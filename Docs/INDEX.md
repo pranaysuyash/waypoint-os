@@ -1,0 +1,9 @@
+- [Product Vision and Model](PRODUCT_VISION_AND_MODEL.md) — The B2B Agency OS thesis and sourcing hierarchy.
+- [Detailed Agent Map](DETAILED_AGENT_MAP.md) — Catalog of all 20+ agents, roles, and v1 stack.
+- [Voice Intake and Orchestration](VOICE_ORCHESTRATION_AND_SESSIONS.md) — 2-screen model, routing loop, and "brackets" logic.
+- [Audit and Intelligence Engine](AUDIT_AND_INTELLIGENCE_ENGINE.md) — Wasted-spend detection, URL ingestion, and market learning.
+- [Technical Scaffold and Autoresearch](TECHNICAL_SCAFFOLD_AND_AUTORESEARCH.md) — Two-loop architecture and prompt registry.
+- [Data Model and Taxonomy](DATA_MODEL_AND_TAXONOMY.md) — Brackets, budget splits, and the shared state schema.
+- [Sourcing and Decision Policy](Sourcing_And_Decision_Policy.md) — Sourcing hierarchy and "Proceed/Ask" gating logic.
+- [Discussion Log](DISCUSSION_LOG.md) — Audit trail of pivots and agent feedback.
+- [First Mile Implementation](FIRST_MILE_IMPLEMENTATION.md) — Roadmap for the Agency Context deconstruction.

@@ -1,0 +1,430 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "canonical_packet.schema.json",
+  "title": "CanonicalPacket",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "packet_id",
+    "schema_version",
+    "stage",
+    "created_at",
+    "updated_at",
+    "facts",
+    "derived_signals",
+    "hypotheses",
+    "unknowns",
+    "contradictions",
+    "blockers",
+    "decision_state",
+    "assumptions",
+    "branch_options",
+    "source_envelope_ids",
+    "event_cursor"
+  ],
+  "properties": {
+    "packet_id": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "discovery",
+        "shortlist",
+        "proposal",
+        "booking"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "party_size": { "$ref": "#/$defs/FieldSlot" },
+        "adult_count": { "$ref": "#/$defs/FieldSlot" },
+        "child_count": { "$ref": "#/$defs/FieldSlot" },
+        "elderly_present": { "$ref": "#/$defs/FieldSlot" },
+        "child_ages": { "$ref": "#/$defs/FieldSlot" },
+        "origin_city": { "$ref": "#/$defs/FieldSlot" },
+        "origin_country": { "$ref": "#/$defs/FieldSlot" },
+        "destination_candidates": { "$ref": "#/$defs/FieldSlot" },
+        "trip_type": { "$ref": "#/$defs/FieldSlot" },
+        "domestic_or_international": { "$ref": "#/$defs/FieldSlot" },
+        "date_window": { "$ref": "#/$defs/FieldSlot" },
+        "duration_nights": { "$ref": "#/$defs/FieldSlot" },
+        "budget_total": { "$ref": "#/$defs/FieldSlot" },
+        "budget_currency": { "$ref": "#/$defs/FieldSlot" },
+        "budget_flexibility": { "$ref": "#/$defs/FieldSlot" },
+        "pace": { "$ref": "#/$defs/FieldSlot" },
+        "trip_style": { "$ref": "#/$defs/FieldSlot" },
+        "hotel_preferences": { "$ref": "#/$defs/FieldSlot" },
+        "meal_preferences": { "$ref": "#/$defs/FieldSlot" },
+        "mobility_constraints": { "$ref": "#/$defs/FieldSlot" },
+        "medical_constraints": { "$ref": "#/$defs/FieldSlot" },
+        "visa_status": { "$ref": "#/$defs/FieldSlot" },
+        "passport_status": { "$ref": "#/$defs/FieldSlot" },
+        "hard_constraints": { "$ref": "#/$defs/FieldSlot" },
+        "soft_preferences": { "$ref": "#/$defs/FieldSlot" },
+        "agency_notes": { "$ref": "#/$defs/FieldSlot" }
+      }
+    },
+    "derived_signals": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/DerivedSignal" }
+    },
+    "hypotheses": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Hypothesis" }
+    },
+    "unknowns": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/UnknownItem" }
+    },
+    "contradictions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Contradiction" }
+    },
+    "blockers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hard",
+        "soft"
+      ],
+      "properties": {
+        "hard": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/BlockerItem" }
+        },
+        "soft": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/BlockerItem" }
+        }
+      }
+    },
+    "decision_state": {
+      "type": "string",
+      "enum": [
+        "ASK_FOLLOWUP",
+        "PROCEED_INTERNAL_DRAFT",
+        "PROCEED_TRAVELER_SAFE",
+        "BRANCH_OPTIONS",
+        "STOP_NEEDS_REVIEW"
+      ]
+    },
+    "assumptions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Assumption" }
+    },
+    "branch_options": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/BranchOption" }
+    },
+    "session_strategy": {
+      "anyOf": [
+        { "$ref": "#/$defs/SessionStrategy" },
+        { "type": "null" }
+      ]
+    },
+    "prompt_bundle": {
+      "type": ["object", "null"],
+      "additionalProperties": true
+    },
+    "source_envelope_ids": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "event_cursor": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "$defs": {
+    "EvidenceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "envelope_id",
+        "evidence_type"
+      ],
+      "properties": {
+        "envelope_id": { "type": "string" },
+        "evidence_type": {
+          "type": "string",
+          "enum": [
+            "text_span",
+            "structured_field",
+            "attachment_extract",
+            "transcript_segment",
+            "manual_note"
+          ]
+        },
+        "excerpt": { "type": ["string", "null"] },
+        "field_path": { "type": ["string", "null"] },
+        "start": { "type": ["integer", "null"] },
+        "end": { "type": ["integer", "null"] },
+        "timestamp_start_ms": { "type": ["integer", "null"] },
+        "timestamp_end_ms": { "type": ["integer", "null"] }
+      }
+    },
+    "FieldSlot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "confidence",
+        "authority_level",
+        "extraction_mode",
+        "evidence_refs",
+        "updated_at"
+      ],
+      "properties": {
+        "value": {},
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "authority_level": {
+          "type": "string",
+          "enum": [
+            "explicit_user",
+            "explicit_owner",
+            "imported_structured",
+            "derived_signal",
+            "soft_hypothesis",
+            "manual_override",
+            "unknown"
+          ]
+        },
+        "extraction_mode": {
+          "type": "string",
+          "enum": [
+            "direct_extract",
+            "normalized",
+            "inferred",
+            "imported",
+            "manual_override",
+            "unknown"
+          ]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/EvidenceRef" }
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "DerivedSignal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal_id",
+        "label",
+        "reason",
+        "confidence"
+      ],
+      "properties": {
+        "signal_id": { "type": "string" },
+        "label": { "type": "string" },
+        "reason": { "type": "string" },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/EvidenceRef" }
+        }
+      }
+    },
+    "Hypothesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hypothesis_id",
+        "label",
+        "reason",
+        "confidence",
+        "status"
+      ],
+      "properties": {
+        "hypothesis_id": { "type": "string" },
+        "label": { "type": "string" },
+        "reason": { "type": "string" },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "validated",
+            "rejected",
+            "stale"
+          ]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/EvidenceRef" }
+        }
+      }
+    },
+    "UnknownItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field_name",
+        "reason",
+        "severity"
+      ],
+      "properties": {
+        "field_name": { "type": "string" },
+        "reason": { "type": "string" },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "hard",
+            "soft"
+          ]
+        }
+      }
+    },
+    "Contradiction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contradiction_id",
+        "field_name",
+        "values",
+        "severity",
+        "status"
+      ],
+      "properties": {
+        "contradiction_id": { "type": "string" },
+        "field_name": { "type": "string" },
+        "values": {
+          "type": "array",
+          "items": {}
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "warning",
+            "blocking"
+          ]
+        },
+        "reason": {
+          "type": ["string", "null"]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "resolved"
+          ]
+        },
+        "resolution_note": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "BlockerItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field_name",
+        "reason"
+      ],
+      "properties": {
+        "field_name": { "type": "string" },
+        "reason": { "type": "string" }
+      }
+    },
+    "Assumption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assumption_id",
+        "label",
+        "reason",
+        "visibility"
+      ],
+      "properties": {
+        "assumption_id": { "type": "string" },
+        "label": { "type": "string" },
+        "reason": { "type": "string" },
+        "visibility": {
+          "type": "string",
+          "enum": [
+            "internal_only",
+            "traveler_visible"
+          ]
+        }
+      }
+    },
+    "BranchOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "branch_id",
+        "label",
+        "based_on"
+      ],
+      "properties": {
+        "branch_id": { "type": "string" },
+        "label": { "type": "string" },
+        "based_on": {
+          "type": "string",
+          "description": "Contradiction or assumption that generated this branch."
+        },
+        "description": { "type": ["string", "null"] }
+      }
+    },
+    "SessionStrategy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "goal",
+        "question_order",
+        "must_confirm",
+        "must_not_assume"
+      ],
+      "properties": {
+        "goal": { "type": "string" },
+        "question_order": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "must_confirm": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "must_not_assume": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "tone": {
+          "type": ["string", "null"]
+        }
+      }
+    }
+  }
+}

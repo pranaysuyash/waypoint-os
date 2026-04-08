@@ -1,0 +1,491 @@
+{
+  "summary": {
+    "total": 30,
+    "passed": 30,
+    "failed": 0,
+    "errors": 0,
+    "success_rate": 100.0
+  },
+  "category_stats": {
+    "basic": {
+      "total": 6,
+      "passed": 6
+    },
+    "contradiction": {
+      "total": 5,
+      "passed": 5
+    },
+    "authority": {
+      "total": 5,
+      "passed": 5
+    },
+    "stage": {
+      "total": 4,
+      "passed": 4
+    },
+    "edge": {
+      "total": 5,
+      "passed": 5
+    },
+    "hybrid": {
+      "total": 5,
+      "passed": 5
+    }
+  },
+  "results": {
+    "passed": [
+      {
+        "name": "basic_empty",
+        "category": "basic",
+        "checks": [
+          "Expected decision: ASK_FOLLOWUP",
+          "Expected hard blockers: 4"
+        ],
+        "packet_summary": {
+          "facts": 0,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "basic_complete_discovery",
+        "category": "basic",
+        "checks": [
+          "Expected decision: PROCEED_TRAVELER_SAFE",
+          "Expected hard blockers: 0"
+        ],
+        "packet_summary": {
+          "facts": 7,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "basic_hypothesis_only",
+        "category": "basic",
+        "checks": [
+          "Expected decision: ASK_FOLLOWUP",
+          "Expected hard blockers: 3"
+        ],
+        "packet_summary": {
+          "facts": 1,
+          "derived": 0,
+          "hypotheses": 3,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "basic_derived_fills",
+        "category": "basic",
+        "checks": [
+          "Expected decision: PROCEED_INTERNAL_DRAFT",
+          "Expected hard blockers: 0"
+        ],
+        "packet_summary": {
+          "facts": 3,
+          "derived": 1,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "basic_soft_only",
+        "category": "basic",
+        "checks": [
+          "Expected decision: PROCEED_INTERNAL_DRAFT",
+          "Expected hard blockers: 0"
+        ],
+        "packet_summary": {
+          "facts": 4,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "basic_minimal_safe",
+        "category": "basic",
+        "checks": [
+          "Expected decision: PROCEED_TRAVELER_SAFE",
+          "Expected hard blockers: 0"
+        ],
+        "packet_summary": {
+          "facts": 7,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "contradiction_date_critical",
+        "category": "contradiction",
+        "checks": [
+          "Expected decision: STOP_NEEDS_REVIEW",
+          "Contradictions: 1"
+        ],
+        "packet_summary": {
+          "facts": 4,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 1
+        }
+      },
+      {
+        "name": "contradiction_budget_branch",
+        "category": "contradiction",
+        "checks": [
+          "Expected decision: BRANCH_OPTIONS",
+          "Contradictions: 1"
+        ],
+        "packet_summary": {
+          "facts": 5,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 1
+        }
+      },
+      {
+        "name": "contradiction_destination_ask",
+        "category": "contradiction",
+        "checks": [
+          "Expected decision: ASK_FOLLOWUP",
+          "Contradictions: 1"
+        ],
+        "packet_summary": {
+          "facts": 4,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 1
+        }
+      },
+      {
+        "name": "contradiction_count_ask",
+        "category": "contradiction",
+        "checks": [
+          "Expected decision: ASK_FOLLOWUP",
+          "Contradictions: 1"
+        ],
+        "packet_summary": {
+          "facts": 4,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 1
+        }
+      },
+      {
+        "name": "contradiction_origin_ask",
+        "category": "contradiction",
+        "checks": [
+          "Expected decision: ASK_FOLLOWUP",
+          "Contradictions: 1"
+        ],
+        "packet_summary": {
+          "facts": 4,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 1
+        }
+      },
+      {
+        "name": "authority_manual_override",
+        "category": "authority",
+        "checks": [
+          "Expected decision: PROCEED_TRAVELER_SAFE",
+          "Expected hard blockers: 0"
+        ],
+        "packet_summary": {
+          "facts": 5,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "authority_owner_vs_imported",
+        "category": "authority",
+        "checks": [
+          "Expected decision: ASK_FOLLOWUP",
+          "Contradictions: 1"
+        ],
+        "packet_summary": {
+          "facts": 4,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 1
+        }
+      },
+      {
+        "name": "authority_derived_vs_hypothesis",
+        "category": "authority",
+        "checks": [
+          "Expected decision: ASK_FOLLOWUP",
+          "Expected hard blockers: 1"
+        ],
+        "packet_summary": {
+          "facts": 2,
+          "derived": 1,
+          "hypotheses": 1,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "authority_explicit_user_high",
+        "category": "authority",
+        "checks": [
+          "Expected decision: PROCEED_TRAVELER_SAFE",
+          "Expected hard blockers: 0"
+        ],
+        "packet_summary": {
+          "facts": 7,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "authority_unknown_rejected",
+        "category": "authority",
+        "checks": [
+          "Expected decision: ASK_FOLLOWUP",
+          "Expected hard blockers: 3"
+        ],
+        "packet_summary": {
+          "facts": 4,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "stage_discovery_to_shortlist",
+        "category": "stage",
+        "checks": [
+          "Expected decision: ASK_FOLLOWUP",
+          "Expected hard blockers: 1"
+        ],
+        "packet_summary": {
+          "facts": 4,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "stage_shortlist_to_proposal",
+        "category": "stage",
+        "checks": [
+          "Expected decision: ASK_FOLLOWUP",
+          "Expected hard blockers: 1"
+        ],
+        "packet_summary": {
+          "facts": 5,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "stage_proposal_to_booking",
+        "category": "stage",
+        "checks": [
+          "Expected decision: ASK_FOLLOWUP",
+          "Expected hard blockers: 2"
+        ],
+        "packet_summary": {
+          "facts": 6,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "stage_booking_complete",
+        "category": "stage",
+        "checks": [
+          "Expected decision: PROCEED_TRAVELER_SAFE",
+          "Expected hard blockers: 0"
+        ],
+        "packet_summary": {
+          "facts": 8,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "edge_null_values",
+        "category": "edge",
+        "checks": [
+          "Expected decision: ASK_FOLLOWUP",
+          "Expected hard blockers: 3"
+        ],
+        "packet_summary": {
+          "facts": 4,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "edge_empty_strings",
+        "category": "edge",
+        "checks": [
+          "Expected decision: ASK_FOLLOWUP",
+          "Expected hard blockers: 3"
+        ],
+        "packet_summary": {
+          "facts": 4,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "edge_zero_confidence",
+        "category": "edge",
+        "checks": [
+          "Expected decision: PROCEED_INTERNAL_DRAFT",
+          "Expected hard blockers: 0"
+        ],
+        "packet_summary": {
+          "facts": 4,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "edge_duplicate_layers",
+        "category": "edge",
+        "checks": [
+          "Expected decision: PROCEED_INTERNAL_DRAFT",
+          "Expected hard blockers: 0"
+        ],
+        "packet_summary": {
+          "facts": 4,
+          "derived": 1,
+          "hypotheses": 1,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "edge_unknown_stage",
+        "category": "edge",
+        "checks": [
+          "Expected decision: ASK_FOLLOWUP",
+          "Expected hard blockers: 2"
+        ],
+        "packet_summary": {
+          "facts": 2,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "hybrid_multi_source",
+        "category": "hybrid",
+        "checks": [
+          "Expected decision: PROCEED_INTERNAL_DRAFT",
+          "Contradictions: 1"
+        ],
+        "packet_summary": {
+          "facts": 4,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 1
+        }
+      },
+      {
+        "name": "hybrid_normalized",
+        "category": "hybrid",
+        "checks": [
+          "Expected decision: PROCEED_TRAVELER_SAFE",
+          "Expected hard blockers: 0"
+        ],
+        "packet_summary": {
+          "facts": 4,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "hybrid_cross_layer",
+        "category": "hybrid",
+        "checks": [
+          "Expected decision: PROCEED_TRAVELER_SAFE",
+          "Expected hard blockers: 0"
+        ],
+        "packet_summary": {
+          "facts": 4,
+          "derived": 1,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "hybrid_confidence_boundary",
+        "category": "hybrid",
+        "checks": [
+          "Expected decision: PROCEED_INTERNAL_DRAFT",
+          "Expected hard blockers: 0"
+        ],
+        "packet_summary": {
+          "facts": 4,
+          "derived": 0,
+          "hypotheses": 0,
+          "unknowns": 0,
+          "contradictions": 0
+        }
+      },
+      {
+        "name": "hybrid_all_layers",
+        "category": "hybrid",
+        "checks": [
+          "Expected decision: ASK_FOLLOWUP",
+          "Expected hard blockers: 1"
+        ],
+        "packet_summary": {
+          "facts": 2,
+          "derived": 1,
+          "hypotheses": 1,
+          "unknowns": 1,
+          "contradictions": 0
+        }
+      }
+    ],
+    "failed": [],
+    "errors": []
+  }
+}
