@@ -3,7 +3,31 @@
     "allow": [
       "Bash(.venv/bin/python *)",
       "Bash(grep *)",
-      "Bash(uv *)"
+      "Bash(uv *)",
+      "Bash(python3)",
+      "Bash(import *)",
+      "Bash(with)",
+      "Bash(as *)",
+      "Bash(nb *)",
+      "Bash(f)",
+      "Bash(old *)",
+      "Bash(new *)",
+      "Bash(.replace)",
+      "Bash(print)",
+      "Bash(break)",
+      "Bash(def *)",
+      "Bash(decision *)",
+      "Bash(packet *)",
+      "Bash(\"destination_city\":)",
+      "Bash(\"origin_city\":)",
+      "Bash(\"travel_dates\":)",
+      "Bash(\"traveler_count\":)",
+      "Bash(})",
+      "Bash(result *)",
+      "Bash(decision, *)",
+      "Bash(assert *)",
+      "Bash(new_test *)",
+      "Bash(um *)"
     ]
   },
   "$version": 3
