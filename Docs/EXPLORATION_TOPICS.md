@@ -458,6 +458,36 @@ Legend:
 ### 15. Advanced: Learning & Optimization
 **Status**: Not Started - Future evolution
 
+---
+
+## PROBLEM DOMAIN DEEP DIVES
+
+### 16. Agency Internal Data Assets 🟡
+**Status**: Exploration started - Problem domain insight
+
+**Overview**: Agencies have rich internal data (preferred suppliers, tribal knowledge, historical patterns) that can dramatically improve recommendations and preserve margins. How do we capture and use this?
+
+**Key Questions**:
+- What internal data do agencies already have?
+- How can preferred supplier lists reduce search space?
+- What "tribal knowledge" exists only in agents' heads?
+- How do we balance customer fit with agency margin?
+
+**Research Areas**:
+- Preferred supplier networks (hotels, airlines, guides)
+- Tribal knowledge capture (reality checks, hidden issues)
+- Historical booking patterns
+- Margin and commercial data
+- Customer preference memory
+- Package templates
+- Vendor reliability scores
+
+**Deliverable**: Internal data integration strategy
+
+**Detailed Research**: [research/AGENCY_INTERNAL_DATA.md](research/AGENCY_INTERNAL_DATA.md) *[ACTIVE]*
+
+**Related Topics**: All persona scenarios (data utilization), DATA_STRATEGY (storage)
+
 **Overview**: The "Autoresearch" loop from specs. How does the system improve itself?
 
 **Key Questions**:

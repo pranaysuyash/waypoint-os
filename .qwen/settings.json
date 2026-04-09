@@ -27,7 +27,8 @@
       "Bash(decision, *)",
       "Bash(assert *)",
       "Bash(new_test *)",
-      "Bash(um *)"
+      "Bash(um *)",
+      "Bash(sed *)"
     ]
   },
   "$version": 3

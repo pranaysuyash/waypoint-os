@@ -55,4 +55,4 @@ Two-Loop System:
 | ------------------------------------- | ---------------------------------------------- | ----- |
 | 01 - Intake & Normalization           | Implemented                                    | —     |
 | 02 - Gap & Decision                   | Implemented + 81 tests (68 unit + 13 scenario) | A-    |
-| 03 - Session Strategy & Prompt Bundle | Next                                           | —     |
+| 03 - Session Strategy & Prompt Bundle | Contract defined + 15 passing tests | —     |
