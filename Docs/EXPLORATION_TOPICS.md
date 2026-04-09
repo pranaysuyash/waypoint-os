@@ -513,6 +513,30 @@ Legend:
 
 **Deliverable**: [research/EVALUATION_FRAMEWORK.md](research/EVALUATION_FRAMEWORK.md)
 
+---
+
+### 19. Real-World Validation Strategy 🔵
+**Status**: Specification complete - Roadmap defined
+
+**Overview**: 4-phase roadmap from lab to production:
+1. **Lab Validated** (current) — Unit tests, fixtures, golden path
+2. **Shadow Mode** (2 weeks) — Parallel running, no customer exposure
+3. **Pilot Agency** (1 month) — Real quotes, 1-2 agencies, agent review required
+4. **Scale** (3+ months) — Multi-agency rollout, production workload
+
+**Key Components**:
+- Shadow mode collector for parallel comparison
+- Pilot partner selection criteria
+- Scope limits and safety gates
+- Feature flags for gradual rollout
+- Pricing model options (per quote vs subscription)
+- Success metrics (business, product, technical)
+- Risk mitigation strategies
+
+**Deliverable**: [research/REAL_WORLD_VALIDATION.md](research/REAL_WORLD_VALIDATION.md)
+
+---
+
 **Overview**: Agencies have rich internal data (preferred suppliers, tribal knowledge, historical patterns) that can dramatically improve recommendations and preserve margins. How do we capture and use this?
 
 **Key Questions**:
