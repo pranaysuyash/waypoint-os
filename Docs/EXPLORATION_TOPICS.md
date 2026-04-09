@@ -462,8 +462,56 @@ Legend:
 
 ## PROBLEM DOMAIN DEEP DIVES
 
-### 16. Agency Internal Data Assets 🟡
-**Status**: Exploration started - Problem domain insight
+### 16. Agency Internal Data Assets ✅
+**Status**: Completed - Research docs written
+
+**Research Docs**:
+- [research/AGENCY_INTERNAL_DATA.md](research/AGENCY_INTERNAL_DATA.md) — Catalog of internal data types
+- [research/INTERNAL_DATA_INTEGRATION.md](research/INTERNAL_DATA_INTEGRATION.md) — Integration architecture with NB02/NB03
+
+**Key Deliverables**:
+- 7 categories of internal data (preferred suppliers, tribal knowledge, historical patterns, margins, customer memory, packages, reliability)
+- 6 integration points identified
+- 2 new decision states: BRANCH_DESTINATION, ADVISORY_BRANCH
+- Full architecture diagram
+
+---
+
+### 17. Notebook 04: Response Generation 🔵
+**Status**: Specification complete - Ready for implementation
+
+**Overview**: Complete contract for the "Last Mile" compiler stage that transforms SessionOutput into traveler-ready proposals and internal quote sheets.
+
+**Key Components**:
+- `TravelerProposal` — Customer-facing document with itinerary, pricing, rationale
+- `InternalQuoteSheet` — Agent-facing operational document with vendors, margins, risks
+- 3 generation modes: Template-based, Constraint-assembly, Research-intensive
+- Component selection logic (hotels, activities) with multi-factor scoring
+- Personalization engine ("why this fits" rationale)
+- Quality gates and error handling
+
+**Deliverable**: [research/NOTEBOOK_04_CONTRACT.md](research/NOTEBOOK_04_CONTRACT.md)
+
+---
+
+### 18. Evaluation Framework 🔵
+**Status**: Specification complete - Ready for implementation
+
+**Overview**: 4-layer evaluation pyramid for testing beyond unit tests:
+1. Structural Validation (schema, completeness, constraints)
+2. LLM-as-Judge (automated quality scoring)
+3. Human Evaluation (expert review, blind comparison)
+4. Business Outcomes (conversion, satisfaction, margin)
+
+**Key Components**:
+- LLM evaluation prompts with calibration
+- Human evaluation rubric
+- Safety evaluation (red team testing)
+- A/B testing framework
+- Continuous evaluation pipeline
+- Success criteria and dashboard
+
+**Deliverable**: [research/EVALUATION_FRAMEWORK.md](research/EVALUATION_FRAMEWORK.md)
 
 **Overview**: Agencies have rich internal data (preferred suppliers, tribal knowledge, historical patterns) that can dramatically improve recommendations and preserve margins. How do we capture and use this?
 
