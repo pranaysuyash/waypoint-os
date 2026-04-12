@@ -1,0 +1,13 @@
+{
+  "id": "shadow_007",
+  "source_type": "",
+  "raw_input": "",
+  "structured_input": null,
+  "context": {
+    "is_repeat_customer": null,
+    "history_notes": null
+  },
+  "expected": null,
+  "system_output": null,
+  "review": null
+}

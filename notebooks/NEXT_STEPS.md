@@ -227,3 +227,38 @@ The hard part is **writing good expected outcomes**, not writing code.
 3. Golden path demo runs clean from raw text to prompt bundle
 4. Internal vs external boundary is proven correct (no leakage)
 5. Results are reproducible and auditable
+
+---
+
+## Status: v0.1 Spine Frozen
+
+| Component                    | File                                          | Status             |
+| ---------------------------- | --------------------------------------------- | ------------------ |
+| NB01: Intake & Normalization | `notebooks/01_intake_and_normalization.ipynb` | Defined            |
+| NB02: Gap & Decision         | `notebooks/02_gap_and_decision.ipynb`         | Defined + 81 tests |
+| NB03: Session Strategy       | `notebooks/03_session_strategy.ipynb`         | Defined + 15 tests |
+| Raw Fixtures (12)            | `data/fixtures/raw_fixtures.py`               | Complete           |
+| Packet Fixtures (19)         | `data/fixtures/packet_fixtures.py`            | Complete           |
+| Eval Runner (2 modes)        | `notebooks/04_eval_runner.ipynb`              | 31/31 pass         |
+| Golden Path Demo             | `notebooks/05_golden_path.ipynb`              | Clean run          |
+
+**All boundary checks pass. The spine is proven.**
+
+---
+
+## Shadow Mode — Ready
+
+| Component            | File                                                           | Status          |
+| -------------------- | -------------------------------------------------------------- | --------------- |
+| Schema               | `data/shadow/SHADOW_MODE_SCHEMA.md`                            | Defined         |
+| Input templates (10) | `data/shadow/inputs/shadow_001.json` through `shadow_010.json` | Ready for notes |
+| Runner               | `notebooks/06_shadow_runner.ipynb`                             | Working         |
+| Output dir           | `data/shadow/outputs/`                                         | Ready           |
+| Evaluation dir       | `data/shadow/evaluations/`                                     | Ready           |
+
+**To use:**
+
+1. Paste real agency notes into `shadow_XXX.json` files (`raw_input` + `source_type`)
+2. Run `notebooks/06_shadow_runner.ipynb` from project root
+3. Review: fill `data/shadow/evaluations/shadow_XXX_eval.json`
+4. Analyze: patterns → `Docs/SHADOW_MODE_REPORT.md`
