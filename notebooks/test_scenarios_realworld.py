@@ -25,17 +25,46 @@ def load_notebook_namespace():
     namespace = {}
     for cell in nb['cells']:
         if cell['cell_type'] == 'code':
-            exec(cell['source'], namespace)
+            source = cell['source']
+            if isinstance(source, list):
+                source = ''.join(source)
+            exec(source, namespace)
     return namespace
 
 ns = load_notebook_namespace()
 
-CanonicalPacket = ns['CanonicalPacket']
-Slot = ns['Slot']
-EvidenceRef = ns['EvidenceRef']
-UnknownField = ns['UnknownField']
-run_gap_and_decision = ns['run_gap_and_decision']
-calculate_confidence = ns['calculate_confidence']
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+
+from intake.packet_models import CanonicalPacket as CanonicalPacketModel, Slot, EvidenceRef, UnknownField
+from intake.decision import (
+    run_gap_and_decision as run_gap_and_decision_src,
+    calculate_confidence as calculate_confidence_src,
+)
+
+run_gap_and_decision = ns.get('run_gap_and_decision', run_gap_and_decision_src)
+calculate_confidence = ns.get('calculate_confidence', calculate_confidence_src)
+
+# Compatibility wrapper for legacy scenario constructors.
+def CanonicalPacket(*args, **kwargs):
+    packet_id = kwargs.pop("packet_id", None)
+    if packet_id is None and args:
+        packet_id = args[0]
+    if packet_id is None:
+        packet_id = "compat_packet"
+
+    kwargs.pop("created_at", None)
+    kwargs.pop("last_updated", None)
+
+    pkt = CanonicalPacketModel(packet_id=packet_id)
+    for key in (
+        "schema_version", "stage", "operating_mode", "decision_state",
+        "facts", "derived_signals", "hypotheses", "ambiguities",
+        "unknowns", "contradictions", "source_envelope_ids",
+        "revision_count", "event_cursor", "events",
+    ):
+        if key in kwargs:
+            setattr(pkt, key, kwargs.pop(key))
+    return pkt
 
 _passed = 0
 _failed = 0

@@ -37,37 +37,85 @@ def load_notebook_namespace():
     namespace = {}
     for cell in nb['cells']:
         if cell['cell_type'] == 'code':
+            source = cell['source']
+            if isinstance(source, list):
+                source = ''.join(source)
             try:
-                exec(cell['source'], namespace)
+                exec(source, namespace)
             except Exception as e:
                 print(f"ERROR loading cell: {e}")
-                print(f"  Source preview: {cell['source'][:120]}")
+                print(f"  Source preview: {source[:120]}")
                 raise
     return namespace
 
 ns = load_notebook_namespace()
 
-# Pull everything into local scope for convenience
-CanonicalPacket = ns['CanonicalPacket']
-Slot = ns['Slot']
-EvidenceRef = ns['EvidenceRef']
-UnknownField = ns['UnknownField']
-MVB_BY_STAGE = ns['MVB_BY_STAGE']
-FIELD_ALIASES = ns['FIELD_ALIASES']
-AUTHORITY_WEIGHTS = ns['AUTHORITY_WEIGHTS']
-CONTRADICTION_HANDLING = ns['CONTRADICTION_HANDLING']
-CONTRADICTION_FIELD_MAP = ns['CONTRADICTION_FIELD_MAP']
-run_gap_and_decision = ns['run_gap_and_decision']
-calculate_confidence = ns['calculate_confidence']
-detect_contradictions = ns['detect_contradictions']
-classify_contradiction = ns['classify_contradiction']
-get_contradiction_action = ns['get_contradiction_action']
-resolve_field = ns['resolve_field']
-field_fills_blocker = ns['field_fills_blocker']
-is_fact = ns['is_fact']
-is_derived_signal = ns['is_derived_signal']
-is_hypothesis = ns['is_hypothesis']
-DecisionResult = ns['DecisionResult']
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+
+from intake.packet_models import CanonicalPacket as CanonicalPacketModel, Slot, EvidenceRef, UnknownField, AuthorityLevel
+from intake.decision import (
+    run_gap_and_decision as run_gap_and_decision_src,
+    MVB_BY_STAGE,
+    LEGACY_ALIASES,
+    CONTRADICTION_ACTIONS,
+    CONTRADICTION_FIELD_MAP,
+    calculate_confidence as calculate_confidence_src,
+    classify_contradiction,
+    get_contradiction_action,
+    resolve_field,
+    field_fills_blocker,
+    DecisionResult,
+)
+
+# Compatibility wrapper for legacy test constructors.
+def CanonicalPacket(*args, **kwargs):
+    packet_id = kwargs.pop("packet_id", None)
+    if packet_id is None and args:
+        packet_id = args[0]
+    if packet_id is None:
+        packet_id = "compat_packet"
+
+    kwargs.pop("created_at", None)
+    kwargs.pop("last_updated", None)
+
+    pkt = CanonicalPacketModel(packet_id=packet_id)
+    for key in (
+        "schema_version", "stage", "operating_mode", "decision_state",
+        "facts", "derived_signals", "hypotheses", "ambiguities",
+        "unknowns", "contradictions", "source_envelope_ids",
+        "revision_count", "event_cursor", "events",
+    ):
+        if key in kwargs:
+            setattr(pkt, key, kwargs.pop(key))
+    return pkt
+
+# Pull functions from notebook namespace when present, otherwise fallback to src/intake.
+run_gap_and_decision = ns.get('run_gap_and_decision', run_gap_and_decision_src)
+calculate_confidence = ns.get('calculate_confidence', calculate_confidence_src)
+FIELD_ALIASES = ns.get('FIELD_ALIASES', LEGACY_ALIASES)
+CONTRADICTION_HANDLING = ns.get('CONTRADICTION_HANDLING', CONTRADICTION_ACTIONS)
+AUTHORITY_WEIGHTS = ns.get('AUTHORITY_WEIGHTS', {
+    "manual_override": 1.0,
+    "explicit_user": 0.95,
+    "imported_structured": 0.85,
+    "explicit_owner": 0.8,
+    "derived_signal": 0.6,
+    "soft_hypothesis": 0.35,
+    "unknown": 0.2,
+})
+detect_contradictions = ns.get('detect_contradictions', lambda packet: packet.contradictions)
+is_fact = ns.get(
+    'is_fact',
+    lambda slot: slot is not None and AuthorityLevel.is_fact(slot.authority_level),
+)
+is_derived_signal = ns.get(
+    'is_derived_signal',
+    lambda slot: slot is not None and slot.authority_level == AuthorityLevel.DERIVED_SIGNAL,
+)
+is_hypothesis = ns.get(
+    'is_hypothesis',
+    lambda slot: slot is not None and slot.authority_level == AuthorityLevel.SOFT_HYPOTHESIS,
+)
 
 # =============================================================================
 # TEST FRAMEWORK (minimal, no dependencies)

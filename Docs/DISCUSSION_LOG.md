@@ -28,3 +28,147 @@ Initial plan was "Agent-Centric" (Agent understands $\rightarrow$ Agent la-hypot
 - [ ] Define the `Canonical Packet Schema`.
 - [ ] Build the `MVB (Minimum Viable Brief)` blocker check.
 - [ ] Create a `Prompt Registry` instead of freeform prompt generation.
+
+## Log Entry: 2026-04-13 - Part 1 Continuation Ingested (Agency Ops + Voice Orchestration Nuances)
+
+### Context
+The first ChatGPT conversation was continued in this Codex thread and added major constraints beyond the original archive segment.
+
+### What Was Added
+- Confirmed agency-first framing with operational sourcing realities:
+  - internal packages
+  - preferred suppliers
+  - network inventory
+  - open market as fallback
+- Explicit move from "trip generation" to "workflow + optimization" framing.
+- Strong requirement for person-level suitability and wasted-spend detection.
+- Budget decomposition expansion including shopping allocation.
+- Recommendation to support itinerary/package auditing from multiple input types (PDF/text/screenshots/URL).
+- Two-screen voice intake direction with adaptive orchestration and live structured brief.
+- Validation-side "free engine" accepted only as intelligence/audit layer, not a full B2C offering.
+
+### Preservation Action
+- Created `Archive/PART_1_CONTINUATION_2026-04-13.md` to preserve continuation context without overwriting historical raw files.
+
+### Immediate Follow-ups
+- Keep ingesting remaining user-provided conversation parts as separate historical artifacts.
+- Reconcile full archived raw conversation chain after all parts are received.
+- Promote confirmed constraints into implementation contracts only after all context drops are complete.
+
+## Log Entry: 2026-04-13 - Part 2 Ingested (Router/Composer/Verifier + Offline Autoresearch)
+
+### Context
+Second conversation focuses on architecture for dynamic question routing and prompt optimization, and where to apply autoresearch safely.
+
+### Key Decisions Reinforced
+- Separate **online production path** from **offline optimization path**.
+- Use a compiler-like runtime pipeline:
+  - context normalizer
+  - intake router
+  - prompt composer (registry-based)
+  - specialist/generalist execution
+  - verifier
+  - memory/log update
+- Keep taxonomy stable and coarse in v1; avoid live taxonomy drift.
+- Apply autoresearch offline to:
+  - router prompts
+  - few-shot packs
+  - context packing/truncation
+  - confidence/escalation thresholds
+- Require eval harness and acceptance gating before deploying prompt/routing changes.
+
+### Preservation Action
+- Added archive artifact: `Archive/PART_2_RAW_2026-04-13.md`
+
+### Follow-up for next context drops
+- Continue preserving each drop as independent historical artifact.
+- After all parts are shared, synthesize into:
+  - consolidated decision timeline
+  - implementation contract checklist
+  - prioritized execution plan mapped to code modules/tests
+
+## Log Entry: 2026-04-13 - Part 2 Re-Shared and Rolling Synthesis Started
+
+### Context
+User re-shared the second conversation content in-thread and confirmed additional context drops are coming.
+
+### Preservation Action
+- Retained `Archive/PART_2_RAW_2026-04-13.md` as part-specific archive context.
+- Added explicit re-share addendum in the archive artifact.
+
+### Synthesis Action
+- Created `Docs/ROLLING_CONTEXT_SYNTHESIS.md` as the active rolling document for:
+  - stable architecture contracts
+  - implementation priorities
+  - risk boundaries
+  - open intake status
+
+### Operating Rule Confirmed
+- Online runtime path remains deterministic.
+- Autoresearch-style optimization remains offline and eval-gated.
+
+## Log Entry: 2026-04-14 - First Principles Foundation and Strict Build Order
+
+### Context
+User requested that planning be grounded in first-principles reasoning before moving to backlog conversion.
+
+### Decisions Captured
+- Reframed product as a **decision system for agencies**, not a generic trip planner.
+- Locked core truths: constraint satisfaction, state integrity, repeatable operations, provenance.
+- Established deterministic-first architecture with selective LLM usage.
+- Defined MVP output quality as: normalized constraints, blocker/contradiction handling, feasibility verdict, ranked options, and bookable next actions.
+
+### New Artifact
+- `Docs/FIRST_PRINCIPLES_FOUNDATION_2026-04-14.md`
+  - contains captured first-principles discussion
+  - contains strict dependency-ordered build sequence (Stage 0 -> Stage 7)
+
+### Immediate Execution Implication
+- Next planning and implementation should be evaluated against Stage 0/1/2 readiness first, before orchestration or GTM expansion work.
+
+## Log Entry: 2026-04-14 - First Principles Gap Assessment (Have vs Should vs Next)
+
+### Context
+User requested explicit first-principles checkpointing: what exists today, what should exist for MVP correctness, and what to execute next.
+
+### Action Taken
+- Added `Docs/FIRST_PRINCIPLES_GAP_ASSESSMENT_2026-04-14.md` with:
+  - current-state inventory from code
+  - MVP-required state from first principles
+  - prioritized P0/P1/P2 gaps
+  - strict next execution order and acceptance criteria
+
+### Key Execution Constraint Reinforced
+- Continue deterministic-first progression: contract -> deterministic compiler hardening -> realism -> optioning/ranking -> orchestration.
+
+## Log Entry: 2026-04-14 - Multi-Agent Execution (NB02 Contract + Notebook Test Compatibility)
+
+### Context
+User requested execution using multiple agents with workflow compliance (plan -> implement -> verify -> document).
+
+### Multi-Agent Work Completed
+1. Notebook loader hardening:
+   - `notebooks/test_02_comprehensive.py`
+   - `notebooks/test_scenarios_realworld.py`
+   - normalized notebook code-cell source before `exec` (`list[str]` -> joined `str`)
+2. Decision-policy contract alignment:
+   - updated `specs/decision_policy.md` to runtime v0.2 behavior
+   - added `tests/test_decision_policy_conformance.py`
+
+### Verification Performed
+- `uv run python -m pytest tests/test_decision_policy_conformance.py -q` -> `5 passed`
+- `uv run python -m pytest tests/test_nb02_v02.py -q` -> `19 passed`
+- `uv run python -m pytest tests -q` -> `46 passed`
+- Notebook scenario scripts executed with `PYTHONPATH=src`:
+  - `notebooks/test_02_comprehensive.py` runs but reports multiple legacy expectation mismatches
+  - `notebooks/test_scenarios_realworld.py` runs but reports multiple legacy expectation mismatches
+
+### Notes
+- Core `tests/` suite is green and aligned with current runtime contract.
+- Notebook scripts contain legacy assumptions from pre-v0.2 interfaces and now act as migration gap indicators rather than strict release gates.
+
+### Pending
+- Decide whether notebook scripts should be:
+  1. migrated fully to v0.2 contracts, or
+  2. archived/reframed as legacy exploratory harnesses (non-gating).
+- If retained, remove deprecated expectations (`current_stage`, `mvb_config`, old field names/aliases) and align assertions with v0.2 decisions.
