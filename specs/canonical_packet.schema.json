@@ -2,33 +2,33 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "canonical_packet.schema.json",
   "title": "CanonicalPacket",
+  "description": "Agency-OS Packet v0.2 \u2014 single source of truth for all intake data. Produced by NB01, consumed by NB02/NB03.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "packet_id",
     "schema_version",
     "stage",
-    "created_at",
-    "updated_at",
+    "operating_mode",
     "facts",
     "derived_signals",
+    "ambiguities",
     "hypotheses",
     "unknowns",
     "contradictions",
-    "blockers",
-    "decision_state",
-    "assumptions",
-    "branch_options",
     "source_envelope_ids",
+    "revision_count",
     "event_cursor"
   ],
   "properties": {
     "packet_id": {
-      "type": "string"
+      "type": "string",
+      "description": "Unique packet identifier"
     },
     "schema_version": {
       "type": "string",
-      "const": "0.1"
+      "const": "0.2",
+      "description": "Schema version \u2014 migration guard"
     },
     "stage": {
       "type": "string",
@@ -37,117 +37,90 @@
         "shortlist",
         "proposal",
         "booking"
-      ]
-    },
-    "created_at": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "updated_at": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "facts": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "party_size": { "$ref": "#/$defs/FieldSlot" },
-        "adult_count": { "$ref": "#/$defs/FieldSlot" },
-        "child_count": { "$ref": "#/$defs/FieldSlot" },
-        "elderly_present": { "$ref": "#/$defs/FieldSlot" },
-        "child_ages": { "$ref": "#/$defs/FieldSlot" },
-        "origin_city": { "$ref": "#/$defs/FieldSlot" },
-        "origin_country": { "$ref": "#/$defs/FieldSlot" },
-        "destination_candidates": { "$ref": "#/$defs/FieldSlot" },
-        "trip_type": { "$ref": "#/$defs/FieldSlot" },
-        "domestic_or_international": { "$ref": "#/$defs/FieldSlot" },
-        "date_window": { "$ref": "#/$defs/FieldSlot" },
-        "duration_nights": { "$ref": "#/$defs/FieldSlot" },
-        "budget_total": { "$ref": "#/$defs/FieldSlot" },
-        "budget_currency": { "$ref": "#/$defs/FieldSlot" },
-        "budget_flexibility": { "$ref": "#/$defs/FieldSlot" },
-        "pace": { "$ref": "#/$defs/FieldSlot" },
-        "trip_style": { "$ref": "#/$defs/FieldSlot" },
-        "hotel_preferences": { "$ref": "#/$defs/FieldSlot" },
-        "meal_preferences": { "$ref": "#/$defs/FieldSlot" },
-        "mobility_constraints": { "$ref": "#/$defs/FieldSlot" },
-        "medical_constraints": { "$ref": "#/$defs/FieldSlot" },
-        "visa_status": { "$ref": "#/$defs/FieldSlot" },
-        "passport_status": { "$ref": "#/$defs/FieldSlot" },
-        "hard_constraints": { "$ref": "#/$defs/FieldSlot" },
-        "soft_preferences": { "$ref": "#/$defs/FieldSlot" },
-        "agency_notes": { "$ref": "#/$defs/FieldSlot" }
-      }
-    },
-    "derived_signals": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/DerivedSignal" }
-    },
-    "hypotheses": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/Hypothesis" }
-    },
-    "unknowns": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/UnknownItem" }
-    },
-    "contradictions": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/Contradiction" }
-    },
-    "blockers": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "hard",
-        "soft"
       ],
-      "properties": {
-        "hard": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/BlockerItem" }
-        },
-        "soft": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/BlockerItem" }
-        }
-      }
+      "default": "discovery"
+    },
+    "operating_mode": {
+      "type": "string",
+      "enum": [
+        "normal_intake",
+        "audit",
+        "emergency",
+        "follow_up",
+        "cancellation",
+        "post_trip",
+        "coordinator_group",
+        "owner_review"
+      ],
+      "default": "normal_intake",
+      "description": "System routing classification \u2014 NOT a traveler fact"
     },
     "decision_state": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "enum": [
         "ASK_FOLLOWUP",
         "PROCEED_INTERNAL_DRAFT",
         "PROCEED_TRAVELER_SAFE",
         "BRANCH_OPTIONS",
-        "STOP_NEEDS_REVIEW"
-      ]
+        "STOP_NEEDS_REVIEW",
+        null
+      ],
+      "default": null,
+      "description": "Set by NB02, not NB01"
     },
-    "assumptions": {
+    "facts": {
+      "$ref": "#/$defs/FactsMap"
+    },
+    "derived_signals": {
+      "$ref": "#/$defs/SignalsMap"
+    },
+    "ambiguities": {
       "type": "array",
-      "items": { "$ref": "#/$defs/Assumption" }
+      "items": {
+        "$ref": "#/$defs/Ambiguity"
+      },
+      "description": "First-class ambiguity markers \u2014 not hidden under unknowns"
     },
-    "branch_options": {
+    "hypotheses": {
+      "$ref": "#/$defs/SignalsMap"
+    },
+    "unknowns": {
       "type": "array",
-      "items": { "$ref": "#/$defs/BranchOption" }
+      "items": {
+        "$ref": "#/$defs/UnknownField"
+      }
     },
-    "session_strategy": {
-      "anyOf": [
-        { "$ref": "#/$defs/SessionStrategy" },
-        { "type": "null" }
-      ]
-    },
-    "prompt_bundle": {
-      "type": ["object", "null"],
-      "additionalProperties": true
+    "contradictions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Contradiction"
+      }
     },
     "source_envelope_ids": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
+    },
+    "revision_count": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "How many times requirements changed"
     },
     "event_cursor": {
       "type": "integer",
-      "minimum": 0
+      "minimum": 0,
+      "default": 0
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Event"
+      }
     }
   },
   "$defs": {
@@ -156,26 +129,56 @@
       "additionalProperties": false,
       "required": [
         "envelope_id",
-        "evidence_type"
+        "evidence_type",
+        "excerpt"
       ],
       "properties": {
-        "envelope_id": { "type": "string" },
+        "ref_id": {
+          "type": "string"
+        },
+        "envelope_id": {
+          "type": "string"
+        },
         "evidence_type": {
           "type": "string",
           "enum": [
             "text_span",
             "structured_field",
             "attachment_extract",
-            "transcript_segment",
-            "manual_note"
+            "derived",
+            "manual_entry"
           ]
         },
-        "excerpt": { "type": ["string", "null"] },
-        "field_path": { "type": ["string", "null"] },
-        "start": { "type": ["integer", "null"] },
-        "end": { "type": ["integer", "null"] },
-        "timestamp_start_ms": { "type": ["integer", "null"] },
-        "timestamp_end_ms": { "type": ["integer", "null"] }
+        "excerpt": {
+          "type": "string"
+        },
+        "field_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "offset": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "start": {
+              "type": "integer"
+            },
+            "end": {
+              "type": "integer"
+            }
+          }
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1.0
+        },
+        "metadata": {
+          "type": "object"
+        }
       }
     },
     "FieldSlot": {
@@ -186,8 +189,7 @@
         "confidence",
         "authority_level",
         "extraction_mode",
-        "evidence_refs",
-        "updated_at"
+        "evidence_refs"
       ],
       "properties": {
         "value": {},
@@ -199,12 +201,12 @@
         "authority_level": {
           "type": "string",
           "enum": [
+            "manual_override",
             "explicit_user",
-            "explicit_owner",
             "imported_structured",
+            "explicit_owner",
             "derived_signal",
             "soft_hypothesis",
-            "manual_override",
             "unknown"
           ]
         },
@@ -212,97 +214,404 @@
           "type": "string",
           "enum": [
             "direct_extract",
-            "normalized",
-            "inferred",
             "imported",
-            "manual_override",
-            "unknown"
+            "normalized",
+            "derived",
+            "manual_entry"
           ]
         },
         "evidence_refs": {
           "type": "array",
-          "items": { "$ref": "#/$defs/EvidenceRef" }
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          }
         },
         "updated_at": {
-          "type": "string",
-          "format": "date-time"
-        }
-      }
-    },
-    "DerivedSignal": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "signal_id",
-        "label",
-        "reason",
-        "confidence"
-      ],
-      "properties": {
-        "signal_id": { "type": "string" },
-        "label": { "type": "string" },
-        "reason": { "type": "string" },
-        "confidence": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
+          "type": "string"
         },
-        "evidence_refs": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/EvidenceRef" }
-        }
-      }
-    },
-    "Hypothesis": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "hypothesis_id",
-        "label",
-        "reason",
-        "confidence",
-        "status"
-      ],
-      "properties": {
-        "hypothesis_id": { "type": "string" },
-        "label": { "type": "string" },
-        "reason": { "type": "string" },
-        "confidence": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "status": {
-          "type": "string",
-          "enum": [
-            "active",
-            "validated",
-            "rejected",
-            "stale"
+        "notes": {
+          "type": [
+            "string",
+            "null"
           ]
         },
-        "evidence_refs": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/EvidenceRef" }
+        "maturity": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "stub",
+            "heuristic",
+            "verified",
+            null
+          ],
+          "description": "Signal maturity: stub (placeholder), heuristic (rule-based), verified (data-backed). Only for derived signals."
         }
       }
     },
-    "UnknownItem": {
+    "FactsMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Explicit or imported truths only. No derived/computed values. Includes later-stage fields for shortlist/proposal/booking.",
+      "properties": {
+        "party_size": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "party_composition": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "child_ages": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "mobility_constraints": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "medical_constraints": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "destination_candidates": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "destination_status": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "origin_city": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "date_window": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "date_start": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "date_end": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "date_confidence": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "duration_nights": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "budget_raw_text": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "budget_min": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "budget_max": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "budget_currency": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "budget_flexibility": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "budget_scope": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "trip_purpose": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "trip_style": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "hotel_preferences": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "meal_preferences": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "hard_constraints": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "soft_preferences": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "agency_notes": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "owner_constraints": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "owner_priority_signals": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "customer_id": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "past_trips": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "passport_status": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "visa_status": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "existing_itinerary": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "traveler_plan": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "sub_groups": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "coordinator_id": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "resolved_destination": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "selected_itinerary": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "payment_method": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "traveler_details": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "special_requests": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "dietary_restrictions": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "activity_preferences": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "accommodation_type": {
+          "$ref": "#/$defs/FieldSlot"
+        }
+      }
+    },
+    "SignalsMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Computed routing/judgment values. NOT explicit facts.",
+      "properties": {
+        "domestic_or_international": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "is_repeat_customer": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "sourcing_path": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "preferred_supplier_available": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "estimated_minimum_cost": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "budget_feasibility": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "composition_risk": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "document_risk": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "operational_complexity": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "urgency": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "value_gap": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "internal_data_present": {
+          "$ref": "#/$defs/FieldSlot"
+        },
+        "booking_readiness": {
+          "$ref": "#/$defs/FieldSlot"
+        }
+      }
+    },
+    "Ambiguity": {
       "type": "object",
       "additionalProperties": false,
       "required": [
         "field_name",
-        "reason",
-        "severity"
+        "ambiguity_type",
+        "raw_value"
       ],
       "properties": {
-        "field_name": { "type": "string" },
-        "reason": { "type": "string" },
-        "severity": {
+        "field_name": {
+          "type": "string"
+        },
+        "ambiguity_type": {
           "type": "string",
           "enum": [
-            "hard",
-            "soft"
+            "unresolved_alternatives",
+            "value_vague",
+            "date_window_only",
+            "budget_unclear_scope",
+            "budget_stretch_present",
+            "composition_unclear",
+            "destination_open"
+          ]
+        },
+        "raw_value": {
+          "type": "string"
+        },
+        "normalized_value": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.0
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          }
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "OwnerConstraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "visibility"
+      ],
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": [
+            "internal_only",
+            "traveler_safe_transformable"
+          ],
+          "description": "internal_only: never shown to traveler. traveler_safe_transformable: can be rephrased neutrally."
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          }
+        }
+      }
+    },
+    "SubGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "group_id",
+        "label",
+        "size"
+      ],
+      "properties": {
+        "group_id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "composition": {
+          "type": "object"
+        },
+        "budget_share": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "payment_status": {
+          "type": "string",
+          "enum": [
+            "not_started",
+            "partial",
+            "paid",
+            "emi_pending"
+          ],
+          "default": "not_started"
+        },
+        "document_status": {
+          "type": "string",
+          "enum": [
+            "not_submitted",
+            "partial",
+            "complete"
+          ],
+          "default": "not_submitted"
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "contact": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "UnknownField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field_name",
+        "reason"
+      ],
+      "properties": {
+        "field_name": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "not_present_in_source",
+            "not_extracted_yet",
+            "extraction_failed",
+            "intentionally_unknown"
+          ]
+        },
+        "attempted_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
           ]
         }
       }
@@ -311,118 +620,48 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "contradiction_id",
         "field_name",
         "values",
-        "severity",
-        "status"
+        "sources"
       ],
       "properties": {
-        "contradiction_id": { "type": "string" },
-        "field_name": { "type": "string" },
+        "field_name": {
+          "type": "string"
+        },
         "values": {
           "type": "array",
           "items": {}
         },
-        "severity": {
-          "type": "string",
-          "enum": [
-            "warning",
-            "blocking"
-          ]
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
-        "reason": {
-          "type": ["string", "null"]
-        },
-        "status": {
-          "type": "string",
-          "enum": [
-            "open",
-            "resolved"
-          ]
-        },
-        "resolution_note": {
-          "type": ["string", "null"]
+        "detected_at": {
+          "type": "string"
         }
       }
     },
-    "BlockerItem": {
+    "Event": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "field_name",
-        "reason"
+        "event_type",
+        "details"
       ],
       "properties": {
-        "field_name": { "type": "string" },
-        "reason": { "type": "string" }
-      }
-    },
-    "Assumption": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "assumption_id",
-        "label",
-        "reason",
-        "visibility"
-      ],
-      "properties": {
-        "assumption_id": { "type": "string" },
-        "label": { "type": "string" },
-        "reason": { "type": "string" },
-        "visibility": {
-          "type": "string",
-          "enum": [
-            "internal_only",
-            "traveler_visible"
-          ]
-        }
-      }
-    },
-    "BranchOption": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "branch_id",
-        "label",
-        "based_on"
-      ],
-      "properties": {
-        "branch_id": { "type": "string" },
-        "label": { "type": "string" },
-        "based_on": {
-          "type": "string",
-          "description": "Contradiction or assumption that generated this branch."
+        "event_id": {
+          "type": "integer"
         },
-        "description": { "type": ["string", "null"] }
-      }
-    },
-    "SessionStrategy": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "goal",
-        "question_order",
-        "must_confirm",
-        "must_not_assume"
-      ],
-      "properties": {
-        "goal": { "type": "string" },
-        "question_order": {
-          "type": "array",
-          "items": { "type": "string" }
+        "event_type": {
+          "type": "string"
         },
-        "must_confirm": {
-          "type": "array",
-          "items": { "type": "string" }
+        "timestamp": {
+          "type": "string"
         },
-        "must_not_assume": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "tone": {
-          "type": ["string", "null"]
+        "details": {
+          "type": "object"
         }
       }
     }
