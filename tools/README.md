@@ -28,3 +28,49 @@ Outputs:
 Notes:
 - Heuristic summarization only; keep archived source as system-of-record.
 - Works offline and has no third-party dependencies.
+
+## 2) `e2e_scenario_runner.py`
+
+Purpose:
+- Run repeatable end-to-end intake scenarios through `ExtractionPipeline -> run_gap_and_decision`.
+- Support phased runs: first 5 scenarios, remaining existing scenarios, and combined existing+new scenarios.
+- Export scenario outcomes to JSON and Markdown for owner tracking.
+
+Use cases:
+- Demonstrate 5 E2E scenarios quickly.
+- Execute full existing scenario sweep after baseline.
+- Re-run all existing + new scenarios after additions.
+- Generate artifacts for documentation/review in `Docs/reports/`.
+
+Usage:
+```bash
+# First 5 existing scenarios
+PYTHONPATH=src uv run python tools/e2e_scenario_runner.py --set first5 \
+  --json-out Docs/reports/e2e_first5_YYYY-MM-DD.json \
+  --md-out Docs/reports/e2e_first5_YYYY-MM-DD.md
+
+# Remaining existing scenarios
+PYTHONPATH=src uv run python tools/e2e_scenario_runner.py --set rest \
+  --json-out Docs/reports/e2e_rest_existing_YYYY-MM-DD.json \
+  --md-out Docs/reports/e2e_rest_existing_YYYY-MM-DD.md
+
+# Existing + new scenarios
+PYTHONPATH=src uv run python tools/e2e_scenario_runner.py --set existing_plus_new \
+  --json-out Docs/reports/e2e_existing_plus_new_YYYY-MM-DD.json \
+  --md-out Docs/reports/e2e_existing_plus_new_YYYY-MM-DD.md
+```
+
+Supported sets:
+- `first5`
+- `rest`
+- `existing`
+- `new`
+- `existing_plus_new`
+
+Outputs:
+- JSON: one object per scenario including decision state, blockers, contradictions, ambiguities, and confidence.
+- Markdown: tabular summary for quick review.
+
+Notes:
+- This tool is additive and does not replace legacy notebooks/scenario scripts.
+- Uses current runtime models from `src/intake/`.

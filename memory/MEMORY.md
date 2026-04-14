@@ -15,6 +15,35 @@
 - **[GTM & Data Network Effects](../Docs/GTM_AND_DATA_NETWORK_EFFECTS.md)** — No recommendation engines needed. Tool value > data aggregation.
 - **[Pricing and Customer Acquisition](../Docs/PRICING_AND_CUSTOMER_ACQUISITION.md)** — ₹999-₹19,999 tiers, free trials, Facebook groups, host agencies.
 
+## Strategic Docs (2026-04-14)
+
+- **[Exploration Roadmap](../Docs/EXPLORATION_ROADMAP_WHILE_BUILDING.md)** — 12 areas to explore while building
+- **[Competitive Landscape](../Docs/COMPETITIVE_LANDSCAPE.md)** — Positioning vs. ChatGPT, Duffel, status quo tools
+- **[Pilot Strategy](../Docs/PILOT_AND_CUSTOMER_DISCOVERY_STRATEGY.md)** — Finding agencies, discovery calls, pilot structure
+- **[Launch Strategy](../Docs/LAUNCH_STRATEGY.md)** — Staged launch: friends → design partners → beta → public
+- **[Metrics and Analytics](../Docs/METRICS_AND_ANALYTICS.md)** — North Star, activation, retention, NPS
+- **[Technical Infrastructure](../Docs/TECHNICAL_INFRASTRUCTURE.md)** — FastAPI + Postgres + HTMX + Clerk + Render
+- **[Integrations](../Docs/INTEGRATIONS_AND_DATA_SOURCES.md)** — What to integrate (LLM, holidays) vs. skip (GDS)
+- **[Feedback Loops](../Docs/FEEDBACK_LOOPS_AND_IMPROVEMENT.md)** — Weekly reviews, categorization, regression testing
+- **[Support & CS](../Docs/SUPPORT_AND_CUSTOMER_SUCCESS.md)** — Channels, SLAs, onboarding, solo boundaries
+- **[Risk Analysis](../Docs/RISK_ANALYSIS.md)** — API risks, business risks, legal risks, mitigations
+- **[Financial Modeling](../Docs/FINANCIAL_MODELING.md)** — Unit economics, CAC/LTV, runway, freedom number
+- **[Hiring & Scaling](../Docs/HIRING_AND_SCALING.md)** — When/who to hire, contractors vs full-time
+- **[Personal Sustainability](../Docs/PERSONAL_SUSTAINABILITY.md)** — Avoid burnout, boundaries, community, mental health
+- **[Legal Basics](../Docs/LEGAL_BASICS.md)** — TOS, privacy policy, AI disclaimers, DPDP compliance
+
+## UX Documentation (2026-04-14)
+
+- **[Jobs to be Done](../Docs/UX_JOBS_TO_BE_DONE.md)** — What each persona is trying to accomplish
+- **[User Journeys and Aha Moments](../Docs/UX_USER_JOURNEYS_AND_AHA_MOMENTS.md)** — Journey maps with emotional shifts
+- **[Detailed User Flows](../Docs/UX_DETAILED_USER_FLOWS.md)** — Screen-by-screen interaction design
+- **[Synthetic Data and Fixtures](../Docs/SYNTHETIC_DATA_AND_FIXTURES.md)** — Test data, schemas, generators
+
+## Product Management (2026-04-14)
+
+- **[Product Gaps and Unknowns](../Docs/PM_PRODUCT_GAPS_AND_UNKNOWN.md)** — Roadmap gaps, assumptions, validation plan, moat strategy
+- **[PM Templates and Frameworks](../Docs/PM_TEMPLATES_AND_FRAMEWORKS.md)** — MVP scope, PRD, assumption log, experiment briefs, retrospectives
+
 ## Environment Setup
 
 - **Package manager**: `uv` (https://docs.astral.sh/uv/)

@@ -1,0 +1,130 @@
+[
+  {
+    "scenario_id": "S01",
+    "name": "Vague Lead",
+    "stage": "discovery",
+    "expected_decision": "ASK_FOLLOWUP",
+    "decision_state": "ASK_FOLLOWUP",
+    "operating_mode": "normal_intake",
+    "confidence": 0.301,
+    "hard_blockers": [
+      "origin_city",
+      "date_window",
+      "party_size"
+    ],
+    "soft_blockers": [
+      "budget_raw_text",
+      "budget_min",
+      "soft_preferences"
+    ],
+    "contradictions": 0,
+    "ambiguities": 0,
+    "risk_flags": [],
+    "pass_expected": true
+  },
+  {
+    "scenario_id": "S02",
+    "name": "Confused Couple",
+    "stage": "discovery",
+    "expected_decision": "STOP_NEEDS_REVIEW",
+    "decision_state": "STOP_NEEDS_REVIEW",
+    "operating_mode": "normal_intake",
+    "confidence": 0.502,
+    "hard_blockers": [
+      "origin_city",
+      "date_window"
+    ],
+    "soft_blockers": [
+      "trip_purpose",
+      "soft_preferences"
+    ],
+    "contradictions": 2,
+    "ambiguities": 0,
+    "risk_flags": [
+      {
+        "flag": "traveler_safe_leakage_risk",
+        "severity": "critical",
+        "message": "Internal data present (2 contradictions) — ensure traveler-safe boundary"
+      }
+    ],
+    "pass_expected": true
+  },
+  {
+    "scenario_id": "S03",
+    "name": "Dreamer Luxury vs Budget",
+    "stage": "discovery",
+    "expected_decision": "BRANCH_OPTIONS",
+    "decision_state": "ASK_FOLLOWUP",
+    "operating_mode": "normal_intake",
+    "confidence": 0.177,
+    "hard_blockers": [
+      "origin_city",
+      "date_window",
+      "party_size"
+    ],
+    "soft_blockers": [
+      "budget_raw_text",
+      "budget_min",
+      "trip_purpose",
+      "soft_preferences"
+    ],
+    "contradictions": 0,
+    "ambiguities": 0,
+    "risk_flags": [],
+    "pass_expected": false
+  },
+  {
+    "scenario_id": "S04",
+    "name": "Ready to Buy",
+    "stage": "discovery",
+    "expected_decision": null,
+    "decision_state": "ASK_FOLLOWUP",
+    "operating_mode": "normal_intake",
+    "confidence": 0.704,
+    "hard_blockers": [
+      "budget_feasibility"
+    ],
+    "soft_blockers": [
+      "trip_purpose",
+      "soft_preferences"
+    ],
+    "contradictions": 1,
+    "ambiguities": 0,
+    "risk_flags": [
+      {
+        "flag": "margin_risk",
+        "severity": "high",
+        "message": "Budget infeasible — gap of ₹117,974 below minimum viable cost",
+        "maturity": "heuristic"
+      }
+    ],
+    "pass_expected": null
+  },
+  {
+    "scenario_id": "S05",
+    "name": "WhatsApp Dump",
+    "stage": "discovery",
+    "expected_decision": null,
+    "decision_state": "ASK_FOLLOWUP",
+    "operating_mode": "normal_intake",
+    "confidence": 0.598,
+    "hard_blockers": [
+      "destination_candidates",
+      "date_window",
+      "party_size"
+    ],
+    "soft_blockers": [
+      "soft_preferences"
+    ],
+    "contradictions": 0,
+    "ambiguities": 2,
+    "risk_flags": [
+      {
+        "flag": "traveler_safe_leakage_risk",
+        "severity": "critical",
+        "message": "Internal data present (blocking ambiguities) — ensure traveler-safe boundary"
+      }
+    ],
+    "pass_expected": null
+  }
+]

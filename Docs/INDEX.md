@@ -26,9 +26,52 @@
 
 ---
 
-## UX and User Experience (2026-04-13)
+## Strategy and Operations (2026-04-14)
 
-> **Note**: UX docs below are being revised to reflect multi-tenant model. Original versions assumed direct-to-consumer incorrectly.
+- **[Exploration Roadmap](EXPLORATION_ROADMAP_WHILE_BUILDING.md)** — 12 strategic areas to explore in parallel: legal, competitive, metrics, infrastructure, risks.
+
+### Product Management
+
+- **[Product Gaps and Unknowns](PM_PRODUCT_GAPS_AND_UNKNOWN.md)** — What we haven't thought through: roadmap, assumptions, metrics, moat, experiments, unknown unknowns.
+- **[PM Templates and Frameworks](PM_TEMPLATES_AND_FRAMEWORKS.md)** — Ready-to-use templates: MVP scope, PRD, assumption log, weekly review, interview script, experiment brief, retrospectives.
+
+### Competitive and Market
+
+- **[Competitive Landscape](COMPETITIVE_LANDSCAPE.md)** — Who else is doing this? Why you? Positioning vs. ChatGPT, Duffel, existing tools.
+- **[Pricing and Customer Acquisition](PRICING_AND_CUSTOMER_ACQUISITION.md)** — Pricing tiers, free trials, and GTM channels: Facebook groups, host agencies, SEO.
+- **[Pilot and Customer Discovery Strategy](PILOT_AND_CUSTOMER_DISCOVERY_STRATEGY.md)** — How to find willing agencies, run discovery calls, and structure pilots.
+- **[Launch Strategy](LAUNCH_STRATEGY.md)** — Soft launch → design partners → beta → public: staged launch plan.
+
+### Product and Operations
+
+- **[Metrics and Analytics](METRICS_AND_ANALYTICS.md)** — What to measure: North Star, activation, retention, NPS. Solo-friendly tracking.
+- **[Technical Infrastructure](TECHNICAL_INFRASTRUCTURE.md)** — Stack: FastAPI + Postgres + HTMX + Clerk + Render. Hosting, costs, scaling.
+- **[Integrations and Data Sources](INTEGRATIONS_AND_DATA_SOURCES.md)** — What APIs you actually need (LLM, holidays) vs. don't (GDS, CRM).
+- **[Feedback Loops and Improvement](FEEDBACK_LOOPS_AND_IMPROVEMENT.md)** — Weekly reviews, categorization framework, regression testing.
+- **[Support and Customer Success](SUPPORT_AND_CUSTOMER_SUCCESS.md)** — Channels, SLAs, onboarding, boundaries for solo builder.
+- **[Risk Analysis](RISK_ANALYSIS.md)** — What could go wrong: API downtime, hallucinations, legal, burnout. Mitigations.
+
+### Business and Personal
+
+- **[Financial Modeling](FINANCIAL_MODELING.md)** — Unit economics, CAC/LTV, runway, break-even, freedom number calculator.
+- **[Hiring and Scaling](HIRING_AND_SCALING.md)** — When to hire, first hire framework, contractor vs full-time, managing people.
+- **[Personal Sustainability](PERSONAL_SUSTAINABILITY.md)** — Avoid burnout: boundaries, energy management, community, mental health.
+- **[Legal Basics](LEGAL_BASICS.md)** — Minimal legal: TOS, privacy policy, AI disclaimers, data protection (India DPDP).
+
+---
+
+## UX and User Experience (2026-04-14)
+
+### Core UX Framework
+
+- **[Jobs to be Done](UX_JOBS_TO_BE_DONE.md)** — What each persona (agency owner, agent, junior, traveler) is trying to accomplish. Functional, emotional, and social jobs.
+- **[User Journeys and Aha Moments](UX_USER_JOURNEYS_AND_AHA_MOMENTS.md)** — Detailed journey maps from pain to delight. Before/After states, emotional shifts, value realization.
+- **[Detailed User Flows](UX_DETAILED_USER_FLOWS.md)** — Screen-by-screen flows: onboarding, intake, processing, options generation, client presentation.
+- **[Synthetic Data and Fixtures](SYNTHETIC_DATA_AND_FIXTURES.md)** — Schemas, test messages, fixtures for development. Clean/moderate/messy/edge cases.
+
+### Previous UX Docs (2026-04-13)
+
+> **Note**: Earlier docs assumed direct-to-consumer incorrectly. Refer to 2026-04-14 docs for platform-led B2B model.
 
 - **[UX Overview](UX_AND_USER_EXPERIENCE.md)** — End-to-end UX analysis: B2B2C architecture, what travelers see vs agents see.
 - **[Message Templates](UX_MESSAGE_TEMPLATES_AND_FLOWS.md)** — Actual WhatsApp/email templates, conversation flows, tone guidelines.
@@ -37,4 +80,3 @@
 - **[Audit Mode Deep Dive](UX_AUDIT_MODE_DEEP_DIVE.md)** — Direct-to-consumer wedge feature: landing page, upload flow, lead capture.
 - **[WhatsApp Integration](UX_WHATSAPP_INTEGRATION_STRATEGY.md)** — Individual founder vs business: manual MVP, WATI, official API options.
 - **[Multi-Channel Strategy](UX_MULTI_CHANNEL_STRATEGY.md)** — Beyond WhatsApp: portal links, email, SMS, omnichannel routing.
-- [First Principles Gap Assessment (2026-04-14)](FIRST_PRINCIPLES_GAP_ASSESSMENT_2026-04-14.md) — What we have now vs what we should have vs prioritized next steps (P0/P1/P2).
