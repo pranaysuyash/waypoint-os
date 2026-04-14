@@ -108,6 +108,22 @@ class TestStructuredBudget:
         stretch_amb = [a for a in pkt.ambiguities if a.ambiguity_type == "budget_stretch_present"]
         assert len(stretch_amb) > 0, "budget_stretch_present ambiguity not detected"
 
+    def test_budget_does_not_parse_from_date_tokens(self):
+        text = (
+            "2 adults from Bangalore to Singapore, 2026-05-12 to 2026-05-18, "
+            "budget 3 lakhs, leisure."
+        )
+        pkt = extract(text)
+
+        assert "budget_raw_text" in pkt.facts, "budget_raw_text not extracted"
+        assert "budget_min" in pkt.facts, "budget_min not extracted"
+        assert pkt.facts["budget_raw_text"].value in ("3 lakh", "3 lakhs"), \
+            f"Unexpected budget_raw_text: {pkt.facts['budget_raw_text'].value}"
+        assert pkt.facts["budget_min"].value == 300000, \
+            f"Expected budget_min=300000, got {pkt.facts['budget_min'].value}"
+        assert pkt.facts.get("date_start") and pkt.facts["date_start"].value == "2026-05-12"
+        assert pkt.facts.get("date_end") and pkt.facts["date_end"].value == "2026-05-18"
+
 
 # ===========================================================================
 # TEST 3: Structured Dates

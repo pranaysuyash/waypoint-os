@@ -175,17 +175,30 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
     """
     text_lower = text.lower()
 
+    def _looks_like_date_token(raw_val: str) -> bool:
+        token = raw_val.strip()
+        return bool(
+            re.fullmatch(r"\d{4}\s*[-/]\s*\d{1,2}(?:\s*[-/]\s*\d{1,2})?", token)
+            or re.fullmatch(r"\d{4}-\d{2}-\d{2}", token)
+        )
+
     # Look for budget-like patterns
     patterns = [
-        r"(?:budget\s+(?:of|is|around)?\s*)?(\d+(?:\.\d+)?\s*(?:-|–|—|\bto\b)\s*\d+(?:\.\d+)?\s*[LlKk]?)",
-        r"(?:budget\s+(?:of|is|around)?\s*)(\d+(?:\.\d+)?\s*[LlKk])",
-        r"(?:around\s+)?(\d+(?:\.\d+)?\s*[LlK])\b",
-        r"(?:budget\s+(?:of|is)?\s*)(\d{4,})",
+        # Explicit budget with numeric range and optional unit suffix.
+        r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*(\d+(?:\.\d+)?\s*(?:-|–|—|\bto\b)\s*\d+(?:\.\d+)?\s*(?:l|k|lac|lakh|lakhs|thousand)?)\b",
+        # Explicit budget with single value + unit.
+        r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*(\d+(?:\.\d+)?\s*(?:l|k|lac|lakh|lakhs|thousand))\b",
+        # Budget-like value with unit when budget keyword may be omitted.
+        r"\b(?:around|about|approx(?:imately)?)\s+(\d+(?:\.\d+)?\s*(?:l|k|lac|lakh|lakhs|thousand))\b",
+        # Plain number only accepted with explicit budget keyword.
+        r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*(\d{4,})\b",
     ]
     for pat in patterns:
         m = re.search(pat, text_lower)
         if m:
-            raw = m.group(0)
+            raw = m.group(1).strip()
+            if _looks_like_date_token(raw):
+                continue
             parsed = Normalizer.parse_budget(raw)
             parsed["raw_text"] = raw
             return parsed

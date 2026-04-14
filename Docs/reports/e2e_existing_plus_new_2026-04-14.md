@@ -1,15 +1,15 @@
 # E2E Scenario Run — existing_plus_new
 
-- Generated at: 2026-04-14T00:51:41.119465
+- Generated at: 2026-04-14T10:15:57.236197
 
 | ID | Name | Stage | Decision | Mode | Confidence | Hard Blockers | Soft Blockers | Contradictions | Ambiguities |
 |---|---|---|---|---|---:|---|---|---:|---:|
 | S01 | Vague Lead | discovery | ASK_FOLLOWUP | normal_intake | 0.301 | origin_city, date_window, party_size | budget_raw_text, budget_min, soft_preferences | 0 | 0 |
 | S02 | Confused Couple | discovery | STOP_NEEDS_REVIEW | normal_intake | 0.502 | origin_city, date_window | trip_purpose, soft_preferences | 2 | 0 |
 | S03 | Dreamer Luxury vs Budget | discovery | ASK_FOLLOWUP | normal_intake | 0.177 | origin_city, date_window, party_size | budget_raw_text, budget_min, trip_purpose, soft_preferences | 0 | 0 |
-| S04 | Ready to Buy | discovery | ASK_FOLLOWUP | normal_intake | 0.704 | budget_feasibility | trip_purpose, soft_preferences | 1 | 0 |
+| S04 | Ready to Buy | discovery | PROCEED_INTERNAL_DRAFT | normal_intake | 0.704 | - | trip_purpose, soft_preferences, budget_feasibility | 1 | 0 |
 | S05 | WhatsApp Dump | discovery | ASK_FOLLOWUP | normal_intake | 0.598 | destination_candidates, date_window, party_size | soft_preferences | 0 | 2 |
-| S06 | CRM Return with Fresh Data | discovery | ASK_FOLLOWUP | normal_intake | 0.708 | budget_feasibility | trip_purpose, soft_preferences | 1 | 0 |
+| S06 | CRM Return with Fresh Data | discovery | PROCEED_INTERNAL_DRAFT | normal_intake | 0.708 | - | trip_purpose, soft_preferences, budget_feasibility | 1 | 0 |
 | S07 | Elderly Pilgrimage | discovery | ASK_FOLLOWUP | normal_intake | 0.486 | origin_city, date_window | trip_purpose | 0 | 0 |
 | S08 | Last-Minute Booker | discovery | ASK_FOLLOWUP | emergency | 0.588 | date_window | - | 0 | 0 |
 | S09 | Stage Progression Shortlist | shortlist | ASK_FOLLOWUP | normal_intake | 0.191 | origin_city, date_window, party_size | budget_min, trip_style | 0 | 0 |

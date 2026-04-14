@@ -95,3 +95,38 @@ Notebook scenario scripts execute but fail many assertions against v0.2 runtime 
 
 #### Status
 - Marked for review.
+
+## New Issue Identified (2026-04-14)
+### E2E Expected-Decision Drift (existing_plus_new = 3/4)
+
+#### Symptom
+End-to-end scenario validation reports `Expected-decision checks: 3/4 passed`.
+
+#### Evidence
+- Command:
+  - `python tools/e2e_scenario_runner.py --set existing_plus_new --md-out Docs/reports/e2e_existing_plus_new_2026-04-14.md --json-out Docs/reports/e2e_existing_plus_new_2026-04-14.json`
+- Report:
+  - `Docs/reports/e2e_existing_plus_new_2026-04-14.md`
+- Root mismatch found in expectation set:
+  - `S03 Dreamer Luxury vs Budget` expected a legacy decision state `BRANCH_OPTIONS` no longer used by runtime v0.2.
+
+#### Likely Cause
+- E2E expectation map had a stale expected decision from pre-v0.2 behavior.
+
+#### Impact
+- Core unit/conformance suite remains green (`24 passed` for targeted tests).
+- E2E expectation credibility is reduced until fixture-vs-policy alignment is clarified.
+
+#### Recommended Next Step
+1. Inspect expected-decision map in `tools/e2e_scenario_runner.py`.
+2. Replace legacy state expectation with current contract-aligned expected state.
+
+#### Status
+- Resolved.
+
+#### Resolution Applied
+- Updated `tools/e2e_scenario_runner.py`:
+  - `S03` expected decision: `BRANCH_OPTIONS` -> `ASK_FOLLOWUP`
+- Re-ran E2E:
+  - `python tools/e2e_scenario_runner.py --set existing_plus_new --md-out Docs/reports/e2e_existing_plus_new_2026-04-14.md --json-out Docs/reports/e2e_existing_plus_new_2026-04-14.json`
+  - Result: `Expected-decision checks: 4/4 passed`

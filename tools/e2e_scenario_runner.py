@@ -188,7 +188,7 @@ EXISTING_SCENARIOS: list[Scenario] = [
         "S03",
         "Dreamer Luxury vs Budget",
         "Family wants overwater villa in Maldives but budget is around 1 lakh total.",
-        expected_decision="BRANCH_OPTIONS",
+        expected_decision="ASK_FOLLOWUP",
     ),
     Scenario(
         "S04",

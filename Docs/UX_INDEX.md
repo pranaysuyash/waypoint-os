@@ -1,6 +1,6 @@
 # UX Documentation Index
 
-**Last Updated**: 2026-04-13
+**Last Updated**: 2026-04-14
 **Purpose**: Complete index of all UX and user experience documentation
 
 ---
@@ -10,6 +10,10 @@
 | If you want to... | Read this |
 |-------------------|-----------|
 | Understand the overall UX philosophy | [UX_AND_USER_EXPERIENCE.md](UX_AND_USER_EXPERIENCE.md) |
+| Understand role-based jobs and expected outcomes | [UX_JOBS_TO_BE_DONE.md](UX_JOBS_TO_BE_DONE.md) |
+| Review emotional journeys and aha moments | [UX_USER_JOURNEYS_AND_AHA_MOMENTS.md](UX_USER_JOURNEYS_AND_AHA_MOMENTS.md) |
+| Inspect detailed step-by-step UX flows | [UX_DETAILED_USER_FLOWS.md](UX_DETAILED_USER_FLOWS.md) |
+| Use UX/PM synthetic fixture packs | [SYNTHETIC_DATA_AND_FIXTURES.md](SYNTHETIC_DATA_AND_FIXTURES.md) |
 | See actual message templates | [UX_MESSAGE_TEMPLATES_AND_FLOWS.md](UX_MESSAGE_TEMPLATES_AND_FLOWS.md) |
 | Design dashboards | [UX_DASHBOARDS_BY_PERSONA.md](UX_DASHBOARDS_BY_PERSONA.md) |
 | Build the frontend | [UX_TECHNICAL_ARCHITECTURE.md](UX_TECHNICAL_ARCHITECTURE.md) |
@@ -35,6 +39,72 @@
 - Audit Mode is the only direct-to-consumer feature
 
 **Audience**: Designers, PMs, anyone understanding the system
+
+---
+
+### 1A. UX_JOBS_TO_BE_DONE.md
+**Purpose**: Persona-level functional, emotional, and social jobs
+
+**Contents**:
+- Agency Owner JTBD
+- Senior/Solo Agent JTBD
+- Junior Agent JTBD
+- End Traveler JTBD
+
+**Key Takeaways**:
+- Separate operator productivity jobs from traveler confidence jobs
+- Emotional jobs (confidence/control) are as important as functional speed
+
+**Audience**: PMs, designers, ops leads
+
+---
+
+### 1B. UX_USER_JOURNEYS_AND_AHA_MOMENTS.md
+**Purpose**: Journey mapping from pain to value realization
+
+**Contents**:
+- Before/trigger/during/aha/after journey structure
+- Role-specific emotional transitions
+- Concrete signals of realized value
+
+**Key Takeaways**:
+- Aha moments must be measurable, not narrative-only
+- Flow quality is proven when emotional load drops with higher outcome quality
+
+**Audience**: PMs, UX researchers, lifecycle owners
+
+---
+
+### 1C. UX_DETAILED_USER_FLOWS.md
+**Purpose**: Screen-by-screen operational flows
+
+**Contents**:
+- onboarding
+- dashboard and trip lifecycle
+- intake, review, follow-up, option generation, presentation
+- role-aware flow architecture
+
+**Key Takeaways**:
+- Detailed flow sequencing reduces implementation ambiguity
+- Role-specific entry points are required for scale without quality collapse
+
+**Audience**: product, design, frontend/backend engineers
+
+---
+
+### 1D. SYNTHETIC_DATA_AND_FIXTURES.md
+**Purpose**: Structured synthetic test data and fixture references
+
+**Contents**:
+- entity schemas
+- synthetic examples and edge patterns
+- fixture file references used for PM/UX scenario testing
+
+**Key Takeaways**:
+- Reproducible scenario data is required for reliable UX/decision-policy validation
+- PM and QA can align on the same fixture contracts
+
+**Audience**: PM, QA, data/engineering
 
 ---
 

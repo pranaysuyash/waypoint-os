@@ -13,6 +13,21 @@ This document provides:
 3. Edge cases and boundary conditions
 4. Generator logic for creating test data
 
+### Fixture Files in Repository
+
+- `data/fixtures/product_persona_flows_synthetic_v1.json`
+  - Purpose: PM/UX synthetic scenarios for role-based journeys.
+  - Coverage:
+    - agency owner / senior agent / junior agent / end traveler personas
+    - functional/emotional/social JTBD per persona
+    - aha moments and metric proxies per persona
+    - end-to-end persona flow steps
+    - flywheel instrumentation fields and open PM questions
+  - Primary use:
+    - acceptance criteria planning
+    - scenario-driven QA and rehearsal
+    - PM prioritization workshops
+
 ---
 
 ## Part 1: Core Data Schemas

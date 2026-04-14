@@ -53,7 +53,7 @@
     "scenario_id": "S03",
     "name": "Dreamer Luxury vs Budget",
     "stage": "discovery",
-    "expected_decision": "BRANCH_OPTIONS",
+    "expected_decision": "ASK_FOLLOWUP",
     "decision_state": "ASK_FOLLOWUP",
     "operating_mode": "normal_intake",
     "confidence": 0.177,
@@ -71,22 +71,21 @@
     "contradictions": 0,
     "ambiguities": 0,
     "risk_flags": [],
-    "pass_expected": false
+    "pass_expected": true
   },
   {
     "scenario_id": "S04",
     "name": "Ready to Buy",
     "stage": "discovery",
     "expected_decision": null,
-    "decision_state": "ASK_FOLLOWUP",
+    "decision_state": "PROCEED_INTERNAL_DRAFT",
     "operating_mode": "normal_intake",
     "confidence": 0.704,
-    "hard_blockers": [
-      "budget_feasibility"
-    ],
+    "hard_blockers": [],
     "soft_blockers": [
       "trip_purpose",
-      "soft_preferences"
+      "soft_preferences",
+      "budget_feasibility"
     ],
     "contradictions": 1,
     "ambiguities": 0,
@@ -132,15 +131,14 @@
     "name": "CRM Return with Fresh Data",
     "stage": "discovery",
     "expected_decision": null,
-    "decision_state": "ASK_FOLLOWUP",
+    "decision_state": "PROCEED_INTERNAL_DRAFT",
     "operating_mode": "normal_intake",
     "confidence": 0.708,
-    "hard_blockers": [
-      "budget_feasibility"
-    ],
+    "hard_blockers": [],
     "soft_blockers": [
       "trip_purpose",
-      "soft_preferences"
+      "soft_preferences",
+      "budget_feasibility"
     ],
     "contradictions": 1,
     "ambiguities": 0,

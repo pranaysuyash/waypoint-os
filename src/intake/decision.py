@@ -156,7 +156,10 @@ CONTRADICTION_ACTIONS = {
     "date_conflict":        {"decision": "STOP_NEEDS_REVIEW",  "priority": "critical"},
     "destination_conflict": {"decision": "ASK_FOLLOWUP",       "priority": "critical"},
     "budget_conflict":      {"decision": "BRANCH_OPTIONS",     "priority": "medium"},
-    "budget_feasibility":   {"decision": "ASK_FOLLOWUP",       "priority": "critical"},
+    # Budget feasibility is stage-gated in run_gap_and_decision:
+    # discovery/shortlist -> non-critical contradiction + soft blocker,
+    # proposal/booking -> hard blocker.
+    "budget_feasibility":   {"decision": "ASK_FOLLOWUP",       "priority": "high"},
     "party_conflict":       {"decision": "ASK_FOLLOWUP",       "priority": "high"},
     "origin_conflict":      {"decision": "ASK_FOLLOWUP",       "priority": "high"},
     "document_conflict":    {"decision": "STOP_NEEDS_REVIEW",  "priority": "critical"},
@@ -759,10 +762,15 @@ def run_gap_and_decision(
         packet, soft_blockers, contradictions, feasibility,
     )
 
-    # --- Phase 5: Budget feasibility as hard blocker ---
+    # --- Phase 5: Budget feasibility stage gating ---
     if feasibility["status"] == "infeasible":
-        if "budget_feasibility" not in hard_blockers:
-            hard_blockers.append("budget_feasibility")
+        strict_budget_stages = {"proposal", "booking"}
+        if stage in strict_budget_stages:
+            if "budget_feasibility" not in hard_blockers:
+                hard_blockers.append("budget_feasibility")
+        else:
+            if "budget_feasibility" not in soft_blockers:
+                soft_blockers.append("budget_feasibility")
         contradictions.append({
             "field_name": "budget_feasibility",
             "values": [

@@ -1,0 +1,176 @@
+{
+  "metadata": {
+    "dataset_name": "product_persona_flows_synthetic_v1",
+    "created_on": "2026-04-14",
+    "timezone": "Asia/Kolkata",
+    "purpose": [
+      "Persona-driven UX flow simulation",
+      "JTBD and aha-moment instrumentation",
+      "Roadmap and experiment planning"
+    ]
+  },
+  "personas": [
+    {
+      "persona_id": "agency_owner_01",
+      "role": "Agency Owner",
+      "primary_outcome": "Scale revenue without scaling chaos",
+      "jobs_to_be_done": {
+        "functional": [
+          "Increase trip throughput per agent",
+          "Reduce quality variance across staff",
+          "Get weekly control-tower visibility"
+        ],
+        "emotional": [
+          "Feel in control of operations",
+          "Reduce firefighting anxiety"
+        ],
+        "social": [
+          "Be perceived as modern and reliable"
+        ]
+      },
+      "aha_moment": {
+        "trigger": "Sees first weekly report with reduced turnaround time and fewer escalations",
+        "signal": "Approves expansion from pilot team to full agency",
+        "metric_proxy": "Trips per agent per week up >= 20%"
+      }
+    },
+    {
+      "persona_id": "agent_senior_01",
+      "role": "Senior Agent",
+      "primary_outcome": "Convert messy asks into credible options quickly",
+      "jobs_to_be_done": {
+        "functional": [
+          "Extract intent from unstructured client messages",
+          "Detect blockers and contradictions early",
+          "Generate 2-3 editable options"
+        ],
+        "emotional": [
+          "Feel confident before sending options",
+          "Avoid end-of-day backlog stress"
+        ],
+        "social": [
+          "Be seen by clients as responsive and expert"
+        ]
+      },
+      "aha_moment": {
+        "trigger": "A previously 90-minute intake+option draft now takes < 20 minutes",
+        "signal": "Starts using the workflow by default on all new inquiries",
+        "metric_proxy": "Time to first quality draft down >= 60%"
+      }
+    },
+    {
+      "persona_id": "agent_junior_01",
+      "role": "Junior Agent",
+      "primary_outcome": "Operate with fewer mistakes and less supervision",
+      "jobs_to_be_done": {
+        "functional": [
+          "Ask the right follow-up questions",
+          "Avoid overpromising infeasible trips",
+          "Learn from reusable high-quality templates"
+        ],
+        "emotional": [
+          "Feel safe and supported while learning",
+          "Build confidence faster"
+        ],
+        "social": [
+          "Earn trust from seniors"
+        ]
+      },
+      "aha_moment": {
+        "trigger": "First client thread closes without senior correction",
+        "signal": "Requests more independent lead ownership",
+        "metric_proxy": "Senior edit rate for junior drafts drops >= 30%"
+      }
+    },
+    {
+      "persona_id": "traveler_end_client_01",
+      "role": "End Client (Traveler)",
+      "primary_outcome": "Choose confidently from clear, relevant options",
+      "jobs_to_be_done": {
+        "functional": [
+          "Share constraints without endless back-and-forth",
+          "Understand trade-offs between options",
+          "Decide quickly with confidence"
+        ],
+        "emotional": [
+          "Feel heard and understood",
+          "Feel excited, not overwhelmed"
+        ],
+        "social": [
+          "Feel like a smart planner for family/group"
+        ]
+      },
+      "aha_moment": {
+        "trigger": "Receives options that mirror stated priorities and constraints",
+        "signal": "Responds with selection instead of more clarification",
+        "metric_proxy": "Option acceptance in first response >= 35%"
+      }
+    }
+  ],
+  "flows": [
+    {
+      "flow_id": "F_OWNER_WEEKLY_OPERATING_REVIEW",
+      "persona_id": "agency_owner_01",
+      "steps": [
+        {"step": 1, "action": "Open owner dashboard", "touchpoint": "analytics", "expected_output": "Agency throughput + quality summary"},
+        {"step": 2, "action": "Inspect top blockers", "touchpoint": "risk_flags", "expected_output": "Prioritized operational issues"},
+        {"step": 3, "action": "Assign process interventions", "touchpoint": "team_tasks", "expected_output": "Owners and due dates"},
+        {"step": 4, "action": "Review experiment outcomes", "touchpoint": "experiments", "expected_output": "Keep / tweak / stop decision"}
+      ]
+    },
+    {
+      "flow_id": "F_AGENT_INTAKE_TO_OPTIONS",
+      "persona_id": "agent_senior_01",
+      "steps": [
+        {"step": 1, "action": "Paste raw client input", "touchpoint": "new_trip_intake", "expected_output": "Canonical brief draft"},
+        {"step": 2, "action": "Review contradictions + blockers", "touchpoint": "decision_engine", "expected_output": "Follow-up checklist"},
+        {"step": 3, "action": "Send high-signal follow-ups", "touchpoint": "client_channel", "expected_output": "Clarified constraints"},
+        {"step": 4, "action": "Generate options", "touchpoint": "option_generator", "expected_output": "2-3 ranked options + rationale"},
+        {"step": 5, "action": "Edit and send", "touchpoint": "traveler_safe_output", "expected_output": "Client-ready proposal"}
+      ]
+    },
+    {
+      "flow_id": "F_JUNIOR_GUIDED_EXECUTION",
+      "persona_id": "agent_junior_01",
+      "steps": [
+        {"step": 1, "action": "Use guided intake template", "touchpoint": "guided_mode", "expected_output": "Complete minimum brief"},
+        {"step": 2, "action": "Resolve mandatory blockers", "touchpoint": "ask_followup_queue", "expected_output": "Proposal-ready packet"},
+        {"step": 3, "action": "Request senior spot-check", "touchpoint": "review_queue", "expected_output": "Approved draft"},
+        {"step": 4, "action": "Send proposal + log learning", "touchpoint": "learning_log", "expected_output": "Reusable pattern captured"}
+      ]
+    },
+    {
+      "flow_id": "F_TRAVELER_DECISION",
+      "persona_id": "traveler_end_client_01",
+      "steps": [
+        {"step": 1, "action": "Receive concise options", "touchpoint": "proposal_message", "expected_output": "Clear comparable choices"},
+        {"step": 2, "action": "Ask clarification", "touchpoint": "single_thread_reply", "expected_output": "Fast answer from agent"},
+        {"step": 3, "action": "Confirm selected option", "touchpoint": "selection_capture", "expected_output": "Decision locked"},
+        {"step": 4, "action": "Move to booking", "touchpoint": "booking_readiness", "expected_output": "Actionable next steps"}
+      ]
+    }
+  ],
+  "product_flywheel": {
+    "loop": [
+      "More real inquiries processed",
+      "Better blocker/contradiction handling",
+      "Faster and higher-quality agent outputs",
+      "Higher client trust and conversion",
+      "More usage and richer operational signal"
+    ],
+    "instrumentation": [
+      "time_to_first_draft_minutes",
+      "first_option_acceptance_rate",
+      "follow_up_rounds_per_trip",
+      "senior_edit_rate",
+      "agent_weekly_throughput"
+    ]
+  },
+  "open_questions": [
+    "What minimum quality bar triggers auto traveler-safe output for each stage?",
+    "Which compliance disclosures are mandatory by channel (WhatsApp/email/portal)?",
+    "What is the acceptable false-positive rate for blocker detection?",
+    "When should price realism override destination preference in option ranking?",
+    "How should we model repeat-client memory with explicit consent boundaries?"
+  ]
+}

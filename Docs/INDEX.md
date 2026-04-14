@@ -34,6 +34,7 @@
 
 - **[Product Gaps and Unknowns](PM_PRODUCT_GAPS_AND_UNKNOWN.md)** — What we haven't thought through: roadmap, assumptions, metrics, moat, experiments, unknown unknowns.
 - **[PM Templates and Frameworks](PM_TEMPLATES_AND_FRAMEWORKS.md)** — Ready-to-use templates: MVP scope, PRD, assumption log, weekly review, interview script, experiment brief, retrospectives.
+- **[PM Execution Blueprint (2026-04-14)](PM_EXECUTION_BLUEPRINT_2026-04-14.md)** — Product-manager view of what makes the system tick: role-based outcomes, detailed execution flows, JTBD/aha synthesis, and prioritized P0-P2 plan.
 
 ### Competitive and Market
 

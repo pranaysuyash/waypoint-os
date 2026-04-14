@@ -172,3 +172,43 @@ User requested execution using multiple agents with workflow compliance (plan ->
   1. migrated fully to v0.2 contracts, or
   2. archived/reframed as legacy exploratory harnesses (non-gating).
 - If retained, remove deprecated expectations (`current_stage`, `mvb_config`, old field names/aliases) and align assertions with v0.2 decisions.
+
+## Log Entry: 2026-04-14 - Policy Tuning for Business-Ready Progression + PM/UX Artifact Expansion
+
+### Context
+User requested policy adjustment so practical, business-ready scenarios do not over-trigger follow-up questions. User also requested deeper PM-oriented coverage: detailed role flows, JTBD, aha moments, synthetic data, and explicit "what still needs work."
+
+### Product/Policy Change Implemented
+- Updated `src/intake/decision.py`:
+  - `budget_feasibility` contradiction priority: `critical` -> `high`.
+  - Stage-aware handling for infeasible budget:
+    - `proposal`/`booking`: remains hard blocker.
+    - `discovery`/`shortlist`: becomes soft blocker (allow internal draft progression).
+
+### Validation Performed
+- `PYTHONPATH=src uv run pytest -q tests/test_nb02_v02.py tests/test_decision_policy_conformance.py`
+- Result: all tests passed (`24 passed`).
+- E2E scenario pack executed and documented:
+  - `Docs/reports/e2e_existing_plus_new_2026-04-14.md`
+  - `Docs/reports/e2e_existing_plus_new_2026-04-14.json`
+- Notable outcome: previously over-blocked business-ready scenarios now progress via `PROCEED_INTERNAL_DRAFT` where expected.
+
+### New PM/UX Artifacts
+- `Docs/PM_EXECUTION_BLUEPRINT_2026-04-14.md`
+  - what makes the product tick
+  - role outcomes (agency owner / senior / junior / traveler)
+  - end-to-end execution flows
+  - prioritized P0/P1/P2 backlog
+- `data/fixtures/product_persona_flows_synthetic_v1.json`
+  - persona JTBD (functional/emotional/social)
+  - role-specific aha moments + metric proxies
+  - persona journey flows and instrumentation fields
+
+### Documentation Integrity Updates
+- Indexed new PM blueprint in `Docs/INDEX.md`.
+- Added fixture cross-reference section in `Docs/SYNTHETIC_DATA_AND_FIXTURES.md`.
+
+### Remaining Open Items
+- Decide release gate policy for notebook-based scenario scripts vs core pytest suite.
+- Add traveler-safe quality rubric as explicit acceptance criteria in tests/docs.
+- E2E expected-decision drift was resolved by aligning stale S03 legacy expectation in `tools/e2e_scenario_runner.py`; current run is `4/4` for expected checks.

@@ -47,7 +47,14 @@ class Normalizer:
     }
 
     # Currency indicators
-    BUDGET_UNITS = {"l": 100000, "k": 1000, "lac": 100000, "lakh": 100000}
+    BUDGET_UNITS = {
+        "l": 100000,
+        "k": 1000,
+        "lac": 100000,
+        "lakh": 100000,
+        "lakhs": 100000,
+        "thousand": 1000,
+    }
 
     # Ambiguity detection patterns
     AMBIGUITY_PATTERNS: Dict[str, List[str]] = {
@@ -119,7 +126,9 @@ class Normalizer:
 
         # Try range: "4-5L", "4 to 5L", "400K-500K", "4–5L"
         range_match = re.search(
-            r"(\d+(?:\.\d+)?)\s*(?:-|–|—|\bto\b)\s*(\d+(?:\.\d+)?)\s*([LlKk]+)?", raw
+            r"(\d+(?:\.\d+)?)\s*(?:-|–|—|\bto\b)\s*(\d+(?:\.\d+)?)\s*(l|k|lac|lakh|lakhs|thousand)?\b",
+            raw,
+            re.IGNORECASE,
         )
         if range_match:
             low = float(range_match.group(1))
@@ -131,7 +140,11 @@ class Normalizer:
             return result
 
         # Try single value: "2L", "400000", "4L"
-        single_match = re.search(r"(\d+(?:\.\d+)?)\s*([LlKk]+)\b", raw)
+        single_match = re.search(
+            r"(\d+(?:\.\d+)?)\s*(l|k|lac|lakh|lakhs|thousand)\b",
+            raw,
+            re.IGNORECASE,
+        )
         if single_match:
             val = float(single_match.group(1))
             unit_str = single_match.group(2).lower()
