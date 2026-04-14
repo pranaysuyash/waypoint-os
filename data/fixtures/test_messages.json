@@ -1,0 +1,505 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "created_at": "2026-04-14",
+    "purpose": "Test messages for intake processing, extraction, and feasibility testing"
+  },
+  "categories": {
+    "clean": {
+      "description": "Clear, well-formed inquiries with minimal ambiguity",
+      "difficulty": "easy"
+    },
+    "moderate": {
+      "description": "Some ambiguity or missing details, but workable",
+      "difficulty": "moderate"
+    },
+    "messy": {
+      "description": "Poorly structured, informal, requires interpretation",
+      "difficulty": "hard"
+    },
+    "contradictory": {
+      "description": "Contains incompatible requirements",
+      "difficulty": "hard"
+    },
+    "edge_case": {
+      "description": "Unusual or boundary-pushing requests",
+      "difficulty": "varies"
+    }
+  },
+  "messages": {
+    "clean": [
+      {
+        "id": "msg_clean_001",
+        "category": "clean",
+        "input": "Hi, we want to plan a trip to Thailand for 2 people. Dates: March 15-22, 2025. Budget: 1.5 lakh. We like beaches and nightlife.",
+        "expected_extraction": {
+          "destination": "Thailand",
+          "dates": {"start": "2025-03-15", "end": "2025-03-22", "duration_days": 7},
+          "travelers": {"adults": 2, "children": 0},
+          "budget": {"min": 150000, "max": 150000},
+          "preferences": ["beaches", "nightlife"],
+          "feasibility": "FEASIBLE"
+        }
+      },
+      {
+        "id": "msg_clean_002",
+        "category": "clean",
+        "input": "Planning a honeymoon to Maldives for 2 people. October 20-25, 2025. Budget 3 lakhs. Want private villa, romantic setup.",
+        "expected_extraction": {
+          "destination": "Maldives",
+          "dates": {"start": "2025-10-20", "end": "2025-10-25", "duration_days": 5},
+          "travelers": {"adults": 2, "trip_type": "honeymoon"},
+          "budget": {"min": 300000, "max": 300000},
+          "preferences": ["private villa", "romantic"],
+          "feasibility": "FEASIBLE"
+        }
+      },
+      {
+        "id": "msg_clean_003",
+        "category": "clean",
+        "input": "Family trip to Golden Temple, Amritsar. 4 adults, 2 children (ages 8, 12). April 5-8, 2025. Budget 80k. Need help with hotel and taxi booking.",
+        "expected_extraction": {
+          "destination": "Amritsar",
+          "dates": {"start": "2025-04-05", "end": "2025-04-08", "duration_days": 3},
+          "travelers": {"adults": 4, "children": 2, "ages": [8, 12]},
+          "budget": {"min": 80000, "max": 80000},
+          "preferences": ["pilgrimage"],
+          "feasibility": "FEASIBLE"
+        }
+      },
+      {
+        "id": "msg_clean_004",
+        "category": "clean",
+        "input": "Dubai trip for family of 4 (2 adults, 2 kids ages 6 and 9). May 1-7, 2025. Budget 4 lakhs. Interested in theme parks, shopping, and desert safari.",
+        "expected_extraction": {
+          "destination": "Dubai",
+          "dates": {"start": "2025-05-01", "end": "2025-05-07", "duration_days": 6},
+          "travelers": {"adults": 2, "children": 2, "ages": [6, 9]},
+          "budget": {"min": 400000, "max": 400000},
+          "preferences": ["theme parks", "shopping", "desert safari"],
+          "feasibility": "FEASIBLE"
+        }
+      },
+      {
+        "id": "msg_clean_005",
+        "category": "clean",
+        "input": "Bali honeymoon for 2 people. September 10-17, 2025. Budget 2 lakhs. Want mix of beaches, culture, and romantic dinners.",
+        "expected_extraction": {
+          "destination": "Bali",
+          "dates": {"start": "2025-09-10", "end": "2025-09-17", "duration_days": 7},
+          "travelers": {"adults": 2, "trip_type": "honeymoon"},
+          "budget": {"min": 200000, "max": 200000},
+          "preferences": ["beaches", "culture", "romantic dinners"],
+          "feasibility": "FEASIBLE"
+        }
+      }
+    ],
+    "moderate": [
+      {
+        "id": "msg_mod_001",
+        "category": "moderate",
+        "input": "Hey, thinking about Europe trip sometime in May or June. Family of 4, kids are teenagers (14, 16). Budget is flexible but maybe around 5 lakhs? We've done Paris before, want something different. Not too rushed please.",
+        "expected_extraction": {
+          "destination": "Europe",
+          "dates": {"approx": "May-June 2025"},
+          "travelers": {"adults": 2, "children": 2, "ages": [14, 16]},
+          "budget": {"min": 400000, "max": 600000, "flexible": true},
+          "preferences": ["not rushed", "not Paris"],
+          "ambiguities": ["specific dates", "specific countries"],
+          "questions_needed": ["Specific dates", "Countries of interest", "Pace preference"]
+        }
+      },
+      {
+        "id": "msg_mod_002",
+        "category": "moderate",
+        "input": "Planning honeymoon for October. Looking at Maldives, Bali, or Thailand. 5-6 nights. Budget not an issue but want something romantic and private. Not interested in party places.",
+        "expected_extraction": {
+          "destinations_options": ["Maldives", "Bali", "Thailand"],
+          "dates": {"month": "October", "nights": [5, 6]},
+          "travelers": {"adults": 2, "trip_type": "honeymoon"},
+          "budget": {"flexible": true, "high": true},
+          "preferences": ["romantic", "private"],
+          "avoid": ["party places"],
+          "ambiguities": ["which destination"],
+          "questions_needed": ["Destination preference", "Budget range for planning"]
+        }
+      },
+      {
+        "id": "msg_mod_003",
+        "category": "moderate",
+        "input": "We want to do a North India trip. Maybe Delhi, Agra, Jaipur? 1 week sometime in winter. Family of 6 - 4 adults and 2 kids. Budget around 2 lakhs. We like history and food.",
+        "expected_extraction": {
+          "destinations_options": ["Delhi", "Agra", "Jaipur"],
+          "dates": {"season": "winter", "duration_days": 7},
+          "travelers": {"adults": 4, "children": 2},
+          "budget": {"min": 180000, "max": 220000},
+          "preferences": ["history", "food"],
+          "ambiguities": ["specific dates", "exact winter month"],
+          "questions_needed": ["Specific dates", "Exact destinations", "Children ages"]
+        }
+      },
+      {
+        "id": "msg_mod_004",
+        "category": "moderate",
+        "input": "Goa trip with friends. 4-5 people. Not sure when, maybe December or January. Budget 2-3 lakh per person. We want party but also some chill days. Some want adventure, some just beach.",
+        "expected_extraction": {
+          "destination": "Goa",
+          "dates": {"approx": "Dec-Jan"},
+          "travelers": {"friends": true, "count": [4, 5]},
+          "budget": {"per_person": [200000, 300000]},
+          "preferences": ["party", "beach", "adventure"],
+          "ambiguities": ["exact dates", "group consensus", "exact group size"],
+          "contradictions": ["party vs chill", "adventure vs beach-only"],
+          "questions_needed": ["Exact dates", "Group size confirmation", "Preference balance"]
+        }
+      },
+      {
+        "id": "msg_mod_005",
+        "category": "moderate",
+        "input": "Solo trip to Rishikesh for yoga and meditation. 5-7 days in March or April. Budget 50k. Want peaceful ashram stay, not commercialized.",
+        "expected_extraction": {
+          "destination": "Rishikesh",
+          "dates": {"months": ["March", "April"], "duration_days": [5, 6, 7]},
+          "travelers": {"solo": true},
+          "budget": {"min": 45000, "max": 55000},
+          "preferences": ["yoga", "meditation", "peaceful"],
+          "avoid": ["commercialized"],
+          "ambiguities": ["Exact dates", "Specific ashram preferences"],
+          "questions_needed": ["Exact dates", "Ashram type preference", "Experience level"]
+        }
+      }
+    ],
+    "messy": [
+      {
+        "id": "msg_messy_001",
+        "category": "messy",
+        "input": "hiiii so me and my friends maybe 4-5 people were thinking goa but also maybe andaman?? not sure when maybe dec or jan budget is like 2-3 lakh per person we want party but also some chill days some want adventure some just beach what do u suggest?? also 1 person has knee issue so cant do much hiking",
+        "expected_extraction": {
+          "destinations_options": ["Goa", "Andaman"],
+          "dates": {"approx": "Dec-Jan"},
+          "travelers": {"friends": true, "count": [4, 5]},
+          "budget": {"per_person": [200000, 300000]},
+          "preferences": ["party", "beach", "adventure"],
+          "constraints": ["knee issue - no hiking"],
+          "contradictions": ["party vs chill", "adventure vs mobility constraint"],
+          "ambiguities": ["dates", "destination choice", "group consensus"],
+          "questions_needed": ["Exact dates", "Group size", "Destination preference", "How to handle mobility constraint"]
+        }
+      },
+      {
+        "id": "msg_messy_002",
+        "category": "messy",
+        "input": "we want europe trip. there's 6 of us - me, wife, our 2 kids (5 and 9), my parents. parents are 65+ so can't walk too much. we have 10 days in april. budget is tricky - maybe 6 lakhs? can stretch if needed. we like culture but kids get bored of museums. want balance. oh and my mom has knee problems. dad uses walker sometimes. we've done switzerland before.",
+        "expected_extraction": {
+          "destination": "Europe",
+          "dates": {"duration_days": 10, "month": "April"},
+          "travelers": {"adults": 4, "children": 2, "ages": [5, 9], "seniors": 2, "senior_ages": [65, 65]},
+          "budget": {"min": 550000, "max": 700000, "flexible": true},
+          "preferences": ["culture", "kid-friendly"],
+          "constraints": ["limited walking", "knee problems", "walker", "not Switzerland"],
+          "feasibility_concerns": ["Budget may be tight for 6 people", "Mobility constraints"],
+          "questions_needed": ["Which countries?", "Budget flexibility", "Mobility specifics"]
+        }
+      },
+      {
+        "id": "msg_messy_003",
+        "category": "messy",
+        "input": "help planning solo trip?? i was thinking ladakh but heard roads are closed in jan?? maybe i should go somewhere else instead?? i have 5 days and budget like 30k for everything including flights. want to see snow mountains and do some adventure stuff but not too tough. also vegetarian food important.",
+        "expected_extraction": {
+          "destination_options": ["Ladakh", "other snowy destinations"],
+          "dates": {"month": "January", "duration_days": 5},
+          "travelers": {"solo": true},
+          "budget": {"total": 30000, "includes_flights": true},
+          "preferences": ["snow mountains", "adventure", "vegetarian food"],
+          "feasibility_concerns": ["Ladakh in January - roads closed", "Budget tight for flights"],
+          "questions_needed": ["Alternative destinations", "Budget flexibility", "Adventure level definition"]
+        }
+      },
+      {
+        "id": "msg_messy_004",
+        "category": "messy",
+        "input": "family trip planning help!! we are 8 people - my family plus my brother's family. kids ages ranging from 3 to 18. want to go somewhere in south india during summer holidays (may). we like temples but kids get bored so need other activities too. budget is around 3 lakhs total (very tight i know). want within 200 km of bangalore if possible because we have elderly parents who can't travel far.",
+        "expected_extraction": {
+          "destination": "South India",
+          "dates": {"month": "May", "season": "summer holidays"},
+          "travelers": {"count": 8, "ages": "3-18", "has_elderly": true},
+          "budget": {"total": 300000, "constraint": "very tight"},
+          "preferences": ["temples", "kid activities"],
+          "constraints": ["Within 200km of Bangalore"],
+          "feasibility_concerns": ["Budget very tight for 8 people", "Location constraint"],
+          "questions_needed": ["Exact group composition", "Budget flexibility", "Elderly mobility"]
+        }
+      },
+      {
+        "id": "msg_messy_005",
+        "category": "messy",
+        "input": "hi i want to surprise my wife for our anniversary. we have 3 days (including weekend) in feb. budget is secret but around 50k? i was thinking a quick trip to jaipur or udaipur from delhi. she likes royal palaces and photography and food. i dont want too much traveling, we prefer to relax in one place. can you suggest??",
+        "expected_extraction": {
+          "destinations_options": ["Jaipur", "Udaipur"],
+          "dates": {"month": "February", "duration_days": 3, "includes_weekend": true},
+          "travelers": {"adults": 2, "occasion": "anniversary"},
+          "budget": {"min": 45000, "max": 55000},
+          "preferences": ["royal palaces", "photography", "food", "relax", "one place"],
+          "ambiguities": ["Exact dates", "Origin (Delhi)"],
+          "questions_needed": ["Exact dates", "Surprise element handling"]
+        }
+      }
+    ],
+    "contradictory": [
+      {
+        "id": "msg_contra_001",
+        "category": "contradictory",
+        "input": "We want a budget Europe trip, around 1 lakh total for 4 people for 10 days. But we want to visit 3 countries and stay in 4-star hotels. Also want private tours everywhere.",
+        "expected_extraction": {
+          "destination": "Europe (multiple countries)",
+          "travelers": {"adults": 4},
+          "budget": {"total": 100000, "per_person": 25000},
+          "preferences": ["3 countries", "4-star hotels", "private tours"],
+          "contradictions": [
+            "₹1L for 4 people Europe = impossible",
+            "4-star + private tours incompatible with budget"
+          ],
+          "feasibility": "IMPOSSIBLE as stated",
+          "blockers": ["budget"],
+          "resolution_required": ["Budget increase", "Expectation management", "Reduce scope"]
+        }
+      },
+      {
+        "id": "msg_contra_002",
+        "category": "contradictory",
+        "input": "Planning a solo trip to Leh-Ladakh for 2 days in January. Want to see Pangong Lake and Nubra Valley. Budget is ₹30,000 including flights.",
+        "expected_extraction": {
+          "destination": "Leh-Ladakh",
+          "dates": {"month": "January", "duration_days": 2},
+          "travelers": {"solo": true},
+          "budget": {"total": 30000, "includes_flights": true},
+          "preferences": ["Pangong Lake", "Nubra Valley"],
+          "contradictions": [
+            "January = many roads closed",
+            "2 days = insufficient for Pangong + Nubra",
+            "Budget may be tight"
+          ],
+          "feasibility": "HIGHLY PROBLEMATIC",
+          "blockers": ["season", "duration", "possibly budget"],
+          "resolution_required": ["Change dates", "Extend duration", "Increase budget"]
+        }
+      },
+      {
+        "id": "msg_contra_003",
+        "category": "contradictory",
+        "input": "Luxury Maldives trip for 2 people on budget of 50k total. Want overwater villa, all meals, seaplane transfers, and spa treatments. 5 days in December.",
+        "expected_extraction": {
+          "destination": "Maldives",
+          "dates": {"month": "December", "duration_days": 5},
+          "travelers": {"adults": 2},
+          "budget": {"total": 50000},
+          "preferences": ["overwater villa", "all meals", "seaplane transfers", "spa"],
+          "contradictions": [
+            "₹50K for 5 days Maldives luxury = impossible",
+            "Peak season (December) = most expensive"
+          ],
+          "feasibility": "IMPOSSIBLE as stated",
+          "blockers": ["budget", "season"],
+          "resolution_required": ["Huge budget increase", "Off-peak travel", "Reduce luxury expectations"]
+        }
+      },
+      {
+        "id": "msg_contra_004",
+        "category": "contradictory",
+        "input": "Family trip to Kerala in May. 10 people including 3 elderly (80+ years) who want to do Munnar, Thekkady, Alleppey houseboat, and Kovalam. Budget 1 lakh total for everyone. Also want 5-star properties.",
+        "expected_extraction": {
+          "destination": "Kerala",
+          "dates": {"month": "May", "duration_days": "not specified but implies full tour"},
+          "travelers": {"count": 10, "elderly": 3, "elderly_ages": "80+"},
+          "budget": {"total": 100000, "per_person": 10000},
+          "preferences": ["Munnar", "Thekkady", "Alleppey houseboat", "Kovalam", "5-star"],
+          "contradictions": [
+            "₹10K per person for Kerala with 5-star = impossible",
+            "Elderly 80+ doing full Kerala circuit = mobility concern"
+          ],
+          "feasibility": "HIGHLY PROBLEMATIC",
+          "blockers": ["budget", "mobility/age constraints"],
+          "resolution_required": ["Reality check on budget", "Reduce destinations", "Manage expectations"]
+        }
+      },
+      {
+        "id": "msg_contra_005",
+        "category": "contradictory",
+        "input": "We want to visit ANDaman AND Thailand in same trip. 7 days total. Budget 2 lakhs for 4 people. We want both islands' beaches and culture. We're flying from Delhi.",
+        "expected_extraction": {
+          "destinations": ["Andaman", "Thailand"],
+          "dates": {"duration_days": 7},
+          "travelers": {"adults": 4},
+          "budget": {"total": 200000},
+          "origin": "Delhi",
+          "contradictions": [
+            "7 days for Andaman AND Thailand = impossible",
+            "Two distant destinations in one week",
+            "Budget may not cover both destinations",
+            "Travel time between locations"
+          ],
+          "feasibility": "IMPOSSIBLE as stated",
+          "blockers": ["duration", "distance", "possibly budget"],
+          "resolution_required": ["Choose one destination", "Extend duration significantly", "Clarify expectations"]
+        }
+      }
+    ],
+    "edge_cases": [
+      {
+        "id": "msg_edge_001",
+        "category": "edge_case",
+        "type": "very_vague",
+        "input": "I want to go somewhere nice.",
+        "expected_extraction": {
+          "destination": null,
+          "preferences": ["somewhere nice"],
+          "ambiguities": ["everything"],
+          "feasibility": "INSUFFICIENT_INFO",
+          "action": "Ask broad qualifying questions"
+        }
+      },
+      {
+        "id": "msg_edge_002",
+        "category": "edge_case",
+        "type": "overspecified",
+        "input": "I want to visit Paris. Exact dates June 15, 2025 to June 22, 2025. Exact hotels: Hotel Fabric for 3 nights, Hotel Henriette for 4 nights. Exact restaurants: Le Comptoir General, Cafe de Flore, L'As du Fallafel. Exact museums: Louvre on Monday 9 AM, Musee d'Orsay on Wednesday 2 PM. Exact budget: ₹2,34,567. I need exact flight timings too.",
+        "expected_extraction": {
+          "destination": "Paris",
+          "dates": {"exact": "2025-06-15 to 2025-06-22"},
+          "preferences": ["very specific itinerary"],
+          "overspecified": true,
+          "feasibility": "FEASIBLE but agent should confirm availability",
+          "action": "Validate specific requests, check availability"
+        }
+      },
+      {
+        "id": "msg_edge_003",
+        "category": "edge_case",
+        "type": "large_group",
+        "input": "Planning a family reunion trip. About 40-50 people. Multi-generational from ages 3 to 85. Some in wheelchairs. Budget around ₹15 lakh. We're thinking Thailand but open.",
+        "expected_extraction": {
+          "destination": "Thailand (preferred)",
+          "travelers": {"count": [40, 50], "ages": "3-85", "mobility": ["wheelchairs"]},
+          "budget": {"total": 1500000},
+          "feasibility_concerns": ["Large group logistics", "Mobility", "Budget per person"],
+          "action": "Flag complexity, recommend consultation"
+        }
+      },
+      {
+        "id": "msg_edge_004",
+        "category": "edge_case",
+        "type": "multi_trip",
+        "input": "We want to do Europe in June AND Japan in October. Same group of 4 people. Budget 10 lakhs for both combined. Is this possible?",
+        "expected_extraction": {
+          "destinations": ["Europe", "Japan"],
+          "dates": [{"month": "June"}, {"month": "October"}],
+          "travelers": {"adults": 4},
+          "budget": {"total": 1000000, "for": "both trips"},
+          "ambiguities": ["How is budget allocated?", "Each trip separate budget?"],
+          "action": "Clarify budget allocation"
+        }
+      },
+      {
+        "id": "msg_edge_005",
+        "category": "edge_case",
+        "type": "seasonal_challenge",
+        "input": "We want to plan a trip to Shimla in December during Christmas week (Dec 23-28). Family of 6 with 2 kids. Budget 1 lakh. We want snow activities and want to avoid crowds.",
+        "expected_extraction": {
+          "destination": "Shimla",
+          "dates": {"exact": "2025-12-23 to 2025-12-28"},
+          "travelers": {"adults": 4, "children": 2},
+          "budget": {"total": 100000},
+          "preferences": ["snow activities", "avoid crowds"],
+          "contradictions": [
+            "Christmas week = peak crowds",
+            "Shimla in December may not have snow",
+            "Budget may be tight for peak season"
+          ],
+          "feasibility": "PROBLEMATIC",
+          "flags": ["season", "budget", "expectation management"]
+        }
+      },
+      {
+        "id": "msg_edge_006",
+        "category": "edge_case",
+        "type": "visa_constraints",
+        "input": "Last minute Europe trip. We want to travel in 2 weeks from now (April 15) for 10 days. Family of 4 with fresh passports (no visas yet). Budget 4 lakhs. We want Schengen visa fast-tracked if possible.",
+        "expected_extraction": {
+          "destination": "Europe",
+          "dates": {"start": "2025-04-15", "urgency": "last_minute"},
+          "travelers": {"adults": 4},
+          "budget": {"total": 400000},
+          "constraints": ["No visas yet", "Passports fresh"],
+          "feasibility": "BLOCKED - Visa timeline",
+          "flags": ["visa processing time", "last minute not feasible"],
+          "action": "Explain visa requirements, suggest alternatives or later dates"
+        }
+      },
+      {
+        "id": "msg_edge_007",
+        "category": "edge_case",
+        "type": "dietary_restrictions",
+        "input": "Planning a trip for our extended family. We're 12 people including 4 who are Jains (strict vegetarian, no onion/garlic). 2 are vegan. 2 have gluten allergies. We want to do a food tour of India. Budget 3 lakhs. June 2025.",
+        "expected_extraction": {
+          "destination": "India",
+          "dates": {"month": "June"},
+          "travelers": {"count": 12},
+          "dietary": ["Jain vegetarian (no onion/garlic)", "vegan", "gluten-free"],
+          "budget": {"total": 300000},
+          "preferences": ["food tour"],
+          "feasibility": "CHALLENGING but possible",
+          "flags": ["dietary complexity", "group coordination"],
+          "action": "Need restaurants that accommodate all restrictions"
+        }
+      },
+      {
+        "id": "msg_edge_008",
+        "category": "edge_case",
+        "type": "accessibility_needs",
+        "input": "My husband uses a wheelchair and we want to do a Rajasthan tour. 7 days in February. We want to visit Jaipur, Jodhpur, and Jaisalmer. We need wheelchair accessible hotels and transport. Budget 2 lakhs.",
+        "expected_extraction": {
+          "destinations": ["Jaipur", "Jodhpur", "Jaisalmer"],
+          "dates": {"duration_days": 7, "month": "February"},
+          "travelers": {"adults": 2, "mobility": "wheelchair user"},
+          "budget": {"total": 200000},
+          "constraints": ["Wheelchair accessible hotels", "Wheelchair accessible transport"],
+          "feasibility": "CHALLENGING",
+          "flags": ["accessibility verification required", "Budget may be tight for accessible options"],
+          "action": "Verify accessibility, may need to adjust destinations or budget"
+        }
+      },
+      {
+        "id": "msg_edge_009",
+        "category": "edge_case",
+        "type": "pet_travel",
+        "input": "We want to travel with our pet golden retriever. Kerala for 10 days in November. 2 adults. Budget 1.5 lakhs excluding pet travel costs. We need pet-friendly hotels and transport. Our dog is well-trained but large.",
+        "expected_extraction": {
+          "destination": "Kerala",
+          "dates": {"duration_days": 10, "month": "November"},
+          "travelers": {"adults": 2, "pet": "golden retriever", "pet_size": "large"},
+          "budget": {"total": 150000, "excludes": "pet_transport"},
+          "constraints": ["Pet-friendly hotels", "Pet-friendly transport"],
+          "feasibility": "POSSIBLE with restrictions",
+          "flags": ["Pet policies vary", "Size restrictions", "Additional costs"],
+          "action": "Verify pet policies at each location"
+        }
+      },
+      {
+        "id": "msg_edge_010",
+        "category": "edge_case",
+        "type": "zero_notice",
+        "input": "Need to book a trip for tomorrow. Just 2 days. Anywhere from Mumbai that has beaches. 2 people. Budget 20k. We just want to get away.",
+        "expected_extraction": {
+          "destination": "Any beach destination from Mumbai",
+          "dates": {"urgency": "tomorrow", "duration_days": 2},
+          "travelers": {"adults": 2},
+          "budget": {"total": 20000},
+          "preferences": ["beaches", "get away"],
+          "feasibility": "POSSIBLE with limitations",
+          "flags": ["Last minute booking", "Limited options", "Higher prices"],
+          "action": "Suggest nearby accessible options (Alibag, Lonavala, Daman)"
+        }
+      }
+    ]
+  }
+}

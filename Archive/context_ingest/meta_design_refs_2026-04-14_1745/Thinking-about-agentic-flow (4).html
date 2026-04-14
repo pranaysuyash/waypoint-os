@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Playables SDK -->
+<script>// Playables SDK v1.0.0
+// Game lifecycle bridge: rAF-based game-ready detection + event communication
+(function() {
+  'use strict';
+
+  // Idempotency: skip if already initialized (e.g., server-side injection
+  // followed by client-side inject-javascript via the Bloks webview component).
+  if (window.playablesSDK) return;
+
+  var HANDLER_NAME = 'playablesGameEventHandler';
+  var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
+  var RAF_FRAME_THRESHOLD = 3;
+
+  var gameReadySent = false;
+  var firstInteractionSent = false;
+  var errorSent = false;
+  var frameCount = 0;
+  var originalRAF = window.requestAnimationFrame;
+
+  // --- Transport Layer ---
+
+  function hasIOSBridge() {
+    return !!(window.webkit &&
+              window.webkit.messageHandlers &&
+              window.webkit.messageHandlers[HANDLER_NAME]);
+  }
+
+  function hasAndroidBridge() {
+    return !!(window[ANDROID_BRIDGE_NAME] &&
+              typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
+  }
+
+  function isInIframe() {
+    return !!(window.parent && window.parent !== window);
+  }
+
+  function sendEvent(eventName, payload) {
+    var message = {
+      type: eventName,
+      payload: payload || {},
+      timestamp: Date.now()
+    };
+
+    if (hasIOSBridge()) {
+      try {
+        window.webkit.messageHandlers[HANDLER_NAME].postMessage(message);
+      } catch (e) { /* ignore */ }
+      return;
+    }
+
+    if (hasAndroidBridge()) {
+    try {
+      var p = payload || {};
+      p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
+      window[ANDROID_BRIDGE_NAME].postEvent(
+        eventName,
+        JSON.stringify(p)
+      );
+    } catch (e) { /* ignore */ }
+    return;
+  }
+
+    if (isInIframe()) {
+      try {
+        window.parent.postMessage(message, '*');
+      } catch (e) { /* ignore */ }
+      return;
+    }
+  }
+
+  // --- rAF Game-Ready Detection ---
+
+  function onFrame() {
+    if (gameReadySent) return;
+
+    frameCount++;
+    if (frameCount >= RAF_FRAME_THRESHOLD) {
+      gameReadySent = true;
+      sendEvent('game_ready', {
+        frame_count: frameCount,
+        detected_at: Date.now()
+      });
+      return;
+    }
+
+    originalRAF.call(window, onFrame);
+  }
+
+  if (originalRAF) {
+    window.requestAnimationFrame = function(callback) {
+      if (!gameReadySent) {
+        return originalRAF.call(window, function(timestamp) {
+          frameCount++;
+          if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) {
+            gameReadySent = true;
+            sendEvent('game_ready', {
+              frame_count: frameCount,
+              detected_at: Date.now()
+            });
+          }
+          callback(timestamp);
+        });
+      }
+      return originalRAF.call(window, callback);
+    };
+  }
+
+  // --- First User Interaction Detection ---
+
+  function setupFirstInteractionDetection() {
+    var events = ['touchstart', 'mousedown', 'keydown'];
+
+    function onFirstInteraction() {
+      if (firstInteractionSent) return;
+      firstInteractionSent = true;
+      sendEvent('user_interaction_start', null);
+
+      for (var i = 0; i < events.length; i++) {
+        document.removeEventListener(events[i], onFirstInteraction, true);
+      }
+    }
+
+    for (var i = 0; i < events.length; i++) {
+      document.addEventListener(events[i], onFirstInteraction, true);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection);
+  } else {
+    setupFirstInteractionDetection();
+  }
+
+  // --- Auto Error Capture ---
+
+  window.addEventListener('error', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    sendEvent('error', {
+      message: event.message || 'Unknown error',
+      source: event.filename || '',
+      lineno: event.lineno || 0,
+      colno: event.colno || 0,
+      auto_captured: true
+    });
+  });
+
+  window.addEventListener('unhandledrejection', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    var reason = event.reason;
+    sendEvent('error', {
+      message: (reason instanceof Error) ? reason.message : String(reason),
+      type: 'unhandled_promise_rejection',
+      auto_captured: true
+    });
+  });
+
+  // --- Public API ---
+
+  window.playablesSDK = {
+    complete: function(score) {
+      sendEvent('game_ended', {
+        score: score,
+        completed: true
+      });
+    },
+
+    error: function(message) {
+      if (errorSent) return;
+      errorSent = true;
+      sendEvent('error', {
+        message: message || 'Unknown error',
+        auto_captured: false
+      });
+    },
+
+    sendEvent: function(eventName, payload) {
+      if (!eventName || typeof eventName !== 'string') return;
+      sendEvent(eventName, payload);
+    }
+  };
+
+  // Kick off rAF detection in case no game code calls rAF immediately
+  if (originalRAF) {
+    originalRAF.call(window, onFrame);
+  }
+})();</script>
+<script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WanderOps — Dual-View Travel OS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+        .dark-scroll::-webkit-scrollbar-thumb { background: #3f3f46; }
+        .glow-blue { box-shadow: 0 0 20px rgba(59,130,246,0.15); }
+        .glow-amber { box-shadow: 0 0 20px rgba(245,158,11,0.2); }
+        .pulse-dot { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .view-transition { transition: opacity 0.4s ease, transform 0.4s ease; }
+    </style>
+</head>
+<body class="bg-[#fcfcfc] text-zinc-900 antialiased overflow-x-hidden">
+    <!-- TOP NAVIGATION -->
+    <nav id="topnav" class="sticky top-0 z-50 border-b backdrop-blur-xl transition-colors duration-500 bg-white/90 border-zinc-200">
+        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 h-[64px] flex items-center justify-between gap-4">
+            <!-- Left -->
+            <div class="flex items-center gap-4 min-w-0 flex-1">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-zinc-900 flex items-center justify-center">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 2L14.85 8.5L22 9.3L17 14.1L18.18 21.2L12 17.8L5.82 21.2L7 14.1L2 9.3L9.15 8.5L12 2Z"/></svg>
+                    </div>
+                    <span class="font-semibold text-[17px] tracking-tight hidden sm:block">WanderOps</span>
+                </div>
+                <div class="hidden md:flex items-center gap-2 pl-4 ml-2 border-l border-zinc-200">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-zinc-400"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <input placeholder="Search trips, clients..." class="w-[180px] lg:w-[240px] bg-transparent outline-none text-sm placeholder-zinc-400">
+                </div>
+            </div>
+
+            <!-- Center Toggle -->
+            <div class="absolute left-1/2 -translate-x-1/2">
+                <div class="relative flex items-center p-1 bg-zinc-100 rounded-full border border-zinc-200 shadow-sm">
+                    <div id="toggle-bg" class="absolute top-1 bottom-1 w-[132px] bg-white rounded-full shadow-md border-zinc-200 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] left-1"></div>
+                    <button id="btn-planning" class="relative z-10 px-5 py-1.5 text-[12px] font-semibold tracking-wider transition-colors">PLANNING</button>
+                    <button id="btn-ops" class="relative z-10 px-5 py-1.5 text-[12px] font-semibold tracking-wider text-zinc-500 transition-colors">OPERATIONS</button>
+                </div>
+            </div>
+
+            <!-- Right -->
+            <div class="flex items-center justify-end gap-3 min-w-0 flex-1">
+                <div id="nav-stats" class="hidden sm:flex items-center gap-2.5 text-[12px] font-medium px-3 py-1.5 rounded-full bg-zinc-50 border-zinc-200 transition-colors">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
+                    <span class="text-zinc-600">32 Active • 7 Due Today</span>
+                </div>
+                <div class="w-8 h-8 rounded-full bg-zinc-900 text-white grid place-items-center text-[12px] font-medium">AK</div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN APP -->
+    <main class="relative max-w-[1600px] mx-auto">
+        <!-- PLANNING VIEW -->
+        <div id="planning-view" class="view-transition">
+            <div class="grid grid-cols-12 gap-5 lg:gap-6 p-4 sm:p-6">
+                <!-- Left Sidebar -->
+                <aside class="col-span-12 lg:col-span-3 xl:col-span-2">
+                    <div class="lg:sticky lg:top-[88px] space-y-5">
+                        <div>
+                            <h3 class="text-[11px] font-semibold tracking-widest text-zinc-400 uppercase mb-3 px-2">Pipeline</h3>
+                            <div class="space-y-1.5">
+                                <button class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-zinc-50 text-left transition">
+                                    <span class="text-[14px]">New Leads</span>
+                                    <span class="text-[12px] font-medium px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600">12</span>
+                                </button>
+                                <button class="w-full rounded-xl bg-blue-50 border border-blue-200">
+                                    <div class="flex items-center justify-between px-3 py-2.5">
+                                        <span class="text-[14px] font-medium text-blue-900">Qualifying</span>
+                                        <span class="text-[12px] font-medium px-2 py-0.5 rounded-md bg-blue-600 text-white">8</span>
+                                    </div>
+                                    <div class="px-2 pb-2 space-y-1">
+                                        <div class="px-2.5 py-2 rounded-lg bg-white shadow-sm border border-blue-200">
+                                            <div class="text-[13px] font-medium text-zinc-900">Sharma Family</div>
+                                            <div class="text-[11px] text-zinc-500 mt-0.5">Singapore • ₹3L • 2d ago</div>
+                                        </div>
+                                        <div class="px-2.5 py-2 rounded-lg hover:bg-white/60">
+                                            <div class="text-[13px] text-zinc-700">Mehta Couple</div>
+                                            <div class="text-[11px] text-zinc-500 mt-0.5">Dubai • ₹1.8L</div>
+                                        </div>
+                                    </div>
+                                </button>
+                                <button class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-zinc-50 text-left transition">
+                                    <span class="text-[14px]">Quoting</span>
+                                    <span class="text-[12px] font-medium px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600">5</span>
+                                </button>
+                                <button class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-zinc-50 text-left transition">
+                                    <span class="text-[14px]">Awaiting Decision</span>
+                                    <span class="text-[12px] font-medium px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600">7</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="hidden lg:block pt-4 border-t border-zinc-200">
+                            <div class="px-2 text-[11px] font-semibold tracking-widest text-zinc-400 uppercase mb-2">Filters</div>
+                            <div class="flex flex-wrap gap-1.5 px-2">
+                                <span class="px-2.5 py-1 text-[11px] rounded-full bg-zinc-900 text-white">Family</span>
+                                <span class="px-2.5 py-1 text-[11px] rounded-full bg-zinc-100 text-zinc-600">Intl</span>
+                                <span class="px-2.5 py-1 text-[11px] rounded-full bg-zinc-100 text-zinc-600">Mar</span>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Center -->
+                <section class="col-span-12 lg:col-span-6 xl:col-span-7">
+                    <div class="bg-white rounded-[20px] border border-zinc-200 shadow-sm overflow-hidden">
+                        <!-- Lead Header -->
+                        <div class="px-5 sm:px-7 py-5 border-b border-zinc-100 flex items-start justify-between gap-4">
+                            <div class="flex gap-3.5 min-w-0">
+                                <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-500 to-blue-600 grid place-items-center text-white font-semibold shrink-0">S</div>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <h1 class="text-[20px] font-semibold tracking-tight">Sharma Family</h1>
+                                        <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-medium tracking-wide uppercase">High Intent</span>
+                                        <span class="px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 text-[10px] font-medium">WhatsApp</span>
+                                    </div>
+                                    <div class="flex items-center gap-3 mt-1 text-[13px] text-zinc-500">
+                                        <span>Lead #2847</span>
+                                        <span>•</span>
+                                        <span>Created 2 days ago</span>
+                                        <span class="hidden sm:flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-emerald-500"></span>Active now</span>
+                                    </div>
+                                </div>
+                            <button class="shrink-0 w-8 h-8 grid place-items-center rounded-xl hover:bg-zinc-50 text-zinc-400">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                            </button>
+                        </div>
+
+                        <!-- Trip Summary Card -->
+                        <div class="px-5 sm:px-7 py-5">
+                            <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50 to-violet-50 border border-blue-100 p-[1px]">
+                                <div class="relative bg-white/70 backdrop-blur-sm rounded-[15px] p-4 sm:p-5">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h2 class="text-[13px] font-semibold tracking-wide text-zinc-700 uppercase">Trip Summary</h2>
+                                        <span class="text-[11px] px-2 py-1 rounded-md bg-white border border-blue-200 text-blue-700 font-medium">Draft</span>
+                                    </div>
+                                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                        <div>
+                                            <div class="text-[11px] text-zinc-500 mb-1">Destination</div>
+                                            <div class="text-[15px] font-medium flex items-center gap-1.5">🇸🇬 Singapore</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-[11px] text-zinc-500 mb-1">Dates</div>
+                                            <div class="text-[15px] font-medium">Mar 15 – 20</div>
+                                            <div class="text-[11px] text-zinc-500">5 nights</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-[11px] text-zinc-500 mb-1">Travelers</div>
+                                            <div class="text-[15px] font-medium">4 people</div>
+                                            <div class="text-[11px] text-zinc-500">2 adults, 2 kids</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-[11px] text-zinc-500 mb-1">Budget</div>
+                                            <div class="text-[15px] font-medium">₹3,00,000</div>
+                                            <div class="text-[11px] text-emerald-600">Flexible ±10%</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form -->
+                        <div class="px-5 sm:px-7 pb-6">
+                            <h3 class="text-[13px] font-semibold tracking-wide text-zinc-700 uppercase mb-3">Trip Details</h3>
+                            <div class="grid sm:grid-cols-2 gap-3">
+                                <div class="group relative">
+                                    <label class="text-[11px] text-zinc-500 ml-3">From</label>
+                                    <div class="mt-1 px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50/50 hover:bg-white transition text-[14px] flex items-center justify-between">
+                                        <span>Mumbai (BOM)</span>
+                                        <span class="text-[11px] text-emerald-600 flex items-center gap-1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg> from notes</span>
+                                    </div>
+                                </div>
+                                <div class="group relative">
+                                    <label class="text-[11px] text-zinc-500 ml-3">To</label>
+                                    <div class="mt-1 px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50/50 hover:bg-white transition text-[14px] flex items-center justify-between">
+                                        <span>Singapore (SIN)</span>
+                                        <span class="text-[11px] text-emerald-600 flex items-center gap-1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg> from notes</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-[11px] text-zinc-500 ml-3">Dates</label>
+                                    <div class="mt-1 px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50/50 text-[14px]">Mar 15 – Mar 20, 2025</div>
+                                </div>
+                                <div>
+                                    <label class="text-[11px] text-zinc-500 ml-3">Travelers</label>
+                                    <div class="mt-1 px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50/50 text-[14px] flex items-center justify-between">
+                                        <span>2 Adults, 2 Children (8, 11)</span>
+                                        <span class="text-[11px] text-emerald-600 flex items-center gap-1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg> from notes</span>
+                                    </div>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <label class="text-[11px] text-zinc-500 ml-3">Budget Range</label>
+                                    <div class="mt-1 px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50/50 text-[14px]">₹2.7L – ₹3.3L (all inclusive)</div>
+                                </div>
+                            </div>
+
+                            <!-- What we know -->
+                            <div class="mt-6">
+                                <h3 class="text-[13px] font-semibold tracking-wide text-zinc-700 uppercase mb-3">What we know</h3>
+                                <div class="rounded-xl border border-zinc-200 bg-[#fcfcfc] p-4">
+                                    <p class="text-[14px] leading-relaxed text-zinc-700">Family of 4 from Mumbai. First international trip with kids aged 8 and 11. Want <span class="bg-amber-100 px-1 rounded">kid-friendly activities</span>, strictly vegetarian food, and a mix of sightseeing + 1 day at Universal. Mrs. Sharma mentioned anxiety about immigration — needs full support. Flexible dates by ±2 days to save costs. Prefer full-service, not DIY.</p>
+                                    <div class="mt-3 flex flex-wrap gap-1.5">
+                                        <span class="px-2.5 py-1 rounded-full bg-violet-100 text-violet-700 text-[11px] font-medium">First-time intl</span>
+                                        <span class="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-medium">Vegetarian</span>
+                                        <span class="px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-[11px] font-medium">Kids activities</span>
+                                        <span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-[11px] font-medium">Hand-holding needed</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Need to clarify -->
+                            <div class="mt-4">
+                                <div class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                                    <div class="w-5 h-5 rounded-full bg-emerald-500 grid place-items-center shrink-0">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+                                    </div>
+                                    <span class="text-[13px] font-medium text-emerald-800">Need to clarify — All clear</span>
+                                    <span class="text-[12px] text-emerald-700 ml-auto">Passport details collected</span>
+                                </div>
+                            </div>
+
+                            <!-- CTA -->
+                            <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                                <button class="flex-1 h-12 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-medium text-[15px] transition flex items-center justify-center gap-2 glow-blue">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                    Create Quote
+                                </button>
+                                <button class="h-12 px-5 rounded-xl border border-zinc-200 hover:bg-zinc-50 font-medium text-[14px] transition">Save as Draft</button>
+                                <button class="h-12 w-12 grid place-items-center rounded-xl border border-zinc-200 hover:bg-zinc-50 transition">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Right Sidebar -->
+                <aside class="col-span-12 lg:col-span-3 xl:col-span-3">
+                    <div class="lg:sticky lg:top-[88px] space-y-4">
+                        <div class="bg-white rounded-2xl border border-zinc-200 p-4">
+                            <h3 class="text-[12px] font-semibold tracking-widest text-zinc-500 uppercase mb-3">Customer History</h3>
+                            <div class="space-y-3">
+                                <div class="flex gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-zinc-100 grid place-items-center text-[11px] font-medium">23</div>
+                                    <div>
+                                        <div class="text-[13px] font-medium">Dubai • Family trip</div>
+                                        <div class="text-[12px] text-zinc-500">Dec 2023 • ₹2.1L • 5★ rating</div>
+                                    </div>
+                                <div class="flex gap-3 opacity-60">
+                                    <div class="w-8 h-8 rounded-lg bg-zinc-100 grid place-items-center text-[11px] font-medium">22</div>
+                                    <div>
+                                        <div class="text-[13px]">Goa • Weekend</div>
+                                        <div class="text-[12px] text-zinc-500">Aug 2022</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-2xl border border-zinc-200 p-4">
+                            <h3 class="text-[12px] font-semibold tracking-widest text-zinc-500 uppercase mb-3">Similar Trips</h3>
+                            <div class="space-y-2.5">
+                                <div class="p-2.5 rounded-xl hover:bg-zinc-50 cursor-pointer border border-transparent hover:border-zinc-200 transition">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[13px] font-medium">Singapore Family 5D</span>
+                                        <span class="text-[11px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">87% close</span>
+                                    </div>
+                                    <div class="text-[12px] text-zinc-500 mt-1">₹2.85L • USS + Sentosa • 12 booked</div>
+                                </div>
+                                <div class="p-2.5 rounded-xl hover:bg-zinc-50 cursor-pointer">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[13px]">Singapore + Cruise</span>
+                                        <span class="text-[11px] px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-600">64%</span>
+                                    </div>
+                                    <div class="text-[12px] text-zinc-500 mt-1">₹3.4L • 7D • Premium</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-violet-600 to-blue-600 rounded-2xl p-[1px]">
+                            <div class="bg-zinc-900 rounded-[15px] p-4 text-white">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-violet-300"><path d="M12 3v7l4-2M12 3l-4 4M12 21v-7l-4 2M12 21l4-4"/></svg>
+                                    <h3 class="text-[12px] font-semibold tracking-widest uppercase text-violet-200">AI Suggestions</h3>
+                                </div>
+                                <ul class="space-y-2.5 text-[13px] leading-snug text-zinc-200">
+                                    <li class="flex gap-2"><span class="text-violet-400">•</span><span>Mention visa-assist & immigration walkthrough — reduces anxiety</span></li>
+                                    <li class="flex gap-2"><span class="text-violet-400">•</span><span>Add 1 veg Indian restaurant per day in itinerary</span></li>
+                                    <li class="flex gap-2"><span class="text-violet-400">•</span><span>Quote ₹2.95L (mid-budget) — 23% higher close rate</span></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+
+        <!-- OPERATIONS VIEW -->
+        <div id="operations-view" class="view-transition hidden opacity-0 pointer-events-none absolute inset-0">
+            <div class="bg-[#0a0a0a] text-zinc-200 min-h-screen">
+                <div class="grid grid-cols-12 gap-3 lg:gap-4 p-3 sm:p-4">
+                    <!-- Left -->
+                    <aside class="col-span-12 xl:col-span-3">
+                        <div class="bg-[#111113] rounded-2xl border border-zinc-800 h-full">
+                            <div class="p-3 border-b border-zinc-800">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="text-[11px] font-semibold tracking-widest text-zinc-500 uppercase mono">Live Trips</h3>
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 mono">AUTO-REFRESH</span>
+                                </div>
+                            <div class="p-2.5 space-y-3 max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-thin dark-scroll">
+                                <div>
+                                    <div class="px-2 py-1.5 flex items-center justify-between">
+                                        <span class="text-[11px] font-medium tracking-wide text-amber-400 uppercase mono">Critical Issues (2)</span>
+                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                    </div>
+                                    <div class="space-y-1.5">
+                                        <button class="w-full text-left p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/15 transition">
+                                            <div class="flex items-start justify-between gap-2">
+                                                <div>
+                                                    <div class="text-[13px] font-medium text-amber-100">Patel Group</div>
+                                                    <div class="text-[11px] text-zinc-400 mono mt-0.5">BALI • 11 pax • Day 3/7</div>
+                                                </div>
+                                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 mono">DELAY</span>
+                                            </div>
+                                            <div class="mt-2 flex items-center gap-2 text-[11px] text-amber-200/80">
+                                                <span class="w-1 h-1 rounded-full bg-amber-400"></span> Flight GA-417 +3h
+                                            </div>
+                                        </button>
+                                        <button class="w-full text-left p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800 hover:bg-zinc-800/50 transition">
+                                            <div class="text-[13px] text-zinc-300">Kumar Family</div>
+                                            <div class="text-[11px] text-zinc-500 mono mt-0.5">MALDIVES • Hotel overbook</div>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div class="px-2 py-1.5">
+                                        <span class="text-[11px] font-medium tracking-wide text-emerald-400 uppercase mono">Traveling Now (5)</span>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <div class="p-2.5 rounded-xl hover:bg-zinc-900/50 cursor-pointer">
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-[13px] text-zinc-200">Gupta • Thailand</span>
+                                                <span class="text-[10px] text-zinc-500 mono">D5/6</span>
+                                            </div>
+                                            <div class="flex items-center gap-1.5 mt-1">
+                                                <span class="w-1 h-1 rounded-full bg-emerald-500"></span>
+                                                <span class="text-[11px] text-zinc-500">On track</span>
+                                            </div>
+                                        </div>
+                                        <div class="p-2.5 rounded-xl hover:bg-zinc-900/50 cursor-pointer">
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-[13px] text-zinc-200">Reddy • Vietnam</span>
+                                                <span class="text-[10px] text-zinc-500 mono">D2/8</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div class="px-2 py-1.5">
+                                        <span class="text-[11px] font-medium tracking-wide text-zinc-500 uppercase mono">Departing Today (8)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <!-- Center -->
+                    <section class="col-span-12 xl:col-span-6 space-y-3">
+                        <!-- Live Status Bar -->
+                        <div class="relative overflow-hidden rounded-2xl bg-[#111113] border border-amber-500/20">
+                            <div class="absolute inset-0 bg-gradient-to-r from-amber-500/5 to-transparent"></div>
+                            <div class="relative p-3 sm:p-4">
+                                <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500 pulse-dot"></span>
+                                        <span class="text-[13px] font-medium tracking-wide">📍 BALI</span>
+                                    </div>
+                                    <div class="h-4 w-px bg-zinc-800 hidden sm:block"></div>
+                                    <div class="flex items-center gap-3 text-[12px] mono">
+                                        <span class="text-zinc-400">Day <span class="text-white">3</span>/7</span>
+                                        <span class="text-zinc-600">•</span>
+                                        <span class="text-zinc-400"><span class="text-white">11</span> travelers</span>
+                                        <span class="text-zinc-600">•</span>
+                                        <span class="text-amber-400">1 active issue</span>
+                                    </div>
+                                    <div class="ml-auto flex items-center gap-2">
+                                        <span class="text-[11px] px-2 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400 mono">Last ping 2m ago</span>
+                                        <button class="w-7 h-7 grid place-items-center rounded-lg bg-zinc-900 border border-zinc-800 hover:bg-zinc-800">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Four Dense Cards -->
+                        <div class="grid sm:grid-cols-2 gap-3">
+                            <!-- Active Issues -->
+                            <div class="rounded-2xl bg-[#111113] border border-amber-500/30 p-3.5 glow-amber">
+                                <div class="flex items-center justify-between mb-2.5">
+                                    <h3 class="text-[11px] font-semibold tracking-widest text-amber-400 uppercase mono">Active Issues</h3>
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 mono">P1</span>
+                                </div>
+                                <div class="space-y-2.5">
+                                    <div>
+                                        <div class="text-[13px] text-amber-100 font-medium">GA-417 delayed 3h 15m</div>
+                                        <div class="text-[12px] text-zinc-400 mt-1 leading-snug">DPS→SIN. Lands 18:40 vs 15:25. Impacts Uluwatu sunset transfer & dinner cruise check-in.</div>
+                                        <div class="mt-2 flex gap-1.5">
+                                            <span class="px-2 py-0.5 rounded text-[10px] bg-zinc-800 text-zinc-300 mono">AUTO-DETECTED</span>
+                                            <span class="px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 mono">CUSTOMER NOTIFIED</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Next 24hrs -->
+                            <div class="rounded-2xl bg-[#111113] border border-zinc-800 p-3.5">
+                                <h3 class="text-[11px] font-semibold tracking-widest text-zinc-500 uppercase mono mb-2.5">Next 24 Hours</h3>
+                                <div class="space-y-2">
+                                    <div class="flex gap-3">
+                                        <span class="text-[11px] mono text-zinc-500 w-10">09:00</span>
+                                        <div>
+                                            <div class="text-[13px] text-zinc-200">Waterfall tour pickup</div>
+                                            <div class="text-[11px] text-zinc-500">Driver Wayan • 11 pax • 2 vans</div>
+                                        </div>
+                                        <span class="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 mono">CONFIRMED</span>
+                                    </div>
+                                    <div class="flex gap-3">
+                                        <span class="text-[11px] mono text-zinc-500 w-10">14:30</span>
+                                        <div>
+                                            <div class="text-[13px] text-zinc-200">Lunch • Warung Bambu</div>
+                                            <div class="text-[11px] text-zinc-500">Veg options confirmed</div>
+                                        </div>
+                                    <div class="flex gap-3">
+                                        <span class="text-[11px] mono text-zinc-500 w-10">19:00</span>
+                                        <div>
+                                            <div class="text-[13px] text-zinc-200 line-through decoration-amber-500/60">Dinner cruise</div>
+                                            <div class="text-[11px] text-amber-400">AT RISK — due to delay</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Money -->
+                            <div class="rounded-2xl bg-[#111113] border border-zinc-800 p-3.5">
+                                <h3 class="text-[11px] font-semibold tracking-widest text-zinc-500 uppercase mono mb-2.5">Money</h3>
+                                <div class="grid grid-cols-3 gap-3">
+                                    <div>
+                                        <div class="text-[11px] text-zinc-500 mono">Collected</div>
+                                        <div class="text-[16px] font-medium text-white mono mt-0.5">₹8.4L</div>
+                                        <div class="text-[10px] text-emerald-400">95%</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-[11px] text-zinc-500 mono">Pending</div>
+                                        <div class="text-[16px] font-medium text-white mono mt-0.5">₹40K</div>
+                                        <div class="text-[10px] text-zinc-500">Due on return</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-[11px] text-zinc-500 mono">Margin</div>
+                                        <div class="text-[16px] font-medium text-emerald-400 mono mt-0.5">18.2%</div>
+                                        <div class="text-[10px] text-zinc-500">₹1.6L</div>
+                                    </div>
+                                </div>
+                                <div class="mt-3 pt-2.5 border-t border-zinc-800 flex items-center justify-between">
+                                    <span class="text-[11px] text-zinc-500 mono">Supplier payouts</span>
+                                    <span class="text-[12px] text-amber-400 mono">₹1.2L due today</span>
+                                </div>
+                            </div>
+
+                            <!-- Suppliers -->
+                            <div class="rounded-2xl bg-[#111113] border border-zinc-800 p-3.5">
+                                <h3 class="text-[11px] font-semibold tracking-widest text-zinc-500 uppercase mono mb-2.5">Suppliers</h3>
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                            <span class="text-[13px] text-zinc-200">Wayan Transport</span>
+                                        </div>
+                                        <span class="text-[11px] mono text-zinc-500">2 vans • OK</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                            <span class="text-[13px] text-zinc-200">Ubud Resort</span>
+                                        </div>
+                                        <span class="text-[11px] mono text-zinc-500">Checked-in</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                            <span class="text-[13px] text-amber-100">Bali Hai Cruise</span>
+                                        </div>
+                                        <span class="text-[11px] mono text-amber-400">Delay noted</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Activity Feed -->
+                        <div class="rounded-2xl bg-[#111113] border border-zinc-800">
+                            <div class="p-3 border-b border-zinc-800 flex items-center justify-between">
+                                <h3 class="text-[11px] font-semibold tracking-widest text-zinc-500 uppercase mono">Live Activity</h3>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    <span class="text-[10px] mono text-zinc-500">STREAMING</span>
+                                </div>
+                            </div>
+                            <div class="p-3 h-[200px] overflow-y-auto scrollbar-thin dark-scroll space-y-2.5 mono text-[12px]">
+                                <div class="flex gap-3">
+                                    <span class="text-zinc-600 w-[42px] shrink-0">09:42</span>
+                                    <span class="text-zinc-500">SYSTEM</span>
+                                    <span class="text-zinc-300">Flight GA-417 delay updated: +3h15m (new ETA 18:40)</span>
+                                </div>
+                                <div class="flex gap-3">
+                                    <span class="text-zinc-600 w-[42px] shrink-0">09:41</span>
+                                    <span class="text-amber-400">ALERT</span>
+                                    <span class="text-zinc-300">Auto-notified customer via WhatsApp + SMS</span>
+                                </div>
+                                <div class="flex gap-3">
+                                    <span class="text-zinc-600 w-[42px] shrink-0">09:38</span>
+                                    <span class="text-violet-400">OPS</span>
+                                    <span class="text-zinc-300">Priya K. assigned as incident owner</span>
+                                </div>
+                                <div class="flex gap-3">
+                                    <span class="text-zinc-600 w-[42px] shrink-0">09:35</span>
+                                    <span class="text-emerald-400">SUPPLIER</span>
+                                    <span class="text-zinc-300">Wayan confirmed pickup adjusted to 19:30</span>
+                                </div>
+                                <div class="flex gap-3">
+                                    <span class="text-zinc-600 w-[42px] shrink-0">09:18</span>
+                                    <span class="text-zinc-500">CUSTOMER</span>
+                                    <span class="text-zinc-300">Patel: "Thanks for quick update. Keep dinner cruise if possible"</span>
+                                </div>
+                                <div class="flex gap-3">
+                                    <span class="text-zinc-600 w-[42px] shrink-0">08:55</span>
+                                    <span class="text-zinc-500">SYSTEM</span>
+                                    <span class="text-zinc-300">Day 3 itinerary pushed to all 11 travelers</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex flex-wrap gap-2">
+                            <button class="h-9 px-4 rounded-xl bg-white text-black text-[13px] font-medium hover:bg-zinc-200 transition flex items-center gap-1.5">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                Message Group
+                            </button>
+                            <button class="h-9 px-4 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-200 text-[13px] font-medium hover:bg-zinc-800 transition flex items-center gap-1.5">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                                Call Lead
+                            </button>
+                            <button class="h-9 px-4 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[13px] font-medium hover:bg-amber-500/25 transition">Escalate</button>
+                            <button class="h-9 px-4 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 text-[13px] font-medium hover:bg-zinc-800 transition ml-auto">Re-route</button>
+                        </div>
+                    </section>
+
+                    <!-- Right -->
+                    <aside class="col-span-12 xl:col-span-3">
+                        <div class="space-y-3">
+                            <div class="rounded-2xl bg-[#111113] border border-zinc-800 p-3.5">
+                                <h3 class="text-[11px] font-semibold tracking-widest text-zinc-500 uppercase mono mb-3">Quick Actions</h3>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button class="h-[68px] rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition flex flex-col items-center justify-center gap-1.5 group">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="text-zinc-500 group-hover:text-white transition"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                        <span class="text-[11px] mono text-zinc-400 group-hover:text-zinc-200">Notify All</span>
+                                    </button>
+                                    <button class="h-[68px] rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition flex flex-col items-center justify-center gap-1.5 group">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="text-zinc-500 group-hover:text-white transition"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                        <span class="text-[11px] mono text-zinc-400 group-hover:text-zinc-200">Rebook</span>
+                                    </button>
+                                    <button class="h-[68px] rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition flex flex-col items-center justify-center gap-1.5 group">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="text-zinc-500 group-hover:text-white transition"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                        <span class="text-[11px] mono text-zinc-400 group-hover:text-zinc-200">Split Group</span>
+                                    </button>
+                                    <button class="h-[68px] rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition flex flex-col items-center justify-center gap-1.5 group">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="text-zinc-500 group-hover:text-white transition"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                        <span class="text-[11px] mono text-zinc-400 group-hover:text-zinc-200">Timeline</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="rounded-2xl bg-[#111113] border border-zinc-800 p-3.5">
+                                <h3 class="text-[11px] font-semibold tracking-widest text-zinc-500 uppercase mono mb-3">Team On Call</h3>
+                                <div class="space-y-2.5">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2.5">
+                                            <div class="w-7 h-7 rounded-full bg-violet-500/20 border border-violet-500/30 grid place-items-center text-[11px] font-medium text-violet-300">PK</div>
+                                            <div>
+                                                <div class="text-[13px] text-zinc-200 leading-none">Priya K.</div>
+                                                <div class="text-[11px] text-zinc-500 mono">Incident Owner</div>
+                                            </div>
+                                        </div>
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2.5">
+                                            <div class="w-7 h-7 rounded-full bg-zinc-800 grid place-items-center text-[11px] font-medium text-zinc-400">AR</div>
+                                            <div>
+                                                <div class="text-[13px] text-zinc-300 leading-none">Amit R.</div>
+                                                <div class="text-[11px] text-zinc-500 mono">Ops Lead</div>
+                                            </div>
+                                        <span class="w-1.5 h-1.5 rounded-full bg-zinc-600"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="rounded-2xl bg-[#111113] border border-red-900/50 p-3.5">
+                                <h3 class="text-[11px] font-semibold tracking-widest text-red-400 uppercase mono mb-2.5 flex items-center gap-1.5">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                    Emergency
+                                </h3>
+                                <div class="space-y-2 text-[12px] mono">
+                                    <div class="flex justify-between"><span class="text-zinc-500">Bali Driver</span><span class="text-zinc-200">+62 812 3456 7890</span></div>
+                                    <div class="flex justify-between"><span class="text-zinc-500">Hotel GM</span><span class="text-zinc-200">+62 361 123 4567</span></div>
+                                    <div class="flex justify-between"><span class="text-zinc-500">Local Partner</span><span class="text-zinc-200">+62 811 222 3344</span></div>
+                                </div>
+                                <button class="w-full mt-3 h-8 rounded-lg bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-300 text-[12px] font-medium transition">Trigger SOS Protocol</button>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Data Flow Indicator -->
+    <div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 hidden md:block pointer-events-none">
+        <div class="flex items-center gap-3 px-4 py-2 rounded-full bg-white/90 backdrop-blur-xl border border-zinc-200 shadow-xl">
+            <div class="flex items-center gap-1.5">
+                <div class="w-5 h-5 rounded-full bg-blue-500/10 grid place-items-center">
+                    <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                </div>
+                <span class="text-[11px] font-medium text-zinc-700 tracking-wide">ONE TRIP, TWO LENSES</span>
+            </div>
+            <div class="w-px h-4 bg-zinc-300"></div>
+            <div class="flex items-center gap-2 text-[11px] text-zinc-500">
+                <span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-medium">Planning</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-zinc-400"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                <span class="px-1.5 py-0.5 rounded bg-zinc-900 text-white font-medium mono">trip_data_v3</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-zinc-400"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                <span class="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 font-medium border border-amber-500/20">Operations</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOMER VIEW - Phone -->
+    <div id="customer-view" class="fixed bottom-5 right-5 z-30 hidden lg:block transition-all duration-500">
+        <div class="relative">
+            <div class="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-900 text-white text-[10px] font-medium tracking-widest uppercase shadow-lg">
+                    <span class="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Customer View • Live
+                </div>
+            </div>
+            <!-- Phone frame -->
+            <div class="w-[280px] h-[560px] bg-black rounded-[36px] p-[10px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] ring-1 ring-zinc-800">
+                <div class="w-full h-full bg-white rounded-[28px] overflow-hidden flex flex-col">
+                    <!-- Phone header -->
+                    <div class="h-[44px] bg-zinc-50 flex items-center justify-center relative shrink-0 border-b border-zinc-100">
+                        <div class="absolute left-4 top-1/2 -translate-y-1/2 w-[60px] h-[20px] bg-black rounded-full"></div>
+                        <span class="text-[12px] font-medium text-zinc-700">9:41</span>
+                    </div>
+                    
+                    <!-- App content -->
+                    <div id="phone-content" class="flex-1 overflow-hidden bg-[#fafafa]">
+                        <!-- Content swaps via JS -->
+                    </div>
+
+                    <!-- Home indicator -->
+                    <div class="h-5 bg-white flex items-center justify-center shrink-0">
+                        <div class="w-20 h-1 bg-black rounded-full"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const btnPlanning = document.getElementById('btn-planning');
+        const btnOps = document.getElementById('btn-ops');
+        const toggleBg = document.getElementById('toggle-bg');
+        const planningView = document.getElementById('planning-view');
+        const operationsView = document.getElementById('operations-view');
+        const topnav = document.getElementById('topnav');
+        const navStats = document.getElementById('nav-stats');
+        const phoneContent = document.getElementById('phone-content');
+
+        const phonePlanning = `
+            <div class="h-full flex flex-col">
+                <div class="px-4 pt-4 pb-3 bg-white border-b border-zinc-100">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-lg bg-zinc-900 grid place-items-center">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 2L14.85 8.5L22 9.3L17 14.1L18.18 21.2L12 17.8L5.82 21.2L7 14.1L2 9.3L9.15 8.5L12 2Z"/></svg>
+                            </div>
+                            <span class="font-semibold text-[15px]">WanderOps</span>
+                        </div>
+                        <span class="text-[11px] px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-medium">Quote Ready</span>
+                    </div>
+                <div class="flex-1 overflow-y-auto p-4 space-y-4">
+                    <div>
+                        <h2 class="text-[22px] font-semibold tracking-tight">Hi Sharma Family 👋</h2>
+                        <p class="text-[13px] text-zinc-500 mt-1">Your Singapore trip is ready to review</p>
+                    </div>
+                    <div class="rounded-2xl overflow-hidden border border-zinc-200 bg-white">
+                        <img src="https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=600" class="w-full h-[140px] object-cover" alt="Singapore">
+                        <div class="p-3.5">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <h3 class="font-semibold">Singapore Family Escape</h3>
+                                    <p class="text-[12px] text-zinc-500 mt-0.5">Mar 15-20 • 5 Days • 4 Travelers</p>
+                                </div>
+                                <span class="text-[11px] font-medium">₹2.95L</span>
+                            </div>
+                            <div class="mt-3 flex gap-1.5 flex-wrap">
+                                <span class="text-[10px] px-2 py-1 rounded-full bg-zinc-100">USS Tickets</span>
+                                <span class="text-[10px] px-2 py-1 rounded-full bg-zinc-100">Veg Meals</span>
+                                <span class="text-[10px] px-2 py-1 rounded-full bg-zinc-100">Visa Assist</span>
+                            </div>
+                        </div>
+                    <div class="rounded-2xl bg-blue-50 border border-blue-100 p-3.5">
+                        <div class="flex gap-2.5">
+                            <div class="w-8 h-8 rounded-full bg-blue-600 text-white grid place-items-center shrink-0 text-[12px]">AK</div>
+                            <div>
+                                <p class="text-[13px] leading-snug"><span class="font-medium">Amit from WanderOps:</span> Added extra veg restaurants near your hotel and included immigration fast-track as discussed.</p>
+                                <p class="text-[11px] text-zinc-500 mt-1.5">2 min ago</p>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="w-full h-11 rounded-xl bg-zinc-900 text-white font-medium text-[14px]">View Full Proposal</button>
+                    <button class="w-full h-10 rounded-xl border border-zinc-200 font-medium text-[13px]">Ask a Question</button>
+                </div>
+            </div>
+        `;
+
+        const phoneOperations = `
+            <div class="h-full flex flex-col">
+                <div class="px-4 pt-4 pb-3 bg-white border-b border-zinc-100">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span class="text-[11px] font-medium text-emerald-700 uppercase tracking-wide">Live Trip</span>
+                            </div>
+                            <h2 class="font-semibold text-[17px] leading-tight mt-0.5">Bali Escape</h2>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-[11px] text-zinc-500">Day</div>
+                            <div class="text-[18px] font-semibold leading-none">3<span class="text-zinc-400 font-normal">/7</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto">
+                    <div class="p-4 space-y-3">
+                        <div class="rounded-2xl bg-amber-50 border border-amber-200 p-3">
+                            <div class="flex items-start gap-2.5">
+                                <div class="w-6 h-6 rounded-full bg-amber-500 grid place-items-center shrink-0 mt-0.5">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-[12px] font-semibold text-amber-900">Flight Delay Update</div>
+                                    <div class="text-[12px] text-amber-800 leading-snug mt-0.5">GA-417 now lands 6:40 PM. We've adjusted your pickup and will try to keep dinner cruise.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-[11px] font-semibold uppercase tracking-widest text-zinc-500 mb-2.5 px-0.5">Next Up</h3>
+                            <div class="bg-white rounded-2xl border border-zinc-200 p-3.5 shadow-sm">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-violet-100 grid place-items-center shrink-0">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M7 16V4M17 8v12M3 12h4m8 0h4"/></svg>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-baseline justify-between gap-2">
+                                            <h4 class="font-medium">Waterfall Tour</h4>
+                                            <span class="text-[11px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-medium">9:00 AM</span>
+                                        </div>
+                                        <p class="text-[12px] text-zinc-600 mt-1">Pickup at lobby • Driver Wayan • 2 vans</p>
+                                        <div class="mt-2.5 flex items-center gap-2">
+                                            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100" class="w-6 h-6 rounded-full object-cover" alt="">
+                                            <span class="text-[12px] text-zinc-600">Wayan • +62 812 3456 789</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div class="bg-white rounded-2xl border border-zinc-200 p-3">
+                                <div class="text-[11px] text-zinc-500">Today's Plan</div>
+                                <div class="text-[13px] font-medium mt-1">3 activities</div>
+                                <div class="mt-2 w-full bg-zinc-100 rounded-full h-1.5 overflow-hidden">
+                                    <div class="h-full w-[33%] bg-zinc-900 rounded-full"></div>
+                                </div>
+                            <div class="bg-white rounded-2xl border border-zinc-200 p-3">
+                                <div class="text-[11px] text-zinc-500">Weather</div>
+                                <div class="text-[13px] font-medium mt-1 flex items-center gap-1">28° ☀️</div>
+                                <div class="text-[11px] text-zinc-500 mt-1">Perfect for tour</div>
+                            </div>
+                        </div>
+
+                        <button class="w-full h-[48px] rounded-2xl bg-red-500 text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 active:scale-[0.98] transition">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                            Emergency Help
+                        </button>
+                    </div>
+                </div>
+                <div class="h-[56px] bg-white border-t border-zinc-100 grid grid-cols-4 place-items-center px-2 shrink-0">
+                    <button class="flex flex-col items-center gap-1 text-zinc-900"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span class="text-[10px] font-medium">Home</span></button>
+                    <button class="flex flex-col items-center gap-1 text-zinc-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span class="text-[10px]">Plan</span></button>
+                    <button class="flex flex-col items-center gap-1 text-zinc-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="text-[10px]">Chat</span></button>
+                    <button class="flex flex-col items-center gap-1 text-zinc-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 0 0 0 9 19.4a1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="text-[10px]">More</span></button>
+                </div>
+            </div>
+        `;
+
+        function setMode(mode) {
+            const isPlanning = mode === 'planning';
+            
+            // Toggle views
+            if (isPlanning) {
+                operationsView.classList.add('opacity-0', 'pointer-events-none');
+                setTimeout(() => operationsView.classList.add('hidden'), 300);
+                planningView.classList.remove('hidden');
+                setTimeout(() => planningView.classList.remove('opacity-0'), 10);
+                
+                // Nav
+                topnav.className = 'sticky top-0 z-50 border-b backdrop-blur-xl transition-colors duration-500 bg-white/90 border-zinc-200';
+                navStats.className = 'hidden sm:flex items-center gap-2.5 text-[12px] font-medium px-3 py-1.5 rounded-full bg-zinc-50 border-zinc-200 transition-colors';
+                navStats.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot"></span><span class="text-zinc-600">32 Active • 7 Due Today</span>';
+                
+                // Toggle
+                toggleBg.style.transform = 'translateX(0)';
+                btnPlanning.classList.remove('text-zinc-500');
+                btnPlanning.classList.add('text-zinc-900');
+                btnOps.classList.add('text-zinc-500');
+                btnOps.classList.remove('text-zinc-900');
+                
+                document.body.className = 'bg-[#fcfcfc] text-zinc-900 antialiased overflow-x-hidden';
+                phoneContent.innerHTML = phonePlanning;
+            } else {
+                planningView.classList.add('opacity-0');
+                setTimeout(() => {
+                    planningView.classList.add('hidden');
+                    operationsView.classList.remove('hidden');
+                    setTimeout(() => {
+                        operationsView.classList.remove('opacity-0', 'pointer-events-none');
+                    }, 10);
+                }, 200);
+                
+                // Nav
+                topnav.className = 'sticky top-0 z-50 border-b backdrop-blur-xl transition-colors duration-500 bg-[#0a0a0a]/90 border-zinc-800';
+                navStats.className = 'hidden sm:flex items-center gap-2.5 text-[12px] font-medium px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 transition-colors';
+                navStats.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-500 pulse-dot"></span><span class="text-zinc-400">5 Live • <span class="text-amber-400">2 Critical</span> • 94% On-Time</span>';
+                
+                // Toggle
+                toggleBg.style.transform = 'translateX(132px)';
+                btnOps.classList.remove('text-zinc-500');
+                btnOps.classList.add('text-zinc-900');
+                btnPlanning.classList.add('text-zinc-500');
+                btnPlanning.classList.remove('text-zinc-900');
+                
+                document.body.className = 'bg-[#0a0a0a] text-zinc-200 antialiased overflow-x-hidden';
+                phoneContent.innerHTML = phoneOperations;
+            }
+        }
+
+        btnPlanning.addEventListener('click', () => setMode('planning'));
+        btnOps.addEventListener('click', () => setMode('operations'));
+
+        // Initialize
+        phoneContent.innerHTML = phonePlanning;
+        planningView.classList.remove('opacity-0');
+        
+        // Keyboard shortcut
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                const isPlanning = !planningView.classList.contains('hidden');
+                setMode(isPlanning ? 'operations' : 'planning');
+            }
+        });
+    </script>
+</body>
+</html>

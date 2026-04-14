@@ -1,0 +1,589 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "created_at": "2026-04-14",
+    "purpose": "Complete trip examples for development testing and demo purposes"
+  },
+  "trips": {
+    "sharma_family_europe": {
+      "id": "trip_001",
+      "agency_id": "priya-travels",
+      "agent_id": "priya_sharma",
+      "status": "options_generated",
+      "client": {
+        "name": "Raj Sharma",
+        "email": "raj.sharma@email.com",
+        "phone": "+91 98765 43210",
+        "whatsapp": "+91 98765 43210"
+      },
+      "input": {
+        "channel": "whatsapp",
+        "raw_message": "Hi Priya, we want to go to Europe sometime in June maybe? Family of 4, kids are 7 and 10. Not sure about budget yet, maybe around 3-4 lakhs? We like beaches but also culture. Can you suggest something?",
+        "received_at": "2025-04-14T10:30:00Z"
+      },
+      "extracted": {
+        "destination": "Europe",
+        "destinations_list": ["France", "Italy"],
+        "dates": {
+          "start": "2025-06-15",
+          "end": "2025-06-25",
+          "flexible": false
+        },
+        "duration_days": 10,
+        "travelers": {
+          "adults": 2,
+          "children": 2,
+          "ages": [7, 10],
+          "total": 4
+        },
+        "budget": {
+          "min": 350000,
+          "max": 400000,
+          "currency": "INR",
+          "per_person": [87500, 100000],
+          "flexible": true
+        },
+        "preferences": [
+          "culture",
+          "beaches",
+          "family-friendly",
+          "moderate pace"
+        ],
+        "avoid": [
+          "too much walking",
+          "early morning starts"
+        ],
+        "constraints": {
+          "season": "peak",
+          "mobility": "moderate",
+          "age_appropriateness": "kids 7-10"
+        }
+      },
+      "processing": {
+        "confidence_score": 0.85,
+        "questions_asked": [
+          "Specific dates in June?",
+          "Countries definitely in or out?",
+          "Beach vs culture balance?",
+          "Mobility constraints?"
+        ],
+        "flags": [
+          {
+            "type": "consideration",
+            "message": "June is peak season - expect premium pricing"
+          },
+          {
+            "type": "consideration",
+            "message": "₹4L budget may be tight for France+Italy"
+          }
+        ],
+        "contradictions": [],
+        "blockers": [],
+        "feasibility": "FEASIBLE"
+      },
+      "options": [
+        {
+          "id": "opt_001",
+          "name": "France Focus",
+          "tagline": "Classic Europe intro, perfect for first-timers",
+          "destinations": ["Paris", "Lyon", "Nice/French Riviera"],
+          "budget": {
+            "min": 400000,
+            "max": 420000
+          },
+          "pace": "moderate",
+          "scores": {
+            "culture": 5,
+            "beach": 3,
+            "kid_friendly": 5,
+            "adventure": 2,
+            "relaxation": 4
+          },
+          "why_this_fits": "Perfect first Europe trip. Paris (culture) + Nice (coast) is ideal balance. Kid-friendly with familiar food options. No 6 AM starts.",
+          "trade_offs": "Less beach time than other options, peak season pricing",
+          "itinerary": [
+            {"day": 1, "location": "Paris", "activities": ["Arrival", "Eiffel Tower at sunset"]},
+            {"day": 2, "location": "Paris", "activities": ["Louvre", "Seine cruise"]},
+            {"day": 3, "location": "Paris", "activities": ["Disneyland Paris day trip"]},
+            {"day": 4, "location": "Lyon", "activities": ["Train to Lyon", "City tour", "Food tour"]},
+            {"day": 5, "location": "Lyon", "activities": ["Local markets", "Basilica"]},
+            {"day": 6, "location": "Nice", "activities": ["Train to Nice", "Promenade des Anglais"]},
+            {"day": 7, "location": "Nice", "activities": ["Old Town", "Beach time"]},
+            {"day": 8, "location": "Nice", "activities": ["Monaco day trip"]},
+            {"day": 9, "location": "Nice", "activities": ["Beach day", "Shopping"]},
+            {"day": 10, "location": "Nice", "activities": ["Departure"]}
+          ]
+        },
+        {
+          "id": "opt_002",
+          "name": "Italy Focus",
+          "tagline": "Best culture+beach combo, under budget",
+          "destinations": ["Rome", "Florence", "Amalfi Coast"],
+          "budget": {
+            "min": 360000,
+            "max": 380000
+          },
+          "pace": "moderate_to_active",
+          "scores": {
+            "culture": 5,
+            "beach": 4,
+            "kid_friendly": 4,
+            "adventure": 3,
+            "relaxation": 3
+          },
+          "why_this_fits": "Best balance of culture and beaches within budget. Great food, memorable experiences. Flexible pace options.",
+          "trade_offs": "More walking than France option, some hilly terrain in Amalfi",
+          "itinerary": [
+            {"day": 1, "location": "Rome", "activities": ["Arrival", "Colosseum area"]},
+            {"day": 2, "location": "Rome", "activities": ["Vatican", "St. Peter's"]},
+            {"day": 3, "location": "Rome", "activities": ["Pantheon", "Trevi Fountain", "Spanish Steps"]},
+            {"day": 4, "location": "Rome", "activities": ["Food tour", "Piazza Navona"]},
+            {"day": 5, "location": "Florence", "activities": ["Train to Florence", "Duomo"]},
+            {"day": 6, "location": "Florence", "activities": ["Uffizi", "Ponte Vecchio"]},
+            {"day": 7, "location": "Florence", "activities": ["Pisa day trip"]},
+            {"day": 8, "location": "Amalfi", "activities": ["Drive to Amalfi", "Positano"]},
+            {"day": 9, "location": "Amalfi", "activities": ["Boat trip", "Beach"]},
+            {"day": 10, "location": "Amalfi", "activities": ["Departure from Naples"]}
+          ]
+        },
+        {
+          "id": "opt_003",
+          "name": "Greece Focus",
+          "tagline": "Best value, relaxed pace, less crowded",
+          "destinations": ["Athens", "Naxos", "Santorini"],
+          "budget": {
+            "min": 330000,
+            "max": 350000
+          },
+          "pace": "relaxed",
+          "scores": {
+            "culture": 3,
+            "beach": 5,
+            "kid_friendly": 5,
+            "adventure": 2,
+            "relaxation": 5
+          },
+          "why_this_fits": "Best value with room for upgrades. Easy pace, family-friendly, less crowded in June than France/Italy.",
+          "trade_offs": "Less 'classic Europe' feel, more travel time between islands",
+          "itinerary": [
+            {"day": 1, "location": "Athens", "activities": ["Arrival", "Plaka"]},
+            {"day": 2, "location": "Athens", "activities": ["Acropolis", "Acropolis Museum"]},
+            {"day": 3, "location": "Athens", "activities": ["Delphi day trip"]},
+            {"day": 4, "location": "Naxos", "activities": ["Ferry to Naxos", "Beach"]},
+            {"day": 5, "location": "Naxos", "activities": ["Village tour", "Beach day"]},
+            {"day": 6, "location": "Naxos", "activities": ["Local cooking class"]},
+            {"day": 7, "location": "Santorini", "activities": ["Ferry to Santorini", "Oia sunset"]},
+            {"day": 8, "location": "Santorini", "activities": ["Beach", "Boat trip"]},
+            {"day": 9, "location": "Santorini", "activities": ["Volcano tour", "Fira"]},
+            {"day": 10, "location": "Santorini", "activities": ["Departure"]}
+          ]
+        }
+      ],
+      "outcome": {
+        "selected": "opt_002",
+        "selection_reason": "Best balance of culture+beach within budget",
+        "agent_edits": "Minor - adjusted one hotel based on availability",
+        "sent_to_client_at": "2025-04-14T11:00:00Z",
+        "client_feedback": "Excited, options feel personalized",
+        "booking_status": "Booked"
+      }
+    },
+    "mehta_thailand": {
+      "id": "trip_002",
+      "agency_id": "priya-travels",
+      "agent_id": "priya_sharma",
+      "status": "booked",
+      "client": {
+        "name": "Amit Mehta",
+        "email": "amit.mehta@email.com",
+        "phone": "+91 98765 12345"
+      },
+      "input": {
+        "channel": "whatsapp",
+        "raw_message": "Hi, we want to plan a trip to Thailand for 2 people. Dates: March 15-22, 2025. Budget: 1.5 lakh. We like beaches and nightlife.",
+        "received_at": "2025-04-10T14:20:00Z"
+      },
+      "extracted": {
+        "destination": "Thailand",
+        "destinations_list": ["Bangkok", "Phuket"],
+        "dates": {
+          "start": "2025-03-15",
+          "end": "2025-03-22",
+          "flexible": false
+        },
+        "duration_days": 7,
+        "travelers": {
+          "adults": 2,
+          "children": 0,
+          "total": 2,
+          "type": "couple"
+        },
+        "budget": {
+          "min": 150000,
+          "max": 150000,
+          "currency": "INR",
+          "per_person": 75000
+        },
+        "preferences": ["beaches", "nightlife"],
+        "trip_vibe": "party",
+        "season": "shoulder"
+      },
+      "processing": {
+        "confidence_score": 0.95,
+        "questions_asked": [
+          "Which cities: Phuket, Bangkok, Pattaya, or mix?",
+          "Any specific interests: adventure, shopping, food tours?"
+        ],
+        "flags": [],
+        "feasibility": "FEASIBLE"
+      },
+      "options": [
+        {
+          "id": "opt_001",
+          "name": "Bangkok + Phuket",
+          "destinations": ["Bangkok", "Phuket"],
+          "budget": 145000,
+          "pace": "active",
+          "why_this_fits": "Classic Thailand combo - city nightlife + beach relaxation",
+          "itinerary_summary": "3 nights Bangkok, 4 nights Phuket"
+        },
+        {
+          "id": "opt_002",
+          "name": "Phuket Focus",
+          "destinations": ["Phuket"],
+          "budget": 130000,
+          "pace": "relaxed",
+          "why_this_fits": "More beach time, less travel, under budget",
+          "itinerary_summary": "7 nights Phuket with day trips"
+        }
+      ],
+      "outcome": {
+        "selected": "opt_001",
+        "booking_status": "Booked"
+      }
+    },
+    "patel_honeymoon_maldives": {
+      "id": "trip_003",
+      "agency_id": "sky-high-tours",
+      "agent_id": "neha_sharma",
+      "status": "options_sent",
+      "client": {
+        "name": "Rahul & Priya Patel",
+        "email": "rahul.patel@email.com",
+        "phone": "+91 99887 76655"
+      },
+      "input": {
+        "channel": "email",
+        "raw_message": "Planning honeymoon to Maldives for 2 people. October 20-25, 2025. Budget 3 lakhs. Want private villa, romantic setup.",
+        "received_at": "2025-04-12T09:15:00Z"
+      },
+      "extracted": {
+        "destination": "Maldives",
+        "dates": {
+          "start": "2025-10-20",
+          "end": "2025-10-25",
+          "flexible": false,
+          "duration_days": 5
+        },
+        "travelers": {
+          "adults": 2,
+          "children": 0,
+          "total": 2,
+          "type": "honeymoon"
+        },
+        "budget": {
+          "min": 300000,
+          "max": 300000,
+          "currency": "INR"
+        },
+        "preferences": ["private villa", "romantic", "honeymoon"],
+        "trip_vibe": "romantic",
+        "season": "shoulder"
+      },
+      "processing": {
+        "confidence_score": 0.90,
+        "flags": [
+          {
+            "type": "info",
+            "message": "October is great weather, not peak season"
+          }
+        ],
+        "feasibility": "FEASIBLE"
+      },
+      "options": [
+        {
+          "id": "opt_001",
+          "name": "Luxury Water Villa",
+          "resort": "Conrad Rangali Island",
+          "villa_type": "overwater",
+          "budget": 295000,
+          "inclusions": ["breakfast", "seaplane transfer", "candlelit dinner", "spa credit"],
+          "why_this_fits": "Iconic overwater villa, amazing house reef, romantic setup"
+        },
+        {
+          "id": "opt_002",
+          "name": "Beach Villa",
+          "resort": "W Maldives",
+          "villa_type": "beach",
+          "budget": 285000,
+          "inclusions": ["all meals", "seaplane transfer", "sunset fishing", "breakfast in bed"],
+          "why_this_fits": "Secluded beach villa, all-inclusive, great service"
+        }
+      ],
+      "outcome": {
+        "status": "awaiting_client_response"
+      }
+    },
+    "contradictory_europe_large_group": {
+      "id": "trip_004",
+      "agency_id": "sky-high-tours",
+      "agent_id": "raj_kumar",
+      "status": "clarification_needed",
+      "client": {
+        "name": " Gupta Family Reunion",
+        "email": "gupta.family@email.com",
+        "phone": "+91 91234 56789"
+      },
+      "input": {
+        "channel": "email",
+        "raw_message": "We want to do Europe trip. There's 6 of us - me, wife, our 2 kids (5 and 9), my parents. Parents are 65+ so can't walk too much. We have 10 days in April. Budget is tricky - maybe 6 lakhs? Can stretch if needed. We like culture but kids get bored of museums. Want balance. Oh and my mom has knee problems. Dad uses walker sometimes. We've done Switzerland before.",
+        "received_at": "2025-04-13T16:45:00Z"
+      },
+      "extracted": {
+        "destination": "Europe",
+        "dates": {
+          "month": "April",
+          "duration_days": 10,
+          "flexible": true
+        },
+        "travelers": {
+          "adults": 4,
+          "children": 2,
+          "ages": [5, 9],
+          "seniors": 2,
+          "senior_ages": [65, 65],
+          "total": 6,
+          "mobility_constraints": ["knee problems", "walker", "limited walking"]
+        },
+        "budget": {
+          "min": 550000,
+          "max": 700000,
+          "per_person": [91666, 116666],
+          "flexible": true
+        },
+        "preferences": ["culture", "kid-friendly"],
+        "avoid": ["Switzerland", "too much walking", "early mornings"],
+        "constraints": {
+          "mobility": "limited",
+          "season": "peak",
+          "budget_tightness": "high"
+        }
+      },
+      "processing": {
+        "confidence_score": 0.70,
+        "contradictions": [
+          {
+            "type": "budget",
+            "description": "₹6L for 6 people Europe = very tight for peak season"
+          },
+          {
+            "type": "mobility",
+            "description": "Culture vs limited walking with kids + mobility constraints"
+          }
+        ],
+        "flags": [
+          {
+            "type": "consideration",
+            "message": "April is peak season - expect premium pricing"
+          },
+          {
+            "type": "consideration",
+            "message": "₹6L budget may be tight for 6 people, suggest Greece/Spain for better value"
+          },
+          {
+            "type": "constraint",
+            "message": "Kids ages 5-9: Limit museums to 1-2 hours/day"
+          },
+          {
+            "type": "constraint",
+            "message": "Mobility constraints limit destination choices"
+          }
+        ],
+        "feasibility": "FEASIBLE WITH MODIFICATIONS",
+        "resolution_needed": "Honest conversation about budget and realistic options"
+      },
+      "options": [],
+      "outcome": {
+        "status": "awaiting_clarification",
+        "talking_points": [
+          "Budget of ₹6L for 6 people = ₹1L/person - this is challenging for Europe in peak season",
+          "Options: increase budget, reduce duration, or consider different destination",
+          "Mobility: need to prioritize accessible destinations",
+          "Recommendation: Consider Greece or Spain for better value"
+        ]
+      }
+    },
+    "impossible_ladakh": {
+      "id": "trip_005",
+      "agency_id": "priya-travels",
+      "agent_id": "amit_kumar",
+      "status": "education_provided",
+      "client": {
+        "name": "Solo Traveler",
+        "email": "wanderlust@email.com",
+        "phone": "+91 88776 66555"
+      },
+      "input": {
+        "channel": "whatsapp",
+        "raw_message": "Planning a solo trip to Leh-Ladakh for 2 days in January. Want to see Pangong Lake and Nubra Valley. Budget is ₹30,000 including flights.",
+        "received_at": "2025-04-14T08:30:00Z"
+      },
+      "extracted": {
+        "destination": "Leh-Ladakh",
+        "dates": {
+          "month": "January",
+          "duration_days": 2,
+          "flexible": false
+        },
+        "travelers": {
+          "solo": true,
+          "total": 1
+        },
+        "budget": {
+          "total": 30000,
+          "includes_flights": true,
+          "currency": "INR"
+        },
+        "preferences": ["Pangong Lake", "Nubra Valley"]
+      },
+      "processing": {
+        "confidence_score": 0.95,
+        "contradictions": [
+          {
+            "type": "season",
+            "description": "January = many roads closed in Ladakh (Pangong/Nubra inaccessible)"
+          },
+          {
+            "type": "duration",
+            "description": "2 days = insufficient for Pangong + Nubra (minimum 5-6 days needed)"
+          },
+          {
+            "type": "budget",
+            "description": "₹30K including flights may be tight for January peak season"
+          }
+        ],
+        "flags": [
+          {
+            "type": "blocker",
+            "message": "Season: Roads to Nubra/Pangong closed in January"
+          },
+          {
+            "type": "blocker",
+            "message": "Duration: 2 days insufficient for both destinations"
+          },
+          {
+            "type": "consideration",
+            "message": "Budget: May need ₹50K+ for flights in January"
+          }
+        ],
+        "feasibility": "HIGHLY PROBLEMATIC",
+        "alternatives": [
+          "Travel in May-September instead",
+          "Extend to 5-7 days minimum",
+          "Increase budget to ₹50K+",
+          "Consider other Himalayan destinations (Shimla, Manali, Spiti)"
+        ]
+      },
+      "outcome": {
+        "status": "educated_client",
+        "resolution": "Client provided with alternatives and timing information",
+        "educational_value": "Client learned about seasonality and logistics"
+      }
+    },
+    "last_minute_getaway": {
+      "id": "trip_006",
+      "agency_id": "priya-travels",
+      "agent_id": "priya_sharma",
+      "status": "feasible_options",
+      "client": {
+        "name": "Quick Getaway",
+        "email": "quick.escape@email.com",
+        "phone": "+91 77777 88888"
+      },
+      "input": {
+        "channel": "whatsapp",
+        "raw_message": "Need to book a trip for tomorrow. Just 2 days. Anywhere from Mumbai that has beaches. 2 people. Budget 20k. We just want to get away.",
+        "received_at": "2025-04-14T18:00:00Z"
+      },
+      "extracted": {
+        "destination": "Any beach destination from Mumbai",
+        "dates": {
+          "start": "2025-04-15",
+          "end": "2025-04-17",
+          "urgency": "last_minute",
+          "duration_days": 2
+        },
+        "travelers": {
+          "adults": 2,
+          "last_minute": true
+        },
+        "budget": {
+          "total": 20000,
+          "currency": "INR"
+        },
+        "preferences": ["beaches", "get away"],
+        "constraints": ["leaving tomorrow", "limited budget"]
+      },
+      "processing": {
+        "confidence_score": 0.80,
+        "flags": [
+          {
+            "type": "constraint",
+            "message": "Last minute booking = limited options, higher prices"
+          },
+          {
+            "type": "constraint",
+            "message": "2 days limits destination choices"
+          }
+        ],
+        "feasibility": "POSSIBLE with limitations"
+      },
+      "options": [
+        {
+          "id": "opt_001",
+          "name": "Alibag Beach",
+          "destination": "Alibag",
+          "distance_from_mumbai": "~95km",
+          "travel_time": "3-4 hours by road",
+          "budget_estimate": 18000,
+          "accommodation": "Beach resort",
+          "why_this_fits": "Closest beach to Mumbai, doable in 2 days, within budget"
+        },
+        {
+          "id": "opt_002",
+          "name": "Daman Beach",
+          "destination": "Daman",
+          "distance_from_mumbai": "~170km",
+          "travel_time": "4-5 hours by road",
+          "budget_estimate": 19500,
+          "accommodation": "Beachside hotel",
+          "why_this_fits": "Beach destination, doable road trip, slightly over budget"
+        },
+        {
+          "id": "opt_003",
+          "name": "Lonavala Getaway",
+          "destination": "Lonavala",
+          "distance_from_mumbai": "~85km",
+          "travel_time": "2-3 hours by train",
+          "budget_estimate": 15000,
+          "accommodation": "Hill station resort",
+          "why_this_fits": "Not exactly beach but has lakes, closest and cheapest option"
+        }
+      ],
+      "outcome": {
+        "status": "options_provided",
+        "note": "Quick turnaround options for last-minute getaway"
+      }
+    }
+  }
+}

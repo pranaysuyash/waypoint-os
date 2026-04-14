@@ -212,3 +212,126 @@ User requested policy adjustment so practical, business-ready scenarios do not o
 - Decide release gate policy for notebook-based scenario scripts vs core pytest suite.
 - Add traveler-safe quality rubric as explicit acceptance criteria in tests/docs.
 - E2E expected-decision drift was resolved by aligning stale S03 legacy expectation in `tools/e2e_scenario_runner.py`; current run is `4/4` for expected checks.
+
+## Log Entry: 2026-04-14 - First-Principles TODO Lock (Parsers -> NER -> OCR -> Gate)
+
+### Context
+User requested the immediate implementation order be documented as a strict TODO sequence before next planning discussion.
+
+### Priority TODO Sequence (Locked)
+From first principles, implementation should follow this exact order:
+
+1. **Parser-first (deterministic constraints)**
+   - Dates, money, pax, locations with strict typed parsers.
+   - Locale-aware money/date parsing.
+   - Hard rule: date-shaped tokens can never satisfy budget fields.
+
+2. **NER/IE second (semantic fill + disambiguation)**
+   - Entity extraction for destination, purpose, preferences, medical/accessibility, group structure.
+   - Must output confidence + evidence spans, not just values.
+
+3. **OCR/document ingestion layer**
+   - For WhatsApp screenshots, PDFs, passports/visa docs, invoices.
+   - OCR output should keep line/box provenance so extraction can cite source.
+
+4. **Schema + confidence gate**
+   - Typed validation before decision policy.
+   - Low-confidence or conflicting critical fields -> `ASK_FOLLOWUP` / `STOP_NEEDS_REVIEW`.
+
+## Log Entry: 2026-04-14 - Context 2 Ingested (One-Time Link + 5-Core Compression)
+
+### Context
+User provided additional second context file from Downloads and requested integration into project documentation.
+
+### Source and Preservation
+- Source file: `/Users/pranay/Downloads/travel_agency_context_2.txt`
+- Archived in repo: `Archive/context_ingest/travel_agency_context_2_2026-04-14.txt`
+- Digest outputs:
+  - `Docs/context/TRAVEL_AGENCY_CONTEXT_2_DIGEST_2026-04-14.md`
+  - `Docs/context/travel_agency_context_2_digest_2026-04-14.json`
+
+### Decisions/Signals Captured
+- Product surface should be **channel-agnostic one-time link workspace**, not chat-only delivery.
+- Architecture direction favors **5-core model** over larger specialist-agent mesh for latency/control reasons.
+- Canonical packet contract reaffirmed as state backbone.
+- Commercial logic highlighted as non-optional (margin floors, partner preference, effort economics).
+- Provenance visibility ("source from user message/channel") reinforced as trust feature.
+
+### New Artifact
+- `Docs/context/TRAVEL_AGENCY_CONTEXT_2_SYNTHESIS_2026-04-14.md`
+
+### Traceability
+- Added to docs navigation:
+  - `Docs/INDEX.md`
+
+5. **Fallback strategy**
+   - Deterministic parser > NER suggestion > regex fallback (never the reverse for critical fields).
+
+### Immediate Next Priority
+- Start parsers + NER + OCR now, with deterministic parsers as the first implementation priority.
+
+## Log Entry: 2026-04-14 - Visa/VOA/Document Requirement Coverage Audit (Discussion Captured)
+
+### Context
+User asked whether visa/document-requirement discussions already exist in the codebase and asked that discussion outcomes always be documented automatically.
+
+Environment date checked before update:
+- `2026-04-14 10:35:53 IST`
+
+### What Exists Today (Found)
+- Code-level partial implementation:
+  - `src/intake/extractors.py` contains `_extract_passport_visa(...)` with basic keyword/regex extraction.
+  - `src/intake/decision.py` contains booking-stage risk checks for `passport_status` / `visa_status`.
+- Documentation-level coverage exists in multiple places:
+  - persona scenarios and gap docs (`Docs/personas_scenarios/*`)
+  - UX and PM artifacts (`Docs/UX_*`, `Docs/PM_EXECUTION_BLUEPRINT_2026-04-14.md`)
+  - contract/gap notes (`Docs/CONTRACT_CHALLENGE_NOTE.md`, `Docs/FIRST_PRINCIPLES_GAP_ASSESSMENT_2026-04-14.md`)
+
+### Gap Summary
+- Coverage is present but fragmented; no single canonical execution contract for visa/doc policy.
+- Missing deterministic visa/document parser contract for:
+  - visa type (`e-visa`, `visa_on_arrival`, embassy visa),
+  - transit constraints,
+  - processing-time risk by trip date.
+- Missing explicit critical-field completeness set for visa decisions:
+  - traveler nationality, residency, travel document type, entry count, transit countries, issuing country.
+- OCR provenance requirement (line/box citation) is stated conceptually but not wired end-to-end for passport/visa evidence traceability.
+- Confidence/evidence-span requirements are not yet fully enforced as a strict visa/doc decision gate.
+
+### Decision
+- Treat visa/VOA/document requirements as a P0 implementation stream under the already locked sequence:
+  - deterministic parser -> NER/IE -> OCR provenance -> schema/confidence gate -> fallback.
+- Track this as an explicit issue in `Docs/issue_review.md` for implementation follow-through.
+
+## Log Entry: 2026-04-14 - Decision Memo Locked + Workflow Source Clarified
+
+### Context
+User requested direct execution without additional prompts: document provided strategy inputs, create a concrete decision memo, and clarify "my workflow" location.
+
+### Actions Completed
+- Created decision memo with explicit go/no-go gates and scope lock:
+  - `Docs/context/DECISION_MEMO_ITINERARY_CHECKER_2026-04-14.md`
+- Created internal workflow location and usage mapping (non-user-facing):
+  - `Archive/context_ingest/internal_notes_2026-04-14/WORKFLOW_LOCATION_AND_USAGE_2026-04-14.md`
+
+### Key Clarification
+- Workspace-level workflow exists on disk at `/Users/pranay/Projects/AGENTS.md`.
+- Repo-specific workflow was provided in-session but not persisted as `/Users/pranay/Projects/travel_agency_agent/AGENTS.md`.
+
+### Follow-up
+- Optional hardening action: persist repo-specific workflow into local `AGENTS.md` for deterministic future loading.
+
+## Log Entry: 2026-04-14 - SEO + Next.js Playbook Ingested with Execution Filter
+
+### Context
+User provided additional strategy and implementation detail from external AI discussion (`Thinking-about-agentic-flow (8).html`) and requested integration into project context.
+
+### Actions Completed
+- Archived source file inside repository:
+  - `Archive/context_ingest/meta_design_refs_2026-04-14_1816/Thinking-about-agentic-flow (8).html`
+- Added synthesis doc with explicit keep/change/defer guidance:
+  - `Docs/context/SEO_NEXTJS_GTM_PLAYBOOK_SYNTHESIS_2026-04-14.md`
+
+### Key Decision
+- Adopt SEO wedge and component structure for MVP.
+- Defer aggressive 50-page programmatic expansion until funnel and precision gates are met.

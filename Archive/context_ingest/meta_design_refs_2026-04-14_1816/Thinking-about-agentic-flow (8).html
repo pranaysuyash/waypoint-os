@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Playables SDK -->
+<script>// Playables SDK v1.0.0
+// Game lifecycle bridge: rAF-based game-ready detection + event communication
+(function() {
+  'use strict';
+
+  // Idempotency: skip if already initialized (e.g., server-side injection
+  // followed by client-side inject-javascript via the Bloks webview component).
+  if (window.playablesSDK) return;
+
+  var HANDLER_NAME = 'playablesGameEventHandler';
+  var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
+  var RAF_FRAME_THRESHOLD = 3;
+
+  var gameReadySent = false;
+  var firstInteractionSent = false;
+  var errorSent = false;
+  var frameCount = 0;
+  var originalRAF = window.requestAnimationFrame;
+
+  // --- Transport Layer ---
+
+  function hasIOSBridge() {
+    return !!(window.webkit &&
+              window.webkit.messageHandlers &&
+              window.webkit.messageHandlers[HANDLER_NAME]);
+  }
+
+  function hasAndroidBridge() {
+    return !!(window[ANDROID_BRIDGE_NAME] &&
+              typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
+  }
+
+  function isInIframe() {
+    return !!(window.parent && window.parent !== window);
+  }
+
+  function sendEvent(eventName, payload) {
+    var message = {
+      type: eventName,
+      payload: payload || {},
+      timestamp: Date.now()
+    };
+
+    if (hasIOSBridge()) {
+      try {
+        window.webkit.messageHandlers[HANDLER_NAME].postMessage(message);
+      } catch (e) { /* ignore */ }
+      return;
+    }
+
+    if (hasAndroidBridge()) {
+    try {
+      var p = payload || {};
+      p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
+      window[ANDROID_BRIDGE_NAME].postEvent(
+        eventName,
+        JSON.stringify(p)
+      );
+    } catch (e) { /* ignore */ }
+    return;
+  }
+
+    if (isInIframe()) {
+      try {
+        window.parent.postMessage(message, '*');
+      } catch (e) { /* ignore */ }
+      return;
+    }
+  }
+
+  // --- rAF Game-Ready Detection ---
+
+  function onFrame() {
+    if (gameReadySent) return;
+
+    frameCount++;
+    if (frameCount >= RAF_FRAME_THRESHOLD) {
+      gameReadySent = true;
+      sendEvent('game_ready', {
+        frame_count: frameCount,
+        detected_at: Date.now()
+      });
+      return;
+    }
+
+    originalRAF.call(window, onFrame);
+  }
+
+  if (originalRAF) {
+    window.requestAnimationFrame = function(callback) {
+      if (!gameReadySent) {
+        return originalRAF.call(window, function(timestamp) {
+          frameCount++;
+          if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) {
+            gameReadySent = true;
+            sendEvent('game_ready', {
+              frame_count: frameCount,
+              detected_at: Date.now()
+            });
+          }
+          callback(timestamp);
+        });
+      }
+      return originalRAF.call(window, callback);
+    };
+  }
+
+  // --- First User Interaction Detection ---
+
+  function setupFirstInteractionDetection() {
+    var events = ['touchstart', 'mousedown', 'keydown'];
+
+    function onFirstInteraction() {
+      if (firstInteractionSent) return;
+      firstInteractionSent = true;
+      sendEvent('user_interaction_start', null);
+
+      for (var i = 0; i < events.length; i++) {
+        document.removeEventListener(events[i], onFirstInteraction, true);
+      }
+    }
+
+    for (var i = 0; i < events.length; i++) {
+      document.addEventListener(events[i], onFirstInteraction, true);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection);
+  } else {
+    setupFirstInteractionDetection();
+  }
+
+  // --- Auto Error Capture ---
+
+  window.addEventListener('error', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    sendEvent('error', {
+      message: event.message || 'Unknown error',
+      source: event.filename || '',
+      lineno: event.lineno || 0,
+      colno: event.colno || 0,
+      auto_captured: true
+    });
+  });
+
+  window.addEventListener('unhandledrejection', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    var reason = event.reason;
+    sendEvent('error', {
+      message: (reason instanceof Error) ? reason.message : String(reason),
+      type: 'unhandled_promise_rejection',
+      auto_captured: true
+    });
+  });
+
+  // --- Public API ---
+
+  window.playablesSDK = {
+    complete: function(score) {
+      sendEvent('game_ended', {
+        score: score,
+        completed: true
+      });
+    },
+
+    error: function(message) {
+      if (errorSent) return;
+      errorSent = true;
+      sendEvent('error', {
+        message: message || 'Unknown error',
+        auto_captured: false
+      });
+    },
+
+    sendEvent: function(eventName, payload) {
+      if (!eventName || typeof eventName !== 'string') return;
+      sendEvent(eventName, payload);
+    }
+  };
+
+  // Kick off rAF detection in case no game code calls rAF immediately
+  if (originalRAF) {
+    originalRAF.call(window, onFrame);
+  }
+})();</script>
+<script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEO Strategy + Next.js Implementation — Itinerary Checker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+  <style>
+    :root { color-scheme: dark; }
+    body { font-family: 'Inter', sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    pre { position: relative; }
+    pre code { font-size: 13px; line-height: 1.7; }
+    .copy-btn { position: absolute; top: 8px; right: 8px; opacity: 0; transition: opacity 0.2s; }
+    pre:hover .copy-btn { opacity: 1; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-[#0a0a0a] text-zinc-200 antialiased">
+  <!-- Header -->
+  <div class="border-b border-zinc-800 bg-zinc-950/50 backdrop-blur-xl sticky top-0 z-40">
+    <div class="max-w-[1200px] mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <div>
+          <h1 class="font-semibold text-white tracking-tight">Itinerary Checker GTM</h1>
+          <p class="text-xs text-zinc-500 -mt-0.5">Implementation Guide</p>
+        </div>
+      </div>
+      <div class="hidden md:flex items-center gap-2 text-xs">
+        <span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Production Ready</span>
+        <span class="px-2.5 py-1 rounded-full bg-zinc-800 text-zinc-400">Next.js 14</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="border-b border-zinc-800">
+    <div class="max-w-[1200px] mx-auto px-6 py-16 md:py-24">
+      <div class="max-w-3xl">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs text-zinc-400 mb-6">
+          <span class="w-2 h-2 rounded-full bg-violet-500 animate-pulse"></span>
+          SEO + ENGINEERING PLAYBOOK
+        </div>
+        <h1 class="text-4xl md:text-6xl font-bold tracking-tight text-white mb-4">
+          SEO Strategy + <span class="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">Next.js Implementation</span>
+        </h1>
+        <p class="text-xl text-zinc-400 leading-relaxed">Get first 1,000 visitors in 30 days. Copy-paste components, keyword strategy, and distribution playbook.</p>
+        <div class="flex flex-wrap gap-3 mt-8">
+          <a href="#seo-strategy" class="px-4 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-zinc-200 transition">Start Building</a>
+          <a href="#components" class="px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-sm hover:bg-zinc-800 transition">View Components</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="max-w-[1200px] mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-12">
+    <!-- Sidebar -->
+    <aside class="hidden lg:block">
+      <div class="sticky top-24">
+        <p class="text-[11px] uppercase tracking-wider text-zinc-500 font-semibold mb-3">Contents</p>
+        <nav class="space-y-1 text-sm">
+          <a href="#seo-strategy" class="block py-1.5 px-2.5 -mx-2.5 rounded hover:bg-zinc-900 text-zinc-300">1. SEO Strategy</a>
+          <a href="#architecture" class="block py-1.5 px-2.5 -mx-2.5 rounded hover:bg-zinc-900 text-zinc-400">2. Architecture</a>
+          <a href="#components" class="block py-1.5 px-2.5 -mx-2.5 rounded hover:bg-zinc-900 text-zinc-400">3. Components</a>
+          <a href="#landing" class="block py-1.5 px-2.5 -mx-2.5 rounded hover:bg-zinc-900 text-zinc-400">4. Landing Page</a>
+          <a href="#seo-pages" class="block py-1.5 px-2.5 -mx-2.5 rounded hover:bg-zinc-900 text-zinc-400">5. SEO Pages</a>
+          <a href="#technical" class="block py-1.5 px-2.5 -mx-2.5 rounded hover:bg-zinc-900 text-zinc-400">6. Technical SEO</a>
+          <a href="#distribution" class="block py-1.5 px-2.5 -mx-2.5 rounded hover:bg-zinc-900 text-zinc-400">7. Distribution</a>
+          <a href="#analytics" class="block py-1.5 px-2.5 -mx-2.5 rounded hover:bg-zinc-900 text-zinc-400">8. Analytics</a>
+        </nav>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="min-w-0">
+      
+      <!-- Section 1 -->
+      <section id="seo-strategy" class="scroll-mt-24 mb-20">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-sm font-medium">1</div>
+          <h2 class="text-2xl font-semibold text-white">SEO Strategy</h2>
+        </div>
+
+        <div class="grid gap-6">
+          <!-- Tier 1 -->
+          <div class="rounded-2xl border border-zinc-800 bg-zinc-950/50 overflow-hidden">
+            <div class="px-5 py-3 border-b border-zinc-800 flex items-center justify-between">
+              <h3 class="font-medium text-white">Tier 1 — High Intent (target first)</h3>
+              <span class="text-xs px-2 py-1 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">Week 1-2</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="text-zinc-500 text-left border-b border-zinc-800">
+                  <tr class="*:px-5 *:py-2.5 *:font-medium">
+                    <th>Keyword</th><th>Volume</th><th>Competition</th><th>CPC</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-900">
+                  <tr class="*:px-5 *:py-3"><td class="font-medium text-white">itinerary checker</td><td>320/mo</td><td><span class="text-emerald-400">Low</span></td><td>₹12</td></tr>
+                  <tr class="*:px-5 *:py-3"><td class="font-medium text-white">check my travel itinerary</td><td>140/mo</td><td><span class="text-emerald-400">Low</span></td><td>₹8</td></tr>
+                  <tr class="*:px-5 *:py-3"><td class="font-medium text-white">is my itinerary good</td><td>90/mo</td><td><span class="text-emerald-400">Low</span></td><td>₹5</td></tr>
+                  <tr class="*:px-5 *:py-3"><td class="font-medium text-white">travel plan validator</td><td>70/mo</td><td><span class="text-emerald-400">Low</span></td><td>₹9</td></tr>
+                  <tr class="*:px-5 *:py-3"><td class="font-medium text-white">itinerary review</td><td>210/mo</td><td><span class="text-amber-400">Medium</span></td><td>₹15</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tier 2 -->
+          <div class="rounded-2xl border border-zinc-800 bg-zinc-950/50 overflow-hidden">
+            <div class="px-5 py-3 border-b border-zinc-800 flex items-center justify-between">
+              <h3 class="font-medium text-white">Tier 2 — Problem Aware</h3>
+              <span class="text-xs px-2 py-1 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Week 3-4</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="text-zinc-500 text-left border-b border-zinc-800">
+                  <tr class="*:px-5 *:py-2.5 *:font-medium">
+                    <th>Keyword</th><th>Volume</th><th>Intent</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-900">
+                  <tr class="*:px-5 *:py-3"><td class="text-white">dubai layover time</td><td>1,200/mo</td><td>Check connection risk</td></tr>
+                  <tr class="*:px-5 *:py-3"><td class="text-white">singapore visa requirements</td><td>8,900/mo</td><td>Visa validation</td></tr>
+                  <tr class="*:px-5 *:py-3"><td class="text-white">travel insurance india</td><td>2,400/mo</td><td>Coverage check</td></tr>
+                  <tr class="*:px-5 *:py-3"><td class="text-white">airport transfer dubai</td><td>590/mo</td><td>Logistics timing</td></tr>
+                  <tr class="*:px-5 *:py-3"><td class="text-white">hotel checkin time</td><td>480/mo</td><td>Schedule conflict</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tier 3 -->
+          <div class="rounded-2xl border border-zinc-800 bg-zinc-950/50 overflow-hidden">
+            <div class="px-5 py-3 border-b border-zinc-800 flex items-center justify-between">
+              <h3 class="font-medium text-white">Tier 3 — Broad</h3>
+              <span class="text-xs px-2 py-1 rounded bg-zinc-800 text-zinc-400">Month 2</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <tbody class="divide-y divide-zinc-900">
+                  <tr class="*:px-5 *:py-3"><td class="text-white">dubai itinerary 5 days</td><td>4,400/mo</td><td>Create + validate</td></tr>
+                  <tr class="*:px-5 *:py-3"><td class="text-white">singapore trip plan</td><td>3,200/mo</td><td>Create + validate</td></tr>
+                  <tr class="*:px-5 *:py-3"><td class="text-white">bali itinerary</td><td>12,000/mo</td><td>Create + validate</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-8 rounded-2xl border border-violet-900/50 bg-violet-950/20 p-6">
+          <h4 class="font-medium text-violet-300 mb-3">Content Strategy</h4>
+          <ul class="space-y-2 text-sm text-zinc-300">
+            <li class="flex gap-2"><span class="text-violet-400">•</span> Create 50 landing pages: <code class="mono text-xs bg-zinc-900 px-1.5 py-0.5 rounded">/check/dubai-itinerary</code>, <code class="mono text-xs bg-zinc-900 px-1.5 py-0.5 rounded">/check/singapore-visa</code></li>
+            <li class="flex gap-2"><span class="text-violet-400">•</span> Each page targets specific check + destination with "Upload your [destination] itinerary" CTA above fold</li>
+            <li class="flex gap-2"><span class="text-violet-400">•</span> Blog posts: "5 mistakes in Dubai itineraries", "How to check Singapore visa requirements in 30s"</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Section 2 -->
+      <section id="architecture" class="scroll-mt-24 mb-20">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-sm font-medium">2</div>
+          <h2 class="text-2xl font-semibold text-white">Next.js Component Architecture</h2>
+        </div>
+        
+        <div class="rounded-2xl border border-zinc-800 bg-zinc-950 overflow-hidden">
+          <div class="px-5 py-3 border-b border-zinc-800 text-xs text-zinc-500 font-medium">File Structure — App Router</div>
+          <pre class="p-5 !bg-transparent !m-0 overflow-x-auto"><code class="language-bash">/app
+  /page.tsx                      # landing
+  /check/[destination]/page.tsx  # SEO pages (SSG)
+  /results/[id]/page.tsx         # results (dynamic)
+  /api
+    /analyze/route.ts            # POST /api/analyze (upload)
+    /report/route.ts             # POST /api/report (email)
+  /blog/[slug]/page.tsx
+  layout.tsx
+  sitemap.ts
+  robots.ts
+
+/components
+  /upload
+    Dropzone.tsx
+    ProcessingAnimation.tsx
+  /results
+    ScoreCard.tsx
+    IssuesList.tsx
+    EmailCapture.tsx
+  /shared
+    Header.tsx
+    Footer.tsx
+
+/lib
+  analyzer.ts
+  seo.ts
+  posthog.ts</code></pre>
+        </div>
+      </section>
+
+      <!-- Section 3 -->
+      <section id="components" class="scroll-mt-24 mb-20">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-sm font-medium">3</div>
+          <h2 class="text-2xl font-semibold text-white">Key Components Code</h2>
+        </div>
+
+        <div class="space-y-8">
+          <!-- Dropzone -->
+          <div>
+            <h3 class="text-lg font-medium text-white mb-3">1. Dropzone.tsx — drag & drop with preview</h3>
+            <pre class="rounded-xl border border-zinc-800 overflow-hidden"><code class="language-tsx">'use client'
+import { useCallback, useState } from 'react'
+
+interface DropzoneProps {
+  onFileSelect: (file: File) => void
+  destination?: string
+  accept?: string
+}
+
+export default function Dropzone({ onFileSelect, destination }: DropzoneProps) {
+  const [isDragging, setIsDragging] = useState(false)
+  const [fileName, setFileName] = useState<string | null>(null)
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file && (file.type === 'application/pdf' || file.type.startsWith('image/'))) {
+      setFileName(file.name)
+      onFileSelect(file)
+    }
+  }, [onFileSelect])
+
+  return (
+    &lt;div
+      onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={handleDrop}
+      className={`relative border-2 border-dashed rounded-2xl p-10 text-center transition
+        ${isDragging ? 'border-violet-500 bg-violet-500/10' : 'border-zinc-700 hover:border-zinc-600 bg-zinc-900/50'}`}
+    &gt;
+      &lt;input
+        type="file"
+        accept=".pdf,image/*"
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) { setFileName(file.name); onFileSelect(file) }
+        }}
+      /&gt;
+      &lt;div className="space-y-3"&gt;
+        &lt;div className="w-12 h-12 mx-auto rounded-xl bg-zinc-800 flex items-center justify-center"&gt;
+          &lt;svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"&gt;&lt;path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/&gt;&lt;/svg&gt;
+        &lt;/div&gt;
+        &lt;div&gt;
+          &lt;p className="font-medium text-white"&gt;
+            {fileName || `Drop your ${destination || 'travel'} itinerary`}
+          &lt;/p&gt;
+          &lt;p className="text-sm text-zinc-500 mt-1"&gt;PDF, PNG, JPG up to 10MB&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  )
+}</code></pre>
+          </div>
+
+          <!-- Processing -->
+          <div>
+            <h3 class="text-lg font-medium text-white mb-3">2. ProcessingAnimation.tsx — real-time checks</h3>
+            <pre class="rounded-xl border border-zinc-800 overflow-hidden"><code class="language-tsx">'use client'
+import { useEffect, useState } from 'react'
+
+interface Check {
+  id: string
+  label: string
+  status: 'pending' | 'running' | 'done'
+}
+
+const CHECKS: Omit&lt;Check, 'status'&gt;[] = [
+  { id: 'visa', label: 'Checking visa requirements' },
+  { id: 'timing', label: 'Validating layover times' },
+  { id: 'insurance', label: 'Verifying travel insurance' },
+  { id: 'transfers', label: 'Checking airport transfers' },
+  { id: 'hotels', label: 'Validating check-in times' },
+]
+
+export default function ProcessingAnimation() {
+  const [checks, setChecks] = useState&lt;Check[]&gt;(
+    CHECKS.map(c =&gt; ({ ...c, status: 'pending' }))
+  )
+
+  useEffect(() => {
+    CHECKS.forEach((_, i) => {
+      setTimeout(() => {
+        setChecks(prev => prev.map((c, idx) =&gt; 
+          idx === i ? { ...c, status: 'running' } : c
+        ))
+        setTimeout(() => {
+          setChecks(prev => prev.map((c, idx) =&gt;
+            idx === i ? { ...c, status: 'done' } : c
+          ))
+        }, 800)
+      }, i * 600)
+    })
+  }, [])
+
+  return (
+    &lt;div className="space-y-3"&gt;
+      {checks.map(check => (
+        &lt;div key={check.id} className="flex items-center gap-3"&gt;
+          &lt;div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center
+            ${check.status === 'done' ? 'border-emerald-500 bg-emerald-500/20' : 
+              check.status === 'running' ? 'border-violet-500 animate-pulse' : 'border-zinc-700'}`}&gt;
+            {check.status === 'done' && (
+              &lt;svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-emerald-400"&gt;&lt;path d="M20 6L9 17l-5-5"/&gt;&lt;/svg&gt;
+            )}
+          &lt;/div&gt;
+          &lt;span className={`text-sm ${check.status === 'pending' ? 'text-zinc-600' : 'text-zinc-300'}`}&gt;
+            {check.label}{check.status === 'running' && '...'}
+          &lt;/span&gt;
+        &lt;/div&gt;
+      ))}
+    &lt;/div&gt;
+  )
+}</code></pre>
+          </div>
+
+          <!-- ScoreCard -->
+          <div>
+            <h3 class="text-lg font-medium text-white mb-3">3. ScoreCard.tsx — circular progress 7.2/10</h3>
+            <pre class="rounded-xl border border-zinc-800 overflow-hidden"><code class="language-tsx">interface ScoreCardProps {
+  score: number
+  maxScore?: number
+  breakdown: { category: string; score: number; max: number }[]
+}
+
+export default function ScoreCard({ score, maxScore = 10, breakdown }: ScoreCardProps) {
+  const percentage = (score / maxScore) * 100
+  const circumference = 2 * Math.PI * 52
+  const offset = circumference - (percentage / 100) * circumference
+
+  const getColor = () => {
+    if (percentage >= 80) return '#10b981'
+    if (percentage >= 60) return '#f59e0b'
+    return '#ef4444'
+  }
+
+  return (
+    &lt;div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6"&gt;
+      &lt;div className="flex items-center gap-6"&gt;
+        &lt;div className="relative w-28 h-28"&gt;
+          &lt;svg className="transform -rotate-90 w-28 h-28"&gt;
+            &lt;circle cx="56" cy="56" r="52" stroke="#27272a" strokeWidth="8" fill="none" /&gt;
+            &lt;circle
+              cx="56" cy="56" r="52"
+              stroke={getColor()}
+              strokeWidth="8"
+              fill="none"
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={offset}
+              className="transition-all duration-1000"
+            /&gt;
+          &lt;/svg&gt;
+          &lt;div className="absolute inset-0 flex flex-col items-center justify-center"&gt;
+            &lt;span className="text-3xl font-bold text-white"&gt;{score}&lt;/span&gt;
+            &lt;span className="text-xs text-zinc-500"&gt;/ {maxScore}&lt;/span&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div className="flex-1 space-y-2"&gt;
+          {breakdown.map(item => (
+            &lt;div key={item.category} className="flex justify-between text-sm"&gt;
+              &lt;span className="text-zinc-400"&gt;{item.category}&lt;/span&gt;
+              &lt;span className="text-white font-medium"&gt;{item.score}/{item.max}&lt;/span&gt;
+            &lt;/div&gt;
+          ))}
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  )
+}</code></pre>
+          </div>
+
+          <!-- IssuesList -->
+          <div>
+            <h3 class="text-lg font-medium text-white mb-3">4. IssuesList.tsx — severity grouped</h3>
+            <pre class="rounded-xl border border-zinc-800 overflow-hidden"><code class="language-tsx">'use client'
+import { useState } from 'react'
+
+interface Issue {
+  id: string
+  severity: 'critical' | 'warning' | 'info'
+  title: string
+  description: string
+  fix: string
+}
+
+interface IssuesListProps {
+  issues: Issue[]
+}
+
+const SEVERITY = {
+  critical: { label: 'Critical', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
+  warning: { label: 'Warning', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+  info: { label: 'Tip', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+}
+
+export default function IssuesList({ issues }: IssuesListProps) {
+  const [openId, setOpenId] = useState&lt;string | null&gt;(issues[0]?.id)
+
+  const grouped = issues.reduce((acc, issue) => {
+    (acc[issue.severity] ||= []).push(issue)
+    return acc
+  }, {} as Record<string, Issue[]>)
+
+  return (
+    &lt;div className="space-y-6"&gt;
+      {(['critical', 'warning', 'info'] as const).map(sev => {
+        const items = grouped[sev]; if (!items?.length) return null
+        const cfg = SEVERITY[sev]
+        return (
+          &lt;div key={sev}&gt;
+            &lt;h4 className={`text-sm font-medium mb-3 ${cfg.color}`}&gt;
+              {cfg.label} ({items.length})
+            &lt;/h4&gt;
+            &lt;div className="space-y-2"&gt;
+              {items.map(issue => (
+                &lt;div key={issue.id} className={`border rounded-xl ${cfg.border} ${cfg.bg}`}&gt;
+                  &lt;button onClick={() =&gt; setOpenId(openId === issue.id ? null : issue.id)}
+                    className="w-full px-4 py-3 flex justify-between items-center text-left"&gt;
+                    &lt;span className="font-medium text-white text-sm"&gt;{issue.title}&lt;/span&gt;
+                    &lt;svg className={`w-4 h-4 transition-transform ${openId === issue.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"&gt;&lt;path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/&gt;&lt;/svg&gt;
+                  &lt;/button&gt;
+                  {openId === issue.id && (
+                    &lt;div className="px-4 pb-4 text-sm space-y-2"&gt;
+                      &lt;p className="text-zinc-300"&gt;{issue.description}&lt;/p&gt;
+                      &lt;p className="text-zinc-400"&gt;&lt;span className="text-emerald-400"&gt;Fix:&lt;/span&gt; {issue.fix}&lt;/p&gt;
+                    &lt;/div&gt;
+                  )}
+                &lt;/div&gt;
+              ))}
+            &lt;/div&gt;
+          &lt;/div&gt;
+        )
+      })}
+    &lt;/div&gt;
+  )
+}</code></pre>
+          </div>
+
+          <!-- EmailCapture -->
+          <div>
+            <h3 class="text-lg font-medium text-white mb-3">5. EmailCapture.tsx — gated full report</h3>
+            <pre class="rounded-xl border border-zinc-800 overflow-hidden"><code class="language-tsx">'use client'
+import { useState } from 'react'
+
+interface EmailCaptureProps {
+  reportId: string
+  onSuccess?: () => void
+}
+
+export default function EmailCapture({ reportId, onSuccess }: EmailCaptureProps) {
+  const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    await fetch('/api/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, reportId })
+    })
+    setLoading(false)
+    onSuccess?.()
+    // Track conversion
+    window.posthog?.capture('email_captured', { reportId })
+  }
+
+  return (
+    &lt;div className="bg-gradient-to-b from-violet-950/40 to-zinc-950 border border-violet-900/50 rounded-2xl p-6"&gt;
+      &lt;h3 className="text-lg font-semibold text-white mb-1"&gt;Get your full report&lt;/h3&gt;
+      &lt;p className="text-sm text-zinc-400 mb-4"&gt;Detailed fixes, visa links, and printable checklist&lt;/p&gt;
+      &lt;form onSubmit={handleSubmit} className="flex gap-2"&gt;
+        &lt;input
+          type="email"
+          required
+          value={email}
+          onChange={e =&gt; setEmail(e.target.value)}
+          placeholder="you@email.com"
+          className="flex-1 px-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
+        /&gt;
+        &lt;button
+          type="submit"
+          disabled={loading}
+          className="px-5 py-2.5 bg-white text-black rounded-lg text-sm font-medium hover:bg-zinc-200 disabled:opacity-50"
+        &gt;
+          {loading ? 'Sending...' : 'Send report'}
+        &lt;/button&gt;
+      &lt;/form&gt;
+      &lt;p className="text-[11px] text-zinc-600 mt-3"&gt;No spam. Unsubscribe anytime.&lt;/p&gt;
+    &lt;/div&gt;
+  )
+}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 4 -->
+      <section id="landing" class="scroll-mt-24 mb-20">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-sm font-medium">4</div>
+          <h2 class="text-2xl font-semibold text-white">Landing Page Structure</h2>
+        </div>
+        <pre class="rounded-xl border border-zinc-800 overflow-hidden"><code class="language-tsx">// app/page.tsx
+import Dropzone from '@/components/upload/Dropzone'
+import { redirect } from 'next/navigation'
+
+export default function Home() {
+  async function handleUpload(file: File) {
+    'use server'
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/analyze`, {
+      method: 'POST',
+      body: formData
+    })
+    const { id } = await res.json()
+    redirect(`/results/${id}`)
+  }
+
+  return (
+    &lt;main className="min-h-screen bg-black"&gt;
+      {/* Hero */}
+      &lt;section className="relative pt-20 pb-16"&gt;
+        &lt;div className="absolute inset-0 bg-gradient-to-b from-violet-950/20 to-transparent" /&gt;
+        &lt;div className="relative max-w-4xl mx-auto px-6 text-center"&gt;
+          &lt;h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6"&gt;
+            Is your itinerary&lt;br/&gt;
+            &lt;span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent"&gt;
+              actually good?
+            &lt;/span&gt;
+          &lt;/h1&gt;
+          &lt;p className="text-xl text-zinc-400 mb-12 max-w-2xl mx-auto"&gt;
+            Upload your PDF. We check visas, layovers, insurance, and timing conflicts in 30 seconds.
+          &lt;/p&gt;
+          
+          &lt;div className="max-w-xl mx-auto"&gt;
+            &lt;Dropzone onFileSelect={handleUpload} /&gt;
+          &lt;/div&gt;
+
+          {/* Trust badges */}
+          &lt;div className="flex items-center justify-center gap-8 mt-12 text-sm text-zinc-600"&gt;
+            &lt;div className="flex items-center gap-2"&gt;
+              &lt;svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"&gt;&lt;path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/&gt;&lt;/svg&gt;
+              Private & secure
+            &lt;/div&gt;
+            &lt;div&gt;✓ Free analysis&lt;/div&gt;
+            &lt;div&gt;✓ No signup&lt;/div&gt;
+          &lt;/div&gt;
+
+          {/* Social proof */}
+          &lt;div className="mt-16 flex items-center justify-center gap-3"&gt;
+            &lt;div className="flex -space-x-2"&gt;
+              {[1,2,3,4].map(i =&gt; (
+                &lt;img key={i} src={`https://i.pravatar.cc/32?img=${i+10}`} className="w-8 h-8 rounded-full border-2 border-black" alt="" /&gt;
+              ))}
+            &lt;/div&gt;
+            &lt;p className="text-sm text-zinc-500"&gt;
+              &lt;span className="text-white font-medium"&gt;1,247&lt;/span&gt; itineraries checked this week
+            &lt;/p&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+      &lt;/section&gt;
+    &lt;/main&gt;
+  )
+}</code></pre>
+      </section>
+
+      <!-- Section 5 -->
+      <section id="seo-pages" class="scroll-mt-24 mb-20">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-sm font-medium">5</div>
+          <h2 class="text-2xl font-semibold text-white">SEO Landing Pages</h2>
+        </div>
+        <p class="text-zinc-400 mb-4 text-sm">Template for <code class="mono bg-zinc-900 px-1.5 py-0.5 rounded">/app/check/[destination]/page.tsx</code></p>
+        <pre class="rounded-xl border border-zinc-800 overflow-hidden"><code class="language-tsx">import { Metadata } from 'next'
+import Dropzone from '@/components/upload/Dropzone'
+
+const DESTINATIONS = {
+  'dubai-itinerary': {
+    name: 'Dubai',
+    h1: 'Dubai Itinerary Checker - Free Analysis',
+    keywords: ['dubai itinerary 5 days', 'dubai layover time', 'dubai visa requirements'],
+    issues: ['DXB minimum connection 90min', 'Visa on arrival eligibility', 'Ramadan timing changes']
+  },
+  'singapore-visa': {
+    name: 'Singapore',
+    h1: 'Singapore Visa & Itinerary Checker',
+    keywords: ['singapore visa requirements', 'singapore trip plan'],
+    issues: ['SG Arrival Card 72h before', 'Changi connection times']
+  }
+}
+
+export async function generateStaticParams() {
+  return Object.keys(DESTINATIONS).map(dest => ({ destination: dest }))
+}
+
+export async function generateMetadata({ params }): Promise&lt;Metadata&gt; {
+  const dest = DESTINATIONS[params.destination]
+  return {
+    title: dest.h1,
+    description: `Check your ${dest.name} itinerary for visa issues, layover risks, and timing conflicts. Free AI analysis in 30 seconds.`,
+    alternates: { canonical: `/check/${params.destination}` }
+  }
+}
+
+export default function CheckPage({ params }) {
+  const dest = DESTINATIONS[params.destination]
+  
+  return (
+    &lt;&gt;
+      &lt;script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [{
+          "@type": "Question",
+          "name": `How to check ${dest.name} itinerary?`,
+          "acceptedAnswer": { "@type": "Answer", "text": "Upload your PDF. We validate visas, connections, and timings." }
+        }]
+      })}} /&gt;
+      
+      &lt;main className="max-w-4xl mx-auto px-6 py-12"&gt;
+        &lt;h1 className="text-4xl font-bold text-white mb-4"&gt;{dest.h1}&lt;/h1&gt;
+        &lt;p className="text-zinc-400 mb-8"&gt;
+          Planning a trip to {dest.name}? Upload your itinerary to check for {dest.keywords[0]}, 
+          {dest.keywords[1]}, and common mistakes travelers make. Our AI validates your {dest.name} travel plan 
+          against current visa rules and airport requirements.
+        &lt;/p&gt;
+
+        &lt;div className="mb-16"&gt;
+          &lt;Dropzone destination={dest.name} onFileSelect={async () =&gt; {}} /&gt;
+        &lt;/div&gt;
+
+        &lt;section className="prose prose-invert max-w-none"&gt;
+          &lt;h2&gt;Common {dest.name} Itinerary Issues&lt;/h2&gt;
+          &lt;ul&gt;{dest.issues.map(i =&gt; &lt;li key={i}&gt;{i}&lt;/li&gt;)}&lt;/ul&gt;
+          
+          &lt;h2&gt;How It Works&lt;/h2&gt;
+          &lt;ol&gt;
+            &lt;li&gt;Upload PDF or screenshot&lt;/li&gt;
+            &lt;li&gt;AI extracts flights, hotels, visas&lt;/li&gt;
+            &lt;li&gt;Get score + fixes in 30s&lt;/li&gt;
+          &lt;/ol&gt;
+        &lt;/section&gt;
+
+        &lt;div className="mt-12 flex gap-4 text-sm"&gt;
+          &lt;a href="/check/bali-itinerary" className="text-violet-400 hover:underline"&gt;Bali itinerary checker →&lt;/a&gt;
+          &lt;a href="/check/singapore-visa" className="text-violet-400 hover:underline"&gt;Singapore →&lt;/a&gt;
+        &lt;/div&gt;
+      &lt;/main&gt;
+    &lt;/&gt;
+  )
+}</code></pre>
+      </section>
+
+      <!-- Section 6 -->
+      <section id="technical" class="scroll-mt-24 mb-20">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-sm font-medium">6</div>
+          <h2 class="text-2xl font-semibold text-white">Technical SEO Checklist</h2>
+        </div>
+        <div class="grid md:grid-cols-2 gap-6">
+          <div class="rounded-2xl border border-zinc-800 bg-zinc-950/50 p-6">
+            <h4 class="font-medium text-white mb-4">Core Requirements</h4>
+            <ul class="space-y-3 text-sm">
+              <li class="flex items-start gap-2.5"><input type="checkbox" checked class="mt-0.5 accent-violet-500"><span><strong>LCP &lt;2.5s</strong> — Preload fonts, optimize images</span></li>
+              <li class="flex items-start gap-2.5"><input type="checkbox" checked class="mt-0.5 accent-violet-500"><span><strong>Schema markup</strong> — SoftwareApplication + FAQ</span></li>
+              <li class="flex items-start gap-2.5"><input type="checkbox" class="mt-0.5 accent-violet-500"><span><strong>Sitemap</strong> — 50+ pages via app/sitemap.ts</span></li>
+              <li class="flex items-start gap-2.5"><input type="checkbox" class="mt-0.5 accent-violet-500"><span><strong>robots.txt</strong> — Allow /check/*, disallow /api</span></li>
+              <li class="flex items-start gap-2.5"><input type="checkbox" class="mt-0.5 accent-violet-500"><span><strong>OG images</strong> — Dynamic for each destination</span></li>
+              <li class="flex items-start gap-2.5"><input type="checkbox" class="mt-0.5 accent-violet-500"><span><strong>SSG</strong> — /check/* pre-rendered at build</span></li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-zinc-800 bg-zinc-950/50 p-6">
+            <h4 class="font-medium text-white mb-3">sitemap.ts</h4>
+            <pre class="text-xs !bg-zinc-900 !p-3 rounded-lg overflow-x-auto"><code class="language-ts">export default async function sitemap() {
+  const destinations = ['dubai', 'singapore', 'bali', /*...50*/]
+  return [
+    { url: 'https://checkit.in', priority: 1 },
+    ...destinations.map(d => ({
+      url: `https://checkit.in/check/${d}-itinerary`,
+      lastModified: new Date(),
+      priority: 0.8
+    }))
+  ]
+}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 7 -->
+      <section id="distribution" class="scroll-mt-24 mb-20">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-sm font-medium">7</div>
+          <h2 class="text-2xl font-semibold text-white">Distribution Strategy</h2>
+        </div>
+        
+        <div class="relative">
+          <div class="absolute left-4 top-0 bottom-0 w-px bg-zinc-800"></div>
+          <div class="space-y-8">
+            <div class="relative pl-12">
+              <div class="absolute left-0 w-8 h-8 rounded-full bg-violet-500/20 border border-violet-500/50 flex items-center justify-center text-xs font-medium text-violet-300">1</div>
+              <h4 class="font-medium text-white mb-2">Week 1 — Launch</h4>
+              <div class="text-sm text-zinc-400 space-y-1">
+                <p>• Product Hunt launch (Tuesday 12:01 AM PST)</p>
+                <p>• Indie Hackers: "Built itinerary checker in 7 days"</p>
+                <p>• Reddit: r/travel, r/digitalnomad, r/india (value-first post)</p>
+              </div>
+            <div class="relative pl-12">
+              <div class="absolute left-0 w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/50 flex items-center justify-center text-xs font-medium text-indigo-300">2</div>
+              <h4 class="font-medium text-white mb-2">Week 2 — Communities</h4>
+              <div class="text-sm text-zinc-400 space-y-1">
+                <p>• Post in 20 Facebook travel groups (Dubai Expats, Singapore Travel)</p>
+                <p>• WhatsApp groups: Share free checklist PDF</p>
+                <p>• Answer 10 Quora questions daily with tool link</p>
+              </div>
+            </div>
+            <div class="relative pl-12">
+              <div class="absolute left-0 w-8 h-8 rounded-full bg-blue-500/20 border border-blue-500/50 flex items-center justify-center text-xs font-medium text-blue-300">3</div>
+              <h4 class="font-medium text-white mb-2">Week 3 — Backlinks</h4>
+              <div class="text-sm text-zinc-400 space-y-1">
+                <p>• Email 50 travel bloggers: "Free tool for your readers"</p>
+                <p>• Offer embed widget for their blogs</p>
+                <p>• Guest post: "5 itinerary mistakes" on 3 blogs</p>
+              </div>
+            <div class="relative pl-12">
+              <div class="absolute left-0 w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-xs font-medium text-emerald-300">4</div>
+              <h4 class="font-medium text-white mb-2">Week 4 — Paid</h4>
+              <div class="text-sm text-zinc-400 space-y-1">
+                <p>• ₹5,000 Google Ads on Tier 1 keywords (exact match)</p>
+                <p>• Target: "itinerary checker", "check my itinerary"</p>
+                <p>• Expected: 80-120 clicks, 25% upload rate</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 8 -->
+      <section id="analytics" class="scroll-mt-24 mb-20">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-sm font-medium">8</div>
+          <h2 class="text-2xl font-semibold text-white">Analytics Setup</h2>
+        </div>
+        
+        <div class="grid md:grid-cols-2 gap-6 mb-6">
+          <div class="rounded-2xl border border-zinc-800 bg-zinc-950/50 p-5">
+            <h4 class="text-sm font-medium text-white mb-3">Track These Events</h4>
+            <ul class="text-xs space-y-2 text-zinc-400 mono">
+              <li>• uploads_by_source</li>
+              <li>• email_capture_rate</li>
+              <li>• issues_found_distribution</li>
+              <li>• conversion_to_paid</li>
+              <li>• most_checked_destinations</li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-zinc-800 bg-zinc-950/50 p-5">
+            <h4 class="text-sm font-medium text-white mb-3">Target Metrics (Day 30)</h4>
+            <ul class="text-xs space-y-2 text-zinc-400">
+              <li class="flex justify-between"><span>Visitors</span><span class="text-white">1,000</span></li>
+              <li class="flex justify-between"><span>Upload rate</span><span class="text-white">22%</span></li>
+              <li class="flex justify-between"><span>Email capture</span><span class="text-white">35%</span></li>
+              <li class="flex justify-between"><span>Top source</span><span class="text-white">Google Organic</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <pre class="rounded-xl border border-zinc-800 overflow-hidden"><code class="language-tsx">// app/layout.tsx
+import { Analytics } from '@vercel/analytics/react'
+import posthog from 'posthog-js'
+import { PostHogProvider } from 'posthog-js/react'
+
+if (typeof window !== 'undefined') {
+  posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
+    api_host: '/ingest',
+    capture_pageview: true
+  })
+}
+
+export default function RootLayout({ children }) {
+  return (
+    &lt;html&gt;
+      &lt;body&gt;
+        &lt;PostHogProvider client={posthog}&gt;
+          {children}
+          &lt;Analytics /&gt;
+        &lt;/PostHogProvider&gt;
+      &lt;/body&gt;
+    &lt;/html&gt;
+  )
+}
+
+// Track upload
+posthog.capture('itinerary_uploaded', {
+  source: document.referrer || 'direct',
+  destination: 'dubai',
+  file_type: 'pdf',
+  processing_time_ms: 2840
+})</code></pre>
+      </section>
+
+      <!-- Footer CTA -->
+      <div class="border-t border-zinc-800 pt-12 pb-20">
+        <div class="rounded-2xl border border-violet-900/50 bg-gradient-to-b from-violet-950/30 to-zinc-950 p-8 text-center">
+          <h3 class="text-xl font-semibold text-white mb-2">Ship in 48 hours</h3>
+          <p class="text-zinc-400 text-sm mb-6 max-w-xl mx-auto">Copy these components, deploy to Vercel, create 10 destination pages first, then scale to 50. Focus on Tier 1 keywords for weeks 1-2.</p>
+          <div class="flex items-center justify-center gap-3">
+            <span class="text-xs px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-800">Next.js 14</span>
+            <span class="text-xs px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-800">TypeScript</span>
+            <span class="text-xs px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-800">Tailwind</span>
+            <span class="text-xs px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-800">Vercel</span>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    // Copy buttons
+    document.querySelectorAll('pre').forEach(pre => {
+      const btn = document.createElement('button');
+      btn.className = 'copy-btn px-2 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded text-zinc-300';
+      btn.textContent = 'Copy';
+      btn.onclick = () => {
+        navigator.clipboard.writeText(pre.innerText);
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 1500);
+      };
+      pre.appendChild(btn);
+    });
+
+    // Smooth scroll for sidebar
+    document.querySelectorAll('aside a').forEach(a => {
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+  </script>
+</body>
+</html>

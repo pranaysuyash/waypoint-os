@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Playables SDK -->
+<script>// Playables SDK v1.0.0
+// Game lifecycle bridge: rAF-based game-ready detection + event communication
+(function() {
+  'use strict';
+
+  // Idempotency: skip if already initialized (e.g., server-side injection
+  // followed by client-side inject-javascript via the Bloks webview component).
+  if (window.playablesSDK) return;
+
+  var HANDLER_NAME = 'playablesGameEventHandler';
+  var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
+  var RAF_FRAME_THRESHOLD = 3;
+
+  var gameReadySent = false;
+  var firstInteractionSent = false;
+  var errorSent = false;
+  var frameCount = 0;
+  var originalRAF = window.requestAnimationFrame;
+
+  // --- Transport Layer ---
+
+  function hasIOSBridge() {
+    return !!(window.webkit &&
+              window.webkit.messageHandlers &&
+              window.webkit.messageHandlers[HANDLER_NAME]);
+  }
+
+  function hasAndroidBridge() {
+    return !!(window[ANDROID_BRIDGE_NAME] &&
+              typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
+  }
+
+  function isInIframe() {
+    return !!(window.parent && window.parent !== window);
+  }
+
+  function sendEvent(eventName, payload) {
+    var message = {
+      type: eventName,
+      payload: payload || {},
+      timestamp: Date.now()
+    };
+
+    if (hasIOSBridge()) {
+      try {
+        window.webkit.messageHandlers[HANDLER_NAME].postMessage(message);
+      } catch (e) { /* ignore */ }
+      return;
+    }
+
+    if (hasAndroidBridge()) {
+    try {
+      var p = payload || {};
+      p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
+      window[ANDROID_BRIDGE_NAME].postEvent(
+        eventName,
+        JSON.stringify(p)
+      );
+    } catch (e) { /* ignore */ }
+    return;
+  }
+
+    if (isInIframe()) {
+      try {
+        window.parent.postMessage(message, '*');
+      } catch (e) { /* ignore */ }
+      return;
+    }
+  }
+
+  // --- rAF Game-Ready Detection ---
+
+  function onFrame() {
+    if (gameReadySent) return;
+
+    frameCount++;
+    if (frameCount >= RAF_FRAME_THRESHOLD) {
+      gameReadySent = true;
+      sendEvent('game_ready', {
+        frame_count: frameCount,
+        detected_at: Date.now()
+      });
+      return;
+    }
+
+    originalRAF.call(window, onFrame);
+  }
+
+  if (originalRAF) {
+    window.requestAnimationFrame = function(callback) {
+      if (!gameReadySent) {
+        return originalRAF.call(window, function(timestamp) {
+          frameCount++;
+          if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) {
+            gameReadySent = true;
+            sendEvent('game_ready', {
+              frame_count: frameCount,
+              detected_at: Date.now()
+            });
+          }
+          callback(timestamp);
+        });
+      }
+      return originalRAF.call(window, callback);
+    };
+  }
+
+  // --- First User Interaction Detection ---
+
+  function setupFirstInteractionDetection() {
+    var events = ['touchstart', 'mousedown', 'keydown'];
+
+    function onFirstInteraction() {
+      if (firstInteractionSent) return;
+      firstInteractionSent = true;
+      sendEvent('user_interaction_start', null);
+
+      for (var i = 0; i < events.length; i++) {
+        document.removeEventListener(events[i], onFirstInteraction, true);
+      }
+    }
+
+    for (var i = 0; i < events.length; i++) {
+      document.addEventListener(events[i], onFirstInteraction, true);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection);
+  } else {
+    setupFirstInteractionDetection();
+  }
+
+  // --- Auto Error Capture ---
+
+  window.addEventListener('error', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    sendEvent('error', {
+      message: event.message || 'Unknown error',
+      source: event.filename || '',
+      lineno: event.lineno || 0,
+      colno: event.colno || 0,
+      auto_captured: true
+    });
+  });
+
+  window.addEventListener('unhandledrejection', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    var reason = event.reason;
+    sendEvent('error', {
+      message: (reason instanceof Error) ? reason.message : String(reason),
+      type: 'unhandled_promise_rejection',
+      auto_captured: true
+    });
+  });
+
+  // --- Public API ---
+
+  window.playablesSDK = {
+    complete: function(score) {
+      sendEvent('game_ended', {
+        score: score,
+        completed: true
+      });
+    },
+
+    error: function(message) {
+      if (errorSent) return;
+      errorSent = true;
+      sendEvent('error', {
+        message: message || 'Unknown error',
+        auto_captured: false
+      });
+    },
+
+    sendEvent: function(eventName, payload) {
+      if (!eventName || typeof eventName !== 'string') return;
+      sendEvent(eventName, payload);
+    }
+  };
+
+  // Kick off rAF detection in case no game code calls rAF immediately
+  if (originalRAF) {
+    originalRAF.call(window, onFrame);
+  }
+})();</script>
+<script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COMMAND — Travel Ops Center</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root { color-scheme: dark; }
+* { -webkit-font-smoothing: antialiased; }
+body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background:#0a0a0a; }
+.mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.custom-scroll::-webkit-scrollbar { width:5px; height:5px; }
+.custom-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-scroll::-webkit-scrollbar-thumb { background:#27272a; border-radius:3px; }
+.custom-scroll::-webkit-scrollbar-thumb:hover { background:#3f3f46; }
+.action-btn { padding:4px 8px; font-size:11px; background:#18181b; border:1px solid #27272a; border-radius:4px; color:#d4d4d8; transition:all .15s; white-space:nowrap; }
+.action-btn:hover { background:#27272a; border-color:#3f3f46; color:#fff; }
+.action-btn.primary { background:#f59e0b1a; border-color:#f59e0b4d; color:#fcd34d; }
+.action-btn.primary:hover { background:#f59e0b33; }
+.trip-row { border:1px solid #1f1f23; background:#121214; transition:all .12s; }
+.trip-row:hover { background:#18181b; border-color:#27272a; }
+.trip-row.active { border-color:#f59e0b80; background:#f59e0b0d; box-shadow: inset 0 0 0 1px #f59e0b1a; }
+.pulse-dot { animation: pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+@keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.4 } }
+.grid-bg { background-image: radial-gradient(circle at 1px 1px, #1f1f23 1px, transparent 0); background-size: 16px 16px; }
+.leaflet-container { background:#050507 !important; filter: saturate(0.7) contrast(1.1); }
+</style>
+</head>
+<body class="bg-[#0a0a0a] text-zinc-200 h-screen overflow-hidden select-none">
+<div class="h-screen flex flex-col">
+
+  <!-- TOP BAR -->
+  <header class="h-[44px] shrink-0 bg-[#0c0c0e]/95 backdrop-blur-xl border-b border-zinc-900 flex items-center px-3 gap-3 z-50">
+    <div class="flex items-center gap-2 min-w-0">
+      <div class="w-6 h-6 rounded bg-zinc-900 border border-zinc-800 grid place-items-center">
+        <div class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></div>
+      </div>
+      <span class="font-semibold tracking-widest text-[12px] text-zinc-300">COMMAND</span>
+    </div>
+    
+    <div class="hidden md:flex items-center gap-4 lg:gap-5 overflow-x-auto scrollbar-none">
+      <div class="flex items-center gap-1.5">
+        <span class="relative flex h-1.5 w-1.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span><span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-sky-500"></span></span>
+        <span class="text-[11px] text-zinc-500 uppercase tracking-wide">Active</span>
+        <span class="text-[12px] font-medium mono text-white">47</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="relative flex h-1.5 w-1.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span></span>
+        <span class="text-[11px] text-zinc-500 uppercase tracking-wide">Traveling</span>
+        <span class="text-[12px] font-medium mono text-emerald-400">5</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 pulse-dot"></span>
+        <span class="text-[11px] text-zinc-500 uppercase tracking-wide">Issues</span>
+        <span class="text-[12px] font-medium mono text-amber-400">3</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-red-500 pulse-dot"></span>
+        <span class="text-[11px] text-zinc-500 uppercase tracking-wide">Critical</span>
+        <span class="text-[12px] font-medium mono text-red-400">2</span>
+      </div>
+      <div class="flex items-center gap-1.5 pl-3 border-l border-zinc-800">
+        <span class="text-[11px] text-zinc-500 uppercase tracking-wide">At Risk</span>
+        <span id="riskCounter" class="text-[12px] font-medium mono text-red-400">₹42L</span>
+      </div>
+    </div>
+
+    <div class="ml-auto flex items-center gap-2">
+      <div class="relative hidden sm:block">
+        <input id="globalSearch" placeholder="Search trips (/)" class="w-[220px] lg:w-[260px] h-[26px] bg-black/60 border border-zinc-800 rounded pl-7 pr-2 text-[12px] focus:outline-none focus:border-zinc-700 placeholder-zinc-600">
+        <svg class="absolute left-2 top-1.5 w-3.5 h-3.5 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      </div>
+      <button class="h-[26px] px-2 bg-zinc-900 border border-zinc-800 rounded text-[11px] text-zinc-400 hover:text-zinc-200">Filters</button>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="flex-1 min-h-0 flex flex-col lg:flex-row bg-zinc-950 gap-px overflow-hidden">
+    
+    <!-- LEFT -->
+    <aside class="w-full lg:w-[22%] xl:w-[22%] shrink-0 bg-[#101012] border-b lg:border-b-0 lg:border-r border-zinc-900 flex flex-col max-h-[38vh] lg:max-h-none lg:h-full">
+      <div class="h-8 flex items-center justify-between px-2.5 border-b border-zinc-900 shrink-0">
+        <span class="text-[10.5px] uppercase tracking-widest font-semibold text-zinc-500">Live Trips</span>
+        <div class="flex items-center gap-1">
+          <button class="p-1 hover:bg-zinc-800 rounded"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="text-zinc-600"><path d="M3 6h18M7 12h10M10 18h4"/></svg></button>
+        </div>
+      </div>
+      <div class="p-1.5 border-b border-zinc-900/50 shrink-0">
+        <input id="tripFilter" placeholder="Filter 47 trips..." class="w-full h-6 bg-black/70 border border-zinc-800 rounded px-2 text-[11px] focus:outline-none focus:border-zinc-700 placeholder-zinc-600">
+      </div>
+      <div class="flex-1 overflow-y-auto custom-scroll p-1.5 space-y-2.5 min-h-0">
+        
+        <!-- TRAVELING NOW -->
+        <div>
+          <button class="group-header w-full flex items-center justify-between px-1.5 py-1 text-[11px] hover:bg-zinc-900/50 rounded">
+            <span class="uppercase tracking-wide font-medium text-zinc-300 flex items-center gap-1.5"><span class="w-1 h-3 bg-emerald-500/80 rounded-sm"></span>TRAVELING NOW (5)</span>
+            <svg class="w-3 h-3 text-zinc-600 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="mt-1 space-y-1">
+            <button data-trip="sharma" class="trip-row w-full text-left p-2 rounded">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                  <div class="text-[12.5px] leading-tight font-medium truncate">Sharma Family <span class="text-zinc-500 font-normal">• Singapore</span></div>
+                  <div class="flex items-center gap-2 mt-1 mono text-[10.5px] text-zinc-500"><span class="flex items-center gap-1"><span class="w-1 h-1 bg-emerald-500 rounded-full"></span>📍 Marina Bay</span><span>• 6am FLT</span></div>
+                </div>
+                <span class="text-[14px] leading-none text-emerald-500">✓</span>
+              </div>
+              <div class="mt-1.5 flex items-center gap-1.5"><div class="h-0.5 flex-1 bg-zinc-900 rounded overflow-hidden"><div class="h-full bg-emerald-600/70 w-[85%]"></div></div><span class="text-[9px] mono text-zinc-600">D6/7</span></div>
+            </button>
+
+            <button data-trip="patel" class="trip-row active w-full text-left p-2 rounded">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                  <div class="text-[12.5px] leading-tight font-medium truncate">Patel Group <span class="text-zinc-500 font-normal">• Bali</span></div>
+                  <div class="flex items-center gap-2 mt-1 mono text-[10.5px] text-zinc-500"><span class="flex items-center gap-1"><span class="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></span>📍 Ubud</span><span>• 11:00 C/O</span></div>
+                </div>
+                <span class="text-[14px] leading-none text-amber-400">⚠</span>
+              </div>
+              <div class="mt-1.5 flex items-center gap-1.5"><div class="h-0.5 flex-1 bg-zinc-900 rounded overflow-hidden"><div class="h-full bg-sky-600/70 w-[42%]"></div></div><span class="text-[9px] mono text-zinc-600">D3/7</span></div>
+            </button>
+
+            <button data-trip="mehta" class="trip-row w-full text-left p-2 rounded">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                  <div class="text-[12.5px] leading-tight font-medium truncate">Mehta <span class="text-zinc-500 font-normal">• Maldives</span></div>
+                  <div class="flex items-center gap-2 mt-1 mono text-[10.5px] text-zinc-500"><span class="flex items-center gap-1"><span class="w-1 h-1 bg-red-500 rounded-full animate-pulse"></span>📍 Airport</span><span>• Transfer</span></div>
+                </div>
+                <span class="text-[14px] leading-none text-red-400">🚨</span>
+              </div>
+              <div class="mt-1.5 flex items-center gap-1.5"><div class="h-0.5 flex-1 bg-zinc-900 rounded overflow-hidden"><div class="h-full bg-sky-600/70 w-[15%]"></div></div><span class="text-[9px] mono text-zinc-600">D1/5</span></div>
+            </button>
+
+            <button class="trip-row w-full text-left p-2 rounded opacity-70">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                  <div class="text-[12.5px] leading-tight font-medium truncate">Reddy • Dubai</div>
+                  <div class="flex items-center gap-2 mt-1 mono text-[10.5px] text-zinc-500"><span>📍 Burj</span><span>• 4pm Desert</span></div>
+                </div>
+                <span class="text-emerald-500">✓</span>
+              </div>
+            </button>
+
+            <button class="trip-row w-full text-left p-2 rounded opacity-70">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                  <div class="text-[12.5px] leading-tight font-medium truncate">Kapoor • Thailand</div>
+                  <div class="flex items-center gap-2 mt-1 mono text-[10.5px] text-zinc-500"><span>📍 Phuket</span><span>• 9am Ferry</span></div>
+                </div>
+                <span class="text-emerald-500">✓</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- OTHER GROUPS -->
+        <div>
+          <button class="group-header w-full flex items-center justify-between px-1.5 py-1 text-[11px] hover:bg-zinc-900/50 rounded">
+            <span class="uppercase tracking-wide font-medium text-zinc-500 flex items-center gap-1.5"><span class="w-1 h-3 bg-sky-500/60 rounded-sm"></span>DEPARTING TODAY (8)</span>
+            <svg class="w-3 h-3 text-zinc-700 rotate-[-90deg]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+        </div>
+        <div>
+          <button class="group-header w-full flex items-center justify-between px-1.5 py-1 text-[11px] hover:bg-zinc-900/50 rounded">
+            <span class="uppercase tracking-wide font-medium text-zinc-500 flex items-center gap-1.5"><span class="w-1 h-3 bg-zinc-600 rounded-sm"></span>PREPARING (12)</span>
+            <svg class="w-3 h-3 text-zinc-700 rotate-[-90deg]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+        </div>
+        <div>
+          <button class="group-header w-full flex items-center justify-between px-1.5 py-1 text-[11px] hover:bg-zinc-900/50 rounded">
+            <span class="uppercase tracking-wide font-medium text-zinc-500 flex items-center gap-1.5"><span class="w-1 h-3 bg-violet-500/60 rounded-sm"></span>SELLING (22)</span>
+            <svg class="w-3 h-3 text-zinc-700 rotate-[-90deg]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- CENTER -->
+    <section class="flex-1 min-w-0 bg-[#0f0f12] flex flex-col min-h-0">
+      <div class="h-8 flex items-center gap-2.5 px-2.5 border-b border-zinc-900 bg-[#0c0c0e] shrink-0">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+          <h1 id="tripTitle" class="text-[12.5px] font-semibold truncate">Patel Group • Bali • 11 travelers • Day 3 of 7</h1>
+        </div>
+        <div class="ml-auto flex items-center gap-1">
+          <button id="opsMode" class="mode-btn px-2 h-5 text-[10.5px] uppercase tracking-wider rounded font-medium bg-amber-500/15 text-amber-300 border border-amber-500/20">Ops</button>
+          <button id="sellMode" class="mode-btn px-2 h-5 text-[10.5px] uppercase tracking-wider rounded font-medium text-zinc-500 hover:text-zinc-300">Selling</button>
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto custom-scroll min-h-0">
+        <!-- OPS VIEW -->
+        <div id="opsView" class="p-2.5 space-y-2.5">
+          <!-- map + 2x2 -->
+          <div class="grid grid-cols-12 gap-2.5">
+            <div class="col-span-12 xl:col-span-5">
+              <div class="bg-[#080809] border border-zinc-900 rounded-md overflow-hidden h-[220px] relative grid-bg">
+                <div id="map" class="absolute inset-0"></div>
+                <div class="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 bg-black/80 backdrop-blur-md border border-zinc-800 rounded">
+                  <span class="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></span>
+                  <span class="text-[10px] mono uppercase tracking-wider text-zinc-300">LIVE • UBUD -8.5069,115.262</span>
+                </div>
+                <div class="absolute bottom-2 left-2 right-2 grid grid-cols-3 gap-1.5">
+                  <div class="bg-black/80 backdrop-blur px-2 py-1 rounded border border-zinc-800"><div class="text-[9px] text-zinc-500 uppercase">Speed</div><div class="text-[11px] mono text-white">0 km/h</div></div>
+                  <div class="bg-black/80 backdrop-blur px-2 py-1 rounded border border-zinc-800"><div class="text-[9px] text-zinc-500 uppercase">Next</div><div class="text-[11px] mono text-white">11:00 C/O</div></div>
+                  <div class="bg-black/80 backdrop-blur px-2 py-1 rounded border border-zinc-800"><div class="text-[9px] text-zinc-500 uppercase">Signal</div><div class="text-[11px] mono text-emerald-400">STRONG</div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-span-12 xl:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              <!-- ACTIVE ISSUES -->
+              <div class="bg-amber-950/15 border border-amber-900/40 rounded-md p-2.5 relative overflow-hidden">
+                <div class="absolute inset-0 opacity-[0.04] pointer-events-none" style="background-image: repeating-linear-gradient(-45deg, #f59e0b 0 1px, transparent 1px 6px);"></div>
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-[10.5px] uppercase tracking-widest font-semibold text-amber-400/90">Active Issues</h3>
+                  <span class="flex items-center gap-1 text-[10px] mono text-amber-300/80"><span class="w-1 h-1 bg-amber-500 rounded-full animate-ping"></span>LIVE</span>
+                </div>
+                <div class="space-y-2 relative">
+                  <div>
+                    <div class="text-[13px] font-medium text-amber-100 leading-snug">🚨 Driver no-show <span class="text-zinc-500 font-normal text-[11px]">(12m ago)</span></div>
+                    <div class="text-[11.5px] text-zinc-300 mt-1">Backup dispatched, ETA <span id="etaCountdown" class="text-amber-300 font-mono font-medium">8</span>min</div>
+                  </div>
+                  <div class="flex flex-wrap gap-1">
+                    <button class="action-btn primary">Call Driver</button>
+                    <button class="action-btn">Message Customer</button>
+                    <button class="action-btn">Escalate</button>
+                  </div>
+                  <div class="border-t border-amber-900/30 pt-1.5 mt-2 space-y-0.5 mono text-[10.5px] text-zinc-500">
+                    <div class="flex gap-2"><span class="text-zinc-600 w-9">07:55</span><span>ETA update • Ramesh +91 98765</span></div>
+                    <div class="flex gap-2"><span class="text-zinc-600 w-9">07:50</span><span>backup dispatched</span></div>
+                    <div class="flex gap-2"><span class="text-zinc-600 w-9">07:48</span><span>customer: "driver not here"</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- NEXT 24 HOURS -->
+              <div class="bg-[#0a0a0b] border border-zinc-900 rounded-md p-2.5">
+                <h3 class="text-[10.5px] uppercase tracking-widest font-semibold text-zinc-500 mb-2.5">Next 24 Hours</h3>
+                <div class="space-y-2">
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                    <span class="mono text-[11px] text-zinc-500 w-[42px]">11:00</span>
+                    <span class="text-[12px]">Checkout Hotel A</span>
+                    <span class="ml-auto text-[9px] px-1 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/20">NEXT</span>
+                  </div>
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-zinc-700"></span>
+                    <span class="mono text-[11px] text-zinc-500 w-[42px]">12:30</span>
+                    <span class="text-[12px] text-zinc-300">Transfer to Ubud</span>
+                    <span class="ml-auto text-[9px] px-1 py-0.5 rounded bg-zinc-800 text-zinc-400">DRIVER</span>
+                  </div>
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-zinc-700"></span>
+                    <span class="mono text-[11px] text-zinc-500 w-[42px]">15:00</span>
+                    <span class="text-[12px] text-zinc-300">Checkin Hotel B</span>
+                    <span class="ml-auto text-[9px] px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-300">CONFIRMED</span>
+                  </div>
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-zinc-700"></span>
+                    <span class="mono text-[11px] text-zinc-500 w-[42px]">19:00</span>
+                    <span class="text-[12px] text-zinc-300">Dinner reservation</span>
+                    <span class="ml-auto text-[9px] px-1 py-0.5 rounded bg-zinc-800 text-zinc-400">8pax</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- MONEY -->
+              <div class="bg-[#0a0a0b] border border-zinc-900 rounded-md p-2.5">
+                <h3 class="text-[10.5px] uppercase tracking-widest font-semibold text-zinc-500 mb-2.5">Money</h3>
+                <div class="grid grid-cols-2 gap-x-3 gap-y-2">
+                  <div><div class="text-[10px] text-zinc-500 uppercase tracking-wide">Quoted</div><div class="text-[13px] mono font-medium">₹5,20,000</div></div>
+                  <div><div class="text-[10px] text-zinc-500 uppercase tracking-wide">Paid</div><div class="text-[13px] mono font-medium text-emerald-400">₹3,90,000 <span class="text-[10px] text-zinc-500">75%</span></div></div>
+                  <div><div class="text-[10px] text-zinc-500 uppercase tracking-wide">Outstanding</div><div class="text-[13px] mono font-medium text-amber-400">₹1,30,000</div></div>
+                  <div><div class="text-[10px] text-zinc-500 uppercase tracking-wide">Margin</div><div class="text-[13px] mono font-medium text-sky-400">18.2%</div></div>
+                </div>
+                <div class="mt-2.5 h-1.5 bg-zinc-900 rounded-full overflow-hidden"><div class="h-full w-[75%] bg-emerald-600/80 rounded-full"></div></div>
+                <div class="mt-2 pt-2 border-t border-zinc-900 flex items-center justify-between text-[11px]">
+                  <span class="text-zinc-500">Next payment</span>
+                  <span class="text-amber-300 font-medium">Today 6pm • UPI link sent</span>
+                </div>
+              </div>
+
+              <!-- SUPPLIERS -->
+              <div class="bg-[#0a0a0b] border border-zinc-900 rounded-md p-2.5">
+                <h3 class="text-[10.5px] uppercase tracking-widest font-semibold text-zinc-500 mb-2.5">Suppliers</h3>
+                <div class="space-y-1.5 text-[12px]">
+                  <div class="flex items-center justify-between"><div class="flex items-center gap-2"><span class="text-emerald-500">✓</span><span>Hotel A (Seminyak)</span></div><span class="text-[10px] mono text-zinc-500">Checked in</span></div>
+                  <div class="flex items-center justify-between"><div class="flex items-center gap-2"><span class="text-amber-400">⚠</span><span>Driver (Wayan)</span></div><span class="text-[10px] mono text-amber-300">Delayed • backup</span></div>
+                  <div class="flex items-center justify-between"><div class="flex items-center gap-2"><span class="text-emerald-500">✓</span><span>Hotel B (Ubud)</span></div><span class="text-[10px] mono text-zinc-500">Voucher sent</span></div>
+                  <div class="flex items-center justify-between"><div class="flex items-center gap-2"><span class="text-emerald-500">✓</span><span>Guide (Ketut)</span></div><span class="text-[10px] mono text-zinc-500">Assigned</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ACTIVITY FEED -->
+          <div class="bg-black/70 border border-zinc-900 rounded-md overflow-hidden">
+            <div class="h-7 flex items-center justify-between px-2.5 border-b border-zinc-900 bg-[#080808]">
+              <h3 class="text-[10.5px] uppercase tracking-widest font-semibold text-zinc-500">Live Activity Feed</h3>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] mono text-zinc-600">AUTO-SCROLL</span>
+                <span class="text-[10px] mono text-emerald-400 flex items-center gap-1"><span class="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></span>STREAMING</span>
+              </div>
+            </div>
+            <div id="activityFeed" class="h-[150px] overflow-y-auto p-2 font-mono text-[11px] leading-[18px] text-zinc-400 custom-scroll bg-[#050505]">
+              <div><span class="text-zinc-600">07:55:23</span> — <span class="text-amber-300">Backup driver assigned</span> (Ramesh, +91 98765 43210)</div>
+              <div><span class="text-zinc-600">07:50:11</span> — Customer messaged: <span class="text-zinc-200">"driver not here yet, we're waiting lobby"</span></div>
+              <div><span class="text-zinc-600">07:48:02</span> — Driver Wayan marked en route (original)</div>
+              <div><span class="text-zinc-600">07:30:15</span> — GPS ping • Ubud center • speed 0 km/h</div>
+              <div><span class="text-zinc-600">Yesterday 18:22</span> — Hotel B voucher sent via WhatsApp</div>
+              <div><span class="text-zinc-600">Yesterday 14:15</span> — Payment received <span class="text-emerald-400">₹1,30,000</span> via UPI</div>
+              <div><span class="text-zinc-600">Yesterday 09:03</span> — Checkin confirmed Hotel A</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SELLING VIEW -->
+        <div id="sellView" class="hidden p-2.5">
+          <div class="grid grid-cols-12 gap-2.5">
+            <div class="col-span-12 lg:col-span-8 space-y-2.5">
+              <div class="bg-[#0a0a0b] border border-zinc-900 rounded-md p-3">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-[11px] uppercase tracking-widest font-semibold text-violet-400">Intake • Patel Group (Selling Mode)</h3>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 border border-violet-500/20">QUOTE STAGE</span>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-[12px]">
+                  <div><div class="text-zinc-500 text-[10px] uppercase">Travelers</div><div class="mt-0.5">11 adults</div></div>
+                  <div><div class="text-zinc-500 text-[10px] uppercase">Dates</div><div class="mt-0.5">Dec 12-19</div></div>
+                  <div><div class="text-zinc-500 text-[10px] uppercase">Budget</div><div class="mt-0.5">₹5-5.5L</div></div>
+                  <div><div class="text-zinc-500 text-[10px] uppercase">Source</div><div class="mt-0.5">Referral</div></div>
+                </div>
+              </div>
+              <div class="bg-[#0a0a0b] border border-zinc-900 rounded-md p-3">
+                <h3 class="text-[11px] uppercase tracking-widest font-semibold text-zinc-500 mb-2">Quote Builder</h3>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-[11px]">
+                    <thead class="text-zinc-500 border-b border-zinc-800"><tr><th class="text-left py-1 font-normal">Item</th><th class="text-right py-1 font-normal">Cost</th><th class="text-right py-1 font-normal">Sell</th></tr></thead>
+                    <tbody class="mono">
+                      <tr class="border-b border-zinc-900/50"><td class="py-1.5">Hotels (7N)</td><td class="text-right">₹2,84,000</td><td class="text-right text-sky-300">₹3,40,000</td></tr>
+                      <tr class="border-b border-zinc-900/50"><td class="py-1.5">Transfers</td><td class="text-right">₹42,000</td><td class="text-right text-sky-300">₹55,000</td></tr>
+                      <tr class="border-b border-zinc-900/50"><td class="py-1.5">Activities</td><td class="text-right">₹68,000</td><td class="text-right text-sky-300">₹85,000</td></tr>
+                      <tr><td class="py-1.5">Flights</td><td class="text-right">₹0</td><td class="text-right text-zinc-500">Client own</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="mt-3 pt-2 border-t border-zinc-800 flex justify-between text-[12px]"><span class="text-zinc-500">Total Sell</span><span class="font-mono text-[14px] text-white">₹5,20,000</span></div>
+              </div>
+            </div>
+            <div class="col-span-12 lg:col-span-4 space-y-2.5">
+              <div class="bg-red-950/20 border border-red-900/40 rounded-md p-2.5">
+                <h3 class="text-[10.5px] uppercase tracking-widest font-semibold text-red-400 mb-2">Blockers</h3>
+                <ul class="space-y-1.5 text-[12px]">
+                  <li class="flex gap-2"><span class="text-red-400">•</span><span>Awaiting passport copies (4 pax)</span></li>
+                  <li class="flex gap-2"><span class="text-amber-400">•</span><span>Budget gap ₹20k vs quote</span></li>
+                  <li class="flex gap-2"><span class="text-zinc-500">•</span><span>Hotel B superior rooms on request</span></li>
+                </ul>
+              </div>
+              <div class="bg-[#0a0a0b] border border-zinc-900 rounded-md p-2.5">
+                <h3 class="text-[10.5px] uppercase tracking-widest font-semibold text-zinc-500 mb-2">Next Actions</h3>
+                <div class="space-y-1.5">
+                  <button class="w-full action-btn text-left">Send revised quote PDF</button>
+                  <button class="w-full action-btn text-left">Request passports WhatsApp</button>
+                  <button class="w-full action-btn text-left">Hold rooms (no pay)</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT -->
+    <aside class="w-full xl:w-[23%] shrink-0 bg-[#101012] border-t xl:border-t-0 xl:border-l border-zinc-900 flex flex-col max-h-[45vh] xl:max-h-none xl:h-full">
+      <div class="flex-1 overflow-y-auto custom-scroll p-2.5 space-y-2.5 min-h-0">
+        <!-- CUSTOMER -->
+        <div class="bg-[#0a0a0b] border border-zinc-900 rounded-md p-2.5">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-[10.5px] uppercase tracking-widest font-semibold text-zinc-500">Customer</h3>
+            <span class="flex items-center gap-1 text-[11px]"><span>😟</span><span class="text-amber-300">Frustrated</span></span>
+          </div>
+          <div class="text-[13px] font-medium leading-tight">Rohan Patel <span class="text-zinc-600 font-normal">• primary</span></div>
+          <div class="text-[11px] mono text-zinc-500 mt-0.5">+91 98123 45678 • Last msg 12m ago</div>
+          <div class="grid grid-cols-3 gap-1 mt-2.5">
+            <button class="action-btn !bg-[#0a2214] !border-emerald-900/50 !text-emerald-300 hover:!bg-[#0f2e1b]">WA</button>
+            <button class="action-btn">Call</button>
+            <button class="action-btn">Email</button>
+          </div>
+        </div>
+
+        <!-- QUICK ACTIONS -->
+        <div class="bg-[#0a0a0b] border border-zinc-900 rounded-md p-2.5">
+          <h3 class="text-[10.5px] uppercase tracking-widest font-semibold text-zinc-500 mb-2">Quick Actions</h3>
+          <div class="grid grid-cols-1 gap-1">
+            <button class="action-btn text-left flex items-center justify-between"><span>Send update to customer</span><span class="text-zinc-600">⌘1</span></button>
+            <button class="action-btn text-left flex items-center justify-between"><span>Call supplier</span><span class="text-zinc-600">⌘2</span></button>
+            <button class="action-btn text-left flex items-center justify-between"><span>Create issue</span><span class="text-zinc-600">⌘3</span></button>
+            <button class="action-btn text-left flex items-center justify-between"><span>Request payment</span><span class="text-zinc-600">⌘4</span></button>
+            <button class="action-btn text-left flex items-center justify-between text-red-300 border-red-900/50 hover:bg-red-950/30"><span>Emergency protocol</span><span>⌘E</span></button>
+          </div>
+        </div>
+
+        <!-- TEAM -->
+        <div class="bg-[#0a0a0b] border border-zinc-900 rounded-md p-2.5">
+          <h3 class="text-[10.5px] uppercase tracking-widest font-semibold text-zinc-500 mb-2">Team</h3>
+          <div class="flex items-center gap-2">
+            <div class="flex -space-x-1.5">
+              <div class="w-6 h-6 rounded-full bg-zinc-800 border-2 border-[#0a0a0b] grid place-items-center text-[10px] font-medium">YP</div>
+              <div class="w-6 h-6 rounded-full bg-amber-900/50 border-2 border-[#0a0a0b] grid place-items-center text-[10px] font-medium text-amber-200">PS</div>
+              <div class="w-6 h-6 rounded-full bg-zinc-800 border-2 border-[#0a0a0b] grid place-items-center text-[10px] font-medium">AK</div>
+            </div>
+            <div class="text-[11px] text-zinc-400">You, Priya, Amit watching</div>
+          </div>
+          <button class="mt-2 w-full h-6 text-[11px] bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded">Assign to teammate</button>
+        </div>
+
+        <!-- HISTORY -->
+        <div class="bg-[#0a0a0b] border border-zinc-900 rounded-md p-2.5">
+          <h3 class="text-[10.5px] uppercase tracking-widest font-semibold text-zinc-500 mb-2">History</h3>
+          <div class="space-y-1.5 text-[11.5px]">
+            <div class="flex justify-between"><span class="text-zinc-500">Total spent</span><span class="font-mono text-zinc-200">₹18,40,000</span></div>
+            <div class="flex justify-between"><span class="text-zinc-500">Trips</span><span class="font-mono text-zinc-200">4 (2022-24)</span></div>
+            <div class="flex justify-between"><span class="text-zinc-500">Status</span><span class="px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 border border-violet-500/20 text-[10px] uppercase tracking-wide">VIP</span></div>
+            <div class="flex justify-between"><span class="text-zinc-500">Pref</span><span class="text-zinc-300">Early checkin, veg</span></div>
+          </div>
+        </div>
+
+        <!-- AI SUGGESTIONS -->
+        <div class="bg-[#0a0a0b] border border-zinc-900 rounded-md p-2.5">
+          <div class="flex items-center gap-1.5 mb-2">
+            <div class="w-4 h-4 rounded bg-sky-500/15 grid place-items-center border border-sky-500/20"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="text-sky-400"><path stroke-width="2" d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></div>
+            <h3 class="text-[10.5px] uppercase tracking-widest font-semibold text-sky-400/90">AI Suggestions</h3>
+          </div>
+          <div class="space-y-2">
+            <div class="group relative pl-2.5 border-l-2 border-amber-500/40 hover:border-amber-500/70 cursor-pointer">
+              <div class="text-[12px] leading-snug text-zinc-200">Customer frustrated — offer ₹2k F&B credit?</div>
+              <div class="text-[10.5px] text-zinc-500 mt-0.5">92% success for delays &gt;15m</div>
+            </div>
+            <div class="group relative pl-2.5 border-l-2 border-sky-500/40 hover:border-sky-500/70 cursor-pointer">
+              <div class="text-[12px] leading-snug text-zinc-200">Proactively message ETA (8min)</div>
+              <div class="text-[10.5px] text-zinc-500 mt-0.5">Template ready</div>
+            </div>
+            <div class="group relative pl-2.5 border-l-2 border-violet-500/40 hover:border-violet-500/70 cursor-pointer">
+              <div class="text-[12px] leading-snug text-zinc-200">Hotel B upgrade available ₹3k</div>
+              <div class="text-[10.5px] text-zinc-500 mt-0.5">Compensate for delay</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- COMMAND BAR -->
+  <footer class="h-[36px] shrink-0 bg-[#080808] border-t border-zinc-900 flex items-center gap-2 px-2.5">
+    <div class="hidden sm:flex items-center gap-1 text-[10px] text-zinc-600 mono"><span class="px-1 py-0.5 border border-zinc-800 rounded">/</span><span>cmd</span></div>
+    <div class="flex-1 relative">
+      <input id="cmdInput" placeholder="/msg customer ETA 8min • /call driver • /escalate • /refund 2000" class="w-full h-[24px] bg-transparent border-0 outline-none text-[12px] placeholder-zinc-700">
+    </div>
+    <div class="flex items-center gap-3 text-[10px] mono text-zinc-600">
+      <span class="hidden md:inline">IST 08:01:24</span>
+      <span class="flex items-center gap-1"><span class="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></span>SYNCED</span>
+      <span class="hidden sm:inline">v2.4.1</span>
+    </div>
+  </footer>
+</div>
+
+<script>
+// Map
+const map = L.map('map', { zoomControl:false, attributionControl:false, dragging:false, scrollWheelZoom:false, doubleClickZoom:false }).setView([-8.5069, 115.2625], 13);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom:19 }).addTo(map);
+const route = L.polyline([[-8.65,115.13],[-8.58,115.18],[-8.52,115.22],[-8.5069,115.2625]], {color:'#f59e0b', weight:2, opacity:0.8, dashArray:'4 6'}).addTo(map);
+L.circleMarker([-8.5069,115.2625], {radius:5, color:'#10b981', fillColor:'#10b981', fillOpacity:1, weight:2}).addTo(map).bindTooltip('Patel Group • Ubud', {permanent:false});
+
+// Trip selection
+document.querySelectorAll('.trip-row').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.trip-row').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const name = btn.querySelector('.font-medium').childNodes[0].textContent.trim();
+    const dest = btn.textContent.includes('Bali')?'Bali':btn.textContent.includes('Singapore')?'Singapore':'Maldives';
+    document.getElementById('tripTitle').textContent = `${name} • ${dest} • 11 travelers • Day 3 of 7`;
+    // simulate data change
+    if(name.includes('Mehta')){
+      document.getElementById('etaCountdown').textContent = '—';
+    }
+  });
+});
+
+// Mode toggle
+const opsView = document.getElementById('opsView');
+const sellView = document.getElementById('sellView');
+const opsBtn = document.getElementById('opsMode');
+const sellBtn = document.getElementById('sellMode');
+opsBtn.onclick = ()=>{ opsView.classList.remove('hidden'); sellView.classList.add('hidden'); opsBtn.classList.add('bg-amber-500/15','text-amber-300','border','border-amber-500/20'); sellBtn.classList.remove('bg-amber-500/15','text-amber-300','border','border-amber-500/20'); sellBtn.classList.add('text-zinc-500'); };
+sellBtn.onclick = ()=>{ sellView.classList.remove('hidden'); opsView.classList.add('hidden'); sellBtn.classList.add('bg-amber-500/15','text-amber-300','border','border-amber-500/20'); opsBtn.classList.remove('bg-amber-500/15','text-amber-300','border','border-amber-500/20'); opsBtn.classList.add('text-zinc-500'); };
+
+// ETA countdown
+let eta = 8;
+const etaEl = document.getElementById('etaCountdown');
+setInterval(()=>{
+  if(eta>0){ eta--; etaEl.textContent = eta; if(eta===3){ addActivity('Driver 3 min away • traffic cleared', 'info'); } if(eta===0){ addActivity('✅ Backup driver arrived • customer picked up', 'success'); etaEl.parentElement.innerHTML = 'Arrived'; } }
+}, 9000);
+
+// Activity feed
+const feed = document.getElementById('activityFeed');
+function addActivity(text, type=''){
+  const now = new Date();
+  const ts = now.toTimeString().slice(0,8);
+  const div = document.createElement('div');
+  const color = type==='success'?'text-emerald-400':type==='info'?'text-sky-300':'text-zinc-200';
+  div.innerHTML = `<span class="text-zinc-600">${ts}</span> — <span class="${color}">${text}</span>`;
+  feed.prepend(div);
+  if(feed.children.length>30) feed.removeChild(feed.lastChild);
+}
+const autos = [
+  "GPS ping • -8.5069,115.2625",
+  "Driver Ramesh location updated • 1.2km away",
+  "WhatsApp delivered to customer",
+  "Hotel B confirmed late checkout request",
+  "System health check OK"
+];
+setInterval(()=>{ addActivity(autos[Math.floor(Math.random()*autos.length)]); }, 14000);
+
+// Risk counter pulse
+const riskEl = document.getElementById('riskCounter');
+setInterval(()=>{ const v = 40 + Math.floor(Math.random()*4); riskEl.textContent = `₹${v}L`; }, 6500);
+
+// Command palette
+const cmd = document.getElementById('cmdInput');
+document.addEventListener('keydown', e=>{ if(e.key==='/'){ e.preventDefault(); cmd.focus(); } if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); document.getElementById('globalSearch').focus(); } });
+cmd.addEventListener('keydown', e=>{ if(e.key==='Enter' && cmd.value.trim()){ addActivity(`CMD: ${cmd.value}`, 'info'); cmd.value=''; } });
+
+// Filter trips
+document.getElementById('tripFilter').addEventListener('input', e=>{
+  const q = e.target.value.toLowerCase();
+  document.querySelectorAll('.trip-row').forEach(r=>{ r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none'; });
+});
+
+// Simulate live clock
+setInterval(()=>{ const el = document.querySelector('footer .hidden.md\\:inline'); if(el){ const d=new Date(); el.textContent = 'IST '+d.toTimeString().slice(0,8); } },1000);
+</script>
+</body>
+</html>

@@ -28,7 +28,7 @@ This document translates first-principles thinking into an execution checkpoint:
 
 ### 3) Test Baseline Is Good for Core Modules
 - `pytest -q tests` currently passes (core test suite health).
-- Full-repo `pytest -q` still blocked by known notebook test loader issue (tracked separately in `Docs/gemini issue review.md`).
+- Full-repo `pytest -q` still blocked by known notebook test loader issue (tracked separately in `Docs/issue_review.md`).
 
 ## What We Should Have (MVP Correctness)
 

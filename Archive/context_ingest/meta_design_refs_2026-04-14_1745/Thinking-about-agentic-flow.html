@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<!-- Playables SDK -->
+<script>// Playables SDK v1.0.0
+// Game lifecycle bridge: rAF-based game-ready detection + event communication
+(function() {
+  'use strict';
+
+  // Idempotency: skip if already initialized (e.g., server-side injection
+  // followed by client-side inject-javascript via the Bloks webview component).
+  if (window.playablesSDK) return;
+
+  var HANDLER_NAME = 'playablesGameEventHandler';
+  var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
+  var RAF_FRAME_THRESHOLD = 3;
+
+  var gameReadySent = false;
+  var firstInteractionSent = false;
+  var errorSent = false;
+  var frameCount = 0;
+  var originalRAF = window.requestAnimationFrame;
+
+  // --- Transport Layer ---
+
+  function hasIOSBridge() {
+    return !!(window.webkit &&
+              window.webkit.messageHandlers &&
+              window.webkit.messageHandlers[HANDLER_NAME]);
+  }
+
+  function hasAndroidBridge() {
+    return !!(window[ANDROID_BRIDGE_NAME] &&
+              typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
+  }
+
+  function isInIframe() {
+    return !!(window.parent && window.parent !== window);
+  }
+
+  function sendEvent(eventName, payload) {
+    var message = {
+      type: eventName,
+      payload: payload || {},
+      timestamp: Date.now()
+    };
+
+    if (hasIOSBridge()) {
+      try {
+        window.webkit.messageHandlers[HANDLER_NAME].postMessage(message);
+      } catch (e) { /* ignore */ }
+      return;
+    }
+
+    if (hasAndroidBridge()) {
+    try {
+      var p = payload || {};
+      p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
+      window[ANDROID_BRIDGE_NAME].postEvent(
+        eventName,
+        JSON.stringify(p)
+      );
+    } catch (e) { /* ignore */ }
+    return;
+  }
+
+    if (isInIframe()) {
+      try {
+        window.parent.postMessage(message, '*');
+      } catch (e) { /* ignore */ }
+      return;
+    }
+  }
+
+  // --- rAF Game-Ready Detection ---
+
+  function onFrame() {
+    if (gameReadySent) return;
+
+    frameCount++;
+    if (frameCount >= RAF_FRAME_THRESHOLD) {
+      gameReadySent = true;
+      sendEvent('game_ready', {
+        frame_count: frameCount,
+        detected_at: Date.now()
+      });
+      return;
+    }
+
+    originalRAF.call(window, onFrame);
+  }
+
+  if (originalRAF) {
+    window.requestAnimationFrame = function(callback) {
+      if (!gameReadySent) {
+        return originalRAF.call(window, function(timestamp) {
+          frameCount++;
+          if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) {
+            gameReadySent = true;
+            sendEvent('game_ready', {
+              frame_count: frameCount,
+              detected_at: Date.now()
+            });
+          }
+          callback(timestamp);
+        });
+      }
+      return originalRAF.call(window, callback);
+    };
+  }
+
+  // --- First User Interaction Detection ---
+
+  function setupFirstInteractionDetection() {
+    var events = ['touchstart', 'mousedown', 'keydown'];
+
+    function onFirstInteraction() {
+      if (firstInteractionSent) return;
+      firstInteractionSent = true;
+      sendEvent('user_interaction_start', null);
+
+      for (var i = 0; i < events.length; i++) {
+        document.removeEventListener(events[i], onFirstInteraction, true);
+      }
+    }
+
+    for (var i = 0; i < events.length; i++) {
+      document.addEventListener(events[i], onFirstInteraction, true);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection);
+  } else {
+    setupFirstInteractionDetection();
+  }
+
+  // --- Auto Error Capture ---
+
+  window.addEventListener('error', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    sendEvent('error', {
+      message: event.message || 'Unknown error',
+      source: event.filename || '',
+      lineno: event.lineno || 0,
+      colno: event.colno || 0,
+      auto_captured: true
+    });
+  });
+
+  window.addEventListener('unhandledrejection', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    var reason = event.reason;
+    sendEvent('error', {
+      message: (reason instanceof Error) ? reason.message : String(reason),
+      type: 'unhandled_promise_rejection',
+      auto_captured: true
+    });
+  });
+
+  // --- Public API ---
+
+  window.playablesSDK = {
+    complete: function(score) {
+      sendEvent('game_ended', {
+        score: score,
+        completed: true
+      });
+    },
+
+    error: function(message) {
+      if (errorSent) return;
+      errorSent = true;
+      sendEvent('error', {
+        message: message || 'Unknown error',
+        auto_captured: false
+      });
+    },
+
+    sendEvent: function(eventName, payload) {
+      if (!eventName || typeof eventName !== 'string') return;
+      sendEvent(eventName, payload);
+    }
+  };
+
+  // Kick off rAF detection in case no game code calls rAF immediately
+  if (originalRAF) {
+    originalRAF.call(window, onFrame);
+  }
+})();</script>
+<script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full Packet View — CanonicalPacket v0.2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Inter', sans-serif; background: #080a0c; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 6px; font-size: 10px; font-weight: 500; letter-spacing: .02em; border: 1px solid; text-transform: lowercase; }
+        .badge-explicit_user { background: rgba(16,185,129,.1); color: #10b981; border-color: rgba(16,185,129,.2); }
+        .badge-explicit_owner { background: rgba(59,130,246,.1); color: #3b82f6; border-color: rgba(59,130,246,.22); }
+        .badge-derived { background: rgba(245,158,11,.1); color: #f59e0b; border-color: rgba(245,158,11,.2); }
+        .badge-hypothesis { background: rgba(113,113,122,.12); color: #a1a1aa; border-color: rgba(113,113,122,.2); }
+        .badge-manual { background: rgba(168,85,247,.1); color: #a855f7; border-color: rgba(168,85,247,.2); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #374151; }
+    </style>
+</head>
+<body class="bg-[#080a0c] text-zinc-200 min-h-screen">
+    <!-- Top Navigation -->
+    <header class="sticky top-0 z-40 backdrop-blur-2xl bg-[#080a0c]/85 border-b border-zinc-900">
+        <div class="flex items-center justify-between px-4 md:px-6 h-[52px]">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-7 h-7 rounded-[8px] bg-white text-black grid place-items-center font-semibold text-[13px] shadow-sm">↗</div>
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <span class="font-medium text-[14px] tracking-tight">Full Packet View</span>
+                    <span class="text-zinc-700 hidden sm:block">/</span>
+                    <span class="text-zinc-500 text-[12px] hidden sm:block">CanonicalPacket v0.2</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2.5">
+                <button class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] bg-[#14171c] hover:bg-[#1a1f26] border border-zinc-800 rounded-lg transition">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Export
+                </button>
+                <div class="w-7 h-7 rounded-full bg-gradient-to-b from-zinc-700 to-zinc-800 border border-zinc-700 grid place-items-center text-[11px] font-medium">AK</div>
+            </div>
+        <nav class="flex items-center gap-0.5 px-3 md:px-4 border-t border-zinc-900/70 overflow-x-auto scrollbar-hide">
+            <button class="relative px-3 py-2.5 text-[13px] font-medium text-white whitespace-nowrap">
+                Overview
+                <div class="absolute bottom-0 left-2 right-2 h-[2px] bg-white rounded-full"></div>
+            </button>
+            <button class="px-3 py-2.5 text-[13px] text-zinc-500 hover:text-zinc-300 whitespace-nowrap transition">Packet JSON</button>
+            <button class="px-3 py-2.5 text-[13px] text-zinc-500 hover:text-zinc-300 whitespace-nowrap transition">Decision</button>
+            <button class="px-3 py-2.5 text-[13px] text-zinc-500 hover:text-zinc-300 whitespace-nowrap transition">Strategy</button>
+            <button class="px-3 py-2.5 text-[13px] text-zinc-500 hover:text-zinc-300 whitespace-nowrap transition">Timeline</button>
+            <div class="w-px h-4 bg-zinc-800 mx-2"></div>
+            <button class="px-3 py-2.5 text-[13px] text-zinc-600 hover:text-zinc-500 whitespace-nowrap flex items-center gap-1.5">
+                Booking <span class="px-1.5 py-0.5 text-[9px] bg-zinc-900 text-zinc-600 rounded border border-zinc-800">Soon</span>
+            </button>
+            <button class="px-3 py-2.5 text-[13px] text-zinc-600 hover:text-zinc-500 whitespace-nowrap flex items-center gap-1.5">
+                Suppliers <span class="px-1.5 py-0.5 text-[9px] bg-zinc-900 text-zinc-600 rounded border border-zinc-800">Soon</span>
+            </button>
+            <button class="px-3 py-2.5 text-[13px] text-zinc-600 hover:text-zinc-500 whitespace-nowrap flex items-center gap-1.5">
+                Payments <span class="px-1.5 py-0.5 text-[9px] bg-zinc-900 text-zinc-600 rounded border border-zinc-800">Soon</span>
+            </button>
+        </nav>
+    </header>
+
+    <main class="max-w-[1680px] mx-auto px-4 md:px-6 py-6 space-y-10">
+        <!-- PACKET 1: CLEAN -->
+        <div>
+            <div class="grid grid-cols-12 gap-4 items-start">
+                <!-- LEFT 60% -->
+                <div class="col-span-12 xl:col-span-7 space-y-4">
+                    <!-- Header -->
+                    <div class="bg-[#0f1115] border border-zinc-800/80 rounded-2xl p-4 md:p-5">
+                        <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2.5 flex-wrap">
+                                    <h1 class="mono text-[18px] md:text-[20px] font-medium tracking-tight text-white">TRP-2026-SGP-0315</h1>
+                                    <span class="px-2 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-[11px] text-zinc-400 font-medium">standard</span>
+                                </div>
+                                <div class="flex items-center gap-2 mt-3 flex-wrap">
+                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/8 border border-emerald-500/15">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        <span class="text-[11px] font-medium text-emerald-400 tracking-wide">PROCEED_TRAVELER_SAFE</span>
+                                    </div>
+                                    <div class="text-[11px] text-zinc-500">Decision State</div>
+                                </div>
+                            <div class="flex items-center gap-6 md:text-right">
+                                <div>
+                                    <div class="text-[11px] text-zinc-500 uppercase tracking-wide">Confidence</div>
+                                    <div class="flex items-baseline gap-1.5 mt-1">
+                                        <span class="text-[28px] font-light text-white leading-none">90</span>
+                                        <span class="text-[14px] text-zinc-500">%</span>
+                                    </div>
+                                </div>
+                                <div class="w-px h-10 bg-zinc-800 hidden md:block"></div>
+                                <div>
+                                    <div class="text-[11px] text-zinc-500 uppercase tracking-wide">Last Updated</div>
+                                    <div class="mono text-[12px] text-zinc-300 mt-1.5">2026-03-12 14:32 IST</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Facts -->
+                    <div class="bg-[#0f1115] border border-zinc-800/80 rounded-2xl overflow-hidden">
+                        <div class="px-4 md:px-5 py-3.5 border-b border-zinc-800/80 flex items-center justify-between">
+                            <h3 class="text-[12px] font-semibold uppercase tracking-widest text-zinc-400">Facts</h3>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] text-zinc-500">7 fields</span>
+                                <span class="w-1 h-1 rounded-full bg-zinc-700"></span>
+                                <span class="text-[11px] text-emerald-400">100% extracted</span>
+                            </div>
+                        <div class="divide-y divide-zinc-900">
+                            <!-- origin_city -->
+                            <div class="grid grid-cols-12 items-center gap-3 px-4 md:px-5 py-3.5 hover:bg-white/[0.02] transition group">
+                                <div class="col-span-5 sm:col-span-3">
+                                    <div class="text-[12px] text-zinc-500">origin_city</div>
+                                </div>
+                                <div class="col-span-7 sm:col-span-5 flex items-center gap-2 min-w-0">
+                                    <span class="mono text-[13px] text-white truncate">Bangalore</span>
+                                    <div class="relative">
+                                        <svg class="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400 transition cursor-help shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                                        <div class="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-[#14171c] border border-zinc-700 rounded-xl shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 transition-all duration-200">
+                                            <div class="text-[10px] text-zinc-500 uppercase tracking-wide mb-1.5">Evidence</div>
+                                            <div class="text-[12px] text-zinc-200 leading-snug">"Flying from Bangalore with family for March break"</div>
+                                            <div class="text-[10px] text-zinc-500 mt-2 font-mono">agency_notes • L1:4-19</div>
+                                        </div>
+                                    </div>
+                                <div class="col-span-6 sm:col-span-2">
+                                    <span class="badge badge-explicit_owner">explicit_owner</span>
+                                </div>
+                                <div class="col-span-6 sm:col-span-2 flex items-center justify-end gap-2.5">
+                                    <div class="w-14 h-1 bg-zinc-900 rounded-full overflow-hidden hidden sm:block">
+                                        <div class="h-full bg-[#3b82f6] w-[95%]"></div>
+                                    </div>
+                                    <span class="text-[11px] text-zinc-500 mono w-8 text-right">95%</span>
+                                </div>
+                            <!-- destination_city -->
+                            <div class="grid grid-cols-12 items-center gap-3 px-4 md:px-5 py-3.5 hover:bg-white/[0.02] transition group">
+                                <div class="col-span-5 sm:col-span-3"><div class="text-[12px] text-zinc-500">destination_city</div></div>
+                                <div class="col-span-7 sm:col-span-5 flex items-center gap-2">
+                                    <span class="mono text-[13px] text-white">Singapore</span>
+                                    <div class="relative">
+                                        <svg class="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400 cursor-help" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                                        <div class="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-[#14171c] border border-zinc-700 rounded-xl shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 transition-all"><div class="text-[10px] text-zinc-500 uppercase mb-1.5">Evidence</div><div class="text-[12px] text-zinc-200">"Singapore for 5 days, looking at March 15-20"</div><div class="text-[10px] text-zinc-500 mt-2 font-mono">agency_notes • L1:34-43</div></div>
+                                    </div>
+                                <div class="col-span-6 sm:col-span-2"><span class="badge badge-explicit_user">explicit_user</span></div>
+                                <div class="col-span-6 sm:col-span-2 flex items-center justify-end gap-2.5"><div class="w-14 h-1 bg-zinc-900 rounded-full overflow-hidden hidden sm:block"><div class="h-full bg-[#10b981] w-[98%]"></div></div><span class="text-[11px] text-zinc-500 mono w-8 text-right">98%</span></div>
+                            </div>
+                            <!-- travel_dates -->
+                            <div class="grid grid-cols-12 items-center gap-3 px-4 md:px-5 py-3.5 hover:bg-white/[0.02] transition group">
+                                <div class="col-span-5 sm:col-span-3"><div class="text-[12px] text-zinc-500">travel_dates</div></div>
+                                <div class="col-span-7 sm:col-span-5 flex items-center gap-2"><span class="mono text-[13px] text-white">March 15-20, 2026</span><div class="relative"><svg class="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400 cursor-help" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg><div class="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-[#14171c] border border-zinc-700 rounded-xl shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 transition-all"><div class="text-[10px] text-zinc-500 uppercase mb-1.5">Evidence</div><div class="text-[12px] text-zinc-200">"March 15-20, 2026"</div><div class="text-[10px] text-zinc-500 mt-2 font-mono">agency_notes • L2:12-25</div></div></div></div>
+                                <div class="col-span-6 sm:col-span-2"><span class="badge badge-explicit_user">explicit_user</span></div>
+                                <div class="col-span-6 sm:col-span-2 flex items-center justify-end gap-2.5"><div class="w-14 h-1 bg-zinc-900 rounded-full overflow-hidden hidden sm:block"><div class="h-full bg-[#10b981] w-full"></div></div><span class="text-[11px] text-zinc-500 mono w-8 text-right">100%</span></div>
+                            </div>
+                            <!-- traveler_count -->
+                            <div class="grid grid-cols-12 items-center gap-3 px-4 md:px-5 py-3.5 hover:bg-white/[0.02] transition group">
+                                <div class="col-span-5 sm:col-span-3"><div class="text-[12px] text-zinc-500">traveler_count</div></div>
+                                <div class="col-span-7 sm:col-span-5 flex items-center gap-2"><span class="mono text-[13px] text-white">4</span><div class="relative"><svg class="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400 cursor-help" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg><div class="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-[#14171c] border border-zinc-700 rounded-xl shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 transition-all"><div class="text-[10px] text-zinc-500 uppercase mb-1.5">Evidence</div><div class="text-[12px] text-zinc-200">"4 of us total - 2 adults, 2 kids (8 and 11)"</div><div class="text-[10px] text-zinc-500 mt-2 font-mono">agency_notes • L2:1-11</div></div></div></div>
+                                <div class="col-span-6 sm:col-span-2"><span class="badge badge-explicit_user">explicit_user</span></div>
+                                <div class="col-span-6 sm:col-span-2 flex items-center justify-end gap-2.5"><div class="w-14 h-1 bg-zinc-900 rounded-full overflow-hidden hidden sm:block"><div class="h-full bg-[#10b981] w-[96%]"></div></div><span class="text-[11px] text-zinc-500 mono w-8 text-right">96%</span></div>
+                            </div>
+                            <!-- budget_range -->
+                            <div class="grid grid-cols-12 items-center gap-3 px-4 md:px-5 py-3.5 hover:bg-white/[0.02] transition group">
+                                <div class="col-span-5 sm:col-span-3"><div class="text-[12px] text-zinc-500">budget_range</div></div>
+                                <div class="col-span-7 sm:col-span-5 flex items-center gap-2"><span class="mono text-[13px] text-white">3 lakhs</span><div class="relative"><svg class="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400 cursor-help" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg><div class="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-[#14171c] border border-zinc-700 rounded-xl shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 transition-all"><div class="text-[10px] text-zinc-500 uppercase mb-1.5">Evidence</div><div class="text-[12px] text-zinc-200">"around 3 lakhs total budget including flights"</div><div class="text-[10px] text-zinc-500 mt-2 font-mono">agency_notes • L3:1-15</div></div></div></div>
+                                <div class="col-span-6 sm:col-span-2"><span class="badge badge-explicit_owner">explicit_owner</span></div>
+                                <div class="col-span-6 sm:col-span-2 flex items-center justify-end gap-2.5"><div class="w-14 h-1 bg-zinc-900 rounded-full overflow-hidden hidden sm:block"><div class="h-full bg-[#3b82f6] w-[88%]"></div></div><span class="text-[11px] text-zinc-500 mono w-8 text-right">88%</span></div>
+                            </div>
+                            <!-- traveler_composition -->
+                            <div class="grid grid-cols-12 items-center gap-3 px-4 md:px-5 py-3.5 hover:bg-white/[0.02] transition group">
+                                <div class="col-span-5 sm:col-span-3"><div class="text-[12px] text-zinc-500">traveler_composition</div></div>
+                                <div class="col-span-7 sm:col-span-5 flex items-center gap-2"><span class="mono text-[13px] text-white">2 adults, 2 kids</span><div class="relative"><svg class="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400 cursor-help" viewBox="0 0 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg><div class="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-[#14171c] border border-zinc-700 rounded-xl shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 transition-all"><div class="text-[10px] text-zinc-500 uppercase mb-1.5">Evidence</div><div class="text-[12px] text-zinc-200">"2 adults, 2 kids (8 and 11)"</div><div class="text-[10px] text-zinc-500 mt-2 font-mono">agency_notes • L2:14-32</div></div></div></div>
+                                <div class="col-span-6 sm:col-span-2"><span class="badge badge-explicit_user">explicit_user</span></div>
+                                <div class="col-span-6 sm:col-span-2 flex items-center justify-end gap-2.5"><div class="w-14 h-1 bg-zinc-900 rounded-full overflow-hidden hidden sm:block"><div class="h-full bg-[#10b981] w-[97%]"></div></div><span class="text-[11px] text-zinc-500 mono w-8 text-right">97%</span></div>
+                            </div>
+                            <!-- preferences -->
+                            <div class="grid grid-cols-12 items-center gap-3 px-4 md:px-5 py-3.5 hover:bg-white/[0.02] transition group">
+                                <div class="col-span-5 sm:col-span-3"><div class="text-[12px] text-zinc-500">preferences</div></div>
+                                <div class="col-span-7 sm:col-span-5 flex items-center gap-2"><span class="mono text-[13px] text-white">kid-friendly</span><div class="relative"><svg class="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400 cursor-help" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg><div class="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-[#14171c] border border-zinc-700 rounded-xl shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 transition-all"><div class="text-[10px] text-zinc-500 uppercase mb-1.5">Evidence</div><div class="text-[12px] text-zinc-200">"need kid-friendly hotels and activities"</div><div class="text-[10px] text-zinc-500 mt-2 font-mono">agency_notes • L3:18-45</div></div></div></div>
+                                <div class="col-span-6 sm:col-span-2"><span class="badge badge-explicit_user">explicit_user</span></div>
+                                <div class="col-span-6 sm:col-span-2 flex items-center justify-end gap-2.5"><div class="w-14 h-1 bg-zinc-900 rounded-full overflow-hidden hidden sm:block"><div class="h-full bg-[#10b981] w-[92%]"></div></div><span class="text-[11px] text-zinc-500 mono w-8 text-right">92%</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Derived & Hypotheses -->
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div class="md:col-span-3 bg-[#0f1115] border border-zinc-800/80 rounded-2xl">
+                            <div class="px-4 py-3 border-b border-zinc-800/80"><h3 class="text-[12px] font-semibold uppercase tracking-widest text-zinc-400">Derived Signals</h3></div>
+                            <div class="p-4 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div><div class="text-[11px] text-zinc-500 mb-1">traveler_type</div><div class="mono text-[13px] text-white">family</div></div>
+                                    <div class="flex items-center gap-2"><span class="badge badge-derived">derived_signal</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-500 border border-zinc-800">verified</span></div>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <div><div class="text-[11px] text-zinc-500 mb-1">urgency</div><div class="mono text-[13px] text-white">low</div></div>
+                                    <div class="flex items-center gap-2"><span class="badge badge-derived">derived_signal</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-500 border border-zinc-800">heuristic</span></div>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <div><div class="text-[11px] text-zinc-500 mb-1">trip_duration</div><div class="mono text-[13px] text-white">5 nights</div></div>
+                                    <div class="flex items-center gap-2"><span class="badge badge-derived">derived_signal</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-500 border border-zinc-800">verified</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="md:col-span-2 bg-[#0f1115] border border-zinc-800/80 rounded-2xl">
+                            <div class="px-4 py-3 border-b border-zinc-800/80"><h3 class="text-[12px] font-semibold uppercase tracking-widest text-zinc-400">Hypotheses</h3></div>
+                            <div class="p-6 flex flex-col items-center justify-center text-center min-h-[132px]">
+                                <div class="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 grid place-items-center mb-2.5"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+                                <div class="text-[13px] text-zinc-400">No active hypotheses</div>
+                                <div class="text-[11px] text-zinc-600 mt-1">All facts validated</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CENTER 25% -->
+                <div class="col-span-12 md:col-span-6 xl:col-span-3 space-y-4">
+                    <div class="bg-[#0f1115] border border-zinc-800/80 rounded-2xl overflow-hidden">
+                        <div class="px-4 py-3 flex items-center justify-between border-b border-zinc-800/60">
+                            <h3 class="text-[12px] font-semibold uppercase tracking-widest text-zinc-400">Ambiguities</h3>
+                            <div class="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 grid place-items-center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div>
+                        </div>
+                        <div class="px-4 py-4"><div class="text-[26px] font-light text-white leading-none">0</div><div class="text-[11px] text-zinc-500 mt-1.5">No ambiguous fields</div></div>
+                    </div>
+                    <div class="bg-[#0f1115] border border-zinc-800/80 rounded-2xl overflow-hidden">
+                        <div class="px-4 py-3 flex items-center justify-between border-b border-zinc-800/60">
+                            <h3 class="text-[12px] font-semibold uppercase tracking-widest text-zinc-400">Unknowns</h3>
+                            <div class="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/20 grid place-items-center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div>
+                        </div>
+                        <div class="px-4 py-4"><div class="text-[26px] font-light text-white leading-none">0</div><div class="text-[11px] text-zinc-500 mt-1.5">All required fields present</div></div>
+                    </div>
+                    <div class="bg-[#0f1115] border border-zinc-800/80 rounded-2xl overflow-hidden">
+                        <div class="px-4 py-3 flex items-center justify-between border-b border-zinc-800/60">
+                            <h3 class="text-[12px] font-semibold uppercase tracking-widest text-zinc-400">Contradictions</h3>
+                            <div class="w-5 h-5 rounded-full bg-zinc-800 grid place-items-center"><span class="text-[10px] text-zinc-500">0</span></div>
+                        </div>
+                        <div class="px-4 py-4"><div class="text-[13px] text-zinc-500">No conflicts detected</div></div>
+                    </div>
+                    <div class="bg-[#0f1115] border border-zinc-800/80 rounded-2xl">
+                        <div class="px-4 py-3 border-b border-zinc-800/60"><h3 class="text-[12px] font-semibold uppercase tracking-widest text-zinc-400">Risk Flags</h3></div>
+                        <div class="px-4 py-4"><div class="text-[13px] text-zinc-600">None</div></div>
+                    </div>
+                </div>
+
+                <!-- RIGHT 15% -->
+                <div class="col-span-12 md:col-span-6 xl:col-span-2 space-y-4">
+                    <div class="bg-[#0f1115] border border-zinc-800/80 rounded-2xl">
+                        <div class="px-3.5 py-2.5 border-b border-zinc-800/80"><h3 class="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">Provenance</h3></div>
+                        <div class="p-3.5 space-y-2.5">
+                            <div><div class="text-[11px] text-zinc-500">SourceEnvelope</div><div class="mono text-[12px] text-zinc-200 mt-1">agency_notes</div></div>
+                            <div class="h-px bg-zinc-900"></div>
+                            <div class="flex justify-between text-[11px]"><span class="text-zinc-500">Received</span><span class="text-zinc-300">2h ago</span></div>
+                            <div class="flex justify-between text-[11px]"><span class="text-zinc-500">Chars</span><span class="text-zinc-300 mono">127</span></div>
+                        </div>
+                    </div>
+                    <div class="bg-[#0f1115] border border-zinc-800/80 rounded-2xl">
+                        <div class="px-3.5 py-2.5 border-b border-zinc-800/80"><h3 class="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">Evidence Coverage</h3></div>
+                        <div class="p-3.5">
+                            <div class="flex items-baseline justify-between"><span class="text-[22px] font-light text-white">7/7</span><span class="text-[11px] text-emerald-400 font-medium">100%</span></div>
+                            <div class="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden mt-2.5"><div class="h-full bg-emerald-500 w-full"></div></div>
+                            <div class="text-[10px] text-zinc-500 mt-2">All fields with evidence</div>
+                        </div>
+                    </div>
+                    <div class="bg-[#0f1115] border border-zinc-800/80 rounded-2xl">
+                        <div class="px-3.5 py-2.5 border-b border-zinc-800/80"><h3 class="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">Event Log</h3></div>
+                        <div class="p-3.5 space-y-3">
+                            <div class="flex gap-2.5"><div class="w-1.5 h-1.5 rounded-full bg-zinc-600 mt-1.5 shrink-0"></div><div><div class="text-[12px] text-zinc-300">packet_created</div><div class="text-[10px] text-zinc-600 mono">14:30:12</div></div></div>
+                            <div class="flex gap-2.5"><div class="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0"></div><div><div class="text-[12px] text-zinc-300">facts_extracted</div><div class="text-[10px] text-zinc-600 mono">14:30:14</div></div></div>
+                            <div class="flex gap-2.5"><div class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0"></div><div><div class="text-[12px] text-zinc-300">decision_made</div><div class="text-[10px] text-zinc-600 mono">14:32:05</div></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DIVIDER -->
+        <div class="relative">
+            <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-zinc-900"></div></div>
+            <div class="relative flex justify-center"><span class="bg-[#080a0c] px-3 text-[11px] uppercase tracking-widest text-zinc-600">Complex Case Example</span></div>
+        </div>
+
+        <!-- PACKET 2: AMBIGUOUS -->
+        <div>
+            <div class="flex items-center gap-2.5 mb-4">
+                <h2 class="text-[14px] font-medium text-zinc-300">TRP-2026-0420-IND</h2>
+                <span class="px-2 py-0.5 text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-md uppercase tracking-wide font-medium">Needs Review</span>
+            </div>
+            <div class="grid grid-cols-12 gap-4 items-start">
+                <!-- LEFT -->
+                <div class="col-span-12 xl:col-span-7 space-y-4">
+                    <div class="bg-[#0f1115] border border-zinc-800/80 rounded-2xl p-4 md:p-5">
+                        <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                            <div>
+                                <div class="flex items-center gap-2.5 flex-wrap">
+                                    <h1 class="mono text-[18px] md:text-[20px] font-medium text-white">TRP-2026-0420-IND</h1>
+                                    <span class="px-2 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-[11px] text-zinc-400">standard</span>
+                                </div>
+                                <div class="flex items-center gap-2 mt-3">
+                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/8 border border-amber-500/15">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                        <span class="text-[11px] font-medium text-amber-400 tracking-wide">ASK_FOLLOWUP</span>
+                                    </div>
+                                    <div class="text-[11px] text-zinc-500">Decision State</div>
+                                </div>
+                            <div class="flex items-center gap-6">
+                                <div>
+                                    <div class="text-[11px] text-zinc-500 uppercase tracking-wide">Confidence</div>
+                                    <div class="flex items-baseline gap-1.5 mt-1"><span class="text-[28px] font-light text-amber-400 leading-none">62</span><span class="text-[14px] text-zinc-600">%</span></div>
+                                </div>
+                                <div class="w-px h-10 bg-zinc-800 hidden md:block"></div>
+                                <div><div class="text-[11px] text-zinc-500 uppercase tracking-wide">Last Updated</div><div class="mono text-[12px] text-zinc-300 mt-1.5">2026-03-12 16:18 IST</div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#0f1115] border border-zinc-800/80 rounded-2xl overflow-hidden">
+                        <div class="px-4 md:px-5 py-3.5 border-b border-zinc-800/80 flex items-center justify-between">
+                            <h3 class="text-[12px] font-semibold uppercase tracking-widest text-zinc-400">Facts</h3>
+                            <div class="flex items-center gap-2"><span class="text-[11px] text-zinc-500">7 fields</span><span class="w-1 h-1 rounded-full bg-zinc-700"></span><span class="text-[11px] text-amber-400">71% extracted</span></div>
+                        </div>
+                        <div class="divide-y divide-zinc-900">
+                            <div class="grid grid-cols-12 items-center gap-3 px-4 md:px-5 py-3.5 hover:bg-white/[0.02] transition">
+                                <div class="col-span-5 sm:col-span-3"><div class="text-[12px] text-zinc-500">origin_city</div></div>
+                                <div class="col-span-7 sm:col-span-5"><span class="mono text-[13px] text-white">Bangalore</span></div>
+                                <div class="col-span-6 sm:col-span-2"><span class="badge badge-explicit_owner">explicit_owner</span></div>
+                                <div class="col-span-6 sm:col-span-2 flex items-center justify-end gap-2.5"><div class="w-14 h-1 bg-zinc-900 rounded-full overflow-hidden hidden sm:block"><div class="h-full bg-[#3b82f6] w-[95%]"></div></div><span class="text-[11px] text-zinc-500 mono w-8 text-right">95%</span></div>
+                            </div>
+                            <div class="grid grid-cols-12 items-center gap-3 px-4 md:px-5 py-3.5 hover:bg-white/[0.02] transition bg-amber-950/20">
+                                <div class="col-span-5 sm:col-span-3"><div class="text-[12px] text-zinc-500">destination_city</div></div>
+                                <div class="col-span-7 sm:col-span-5 flex items-center gap-2 flex-wrap"><span class="mono text-[13px] text-amber-200">Andaman or Sri Lanka</span><span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/25"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>ambiguous</span></div>
+                                <div class="col-span-6 sm:col-span-2"><span class="badge badge-explicit_user">explicit_user</span></div>
+                                <div class="col-span-6 sm:col-span-2 flex items-center justify-end gap-2.5"><div class="w-14 h-1 bg-zinc-900 rounded-full overflow-hidden hidden sm:block"><div class="h-full bg-amber-500 w-[55%]"></div></div><span class="text-[11px] text-amber-400 mono w-8 text-right">55%</span></div>
+                            </div>
+                            <div class="grid grid-cols-12 items-center gap-3 px-4 md:px-5 py-3.5 hover:bg-white/[0.02] transition opacity-60">
+                                <div class="col-span-5 sm:col-span-3"><div class="text-[12px] text-zinc-500">travel_dates</div></div>
+                                <div class="col-span-7 sm:col-span-5"><span class="mono text-[13px] text-zinc-600">—</span></div>
+                                <div class="col-span-6 sm:col-span-2"><span class="badge badge-hypothesis">soft_hypothesis</span></div>
+                                <div class="col-span-6 sm:col-span-2 flex items-center justify-end"><span class="text-[11px] text-zinc-600 mono w-8 text-right">0%</span></div>
+                            </div>
+                            <div class="grid grid-cols-12 items-center gap-3 px-4 md:px-5 py-3.5 hover:bg-white/[0.02] transition">
+                                <div class="col-span-5 sm:col-span-3"><div class="text-[12px] text-zinc-500">traveler_count</div></div>
+                                <div class="col-span-7 sm:col-span-5"><span class="mono text-[13px] text-white">3</span></div>
+                                <div class="col-span-6 sm:col-span-2"><span class="badge badge-explicit_user">explicit_user</span></div>
+                                <div class="col-span-6 sm:col-span-2 flex items-center justify-end gap-2.5"><div class="w-14 h-1 bg-zinc-900 rounded-full overflow-hidden hidden sm:block"><div class="h-full bg-[#10b981] w-[90%]"></div></div><span class="text-[11px] text-zinc-500 mono w-8 text-right">90%</span></div>
+                            </div>
+                            <div class="grid grid-cols-12 items-center gap-3 px-4 md:px-5 py-3.5 hover:bg-white/[0.02] transition">
+                                <div class="col-span-5 sm:col-span-3"><div class="text-[12px] text-zinc-500">budget_range</div></div>
+                                <div class="col-span-7 sm:col-span-5"><span class="mono text-[13px] text-white">2 lakhs</span></div>
+                                <div class="col-span-6 sm:col-span-2"><span class="badge badge-explicit_owner">explicit_owner</span></div>
+                                <div class="col-span-6 sm:col-span-2 flex items-center justify-end gap-2.5"><div class="w-14 h-1 bg-zinc-900 rounded-full overflow-hidden hidden sm:block"><div class="h-full bg-[#3b82f6] w-[85%]"></div></div><span class="text-[11px] text-zinc-500 mono w-8 text-right">85%</span></div>
+                            </div>
+                            <div class="grid grid-cols-12 items-center gap-3 px-4 md:px-5 py-3.5 hover:bg-white/[0.02] transition">
+                                <div class="col-span-5 sm:col-span-3"><div class="text-[12px] text-zinc-500">traveler_composition</div></div>
+                                <div class="col-span-7 sm:col-span-5"><span class="mono text-[13px] text-white">3 adults</span></div>
+                                <div class="col-span-6 sm:col-span-2"><span class="badge badge-derived">derived_signal</span></div>
+                                <div class="col-span-6 sm:col-span-2 flex items-center justify-end gap-2.5"><div class="w-14 h-1 bg-zinc-900 rounded-full overflow-hidden hidden sm:block"><div class="h-full bg-amber-500 w-[70%]"></div></div><span class="text-[11px] text-zinc-500 mono w-8 text-right">70%</span></div>
+                            </div>
+                            <div class="grid grid-cols-12 items-center gap-3 px-4 md:px-5 py-3.5 hover:bg-white/[0.02] transition">
+                                <div class="col-span-5 sm:col-span-3"><div class="text-[12px] text-zinc-500">preferences</div></div>
+                                <div class="col-span-7 sm:col-span-5"><span class="mono text-[13px] text-white">beach</span></div>
+                                <div class="col-span-6 sm:col-span-2"><span class="badge badge-explicit_user">explicit_user</span></div>
+                                <div class="col-span-6 sm:col-span-2 flex items-center justify-end gap-2.5"><div class="w-14 h-1 bg-zinc-900 rounded-full overflow-hidden hidden sm:block"><div class="h-full bg-[#10b981] w-[80%]"></div></div><span class="text-[11px] text-zinc-500 mono w-8 text-right">80%</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div class="md:col-span-3 bg-[#0f1115] border border-zinc-800/80 rounded-2xl">
+                            <div class="px-4 py-3 border-b border-zinc-800/80"><h3 class="text-[12px] font-semibold uppercase tracking-widest text-zinc-400">Derived Signals</h3></div>
+                            <div class="p-4 space-y-3">
+                                <div class="flex items-center justify-between"><div><div class="text-[11px] text-zinc-500 mb-1">traveler_type</div><div class="mono text-[13px] text-white">group</div></div><div class="flex items-center gap-2"><span class="badge badge-derived">derived_signal</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-500 border border-zinc-800">heuristic</span></div></div>
+                                <div class="flex items-center justify-between"><div><div class="text-[11px] text-zinc-500 mb-1">urgency</div><div class="mono text-[13px] text-white">medium</div></div><div class="flex items-center gap-2"><span class="badge badge-derived">derived_signal</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-500 border border-zinc-800">heuristic</span></div></div>
+                                <div class="flex items-center justify-between opacity-50"><div><div class="text-[11px] text-zinc-500 mb-1">trip_duration</div><div class="mono text-[13px] text-zinc-600">unknown</div></div><div class="flex items-center gap-2"><span class="badge badge-hypothesis">soft_hypothesis</span></div></div>
+                            </div>
+                        </div>
+                        <div class="md:col-span-2 bg-[#0f1115] border border-amber-900/40 rounded-2xl">
+                            <div class="px-4 py-3 border-b border-amber-900/30"><h3 class="text-[12px] font-semibold uppercase tracking-widest text-amber-400/80">Hypotheses</h3></div>
+                            <div class="p-4">
+                                <div class="flex items-start gap-2.5">
+                                    <div class="w-5 h-5 rounded-full bg-amber-500/10 grid place-items-center mt-0.5 shrink-0"><span class="text-[10px] text-amber-400">1</span></div>
+                                    <div><div class="text-[12px] text-zinc-200 leading-snug">Destination likely Andaman (budget fit)</div><div class="text-[11px] text-zinc-500 mt-1">confidence 62% • needs confirmation</div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CENTER -->
+                <div class="col-span-12 md:col-span-6 xl:col-span-3 space-y-4">
+                    <div class="bg-[#141009] border border-amber-900/50 rounded-2xl overflow-hidden">
+                        <div class="px-4 py-3 flex items-center justify-between border-b border-amber-900/30">
+                            <h3 class="text-[12px] font-semibold uppercase tracking-widest text-amber-300/80">Ambiguities</h3>
+                            <div class="w-5 h-5 rounded-full bg-amber-500/15 grid place-items-center"><span class="text-[11px] text-amber-400 font-medium">1</span></div>
+                        </div>
+                        <div class="p-3">
+                            <div class="bg-[#1c1408] border border-amber-900/40 rounded-xl p-3">
+                                <div class="flex items-start gap-2.5">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" class="mt-0.5 shrink-0"><path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <div class="min-w-0">
+                                        <div class="text-[12px] text-amber-200 font-medium">destination_city</div>
+                                        <div class="text-[11px] text-zinc-400 mt-1 leading-snug">"Andaman or Sri Lanka" — unresolved alternatives</div>
+                                        <div class="mt-2"><span class="px-1.5 py-0.5 text-[10px] bg-amber-500/15 text-amber-300 rounded border border-amber-500/20">unresolved_alternatives</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <div class="bg-[#0f1115] border border-zinc-800/80 rounded-2xl overflow-hidden">
+                        <div class="px-4 py-3 flex items-center justify-between border-b border-zinc-800/60">
+                            <h3 class="text-[12px] font-semibold uppercase tracking-widest text-zinc-400">Unknowns</h3>
+                            <div class="w-5 h-5 rounded-full bg-amber-500/10 border border-amber-500/20 grid place-items-center"><span class="text-[11px] text-amber-400">1</span></div>
+                        </div>
+                        <div class="px-4 py-3.5"><div class="text-[13px] text-white mono">travel_dates</div><div class="text-[11px] text-zinc-500 mt-1">Required for pricing</div></div>
+                    </div>
+                    <div class="bg-[#0f1115] border border-zinc-800/80 rounded-2xl overflow-hidden">
+                        <div class="px-4 py-3 flex items-center justify-between border-b border-zinc-800/60">
+                            <h3 class="text-[12px] font-semibold uppercase tracking-widest text-zinc-400">Contradictions</h3>
+                            <div class="w-5 h-5 rounded-full bg-zinc-800 grid place-items-center"><span class="text-[10px] text-zinc-500">0</span></div>
+                        </div>
+                        <div class="px-4 py-4"><div class="text-[13px] text-zinc-500">None detected</div></div>
+                    </div>
+                    <div class="bg-[#0f1115] border border-zinc-800/80 rounded-2xl">
+                        <div class="px-4 py-3 border-b border-zinc-800/60"><h3 class="text-[12px] font-semibold uppercase tracking-widest text-zinc-400">Risk Flags</h3></div>
+                        <div class="px-4 py-3.5"><div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span><span class="text-[12px] text-amber-300">dates_missing_blocks_quote</span></div></div>
+                    </div>
+                </div>
+
+                <!-- RIGHT -->
+                <div class="col-span-12 md:col-span-6 xl:col-span-2 space-y-4">
+                    <div class="bg-[#0f1115] border border-zinc-800/80 rounded-2xl">
+                        <div class="px-3.5 py-2.5 border-b border-zinc-800/80"><h3 class="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">Provenance</h3></div>
+                        <div class="p-3.5 space-y-2.5">
+                            <div><div class="text-[11px] text-zinc-500">SourceEnvelope</div><div class="mono text-[12px] text-zinc-200 mt-1">whatsapp_message</div></div>
+                            <div class="h-px bg-zinc-900"></div>
+                            <div class="flex justify-between text-[11px]"><span class="text-zinc-500">Received</span><span class="text-zinc-300">45m ago</span></div>
+                            <div class="flex justify-between text-[11px]"><span class="text-zinc-500">Chars</span><span class="text-zinc-300 mono">89</span></div>
+                        </div>
+                    </div>
+                    <div class="bg-[#0f1115] border border-zinc-800/80 rounded-2xl">
+                        <div class="px-3.5 py-2.5 border-b border-zinc-800/80"><h3 class="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">Evidence Coverage</h3></div>
+                        <div class="p-3.5">
+                            <div class="flex items-baseline justify-between"><span class="text-[22px] font-light text-white">5/7</span><span class="text-[11px] text-amber-400 font-medium">71%</span></div>
+                            <div class="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden mt-2.5"><div class="h-full bg-amber-500 w-[71%]"></div></div>
+                            <div class="text-[10px] text-zinc-500 mt-2">2 fields missing evidence</div>
+                        </div>
+                    <div class="bg-[#0f1115] border border-zinc-800/80 rounded-2xl">
+                        <div class="px-3.5 py-2.5 border-b border-zinc-800/80"><h3 class="text-[11px] font-semibold uppercase tracking-widest text-zinc-500">Event Log</h3></div>
+                        <div class="p-3.5 space-y-3">
+                            <div class="flex gap-2.5"><div class="w-1.5 h-1.5 rounded-full bg-zinc-600 mt-1.5"></div><div><div class="text-[12px] text-zinc-300">packet_created</div><div class="text-[10px] text-zinc-600 mono">16:15:02</div></div></div>
+                            <div class="flex gap-2.5"><div class="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5"></div><div><div class="text-[12px] text-zinc-300">ambiguity_detected</div><div class="text-[10px] text-zinc-600 mono">16:15:04</div></div></div>
+                            <div class="flex gap-2.5"><div class="w-1.5 h-1.5 rounded-full bg-zinc-700 mt-1.5 animate-pulse"></div><div><div class="text-[12px] text-zinc-400">awaiting_input</div><div class="text-[10px] text-zinc-600 mono">—</div></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Meta -->
+        <div class="pt-4 border-t border-zinc-900 flex items-center justify-between text-[11px] text-zinc-600">
+            <div class="flex items-center gap-3">
+                <span>CanonicalPacket v0.2</span>
+                <span>•</span>
+                <span class="hidden sm:inline">Authority: manual_override > explicit_user > explicit_owner > derived_signal > soft_hypothesis</span>
+            </div>
+            <div class="mono">schema-hash: cp02-7f3a9d</div>
+        </div>
+    </main>
+</body>
+</html>

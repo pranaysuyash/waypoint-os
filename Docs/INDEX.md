@@ -6,10 +6,16 @@
 - [Data Model and Taxonomy](DATA_MODEL_AND_TAXONOMY.md) — Brackets, budget splits, and the shared state schema.
 - [Sourcing and Decision Policy](Sourcing_And_Decision_Policy.md) — Sourcing hierarchy and "Proceed/Ask" gating logic.
 - [Discussion Log](DISCUSSION_LOG.md) — Audit trail of pivots and agent feedback.
-- [Gemini Issue Review](gemini%20issue%20review.md) — Active issue register for identified/validated gaps.
+- [Issue Review](issue_review.md) — Active issue register for identified/validated gaps.
 - [First Principles Foundation (2026-04-14)](FIRST_PRINCIPLES_FOUNDATION_2026-04-14.md) — Core truths, objective function, and strict dependency-ordered build sequence.
 - [Rolling Context Synthesis](ROLLING_CONTEXT_SYNTHESIS.md) — Active cross-part synthesis and implementation contracts.
 - [First Mile Implementation](FIRST_MILE_IMPLEMENTATION.md) — Roadmap for the Agency Context deconstruction.
+- [Meta Design Reference Synthesis (2026-04-14)](context/META_DESIGN_REFERENCE_SYNTHESIS_2026-04-14.md) — Extracted actions from 5:45 PM external design artifacts (`Do now / Do later / Discuss`).
+- [Institutional Memory Layer Synthesis (2026-04-14)](context/INSTITUTIONAL_MEMORY_LAYER_SYNTHESIS_2026-04-14.md) — Missing angles and operating model for Template Genome, Supplier Graph, Pricing Memory, Customer Genome, and Playbook Engine.
+- [Itinerary Checker GTM Wedge (2026-04-14)](context/ITINERARY_CHECKER_GTM_WEDGE_2026-04-14.md) — Free checker strategy, 15-rule NB02-lite scope, API contract, rollout plan, and data-flywheel linkage.
+- [Decision Memo: Itinerary Checker (2026-04-14)](context/DECISION_MEMO_ITINERARY_CHECKER_2026-04-14.md) — Go/no-go decision, 30-day gates, locked v1 scope, and execution cadence.
+- [SEO + Next.js GTM Playbook Synthesis (2026-04-14)](context/SEO_NEXTJS_GTM_PLAYBOOK_SYNTHESIS_2026-04-14.md) — Integrated external implementation draft with keep/change/defer decisions for practical MVP rollout.
+- [Travel Agency Context 2 Synthesis (2026-04-14)](context/TRAVEL_AGENCY_CONTEXT_2_SYNTHESIS_2026-04-14.md) — One-time-link workspace framing, 5-core architecture compression, canonical packet reinforcement, and commercial-layer priorities.
 
 ---
 
@@ -69,6 +75,13 @@
 - **[User Journeys and Aha Moments](UX_USER_JOURNEYS_AND_AHA_MOMENTS.md)** — Detailed journey maps from pain to delight. Before/After states, emotional shifts, value realization.
 - **[Detailed User Flows](UX_DETAILED_USER_FLOWS.md)** — Screen-by-screen flows: onboarding, intake, processing, options generation, client presentation.
 - **[Synthetic Data and Fixtures](SYNTHETIC_DATA_AND_FIXTURES.md)** — Schemas, test messages, fixtures for development. Clean/moderate/messy/edge cases.
+
+### Fixture Files (data/fixtures/)
+
+- **[product_persona_flows_synthetic_v1.json](../data/fixtures/product_persona_flows_synthetic_v1.json)** — PM/UX synthetic scenarios with personas, JTBD, aha moments, flows, and flywheel instrumentation.
+- **[test_messages.json](../data/fixtures/test_messages.json)** — 30 categorized test messages (clean/moderate/messy/contradictory/edge cases) for intake and feasibility testing.
+- **[trip_examples.json](../data/fixtures/trip_examples.json)** — Complete trip examples with full journey data for development and demos.
+- **[README.md](../data/fixtures/README.md)** — Fixture files documentation, usage examples, data structures.
 
 ### Previous UX Docs (2026-04-13)
 

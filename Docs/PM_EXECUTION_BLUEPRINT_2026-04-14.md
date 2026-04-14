@@ -134,6 +134,23 @@ Use this file for:
 
 ## 6) What We Still Need to Think Through (Priority Backlog)
 
+### P0 (Execution Order Lock: First Principles)
+1. Parser-first (deterministic constraints):
+   - typed parsers for dates, money, pax, locations
+   - locale-aware money/date parsing
+   - hard rule: date-shaped tokens can never satisfy budget fields
+2. NER/IE second (semantic fill + disambiguation):
+   - extract destination, purpose, preferences, medical/accessibility, group structure
+   - output confidence + evidence spans (not value-only extraction)
+3. OCR/document ingestion layer:
+   - support WhatsApp screenshots, PDFs, passports/visa docs, invoices
+   - preserve OCR provenance (line/box) for citation and traceability
+4. Schema + confidence gate:
+   - typed validation before decision policy
+   - low-confidence/conflicting critical fields -> `ASK_FOLLOWUP` / `STOP_NEEDS_REVIEW`
+5. Fallback strategy:
+   - deterministic parser > NER suggestion > regex fallback (never reverse for critical fields)
+
 ### P0 (Now)
 1. Define stage-specific quality gates for `PROCEED_TRAVELER_SAFE`.
 2. Lock a canonical follow-up question strategy (minimal questions, maximum clarity).
@@ -177,4 +194,3 @@ Use this file for:
 2. Add telemetry fields for each flow checkpoint in `product_persona_flows_synthetic_v1.json`.
 3. Define and publish a one-page operator rubric for “ready to send to traveler”.
 4. Establish monthly PM review doc template tied to this blueprint.
-

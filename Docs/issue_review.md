@@ -1,4 +1,4 @@
-# Gemini Issue Review
+# Issue Review
 
 Date: 2026-04-14 IST
 
@@ -130,3 +130,80 @@ End-to-end scenario validation reports `Expected-decision checks: 3/4 passed`.
 - Re-ran E2E:
   - `python tools/e2e_scenario_runner.py --set existing_plus_new --md-out Docs/reports/e2e_existing_plus_new_2026-04-14.md --json-out Docs/reports/e2e_existing_plus_new_2026-04-14.json`
   - Result: `Expected-decision checks: 4/4 passed`
+
+## New Issue Identified (2026-04-14)
+### Visa/VOA/Document Requirement Contract is Fragmented (Not Canonical)
+
+#### Context
+Discussion review requested to verify whether visa/document-requirement thinking already exists in repo and whether it is implementation-ready.
+
+Environment date checked before documenting:
+- `2026-04-14 10:35:53 IST`
+
+#### Evidence (Current State)
+- Code has partial handling:
+  - `src/intake/extractors.py` -> `_extract_passport_visa(...)` (keyword/regex-level extraction).
+  - `src/intake/decision.py` -> booking-stage checks using `passport_status` / `visa_status`.
+- Docs include multiple references across PM/UX/scenario files, but not one canonical runtime contract.
+
+#### Problem
+- Logic is distributed across docs and implementation with no single deterministic visa/doc policy spec.
+- No strict parser contract yet for:
+  - `visa_on_arrival` vs `e-visa` vs embassy visa,
+  - transit visa semantics,
+  - processing-time-to-travel risk calculations.
+- Critical traveler attributes for visa decisions are not enforced as a complete required set.
+- OCR provenance (line/box source evidence) is not yet represented as a strict decision input for visa/doc checks.
+
+#### Impact
+- Increased risk of inconsistent handling across scenarios.
+- Potential false proceed or delayed escalation for high-risk visa/document cases.
+- Harder to validate behavior with deterministic test coverage.
+
+#### Recommended Fix Direction
+1. Add canonical visa/doc requirement contract (single source of truth doc + schema hooks).
+2. Implement deterministic parser-first module for visa/doc constraints.
+3. Extend schema + confidence gate to enforce:
+   - critical-field completeness,
+   - confidence thresholds,
+   - evidence spans/provenance for OCR-derived claims.
+4. Add scenario tests specifically for:
+   - visa-on-arrival eligibility,
+   - transit visa requirements,
+   - processing-time risk near travel dates.
+
+#### Status
+- Marked for review.
+- Implementation pending.
+
+## New Issue Identified (2026-04-14)
+### Full `pytest` collection fails with notebook import path error (`ModuleNotFoundError: intake`)
+
+#### Symptom
+Running `pytest -q` from project root fails during collection of notebook-linked tests.
+
+#### Evidence
+- Command:
+  - `pytest -q`
+- Error:
+  - `ModuleNotFoundError: No module named 'intake'`
+- Affected files:
+  - `notebooks/test_02_comprehensive.py`
+  - `notebooks/test_scenarios_realworld.py`
+
+#### Likely Cause
+Notebook test loader currently relies on relative path insertion that is brittle under root-level test collection context.
+
+#### Impact
+- Full test discovery fails even when non-notebook test modules may be healthy.
+- Slows CI confidence if full `pytest` is expected as standard.
+
+#### Recommended Next Step
+1. Normalize import path strategy for notebook tests (explicit, root-safe resolution).
+2. Re-run full suite:
+   - `pytest -q`
+3. Keep notebook tests clearly marked as core vs exploratory if needed.
+
+#### Status
+- Marked for review.
+- Not fixed in this documentation pass.
