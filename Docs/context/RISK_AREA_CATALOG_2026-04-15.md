@@ -14,12 +14,13 @@ This catalog is a canonical list of risk areas for the travel agency product. It
 - Product requirements and feature prioritization
 - Customer communication and contingency planning
 
-The risk areas are grouped into four primary categories:
+The risk areas are grouped into five primary categories:
 
 1. Customer-side risks
 2. Vendor-side risks
 3. Operational risks
 4. External risks
+5. SaaS Provider risks
 
 Each category contains high-level risk buckets and concrete examples relevant to agency travel planning.
 
@@ -249,6 +250,92 @@ These are risks outside the direct control of the customer, vendor, or agency.
 - Phishing attacks target travelers with fake booking confirmations.
 - Online payment systems are compromised during peak booking periods.
 - GPS or navigation systems fail, affecting transfers and activities.
+
+---
+
+## 5. SaaS Provider Risks
+
+These are risks specific to operating the travel agency agent as a software platform and business.
+
+### 5.1 Platform availability & uptime risk
+
+- Service outages due to infrastructure failures or DDoS attacks.
+- API rate limiting affects customer usage during peak periods.
+- Database performance degrades under high load, causing slow responses.
+- Third-party service dependencies (LLMs, payment processors) become unavailable.
+- Maintenance windows or deployments cause unexpected downtime.
+
+### 5.2 Data security & privacy risk
+
+- Customer travel data is breached or leaked.
+- Inadequate encryption of sensitive information (passports, payment details).
+- Non-compliance with GDPR, CCPA, or other data protection regulations.
+- Data residency requirements are not met for international customers.
+- Third-party data processors introduce security vulnerabilities.
+
+### 5.3 Scalability & performance risk
+
+- User growth outpaces infrastructure capacity.
+- Compute costs spike unexpectedly with increased usage.
+- Database queries become inefficient as data volume grows.
+- API response times degrade under concurrent load.
+- Resource allocation is not optimized for cost-efficiency.
+
+### 5.4 Third-party dependency risk
+
+- API keys or credentials for external services are compromised.
+- Third-party providers change terms, pricing, or deprecate services.
+- Integration failures occur when external APIs change.
+- Vendor lock-in makes migration difficult or expensive.
+- Supply chain attacks affect open-source dependencies.
+
+### 5.5 Cost management & financial risk
+
+- Cloud infrastructure costs exceed revenue projections.
+- Unexpected usage spikes lead to budget overruns.
+- Payment processor fees or currency conversion losses.
+- Insurance premiums for cyber liability become unaffordable.
+- Capital expenditure for hardware or software licenses.
+
+### 5.6 Product liability & legal risk
+
+- AI-generated travel advice leads to customer harm or financial loss.
+- Platform is used for illegal activities (sanctions violations, unsafe travel).
+- Intellectual property disputes over training data or generated content.
+- Class action lawsuits from dissatisfied customers.
+- Regulatory changes require expensive platform modifications.
+
+### 5.7 Customer success & retention risk
+
+- High churn rate due to poor user experience or feature gaps.
+- Customer support capacity cannot scale with user growth.
+- Onboarding process fails to convert trial users to paid customers.
+- Feature requests from power users are not prioritized.
+- Negative reviews or word-of-mouth damage reputation.
+
+### 5.8 Competitive & market risk
+
+- Competitors launch similar AI travel planning features.
+- Market saturation reduces pricing power.
+- Customer acquisition costs increase due to competition.
+- Technology becomes commoditized, reducing differentiation.
+- Strategic partnerships fail or competitors acquire key allies.
+
+### 5.9 Regulatory & compliance risk
+
+- Travel industry regulations change (airline codes, booking standards).
+- AI-specific regulations emerge (bias, transparency, explainability).
+- International tax implications for SaaS revenue.
+- Export controls affect global expansion.
+- Accessibility requirements (WCAG) are not met.
+
+### 5.10 Operational & team risk
+
+- Key technical talent leaves, creating knowledge gaps.
+- Development velocity slows due to technical debt.
+- Security incidents erode customer trust.
+- Burnout affects product quality and innovation.
+- Remote work challenges impact team collaboration.
 
 ---
 
