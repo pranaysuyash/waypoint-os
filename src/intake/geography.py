@@ -59,6 +59,9 @@ _BLACKLIST: Set[str] = {
     "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
     # Common non-place capitalized words in travel
     "Family", "Budget", "Group", "Team", "Client", "Customer",
+    # Pronouns (should never be destinations)
+    "We", "I", "My", "Our", "The", "This", "That", "It",
+    "They", "He", "She", "Us", "You",
 }
 
 # Country names commonly used as destination synonyms

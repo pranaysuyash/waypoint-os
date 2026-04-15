@@ -1,265 +1,154 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useWorkbenchStore } from "@/stores/workbench";
-import type { SpineStage, OperatingMode } from "@/types/spine";
-import styles from "./workbench.module.css";
+import { useState } from 'react';
+import {
+  ChevronDown,
+  FileText,
+  User,
+  MapPin,
+  Calendar,
+  Users,
+  Wallet,
+  Sparkles,
+  Settings,
+} from 'lucide-react';
 
-interface ScenarioListItem {
+interface Scenario {
   id: string;
   title: string;
+  stage: string;
 }
 
+const scenarios: Scenario[] = [
+  { id: 'sgp-family', title: 'Singapore Family Trip', stage: 'discovery' },
+  { id: 'dubai-corp', title: 'Dubai Corporate Retreat', stage: 'shortlist' },
+  { id: 'andaman-rom', title: 'Andaman Honeymoon', stage: 'discovery' },
+  { id: 'europe-multi', title: 'Europe Multi-City', stage: 'proposal' },
+];
+
+const stages = [
+  { value: 'discovery', label: 'Discovery' },
+  { value: 'shortlist', label: 'Shortlist' },
+  { value: 'proposal', label: 'Proposal' },
+  { value: 'booking', label: 'Booking' },
+];
+
+const modes = [
+  { value: 'normal_intake', label: 'Normal Intake' },
+  { value: 'audit', label: 'Audit' },
+  { value: 'emergency', label: 'Emergency' },
+  { value: 'follow_up', label: 'Follow Up' },
+  { value: 'cancellation', label: 'Cancellation' },
+  { value: 'post_trip', label: 'Post Trip' },
+];
+
 export function IntakeTab() {
-  const {
-    input_raw_note,
-    input_owner_note,
-    input_structured_json,
-    input_itinerary_text,
-    operating_mode,
-    stage,
-    scenario_id,
-    strict_leakage,
-    debug_raw_json,
-    result_run_ts,
-    setInputRawNote,
-    setInputOwnerNote,
-    setInputStructuredJson,
-    setInputItineraryText,
-    setOperatingMode,
-    setStage,
-    setScenarioId,
-    setStrictLeakage,
-    setDebugRawJson,
-    setResultPacket,
-    setResultValidation,
-    setResultDecision,
-    setResultStrategy,
-    setResultInternalBundle,
-    setResultTravelerBundle,
-    setResultSafety,
-    setResultRunTs,
-  } = useWorkbenchStore();
-
-  const [scenarios, setScenarios] = useState<ScenarioListItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [running, setRunning] = useState(false);
-  const [jsonError, setJsonError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch("/api/scenarios")
-      .then((res) => res.json())
-      .then((data) => setScenarios(data.items || []))
-      .catch(() => setScenarios([]));
-  }, []);
-
-  const handleScenarioChange = async (newScenarioId: string) => {
-    setScenarioId(newScenarioId);
-    if (!newScenarioId) return;
-
-    try {
-      const res = await fetch(`/api/scenarios/${newScenarioId}`);
-      const data = await res.json();
-      if (data.input) {
-        setInputRawNote(data.input.raw_note || "");
-        setInputOwnerNote(data.input.owner_note || "");
-        setInputStructuredJson(
-          data.input.structured_json
-            ? JSON.stringify(data.input.structured_json, null, 2)
-            : ""
-        );
-        setInputItineraryText(data.input.itinerary_text || "");
-        if (data.input.stage) setStage(data.input.stage as SpineStage);
-        if (data.input.mode) setOperatingMode(data.input.mode as OperatingMode);
-      }
-    } catch {
-      // Silently handle error
-    }
-  };
-
-  const handleStructuredJsonChange = (value: string) => {
-    setInputStructuredJson(value);
-    if (value.trim()) {
-      try {
-        JSON.parse(value);
-        setJsonError(null);
-      } catch {
-        setJsonError("Invalid JSON format");
-      }
-    } else {
-      setJsonError(null);
-    }
-  };
-
-  const handleRunSpine = async () => {
-    if (jsonError) return;
-
-    setRunning(true);
-    setJsonError(null);
-
-    let structuredJson: Record<string, unknown> | null = null;
-    if (input_structured_json.trim()) {
-      try {
-        structuredJson = JSON.parse(input_structured_json);
-      } catch {
-        setJsonError("Invalid JSON format");
-        setRunning(false);
-        return;
-      }
-    }
-
-    try {
-      const res = await fetch("/api/spine/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          raw_note: input_raw_note || null,
-          owner_note: input_owner_note || null,
-          structured_json: structuredJson,
-          itinerary_text: input_itinerary_text || null,
-          stage,
-          operating_mode,
-          strict_leakage,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setJsonError(data.error || "Spine run failed");
-        setRunning(false);
-        return;
-      }
-
-      setResultPacket(data.packet ?? null);
-      setResultValidation(data.validation ?? null);
-      setResultDecision(data.decision ?? null);
-      setResultStrategy(data.strategy ?? null);
-      setResultInternalBundle(data.internal_bundle ?? null);
-      setResultTravelerBundle(data.traveler_bundle ?? null);
-      setResultSafety(data.safety ?? null);
-      setResultRunTs(data.run_id ? `run-${data.run_id}` : null);
-    } catch (err) {
-      setJsonError("Failed to call spine API");
-    } finally {
-      setRunning(false);
-    }
-  };
-
-  const stages: SpineStage[] = ["discovery", "shortlist", "proposal", "booking"];
-  const modes: { value: OperatingMode; label: string }[] = [
-    { value: "normal_intake", label: "Normal Intake" },
-    { value: "audit", label: "Audit" },
-    { value: "emergency", label: "Emergency" },
-    { value: "follow_up", label: "Follow Up" },
-    { value: "cancellation", label: "Cancellation" },
-    { value: "post_trip", label: "Post Trip" },
-    { value: "coordinator_group", label: "Coordinator Group" },
-    { value: "owner_review", label: "Owner Review" },
-  ];
+  const [selectedScenario, setSelectedScenario] = useState('');
+  const [stage, setStage] = useState('discovery');
+  const [mode, setMode] = useState('normal_intake');
+  const [rawNote, setRawNote] = useState('');
+  const [ownerNote, setOwnerNote] = useState('');
+  const [structuredJson, setStructuredJson] = useState('');
 
   return (
-    <div>
-      <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>Scenario Selection</h2>
-        <div className={styles.field}>
+    <div className='space-y-6'>
+      {/* Scenario Selection */}
+      <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
+        <div className='flex items-center gap-2 mb-4'>
+          <Sparkles className='w-4 h-4 text-[#a371f7]' />
+          <h3 className='text-sm font-semibold text-[#e6edf3]'>
+            Scenario Selection
+          </h3>
+        </div>
+        <div className='relative'>
           <select
-            className={styles.select}
-            value={scenario_id}
-            onChange={(e) => handleScenarioChange(e.target.value)}
+            value={selectedScenario}
+            onChange={(e) => setSelectedScenario(e.target.value)}
+            className='w-full px-4 py-2.5 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] appearance-none cursor-pointer'
           >
-            <option value="">-- Select a scenario --</option>
+            <option value=''>Select a scenario...</option>
             {scenarios.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.title}
+                {s.title} ({s.stage})
               </option>
             ))}
           </select>
+          <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6e7681] pointer-events-none' />
         </div>
       </div>
 
-      <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>Input Fields</h2>
-        <div className={styles.row}>
-          <div className={styles.col}>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="raw_note">Raw Note</label>
-              <textarea
-                id="raw_note"
-                className={styles.textarea}
-                value={input_raw_note}
-                onChange={(e) => setInputRawNote(e.target.value)}
-                placeholder="Enter raw incoming note..."
-              />
-            </div>
+      {/* Input Fields Grid */}
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+        {/* Raw Note */}
+        <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
+          <div className='flex items-center gap-2 mb-3'>
+            <FileText className='w-4 h-4 text-[#8b949e]' />
+            <label className='text-sm font-medium text-[#e6edf3]'>
+              Raw Note
+            </label>
           </div>
-          <div className={styles.col}>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="owner_note">Owner Note</label>
-              <textarea
-                id="owner_note"
-                className={styles.textarea}
-                value={input_owner_note}
-                onChange={(e) => setInputOwnerNote(e.target.value)}
-                placeholder="Enter owner note..."
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="structured_json">Structured JSON</label>
           <textarea
-            id="structured_json"
-            className={styles.textarea}
-            value={input_structured_json}
-            onChange={(e) => handleStructuredJsonChange(e.target.value)}
-            placeholder='{"key": "value"}'
-            style={{ minHeight: "150px", fontFamily: "monospace" }}
+            value={rawNote}
+            onChange={(e) => setRawNote(e.target.value)}
+            placeholder='Paste the incoming traveler note here...'
+            rows={6}
+            className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff] resize-none font-mono'
           />
-          {jsonError && <div className={styles.error}>{jsonError}</div>}
         </div>
 
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="itinerary_text">Itinerary Text</label>
+        {/* Owner Note */}
+        <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
+          <div className='flex items-center gap-2 mb-3'>
+            <User className='w-4 h-4 text-[#58a6ff]' />
+            <label className='text-sm font-medium text-[#e6edf3]'>
+              Owner Note
+            </label>
+          </div>
           <textarea
-            id="itinerary_text"
-            className={styles.textarea}
-            value={input_itinerary_text}
-            onChange={(e) => setInputItineraryText(e.target.value)}
-            placeholder="Enter itinerary text..."
+            value={ownerNote}
+            onChange={(e) => setOwnerNote(e.target.value)}
+            placeholder="Add owner's comments or clarifications..."
+            rows={6}
+            className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff] resize-none'
           />
         </div>
       </div>
 
-      <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>Configuration</h2>
-        <div className={styles.row}>
-          <div className={styles.col}>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="stage">Stage</label>
+      {/* Configuration */}
+      <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
+        <h3 className='text-sm font-semibold text-[#e6edf3] mb-4 flex items-center gap-2'>
+          <Settings className='w-4 h-4 text-[#8b949e]' />
+          Configuration
+        </h3>
+        <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+          <div>
+            <label className='block text-xs font-medium text-[#8b949e] mb-2'>
+              Stage
+            </label>
+            <div className='relative'>
               <select
-                id="stage"
-                className={styles.select}
                 value={stage}
-                onChange={(e) => setStage(e.target.value as SpineStage)}
+                onChange={(e) => setStage(e.target.value)}
+                className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] appearance-none'
               >
                 {stages.map((s) => (
-                  <option key={s} value={s}>
-                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                  <option key={s.value} value={s.value}>
+                    {s.label}
                   </option>
                 ))}
               </select>
+              <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6e7681] pointer-events-none' />
             </div>
           </div>
-          <div className={styles.col}>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="operating_mode">Operating Mode</label>
+          <div>
+            <label className='block text-xs font-medium text-[#8b949e] mb-2'>
+              Operating Mode
+            </label>
+            <div className='relative'>
               <select
-                id="operating_mode"
-                className={styles.select}
-                value={operating_mode}
-                onChange={(e) => setOperatingMode(e.target.value as OperatingMode)}
+                value={mode}
+                onChange={(e) => setMode(e.target.value)}
+                className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] appearance-none'
               >
                 {modes.map((m) => (
                   <option key={m.value} value={m.value}>
@@ -267,53 +156,20 @@ export function IntakeTab() {
                   </option>
                 ))}
               </select>
+              <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6e7681] pointer-events-none' />
             </div>
           </div>
         </div>
-
-        <div className={styles.inlineField}>
-          <label className={styles.toggle} htmlFor="strict_leakage">
-            <input
-              id="strict_leakage"
-              type="checkbox"
-              className={styles.toggleInput}
-              checked={strict_leakage}
-              onChange={(e) => setStrictLeakage(e.target.checked)}
-            />
-            <span className={styles.toggleSwitch}></span>
-            <span>Strict Leakage Mode</span>
-          </label>
-        </div>
-
-        <div className={styles.inlineField}>
-          <label className={styles.toggle} htmlFor="debug_raw_json">
-            <input
-              id="debug_raw_json"
-              type="checkbox"
-              className={styles.toggleInput}
-              checked={debug_raw_json}
-              onChange={(e) => setDebugRawJson(e.target.checked)}
-            />
-            <span className={styles.toggleSwitch}></span>
-            <span>Debug Raw JSON</span>
-          </label>
-        </div>
       </div>
 
-      <div className={styles.buttonRow}>
-        <button
-          type="button"
-          className={styles.button}
-          onClick={handleRunSpine}
-          disabled={running || !!jsonError}
-        >
-          {running ? "Running..." : "Run Spine"}
-        </button>
-        {result_run_ts && (
-          <span style={{ alignSelf: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>
-            Last run: {new Date(result_run_ts).toLocaleString()}
-          </span>
-        )}
+      {/* Quick Actions */}
+      <div className='flex items-center justify-between pt-4 border-t border-[#30363d]'>
+        <div className='flex items-center gap-4 text-sm text-[#8b949e]'>
+          <div className='flex items-center gap-2'>
+            <div className='w-2 h-2 rounded-full bg-[#3fb950]'></div>
+            <span>API Connected</span>
+          </div>
+        </div>
       </div>
     </div>
   );

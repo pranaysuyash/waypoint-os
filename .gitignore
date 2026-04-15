@@ -41,14 +41,18 @@ env/
 # Local tool/session state
 .agent/
 .qwen/
+
 # Frontend generated files
+node_modules/
 frontend/node_modules/
 frontend/.next/
 
+# Playwright MCP
+.playwright-mcp/
+
 # Data files
 # Generated/accumulated data
-accumulated_cities.json
+data/accumulated_cities.json
 
-# Downloaded datasets
-cities5000.txt
-cities.json
+# Design reference files (HTML assets)
+Archive/design_refs/

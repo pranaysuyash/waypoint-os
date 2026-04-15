@@ -17,6 +17,7 @@ from .packet_models import (
     Slot,
     AuthorityLevel,
 )
+from .telemetry import emit_ambiguity_synthesis
 
 
 # =============================================================================
@@ -259,22 +260,35 @@ AMBIGUITY_SEVERITY: Dict[str, str] = {
 }
 
 
-def classify_ambiguity_severity(field_name: str, ambiguity_type: str) -> str:
+def classify_ambiguity_severity(field_name: str, ambiguity_type: str, stage: str = "discovery") -> str:
     """
     Classify whether an ambiguity blocks progression or is advisory.
     Defaults to advisory (conservative).
+
+    Stage-aware escalation: destination vagueness is advisory at discovery,
+    blocking at shortlist/proposal/booking.
     """
-    return AMBIGUITY_SEVERITY.get(
+    # Base severity from table
+    base_severity = AMBIGUITY_SEVERITY.get(
         (field_name, ambiguity_type),
         "advisory",
     )
+
+    # Stage-aware escalation for destination_candidates value_vague
+    if field_name == "destination_candidates" and ambiguity_type == "value_vague":
+        if stage in ("shortlist", "proposal", "booking"):
+            return "blocking"
+        return "advisory"
+
+    return base_severity
 
 
 def classify_ambiguities(packet: CanonicalPacket) -> List[AmbiguityRef]:
     """Convert packet ambiguities into DecisionResult AmbiguityRefs with severity."""
     refs = []
+    stage = packet.stage
     for amb in packet.ambiguities:
-        severity = classify_ambiguity_severity(amb.field_name, amb.ambiguity_type)
+        severity = classify_ambiguity_severity(amb.field_name, amb.ambiguity_type, stage)
         refs.append(AmbiguityRef(
             field_name=amb.field_name,
             ambiguity_type=amb.ambiguity_type,
@@ -1489,6 +1503,61 @@ def generate_question(field_name: str) -> str:
     return QUESTIONS.get(field_name, f"Can you provide details for: {field_name}?")
 
 
+def generate_budget_question(
+    packet: CanonicalPacket,
+    budget_min: Optional[int] = None,
+) -> str:
+    """
+    Generate budget question that preserves stretch semantics.
+    
+    Case A: "2L, can stretch" → ask for absolute upper limit
+    Case B: "2L, can stretch to 2.5L" → confirm the stretch amount is correct
+    """
+    # Check for budget_stretch_present ambiguity
+    stretch_ambiguity = None
+    for amb in packet.ambiguities:
+        if amb.field_name in ("budget_min", "budget_raw_text") and \
+           amb.ambiguity_type == "budget_stretch_present":
+            stretch_ambiguity = amb
+            break
+    
+    if not stretch_ambiguity:
+        # No stretch detected, use generic budget question
+        return QUESTIONS.get("budget_min", "Could you confirm the budget in numeric terms?")
+    
+    # Check if explicit max was provided in raw value
+    raw_value = stretch_ambiguity.raw_value if stretch_ambiguity else ""
+    
+    # Parse for "to X" pattern (e.g., "2L, can stretch to 2.5L")
+    import re
+    stretch_to_match = re.search(r"(?:to|up to|until)\s*(\d+(?:\.\d+)?)\s*(L|lakh|k|K)?", raw_value, re.IGNORECASE)
+    
+    if stretch_to_match:
+        # Case B: Explicit upper bound mentioned
+        amount = stretch_to_match.group(1)
+        unit = stretch_to_match.group(2) or ""
+        unit_str = unit if unit else ""
+        return f"You mentioned {budget_min or 'a budget'} with flexibility up to {amount}{unit_str}. Is that the hard limit, or is there any wiggle room?"
+    else:
+        # Case A: Stretch mentioned but no explicit max
+        base = budget_min if budget_min else "this amount"
+        return f"You mentioned {base} with flexibility. What's the absolute upper limit you're comfortable with?"
+
+
+def generate_candidate_question(
+    packet: CanonicalPacket,
+    candidates: List[str],
+) -> str:
+    """Generate candidate-specific question for multi-value destinations."""
+    if len(candidates) == 2:
+        return f"Between {candidates[0]} and {candidates[1]}, which are you leaning toward?"
+    elif len(candidates) == 3:
+        return f"Between {candidates[0]}, {candidates[1]}, and {candidates[2]}, which do you prefer?"
+    else:
+        candidates_str = ", ".join(candidates[:3])
+        return f"From {candidates_str}, which destination interests you most?"
+
+
 # =============================================================================
 # SECTION 12: DESTINATION AMBIGUITY SYNTHESIS
 # =============================================================================
@@ -1530,6 +1599,15 @@ def _synthesize_destination_ambiguity(
         raw_value=raw_value,
         confidence=0.8,
     ))
+
+    # Emit telemetry for upstream extraction quality tracking
+    emit_ambiguity_synthesis(
+        field_name="destination_candidates",
+        reason="multi_value_without_ambiguity",
+        stage=packet.stage,
+        candidates=candidates,
+        packet_id=packet.packet_id,
+    )
 
     ambiguities.append(AmbiguityRef(
         field_name="destination_candidates",
@@ -1686,6 +1764,14 @@ def run_gap_and_decision(
                         suggested = candidates
                     elif not suggested and dest_slot and isinstance(dest_slot.value, list) and len(dest_slot.value) == 1:
                         suggested = dest_slot.value
+
+                elif blocker == "budget_min":
+                    # Check for budget stretch ambiguity and generate appropriate question
+                    budget_slot = resolve_field(packet, "budget_min")
+                    budget_value = budget_slot.value if budget_slot and hasattr(budget_slot, 'value') else None
+                    stretch_question = generate_budget_question(packet, budget_value)
+                    if stretch_question != question_text:  # Only override if stretch detected
+                        question_text = stretch_question
 
                 follow_up_questions.append({
                     "field_name": blocker,

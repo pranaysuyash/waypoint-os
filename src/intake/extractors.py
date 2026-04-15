@@ -341,6 +341,50 @@ def _extract_budget_scope(text: str) -> str:
     return "unknown"
 
 
+def _extract_budget_stretch_max(text: str) -> Optional[int]:
+    """
+    Extract explicit maximum budget from stretch phrases.
+    
+    Case A: "2L, can stretch" → returns None (no explicit max)
+    Case B: "2L, can stretch to 2.5L" → returns 250000
+    
+    Returns: max budget in base units (e.g., rupees), or None if not specified.
+    """
+    text_lower = text.lower()
+    
+    # Pattern: "stretch to/up to/until X" or "go up to X"
+    patterns = [
+        # "stretch to 2.5L", "can stretch up to 250000"
+        r"(?:stretch|flexible|go)\s+(?:up\s+)?(?:to|until)\s*(\d+(?:\.\d+)?)\s*(l|lac|lakh|lakhs|k|thousand)?",
+        # "can stretch to 2.5", "goes up to 3L"
+        r"(?:to|up\s+to)\s*(\d+(?:\.\d+)?)\s*(l|lac|lakh|lakhs|k|thousand)?",
+    ]
+    
+    for pat in patterns:
+        match = re.search(pat, text_lower)
+        if match:
+            amount_str = match.group(1)
+            unit = (match.group(2) or "").lower()
+            
+            try:
+                amount = float(amount_str)
+                
+                # Apply unit multipliers
+                if unit in ("l", "lac", "lakh", "lakhs"):
+                    return int(amount * 100000)
+                elif unit in ("k", "thousand"):
+                    return int(amount * 1000)
+                elif amount < 10000:  # Assume lakhs if reasonable
+                    return int(amount * 100000)
+                else:
+                    return int(amount)
+                    
+            except (ValueError, IndexError):
+                continue
+    
+    return None
+
+
 # =============================================================================
 # SECTION 4: PARTY EXTRACTION
 # =============================================================================
@@ -844,12 +888,22 @@ class ExtractionPipeline:
                 "Derived from budget context", eid,
             ))
 
-        # Check for budget stretch ambiguity
+        # Check for budget stretch ambiguity and extract explicit max if present
         if "stretch" in text_lower or "flexible" in text_lower:
-            stretch_match = re.search(r"((?:can\s+stretch|flexible)[^.,]*)", text_lower)
-            if stretch_match:
-                for amb in Normalizer.detect_ambiguities("budget_flexibility", stretch_match.group(1)):
-                    packet.add_ambiguity(amb)
+            # Use full text for stretch extraction (don't truncate at punctuation)
+            stretch_text = text_lower
+            
+            # Extract stretch ambiguity
+            for amb in Normalizer.detect_ambiguities("budget_flexibility", stretch_text):
+                packet.add_ambiguity(amb)
+            
+            # Extract explicit stretch maximum (Case B: "to 2.5L")
+            stretch_max = _extract_budget_stretch_max(stretch_text)
+            if stretch_max is not None:
+                packet.set_fact("budget_soft_ceiling", self._make_slot(
+                    stretch_max, 0.85, AuthorityLevel.EXPLICIT_USER,
+                    stretch_text, eid,
+                ))
 
         # --- PARTY ---
         party = _extract_party(text)
