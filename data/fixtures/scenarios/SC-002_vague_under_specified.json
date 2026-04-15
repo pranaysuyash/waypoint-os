@@ -1,0 +1,50 @@
+{
+  "scenario_id": "SC-002",
+  "title": "Vague under-specified lead — ask followup",
+  "description": "A minimal, messy lead with almost no structured information. Should trigger ASK_FOLLOWUP with critical questions about destination, origin, and party size.",
+  "mode": "normal_intake",
+  "stage": "discovery",
+  "inputs": {
+    "raw_note": "Someone called, wants to go international. Big family, maybe around March. Said budget is fine, will call back.",
+    "owner_note": null,
+    "structured_json": null,
+    "itinerary_text": null
+  },
+  "expected": {
+    "allowed_decision_states": ["ASK_FOLLOWUP"],
+    "required_packet_fields": [
+      "origin_city",
+      "budget_raw_text",
+      "trip_purpose"
+    ],
+    "forbidden_traveler_terms": [
+      "hypothesis",
+      "blocker",
+      "ambiguity",
+      "contradiction",
+      "internal_only",
+      "agency_notes",
+      "confidence_score",
+      "decision_state",
+      "hard_blockers",
+      "soft_blockers"
+    ],
+    "leakage_expected": false,
+    "assertions": [
+      {
+        "type": "decision_state_in",
+        "value": "ASK_FOLLOWUP",
+        "message": "Under-specified lead should require followup questions"
+      },
+      {
+        "type": "no_leakage",
+        "message": "Even in ASK_FOLLOWUP mode, traveler bundle must not leak internal concepts"
+      },
+      {
+        "type": "field_present",
+        "field": "budget_raw_text",
+        "message": "Budget raw text should be extracted even from vague input"
+      }
+    ]
+  }
+}

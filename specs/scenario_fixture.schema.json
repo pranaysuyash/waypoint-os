@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://travel-agency-agent/fixtures/scenario/v1.json",
+  "title": "Scenario Fixture Schema v1",
+  "description": "Formal schema for Operator Workbench scenario fixtures. Every fixture in data/fixtures/scenarios/*.json must conform to this shape.",
+  "type": "object",
+  "required": ["scenario_id", "title", "mode", "stage", "inputs", "expected"],
+  "additionalProperties": false,
+  "properties": {
+    "scenario_id": {
+      "type": "string",
+      "description": "Unique stable identifier, e.g. SC-001",
+      "pattern": "^SC-[0-9]{3,}$"
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable scenario name",
+      "minLength": 3
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional longer description of the scenario context"
+    },
+    "mode": {
+      "type": "string",
+      "description": "Operating mode for the spine run",
+      "enum": [
+        "normal_intake",
+        "audit",
+        "emergency",
+        "follow_up",
+        "cancellation",
+        "post_trip",
+        "coordinator_group",
+        "owner_review"
+      ]
+    },
+    "stage": {
+      "type": "string",
+      "description": "Trip stage for MVB evaluation",
+      "enum": ["discovery", "shortlist", "proposal", "booking"]
+    },
+    "inputs": {
+      "type": "object",
+      "required": ["raw_note"],
+      "additionalProperties": false,
+      "properties": {
+        "raw_note": {
+          "type": "string",
+          "description": "Freeform agency/traveler text input",
+          "minLength": 1
+        },
+        "owner_note": {
+          "type": ["string", "null"],
+          "description": "Owner-specific instructions (internal)"
+        },
+        "structured_json": {
+          "type": ["object", "null"],
+          "description": "Structured import data (if any)"
+        },
+        "itinerary_text": {
+          "type": ["string", "null"],
+          "description": "Existing itinerary text (for follow_up/post_trip modes)"
+        }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "required": ["allowed_decision_states"],
+      "additionalProperties": false,
+      "properties": {
+        "allowed_decision_states": {
+          "type": "array",
+          "description": "One or more acceptable decision states from the spine",
+          "items": {
+            "type": "string",
+            "enum": [
+              "ASK_FOLLOWUP",
+              "PROCEED_INTERNAL_DRAFT",
+              "PROCEED_TRAVELER_SAFE",
+              "BRANCH_OPTIONS",
+              "STOP_NEEDS_REVIEW"
+            ]
+          },
+          "minItems": 1
+        },
+        "required_packet_fields": {
+          "type": "array",
+          "description": "Fact field names that must be present in the packet after extraction",
+          "items": { "type": "string" }
+        },
+        "forbidden_traveler_terms": {
+          "type": "array",
+          "description": "Terms that must NOT appear in the traveler bundle user_message or system_context",
+          "items": { "type": "string" }
+        },
+        "leakage_expected": {
+          "type": "boolean",
+          "description": "If true, the fixture expects leakage to be detected (negative test). If false, expects clean output."
+        },
+        "assertions": {
+          "type": "array",
+          "description": "Additional structured assertions to evaluate",
+          "items": {
+            "type": "object",
+            "required": ["type", "message"],
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "field_present",
+                  "field_absent",
+                  "field_equals",
+                  "decision_state_in",
+                  "no_leakage",
+                  "leakage_detected"
+                ]
+              },
+              "field": {
+                "type": "string",
+                "description": "Field name for field_* assertions"
+              },
+              "value": {
+                "description": "Expected value for field_equals or decision_state_in"
+              },
+              "message": {
+                "type": "string",
+                "description": "Human-readable failure explanation"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

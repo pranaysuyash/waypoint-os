@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from .packet_models import (
     Ambiguity,
     CanonicalPacket,
+    LifecycleInfo,
     Slot,
     AuthorityLevel,
 )
@@ -28,6 +29,17 @@ DECISION_STATES = (
     "PROCEED_TRAVELER_SAFE",
     "BRANCH_OPTIONS",
     "STOP_NEEDS_REVIEW",
+)
+
+COMMERCIAL_DECISIONS = (
+    "NONE",
+    "SEND_FOLLOWUP",
+    "SET_BOUNDARY",
+    "REQUEST_TOKEN",
+    "MOVE_TO_NURTURE",
+    "REACTIVATE_REPEAT",
+    "CLOSE_LOST",
+    "ESCALATE_RECOVERY",
 )
 
 
@@ -56,6 +68,9 @@ class DecisionResult:
     rationale: Dict[str, Any] = field(default_factory=dict)
     confidence_score: float = 0.0
     risk_flags: List[Dict[str, Any]] = field(default_factory=list)
+    commercial_decision: str = "NONE"          # One of COMMERCIAL_DECISIONS
+    intent_scores: Dict[str, float] = field(default_factory=dict)
+    next_best_action: Optional[str] = None
 
 
 # =============================================================================
@@ -118,7 +133,14 @@ MVB_BY_STAGE = {
     },
 }
 
-# Legacy aliases for backward compat with existing fixtures
+# Legacy aliases for backward compat with existing fixtures.
+# DEPRECATED: These will be removed in a future version.
+# All code should use canonical v0.2 field names directly.
+# Migration: destination_city → destination_candidates, travel_dates → date_window,
+# budget_range → budget_min, traveler_count → party_size,
+# traveler_details → passport_status, traveler_preferences → soft_preferences
+import warnings as _warnings
+
 LEGACY_ALIASES = {
     "destination_city": "destination_candidates",
     "travel_dates": "date_window",
@@ -239,9 +261,16 @@ def resolve_field(packet: CanonicalPacket, canonical_field: str) -> Optional[Slo
     # Direct match in derived_signals
     if canonical_field in packet.derived_signals:
         return packet.derived_signals[canonical_field]
-    # Legacy alias
+    # Legacy alias (DEPRECATED)
     if canonical_field in LEGACY_ALIASES:
         aliased = LEGACY_ALIASES[canonical_field]
+        _warnings.warn(
+            f"LEGACY_ALIASES lookup: '{canonical_field}' → '{aliased}'. "
+            f"Use the canonical v0.2 field name directly. "
+            f"Legacy aliases will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
         if aliased in packet.facts:
             return packet.facts[aliased]
         if aliased in packet.derived_signals:
@@ -427,10 +456,16 @@ def apply_urgency(urgency: str, soft_blockers: List[str]) -> List[str]:
 # SECTION 8: RISK FLAG GENERATION
 # =============================================================================
 
-def generate_risk_flags(packet: CanonicalPacket, stage: str) -> List[Dict[str, Any]]:
+def generate_risk_flags(
+    packet: CanonicalPacket,
+    stage: str,
+    cached_feasibility: Optional[Dict[str, Any]] = None,
+) -> List[Dict[str, Any]]:
     """
     Generate contextual risk flags based on actual packet data.
     NOT static templates — these emerge from fact combinations.
+
+    Accepts optional cached_feasibility to avoid recomputation.
     """
     risks = []
 
@@ -489,8 +524,8 @@ def generate_risk_flags(packet: CanonicalPacket, stage: str) -> List[Dict[str, A
             "message": "High urgency + visa required — timeline risk",
         })
 
-    # Margin risk (from budget feasibility)
-    feasibility = check_budget_feasibility(packet)
+    # Margin risk (from budget feasibility — reuse cached if available)
+    feasibility = cached_feasibility if cached_feasibility is not None else check_budget_feasibility(packet)
     if feasibility["status"] == "infeasible":
         gap = feasibility["gap"]
         risks.append({
@@ -561,11 +596,184 @@ def generate_risk_flags(packet: CanonicalPacket, stage: str) -> List[Dict[str, A
 
 
 # =============================================================================
-# SECTION 9: OPERATING MODE ROUTING
+# SECTION 9: LIFECYCLE SCORING & COMMERCIAL DECISION
+# =============================================================================
+
+def _signal_set(lifecycle: Optional[LifecycleInfo]) -> set[str]:
+    if not lifecycle:
+        return set()
+    return set(lifecycle.commitment_signals) | set(lifecycle.risk_signals)
+
+
+def _clamp01(value: float) -> float:
+    return max(0.0, min(1.0, value))
+
+
+def _derive_lifecycle(packet: CanonicalPacket) -> Optional[LifecycleInfo]:
+    if packet.lifecycle:
+        return packet.lifecycle
+    return None
+
+
+def score_ghost_risk(lifecycle: Optional[LifecycleInfo]) -> float:
+    if not lifecycle:
+        return 0.0
+    score = 0.0
+    signals = _signal_set(lifecycle)
+
+    if lifecycle.quote_opened and (lifecycle.days_since_last_reply or 0) >= 3:
+        score += 0.35
+    if lifecycle.options_viewed_count == 1 and lifecycle.quote_open_count >= 2:
+        score += 0.15
+    if lifecycle.links_clicked_count > 0:
+        score += 0.10
+    if "follow_up_sent_no_reply_48h" in signals:
+        score += 0.15
+
+    if "asked_concrete_booking_question" in signals:
+        score -= 0.25
+    if "shared_passport" in signals or "shared_traveler_docs" in signals:
+        score -= 0.30
+    if "requested_hold" in signals or "asked_payment_plan" in signals:
+        score -= 0.20
+    return _clamp01(score)
+
+
+def score_window_shopper_risk(lifecycle: Optional[LifecycleInfo]) -> float:
+    if not lifecycle:
+        return 0.0
+    score = 0.0
+    signals = _signal_set(lifecycle)
+
+    if lifecycle.revision_count >= 3:
+        score += 0.20
+    if "destination_flipped_2plus" in signals:
+        score += 0.20
+    if "budget_contradiction_unresolved" in signals:
+        score += 0.15
+    if lifecycle.options_viewed_count >= 5 and lifecycle.revision_count >= 3:
+        score += 0.15
+    if lifecycle.payment_stage == "none" and lifecycle.revision_count >= 5:
+        score += 0.20
+    if (lifecycle.days_since_last_reply or 0) > 14:
+        score += 0.10
+
+    if "planning_fee_paid" in signals:
+        score -= 0.30
+    if "fixed_dates_origin_confirmed" in signals:
+        score -= 0.25
+    if "shared_traveler_docs" in signals:
+        score -= 0.20
+    return _clamp01(score)
+
+
+def score_repeat_likelihood(lifecycle: Optional[LifecycleInfo]) -> float:
+    if not lifecycle:
+        return 0.0
+    score = 0.0
+    signals = _signal_set(lifecycle)
+    has_prior_trip = lifecycle.repeat_trip_count > 0 or lifecycle.last_trip_completed_at is not None
+
+    if has_prior_trip:
+        score += 0.30
+    if "positive_feedback" in signals or "positive_review" in signals:
+        score += 0.15
+    if "fast_response_history" in signals:
+        score += 0.10
+    if "seasonal_repeat_pattern" in signals:
+        score += 0.15
+    if "profile_on_file" in signals or "family_preferences_on_file" in signals:
+        score += 0.10
+    if "referral_made" in signals:
+        score += 0.10
+
+    if "unresolved_complaint" in signals:
+        score -= 0.25
+    if "cancellation_dispute" in signals:
+        score -= 0.20
+    if "price_sensitive_no_win" in signals:
+        score -= 0.15
+    return _clamp01(score)
+
+
+def score_churn_risk(lifecycle: Optional[LifecycleInfo]) -> float:
+    if not lifecycle:
+        return 0.0
+    has_prior_trip = lifecycle.repeat_trip_count > 0 or lifecycle.last_trip_completed_at is not None
+    if not has_prior_trip:
+        return 0.0
+
+    score = 0.0
+    signals = _signal_set(lifecycle)
+    if "no_engagement_next_trip_window" in signals:
+        score += 0.30
+    if "no_feedback_captured" in signals:
+        score += 0.20
+    if "last_trip_issue" in signals:
+        score += 0.15
+    if "no_reactivation_sent" in signals:
+        score += 0.15
+    if "price_objections_last_quote" in signals:
+        score += 0.10
+
+    if "positive_review" in signals:
+        score -= 0.25
+    if "referral_made" in signals:
+        score -= 0.20
+    if "anniversary_intent_observed" in signals or "seasonal_intent_observed" in signals:
+        score -= 0.20
+    return _clamp01(score)
+
+
+def compute_intent_scores(packet: CanonicalPacket) -> Dict[str, float]:
+    lifecycle = _derive_lifecycle(packet)
+    return {
+        "ghost_risk": round(score_ghost_risk(lifecycle), 3),
+        "window_shopper_risk": round(score_window_shopper_risk(lifecycle), 3),
+        "repeat_likelihood": round(score_repeat_likelihood(lifecycle), 3),
+        "churn_risk": round(score_churn_risk(lifecycle), 3),
+    }
+
+
+def decide_commercial_action(
+    packet: CanonicalPacket,
+    intent_scores: Dict[str, float],
+) -> Tuple[str, Optional[str]]:
+    lifecycle = _derive_lifecycle(packet)
+    if lifecycle and (lifecycle.status == "LOST" or lifecycle.loss_reason):
+        return "CLOSE_LOST", "CLOSE_LOST"
+
+    ghost = intent_scores.get("ghost_risk", 0.0)
+    window = intent_scores.get("window_shopper_risk", 0.0)
+    repeat = intent_scores.get("repeat_likelihood", 0.0)
+    churn = intent_scores.get("churn_risk", 0.0)
+
+    if ghost >= 0.70:
+        return "SEND_FOLLOWUP", "SEND_TARGETED_FOLLOWUP"
+    if window >= 0.75:
+        if lifecycle and lifecycle.payment_stage == "none":
+            return "REQUEST_TOKEN", "REQUEST_TOKEN_OR_PLANNING_FEE"
+        return "SET_BOUNDARY", "SET_REVISION_BOUNDARY"
+    if churn >= 0.65:
+        return "REACTIVATE_REPEAT", "CHURN_RECOVERY_REACHOUT"
+    if repeat >= 0.70:
+        return "REACTIVATE_REPEAT", "PERSONALIZED_REACTIVATION"
+    if ghost >= 0.40:
+        return "MOVE_TO_NURTURE", "MOVE_TO_NURTURE"
+    if window >= 0.50:
+        return "SET_BOUNDARY", "SET_REVISION_BOUNDARY"
+    if churn >= 0.40:
+        return "MOVE_TO_NURTURE", "MOVE_TO_NURTURE"
+    return "NONE", None
+
+
+# =============================================================================
+# SECTION 10: OPERATING MODE ROUTING
 # =============================================================================
 
 def apply_operating_mode(
     packet: CanonicalPacket,
+    hard_blockers: List[str],
     soft_blockers: List[str],
     contradictions: List[Dict[str, Any]],
     feasibility: Dict[str, Any],
@@ -591,8 +799,8 @@ def apply_operating_mode(
         return soft_blockers, contradictions, None
 
     elif mode == "audit":
-        # Add value_gap check
-        if feasibility["status"] == "infeasible":
+        # Add value_gap check — flag both infeasible and tight budgets
+        if feasibility["status"] in ("infeasible", "tight"):
             contradictions.append({
                 "field_name": "budget_feasibility",
                 "values": [f"budget_min vs estimated_minimum_cost (gap: {feasibility['gap']})"],
@@ -601,12 +809,25 @@ def apply_operating_mode(
         return soft_blockers, contradictions, None
 
     elif mode == "follow_up":
-        # Check response gap — if no response > 72h, suggest follow-up
+        # Follow-up mode: if all hard blockers are filled, prefer PROCEED over ASK
+        # (the point is to re-engage, not re-collect). Also skip soft blocker follow-ups
+        # that were already asked in the original intake.
+        if not hard_blockers and soft_blockers:
+            # Demote soft blockers to advisory — we're re-engaging, not starting fresh
+            soft_blockers = []
         return soft_blockers, contradictions, None
 
     elif mode == "cancellation":
-        # Run policy engine — not implemented yet, pass through
-        return soft_blockers, contradictions, None
+        # Cancellation mode: suppress soft blockers (not relevant for cancellation).
+        # Hard blockers remain but cancellation-relevant fields take priority.
+        # Add cancellation policy as a tracked item.
+        if "cancellation_policy" not in [c.get("field_name") for c in contradictions]:
+            contradictions.append({
+                "field_name": "cancellation_policy",
+                "values": ["pending_policy_lookup"],
+                "sources": ["cancellation_mode_routing"],
+            })
+        return [], contradictions, None
 
     elif mode == "post_trip":
         # Skip blocker logic entirely
@@ -717,6 +938,7 @@ def generate_question(field_name: str) -> str:
 def run_gap_and_decision(
     packet: CanonicalPacket,
     feasibility_table: Optional[Dict[str, Any]] = None,
+    _cached_feasibility: Optional[Dict[str, Any]] = None,
 ) -> DecisionResult:
     """
     Main entry point: CanonicalPacket v0.2 → DecisionResult.
@@ -725,11 +947,21 @@ def run_gap_and_decision(
     1. Classifies ambiguities (blocking vs advisory)
     2. Applies operating-mode routing
     3. Evaluates urgency-aware blocker suppression
-    4. Checks budget feasibility
+    4. Checks budget feasibility (cached per call)
     5. Evaluates contradictions
     6. Computes decision state
     7. Generates follow-up questions
     8. Generates risk flags
+
+    Confidence formula (authoritative):
+        confidence = avg(fact_weight) + 0.2 * avg(hypothesis_weight) - unknown_penalty
+    where:
+        fact_weight    = slot.confidence * authority_weight(slot.authority_level)
+        authority_weight = {manual_override: 1.0, explicit_user: 0.95,
+                            imported_structured: 0.85, explicit_owner: 0.80}
+        hypothesis_weight = slot.confidence * 0.5
+        unknown_penalty  = len(packet.unknowns) * 0.1
+    Result clamped to [0.0, 1.0].
     """
     stage = packet.stage
     mode = packet.operating_mode
@@ -738,8 +970,8 @@ def run_gap_and_decision(
     # --- Phase 1: Classify ambiguities ---
     ambiguities = classify_ambiguities(packet)
 
-    # --- Phase 2: Budget feasibility ---
-    feasibility = check_budget_feasibility(packet, feasibility_table)
+    # --- Phase 2: Budget feasibility (computed once, reused downstream) ---
+    feasibility = _cached_feasibility if _cached_feasibility is not None else check_budget_feasibility(packet, feasibility_table)
 
     # --- Phase 3: Evaluate blockers ---
     hard_blockers = []
@@ -759,7 +991,7 @@ def run_gap_and_decision(
     # --- Phase 4: Operating mode routing ---
     contradictions = list(packet.contradictions)
     soft_blockers, contradictions, forced_decision = apply_operating_mode(
-        packet, soft_blockers, contradictions, feasibility,
+        packet, hard_blockers, soft_blockers, contradictions, feasibility,
     )
 
     # --- Phase 5: Budget feasibility stage gating ---
@@ -888,8 +1120,8 @@ def run_gap_and_decision(
                 else:
                     decision_state = "PROCEED_TRAVELER_SAFE"
 
-    # --- Phase 10: Risk flags ---
-    risk_flags = generate_risk_flags(packet, stage)
+    # --- Phase 10: Risk flags (reuse cached feasibility) ---
+    risk_flags = generate_risk_flags(packet, stage, cached_feasibility=feasibility)
 
     # --- Phase 11: Post-trip mode skips blocker logic ---
     if mode == "post_trip":
@@ -907,6 +1139,9 @@ def run_gap_and_decision(
     if feasibility["status"] == "infeasible" and decision_state == "PROCEED_TRAVELER_SAFE":
         decision_state = "ASK_FOLLOWUP"
 
+    intent_scores = compute_intent_scores(packet)
+    commercial_decision, next_best_action = decide_commercial_action(packet, intent_scores)
+
     rationale = {
         "hard_blockers": hard_blockers,
         "soft_blockers": soft_blockers,
@@ -914,6 +1149,7 @@ def run_gap_and_decision(
         "confidence": round(confidence, 3),
         "feasibility": feasibility["status"],
         "operating_mode": mode,
+        "commercial_decision": commercial_decision,
     }
 
     return DecisionResult(
@@ -930,4 +1166,7 @@ def run_gap_and_decision(
         rationale=rationale,
         confidence_score=round(confidence, 3),
         risk_flags=risk_flags,
+        commercial_decision=commercial_decision,
+        intent_scores=intent_scores,
+        next_best_action=next_best_action,
     )

@@ -10,9 +10,13 @@ dependencies = [
     "pandas>=3.0.2",
     "pydantic>=2.12.5",
     "rich>=14.3.3",
+    "streamlit>=1.40.0",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

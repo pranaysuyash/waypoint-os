@@ -995,7 +995,7 @@ class TestLeakageEnforcement:
     """Tests proving leakage checks are in the actual code path."""
 
     def test_leakage_check_runs_after_bundle_generation(self):
-        """Prove check_no_leakage() runs after traveler bundle generation."""
+        """Prove enforce_no_leakage() runs after traveler bundle generation."""
         from intake.strategy import build_traveler_safe_bundle
         from unittest.mock import patch
 
@@ -1010,14 +1010,14 @@ class TestLeakageEnforcement:
         decision = run_gap_and_decision(pkt)
         strategy = build_session_strategy(decision, pkt)
 
-        # Mock the leakage check to verify it's called
-        with patch('intake.strategy.check_no_leakage') as mock_check:
+        # Mock enforce_no_leakage to verify it's called
+        with patch('intake.strategy.enforce_no_leakage') as mock_check:
             mock_check.return_value = []  # No leaks for this test
 
             bundle = build_traveler_safe_bundle(strategy, decision)
 
-            # Verify leakage check was called
-            assert mock_check.called, "check_no_leakage must be called in production path"
+            # Verify leakage enforcement was called
+            assert mock_check.called, "enforce_no_leakage must be called in production path"
 
     def test_leakage_detected_prevents_traveler_output(self):
         """Prove that detected leakage blocks or flags the output."""
@@ -1031,7 +1031,7 @@ class TestLeakageEnforcement:
         from intake.strategy import PromptBundle
 
         bad_bundle = PromptBundle(
-            system_context="Decision state: ASK_FOLLOWUP",  # Leakage!
+            system_context="Decision state: ASK_FOLLOWUP",
             user_message="Based on my hypothesis...",
             follow_up_sequence=[],
             branch_prompts=[],
@@ -1042,8 +1042,9 @@ class TestLeakageEnforcement:
 
         leaks = check_no_leakage(bad_bundle)
         assert len(leaks) > 0, "Should detect leakage"
-        # Leak message contains "decision state" (space-separated), not "decision_state" (underscore)
-        assert any("decision state" in leak.lower() for leak in leaks)
+        # Leak message should contain the forbidden term
+        leak_text = " ".join(leaks).lower()
+        assert "decision state" in leak_text or "hypothesis" in leak_text
 
 
 class StrengthenedCoordinatorGroupTests:

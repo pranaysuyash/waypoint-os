@@ -264,6 +264,54 @@ User provided additional second context file from Downloads and requested integr
 - Added to docs navigation:
   - `Docs/INDEX.md`
 
+## Log Entry: 2026-04-15 - Additional Discussion Ingested (Repeat/Ghosting/Window-Shopper/Churn)
+
+### Context
+User provided an additional lifecycle-focused discussion and requested explicit treatment of:
+- repeat customers
+- churn
+- ghosting risk
+- window-shoppers
+
+### Coverage Review Outcome
+- Repeat customer and ghosting ideas existed in docs/scenarios but were fragmented.
+- Churn and lifecycle intelligence were mostly implied, not standardized as a first-class contract.
+- Existing stack was stronger on trip intelligence than commercial lifecycle intelligence.
+
+### New Artifact Added
+- `Docs/LEAD_LIFECYCLE_AND_RETENTION.md`
+
+### What the new artifact formalizes
+- lifecycle state machine
+- additive canonical packet `lifecycle` schema block
+- deterministic v1 heuristic scoring
+- commercial decision family
+- intervention playbooks
+- NB01/NB02/NB03 integration points
+- lifecycle metrics
+
+### Traceability
+- Added to docs navigation:
+  - `Docs/INDEX.md`
+
+## Log Entry: 2026-04-15 - Projects Workflow Compliance (Explicit Lifecycle Record)
+
+### Context
+User requested explicit demonstration that the Projects-level workflow structure was discovered and followed (analysis -> document -> plan -> research -> decision log -> implement -> test -> document results), and asked that this also be reflected at project level.
+
+### Actions Taken
+- Added explicit compliance artifact:
+  - `Docs/context/WORKFLOW_COMPLIANCE_ENTRY_2026-04-15.md`
+- Refreshed project-level context pack via:
+  - `/Users/pranay/Projects/agent-start --project travel_agency_agent --skip-index`
+- Confirmed refreshed files:
+  - `.agent/AGENT_KICKOFF_PROMPT.txt`
+  - `.agent/SESSION_CONTEXT.md`
+  - `.agent/STEP1_ENV.sh`
+
+### Test Status
+- Re-ran `pytest -q`; same pre-existing notebook import-path errors remain (`ModuleNotFoundError: intake` in two notebook tests).
+
 5. **Fallback strategy**
    - Deterministic parser > NER suggestion > regex fallback (never the reverse for critical fields).
 
@@ -335,3 +383,173 @@ User provided additional strategy and implementation detail from external AI dis
 ### Key Decision
 - Adopt SEO wedge and component structure for MVP.
 - Defer aggressive 50-page programmatic expansion until funnel and precision gates are met.
+
+## Log Entry: 2026-04-15 - Lifecycle/Retention Engine Implemented in Runtime (NB02 Additive Pass)
+
+### Context
+User asked to run the workflow end-to-end against current project state and implement missing lifecycle/churn parts only where they materially improve the existing system.
+
+Environment date checked before this documentation update:
+- `2026-04-15 08:12:13 IST`
+
+### Implementation Completed
+- Added canonical lifecycle block support in packet model:
+  - `src/intake/packet_models.py` (`LifecycleInfo`, optional `CanonicalPacket.lifecycle`, serialization)
+- Exported lifecycle model:
+  - `src/intake/__init__.py`
+- Added deterministic lifecycle scoring and commercial policy in NB02:
+  - `src/intake/decision.py`
+  - New scores: `ghost_risk`, `window_shopper_risk`, `repeat_likelihood`, `churn_risk`
+  - New outputs on `DecisionResult`: `commercial_decision`, `intent_scores`, `next_best_action`
+- Added tests for lifecycle/commercial behavior:
+  - `tests/test_lifecycle_retention.py`
+
+### Verification
+- Focused suite passed:
+  - `uv run pytest -q tests/test_lifecycle_retention.py tests/test_decision_policy_conformance.py tests/test_nb02_v02.py`
+  - Result: `29 passed`
+- Full suite status unchanged from prior baseline:
+  - `uv run pytest -q`
+  - Existing notebook collection errors remain (`ModuleNotFoundError: intake` in notebook tests).
+
+### Outcome
+- Lifecycle/churn logic moved from doc-only guidance to executable runtime behavior.
+- Change is additive and backward-compatible with current trip decision flow.
+
+## Log Entry: 2026-04-15 - Comprehensive Orchestration Alignment (No Scope Shrink)
+
+### Context
+User provided another discussion set and explicitly locked direction:
+- do not reduce or delete prior comprehensive work
+- keep additive improvement approach
+- go big with proper multi-agent orchestration
+- add this motto at Projects-level instructions
+
+Environment date checked before this documentation update:
+- `2026-04-15 08:17:30 IST`
+
+### Actions Completed
+- Added Projects-level execution motto in:
+  - `/Users/pranay/Projects/AGENTS.md`
+  - Motto: **additive, better, comprehensive** with explicit multi-agent orchestration preference.
+- Added repo control docs:
+  - `Docs/status/STATUS_MATRIX.md`
+  - `Docs/status/PHASE_1_BUILD_QUEUE.md`
+- Updated index links:
+  - `Docs/INDEX.md`
+
+### Decision
+- Preserve full capability map and all historical documentation as product ontology.
+- Use explicit status layering:
+  - Knowledge Asset
+  - Build Now
+  - Design Contract
+  - Orchestration Expansion
+- Treat current phase work as foundation for larger orchestration, not MVP downscoping.
+
+## Log Entry: 2026-04-15 - Follow-up Mode Bug Fix + Notebook Import Path Hardening
+
+### Context
+User requested immediate implementation of:
+1. notebook import-path failure fix
+2. `follow_up` mode bug flagged in issue review
+3. clarification and correction of model-specific issue-review naming
+
+Environment date checked before this documentation update:
+- `2026-04-15 08:22:32 IST`
+
+### Actions Completed
+- Fixed runtime bug in `src/intake/decision.py`:
+  - `apply_operating_mode(...)` now receives `hard_blockers` explicitly.
+  - Updated call site in `run_gap_and_decision(...)`.
+- Added regression coverage:
+  - `tests/test_follow_up_mode.py`
+- Hardened notebook scripts so `src` import path is injected before notebook cell execution:
+  - `notebooks/test_02_comprehensive.py`
+  - `notebooks/test_scenarios_realworld.py`
+- Prevented notebook script harnesses from being collected as pytest modules:
+  - `pyproject.toml` -> `[tool.pytest.ini_options] testpaths = ["tests"]`
+- Addressed naming convention drift:
+  - Added canonical project-neutral review file:
+    - `Docs/process_issue_review_2026-04-15.md`
+  - Converted `Docs/gemini issue review.md` to legacy pointer.
+  - Updated `Docs/INDEX.md` link to project-neutral file.
+- Stabilized unrelated flaky geography test using unique runtime-generated fake city names:
+  - `tests/test_geography.py`
+
+### Verification
+- Targeted decision/path tests:
+  - `uv run pytest -q tests/test_follow_up_mode.py tests/test_decision_policy_conformance.py tests/test_nb02_v02.py`
+  - Result: `25 passed`
+- Full suite:
+  - `uv run pytest -q`
+  - Result: `132 passed`
+- Notebook script import-path check:
+  - Executed both notebook scripts and verified no `ModuleNotFoundError: intake` surfaced.
+
+## Log Entry: 2026-04-15 - Operator Workbench Component Spec + Ticketed Acceptance Checklist
+
+### Context
+User requested explicit conversion of UI direction into execution-grade specification and acceptance gates.
+
+Environment date checked before this documentation update:
+- `2026-04-15 08:42:54 IST`
+
+### Actions Completed
+- Added component specification:
+  - `Docs/status/OPERATOR_WORKBENCH_COMPONENT_SPEC_2026-04-15.md`
+- Added ticketed acceptance checklist:
+  - `Docs/status/WORKBENCH_ACCEPTANCE_CHECKLIST_2026-04-15.md`
+- Updated index links:
+  - `Docs/INDEX.md`
+
+### Decision
+- Proceed with one internal Streamlit app in Phase A.
+- Implement two real modes (Workbench + Flow Simulation) over frozen spine modules.
+- Keep logic centralized in shared intake modules; UI remains orchestration and presentation layer only.
+
+## Log Entry: 2026-04-15 - Frontend Direction Override (No Streamlit, Proper Full Frontend)
+
+### Context
+User explicitly requested a proper full frontend path and rejected Streamlit for implementation.
+
+Environment date checked before this documentation update:
+- `2026-04-15 09:50:32 IST`
+
+### Actions Completed
+- Added full-scope frontend specification:
+  - `Docs/FRONTEND_PRODUCT_SPEC_FULL_2026-04-15.md`
+- Preserved previous draft as historical baseline:
+  - `Docs/FRONTEND_PRODUCT_SPEC_FULL_2026-04-15_STREAMLIT_BASELINE.md`
+- Marked Streamlit-oriented workbench docs as superseded/historical context:
+  - `Docs/status/OPERATOR_WORKBENCH_COMPONENT_SPEC_2026-04-15.md`
+  - `Docs/status/WORKBENCH_ACCEPTANCE_CHECKLIST_2026-04-15.md`
+- Updated docs index:
+  - `Docs/INDEX.md`
+
+### Decision
+- Frontend implementation path is now locked to productized web app architecture (Next.js + TypeScript), including internal workbench routes inside the same shell.
+- No Streamlit implementation path for frontend delivery.
+
+## Log Entry: 2026-04-15 - Next.js Frontend Implementation Track Defined
+
+### Context
+User requested conversion of full frontend spec into execution-ready implementation tracks with routes, ownership, and API contracts.
+
+Environment date checked before this documentation update:
+- `2026-04-15 09:57:42 IST`
+
+### Actions Completed
+- Added Next.js implementation track:
+  - `Docs/status/NEXTJS_IMPLEMENTATION_TRACK_2026-04-15.md`
+- Included:
+  - route-by-route build track
+  - component ownership map
+  - BFF API contracts (`/api/spine/run`, scenario, fixture compare)
+  - phased FE ticket sequence (P0/P1/P2/P3)
+  - test plan and program-level done criteria
+- Updated docs index:
+  - `Docs/INDEX.md`
+
+### Decision
+- Frontend execution is now explicitly organized as Next.js product tracks with no Streamlit dependency.

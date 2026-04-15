@@ -84,9 +84,11 @@ class PacketValidationReport:
 def validate_packet(packet: CanonicalPacket, stage: str = "discovery") -> PacketValidationReport:
     """
     Validate a CanonicalPacket against v0.2 schema.
-    Every NB01 run should end with this check.
 
-    is_valid is False if ANY errors exist.
+    Entry point: ``validate_packet(packet)`` → PacketValidationReport.
+
+    Every NB01 run should end with this check.
+    is_valid is False if ANY errors exist (structural violations).
     Warnings do NOT affect is_valid but are still reported.
     """
     errors: List[ValidationIssue] = []

@@ -41,3 +41,10 @@ env/
 # Local tool/session state
 .agent/
 .qwen/
+# Data files
+# Generated/accumulated data
+accumulated_cities.json
+
+# Downloaded datasets
+cities5000.txt
+cities.json

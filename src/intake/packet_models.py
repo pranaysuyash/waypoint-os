@@ -173,7 +173,57 @@ class SubGroup:
 
 
 # =============================================================================
-# SECTION 4: SOURCE ENVELOPE
+# SECTION 4: LIFECYCLE & RETENTION MODELS
+# =============================================================================
+
+@dataclass
+class LifecycleInfo:
+    """Lead/customer lifecycle signals for retention and commercial decisions."""
+    lead_id: Optional[str] = None
+    customer_id: Optional[str] = None
+    trip_thread_id: Optional[str] = None
+    status: Optional[Literal[
+        "NEW_LEAD",
+        "ACTIVE_DISCOVERY",
+        "QUOTE_IN_PROGRESS",
+        "QUOTE_SENT",
+        "ENGAGED_AFTER_QUOTE",
+        "GHOST_RISK",
+        "WON",
+        "BOOKING_IN_PROGRESS",
+        "TRIP_CONFIRMED",
+        "TRIP_ACTIVE",
+        "TRIP_COMPLETED",
+        "REVIEW_PENDING",
+        "RETENTION_WINDOW",
+        "REPEAT_BOOKED",
+        "DORMANT",
+        "LOST",
+    ]] = None
+    created_at: Optional[str] = None
+    last_customer_message_at: Optional[str] = None
+    last_agent_message_at: Optional[str] = None
+    last_meaningful_engagement_at: Optional[str] = None
+    quote_sent_at: Optional[str] = None
+    quote_opened: bool = False
+    quote_open_count: int = 0
+    options_viewed_count: int = 0
+    links_clicked_count: int = 0
+    revision_count: int = 0
+    days_since_last_reply: Optional[int] = None
+    payment_stage: Literal["none", "token", "partial", "full"] = "none"
+    commitment_signals: List[str] = field(default_factory=list)
+    risk_signals: List[str] = field(default_factory=list)
+    repeat_trip_count: int = 0
+    last_trip_completed_at: Optional[str] = None
+    loss_reason: Optional[str] = None
+    win_reason: Optional[str] = None
+    next_best_action: Optional[str] = None
+    next_action_due_at: Optional[str] = None
+
+
+# =============================================================================
+# SECTION 5: SOURCE ENVELOPE
 # =============================================================================
 
 @dataclass
@@ -212,7 +262,7 @@ class SourceEnvelope:
 
 
 # =============================================================================
-# SECTION 5: CANONICAL PACKET (v0.2)
+# SECTION 6: CANONICAL PACKET (v0.2)
 # =============================================================================
 
 @dataclass
@@ -236,6 +286,7 @@ class CanonicalPacket:
     facts: Dict[str, Slot] = field(default_factory=dict)
     derived_signals: Dict[str, Slot] = field(default_factory=dict)
     hypotheses: Dict[str, Slot] = field(default_factory=dict)
+    lifecycle: Optional[LifecycleInfo] = None
 
     # Explicit tracking
     ambiguities: List[Ambiguity] = field(default_factory=list)
@@ -325,6 +376,7 @@ class CanonicalPacket:
             "facts": {k: v.to_dict() for k, v in self.facts.items()},
             "derived_signals": {k: v.to_dict() for k, v in self.derived_signals.items()},
             "hypotheses": {k: v.to_dict() for k, v in self.hypotheses.items()},
+            "lifecycle": asdict(self.lifecycle) if self.lifecycle else None,
             "ambiguities": [asdict(a) for a in self.ambiguities],
             "unknowns": [asdict(u) for u in self.unknowns],
             "contradictions": self.contradictions,

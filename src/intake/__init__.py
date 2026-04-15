@@ -9,6 +9,7 @@ Core modules:
 - decision: NB02 v0.2 — Gap and decision engine (run_gap_and_decision)
 - strategy: NB03 v0.2 — Session strategy and SEPARATE internal/traveler builders
 - safety: NB03 v0.2 — Structural traveler-safe sanitization
+- geography: City database from GeoNames (CC-BY 4.0) + world-cities.json (MIT)
 """
 
 from .packet_models import (
@@ -17,6 +18,7 @@ from .packet_models import (
     CanonicalPacket,
     EvidenceRef,
     ExtractionMode,
+    LifecycleInfo,
     OwnerConstraint,
     Slot,
     SourceEnvelope,
@@ -65,4 +67,20 @@ from .safety import (
     is_field_internal_only,
     audit_packet_internal_data,
     sanitize_text_output,
+)
+
+# Orchestration — single spine entrypoint
+from .orchestration import (
+    SpineResult,
+    run_spine_once,
+)
+
+# Geography database
+from .geography import (
+    is_known_city,
+    is_known_city_normalized,
+    record_seen_city,
+    get_dataset_info,
+    get_attribution_notice,
+    clear_cache,
 )

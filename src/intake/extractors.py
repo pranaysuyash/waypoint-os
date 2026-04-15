@@ -3,6 +3,11 @@ intake.extractors — ExtractionPipeline v0.2.
 
 Pattern-based (not mock/keyword) extraction that populates the v0.2 CanonicalPacket.
 Not an LLM — but honest regex parsing that handles the 30+ fact fields.
+
+Geography handling (v0.2.1):
+- Uses geography.py for city validation (590k+ cities from GeoNames + world-cities)
+- Separates concerns: is_known_city vs likely_origin vs likely_destination vs historical_mention
+- Origin/destination are determined by context patterns, not city list membership
 """
 
 from __future__ import annotations
@@ -25,56 +30,126 @@ from .packet_models import (
     UnknownField,
 )
 from .normalizer import Normalizer
+from .geography import is_known_city, is_known_destination, get_city_country
 
 
 # =============================================================================
 # SECTION 1: DESTINATION DETECTION
 # =============================================================================
 
-# Known destination keywords (used for extraction + domestic/intl classification)
-INTERNATIONAL_DESTINATIONS = frozenset({
-    "Japan", "Tokyo", "Osaka", "Paris", "London", "New York", "Singapore",
-    "Thailand", "Bangkok", "Dubai", "Maldives", "Europe", "Bali", "Switzerland",
-    "Austria", "Vietnam", "Sri Lanka", "Nepal",
-    "Bhutan", "Mauritius", "Seychelles", "Turkey", "Istanbul",
-})
-
-DOMESTIC_DESTINATIONS = frozenset({
-    "Goa", "Kerala", "Kashmir", "Himachal", "Manali", "Shimla",
-    "Rajasthan", "Jaipur", "Udaipur", "Andhra", "Tamil Nadu",
-    "Darjeeling", "Sikkim", "Ladakh", "Leh", "Andaman", "Andamans", "Char Dham", "Uttarakhand",
-    "Rishikesh", "Munnar", "Coorg", "Ooty", "Hampi",
-})
-
-ALL_DESTINATIONS = INTERNATIONAL_DESTINATIONS | DOMESTIC_DESTINATIONS
-
-DESTINATION_KEYWORDS = "|".join(sorted(ALL_DESTINATIONS, key=len, reverse=True))
-
-# Regex for destination extraction
+# Regex for destination extraction - uses broad pattern to capture place names
+# Validation happens via geography.py, not hardcoded lists
+# Matches capitalized place names (single or multi-word)
 _DESTINATION_RE = re.compile(
-    rf"\b({DESTINATION_KEYWORDS})\b",
-    re.IGNORECASE,
+    r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b",
 )
+
+# Past trip indicators - used to distinguish current vs historical mentions
+_PAST_TRIP_INDICATORS = frozenset({
+    "last time", "previous trip", "past trip", "went to", "visited last",
+    "came back from", "returned from", "their last", "earlier trip",
+    "last year", "last month", "last summer", "last winter",
+    "recently visited", "we went to",
+})
+
+
+def _extract_relevant_span(text: str, match_str: str, window: int = 80) -> str:
+    """
+    Extract a context window around the first occurrence of match_str in text.
+    Returns the span of text (up to `window` chars before and after match).
+    If match_str not found, returns empty string.
+    """
+    idx = text.lower().find(match_str.lower())
+    if idx < 0:
+        return ""
+    start = max(0, idx - window)
+    end = min(len(text), idx + len(match_str) + window)
+    return text[start:end]
+
+
+_PAST_TRIP_INDICATORS = frozenset({
+    "last time", "previous trip", "past trip", "went to", "visited last",
+    "came back from", "returned from", "their last", "earlier trip",
+    "last year", "last month", "last summer", "last winter",
+})
+
+
+def _is_past_trip_mention(sentence: str, dest_match: str) -> bool:
+    """Check if a destination mention is in the context of a past trip (not current intent).
+
+    Uses a narrow clause-level check: looks for past-trip indicators in the
+    same clause as the destination (comma-delimited or sentence-delimited),
+    not just a broad character window.
+    """
+    lowered = sentence.lower()
+    match_idx = lowered.find(dest_match.lower())
+    if match_idx < 0:
+        return False
+
+    # Extract the clause containing the destination.
+    # A clause is bounded by commas, periods, semicolons, or the start/end of the text.
+    # Search backward from the match for the nearest clause boundary.
+    text_before_match = lowered[:match_idx]
+    last_clause_boundary = 0
+    for boundary_char in [',', '.', ';', '!', '?']:
+        idx = text_before_match.rfind(boundary_char)
+        if idx >= last_clause_boundary:
+            last_clause_boundary = idx + 1
+
+    clause_context = lowered[last_clause_boundary:match_idx + len(dest_match)]
+
+    for indicator in _PAST_TRIP_INDICATORS:
+        if indicator in clause_context:
+            return True
+    return False
+
+
+def _is_likely_origin(text: str, dest_match: str) -> bool:
+    """Check if a destination mention is actually the origin city.
+
+    Looks for patterns like "from Bangalore" where Bangalore would be
+    extracted as destination but is actually the origin.
+    """
+    lowered = text.lower()
+    match_idx = lowered.find(dest_match.lower())
+    if match_idx < 0:
+        return False
+
+    # Check if preceded by "from" within 10 chars
+    context_before = lowered[max(0, match_idx - 10):match_idx]
+    if re.search(r'\b(from|starting|departing)\s+$', context_before):
+        return True
+
+    return False
 
 
 def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional[str]]:
     """
     Returns (candidates, status, raw_match).
     status: "definite" | "semi_open" | "open"
+
+    Past-trip destination mentions are excluded to prevent contamination
+    of current destination intent.
     """
     text_lower = text.lower()
     candidates: List[str] = []
+    excluded_by_past_trip: List[str] = []
 
     # Check for "or" pattern (semi-open)
     or_match = re.search(
-        rf"\b({DESTINATION_KEYWORDS})\s+(?:or|and)\s+({DESTINATION_KEYWORDS})\b",
-        text_lower,
-        re.IGNORECASE,
+        r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)(?:\s+(?:or|and)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*).*?)\b",
+        text,
     )
     if or_match:
         c1 = or_match.group(1).title()
         c2 = or_match.group(2).title()
-        return [c1, c2], "semi_open", or_match.group(0)
+        combined = []
+        if not _is_past_trip_mention(text, or_match.group(0)):
+            combined = [c1, c2]
+        if combined:
+            return combined, "semi_open", or_match.group(0)
+        else:
+            return [], "open", None
 
     # Check for "somewhere with/for" (open)
     open_match = re.search(r"somewhere\s+(?:with|for|that)\s+(\w+)", text_lower)
@@ -85,23 +160,36 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
     if "open to suggestions" in text_lower or "suggestions" in text_lower:
         return [], "open", "suggestions"
 
-    # Single destination match
-    matches = _DESTINATION_RE.findall(text)
+    # Single/multiple destination match — filter past-trip mentions AND origin patterns
+    # Validate against geography database to filter out non-city capitalized words
+    matches = [m.group(0) for m in _DESTINATION_RE.finditer(text)]
     if matches:
         seen = []
         for m in matches:
             title = m.title()
             if title not in seen:
-                seen.append(title)
+                # Skip if not a known destination (city or country)
+                # geography.py is the filter, not hardcoded lists
+                if not is_known_destination(title):
+                    continue
+                # Skip if this looks like an origin (preceded by "from")
+                if _is_likely_origin(text, m):
+                    continue
+                if _is_past_trip_mention(text, m):
+                    excluded_by_past_trip.append(title)
+                else:
+                    seen.append(title)
         if len(seen) == 1:
             return seen, "definite", matches[0]
-        return seen, "semi_open", ", ".join(matches)
+        elif len(seen) > 1:
+            return seen, "semi_open", ", ".join(matches)
 
-    # Maybe pattern: "maybe Singapore"
+    # Maybe pattern: "maybe Singapore" or "maybe Japan"
     maybe_match = re.search(r"\bmaybe\s+(\w+)", text_lower)
     if maybe_match:
         dest = maybe_match.group(1).title()
-        if dest in ALL_DESTINATIONS:
+        # Use geography.py as plausibility check, not as gatekeeper
+        if is_known_destination(dest):
             return [dest], "semi_open", maybe_match.group(0)
 
     return [], "open" if ("somewhere" in text_lower or "any" in text_lower) else "undecided", None
@@ -136,6 +224,7 @@ def _extract_dates(text: str) -> Optional[Tuple[str, Optional[str], Optional[str
         r"((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)"
         r"\s+(\d{4})",
         text_lower,
+        re.IGNORECASE,
     )
     if month_window:
         raw = month_window.group(0)
@@ -146,17 +235,19 @@ def _extract_dates(text: str) -> Optional[Tuple[str, Optional[str], Optional[str
         r"((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)"
         r"\s+(\d{4})",
         text_lower,
+        re.IGNORECASE,
     )
     if single_month:
         raw = single_month.group(0)
         return raw, None, None, "flexible"
 
-    # "around March 2026"
+    # "around March 2026", "sometime in May 2026"
     fuzzy = re.search(
         r"(?:around|sometime\s+in|during)\s+"
         r"((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)"
         r"\s+(\d{4})",
         text_lower,
+        re.IGNORECASE,
     )
     if fuzzy:
         raw = fuzzy.group(0)
@@ -560,7 +651,15 @@ def _extract_traveler_plan(text: str) -> Dict[str, Any]:
 # =============================================================================
 
 class ExtractionPipeline:
-    """The core compiler: envelopes → CanonicalPacket v0.2."""
+    """
+    The core compiler: raw SourceEnvelope(s) → CanonicalPacket v0.2.
+
+    Entry point: ``pipeline.extract([envelope])`` → CanonicalPacket.
+
+    Pattern-based (not LLM) extraction that populates 30+ fact fields.
+    Handles freeform text, structured JSON, and hybrid inputs.
+    After extraction, computes derived signals and identifies unknowns.
+    """
 
     def __init__(self, model_client=None):
         self.model_client = model_client
@@ -636,10 +735,20 @@ class ExtractionPipeline:
                 dest_status, 0.8, AuthorityLevel.EXPLICIT_USER,
                 "Derived from destination text", eid,
             ))
-            # Check for ambiguities
+            # Check for ambiguities on the ORIGINAL source phrasing, not just extracted values.
+            # Using the source span catches natural-language vagueness that
+            # normalization can lose (e.g., "maybe somewhere like Andaman?").
             if dest_raw:
                 for amb in Normalizer.detect_ambiguities("destination_candidates", dest_raw):
                     packet.add_ambiguity(amb)
+            # Also run ambiguity detection on the relevant source text span
+            # around the destination mention for richer detection.
+            dest_context = _extract_relevant_span(text, dest_raw or "", window=80)
+            if dest_context and dest_context != dest_raw:
+                for amb in Normalizer.detect_ambiguities("destination_candidates", dest_context):
+                    # Avoid duplicate ambiguity types
+                    if not any(a.ambiguity_type == amb.ambiguity_type for a in packet.ambiguities):
+                        packet.add_ambiguity(amb)
 
         # --- DATES ---
         date_result = _extract_dates(text)
@@ -723,7 +832,8 @@ class ExtractionPipeline:
             ))
 
         # --- ORIGIN ---
-        # Check for airport codes first
+        # Bounded extraction: limit to ~3 words after "from/starting/departing"
+        # to prevent conversational spillover into unrelated sentence parts.
         airport_match = re.search(r"\b(from|starting|departing)\s+([A-Z]{3})\b", text)
         if airport_match:
             city, was_normalized = Normalizer.normalize_city(airport_match.group(2))
@@ -733,15 +843,28 @@ class ExtractionPipeline:
                 airport_match.group(0), eid, extraction_mode=mode,
             ))
         else:
-            origin_match = re.search(r"\b(from|starting|departing)\s+([A-Za-z\s]+?)(?:\bto\b|,|\.|$)", text)
+            # Match max 3 words after "from" before hitting a delimiter
+            # Delimiters: to, comma, period, newline, or sentence-ending patterns
+            origin_match = re.search(
+                r"\b(from|starting|departing)\s+((?:[A-Za-z]+\s*){1,3}?)(?:\bto\b|,|\.|\$|\n)",
+                text,
+                re.IGNORECASE,
+            )
             if origin_match:
-                city = origin_match.group(2).strip()
-                city, was_normalized = Normalizer.normalize_city(city)
+                city_raw = origin_match.group(2).strip()
+                # Validate as a plausible city name using geography.py
+                # NOTE: A city being in destination lists doesn't disqualify it as origin.
+                # People can take trips FROM destinations. What matters is the pattern.
+                city, was_normalized = Normalizer.normalize_city(city_raw)
                 mode = ExtractionMode.NORMALIZED if was_normalized else ExtractionMode.DIRECT_EXTRACT
-                packet.set_fact("origin_city", self._make_slot(
-                    city, 0.9, AuthorityLevel.EXPLICIT_USER,
-                    origin_match.group(0), eid, extraction_mode=mode,
-                ))
+
+                # Basic validation: must be a known city (or close enough) or multi-word
+                # Multi-word names like "New York" should be accepted even if not in city DB
+                if is_known_city(city) or len(city_raw.split()) > 1:
+                    packet.set_fact("origin_city", self._make_slot(
+                        city, 0.9, AuthorityLevel.EXPLICIT_USER,
+                        origin_match.group(0), eid, extraction_mode=mode,
+                    ))
 
         # --- MOBILITY / MEDICAL CONSTRAINTS ---
         mobility_match = re.search(r"((?:can'?t\s+walk|wheelchair|mobility|slow\s+pace|limited\s+mobility|ground\s+floor)[^.,]*)", text_lower)
@@ -914,22 +1037,49 @@ class ExtractionPipeline:
         """Compute derived signals from facts only — never from hypotheses."""
 
         # domestic_or_international
+        # Uses geography.py for country lookup (from GeoNames)
+        # Falls back to "unknown" if country info unavailable
         if "destination_candidates" in packet.facts and "origin_city" in packet.facts:
             dests = packet.facts["destination_candidates"].value
             origin = packet.facts["origin_city"].value
 
-            if isinstance(dests, list):
-                all_domestic = all(d in DOMESTIC_DESTINATIONS for d in dests)
-                all_intl = all(d in INTERNATIONAL_DESTINATIONS for d in dests)
-                signal = "domestic" if all_domestic else ("international" if all_intl else "mixed")
-            else:
-                signal = "domestic" if dests in DOMESTIC_DESTINATIONS else (
-                    "international" if dests in INTERNATIONAL_DESTINATIONS else "unknown"
-                )
+            # Get country codes for origin and destinations
+            origin_country = get_city_country(str(origin)) if origin else None
+
+            signal = "unknown"
+            confidence = 0.3  # Low default confidence when geography unavailable
+
+            if origin_country:
+                dest_list = dests if isinstance(dests, list) else [dests]
+                countries_known = []
+                countries_match_origin = []
+
+                for d in dest_list:
+                    d_country = get_city_country(str(d))
+                    if d_country:
+                        countries_known.append(d)
+                        countries_match_origin.append(d_country == origin_country)
+
+                if countries_known:
+                    # All known destinations are in same country as origin
+                    if all(countries_match_origin):
+                        signal = "domestic"
+                        confidence = 0.9
+                    # All known destinations are in different countries from origin
+                    elif all(not cm for cm in countries_match_origin):
+                        signal = "international"
+                        confidence = 0.9
+                    else:
+                        signal = "mixed"
+                        confidence = 0.8
+                else:
+                    # No country info for any destination
+                    signal = "unknown"
+                    confidence = 0.3
 
             packet.set_derived_signal("domestic_or_international", self._make_slot(
-                signal, 0.9, AuthorityLevel.DERIVED_SIGNAL,
-                f"Computed from destination_candidates={dests}, origin={origin}",
+                signal, confidence, AuthorityLevel.DERIVED_SIGNAL,
+                f"Computed from destination_candidates={dests}, origin={origin}, origin_country={origin_country}",
                 "derived", extraction_mode="derived", maturity="heuristic",
             ))
 

@@ -1,0 +1,52 @@
+{
+  "scenario_id": "SC-001",
+  "title": "Clean family booking — proceed traveler-safe",
+  "description": "A well-specified family trip from Bangalore to Singapore with clear dates, budget, and composition. Should proceed directly to traveler-safe proposal generation.",
+  "mode": "normal_intake",
+  "stage": "discovery",
+  "inputs": {
+    "raw_note": "Family of 4 from Bangalore — 2 adults, 2 kids (ages 8 and 12). Want to go to Singapore, 5 nights, March 15-20. Budget around 3 lakhs total. They've been to Thailand before and loved it. Want kid-friendly activities, vegetarian food important. Both kids have valid passports. Ready to book.",
+    "owner_note": null,
+    "structured_json": null,
+    "itinerary_text": null
+  },
+  "expected": {
+    "allowed_decision_states": ["PROCEED_TRAVELER_SAFE", "PROCEED_INTERNAL_DRAFT"],
+    "required_packet_fields": [
+      "origin_city",
+      "destination_candidates",
+      "date_window",
+      "party_size",
+      "budget_raw_text",
+      "trip_purpose",
+      "traveler_composition"
+    ],
+    "forbidden_traveler_terms": [
+      "hypothesis",
+      "blocker",
+      "ambiguity",
+      "contradiction",
+      "internal_only",
+      "agency_notes",
+      "confidence_score",
+      "decision_state"
+    ],
+    "leakage_expected": false,
+    "assertions": [
+      {
+        "type": "no_leakage",
+        "message": "Traveler bundle should contain no internal leakage terms"
+      },
+      {
+        "type": "field_present",
+        "field": "origin_city",
+        "message": "Origin city should be extracted from the raw note"
+      },
+      {
+        "type": "field_present",
+        "field": "destination_candidates",
+        "message": "Singapore should be extracted as destination candidate"
+      }
+    ]
+  }
+}

@@ -5,17 +5,27 @@
 - [Technical Scaffold and Autoresearch](TECHNICAL_SCAFFOLD_AND_AUTORESEARCH.md) — Two-loop architecture and prompt registry.
 - [Data Model and Taxonomy](DATA_MODEL_AND_TAXONOMY.md) — Brackets, budget splits, and the shared state schema.
 - [Sourcing and Decision Policy](Sourcing_And_Decision_Policy.md) — Sourcing hierarchy and "Proceed/Ask" gating logic.
+- [Lead Lifecycle and Retention](LEAD_LIFECYCLE_AND_RETENTION.md) — Unified state machine, schema, scoring, and interventions for repeat, ghosting, window-shopping, and churn.
 - [Discussion Log](DISCUSSION_LOG.md) — Audit trail of pivots and agent feedback.
 - [Issue Review](issue_review.md) — Active issue register for identified/validated gaps.
+- [Process Issue Review (2026-04-15)](process_issue_review_2026-04-15.md) — Runtime/code issues identified during implementation passes with project-neutral naming.
+- [Status Matrix (2026-04-15)](status/STATUS_MATRIX.md) — Control layer that preserves full scope while mapping what is active now vs phased orchestration expansion.
+- [Phase 1 Build Queue (2026-04-15)](status/PHASE_1_BUILD_QUEUE.md) — Ordered execution checklist for deterministic foundations before broader specialist activation.
+- [Frontend Product Spec (Full, 2026-04-15)](FRONTEND_PRODUCT_SPEC_FULL_2026-04-15.md) — Full product frontend architecture and screen contracts (internal/operator/owner/traveler/public), no Streamlit path.
+- [Next.js Implementation Track (2026-04-15)](status/NEXTJS_IMPLEMENTATION_TRACK_2026-04-15.md) — Route-by-route execution plan, component ownership, and BFF API contracts for full frontend delivery.
+- [Operator Workbench Component Spec (2026-04-15)](status/OPERATOR_WORKBENCH_COMPONENT_SPEC_2026-04-15.md) — Screen-by-screen internal app contract for Workbench and Flow Simulation modes.
+- [Workbench Acceptance Checklist (2026-04-15)](status/WORKBENCH_ACCEPTANCE_CHECKLIST_2026-04-15.md) — Ticketed acceptance gates for implementation and validation.
 - [First Principles Foundation (2026-04-14)](FIRST_PRINCIPLES_FOUNDATION_2026-04-14.md) — Core truths, objective function, and strict dependency-ordered build sequence.
 - [Rolling Context Synthesis](ROLLING_CONTEXT_SYNTHESIS.md) — Active cross-part synthesis and implementation contracts.
 - [First Mile Implementation](FIRST_MILE_IMPLEMENTATION.md) — Roadmap for the Agency Context deconstruction.
 - [Meta Design Reference Synthesis (2026-04-14)](context/META_DESIGN_REFERENCE_SYNTHESIS_2026-04-14.md) — Extracted actions from 5:45 PM external design artifacts (`Do now / Do later / Discuss`).
 - [Institutional Memory Layer Synthesis (2026-04-14)](context/INSTITUTIONAL_MEMORY_LAYER_SYNTHESIS_2026-04-14.md) — Missing angles and operating model for Template Genome, Supplier Graph, Pricing Memory, Customer Genome, and Playbook Engine.
+- [Geography Extraction Design Decision (2026-04-15)](context/GEOGRAPHY_EXTRACTION_DESIGN_DECISION_2026-04-15.md) — Hybrid city database: GeoNames (CC-BY 4.0) + world-cities.json (MIT) + organic accumulation. Attribution required.
 - [Itinerary Checker GTM Wedge (2026-04-14)](context/ITINERARY_CHECKER_GTM_WEDGE_2026-04-14.md) — Free checker strategy, 15-rule NB02-lite scope, API contract, rollout plan, and data-flywheel linkage.
 - [Decision Memo: Itinerary Checker (2026-04-14)](context/DECISION_MEMO_ITINERARY_CHECKER_2026-04-14.md) — Go/no-go decision, 30-day gates, locked v1 scope, and execution cadence.
 - [SEO + Next.js GTM Playbook Synthesis (2026-04-14)](context/SEO_NEXTJS_GTM_PLAYBOOK_SYNTHESIS_2026-04-14.md) — Integrated external implementation draft with keep/change/defer decisions for practical MVP rollout.
 - [Travel Agency Context 2 Synthesis (2026-04-14)](context/TRAVEL_AGENCY_CONTEXT_2_SYNTHESIS_2026-04-14.md) — One-time-link workspace framing, 5-core architecture compression, canonical packet reinforcement, and commercial-layer priorities.
+- [Workflow Compliance Entry (2026-04-15)](context/WORKFLOW_COMPLIANCE_ENTRY_2026-04-15.md) — Explicit Analysis→Document→Plan→Research→Decision→Implement→Test→Results execution record for lifecycle/churn additions.
 
 ---
 

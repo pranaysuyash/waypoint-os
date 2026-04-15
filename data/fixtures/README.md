@@ -1,7 +1,7 @@
 # Fixture Files Documentation
 
-**Date**: 2026-04-14
-**Purpose**: Documentation for synthetic data fixtures in `data/fixtures/`
+**Date**: 2026-04-15
+**Purpose**: Documentation for synthetic data fixtures and datasets in `data/`
 
 ---
 
@@ -11,7 +11,66 @@ Fixture files provide sample/test data for development, testing, and demonstrati
 
 ---
 
-## Files
+## Directory Structure
+
+```
+data/
+├── fixtures/           # Test fixtures for PM/UX scenarios and test messages
+├── cities.json         # world-cities.json dataset (MIT license)
+├── cities5000.txt      # GeoNames dataset (CC-BY 4.0 license)
+└── accumulated_cities.json # Organically added cities from user messages
+```
+
+---
+
+## Geography Datasets
+
+### cities5000.txt (GeoNames)
+
+**Source**: https://download.geonames.org/export/dump/
+**License**: CC-BY 4.0 (attribution required)
+**Size**: ~68,000 cities (population > 5000)
+**Format**: Tab-separated values
+
+**Fields**: geonameid, name, asciiname, alternatenames, feature class, feature code,
+country code, cc2, admin1, admin2, admin3, admin4, admin5, population, elevation, dem, timezone
+
+**Usage**: Primary city database for origin/destination extraction in `src/intake/geography.py`
+
+**Attribution**: Any UI using this data must include:
+```html
+Location data © <a href="https://www.geonames.org/">GeoNames</a>
+```
+
+---
+
+### cities.json (world-cities.json)
+
+**Source**: https://github.com/dr5hn/countries-states-cities-database
+**License**: MIT (no attribution required)
+**Size**: ~150,000 cities
+**Format**: JSON array
+
+**Usage**: Supplemental city database, fills gaps in GeoNames coverage
+
+---
+
+### accumulated_cities.json
+
+**Purpose**: Organic accumulation of cities seen in real user messages
+**License**: Project license
+**Format**: JSON array of city names (strings)
+**Initial state**: Empty array `[]`
+
+**How cities are added**:
+- Confidence score > 0.7 (reasonably sure it's a city)
+- Not already in baseline datasets
+- Not a blacklisted term (common travel words)
+- Added via `record_seen_city()` in `src/intake/geography.py`
+
+---
+
+## Fixture Files
 
 ### 1. `product_persona_flows_synthetic_v1.json`
 

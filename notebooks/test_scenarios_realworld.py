@@ -17,6 +17,9 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 from enum import IntEnum
 
+# Ensure notebook cell imports can resolve project modules before exec.
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+
 # Load notebook code
 def load_notebook_namespace():
     nb_path = os.path.join(os.path.dirname(__file__), "02_gap_and_decision.ipynb")
@@ -32,8 +35,6 @@ def load_notebook_namespace():
     return namespace
 
 ns = load_notebook_namespace()
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
 from intake.packet_models import CanonicalPacket as CanonicalPacketModel, Slot, EvidenceRef, UnknownField
 from intake.decision import (

@@ -52,8 +52,10 @@ If instructions conflict, follow the stricter rule and cite concrete file paths.
 
 ### Issue Review Naming
 - When an issue is identified and explicitly requires a review note, name the document:
-  - `process_issue_review_<date>.md`
-- Avoid model-specific naming in issue review files.
+  - `travel_agency_process_issue_review_<date>.md` (under `Docs/`)
+  - Example: `travel_agency_process_issue_review_2026-04-15.md`
+- This makes issue documents project-specific and discoverable
+- Avoid model-specific naming in issue review files (e.g., no "gemini issue review")
 
 ### Git Safety (Critical)
 - Never commit or push without explicit user approval in the current conversation.

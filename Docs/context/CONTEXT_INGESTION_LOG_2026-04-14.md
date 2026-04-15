@@ -151,3 +151,96 @@
 
 ### Date Validation
 - Environment date/time used for this addendum: `2026-04-14 19:57:23 IST +0530`.
+
+## Addendum (2026-04-15 08:02 IST)
+
+### Source Ingested
+- Additional in-thread discussion focused on:
+  - repeat customers
+  - ghosting / probable ghosting
+  - window-shopper detection
+  - churn modeling
+
+### Completed Tasks
+- Performed coverage check across existing docs and scenario artifacts.
+- Added unified lifecycle and retention specification:
+  - `Docs/LEAD_LIFECYCLE_AND_RETENTION.md`
+- Updated:
+  - `Docs/INDEX.md`
+  - `Docs/DISCUSSION_LOG.md`
+
+### Gap Outcome
+- Existing docs covered repeat/ghosting partially.
+- Churn and lifecycle intelligence were not consolidated as first-class schema + policy.
+- New spec closes that structuring gap.
+
+### Date Validation
+- Environment date/time used for this addendum: `2026-04-15 08:02:38 IST +0530`.
+
+## Addendum (2026-04-15 08:07 IST)
+
+### Completed Tasks
+- Added explicit lifecycle-compliance execution artifact:
+  - `Docs/context/WORKFLOW_COMPLIANCE_ENTRY_2026-04-15.md`
+- Updated index linkage:
+  - `Docs/INDEX.md`
+- Refreshed project context artifacts through workspace tool:
+  - `/Users/pranay/Projects/agent-start --project travel_agency_agent --skip-index`
+
+### Notes
+- This addendum records strict use of Projects-level default task lifecycle for the lifecycle/churn update path.
+
+### Date Validation
+- Environment date/time used for this addendum: `2026-04-15 08:07:04 IST +0530`.
+
+## Addendum (2026-04-15 08:17 IST)
+
+### Source Ingested
+- Additional in-thread strategy discussion emphasizing:
+  - no deletion of prior comprehensive work
+  - additive execution over scope reduction
+  - explicit preference for multi-agent orchestration expansion
+
+### Completed Tasks
+- Added Projects-level motto to workspace rules:
+  - `/Users/pranay/Projects/AGENTS.md`
+- Added control docs in repo:
+  - `Docs/status/STATUS_MATRIX.md`
+  - `Docs/status/PHASE_1_BUILD_QUEUE.md`
+- Updated index references:
+  - `Docs/INDEX.md`
+- Logged decision trail:
+  - `Docs/DISCUSSION_LOG.md`
+
+### Date Validation
+- Environment date/time used for this addendum: `2026-04-15 08:17:30 IST +0530`.
+
+## Addendum (2026-04-15 08:22 IST)
+
+### Source Ingested
+- In-thread follow-up request to execute immediately on:
+  - notebook import-path failures
+  - `follow_up` mode runtime bug
+  - project-neutral issue-review naming compliance
+
+### Completed Tasks
+- Patched `apply_operating_mode(...)` hard-blocker reference bug in:
+  - `src/intake/decision.py`
+- Added regression test:
+  - `tests/test_follow_up_mode.py`
+- Hardened notebook script imports (`src` path before notebook-cell exec):
+  - `notebooks/test_02_comprehensive.py`
+  - `notebooks/test_scenarios_realworld.py`
+- Scoped pytest collection to `tests/` to avoid notebook script harness collection:
+  - `pyproject.toml`
+- Added canonical issue review doc with project-neutral naming:
+  - `Docs/process_issue_review_2026-04-15.md`
+- Kept legacy file as pointer (no deletion):
+  - `Docs/gemini issue review.md`
+- Updated index link:
+  - `Docs/INDEX.md`
+- Verification summary:
+  - `uv run pytest -q` -> `132 passed`
+
+### Date Validation
+- Environment date/time used for this addendum: `2026-04-15 08:22:32 IST +0530`.

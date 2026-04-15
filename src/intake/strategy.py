@@ -18,7 +18,7 @@ from enum import Enum
 
 from .packet_models import CanonicalPacket, Slot, AuthorityLevel
 from .decision import DecisionResult
-from .safety import sanitize_for_traveler, check_no_leakage, SanitizedPacketView
+from .safety import sanitize_for_traveler, check_no_leakage, enforce_no_leakage, SanitizedPacketView
 
 
 # =============================================================================
@@ -879,15 +879,16 @@ def build_traveler_safe_bundle(
         audience="traveler",
     )
 
-    # POST-BUILD LEAKAGE CHECK
-    # This is enforced in the actual code path, not just tests
-    leaks = check_no_leakage(bundle)
+    # POST-BUILD LEAKAGE ENFORCEMENT
+    # Strict mode: raises ValueError if leakage detected
+    # Non-strict mode: logs leakage in internal_notes (never traveler-facing)
+    try:
+        leaks = enforce_no_leakage(bundle)
+    except ValueError:
+        raise
+
     if leaks:
-        # In production, this should log/alert
-        # For now, we include leakage info in internal_notes (which won't go to traveler)
         bundle.internal_notes = f"LEAKAGE DETECTED: {'; '.join(leaks)}"
-        # In strict mode, we might raise an exception
-        # raise ValueError(f"Traveler-safe bundle has internal concept leakage: {leaks}")
 
     return bundle
 

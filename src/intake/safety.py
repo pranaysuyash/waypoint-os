@@ -9,6 +9,8 @@ Contract: notebooks/NB03_V02_SPEC.md
 
 from __future__ import annotations
 
+import os
+import re
 from dataclasses import asdict
 from typing import Any, Dict, List, Optional, Set
 
@@ -24,23 +26,33 @@ from .packet_models import (
 # SECTION 1: FORBIDDEN CONCEPTS (leakage detection)
 # =============================================================================
 
-# Terms that must never appear in traveler-facing content
-# Include both underscore_case and Title Case variants
+# Terms that must never appear in traveler-facing content.
+# Each entry is a base form; the check expands to catch plurals and common variants.
+# The word-boundary regex ensures exact-match (not substring), and variant expansion
+# catches "hypotheses", "blockers", "ambiguities", etc.
 FORBIDDEN_TRAVELER_CONCEPTS = {
     "unknown",
     "hypothesis",
+    "hypotheses",
     "contradiction",
+    "contradictions",
     "blocker",
+    "blockers",
+    "hard_blocker",
+    "hard_blockers",
+    "soft_blocker",
+    "soft_blockers",
     "internal_only",
     "owner_constraint",
+    "owner_constraints",
     "agency_note",
-    "hard_blocker",
-    "soft_blocker",
+    "agency_notes",
     "decision_state",
-    "decision state",
+    "decision states",
     "confidence_score",
-    "confidence score",
+    "confidence scores",
     "ambiguity",
+    "ambiguities",
 }
 
 # Field names that are internal-only and must be stripped
@@ -115,12 +127,11 @@ def sanitize_for_traveler(packet: CanonicalPacket) -> SanitizedPacketView:
         # Keep other fields as-is
         sanitized_facts[field_name] = slot
 
-    # Process derived_signals: only keep traveler-safe ones
-    # (Most derived_signals are internal — only include explicitly safe ones)
+    # Process derived_signals: only keep traveler-safe ones that are ACTUALLY produced.
+    # trip_duration_days and seasonality are NOT produced by NB01 — removed from
+    # allowed list to avoid dead traveler-safe surface area. Re-add when implemented.
     traveler_safe_signals = {
         "domestic_or_international",
-        "trip_duration_days",
-        "seasonality",
     }
 
     for field_name, slot in packet.derived_signals.items():
@@ -211,6 +222,25 @@ def _sanitize_slot(slot: Slot, new_value: Any = None) -> Slot:
 # SECTION 3: LEAKAGE DETECTION
 # =============================================================================
 
+# Strict leakage enforcement: when True, build_traveler_safe_bundle raises on leakage.
+# Set via environment variable TRAVELER_SAFE_STRICT=1 or by calling set_strict_mode(True).
+_STRICT_MODE: Optional[bool] = None
+
+
+def set_strict_mode(enabled: bool) -> None:
+    """Enable or disable strict leakage enforcement (raises on leakage)."""
+    global _STRICT_MODE
+    _STRICT_MODE = enabled
+
+
+def _is_strict_mode() -> bool:
+    """Check if strict leakage enforcement is active."""
+    global _STRICT_MODE
+    if _STRICT_MODE is not None:
+        return _STRICT_MODE
+    return os.environ.get("TRAVELER_SAFE_STRICT", "").strip() in ("1", "true", "yes")
+
+
 def check_no_leakage(bundle_or_dict: Any) -> List[str]:
     """
     Verify that traveler-facing content contains no internal concepts.
@@ -247,7 +277,6 @@ def check_no_leakage(bundle_or_dict: Any) -> List[str]:
         for forbidden in FORBIDDEN_TRAVELER_CONCEPTS:
             # Check for the forbidden term as a whole word (not substring)
             # to avoid false positives like "knowing" containing "unknown"
-            import re
             pattern = r'\b' + re.escape(forbidden) + r'\b'
             if re.search(pattern, text_lower):
                 # Get excerpt (first 100 chars)
@@ -265,6 +294,34 @@ def validate_traveler_safe_output(output: Any) -> bool:
     """
     leaks = check_no_leakage(output)
     return len(leaks) == 0
+
+
+def enforce_no_leakage(bundle_or_dict: Any, strict: Optional[bool] = None) -> List[str]:
+    """
+    Verify that traveler-facing content contains no internal concepts.
+
+    In strict mode (default in test, configurable via TRAVELER_SAFE_STRICT env),
+    raises ValueError on leakage instead of just logging.
+
+    Args:
+        bundle_or_dict: Either a PromptBundle object or a dict with user_message/system_context
+        strict: Override strict mode. None = use global config.
+
+    Returns:
+        List of leakage messages (empty if no leakage detected)
+
+    Raises:
+        ValueError: If strict mode is active and leakage is detected
+    """
+    leaks = check_no_leakage(bundle_or_dict)
+
+    use_strict = strict if strict is not None else _is_strict_mode()
+    if use_strict and leaks:
+        raise ValueError(
+            f"Traveler-safe leakage detected (strict mode): {'; '.join(leaks)}"
+        )
+
+    return leaks
 
 
 # =============================================================================
@@ -394,11 +451,9 @@ def get_safe_field_value(packet: CanonicalPacket, field_name: str) -> Optional[A
     if field_name in packet.facts:
         return packet.facts[field_name].value
 
-    # Check derived signals (only safe ones)
+    # Check derived signals (only safe ones actually produced)
     safe_signals = {
         "domestic_or_international",
-        "trip_duration_days",
-        "seasonality",
     }
     if field_name in safe_signals and field_name in packet.derived_signals:
         return packet.derived_signals[field_name].value
@@ -467,21 +522,20 @@ def sanitize_text_output(text: str) -> str:
 
     Uses placeholder replacement for any leaked terms.
     """
-    import re
-
     # Replace internal terms with traveler-safe alternatives
     replacements = {
-        r'\bhypothesis\b': "consideration",
-        r'\bcontradiction\b': "clarification needed",
-        r'\bblocker\b': "item to confirm",
-        r'\bhard_blocker\b': "key detail needed",
-        r'\bsoft_blocker\b': "additional detail",
-        r'\bambiguity\b': "point to clarify",
+        r'\bhypothes[ie]s\b': "consideration",
+        r'\bhypothes[i]s\b': "consideration",
+        r'\bcontradictions?\b': "clarification needed",
+        r'\bblockers?\b': "item to confirm",
+        r'\bhard[-_ ]?blockers?\b': "key detail needed",
+        r'\bsoft[-_ ]?blockers?\b': "additional detail",
+        r'\bambiguit(?:y|ies)\b': "point to clarify",
         r'\binternal_only\b': "",
-        r'\bowner_constraint\b': "requirement",
-        r'\bagency_note\b': "",
-        r'\bdecision_state\b': "",
-        r'\bconfidence_score\b': "",
+        r'\bowner_constraints?\b': "requirement",
+        r'\bagency_notes?\b': "",
+        r'\bdecision_states?\b': "",
+        r'\bconfidence_scores?\b': "",
     }
 
     sanitized = text

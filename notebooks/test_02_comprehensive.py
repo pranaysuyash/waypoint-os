@@ -24,6 +24,9 @@ from enum import IntEnum
 # =============================================================================
 # IMPORT THE NOTEBOOK CODE
 # =============================================================================
+# Ensure notebook cell imports can resolve project modules before exec.
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+
 # We extract all code cells from the notebook and exec them, then run tests
 # against the resulting namespace. This is the most honest way to test the
 # actual notebook code without copying it.
@@ -49,8 +52,6 @@ def load_notebook_namespace():
     return namespace
 
 ns = load_notebook_namespace()
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
 from intake.packet_models import CanonicalPacket as CanonicalPacketModel, Slot, EvidenceRef, UnknownField, AuthorityLevel
 from intake.decision import (
