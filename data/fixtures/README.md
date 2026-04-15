@@ -38,6 +38,7 @@ country code, cc2, admin1, admin2, admin3, admin4, admin5, population, elevation
 **Usage**: Primary city database for origin/destination extraction in `src/intake/geography.py`
 
 **Attribution**: Any UI using this data must include:
+
 ```html
 Location data © <a href="https://www.geonames.org/">GeoNames</a>
 ```
@@ -47,11 +48,15 @@ Location data © <a href="https://www.geonames.org/">GeoNames</a>
 ### cities.json (world-cities.json)
 
 **Source**: https://github.com/dr5hn/countries-states-cities-database
-**License**: MIT (no attribution required)
+**License**: ODbL-1.0 (Open Database License) — share-alike obligations apply
 **Size**: ~150,000 cities
 **Format**: JSON array
 
 **Usage**: Supplemental city database, fills gaps in GeoNames coverage
+
+**⚠️ License Note**: This dataset is ODbL-1.0, not MIT as previously documented.
+ODbL-1.0 requires share-alike for derivative databases, which conflicts with proprietary licensing.
+If proprietary licensing is required, replace with an MIT/CC0-licensed alternative.
 
 ---
 
@@ -63,6 +68,7 @@ Location data © <a href="https://www.geonames.org/">GeoNames</a>
 **Initial state**: Empty array `[]`
 
 **How cities are added**:
+
 - Confidence score > 0.7 (reasonably sure it's a city)
 - Not already in baseline datasets
 - Not a blacklisted term (common travel words)
@@ -77,6 +83,7 @@ Location data © <a href="https://www.geonames.org/">GeoNames</a>
 **Purpose**: PM/UX scenarios for role-based journeys
 
 **Coverage**:
+
 - 4 personas: Agency Owner, Senior Agent, Junior Agent, End Traveler
 - Jobs to be Done (functional, emotional, social)
 - Aha moments and metric proxies
@@ -85,6 +92,7 @@ Location data © <a href="https://www.geonames.org/">GeoNames</a>
 - Open PM questions
 
 **Use cases**:
+
 - Acceptance criteria planning
 - Scenario-driven QA and rehearsals
 - PM prioritization workshops
@@ -97,6 +105,7 @@ Location data © <a href="https://www.geonames.org/">GeoNames</a>
 **Purpose**: Test messages for intake processing, extraction, and feasibility testing
 
 **Categories**:
+
 - **Clean** (5 examples): Clear, well-formed inquiries
 - **Moderate** (5 examples): Some ambiguity but workable
 - **Messy** (5 examples): Poorly structured, informal
@@ -106,6 +115,7 @@ Location data © <a href="https://www.geonames.org/">GeoNames</a>
 **Total**: 30 test messages covering all categories
 
 **Use cases**:
+
 - Testing intake extraction
 - Validating feasibility detection
 - Testing contradiction identification
@@ -114,13 +124,13 @@ Location data © <a href="https://www.geonames.org/">GeoNames</a>
 
 **Example categories**:
 
-| Category | Count | Difficulty |
-|----------|-------|------------|
-| Clean | 5 | Easy |
-| Moderate | 5 | Medium |
-| Messy | 5 | Hard |
-| Contradictory | 5 | Hard |
-| Edge Cases | 10 | Varies |
+| Category      | Count | Difficulty |
+| ------------- | ----- | ---------- |
+| Clean         | 5     | Easy       |
+| Moderate      | 5     | Medium     |
+| Messy         | 5     | Hard       |
+| Contradictory | 5     | Hard       |
+| Edge Cases    | 10    | Varies     |
 
 ---
 
@@ -129,6 +139,7 @@ Location data © <a href="https://www.geonames.org/">GeoNames</a>
 **Purpose**: Complete trip examples for development and demo purposes
 
 **Trips included**:
+
 1. **Sharma Family Europe** - Successful moderate complexity flow
 2. **Mehta Thailand** - Clean, straightforward booking
 3. **Patel Honeymoon Maldives** - High-value options selection
@@ -137,6 +148,7 @@ Location data © <a href="https://www.geonames.org/">GeoNames</a>
 6. **Last Minute Getaway** - Time/cost constrained options
 
 **Each trip contains**:
+
 - Client information
 - Raw input message
 - Extracted data
@@ -145,6 +157,7 @@ Location data © <a href="https://www.geonames.org/">GeoNames</a>
 - Outcome data
 
 **Use cases**:
+
 - End-to-end flow testing
 - Demo scenarios
 - API response examples
@@ -286,6 +299,7 @@ print(f"Options: {len(trip['options'])} options generated")
 ### Updating Personas
 
 When updating personas:
+
 1. Update `product_persona_flows_synthetic_v1.json`
 2. Add new persona or update existing
 3. Include JTBD for all three dimensions
@@ -298,6 +312,7 @@ When updating personas:
 ## Versioning
 
 Fixtures follow semantic versioning:
+
 - **Major version** (1.x → 2.x): Breaking changes to schema
 - **Minor version** (1.0 → 1.1): Additions compatible with existing
 - **Patch version** (1.0.0 → 1.0.1): Bug fixes, documentation updates

@@ -4,8 +4,6 @@ import { join } from "path";
 const SCENARIOS_DIR = join(
   process.cwd(),
   "..",
-  "..",
-  "..",
   "data",
   "fixtures",
   "scenarios"
