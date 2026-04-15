@@ -1,8 +1,19 @@
-# Next.js Frontend Implementation Track (Full Scope)
+# Next.js Frontend Implementation Track (Full Scope, Corrected)
 
-Date: 2026-04-15 09:57:42 IST
+Date: 2026-04-15 10:03:53 IST
 Authority:
 - `Docs/FRONTEND_PRODUCT_SPEC_FULL_2026-04-15.md`
+
+## 0) Truth Sources and Conflict Resolution
+
+Implementation path truth:
+- Next.js App Router only.
+- No Streamlit runtime path is active for this build track.
+
+Spec usage split:
+- Full Product Spec (`FRONTEND_PRODUCT_SPEC_FULL_2026-04-15.md`) is product truth.
+- This file is build sequencing truth.
+- Workbench component/checklist docs are behavior and acceptance references only (not stack/runtime choice).
 
 ## 1) Stack + Repo Layout (Target)
 
@@ -155,8 +166,8 @@ Request:
   "owner_note": "string | null",
   "structured_json": {},
   "itinerary_text": "string | null",
-  "stage": "discovery|quote_building|booking_readiness|disruption_recovery|post_trip_memory",
-  "operating_mode": "normal|audit|follow_up|internal_only",
+  "stage": "discovery|shortlist|proposal|booking",
+  "operating_mode": "normal_intake|audit|emergency|follow_up|cancellation|post_trip|coordinator_group|owner_review",
   "strict_leakage": true,
   "scenario_id": "string | null"
 }
@@ -222,6 +233,10 @@ Response:
 ## 5) Runtime Integration Rules
 
 - All business logic must remain in shared intake modules.
+- One shared orchestrator entrypoint under `src/intake/` should be used by:
+  - `/api/spine/run`
+  - `/api/fixtures/compare`
+  - `/app/workbench`
 - BFF must orchestrate existing functions only:
   - `ExtractionPipeline`
   - `validate_packet`
@@ -229,17 +244,20 @@ Response:
   - `build_session_strategy_and_bundle`
   - `build_traveler_safe_bundle` / `build_internal_bundle`
 - No decisioning implemented in frontend components.
+- Strict leakage mode must hard-fail visibly:
+  - traveler preview suppressed/invalidated on leakage
+  - assertion panel fails with explicit reason
+- No reruns of spine on tab switch for inspection routes.
 
 ## 6) Implementation Tickets (Execution Sequence)
 
-### Phase P0: Foundation
+### Phase P0: Foundation (Contract-Correct First)
 - FE-001: Initialize Next.js frontend workspace and app shell
 - FE-002: Add global state semantics and design tokens (state colors locked)
-- FE-003: Implement `/api/spine/run` with shared module orchestration
+- FE-003: Implement `/api/spine/run` with spine-aligned enums and shared module orchestration
 - FE-004: Implement scenario APIs (`/api/scenarios*`)
 
-### Phase P1: Internal Product Core
-- FE-010: `/app/inbox`
+### Phase P1: Internal Product Core (First Deliverable)
 - FE-011: `/app/workbench`
 - FE-012: `/app/workspace/[tripId]/intake`
 - FE-013: `/app/workspace/[tripId]/packet`
@@ -248,7 +266,8 @@ Response:
 - FE-016: `/app/workspace/[tripId]/output`
 - FE-017: `/app/workspace/[tripId]/safety`
 
-### Phase P2: Owner + Traveler
+### Phase P2: Inbox + Owner + Traveler
+- FE-010: `/app/inbox`
 - FE-020: `/app/owner/reviews`
 - FE-021: `/app/owner/insights`
 - FE-022: `/trip/[shareToken]`

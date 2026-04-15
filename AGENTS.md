@@ -62,6 +62,11 @@ If instructions conflict, follow the stricter rule and cite concrete file paths.
 - Staging and checks are allowed proactively.
 - Commit/push/merge only when user explicitly asks.
 
+### Commit Message Rules (Critical)
+- **NEVER** add `Co-Authored-By` or any attribution lines to commit messages.
+- All commits are authored by the project owner only.
+- Commit messages should be concise and descriptive without external credits.
+
 ## Current Project Guardrails
 - Preserve existing `memory/` contents; do not remove memory artifacts unless explicitly instructed.
 - Keep institutional-memory and GTM decision artifacts under `Docs/context/`.

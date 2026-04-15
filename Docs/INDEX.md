@@ -12,9 +12,9 @@
 - [Status Matrix (2026-04-15)](status/STATUS_MATRIX.md) — Control layer that preserves full scope while mapping what is active now vs phased orchestration expansion.
 - [Phase 1 Build Queue (2026-04-15)](status/PHASE_1_BUILD_QUEUE.md) — Ordered execution checklist for deterministic foundations before broader specialist activation.
 - [Frontend Product Spec (Full, 2026-04-15)](FRONTEND_PRODUCT_SPEC_FULL_2026-04-15.md) — Full product frontend architecture and screen contracts (internal/operator/owner/traveler/public), no Streamlit path.
-- [Next.js Implementation Track (2026-04-15)](status/NEXTJS_IMPLEMENTATION_TRACK_2026-04-15.md) — Route-by-route execution plan, component ownership, and BFF API contracts for full frontend delivery.
-- [Operator Workbench Component Spec (2026-04-15)](status/OPERATOR_WORKBENCH_COMPONENT_SPEC_2026-04-15.md) — Screen-by-screen internal app contract for Workbench and Flow Simulation modes.
-- [Workbench Acceptance Checklist (2026-04-15)](status/WORKBENCH_ACCEPTANCE_CHECKLIST_2026-04-15.md) — Ticketed acceptance gates for implementation and validation.
+- [Next.js Implementation Track (2026-04-15)](status/NEXTJS_IMPLEMENTATION_TRACK_2026-04-15.md) — Corrected execution plan with spine-aligned BFF enums and phased build order (foundation -> workspace core -> expansion).
+- [Operator Workbench Component Spec (2026-04-15)](status/OPERATOR_WORKBENCH_COMPONENT_SPEC_2026-04-15.md) — Screen-level behavior reference for Workbench/Flow Simulation (not runtime stack authority).
+- [Workbench Acceptance Checklist (2026-04-15)](status/WORKBENCH_ACCEPTANCE_CHECKLIST_2026-04-15.md) — Acceptance gates used as behavior validation reference for the Next.js workbench surface.
 - [First Principles Foundation (2026-04-14)](FIRST_PRINCIPLES_FOUNDATION_2026-04-14.md) — Core truths, objective function, and strict dependency-ordered build sequence.
 - [Rolling Context Synthesis](ROLLING_CONTEXT_SYNTHESIS.md) — Active cross-part synthesis and implementation contracts.
 - [First Mile Implementation](FIRST_MILE_IMPLEMENTATION.md) — Roadmap for the Agency Context deconstruction.

@@ -553,3 +553,35 @@ Environment date checked before this documentation update:
 
 ### Decision
 - Frontend execution is now explicitly organized as Next.js product tracks with no Streamlit dependency.
+
+## Log Entry: 2026-04-15 - Plan Correction Applied (Contract + Phase Ordering)
+
+### Context
+User provided blocking feedback: resolve Streamlit vs Next.js conflict, keep workbench as internal validation route inside product shell, and fix BFF enum contract mismatch with frozen spine before implementation proceeds.
+
+Environment date checked before this documentation update:
+- `2026-04-15 10:03:53 IST`
+
+### Actions Completed
+- Corrected implementation track file:
+  - `Docs/status/NEXTJS_IMPLEMENTATION_TRACK_2026-04-15.md`
+- Added explicit truth-source section:
+  - Next.js as only active implementation path
+  - full frontend spec as product truth
+  - workbench docs treated as screen-level behavior/acceptance references only
+- Corrected `/api/spine/run` request contract to spine-native enums:
+  - `stage`: `discovery | shortlist | proposal | booking`
+  - `operating_mode`: `normal_intake | audit | emergency | follow_up | cancellation | post_trip | coordinator_group | owner_review`
+- Tightened runtime rules:
+  - shared orchestrator entrypoint under `src/intake/`
+  - strict leakage hard-fail behavior
+  - no reruns on tab switch
+- Reordered execution phases:
+  - P0 foundation first
+  - P1 internal product core (`/app/workbench` + `/app/workspace/[tripId]/*`)
+  - P2 inbox + owner + traveler
+  - P3 public growth surface
+
+### Decision
+- Contract drift between frontend/BFF and frozen spine is now removed at plan level.
+- Implementation sequencing now reflects foundation -> workspace core -> additional surfaces.
