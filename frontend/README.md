@@ -1,15 +1,17 @@
 # Travel Agency Agent — Frontend
 
-Next.js frontend for the Travel Agency Agent system. The frontend communicates with the Python spine via a subprocess bridge.
+Next.js frontend for the Travel Agency Agent system. The frontend communicates with the Python spine via a persistent FastAPI service.
 
 ## Architecture
 
 ```
-Browser → Next.js (localhost:3000) → spine-wrapper.py → Python spine modules
+Browser → Next.js (localhost:3000) → spine-api (FastAPI, port 8000) → run_spine_once
+                                                             (persistent process,
+                                                              modules pre-loaded)
 ```
 
 - **Frontend**: Next.js 16.2.3 with App Router, TypeScript, Zustand
-- **Backend**: Python 3.13+ via `spine-wrapper.py` subprocess
+- **Backend**: Python 3.13+ via `spine-api` FastAPI service (persistent process)
 - **State**: Zustand store for workbench state (no rerun on tab switch)
 
 ## Prerequisites
@@ -49,6 +51,30 @@ frontend/
 ├── src/
 │   ├── app/
 │   │   ├── api/
+│   │   │   ├── spine/run/route.ts     # POST /api/spine/run (BFF → spine-api)
+│   │   │   └── scenarios/            # GET /api/scenarios, /api/scenarios/[id]
+│   │   ├── workbench/                 # Main workbench UI
+│   │   │   ├── page.tsx              # 5-tab workbench
+│   │   │   ├── IntakeTab.tsx         # Input form + Run Spine
+│   │   │   ├── PacketTab.tsx          # Packet inspection
+│   │   │   ├── DecisionTab.tsx        # Decision state + blockers
+│   │   │   ├── StrategyTab.tsx        # Internal vs traveler-safe
+│   │   │   └── SafetyTab.tsx          # Leakage + assertions
+│   │   └── globals.css               # Design tokens
+│   ├── lib/
+│   │   ├── spine-client.ts           # HTTP client → spine-api (port 8000)
+│   │   ├── scenario-loader.ts        # Scenario file loader
+│   │   └── design-system.ts          # State color constants
+│   ├── stores/
+│   │   └── workbench.ts             # Zustand store (19 state keys)
+│   └── types/
+│       └── spine.ts                 # TypeScript types matching Python
+└── package.json
+```
+frontend/
+├── src/
+│   ├── app/
+│   │   ├── api/
 │   │   │   ├── spine/run/route.ts     # POST /api/spine/run
 │   │   │   └── scenarios/            # GET /api/scenarios, /api/scenarios/[id]
 │   │   ├── workbench/                 # Main workbench UI
@@ -60,8 +86,7 @@ frontend/
 │   │   │   └── SafetyTab.tsx          # Leakage + assertions
 │   │   └── globals.css               # Design tokens
 │   ├── lib/
-│   │   ├── spine-wrapper.py          # Python spine bridge (subprocess)
-│   │   ├── spine-client.ts           # TypeScript subprocess client
+│   │   ├── spine-client.ts           # HTTP client → spine-api (port 8000)
 │   │   ├── scenario-loader.ts        # Scenario file loader
 │   │   └── design-system.ts          # State color constants
 │   ├── stores/
@@ -107,11 +132,23 @@ frontend/
 
 ## Troubleshooting
 
-### "Spine subprocess failed"
+### Start spine-api first
+The Next.js BFF calls the spine-api FastAPI service on port 8000. Start it with:
 ```bash
 cd /Users/pranay/Projects/travel_agency_agent
-source .venv/bin/activate
-echo '{"raw_note":"test","stage":"discovery","operating_mode":"normal_intake","strict_leakage":false}' | python3 frontend/src/lib/spine-wrapper.py
+uv run uvicorn spine-api.server:app --port 8000
+```
+
+### "spine-api connection failed"
+```bash
+# Verify spine-api is running
+curl http://127.0.0.1:8000/health
+# Should return: {"status":"ok","version":"1.0.0"}
+
+# Or test a spine run directly
+curl -X POST http://127.0.0.1:8000/run \
+  -H "Content-Type: application/json" \
+  -d '{"raw_note":"Family of 4 to Singapore","stage":"discovery"}'
 ```
 
 ### "Module not found" errors
@@ -160,15 +197,17 @@ node -e "const p=require('path'); console.log(p.join(process.cwd(),'..','data','
 **Response:**
 ```json
 {
+  "ok": true,
+  "run_id": "abc123",
   "packet": { ... },
   "validation": { ... },
   "decision": { "decision_state": "ASK_FOLLOWUP", ... },
   "strategy": { ... },
   "internal_bundle": { ... },
   "traveler_bundle": { ... },
-  "leakage": { "ok": true, "items": [] },
+  "safety": { "strict_leakage": false, "leakage_passed": true, "leakage_errors": [] },
   "assertions": null,
-  "run_ts": "2026-04-15T..."
+  "meta": { "stage": "discovery", "operating_mode": "normal_intake", "fixture_id": null, "execution_ms": 45.2 }
 }
 ```
 

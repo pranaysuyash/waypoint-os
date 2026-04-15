@@ -14,6 +14,8 @@ export interface ScenarioInputs {
   owner_note: string | null;
   structured_json: Record<string, unknown> | null;
   itinerary_text: string | null;
+  stage: string;
+  mode: string;
 }
 
 export interface ScenarioExpected {
@@ -33,8 +35,6 @@ export interface ScenarioFixture {
   scenario_id: string;
   title: string;
   description: string;
-  mode: string;
-  stage: string;
   inputs: ScenarioInputs;
   expected: ScenarioExpected;
 }

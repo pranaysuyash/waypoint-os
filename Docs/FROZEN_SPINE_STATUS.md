@@ -45,12 +45,16 @@ future hybrid extraction (regex + NER/LLM) without breaking changes.
 - Feasibility caching (computed once, reused in risk flags)
 - Urgency computation from date_end (verified maturity)
 - Confidence scoring: authority-weighted average with unknown penalties
+- **Defense-in-depth ambiguity synthesis** (2026-04-15): `_synthesize_destination_ambiguity()` catches multi-value destinations that bypassed NB01
+- **Stage-aware ambiguity severity** (2026-04-15): `value_vague` on `destination_candidates` is blocking
+- **Candidate-aware question generation** (2026-04-15): "Between X and Y, which are you leaning toward?" instead of generic "Where?"
 
 ### Strategy & Output (NB03)
 - SessionStrategy and PromptBundle generation
 - Tone scaling based on confidence (cautious → measured → confident → direct)
 - Question ordering (constraint-first)
 - Legacy alias deprecation warnings
+- **No decision state overrides** (2026-04-15 clarification): NB03 presents, never reclassifies. Ownership is NB01 (capture), NB02 (judgment), NB03 (presentation).
 
 ### Extraction Hardening (Regex-Based)
 - **Pattern-based (not LLM) extraction** — honest temporary baseline
@@ -58,6 +62,9 @@ future hybrid extraction (regex + NER/LLM) without breaking changes.
 - Past-trip destination filtering (prevents contamination of current intent)
 - Origin extraction bounding (max 3 words, destination guard, origin-pattern guard)
 - Ambiguity detection on source text spans (not just extracted values)
+- **Hedging pattern priority** (2026-04-15): "maybe", "thinking about", "perhaps", "considering" patterns checked before general destination regex — "maybe Singapore" now extracts as semi_open, not definite
+- **Stop-word filter** (2026-04-15): Common pronouns ("We", "I", etc.) filtered before geography check
+- **Value-structural ambiguity synthesis** (2026-04-15): Multi-element destination lists always produce unresolved_alternatives ambiguity, even without text-pattern detection
 - Date extraction with fuzzy phrase support ("sometime in May", "around March")
 - Budget parsing with scope detection (per_person, per_night, total)
 - Party composition extraction (adults/children/elderly with ages)
@@ -132,24 +139,43 @@ future hybrid extraction (regex + NER/LLM) without breaking changes.
 
 ## Test Coverage
 
-- 116 tests passing (85 original + 31 e2e freeze-pack)
+- 127+ tests passing (including 11 new regression tests from 2026-04-15 spine hardening)
 - 5 realistic scenarios: messy family discovery, past customer, audit mode, coordinator group, emergency/cancellation
 - Edge cases: fuzzy dates, origin bounding, past-trip filtering, ambiguity detection, strict leakage enforcement
+- Destination ambiguity: multi-candidate synthesis, hedging extraction order, stop-word filtering, candidate-aware questions
+- Value-vague on destinations: classified as blocking, not advisory
 
 ---
 
 ## Post-Freeze Rules
 
-### Phase A (Now): UI/Workbench
+### Phase A (Now): UI/Workbench + Spine Hardening
 - Treat spine as read-mostly
-- Only patch for real surfaced bugs
+- Only patch for real surfaced bugs — done (2026-04-15: destination ambiguity, hedging extraction, stop words, severity)
 - Build flow simulation on deterministic baseline
+- Add NB02 telemetry for ambiguity synthesis misses (upstream extraction quality signal)
 
-### Phase B (Later): Hybrid Extraction Track
+### Phase B (After FE-003, parallel with FE-011): Hybrid Extraction Track
 - Keep regex as baseline/fallback
 - Add NER/span layer
 - Add schema-constrained LLM extraction
-- Merge + validate
+- Merge + validate via reconciler (NOT direct writes to CanonicalPacket)
 - Compare against deterministic baseline in eval mode
+
+**Phase B merge architecture:**
+
+```
+Source text
+    ├── Step 1: Deterministic extraction (regex, current pipeline)
+    │       → CanonicalPacket (authority: EXPLICIT_USER / INFERRED)
+    ├── Step 2: Semantic candidate extraction (NER / LLM)
+    │       → CandidatePacket (authority: SEMANTIC_CANDIDATE)
+    └── Step 3: Reconciler
+            → Merged CanonicalPacket (truth object, provenance preserved)
+            Priority: explicit structured input > regex extraction > semantic candidate
+```
+
+Key rule: semantic candidates never overwrite regex results for critical fields
+(destination, budget, dates, party). They can only ADD or SUGGEST with lower authority.
 
 **Frozen does not mean "done." Frozen means "stable enough to build on top of."**

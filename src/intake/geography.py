@@ -16,8 +16,15 @@ Files:
 from __future__ import annotations
 
 import json
+import os
+import sys
 from pathlib import Path
 from typing import Set, Optional, Dict, Any, List, Tuple
+
+if sys.platform == "win32":
+    import msvcrt
+else:
+    import fcntl
 
 
 # =============================================================================
@@ -317,9 +324,33 @@ def record_seen_city(city: str, confidence: float = 0.5) -> bool:
 
 
 def _persist_accumulated() -> None:
-    """Save accumulated cities to disk."""
-    with open(_ACCUMULATED_PATH, "w") as f:
-        json.dump(sorted(_accumulated_cities), f, indent=2)
+    """
+    Save accumulated cities to disk with exclusive file locking.
+
+    Uses flock (POSIX) on macOS/Linux, and a lock file with msvcrt on Windows.
+    Advisory locking only — works within the same process and between processes
+    on the same host. Not a distributed lock.
+    """
+    lock_path = _ACCUMULATED_PATH.with_suffix(".lock")
+    if sys.platform == "win32":
+        with open(lock_path, "w") as lock_f:
+            try:
+                msvcrt.locking(lock_f.fileno(), msvcrt.LK_LOCK, 1)
+                try:
+                    with open(_ACCUMULATED_PATH, "w") as f:
+                        json.dump(sorted(_accumulated_cities), f, indent=2)
+                finally:
+                    msvcrt.locking(lock_f.fileno(), msvcrt.LK_UNLCK, 1)
+            except (IOError, OSError):
+                pass
+    else:
+        with open(lock_path, "w") as lock_f:
+            fcntl.flock(lock_f.fileno(), fcntl.LOCK_EX)
+            try:
+                with open(_ACCUMULATED_PATH, "w") as f:
+                    json.dump(sorted(_accumulated_cities), f, indent=2)
+            finally:
+                fcntl.flock(lock_f.fileno(), fcntl.LOCK_UN)
 
 
 def get_dataset_info() -> Dict[str, Any]:

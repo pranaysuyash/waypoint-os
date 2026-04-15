@@ -104,7 +104,7 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(
+                "destination_candidates": Slot(
                     value="Singapore", confidence=0.95, authority_level="explicit_user",
                     evidence_refs=[cls._evidence("Singapore")]
                 ),
@@ -112,15 +112,15 @@ class TestScenarios:
                     value="Bangalore", confidence=0.95, authority_level="explicit_user",
                     evidence_refs=[cls._evidence("Bangalore")]
                 ),
-                "travel_dates": Slot(
+                "date_window": Slot(
                     value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user",
                     evidence_refs=[cls._evidence("March 15-22")]
                 ),
-                "traveler_count": Slot(
+                "party_size": Slot(
                     value=5, confidence=0.95, authority_level="explicit_user",
                     evidence_refs=[cls._evidence("5 people")]
                 ),
-                "budget_range": Slot(
+                "budget_min": Slot(
                     value="mid_range", confidence=0.80, authority_level="explicit_owner",
                     evidence_refs=[cls._evidence("mid-range")]
                 ),
@@ -128,7 +128,7 @@ class TestScenarios:
                     value="family leisure", confidence=0.85, authority_level="explicit_user",
                     evidence_refs=[cls._evidence("family leisure")]
                 ),
-                "traveler_preferences": Slot(
+                "soft_preferences": Slot(
                     value="relaxed pace, kid-friendly", confidence=0.80, authority_level="explicit_user",
                     evidence_refs=[cls._evidence("relaxed, kid-friendly")]
                 ),
@@ -150,15 +150,15 @@ class TestScenarios:
                 ),
             },
             hypotheses={
-                "destination_city": Slot(
+                "destination_candidates": Slot(
                     value="Singapore", confidence=0.50, authority_level="soft_hypothesis",
                     evidence_refs=[cls._evidence("maybe Singapore")]
                 ),
-                "travel_dates": Slot(
+                "date_window": Slot(
                     value="March 2026", confidence=0.40, authority_level="soft_hypothesis",
                     evidence_refs=[cls._evidence("sometime March")]
                 ),
-                "traveler_count": Slot(
+                "party_size": Slot(
                     value=4, confidence=0.45, authority_level="soft_hypothesis",
                     evidence_refs=[cls._evidence("family of 4")]
                 ),
@@ -178,17 +178,17 @@ class TestScenarios:
                     value="Bangalore", confidence=0.90, authority_level="explicit_owner",
                     evidence_refs=[cls._evidence("Bangalore")]
                 ),
-                "traveler_count": Slot(
+                "party_size": Slot(
                     value=5, confidence=0.95, authority_level="explicit_user",
                     evidence_refs=[cls._evidence("5 travelers")]
                 ),
-                "travel_dates": Slot(
+                "date_window": Slot(
                     value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user",
                     evidence_refs=[cls._evidence("March 15-22")]
                 ),
             },
             derived_signals={
-                "destination_city": Slot(
+                "destination_candidates": Slot(
                     value="Singapore",
                     confidence=0.75,
                     authority_level="derived_signal",
@@ -214,10 +214,10 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
                 "origin_city": Slot(value="Bangalore", confidence=0.90, authority_level="explicit_user"),
-                "travel_dates": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
-                "traveler_count": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
+                "date_window": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
+                "party_size": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
             }
         )
     
@@ -230,13 +230,13 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(value="Singapore", confidence=0.60, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.60, authority_level="explicit_user"),
                 "origin_city": Slot(value="Bangalore", confidence=0.60, authority_level="explicit_user"),
-                "travel_dates": Slot(value="March 2026", confidence=0.60, authority_level="explicit_user"),
-                "traveler_count": Slot(value=2, confidence=0.60, authority_level="explicit_user"),
-                "budget_range": Slot(value="mid_range", confidence=0.60, authority_level="explicit_user"),
+                "date_window": Slot(value="March 2026", confidence=0.60, authority_level="explicit_user"),
+                "party_size": Slot(value=2, confidence=0.60, authority_level="explicit_user"),
+                "budget_min": Slot(value="mid_range", confidence=0.60, authority_level="explicit_user"),
                 "trip_purpose": Slot(value="leisure", confidence=0.60, authority_level="explicit_user"),
-                "traveler_preferences": Slot(value="none", confidence=0.60, authority_level="explicit_user"),
+                "soft_preferences": Slot(value="none", confidence=0.60, authority_level="explicit_user"),
             }
         )
 
@@ -253,9 +253,9 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
                 "origin_city": Slot(value="Bangalore", confidence=0.90, authority_level="explicit_user"),
-                "travel_dates": Slot(
+                "date_window": Slot(
                     value=["2026-03-15", "2026-04-01"],
                     confidence=0.70,
                     authority_level="explicit_owner",
@@ -264,10 +264,10 @@ class TestScenarios:
                         cls._evidence("April 1", "env2"),
                     ]
                 ),
-                "traveler_count": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
+                "party_size": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
             },
             contradictions=[{
-                "field_name": "travel_dates",
+                "field_name": "date_window",
                 "values": ["2026-03-15", "2026-04-01"],
                 "sources": ["env1", "env2"]
             }]
@@ -282,11 +282,11 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
                 "origin_city": Slot(value="Bangalore", confidence=0.90, authority_level="explicit_user"),
-                "travel_dates": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
-                "traveler_count": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
-                "budget_range": Slot(
+                "date_window": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
+                "party_size": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
+                "budget_min": Slot(
                     value=["budget", "premium"],
                     confidence=0.60,
                     authority_level="explicit_owner",
@@ -297,7 +297,7 @@ class TestScenarios:
                 ),
             },
             contradictions=[{
-                "field_name": "budget_range",
+                "field_name": "budget_min",
                 "values": ["budget", "premium"],
                 "sources": ["env3", "env4"]
             }]
@@ -312,7 +312,7 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(
+                "destination_candidates": Slot(
                     value=["Singapore", "Thailand"],
                     confidence=0.70,
                     authority_level="explicit_user",
@@ -322,11 +322,11 @@ class TestScenarios:
                     ]
                 ),
                 "origin_city": Slot(value="Bangalore", confidence=0.90, authority_level="explicit_user"),
-                "travel_dates": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
-                "traveler_count": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
+                "date_window": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
+                "party_size": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
             },
             contradictions=[{
-                "field_name": "destination_city",
+                "field_name": "destination_candidates",
                 "values": ["Singapore", "Thailand"],
                 "sources": ["env1", "env2"]
             }]
@@ -341,10 +341,10 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
                 "origin_city": Slot(value="Bangalore", confidence=0.90, authority_level="explicit_user"),
-                "travel_dates": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
-                "traveler_count": Slot(
+                "date_window": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
+                "party_size": Slot(
                     value=[3, 5],
                     confidence=0.70,
                     authority_level="explicit_owner",
@@ -355,7 +355,7 @@ class TestScenarios:
                 ),
             },
             contradictions=[{
-                "field_name": "traveler_count",
+                "field_name": "party_size",
                 "values": [3, 5],
                 "sources": ["env1", "env2"]
             }]
@@ -370,7 +370,7 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
                 "origin_city": Slot(
                     value=["Bangalore", "Mumbai"],
                     confidence=0.70,
@@ -380,8 +380,8 @@ class TestScenarios:
                         cls._evidence("Mumbai", "env2"),
                     ]
                 ),
-                "travel_dates": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
-                "traveler_count": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
+                "date_window": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
+                "party_size": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
             },
             contradictions=[{
                 "field_name": "origin_city",
@@ -403,11 +403,11 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(value="Maldives", confidence=1.0, authority_level="manual_override"),
+                "destination_candidates": Slot(value="Maldives", confidence=1.0, authority_level="manual_override"),
                 "origin_city": Slot(value="Delhi", confidence=1.0, authority_level="manual_override"),
-                "travel_dates": Slot(value="2026-05-01 to 2026-05-07", confidence=1.0, authority_level="manual_override"),
-                "traveler_count": Slot(value=2, confidence=1.0, authority_level="manual_override"),
-                "budget_range": Slot(value="luxury", confidence=1.0, authority_level="manual_override"),
+                "date_window": Slot(value="2026-05-01 to 2026-05-07", confidence=1.0, authority_level="manual_override"),
+                "party_size": Slot(value=2, confidence=1.0, authority_level="manual_override"),
+                "budget_min": Slot(value="luxury", confidence=1.0, authority_level="manual_override"),
             }
         )
     
@@ -420,15 +420,15 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
                 "origin_city": Slot(
                     value="Mumbai",  # Owner said Mumbai
                     confidence=0.80,
                     authority_level="imported_structured",  # But CRM imported says Bangalore
                     evidence_refs=[cls._evidence("Mumbai", "crm_import")]
                 ),
-                "travel_dates": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
-                "traveler_count": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
+                "date_window": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
+                "party_size": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
             },
             contradictions=[{
                 "field_name": "origin_city",
@@ -447,13 +447,13 @@ class TestScenarios:
             stage="discovery",
             facts={
                 "origin_city": Slot(value="Bangalore", confidence=0.90, authority_level="explicit_owner"),
-                "travel_dates": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
+                "date_window": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
             },
             derived_signals={
-                "destination_city": Slot(value="Singapore", confidence=0.70, authority_level="derived_signal"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.70, authority_level="derived_signal"),
             },
             hypotheses={
-                "traveler_count": Slot(value=4, confidence=0.50, authority_level="soft_hypothesis"),
+                "party_size": Slot(value=4, confidence=0.50, authority_level="soft_hypothesis"),
             }
         )
     
@@ -466,13 +466,13 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(value="Bali", confidence=0.95, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Bali", confidence=0.95, authority_level="explicit_user"),
                 "origin_city": Slot(value="Chennai", confidence=0.95, authority_level="explicit_user"),
-                "travel_dates": Slot(value="2026-06-10 to 2026-06-17", confidence=0.95, authority_level="explicit_user"),
-                "traveler_count": Slot(value=4, confidence=0.95, authority_level="explicit_user"),
-                "budget_range": Slot(value="premium", confidence=0.90, authority_level="explicit_user"),
+                "date_window": Slot(value="2026-06-10 to 2026-06-17", confidence=0.95, authority_level="explicit_user"),
+                "party_size": Slot(value=4, confidence=0.95, authority_level="explicit_user"),
+                "budget_min": Slot(value="premium", confidence=0.90, authority_level="explicit_user"),
                 "trip_purpose": Slot(value="anniversary", confidence=0.95, authority_level="explicit_user"),
-                "traveler_preferences": Slot(value="beach, relaxation", confidence=0.90, authority_level="explicit_user"),
+                "soft_preferences": Slot(value="beach, relaxation", confidence=0.90, authority_level="explicit_user"),
             }
         )
     
@@ -485,10 +485,10 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(value="???", confidence=0.0, authority_level="unknown"),
+                "destination_candidates": Slot(value="???", confidence=0.0, authority_level="unknown"),
                 "origin_city": Slot(value="Bangalore", confidence=0.90, authority_level="explicit_user"),
-                "travel_dates": Slot(value="2026", confidence=0.3, authority_level="unknown"),
-                "traveler_count": Slot(value="few", confidence=0.2, authority_level="unknown"),
+                "date_window": Slot(value="2026", confidence=0.3, authority_level="unknown"),
+                "party_size": Slot(value="few", confidence=0.2, authority_level="unknown"),
             }
         )
 
@@ -506,10 +506,10 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="shortlist",
             facts={
-                "destination_city": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
                 "origin_city": Slot(value="Bangalore", confidence=0.90, authority_level="explicit_user"),
-                "travel_dates": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
-                "traveler_count": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
+                "date_window": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
+                "party_size": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
                 # Missing: selected_destinations
             }
         )
@@ -523,11 +523,11 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="proposal",
             facts={
-                "destination_city": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
                 "origin_city": Slot(value="Bangalore", confidence=0.90, authority_level="explicit_user"),
-                "travel_dates": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
-                "traveler_count": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
-                "selected_destinations": Slot(value=["Singapore", "Bali"], confidence=0.85, authority_level="explicit_user"),
+                "date_window": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
+                "party_size": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
+                "resolved_destination": Slot(value=["Singapore", "Bali"], confidence=0.85, authority_level="explicit_user"),
                 # Missing: selected_itinerary
             }
         )
@@ -541,11 +541,11 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="booking",
             facts={
-                "destination_city": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
                 "origin_city": Slot(value="Bangalore", confidence=0.90, authority_level="explicit_user"),
-                "travel_dates": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
-                "traveler_count": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
-                "selected_destinations": Slot(value=["Singapore"], confidence=0.90, authority_level="explicit_user"),
+                "date_window": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
+                "party_size": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
+                "resolved_destination": Slot(value=["Singapore"], confidence=0.90, authority_level="explicit_user"),
                 "selected_itinerary": Slot(value="singapore_family_package_v1", confidence=0.90, authority_level="explicit_user"),
                 # Missing: traveler_details, payment_method
             }
@@ -560,13 +560,13 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="booking",
             facts={
-                "destination_city": Slot(value="Singapore", confidence=0.95, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.95, authority_level="explicit_user"),
                 "origin_city": Slot(value="Bangalore", confidence=0.95, authority_level="explicit_user"),
-                "travel_dates": Slot(value="2026-03-15 to 2026-03-22", confidence=0.95, authority_level="explicit_user"),
-                "traveler_count": Slot(value=3, confidence=0.95, authority_level="explicit_user"),
-                "selected_destinations": Slot(value=["Singapore"], confidence=0.95, authority_level="explicit_user"),
+                "date_window": Slot(value="2026-03-15 to 2026-03-22", confidence=0.95, authority_level="explicit_user"),
+                "party_size": Slot(value=3, confidence=0.95, authority_level="explicit_user"),
+                "resolved_destination": Slot(value=["Singapore"], confidence=0.95, authority_level="explicit_user"),
                 "selected_itinerary": Slot(value="singapore_family_package_v1", confidence=0.95, authority_level="explicit_user"),
-                "traveler_details": Slot(
+                "passport_status": Slot(
                     value=[
                         {"name": "Rajesh Kumar", "dob": "1985-06-15", "passport": "A1234567"},
                         {"name": "Priya Kumar", "dob": "1988-09-22", "passport": "A7654321"},
@@ -592,10 +592,10 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(value=None, confidence=0.0, authority_level="unknown"),
+                "destination_candidates": Slot(value=None, confidence=0.0, authority_level="unknown"),
                 "origin_city": Slot(value="Bangalore", confidence=0.90, authority_level="explicit_user"),
-                "travel_dates": Slot(value=None, confidence=0.0, authority_level="unknown"),
-                "traveler_count": Slot(value=None, confidence=0.0, authority_level="unknown"),
+                "date_window": Slot(value=None, confidence=0.0, authority_level="unknown"),
+                "party_size": Slot(value=None, confidence=0.0, authority_level="unknown"),
             }
         )
     
@@ -608,10 +608,10 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(value="", confidence=0.1, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="", confidence=0.1, authority_level="explicit_user"),
                 "origin_city": Slot(value="Bangalore", confidence=0.90, authority_level="explicit_user"),
-                "travel_dates": Slot(value="", confidence=0.1, authority_level="explicit_user"),
-                "traveler_count": Slot(value="", confidence=0.1, authority_level="explicit_user"),
+                "date_window": Slot(value="", confidence=0.1, authority_level="explicit_user"),
+                "party_size": Slot(value="", confidence=0.1, authority_level="explicit_user"),
             }
         )
     
@@ -624,10 +624,10 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(value="Singapore", confidence=0.0, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.0, authority_level="explicit_user"),
                 "origin_city": Slot(value="Bangalore", confidence=0.0, authority_level="explicit_user"),
-                "travel_dates": Slot(value="2026-03-15", confidence=0.0, authority_level="explicit_user"),
-                "traveler_count": Slot(value=2, confidence=0.0, authority_level="explicit_user"),
+                "date_window": Slot(value="2026-03-15", confidence=0.0, authority_level="explicit_user"),
+                "party_size": Slot(value=2, confidence=0.0, authority_level="explicit_user"),
             }
         )
     
@@ -640,16 +640,16 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(value="Singapore", confidence=0.95, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.95, authority_level="explicit_user"),
                 "origin_city": Slot(value="Bangalore", confidence=0.90, authority_level="explicit_user"),
-                "travel_dates": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
-                "traveler_count": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
+                "date_window": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
+                "party_size": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
             },
             derived_signals={
-                "destination_city": Slot(value="Thailand", confidence=0.70, authority_level="derived_signal"),
+                "destination_candidates": Slot(value="Thailand", confidence=0.70, authority_level="derived_signal"),
             },
             hypotheses={
-                "destination_city": Slot(value="Bali", confidence=0.50, authority_level="soft_hypothesis"),
+                "destination_candidates": Slot(value="Bali", confidence=0.50, authority_level="soft_hypothesis"),
             }
         )
     
@@ -662,7 +662,7 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="unknown_stage",  # Invalid stage
             facts={
-                "destination_city": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
                 "origin_city": Slot(value="Bangalore", confidence=0.90, authority_level="explicit_user"),
             }
         )
@@ -680,7 +680,7 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(
+                "destination_candidates": Slot(
                     value="Singapore",
                     confidence=0.85,
                     authority_level="explicit_user",
@@ -690,11 +690,11 @@ class TestScenarios:
                     ]
                 ),
                 "origin_city": Slot(value="Bangalore", confidence=0.90, authority_level="explicit_user"),
-                "travel_dates": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
-                "traveler_count": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
+                "date_window": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
+                "party_size": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
             },
             contradictions=[{
-                "field_name": "destination_city",
+                "field_name": "destination_candidates",
                 "values": ["SG", "Singapore"],
                 "sources": ["env_email", "env_chat"],
                 "type": "multi_source_conflict"
@@ -710,7 +710,7 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.90, authority_level="explicit_user"),
                 "origin_city": Slot(
                     value="Bangalore",  # Normalized from "blr"
                     confidence=0.90,
@@ -720,8 +720,8 @@ class TestScenarios:
                         EvidenceRef(ref_id="r1", envelope_id="env_form", evidence_type="structured_field", excerpt="blr")
                     ]
                 ),
-                "travel_dates": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
-                "traveler_count": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
+                "date_window": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
+                "party_size": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
             }
         )
     
@@ -734,13 +734,13 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(value="Singapore", confidence=0.95, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.95, authority_level="explicit_user"),
                 "origin_city": Slot(value="Bangalore", confidence=0.90, authority_level="explicit_user"),
-                "travel_dates": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
-                "traveler_count": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
+                "date_window": Slot(value="2026-03-15 to 2026-03-22", confidence=0.90, authority_level="explicit_user"),
+                "party_size": Slot(value=3, confidence=0.90, authority_level="explicit_user"),
             },
             derived_signals={
-                "destination_city": Slot(value="Thailand", confidence=0.70, authority_level="derived_signal"),
+                "destination_candidates": Slot(value="Thailand", confidence=0.70, authority_level="derived_signal"),
             }
         )
     
@@ -753,10 +753,10 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(value="Singapore", confidence=0.60, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.60, authority_level="explicit_user"),
                 "origin_city": Slot(value="Bangalore", confidence=0.60, authority_level="explicit_user"),
-                "travel_dates": Slot(value="March 2026", confidence=0.60, authority_level="explicit_user"),
-                "traveler_count": Slot(value=2, confidence=0.60, authority_level="explicit_user"),
+                "date_window": Slot(value="March 2026", confidence=0.60, authority_level="explicit_user"),
+                "party_size": Slot(value=2, confidence=0.60, authority_level="explicit_user"),
             }
         )
     
@@ -769,17 +769,17 @@ class TestScenarios:
             last_updated=cls._now(),
             stage="discovery",
             facts={
-                "destination_city": Slot(value="Singapore", confidence=0.95, authority_level="explicit_user"),
+                "destination_candidates": Slot(value="Singapore", confidence=0.95, authority_level="explicit_user"),
                 "origin_city": Slot(value="Bangalore", confidence=0.90, authority_level="explicit_user"),
             },
             derived_signals={
-                "travel_dates": Slot(value="2026-03-15 to 2026-03-22", confidence=0.75, authority_level="derived_signal"),
+                "date_window": Slot(value="2026-03-15 to 2026-03-22", confidence=0.75, authority_level="derived_signal"),
             },
             hypotheses={
-                "traveler_count": Slot(value=4, confidence=0.50, authority_level="soft_hypothesis"),
+                "party_size": Slot(value=4, confidence=0.50, authority_level="soft_hypothesis"),
             },
             unknowns=[
-                UnknownField(field_name="budget_range", reason="not_present_in_source"),
+                UnknownField(field_name="budget_min", reason="not_present_in_source"),
             ]
         )
 

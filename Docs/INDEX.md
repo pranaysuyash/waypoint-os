@@ -23,6 +23,10 @@
 - [Geography Extraction Design Decision (2026-04-15)](context/GEOGRAPHY_EXTRACTION_DESIGN_DECISION_2026-04-15.md) — Hybrid city database: GeoNames (CC-BY 4.0) + world-cities.json (ODbL-1.0) + organic accumulation. Attribution required.
 - [Trip Feasibility Scenario (2026-04-15)](context/TRIP_FEASIBILITY_SCENARIO_2026-04-15.md) — Synthetic route, investigation tasks, input/output schema, and evaluated feasibility result for multi-country travel planning.
 - [Trip Budget Reality Scenario (2026-04-15)](context/TRIP_BUDGET_REALITY_SCENARIO_2026-04-15.md) — Synthetic budget investigation with missing cost bucket coverage, sub-bucket estimates, and quote shock prevention.
+- [Trip Visa & Document Risk Scenario (2026-04-15)](context/TRIP_VISA_DOCUMENT_RISK_SCENARIO_2026-04-15.md) — Synthetic document risk investigation for multi-border travel with visa, transit, and insurance uncertainty.
+- [Trip Transfer Complexity Scenario (2026-04-15)](context/TRIP_TRANSFER_COMPLEXITY_SCENARIO_2026-04-15.md) — Synthetic transfer and route friction investigation for a multi-city itinerary with high mobility demand.
+- [Trip Activity & Pacing Scenario (2026-04-15)](context/TRIP_ACTIVITY_PACING_SCENARIO_2026-04-15.md) — Synthetic pacing risk investigation for a multi-region active itinerary with a senior and child.
+- [Risk Area Catalog (2026-04-15)](context/RISK_AREA_CATALOG_2026-04-15.md) — Customer, vendor, operational, and external risk taxonomy for travel feasibility and agency operations.
 - [Itinerary Checker GTM Wedge (2026-04-14)](context/ITINERARY_CHECKER_GTM_WEDGE_2026-04-14.md) — Free checker strategy, 15-rule NB02-lite scope, API contract, rollout plan, and data-flywheel linkage.
 - [Decision Memo: Itinerary Checker (2026-04-14)](context/DECISION_MEMO_ITINERARY_CHECKER_2026-04-14.md) — Go/no-go decision, 30-day gates, locked v1 scope, and execution cadence.
 - [SEO + Next.js GTM Playbook Synthesis (2026-04-14)](context/SEO_NEXTJS_GTM_PLAYBOOK_SYNTHESIS_2026-04-14.md) — Integrated external implementation draft with keep/change/defer decisions for practical MVP rollout.

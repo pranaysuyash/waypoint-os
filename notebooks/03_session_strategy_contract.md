@@ -439,17 +439,71 @@ The session strategy adjusts tone based on confidence score:
 
 ## Known Limitations (from NB02 scenario testing)
 
-### 1. Ambiguous values not detected
-**Gap**: "Andaman or Sri Lanka" is treated as a valid destination.
-**NB03 mitigation**: If destination value contains "or" or "maybe", add a clarification question even if NB02 said PROCEED_TRAVELER_SAFE.
+### 1. Ambiguous destination handling — RESOLVED (2026-04-15)
 
-### 2. No urgency handling
+**Original gap**: "Andaman or Sri Lanka" was treated as a valid destination, allowing `PROCEED_TRAVELER_SAFE` when the traveler had not chosen.
+
+**Resolution**: Ambiguity detection is now owned by the correct layers:
+- **NB01** owns ambiguity capture: `_extract_destination_candidates()` preserves hedging context ("maybe", "or", semi_open status). Value-structural synthesis adds `unresolved_alternatives` ambiguity when the extracted value is a multi-element list.
+- **NB02** owns ambiguity enforcement and integrity defense: `_synthesize_destination_ambiguity()` in `run_gap_and_decision()` catches cases where NB01 did not create the ambiguity object (structured import, API call). `AMBIGUITY_SEVERITY` maps `(destination_candidates, value_vague)` to `blocking`.
+- **NB03** owns presentation: it formats the question and enforces traveler-safe output. It does NOT reclassify decision states.
+
+**Invariant**: A multi-candidate or hedged destination must never reach `PROCEED_TRAVELER_SAFE`. This is enforced at both NB01 and NB02 layers.
+
+**Stage-aware severity** (to be implemented): At discovery, a vague destination can support `ASK_FOLLOWUP` or `BRANCH_OPTIONS`. At shortlist/proposal/booking, it is fully blocking. Current implementation uses flat `blocking` severity; stage escalation is a future enhancement.
+
+### 2. Urgency handling — PARTIALLY RESOLVED
+
 **Gap**: Last-minute trips still get soft blocker questions.
-**NB03 mitigation**: If travel_dates contain "this weekend" or dates within 7 days, suppress soft blocker questions.
+**Current mitigation**: `apply_urgency()` in NB02 suppresses soft blockers when urgency is "high" (< 7 days). This runs in NB02's decision engine, not as an NB03 override.
+**Remaining gap**: If NB02's urgency signal is missing or wrong, NB03 has no fallback suppression. Urgency-aware question reordering in NB03's strategy builder should be the presentation-layer complement, not the primary mechanism.
 
-### 3. Budget stretch not structured
-**Gap**: "200000 (can stretch)" — stretch signal lost.
-**NB03 mitigation**: Parse value string for stretch signals and use in question generation.
+### 3. Budget stretch signal — OPEN
+
+**Gap**: "200000 (can stretch)" — the stretch signal is detected by NB01's normalizer as `budget_stretch_present` ambiguity, but the stretch amount ("2.5L") and the semantics ("can stretch", not "fixed at") are not preserved into question generation.
+
+**Target behavior**:
+- Case A: "2L, can stretch" → `budget_min=200000, budget_flexibility=stretch`, no invented max. Question: "What's the absolute upper limit?"
+- Case B: "2L, can stretch to 2.5L" → `budget_min=200000, budget_soft_ceiling=250000, budget_flexibility=stretch`. Question: "You said 2L with flexibility up to 2.5L — is that the hard limit?"
+
+**NB03 does not parse value strings.** Stretch signal preservation is an NB01 extraction + NB02 question generation responsibility.
+
+### 4. Multi-source authority — OPEN (data model change needed)
+
+**Gap**: Contradiction metadata carries `sources` as a flat list (`["email", "whatsapp"]`), but does not attribute which source provided which value. This prevents reasoning about authority, recency, and owner-vs-traveler disagreements.
+
+**Target model**: Contradiction entries should carry per-value source attribution:
+```python
+{"field_name": "budget", "values": [
+    {"value": "3L", "source": "email", "authority": "explicit_user", "timestamp": "..."},
+    {"value": "4L", "source": "whatsapp", "authority": "explicit_user", "timestamp": "..."},
+]}
+```
+
+This is a data model change, not just enrichment. Backward-compatible migration will be needed.
+
+### 5. Corporate-specific blockers — DEFERRED
+
+**Gap**: The current MVB does not include corporate-specific or urgency-specific blockers.
+
+**Decision**: Corporate-specific blockers are out of scope unless the product thesis expands to corporate travel. Urgency-specific behavior is handled by operating mode routing (emergency, cancellation), not by adding MVB entries.
+
+---
+
+## Layer Ownership for Ambiguity and Destination Integrity
+
+| Concern | Owner | Enforcer | Presenter |
+|---------|-------|----------|-----------|
+| Text-pattern ambiguity detection | NB01 | — | — |
+| Value-structural ambiguity synthesis | NB01 (extraction time) | NB02 (pre-decision defense) | — |
+| Ambiguity severity classification | — | NB02 (AMBIGUITY_SEVERITY table) | — |
+| Stage-aware severity escalation | — | NB02 (future) | — |
+| Ambiguity-based decision routing | — | NB02 (ASK_FOLLOWUP / PROCEED / STOP) | — |
+| Question framing with candidate values | — | NB02 (follow_up_questions) | — |
+| Traveler-safe output enforcement | — | — | NB03 (sanitization, leakage) |
+| Override of NB02 decision state | — | — | **NEVER** — NB03 does not reclassify |
+
+**Key invariant**: NB03 may add presentation guardrails (leakage prevention, tone scaling), but it must never change a decision state that NB02 produced. If the decision is wrong, the fix belongs upstream.
 
 ---
 

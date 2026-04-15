@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useWorkbenchStore } from "@/stores/workbench";
-import type { DecisionState } from "@/types/spine";
+import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate } from "@/types/spine";
 import styles from "./workbench.module.css";
 
 const STATE_BADGE_CLASS: Record<string, string> = {
@@ -48,6 +48,34 @@ interface DecisionOutput {
   confidence_score: number;
   branch_options: string[];
   commercial_decision: string;
+  budget_breakdown: BudgetBreakdownResult | null;
+}
+
+const VERDICT_BADGE_CLASS: Record<string, string> = {
+  realistic: styles.stateGreen,
+  borderline: styles.stateAmber,
+  not_realistic: styles.stateRed,
+};
+
+const VERDICT_LABELS: Record<string, string> = {
+  realistic: "REALISTIC",
+  borderline: "BORDERLINE",
+  not_realistic: "NOT REALISTIC",
+};
+
+const BUCKET_DISPLAY: Record<string, string> = {
+  flights: "Flights",
+  stay: "Stay",
+  food: "Food",
+  local_transport: "Local Transport",
+  activities: "Activities",
+  visa_insurance: "Visa / Insurance",
+  shopping: "Shopping",
+  buffer: "Buffer",
+};
+
+function formatINR(n: number): string {
+  return `₹${n.toLocaleString("en-IN")}`;
 }
 
 export function DecisionTab() {
@@ -72,6 +100,7 @@ export function DecisionTab() {
   const followupQuestions = decision.follow_up_questions || [];
   const rationale = decision.rationale || {};
   const branchOptions = decision.branch_options || [];
+  const budgetBreakdown = decision.budget_breakdown || null;
 
   return (
     <div>
@@ -221,6 +250,90 @@ export function DecisionTab() {
                 </li>
               ))}
             </ul>
+          </div>
+        </div>
+      )}
+
+      {/* Budget Breakdown */}
+      {budgetBreakdown && (
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Budget Breakdown</h3>
+          <div className={styles.card}>
+            <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "12px" }}>
+              <span className={`${styles.badge} ${VERDICT_BADGE_CLASS[budgetBreakdown.verdict] || styles.stateBlue}`}>
+                {VERDICT_LABELS[budgetBreakdown.verdict] || budgetBreakdown.verdict}
+              </span>
+              {budgetBreakdown.budget_stated != null && (
+                <span style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>
+                  Budget: {formatINR(budgetBreakdown.budget_stated)} | Est. range: {formatINR(budgetBreakdown.total_estimated_low)} – {formatINR(budgetBreakdown.total_estimated_high)}
+                </span>
+              )}
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--color-border)" }}>
+                  <th style={{ textAlign: "left", padding: "8px", fontSize: "12px", color: "var(--color-text-muted)" }}>Bucket</th>
+                  <th style={{ textAlign: "left", padding: "8px", fontSize: "12px", color: "var(--color-text-muted)" }}>Low</th>
+                  <th style={{ textAlign: "left", padding: "8px", fontSize: "12px", color: "var(--color-text-muted)" }}>High</th>
+                  <th style={{ textAlign: "left", padding: "8px", fontSize: "12px", color: "var(--color-text-muted)" }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {budgetBreakdown.buckets.map((b: CostBucketEstimate) => (
+                  <tr key={b.bucket} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                    <td style={{ padding: "8px", fontSize: "13px" }}>{BUCKET_DISPLAY[b.bucket] || b.bucket}</td>
+                    <td style={{ padding: "8px", fontSize: "13px" }}>{formatINR(b.low)}</td>
+                    <td style={{ padding: "8px", fontSize: "13px" }}>{formatINR(b.high)}</td>
+                    <td style={{ padding: "8px", fontSize: "13px" }}>
+                      <span className={`${styles.badge} ${b.covered ? styles.stateGreen : styles.stateRed}`}>
+                        {b.covered ? "Covered" : "Gap"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {budgetBreakdown.missing_buckets.length > 0 && (
+              <div style={{ marginTop: "12px" }}>
+                <strong style={{ color: "var(--color-warning)" }}>Missing Buckets:</strong>{" "}
+                {budgetBreakdown.missing_buckets.map((m: string) => BUCKET_DISPLAY[m] || m).join(", ")}
+              </div>
+            )}
+            {budgetBreakdown.risks.length > 0 && (
+              <ul className={styles.list} style={{ marginTop: "12px" }}>
+                {budgetBreakdown.risks.map((r: string) => (
+                  <li key={`br-${r}`} className={styles.listItem}>
+                    <span className={`${styles.listIcon} ${styles.iconWarning}`}>!</span>
+                    <span style={{ fontSize: "13px" }}>{r.replace(/_/g, " ")}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {budgetBreakdown.critical_changes.length > 0 && (
+              <div style={{ marginTop: "12px" }}>
+                <strong>Critical Changes:</strong>
+                <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
+                  {budgetBreakdown.critical_changes.map((c: string, i: number) => (
+                    <li key={`cc-${i}`}>{c}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {budgetBreakdown.must_confirm.length > 0 && (
+              <div style={{ marginTop: "12px" }}>
+                <strong>Must Confirm:</strong>
+                <ul style={{ margin: "4px 0 0 16px", fontSize: "13px", color: "var(--color-text-muted)" }}>
+                  {budgetBreakdown.must_confirm.map((m: string, i: number) => (
+                    <li key={`mc-${i}`}>{m.replace(/_/g, " ")}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {budgetBreakdown.alternative && (
+              <div style={{ marginTop: "12px", padding: "8px 12px", background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "6px", fontSize: "13px" }}>
+                <strong>Alternative:</strong> {budgetBreakdown.alternative}
+              </div>
+            )}
           </div>
         </div>
       )}

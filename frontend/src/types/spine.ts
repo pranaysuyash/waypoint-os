@@ -23,11 +23,55 @@ export interface SafetyResult {
   leakage_errors: string[];
 }
 
+export interface CostBucketEstimate {
+  bucket: string;
+  low: number;
+  high: number;
+  covered: boolean;
+  notes?: string | null;
+}
+
+export interface BudgetBreakdownResult {
+  verdict: "realistic" | "borderline" | "not_realistic";
+  buckets: CostBucketEstimate[];
+  missing_buckets: string[];
+  total_estimated_low: number;
+  total_estimated_high: number;
+  budget_stated: number | null;
+  gap: number | null;
+  risks: string[];
+  critical_changes: string[];
+  must_confirm: string[];
+  alternative: string | null;
+  maturity: string;
+}
+
+export interface PromptBundle {
+  system_context: string;
+  user_message: string;
+  follow_up_sequence: Array<{
+    field_name: string;
+    question: string;
+    priority: string;
+  }>;
+  branch_prompts: unknown[];
+  internal_notes: string;
+  constraints: string[];
+  audience: string;
+}
+
 export interface RunMeta {
   stage: string;
   operating_mode: string;
   fixture_id: string | null;
   execution_ms: number;
+}
+
+export interface AssertionResult {
+  type: string;
+  passed: boolean;
+  message: string;
+  field?: string;
 }
 
 export interface SpineRunResponse {
@@ -40,6 +84,7 @@ export interface SpineRunResponse {
   internal_bundle: unknown | null;
   traveler_bundle: unknown | null;
   safety: SafetyResult;
+  assertions: AssertionResult[] | null;
   meta: RunMeta;
 }
 

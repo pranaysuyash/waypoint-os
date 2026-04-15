@@ -432,6 +432,14 @@
         },
         "booking_readiness": {
           "$ref": "#/$defs/FieldSlot"
+        },
+        "budget_breakdown": {
+          "$ref": "#/$defs/FieldSlot",
+          "description": "Decomposed budget estimate per cost bucket (flights, stay, food, local_transport, activities, visa_insurance, shopping, buffer)"
+        },
+        "budget_verdict": {
+          "$ref": "#/$defs/FieldSlot",
+          "description": "Per-bucket feasibility verdict: realistic | borderline | not_realistic"
         }
       }
     },

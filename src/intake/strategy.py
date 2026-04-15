@@ -141,6 +141,22 @@ class PromptBundle:
             "audience": self.audience,
         }
 
+    def to_traveler_dict(self) -> dict:
+        """
+        Serialise for traveler-facing transport.
+
+        Omits internal_notes and other internal-only fields so the object
+        is intrinsically safe — even if accidentally logged or rendered.
+        """
+        return {
+            "system_context": self.system_context,
+            "user_message": self.user_message,
+            "follow_up_sequence": self.follow_up_sequence,
+            "branch_prompts": self.branch_prompts,
+            "constraints": self.constraints,
+            "audience": "traveler",
+        }
+
 
 # =============================================================================
 # SECTION 2: TONE SCALING (based on confidence)

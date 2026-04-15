@@ -123,8 +123,8 @@ PACKET_FIXTURES = {
         ),
         "expected": {
             "decision_state": "ASK_FOLLOWUP",
-            "hard_blockers": ["destination_city", "origin_city", "travel_dates", "traveler_count"],
-            "soft_blockers": ["budget_range", "trip_purpose", "traveler_preferences"],
+            "hard_blockers": ["destination_candidates", "origin_city", "date_window", "party_size"],
+            "soft_blockers": ["budget_min", "trip_purpose", "soft_preferences"],
             "question_count_min": 4,
         },
     },
@@ -136,13 +136,13 @@ PACKET_FIXTURES = {
             packet_id="ask_no_dest",
             facts={
                 "origin_city": S("Bangalore"),
-                "travel_dates": S("March 2026"),
-                "traveler_count": S(3),
+                "date_window": S("March 2026"),
+                "party_size": S(3),
             },
         ),
         "expected": {
             "decision_state": "ASK_FOLLOWUP",
-            "hard_blockers": ["destination_city"],
+            "hard_blockers": ["destination_candidates"],
             "question_count_min": 1,
         },
     },
@@ -154,13 +154,13 @@ PACKET_FIXTURES = {
             packet_id="ask_no_dates",
             facts={
                 "origin_city": S("Bangalore"),
-                "destination_city": S("Singapore"),
-                "traveler_count": S(4),
+                "destination_candidates": S("Singapore"),
+                "party_size": S(4),
             },
         ),
         "expected": {
             "decision_state": "ASK_FOLLOWUP",
-            "hard_blockers": ["travel_dates"],
+            "hard_blockers": ["date_window"],
             "question_count_min": 1,
         },
     },
@@ -176,7 +176,7 @@ PACKET_FIXTURES = {
         ),
         "expected": {
             "decision_state": "ASK_FOLLOWUP",
-            "hard_blockers": ["destination_city", "travel_dates", "traveler_count"],
+            "hard_blockers": ["destination_candidates", "date_window", "party_size"],
             "question_count_min": 3,
         },
     },
@@ -188,14 +188,14 @@ PACKET_FIXTURES = {
             packet_id="ask_budget",
             facts={
                 "origin_city": S("Bangalore"),
-                "destination_city": S("Goa"),
-                "traveler_count": S(2),
-                "budget_range": S("50000", auth="explicit_owner"),
+                "destination_candidates": S("Goa"),
+                "party_size": S(2),
+                "budget_min": S("50000", auth="explicit_owner"),
             },
         ),
         "expected": {
             "decision_state": "ASK_FOLLOWUP",
-            "hard_blockers": ["travel_dates"],
+            "hard_blockers": ["date_window"],
             "question_count_min": 1,
         },
     },
@@ -207,15 +207,15 @@ PACKET_FIXTURES = {
             packet_id="ask_contra",
             facts={
                 "origin_city": S("Bangalore"),
-                "traveler_count": S(3),
+                "party_size": S(3),
             },
             contradictions=[
-                {"field_name": "destination_city", "values": ["Singapore", "Thailand"], "sources": ["env1", "env2"]},
+                {"field_name": "destination_candidates", "values": ["Singapore", "Thailand"], "sources": ["env1", "env2"]},
             ],
         ),
         "expected": {
             "decision_state": "ASK_FOLLOWUP",
-            "hard_blockers": ["destination_city", "travel_dates"],
+            "hard_blockers": ["destination_candidates", "date_window"],
         },
     },
 
@@ -226,16 +226,16 @@ PACKET_FIXTURES = {
             packet_id="ask_hyp_dest",
             facts={
                 "origin_city": S("Bangalore"),
-                "travel_dates": S("March 2026"),
-                "traveler_count": S(4),
+                "date_window": S("March 2026"),
+                "party_size": S(4),
             },
             hypotheses={
-                "destination_city": S("Singapore", conf=0.5, auth="soft_hypothesis"),
+                "destination_candidates": S("Singapore", conf=0.5, auth="soft_hypothesis"),
             },
         ),
         "expected": {
             "decision_state": "ASK_FOLLOWUP",
-            "hard_blockers": ["destination_city"],  # Hypothesis doesn't fill
+            "hard_blockers": ["destination_candidates"],  # Hypothesis doesn't fill
             "question_count_min": 1,
         },
     },
@@ -247,15 +247,15 @@ PACKET_FIXTURES = {
             packet_id="ask_composition",
             facts={
                 "origin_city": S("Delhi"),
-                "destination_city": S("Europe"),
-                "travel_dates": S("June-July"),
-                "traveler_count": S("big family", conf=0.4, auth="explicit_owner"),
+                "destination_candidates": S("Europe"),
+                "date_window": S("June-July"),
+                "party_size": S("big family", conf=0.4, auth="explicit_owner"),
             },
         ),
         "expected": {
             "decision_state": "PROCEED_INTERNAL_DRAFT",
             "hard_blockers": [],
-            "soft_blockers": ["budget_range", "trip_purpose", "traveler_preferences"],
+            "soft_blockers": ["budget_min", "trip_purpose", "soft_preferences"],
         },
     },
 
@@ -270,12 +270,12 @@ PACKET_FIXTURES = {
             packet_id="proceed_complete",
             facts={
                 "origin_city": S("Bangalore", conf=0.95, auth="explicit_user"),
-                "destination_city": S("Singapore", conf=0.95, auth="explicit_user"),
-                "travel_dates": S("2026-03-15 to 2026-03-22", conf=0.9, auth="explicit_user"),
-                "traveler_count": S(3, conf=0.95, auth="explicit_user"),
-                "budget_range": S("250000", conf=0.85, auth="explicit_user"),
+                "destination_candidates": S("Singapore", conf=0.95, auth="explicit_user"),
+                "date_window": S("2026-03-15 to 2026-03-22", conf=0.9, auth="explicit_user"),
+                "party_size": S(3, conf=0.95, auth="explicit_user"),
+                "budget_min": S("250000", conf=0.85, auth="explicit_user"),
                 "trip_purpose": S("family leisure", conf=0.85, auth="explicit_user"),
-                "traveler_preferences": S("kid-friendly", conf=0.8, auth="explicit_user"),
+                "soft_preferences": S("kid-friendly", conf=0.8, auth="explicit_user"),
             },
         ),
         "expected": {
@@ -293,12 +293,12 @@ PACKET_FIXTURES = {
             packet_id="proceed_manual",
             facts={
                 "origin_city": S("Bangalore", conf=1.0, auth="manual_override"),
-                "destination_city": S("Maldives", conf=1.0, auth="manual_override"),
-                "travel_dates": S("2026-05-01 to 2026-05-07", conf=1.0, auth="manual_override"),
-                "traveler_count": S(2, conf=1.0, auth="manual_override"),
-                "budget_range": S("400000", conf=1.0, auth="manual_override"),
+                "destination_candidates": S("Maldives", conf=1.0, auth="manual_override"),
+                "date_window": S("2026-05-01 to 2026-05-07", conf=1.0, auth="manual_override"),
+                "party_size": S(2, conf=1.0, auth="manual_override"),
+                "budget_min": S("400000", conf=1.0, auth="manual_override"),
                 "trip_purpose": S("honeymoon", conf=1.0, auth="manual_override"),
-                "traveler_preferences": S("5-star resort", conf=1.0, auth="manual_override"),
+                "soft_preferences": S("5-star resort", conf=1.0, auth="manual_override"),
             },
         ),
         "expected": {
@@ -315,14 +315,14 @@ PACKET_FIXTURES = {
             packet_id="proceed_derived",
             facts={
                 "origin_city": S("Bangalore", conf=0.9, auth="explicit_user"),
-                "travel_dates": S("2026-04-01 to 2026-04-07", conf=0.85, auth="explicit_user"),
-                "traveler_count": S(3, conf=0.9, auth="explicit_user"),
-                "budget_range": S("300000", conf=0.8, auth="explicit_user"),
+                "date_window": S("2026-04-01 to 2026-04-07", conf=0.85, auth="explicit_user"),
+                "party_size": S(3, conf=0.9, auth="explicit_user"),
+                "budget_min": S("300000", conf=0.8, auth="explicit_user"),
                 "trip_purpose": S("beach vacation", conf=0.8, auth="explicit_user"),
-                "traveler_preferences": S("beaches, water sports", conf=0.75, auth="explicit_user"),
+                "soft_preferences": S("beaches, water sports", conf=0.75, auth="explicit_user"),
             },
             derived_signals={
-                "destination_city": S("Andaman", conf=0.7, auth="derived_signal",
+                "destination_candidates": S("Andaman", conf=0.7, auth="derived_signal",
                     evidence={"ref": "ref_derived", "env": "env_prefs", "type": "derived",
                               "excerpt": "beach vacation + water sports + budget fits Andaman"}),
             },
@@ -345,15 +345,15 @@ PACKET_FIXTURES = {
             packet_id="draft_soft",
             facts={
                 "origin_city": S("Bangalore"),
-                "destination_city": S("Singapore"),
-                "travel_dates": S("March 2026"),
-                "traveler_count": S(3),
+                "destination_candidates": S("Singapore"),
+                "date_window": S("March 2026"),
+                "party_size": S(3),
             },
         ),
         "expected": {
             "decision_state": "PROCEED_INTERNAL_DRAFT",
             "hard_blockers": [],
-            "soft_blockers": ["budget_range", "trip_purpose", "traveler_preferences"],
+            "soft_blockers": ["budget_min", "trip_purpose", "soft_preferences"],
             "nb03_behavior": "Generate internal draft with assumptions listed. NOT for traveler.",
         },
     },
@@ -365,12 +365,12 @@ PACKET_FIXTURES = {
             packet_id="draft_low",
             facts={
                 "origin_city": S("Mumbai", conf=0.5, auth="explicit_owner"),
-                "destination_city": S("Dubai", conf=0.5, auth="explicit_owner"),
-                "travel_dates": S("sometime in May", conf=0.4, auth="explicit_owner"),
-                "traveler_count": S("maybe 4 or 5", conf=0.4, auth="explicit_owner"),
-                "budget_range": S("around 3L", conf=0.5, auth="explicit_owner"),
+                "destination_candidates": S("Dubai", conf=0.5, auth="explicit_owner"),
+                "date_window": S("sometime in May", conf=0.4, auth="explicit_owner"),
+                "party_size": S("maybe 4 or 5", conf=0.4, auth="explicit_owner"),
+                "budget_min": S("around 3L", conf=0.5, auth="explicit_owner"),
                 "trip_purpose": S("family trip", conf=0.5, auth="explicit_owner"),
-                "traveler_preferences": S("something nice", conf=0.3, auth="explicit_owner"),
+                "soft_preferences": S("something nice", conf=0.3, auth="explicit_owner"),
             },
         ),
         "expected": {
@@ -388,12 +388,12 @@ PACKET_FIXTURES = {
             packet_id="draft_stretch",
             facts={
                 "origin_city": S("Bangalore"),
-                "destination_city": S("Singapore"),
-                "travel_dates": S("April 2026"),
-                "traveler_count": S(4),
-                "budget_range": S("200000 (can stretch)", conf=0.7, auth="explicit_owner"),
+                "destination_candidates": S("Singapore"),
+                "date_window": S("April 2026"),
+                "party_size": S(4),
+                "budget_min": S("200000 (can stretch)", conf=0.7, auth="explicit_owner"),
                 "trip_purpose": S("family leisure"),
-                "traveler_preferences": S("good hotels"),
+                "soft_preferences": S("good hotels"),
             },
         ),
         "expected": {
@@ -414,10 +414,10 @@ PACKET_FIXTURES = {
             packet_id="branch_budget",
             facts={
                 "origin_city": S("Bangalore"),
-                "destination_city": S("Maldives"),
-                "travel_dates": S("2026-06-01 to 2026-06-07"),
-                "traveler_count": S(2),
-                "budget_range": S(
+                "destination_candidates": S("Maldives"),
+                "date_window": S("2026-06-01 to 2026-06-07"),
+                "party_size": S(2),
+                "budget_min": S(
                     value=["budget", "premium"],
                     conf=0.6,
                     auth="explicit_owner",
@@ -425,7 +425,7 @@ PACKET_FIXTURES = {
                 ),
             },
             contradictions=[
-                {"field_name": "budget_range", "values": ["budget", "premium"], "sources": ["env_husband", "env_wife"]},
+                {"field_name": "budget_min", "values": ["budget", "premium"], "sources": ["env_husband", "env_wife"]},
             ],
         ),
         "expected": {
@@ -442,13 +442,13 @@ PACKET_FIXTURES = {
             packet_id="branch_dest",
             facts={
                 "origin_city": S("Mumbai"),
-                "destination_city": S("Andaman or Sri Lanka", conf=0.6, auth="explicit_owner"),
-                "travel_dates": S("May 2026"),
-                "traveler_count": S(2),
-                "budget_range": S("200000"),
+                "destination_candidates": S("Andaman or Sri Lanka", conf=0.6, auth="explicit_owner"),
+                "date_window": S("May 2026"),
+                "party_size": S(2),
+                "budget_min": S("200000"),
             },
             contradictions=[
-                {"field_name": "destination_city", "values": ["Andaman", "Sri Lanka"], "sources": ["env_notes"]},
+                {"field_name": "destination_candidates", "values": ["Andaman", "Sri Lanka"], "sources": ["env_notes"]},
             ],
         ),
         "expected": {
@@ -469,16 +469,16 @@ PACKET_FIXTURES = {
             packet_id="stop_date",
             facts={
                 "origin_city": S("Bangalore"),
-                "destination_city": S("Singapore"),
-                "traveler_count": S(3),
-                "travel_dates": S(
+                "destination_candidates": S("Singapore"),
+                "party_size": S(3),
+                "date_window": S(
                     value=["2026-03-15", "2026-04-01"],
                     conf=0.6,
                     auth="explicit_owner",
                 ),
             },
             contradictions=[
-                {"field_name": "travel_dates", "values": ["2026-03-15", "2026-04-01"], "sources": ["env1", "env2"]},
+                {"field_name": "date_window", "values": ["2026-03-15", "2026-04-01"], "sources": ["env1", "env2"]},
             ],
         ),
         "expected": {
@@ -494,17 +494,17 @@ PACKET_FIXTURES = {
             packet_id="stop_multi",
             facts={
                 "origin_city": S("Bangalore"),
-                "destination_city": S("Singapore"),
-                "traveler_count": S(3),
-                "travel_dates": S(
+                "destination_candidates": S("Singapore"),
+                "party_size": S(3),
+                "date_window": S(
                     value=["2026-03-15", "2026-04-01"],
                     conf=0.5,
                     auth="explicit_owner",
                 ),
             },
             contradictions=[
-                {"field_name": "travel_dates", "values": ["2026-03-15", "2026-04-01"], "sources": ["env1", "env2"]},
-                {"field_name": "destination_city", "values": ["Singapore", "Thailand"], "sources": ["env1", "env3"]},
+                {"field_name": "date_window", "values": ["2026-03-15", "2026-04-01"], "sources": ["env1", "env2"]},
+                {"field_name": "destination_candidates", "values": ["Singapore", "Thailand"], "sources": ["env1", "env3"]},
             ],
         ),
         "expected": {
@@ -520,8 +520,8 @@ PACKET_FIXTURES = {
             packet_id="stop_empty",
             facts={},
             contradictions=[
-                {"field_name": "travel_dates", "values": ["March", "April"], "sources": ["env1", "env2"]},
-                {"field_name": "destination_city", "values": ["Singapore", "Thailand"], "sources": ["env1", "env2"]},
+                {"field_name": "date_window", "values": ["March", "April"], "sources": ["env1", "env2"]},
+                {"field_name": "destination_candidates", "values": ["Singapore", "Thailand"], "sources": ["env1", "env2"]},
             ],
         ),
         "expected": {

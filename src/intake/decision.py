@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from .packet_models import (
     Ambiguity,
@@ -43,6 +43,43 @@ COMMERCIAL_DECISIONS = (
 )
 
 
+COST_BUCKET_NAMES = (
+    "flights",
+    "stay",
+    "food",
+    "local_transport",
+    "activities",
+    "visa_insurance",
+    "shopping",
+    "buffer",
+)
+
+
+@dataclass
+class CostBucketEstimate:
+    bucket: str
+    low: int
+    high: int
+    covered: bool
+    notes: Optional[str] = None
+
+
+@dataclass
+class BudgetBreakdownResult:
+    verdict: Literal["realistic", "borderline", "not_realistic"]
+    buckets: List[CostBucketEstimate] = field(default_factory=list)
+    missing_buckets: List[str] = field(default_factory=list)
+    total_estimated_low: int = 0
+    total_estimated_high: int = 0
+    budget_stated: Optional[int] = None
+    gap: Optional[int] = None
+    risks: List[str] = field(default_factory=list)
+    critical_changes: List[str] = field(default_factory=list)
+    must_confirm: List[str] = field(default_factory=list)
+    alternative: Optional[str] = None
+    maturity: str = "heuristic"
+
+
 @dataclass
 class AmbiguityRef:
     """A reference to a packet ambiguity, with severity classification."""
@@ -71,6 +108,7 @@ class DecisionResult:
     commercial_decision: str = "NONE"          # One of COMMERCIAL_DECISIONS
     intent_scores: Dict[str, float] = field(default_factory=dict)
     next_best_action: Optional[str] = None
+    budget_breakdown: Optional[BudgetBreakdownResult] = None
 
 
 # =============================================================================
@@ -342,10 +380,312 @@ BUDGET_FEASIBILITY_TABLE = {
     "Tokyo": {"min_per_person": 120000, "maturity": "heuristic"},
     "Osaka": {"min_per_person": 120000, "maturity": "heuristic"},
     "New York": {"min_per_person": 180000, "maturity": "heuristic"},
-    # Domestic fallback
     "__default_domestic__": {"min_per_person": 15000, "maturity": "heuristic"},
     "__default_international__": {"min_per_person": 50000, "maturity": "heuristic"},
 }
+
+
+BUDGET_BUCKET_RANGES: Dict[str, Dict[str, Tuple[int, int, float]]] = {
+    "__default_international__": {
+        "flights": (25000, 50000, 0.40),
+        "stay": (20000, 45000, 0.30),
+        "food": (5000, 10000, 0.10),
+        "local_transport": (3000, 8000, 0.06),
+        "activities": (5000, 12000, 0.08),
+        "visa_insurance": (3000, 8000, 0.04),
+        "shopping": (3000, 10000, 0.04),
+        "buffer": (5000, 12000, 0.06),
+    },
+    "__default_domestic__": {
+        "flights": (5000, 15000, 0.35),
+        "stay": (4000, 10000, 0.25),
+        "food": (2000, 5000, 0.10),
+        "local_transport": (1000, 3000, 0.06),
+        "activities": (2000, 5000, 0.08),
+        "visa_insurance": (0, 500, 0.01),
+        "shopping": (1000, 4000, 0.06),
+        "buffer": (2000, 5000, 0.06),
+    },
+    "Dubai": {
+        "flights": (18000, 40000, 0.38),
+        "stay": (15000, 35000, 0.28),
+        "food": (5000, 12000, 0.10),
+        "local_transport": (3000, 8000, 0.06),
+        "activities": (6000, 15000, 0.08),
+        "visa_insurance": (3000, 6000, 0.04),
+        "shopping": (5000, 15000, 0.05),
+        "buffer": (5000, 12000, 0.05),
+    },
+    "Maldives": {
+        "flights": (25000, 55000, 0.35),
+        "stay": (30000, 70000, 0.32),
+        "food": (8000, 18000, 0.10),
+        "local_transport": (5000, 15000, 0.07),
+        "activities": (5000, 12000, 0.06),
+        "visa_insurance": (2000, 5000, 0.02),
+        "shopping": (2000, 8000, 0.03),
+        "buffer": (8000, 18000, 0.07),
+    },
+    "Singapore": {
+        "flights": (18000, 40000, 0.36),
+        "stay": (18000, 40000, 0.28),
+        "food": (5000, 10000, 0.10),
+        "local_transport": (2000, 6000, 0.06),
+        "activities": (5000, 12000, 0.08),
+        "visa_insurance": (1000, 3000, 0.02),
+        "shopping": (5000, 12000, 0.05),
+        "buffer": (5000, 10000, 0.05),
+    },
+    "Thailand": {
+        "flights": (15000, 30000, 0.35),
+        "stay": (10000, 25000, 0.28),
+        "food": (3000, 8000, 0.10),
+        "local_transport": (2000, 5000, 0.06),
+        "activities": (3000, 10000, 0.08),
+        "visa_insurance": (1000, 3000, 0.02),
+        "shopping": (3000, 10000, 0.05),
+        "buffer": (3000, 8000, 0.06),
+    },
+    "Japan": {
+        "flights": (30000, 60000, 0.38),
+        "stay": (25000, 50000, 0.28),
+        "food": (10000, 20000, 0.12),
+        "local_transport": (5000, 12000, 0.06),
+        "activities": (8000, 15000, 0.07),
+        "visa_insurance": (2000, 5000, 0.03),
+        "shopping": (5000, 15000, 0.04),
+        "buffer": (5000, 12000, 0.05),
+    },
+    "Europe": {
+        "flights": (40000, 80000, 0.38),
+        "stay": (30000, 60000, 0.28),
+        "food": (8000, 18000, 0.10),
+        "local_transport": (5000, 12000, 0.06),
+        "activities": (8000, 15000, 0.07),
+        "visa_insurance": (5000, 12000, 0.05),
+        "shopping": (5000, 15000, 0.04),
+        "buffer": (8000, 18000, 0.06),
+    },
+    "Bali": {
+        "flights": (18000, 38000, 0.36),
+        "stay": (15000, 35000, 0.28),
+        "food": (3000, 8000, 0.10),
+        "local_transport": (2000, 6000, 0.06),
+        "activities": (4000, 10000, 0.08),
+        "visa_insurance": (1500, 4000, 0.03),
+        "shopping": (3000, 10000, 0.05),
+        "buffer": (4000, 10000, 0.06),
+    },
+    "Goa": {
+        "flights": (3000, 8000, 0.30),
+        "stay": (3000, 8000, 0.25),
+        "food": (2000, 5000, 0.12),
+        "local_transport": (1000, 3000, 0.06),
+        "activities": (2000, 5000, 0.08),
+        "visa_insurance": (0, 0, 0.00),
+        "shopping": (1000, 3000, 0.06),
+        "buffer": (2000, 5000, 0.07),
+    },
+    "Kerala": {
+        "flights": (3000, 8000, 0.28),
+        "stay": (3000, 8000, 0.26),
+        "food": (2000, 5000, 0.12),
+        "local_transport": (2000, 5000, 0.08),
+        "activities": (2000, 5000, 0.08),
+        "visa_insurance": (0, 0, 0.00),
+        "shopping": (1000, 3000, 0.04),
+        "buffer": (2000, 5000, 0.08),
+    },
+    "Kashmir": {
+        "flights": (4000, 10000, 0.30),
+        "stay": (4000, 10000, 0.25),
+        "food": (2000, 6000, 0.12),
+        "local_transport": (2000, 5000, 0.08),
+        "activities": (3000, 6000, 0.08),
+        "visa_insurance": (0, 0, 0.00),
+        "shopping": (1000, 3000, 0.04),
+        "buffer": (2000, 6000, 0.08),
+    },
+    "Sri Lanka": {
+        "flights": (10000, 25000, 0.35),
+        "stay": (8000, 18000, 0.26),
+        "food": (3000, 8000, 0.12),
+        "local_transport": (2000, 5000, 0.06),
+        "activities": (3000, 8000, 0.08),
+        "visa_insurance": (1000, 3000, 0.02),
+        "shopping": (2000, 6000, 0.04),
+        "buffer": (3000, 8000, 0.06),
+    },
+    "Vietnam": {
+        "flights": (15000, 30000, 0.36),
+        "stay": (8000, 18000, 0.26),
+        "food": (3000, 8000, 0.12),
+        "local_transport": (1500, 5000, 0.06),
+        "activities": (3000, 8000, 0.08),
+        "visa_insurance": (1000, 3000, 0.02),
+        "shopping": (2000, 6000, 0.04),
+        "buffer": (3000, 8000, 0.06),
+    },
+    "Andaman": {
+        "flights": (6000, 15000, 0.32),
+        "stay": (6000, 15000, 0.28),
+        "food": (3000, 6000, 0.10),
+        "local_transport": (2000, 5000, 0.06),
+        "activities": (3000, 8000, 0.08),
+        "visa_insurance": (0, 0, 0.00),
+        "shopping": (1000, 3000, 0.04),
+        "buffer": (3000, 7000, 0.06),
+    },
+    "Andamans": {
+        "flights": (6000, 15000, 0.32),
+        "stay": (6000, 15000, 0.28),
+        "food": (3000, 6000, 0.10),
+        "local_transport": (2000, 5000, 0.06),
+        "activities": (3000, 8000, 0.08),
+        "visa_insurance": (0, 0, 0.00),
+        "shopping": (1000, 3000, 0.04),
+        "buffer": (3000, 7000, 0.06),
+    },
+    "Nepal": {
+        "flights": (5000, 12000, 0.32),
+        "stay": (4000, 10000, 0.26),
+        "food": (2000, 5000, 0.12),
+        "local_transport": (1000, 4000, 0.08),
+        "activities": (2000, 6000, 0.08),
+        "visa_insurance": (0, 500, 0.01),
+        "shopping": (1000, 4000, 0.04),
+        "buffer": (2000, 6000, 0.06),
+    },
+    "Bhutan": {
+        "flights": (8000, 18000, 0.34),
+        "stay": (10000, 22000, 0.30),
+        "food": (3000, 6000, 0.10),
+        "local_transport": (2000, 6000, 0.06),
+        "activities": (3000, 8000, 0.08),
+        "visa_insurance": (0, 500, 0.01),
+        "shopping": (1000, 4000, 0.04),
+        "buffer": (3000, 7000, 0.06),
+    },
+    "Mauritius": {
+        "flights": (25000, 50000, 0.36),
+        "stay": (25000, 55000, 0.30),
+        "food": (6000, 12000, 0.10),
+        "local_transport": (3000, 8000, 0.06),
+        "activities": (4000, 10000, 0.06),
+        "visa_insurance": (1500, 4000, 0.02),
+        "shopping": (3000, 10000, 0.04),
+        "buffer": (5000, 12000, 0.06),
+    },
+    "Seychelles": {
+        "flights": (30000, 60000, 0.37),
+        "stay": (30000, 65000, 0.30),
+        "food": (6000, 12000, 0.10),
+        "local_transport": (3000, 8000, 0.06),
+        "activities": (4000, 10000, 0.06),
+        "visa_insurance": (0, 2000, 0.01),
+        "shopping": (2000, 8000, 0.04),
+        "buffer": (6000, 14000, 0.06),
+    },
+    "Turkey": {
+        "flights": (25000, 50000, 0.36),
+        "stay": (18000, 38000, 0.28),
+        "food": (5000, 12000, 0.10),
+        "local_transport": (3000, 8000, 0.06),
+        "activities": (5000, 12000, 0.08),
+        "visa_insurance": (3000, 6000, 0.04),
+        "shopping": (3000, 10000, 0.04),
+        "buffer": (5000, 12000, 0.05),
+    },
+    "Istanbul": {
+        "flights": (25000, 50000, 0.36),
+        "stay": (18000, 38000, 0.28),
+        "food": (5000, 12000, 0.10),
+        "local_transport": (3000, 8000, 0.06),
+        "activities": (5000, 12000, 0.08),
+        "visa_insurance": (3000, 6000, 0.04),
+        "shopping": (3000, 10000, 0.04),
+        "buffer": (5000, 12000, 0.05),
+    },
+    "Paris": {
+        "flights": (40000, 80000, 0.38),
+        "stay": (30000, 55000, 0.28),
+        "food": (8000, 18000, 0.10),
+        "local_transport": (5000, 12000, 0.06),
+        "activities": (8000, 15000, 0.07),
+        "visa_insurance": (5000, 12000, 0.05),
+        "shopping": (5000, 15000, 0.04),
+        "buffer": (8000, 18000, 0.06),
+    },
+    "London": {
+        "flights": (40000, 80000, 0.38),
+        "stay": (30000, 55000, 0.28),
+        "food": (8000, 18000, 0.10),
+        "local_transport": (5000, 12000, 0.06),
+        "activities": (8000, 15000, 0.07),
+        "visa_insurance": (5000, 12000, 0.05),
+        "shopping": (5000, 15000, 0.04),
+        "buffer": (8000, 18000, 0.06),
+    },
+    "Tokyo": {
+        "flights": (30000, 60000, 0.38),
+        "stay": (25000, 50000, 0.28),
+        "food": (10000, 20000, 0.12),
+        "local_transport": (5000, 12000, 0.06),
+        "activities": (8000, 15000, 0.07),
+        "visa_insurance": (2000, 5000, 0.03),
+        "shopping": (5000, 15000, 0.04),
+        "buffer": (5000, 12000, 0.05),
+    },
+    "Osaka": {
+        "flights": (30000, 60000, 0.38),
+        "stay": (25000, 50000, 0.28),
+        "food": (10000, 20000, 0.12),
+        "local_transport": (5000, 12000, 0.06),
+        "activities": (8000, 15000, 0.07),
+        "visa_insurance": (2000, 5000, 0.03),
+        "shopping": (5000, 15000, 0.04),
+        "buffer": (5000, 12000, 0.05),
+    },
+    "New York": {
+        "flights": (50000, 95000, 0.38),
+        "stay": (35000, 70000, 0.28),
+        "food": (10000, 22000, 0.10),
+        "local_transport": (5000, 12000, 0.06),
+        "activities": (8000, 18000, 0.07),
+        "visa_insurance": (8000, 15000, 0.05),
+        "shopping": (5000, 15000, 0.04),
+        "buffer": (8000, 18000, 0.06),
+    },
+    "Bangkok": {
+        "flights": (15000, 30000, 0.35),
+        "stay": (10000, 25000, 0.28),
+        "food": (3000, 8000, 0.10),
+        "local_transport": (2000, 5000, 0.06),
+        "activities": (3000, 10000, 0.08),
+        "visa_insurance": (1000, 3000, 0.02),
+        "shopping": (3000, 10000, 0.05),
+        "buffer": (3000, 8000, 0.06),
+    },
+}
+
+_DESTINATION_ALIASES: Dict[str, str] = {
+    "Andamans": "Andaman",
+    "Istanbul": "Turkey",
+    "Paris": "Europe",
+    "London": "Europe",
+    "Tokyo": "Japan",
+    "Osaka": "Japan",
+    "Bangkok": "Thailand",
+    "New York": "New York",
+}
+
+_CHILD_SURCHARGE = 0.75
+_TODDLER_SURCHARGE = 0.30
+_ELDERLY_SURCHARGE = 0.05
+_SEASON_MULTIPLIER_SHOULDER = 1.15
+_SEASON_MULTIPLIER_PEAK = 1.30
+_MULTI_COUNTRY_PENALTY = 1.10
+_FAMILY_BUFFER_BUMP = 0.02
 
 
 def get_numeric_budget(packet: CanonicalPacket) -> Optional[int]:
@@ -435,6 +775,222 @@ def check_budget_feasibility(
     elif gap < 0:
         return {"status": "tight", "gap": gap, "maturity": entry.get("maturity", "heuristic")}
     return {"status": "feasible", "gap": gap, "maturity": entry.get("maturity", "heuristic")}
+
+
+def _resolve_bucket_table(dest: str, packet: CanonicalPacket) -> Dict[str, Tuple[int, int, float]]:
+    primary = _DESTINATION_ALIASES.get(dest, dest)
+    if primary in BUDGET_BUCKET_RANGES:
+        return BUDGET_BUCKET_RANGES[primary]
+    intl_slot = packet.derived_signals.get("domestic_or_international")
+    if intl_slot and intl_slot.value == "domestic":
+        return BUDGET_BUCKET_RANGES["__default_domestic__"]
+    return BUDGET_BUCKET_RANGES["__default_international__"]
+
+
+def _get_composition_modifiers(packet: CanonicalPacket) -> Tuple[float, float]:
+    adult_equivalents = 0.0
+    has_toddler = False
+    has_elderly = False
+    comp = packet.facts.get("party_composition")
+    if comp and isinstance(comp.value, dict):
+        has_toddler = bool(comp.value.get("toddlers", 0))
+        has_elderly = bool(comp.value.get("elderly", 0))
+        adults = comp.value.get("adults", 0)
+        teens = comp.value.get("teens", 0)
+        children = comp.value.get("children", 0)
+        toddlers = comp.value.get("toddlers", 0)
+        elderly = comp.value.get("elderly", 0)
+        adult_equivalents = (
+            adults
+            + teens * _CHILD_SURCHARGE
+            + children * _CHILD_SURCHARGE
+            + toddlers * _TODDLER_SURCHARGE
+        )
+        if has_elderly:
+            adult_equivalents += elderly * _ELDERLY_SURCHARGE
+    else:
+        party_slot = packet.facts.get("party_size")
+        adult_equivalents = float(party_slot.value) if party_slot and party_slot.value else 1.0
+    if has_toddler:
+        adult_equivalents = max(adult_equivalents, adult_equivalents + _FAMILY_BUFFER_BUMP * adult_equivalents)
+    return adult_equivalents, has_toddler
+
+
+def _is_multi_destination(packet: CanonicalPacket) -> bool:
+    dest_slot = packet.facts.get("destination_candidates")
+    if dest_slot and isinstance(dest_slot.value, list):
+        return len(dest_slot.value) > 1
+    return False
+
+
+def decompose_budget(
+    packet: CanonicalPacket,
+    bucket_table: Optional[Dict[str, Dict[str, Tuple[int, int, float]]]] = None,
+    cached_feasibility: Optional[Dict[str, Any]] = None,
+) -> BudgetBreakdownResult:
+    """
+    Decompose a trip budget into cost buckets with per-destination estimates.
+
+    Architecture:
+      1. Resolve destination -> bucket range table
+      2. Scale per-person ranges by effective party size (adult-equivalents)
+      3. Apply composition modifiers (toddler, elderly)
+      4. Apply multi-destination penalty
+      5. Compare total estimated range against stated budget
+      6. Determine covered/missing buckets, verdict, risks, and alternatives
+    """
+    budget_min = get_numeric_budget(packet)
+    if budget_min is None:
+        return BudgetBreakdownResult(
+            verdict="not_realistic",
+            maturity="heuristic",
+            risks=["budget_unknown"],
+            critical_changes=["Provide a numeric budget for decomposition"],
+        )
+
+    resolved = packet.facts.get("resolved_destination")
+    dests = []
+    if resolved and resolved.value:
+        dests = [resolved.value]
+    else:
+        dest_slot = packet.facts.get("destination_candidates")
+        if dest_slot and dest_slot.value:
+            dests = dest_slot.value if isinstance(dest_slot.value, list) else [dest_slot.value]
+
+    if len(dests) > 1:
+        primary_dest = dests[0]
+    elif len(dests) == 1:
+        primary_dest = dests[0]
+    else:
+        return BudgetBreakdownResult(
+            verdict="not_realistic",
+            budget_stated=budget_min,
+            maturity="heuristic",
+            risks=["destination_unknown"],
+            critical_changes=["Specify a destination for budget decomposition"],
+        )
+
+    table_source = bucket_table or BUDGET_BUCKET_RANGES
+    primary_key = _DESTINATION_ALIASES.get(primary_dest, primary_dest)
+    if primary_key not in table_source:
+        intl_slot = packet.derived_signals.get("domestic_or_international")
+        if intl_slot and intl_slot.value == "domestic":
+            bucket_ranges = table_source["__default_domestic__"]
+        else:
+            bucket_ranges = table_source["__default_international__"]
+    else:
+        bucket_ranges = table_source[primary_key]
+
+    adult_equiv, has_toddler = _get_composition_modifiers(packet)
+    is_multi = _is_multi_destination(packet)
+
+    buckets: List[CostBucketEstimate] = []
+    total_low = 0
+    total_high = 0
+    missing: List[str] = []
+
+    for bname in COST_BUCKET_NAMES:
+        if bname not in bucket_ranges:
+            missing.append(bname)
+            continue
+        low_pp, high_pp, weight = bucket_ranges[bname]
+        low = round(low_pp * adult_equiv)
+        high = round(high_pp * adult_equiv)
+        if is_multi and bname in ("flights", "local_transport", "buffer"):
+            low = round(low * _MULTI_COUNTRY_PENALTY)
+            high = round(high * _MULTI_COUNTRY_PENALTY)
+        if has_toddler and bname in ("activities", "local_transport", "buffer"):
+            high = round(high * 1.15)
+        if bname == "visa_insurance" and low == 0 and high == 0:
+            buckets.append(CostBucketEstimate(
+                bucket=bname, low=0, high=0, covered=True, notes="Not applicable (domestic)",
+            ))
+        else:
+            covered = budget_min >= low
+            buckets.append(CostBucketEstimate(bucket=bname, low=low, high=high, covered=covered))
+        total_low += low
+        total_high += high
+
+    gap = budget_min - total_low
+    if budget_min >= total_high:
+        verdict: str = "realistic"
+    elif budget_min >= total_low:
+        verdict = "borderline"
+    elif gap >= -0.2 * total_low:
+        verdict = "borderline"
+    else:
+        verdict = "not_realistic"
+
+    for b in buckets:
+        if not b.covered:
+            missing.append(b.bucket)
+
+    risks: List[str] = []
+    critical_changes: List[str] = []
+    must_confirm: List[str] = []
+
+    flight_b = next((b for b in buckets if b.bucket == "flights"), None)
+    if flight_b and budget_min < flight_b.low:
+        risks.append("flight_inflation")
+        must_confirm.append("flight_quote_for_party")
+
+    stay_b = next((b for b in buckets if b.bucket == "stay"), None)
+    if stay_b and budget_min < stay_b.high and "Maldives" in dests:
+        risks.append("resort_premium")
+        critical_changes.append("Consider 3-night Maldives stay instead of 4")
+
+    ins_b = next((b for b in buckets if b.bucket == "visa_insurance"), None)
+    if ins_b and ins_b.high > 0 and not ins_b.covered:
+        risks.append("insurance_gap")
+        must_confirm.append("travel_insurance_premium")
+
+    if "visa_insurance" in missing and len(dests) > 1:
+        risks.append("visa_fee_omission")
+        must_confirm.append("visa_fees_for_all_destinations")
+
+    if "shopping" in missing:
+        risks.append("shopping_underbudget")
+        critical_changes.append("Add explicit shopping allowance")
+
+    if "buffer" in missing:
+        risks.append("tight_buffer")
+        critical_changes.append("Add 10-15% contingency buffer")
+
+    if "food" in missing:
+        risks.append("food_underbudget")
+        critical_changes.append("Add explicit food and daily meal allowance")
+
+    if "local_transport" in missing:
+        risks.append("transport_gap")
+        critical_changes.append("Budget for airport transfers and local mobility")
+
+    if is_multi:
+        risks.append("transfer_complexity")
+        must_confirm.append("inter-destination_transfer_cost")
+
+    if has_toddler:
+        risks.append("toddler_addons")
+        must_confirm.append("child_seat_and_transfer_cost")
+
+    alternative = None
+    if verdict in ("borderline", "not_realistic") and len(dests) > 1:
+        alt_parts = [d for d in dests if d != dests[-1]]
+        alternative = f"{' + '.join(alt_parts)} only, same dates — fewer transfers and lower resort costs"
+
+    return BudgetBreakdownResult(
+        verdict=verdict,
+        buckets=buckets,
+        missing_buckets=missing,
+        total_estimated_low=total_low,
+        total_estimated_high=total_high,
+        budget_stated=budget_min,
+        gap=gap,
+        risks=risks,
+        critical_changes=critical_changes,
+        must_confirm=must_confirm,
+        alternative=alternative,
+        maturity="heuristic",
+    )
 
 
 # =============================================================================
@@ -1029,6 +1585,9 @@ def run_gap_and_decision(
     # --- Phase 2: Budget feasibility (computed once, reused downstream) ---
     feasibility = _cached_feasibility if _cached_feasibility is not None else check_budget_feasibility(packet, feasibility_table)
 
+    # --- Phase 2b: Budget decomposition ---
+    budget_breakdown = decompose_budget(packet, cached_feasibility=feasibility)
+
     # --- Phase 3: Evaluate blockers ---
     hard_blockers = []
     soft_blockers = []
@@ -1225,6 +1784,9 @@ def run_gap_and_decision(
         "feasibility": feasibility["status"],
         "operating_mode": mode,
         "commercial_decision": commercial_decision,
+        "budget_verdict": budget_breakdown.verdict if budget_breakdown else None,
+        "budget_total_low": budget_breakdown.total_estimated_low if budget_breakdown else None,
+        "budget_total_high": budget_breakdown.total_estimated_high if budget_breakdown else None,
     }
 
     return DecisionResult(
@@ -1244,4 +1806,5 @@ def run_gap_and_decision(
         commercial_decision=commercial_decision,
         intent_scores=intent_scores,
         next_best_action=next_best_action,
+        budget_breakdown=budget_breakdown,
     )

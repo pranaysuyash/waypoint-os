@@ -109,7 +109,8 @@ Example structure:
 
 - This scenario is intentionally focused on budget reality and missing cost buckets. It is not just a high/low feasibility check.
 - It should surface the exact buckets that often cause customer shock and wasted quoting effort.
-- Current backend coverage in `src/intake/decision.py` is narrower than this scenario. `check_budget_feasibility()` only evaluates overall destination viability by total budget vs destination baseline. It does not model buckets such as flights, transfers, visas, insurance, shopping, or buffer.
+- ~~Current backend coverage in `src/intake/decision.py` is narrower than this scenario. `check_budget_feasibility()` only evaluates overall destination viability by total budget vs destination baseline. It does not model buckets such as flights, transfers, visas, insurance, shopping, or buffer.~~
+- **IMPLEMENTED 2026-04-15**: `decompose_budget()` now provides full per-bucket decomposition across all 8 cost buckets (flights, stay, food, local_transport, activities, visa_insurance, shopping, buffer). The `BudgetBreakdownResult` includes verdict, bucket estimates with low/high ranges, covered/gap status, missing buckets, risks, critical changes, must-confirm items, and alternatives. Per-destination bucket ranges are in `BUDGET_BUCKET_RANGES` (27 destinations). Frontend DecisionTab shows a full breakdown table.
 
 ---
 

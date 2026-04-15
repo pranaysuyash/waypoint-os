@@ -17,6 +17,7 @@ Canonical response contract (always returned, never raises):
         traveler_bundle: object | null,   # null on strict leakage failure
         internal_bundle: object | null,
         safety: { strict_leakage, leakage_passed, leakage_errors },
+        assertions: [{ type, passed, message, field }] | null,  # populated when scenario_id provided
         meta: { stage, operating_mode, fixture_id, execution_ms }
     }
 
@@ -64,6 +65,13 @@ class SafetyResult(BaseModel):
     leakage_errors: List[str] = Field(default_factory=list)
 
 
+class AssertionResult(BaseModel):
+    type: str
+    passed: bool
+    message: str
+    field: Optional[str] = None
+
+
 class RunMeta(BaseModel):
     stage: str = "discovery"
     operating_mode: str = "normal_intake"
@@ -81,6 +89,7 @@ class SpineRunResponse(BaseModel):
     traveler_bundle: Optional[dict[str, Any]] = None
     internal_bundle: Optional[dict[str, Any]] = None
     safety: SafetyResult = Field(default_factory=SafetyResult)
+    assertions: Optional[List[AssertionResult]] = None
     meta: RunMeta = Field(default_factory=RunMeta)
 
 
@@ -183,10 +192,62 @@ def _to_dict(obj: Any) -> Any:
     return obj
 
 
-def serialize_bundle(bundle: Any) -> Optional[dict[str, Any]]:
+def serialize_bundle(bundle: Any, traveler_safe: bool = False) -> Optional[dict[str, Any]]:
     if bundle is None:
         return None
+    if traveler_safe and hasattr(bundle, "to_traveler_dict"):
+        return bundle.to_traveler_dict()
     return _to_dict(bundle)
+
+
+def _normalize_scenario_id(id: str) -> str:
+    """
+    Normalize a scenario ID for comparison.
+
+    Handles case, separator (/ vs -, _), and SC- prefix variations.
+    Examples:
+        SC-001  -> sc001
+        sc_001  -> sc001
+        SC001   -> sc001
+        001     -> 001
+    """
+    normalized = id.lower().strip()
+    # Strip SC prefix consistently
+    for prefix in ("sc-", "sc_", "sc"):
+        if normalized.startswith(prefix):
+            normalized = normalized[len(prefix):]
+            break
+    # Normalize separators
+    return normalized.replace("-", "").replace("_", "")
+
+
+def _scenario_ids_match(a: str, b: str) -> bool:
+    """Check if two scenario IDs refer to the same fixture."""
+    return _normalize_scenario_id(a) == _normalize_scenario_id(b)
+
+
+def load_fixture_expectations(scenario_id: Optional[str]) -> Optional[dict[str, Any]]:
+    """Load fixture expectations from scenario file if scenario_id is provided."""
+    if not scenario_id:
+        return None
+
+    fixtures_dir = PROJECT_ROOT / "data" / "fixtures" / "scenarios"
+    if not fixtures_dir.exists():
+        return None
+
+    for fname in fixtures_dir.glob("*.json"):
+        try:
+            import json as _json
+
+            with open(fname) as f:
+                fixture = _json.load(f)
+            fid = fixture.get("scenario_id", "")
+            if _scenario_ids_match(fid, scenario_id):
+                return fixture.get("expected")
+        except Exception:
+            continue
+
+    return None
 
 
 # =============================================================================
@@ -223,21 +284,24 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
 
     try:
         envelopes = build_envelopes(request.model_dump(exclude_none=True))
+        fixture_expectations = load_fixture_expectations(request.scenario_id)
 
         result = run_spine_once(
             envelopes=envelopes,
             stage=request.stage,
             operating_mode=request.operating_mode,
+            fixture_expectations=fixture_expectations,
         )
 
         execution_ms = (time.perf_counter() - t0) * 1000
         meta.execution_ms = round(execution_ms, 2)
 
         logger.info(
-            "spine_run ok=True run_id=%s stage=%s mode=%s execution_ms=%.2f",
+            "spine_run ok=True run_id=%s stage=%s mode=%s scenario_id=%s execution_ms=%.2f",
             run_id,
             request.stage,
             request.operating_mode,
+            request.scenario_id,
             execution_ms,
         )
 
@@ -252,6 +316,18 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
             else len(all_leaks) == 0
         )
 
+        assertions_out: Optional[List[AssertionResult]] = None
+        if result.assertion_result is not None:
+            assertions_out = [
+                AssertionResult(
+                    type=a.get("type", ""),
+                    passed=a.get("passed", False),
+                    message=a.get("message", ""),
+                    field=a.get("field"),
+                )
+                for a in result.assertion_result.get("assertions", [])
+            ]
+
         return SpineRunResponse(
             ok=True,
             run_id=run_id,
@@ -259,7 +335,7 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
             validation=_to_dict(result.validation) if hasattr(result, "validation") else None,
             decision=_to_dict(result.decision) if hasattr(result, "decision") else None,
             strategy=_to_dict(result.strategy) if hasattr(result, "strategy") else None,
-            traveler_bundle=serialize_bundle(result.traveler_bundle)
+            traveler_bundle=serialize_bundle(result.traveler_bundle, traveler_safe=True)
             if result.traveler_bundle is not None
             else None,
             internal_bundle=serialize_bundle(result.internal_bundle)
@@ -270,6 +346,7 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
                 leakage_passed=is_safe,
                 leakage_errors=all_leaks,
             ),
+            assertions=assertions_out,
             meta=meta,
         )
 

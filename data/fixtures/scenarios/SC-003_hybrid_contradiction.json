@@ -2,13 +2,13 @@
   "scenario_id": "SC-003",
   "title": "Hybrid conflict — husband vs wife contradiction",
   "description": "A couple provides contradictory information: husband says Singapore March 15-20 with 120k budget, wife says Thailand April 1-6 with 200k budget and a baby. Should trigger STOP_NEEDS_REVIEW due to critical contradictions.",
-  "mode": "normal_intake",
-  "stage": "discovery",
   "inputs": {
     "raw_note": "Husband: Singapore, 5 nights, March 15-20, 2 adults, 120k budget. Wife: Thailand would be better, April 1-6, 2 adults + baby, 200k budget.",
     "owner_note": null,
     "structured_json": null,
-    "itinerary_text": null
+    "itinerary_text": null,
+    "stage": "discovery",
+    "mode": "normal_intake"
   },
   "expected": {
     "allowed_decision_states": ["STOP_NEEDS_REVIEW", "ASK_FOLLOWUP", "BRANCH_OPTIONS"],

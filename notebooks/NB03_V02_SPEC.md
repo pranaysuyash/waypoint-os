@@ -259,7 +259,7 @@ def generate_risk_flags(packet: CanonicalPacket, decision: DecisionResult) -> Li
 |---|------|------------------|
 | 1 | ASK_FOLLOWUP → constraint-first question order | Questions ordered: composition → destination → origin → dates |
 | 2 | ASK_FOLLOWUP → hypothesis hints used | "Maybe Singapore" → offered as suggestion, not generic "where?" |
-| 3 | ASK_FOLLOWUP + ambiguity | "Andaman or Sri Lanka" → clarification question even if NB02 said PROCEED |
+| 3 | ASK_FOLLOWUP + ambiguity | "Andaman or Sri Lanka" → clarification question with candidate-specific framing ("Between Andaman and Sri Lanka, which are you leaning toward?"). NB01/NB02 enforce blocking ambiguity; NB03 presents the question. |
 | 4 | ASK_FOLLOWUP + emergency mode | Only crisis questions (docs, contacts, timeline) — no soft blockers |
 | 5 | ASK_FOLLOWUP + coordinator_group | Per-group questions + coordinator summary |
 | 6 | BRANCH_OPTIONS → neutral framing | No "recommended" vs "alternative" — "Option A", "Option B" |
@@ -267,7 +267,7 @@ def generate_risk_flags(packet: CanonicalPacket, decision: DecisionResult) -> Li
 | 8 | PROCEED_INTERNAL_DRAFT → assumptions documented | Soft blockers listed as explicit assumptions |
 | 9 | PROCEED_TRAVELER_SAFE → grounded in facts | No mention of unknowns, hypotheses, contradictions |
 | 10 | PROCEED_TRAVELER_SAFE → sanitization | Owner-only fields not present in traveler-facing output |
-| 11 | PROCEED_TRAVELER_SAFE + ambiguity | Ambiguous values trigger post-proposal confirmation question |
+| 11 | PROCEED_TRAVELER_SAFE + ambiguity | Vague/hedged destination never reaches PROCEED_TRAVELER_SAFE (enforced by NB01/NB02, not NB03 override). At discovery, may allow BRANCH_OPTIONS; at shortlist+, fully blocking. |
 | 12 | STOP_NEEDS_REVIEW → review briefing | Contradiction details + evidence refs + suggested resolutions |
 | 13 | STOP_NEEDS_REVIEW + emergency mode | Step-by-step emergency protocol with immediate actions |
 | 14 | Sanitization → no leakage | user_message and system_context contain no internal concepts |
@@ -287,6 +287,23 @@ def generate_risk_flags(packet: CanonicalPacket, decision: DecisionResult) -> Li
 | Generic branch presentation | Branch-quality rules — different approach per root cause |
 | No urgency awareness | Urgency-aware question suppression and reordering |
 | No sanitization tests | 3 dedicated leakage-checking tests (#10, #14) |
+| Ambiguous values not detected | NB01 value-structural synthesis + NB02 integrity defense + NB02 severity classification. NB03 does NOT override decision states. |
+
+---
+
+## Layer Ownership (Clarified 2026-04-15)
+
+NB03 is a **presentation and session behavior** layer. It does not reclassify decision states produced by NB02.
+
+| Concern | Owner | Why |
+|---------|-------|-----|
+| Text-pattern ambiguity detection | NB01 | Truth capture and normalization |
+| Value-structural ambiguity synthesis | NB01 (primary), NB02 (defense) | NB01 creates Ambiguity objects from extraction; NB02 synthesizes if NB01 missed |
+| Ambiguity severity classification | NB02 | Judgment and routing |
+| Stage-aware severity escalation | NB02 | Decision engine considers stage context |
+| Destination-candidate question framing | NB02 | Follow-up questions are part of the decision result, not presentation |
+| Traveler-safe output enforcement | NB03 | Session behavior and prompt boundaries |
+| Decision state override | **Never NB03** | If decision is wrong, fix upstream |
 
 ---
 

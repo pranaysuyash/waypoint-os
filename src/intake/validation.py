@@ -38,6 +38,8 @@ DERIVED_ONLY_FIELDS = frozenset({
     "value_gap",
     "internal_data_present",
     "booking_readiness",
+    "budget_breakdown",
+    "budget_verdict",
 })
 
 # Discovery-stage MVB
