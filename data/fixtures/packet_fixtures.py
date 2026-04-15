@@ -13,98 +13,62 @@ Usage:
 
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'notebooks'))
 
-# Load NB02 models
-from importlib import util as import_util
+# Add src to path for v0.2 models
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
-def _load_nb02_models():
-    spec = import_util.spec_from_file_location(
-        "nb02_models",
-        os.path.join(os.path.dirname(__file__), '..', '..', 'notebooks', 'test_02_comprehensive.py')
-    )
-    # Instead of importing the test runner, define the models directly here
-    # to avoid circular dependencies
-    from dataclasses import dataclass, asdict, field
-    from datetime import datetime
-    from typing import List, Dict, Any, Optional
-    from enum import IntEnum
+from intake.packet_models import (
+    CanonicalPacket, Slot, EvidenceRef, UnknownField, AuthorityLevel,
+)
+from intake.decision import LEGACY_ALIASES
 
-    class AuthorityLevel(IntEnum):
-        MANUAL_OVERRIDE = 1
-        EXPLICIT_USER = 2
-        IMPORTED_STRUCTURED = 3
-        EXPLICIT_OWNER = 4
-        DERIVED_SIGNAL = 5
-        SOFT_HYPOTHESIS = 6
-        UNKNOWN = 7
-
-    @dataclass
-    class EvidenceRef:
-        ref_id: str
-        envelope_id: str
-        evidence_type: str
-        excerpt: str
-        field_path: Optional[str] = None
-        offset: Optional[Dict[str, int]] = None
-        confidence: float = 1.0
-        metadata: Dict[str, Any] = field(default_factory=dict)
-
-    @dataclass
-    class Slot:
-        value: Any = None
-        confidence: float = 0.0
-        authority_level: str = "unknown"
-        extraction_mode: str = "unknown"
-        evidence_refs: List[EvidenceRef] = field(default_factory=list)
-        updated_at: str = field(default_factory=lambda: datetime.now().isoformat())
-        notes: Optional[str] = None
-
-    @dataclass
-    class UnknownField:
-        field_name: str
-        reason: str
-        attempted_at: Optional[str] = None
-        notes: Optional[str] = None
-
-    @dataclass
-    class CanonicalPacket:
-        packet_id: str
-        created_at: str
-        last_updated: str
-        facts: Dict[str, Slot] = field(default_factory=dict)
-        derived_signals: Dict[str, Slot] = field(default_factory=dict)
-        hypotheses: Dict[str, Slot] = field(default_factory=dict)
-        unknowns: List[UnknownField] = field(default_factory=list)
-        contradictions: List[Dict[str, Any]] = field(default_factory=list)
-        source_envelope_ids: List[str] = field(default_factory=list)
-        stage: str = "discovery"
-
-    return Slot, EvidenceRef, UnknownField, CanonicalPacket
-
-
-# Build models once
-_Slot, _EvidenceRef, _UnknownField, _CanonicalPacket = _load_nb02_models()
 
 def S(value, conf=0.9, auth="explicit_user", evidence=None):
-    """Shorthand for Slot creation."""
+    """Shorthand for Slot creation.
+
+    Args:
+        value: The slot value
+        conf: Confidence score (0-1)
+        auth: Authority level (string, matches v0.2 AuthorityLevel constants)
+        evidence: Optional dict with keys: ref, env, type, excerpt
+    """
     refs = []
     if evidence:
-        refs.append(_EvidenceRef(
+        refs.append(EvidenceRef(
             ref_id=evidence.get("ref", "ref_001"),
             envelope_id=evidence.get("env", "env_001"),
             evidence_type=evidence.get("type", "text_span"),
             excerpt=evidence.get("excerpt", str(value)),
         ))
-    return _Slot(value=value, confidence=conf, authority_level=auth, evidence_refs=refs)
+    return Slot(value=value, confidence=conf, authority_level=auth, evidence_refs=refs)
+
 
 def P(**kwargs):
-    """Shorthand for CanonicalPacket creation."""
+    """Shorthand for CanonicalPacket creation (v0.2).
+
+    v0.2 CanonicalPacket has these fields:
+    - packet_id: str
+    - schema_version: str = "0.2"
+    - stage: Literal["discovery", "shortlist", "proposal", "booking"] = "discovery"
+    - operating_mode: Literal[...] = "normal_intake"
+    - decision_state: Optional[str] = None
+    - facts: Dict[str, Slot] = field(default_factory=dict)
+    - derived_signals: Dict[str, Slot] = field(default_factory=dict)
+    - hypotheses: Dict[str, Slot] = field(default_factory=dict)
+    - lifecycle: Optional[LifecycleInfo] = None
+    - ambiguities: List[Ambiguity] = field(default_factory=list)
+    - unknowns: List[UnknownField] = field(default_factory=list)
+    - contradictions: List[Dict[str, Any]] = field(default_factory=list)
+    - source_envelope_ids: List[str] = field(default_factory=list)
+    - revision_count: int = 0
+    - event_cursor: int = 0
+    - events: List[Dict[str, Any]] = field(default_factory=list)
+    """
     kwargs.setdefault("packet_id", "fixture")
-    kwargs.setdefault("created_at", "now")
-    kwargs.setdefault("last_updated", "now")
     kwargs.setdefault("stage", "discovery")
-    return _CanonicalPacket(**kwargs)
+    kwargs.setdefault("operating_mode", "normal_intake")
+    # v0.2 CanonicalPacket is a dataclass with defaults for most fields
+    return CanonicalPacket(**kwargs)
 
 
 PACKET_FIXTURES = {
@@ -273,6 +237,7 @@ PACKET_FIXTURES = {
                 "destination_candidates": S("Singapore", conf=0.95, auth="explicit_user"),
                 "date_window": S("2026-03-15 to 2026-03-22", conf=0.9, auth="explicit_user"),
                 "party_size": S(3, conf=0.95, auth="explicit_user"),
+                "budget_raw_text": S("2.5L", conf=0.95, auth="explicit_user"),
                 "budget_min": S("250000", conf=0.85, auth="explicit_user"),
                 "trip_purpose": S("family leisure", conf=0.85, auth="explicit_user"),
                 "soft_preferences": S("kid-friendly", conf=0.8, auth="explicit_user"),
@@ -296,6 +261,7 @@ PACKET_FIXTURES = {
                 "destination_candidates": S("Maldives", conf=1.0, auth="manual_override"),
                 "date_window": S("2026-05-01 to 2026-05-07", conf=1.0, auth="manual_override"),
                 "party_size": S(2, conf=1.0, auth="manual_override"),
+                "budget_raw_text": S("4L", conf=1.0, auth="manual_override"),
                 "budget_min": S("400000", conf=1.0, auth="manual_override"),
                 "trip_purpose": S("honeymoon", conf=1.0, auth="manual_override"),
                 "soft_preferences": S("5-star resort", conf=1.0, auth="manual_override"),
@@ -550,3 +516,7 @@ def print_summary():
         print(f"  {cat}: {len(ids)}")
         for i in ids:
             print(f"    - {i}")
+
+
+if __name__ == "__main__":
+    print_summary()

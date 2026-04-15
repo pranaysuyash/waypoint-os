@@ -99,6 +99,11 @@
 - **[trip_examples.json](../data/fixtures/trip_examples.json)** — Complete trip examples with full journey data for development and demos.
 - **[README.md](../data/fixtures/README.md)** — Fixture files documentation, usage examples, data structures.
 
+## Architecture Decision Records
+
+- **[ADR-001: Scenario Handling Architecture](architecture/adr/ADR-001-SCENARIO-HANDLING-ARCHITECTURE.md)** — Enhanced scenario handling system with structured risk format.
+- **[ADR-002: Spine API Architecture](architecture/adr/ADR-002-SPINE-API-ARCHITECTURE.md)** — HTTP service architecture replacing subprocess approach for better performance and scalability.
+
 ### Previous UX Docs (2026-04-13)
 
 > **Note**: Earlier docs assumed direct-to-consumer incorrectly. Refer to 2026-04-14 docs for platform-led B2B model.

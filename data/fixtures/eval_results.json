@@ -16,30 +16,16 @@
         "check": "hard_blockers",
         "passed": true,
         "expected": [
-          "destination_city",
+          "date_window",
+          "destination_candidates",
           "origin_city",
-          "travel_dates",
-          "traveler_count"
+          "party_size"
         ],
         "actual": [
-          "destination_city",
+          "date_window",
+          "destination_candidates",
           "origin_city",
-          "travel_dates",
-          "traveler_count"
-        ]
-      },
-      {
-        "check": "soft_blockers",
-        "passed": true,
-        "expected": [
-          "budget_range",
-          "traveler_preferences",
-          "trip_purpose"
-        ],
-        "actual": [
-          "budget_range",
-          "traveler_preferences",
-          "trip_purpose"
+          "party_size"
         ]
       },
       {
@@ -68,10 +54,10 @@
         "check": "hard_blockers",
         "passed": true,
         "expected": [
-          "destination_city"
+          "destination_candidates"
         ],
         "actual": [
-          "destination_city"
+          "destination_candidates"
         ]
       },
       {
@@ -100,10 +86,10 @@
         "check": "hard_blockers",
         "passed": true,
         "expected": [
-          "travel_dates"
+          "date_window"
         ],
         "actual": [
-          "travel_dates"
+          "date_window"
         ]
       },
       {
@@ -132,14 +118,14 @@
         "check": "hard_blockers",
         "passed": true,
         "expected": [
-          "destination_city",
-          "travel_dates",
-          "traveler_count"
+          "date_window",
+          "destination_candidates",
+          "party_size"
         ],
         "actual": [
-          "destination_city",
-          "travel_dates",
-          "traveler_count"
+          "date_window",
+          "destination_candidates",
+          "party_size"
         ]
       },
       {
@@ -168,10 +154,10 @@
         "check": "hard_blockers",
         "passed": true,
         "expected": [
-          "travel_dates"
+          "date_window"
         ],
         "actual": [
-          "travel_dates"
+          "date_window"
         ]
       },
       {
@@ -200,12 +186,12 @@
         "check": "hard_blockers",
         "passed": true,
         "expected": [
-          "destination_city",
-          "travel_dates"
+          "date_window",
+          "destination_candidates"
         ],
         "actual": [
-          "destination_city",
-          "travel_dates"
+          "date_window",
+          "destination_candidates"
         ]
       }
     ],
@@ -228,10 +214,10 @@
         "check": "hard_blockers",
         "passed": true,
         "expected": [
-          "destination_city"
+          "destination_candidates"
         ],
         "actual": [
-          "destination_city"
+          "destination_candidates"
         ]
       },
       {
@@ -255,32 +241,6 @@
         "passed": true,
         "expected": "PROCEED_INTERNAL_DRAFT",
         "actual": "PROCEED_INTERNAL_DRAFT"
-      },
-      {
-        "check": "hard_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
-      },
-      {
-        "check": "soft_blockers",
-        "passed": true,
-        "expected": [
-          "budget_range",
-          "traveler_preferences",
-          "trip_purpose"
-        ],
-        "actual": [
-          "budget_range",
-          "traveler_preferences",
-          "trip_purpose"
-        ]
-      },
-      {
-        "check": "internal_draft_boundary",
-        "passed": true,
-        "expected": "PROCEED_INTERNAL_DRAFT",
-        "actual": "PROCEED_INTERNAL_DRAFT"
       }
     ],
     "errors": []
@@ -288,37 +248,15 @@
   {
     "fixture_id": "proceed_complete_discovery",
     "mode": "policy",
-    "passed": true,
-    "decision_state_actual": "PROCEED_TRAVELER_SAFE",
+    "passed": false,
+    "decision_state_actual": "PROCEED_INTERNAL_DRAFT",
     "decision_state_expected": "PROCEED_TRAVELER_SAFE",
     "checks": [
       {
         "check": "decision_state",
-        "passed": true,
+        "passed": false,
         "expected": "PROCEED_TRAVELER_SAFE",
-        "actual": "PROCEED_TRAVELER_SAFE"
-      },
-      {
-        "check": "hard_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
-      },
-      {
-        "check": "soft_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
-      },
-      {
-        "check": "traveler_safe_complete",
-        "passed": true,
-        "details": "state=PROCEED_TRAVELER_SAFE, questions=0"
-      },
-      {
-        "check": "confidence_reasonable",
-        "passed": true,
-        "actual": 0.848
+        "actual": "PROCEED_INTERNAL_DRAFT"
       }
     ],
     "errors": []
@@ -326,37 +264,15 @@
   {
     "fixture_id": "proceed_manual_override",
     "mode": "policy",
-    "passed": true,
-    "decision_state_actual": "PROCEED_TRAVELER_SAFE",
+    "passed": false,
+    "decision_state_actual": "PROCEED_INTERNAL_DRAFT",
     "decision_state_expected": "PROCEED_TRAVELER_SAFE",
     "checks": [
       {
         "check": "decision_state",
-        "passed": true,
+        "passed": false,
         "expected": "PROCEED_TRAVELER_SAFE",
-        "actual": "PROCEED_TRAVELER_SAFE"
-      },
-      {
-        "check": "hard_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
-      },
-      {
-        "check": "soft_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
-      },
-      {
-        "check": "traveler_safe_complete",
-        "passed": true,
-        "details": "state=PROCEED_TRAVELER_SAFE, questions=0"
-      },
-      {
-        "check": "confidence_reasonable",
-        "passed": true,
-        "actual": 1.0
+        "actual": "PROCEED_INTERNAL_DRAFT"
       }
     ],
     "errors": []
@@ -364,37 +280,15 @@
   {
     "fixture_id": "proceed_derived_destination",
     "mode": "policy",
-    "passed": true,
-    "decision_state_actual": "PROCEED_TRAVELER_SAFE",
+    "passed": false,
+    "decision_state_actual": "PROCEED_INTERNAL_DRAFT",
     "decision_state_expected": "PROCEED_TRAVELER_SAFE",
     "checks": [
       {
         "check": "decision_state",
-        "passed": true,
+        "passed": false,
         "expected": "PROCEED_TRAVELER_SAFE",
-        "actual": "PROCEED_TRAVELER_SAFE"
-      },
-      {
-        "check": "hard_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
-      },
-      {
-        "check": "soft_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
-      },
-      {
-        "check": "traveler_safe_complete",
-        "passed": true,
-        "details": "state=PROCEED_TRAVELER_SAFE, questions=0"
-      },
-      {
-        "check": "confidence_reasonable",
-        "passed": true,
-        "actual": 0.792
+        "actual": "PROCEED_INTERNAL_DRAFT"
       }
     ],
     "errors": []
@@ -408,32 +302,6 @@
     "checks": [
       {
         "check": "decision_state",
-        "passed": true,
-        "expected": "PROCEED_INTERNAL_DRAFT",
-        "actual": "PROCEED_INTERNAL_DRAFT"
-      },
-      {
-        "check": "hard_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
-      },
-      {
-        "check": "soft_blockers",
-        "passed": true,
-        "expected": [
-          "budget_range",
-          "traveler_preferences",
-          "trip_purpose"
-        ],
-        "actual": [
-          "budget_range",
-          "traveler_preferences",
-          "trip_purpose"
-        ]
-      },
-      {
-        "check": "internal_draft_boundary",
         "passed": true,
         "expected": "PROCEED_INTERNAL_DRAFT",
         "actual": "PROCEED_INTERNAL_DRAFT"
@@ -453,24 +321,6 @@
         "passed": true,
         "expected": "PROCEED_INTERNAL_DRAFT",
         "actual": "PROCEED_INTERNAL_DRAFT"
-      },
-      {
-        "check": "hard_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
-      },
-      {
-        "check": "soft_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
-      },
-      {
-        "check": "internal_draft_boundary",
-        "passed": true,
-        "expected": "PROCEED_INTERNAL_DRAFT",
-        "actual": "PROCEED_INTERNAL_DRAFT"
       }
     ],
     "errors": []
@@ -478,37 +328,15 @@
   {
     "fixture_id": "draft_budget_stretch",
     "mode": "policy",
-    "passed": true,
-    "decision_state_actual": "PROCEED_TRAVELER_SAFE",
+    "passed": false,
+    "decision_state_actual": "PROCEED_INTERNAL_DRAFT",
     "decision_state_expected": "PROCEED_TRAVELER_SAFE",
     "checks": [
       {
         "check": "decision_state",
-        "passed": true,
+        "passed": false,
         "expected": "PROCEED_TRAVELER_SAFE",
-        "actual": "PROCEED_TRAVELER_SAFE"
-      },
-      {
-        "check": "hard_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
-      },
-      {
-        "check": "soft_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
-      },
-      {
-        "check": "traveler_safe_complete",
-        "passed": true,
-        "details": "state=PROCEED_TRAVELER_SAFE, questions=0"
-      },
-      {
-        "check": "confidence_reasonable",
-        "passed": true,
-        "actual": 0.813
+        "actual": "PROCEED_INTERNAL_DRAFT"
       }
     ],
     "errors": []
@@ -525,12 +353,6 @@
         "passed": true,
         "expected": "BRANCH_OPTIONS",
         "actual": "BRANCH_OPTIONS"
-      },
-      {
-        "check": "hard_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
       }
     ],
     "errors": []
@@ -547,12 +369,6 @@
         "passed": true,
         "expected": "ASK_FOLLOWUP",
         "actual": "ASK_FOLLOWUP"
-      },
-      {
-        "check": "hard_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
       }
     ],
     "errors": []
@@ -569,11 +385,6 @@
         "passed": true,
         "expected": "STOP_NEEDS_REVIEW",
         "actual": "STOP_NEEDS_REVIEW"
-      },
-      {
-        "check": "stop_generates_review",
-        "passed": true,
-        "details": "state=STOP_NEEDS_REVIEW, questions=1"
       }
     ],
     "errors": []
@@ -590,11 +401,6 @@
         "passed": true,
         "expected": "STOP_NEEDS_REVIEW",
         "actual": "STOP_NEEDS_REVIEW"
-      },
-      {
-        "check": "stop_generates_review",
-        "passed": true,
-        "details": "state=STOP_NEEDS_REVIEW, questions=2"
       }
     ],
     "errors": []
@@ -611,11 +417,6 @@
         "passed": true,
         "expected": "STOP_NEEDS_REVIEW",
         "actual": "STOP_NEEDS_REVIEW"
-      },
-      {
-        "check": "stop_generates_review",
-        "passed": true,
-        "details": "state=STOP_NEEDS_REVIEW, questions=2"
       }
     ],
     "errors": []
@@ -623,95 +424,37 @@
   {
     "fixture_id": "clean_family_booking",
     "mode": "policy",
-    "passed": true,
-    "decision_state_actual": "PROCEED_TRAVELER_SAFE",
+    "passed": false,
+    "decision_state_actual": "ERROR",
     "decision_state_expected": "PROCEED_TRAVELER_SAFE",
-    "checks": [
-      {
-        "check": "decision_state",
-        "passed": true,
-        "expected": "PROCEED_TRAVELER_SAFE",
-        "actual": "PROCEED_TRAVELER_SAFE"
-      },
-      {
-        "check": "hard_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
-      },
-      {
-        "check": "traveler_safe_complete",
-        "passed": true,
-        "details": "state=PROCEED_TRAVELER_SAFE, questions=0"
-      },
-      {
-        "check": "confidence_reasonable",
-        "passed": true,
-        "actual": 0.64
-      }
-    ],
-    "errors": []
+    "checks": [],
+    "errors": [
+      "'str' object has no attribute 'get'"
+    ]
   },
   {
     "fixture_id": "complete_pilgrimage",
     "mode": "policy",
-    "passed": true,
-    "decision_state_actual": "PROCEED_TRAVELER_SAFE",
+    "passed": false,
+    "decision_state_actual": "ERROR",
     "decision_state_expected": "PROCEED_TRAVELER_SAFE",
-    "checks": [
-      {
-        "check": "decision_state",
-        "passed": true,
-        "expected": "PROCEED_TRAVELER_SAFE",
-        "actual": "PROCEED_TRAVELER_SAFE"
-      },
-      {
-        "check": "hard_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
-      },
-      {
-        "check": "traveler_safe_complete",
-        "passed": true,
-        "details": "state=PROCEED_TRAVELER_SAFE, questions=0"
-      },
-      {
-        "check": "confidence_reasonable",
-        "passed": true,
-        "actual": 0.64
-      }
-    ],
-    "errors": []
+    "checks": [],
+    "errors": [
+      "'str' object has no attribute 'get'"
+    ]
   },
   {
     "fixture_id": "business_shortlist",
     "mode": "policy",
-    "passed": true,
-    "decision_state_actual": "PROCEED_TRAVELER_SAFE",
+    "passed": false,
+    "decision_state_actual": "PROCEED_INTERNAL_DRAFT",
     "decision_state_expected": "PROCEED_TRAVELER_SAFE",
     "checks": [
       {
         "check": "decision_state",
-        "passed": true,
+        "passed": false,
         "expected": "PROCEED_TRAVELER_SAFE",
-        "actual": "PROCEED_TRAVELER_SAFE"
-      },
-      {
-        "check": "hard_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
-      },
-      {
-        "check": "traveler_safe_complete",
-        "passed": true,
-        "details": "state=PROCEED_TRAVELER_SAFE, questions=0"
-      },
-      {
-        "check": "confidence_reasonable",
-        "passed": true,
-        "actual": 0.65
+        "actual": "PROCEED_INTERNAL_DRAFT"
       }
     ],
     "errors": []
@@ -719,61 +462,26 @@
   {
     "fixture_id": "vague_lead",
     "mode": "policy",
-    "passed": true,
-    "decision_state_actual": "ASK_FOLLOWUP",
+    "passed": false,
+    "decision_state_actual": "ERROR",
     "decision_state_expected": "ASK_FOLLOWUP",
-    "checks": [
-      {
-        "check": "decision_state",
-        "passed": true,
-        "expected": "ASK_FOLLOWUP",
-        "actual": "ASK_FOLLOWUP"
-      },
-      {
-        "check": "hard_blockers",
-        "passed": true,
-        "expected": [
-          "destination_city",
-          "origin_city",
-          "traveler_count"
-        ],
-        "actual": [
-          "destination_city",
-          "origin_city",
-          "traveler_count"
-        ]
-      }
-    ],
-    "errors": []
+    "checks": [],
+    "errors": [
+      "'str' object has no attribute 'get'"
+    ]
   },
   {
     "fixture_id": "whatsapp_dump",
     "mode": "policy",
-    "passed": true,
-    "decision_state_actual": "PROCEED_TRAVELER_SAFE",
+    "passed": false,
+    "decision_state_actual": "PROCEED_INTERNAL_DRAFT",
     "decision_state_expected": "PROCEED_TRAVELER_SAFE",
     "checks": [
       {
         "check": "decision_state",
-        "passed": true,
+        "passed": false,
         "expected": "PROCEED_TRAVELER_SAFE",
-        "actual": "PROCEED_TRAVELER_SAFE"
-      },
-      {
-        "check": "hard_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
-      },
-      {
-        "check": "traveler_safe_complete",
-        "passed": true,
-        "details": "state=PROCEED_TRAVELER_SAFE, questions=0"
-      },
-      {
-        "check": "confidence_reasonable",
-        "passed": true,
-        "actual": 0.64
+        "actual": "PROCEED_INTERNAL_DRAFT"
       }
     ],
     "errors": []
@@ -781,21 +489,15 @@
   {
     "fixture_id": "partial_crm_entry",
     "mode": "policy",
-    "passed": true,
-    "decision_state_actual": "ASK_FOLLOWUP",
+    "passed": false,
+    "decision_state_actual": "PROCEED_INTERNAL_DRAFT",
     "decision_state_expected": "ASK_FOLLOWUP",
     "checks": [
       {
         "check": "decision_state",
-        "passed": true,
+        "passed": false,
         "expected": "ASK_FOLLOWUP",
-        "actual": "ASK_FOLLOWUP"
-      },
-      {
-        "check": "hard_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
+        "actual": "PROCEED_INTERNAL_DRAFT"
       }
     ],
     "errors": []
@@ -822,11 +524,6 @@
         "actual": [
           "origin_city"
         ]
-      },
-      {
-        "check": "stop_generates_review",
-        "passed": true,
-        "details": "state=STOP_NEEDS_REVIEW, questions=3"
       }
     ],
     "errors": []
@@ -848,12 +545,12 @@
         "check": "hard_blockers",
         "passed": true,
         "expected": [
-          "destination_city",
-          "travel_dates"
+          "date_window",
+          "destination_candidates"
         ],
         "actual": [
-          "destination_city",
-          "travel_dates"
+          "date_window",
+          "destination_candidates"
         ]
       }
     ],
@@ -876,10 +573,10 @@
         "check": "hard_blockers",
         "passed": true,
         "expected": [
-          "travel_dates"
+          "date_window"
         ],
         "actual": [
-          "travel_dates"
+          "date_window"
         ]
       }
     ],
@@ -897,12 +594,6 @@
         "passed": true,
         "expected": "BRANCH_OPTIONS",
         "actual": "BRANCH_OPTIONS"
-      },
-      {
-        "check": "hard_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
       }
     ],
     "errors": []
@@ -910,31 +601,15 @@
   {
     "fixture_id": "andaman_or_srilanka",
     "mode": "policy",
-    "passed": true,
-    "decision_state_actual": "PROCEED_TRAVELER_SAFE",
+    "passed": false,
+    "decision_state_actual": "PROCEED_INTERNAL_DRAFT",
     "decision_state_expected": "PROCEED_TRAVELER_SAFE",
     "checks": [
       {
         "check": "decision_state",
-        "passed": true,
+        "passed": false,
         "expected": "PROCEED_TRAVELER_SAFE",
-        "actual": "PROCEED_TRAVELER_SAFE"
-      },
-      {
-        "check": "hard_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
-      },
-      {
-        "check": "traveler_safe_complete",
-        "passed": true,
-        "details": "state=PROCEED_TRAVELER_SAFE, questions=0"
-      },
-      {
-        "check": "confidence_reasonable",
-        "passed": true,
-        "actual": 0.64
+        "actual": "PROCEED_INTERNAL_DRAFT"
       }
     ],
     "errors": []
@@ -942,33 +617,12 @@
   {
     "fixture_id": "luxury_wants_budget_reality",
     "mode": "policy",
-    "passed": true,
-    "decision_state_actual": "PROCEED_TRAVELER_SAFE",
+    "passed": false,
+    "decision_state_actual": "ERROR",
     "decision_state_expected": "PROCEED_TRAVELER_SAFE",
-    "checks": [
-      {
-        "check": "decision_state",
-        "passed": true,
-        "expected": "PROCEED_TRAVELER_SAFE",
-        "actual": "PROCEED_TRAVELER_SAFE"
-      },
-      {
-        "check": "hard_blockers",
-        "passed": true,
-        "expected": [],
-        "actual": []
-      },
-      {
-        "check": "traveler_safe_complete",
-        "passed": true,
-        "details": "state=PROCEED_TRAVELER_SAFE, questions=0"
-      },
-      {
-        "check": "confidence_reasonable",
-        "passed": true,
-        "actual": 0.64
-      }
-    ],
-    "errors": []
+    "checks": [],
+    "errors": [
+      "'str' object has no attribute 'get'"
+    ]
   }
 ]
