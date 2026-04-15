@@ -210,6 +210,7 @@ AMBIGUITY_SEVERITY: Dict[str, str] = {
     # Blocking: field exists but cannot be used for decision
     ("destination_candidates", "unresolved_alternatives"): "blocking",
     ("destination_candidates", "destination_open"): "blocking",
+    ("destination_candidates", "value_vague"): "blocking",
     ("party_size", "value_vague"): "blocking",
     ("party_size", "composition_unclear"): "advisory",
     # Advisory: field exists, extra context needed but not blocking
@@ -932,7 +933,56 @@ def generate_question(field_name: str) -> str:
 
 
 # =============================================================================
-# SECTION 12: MAIN ENTRY POINT
+# SECTION 12: DESTINATION AMBIGUITY SYNTHESIS
+# =============================================================================
+
+def _synthesize_destination_ambiguity(
+    packet: CanonicalPacket,
+    ambiguities: List[AmbiguityRef],
+) -> None:
+    """
+    Synthesize unresolved_alternatives ambiguity from destination value structure.
+
+    If destination_candidates is a list with 2+ items but no blocking
+    unresolved_alternatives ambiguity exists, create one. This handles packets
+    from structured imports or API calls that bypass NB01 text extraction.
+
+    Also mutates the packet to add the Ambiguity object so downstream
+    consumers (NB03) have access to it.
+    """
+    has_unresolved = any(
+        a.field_name == "destination_candidates"
+        and a.ambiguity_type == "unresolved_alternatives"
+        and a.severity == "blocking"
+        for a in ambiguities
+    )
+    if has_unresolved:
+        return
+
+    dest_slot = resolve_field(packet, "destination_candidates")
+    if not dest_slot or not isinstance(dest_slot.value, list) or len(dest_slot.value) < 2:
+        return
+
+    candidates = dest_slot.value[:3]
+    raw_value = " or ".join(candidates)
+
+    from .packet_models import Ambiguity as AmbiguityModel
+    packet.add_ambiguity(AmbiguityModel(
+        field_name="destination_candidates",
+        ambiguity_type="unresolved_alternatives",
+        raw_value=raw_value,
+        confidence=0.8,
+    ))
+
+    ambiguities.append(AmbiguityRef(
+        field_name="destination_candidates",
+        ambiguity_type="unresolved_alternatives",
+        raw_value=raw_value,
+        severity="blocking",
+    ))
+
+
+# SECTION 13: MAIN ENTRY POINT
 # =============================================================================
 
 def run_gap_and_decision(
@@ -969,6 +1019,12 @@ def run_gap_and_decision(
 
     # --- Phase 1: Classify ambiguities ---
     ambiguities = classify_ambiguities(packet)
+
+    # Value-structural ambiguity synthesis:
+    # If destination_candidates has 2+ items but no unresolved_alternatives
+    # ambiguity was flagged by NB01, synthesize one here. This handles packets
+    # constructed from structured import or API calls that bypass extraction.
+    _synthesize_destination_ambiguity(packet, ambiguities)
 
     # --- Phase 2: Budget feasibility (computed once, reused downstream) ---
     feasibility = _cached_feasibility if _cached_feasibility is not None else check_budget_feasibility(packet, feasibility_table)
@@ -1061,9 +1117,19 @@ def run_gap_and_decision(
                 can_infer = hyp_slot is not None
                 inference_conf = round(hyp_slot.confidence * 0.3, 2) if hyp_slot else 0.0
 
+                question_text = generate_question(blocker)
+                if blocker == "destination_candidates":
+                    dest_slot = resolve_field(packet, "destination_candidates")
+                    if dest_slot and isinstance(dest_slot.value, list) and len(dest_slot.value) >= 2:
+                        candidates = dest_slot.value[:3]
+                        question_text = f"Between {' and '.join(candidates)}, which are you leaning toward?"
+                        suggested = candidates
+                    elif not suggested and dest_slot and isinstance(dest_slot.value, list) and len(dest_slot.value) == 1:
+                        suggested = dest_slot.value
+
                 follow_up_questions.append({
                     "field_name": blocker,
-                    "question": generate_question(blocker),
+                    "question": question_text,
                     "priority": "critical",
                     "can_infer": can_infer,
                     "inference_confidence": inference_conf,
@@ -1105,12 +1171,21 @@ def run_gap_and_decision(
             elif blocking_ambiguities:
                 # Blocking ambiguities → ASK_FOLLOWUP
                 for amb in blocking_ambiguities:
+                    question_text = generate_question(amb.field_name)
+                    suggested = []
+                    if amb.field_name == "destination_candidates" and amb.ambiguity_type == "unresolved_alternatives":
+                        dest_slot = resolve_field(packet, "destination_candidates")
+                        if dest_slot and isinstance(dest_slot.value, list) and len(dest_slot.value) >= 2:
+                            candidates = dest_slot.value[:3]
+                            question_text = f"Between {' and '.join(candidates)}, which are you leaning toward?"
+                            suggested = candidates
                     follow_up_questions.append({
                         "field_name": amb.field_name,
-                        "question": generate_question(amb.field_name),
+                        "question": question_text,
                         "priority": "critical",
                         "can_infer": False,
                         "inference_confidence": 0.0,
+                        "suggested_values": suggested,
                     })
                 decision_state = "ASK_FOLLOWUP"
             else:

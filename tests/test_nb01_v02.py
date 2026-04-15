@@ -513,6 +513,94 @@ class TestSchemaRoundtrip:
 
 
 # ===========================================================================
+# REGRESSION: Hedging-extraction order and stop-word filter
+# ===========================================================================
+
+class TestHedgingExtractionOrder:
+    """
+    Bug: 'maybe Singapore' extracted as definite instead of semi_open
+    because the single-destination regex matched before the hedging pattern.
+
+    Fix: Hedging patterns (maybe, thinking about, perhaps, considering)
+    are now checked BEFORE the general destination regex.
+    """
+
+    def test_maybe_pattern_produces_semi_open(self):
+        """"maybe Singapore" → semi_open, not definite."""
+        text = "maybe Singapore from Bangalore, 4 people"
+        env = SourceEnvelope.from_freeform(text, "test_hedge_maybe")
+        pkt = ExtractionPipeline().extract([env])
+        ds = pkt.facts.get("destination_status")
+        dc = pkt.facts.get("destination_candidates")
+        assert ds is not None, "Should have destination_status"
+        assert ds.value == "semi_open", f"Expected semi_open, got {ds.value}"
+        assert dc.value == ["Singapore"], f"Expected ['Singapore'], got {dc.value}"
+
+    def test_thinking_about_pattern_produces_semi_open(self):
+        """"thinking about Singapore" → semi_open."""
+        text = "thinking about Singapore from Bangalore, 4 people"
+        env = SourceEnvelope.from_freeform(text, "test_hedge_think")
+        pkt = ExtractionPipeline().extract([env])
+        ds = pkt.facts.get("destination_status")
+        assert ds is not None
+        assert ds.value == "semi_open", f"Expected semi_open, got {ds.value}"
+
+    def test_perhaps_pattern_produces_semi_open(self):
+        """"perhaps Singapore" → semi_open."""
+        text = "perhaps Singapore in March from Bangalore"
+        env = SourceEnvelope.from_freeform(text, "test_hedge_perhaps")
+        pkt = ExtractionPipeline().extract([env])
+        ds = pkt.facts.get("destination_status")
+        assert ds is not None
+        assert ds.value == "semi_open", f"Expected semi_open, got {ds.value}"
+
+    def test_definite_destination_still_definite(self):
+        """Plain "Singapore from Bangalore" → still definite."""
+        text = "Singapore from Bangalore, 4 people, March 2026"
+        env = SourceEnvelope.from_freeform(text, "test_definite")
+        pkt = ExtractionPipeline().extract([env])
+        ds = pkt.facts.get("destination_status")
+        dc = pkt.facts.get("destination_candidates")
+        assert ds.value == "definite", f"Expected definite, got {ds.value}"
+        assert dc.value == ["Singapore"], f"Expected ['Singapore'], got {dc.value}"
+
+    def test_or_pattern_still_sem_open(self):
+        """"Andaman or Sri Lanka" → semi_open (regression check)."""
+        text = "Andaman or Sri Lanka from Bangalore, 4 people"
+        env = SourceEnvelope.from_freeform(text, "test_or")
+        pkt = ExtractionPipeline().extract([env])
+        dc = pkt.facts.get("destination_candidates")
+        assert dc.value == ["Andaman", "Sri Lanka"], f"Expected 2 candidates, got {dc.value}"
+
+
+class TestStopWordFilter:
+    """
+    Bug: "We want to go somewhere nice" extracted "We" as a destination.
+
+    Fix: Common pronouns and stop words filtered before is_known_destination.
+    """
+
+    def test_we_pronoun_filtered(self):
+        """"We want to go somewhere nice" → no destination, not "We"."""
+        text = "We want to go somewhere nice from Bangalore"
+        env = SourceEnvelope.from_freeform(text, "test_stop_we")
+        pkt = ExtractionPipeline().extract([env])
+        dc = pkt.facts.get("destination_candidates")
+        if dc and dc.value:
+            assert "We" not in dc.value, f'"We" should be filtered, got {dc.value}'
+
+    def test_real_destination_after_pronoun(self):
+        """"I want to visit Singapore" → Singapore, not "I"."""
+        text = "I want to visit Singapore from Bangalore"
+        env = SourceEnvelope.from_freeform(text, "test_stop_i")
+        pkt = ExtractionPipeline().extract([env])
+        dc = pkt.facts.get("destination_candidates")
+        assert dc is not None
+        assert "I" not in dc.value, f'"I" should be filtered, got {dc.value}'
+        assert "Singapore" in dc.value
+
+
+# ===========================================================================
 # Run
 # ===========================================================================
 

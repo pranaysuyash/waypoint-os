@@ -9,7 +9,7 @@ Core modules:
 - decision: NB02 v0.2 — Gap and decision engine (run_gap_and_decision)
 - strategy: NB03 v0.2 — Session strategy and SEPARATE internal/traveler builders
 - safety: NB03 v0.2 — Structural traveler-safe sanitization
-- geography: City database from GeoNames (CC-BY 4.0) + world-cities.json (MIT)
+- geography: City database from GeoNames (CC-BY 4.0) + world-cities.json (ODbL-1.0)
 """
 
 from .packet_models import (

@@ -37,8 +37,7 @@ export function IntakeTab() {
     setResultStrategy,
     setResultInternalBundle,
     setResultTravelerBundle,
-    setResultLeakage,
-    setResultAssertions,
+    setResultSafety,
     setResultRunTs,
   } = useWorkbenchStore();
 
@@ -132,15 +131,14 @@ export function IntakeTab() {
         return;
       }
 
-      setResultPacket(data.packet);
-      setResultValidation(data.validation);
-      setResultDecision(data.decision);
-      setResultStrategy(data.strategy);
-      setResultInternalBundle(data.internal_bundle);
-      setResultTravelerBundle(data.traveler_bundle);
-      setResultLeakage(data.leakage);
-      setResultAssertions(data.assertions);
-      setResultRunTs(data.run_ts);
+      setResultPacket(data.packet ?? null);
+      setResultValidation(data.validation ?? null);
+      setResultDecision(data.decision ?? null);
+      setResultStrategy(data.strategy ?? null);
+      setResultInternalBundle(data.internal_bundle ?? null);
+      setResultTravelerBundle(data.traveler_bundle ?? null);
+      setResultSafety(data.safety ?? null);
+      setResultRunTs(data.run_id ? `run-${data.run_id}` : null);
     } catch (err) {
       setJsonError("Failed to call spine API");
     } finally {

@@ -130,6 +130,10 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
 
     Past-trip destination mentions are excluded to prevent contamination
     of current destination intent.
+
+    Extraction order matters: hedging patterns ("maybe", "or") are checked
+    before the general destination regex so that hedging context is
+    preserved in status and raw_match.
     """
     text_lower = text.lower()
     candidates: List[str] = []
@@ -151,23 +155,47 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
         else:
             return [], "open", None
 
+    # Check for "maybe" pattern (semi-open) — before general regex
+    # so "maybe Singapore" is captured as semi_open, not definite.
+    maybe_match = re.search(r"\bmaybe\s+(\w+)", text_lower)
+    if maybe_match:
+        dest = maybe_match.group(1).title()
+        if is_known_destination(dest):
+            return [dest], "semi_open", maybe_match.group(0)
+
+    # Check for "thinking about" / "perhaps" / hedging patterns (semi-open)
+    hedging_match = re.search(
+        r"\b(?:thinking\s+about|perhaps|considering|looking\s+at)\s+(\w+)",
+        text_lower,
+    )
+    if hedging_match:
+        dest = hedging_match.group(1).title()
+        if is_known_destination(dest):
+            return [dest], "semi_open", hedging_match.group(0)
+
     # Check for "somewhere with/for" (open)
     open_match = re.search(r"somewhere\s+(?:with|for|that)\s+(\w+)", text_lower)
     if open_match:
         return [], "open", open_match.group(0)
 
     # Check for "open to suggestions"
-    if "open to suggestions" in text_lower or "suggestions" in text_lower:
+    if "open to suggestions" in text_lower or ("suggestions" in text_lower and "destination" in text_lower):
         return [], "open", "suggestions"
 
     # Single/multiple destination match — filter past-trip mentions AND origin patterns
-    # Validate against geography database to filter out non-city capitalized words
+    # Validate against geography database to filter out non-city capitalized words.
+    # Also filter common pronouns and stop words that should never be destinations.
+    _DESTINATION_STOP_WORDS = {"we", "i", "my", "our", "the", "this", "that", "it", "they", "he", "she", "us"}
+
     matches = [m.group(0) for m in _DESTINATION_RE.finditer(text)]
     if matches:
         seen = []
         for m in matches:
             title = m.title()
             if title not in seen:
+                # Skip common pronouns and stop words
+                if title.lower() in _DESTINATION_STOP_WORDS:
+                    continue
                 # Skip if not a known destination (city or country)
                 # geography.py is the filter, not hardcoded lists
                 if not is_known_destination(title):
@@ -183,14 +211,6 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
             return seen, "definite", matches[0]
         elif len(seen) > 1:
             return seen, "semi_open", ", ".join(matches)
-
-    # Maybe pattern: "maybe Singapore" or "maybe Japan"
-    maybe_match = re.search(r"\bmaybe\s+(\w+)", text_lower)
-    if maybe_match:
-        dest = maybe_match.group(1).title()
-        # Use geography.py as plausibility check, not as gatekeeper
-        if is_known_destination(dest):
-            return [dest], "semi_open", maybe_match.group(0)
 
     return [], "open" if ("somewhere" in text_lower or "any" in text_lower) else "undecided", None
 
@@ -749,6 +769,24 @@ class ExtractionPipeline:
                     # Avoid duplicate ambiguity types
                     if not any(a.ambiguity_type == amb.ambiguity_type for a in packet.ambiguities):
                         packet.add_ambiguity(amb)
+
+            # Value-structural ambiguity synthesis:
+            # If destination_candidates has 2+ items but no unresolved_alternatives
+            # ambiguity was flagged (e.g., text-pattern missed it, or packet
+            # constructed from structured import), synthesize one from the value
+            # structure itself. A multi-element destination list IS the ambiguity.
+            if dest_candidates and len(dest_candidates) >= 2:
+                if not any(
+                    a.ambiguity_type == "unresolved_alternatives"
+                    and a.field_name == "destination_candidates"
+                    for a in packet.ambiguities
+                ):
+                    packet.add_ambiguity(Ambiguity(
+                        field_name="destination_candidates",
+                        ambiguity_type="unresolved_alternatives",
+                        raw_value=" or ".join(dest_candidates),
+                        confidence=0.8,
+                    ))
 
         # --- DATES ---
         date_result = _extract_dates(text)

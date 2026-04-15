@@ -1,7 +1,7 @@
 """
 intake.geography — Geography database for origin/destination extraction.
 
-Combines GeoNames (CC-BY 4.0) + world-cities.json (MIT) + accumulated cities.
+Combines GeoNames (CC-BY 4.0) + world-cities.json (ODbL-1.0) + accumulated cities.
 
 **ATTRIBUTION REQUIRED**: GeoNames data is CC-BY 4.0 licensed.
 Any UI using location data must include:

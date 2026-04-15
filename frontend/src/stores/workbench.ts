@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type {
   SpineStage,
   OperatingMode,
-  LeakageResult,
+  SafetyResult,
   SpineRunResponse,
 } from "@/types/spine";
 
@@ -37,8 +37,7 @@ interface WorkbenchResultState {
   result_strategy: SpineRunResponse["strategy"] | null;
   result_internal_bundle: SpineRunResponse["internal_bundle"] | null;
   result_traveler_bundle: SpineRunResponse["traveler_bundle"] | null;
-  result_leakage: LeakageResult | null;
-  result_assertions: SpineRunResponse["assertions"] | null;
+  result_safety: SafetyResult | null;
   result_run_ts: string | null;
   setResultPacket: (value: SpineRunResponse["packet"]) => void;
   setResultValidation: (value: SpineRunResponse["validation"]) => void;
@@ -46,9 +45,8 @@ interface WorkbenchResultState {
   setResultStrategy: (value: SpineRunResponse["strategy"]) => void;
   setResultInternalBundle: (value: SpineRunResponse["internal_bundle"]) => void;
   setResultTravelerBundle: (value: SpineRunResponse["traveler_bundle"]) => void;
-  setResultLeakage: (value: LeakageResult | null) => void;
-  setResultAssertions: (value: SpineRunResponse["assertions"]) => void;
-  setResultRunTs: (value: string) => void;
+  setResultSafety: (value: SafetyResult | null) => void;
+  setResultRunTs: (value: string | null) => void;
 }
 
 type WorkbenchStore = WorkbenchInputState &
@@ -82,8 +80,7 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
   result_strategy: null,
   result_internal_bundle: null,
   result_traveler_bundle: null,
-  result_leakage: null,
-  result_assertions: null,
+  result_safety: null,
   result_run_ts: null,
   setResultPacket: (value) => set({ result_packet: value }),
   setResultValidation: (value) => set({ result_validation: value }),
@@ -91,8 +88,7 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
   setResultStrategy: (value) => set({ result_strategy: value }),
   setResultInternalBundle: (value) => set({ result_internal_bundle: value }),
   setResultTravelerBundle: (value) => set({ result_traveler_bundle: value }),
-  setResultLeakage: (value) => set({ result_leakage: value }),
-  setResultAssertions: (value) => set({ result_assertions: value }),
+  setResultSafety: (value) => set({ result_safety: value }),
   setResultRunTs: (value) => set({ result_run_ts: value }),
 }));
 

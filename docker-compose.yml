@@ -1,0 +1,30 @@
+# docker-compose.yml — spine-api (for local dev and production)
+#
+# Usage:
+#   docker compose up --build          # dev (with rebuild)
+#   docker compose up -d              # production (detached)
+#   docker compose down               # stop
+
+services:
+  spine-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: spine-api
+    ports:
+      - "${SPINE_API_PORT:-8000}:8000"
+    environment:
+      SPINE_API_HOST: "0.0.0.0"
+      SPINE_API_PORT: "8000"
+      SPINE_API_WORKERS: "4"
+      SPINE_API_RELOAD: "0"
+      SPINE_API_CORS: "${SPINE_API_CORS:-http://localhost:3000,http://127.0.0.1:3000}"
+      TRAVELER_SAFE_STRICT: "${TRAVELER_SAFE_STRICT:-0}"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

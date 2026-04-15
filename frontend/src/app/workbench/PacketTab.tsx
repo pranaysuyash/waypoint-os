@@ -4,6 +4,38 @@ import { useState } from "react";
 import { useWorkbenchStore } from "@/stores/workbench";
 import styles from "./workbench.module.css";
 
+interface SlotValue {
+  value: unknown;
+  confidence: number;
+  authority_level: string;
+  extraction_mode: string;
+  evidence_refs?: Array<{ envelope_id: string; excerpt: string }>;
+}
+
+interface Ambiguity {
+  field_name: string;
+  ambiguity_type: string;
+  raw_value: string;
+}
+
+interface Unknown {
+  field_name: string;
+  reason: string;
+  notes: string | null;
+}
+
+interface Contradiction {
+  field_name: string;
+  values: unknown[];
+  sources: string[];
+}
+
+interface ValidationReport {
+  is_valid: boolean;
+  errors: Array<{ severity: string; code: string; message: string; field: string }>;
+  warnings: Array<{ severity: string; code: string; message: string; field: string }>;
+}
+
 export function PacketTab() {
   const { result_packet, result_validation } = useWorkbenchStore();
   const [showRaw, setShowRaw] = useState(false);
@@ -17,21 +49,28 @@ export function PacketTab() {
   }
 
   const packet = result_packet as Record<string, unknown>;
-  const validation = result_validation as Record<string, unknown> | null;
+  const validation = result_validation as ValidationReport | null;
 
-  const summaryCards = [
-    { label: "Destination", value: (packet.destination as string) || "—" },
-    { label: "Dates", value: (packet.dates as string) || "—" },
-    { label: "Budget", value: (packet.budget as string) || "—" },
-    { label: "Party Size", value: (packet.party_size as string) || "—" },
-    { label: "Confidence", value: (packet.confidence as string) || "—" },
-  ];
+  // Extract summary data from facts
+  const facts = (packet.facts || {}) as Record<string, SlotValue>;
+  const derivedSignals = (packet.derived_signals || {}) as Record<string, SlotValue>;
+  const ambiguities = (packet.ambiguities || []) as Ambiguity[];
+  const unknowns = (packet.unknowns || []) as Unknown[];
+  const contradictions = (packet.contradictions || []) as Contradiction[];
 
-  const facts = (packet.facts as Array<{ field: string; value: string; authority: string }>) || [];
-  const derivedSignals = (packet.derived_signals as Array<{ signal: string; maturity: string }>) || [];
-  const ambiguities = (packet.ambiguities as string[]) || [];
-  const unknowns = (packet.unknowns as string[]) || [];
-  const contradictions = (packet.contradictions as string[]) || [];
+  // Build summary from facts
+  const summaryData = {
+    Destination: _getFactValue(facts, "destination_candidates") || "—",
+    Origin: _getFactValue(facts, "origin_city") || "—",
+    Dates: _getFactValue(facts, "date_window") || _getFactValue(facts, "date_start") || "—",
+    Budget: _getFactValue(facts, "budget_raw_text") || "—",
+    Party: _getFactValue(facts, "party_size") || "—",
+  };
+
+  const summaryCards = Object.entries(summaryData).map(([label, value]) => ({
+    label,
+    value: String(value),
+  }));
 
   return (
     <div>
@@ -44,55 +83,65 @@ export function PacketTab() {
         ))}
       </div>
 
-      {facts.length > 0 && (
-        <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Facts</h3>
-          <div className={styles.card}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--color-border)" }}>
-                  <th style={{ textAlign: "left", padding: "8px", fontSize: "12px", color: "var(--color-text-muted)" }}>Field</th>
-                  <th style={{ textAlign: "left", padding: "8px", fontSize: "12px", color: "var(--color-text-muted)" }}>Value</th>
-                  <th style={{ textAlign: "left", padding: "8px", fontSize: "12px", color: "var(--color-text-muted)" }}>Authority</th>
+      {/* Facts Section */}
+      <div className={styles.section}>
+        <h3 className={styles.sectionTitle}>Facts</h3>
+        <div className={styles.card}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--color-border)" }}>
+                <th style={{ textAlign: "left", padding: "8px", fontSize: "12px", color: "var(--color-text-muted)" }}>Field</th>
+                <th style={{ textAlign: "left", padding: "8px", fontSize: "12px", color: "var(--color-text-muted)" }}>Value</th>
+                <th style={{ textAlign: "left", padding: "8px", fontSize: "12px", color: "var(--color-text-muted)" }}>Confidence</th>
+                <th style={{ textAlign: "left", padding: "8px", fontSize: "12px", color: "var(--color-text-muted)" }}>Authority</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(facts).map(([field, slot]) => (
+                <tr key={`fact-${field}`} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                  <td style={{ padding: "8px", fontSize: "13px" }}>{field}</td>
+                  <td style={{ padding: "8px", fontSize: "13px" }}>{_formatValue(slot.value)}</td>
+                  <td style={{ padding: "8px", fontSize: "13px", color: "var(--color-text-muted)" }}>{_formatConfidence(slot.confidence)}</td>
+                  <td style={{ padding: "8px", fontSize: "13px", color: "var(--color-text-muted)" }}>{slot.authority_level || "—"}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {facts.map((fact, i) => (
-                  <tr key={`${fact.field}-${i}`} style={{ borderBottom: "1px solid var(--color-border)" }}>
-                    <td style={{ padding: "8px", fontSize: "13px" }}>{fact.field}</td>
-                    <td style={{ padding: "8px", fontSize: "13px" }}>{fact.value}</td>
-                    <td style={{ padding: "8px", fontSize: "13px", color: "var(--color-text-muted)" }}>{fact.authority}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
 
-      {derivedSignals.length > 0 && (
+      {/* Derived Signals Section */}
+      {Object.keys(derivedSignals).length > 0 && (
         <div className={styles.section}>
           <h3 className={styles.sectionTitle}>Derived Signals</h3>
           <div className={styles.card}>
-            {derivedSignals.map((sig, i) => (
-              <div key={`${sig.signal}-${i}`} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--color-border)" }}>
-                <span>{sig.signal}</span>
-                <span style={{ color: "var(--color-text-muted)", fontSize: "12px" }}>{sig.maturity}</span>
+              {Object.entries(derivedSignals).map(([signal, slot]) => (
+              <div key={`sig-${signal}`} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--color-border)" }}>
+                <span>{signal}</span>
+                <span style={{ color: "var(--color-text-muted)", fontSize: "12px" }}>
+                  {String(slot.value)} ({_formatConfidence(slot.confidence)})
+                </span>
               </div>
             ))}
           </div>
         </div>
       )}
 
+      {/* Ambiguities Section */}
       {ambiguities.length > 0 && (
         <div className={styles.section}>
           <h3 className={styles.sectionTitle}>Ambiguities</h3>
           <div className={styles.card}>
             <ul className={styles.list}>
-              {ambiguities.map((item, idx) => (
-                <li key={`amb-${idx}-${item.slice(0, 10)}`} className={styles.listItem}>
+              {ambiguities.map((amb, idx) => (
+                <li key={`amb-${amb.field_name}-${idx}`} className={styles.listItem}>
                   <span className={`${styles.listIcon} ${styles.iconWarning}`}>?</span>
-                  {item}
+                  <div>
+                    <strong>{amb.field_name}</strong> ({amb.ambiguity_type})
+                    <p style={{ fontSize: "12px", color: "var(--color-text-muted)", margin: "4px 0 0 0" }}>
+                      Raw: {amb.raw_value}
+                    </p>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -100,15 +149,23 @@ export function PacketTab() {
         </div>
       )}
 
+      {/* Unknowns Section */}
       {unknowns.length > 0 && (
         <div className={styles.section}>
           <h3 className={styles.sectionTitle}>Unknowns</h3>
           <div className={styles.card}>
             <ul className={styles.list}>
-              {unknowns.map((item, idx) => (
-                <li key={`unk-${idx}-${item.slice(0, 10)}`} className={styles.listItem}>
+              {unknowns.map((unk, idx) => (
+                <li key={`unk-${unk.field_name}-${idx}`} className={styles.listItem}>
                   <span className={`${styles.listIcon} ${styles.iconInfo}`}>!</span>
-                  {item}
+                  <div>
+                    <strong>{unk.field_name}</strong> — {unk.reason}
+                    {unk.notes && (
+                      <p style={{ fontSize: "12px", color: "var(--color-text-muted)", margin: "4px 0 0 0" }}>
+                        {unk.notes}
+                      </p>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -116,15 +173,21 @@ export function PacketTab() {
         </div>
       )}
 
+      {/* Contradictions Section */}
       {contradictions.length > 0 && (
         <div className={styles.section}>
           <h3 className={styles.sectionTitle}>Contradictions</h3>
           <div className={styles.card}>
             <ul className={styles.list}>
-              {contradictions.map((item, idx) => (
-                <li key={`con-${idx}-${item.slice(0, 10)}`} className={styles.listItem}>
+              {contradictions.map((con, idx) => (
+                <li key={`con-${con.field_name}-${idx}`} className={styles.listItem}>
                   <span className={`${styles.listIcon} ${styles.iconDanger}`}>X</span>
-                  {item}
+                  <div>
+                    <strong>{con.field_name}</strong>
+                    <p style={{ fontSize: "12px", color: "var(--color-text-muted)", margin: "4px 0 0 0" }}>
+                      Values: {con.values.join(" vs ")}
+                    </p>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -132,13 +195,34 @@ export function PacketTab() {
         </div>
       )}
 
+      {/* Validation Report Section */}
       {validation && (
         <div className={styles.section}>
           <h3 className={styles.sectionTitle}>Validation Report</h3>
           <div className={styles.card}>
-            <pre className={styles.jsonOutput} style={{ whiteSpace: "pre-wrap" }}>
-              {JSON.stringify(validation, null, 2)}
-            </pre>
+            <div style={{ marginBottom: "8px" }}>
+              <strong>Valid:</strong> {validation.is_valid ? "✓ Yes" : "✗ No"}
+            </div>
+            {validation.errors.length > 0 && (
+              <div style={{ marginBottom: "8px" }}>
+                <strong style={{ color: "var(--color-danger)" }}>Errors:</strong>
+                <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
+                  {validation.errors.map((err, i) => (
+                    <li key={`err-${err.code}-${err.field}-${i}`}>{err.message} ({err.field})</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {validation.warnings.length > 0 && (
+              <div>
+                <strong style={{ color: "var(--color-warning)" }}>Warnings:</strong>
+                <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
+                  {validation.warnings.map((warn, i) => (
+                    <li key={`warn-${warn.code}-${i}`}>{warn.message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -158,4 +242,21 @@ export function PacketTab() {
       )}
     </div>
   );
+}
+
+function _getFactValue(facts: Record<string, SlotValue>, field: string): unknown {
+  const slot = facts[field];
+  return slot?.value ?? null;
+}
+
+function _formatValue(value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  if (Array.isArray(value)) return value.join(", ");
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function _formatConfidence(confidence: number | undefined): string {
+  if (confidence === undefined || confidence === null) return "—";
+  return `${Math.round(confidence * 100)}%`;
 }

@@ -115,6 +115,8 @@ cd frontend && npm install && npm run dev
 - **Testing**: pytest, scenario-based testing
 - **Geography**: GeoNames dataset + world-cities.json (~590k cities)
 
+> **License note:** GeoNames is CC-BY 4.0 and requires attribution. `world-cities.json` is supplemental and ODbL-1.0, so we keep it documented as licensed data rather than a proprietary dataset.
+
 ## Development Philosophy
 
 - **Preservation-first**: Never delete historical documentation or code

@@ -1,0 +1,44 @@
+# fly.toml — Fly.io configuration for spine-api
+#
+# Usage:
+#   fly launch --image ghcr.io/your-org/spine-api:latest
+#   fly secrets set TRAVELER_SAFE_STRICT=0
+#   fly deploy
+
+app = "spine-api"
+primary_region = "iad"
+
+[build]
+image = "ghcr.io/your-org/spine-api:latest"
+
+[deploy]
+  release_command = ""
+
+[env]
+  PORT = "8000"
+  SPINE_API_HOST = "0.0.0.0"
+  SPINE_API_PORT = "8000"
+  SPINE_API_WORKERS = "4"
+  SPINE_API_RELOAD = "0"
+  TRAVELER_SAFE_STRICT = "0"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[checks]
+  [checks.health]
+    port = 8000
+    path = "/health"
+    interval = "30s"
+    timeout = "10s"
+    grace_period = "5s"

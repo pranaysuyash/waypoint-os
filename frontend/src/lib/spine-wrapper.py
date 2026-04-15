@@ -99,6 +99,12 @@ def main() -> None:
         # Extract parameters
         stage = data.get("stage", "discovery")
         operating_mode = data.get("operating_mode", "normal_intake")
+        strict_leakage = data.get("strict_leakage", False)
+
+        # Set strict leakage mode in the safety module before running spine
+        if strict_leakage:
+            from src.intake.safety import set_strict_mode
+            set_strict_mode(True)
 
         # Run spine
         result = run_spine_once(

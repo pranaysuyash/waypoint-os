@@ -41,6 +41,10 @@ env/
 # Local tool/session state
 .agent/
 .qwen/
+# Frontend generated files
+frontend/node_modules/
+frontend/.next/
+
 # Data files
 # Generated/accumulated data
 accumulated_cities.json

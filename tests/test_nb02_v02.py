@@ -572,6 +572,178 @@ class TestFeasibilityUnderAmbiguity:
 
 
 # ===========================================================================
+# REGRESSION: Value-structural destination ambiguity synthesis
+# ===========================================================================
+
+class TestDestinationAmbiguitySynthesis:
+    """
+    Bug: destination_candidates=["Andaman", "Sri Lanka"] with no Ambiguity
+    objects bypassed the blocking check and reached PROCEED_TRAVELER_SAFE.
+
+    Fix: NB02 synthesizes unresolved_alternatives ambiguity from the value
+    structure (multi-element list) when no ambiguity was flagged by NB01.
+    """
+
+    def test_multi_candidate_destination_never_proceeds_traveler_safe(self):
+        """2+ destination candidates without ambiguity objects → ASK_FOLLOWUP, not PROCEED."""
+        pkt = CanonicalPacket(
+            packet_id="reg_dest_amb",
+            stage="discovery",
+            operating_mode="normal_intake",
+        )
+        pkt.facts["destination_candidates"] = Slot(
+            value=["Andaman", "Sri Lanka"],
+            confidence=0.7,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        pkt.facts["origin_city"] = Slot(
+            value="Bangalore",
+            confidence=0.9,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        pkt.facts["date_window"] = Slot(
+            value="March 2026",
+            confidence=0.9,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        pkt.facts["party_size"] = Slot(
+            value=4,
+            confidence=0.9,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        for f, v in [("budget_raw_text", "2L"), ("budget_min", 200000),
+                      ("trip_purpose", "leisure"), ("soft_preferences", "beach")]:
+            pkt.facts[f] = Slot(value=v, confidence=0.8, authority_level=AuthorityLevel.EXPLICIT_USER)
+
+        decision = run_gap_and_decision(pkt)
+
+        assert decision.decision_state != "PROCEED_TRAVELER_SAFE", \
+            f"Multi-candidate destination must not reach PROCEED_TRAVELER_SAFE, got {decision.decision_state}"
+
+        blocking_dest = [a for a in decision.ambiguities
+                         if a.field_name == "destination_candidates"
+                         and a.ambiguity_type == "unresolved_alternatives"
+                         and a.severity == "blocking"]
+        assert len(blocking_dest) > 0, "Should synthesize blocking unresolved_alternatives ambiguity"
+
+    def test_single_candidate_destination_no_synthesis(self):
+        """Single destination → no synthesized ambiguity."""
+        pkt = CanonicalPacket(
+            packet_id="reg_single_dest",
+            stage="discovery",
+            operating_mode="normal_intake",
+        )
+        pkt.facts["destination_candidates"] = Slot(
+            value=["Singapore"],
+            confidence=0.9,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        pkt.facts["origin_city"] = Slot(
+            value="Bangalore",
+            confidence=0.9,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        pkt.facts["date_window"] = Slot(
+            value="March 2026",
+            confidence=0.9,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        pkt.facts["party_size"] = Slot(
+            value=4,
+            confidence=0.9,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+
+        decision = run_gap_and_decision(pkt)
+
+        unresolved = [a for a in decision.ambiguities
+                     if a.ambiguity_type == "unresolved_alternatives"]
+        assert len(unresolved) == 0, "Single candidate should not synthesize unresolved_alternatives"
+
+    def test_existing_ambiguity_no_duplicate_synthesis(self):
+        """If NB01 already flagged unresolved_alternatives, no duplicate."""
+        pkt = CanonicalPacket(
+            packet_id="reg_no_dup",
+            stage="discovery",
+            operating_mode="normal_intake",
+        )
+        pkt.facts["destination_candidates"] = Slot(
+            value=["Andaman", "Sri Lanka"],
+            confidence=0.7,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        pkt.facts["origin_city"] = Slot(
+            value="Bangalore",
+            confidence=0.9,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        pkt.facts["date_window"] = Slot(
+            value="March 2026",
+            confidence=0.9,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        pkt.facts["party_size"] = Slot(
+            value=4,
+            confidence=0.9,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        pkt.add_ambiguity(Ambiguity(
+            field_name="destination_candidates",
+            ambiguity_type="unresolved_alternatives",
+            raw_value="Andaman or Sri Lanka",
+        ))
+
+        decision = run_gap_and_decision(pkt)
+
+        unresolved = [a for a in decision.ambiguities
+                      if a.ambiguity_type == "unresolved_alternatives"
+                      and a.field_name == "destination_candidates"]
+        assert len(unresolved) == 1, "Should not duplicate existing ambiguity"
+
+    def test_candidate_aware_question_for_destination(self):
+        """Multi-candidate destination → question uses 'Between X and Y' framing."""
+        pkt = CanonicalPacket(
+            packet_id="reg_question",
+            stage="discovery",
+            operating_mode="normal_intake",
+        )
+        pkt.facts["destination_candidates"] = Slot(
+            value=["Andaman", "Sri Lanka"],
+            confidence=0.7,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        pkt.facts["origin_city"] = Slot(
+            value="Bangalore",
+            confidence=0.9,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        pkt.facts["date_window"] = Slot(
+            value="March 2026",
+            confidence=0.9,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        pkt.facts["party_size"] = Slot(
+            value=4,
+            confidence=0.9,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+
+        decision = run_gap_and_decision(pkt)
+
+        dest_q = [q for q in decision.follow_up_questions
+                   if q.get("field_name") == "destination_candidates"]
+        assert len(dest_q) > 0, "Should have destination question"
+
+        question = dest_q[0]["question"]
+        assert "Andaman" in question, f"Question should mention candidates, got: {question}"
+        assert "Sri Lanka" in question, f"Question should mention candidates, got: {question}"
+
+        suggested = dest_q[0].get("suggested_values", [])
+        assert "Andaman" in suggested, f"suggested_values should include candidates, got: {suggested}"
+        assert "Sri Lanka" in suggested, f"suggested_values should include candidates, got: {suggested}"
+
+
+# ===========================================================================
 # Run
 # ===========================================================================
 

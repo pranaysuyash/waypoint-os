@@ -32,7 +32,7 @@ How do we fix geography extraction without hardcoding every city?
 | **GeoNames**                  | ~200k (pop > 1000) | CC-BY 4.0 | Required              | Larger, includes small towns, has alternate names + lat/long |
 | **world-cities.json** (dr5hn) | ~150k              | ODbL-1.0  | Required, share-alike | Major cities + countries, single JSON file                   |
 
-**⚠️ world-cities.json is ODbL-1.0, not MIT.** Previously misattributed. ODbL-1.0 has share-alake
+**⚠️ world-cities.json is ODbL-1.0, not MIT.** Previously misattributed. ODbL-1.0 has share-alike
 obligations that conflict with proprietary licensing. Consider replacing with a CC0/MIT-licensed alternative
 if proprietary distribution is required.
 
@@ -75,7 +75,7 @@ curl -o data/cities.json \
 """
 Geography database for origin/destination extraction.
 
-Combines GeoNames (CC-BY 4.0) + world-cities.json (MIT) + accumulated.
+Combines GeoNames (CC-BY 4.0) + world-cities.json (ODbL-1.0) + accumulated.
 Attribution required for GeoNames: add footer credit to any UI using this.
 """
 

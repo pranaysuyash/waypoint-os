@@ -1,0 +1,29 @@
+# render.yaml — Render Blueprint for spine-api
+#
+# Deploy with:
+#   render blueprint render.yaml
+#
+# Or connect directly on render.com to this repo and use:
+#   Build Command: uv sync --frozen
+#   Start Command: uvicorn spine-api.server:app --host 0.0.0.0 --port 8000 --workers 4
+
+services:
+  - type: web
+    name: spine-api
+    env: python
+    region: oregon
+    plan: starter
+    buildCommand: uv sync --frozen
+    startCommand: uvicorn spine-api.server:app --host 0.0.0.0 --port 8000 --workers 4
+    healthCheckPath: /health
+    envVars:
+      - key: SPINE_API_PORT
+        value: 8000
+      - key: SPINE_API_WORKERS
+        value: 4
+      - key: SPINE_API_CORS
+        sync: false
+      - key: TRAVELER_SAFE_STRICT
+        sync: false
+      - key: UV_SYMLINK
+        value: false

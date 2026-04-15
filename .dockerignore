@@ -1,0 +1,43 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*.so
+.mypy_cache
+.pytest_cache
+*.egg-info
+.eggs
+
+# Virtual envs
+.venv
+venv/
+env/
+
+# Frontend
+frontend/node_modules
+frontend/.next
+frontend/out
+
+# Docs and project files not needed in container
+*.md
+Docs/
+Archive/
+memory/
+notebooks/
+prompts/
+specs/
+tests/
+tools/
+*.log
+
+# IDE
+.vscode
+.mcp
+.qwen
+
+# OS
+.DS_Store
+Thumbs.db
