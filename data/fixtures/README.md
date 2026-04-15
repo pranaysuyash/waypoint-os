@@ -16,7 +16,7 @@ Fixture files provide sample/test data for development, testing, and demonstrati
 ```
 data/
 ├── fixtures/           # Test fixtures for PM/UX scenarios and test messages
-├── cities.json         # world-cities.json dataset (MIT license)
+├── cities.json         # world-cities.json dataset (ODbL-1.0 license)
 ├── cities5000.txt      # GeoNames dataset (CC-BY 4.0 license)
 └── accumulated_cities.json # Organically added cities from user messages
 ```
