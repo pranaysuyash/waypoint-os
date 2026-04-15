@@ -7,6 +7,38 @@
 
 If instructions conflict, follow the stricter rule and cite concrete file paths.
 
+## Skills Ecosystem (Critical — Read Before Any Task)
+
+**⚠️ DO NOT default to gstack.** You have 3,000+ skills across 5 locations. Always check ALL locations for relevant skills before assuming one doesn't exist.
+
+### Skill Locations (Check in Order)
+
+1. **`~/.claude/skills/*/`** — ~72 skills (Claude Code built-ins)
+2. **`~/.agents/skills/*/`** — ~98 skills (All agents, includes Azure/Marketing stack)
+3. **`~/Projects/skills/*/`** — 143 skills (Most curated, engineering focus) ⭐ **CHECK THIS FIRST**
+4. **`~/Projects/external-skills/*/`** — 2,898+ skills (Community imports)
+5. **`~/Projects/openai-skills/`** — OpenAI Codex skills (official standard repo copy)
+6. **`$CODEX_HOME/skills/*/`** — Codex runtime-installed skills (when CODEX_HOME is set)
+7. **`~/.codex/skills/*/`** — Codex local saved skills (default path)
+8. **`~/.codex/skills/.system/*/`** — Codex app bundled/system skills (read-only baseline)
+
+### Reference
+
+- **Master catalog**: `/Users/pranay/Projects/SKILLS_CATALOG.md`
+- **Workspace rules**: `/Users/pranay/Projects/AGENTS.md`
+
+### Common Task → Right Skill
+
+| Task | Use This Skill | Location |
+|------|----------------|----------|
+| Debug/troubleshoot | `systematic-debugging` | ~/Projects/skills/ |
+| Write tests | `tdd-workflow`, `e2e-testing` | ~/Projects/skills/ |
+| QA testing | `qa`, `qa-only` | ~/.agents/skills/ |
+| Verify before done | `verification-before-completion` | ~/Projects/skills/ |
+| Research before code | `search-first` | ~/Projects/skills/ |
+| UI screenshots | `browse` | ~/.agents/skills/ |
+| Visual QA | `design-review` | ~/.claude/skills/ |
+
 ## Workspace Alignment (Adopted)
 - Ensure `.agent/AGENT_KICKOFF_PROMPT.txt` and `.agent/SESSION_CONTEXT.md` are loaded before substantive implementation.
 - Prefer repository docs and existing scripts over ad-hoc process invention.

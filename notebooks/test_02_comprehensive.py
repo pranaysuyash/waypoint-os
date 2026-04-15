@@ -396,8 +396,8 @@ def t_discovery_packet_fails_shortlist():
             "travel_dates": Slot(value="2026-03-15", confidence=0.9, authority_level="explicit_user"),
             "traveler_count": Slot(value=3, confidence=0.9, authority_level="explicit_user"),
         },
-        stage="discovery")
-    r = run_gap_and_decision(pkt, current_stage="shortlist")
+        stage="shortlist")  # v0.2: set stage directly on packet
+    r = run_gap_and_decision(pkt)
     assert "selected_destinations" in r.hard_blockers, \
         f"Shortlist should require selected_destinations. Blockers: {r.hard_blockers}"
     assert len(r.hard_blockers) >= 1
@@ -416,8 +416,8 @@ def t_shortlist_packet_fails_proposal():
             "traveler_count": Slot(value=3, confidence=0.9, authority_level="explicit_user"),
             "selected_destinations": Slot(value=["Singapore", "Malaysia"], confidence=0.8, authority_level="explicit_user"),
         },
-        stage="shortlist")
-    r = run_gap_and_decision(pkt, current_stage="proposal")
+        stage="proposal")  # v0.2: set stage directly on packet
+    r = run_gap_and_decision(pkt)
     assert "selected_itinerary" in r.hard_blockers, \
         f"Proposal should require selected_itinerary. Blockers: {r.hard_blockers}"
 
@@ -436,8 +436,8 @@ def t_proposal_packet_fails_booking():
             "selected_destinations": Slot(value=["Singapore"], confidence=0.8, authority_level="explicit_user"),
             "selected_itinerary": Slot(value="pkg_001", confidence=0.8, authority_level="explicit_user"),
         },
-        stage="proposal")
-    r = run_gap_and_decision(pkt, current_stage="booking")
+        stage="booking")  # v0.2: set stage directly on packet
+    r = run_gap_and_decision(pkt)
     assert "traveler_details" in r.hard_blockers
     assert "payment_method" in r.hard_blockers
     assert len(r.hard_blockers) >= 2
@@ -460,7 +460,7 @@ def t_full_booking_packet_succeeds():
             "payment_method": Slot(value="credit_card", confidence=0.9, authority_level="explicit_user"),
         },
         stage="booking")
-    r = run_gap_and_decision(pkt, current_stage="booking")
+    r = run_gap_and_decision(pkt)
     assert r.decision_state == "PROCEED_TRAVELER_SAFE"
     assert len(r.hard_blockers) == 0
     assert len(r.soft_blockers) == 0
@@ -469,7 +469,7 @@ test("Full booking packet → PROCEED_TRAVELER_SAFE", t_full_booking_packet_succ
 
 
 # Test 2.5: Stage defaults to packet.stage when not overridden
-# Why: If caller doesn't pass current_stage, should use packet.stage.
+# Why: If caller doesn't override, should use packet.stage.
 def t_stage_defaults_to_packet_stage():
     pkt = CanonicalPacket(packet_id="def", created_at="now", last_updated="now",
         facts={
@@ -479,20 +479,21 @@ def t_stage_defaults_to_packet_stage():
             "traveler_count": Slot(value=3, confidence=0.9, authority_level="explicit_user"),
         },
         stage="discovery")
-    r = run_gap_and_decision(pkt)  # no current_stage
+    r = run_gap_and_decision(pkt)
     assert r.current_stage == "discovery"
     assert len(r.hard_blockers) == 0  # discovery blockers all filled
 
 test("Stage defaults to packet.stage", t_stage_defaults_to_packet_stage)
 
 
-# Test 2.6: Stage can be overridden via current_stage parameter
-# Why: Tests that the caller can force a different stage than the packet's stage.
+# Test 2.6: Stage can be overridden by modifying packet.stage
+# Why: Tests that the caller can force a different stage than the packet's original stage.
 def t_stage_override():
     pkt = CanonicalPacket(packet_id="override", created_at="now", last_updated="now",
         facts={"destination_city": Slot(value="Singapore", confidence=0.9, authority_level="explicit_user")},
         stage="discovery")
-    r = run_gap_and_decision(pkt, current_stage="shortlist")
+    pkt.stage = "shortlist"  # v0.2: override stage directly on packet
+    r = run_gap_and_decision(pkt)
     assert r.current_stage == "shortlist"
     # Shortlist has 5 blockers, we only have 1 filled
     assert len(r.hard_blockers) == 4
@@ -1087,7 +1088,7 @@ def t_alias_departure_city():
     slot = resolve_field(pkt, "origin_city")
     assert slot is not None
     assert slot.value == "Bangalore"
-    assert field_fills_blocker(slot)
+    assert field_fills_blocker(slot, [], "origin_city")  # v0.2: add ambiguities and field_name
 
 test("Alias 'departure_city' resolves to 'origin_city'", t_alias_departure_city)
 
@@ -1124,7 +1125,7 @@ def t_alias_group_size():
     slot = resolve_field(pkt, "traveler_count")
     assert slot is not None
     assert slot.value == 5
-    assert field_fills_blocker(slot)
+    assert field_fills_blocker(slot, [], "traveler_count")  # v0.2: add ambiguities and field_name
 
 test("Alias 'group_size' resolves to 'traveler_count'", t_alias_group_size)
 
@@ -1137,7 +1138,7 @@ def t_alias_in_derived_signals():
     slot = resolve_field(pkt, "origin_city")
     assert slot is not None
     assert slot.value == "Bangalore"
-    assert field_fills_blocker(slot)  # derived_signal should fill blocker
+    assert field_fills_blocker(slot, [], "origin_city")  # v0.2: derived_signal should fill blocker
 
 test("Alias works in derived_signals layer", t_alias_in_derived_signals)
 
@@ -1150,7 +1151,7 @@ def t_alias_in_hypotheses():
     slot = resolve_field(pkt, "destination_city")
     assert slot is not None
     assert slot.value == "Singapore"
-    assert not field_fills_blocker(slot)  # hypothesis should NOT fill blocker
+    assert not field_fills_blocker(slot, [], "destination_city")  # v0.2: hypothesis should NOT fill blocker
 
 test("Alias works in hypotheses layer (but doesn't fill blocker)", t_alias_in_hypotheses)
 
@@ -1400,14 +1401,9 @@ test("Multiple unknowns stack penalty (5 unknowns = -0.5)", t_multiple_unknowns_
 def t_invalid_stage_defaults_to_discovery_mvb():
     pkt = CanonicalPacket(packet_id="edge6", created_at="now", last_updated="now",
         facts={"origin_city": Slot(value="Bangalore", confidence=0.9, authority_level="explicit_owner")},
-        stage="nonexistent_stage")
-    r = run_gap_and_decision(pkt, current_stage="nonexistent_stage")
-    # Should use empty MVB (not found → defaults to empty dict → no blockers)
-    # Wait, let me check: MVB_BY_STAGE.get("nonexistent_stage", MVB_BY_STAGE["discovery"])
-    # Actually it defaults to discovery MVB. So we should still have blockers.
-    # Hmm, let me check the code... run_gap_and_decision uses:
-    # mvb = mvb_config or MVB_BY_STAGE.get(stage, MVB_BY_STAGE["discovery"])
-    # So it defaults to discovery. The test is that it doesn't crash.
+        stage="nonexistent_stage")  # v0.2: set stage directly on packet
+    r = run_gap_and_decision(pkt)
+    # v0.2: Uses MVB_BY_STAGE.get(stage, MVB_BY_STAGE["discovery"])
     assert r.current_stage == "nonexistent_stage"
     # Hard blockers should still be the discovery ones (4)
     assert len(r.hard_blockers) == 3  # 1 filled (origin_city), 3 remaining
@@ -1415,9 +1411,13 @@ def t_invalid_stage_defaults_to_discovery_mvb():
 test("Invalid stage doesn't crash (defaults to discovery MVB)", t_invalid_stage_defaults_to_discovery_mvb)
 
 
-# Test 8.7: Custom MVB config overrides the default
-# Why: The pipeline accepts a custom mvb_config parameter.
+# Test 8.7: Custom MVB config (v0.2 REMOVED - was legacy parameter)
+# Why: v0.2 no longer supports custom mvb_config parameter.
+# MVB is now fixed per stage in MVB_BY_STAGE constant.
+# This test is kept for documentation but marked as skipped.
 def t_custom_mvb_config():
+    # v0.2: This functionality was removed. MVB is now internal.
+    # To customize blockers, modify MVB_BY_STAGE in decision.py
     pkt = CanonicalPacket(packet_id="edge7", created_at="now", last_updated="now",
         facts={
             "destination_city": Slot(value="Singapore", confidence=0.9, authority_level="explicit_user"),
@@ -1426,20 +1426,18 @@ def t_custom_mvb_config():
             "traveler_count": Slot(value=3, confidence=0.9, authority_level="explicit_user"),
         },
         stage="discovery")
-    custom_mvb = {
-        "hard_blockers": ["destination_city", "origin_city"],
-        "soft_blockers": [],
-    }
-    r = run_gap_and_decision(pkt, mvb_config=custom_mvb)
-    assert len(r.hard_blockers) == 0  # Only 2 blockers, both filled
-    assert len(r.soft_blockers) == 0  # No soft blockers defined
+    r = run_gap_and_decision(pkt)
+    # v0.2: All 4 discovery blockers filled → no hard blockers
+    assert len(r.hard_blockers) == 0
 
-test("Custom MVB config overrides default", t_custom_mvb_config)
+test("Custom MVB config overrides default (v0.2: MVB now internal)", t_custom_mvb_config)
 
 
-# Test 8.8: Custom confidence threshold changes decision
-# Why: A higher threshold should make it harder to PROCEED_TRAVELER_SAFE.
+# Test 8.8: Custom confidence threshold (v0.2 REMOVED - was legacy parameter)
+# Why: v0.2 no longer supports custom confidence_threshold parameter.
+# Threshold is now fixed in the decision logic (0.6 for PROCEED_TRAVELER_SAFE).
 def t_custom_confidence_threshold():
+    # v0.2: This functionality was removed. Confidence threshold is now internal.
     # Build a complete packet with moderate confidence
     pkt = CanonicalPacket(packet_id="edge8", created_at="now", last_updated="now",
         facts={
@@ -1452,17 +1450,13 @@ def t_custom_confidence_threshold():
             "traveler_preferences": Slot(value="relaxed", confidence=0.9, authority_level="explicit_owner"),
         },
         stage="discovery")
-    # explicit_owner weight = 0.80, confidence = 0.9 → avg = 0.72
-    # This is above default threshold (0.6) → PROCEED_TRAVELER_SAFE
-    r_default = run_gap_and_decision(pkt)
-    assert r_default.decision_state == "PROCEED_TRAVELER_SAFE", \
-        f"Default threshold: expected PROCEED_TRAVELER_SAFE, got {r_default.decision_state}"
-    # With threshold=0.80: 0.72 < 0.80 → PROCEED_INTERNAL_DRAFT
-    r_high = run_gap_and_decision(pkt, confidence_threshold=0.80)
-    assert r_high.decision_state == "PROCEED_INTERNAL_DRAFT", \
-        f"High threshold: expected PROCEED_INTERNAL_DRAFT, got {r_high.decision_state}"
+    # v0.2: explicit_owner weight = 0.80, confidence = 0.9 → avg ≈ 0.72
+    # Fixed threshold is 0.6 for PROCEED_TRAVELER_SAFE
+    r = run_gap_and_decision(pkt)
+    assert r.decision_state == "PROCEED_TRAVELER_SAFE", \
+        f"Expected PROCEED_TRAVELER_SAFE, got {r.decision_state}"
 
-test("Custom confidence threshold can change decision", t_custom_confidence_threshold)
+test("Fixed confidence threshold produces PROCEED_TRAVELER_SAFE (v0.2: threshold now internal)", t_custom_confidence_threshold)
 
 
 # Test 8.9: All four authority levels that are facts → all fill blockers
@@ -1471,7 +1465,7 @@ test("Custom confidence threshold can change decision", t_custom_confidence_thre
 def t_all_fact_authorities_fill_blocker():
     for auth in ["manual_override", "explicit_user", "imported_structured", "explicit_owner"]:
         slot = Slot(value="X", confidence=0.9, authority_level=auth)
-        assert field_fills_blocker(slot), f"{auth} should fill blocker"
+        assert field_fills_blocker(slot, [], "test_field"), f"{auth} should fill blocker"  # v0.2: add ambiguities and field_name
 
 test("All fact-level authorities (manual_override, explicit_user, imported_structured, explicit_owner) fill blockers", t_all_fact_authorities_fill_blocker)
 
@@ -1480,7 +1474,7 @@ test("All fact-level authorities (manual_override, explicit_user, imported_struc
 # Why: The flip side of 8.9.
 def t_hypothesis_authority_does_not_fill():
     slot = Slot(value="X", confidence=0.99, authority_level="soft_hypothesis")
-    assert not field_fills_blocker(slot), "soft_hypothesis should NOT fill blocker"
+    assert not field_fills_blocker(slot, [], "test_field"), "soft_hypothesis should NOT fill blocker"  # v0.2: add ambiguities and field_name
 
 test("soft_hypothesis does NOT fill blocker (even at 0.99 confidence)", t_hypothesis_authority_does_not_fill)
 
@@ -1492,11 +1486,12 @@ def t_decision_result_serializable():
         facts={"origin_city": Slot(value="Bangalore", confidence=0.9, authority_level="explicit_owner")},
         stage="discovery")
     r = run_gap_and_decision(pkt)
-    d = r.to_dict()
+    # v0.2: DecisionResult is a dataclass, use asdict() instead of to_dict()
+    d = asdict(r)
     # Should not raise
     json.dumps(d, default=str)
 
-test("DecisionResult.to_dict() is JSON serializable", t_decision_result_serializable)
+test("DecisionResult is JSON serializable via dataclasses.asdict() (v0.2: no to_dict method)", t_decision_result_serializable)
 
 
 # =============================================================================
