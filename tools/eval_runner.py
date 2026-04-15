@@ -82,7 +82,8 @@ def packet_from_raw_fixture(fixture: Dict[str, Any]) -> CanonicalPacket:
             "date_conflict": "date_window",
             "destination_conflict": "destination_candidates",
             "budget_conflict": "budget_min",
-            "traveler_count_conflict": "party_size",
+            "party_conflict": "party_size",  # v0.2 canonical name
+            "traveler_count_conflict": "party_size",  # v0.1 legacy name
             "origin_conflict": "origin_city",
         }
         fname = field_map.get(ctype, ctype)

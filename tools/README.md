@@ -74,3 +74,46 @@ Outputs:
 Notes:
 - This tool is additive and does not replace legacy notebooks/scenario scripts.
 - Uses current runtime models from `src/intake/`.
+
+## 3) `eval_runner.py`
+
+Purpose:
+- Validate test fixtures against NB02 decision engine.
+- Run policy-only (CanonicalPacket → NB02) and end-to-end (Raw → NB02) evaluations.
+- Verify decision states, blockers, and follow-up questions match expectations.
+
+Use cases:
+- Regression testing after decision engine changes.
+- Validate fixture data quality and coverage.
+- Debug decision logic behavior with real-world scenarios.
+
+Usage:
+```bash
+cd /Users/pranay/Projects/travel_agency_agent
+python tools/eval_runner.py
+```
+
+Outputs:
+- Console summary of pass/fail for each fixture.
+- Detailed failure breakdown showing check mismatches.
+- JSON results file at `data/fixtures/eval_results.json`.
+
+Test coverage:
+- Mode 2 (Policy-Only): 19 CanonicalPacket fixtures covering:
+  - ASK_FOLLOWUP scenarios (empty, missing fields, contradictions)
+  - PROCEED_TRAVELER_SAFE (complete discovery, manual override, derived destination)
+  - PROCEED_INTERNAL_DRAFT (soft blockers only, low confidence)
+  - BRANCH_OPTIONS (budget/destination ambiguity)
+  - STOP_NEEDS_REVIEW (date contradictions, multiple critical issues)
+
+- Mode 1 (End-to-End): 12 raw input fixtures covering:
+  - Clean/happy path bookings
+  - Messy/under-specified leads
+  - Hybrid conflicts (CRM + notes)
+  - Contradiction-heavy scenarios
+  - Branch-worthy ambiguities
+
+Notes:
+- All 31 fixtures currently pass (100%).
+- Fixes applied: migrated packet_fixtures.py and raw_fixtures.py to v0.2 API.
+- Fixed decision.py to handle string-format party_composition values.

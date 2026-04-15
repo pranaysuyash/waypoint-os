@@ -56,6 +56,46 @@ If instructions conflict, follow the stricter rule and cite concrete file paths.
 7. Verify functionality and run tests.
 8. Document outcomes and pending items.
 
+## External Review Evaluation Workflow (Critical Addition)
+
+When receiving external reviews (human or model), do NOT treat them as authority. Apply this critical evaluation:
+
+### Step 1: Source Assessment
+- Is this a static document or living feedback loop?
+- When was it last updated relative to codebase changes?
+- Who owns it and can iterate on it?
+
+### Step 2: Architectural Soundness Check
+Evaluate each recommendation against:
+- **Layer ownership** (per V02_GOVERNING_PRINCIPLES): Does this recommendation respect which layer owns what?
+- **Additive vs. destructive**: Does it add capability or refactor existing working code?
+- **Blast radius**: How many files/modules does it touch? >5 files = treat as "ocean" not "lake"
+- **Backward compatibility**: Can it be implemented without breaking existing contracts?
+
+### Step 3: Sequencing Challenge
+- Does the review recommend parallel work that should be sequential?
+- Is the blast radius justified by the value?
+- Can it be decomposed into smaller, verifiable chunks?
+
+### Step 4: Current State Verification
+- Before implementing, verify the recommendation against ACTUAL codebase state
+- Don't assume external reviewers have fresh context
+- Check if issues they mention were already fixed, or if the architecture already changed
+
+### Step 5: Decision Documentation
+For each recommendation, document:
+- **ACCEPT**: Implement as suggested (low risk, high value)
+- **ACCEPT+MODIFY**: Implement with changes (explain divergence)
+- **DEFER**: Acknowledge but don't implement now (tag with reason)
+- **REJECT**: Explicitly reject with rationale (don't silently ignore)
+
+### Step 6: Verification Before Proceeding
+- Run full test suite before AND after implementation
+- Verify no regressions in unrelated areas
+- Confirm the fix actually addresses the root cause (not just symptom)
+
+**Example format**: See `Docs/SPINE_HARDENING_PLAN_STAGE_2_2026-04-15.md` for how this workflow was applied to the destination ambiguity review.
+
 ## Repo-Specific Development Rules
 
 ### Documentation and Tracking

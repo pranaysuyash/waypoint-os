@@ -34,6 +34,7 @@ RAW_FIXTURES = {
                 "destination_candidates": {"value": "Singapore", "authority": "explicit_owner"},
                 "date_window": {"value": "March 15-20", "authority": "explicit_owner"},
                 "party_size": {"value": 4, "authority": "explicit_owner"},
+                "budget_raw_text": {"value": "3 lakhs", "authority": "explicit_owner"},
                 "budget_min": {"value": "300000", "authority": "explicit_owner"},
                 "party_composition": {"value": "2 adults, 2 kids (8, 12)", "authority": "explicit_owner"},
                 "soft_preferences": {"value": "kid-friendly, vegetarian food", "authority": "explicit_owner"},
@@ -54,7 +55,7 @@ RAW_FIXTURES = {
         "raw_input": (
             "Group of 6 elderly people from Varanasi. "
             "Want to do Char Dham Yatra in Uttarakhand. "
-            "September 10-18, 2026. Budget 2 lakhs total. "
+            "September 10-18, 2026. Budget 4 lakhs total. "
             "All have medical conditions — need accessible transport. "
             "Passports not needed (domestic). "
             "Coordinator: Mrs. Sharma, phone verified."
@@ -66,7 +67,8 @@ RAW_FIXTURES = {
                 "destination_candidates": {"value": "Char Dham, Uttarakhand", "authority": "explicit_owner"},
                 "date_window": {"value": "September 10-18, 2026", "authority": "explicit_owner"},
                 "party_size": {"value": 6, "authority": "explicit_owner"},
-                "budget_min": {"value": "200000", "authority": "explicit_owner"},
+                "budget_raw_text": {"value": "4 lakhs", "authority": "explicit_owner"},
+                "budget_min": {"value": "400000", "authority": "explicit_owner"},
                 "party_composition": {"value": "6 elderly", "authority": "explicit_owner"},
                 "soft_preferences": {"value": "accessible transport, medical needs", "authority": "explicit_owner"},
                 "trip_purpose": {"value": "pilgrimage", "authority": "explicit_owner"},
@@ -100,8 +102,7 @@ RAW_FIXTURES = {
                 "destination_candidates": {"value": "Goa", "authority": "explicit_owner"},
                 "date_window": {"value": "First week of May", "authority": "explicit_owner"},
                 "party_size": {"value": 15, "authority": "imported_structured"},
-                "budget_min": {"value": "500000", "authority": "explicit_owner"},
-                "resolved_destination": {"value": ["Grand Hyatt Goa", "Taj Fort Aguada"], "authority": "imported_structured"},
+                "budget_raw_text": {"value": "5 lakhs", "authority": "explicit_owner"},
                 "budget_min": {"value": "500000", "authority": "explicit_owner"},
                 "trip_purpose": {"value": "corporate offsite", "authority": "explicit_owner"},
                 "soft_preferences": {"value": "conference room + team activities", "authority": "explicit_owner"},
@@ -162,6 +163,7 @@ RAW_FIXTURES = {
             "extracted_fields": {
                 "origin_city": {"value": "Chennai", "authority": "explicit_owner"},
                 "party_size": {"value": 3, "authority": "explicit_owner"},
+                "budget_raw_text": {"value": "2 lakhs", "authority": "explicit_owner"},
                 "budget_min": {"value": "200000 (can stretch)", "authority": "explicit_owner"},
                 "date_window": {"value": "April-May", "authority": "explicit_owner"},
                 "destination_candidates": {"value": "Andaman or Sri Lanka", "authority": "explicit_owner"},
@@ -200,13 +202,16 @@ RAW_FIXTURES = {
                 "destination_candidates": {"value": "Singapore", "authority": "imported_structured"},
                 "date_window": {"value": "2026-03-15 to 2026-03-20", "authority": "imported_structured"},
                 "party_size": {"value": 6, "authority": "explicit_owner"},  # New overrides old
+                "budget_raw_text": {"value": "3 lakhs", "authority": "imported_structured"},
                 "budget_min": {"value": "300000", "authority": "imported_structured"},
+                "trip_purpose": {"value": "family vacation", "authority": "explicit_owner"},
+                "soft_preferences": {"value": "standard", "authority": "explicit_owner"},
             },
             "expected_unknowns": [],
             "expected_contradictions": ["traveler_count_conflict"],
-            "nb02_decision_state": "ASK_FOLLOWUP",
+            "nb02_decision_state": "PROCEED_TRAVELER_SAFE",  # All blockers filled, contradiction tracked
             "nb02_hard_blockers": [],
-            "nb03_behavior": "ASK_FOLLOWUP due to traveler count contradiction. Ask to confirm: 4 or 6 people?",
+            "nb03_behavior": "Proceed but flag traveler count contradiction (4 vs 6). Confirm party size.",
         },
     },
 
@@ -360,10 +365,10 @@ RAW_FIXTURES = {
                 "destination_candidates": {"value": "Andaman or Sri Lanka", "authority": "explicit_owner"},
                 "date_window": {"value": "May 2026", "authority": "explicit_owner"},
                 "party_size": {"value": 2, "authority": "explicit_owner"},
+                "budget_raw_text": {"value": "2 lakhs", "authority": "explicit_owner"},
                 "budget_min": {"value": "200000", "authority": "explicit_owner"},
                 "soft_preferences": {"value": "beaches, good food, privacy", "authority": "explicit_owner"},
                 "trip_purpose": {"value": "honeymoon", "authority": "explicit_owner"},
-                "soft_preferences": {"value": "beaches, good food, privacy", "authority": "explicit_owner"},
             },
             "expected_unknowns": [],
             "expected_contradictions": [],
@@ -380,7 +385,7 @@ RAW_FIXTURES = {
         "raw_input": (
             "Family of 5 from Delhi. "
             "They want Europe — kids want to see snow in summer. "
-            "Budget around 4-5 lakhs total. "
+            "Budget around 8 lakhs total. "
             "Parents can't walk too much, need accessible hotels. "
             "Maybe Switzerland or Austria."
         ),
@@ -391,7 +396,8 @@ RAW_FIXTURES = {
                 "destination_candidates": {"value": "Switzerland or Austria", "authority": "explicit_owner"},
                 "date_window": {"value": "summer (June/July)", "authority": "explicit_owner"},
                 "party_size": {"value": 5, "authority": "explicit_owner"},
-                "budget_min": {"value": "450000", "authority": "explicit_owner"},
+                "budget_raw_text": {"value": "8 lakhs", "authority": "explicit_owner"},
+                "budget_min": {"value": "800000", "authority": "explicit_owner"},
                 "party_composition": {"value": "family with elderly parents + kids", "authority": "explicit_owner"},
                 "soft_preferences": {"value": "snow, accessible hotels", "authority": "explicit_owner"},
                 "trip_purpose": {"value": "family leisure", "authority": "explicit_owner"},

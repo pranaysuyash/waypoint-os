@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Union
 
 
 # =============================================================================
@@ -128,6 +128,15 @@ class UnknownField:
 # =============================================================================
 # SECTION 3: AMBIGUITY, OWNER CONSTRAINT, SUBGROUP
 # =============================================================================
+
+@dataclass
+class ContradictionValue:
+    """A single value in a contradiction with its source attribution."""
+    value: Any
+    source: str  # envelope_id or source identifier
+    authority: str  # AuthorityLevel value
+    timestamp: Optional[str] = None  # ISO-8601 when this value was captured
+
 
 @dataclass
 class Ambiguity:
@@ -353,12 +362,46 @@ class CanonicalPacket:
         self.unknowns.append(UnknownField(field_name=field_name, reason=reason))
         self._emit_event("unknown_added", {"field_name": field_name, "reason": reason})
 
-    def add_contradiction(self, field_name: str, values: List[Any], sources: List[str]) -> None:
+    def add_contradiction(
+        self,
+        field_name: str,
+        values: Union[List[Any], List[ContradictionValue]],
+        sources: Optional[List[str]] = None,
+    ) -> None:
+        """Add a contradiction. Supports both legacy and new structured formats.
+
+        Legacy: add_contradiction("budget", ["3L", "4L"], ["email", "chat"])
+        New: add_contradiction("budget", [
+            ContradictionValue("3L", "email", "explicit_user"),
+            ContradictionValue("4L", "chat", "explicit_user"),
+        ])
+        """
+        detected_at = datetime.now().isoformat()
+
+        # Check if values is already structured (new format)
+        if values and isinstance(values[0], ContradictionValue):
+            structured_values = values
+            # Maintain backward-compatible sources list
+            sources_list = [v.source for v in structured_values]
+        else:
+            # Legacy format: convert to structured
+            structured_values = []
+            sources_list = sources or []
+            for i, val in enumerate(values):
+                source = sources_list[i] if i < len(sources_list) else "unknown"
+                structured_values.append(
+                    ContradictionValue(value=val, source=source, authority="explicit_user")
+                )
+            # Extend sources_list to match values count for backward compatibility
+            while len(sources_list) < len(values):
+                sources_list.append("unknown")
+
         self.contradictions.append({
             "field_name": field_name,
-            "values": values,
-            "sources": sources,
-            "detected_at": datetime.now().isoformat(),
+            "values": structured_values,
+            "values_legacy": [v.value for v in structured_values],  # For backward compat
+            "sources": sources_list,
+            "detected_at": detected_at,
         })
         self._emit_event("contradiction_detected", {"field_name": field_name, "values": values})
 

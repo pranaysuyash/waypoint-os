@@ -7,9 +7,12 @@
 - [Sourcing and Decision Policy](Sourcing_And_Decision_Policy.md) — Sourcing hierarchy and "Proceed/Ask" gating logic.
 - [Lead Lifecycle and Retention](LEAD_LIFECYCLE_AND_RETENTION.md) — Unified state machine, schema, scoring, and interventions for repeat, ghosting, window-shopping, and churn.
 - [Discussion Log](DISCUSSION_LOG.md) — Audit trail of pivots and agent feedback.
+- [Coverage Assessment (2026-04-15)](COVERAGE_ASSESSMENT_2026-04-15.md) — Summary of what is now covered across risks, stakeholders, scenarios, use cases, and markets, plus remaining documentation/runtime gaps.
+- [Coverage Matrix (2026-04-15)](COVERAGE_MATRIX_2026-04-15.md) — Control document separating what is documented, scenario-covered, tested, and implemented across risks, stakeholders, lifecycle, markets, and commercial logic.
 - [Issue Review](issue_review.md) — Active issue register for identified/validated gaps.
 - [Process Issue Review (2026-04-15)](process_issue_review_2026-04-15.md) — Runtime/code issues identified during implementation passes with project-neutral naming.
 - [Status Matrix (2026-04-15)](status/STATUS_MATRIX.md) — Control layer that preserves full scope while mapping what is active now vs phased orchestration expansion.
+- [Coverage Closure Build Queue (2026-04-15)](status/COVERAGE_CLOSURE_BUILD_QUEUE_2026-04-15.md) — Dependency-ordered queue derived from the coverage matrix, aligned to runtime modules, tests, and acceptance signals.
 - [Phase 1 Build Queue (2026-04-15)](status/PHASE_1_BUILD_QUEUE.md) — Ordered execution checklist for deterministic foundations before broader specialist activation.
 - [Frontend Product Spec (Full, 2026-04-15)](FRONTEND_PRODUCT_SPEC_FULL_2026-04-15.md) — Full product frontend architecture and screen contracts (internal/operator/owner/traveler/public), no Streamlit path.
 - [Next.js Implementation Track (2026-04-15)](status/NEXTJS_IMPLEMENTATION_TRACK_2026-04-15.md) — Corrected execution plan with spine-aligned BFF enums and phased build order (foundation -> workspace core -> expansion).

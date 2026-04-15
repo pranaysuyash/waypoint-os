@@ -1031,7 +1031,8 @@ def generate_risk_flags(
     dest = packet.facts.get("destination_candidates")
     if comp and comp.value:
         composition = comp.value
-        if composition.get("elderly") and dest:
+        # Handle both dict format (from structured input) and string format (from free text)
+        if isinstance(composition, dict) and composition.get("elderly") and dest:
             dests = dest.value
             if isinstance(dests, list):
                 risky_dests = {"Maldives", "Andaman", "Andamans", "Bhutan", "Nepal"}
@@ -1041,7 +1042,7 @@ def generate_risk_flags(
                         "severity": "high",
                         "message": f"Elderly travelers + {dests[0]} — verify medical access and mobility",
                     })
-        if composition.get("children") and dest:
+        if isinstance(composition, dict) and composition.get("children") and dest:
             ages = packet.facts.get("child_ages")
             if ages and ages.value:
                 young_ages = [a for a in ages.value if a < 4]

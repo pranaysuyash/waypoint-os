@@ -264,6 +264,51 @@ User provided additional second context file from Downloads and requested integr
 - Added to docs navigation:
   - `Docs/INDEX.md`
 
+## Log Entry: 2026-04-15 - Coverage Matrix Added as Control Layer
+
+### Context
+After the coverage assessment was documented, user requested a second artifact: a **new standalone document** that works as a practical matrix rather than narrative analysis.
+
+### New Artifact Added
+- `Docs/COVERAGE_MATRIX_2026-04-15.md`
+
+### What the new artifact does
+- separates documented vs scenario-written vs tested vs implemented status
+- organizes coverage by risk, stakeholder, scenario family, lifecycle stage, market segment, and commercial logic
+- makes the gap between product thinking and runtime closure explicit
+- provides a prioritized closure list for P0 / P1 / P2 follow-up
+- now also includes execution-oriented planning fields:
+  - priority
+  - repo area / module
+  - acceptance signal
+  - blocking dependency
+
+### Traceability
+- Added to docs navigation:
+  - `Docs/INDEX.md`
+
+## Log Entry: 2026-04-15 - Coverage Closure Queue Added
+
+### Context
+After the coverage matrix was upgraded with execution-oriented planning fields, user approved taking the next step if it made sense: convert the highest-priority matrix items into an explicit ordered build queue.
+
+### New Artifact Added
+- `Docs/status/COVERAGE_CLOSURE_BUILD_QUEUE_2026-04-15.md`
+
+### What the new artifact does
+- translates P0/P1 matrix gaps into a dependency-ordered implementation queue
+- aligns work to concrete repo areas such as:
+  - `src/intake/decision.py`
+  - `src/intake/packet_models.py`
+  - `src/intake/extractors.py`
+  - `tests/`
+- defines acceptance signals for each phase
+- separates trust-critical work from later expansion-layer work
+
+### Traceability
+- Added to docs navigation:
+  - `Docs/INDEX.md`
+
 ## Log Entry: 2026-04-15 - Additional Discussion Ingested (Repeat/Ghosting/Window-Shopper/Churn)
 
 ### Context
@@ -311,6 +356,38 @@ User requested explicit demonstration that the Projects-level workflow structure
 
 ### Test Status
 - Re-ran `pytest -q`; same pre-existing notebook import-path errors remain (`ModuleNotFoundError: intake` in two notebook tests).
+
+## Log Entry: 2026-04-15 - Coverage Review Discussion Documented (Risks / Scenarios / Stakeholders / Markets)
+
+### Context
+User asked whether the project now has adequate coverage from different angles, including:
+
+- risks
+- scenarios
+- use cases
+- stakeholders
+- markets
+
+User then requested that the discussion be documented explicitly, including what is already done, what could be better, and what major coverage gaps remain.
+
+### Findings Captured
+- Documentation coverage is now broad across risk categories, personas, scenario families, and core market framing.
+- Runtime coverage is still narrower than documentation coverage and remains concentrated around the deterministic golden path.
+- The project is no longer primarily missing ideas; it is primarily missing implementation and systematic coverage closure.
+
+### New Artifact Added
+- `Docs/COVERAGE_ASSESSMENT_2026-04-15.md`
+
+### What the new artifact summarizes
+- what is well covered now
+- what improved materially in recent work
+- where documentation is ahead of runtime
+- which coverage gaps still matter most
+- recommended next documentation move: explicit coverage matrix
+
+### Traceability
+- Added to docs navigation:
+  - `Docs/INDEX.md`
 
 5. **Fallback strategy**
    - Deterministic parser > NER suggestion > regex fallback (never the reverse for critical fields).
