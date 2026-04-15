@@ -2,7 +2,6 @@ import { create } from "zustand";
 import type {
   SpineStage,
   OperatingMode,
-  DecisionState,
   LeakageResult,
   SpineRunResponse,
 } from "@/types/spine";
@@ -12,6 +11,10 @@ interface WorkbenchInputState {
   input_owner_note: string;
   input_structured_json: string;
   input_itinerary_text: string;
+  setInputRawNote: (value: string) => void;
+  setInputOwnerNote: (value: string) => void;
+  setInputStructuredJson: (value: string) => void;
+  setInputItineraryText: (value: string) => void;
 }
 
 interface WorkbenchConfigState {
@@ -20,6 +23,11 @@ interface WorkbenchConfigState {
   scenario_id: string;
   strict_leakage: boolean;
   debug_raw_json: boolean;
+  setOperatingMode: (value: OperatingMode) => void;
+  setStage: (value: SpineStage) => void;
+  setScenarioId: (value: string) => void;
+  setStrictLeakage: (value: boolean) => void;
+  setDebugRawJson: (value: boolean) => void;
 }
 
 interface WorkbenchResultState {
@@ -32,6 +40,15 @@ interface WorkbenchResultState {
   result_leakage: LeakageResult | null;
   result_assertions: SpineRunResponse["assertions"] | null;
   result_run_ts: string | null;
+  setResultPacket: (value: SpineRunResponse["packet"]) => void;
+  setResultValidation: (value: SpineRunResponse["validation"]) => void;
+  setResultDecision: (value: SpineRunResponse["decision"]) => void;
+  setResultStrategy: (value: SpineRunResponse["strategy"]) => void;
+  setResultInternalBundle: (value: SpineRunResponse["internal_bundle"]) => void;
+  setResultTravelerBundle: (value: SpineRunResponse["traveler_bundle"]) => void;
+  setResultLeakage: (value: LeakageResult | null) => void;
+  setResultAssertions: (value: SpineRunResponse["assertions"]) => void;
+  setResultRunTs: (value: string) => void;
 }
 
 type WorkbenchStore = WorkbenchInputState &
@@ -43,12 +60,21 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
   input_owner_note: "",
   input_structured_json: "",
   input_itinerary_text: "",
+  setInputRawNote: (value) => set({ input_raw_note: value }),
+  setInputOwnerNote: (value) => set({ input_owner_note: value }),
+  setInputStructuredJson: (value) => set({ input_structured_json: value }),
+  setInputItineraryText: (value) => set({ input_itinerary_text: value }),
 
   operating_mode: "normal_intake",
   stage: "discovery",
   scenario_id: "",
   strict_leakage: false,
   debug_raw_json: false,
+  setOperatingMode: (value) => set({ operating_mode: value }),
+  setStage: (value) => set({ stage: value }),
+  setScenarioId: (value) => set({ scenario_id: value }),
+  setStrictLeakage: (value) => set({ strict_leakage: value }),
+  setDebugRawJson: (value) => set({ debug_raw_json: value }),
 
   result_packet: null,
   result_validation: null,
@@ -59,6 +85,15 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
   result_leakage: null,
   result_assertions: null,
   result_run_ts: null,
+  setResultPacket: (value) => set({ result_packet: value }),
+  setResultValidation: (value) => set({ result_validation: value }),
+  setResultDecision: (value) => set({ result_decision: value }),
+  setResultStrategy: (value) => set({ result_strategy: value }),
+  setResultInternalBundle: (value) => set({ result_internal_bundle: value }),
+  setResultTravelerBundle: (value) => set({ result_traveler_bundle: value }),
+  setResultLeakage: (value) => set({ result_leakage: value }),
+  setResultAssertions: (value) => set({ result_assertions: value }),
+  setResultRunTs: (value) => set({ result_run_ts: value }),
 }));
 
 export type { WorkbenchStore };
