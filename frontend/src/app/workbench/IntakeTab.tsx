@@ -13,13 +13,13 @@ import {
   Settings,
 } from 'lucide-react';
 
-interface Scenario {
+interface Trip {
   id: string;
   title: string;
   stage: string;
 }
 
-const scenarios: Scenario[] = [
+const trips: Trip[] = [
   { id: 'sgp-family', title: 'Singapore Family Trip', stage: 'discovery' },
   { id: 'dubai-corp', title: 'Dubai Corporate Retreat', stage: 'shortlist' },
   { id: 'andaman-rom', title: 'Andaman Honeymoon', stage: 'discovery' },
@@ -43,33 +43,33 @@ const modes = [
 ];
 
 export function IntakeTab() {
-  const [selectedScenario, setSelectedScenario] = useState('');
+  const [selectedTrip, setSelectedTrip] = useState('');
   const [stage, setStage] = useState('discovery');
   const [mode, setMode] = useState('normal_intake');
-  const [rawNote, setRawNote] = useState('');
-  const [ownerNote, setOwnerNote] = useState('');
+  const [customerMessage, setCustomerMessage] = useState('');
+  const [agentNotes, setAgentNotes] = useState('');
   const [structuredJson, setStructuredJson] = useState('');
 
   return (
     <div className='space-y-6'>
-      {/* Scenario Selection */}
+      {/* Trip Selection */}
       <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
         <div className='flex items-center gap-2 mb-4'>
           <Sparkles className='w-4 h-4 text-[#a371f7]' />
           <h3 className='text-sm font-semibold text-[#e6edf3]'>
-            Scenario Selection
+            Trip Selection
           </h3>
         </div>
         <div className='relative'>
           <select
-            value={selectedScenario}
-            onChange={(e) => setSelectedScenario(e.target.value)}
+            value={selectedTrip}
+            onChange={(e) => setSelectedTrip(e.target.value)}
             className='w-full px-4 py-2.5 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] appearance-none cursor-pointer'
           >
-            <option value=''>Select a scenario...</option>
-            {scenarios.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.title} ({s.stage})
+            <option value=''>Select a trip...</option>
+            {trips.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.title} ({t.stage})
               </option>
             ))}
           </select>
@@ -79,34 +79,34 @@ export function IntakeTab() {
 
       {/* Input Fields Grid */}
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-        {/* Raw Note */}
+        {/* Customer Message */}
         <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
           <div className='flex items-center gap-2 mb-3'>
             <FileText className='w-4 h-4 text-[#8b949e]' />
             <label className='text-sm font-medium text-[#e6edf3]'>
-              Raw Note
+              Customer Message
             </label>
           </div>
           <textarea
-            value={rawNote}
-            onChange={(e) => setRawNote(e.target.value)}
+            value={customerMessage}
+            onChange={(e) => setCustomerMessage(e.target.value)}
             placeholder='Paste the incoming traveler note here...'
             rows={6}
             className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff] resize-none font-mono'
           />
         </div>
 
-        {/* Owner Note */}
+        {/* Agent Notes */}
         <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
           <div className='flex items-center gap-2 mb-3'>
             <User className='w-4 h-4 text-[#58a6ff]' />
             <label className='text-sm font-medium text-[#e6edf3]'>
-              Owner Note
+              Agent Notes
             </label>
           </div>
           <textarea
-            value={ownerNote}
-            onChange={(e) => setOwnerNote(e.target.value)}
+            value={agentNotes}
+            onChange={(e) => setAgentNotes(e.target.value)}
             placeholder="Add owner's comments or clarifications..."
             rows={6}
             className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff] resize-none'

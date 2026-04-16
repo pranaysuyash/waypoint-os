@@ -30,7 +30,7 @@ export function SafetyTab() {
   if (!result_safety) {
     return (
       <div className={styles.emptyState}>
-        <p>No safety data. Run Spine from the Intake tab first.</p>
+        <p>No review data. Process a trip from the New Inquiry tab first.</p>
       </div>
     );
   }

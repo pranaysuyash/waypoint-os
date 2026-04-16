@@ -16,7 +16,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Travel Agency Agent',
+  title: 'Waypoint OS',
   description: 'AI-powered travel agency decision support system',
 };
 

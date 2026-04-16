@@ -27,15 +27,15 @@ const NAV = [
       },
       {
         href: '/inbox',
-        label: 'Inbox',
+        label: 'New Leads',
         icon: Inbox,
         description: 'Triage and prioritize incoming demand',
       },
       {
         href: '/workbench',
-        label: 'Workbench',
+        label: 'Trip Pipeline',
         icon: Briefcase,
-        description: 'Inspect packet, decision, strategy, and safety',
+        description: 'Process trips through the pipeline stages',
       },
     ],
   },
@@ -44,13 +44,13 @@ const NAV = [
     items: [
       {
         href: '/owner/reviews',
-        label: 'Reviews',
+        label: 'Pending Reviews',
         icon: ClipboardCheck,
         description: 'Approve high-risk and exception decisions',
       },
       {
         href: '/owner/insights',
-        label: 'Insights',
+        label: 'Analytics',
         icon: BarChart2,
         description: 'Monitor quality, throughput, and conversion',
       },
@@ -167,7 +167,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               className='text-[11px] text-[#6e7681] font-mono'
               aria-live='polite'
             >
-              spine · live
+              system · live
             </span>
           </div>
           <div className='mt-1 flex items-center gap-1.5 text-[11px] text-[#484f58]'>
@@ -214,7 +214,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               aria-live='polite'
             >
               <Zap className='h-3 w-3 text-[#d29922]' aria-hidden='true' />
-              <span>spine ready</span>
+              <span>ready</span>
             </div>
             <div
               className='h-6 w-6 rounded-md bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-semibold'

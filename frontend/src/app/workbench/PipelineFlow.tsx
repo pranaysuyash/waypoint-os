@@ -8,11 +8,11 @@ interface PipelineFlowProps {
 }
 
 const stages = [
-  { id: "intake", label: "NB01", fullLabel: "Intake", description: "Parse Input" },
-  { id: "packet", label: "NB02", fullLabel: "Packet", description: "Extract Facts" },
-  { id: "decision", label: "NB03", fullLabel: "Decision", description: "Validate & Decide" },
-  { id: "strategy", label: "NB04", fullLabel: "Strategy", description: "Build Bundles" },
-  { id: "safety", label: "NB05", fullLabel: "Safety", description: "Final Check" },
+  { id: "intake", label: "1", fullLabel: "New Inquiry", description: "Capture customer request" },
+  { id: "packet", label: "2", fullLabel: "Trip Details", description: "Extract trip information" },
+  { id: "decision", label: "3", fullLabel: "Ready to Quote?", description: "Check if ready to price" },
+  { id: "strategy", label: "4", fullLabel: "Build Options", description: "Create travel options" },
+  { id: "safety", label: "5", fullLabel: "Final Review", description: "Last check before send" },
 ];
 
 export function PipelineFlow({ currentStage }: PipelineFlowProps) {

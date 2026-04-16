@@ -43,20 +43,20 @@ export function PacketTab() {
   if (!result_packet) {
     return (
       <div className={styles.emptyState}>
-        <p>No packet data. Run Spine from the Intake tab first.</p>
+        <p>No booking request data. Process a trip from the New Inquiry tab first.</p>
       </div>
     );
   }
 
-  const packet = result_packet as Record<string, unknown>;
+  const bookingRequest = result_packet as Record<string, unknown>;
   const validation = result_validation as ValidationReport | null;
 
   // Extract summary data from facts
-  const facts = (packet.facts || {}) as Record<string, SlotValue>;
-  const derivedSignals = (packet.derived_signals || {}) as Record<string, SlotValue>;
-  const ambiguities = (packet.ambiguities || []) as Ambiguity[];
-  const unknowns = (packet.unknowns || []) as Unknown[];
-  const contradictions = (packet.contradictions || []) as Contradiction[];
+  const facts = (bookingRequest.facts || {}) as Record<string, SlotValue>;
+  const derivedSignals = (bookingRequest.derived_signals || {}) as Record<string, SlotValue>;
+  const ambiguities = (bookingRequest.ambiguities || []) as Ambiguity[];
+  const unknowns = (bookingRequest.unknowns || []) as Unknown[];
+  const contradictions = (bookingRequest.contradictions || []) as Contradiction[];
 
   // Build summary from facts
   const summaryData = {
@@ -237,7 +237,7 @@ export function PacketTab() {
 
       {showRaw && (
         <div className={styles.jsonOutput}>
-          <pre>{JSON.stringify(packet, null, 2)}</pre>
+          <pre>{JSON.stringify(bookingRequest, null, 2)}</pre>
         </div>
       )}
     </div>

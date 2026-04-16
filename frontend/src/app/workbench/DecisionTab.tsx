@@ -15,11 +15,11 @@ const STATE_BADGE_CLASS: Record<string, string> = {
 };
 
 const STATE_LABELS: Record<string, string> = {
-  PROCEED_TRAVELER_SAFE: "PROCEED — TRAVELER SAFE",
-  PROCEED_INTERNAL_DRAFT: "PROCEED — INTERNAL DRAFT",
-  BRANCH_OPTIONS: "BRANCH OPTIONS",
-  STOP_NEEDS_REVIEW: "STOP — NEEDS REVIEW",
-  ASK_FOLLOWUP: "ASK FOLLOWUP",
+  PROCEED_TRAVELER_SAFE: "Ready to Book",
+  PROCEED_INTERNAL_DRAFT: "Draft Quote",
+  BRANCH_OPTIONS: "Needs Options",
+  STOP_NEEDS_REVIEW: "Needs Attention",
+  ASK_FOLLOWUP: "Need More Info",
 };
 
 interface FollowUpQuestion {
@@ -85,7 +85,7 @@ export function DecisionTab() {
   if (!result_decision) {
     return (
       <div className={styles.emptyState}>
-        <p>No decision data. Run Spine from the Intake tab first.</p>
+        <p>No quote status data. Process a trip from the New Inquiry tab first.</p>
       </div>
     );
   }

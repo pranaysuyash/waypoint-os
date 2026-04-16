@@ -12,11 +12,11 @@ import { PipelineFlow } from './PipelineFlow';
 import { Play, RotateCcw, Settings } from 'lucide-react';
 
 const workbenchTabs = [
-  { id: 'intake', label: 'Intake' },
-  { id: 'packet', label: 'Packet' },
-  { id: 'decision', label: 'Decision' },
-  { id: 'strategy', label: 'Strategy' },
-  { id: 'safety', label: 'Safety' },
+  { id: 'intake', label: 'New Inquiry' },
+  { id: 'packet', label: 'Trip Details' },
+  { id: 'decision', label: 'Ready to Quote?' },
+  { id: 'strategy', label: 'Build Options' },
+  { id: 'safety', label: 'Final Review' },
 ];
 
 type WorkbenchTabId = (typeof workbenchTabs)[number]['id'];
@@ -49,10 +49,10 @@ function WorkbenchContent() {
         <div className='flex items-center justify-between mb-6'>
           <div>
             <h1 className='text-xl font-semibold text-[#e6edf3] mb-1'>
-              Workbench
+              Trip Pipeline
             </h1>
             <p className='text-sm text-[#8b949e]'>
-              Process travel requests through the NB pipeline
+              Process travel requests through the pipeline
             </p>
           </div>
           <div className='flex items-center gap-3'>
@@ -61,7 +61,7 @@ function WorkbenchContent() {
               disabled={isRunning}
               className='flex items-center gap-2 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg font-medium hover:bg-[#6eb5ff] disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
               aria-label={
-                isRunning ? 'Running spine pipeline' : 'Run spine pipeline'
+                isRunning ? 'Processing trip' : 'Process trip'
               }
             >
               {isRunning ? (
@@ -70,19 +70,19 @@ function WorkbenchContent() {
                     className='w-4 h-4 border-2 border-[#0d1117]/30 border-t-[#0d1117] rounded-full animate-spin'
                     aria-hidden='true'
                   />
-                  Running...
+                  Processing...
                 </>
               ) : (
                 <>
                   <Play className='w-4 h-4' aria-hidden='true' />
-                  Run Spine
+                  Process Trip
                 </>
               )}
             </button>
             <button
               type='button'
               className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg font-medium hover:bg-[#21262d] transition-colors'
-              aria-label='Reset workbench'
+              aria-label='Reset pipeline'
             >
               <RotateCcw className='w-4 h-4' aria-hidden='true' />
               Reset
