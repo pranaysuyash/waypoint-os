@@ -122,7 +122,7 @@ export function IntakeTab() {
         </h3>
         <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
           <div>
-            <label className='block text-xs font-medium text-[#8b949e] mb-2'>
+            <label className='block text-sm font-medium text-[#8b949e] mb-2'>
               Stage
             </label>
             <div className='relative'>
@@ -141,7 +141,7 @@ export function IntakeTab() {
             </div>
           </div>
           <div>
-            <label className='block text-xs font-medium text-[#8b949e] mb-2'>
+            <label className='block text-sm font-medium text-[#8b949e] mb-2'>
               Operating Mode
             </label>
             <div className='relative'>

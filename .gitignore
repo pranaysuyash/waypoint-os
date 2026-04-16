@@ -51,6 +51,10 @@ frontend/.next/
 .playwright-mcp/
 
 # Data files
+# Downloaded datasets (186MB total)
+data/cities5000.txt
+data/cities.json
+
 # Generated/accumulated data
 data/accumulated_cities.json
 

@@ -52,13 +52,13 @@ export function PipelineFlow({ currentStage }: PipelineFlowProps) {
                 <div className="mt-2 text-center">
                   <p
                     className={cn(
-                      "text-xs font-medium",
+                      "text-sm font-medium",
                       isActive ? "text-[#e6edf3]" : "text-[#8b949e]"
                     )}
                   >
                     {stage.fullLabel}
                   </p>
-                  <p className="text-[10px] text-[#6e7681] mt-0.5">{stage.description}</p>
+                  <p className="text-xs text-[#6e7681] mt-0.5">{stage.description}</p>
                 </div>
 
                 {/* Active Indicator */}

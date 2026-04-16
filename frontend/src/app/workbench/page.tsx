@@ -1,15 +1,28 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Suspense, useState } from 'react';
+import { Suspense, useState, lazy } from 'react';
 import { Tabs } from '@/components/ui/tabs';
-import { IntakeTab } from './IntakeTab';
-import { PacketTab } from './PacketTab';
-import { DecisionTab } from './DecisionTab';
-import { StrategyTab } from './StrategyTab';
-import { SafetyTab } from './SafetyTab';
 import { PipelineFlow } from './PipelineFlow';
 import { Play, RotateCcw, Settings } from 'lucide-react';
+import { InlineLoading } from '@/components/ui/loading';
+
+// Code split tab components for better initial load performance
+const IntakeTab = lazy(() =>
+  import('./IntakeTab').then((m) => ({ default: m.IntakeTab }))
+);
+const PacketTab = lazy(() =>
+  import('./PacketTab').then((m) => ({ default: m.PacketTab }))
+);
+const DecisionTab = lazy(() =>
+  import('./DecisionTab').then((m) => ({ default: m.DecisionTab }))
+);
+const StrategyTab = lazy(() =>
+  import('./StrategyTab').then((m) => ({ default: m.StrategyTab }))
+);
+const SafetyTab = lazy(() =>
+  import('./SafetyTab').then((m) => ({ default: m.SafetyTab }))
+);
 
 const workbenchTabs = [
   { id: 'intake', label: 'New Inquiry' },
@@ -46,12 +59,12 @@ function WorkbenchContent() {
       {/* Main Content */}
       <div className='px-6 py-6'>
         {/* Header */}
-        <div className='flex items-center justify-between mb-6'>
+        <header className='flex items-center justify-between mb-6'>
           <div>
-            <h1 className='text-xl font-semibold text-[#e6edf3] mb-1'>
+            <h1 className='text-2xl font-semibold text-[#e6edf3] mb-1'>
               Trip Pipeline
             </h1>
-            <p className='text-sm text-[#8b949e]'>
+            <p className='text-base text-[#a8b3c1]'>
               Process travel requests through the pipeline
             </p>
           </div>
@@ -95,7 +108,7 @@ function WorkbenchContent() {
               <Settings className='w-4 h-4' aria-hidden='true' />
             </button>
           </div>
-        </div>
+        </header>
 
         {/* Tab Navigation */}
         <div className='bg-[#0f1115] border border-[#30363d] rounded-t-xl overflow-hidden'>
@@ -110,14 +123,18 @@ function WorkbenchContent() {
         <div
           className='bg-[#0f1115] border-x border-b border-[#30363d] rounded-b-xl'
           role='tabpanel'
-          aria-label={`${activeTab} content`}
+          id={`tabpanel-${activeTab}`}
+          aria-labelledby={`tab-${activeTab}`}
+          tabIndex={0}
         >
           <div className='p-6'>
-            {activeTab === 'intake' && <IntakeTab />}
-            {activeTab === 'packet' && <PacketTab />}
-            {activeTab === 'decision' && <DecisionTab />}
-            {activeTab === 'strategy' && <StrategyTab />}
-            {activeTab === 'safety' && <SafetyTab />}
+            <Suspense fallback={<InlineLoading message='Loading tab...' />}>
+              {activeTab === 'intake' && <IntakeTab />}
+              {activeTab === 'packet' && <PacketTab />}
+              {activeTab === 'decision' && <DecisionTab />}
+              {activeTab === 'strategy' && <StrategyTab />}
+              {activeTab === 'safety' && <SafetyTab />}
+            </Suspense>
           </div>
         </div>
       </div>

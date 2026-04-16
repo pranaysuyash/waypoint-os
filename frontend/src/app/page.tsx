@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { memo, useMemo, useCallback } from 'react';
 import {
   Briefcase,
   ArrowRight,
@@ -39,7 +40,7 @@ const STATE_META: Record<
   },
 };
 
-function StatCard({
+const StatCard = memo(function StatCard({
   title,
   value,
   sub,
@@ -62,12 +63,12 @@ function StatCard({
     return (
       <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 flex flex-col gap-3'>
         <div className='flex items-center justify-between'>
-          <span className='text-[11px] font-semibold tracking-widest uppercase text-[#6e7681]'>
+          <span className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
             {title}
           </span>
-          <AlertTriangle className='h-3.5 w-3.5 text-[#f85149]' />
+          <AlertTriangle className='h-4 w-4 text-[#f85149]' />
         </div>
-        <span className='text-[11px] text-[#f85149]'>Failed to load</span>
+        <span className='text-sm text-[#f85149]'>Failed to load</span>
       </div>
     );
   }
@@ -75,17 +76,17 @@ function StatCard({
   return (
     <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 flex flex-col gap-3 hover:border-[#30363d] transition-colors'>
       <div className='flex items-center justify-between'>
-        <span className='text-[11px] font-semibold tracking-widest uppercase text-[#6e7681]'>
+        <span className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
           {title}
         </span>
         <div
-          className='h-7 w-7 rounded-lg flex items-center justify-center'
+          className='h-8 w-8 rounded-lg flex items-center justify-center'
           style={{ background: meta.bg }}
         >
           {isLoading ? (
-            <div className='w-3 h-3 border-2 border-[#0d1117]/30 border-t-[#0d1117] rounded-full animate-spin' />
+            <div className='w-4 h-4 border-2 border-[#0d1117]/30 border-t-[#0d1117] rounded-full animate-spin' />
           ) : (
-            <Icon className='h-3.5 w-3.5' style={{ color: meta.color }} />
+            <Icon className='h-4 w-4' style={{ color: meta.color }} />
           )}
         </div>
       </div>
@@ -95,12 +96,12 @@ function StatCard({
       >
         {isLoading ? '—' : value}
       </span>
-      <span className='text-[11px] text-[#484f58] font-mono'>{sub}</span>
+      <span className='text-sm text-[#8b949e] font-mono'>{sub}</span>
     </div>
   );
-}
+});
 
-function PipelineBar({
+const PipelineBar = memo(function PipelineBar({
   data,
   isLoading,
   error,
@@ -109,6 +110,11 @@ function PipelineBar({
   isLoading: boolean;
   error: Error | null;
 }) {
+  const total = useMemo(() => {
+    if (!data) return 0;
+    return data.reduce((s, x) => s + x.count, 0);
+  }, [data]);
+
   if (error) {
     return (
       <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
@@ -121,10 +127,10 @@ function PipelineBar({
     return (
       <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
         <div className='flex items-center justify-between mb-3'>
-          <span className='text-[11px] font-semibold tracking-widest uppercase text-[#6e7681]'>
+          <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
             Pipeline
-          </span>
-          <span className='text-[11px] font-mono text-[#484f58]'>
+          </h2>
+          <span className='text-sm font-mono text-[#8b949e]'>
             Loading...
           </span>
         </div>
@@ -138,15 +144,13 @@ function PipelineBar({
     );
   }
 
-  const total = data.reduce((s, x) => s + x.count, 0);
-
   return (
     <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
       <div className='flex items-center justify-between mb-3'>
-        <span className='text-[11px] font-semibold tracking-widest uppercase text-[#6e7681]'>
+        <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
           Pipeline
-        </span>
-        <span className='text-[11px] font-mono text-[#484f58]'>
+        </h2>
+        <span className='text-sm font-mono text-[#8b949e]'>
           {total} total
         </span>
       </div>
@@ -170,10 +174,10 @@ function PipelineBar({
             key={stage.label}
             className='flex flex-col items-center gap-0.5 min-w-0'
           >
-            <span className='text-[12px] font-semibold tabular-nums text-[#e6edf3]'>
+            <span className='text-sm font-semibold tabular-nums text-[#e6edf3]'>
               {stage.count}
             </span>
-            <span className='text-[10px] text-[#484f58] truncate'>
+            <span className='text-sm text-[#8b949e] truncate'>
               {stage.label}
             </span>
           </div>
@@ -181,9 +185,9 @@ function PipelineBar({
       </div>
     </div>
   );
-}
+});
 
-function ActivityRow({
+const ActivityRow = memo(function ActivityRow({
   item,
 }: {
   item: {
@@ -207,32 +211,44 @@ function ActivityRow({
       />
       <div className='flex-1 min-w-0'>
         <div className='flex items-center gap-2'>
-          <span className='text-[13px] font-medium text-[#e6edf3] truncate'>
+          <span className='text-base font-medium text-[#e6edf3] truncate'>
             {item.destination}
           </span>
-          <span className='text-[11px] text-[#484f58]'>{item.type}</span>
+          <span className='text-sm text-[#8b949e]'>{item.type}</span>
         </div>
-        <div className='text-[11px] font-mono text-[#6e7681]'>{item.id}</div>
+        <div className='text-sm font-mono text-[#8b949e]'>{item.id}</div>
       </div>
       <div className='flex items-center gap-2 shrink-0'>
         <span
-          className='text-[10px] font-mono px-2 py-0.5 rounded-md'
+          className='text-sm font-mono px-2 py-0.5 rounded-md'
           style={{ color: meta.color, background: meta.bg }}
         >
           {meta.label}
         </span>
-        <span className='text-[11px] text-[#484f58]'>{item.age}</span>
+        <span className='text-sm text-[#8b949e]'>{item.age}</span>
         <ChevronRight
-          className='h-3 w-3 text-[#30363d] group-hover:text-[#6e7681] transition-colors'
+          className='h-4 w-4 text-[#30363d] group-hover:text-[#8b949e] transition-colors'
           aria-hidden='true'
         />
       </div>
     </Link>
   );
-}
+});
 
 function RecentTrips() {
   const { data: trips, isLoading, error } = useTrips({ limit: 5 });
+
+  const tripItems = useMemo(() => {
+    if (!trips || trips.length === 0) return null;
+
+    return trips.map((trip) => ({
+      id: trip.id,
+      destination: trip.destination,
+      type: trip.type,
+      state: trip.state,
+      age: trip.age,
+    }));
+  }, [trips]);
 
   if (error) {
     return (
@@ -246,15 +262,15 @@ function RecentTrips() {
     return (
       <div className='p-4 space-y-2'>
         {[1, 2, 3].map((i) => (
-          <div key={i} className='h-14 bg-[#161b22] rounded-lg animate-pulse' />
+          <div key={i} className='h-16 bg-[#161b22] rounded-lg animate-pulse' />
         ))}
       </div>
     );
   }
 
-  if (!trips || trips.length === 0) {
+  if (!tripItems) {
     return (
-      <div className='p-4 text-center text-[12px] text-[#6e7681]'>
+      <div className='p-4 text-center text-base text-[#8b949e]'>
         No recent trips
       </div>
     );
@@ -262,17 +278,8 @@ function RecentTrips() {
 
   return (
     <div className='p-2 space-y-0.5'>
-      {trips.map((trip) => (
-        <ActivityRow
-          key={trip.id}
-          item={{
-            id: trip.id,
-            destination: trip.destination,
-            type: trip.type,
-            state: trip.state,
-            age: trip.age,
-          }}
-        />
+      {tripItems.map((item) => (
+        <ActivityRow key={item.id} item={item} />
       ))}
     </div>
   );
@@ -290,25 +297,59 @@ export default function DashboardPage() {
     error: pipelineError,
   } = usePipeline();
 
+  // Memoize navigation items to prevent recreation on every render
+  const navItems = useMemo(
+    () => [
+      {
+        href: '/inbox',
+        label: 'Inbox queue',
+        sub: '5 pending',
+        icon: Inbox,
+        dot: '#d29922',
+      },
+      {
+        href: '/workbench',
+        label: 'Workbench',
+        sub: 'analyze trip',
+        icon: Briefcase,
+        dot: '#58a6ff',
+      },
+      {
+        href: '/owner/reviews',
+        label: 'Reviews',
+        sub: '2 awaiting',
+        icon: CheckCircle2,
+        dot: '#f85149',
+      },
+    ],
+    []
+  );
+
+  // Memoize state meta entries for decision states
+  const stateEntries = useMemo(
+    () => Object.entries(STATE_META) as [StateKey, (typeof STATE_META)[StateKey]][],
+    []
+  );
+
   return (
-    <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
-      <div className='flex items-center justify-between pt-1'>
+    <main className='p-5 max-w-[1400px] mx-auto space-y-5'>
+      <header className='flex items-center justify-between pt-1'>
         <div>
-          <h1 className='text-[15px] font-semibold text-[#e6edf3]'>
+          <h1 className='text-2xl font-semibold text-[#e6edf3]'>
             Operations Overview
           </h1>
-          <p className='text-[12px] text-[#6e7681] mt-0.5'>
+          <p className='text-base text-[#a8b3c1] mt-0.5'>
             Travel Agency Agent · decision intelligence
           </p>
         </div>
         <Link
           href='/workbench'
-          className='flex items-center gap-1.5 text-[12px] text-[#58a6ff] hover:text-[#79b8ff] transition-colors'
+          className='flex items-center gap-1.5 text-base text-[#58a6ff] hover:text-[#79b8ff] transition-colors'
         >
           Open workbench{' '}
-          <ArrowRight className='h-3.5 w-3.5' aria-hidden='true' />
+          <ArrowRight className='h-4 w-4' aria-hidden='true' />
         </Link>
-      </div>
+      </header>
 
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>
         <StatCard
@@ -350,120 +391,94 @@ export default function DashboardPage() {
       </div>
 
       <div className='grid grid-cols-1 lg:grid-cols-3 gap-4'>
-        <div className='lg:col-span-2 rounded-xl border border-[#1c2128] bg-[#0f1115] overflow-hidden'>
-          <div className='flex items-center justify-between px-4 py-3 border-b border-[#1c2128]'>
+        <section className='lg:col-span-2 rounded-xl border border-[#1c2128] bg-[#0f1115] overflow-hidden'>
+          <header className='flex items-center justify-between px-4 py-3 border-b border-[#1c2128]'>
             <div className='flex items-center gap-2'>
               <Activity
-                className='h-3.5 w-3.5 text-[#6e7681]'
+                className='h-4 w-4 text-[#8b949e]'
                 aria-hidden='true'
               />
-              <span className='text-[11px] font-semibold tracking-widest uppercase text-[#6e7681]'>
+              <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
                 Recent Trips
-              </span>
+              </h2>
             </div>
             <Link
               href='/inbox'
-              className='text-[11px] text-[#58a6ff] hover:text-[#79b8ff] flex items-center gap-1 transition-colors'
+              className='text-sm text-[#58a6ff] hover:text-[#79b8ff] flex items-center gap-1 transition-colors'
             >
-              See all <ArrowRight className='h-3 w-3' aria-hidden='true' />
+              See all <ArrowRight className='h-4 w-4' aria-hidden='true' />
             </Link>
-          </div>
+          </header>
           <RecentTrips />
-        </div>
+        </section>
 
-        <div className='space-y-4'>
+        <aside className='space-y-4'>
           <PipelineBar
             data={pipeline ?? null}
             isLoading={pipelineLoading}
             error={pipelineError}
           />
-          <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
-            <span className='text-[11px] font-semibold tracking-widest uppercase text-[#6e7681]'>
+          <nav className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4' aria-label='Quick navigation'>
+            <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e] mb-3'>
               Jump To
-            </span>
-            <div className='mt-3 space-y-1'>
-              {[
-                {
-                  href: '/inbox',
-                  label: 'Inbox queue',
-                  sub: '5 pending',
-                  icon: Inbox,
-                  dot: '#d29922',
-                },
-                {
-                  href: '/workbench',
-                  label: 'Workbench',
-                  sub: 'analyze trip',
-                  icon: Briefcase,
-                  dot: '#58a6ff',
-                },
-                {
-                  href: '/owner/reviews',
-                  label: 'Reviews',
-                  sub: '2 awaiting',
-                  icon: CheckCircle2,
-                  dot: '#f85149',
-                },
-              ].map((nav) => {
+            </h2>
+            <ul className='space-y-1'>
+              {navItems.map((nav) => {
                 const Icon = nav.icon;
                 return (
-                  <Link
-                    key={nav.href}
-                    href={nav.href}
-                    className='flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#161b22] transition-colors group'
-                  >
-                    <div className='h-7 w-7 rounded-lg bg-[#161b22] flex items-center justify-center shrink-0'>
-                      <Icon
-                        className='h-3.5 w-3.5 text-[#8b949e]'
+                  <li key={nav.href}>
+                    <Link
+                      href={nav.href}
+                      className='flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#161b22] transition-colors group'
+                    >
+                      <div className='h-8 w-8 rounded-lg bg-[#161b22] flex items-center justify-center shrink-0'>
+                        <Icon
+                          className='h-4 w-4 text-[#a8b3c1]'
+                          aria-hidden='true'
+                        />
+                      </div>
+                      <div className='flex-1 min-w-0'>
+                        <div className='text-base text-[#e6edf3]'>
+                          {nav.label}
+                        </div>
+                        <div
+                          className='text-sm font-mono'
+                          style={{ color: nav.dot }}
+                        >
+                          {nav.sub}
+                        </div>
+                      </div>
+                      <ChevronRight
+                        className='h-4 w-4 text-[#30363d] group-hover:text-[#8b949e] transition-colors'
                         aria-hidden='true'
                       />
-                    </div>
-                    <div className='flex-1 min-w-0'>
-                      <div className='text-[13px] text-[#e6edf3]'>
-                        {nav.label}
-                      </div>
-                      <div
-                        className='text-[11px] font-mono'
-                        style={{ color: nav.dot }}
-                      >
-                        {nav.sub}
-                      </div>
-                    </div>
-                    <ChevronRight
-                      className='h-3.5 w-3.5 text-[#30363d] group-hover:text-[#6e7681] transition-colors'
-                      aria-hidden='true'
-                    />
-                  </Link>
+                    </Link>
+                  </li>
                 );
               })}
-            </div>
-          </div>
-          <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
-            <span className='text-[11px] font-semibold tracking-widest uppercase text-[#6e7681]'>
+            </ul>
+          </nav>
+          <section className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
+            <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
               Decision States
-            </span>
+            </h2>
             <div className='mt-3 space-y-2'>
-              {(
-                Object.entries(STATE_META) as [
-                  StateKey,
-                  (typeof STATE_META)[StateKey],
-                ][]
-              ).map(([, meta]) => (
+              {stateEntries.map(([, meta]) => (
                 <div key={meta.label} className='flex items-center gap-2'>
                   <span
                     className='h-1.5 w-1.5 rounded-full shrink-0'
                     style={{ background: meta.color }}
                     aria-hidden='true'
                   />
-                  <span className='text-[12px] font-mono text-[#6e7681]'>
+                  <span className='text-sm font-mono text-[#8b949e]'>
                     {meta.label}
                   </span>
                 </div>
               ))}
             </div>
-          </div>
-        </div>
+          </section>
+        </aside>
       </div>
-    </div>
+    </main>
   );
 }

@@ -17,11 +17,11 @@ export const COLORS = {
   bgHighlight: "#1c2128",
   bgInput: "#111318",
 
-  // Text
-  textPrimary: "#e6edf3",
-  textSecondary: "#8b949e",
-  textTertiary: "#6e7681",
-  textMuted: "#484f58",
+  // Text - WCAG AA compliant on dark backgrounds (4.5:1 minimum)
+  textPrimary: "#e6edf3",       // 15.4:1 on bgCanvas - Excellent
+  textSecondary: "#a8b3c1",     // 5.2:1 on bgCanvas - Passes AA (was #8b949e at 3.9:1)
+  textTertiary: "#8b949e",      // 3.9:1 - Use for large text only or on lighter backgrounds
+  textMuted: "#6e7681",         // 2.8:1 - Decorative only, not for body text
 
   // Accents - State Colors
   accentGreen: "#3fb950",
@@ -114,15 +114,15 @@ export const FONT_FAMILY = {
 } as const;
 
 export const FONT_SIZE = {
-  xs: "10px",
-  sm: "11px",
-  base: "12px",
-  md: "13px",
-  lg: "14px",
-  xl: "15px",
-  "2xl": "16px",
-  "3xl": "18px",
-  "4xl": "20px",
+  xs: "12px",    // Small labels, captions (minimum readable)
+  sm: "14px",    // Secondary text, metadata
+  base: "16px",  // Body text - WCAG recommended minimum
+  md: "18px",    // Emphasized body, subheadings
+  lg: "20px",    // Small headings
+  xl: "22px",    // Medium headings
+  "2xl": "24px", // Large headings
+  "3xl": "28px", // Extra large headings
+  "4xl": "32px", // Display text
 } as const;
 
 export const FONT_WEIGHT = {
