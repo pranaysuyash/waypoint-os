@@ -99,10 +99,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <MapPin className='h-3.5 w-3.5 text-white' aria-hidden='true' />
           </div>
           <div className='min-w-0'>
-            <div className='text-[13px] font-semibold leading-tight tracking-tight truncate'>
-              TAA
+            <div className='text-xs font-semibold leading-tight tracking-tight truncate'>
+              Waypoint
             </div>
-            <div className='text-[10px] text-[#6e7681] leading-tight font-mono'>
+            <div className='text-xs text-[#6e7681] leading-tight font-mono'>
               v2.0 · decision engine
             </div>
           </div>
@@ -115,7 +115,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         >
           {NAV.map((section) => (
             <div key={section.label}>
-              <div className='px-2 pb-1.5 text-[10px] font-semibold tracking-widest text-[#484f58] uppercase'>
+              <div className='px-2 pb-1.5 text-xs font-semibold tracking-widest text-[#484f58] uppercase'>
                 {section.label}
               </div>
               <ul className='space-y-0.5' role='list'>
@@ -164,13 +164,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
               aria-hidden='true'
             />
             <span
-              className='text-[11px] text-[#6e7681] font-mono'
+              className='text-xs text-[#6e7681] font-mono'
               aria-live='polite'
             >
               system · live
             </span>
           </div>
-          <div className='mt-1 flex items-center gap-1.5 text-[11px] text-[#484f58]'>
+          <div className='mt-1 flex items-center gap-1.5 text-xs text-[#484f58]'>
             <Activity className='h-3 w-3' aria-hidden='true' />
             <span className='font-mono' aria-live='polite'>
               0 active · 0 queued
@@ -191,7 +191,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               href='/'
               className='text-[#484f58] hover:text-[#8b949e] text-[12px] transition-colors'
             >
-              TAA
+              Waypoint
             </Link>
             {pathname !== '/' && (
               <>
@@ -209,7 +209,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </nav>
           <div className='flex items-center gap-3'>
             <div
-              className='flex items-center gap-1.5 text-[11px] text-[#6e7681] font-mono'
+              className='flex items-center gap-1.5 text-xs text-[#6e7681] font-mono'
               role='status'
               aria-live='polite'
             >
@@ -217,7 +217,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <span>ready</span>
             </div>
             <div
-              className='h-6 w-6 rounded-md bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-semibold'
+              className='h-6 w-6 rounded-md bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-xs font-semibold'
               aria-label='Current operator: OP'
             >
               OP
@@ -243,7 +243,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   <Link
                     href={item.href}
                     className={cn(
-                      'flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-[10px]',
+                      'flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-xs',
                       isActive ? 'text-[#58a6ff]' : 'text-[#6e7681]',
                     )}
                     aria-current={isActive ? 'page' : undefined}

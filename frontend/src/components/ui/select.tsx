@@ -120,13 +120,13 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         </div>
 
         {description && !error && (
-          <p id={descriptionId} className="text-[11px] text-[#484f58]">
+          <p id={descriptionId} className="text-xs text-[#484f58]">
             {description}
           </p>
         )}
 
         {error && (
-          <p id={errorId} className="text-[11px] text-[#f85149]" role="alert">
+          <p id={errorId} className="text-xs text-[#f85149]" role="alert">
             {error}
           </p>
         )}

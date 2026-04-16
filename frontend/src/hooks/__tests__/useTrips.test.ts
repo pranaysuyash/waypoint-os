@@ -5,6 +5,16 @@ import { useTrips, useTripStats, usePipeline } from '../useTrips';
 // Mock fetch
 global.fetch = vi.fn();
 
+// Mock the api-client module
+vi.mock('@/lib/api-client', () => ({
+  getTrips: vi.fn(),
+  getTrip: vi.fn(),
+  getTripStats: vi.fn(),
+  getPipeline: vi.fn(),
+}));
+
+import { getTrips, getTripStats, getPipeline } from '@/lib/api-client';
+
 describe('useTrips Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -16,9 +26,9 @@ describe('useTrips Hook', () => {
       { id: '2', destination: 'Tokyo', type: 'business', state: 'amber', age: '1d' },
     ];
 
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockTrips,
+    (getTrips as any).mockResolvedValueOnce({
+      items: mockTrips,
+      total: 2,
     });
 
     const { result } = renderHook(() => useTrips());
@@ -30,11 +40,12 @@ describe('useTrips Hook', () => {
     });
 
     expect(result.current.data).toEqual(mockTrips);
+    expect(result.current.total).toBe(2);
     expect(result.current.error).toBeNull();
   });
 
   it('handles fetch errors', async () => {
-    (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
+    (getTrips as any).mockRejectedValueOnce(new Error('Network error'));
 
     const { result } = renderHook(() => useTrips());
 
@@ -47,16 +58,14 @@ describe('useTrips Hook', () => {
   });
 
   it('passes limit parameter to API', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => [],
+    (getTrips as any).mockResolvedValueOnce({
+      items: [],
+      total: 0,
     });
 
     renderHook(() => useTrips({ limit: 5 }));
 
-    expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('limit=5')
-    );
+    expect(getTrips).toHaveBeenCalledWith({ limit: 5 });
   });
 });
 
@@ -73,10 +82,7 @@ describe('useTripStats Hook', () => {
       needsAttention: 2,
     };
 
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockStats,
-    });
+    (getTripStats as any).mockResolvedValueOnce(mockStats);
 
     const { result } = renderHook(() => useTripStats());
 
@@ -99,10 +105,7 @@ describe('usePipeline Hook', () => {
       { label: 'Decision', count: 3 },
     ];
 
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockPipeline,
-    });
+    (getPipeline as any).mockResolvedValueOnce(mockPipeline);
 
     const { result } = renderHook(() => usePipeline());
 

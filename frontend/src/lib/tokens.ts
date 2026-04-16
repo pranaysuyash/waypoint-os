@@ -19,9 +19,9 @@ export const COLORS = {
 
   // Text - WCAG AA compliant on dark backgrounds (4.5:1 minimum)
   textPrimary: "#e6edf3",       // 15.4:1 on bgCanvas - Excellent
-  textSecondary: "#a8b3c1",     // 5.2:1 on bgCanvas - Passes AA (was #8b949e at 3.9:1)
-  textTertiary: "#8b949e",      // 3.9:1 - Use for large text only or on lighter backgrounds
-  textMuted: "#6e7681",         // 2.8:1 - Decorative only, not for body text
+  textSecondary: "#a8b3c1",     // 5.2:1 on bgCanvas - Passes AA
+  textTertiary: "#9ba3b0",      // ~4.5:1 - Lighter tertiary for better readability
+  textMuted: "#8b949e",         // 3.9:1 - For large text only (was #6e7681 at 2.8:1)
 
   // Accents - State Colors
   accentGreen: "#3fb950",

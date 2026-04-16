@@ -165,17 +165,17 @@ function TripCard({ trip }: { trip: TripItem }) {
           <span className='text-[14px] font-semibold text-[#e6edf3] truncate'>
             {trip.destination}
           </span>
-          <span className='text-[11px] text-[#6e7681]'>{trip.type}</span>
+          <span className='text-xs text-[#6e7681]'>{trip.type}</span>
         </div>
         <span
-          className='shrink-0 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md whitespace-nowrap'
+          className='shrink-0 text-xs font-mono font-semibold px-2 py-0.5 rounded-md whitespace-nowrap'
           style={{ color: meta.color, background: meta.bg }}
         >
           {meta.label}
         </span>
       </div>
 
-      <div className='flex items-center gap-4 text-[11px] text-[#6e7681]'>
+      <div className='flex items-center gap-4 text-xs text-[#6e7681]'>
         <span className='flex items-center gap-1'>
           <Users className='h-3 w-3' /> {trip.party} pax
         </span>
@@ -190,12 +190,12 @@ function TripCard({ trip }: { trip: TripItem }) {
       <div className='flex items-center justify-between'>
         <div className='flex items-center gap-2'>
           <Briefcase className='h-3 w-3 text-[#484f58]' />
-          <span className='text-[11px] text-[#8b949e]'>{trip.action}</span>
+          <span className='text-xs text-[#8b949e]'>{trip.action}</span>
         </div>
         <ChevronRight className='h-3.5 w-3.5 text-[#30363d] group-hover:text-[#6e7681] transition-colors shrink-0' />
       </div>
 
-      <div className='text-[10px] font-mono text-[#484f58]'>{trip.id}</div>
+      <div className='text-xs font-mono text-[#484f58]'>{trip.id}</div>
     </Link>
   );
 }
@@ -219,7 +219,7 @@ export default function InboxPage() {
             Trip queue · sorted by urgency
           </p>
         </div>
-        <span className='text-[11px] font-mono text-[#484f58]'>
+        <span className='text-xs font-mono text-[#484f58]'>
           {TRIPS.length} trips total
         </span>
       </div>
@@ -229,7 +229,7 @@ export default function InboxPage() {
           <button
             key={f.key}
             onClick={() => setActiveFilter(f.key)}
-            className='flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors'
+            className='flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors'
             style={
               activeFilter === f.key
                 ? {
@@ -242,7 +242,7 @@ export default function InboxPage() {
           >
             {f.label}
             <span
-              className='tabular-nums px-1.5 py-0.5 rounded-md text-[10px]'
+              className='tabular-nums px-1.5 py-0.5 rounded-md text-xs'
               style={
                 activeFilter === f.key
                   ? { background: 'rgba(88,166,255,0.15)', color: '#58a6ff' }

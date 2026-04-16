@@ -112,11 +112,11 @@ export function DefaultErrorFallback({
         {/* Error Details (Development Only) */}
         {process.env.NODE_ENV === "development" && error && (
           <details className="mb-4">
-            <summary className="cursor-pointer text-[11px] text-[#484f58] hover:text-[#8b949e] mb-2">
+            <summary className="cursor-pointer text-xs text-[#484f58] hover:text-[#8b949e] mb-2">
               Error details
             </summary>
             <div className="p-3 rounded-md bg-[#161b22] border border-[#30363d]">
-              <pre className="text-[10px] text-[#f85149] overflow-auto max-h-40">
+              <pre className="text-xs text-[#f85149] overflow-auto max-h-40">
                 {error.message}
                 {error.stack}
               </pre>
@@ -178,7 +178,7 @@ export function InlineError({
         <AlertTriangle className="w-4 h-4 text-[#f85149] shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <p className="text-[12px] font-medium text-[#e6edf3]">{title}</p>
-          <p className="text-[11px] text-[#6e7681] mt-0.5">{message}</p>
+          <p className="text-xs text-[#6e7681] mt-0.5">{message}</p>
         </div>
         {onDismiss && (
           <button
@@ -193,7 +193,7 @@ export function InlineError({
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-3 flex items-center gap-1.5 text-[11px] text-[#58a6ff] hover:text-[#79b8ff] transition-colors"
+          className="mt-3 flex items-center gap-1.5 text-xs text-[#58a6ff] hover:text-[#79b8ff] transition-colors"
         >
           <RefreshCw className="w-3 h-3" />
           Try again

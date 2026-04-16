@@ -38,11 +38,11 @@ export default function Error({
         {/* Error Details (Development Only) */}
         {process.env.NODE_ENV === "development" && (
           <details className="mb-4">
-            <summary className="cursor-pointer text-[11px] text-[#484f58] hover:text-[#8b949e] mb-2">
+            <summary className="cursor-pointer text-xs text-[#484f58] hover:text-[#8b949e] mb-2">
               Error details
             </summary>
             <div className="p-3 rounded-md bg-[#161b22] border border-[#30363d]">
-              <pre className="text-[10px] text-[#f85149] overflow-auto max-h-40">
+              <pre className="text-xs text-[#f85149] overflow-auto max-h-40">
                 {error.message}
                 {error.stack}
               </pre>

@@ -15,6 +15,8 @@
 - [Coverage Closure Build Queue (2026-04-15)](status/COVERAGE_CLOSURE_BUILD_QUEUE_2026-04-15.md) — Dependency-ordered queue derived from the coverage matrix, aligned to runtime modules, tests, and acceptance signals.
 - [Phase 1 Build Queue (2026-04-15)](status/PHASE_1_BUILD_QUEUE.md) — Ordered execution checklist for deterministic foundations before broader specialist activation.
 - [Frontend Product Spec (Full, 2026-04-15)](FRONTEND_PRODUCT_SPEC_FULL_2026-04-15.md) — Full product frontend architecture and screen contracts (internal/operator/owner/traveler/public), no Streamlit path.
+- [Frontend Workflow Coverage Baseline (2026-04-16)](FRONTEND_WORKFLOW_COVERAGE_2026-04-16.md) — Verified current-state route/workflow coverage map with surface-by-surface gap analysis.
+- [Frontend Workflow Implementation Checklist (2026-04-16)](FRONTEND_WORKFLOW_IMPLEMENTATION_CHECKLIST_2026-04-16.md) — Phased execution checklist with route-level acceptance criteria and delivery gates.
 - [Next.js Implementation Track (2026-04-15)](status/NEXTJS_IMPLEMENTATION_TRACK_2026-04-15.md) — Corrected execution plan with spine-aligned BFF enums and phased build order (foundation -> workspace core -> expansion).
 - [Operator Workbench Component Spec (2026-04-15)](status/OPERATOR_WORKBENCH_COMPONENT_SPEC_2026-04-15.md) — Screen-level behavior reference for Workbench/Flow Simulation (not runtime stack authority).
 - [Workbench Acceptance Checklist (2026-04-15)](status/WORKBENCH_ACCEPTANCE_CHECKLIST_2026-04-15.md) — Acceptance gates used as behavior validation reference for the Next.js workbench surface.
