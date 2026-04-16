@@ -21,6 +21,8 @@ python tools/context_digest.py \
   --output-json Docs/context/context_digest_2026-04-14.json
 ```
 
+Note: `DESIGN.md` has been moved to `Docs/DESIGN.md`.
+
 Outputs:
 - Markdown digest (`--output-md`) with sections, themes, top terms, and action candidates.
 - JSON digest (`--output-json`) for automation or downstream tooling.

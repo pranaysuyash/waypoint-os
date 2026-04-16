@@ -127,7 +127,7 @@ For each recommendation, document:
   - `travel_agency_process_issue_review_<date>.md` (under `Docs/`)
   - Example: `travel_agency_process_issue_review_2026-04-15.md`
 - This makes issue documents project-specific and discoverable
-- Avoid model-specific naming in issue review files (e.g., no "gemini issue review")
+- Avoid model-specific naming in issue review files.
 
 ### Git Safety (Critical)
 - Never commit or push without explicit user approval in the current conversation.
@@ -143,4 +143,3 @@ For each recommendation, document:
 - Preserve existing `memory/` contents; do not remove memory artifacts unless explicitly instructed.
 - Keep institutional-memory and GTM decision artifacts under `Docs/context/`.
 - Keep internal-only process notes under `Archive/context_ingest/internal_notes_*`.
-

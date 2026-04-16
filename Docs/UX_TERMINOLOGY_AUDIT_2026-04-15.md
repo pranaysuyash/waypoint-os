@@ -85,7 +85,7 @@ frontend/src/
 Docs/
 ├── ARCHITECTURE.md                 # Concept explanations
 ├── CURRENT_STATE.md                # Feature descriptions
-└── DESIGN.md                       # UI terminology
+└── Docs/DESIGN.md                       # UI terminology
 ```
 
 ---

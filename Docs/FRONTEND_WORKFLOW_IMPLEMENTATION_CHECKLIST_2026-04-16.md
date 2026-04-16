@@ -188,4 +188,4 @@ This checklist converts `Docs/FRONTEND_WORKFLOW_COVERAGE_2026-04-16.md` into an 
 
 - `Docs/FRONTEND_WORKFLOW_COVERAGE_2026-04-16.md`
 - `Docs/FRONTEND_PRODUCT_SPEC_FULL_2026-04-15.md`
-- `DESIGN.md`
+- `Docs/DESIGN.md`

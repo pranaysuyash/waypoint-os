@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Suspense, useState, lazy } from 'react';
+import { Suspense, useState, lazy, useCallback } from 'react';
 import { Tabs } from '@/components/ui/tabs';
 import { PipelineFlow } from './PipelineFlow';
 import { Play, RotateCcw, Settings } from 'lucide-react';
@@ -43,11 +43,14 @@ function WorkbenchContent() {
       ? tabParam
       : 'intake';
 
-  const handleTabChange = (tab: WorkbenchTabId) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('tab', tab);
-    router.push(`?${params.toString()}`, { scroll: false });
-  };
+  const handleTabChange = useCallback(
+    (tab: WorkbenchTabId) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('tab', tab);
+      router.push(`?${params.toString()}`, { scroll: false });
+    },
+    [searchParams, router]
+  );
 
   const [isRunning, setIsRunning] = useState(false);
 

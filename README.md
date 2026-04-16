@@ -59,6 +59,7 @@ Inquiry → NB01 Intake → NB02 Gap & Decision → NB03 Strategy & Prompt → O
 ├── specs/                   # JSON schemas and contracts
 ├── prompts/                 # LLM prompt templates
 ├── Docs/                    # Product specs, decision logs, strategy docs
+├── logs/                    # Runtime and test logs
 └── memory/                  # Project memory and institutional knowledge
 ```
 

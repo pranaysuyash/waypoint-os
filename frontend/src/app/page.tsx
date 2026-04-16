@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { memo, useMemo, useCallback } from 'react';
+import { memo, useMemo, useCallback, useState, useEffect } from 'react';
 import {
   Briefcase,
   ArrowRight,
@@ -73,6 +73,9 @@ const StatCard = memo(function StatCard({
     );
   }
 
+  const displayValue = isLoading && value === '—' ? '—' : value;
+  const displaySub = isLoading && sub === 'Loading...' ? 'Loading...' : sub;
+
   return (
     <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 flex flex-col gap-3 hover:border-[#30363d] transition-colors'>
       <div className='flex items-center justify-between'>
@@ -83,20 +86,16 @@ const StatCard = memo(function StatCard({
           className='h-8 w-8 rounded-lg flex items-center justify-center'
           style={{ background: meta.bg }}
         >
-          {isLoading ? (
-            <div className='w-4 h-4 border-2 border-[#0d1117]/30 border-t-[#0d1117] rounded-full animate-spin' />
-          ) : (
-            <Icon className='h-4 w-4' style={{ color: meta.color }} />
-          )}
+          <Icon className='h-4 w-4' style={{ color: meta.color }} />
         </div>
       </div>
       <span
         className='text-3xl font-bold tabular-nums'
         style={{ color: meta.color }}
       >
-        {isLoading ? '—' : value}
+        {displayValue}
       </span>
-      <span className='text-sm text-[#8b949e] font-mono'>{sub}</span>
+      <span className='text-sm text-[#8b949e] font-mono'>{displaySub}</span>
     </div>
   );
 });
@@ -110,10 +109,13 @@ const PipelineBar = memo(function PipelineBar({
   isLoading: boolean;
   error: Error | null;
 }) {
+  const safeData = data ?? [];
   const total = useMemo(() => {
-    if (!data) return 0;
-    return data.reduce((s, x) => s + x.count, 0);
-  }, [data]);
+    return safeData.reduce((s, x) => s + x.count, 0);
+  }, [safeData]);
+
+  // Collapsed state for minimal view
+  const [isExpanded, setIsExpanded] = useState(false);
 
   if (error) {
     return (
@@ -123,65 +125,117 @@ const PipelineBar = memo(function PipelineBar({
     );
   }
 
-  if (isLoading || !data) {
+  if (isLoading && safeData.length === 0) {
     return (
       <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
         <div className='flex items-center justify-between mb-3'>
           <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
             Pipeline
           </h2>
-          <span className='text-sm font-mono text-[#8b949e]'>
-            Loading...
-          </span>
+          <span className='text-sm font-mono text-[#8b949e]'>Loading...</span>
         </div>
         <div className='h-2 bg-[#161b22] rounded-full overflow-hidden'>
-          <div
-            className='h-full bg-[#58a6ff] animate-pulse'
-            style={{ width: '30%' }}
-          />
+          <div className='h-full bg-[#58a6ff]' style={{ width: '30%' }} />
         </div>
       </div>
     );
   }
 
-  return (
-    <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
-      <div className='flex items-center justify-between mb-3'>
-        <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
+  if (safeData.length === 0) {
+    return (
+      <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
+        <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e] mb-2'>
           Pipeline
         </h2>
-        <span className='text-sm font-mono text-[#8b949e]'>
-          {total} total
-        </span>
+        <p className='text-sm text-[#8b949e]'>No active trips in pipeline</p>
+        <Link href='/workbench' className='text-sm text-[#58a6ff] hover:text-[#79b8ff] mt-2 inline-block'>
+          Process your first trip →
+        </Link>
       </div>
-      <div className='flex h-2 rounded-full overflow-hidden gap-px'>
-        {data.map((stage) => (
-          <div
-            key={stage.label}
-            className='h-full'
-            style={{
-              width: `${(stage.count / total) * 100}%`,
-              background: '#58a6ff',
-              opacity: 0.35 + (stage.count / total) * 0.65,
-            }}
-            title={`${stage.label}: ${stage.count}`}
-          />
-        ))}
-      </div>
-      <div className='flex justify-between mt-2.5'>
-        {data.map((stage) => (
-          <div
-            key={stage.label}
-            className='flex flex-col items-center gap-0.5 min-w-0'
+    );
+  }
+
+  // Collapsed view - just summary
+  if (!isExpanded) {
+    return (
+      <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
+        <div className='flex items-center justify-between mb-2'>
+          <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
+            Trip Pipeline
+          </h2>
+          <button 
+            onClick={() => setIsExpanded(true)}
+            className='text-xs text-[#58a6ff] hover:text-[#79b8ff]'
           >
-            <span className='text-sm font-semibold tabular-nums text-[#e6edf3]'>
-              {stage.count}
-            </span>
-            <span className='text-sm text-[#8b949e] truncate'>
-              {stage.label}
-            </span>
+            Expand
+          </button>
+        </div>
+        <div className='flex items-center gap-3'>
+          <div className='flex-1'>
+            <div className='h-2 bg-[#161b22] rounded-full overflow-hidden flex'>
+              {safeData.map((stage, i) => (
+                <div
+                  key={stage.label}
+                  className='h-full'
+                  style={{
+                    width: `${(stage.count / total) * 100}%`,
+                    background: ['#3fb950', '#58a6ff', '#d29922', '#f85149', '#a371f7'][i % 5],
+                  }}
+                />
+              ))}
+            </div>
           </div>
-        ))}
+          <span className='text-sm font-semibold text-[#e6edf3] tabular-nums'>
+            {total}
+          </span>
+        </div>
+        <p className='text-xs text-[#8b949e] mt-2'>
+          {safeData.length} stages · Most in {safeData.reduce((m, s) => s.count > m.count ? s : m).label}
+        </p>
+      </div>
+    );
+  }
+
+  // Expanded view with vertical list
+  return (
+    <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
+      <div className='flex items-center justify-between mb-4'>
+        <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
+          Trip Pipeline
+        </h2>
+        <div className='flex items-center gap-2'>
+          <span className='text-sm font-mono text-[#8b949e]'>{total} total</span>
+          <button 
+            onClick={() => setIsExpanded(false)}
+            className='text-xs text-[#8b949e] hover:text-[#e6edf3]'
+          >
+            Collapse
+          </button>
+        </div>
+      </div>
+      
+      <div className='space-y-2'>
+        {safeData.map((stage, i) => {
+          const percentage = total > 0 ? (stage.count / total) * 100 : 0;
+          const color = ['#3fb950', '#58a6ff', '#d29922', '#f85149', '#a371f7'][i % 5];
+          
+          return (
+            <div key={stage.label} className='group'>
+              <div className='flex items-center justify-between mb-1'>
+                <span className='text-sm text-[#e6edf3]'>{stage.label}</span>
+                <span className='text-sm font-mono text-[#8b949e] tabular-nums'>
+                  {stage.count}
+                </span>
+              </div>
+              <div className='h-1.5 bg-[#161b22] rounded-full overflow-hidden'>
+                <div
+                  className='h-full rounded-full transition-all'
+                  style={{ width: `${percentage}%`, background: color }}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -239,7 +293,7 @@ function RecentTrips() {
   const { data: trips, isLoading, error } = useTrips({ limit: 5 });
 
   const tripItems = useMemo(() => {
-    if (!trips || trips.length === 0) return null;
+    if (trips.length === 0) return [];
 
     return trips.map((trip) => ({
       id: trip.id,
@@ -258,20 +312,33 @@ function RecentTrips() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading && trips.length === 0) {
     return (
       <div className='p-4 space-y-2'>
         {[1, 2, 3].map((i) => (
-          <div key={i} className='h-16 bg-[#161b22] rounded-lg animate-pulse' />
+          <div key={i} className='h-16 bg-[#161b22] rounded-lg' />
         ))}
       </div>
     );
   }
 
-  if (!tripItems) {
+  if (tripItems.length === 0) {
     return (
-      <div className='p-4 text-center text-base text-[#8b949e]'>
-        No recent trips
+      <div className='p-6 text-center'>
+        <div className='w-12 h-12 rounded-full bg-[#161b22] flex items-center justify-center mx-auto mb-3'>
+          <Briefcase className='w-6 h-6 text-[#6e7681]' />
+        </div>
+        <p className='text-base text-[#e6edf3] font-medium mb-1'>No trips yet</p>
+        <p className='text-sm text-[#8b949e] mb-4'>
+          Get started by processing your first customer inquiry
+        </p>
+        <Link
+          href='/workbench'
+          className='inline-flex items-center gap-2 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg text-sm font-medium hover:bg-[#6eb5ff] transition-colors'
+        >
+          Process Your First Trip
+          <ArrowRight className='w-4 h-4' />
+        </Link>
       </div>
     );
   }
@@ -285,7 +352,17 @@ function RecentTrips() {
   );
 }
 
+// Hook to prevent hydration mismatch - only render data after client mount
+function useMounted() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  return mounted;
+}
+
 export default function DashboardPage() {
+  const mounted = useMounted();
   const {
     data: stats,
     isLoading: statsLoading,
@@ -414,7 +491,7 @@ export default function DashboardPage() {
 
         <aside className='space-y-4'>
           <PipelineBar
-            data={pipeline ?? null}
+            data={pipeline}
             isLoading={pipelineLoading}
             error={pipelineError}
           />

@@ -221,6 +221,6 @@ A debug/developer panel allows switching variants:
 
 ## References
 
-- DESIGN.md: Visual design system
+- Docs/DESIGN.md: Visual design system
 - Component Spec: OPERATOR_WORKBENCH_COMPONENT_SPEC
 - Reference HTML: Archive/design_refs/

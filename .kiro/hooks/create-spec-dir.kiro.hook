@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Create spec directory",
+  "description": "Create spec directory for workspace-routing feature",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "mkdir -p .kiro/specs/workspace-routing"
+  }
+}

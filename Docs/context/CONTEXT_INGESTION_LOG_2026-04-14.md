@@ -236,7 +236,7 @@
 - Added canonical issue review doc with project-neutral naming:
   - `Docs/process_issue_review_2026-04-15.md`
 - Kept legacy file as pointer (no deletion):
-  - `Docs/gemini issue review.md`
+  - `Docs/issue review legacy pointer.md`
 - Updated index link:
   - `Docs/INDEX.md`
 - Verification summary:

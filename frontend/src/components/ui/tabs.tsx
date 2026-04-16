@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
 interface TabsProps {
   tabs: { id: string; label: string; count?: number }[];
@@ -13,11 +13,11 @@ export function Tabs({ tabs, activeTab, onTabChange }: TabsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Keyboard navigation for tabs
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      const container = containerRef.current;
+      if (!container) return;
 
-    const handleKeyDown = (e: KeyboardEvent) => {
       const tabElements = Array.from(
         container.querySelectorAll('[role="tab"]')
       ) as HTMLButtonElement[];
@@ -52,11 +52,17 @@ export function Tabs({ tabs, activeTab, onTabChange }: TabsProps) {
 
       tabElements[nextIndex].focus();
       onTabChange(tabs[nextIndex].id);
-    };
+    },
+    [tabs, onTabChange]
+  );
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
 
     container.addEventListener("keydown", handleKeyDown);
     return () => container.removeEventListener("keydown", handleKeyDown);
-  }, [tabs, onTabChange]);
+  }, [handleKeyDown]);
 
   return (
     <div

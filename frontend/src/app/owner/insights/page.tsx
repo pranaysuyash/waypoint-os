@@ -1,8 +1,436 @@
-export default function OwnerInsightsPage() {
+'use client';
+
+import { useState, useMemo, memo } from 'react';
+import {
+  TrendingUp,
+  Users,
+  Clock,
+  DollarSign,
+  AlertTriangle,
+  ChevronDown,
+  Download,
+} from 'lucide-react';
+import { useInsightsSummary, usePipelineMetrics, useTeamMetrics, useBottleneckAnalysis } from '@/hooks/useGovernance';
+import type { TimeRange, StageMetrics, TeamMemberMetrics, BottleneckAnalysis } from '@/types/governance';
+
+// ============================================================================
+// MOCK DATA
+// ============================================================================
+
+const MOCK_INSIGHTS_SUMMARY = {
+  totalInquiries: 47,
+  convertedToBooked: 31,
+  conversionRate: 66,
+  avgResponseTime: 4.2,
+  pipelineValue: 184200,
+  pipelineVelocity: {
+    stage1To2: 0.8,
+    stage2To3: 1.2,
+    stage3To4: 2.8,
+    stage4To5: 1.5,
+    stage5ToBooked: 0.6,
+    averageTotal: 6.9,
+  },
+};
+
+const MOCK_PIPELINE_METRICS: StageMetrics[] = [
+  { stageId: 'intake', stageName: 'New Inquiry', tripCount: 12, avgTimeInStage: 18, exitRate: 92, avgTimeToExit: 18 },
+  { stageId: 'packet', stageName: 'Trip Details', tripCount: 8, avgTimeInStage: 28, exitRate: 88, avgTimeToExit: 28 },
+  { stageId: 'decision', stageName: 'Ready to Quote?', tripCount: 6, avgTimeInStage: 67, exitRate: 75, avgTimeToExit: 67 },
+  { stageId: 'strategy', stageName: 'Build Options', tripCount: 4, avgTimeInStage: 36, exitRate: 85, avgTimeToExit: 36 },
+  { stageId: 'safety', stageName: 'Final Review', tripCount: 3, avgTimeInStage: 14, exitRate: 95, avgTimeToExit: 14 },
+];
+
+const MOCK_TEAM_METRICS: TeamMemberMetrics[] = [
+  { userId: 'agent-001', name: 'Sarah Chen', role: 'Senior Agent', activeTrips: 12, completedTrips: 48, conversionRate: 72, avgResponseTime: 3.2, customerSatisfaction: 4.8, currentWorkload: 'optimal', workloadScore: 75 },
+  { userId: 'agent-002', name: 'Mike Johnson', role: 'Agent', activeTrips: 16, completedTrips: 42, conversionRate: 68, avgResponseTime: 5.1, customerSatisfaction: 4.5, currentWorkload: 'over', workloadScore: 92 },
+  { userId: 'agent-003', name: 'Alex Kim', role: 'Agent', activeTrips: 8, completedTrips: 35, conversionRate: 74, avgResponseTime: 2.8, customerSatisfaction: 4.9, currentWorkload: 'under', workloadScore: 55 },
+  { userId: 'agent-004', name: 'Emily Rodriguez', role: 'Agent', activeTrips: 11, completedTrips: 28, conversionRate: 65, avgResponseTime: 4.5, customerSatisfaction: 4.6, currentWorkload: 'optimal', workloadScore: 78 },
+];
+
+const MOCK_BOTTLENECKS: BottleneckAnalysis[] = [
+  {
+    stageId: 'decision',
+    stageName: 'Ready to Quote?',
+    avgTimeInStage: 67,
+    isBottleneck: true,
+    severity: 'high',
+    primaryCauses: [
+      { cause: 'Supplier response delays', percentage: 60, affectedTrips: 12, suggestedAction: 'Set up automated supplier follow-ups' },
+      { cause: 'Incomplete trip details', percentage: 25, affectedTrips: 5, suggestedAction: 'Add required fields validation' },
+      { cause: 'Client clarification needed', percentage: 15, affectedTrips: 3, suggestedAction: 'Add clarifying question templates' },
+    ],
+  },
+];
+
+const MOCK_REVENUE_BY_MONTH = [
+  { month: 'Jan', inquiries: 12, booked: 8, revenue: 42000 },
+  { month: 'Feb', inquiries: 15, booked: 10, revenue: 58000 },
+  { month: 'Mar', inquiries: 18, booked: 12, revenue: 72000 },
+  { month: 'Apr', inquiries: 14, booked: 9, revenue: 51000 },
+  { month: 'May', inquiries: 20, booked: 14, revenue: 89000 },
+];
+
+// ============================================================================
+// COMPONENTS
+// ============================================================================
+
+const StatCard = memo(function StatCard({
+  title,
+  value,
+  subtext,
+  trend,
+  icon: Icon,
+}: {
+  title: string;
+  value: string;
+  subtext: string;
+  trend?: 'up' | 'down' | 'neutral';
+  icon: React.ComponentType<{ className?: string }>;
+}) {
   return (
-    <div>
-      <h1>Owner Insights</h1>
-      <p>Conversion, turnaround, margin adherence, revision loops, escalation heatmap</p>
+    <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
+      <div className='flex items-start justify-between'>
+        <div>
+          <p className='text-sm text-[#8b949e] mb-1'>{title}</p>
+          <p className='text-2xl font-bold text-[#e6edf3]'>{value}</p>
+          <p className={`text-xs mt-1 ${
+            trend === 'up' ? 'text-[#3fb950]' : 
+            trend === 'down' ? 'text-[#f85149]' : 
+            'text-[#8b949e]'
+          }`}>
+            {subtext}
+          </p>
+        </div>
+        <div className='h-10 w-10 rounded-lg bg-[#161b22] flex items-center justify-center'>
+          <Icon className='h-5 w-5 text-[#58a6ff]' />
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const VelocityBar = memo(function VelocityBar({ 
+  label, 
+  value, 
+  max, 
+  color 
+}: { 
+  label: string; 
+  value: number; 
+  max: number;
+  color: string;
+}) {
+  const percentage = Math.min((value / max) * 100, 100);
+  
+  return (
+    <div className='mb-3'>
+      <div className='flex items-center justify-between mb-1'>
+        <span className='text-sm text-[#e6edf3]'>{label}</span>
+        <span className='text-sm font-mono text-[#8b949e]'>{value}h</span>
+      </div>
+      <div className='h-2 bg-[#161b22] rounded-full overflow-hidden'>
+        <div 
+          className='h-full rounded-full transition-all'
+          style={{ width: `${percentage}%`, background: color }}
+        />
+      </div>
+    </div>
+  );
+});
+
+const TeamMemberRow = memo(function TeamMemberRow({ member }: { member: TeamMemberMetrics }) {
+  const workloadColors = {
+    under: '#58a6ff',
+    optimal: '#3fb950',
+    over: '#d29922',
+    critical: '#f85149',
+  };
+  
+  return (
+    <tr className='border-b border-[#1c2128] last:border-0'>
+      <td className='py-3'>
+        <div className='flex items-center gap-3'>
+          <div className='h-8 w-8 rounded-full bg-[#58a6ff]/20 flex items-center justify-center text-[#58a6ff] text-xs font-bold'>
+            {member.name.split(' ').map(n => n[0]).join('')}
+          </div>
+          <div>
+            <p className='text-sm font-medium text-[#e6edf3]'>{member.name}</p>
+            <p className='text-xs text-[#8b949e]'>{member.role}</p>
+          </div>
+        </div>
+      </td>
+      
+      <td className='py-3 text-center'>
+        <span className='text-sm text-[#e6edf3]'>{member.activeTrips}</span>
+      </td>
+      
+      <td className='py-3 text-center'>
+        <div className='flex items-center justify-center gap-2'>
+          <div className='w-16 h-1.5 bg-[#161b22] rounded-full overflow-hidden'>
+            <div 
+              className='h-full rounded-full'
+              style={{ width: `${member.workloadScore}%`, background: workloadColors[member.currentWorkload] }}
+            />
+          </div>
+          <span className={`text-xs ${
+            member.currentWorkload === 'over' ? 'text-[#d29922]' : 
+            member.currentWorkload === 'critical' ? 'text-[#f85149]' :
+            'text-[#8b949e]'
+          }`}>
+            {member.workloadScore}%
+          </span>
+        </div>
+      </td>
+      
+      <td className='py-3 text-center'>
+        <span className='text-sm text-[#e6edf3]'>{member.conversionRate}%</span>
+      </td>
+      
+      <td className='py-3 text-center'>
+        <span className='text-sm text-[#e6edf3]'>{member.avgResponseTime}h</span>
+      </td>
+      
+      <td className='py-3 text-center'>
+        <span className='text-sm text-[#e6edf3]'>{member.customerSatisfaction}/5</span>
+      </td>
+    </tr>
+  );
+});
+
+const BottleneckCard = memo(function BottleneckCard({ analysis }: { analysis: BottleneckAnalysis }) {
+  return (
+    <div className='rounded-xl border border-[#d29922]/30 bg-[#d29922]/5 p-4'>
+      <div className='flex items-center gap-2 mb-3'>
+        <AlertTriangle className='w-5 h-5 text-[#d29922]' />
+        <h3 className='text-base font-semibold text-[#e6edf3]'>
+          Bottleneck: {analysis.stageName}
+        </h3>
+        <span className='ml-auto px-2 py-1 bg-[#d29922]/20 text-[#d29922] text-xs rounded font-medium'>
+          {analysis.severity.toUpperCase()}
+        </span>
+      </div>
+      
+      <p className='text-sm text-[#8b949e] mb-3'>
+        Taking {analysis.avgTimeInStage} hours on average (target: 24h)
+      </p>
+      
+      <div className='space-y-2'>
+        {analysis.primaryCauses.map((cause, i) => (
+          <div key={i} className='flex items-center justify-between py-2 border-b border-[#30363d]/50 last:border-0'>
+            <div>
+              <p className='text-sm text-[#e6edf3]'>{cause.cause}</p>
+              <p className='text-xs text-[#8b949e]'>Affecting {cause.affectedTrips} trips · {cause.percentage}% of delays</p>
+            </div>
+            <button className='text-xs text-[#58a6ff] hover:text-[#79b8ff]'>
+              {cause.suggestedAction}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+// ============================================================================
+// MAIN PAGE
+// ============================================================================
+
+export default function OwnerInsightsPage() {
+  const [timeRange, setTimeRange] = useState<TimeRange>('30d');
+  
+  // Using mock data - replace with actual hooks when API is ready
+  const summary = MOCK_INSIGHTS_SUMMARY;
+  const pipelineMetrics = MOCK_PIPELINE_METRICS;
+  const teamMetrics = MOCK_TEAM_METRICS;
+  const bottlenecks = MOCK_BOTTLENECKS;
+
+  const maxStageTime = Math.max(...pipelineMetrics.map(m => m.avgTimeInStage));
+
+  return (
+    <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
+      {/* Header */}
+      <header className='flex items-center justify-between pt-1'>
+        <div>
+          <h1 className='text-2xl font-semibold text-[#e6edf3]'>Insights & Analytics</h1>
+          <p className='text-base text-[#8b949e] mt-0.5'>
+            Monitor performance, identify bottlenecks, optimize operations
+          </p>
+        </div>
+        
+        <div className='flex items-center gap-3'>
+          <div className='relative'>
+            <select
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value as TimeRange)}
+              className='appearance-none bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:border-[#58a6ff]'
+            >
+              <option value='7d'>Last 7 days</option>
+              <option value='30d'>Last 30 days</option>
+              <option value='90d'>Last 90 days</option>
+              <option value='mtd'>This month</option>
+              <option value='ytd'>Year to date</option>
+            </select>
+            <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8b949e] pointer-events-none' />
+          </div>
+          
+          <button className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg text-sm hover:bg-[#21262d] transition-colors'>
+            <Download className='w-4 h-4' /> Export
+          </button>
+        </div>
+      </header>
+
+      {/* Summary Stats */}
+      <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
+        <StatCard
+          title='Total Inquiries'
+          value={summary.totalInquiries.toString()}
+          subtext='+12% vs last period'
+          trend='up'
+          icon={TrendingUp}
+        />
+        
+        <StatCard
+          title='Conversion Rate'
+          value={`${summary.conversionRate}%`}
+          subtext='31 of 47 inquiries'
+          trend='up'
+          icon={Users}
+        />
+        
+        <StatCard
+          title='Avg Response Time'
+          value={`${summary.avgResponseTime}h`}
+          subtext='Target: 4h'
+          trend='neutral'
+          icon={Clock}
+        />
+        
+        <StatCard
+          title='Pipeline Value'
+          value={`$${(summary.pipelineValue / 1000).toFixed(0)}k`}
+          subtext='Across 33 active trips'
+          trend='up'
+          icon={DollarSign}
+        />
+      </div>
+
+      {/* Main Content Grid */}
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-5'>
+        
+        {/* Pipeline Velocity */}
+        <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5'>
+          <div className='flex items-center justify-between mb-4'>
+            <h2 className='text-base font-semibold text-[#e6edf3]'>Pipeline Velocity</h2>
+            <span className='text-xs text-[#8b949e]'>Avg: {summary.pipelineVelocity.averageTotal} days total</span>
+          </div>
+          
+          <div className='space-y-1'>
+            <VelocityBar 
+              label='New Inquiry → Details' 
+              value={summary.pipelineVelocity.stage1To2 * 24} 
+              max={maxStageTime}
+              color='#3fb950'
+            />
+            <VelocityBar 
+              label='Details → Ready to Quote' 
+              value={summary.pipelineVelocity.stage2To3 * 24} 
+              max={maxStageTime}
+              color='#58a6ff'
+            />
+            <VelocityBar 
+              label='Ready to Quote → Build Options' 
+              value={summary.pipelineVelocity.stage3To4 * 24} 
+              max={maxStageTime}
+              color='#d29922'
+            />
+            <VelocityBar 
+              label='Build Options → Final Review' 
+              value={summary.pipelineVelocity.stage4To5 * 24} 
+              max={maxStageTime}
+              color='#58a6ff'
+            />
+            <VelocityBar 
+              label='Final Review → Booked' 
+              value={summary.pipelineVelocity.stage5ToBooked * 24} 
+              max={maxStageTime}
+              color='#3fb950'
+            />
+          </div>
+        </div>
+
+        {/* Stage Breakdown */}
+        <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5'>
+          <h2 className='text-base font-semibold text-[#e6edf3] mb-4'>Stage Breakdown</h2>
+          
+          <div className='space-y-3'>
+            {pipelineMetrics.map((stage) => (
+              <div key={stage.stageId} className='flex items-center justify-between'>
+                <div className='flex-1'>
+                  <div className='flex items-center justify-between mb-1'>
+                    <span className='text-sm text-[#e6edf3]'>{stage.stageName}</span>
+                    <span className='text-xs text-[#8b949e]'>{stage.tripCount} trips · {stage.exitRate}% exit</span>
+                  </div>
+                  <div className='h-1.5 bg-[#161b22] rounded-full overflow-hidden'>
+                    <div 
+                      className='h-full bg-[#58a6ff] rounded-full'
+                      style={{ width: `${(stage.tripCount / 20) * 100}%` }}
+                    />
+                  </div>
+                </div>
+                
+                <span className='ml-4 text-xs text-[#8b949e] w-16 text-right'>
+                  {stage.avgTimeInStage}h
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Team Performance */}
+        <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5 lg:col-span-2'>
+          <h2 className='text-base font-semibold text-[#e6edf3] mb-4'>Team Performance</h2>
+          
+          <div className='overflow-x-auto'>
+            <table className='w-full'>
+              <thead>
+                <tr className='border-b border-[#30363d]'>
+                  <th className='text-left py-2 text-sm font-medium text-[#8b949e]'>Agent</th>
+                  <th className='text-center py-2 text-sm font-medium text-[#8b949e]'>Active</th>
+                  <th className='text-center py-2 text-sm font-medium text-[#8b949e]'>Workload</th>
+                  <th className='text-center py-2 text-sm font-medium text-[#8b949e]'>Conversion</th>
+                  <th className='text-center py-2 text-sm font-medium text-[#8b949e]'>Response</th>
+                  <th className='text-center py-2 text-sm font-medium text-[#8b949e]'>CSAT</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teamMetrics.map((member) => (
+                  <TeamMemberRow key={member.userId} member={member} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Bottlenecks */}
+        <div className='lg:col-span-2'>
+          <h2 className='text-base font-semibold text-[#e6edf3] mb-3'>Bottleneck Analysis</h2>
+          
+          {bottlenecks.length > 0 ? (
+            <div className='space-y-3'>
+              {bottlenecks.map((bottleneck) => (
+                <BottleneckCard key={bottleneck.stageId} analysis={bottleneck} />
+              ))}
+            </div>
+          ) : (
+            <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-6 text-center'>
+              <CheckCircle className='w-8 h-8 text-[#3fb950] mx-auto mb-2' />
+              <p className='text-sm text-[#8b949e]'>No bottlenecks detected. Pipeline is flowing smoothly!</p>
+            </div>
+          )}
+        </div>
+
+      </div>
     </div>
   );
 }

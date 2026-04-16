@@ -53,6 +53,20 @@ from src.intake.orchestration import run_spine_once
 from src.intake.packet_models import SourceEnvelope
 from src.intake.safety import set_strict_mode
 
+# Import persistence (handle hyphen in path)
+import importlib.util
+import sys
+from pathlib import Path
+_persistence_path = Path(__file__).parent / "persistence.py"
+spec = importlib.util.spec_from_file_location("persistence", _persistence_path)
+persistence = importlib.util.module_from_spec(spec)
+sys.modules["persistence"] = persistence
+spec.loader.exec_module(persistence)
+TripStore = persistence.TripStore
+AssignmentStore = persistence.AssignmentStore
+AuditStore = persistence.AuditStore
+save_processed_trip = persistence.save_processed_trip
+
 logger = logging.getLogger("spine-api")
 
 # =============================================================================
@@ -305,6 +319,24 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
             execution_ms,
         )
 
+        # Save the trip to persistence
+        try:
+            trip_id = save_processed_trip(
+                {
+                    "run_id": run_id,
+                    "packet": _to_dict(result.packet) if hasattr(result, "packet") else None,
+                    "validation": _to_dict(result.validation) if hasattr(result, "validation") else None,
+                    "decision": _to_dict(result.decision) if hasattr(result, "decision") else None,
+                    "strategy": _to_dict(result.strategy) if hasattr(result, "strategy") else None,
+                    "meta": meta.model_dump(),
+                },
+                source="spine_api",
+            )
+            logger.info("Trip saved: %s", trip_id)
+        except Exception as e:
+            logger.error("Failed to save trip: %s", e)
+            # Don't fail the request if saving fails
+
         all_leaks: List[str] = (
             result.leakage_result.get("leaks", [])
             if hasattr(result, "leakage_result") and result.leakage_result
@@ -401,6 +433,84 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
     finally:
         # Reset strict mode after every request to prevent state leaking to the next
         set_strict_mode(False)
+
+
+from spine-api.persistence import TripStore, AssignmentStore, AuditStore, save_processed_trip
+
+
+# =============================================================================
+# Trip Management Endpoints
+# =============================================================================
+
+@app.get("/trips")
+def list_trips(status: Optional[str] = None, limit: int = 100):
+    """List all trips, optionally filtered by status."""
+    trips = TripStore.list_trips(status=status, limit=limit)
+    return {"items": trips, "total": len(trips)}
+
+
+@app.get("/trips/{trip_id}")
+def get_trip(trip_id: str):
+    """Get a specific trip by ID."""
+    trip = TripStore.get_trip(trip_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    # Include assignment info
+    assignment = AssignmentStore.get_assignment(trip_id)
+    if assignment:
+        trip["assigned_to"] = assignment["agent_id"]
+        trip["assigned_to_name"] = assignment["agent_name"]
+    
+    return trip
+
+
+@app.post("/trips/{trip_id}/assign")
+def assign_trip(trip_id: str, agent_id: str, agent_name: str, assigned_by: str = "system"):
+    """Assign a trip to an agent."""
+    trip = TripStore.get_trip(trip_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    AssignmentStore.assign_trip(trip_id, agent_id, agent_name, assigned_by)
+    
+    # Update trip status
+    TripStore.update_trip(trip_id, {"status": "assigned"})
+    
+    return {"success": True, "trip_id": trip_id, "assigned_to": agent_id}
+
+
+@app.post("/trips/{trip_id}/unassign")
+def unassign_trip(trip_id: str, unassigned_by: str = "system"):
+    """Remove assignment from a trip."""
+    trip = TripStore.get_trip(trip_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    AssignmentStore.unassign_trip(trip_id, unassigned_by)
+    
+    return {"success": True, "trip_id": trip_id}
+
+
+@app.get("/assignments")
+def list_assignments(agent_id: Optional[str] = None):
+    """List assignments, optionally filtered by agent."""
+    if agent_id:
+        assignments = AssignmentStore.get_trips_for_agent(agent_id)
+    else:
+        # Get all assignments
+        import json
+        from spine-api.persistence import AssignmentStore
+        assignments = list(AssignmentStore._load_assignments().values())
+    
+    return {"items": assignments, "total": len(assignments)}
+
+
+@app.get("/audit")
+def get_audit_events(limit: int = 100):
+    """Get recent audit events."""
+    events = AuditStore.get_events(limit=limit)
+    return {"items": events, "total": len(events)}
 
 
 # =============================================================================

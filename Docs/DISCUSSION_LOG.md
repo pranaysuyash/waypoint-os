@@ -549,7 +549,7 @@ Environment date checked before this documentation update:
 - Addressed naming convention drift:
   - Added canonical project-neutral review file:
     - `Docs/process_issue_review_2026-04-15.md`
-  - Converted `Docs/gemini issue review.md` to legacy pointer.
+  - Converted the legacy issue review pointer filename to a non-model-specific name.
   - Updated `Docs/INDEX.md` link to project-neutral file.
 - Stabilized unrelated flaky geography test using unique runtime-generated fake city names:
   - `tests/test_geography.py`

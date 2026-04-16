@@ -1,0 +1,19 @@
+{
+  "specType": "feature",
+  "workflowType": "requirements-first",
+  "featureName": "workspace-routing",
+  "createdDate": "2026-04-16",
+  "status": "implementation",
+  "completedPhases": ["requirements", "design"],
+  "nextPhase": "implementation",
+  "lastUpdated": "2026-04-16",
+  "fixesApplied": [
+    "Added session persistence spec (FR-3.5)",
+    "Fixed route structure contradiction (layout.tsx is shell)",
+    "Corrected workbench reuse assumption (NEW components, not reused)",
+    "Added Phase 4 dependencies",
+    "Replaced owner placeholders with TBD",
+    "Added auth/access control spec (Section 9.2)",
+    "Completed cache invalidation spec (Section 8.1)"
+  ]
+}

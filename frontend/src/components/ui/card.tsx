@@ -49,16 +49,16 @@ const CardTitle = React.forwardRef<HTMLParagraphElement, CardTitleProps>(
   ({ className, level = "h3", children, ...props }, ref) => {
     const Tag = level;
     const sizeClasses = {
-      h1: "text-[15px] font-semibold",
-      h2: "text-[14px] font-semibold",
-      h3: "text-[13px] font-semibold",
-      h4: "text-[12px] font-semibold",
+      h1: "text-[18px] font-semibold",
+      h2: "text-[16px] font-semibold",
+      h3: "text-[14px] font-semibold",
+      h4: "text-[14px] font-medium",
     };
 
     return (
       <Tag
         ref={ref}
-        className={cn(sizeClasses[level], "leading-none tracking-tight", className)}
+        className={cn(sizeClasses[level], "leading-tight tracking-tight", className)}
         {...props}
       >
         {children}
@@ -74,7 +74,7 @@ const CardDescription = React.forwardRef<HTMLParagraphElement, CardDescriptionPr
   ({ className, ...props }, ref) => (
     <p
       ref={ref}
-      className={cn("text-xs text-[#8b949e]", className)}
+      className={cn("text-sm text-[#8b949e]", className)}
       {...props}
     />
   )

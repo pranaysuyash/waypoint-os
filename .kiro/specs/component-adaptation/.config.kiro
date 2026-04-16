@@ -1,0 +1,10 @@
+{
+  "specType": "feature",
+  "workflowType": "requirements-first",
+  "featureName": "component-adaptation",
+  "createdDate": "2026-04-16",
+  "status": "design",
+  "completedPhases": ["requirements"],
+  "nextPhase": "implementation",
+  "relatedSpecs": ["workspace-routing"]
+}

@@ -20,6 +20,30 @@
 - [Next.js Implementation Track (2026-04-15)](status/NEXTJS_IMPLEMENTATION_TRACK_2026-04-15.md) — Corrected execution plan with spine-aligned BFF enums and phased build order (foundation -> workspace core -> expansion).
 - [Operator Workbench Component Spec (2026-04-15)](status/OPERATOR_WORKBENCH_COMPONENT_SPEC_2026-04-15.md) — Screen-level behavior reference for Workbench/Flow Simulation (not runtime stack authority).
 - [Workbench Acceptance Checklist (2026-04-15)](status/WORKBENCH_ACCEPTANCE_CHECKLIST_2026-04-15.md) — Acceptance gates used as behavior validation reference for the Next.js workbench surface.
+- [Vendor/Cost Tracking Gap Analysis (2026-04-16)](VENDOR_COST_TRACKING_GAP_ANALYSIS_2026-04-16.md) — Critical gap: no vendor management, margin calculation, or sourcing hierarchy logic. Documented as intentional deferral.
+- [Vendor/Cost/Sourcing Discovery Gap Analysis (2026-04-16)](VENDOR_COST_TRACKING_DISCOVERY_GAP_ANALYSIS_2026-04-16.md) — Full deep-dive: evidence inventory, gap taxonomy, dependency graph, data models, phase-in plan for vendor/supplier/cost/margin/sourcing.
+- [Master Gap Register (2026-04-16)](MASTER_GAP_REGISTER_2026-04-16.md) — ⭐ Single source of truth: ALL 17 gap areas with priority, dependencies, deep-dive status, and naming convention.
+
+### Discovery Gap Deep-Dives (2026-04-16)
+
+- [Gap #01: Vendor/Cost/Sourcing/Margin](VENDOR_COST_TRACKING_DISCOVERY_GAP_ANALYSIS_2026-04-16.md) — ✅ Complete
+- [Gap #02: Data Persistence](DISCOVERY_GAP_DATA_PERSISTENCE_2026-04-16.md) — ✅ Complete
+- [Gap #03: Communication/Channels](DISCOVERY_GAP_COMMUNICATION_CHANNELS_2026-04-16.md) — ✅ Complete
+- [Gap #04: Financial State Tracking](DISCOVERY_GAP_FINANCIAL_STATE_2026-04-16.md) — ✅ Complete
+- [Gap #05: Cancellation/Refund Policy Engine](DISCOVERY_GAP_CANCELLATION_REFUND_2026-04-16.md) — ✅ Complete
+- [Gap #06: Customer Lifecycle & Cross-Trip Memory](DISCOVERY_GAP_CUSTOMER_LIFECYCLE_2026-04-16.md) — ✅ Complete
+- [Gap #07: LLM/AI Integration Architecture](DISCOVERY_GAP_LLM_AI_INTEGRATION_2026-04-16.md) — ✅ Complete
+- [Gap #08: Auth/Identity & Multi-Agent](DISCOVERY_GAP_AUTH_IDENTITY_MULTI_AGENT_2026-04-16.md) — ✅ Complete
+- Gaps #09-#17: ⬜ Pending → ✅ All complete:
+  - [Gap #09: In-Trip Ops & Emergency Protocol](DISCOVERY_GAP_IN_TRIP_OPS_EMERGENCY_2026-04-16.md)
+  - [Gap #10: Document/Visa Management](DISCOVERY_GAP_DOCUMENT_VISA_MANAGEMENT_2026-04-16.md)
+  - [Gap #11: Post-Trip/Feedback/Learning Loops](DISCOVERY_GAP_POST_TRIP_FEEDBACK_LOOPS_2026-04-16.md)
+  - [Gap #12: Analytics/Reporting Pipeline](DISCOVERY_GAP_ANALYTICS_REPORTING_2026-04-16.md)
+  - [Gap #13: Audit Trail/Action Logging](DISCOVERY_GAP_AUDIT_TRAIL_ACTION_LOGGING_2026-04-16.md)
+  - [Gap #14: Seasonality/Dynamic Pricing](DISCOVERY_GAP_SEASONALITY_DYNAMIC_PRICING_2026-04-16.md)
+  - [Gap #15: Insurance/TCS/GST Compliance](DISCOVERY_GAP_INSURANCE_TCS_GST_2026-04-16.md)
+  - [Gap #16: Configuration Management](DISCOVERY_GAP_CONFIGURATION_MANAGEMENT_2026-04-16.md)
+  - [Gap #17: Industry Blind Spots](DISCOVERY_GAP_INDUSTRY_BLIND_SPOTS_2026-04-16.md)
 - [First Principles Foundation (2026-04-14)](FIRST_PRINCIPLES_FOUNDATION_2026-04-14.md) — Core truths, objective function, and strict dependency-ordered build sequence.
 - [Rolling Context Synthesis](ROLLING_CONTEXT_SYNTHESIS.md) — Active cross-part synthesis and implementation contracts.
 - [First Mile Implementation](FIRST_MILE_IMPLEMENTATION.md) — Roadmap for the Agency Context deconstruction.

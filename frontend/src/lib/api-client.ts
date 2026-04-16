@@ -212,6 +212,11 @@ export interface Trip {
   age: string;
   createdAt: string;
   updatedAt: string;
+  // Additional fields for UI display
+  party?: number;
+  dateWindow?: string;
+  action?: string;
+  overdue?: boolean;
 }
 
 export interface TripStats {

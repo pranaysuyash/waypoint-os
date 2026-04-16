@@ -7,7 +7,7 @@
 
 ## What Was Built
 
-### 1. Design System (DESIGN.md)
+### 1. Design System (Docs/DESIGN.md)
 **Palantir-style cartographic dark interface**
 
 - **Backgrounds**: Deep canvas (#080a0c) to elevated surfaces (#161b22)

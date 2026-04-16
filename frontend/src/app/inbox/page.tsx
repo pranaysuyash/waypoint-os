@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, memo, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Briefcase,
@@ -9,41 +9,40 @@ import {
   Users,
   Calendar,
   AlertTriangle,
+  CheckSquare,
+  Square,
+  UserPlus,
+  MoreHorizontal,
+  Download,
+  Filter,
+  Search,
+  Flag,
 } from 'lucide-react';
+import { useTrips } from '@/hooks/useTrips';
+import { InlineLoading } from '@/components/ui/loading';
+import { InlineError } from '@/components/error-boundary';
+import type { TeamMember } from '@/types/governance';
+
+// ============================================================================
+// MOCK TEAM DATA - Replace with real API
+// ============================================================================
+
+const TEAM_MEMBERS: TeamMember[] = [
+  { id: 'agent-001', name: 'Sarah Chen', email: 'sarah@agency.com', role: 'agent', isActive: true, joinedAt: '2026-01-15', capacity: 15, currentAssignments: 12 },
+  { id: 'agent-002', name: 'Mike Johnson', email: 'mike@agency.com', role: 'agent', isActive: true, joinedAt: '2026-02-01', capacity: 15, currentAssignments: 16 },
+  { id: 'agent-003', name: 'Alex Kim', email: 'alex@agency.com', role: 'agent', isActive: true, joinedAt: '2026-03-10', capacity: 10, currentAssignments: 8 },
+  { id: 'unassigned', name: 'Unassigned', email: '', role: 'agent', isActive: true, joinedAt: '', capacity: 0, currentAssignments: 3 },
+];
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 type StateKey = 'green' | 'amber' | 'red' | 'blue';
+type PriorityKey = 'low' | 'medium' | 'high' | 'critical';
+type SLAStatus = 'on_track' | 'at_risk' | 'breached';
 
-const STATE_META: Record<
-  StateKey,
-  { color: string; bg: string; border: string; label: string }
-> = {
-  green: {
-    color: '#3fb950',
-    bg: 'rgba(63,185,80,0.12)',
-    border: 'rgba(63,185,80,0.25)',
-    label: 'PROCEED_SAFE',
-  },
-  amber: {
-    color: '#d29922',
-    bg: 'rgba(210,153,34,0.12)',
-    border: 'rgba(210,153,34,0.25)',
-    label: 'BRANCH / DRAFT',
-  },
-  red: {
-    color: '#f85149',
-    bg: 'rgba(248,81,73,0.12)',
-    border: 'rgba(248,81,73,0.25)',
-    label: 'STOP_REVIEW',
-  },
-  blue: {
-    color: '#58a6ff',
-    bg: 'rgba(88,166,255,0.12)',
-    border: 'rgba(88,166,255,0.25)',
-    label: 'ASK_FOLLOWUP',
-  },
-};
-
-type TripItem = {
+interface TripItem {
   id: string;
   destination: string;
   type: string;
@@ -53,218 +52,511 @@ type TripItem = {
   age: string;
   action: string;
   overdue?: boolean;
+  assignedTo?: string;
+  assignedToName?: string;
+  priority: PriorityKey;
+  slaStatus: SLAStatus;
+  daysInStage: number;
+  value?: number;
+}
+
+// ============================================================================
+// STATE CONFIGURATION
+// ============================================================================
+
+const STATE_META: Record<
+  StateKey,
+  { color: string; bg: string; border: string; label: string }
+> = {
+  green: {
+    color: '#3fb950',
+    bg: 'rgba(63,185,80,0.12)',
+    border: 'rgba(63,185,80,0.25)',
+    label: 'Ready',
+  },
+  amber: {
+    color: '#d29922',
+    bg: 'rgba(210,153,34,0.12)',
+    border: 'rgba(210,153,34,0.25)',
+    label: 'In Progress',
+  },
+  red: {
+    color: '#f85149',
+    bg: 'rgba(248,81,73,0.12)',
+    border: 'rgba(248,81,73,0.25)',
+    label: 'Needs Review',
+  },
+  blue: {
+    color: '#58a6ff',
+    bg: 'rgba(88,166,255,0.12)',
+    border: 'rgba(88,166,255,0.25)',
+    label: 'Awaiting Info',
+  },
 };
 
-const TRIPS: TripItem[] = [
-  {
-    id: 'TRP-2026-MSC-0422',
-    destination: 'Moscow',
-    type: 'Solo',
-    party: 1,
-    dateWindow: 'Jun 10–20',
-    state: 'red',
-    age: '2d ago',
-    action: 'Requires owner review',
-    overdue: true,
-  },
-  {
-    id: 'TRP-2026-AND-0420',
-    destination: 'Andaman',
-    type: 'Honeymoon',
-    party: 2,
-    dateWindow: 'May 15–22',
-    state: 'amber',
-    age: '1d ago',
-    action: 'Draft itinerary branch pending',
-  },
-  {
-    id: 'TRP-2026-DXB-0418',
-    destination: 'Dubai',
-    type: 'Corporate',
-    party: 8,
-    dateWindow: 'Jul 3–7',
-    state: 'blue',
-    age: '5h ago',
-    action: 'Clarification requested from client',
-  },
-  {
-    id: 'TRP-2026-SGP-0315',
-    destination: 'Singapore',
-    type: 'Family',
-    party: 4,
-    dateWindow: 'Aug 1–10',
-    state: 'green',
-    age: '2h ago',
-    action: 'Ready to proceed',
-  },
-  {
-    id: 'TRP-2026-BKK-0401',
-    destination: 'Bangkok',
-    type: 'Group',
-    party: 12,
-    dateWindow: 'Sep 5–12',
-    state: 'green',
-    age: '3d ago',
-    action: 'Booking confirmation pending',
-  },
-  {
-    id: 'TRP-2026-PAR-0430',
-    destination: 'Paris',
-    type: 'Anniversary',
-    party: 2,
-    dateWindow: 'Oct 14–21',
-    state: 'amber',
-    age: '4d ago',
-    action: 'Visa docs incomplete',
-  },
-  {
-    id: 'TRP-2026-NYC-0512',
-    destination: 'New York',
-    type: 'Family',
-    party: 5,
-    dateWindow: 'Dec 20–28',
-    state: 'blue',
-    age: '6h ago',
-    action: 'Budget clarification needed',
-  },
-];
+const PRIORITY_META: Record<
+  PriorityKey,
+  { color: string; label: string; icon: React.ComponentType<{ className?: string }> }
+> = {
+  low: { color: '#8b949e', label: 'Low', icon: Flag },
+  medium: { color: '#58a6ff', label: 'Medium', icon: Flag },
+  high: { color: '#d29922', label: 'High', icon: Flag },
+  critical: { color: '#f85149', label: 'Critical', icon: AlertTriangle },
+};
 
-type FilterKey = 'all' | 'pending' | 'review';
+// ============================================================================
+// COMPONENTS
+// ============================================================================
 
-const FILTERS: { key: FilterKey; label: string; count: number }[] = [
-  { key: 'all', label: 'All', count: TRIPS.length },
-  {
-    key: 'pending',
-    label: 'Pending',
-    count: TRIPS.filter((t) => t.state === 'amber' || t.state === 'blue')
-      .length,
-  },
-  {
-    key: 'review',
-    label: 'Needs Review',
-    count: TRIPS.filter((t) => t.state === 'red').length,
-  },
-];
-
-function TripCard({ trip }: { trip: TripItem }) {
-  const meta = STATE_META[trip.state];
+const PriorityBadge = memo(function PriorityBadge({ priority }: { priority: PriorityKey }) {
+  const meta = PRIORITY_META[priority];
+  const Icon = meta.icon;
+  
   return (
-    <Link
-      href='/workbench'
-      className='group flex flex-col gap-3 rounded-xl border bg-[#0f1115] p-4 transition-colors hover:border-[#30363d]'
-      style={{ borderColor: trip.overdue ? meta.border : '#1c2128' }}
+    <span
+      className='inline-flex items-center gap-1 text-xs'
+      style={{ color: meta.color }}
     >
-      <div className='flex items-start justify-between gap-3'>
-        <div className='flex items-center gap-2 min-w-0'>
-          {trip.overdue && (
-            <AlertTriangle
-              className='h-3.5 w-3.5 shrink-0'
-              style={{ color: meta.color }}
-            />
-          )}
-          <span className='text-[14px] font-semibold text-[#e6edf3] truncate'>
-            {trip.destination}
+      <Icon className='w-3 h-3' />
+      {meta.label}
+    </span>
+  );
+});
+
+const SLABadge = memo(function SLABadge({ status, daysInStage }: { status: SLAStatus; daysInStage: number }) {
+  const styles = {
+    on_track: { color: '#3fb950', bg: 'rgba(63,185,80,0.1)', label: 'On Track' },
+    at_risk: { color: '#d29922', bg: 'rgba(210,153,34,0.1)', label: `${daysInStage}d` },
+    breached: { color: '#f85149', bg: 'rgba(248,81,73,0.1)', label: `${daysInStage}d overdue` },
+  };
+  
+  const style = styles[status];
+  
+  return (
+    <span
+      className='inline-block px-1.5 py-0.5 rounded text-xs font-medium'
+      style={{ color: style.color, background: style.bg }}
+    >
+      {style.label}
+    </span>
+  );
+});
+
+const TripCard = memo(function TripCard({
+  trip,
+  isSelected,
+  onSelect,
+}: {
+  trip: TripItem;
+  isSelected: boolean;
+  onSelect: (id: string, selected: boolean) => void;
+}) {
+  const meta = STATE_META[trip.state];
+  
+  return (
+    <div
+      className='group relative rounded-xl border bg-[#0f1115] p-4 transition-all hover:border-[#30363d]'
+      style={{ borderColor: trip.slaStatus === 'breached' ? '#f85149' : '#1c2128' }}
+    >
+      {/* Selection Checkbox */}
+      <button
+        type='button'
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect(trip.id, !isSelected);
+        }}
+        className='absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity'
+      >
+        {isSelected ? (
+          <CheckSquare className='w-4 h-4 text-[#58a6ff]' />
+        ) : (
+          <Square className='w-4 h-4 text-[#484f58]' />
+        )}
+      </button>
+
+      <Link href={`/workbench?trip=${trip.id}`} className='block pl-6'>
+        <div className='flex items-start justify-between gap-3 mb-2'>
+          <div className='flex items-center gap-2 min-w-0'>
+            <span className='text-[14px] font-semibold text-[#e6edf3] truncate' title={trip.destination}>
+              {trip.destination}
+            </span>
+            <span className='text-xs text-[#8b949e]'>{trip.type}</span>
+          </div>
+          <div className='flex items-center gap-1'>
+            <PriorityBadge priority={trip.priority} />
+            <span
+              className='shrink-0 text-xs font-mono font-semibold px-2 py-0.5 rounded-md whitespace-nowrap'
+              style={{ color: meta.color, background: meta.bg }}
+            >
+              {meta.label}
+            </span>
+          </div>
+        </div>
+
+        <div className='flex items-center gap-4 text-xs text-[#8b949e] mb-2'>
+          <span className='flex items-center gap-1'>
+            <Users className='h-3 w-3' aria-hidden='true' /> {trip.party} pax
           </span>
-          <span className='text-xs text-[#8b949e]'>{trip.type}</span>
+          <span className='flex items-center gap-1'>
+            <Calendar className='h-3 w-3' aria-hidden='true' /> {trip.dateWindow}
+          </span>
+          <span className='flex items-center gap-1 font-mono text-[#484f58]'>
+            <Clock className='h-3 w-3' aria-hidden='true' /> {trip.age}
+          </span>
+          {trip.value && (
+            <span className='font-mono text-[#58a6ff]'>
+              ${(trip.value / 1000).toFixed(1)}k
+            </span>
+          )}
         </div>
-        <span
-          className='shrink-0 text-xs font-mono font-semibold px-2 py-0.5 rounded-md whitespace-nowrap'
-          style={{ color: meta.color, background: meta.bg }}
+
+        <div className='flex items-center justify-between'>
+          <div className='flex items-center gap-2'>
+            <Briefcase className='h-3 w-3 text-[#484f58]' aria-hidden='true' />
+            <span className='text-xs text-[#8b949e]'>{trip.action}</span>
+          </div>
+          <div className='flex items-center gap-2'>
+            {trip.assignedToName ? (
+              <span className='text-xs text-[#8b949e]'>
+                👤 {trip.assignedToName}
+              </span>
+            ) : (
+              <span className='text-xs text-[#d29922]'>
+                👤 Unassigned
+              </span>
+            )}
+            <SLABadge status={trip.slaStatus} daysInStage={trip.daysInStage} />
+          </div>
+        </div>
+
+        <div className='text-xs font-mono text-[#484f58] mt-2'>{trip.id}</div>
+      </Link>
+    </div>
+  );
+});
+
+// ============================================================================
+// BULK ACTIONS TOOLBAR
+// ============================================================================
+
+function BulkActionsToolbar({
+  selectedCount,
+  onClearSelection,
+  onAssign,
+  onExport,
+}: {
+  selectedCount: number;
+  onClearSelection: () => void;
+  onAssign: () => void;
+  onExport: () => void;
+}) {
+  const [showAssignDropdown, setShowAssignDropdown] = useState(false);
+
+  return (
+    <div className='flex items-center justify-between py-2 px-3 bg-[#161b22] rounded-lg border border-[#30363d]'>
+      <div className='flex items-center gap-3'>
+        <span className='text-sm text-[#e6edf3]'>
+          <strong>{selectedCount}</strong> trips selected
+        </span>
+        <button
+          onClick={onClearSelection}
+          className='text-xs text-[#8b949e] hover:text-[#e6edf3]'
         >
-          {meta.label}
-        </span>
+          Clear
+        </button>
       </div>
 
-      <div className='flex items-center gap-4 text-xs text-[#8b949e]'>
-        <span className='flex items-center gap-1'>
-          <Users className='h-3 w-3' /> {trip.party} pax
-        </span>
-        <span className='flex items-center gap-1'>
-          <Calendar className='h-3 w-3' /> {trip.dateWindow}
-        </span>
-        <span className='flex items-center gap-1 font-mono text-[#484f58]'>
-          <Clock className='h-3 w-3' /> {trip.age}
-        </span>
-      </div>
-
-      <div className='flex items-center justify-between'>
-        <div className='flex items-center gap-2'>
-          <Briefcase className='h-3 w-3 text-[#484f58]' />
-          <span className='text-xs text-[#8b949e]'>{trip.action}</span>
+      <div className='flex items-center gap-2'>
+        <div className='relative'>
+          <button
+            onClick={() => setShowAssignDropdown(!showAssignDropdown)}
+            className='flex items-center gap-1.5 px-3 py-1.5 bg-[#58a6ff] text-[#0d1117] rounded-lg text-sm font-medium hover:bg-[#6eb5ff] transition-colors'
+          >
+            <UserPlus className='w-4 h-4' />
+            Assign to...
+          </button>
+          
+          {showAssignDropdown && (
+            <div className='absolute top-full right-0 mt-1 w-48 bg-[#0f1115] border border-[#30363d] rounded-lg shadow-xl z-10'>
+              {TEAM_MEMBERS.filter(m => m.id !== 'unassigned').map((member) => (
+                <button
+                  key={member.id}
+                  onClick={() => {
+                    onAssign();
+                    setShowAssignDropdown(false);
+                  }}
+                  className='w-full flex items-center gap-2 px-3 py-2 text-left text-sm text-[#e6edf3] hover:bg-[#161b22] first:rounded-t-lg last:rounded-b-lg'
+                >
+                  <div className='h-6 w-6 rounded-full bg-[#58a6ff]/20 flex items-center justify-center text-[#58a6ff] text-xs font-bold'>
+                    {member.name.split(' ').map(n => n[0]).join('')}
+                  </div>
+                  <div>
+                    <div>{member.name}</div>
+                    <div className='text-xs text-[#8b949e]'>
+                      {member.currentAssignments}/{member.capacity} trips
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-        <ChevronRight className='h-3.5 w-3.5 text-[#30363d] group-hover:text-[#8b949e] transition-colors shrink-0' />
-      </div>
 
-      <div className='text-xs font-mono text-[#484f58]'>{trip.id}</div>
-    </Link>
+        <button
+          onClick={onExport}
+          className='flex items-center gap-1.5 px-3 py-1.5 bg-[#161b22] text-[#8b949e] rounded-lg text-sm hover:text-[#e6edf3] transition-colors'
+        >
+          <Download className='w-4 h-4' />
+          Export
+        </button>
+      </div>
+    </div>
   );
 }
 
-export default function InboxPage() {
-  const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
+// ============================================================================
+// MAIN PAGE
+// ============================================================================
 
-  const filtered = TRIPS.filter((t) => {
-    if (activeFilter === 'pending')
-      return t.state === 'amber' || t.state === 'blue';
-    if (activeFilter === 'review') return t.state === 'red';
-    return true;
-  });
+export default function InboxPage() {
+  const [activeFilter, setActiveFilter] = useState<'all' | 'pending' | 'review' | 'unassigned'>('all');
+  const [selectedTrips, setSelectedTrips] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+  const { data: trips, isLoading, error, refetch } = useTrips();
+
+  // Convert API trips with enhanced fields
+  const tripItems: TripItem[] = useMemo(() => {
+    return trips.map((trip, index) => {
+      // Simulate assignment (in real app, comes from API)
+      const assignments = ['agent-001', 'agent-002', 'agent-003', undefined];
+      const assignedTo = assignments[index % 4];
+      const assignedMember = assignedTo ? TEAM_MEMBERS.find(m => m.id === assignedTo) : undefined;
+      
+      // Simulate priority based on value/overdue
+      const priorities: PriorityKey[] = ['low', 'medium', 'high', 'critical'];
+      const priority = trip.overdue ? 'critical' : priorities[index % 4];
+      
+      // Simulate SLA status
+      const daysInStage = Math.floor(Math.random() * 5) + 1;
+      const slaStatus: SLAStatus = daysInStage > 3 ? 'breached' : daysInStage > 2 ? 'at_risk' : 'on_track';
+      
+      return {
+        id: trip.id,
+        destination: trip.destination,
+        type: trip.type,
+        state: trip.state,
+        age: trip.age,
+        party: 2 + (index % 6),
+        dateWindow: ['Jun 10-20', 'Jul 3-7', 'Aug 15-22', 'Sep 5-12'][index % 4],
+        action: ['Needs supplier quote', 'Awaiting client confirmation', 'Ready to book', 'Draft itinerary'][index % 4],
+        overdue: trip.overdue || slaStatus === 'breached',
+        assignedTo,
+        assignedToName: assignedMember?.name,
+        priority,
+        slaStatus,
+        daysInStage,
+        value: 5000 + (index * 2500),
+      };
+    });
+  }, [trips]);
+
+  // Filter counts
+  const filterCounts = useMemo(() => ({
+    all: tripItems.length,
+    pending: tripItems.filter((t) => t.state === 'amber' || t.state === 'blue').length,
+    review: tripItems.filter((t) => t.state === 'red').length,
+    unassigned: tripItems.filter((t) => !t.assignedTo).length,
+  }), [tripItems]);
+
+  // Filter and search
+  const filtered = useMemo(() => {
+    let result = tripItems;
+    
+    // Apply status filter
+    if (activeFilter === 'pending') {
+      result = result.filter((t) => t.state === 'amber' || t.state === 'blue');
+    } else if (activeFilter === 'review') {
+      result = result.filter((t) => t.state === 'red');
+    } else if (activeFilter === 'unassigned') {
+      result = result.filter((t) => !t.assignedTo);
+    }
+    
+    // Apply search
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter((t) =>
+        t.destination.toLowerCase().includes(query) ||
+        t.id.toLowerCase().includes(query) ||
+        t.type.toLowerCase().includes(query)
+      );
+    }
+    
+    // Sort by priority (critical first) then by SLA status
+    return result.sort((a, b) => {
+      const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+      if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      }
+      const slaOrder = { breached: 0, at_risk: 1, on_track: 2 };
+      return slaOrder[a.slaStatus] - slaOrder[b.slaStatus];
+    });
+  }, [tripItems, activeFilter, searchQuery]);
+
+  const handleSelect = useCallback((id: string, selected: boolean) => {
+    setSelectedTrips((prev) => {
+      const next = new Set(prev);
+      if (selected) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedTrips(new Set());
+  }, []);
+
+  const handleAssign = useCallback(() => {
+    // Simulate assignment
+    alert(`Assigning ${selectedTrips.size} trips...`);
+    handleClearSelection();
+  }, [selectedTrips.size, handleClearSelection]);
+
+  const handleExport = useCallback(() => {
+    alert(`Exporting ${selectedTrips.size} trips...`);
+  }, [selectedTrips.size]);
+
+  // Error state
+  if (error) {
+    return (
+      <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
+        <div className='flex items-center justify-between pt-1'>
+          <div>
+            <h1 className='text-xl font-semibold text-[#e6edf3]'>Inbox</h1>
+            <p className='text-sm text-[#8b949e] mt-0.5'>Trip queue · sorted by urgency</p>
+          </div>
+        </div>
+        <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-8 text-center'>
+          <InlineError message='Failed to load trips' />
+          <button
+            type='button'
+            onClick={() => refetch()}
+            className='mt-4 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg text-sm font-medium hover:bg-[#6eb5ff] transition-colors'
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
-      <div className='flex items-center justify-between pt-1'>
+      {/* Header */}
+      <header className='flex items-center justify-between pt-1'>
         <div>
-          <h1 className='text-[15px] font-semibold text-[#e6edf3]'>Inbox</h1>
-          <p className='text-[12px] text-[#8b949e] mt-0.5'>
-            Trip queue · sorted by urgency
-          </p>
+          <h1 className='text-xl font-semibold text-[#e6edf3]'>Inbox</h1>
+          <p className='text-sm text-[#8b949e] mt-0.5'>Trip queue · sorted by urgency</p>
         </div>
-        <span className='text-xs font-mono text-[#484f58]'>
-          {TRIPS.length} trips total
-        </span>
-      </div>
+        
+        <div className='flex items-center gap-3'>
+          <div className='relative'>
+            <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8b949e]' />
+            <input
+              type='text'
+              placeholder='Search trips...'
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className='pl-9 pr-3 py-2 bg-[#161b22] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff] w-64'
+            />
+          </div>
+          
+          <span className='text-sm text-[#8b949e]'>
+            {isLoading ? 'Loading...' : `${tripItems.length} trips total`}
+          </span>
+        </div>
+      </header>
 
-      <div className='flex items-center gap-1'>
-        {FILTERS.map((f) => (
+      {/* Bulk Actions Toolbar */}
+      {selectedTrips.size > 0 && (
+        <BulkActionsToolbar
+          selectedCount={selectedTrips.size}
+          onClearSelection={handleClearSelection}
+          onAssign={handleAssign}
+          onExport={handleExport}
+        />
+      )}
+
+      {/* Filters */}
+      <div className='flex items-center gap-1' role='tablist'>
+        {[
+          { key: 'all', label: 'All' },
+          { key: 'pending', label: 'Pending' },
+          { key: 'review', label: 'Needs Review' },
+          { key: 'unassigned', label: 'Unassigned' },
+        ].map((f) => (
           <button
             key={f.key}
-            onClick={() => setActiveFilter(f.key)}
-            className='flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors'
-            style={
+            onClick={() => setActiveFilter(f.key as typeof activeFilter)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
               activeFilter === f.key
-                ? {
-                    background: '#161b22',
-                    color: '#e6edf3',
-                    borderLeft: '2px solid #58a6ff',
-                  }
-                : { color: '#8b949e' }
-            }
+                ? 'bg-[#161b22] text-[#e6edf3] border-l-2 border-[#58a6ff]'
+                : 'text-[#8b949e] hover:text-[#e6edf3]'
+            }`}
           >
             {f.label}
-            <span
-              className='tabular-nums px-1.5 py-0.5 rounded-md text-xs'
-              style={
-                activeFilter === f.key
-                  ? { background: 'rgba(88,166,255,0.15)', color: '#58a6ff' }
-                  : { background: '#161b22', color: '#484f58' }
-              }
-            >
-              {f.count}
+            <span className={`tabular-nums px-1.5 py-0.5 rounded-md text-xs ${
+              activeFilter === f.key
+                ? 'bg-[rgba(88,166,255,0.15)] text-[#58a6ff]'
+                : 'bg-[#161b22] text-[#484f58]'
+            }`}>
+              {filterCounts[f.key as keyof typeof filterCounts]}
             </span>
           </button>
         ))}
       </div>
 
-      <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'>
-        {filtered.map((trip) => (
-          <TripCard key={trip.id} trip={trip} />
-        ))}
-        {filtered.length === 0 && (
-          <div className='col-span-full py-12 text-center text-[13px] text-[#484f58]'>
-            No trips match this filter.
-          </div>
-        )}
-      </div>
+      {/* Trip Grid */}
+      {isLoading && tripItems.length === 0 ? (
+        <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'>
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div
+              key={i}
+              className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 space-y-3'
+            >
+              <div className='h-4 bg-[#161b22] rounded w-1/2' />
+              <div className='h-3 bg-[#161b22] rounded w-1/3' />
+              <div className='h-3 bg-[#161b22] rounded w-2/3' />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'>
+          {filtered.map((trip) => (
+            <TripCard
+              key={trip.id}
+              trip={trip}
+              isSelected={selectedTrips.has(trip.id)}
+              onSelect={handleSelect}
+            />
+          ))}
+          {filtered.length === 0 && !isLoading && (
+            <div className='col-span-full py-12 text-center'>
+              <p className='text-[#8b949e]'>No trips match this filter.</p>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className='mt-2 text-sm text-[#58a6ff] hover:text-[#79b8ff]'
+                >
+                  Clear search
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
