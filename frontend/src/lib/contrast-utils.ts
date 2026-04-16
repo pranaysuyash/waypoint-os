@@ -153,9 +153,9 @@ export function validateTokenColors() {
 
   const textColors = {
     textPrimary: "#e6edf3",
-    textSecondary: "#8b949e",
-    textTertiary: "#6e7681",
-    textMuted: "#484f58",
+    textSecondary: "#a8b3c1",
+    textTertiary: "#9ba3b0",
+    textMuted: "#8b949e",
   };
 
   for (const [bgName, bgValue] of Object.entries(backgrounds)) {

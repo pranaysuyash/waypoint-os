@@ -339,7 +339,7 @@ export default function DashboardPage() {
             Operations Overview
           </h1>
           <p className='text-base text-[#a8b3c1] mt-0.5'>
-            Travel Agency Agent · decision intelligence
+            Waypoint OS · decision intelligence
           </p>
         </div>
         <Link

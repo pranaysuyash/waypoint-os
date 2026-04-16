@@ -74,7 +74,7 @@ const CardDescription = React.forwardRef<HTMLParagraphElement, CardDescriptionPr
   ({ className, ...props }, ref) => (
     <p
       ref={ref}
-      className={cn("text-xs text-[#6e7681]", className)}
+      className={cn("text-xs text-[#8b949e]", className)}
       {...props}
     />
   )

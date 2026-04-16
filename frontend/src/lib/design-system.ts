@@ -20,8 +20,8 @@ export interface NavSection {
 }
 
 export const PRODUCT_COPY = {
-  name: "Travel Agency Agent",
-  shortName: "TAA",
+  name: "Waypoint OS",
+  shortName: "Waypoint",
   tagline: "Decision intelligence for travel operations",
   mission: "Convert messy travel requests into precise, safe, and actionable decisions.",
 } as const;

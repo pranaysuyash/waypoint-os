@@ -105,7 +105,7 @@ export function DefaultErrorFallback({
         </h1>
 
         {/* Message */}
-        <p className="text-center text-[12px] text-[#6e7681] mb-4">
+        <p className="text-center text-[12px] text-[#8b949e] mb-4">
           An unexpected error occurred. This has been logged and our team will look into it.
         </p>
 
@@ -178,7 +178,7 @@ export function InlineError({
         <AlertTriangle className="w-4 h-4 text-[#f85149] shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <p className="text-[12px] font-medium text-[#e6edf3]">{title}</p>
-          <p className="text-xs text-[#6e7681] mt-0.5">{message}</p>
+          <p className="text-xs text-[#8b949e] mt-0.5">{message}</p>
         </div>
         {onDismiss && (
           <button

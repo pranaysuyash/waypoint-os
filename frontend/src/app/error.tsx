@@ -31,7 +31,7 @@ export default function Error({
         </h1>
 
         {/* Message */}
-        <p className="text-center text-[12px] text-[#6e7681] mb-4">
+        <p className="text-center text-[12px] text-[#8b949e] mb-4">
           An unexpected error occurred. This has been logged and our team will look into it.
         </p>
 

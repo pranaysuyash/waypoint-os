@@ -40,7 +40,7 @@ export function PipelineFlow({ currentStage }: PipelineFlowProps) {
                     "w-10 h-10 rounded-lg flex items-center justify-center font-mono text-sm font-semibold transition-all",
                     isCompleted && "bg-[#3fb950]/10 border border-[#3fb950] text-[#3fb950]",
                     isActive && "bg-[#58a6ff] text-[#0d1117] shadow-lg shadow-[#58a6ff]/20",
-                    isPending && "bg-[#161b22] border border-[#30363d] text-[#6e7681]"
+                    isPending && "bg-[#161b22] border border-[#30363d] text-[#8b949e]"
                   )}
                 >
                   {isCompleted ? (
@@ -58,7 +58,7 @@ export function PipelineFlow({ currentStage }: PipelineFlowProps) {
                   >
                     {stage.fullLabel}
                   </p>
-                  <p className="text-xs text-[#6e7681] mt-0.5">{stage.description}</p>
+                  <p className="text-xs text-[#8b949e] mt-0.5">{stage.description}</p>
                 </div>
 
                 {/* Active Indicator */}

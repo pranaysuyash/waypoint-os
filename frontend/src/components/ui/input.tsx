@@ -50,7 +50,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 
         <div className="relative">
           {leftIcon && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6e7681] pointer-events-none">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8b949e] pointer-events-none">
               {leftIcon}
             </div>
           )}
@@ -83,7 +83,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           />
 
           {rightIcon && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6e7681] pointer-events-none">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8b949e] pointer-events-none">
               {rightIcon}
             </div>
           )}

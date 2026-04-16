@@ -165,7 +165,7 @@ function TripCard({ trip }: { trip: TripItem }) {
           <span className='text-[14px] font-semibold text-[#e6edf3] truncate'>
             {trip.destination}
           </span>
-          <span className='text-xs text-[#6e7681]'>{trip.type}</span>
+          <span className='text-xs text-[#8b949e]'>{trip.type}</span>
         </div>
         <span
           className='shrink-0 text-xs font-mono font-semibold px-2 py-0.5 rounded-md whitespace-nowrap'
@@ -175,7 +175,7 @@ function TripCard({ trip }: { trip: TripItem }) {
         </span>
       </div>
 
-      <div className='flex items-center gap-4 text-xs text-[#6e7681]'>
+      <div className='flex items-center gap-4 text-xs text-[#8b949e]'>
         <span className='flex items-center gap-1'>
           <Users className='h-3 w-3' /> {trip.party} pax
         </span>
@@ -192,7 +192,7 @@ function TripCard({ trip }: { trip: TripItem }) {
           <Briefcase className='h-3 w-3 text-[#484f58]' />
           <span className='text-xs text-[#8b949e]'>{trip.action}</span>
         </div>
-        <ChevronRight className='h-3.5 w-3.5 text-[#30363d] group-hover:text-[#6e7681] transition-colors shrink-0' />
+        <ChevronRight className='h-3.5 w-3.5 text-[#30363d] group-hover:text-[#8b949e] transition-colors shrink-0' />
       </div>
 
       <div className='text-xs font-mono text-[#484f58]'>{trip.id}</div>
@@ -215,7 +215,7 @@ export default function InboxPage() {
       <div className='flex items-center justify-between pt-1'>
         <div>
           <h1 className='text-[15px] font-semibold text-[#e6edf3]'>Inbox</h1>
-          <p className='text-[12px] text-[#6e7681] mt-0.5'>
+          <p className='text-[12px] text-[#8b949e] mt-0.5'>
             Trip queue · sorted by urgency
           </p>
         </div>
@@ -237,7 +237,7 @@ export default function InboxPage() {
                     color: '#e6edf3',
                     borderLeft: '2px solid #58a6ff',
                   }
-                : { color: '#6e7681' }
+                : { color: '#8b949e' }
             }
           >
             {f.label}

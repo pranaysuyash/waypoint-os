@@ -102,7 +102,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <div className='text-xs font-semibold leading-tight tracking-tight truncate'>
               Waypoint
             </div>
-            <div className='text-xs text-[#6e7681] leading-tight font-mono'>
+            <div className='text-xs text-[#8b949e] leading-tight font-mono'>
               v2.0 · decision engine
             </div>
           </div>
@@ -164,7 +164,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               aria-hidden='true'
             />
             <span
-              className='text-xs text-[#6e7681] font-mono'
+              className='text-xs text-[#8b949e] font-mono'
               aria-live='polite'
             >
               system · live
@@ -209,7 +209,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </nav>
           <div className='flex items-center gap-3'>
             <div
-              className='flex items-center gap-1.5 text-xs text-[#6e7681] font-mono'
+              className='flex items-center gap-1.5 text-xs text-[#8b949e] font-mono'
               role='status'
               aria-live='polite'
             >
@@ -244,7 +244,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                     href={item.href}
                     className={cn(
                       'flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-xs',
-                      isActive ? 'text-[#58a6ff]' : 'text-[#6e7681]',
+                      isActive ? 'text-[#58a6ff]' : 'text-[#8b949e]',
                     )}
                     aria-current={isActive ? 'page' : undefined}
                     aria-label={item.label}

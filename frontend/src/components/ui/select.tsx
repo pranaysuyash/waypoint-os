@@ -98,7 +98,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
 
           {/* Custom arrow indicator */}
           <div
-            className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#6e7681]"
+            className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#8b949e]"
             aria-hidden="true"
           >
             <svg

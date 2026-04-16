@@ -73,7 +73,7 @@ export function IntakeTab() {
               </option>
             ))}
           </select>
-          <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6e7681] pointer-events-none' />
+          <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8b949e] pointer-events-none' />
         </div>
       </div>
 
@@ -92,7 +92,7 @@ export function IntakeTab() {
             onChange={(e) => setCustomerMessage(e.target.value)}
             placeholder='Paste the incoming traveler note here...'
             rows={6}
-            className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff] resize-none font-mono'
+            className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder:text-[#8b949e] focus:outline-none focus:border-[#58a6ff] resize-none font-mono'
           />
         </div>
 
@@ -109,7 +109,7 @@ export function IntakeTab() {
             onChange={(e) => setAgentNotes(e.target.value)}
             placeholder="Add owner's comments or clarifications..."
             rows={6}
-            className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder:text-[#6e7681] focus:outline-none focus:border-[#58a6ff] resize-none'
+            className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder:text-[#8b949e] focus:outline-none focus:border-[#58a6ff] resize-none'
           />
         </div>
       </div>
@@ -137,7 +137,7 @@ export function IntakeTab() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6e7681] pointer-events-none' />
+              <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8b949e] pointer-events-none' />
             </div>
           </div>
           <div>
@@ -156,7 +156,7 @@ export function IntakeTab() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6e7681] pointer-events-none' />
+              <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8b949e] pointer-events-none' />
             </div>
           </div>
         </div>
