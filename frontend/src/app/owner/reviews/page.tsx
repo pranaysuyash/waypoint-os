@@ -396,7 +396,7 @@ export default function OwnerReviewsPage() {
         </div>
         
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
-          <span className='text-sm text-[#8b949e]'>Pipeline Value</span>
+          <span className='text-sm text-[#8b949e]'>Total Value in Progress</span>
           <div className='text-2xl font-bold text-[#e6edf3] mt-1'>
             ${(stats.totalValue / 1000).toFixed(1)}k
           </div>

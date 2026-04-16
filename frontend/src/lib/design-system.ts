@@ -36,9 +36,9 @@ export const NAV_SECTIONS: NavSection[] = [
         description: "Triage and prioritize incoming demand",
       },
       {
-        label: "Workbench",
+        label: "Trip Workspace",
         href: "/workbench",
-        description: "Inspect packet, decision, strategy, and safety",
+        description: "Inspect trip details, quote status, options, and review",
       },
     ],
   },

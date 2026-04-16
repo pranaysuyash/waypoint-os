@@ -1,8 +1,8 @@
 export default function OutputPage() {
   return (
     <div>
-      <h1>Output</h1>
-      <p>Traveler-safe proposal preview and send-prep</p>
+      <h1>Customer Message Preview</h1>
+      <p>Preview the message to customer before sending</p>
     </div>
   );
 }

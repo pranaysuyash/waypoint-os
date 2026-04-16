@@ -1,8 +1,8 @@
 export default function DecisionPage() {
   return (
     <div>
-      <h1>Decision</h1>
-      <p>NB02 explanation-first decisioning view</p>
+      <h1>Ready to Quote?</h1>
+      <p>Explanation of quote status and blockers</p>
     </div>
   );
 }

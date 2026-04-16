@@ -34,7 +34,7 @@ const stages = [
 ];
 
 const modes = [
-  { value: 'normal_intake', label: 'Normal Intake' },
+  { value: 'normal_intake', label: 'New Request' },
   { value: 'audit', label: 'Audit' },
   { value: 'emergency', label: 'Emergency' },
   { value: 'follow_up', label: 'Follow Up' },
@@ -142,7 +142,7 @@ export function IntakeTab() {
           </div>
           <div>
             <label className='block text-sm font-medium text-[#8b949e] mb-2'>
-              Operating Mode
+              Request Type
             </label>
             <div className='relative'>
               <select
@@ -167,7 +167,7 @@ export function IntakeTab() {
         <div className='flex items-center gap-4 text-sm text-[#8b949e]'>
           <div className='flex items-center gap-2'>
             <div className='w-2 h-2 rounded-full bg-[#3fb950]'></div>
-            <span>API Connected</span>
+            <span>System Ready</span>
           </div>
         </div>
       </div>

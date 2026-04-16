@@ -20,5 +20,27 @@ dev = [
     "pytest>=9.0.3",
 ]
 
+# =============================================================================
+# LLM Dependencies (Optional - Install as Needed)
+# =============================================================================
+# To install LLM support:
+#   uv add --group llm google-generativeai
+#   uv add --group llm transformers torch sentencepiece
+#
+# Or install all: uv add --group llm --all-groups llm
+# =============================================================================
+llm = [
+    # Gemini API (primary - fast and cost-effective)
+    "google-generativeai>=0.8.0",
+
+    # OpenAI API (fallback)
+    "openai>=1.50.0",
+
+    # Local LLM support (HuggingFace transformers)
+    "transformers>=4.30.0",
+    "torch>=2.0.0",
+    "sentencepiece>=0.1.99",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

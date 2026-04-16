@@ -33,9 +33,9 @@ const NAV = [
       },
       {
         href: '/workbench',
-        label: 'Trip Pipeline',
+        label: 'Trip Workspace',
         icon: Briefcase,
-        description: 'Process trips through the pipeline stages',
+        description: 'Process trips through the workspace stages',
       },
     ],
   },

@@ -45,25 +45,25 @@ export function SafetyTab() {
   return (
     <div>
       <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Leakage Status</h3>
+        <h3 className={styles.sectionTitle}>Content Review</h3>
         {safety.leakage_passed ? (
           <div className={styles.leakagePass}>
             <div className={styles.leakageTitle}>
               <span className={`${styles.listIcon} ${styles.iconSuccess}`} style={{ marginRight: "8px" }}>✓</span>
-              PASS - No Leakage Detected
+              PASS — Safe for Customer
             </div>
             <p style={{ fontSize: "13px", color: "var(--color-text-muted)", margin: "8px 0 0 0" }}>
-              All internal terms have been properly sanitized for traveler-safe output.
+              No internal jargon or sensitive details found in the customer-facing message.
             </p>
           </div>
         ) : (
           <div className={styles.leakageFail}>
             <div className={styles.leakageTitle}>
               <span className={`${styles.listIcon} ${styles.iconDanger}`} style={{ marginRight: "8px" }}>✗</span>
-              FAIL - Leakage Detected
+              FAIL — Internal Jargon Found
             </div>
             <p style={{ fontSize: "13px", color: "var(--color-text-muted)", margin: "8px 0 0 0" }}>
-              Internal terms were found in the traveler-facing output.
+              Internal-only terms were found in the message the customer would see.
             </p>
           </div>
         )}
@@ -72,10 +72,10 @@ export function SafetyTab() {
       {safety.strict_leakage && !safety.leakage_passed && (
         <div className={styles.leakageFail} style={{ border: "2px solid rgba(239, 68, 68, 0.5)", marginBottom: "16px" }}>
           <div className={styles.leakageTitle} style={{ color: "var(--color-danger)", fontWeight: 700 }}>
-            STRICT MODE FAILURE
+            NOT SAFE TO SEND
           </div>
           <p style={{ fontSize: "13px", margin: "8px 0 0 0" }}>
-            Leakage detected with strict mode enabled. Traveler bundle is invalidated.
+            Customer message contains internal jargon and cannot be sent until fixed.
           </p>
         </div>
       )}
@@ -97,7 +97,7 @@ export function SafetyTab() {
       )}
 
       <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Traveler-Safe Bundle</h3>
+        <h3 className={styles.sectionTitle}>Customer-Facing Message</h3>
         <div className={styles.card}>
           {travelerBundle && !isStrictFail ? (
             <div>
@@ -138,7 +138,7 @@ export function SafetyTab() {
             </div>
           ) : (
             <p style={{ color: "var(--color-text-muted)" }}>
-              {isStrictFail ? "Invalidated due to strict mode failure" : "No traveler bundle available"}
+              {isStrictFail ? "Cannot be sent — contains internal jargon" : "No customer message available"}
             </p>
           )}
         </div>
@@ -146,7 +146,7 @@ export function SafetyTab() {
 
       {internalBundle && (
         <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Internal Bundle (Reference)</h3>
+          <h3 className={styles.sectionTitle}>Agent-Only Notes</h3>
           <div className={styles.card}>
             <pre className={styles.jsonOutput}>
               {JSON.stringify(internalBundle, null, 2)}
@@ -160,7 +160,7 @@ export function SafetyTab() {
         className={styles.jsonToggle}
         onClick={() => setShowRaw(!showRaw)}
       >
-        {showRaw ? "Hide" : "Show"} Full Raw Data
+        {showRaw ? "Hide" : "Show"} Technical Data
       </button>
 
       {showRaw && (

@@ -232,7 +232,7 @@ export function PacketTab() {
         className={styles.jsonToggle}
         onClick={() => setShowRaw(!showRaw)}
       >
-        {showRaw ? "Hide" : "Show"} Raw JSON
+        {showRaw ? "Hide" : "Show"} Technical Data
       </button>
 
       {showRaw && (

@@ -65,10 +65,10 @@ function WorkbenchContent() {
         <header className='flex items-center justify-between mb-6'>
           <div>
             <h1 className='text-2xl font-semibold text-[#e6edf3] mb-1'>
-              Trip Pipeline
+              Trip Workspace
             </h1>
             <p className='text-base text-[#a8b3c1]'>
-              Process travel requests through the pipeline
+              Process travel requests through the analysis pipeline
             </p>
           </div>
           <div className='flex items-center gap-3'>

@@ -1,9 +1,8 @@
 export default function IntakePage() {
   return (
     <div>
-      <h1>Intake</h1>
-      <p>Normal intake handling for operators</p>
-      <p>Includes: incoming context, known/unknown, clarify prompts, mode/stage controls</p>
+      <h1>New Inquiry</h1>
+      <p>Enter the customer request, set the trip stage and request type</p>
     </div>
   );
 }

@@ -85,7 +85,7 @@ export function DecisionTab() {
   if (!result_decision) {
     return (
       <div className={styles.emptyState}>
-        <p>No quote status data. Process a trip from the New Inquiry tab first.</p>
+        <p>No quote status data. Process a trip from the "New Inquiry" section first.</p>
       </div>
     );
   }
@@ -343,7 +343,7 @@ export function DecisionTab() {
         className={styles.jsonToggle}
         onClick={() => setShowRaw(!showRaw)}
       >
-        {showRaw ? "Hide" : "Show"} Raw JSON
+        {showRaw ? "Hide" : "Show"} Technical Data
       </button>
 
       {showRaw && (

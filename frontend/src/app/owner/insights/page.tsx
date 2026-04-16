@@ -307,7 +307,7 @@ export default function OwnerInsightsPage() {
         />
         
         <StatCard
-          title='Pipeline Value'
+          title='Total Value in Progress'
           value={`$${(summary.pipelineValue / 1000).toFixed(0)}k`}
           subtext='Across 33 active trips'
           trend='up'
@@ -321,7 +321,7 @@ export default function OwnerInsightsPage() {
         {/* Pipeline Velocity */}
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5'>
           <div className='flex items-center justify-between mb-4'>
-            <h2 className='text-base font-semibold text-[#e6edf3]'>Pipeline Velocity</h2>
+            <h2 className='text-base font-semibold text-[#e6edf3]'>Average Time to Complete</h2>
             <span className='text-xs text-[#8b949e]'>Avg: {summary.pipelineVelocity.averageTotal} days total</span>
           </div>
           
@@ -425,7 +425,7 @@ export default function OwnerInsightsPage() {
           ) : (
             <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-6 text-center'>
               <CheckCircle className='w-8 h-8 text-[#3fb950] mx-auto mb-2' />
-              <p className='text-sm text-[#8b949e]'>No bottlenecks detected. Pipeline is flowing smoothly!</p>
+              <p className='text-sm text-[#8b949e]'>No bottlenecks detected. Things are flowing smoothly!</p>
             </div>
           )}
         </div>

@@ -608,6 +608,41 @@ Environment date checked before this documentation update:
 - Frontend implementation path is now locked to productized web app architecture (Next.js + TypeScript), including internal workbench routes inside the same shell.
 - No Streamlit implementation path for frontend delivery.
 
+## Log Entry: 2026-04-16 - Thesis Deep Dive: Four Open Threads (Updated: No MVP Framing)
+
+### Context
+Comprehensive discussion of `PROJECT_THESIS.md` covering all four identified tension points, cross-referenced against 7 existing docs and codebase state. User explicitly corrected framing: **no MVP scoping — full production system phased by dependency order**.
+
+### Artifact Created
+- `Docs/DISCUSSION_THESIS_DEEP_DIVE_2026-04-16.md`
+
+### Four Threads Analyzed
+1. **Copilot vs. Replacement line** — System already models significant judgment (decision gating, lifecycle scoring, feasibility). Need autonomy gradient + override dignity pattern.
+2. **Intelligence Layer lead-gen** — Two distinct funnels (agency self-audit vs. consumer audit). Both are production targets. Agency self-audit ships first (Stage 2), consumer audit ships with GTM surface (Stage 7).
+3. **Sourcing hierarchy configurability** — Currently a taxonomy label, not a decision driver. Per-agency `SourcingPolicy` config object needed — design contract now, implement with vendor/supplier models (Gap #01).
+4. **Per-person suitability depth** — `activity_matcher.py` is referenced in architecture but not implemented. Three depth levels (L1 binary → L2 scored → L3 scheduling) — ALL are production targets, phased by dependency.
+
+### D4 and D6 Detailed Breakdowns Added
+- **D4**: Full production scope for `activity_matcher.py` across three phases. Blocking question: what data model supports all three levels without rework? Three sub-decisions: layer ownership, dataclass extensibility, activity catalog data source.
+- **D6**: Full audit-mode eval suite spec: ~40-60 fixture set, recall/precision/severity metrics, CI regression gate. Recommendation: build framework and author fixtures now, gate incrementally as capabilities ship. D4 and D6 are coupled — build in parallel.
+
+### Key Gaps Identified
+- No `SourcingPolicy` model in packet models
+- No `activity_matcher.py` runtime implementation
+- No audit-mode eval suite / accuracy benchmarks
+- Human override protocol specified but not implemented as runtime path
+
+### Open Decisions (6)
+- D1: Autonomy gradient — configurable with "always review" default
+- D2: Free engine persona — both funnels, sequenced by dependency
+- D3: Sourcing configurability — per-agency, design now, implement with Gap #01
+- D4: Suitability depth phasing — all three levels, **blocking: data model design** (detailed)
+- D5: Override learning — log + influence via traveler memory
+- D6: Audit-mode eval suite — **blocking: quality gate for audit surface** (detailed)
+
+### Cross-Thread Synthesis
+Threads 3 (sourcing) and 4 (suitability) are foundational — they determine system credibility. Thread 1 (autonomy) is a UX/config question. Thread 2 (lead-gen) is GTM and should not drive architecture.
+
 ## Log Entry: 2026-04-15 - Next.js Frontend Implementation Track Defined
 
 ### Context
@@ -662,3 +697,43 @@ Environment date checked before this documentation update:
 ### Decision
 - Contract drift between frontend/BFF and frozen spine is now removed at plan level.
 - Implementation sequencing now reflects foundation -> workspace core -> additional surfaces.
+
+## Log Entry: 2026-04-16 - Activity Suitability Matrix Web Findings Documented
+
+### Context
+User requested that web research findings be documented directly and consistently.
+
+### Actions Completed
+- Created dedicated research artifact:
+  - `Docs/ACTIVITY_SUITABILITY_MATRIX_WEB_FINDINGS_2026-04-16.md`
+- Captured evidence for:
+  - API/provider landscape for age suitability signals
+  - OTA activity-data structuring patterns
+  - family and elderly/accessibility resource overlays
+- Included confidence levels, caveats, normalized schema proposal, and source appendix URLs.
+
+### Key Outcome
+- Research is now preserved as a reusable implementation input for Product B / GTM activity suitability matrix work.
+- Documentation explicitly records that direct provider-level age suitability scores were not verified; suitability must be derived from structured constraints and overlays.
+
+## Log Entry: 2026-04-16 - Activity Suitability Implementation Handoff Added
+
+### Context
+User approved creation of an execution-grade handoff document derived from web findings.
+
+### Actions Completed
+- Added implementation handoff artifact:
+  - `Docs/status/ACTIVITY_SUITABILITY_IMPLEMENTATION_HANDOFF_2026-04-16.md`
+- Included deterministic delivery content:
+  - provider onboarding priority order
+  - canonical suitability schema
+  - provider-level field mapping matrix
+  - scoring pseudocode with confidence adjustment
+  - phased implementation sequence and acceptance criteria
+  - risk and drift mitigation notes
+- Added index discoverability entry:
+  - `Docs/INDEX.md`
+
+### Key Outcome
+- Downstream implementation can now proceed without additional research interpretation.
+- Handoff is aligned to deterministic-first execution and includes explicit confidence/provenance expectations.

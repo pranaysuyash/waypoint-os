@@ -130,7 +130,7 @@ const PipelineBar = memo(function PipelineBar({
       <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
         <div className='flex items-center justify-between mb-3'>
           <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
-            Pipeline
+            Progress
           </h2>
           <span className='text-sm font-mono text-[#8b949e]'>Loading...</span>
         </div>
@@ -161,7 +161,7 @@ const PipelineBar = memo(function PipelineBar({
       <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
         <div className='flex items-center justify-between mb-2'>
           <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
-            Trip Pipeline
+            Trip Progress
           </h2>
           <button 
             onClick={() => setIsExpanded(true)}
@@ -386,7 +386,7 @@ export default function DashboardPage() {
       },
       {
         href: '/workbench',
-        label: 'Workbench',
+        label: 'Trip Workspace',
         sub: 'analyze trip',
         icon: Briefcase,
         dot: '#58a6ff',

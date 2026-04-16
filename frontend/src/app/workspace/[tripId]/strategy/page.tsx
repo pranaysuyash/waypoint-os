@@ -1,8 +1,8 @@
 export default function StrategyPage() {
   return (
     <div>
-      <h1>Strategy</h1>
-      <p>NB03 plan sequence and internal/traveler split</p>
+      <h1>Build Options</h1>
+      <p>Plan the approach and separate agent notes from customer message</p>
     </div>
   );
 }

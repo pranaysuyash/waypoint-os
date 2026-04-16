@@ -109,11 +109,11 @@ export function StrategyTab() {
 
       {/* Internal vs Traveler-safe Split View */}
       <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Internal vs Traveler-Safe</h3>
+        <h3 className={styles.sectionTitle}>Agent View vs Customer View</h3>
         <div className={styles.splitView}>
           {/* Internal Bundle */}
           <div className={`${styles.splitPanel} ${styles.internalPanel}`}>
-            <div className={styles.splitTitle}>Internal Agent View</div>
+            <div className={styles.splitTitle}>For You (Agent)</div>
             {internalBundle ? (
               <div>
                 <div style={{ marginBottom: "12px" }}>
@@ -148,13 +148,13 @@ export function StrategyTab() {
                 )}
               </div>
             ) : (
-              <p style={{ color: "var(--color-text-muted)" }}>No internal bundle</p>
+              <p style={{ color: "var(--color-text-muted)" }}>No agent notes</p>
             )}
           </div>
 
           {/* Traveler-safe Bundle */}
           <div className={`${styles.splitPanel} ${styles.travelerPanel}`}>
-            <div className={styles.splitTitle}>Traveler-Safe View</div>
+            <div className={styles.splitTitle}>For Customer</div>
             {travelerBundle ? (
               <div>
                 <div style={{ marginBottom: "12px" }}>
@@ -181,7 +181,7 @@ export function StrategyTab() {
                 )}
               </div>
             ) : (
-              <p style={{ color: "var(--color-text-muted)" }}>No traveler bundle</p>
+              <p style={{ color: "var(--color-text-muted)" }}>No customer message</p>
             )}
           </div>
         </div>
@@ -192,7 +192,7 @@ export function StrategyTab() {
         className={styles.jsonToggle}
         onClick={() => setShowRaw(!showRaw)}
       >
-        {showRaw ? "Hide" : "Show"} Raw JSON
+        {showRaw ? "Hide" : "Show"} Technical Data
       </button>
 
       {showRaw && (

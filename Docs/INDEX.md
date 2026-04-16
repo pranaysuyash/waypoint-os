@@ -7,6 +7,7 @@
 - [Sourcing and Decision Policy](Sourcing_And_Decision_Policy.md) — Sourcing hierarchy and "Proceed/Ask" gating logic.
 - [Lead Lifecycle and Retention](LEAD_LIFECYCLE_AND_RETENTION.md) — Unified state machine, schema, scoring, and interventions for repeat, ghosting, window-shopping, and churn.
 - [Discussion Log](DISCUSSION_LOG.md) — Audit trail of pivots and agent feedback.
+- [Thesis Deep Dive Discussion (2026-04-16)](DISCUSSION_THESIS_DEEP_DIVE_2026-04-16.md) — Four-thread analysis of PROJECT_THESIS.md: copilot autonomy line, intelligence layer lead-gen model, sourcing hierarchy configurability, per-person suitability depth.
 - [Coverage Assessment (2026-04-15)](COVERAGE_ASSESSMENT_2026-04-15.md) — Summary of what is now covered across risks, stakeholders, scenarios, use cases, and markets, plus remaining documentation/runtime gaps.
 - [Coverage Matrix (2026-04-15)](COVERAGE_MATRIX_2026-04-15.md) — Control document separating what is documented, scenario-covered, tested, and implemented across risks, stakeholders, lifecycle, markets, and commercial logic.
 - [Issue Review](issue_review.md) — Active issue register for identified/validated gaps.
@@ -18,6 +19,7 @@
 - [Frontend Workflow Coverage Baseline (2026-04-16)](FRONTEND_WORKFLOW_COVERAGE_2026-04-16.md) — Verified current-state route/workflow coverage map with surface-by-surface gap analysis.
 - [Frontend Workflow Implementation Checklist (2026-04-16)](FRONTEND_WORKFLOW_IMPLEMENTATION_CHECKLIST_2026-04-16.md) — Phased execution checklist with route-level acceptance criteria and delivery gates.
 - [Next.js Implementation Track (2026-04-15)](status/NEXTJS_IMPLEMENTATION_TRACK_2026-04-15.md) — Corrected execution plan with spine-aligned BFF enums and phased build order (foundation -> workspace core -> expansion).
+- [Activity Suitability Implementation Handoff (2026-04-16)](status/ACTIVITY_SUITABILITY_IMPLEMENTATION_HANDOFF_2026-04-16.md) — Execution-ready handoff: provider field mapping, scoring pseudocode, ingestion order, confidence model, and acceptance gates for Product B/GTM suitability matrix.
 - [Operator Workbench Component Spec (2026-04-15)](status/OPERATOR_WORKBENCH_COMPONENT_SPEC_2026-04-15.md) — Screen-level behavior reference for Workbench/Flow Simulation (not runtime stack authority).
 - [Workbench Acceptance Checklist (2026-04-15)](status/WORKBENCH_ACCEPTANCE_CHECKLIST_2026-04-15.md) — Acceptance gates used as behavior validation reference for the Next.js workbench surface.
 - [Vendor/Cost Tracking Gap Analysis (2026-04-16)](VENDOR_COST_TRACKING_GAP_ANALYSIS_2026-04-16.md) — Critical gap: no vendor management, margin calculation, or sourcing hierarchy logic. Documented as intentional deferral.

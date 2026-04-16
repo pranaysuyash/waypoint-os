@@ -12,11 +12,11 @@ interface WorkbenchTabProps {
 }
 
 const TABS: { id: WorkbenchTabId; label: string }[] = [
-  { id: "intake", label: "Intake" },
-  { id: "packet", label: "Packet" },
-  { id: "decision", label: "Decision" },
-  { id: "strategy", label: "Strategy" },
-  { id: "safety", label: "Safety" },
+  { id: "intake", label: "New Inquiry" },
+  { id: "packet", label: "Trip Details" },
+  { id: "decision", label: "Ready to Quote?" },
+  { id: "strategy", label: "Build Options" },
+  { id: "safety", label: "Final Review" },
 ];
 
 // Generate stable IDs for ARIA relationships
