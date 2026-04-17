@@ -8,6 +8,9 @@
 - [Lead Lifecycle and Retention](LEAD_LIFECYCLE_AND_RETENTION.md) — Unified state machine, schema, scoring, and interventions for repeat, ghosting, window-shopping, and churn.
 - [Discussion Log](DISCUSSION_LOG.md) — Audit trail of pivots and agent feedback.
 - [Thesis Deep Dive Discussion (2026-04-16)](DISCUSSION_THESIS_DEEP_DIVE_2026-04-16.md) — Four-thread analysis of PROJECT_THESIS.md: copilot autonomy line, intelligence layer lead-gen model, sourcing hierarchy configurability, per-person suitability depth.
+- [Architecture Decision: D4+D6 Suitability & Audit (2026-04-16)](ARCHITECTURE_DECISION_D4_D6_SUITABILITY_AUDIT_2026-04-16.md) — Full production architecture for suitability engine (activity_matcher) and audit eval suite. Protocol-based plugin pattern, manifest-driven eval, phased by dependency.
+- [Architecture Decision: LLM Cache + NB05/NB06 (2026-04-16)](ARCHITECTURE_DECISION_LLM_CACHE_NB05_NB06_2026-04-16.md) — LLM output extraction/caching strategy, NB05 golden-path demo system, NB06 shadow-mode replay. Extends existing `src/decision/hybrid_engine.py` pattern to all LLM touchpoints.
+- [Plugin System Exploration (Draft, 2026-04-17)](PLUGIN_SYSTEM_EXPLORATION_DRAFT_2026-04-17.md) — Draft exploration of protocol/registry plugin architecture, execution guardrails, fallback model, and phased rollout.
 - [Coverage Assessment (2026-04-15)](COVERAGE_ASSESSMENT_2026-04-15.md) — Summary of what is now covered across risks, stakeholders, scenarios, use cases, and markets, plus remaining documentation/runtime gaps.
 - [Coverage Matrix (2026-04-15)](COVERAGE_MATRIX_2026-04-15.md) — Control document separating what is documented, scenario-covered, tested, and implemented across risks, stakeholders, lifecycle, markets, and commercial logic.
 - [Issue Review](issue_review.md) — Active issue register for identified/validated gaps.
@@ -75,6 +78,7 @@
 - **[Business Model Correction](BUSINESS_MODEL_CORRECTION.md)** — You're building the platform FOR agencies, not running an agency.
 - **[Single-Tenant MVP Strategy](SINGLE_TENANT_MVP_STRATEGY.md)** — Start simple: one agency first, add complexity later.
 - **[Pricing and Customer Acquisition](PRICING_AND_CUSTOMER_ACQUISITION.md)** — Pricing tiers, free trials, and GTM channels: Facebook groups, host agencies, SEO.
+- **[Pricing Packaging Discussion (Draft, 2026-04-17)](PRICING_PACKAGING_DISCUSSION_DRAFT_2026-04-17.md)** — Working packaging direction: ₹6k default plan (1 owner/admin + 4 team), team packs, and modular add-ons. Explicitly non-final.
 - **[Pilot and Customer Discovery Strategy](PILOT_AND_CUSTOMER_DISCOVERY_STRATEGY.md)** — How to find willing agencies, run discovery calls, and structure pilots.
 
 ---

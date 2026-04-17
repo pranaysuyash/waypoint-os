@@ -643,6 +643,84 @@ Comprehensive discussion of `PROJECT_THESIS.md` covering all four identified ten
 ### Cross-Thread Synthesis
 Threads 3 (sourcing) and 4 (suitability) are foundational — they determine system credibility. Thread 1 (autonomy) is a UX/config question. Thread 2 (lead-gen) is GTM and should not drive architecture.
 
+## Log Entry: 2026-04-16 - LLM Output Caching + NB05/NB06 Architecture
+
+### Context
+User raised two critical gaps in the D4/D6 architecture:
+1. Every LLM call must extract and cache its output so similar future calls reuse cached results instead of calling the LLM again.
+2. NB05 (golden-path demos) and NB06 (shadow-mode replay) are defined in V02 but not addressed in D4/D6.
+
+### Artifact Created
+- `Docs/ARCHITECTURE_DECISION_LLM_CACHE_NB05_NB06_2026-04-16.md`
+
+### Key Discovery
+`src/decision/hybrid_engine.py` already implements the cache → rule → LLM → cache-result pattern with feedback-based success rate tracking (`CachedDecision.record_feedback()`). This is a strong foundation — needs extension to all LLM touchpoints, not replacement.
+
+### Decisions
+
+**LLM Caching Strategy:**
+- `LLMCacheable` protocol generalizes the existing hybrid engine pattern to all LLM touchpoints (extraction, question generation, suitability scoring, audit explanation, proposal generation, tone adaptation)
+- Every LLM call logs to `LLMCallLog` (namespace, cost, latency, cache hit/miss)
+- Cache lifecycle: call → cache → feedback → eviction or promotion
+- **Cache → Rule promotion**: When a cached decision has `use_count > 20`, `success_rate > 0.95`, `feedback_count > 5`, it's a candidate for promotion to a deterministic rule. System gets cheaper over time.
+
+**NB05 (Golden-Path Demos):**
+- NOT a runtime pipeline stage — a demonstration and validation system
+- Curated `GoldenPathScenario` dataclass with expected outcomes at every pipeline stage
+- Leakage assertions (internal data never in traveler output)
+- Cache-warming function: golden paths pre-populate LLM cache with known-good results
+- Lives in `src/evals/golden_path/`
+
+**NB06 (Shadow-Mode Replay):**
+- Replays real production inputs through experimental pipeline, compares outputs
+- `ShadowDiff` structured comparison (decision state, risk flags, costs, latency)
+- Primary feedback loop for cache freshness validation
+- Used to test new scorers, audit rules, and policy changes before deployment
+- Lives in `src/evals/shadow/`
+
+### The Evolution Flywheel
+Day 1: Heuristics + LLM for edge cases → cache results
+Week 2: Cache hit rate climbs, costs drop
+Month 1: High-success cached decisions promoted to rules
+Month 3: New capabilities start LLM-assisted → graduate to rules
+Ongoing: Every LLM call is a compounding investment that reduces future costs.
+
+## Log Entry: 2026-04-16 - Architecture Decision: D4+D6 Suitability Engine + Audit Eval Suite
+
+### Context
+User requested architecturally sound decisions where everything evolves and improves — no throwaway contracts, no MVP scoping.
+
+### Artifact Created
+- `Docs/ARCHITECTURE_DECISION_D4_D6_SUITABILITY_AUDIT_2026-04-16.md`
+
+### Core Architectural Decisions
+1. **Analyzers vs. Routers split**: D4 (suitability) is an analyzer that computes typed artifacts. D6 (audit) is a measurement system over those same artifacts. They share contracts but never duplicate logic.
+2. **Protocol-based plugin pattern**: Three swappable interfaces for suitability (`ActivityCatalogProvider`, `SuitabilityScorer`, `ScheduleAllocator`) and one for audit (`AuditRule`). Simple Python protocols + registries — no framework dependency.
+3. **Stable contracts across all phases**: `ActivitySuitability` uses same shape for binary flags (Phase 1), scored compatibility (Phase 2), and per-person scheduling (Phase 3). `ParticipantRef` evolves from `cohort` → `person` without downstream contract changes.
+4. **Manifest-driven eval suite**: Categories progress `planned` → `shadow` → `gating`. Eval suite serves as both quality gate AND roadmap.
+5. **`StructuredRisk` as common finding contract**: Replaces current `List[Dict]` risk flags. Same type used by runtime decision engine, audit rules, and eval fixtures.
+6. **`AuditDerivedState` as shared cache**: D4 suitability bundles feed directly into D6 audit rules — the activity audit rule reads suitability results, never re-scores.
+
+### Module Layout Specified
+- `src/intake/suitability/` (contracts, registry, service, catalogs, scorers, scheduling)
+- `src/intake/audit/` (contracts, registry, engine, rules per category)
+- `src/evals/audit/` (manifest, fixtures, metrics, gates, runner)
+- 5-step migration path from current `decision.py` monolith
+
+### Guardrails Locked
+- Agency customization via policy objects, never code branches
+- ML scoring cannot bypass hard exclusions
+- External data normalizes to `ActivityDefinition` before scoring
+- Eval gates per-category, not just aggregate
+- Traveler memory is explicit input, not hidden side effect
+
+### Open Sub-Decisions (5)
+- D4.1: Initial activity catalog scope (destination-scoped vs. activity-type-only)
+- D4.2: Suitability matrix granularity (~100 cells vs. tag-based)
+- D4.3: Layer ownership — `src/intake/` vs. `src/planning/`
+- D6.1: Fixture authoring source (manual vs. real agency scenarios)
+- D6.2: Fixture format (Python dataclasses vs. JSON/YAML)
+
 ## Log Entry: 2026-04-15 - Next.js Frontend Implementation Track Defined
 
 ### Context
@@ -737,3 +815,113 @@ User approved creation of an execution-grade handoff document derived from web f
 ### Key Outcome
 - Downstream implementation can now proceed without additional research interpretation.
 - Handoff is aligned to deterministic-first execution and includes explicit confidence/provenance expectations.
+
+## Log Entry: 2026-04-16 - Pricing Angle + Map/Globe + Real-Time Flight Tracking Exploration
+
+### Context
+User asked to explore product and GTM opportunities around:
+- pricing strategy/packaging
+- map or globe component
+- real-time flight tracking
+
+### What Was Reviewed
+- Existing pricing strategy and GTM guidance in:
+  - `Docs/GTM_AND_DATA_NETWORK_EFFECTS.md`
+  - `Docs/PRODUCT_VISION_AND_MODEL.md`
+- Frontend readiness and product-surface gaps in:
+  - `Docs/FRONTEND_COMPREHENSIVE_AUDIT_2026-04-16.md`
+- Codebase scan confirmed map/globe and live flight tracking are not currently implemented as product modules.
+
+### Strategic Outcome (Documented Direction)
+1. **Pricing**
+   - Keep core subscription simple.
+   - Introduce attachable premium value layers:
+     - Price Intelligence add-on
+     - Live Ops (flight disruption) add-on
+     - Traveler map/share experience module (mid/high tiers)
+
+2. **Map/Globe Productization Sequence**
+   - Phase 1: 2D operational route map (itinerary legs, transfer/risk overlays).
+   - Phase 2: Traveler-safe branded share surface.
+   - Phase 3: Optional 3D globe only if conversion/demo ROI is proven.
+
+3. **Real-Time Flight Tracking Productization Sequence**
+   - Start with delay/cancellation/gate-change operational alerts.
+   - Attach action playbooks (notify traveler, adjust transfer, reflow itinerary).
+   - Monetize by active trip segment / ops usage rather than broad flat inclusion.
+
+### GTM/Execution Recommendation
+- 90-day rollout framing:
+  1. Price intelligence lite + 2D map baseline
+  2. Flight disruption alerts + ops action cards
+  3. Premium traveler map experience + usage-linked monetization
+
+### Key Constraint Recorded
+- Feature roadmap should remain dependency-ordered and deterministic-first.
+- Visual sophistication (globe) should follow measurable operational/commercial impact, not precede it.
+
+## Log Entry: 2026-04-17 - Baseline Packaging Proposal (₹6k Core + Team Packs + Add-ons)
+
+### Context
+User proposed a commercially simpler baseline aligned with prior direction:
+- one default plan around ₹6,000/month
+- includes 1 owner/admin + 4 team members
+- additional team member packs can be added
+- add-on components (including live modules) should remain separate
+
+### Decision Signal Captured
+- Keep pricing architecture simple at the entry point (single strong default).
+- Preserve modular monetization through optional add-ons rather than feature bloat in base tier.
+- Use team expansion packs as the scaling mechanism before introducing multi-tier complexity.
+
+### Recommended Implementation Interpretation
+1. **Core Default Plan**
+  - `Core_6000`: owner/admin + 4 team seats.
+2. **Team Expansion**
+  - add seat packs (e.g., +3 or +5 users) as attachable increments.
+3. **Optional Add-ons**
+  - Price Intelligence module
+  - Live Ops / Flight disruption module
+  - Traveler map/share premium module
+
+### Why This Matters
+- Reduces decision fatigue in early sales conversations.
+- Keeps packaging aligned with demonstrated agency team structures.
+- Maintains clear path to ARPU growth via expansion + add-ons.
+
+## Log Entry: 2026-04-17 - Next Exploration Direction: Plugin System (Draft)
+
+### Context
+User asked what to explore next and suggested plugin system as the next strategic thread.
+
+### Actions Completed
+- Created draft exploration artifact:
+  - `Docs/PLUGIN_SYSTEM_EXPLORATION_DRAFT_2026-04-17.md`
+- Documented:
+  - candidate plugin domains (suitability, audit rules, data sources, ops/live)
+  - core design questions (registration, contract strictness, execution, safety, precedence)
+  - recommended v1 architecture (explicit registry + execution guardrails)
+  - phased execution order and non-goals
+
+### Traceability
+- Added index link:
+  - `Docs/INDEX.md`
+
+## Log Entry: 2026-04-17 - Pricing Packaging Draft Documented (Proper Naming)
+
+### Context
+User requested the discussion to be documented with a clear and proper name while keeping status as non-final.
+
+### Actions Completed
+- Created dedicated draft artifact:
+  - `Docs/PRICING_PACKAGING_DISCUSSION_DRAFT_2026-04-17.md`
+- Captured current working direction:
+  - ₹6,000 default plan
+  - 1 owner/admin + 4 team members included
+  - team expansion packs
+  - modular add-ons (live ops, price intelligence, traveler map/share)
+- Explicitly marked document status as **Draft / Not Final** with open questions.
+
+### Traceability
+- Added to docs navigation:
+  - `Docs/INDEX.md`

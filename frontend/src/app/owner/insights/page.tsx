@@ -7,6 +7,7 @@ import {
   Clock,
   DollarSign,
   AlertTriangle,
+  CheckCircle,
   ChevronDown,
   Download,
 } from 'lucide-react';
@@ -165,7 +166,7 @@ const TeamMemberRow = memo(function TeamMemberRow({ member }: { member: TeamMemb
         <span className='text-sm text-[#e6edf3]'>{member.activeTrips}</span>
       </td>
       
-      <td className='py-3 text-center'>
+      <td className='py-3 text-center hidden md:table-cell'>
         <div className='flex items-center justify-center gap-2'>
           <div className='w-16 h-1.5 bg-[#161b22] rounded-full overflow-hidden'>
             <div 
@@ -187,11 +188,11 @@ const TeamMemberRow = memo(function TeamMemberRow({ member }: { member: TeamMemb
         <span className='text-sm text-[#e6edf3]'>{member.conversionRate}%</span>
       </td>
       
-      <td className='py-3 text-center'>
+      <td className='py-3 text-center hidden lg:table-cell'>
         <span className='text-sm text-[#e6edf3]'>{member.avgResponseTime}h</span>
       </td>
       
-      <td className='py-3 text-center'>
+      <td className='py-3 text-center hidden lg:table-cell'>
         <span className='text-sm text-[#e6edf3]'>{member.customerSatisfaction}/5</span>
       </td>
     </tr>
@@ -397,10 +398,10 @@ export default function OwnerInsightsPage() {
                 <tr className='border-b border-[#30363d]'>
                   <th className='text-left py-2 text-sm font-medium text-[#8b949e]'>Agent</th>
                   <th className='text-center py-2 text-sm font-medium text-[#8b949e]'>Active</th>
-                  <th className='text-center py-2 text-sm font-medium text-[#8b949e]'>Workload</th>
+                  <th className='text-center py-2 text-sm font-medium text-[#8b949e] hidden md:table-cell'>Workload</th>
                   <th className='text-center py-2 text-sm font-medium text-[#8b949e]'>Conversion</th>
-                  <th className='text-center py-2 text-sm font-medium text-[#8b949e]'>Response</th>
-                  <th className='text-center py-2 text-sm font-medium text-[#8b949e]'>CSAT</th>
+                  <th className='text-center py-2 text-sm font-medium text-[#8b949e] hidden lg:table-cell'>Response</th>
+                  <th className='text-center py-2 text-sm font-medium text-[#8b949e] hidden lg:table-cell'>CSAT</th>
                 </tr>
               </thead>
               <tbody>

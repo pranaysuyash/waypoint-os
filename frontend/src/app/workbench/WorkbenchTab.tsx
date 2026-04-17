@@ -52,7 +52,7 @@ export function WorkbenchTab({ activeTab, onTabChange }: WorkbenchTabProps) {
       <div
         className={styles.tabs}
         role="tablist"
-        aria-label="Workbench tabs"
+        aria-label="Trip workspace sections"
         id={tabListId}
       >
         {TABS.map((tab, index) => {

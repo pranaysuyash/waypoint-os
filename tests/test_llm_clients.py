@@ -83,8 +83,21 @@ class TestGeminiClient:
         """Test that creating client without API key raises error."""
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
 
-        with pytest.raises(LLMUnavailableError, match="GEMINI_API_KEY not set"):
-            GeminiClient()
+        # Check if package is available
+        try:
+            import google.generativeai
+            package_available = True
+        except ImportError:
+            package_available = False
+
+        if package_available:
+            # Package installed - should get API key error
+            with pytest.raises(LLMUnavailableError, match="GEMINI_API_KEY not set"):
+                GeminiClient()
+        else:
+            # Package not installed - should get package error
+            with pytest.raises(LLMUnavailableError, match="google-generativeai"):
+                GeminiClient()
 
     def test_create_with_api_key(self, monkeypatch):
         """Test creating client with API key."""
@@ -135,8 +148,21 @@ class TestOpenAIClient:
         """Test that creating client without API key raises error."""
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
-        with pytest.raises(LLMUnavailableError, match="OPENAI_API_KEY not set"):
-            OpenAIClient()
+        # Check if package is available
+        try:
+            import openai
+            package_available = True
+        except ImportError:
+            package_available = False
+
+        if package_available:
+            # Package installed - should get API key error
+            with pytest.raises(LLMUnavailableError, match="OPENAI_API_KEY not set"):
+                OpenAIClient()
+        else:
+            # Package not installed - should get package error
+            with pytest.raises(LLMUnavailableError, match="openai"):
+                OpenAIClient()
 
     def test_create_with_api_key(self, monkeypatch):
         """Test creating client with API key."""

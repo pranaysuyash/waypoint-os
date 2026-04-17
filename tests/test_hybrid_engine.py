@@ -228,7 +228,8 @@ class TestHybridDecisionEngine:
             enable_llm=False,
         )
 
-        # Register a mock rule
+        # Clear built-in rules and register a mock rule
+        engine._rules = {}
         def mock_rule(packet):
             return {"risk_level": "medium", "reason": "Rule decision"}
 

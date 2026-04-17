@@ -62,7 +62,7 @@ function WorkbenchContent() {
       {/* Main Content */}
       <div className='px-6 py-6'>
         {/* Header */}
-        <header className='flex items-center justify-between mb-6'>
+        <header className='flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-6'>
           <div>
             <h1 className='text-2xl font-semibold text-[#e6edf3] mb-1'>
               Trip Workspace
@@ -71,7 +71,7 @@ function WorkbenchContent() {
               Process travel requests through the analysis pipeline
             </p>
           </div>
-          <div className='flex items-center gap-3'>
+          <div className='flex items-center gap-3 flex-wrap'>
             <button
               type='button'
               disabled={isRunning}

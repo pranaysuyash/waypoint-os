@@ -71,7 +71,7 @@ export function Tabs({ tabs, activeTab, onTabChange }: TabsProps) {
       className="border-b border-[#30363d]"
       aria-label="Tab navigation"
     >
-      <div className="flex">
+      <div className="flex overflow-x-auto scrollbar-hide">
         {tabs.map((tab, index) => (
           <button
             key={tab.id}

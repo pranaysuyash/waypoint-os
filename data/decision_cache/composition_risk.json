@@ -1,0 +1,32 @@
+{
+  "f82a37c6798e02276ed18c1180562f43": {
+    "cache_key": "f82a37c6798e02276ed18c1180562f43",
+    "decision_type": "composition_risk",
+    "decision": {
+      "risk_level": "medium",
+      "reasoning": "Party of 5 (2 adults, 2 teens, 1 toddlers) visiting Dubai \u2014 All-teen group may have specific activity preferences",
+      "concerns": [
+        "All-teen group may have specific activity preferences"
+      ],
+      "recommendations": [
+        "Consider age-appropriate activities and supervision"
+      ],
+      "party_size": 5,
+      "composition": {
+        "adults": 2,
+        "teens": 2,
+        "children": 0,
+        "toddlers": 1,
+        "elderly": 0
+      }
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-16T23:35:44.530630",
+    "last_used_at": "2026-04-17T06:46:17.701824+00:00",
+    "use_count": 544,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  }
+}

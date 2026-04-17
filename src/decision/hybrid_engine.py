@@ -241,9 +241,24 @@ class HybridDecisionEngine:
 
     def _register_builtin_rules(self) -> None:
         """Register built-in decision rules."""
-        # Rules will be registered here
-        # For now, we'll add placeholder rule functions
-        pass
+        try:
+            from decision.rules import (
+                rule_elderly_mobility_risk,
+                rule_toddler_pacing_risk,
+                rule_budget_feasibility,
+                rule_visa_timeline_risk,
+                rule_composition_risk,
+            )
+
+            self.register_rule("elderly_mobility_risk", rule_elderly_mobility_risk)
+            self.register_rule("toddler_pacing_risk", rule_toddler_pacing_risk)
+            self.register_rule("budget_feasibility", rule_budget_feasibility)
+            self.register_rule("visa_timeline_risk", rule_visa_timeline_risk)
+            self.register_rule("composition_risk", rule_composition_risk)
+
+            logger.debug("Registered 5 built-in decision rules")
+        except ImportError as e:
+            logger.warning(f"Failed to import built-in rules: {e}")
 
     def register_rule(
         self,

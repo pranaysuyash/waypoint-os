@@ -1,0 +1,27 @@
+{
+  "ee4499cf489ddd10b95ea826f4e94ffd": {
+    "cache_key": "ee4499cf489ddd10b95ea826f4e94ffd",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "medium",
+      "reasoning": "Toddler (0 years old) | Single destination: Dubai \u2014 pacing and transfer complexity concerns",
+      "recommendations": [
+        "Plan for frequent breaks (every 2-3 hours)",
+        "Book direct transfers where possible",
+        "Choose accommodation with play areas or pools"
+      ],
+      "toddler_ages": [
+        0
+      ],
+      "duration_days": null
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-16T23:35:44.530040",
+    "last_used_at": "2026-04-17T06:46:17.701323+00:00",
+    "use_count": 520,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  }
+}

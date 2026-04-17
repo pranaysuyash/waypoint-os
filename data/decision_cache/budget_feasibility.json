@@ -1,0 +1,22 @@
+{
+  "7520b6f1ae32fde59dabe44f54649ada": {
+    "cache_key": "7520b6f1ae32fde59dabe44f54649ada",
+    "decision_type": "budget_feasibility",
+    "decision": {
+      "feasible": true,
+      "risk_level": "low",
+      "reasoning": "Budget \u20b9400,000 is \u20b9220,000 above minimum viable cost of \u20b9180,000 for 3 travelers to Singapore. Good budget for this destination.",
+      "estimated_cost_range": "\u20b9180,000 minimum",
+      "gap_amount": 220000,
+      "gap_percent": 122.2
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-16T23:35:49.509530",
+    "last_used_at": "2026-04-17T06:46:17.163701+00:00",
+    "use_count": 15,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  }
+}

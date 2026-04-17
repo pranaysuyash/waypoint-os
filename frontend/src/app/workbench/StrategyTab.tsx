@@ -37,7 +37,7 @@ export function StrategyTab() {
   if (!result_strategy) {
     return (
       <div className={styles.emptyState}>
-        <p>No options data. Process a trip from the New Inquiry tab first.</p>
+        <p>No options data. Process a trip from the "New Inquiry" section first.</p>
       </div>
     );
   }

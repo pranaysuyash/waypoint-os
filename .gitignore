@@ -61,3 +61,6 @@ data/accumulated_cities.json
 # Design reference files (HTML assets)
 Archive/design_refs/
 .gstack/
+
+# Responsive audit output
+Docs/responsive-audit/

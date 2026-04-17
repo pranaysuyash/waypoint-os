@@ -43,7 +43,7 @@ export function PacketTab() {
   if (!result_packet) {
     return (
       <div className={styles.emptyState}>
-        <p>No booking request data. Process a trip from the New Inquiry tab first.</p>
+        <p>No booking request data. Process a trip from the "New Inquiry" section first.</p>
       </div>
     );
   }
@@ -85,7 +85,7 @@ export function PacketTab() {
 
       {/* Facts Section */}
       <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Facts</h3>
+        <h3 className={styles.sectionTitle}>Extracted Information</h3>
         <div className={styles.card}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -113,7 +113,7 @@ export function PacketTab() {
       {/* Derived Signals Section */}
       {Object.keys(derivedSignals).length > 0 && (
         <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Derived Signals</h3>
+          <h3 className={styles.sectionTitle}>Inferred Details</h3>
           <div className={styles.card}>
               {Object.entries(derivedSignals).map(([signal, slot]) => (
               <div key={`sig-${signal}`} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--color-border)" }}>

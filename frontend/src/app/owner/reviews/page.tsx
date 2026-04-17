@@ -321,10 +321,9 @@ export default function OwnerReviewsPage() {
 
   const handleApprove = useCallback((id: string) => {
     setIsProcessing(true);
-    // Simulate API call
     setTimeout(() => {
-      setReviews((prev) =
-        prev.map((r) =
+      setReviews((prev) =>
+        prev.map((r) =>
           r.id === id ? { ...r, status: 'approved', reviewedAt: new Date().toISOString() } : r
         )
       );
@@ -335,8 +334,8 @@ export default function OwnerReviewsPage() {
   const handleReject = useCallback((id: string) => {
     setIsProcessing(true);
     setTimeout(() => {
-      setReviews((prev) =
-        prev.map((r) =
+      setReviews((prev) =>
+        prev.map((r) =>
           r.id === id ? { ...r, status: 'rejected', reviewedAt: new Date().toISOString() } : r
         )
       );
@@ -347,8 +346,8 @@ export default function OwnerReviewsPage() {
   const handleRequestChanges = useCallback((id: string) => {
     setIsProcessing(true);
     setTimeout(() => {
-      setReviews((prev) =
-        prev.map((r) =
+      setReviews((prev) =>
+        prev.map((r) =>
           r.id === id ? { ...r, status: 'escalated', reviewedAt: new Date().toISOString() } : r
         )
       );
@@ -369,7 +368,7 @@ export default function OwnerReviewsPage() {
   return (
     <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
       {/* Header */}
-      <header className='flex items-center justify-between pt-1'>
+      <header className='flex flex-wrap items-center justify-between gap-3 pt-1'>
         <div>
           <h1 className='text-2xl font-semibold text-[#e6edf3]'>Reviews & Approvals</h1>
           <p className='text-base text-[#8b949e] mt-0.5'>

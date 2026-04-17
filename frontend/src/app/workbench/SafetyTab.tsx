@@ -30,7 +30,7 @@ export function SafetyTab() {
   if (!result_safety) {
     return (
       <div className={styles.emptyState}>
-        <p>No review data. Process a trip from the New Inquiry tab first.</p>
+        <p>No review data. Process a trip from the "New Inquiry" section first.</p>
       </div>
     );
   }
@@ -82,7 +82,7 @@ export function SafetyTab() {
 
       {strippedFields.length > 0 && (
         <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Stripped Fields / Terms</h3>
+          <h3 className={styles.sectionTitle}>Jargon Found in Customer Message</h3>
           <div className={styles.card}>
             <ul className={styles.list}>
               {strippedFields.map((item, i) => (

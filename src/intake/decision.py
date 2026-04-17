@@ -6,6 +6,7 @@ Consumes CanonicalPacket v0.2 from NB01, returns DecisionResult.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Tuple
@@ -18,6 +19,123 @@ from .packet_models import (
     AuthorityLevel,
 )
 from .telemetry import emit_ambiguity_synthesis
+
+# =============================================================================
+# HYBRID DECISION ENGINE INTEGRATION
+# =============================================================================
+
+# Feature flag to enable hybrid decision engine
+# Set via environment variable: USE_HYBRID_DECISION_ENGINE=1
+_HYBRID_ENGINE_ENABLED = os.environ.get("USE_HYBRID_DECISION_ENGINE", "1") == "1"
+
+# Lazy-load hybrid engine only when enabled
+_hybrid_engine_instance = None
+
+
+def _get_hybrid_engine():
+    """Get or create the hybrid decision engine instance."""
+    global _hybrid_engine_instance
+    if not _HYBRID_ENGINE_ENABLED:
+        return None
+
+    if _hybrid_engine_instance is None:
+        try:
+            from decision import create_hybrid_engine
+            _hybrid_engine_instance = create_hybrid_engine(
+                enable_cache=True,
+                enable_rules=True,
+                enable_llm=True,
+            )
+        except ImportError:
+            # Hybrid engine not available
+            return None
+        except Exception as e:
+            # Log but don't fail - fall back to rule engine
+            print(f"Warning: Failed to initialize hybrid engine: {e}")
+            return None
+
+    return _hybrid_engine_instance
+
+
+def _generate_risk_flags_with_hybrid_engine(
+    packet: CanonicalPacket,
+    stage: str,
+    cached_feasibility: Optional[Dict[str, Any]] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Generate risk flags using the hybrid decision engine.
+
+    This function uses the hybrid engine's rules + cache + LLM to generate
+    contextual risk flags. Falls back to empty list if engine unavailable.
+
+    Args:
+        packet: CanonicalPacket with travel information
+        stage: Current stage (discovery, shortlist, proposal, booking)
+        cached_feasibility: Optional pre-computed feasibility result
+
+    Returns:
+        List of risk flag dictionaries
+    """
+    engine = _get_hybrid_engine()
+    if not engine:
+        return []
+
+    risks = []
+
+    # Decision types to check
+    decision_types = [
+        "elderly_mobility_risk",
+        "toddler_pacing_risk",
+        "composition_risk",
+        "visa_timeline_risk",
+    ]
+
+    # Add budget_feasibility for booking stage
+    if stage == "booking":
+        decision_types.append("budget_feasibility")
+
+    for decision_type in decision_types:
+        try:
+            result = engine.decide(decision_type, packet)
+
+            # Convert hybrid engine result to risk flag format
+            if result and result.decision:
+                risk_level = result.decision.get("risk_level", "low")
+
+                # Map risk level to severity
+                severity_map = {"low": "low", "medium": "medium", "high": "high"}
+                severity = severity_map.get(risk_level, "low")
+
+                # Build reasoning from hybrid engine output
+                reasoning = result.decision.get("reasoning", "")
+
+                # Map decision type to flag name
+                flag_map = {
+                    "elderly_mobility_risk": "elderly_mobility_risk",
+                    "toddler_pacing_risk": "toddler_pacing_risk",
+                    "composition_risk": "composition_risk",
+                    "visa_timeline_risk": "visa_timeline_risk",
+                    "budget_feasibility": "margin_risk",
+                }
+
+                flag = flag_map.get(decision_type, decision_type)
+
+                # Add risk flag if not low risk
+                if risk_level != "low":
+                    risks.append({
+                        "flag": flag,
+                        "severity": severity,
+                        "message": reasoning,
+                        "source": result.source,  # "rule", "llm", or "cache"
+                        "recommendations": result.decision.get("recommendations", []),
+                    })
+
+        except Exception as e:
+            # Log but continue with other decision types
+            print(f"Warning: Hybrid engine failed for {decision_type}: {e}")
+            continue
+
+    return risks
 
 
 # =============================================================================
@@ -1037,37 +1155,50 @@ def generate_risk_flags(
     NOT static templates — these emerge from fact combinations.
 
     Accepts optional cached_feasibility to avoid recomputation.
+
+    Uses hybrid decision engine when enabled (USE_HYBRID_DECISION_ENGINE=1),
+    falling back to original rule-based logic for compatibility.
     """
     risks = []
 
-    # Composition risk
-    comp = packet.facts.get("party_composition")
-    dest = packet.facts.get("destination_candidates")
-    if comp and comp.value:
-        composition = comp.value
-        # Handle both dict format (from structured input) and string format (from free text)
-        if isinstance(composition, dict) and composition.get("elderly") and dest:
-            dests = dest.value
-            if isinstance(dests, list):
-                risky_dests = {"Maldives", "Andaman", "Andamans", "Bhutan", "Nepal"}
-                if any(d in risky_dests for d in dests):
-                    risks.append({
-                        "flag": "elderly_mobility_risk",
-                        "severity": "high",
-                        "message": f"Elderly travelers + {dests[0]} — verify medical access and mobility",
-                    })
-        if isinstance(composition, dict) and composition.get("children") and dest:
-            ages = packet.facts.get("child_ages")
-            if ages and ages.value:
-                young_ages = [a for a in ages.value if a < 4]
-                if young_ages:
-                    risks.append({
-                        "flag": "toddler_pacing_risk",
-                        "severity": "medium",
-                        "message": f"Toddler ({min(young_ages)}yo) — flag pacing and transfer complexity",
-                    })
+    # --- HYBRID ENGINE: Handle supported decision types ---
+    if _HYBRID_ENGINE_ENABLED:
+        hybrid_risks = _generate_risk_flags_with_hybrid_engine(packet, stage, cached_feasibility)
+        risks.extend(hybrid_risks)
 
-    # Document risk
+        # If hybrid engine handled all risk types, skip the original logic
+        # (except for critical document/visa status which must always be checked)
+        # Continue to document risk checks below...
+    else:
+        # --- ORIGINAL RULES: Use when hybrid engine disabled ---
+        # Composition risk (elderly mobility, toddler pacing)
+        comp = packet.facts.get("party_composition")
+        dest = packet.facts.get("destination_candidates")
+        if comp and comp.value:
+            composition = comp.value
+            # Handle both dict format (from structured input) and string format (from free text)
+            if isinstance(composition, dict) and composition.get("elderly") and dest:
+                dests = dest.value
+                if isinstance(dests, list):
+                    risky_dests = {"Maldives", "Andaman", "Andamans", "Bhutan", "Nepal"}
+                    if any(d in risky_dests for d in dests):
+                        risks.append({
+                            "flag": "elderly_mobility_risk",
+                            "severity": "high",
+                            "message": f"Elderly travelers + {dests[0]} — verify medical access and mobility",
+                        })
+            if isinstance(composition, dict) and composition.get("children") and dest:
+                ages = packet.facts.get("child_ages")
+                if ages and ages.value:
+                    young_ages = [a for a in ages.value if a < 4]
+                    if young_ages:
+                        risks.append({
+                            "flag": "toddler_pacing_risk",
+                            "severity": "medium",
+                            "message": f"Toddler ({min(young_ages)}yo) — flag pacing and transfer complexity",
+                        })
+
+    # --- CRITICAL DOCUMENT RISKS: Always check (not in hybrid engine) ---
     passport = packet.facts.get("passport_status")
     visa = packet.facts.get("visa_status")
     date_end = packet.facts.get("date_end")
@@ -1088,7 +1219,10 @@ def generate_risk_flags(
                 "severity": "critical",
                 "message": "Visa required but not applied — booking blocked",
             })
-    if urgency and urgency.value == "high" and visa and isinstance(visa.value, dict) \
+
+    # --- VISA TIMELINE RISK: Check if not already handled by hybrid engine ---
+    visa_flags = [r for r in risks if r["flag"] == "visa_timeline_risk"]
+    if not visa_flags and urgency and urgency.value == "high" and visa and isinstance(visa.value, dict) \
        and visa.value.get("requirement") == "required":
         risks.append({
             "flag": "visa_timeline_risk",
@@ -1096,16 +1230,77 @@ def generate_risk_flags(
             "message": "High urgency + visa required — timeline risk",
         })
 
-    # Margin risk (from budget feasibility — reuse cached if available)
-    feasibility = cached_feasibility if cached_feasibility is not None else check_budget_feasibility(packet)
-    if feasibility["status"] == "infeasible":
-        gap = feasibility["gap"]
+    # --- MARGIN RISK: Check if not already handled by hybrid engine ---
+    margin_flags = [r for r in risks if r["flag"] == "margin_risk"]
+    if not margin_flags:
+        feasibility = cached_feasibility if cached_feasibility is not None else check_budget_feasibility(packet)
+        if feasibility["status"] == "infeasible":
+            gap = feasibility["gap"]
+            risks.append({
+                "flag": "margin_risk",
+                "severity": "high",
+                "message": f"Budget infeasible — gap of ₹{abs(gap):,} below minimum viable cost",
+                "maturity": feasibility.get("maturity", "heuristic"),
+            })
+
+    # --- COORDINATION RISK: Multi-party budget spread (not in hybrid engine) ---
+    sub_groups = packet.facts.get("sub_groups")
+    if sub_groups and isinstance(sub_groups.value, dict):
+        groups = sub_groups.value
+        budget_slot = packet.facts.get("budget_min")
+        if budget_slot and budget_slot.value:
+            total_budget = budget_slot.value
+            budget_shares = [
+                g.budget_share if hasattr(g, 'budget_share') else g.get('budget_share', 0)
+                for g in groups.values()
+            ]
+            budget_shares = [b for b in budget_shares if b]
+            if budget_shares and total_budget:
+                spread = max(budget_shares) - min(budget_shares)
+                if spread > 0.3 * total_budget:
+                    risks.append({
+                        "flag": "coordination_risk",
+                        "severity": "medium",
+                        "message": f"Budget spread of ₹{spread:,} across groups — coordination risk",
+                    })
+
+    # --- TRAVELER-SAFE LEAKAGE RISK: Always check (not in hybrid engine) ---
+    # Triggered by: hypotheses, contradictions, ambiguities, or internal-only owner fields
+    has_internal_data = bool(packet.hypotheses) or bool(packet.contradictions)
+    has_blocking_ambiguities = any(
+        a.ambiguity_type in ("unresolved_alternatives", "destination_open", "value_vague")
+        for a in packet.ambiguities
+    )
+    has_internal_owner = False
+    oc = packet.facts.get("owner_constraints")
+    if oc and oc.value:
+        constraints = oc.value
+        if isinstance(constraints, list):
+            has_internal_owner = any(
+                getattr(c, 'visibility', None) == "internal_only" or
+                (isinstance(c, dict) and c.get("visibility") == "internal_only")
+                for c in constraints
+            )
+
+    if has_internal_data or has_blocking_ambiguities or has_internal_owner:
+        internal = packet.derived_signals.get("internal_data_present")
+        reasons = []
+        if packet.hypotheses:
+            reasons.append(f"{len(packet.hypotheses)} hypotheses")
+        if packet.contradictions:
+            reasons.append(f"{len(packet.contradictions)} contradictions")
+        if has_blocking_ambiguities:
+            reasons.append("blocking ambiguities")
+        if has_internal_owner:
+            reasons.append("internal-only owner constraints")
+
         risks.append({
-            "flag": "margin_risk",
-            "severity": "high",
-            "message": f"Budget infeasible — gap of ₹{abs(gap):,} below minimum viable cost",
-            "maturity": feasibility.get("maturity", "heuristic"),
+            "flag": "traveler_safe_leakage_risk",
+            "severity": "critical",
+            "message": f"Internal data present ({', '.join(reasons)}) — ensure traveler-safe boundary",
         })
+
+    return risks
 
     # Coordination risk (multi-party)
     sub_groups = packet.facts.get("sub_groups")

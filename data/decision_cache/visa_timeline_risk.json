@@ -1,0 +1,36 @@
+{
+  "a4f5853219b163d8d60f920e9b1682e5": {
+    "cache_key": "a4f5853219b163d8d60f920e9b1682e5",
+    "decision_type": "visa_timeline_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "Domestic destination \u2014 no visa required",
+      "visa_lead_time_days": 0
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-16T23:35:50.821181",
+    "last_used_at": "2026-04-17T06:46:17.032946+00:00",
+    "use_count": 8,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "842af98539d049d65b017ff279c4936f": {
+    "cache_key": "842af98539d049d65b017ff279c4936f",
+    "decision_type": "visa_timeline_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "Visa not_required \u2014 no timeline risk",
+      "visa_lead_time_days": 0
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-16T23:35:50.836803",
+    "last_used_at": "2026-04-17T06:46:17.163180+00:00",
+    "use_count": 4,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  }
+}
