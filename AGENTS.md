@@ -56,6 +56,21 @@ If instructions conflict, follow the stricter rule and cite concrete file paths.
 7. Verify functionality and run tests.
 8. Document outcomes and pending items.
 
+## Autonomous Review + Handoff Protocol (Critical)
+
+When asked to review implementation work and/or propose new tasks for an implementation agent:
+
+1. **Do not repeatedly ask the user for process preferences.**
+2. **Automatically apply** `Docs/IMPLEMENTATION_AGENT_REVIEW_HANDOFF_CHECKLIST.md`.
+3. Produce an evidence-first review and a concrete, atomic task package.
+4. Include the confirmation line:
+  - `Checklist applied: IMPLEMENTATION_AGENT_REVIEW_HANDOFF_CHECKLIST.md`
+
+Only ask a clarification question if blocked by:
+- contradictory instructions,
+- missing critical artifact for a safety decision,
+- destructive action needing explicit approval.
+
 ## External Review Evaluation Workflow (Critical Addition)
 
 When receiving external reviews (human or model), do NOT treat them as authority. Apply this critical evaluation:
@@ -118,9 +133,27 @@ For each recommendation, document:
 - Do not create throwaway useful tools in `/tmp`.
 
 ### Code Preservation
-- Never delete methods/functions/code to silence warnings without explicit user approval.
+- Never delete code to silence warnings without explicit user approval.
 - For unused identifiers, prefer non-destructive refactors (for TS, underscore prefix convention where applicable).
 - Preserve code intent and structure; ask if deletion is unclear.
+- **Redundant superseded code**: If a component/function is fully replaced by another that does the same job better, removal is preferred over keeping dead code. Document the removal briefly in the commit message (e.g., "Remove WorkbenchTab — superseded by Tabs component which provides identical ARIA functionality"). Do NOT keep code that serves no purpose and will rot — that creates confusion and maintenance debt.
+- **Unused but potentially useful**: This is different from redundant. A utility hook, type definition, or helper that isn't currently called but serves a clear purpose for upcoming work — keep it. Use underscore prefix if lint complains.
+
+### Supersession Workflow (Critical — Required Before Any Removal)
+
+Before removing **any** code (function, type, component, export), apply this workflow. No exceptions.
+
+1. **Identify the candidate for removal** and its supposed superset/replacement.
+2. **Field-by-field comparison**: Compare all features, exports, props, type fields, and behavioral contracts. If the candidate has ANY feature the replacement lacks, the replacement is NOT a superset — stop and merge the missing features first.
+3. **Call-site audit**: Grep for all references to the candidate. If any call site relies on a feature the replacement doesn't provide, the candidate is NOT redundant — stop.
+4. **Verify add-first-then-remove**: If canonical types live elsewhere (e.g., `spine.ts`), add them to the canonical location FIRST. Verify build passes. Only THEN remove the local duplicate.
+5. **Document the analysis**: Record the comparison table and verdict in the commit message or session notes. Format:
+   ```
+   Removal: <candidate> — superseded by <replacement>
+   Comparison: <list each dimension checked>
+   Call sites: <N> — all migrated
+   ```
+6. **Post-removal verification**: Run build + tests immediately after removal. If anything breaks, revert and re-analyze.
 
 ### Issue Review Naming
 - When an issue is identified and explicitly requires a review note, name the document:

@@ -1030,6 +1030,29 @@ Identified as prerequisite for adaptive autonomy. Candidate dimensions: trip com
 ### Traceability
 - Added to `Docs/INDEX.md`
 
+## Log Entry: 2026-04-18 - D2 Free Engine Persona Decision
+
+### Context
+Continued thesis deep dive. D2 (free engine target persona) from `DISCUSSION_THESIS_DEEP_DIVE_2026-04-16.md` Thread 2 discussed.
+
+### Key Consolidation
+Funnel B (thesis deep dive) and Itinerary Checker GTM Wedge (`Docs/context/ITINERARY_CHECKER_GTM_WEDGE_2026-04-14.md`) are the same initiative described at two altitudes. Documented as such to prevent future confusion.
+
+### Positioning Decision (Owner-Directed)
+Owner corrected the framing: the free engine is NOT "your plan is bad, we'll fix it." It IS "here are things worth discussing with your planner before you finalize." The tool empowers consumers to ask better questions, not to replace their agency. Lead-gen conversion happens organically when the consumer's agency can't answer well — not through adversarial redirect.
+
+### Architecture Decision
+Shared pipeline (`operating_mode: "audit"` for both surfaces), different NB03 presentation layer. New field: `presentation_profile: Literal["agency", "consumer"]` controls NB03 builder selection, finding visibility, and language register. Consumer surface only shows `gating`-status rules from D6 eval manifest (stricter quality bar — no agent to catch false positives, and false positives undermine consumer-agency relationships under the empowerment framing).
+
+### Sequencing
+Agency self-audit (Funnel A) ships with Stage 2. Consumer free engine (Funnel B = itinerary checker) ships after D6 eval gating categories pass precision thresholds. Paid fix tier + lead routing after 30-day go/no-go gates from decision memo.
+
+### Artifacts
+- Created: `Docs/ARCHITECTURE_DECISION_D2_FREE_ENGINE_PERSONA_2026-04-18.md`
+
+### Traceability
+- Added to `Docs/INDEX.md`
+
 ## Log Entry: 2026-04-18 - Cloudflare vs Postgres Clarification (Ease of Deployment + Cost)
 
 ### Context

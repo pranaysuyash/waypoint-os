@@ -326,7 +326,7 @@ AMBIGUITY_SEVERITY: Dict[str, str] = {
 
 ### Phase 3: High Value, High Complexity (P0, Core Differentiator)
 
-6. **Activity suitability matrix** (This is Product B!)
+6. **Activity suitability matrix** (This is Product B!) - **PARTIALLY IMPLEMENTED 2026-04-18**
    ```python
    # data/activity_suitability.json
    {
@@ -342,6 +342,7 @@ AMBIGUITY_SEVERITY: Dict[str, str] = {
      }
    }
    ```
+   **Status**: Tier 1 and Tier 2 scoring implemented in `src/suitability/`. Static activity catalog with 18 activities. Integrated with decision pipeline. See `Docs/SUITABILITY_IMPLEMENTATION_SUMMARY_2026-04-18.md` for details.
 
 7. **Supplier inventory integration** (Sourcing hierarchy!)
    - Internal packages database

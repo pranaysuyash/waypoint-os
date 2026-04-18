@@ -20,6 +20,15 @@
 - **Master catalog**: `/Users/pranay/Projects/SKILLS_CATALOG.md`
 - **Workspace rules**: `/Users/pranay/Projects/AGENTS.md`
 - **Project rules**: `../AGENTS.md`
+- **Review/handoff checklist**: `../Docs/IMPLEMENTATION_AGENT_REVIEW_HANDOFF_CHECKLIST.md`
+
+## Autonomous Review/Handoff Rule (Frontend)
+
+For frontend implementation reviews and new task proposals:
+
+1. Apply `../Docs/IMPLEMENTATION_AGENT_REVIEW_HANDOFF_CHECKLIST.md` automatically.
+2. Do not repeatedly ask the user to restate review format/process.
+3. Provide evidence-first findings + atomic implementation tasks with verification commands.
 
 ### Frontend-Specific Skills
 

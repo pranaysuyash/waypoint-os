@@ -31,6 +31,7 @@ from .safety import (
     enforce_no_leakage,
     SanitizedPacketView,
 )
+from .config.agency_settings import AgencySettings
 
 
 # =============================================================================
@@ -74,6 +75,7 @@ def run_spine_once(
     operating_mode: Optional[str] = None,
     feasibility_table: Optional[Dict[str, Any]] = None,
     fixture_expectations: Optional[Dict[str, Any]] = None,
+    agency_settings: Optional[AgencySettings] = None,
 ) -> SpineResult:
     """
     Single spine entrypoint: envelopes → complete result bundle.
@@ -114,13 +116,13 @@ def run_spine_once(
     validation = validate_packet(packet, stage=stage)
 
     # --- Phase 3: Decision ---
-    decision = run_gap_and_decision(packet, feasibility_table=feasibility_table)
+    decision = run_gap_and_decision(packet, feasibility_table=feasibility_table, agency_settings=agency_settings)
 
     # Update packet decision_state from decision result
     packet.decision_state = decision.decision_state
 
     # --- Phase 4: Strategy ---
-    strategy = build_session_strategy(decision, packet)
+    strategy = build_session_strategy(decision, packet, agency_settings=agency_settings)
 
     # --- Phase 5: Internal Bundle ---
     internal_bundle = build_internal_bundle(strategy, decision, packet)

@@ -2,37 +2,13 @@
 
 import { useState } from "react";
 import { useWorkbenchStore } from "@/stores/workbench";
+import type { StrategyOutput, PromptBundle } from "@/types/spine";
 import styles from "./workbench.module.css";
 
-interface StrategyOutput {
-  session_goal: string;
-  priority_sequence: string[];
-  tonal_guardrails: string[];
-  risk_flags: string[];
-  suggested_opening: string;
-  exit_criteria: string[];
-  next_action: string;
-  assumptions: string[];
-  suggested_tone: string;
-}
-
-interface PromptBundle {
-  system_context: string;
-  user_message: string;
-  follow_up_sequence: Array<{
-    field_name: string;
-    question: string;
-    priority: string;
-  }>;
-  branch_prompts: unknown[];
-  internal_notes: string;
-  constraints: string[];
-  audience: string;
-}
-
 export function StrategyTab() {
-  const { result_strategy, result_internal_bundle, result_traveler_bundle } = useWorkbenchStore();
+  const { result_strategy, result_internal_bundle, result_traveler_bundle, debug_raw_json } = useWorkbenchStore();
   const [showRaw, setShowRaw] = useState(false);
+  const effectiveShowRaw = debug_raw_json || showRaw;
 
   if (!result_strategy) {
     return (
@@ -190,12 +166,12 @@ export function StrategyTab() {
       <button
         type="button"
         className={styles.jsonToggle}
-        onClick={() => setShowRaw(!showRaw)}
+        onClick={() => setShowRaw(!effectiveShowRaw)}
       >
-        {showRaw ? "Hide" : "Show"} Technical Data
+        {effectiveShowRaw ? "Hide" : "Show"} Technical Data
       </button>
 
-      {showRaw && (
+      {effectiveShowRaw && (
         <div className={styles.jsonOutput}>
           <pre>{JSON.stringify({ strategy, internal_bundle: internalBundle, traveler_bundle: travelerBundle }, null, 2)}</pre>
         </div>

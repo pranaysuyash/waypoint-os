@@ -323,8 +323,8 @@
     "source": "rule_engine",
     "llm_model_used": null,
     "created_at": "2026-04-18T12:37:01.388093",
-    "last_used_at": "2026-04-18T12:37:01.388093",
-    "use_count": 1,
+    "last_used_at": "2026-04-18T09:24:50.323793+00:00",
+    "use_count": 5,
     "success_rate": 1.0,
     "feedback_count": 0
   },
@@ -343,8 +343,8 @@
     "source": "rule_engine",
     "llm_model_used": null,
     "created_at": "2026-04-18T12:37:01.389943",
-    "last_used_at": "2026-04-18T12:37:01.389943",
-    "use_count": 1,
+    "last_used_at": "2026-04-18T09:24:50.326702+00:00",
+    "use_count": 5,
     "success_rate": 1.0,
     "feedback_count": 0
   },
@@ -364,8 +364,8 @@
     "source": "rule_engine",
     "llm_model_used": null,
     "created_at": "2026-04-18T12:37:02.902079",
-    "last_used_at": "2026-04-18T07:07:02.922330+00:00",
-    "use_count": 2,
+    "last_used_at": "2026-04-18T09:24:52.033519+00:00",
+    "use_count": 10,
     "success_rate": 1.0,
     "feedback_count": 0
   }

@@ -13,15 +13,18 @@ import {
 } from 'lucide-react';
 import type { Trip } from '@/lib/api-client';
 import { useWorkbenchStore } from '@/stores/workbench';
+import type { SpineStage, OperatingMode } from '@/types/spine';
 
-const stages = [
+const stages: { value: SpineStage; label: string }[] = [
   { value: 'discovery', label: 'Discovery' },
   { value: 'shortlist', label: 'Shortlist' },
   { value: 'proposal', label: 'Proposal' },
   { value: 'booking', label: 'Booking' },
 ];
 
-const modes = [
+const VALID_STAGES = new Set<SpineStage>(stages.map(s => s.value));
+
+const modes: { value: OperatingMode; label: string }[] = [
   { value: 'normal_intake', label: 'New Request' },
   { value: 'audit', label: 'Audit' },
   { value: 'emergency', label: 'Emergency' },
@@ -30,6 +33,8 @@ const modes = [
   { value: 'post_trip', label: 'Post Trip' },
 ];
 
+const VALID_MODES = new Set<OperatingMode>(modes.map(m => m.value));
+
 interface IntakeTabProps {
   trip?: Trip | null;
 }
@@ -37,11 +42,10 @@ interface IntakeTabProps {
 export function IntakeTab({ trip }: IntakeTabProps) {
   const { input_raw_note, input_owner_note, setInputRawNote, setInputOwnerNote, stage, setStage, operating_mode, setOperatingMode } = useWorkbenchStore();
 
-  const richTrip = trip as Record<string, unknown> | null | undefined;
-  const origin = (richTrip?.origin as string) || '—';
-  const budget = (richTrip?.budget as string) || '—';
+  const origin = trip?.origin || '—';
+  const budget = trip?.budget || '—';
   const party = trip?.party || '—';
-  const dateWindow = (richTrip?.dateWindow as string) || trip?.dateWindow || '—';
+  const dateWindow = trip?.dateWindow || '—';
 
   return (
     <div className='space-y-6'>
@@ -141,7 +145,10 @@ export function IntakeTab({ trip }: IntakeTabProps) {
             <div className='relative'>
               <select
                 value={stage}
-                onChange={(e) => setStage(e.target.value as any)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (VALID_STAGES.has(v as SpineStage)) setStage(v as SpineStage);
+                }}
                 className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] appearance-none'
               >
                 {stages.map((s) => (
@@ -160,7 +167,10 @@ export function IntakeTab({ trip }: IntakeTabProps) {
             <div className='relative'>
               <select
                 value={operating_mode}
-                onChange={(e) => setOperatingMode(e.target.value as any)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (VALID_MODES.has(v as OperatingMode)) setOperatingMode(v as OperatingMode);
+                }}
                 className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] appearance-none'
               >
                 {modes.map((m) => (

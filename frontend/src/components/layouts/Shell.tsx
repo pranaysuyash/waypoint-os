@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useRuntimeVersion } from '@/hooks/useRuntimeVersion';
 import {
   Briefcase,
   Inbox,
@@ -90,6 +91,7 @@ function getPageLabel(pathname: string): string {
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { versionLabel, detailsLabel } = useRuntimeVersion();
 
   return (
     <div className='flex h-screen overflow-hidden bg-[#080a0c] text-[#e6edf3]'>
@@ -103,20 +105,20 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       {/* ── Sidebar ── */}
       <aside
-        className='hidden md:flex flex-col w-[220px] shrink-0 border-r border-[#1c2128] bg-[#0a0d11]'
+        className='flex flex-col w-[72px] md:w-[220px] shrink-0 border-r border-[#1c2128] bg-[#0a0d11]'
         aria-label='Main navigation'
       >
         {/* Brand */}
-        <div className='flex items-center gap-2.5 px-4 h-14 border-b border-[#1c2128] shrink-0'>
+        <div className='flex items-center gap-2.5 px-3 md:px-4 h-14 border-b border-[#1c2128] shrink-0 justify-center md:justify-start'>
           <div className='flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-[#2563eb] to-[#39d0d8] shrink-0'>
             <MapPin className='h-3.5 w-3.5 text-white' aria-hidden='true' />
           </div>
-          <div className='min-w-0'>
+          <div className='min-w-0 hidden md:block'>
             <div className='text-xs font-semibold leading-tight tracking-tight truncate'>
               Waypoint
             </div>
             <div className='text-xs text-[#8b949e] leading-tight font-mono'>
-              v2.0 · decision engine
+              {versionLabel}
             </div>
           </div>
         </div>
@@ -128,7 +130,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         >
           {NAV.map((section) => (
             <div key={section.label}>
-              <div className='px-2 pb-1.5 text-xs font-semibold tracking-widest text-[#484f58] uppercase'>
+              <div className='hidden md:block px-2 pb-1.5 text-xs font-semibold tracking-widest text-[#484f58] uppercase'>
                 {section.label}
               </div>
               <ul className='space-y-0.5' role='list'>
@@ -144,7 +146,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                       <Link
                         href={item.href}
                         className={cn(
-                          'flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] transition-all duration-150',
+                          'flex items-center justify-center md:justify-start gap-2.5 px-2.5 py-2 rounded-md text-[13px] transition-all duration-150',
                           isActive
                             ? 'bg-[#161b22] text-[#e6edf3] border-l-2 border-[#58a6ff]'
                             : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#0f1115]',
@@ -159,7 +161,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                           )}
                           aria-hidden='true'
                         />
-                        <span>{item.label}</span>
+                        <span className='hidden md:inline'>{item.label}</span>
                       </Link>
                     </li>
                   );
@@ -170,7 +172,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Status footer */}
-        <div className='px-4 py-3 border-t border-[#1c2128] shrink-0'>
+        <div className='hidden md:block px-4 py-3 border-t border-[#1c2128] shrink-0'>
           <div className='flex items-center gap-2'>
             <span
               className='inline-block h-1.5 w-1.5 rounded-full bg-[#3fb950] animate-pulse-dot'
@@ -186,7 +188,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <div className='mt-1 flex items-center gap-1.5 text-xs text-[#484f58]'>
             <Activity className='h-3 w-3' aria-hidden='true' />
             <span className='font-mono' aria-live='polite'>
-              0 active · 0 queued
+              {detailsLabel}
             </span>
           </div>
         </div>
@@ -238,43 +240,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        {/* Mobile nav (bottom bar) */}
-        <nav
-          className='md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-[#1c2128] bg-[#0a0d11]/95 backdrop-blur-xl px-2 py-1.5'
-          aria-label='Mobile navigation'
-          role='navigation'
-        >
-          <ul className='flex items-center justify-around' role='list'>
-            {NAV.flatMap((s) => s.items).map((item) => {
-              const Icon = item.icon;
-              const isActive =
-                item.href === '/'
-                  ? pathname === '/'
-                  : pathname.startsWith(item.href);
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      'flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-xs',
-                      isActive ? 'text-[#58a6ff]' : 'text-[#8b949e]',
-                    )}
-                    aria-current={isActive ? 'page' : undefined}
-                    aria-label={item.label}
-                  >
-                    <Icon className='h-4 w-4' aria-hidden='true' />
-                    <span>{item.label}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-
         {/* Page content */}
         <main
           id='main-content'
-          className='flex-1 overflow-y-auto pb-16 md:pb-0'
+          className='flex-1 overflow-y-auto pb-0'
           tabIndex={-1}
         >
           {children}

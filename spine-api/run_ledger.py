@@ -37,7 +37,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from run_state import RunState
+from run_state import RunState, assert_can_transition
 
 # ---------------------------------------------------------------------------
 # Storage root
@@ -112,17 +112,28 @@ class RunLedger:
             with path.open("w", encoding="utf-8") as fh:
                 json.dump(meta, fh, indent=2)
 
-        return meta
+        # Idempotency policy (explicit, documented):
+        # create() is idempotent — calling it again with the same run_id is a no-op.
+        # Each call to POST /run generates a new run_id (via uuid4), so true
+        # duplicates from the same HTTP call are impossible. This guard protects
+        # against unexpected double-initialisation within a single request lifecycle.
+        return RunLedger.get_meta(run_id) if path.exists() and not meta else meta
 
     @staticmethod
     def set_state(run_id: str, state: RunState) -> None:
         """
         Update the run state in meta.json.
+
+        Enforces the state machine transition rules via assert_can_transition.
         Sets started_at when transitioning to RUNNING.
+        Raises ValueError on invalid transition.
         """
         meta = RunLedger.get_meta(run_id)
         if meta is None:
             raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
+
+        current = RunState(meta["state"])
+        assert_can_transition(current, state)  # raises ValueError on invalid
 
         meta["state"] = state.value
 
@@ -163,10 +174,13 @@ class RunLedger:
 
     @staticmethod
     def complete(run_id: str, total_ms: float) -> None:
-        """Mark run as COMPLETED with timing."""
+        """Mark run as COMPLETED with timing. Enforces transition guard."""
         meta = RunLedger.get_meta(run_id)
         if meta is None:
             raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
+
+        current = RunState(meta["state"])
+        assert_can_transition(current, RunState.COMPLETED)
 
         meta["state"]        = RunState.COMPLETED.value
         meta["completed_at"] = _now_iso()
@@ -177,10 +191,13 @@ class RunLedger:
 
     @staticmethod
     def fail(run_id: str, error_type: str, error_message: str) -> None:
-        """Mark run as FAILED with error details."""
+        """Mark run as FAILED. Enforces transition guard."""
         meta = RunLedger.get_meta(run_id)
         if meta is None:
             raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
+
+        current = RunState(meta["state"])
+        assert_can_transition(current, RunState.FAILED)
 
         meta["state"]         = RunState.FAILED.value
         meta["completed_at"]  = _now_iso()
@@ -192,10 +209,13 @@ class RunLedger:
 
     @staticmethod
     def block(run_id: str, block_reason: str) -> None:
-        """Mark run as BLOCKED (strict leakage violation)."""
+        """Mark run as BLOCKED (strict leakage violation). Enforces transition guard."""
         meta = RunLedger.get_meta(run_id)
         if meta is None:
             raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
+
+        current = RunState(meta["state"])
+        assert_can_transition(current, RunState.BLOCKED)
 
         meta["state"]        = RunState.BLOCKED.value
         meta["completed_at"] = _now_iso()

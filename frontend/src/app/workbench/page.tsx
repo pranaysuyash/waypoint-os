@@ -11,6 +11,9 @@ import { useWorkbenchStore } from '@/stores/workbench';
 import { useSpineRun } from '@/hooks/useSpineRun';
 import { useUpdateTrip } from '@/hooks/useTrips';
 import type { SpineRunRequest } from '@/types/spine';
+import type { SafetyResult } from '@/types/spine';
+import type { Trip } from '@/lib/api-client';
+import { ErrorBoundary } from '@/components/error-boundary';
 
 const IntakeTab = lazy(() =>
   import('./IntakeTab').then((m) => ({ default: m.IntakeTab }))
@@ -41,26 +44,25 @@ const workspaceTabs = [
 
 type WorkspaceTabId = (typeof workspaceTabs)[number]['id'];
 
-function useHydrateStoreFromTrip(trip: Record<string, unknown> | null | undefined) {
+function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
   const store = useWorkbenchStore();
   const hydratedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!trip || !trip.id) return;
-    const tripId = trip.id as string;
-    if (hydratedRef.current === tripId) return;
+    if (!trip?.id) return;
+    if (hydratedRef.current === trip.id) return;
 
-    hydratedRef.current = tripId;
+    hydratedRef.current = trip.id;
 
-    if (!store.result_packet && trip.packet) store.setResultPacket(trip.packet as any);
-    if (!store.result_validation && trip.validation) store.setResultValidation(trip.validation as any);
-    if (!store.result_decision && trip.decision) store.setResultDecision(trip.decision as any);
-    if (!store.result_strategy && trip.strategy) store.setResultStrategy(trip.strategy as any);
-    if (!store.result_internal_bundle && trip.internal_bundle) store.setResultInternalBundle(trip.internal_bundle as any);
-    if (!store.result_traveler_bundle && trip.traveler_bundle) store.setResultTravelerBundle(trip.traveler_bundle as any);
-    if (!store.result_safety && trip.safety) store.setResultSafety(trip.safety as any);
-    if (!store.input_raw_note && trip.customerMessage) store.setInputRawNote(trip.customerMessage as string);
-    if (!store.input_owner_note && trip.agentNotes) store.setInputOwnerNote(trip.agentNotes as string);
+    if (!store.result_packet && trip.packet) store.setResultPacket(trip.packet);
+    if (!store.result_validation && trip.validation) store.setResultValidation(trip.validation);
+    if (!store.result_decision && trip.decision) store.setResultDecision(trip.decision);
+    if (!store.result_strategy && trip.strategy) store.setResultStrategy(trip.strategy);
+    if (!store.result_internal_bundle && trip.internal_bundle) store.setResultInternalBundle(trip.internal_bundle);
+    if (!store.result_traveler_bundle && trip.traveler_bundle) store.setResultTravelerBundle(trip.traveler_bundle);
+    if (!store.result_safety && trip.safety) store.setResultSafety(trip.safety as SafetyResult | null);
+    if (!store.input_raw_note && trip.customerMessage) store.setInputRawNote(trip.customerMessage);
+    if (!store.input_owner_note && trip.agentNotes) store.setInputOwnerNote(trip.agentNotes);
   }, [trip, store]);
 }
 
@@ -69,7 +71,7 @@ function WorkbenchContent() {
   const router = useRouter();
   const tripId = searchParams.get('trip');
   const { data: trip, isLoading: tripLoading, error: tripError } = useTrip(tripId);
-  useHydrateStoreFromTrip(trip as Record<string, unknown> | null | undefined);
+  useHydrateStoreFromTrip(trip);
   const tabParam = searchParams.get('tab') as WorkspaceTabId | null;
   const activeTab =
     tabParam && workspaceTabs.some((t) => t.id === tabParam)
@@ -93,6 +95,7 @@ function WorkbenchContent() {
   const { execute: executeSpineRun } = useSpineRun();
   const { mutate: saveTrip, isSaving } = useUpdateTrip();
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleProcessTrip = useCallback(async () => {
     if (!store.input_raw_note && !store.input_owner_note) return;
@@ -152,13 +155,17 @@ function WorkbenchContent() {
 
   const handleSave = useCallback(async () => {
     if (!tripId) return;
+    setSaveError(null);
     const result = await saveTrip(tripId, {
       customerMessage: store.input_raw_note,
       agentNotes: store.input_owner_note,
-    } as any);
+    });
     if (result) {
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
+    } else {
+      setSaveError('Failed to save. Check connection and try again.');
+      setTimeout(() => setSaveError(null), 8000);
     }
   }, [tripId, saveTrip, store.input_raw_note, store.input_owner_note]);
 
@@ -203,6 +210,12 @@ function WorkbenchContent() {
               <div className='flex items-center gap-2 px-3 py-2 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-lg text-sm text-[#3fb950]'>
                 <CheckCircle className='w-4 h-4' />
                 Saved
+              </div>
+            )}
+            {saveError && (
+              <div className='flex items-center gap-2 px-3 py-2 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg text-sm text-[#f85149]'>
+                <AlertTriangle className='w-4 h-4' />
+                <span className='max-w-xs truncate'>{saveError}</span>
               </div>
             )}
             <button
@@ -276,6 +289,7 @@ function WorkbenchContent() {
             tabs={workspaceTabs}
             activeTab={activeTab}
             onTabChange={handleTabChange}
+            ariaLabel='Trip workspace sections'
           />
         </div>
 
@@ -307,9 +321,11 @@ function WorkbenchContent() {
 
 export default function WorkbenchPage() {
   return (
-    <Suspense fallback={<WorkbenchLoading />}>
-      <WorkbenchContent />
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={<WorkbenchLoading />}>
+        <WorkbenchContent />
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 

@@ -49,6 +49,13 @@ Inquiry → NB01 Intake → NB02 Gap & Decision → NB03 Strategy & Prompt → O
 │   ├── safety.py            # SanitizedPacketView and leakage detection
 │   ├── validation.py        # Input validation rules
 │   └── orchestration.py     # Pipeline coordination
+├── src/suitability/         # Activity suitability scoring
+│   ├── models.py            # Data models (ActivityDefinition, ParticipantRef, etc.)
+│   ├── scoring.py           # Tier 1 deterministic scoring
+│   ├── context_rules.py     # Tier 2 day/trip coherence rules
+│   ├── confidence.py        # Confidence calculation
+│   ├── catalog.py           # Static activity catalog
+│   └── integration.py       # Decision pipeline integration
 ├── frontend/                # Next.js operator workbench
 │   ├── src/app/             # Routes (inbox, workbench, owner views)
 │   ├── src/components/      # UI components + design system

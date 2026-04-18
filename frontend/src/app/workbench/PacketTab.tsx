@@ -2,43 +2,13 @@
 
 import { useState } from "react";
 import { useWorkbenchStore } from "@/stores/workbench";
+import type { SlotValue, Ambiguity, PacketUnknown, PacketContradiction, ValidationReport } from "@/types/spine";
 import styles from "./workbench.module.css";
 
-interface SlotValue {
-  value: unknown;
-  confidence: number;
-  authority_level: string;
-  extraction_mode: string;
-  evidence_refs?: Array<{ envelope_id: string; excerpt: string }>;
-}
-
-interface Ambiguity {
-  field_name: string;
-  ambiguity_type: string;
-  raw_value: string;
-}
-
-interface Unknown {
-  field_name: string;
-  reason: string;
-  notes: string | null;
-}
-
-interface Contradiction {
-  field_name: string;
-  values: unknown[];
-  sources: string[];
-}
-
-interface ValidationReport {
-  is_valid: boolean;
-  errors: Array<{ severity: string; code: string; message: string; field: string }>;
-  warnings: Array<{ severity: string; code: string; message: string; field: string }>;
-}
-
 export function PacketTab() {
-  const { result_packet, result_validation } = useWorkbenchStore();
+  const { result_packet, result_validation, debug_raw_json } = useWorkbenchStore();
   const [showRaw, setShowRaw] = useState(false);
+  const effectiveShowRaw = debug_raw_json || showRaw;
 
   if (!result_packet) {
     return (
@@ -55,8 +25,8 @@ export function PacketTab() {
   const facts = (bookingRequest.facts || {}) as Record<string, SlotValue>;
   const derivedSignals = (bookingRequest.derived_signals || {}) as Record<string, SlotValue>;
   const ambiguities = (bookingRequest.ambiguities || []) as Ambiguity[];
-  const unknowns = (bookingRequest.unknowns || []) as Unknown[];
-  const contradictions = (bookingRequest.contradictions || []) as Contradiction[];
+  const unknowns = (bookingRequest.unknowns || []) as PacketUnknown[];
+  const contradictions = (bookingRequest.contradictions || []) as PacketContradiction[];
 
   // Build summary from facts
   const summaryData = {
@@ -230,12 +200,12 @@ export function PacketTab() {
       <button
         type="button"
         className={styles.jsonToggle}
-        onClick={() => setShowRaw(!showRaw)}
+        onClick={() => setShowRaw(!effectiveShowRaw)}
       >
-        {showRaw ? "Hide" : "Show"} Technical Data
+        {effectiveShowRaw ? "Hide" : "Show"} Technical Data
       </button>
 
-      {showRaw && (
+      {effectiveShowRaw && (
         <div className={styles.jsonOutput}>
           <pre>{JSON.stringify(bookingRequest, null, 2)}</pre>
         </div>

@@ -32,6 +32,21 @@ npm run dev
 
 Open **http://localhost:3000/workbench** in your browser.
 
+### Dev Runtime Consistency (Recommended)
+
+Next.js already provides Fast Refresh in `npm run dev` (no `nodemon` needed for frontend).
+
+If you ever see stale UI (e.g., old nav labels in one window):
+
+```bash
+cd /Users/pranay/Projects/travel_agency_agent/frontend
+npm run dev:doctor
+npm run dev:reset
+npm run dev
+```
+
+This ensures a single clean runtime on `:3000` and clears stale `.next` artifacts.
+
 ### 2. Verify APIs Work
 
 ```bash
@@ -104,6 +119,18 @@ frontend/
 | `/api/spine/run` | POST — Run spine with input payload |
 | `/api/scenarios` | GET — List all scenario fixtures |
 | `/api/scenarios/[id]` | GET — Load specific scenario (e.g. `/api/scenarios/clean-family-booking`) |
+| `/api/version` | GET — Frontend runtime fingerprint (version/env/gitSha) |
+
+### Runtime Fingerprint
+
+The sidebar brand/status now reads from `/api/version`, which is sourced from `package.json` and runtime env.
+This prevents stale-window ambiguity by showing what runtime you are actually connected to.
+
+Optional env for richer traceability:
+
+```bash
+NEXT_PUBLIC_GIT_SHA=<short-or-full-commit-sha>
+```
 
 ## Owner Insights Visualizations
 
@@ -207,6 +234,14 @@ pip install -e .  # Install project dependencies
 # Find and kill
 lsof -ti:3000 | xargs kill -9
 cd frontend && npm run dev
+```
+
+Or use the built-in reset helper:
+
+```bash
+cd /Users/pranay/Projects/travel_agency_agent/frontend
+npm run dev:reset
+npm run dev
 ```
 
 ### Frontend shows "No scenarios found" or API errors

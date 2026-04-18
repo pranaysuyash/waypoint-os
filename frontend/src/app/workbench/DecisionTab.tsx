@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useWorkbenchStore } from "@/stores/workbench";
-import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate } from "@/types/spine";
+import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate, DecisionOutput } from "@/types/spine";
 import styles from "./workbench.module.css";
 
 /**
@@ -45,35 +45,6 @@ const STATE_LABELS: Record<string, string> = {
   ASK_FOLLOWUP: "Need More Info",
 };
 
-interface FollowUpQuestion {
-  field_name: string;
-  question: string;
-  priority: string;
-  suggested_values: unknown[];
-}
-
-interface Rationale {
-  hard_blockers: string[];
-  soft_blockers: string[];
-  contradictions: string[];
-  confidence: number;
-  feasibility: string;
-}
-
-interface DecisionOutput {
-  decision_state: string;
-  hard_blockers: string[];
-  soft_blockers: string[];
-  contradictions: string[];
-  risk_flags: string[];
-  follow_up_questions: FollowUpQuestion[];
-  rationale: Rationale;
-  confidence_score: number;
-  branch_options: string[];
-  commercial_decision: string;
-  budget_breakdown: BudgetBreakdownResult | null;
-}
-
 const VERDICT_BADGE_CLASS: Record<string, string> = {
   realistic: styles.stateGreen,
   borderline: styles.stateAmber,
@@ -109,13 +80,11 @@ function formatCurrency(n: number, currency?: string): string {
   return formatter(n);
 }
 
-function formatINR(n: number): string {
-  return formatCurrency(n, "INR");
-}
-
 export function DecisionTab() {
-  const { result_decision } = useWorkbenchStore();
+  const { result_decision, debug_raw_json } = useWorkbenchStore();
   const [showRaw, setShowRaw] = useState(false);
+
+  const effectiveShowRaw = debug_raw_json || showRaw;
 
   if (!result_decision) {
     return (
@@ -141,7 +110,7 @@ export function DecisionTab() {
   const rationale = decision.rationale || {};
   const branchOptions = decision.branch_options || [];
   const budgetBreakdown = decision.budget_breakdown || null;
-  const budgetCurrency = (budgetBreakdown as any)?.currency as string | undefined;
+  const budgetCurrency = budgetBreakdown?.currency as string | undefined;
 
   return (
     <div>
@@ -382,12 +351,12 @@ export function DecisionTab() {
       <button
         type="button"
         className={styles.jsonToggle}
-        onClick={() => setShowRaw(!showRaw)}
+        onClick={() => setShowRaw(!effectiveShowRaw)}
       >
-        {showRaw ? "Hide" : "Show"} Technical Data
+        {effectiveShowRaw ? "Hide" : "Show"} Technical Data
       </button>
 
-      {showRaw && (
+      {effectiveShowRaw && (
         <div className={styles.jsonOutput}>
           <pre>{JSON.stringify(decision, null, 2)}</pre>
         </div>

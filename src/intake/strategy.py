@@ -19,6 +19,7 @@ from enum import Enum
 from .packet_models import CanonicalPacket, Slot, AuthorityLevel
 from .decision import DecisionResult
 from .safety import sanitize_for_traveler, check_no_leakage, enforce_no_leakage, SanitizedPacketView
+from .config.agency_settings import AgencySettings
 
 
 # =============================================================================
@@ -401,6 +402,7 @@ def build_session_strategy(
     packet: Optional[CanonicalPacket] = None,
     session_context: Optional[dict] = None,
     agent_profile: Optional[dict] = None,
+    agency_settings: Optional[AgencySettings] = None,
 ) -> SessionStrategy:
     """
     Main entry point: DecisionResult + CanonicalPacket → SessionStrategy.
@@ -408,8 +410,10 @@ def build_session_strategy(
     This is the NB03 conversation planner. It answers:
     "Given the decision state and context, how should the next interaction be structured?"
     """
-    # Determine tone from confidence
+    # Determine tone from confidence, then apply agency overrides
     tone = determine_tone(decision.confidence_score)
+    if agency_settings and agency_settings.brand_tone:
+        tone = agency_settings.brand_tone
     tonal_guardrails = get_tonal_guardrails(tone)
 
     # Get mode-specific goal and opening

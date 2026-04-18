@@ -75,10 +75,9 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 className='sr-only'
               />
               <div
-                className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${
+                className={`w-9 h-5 rounded-full transition-colors relative ${
                   strict_leakage ? 'bg-[#f85149]' : 'bg-[#30363d]'
                 }`}
-                onClick={() => setStrictLeakage(!strict_leakage)}
               >
                 <div
                   className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
@@ -114,10 +113,9 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 className='sr-only'
               />
               <div
-                className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${
+                className={`w-9 h-5 rounded-full transition-colors relative ${
                   debug_raw_json ? 'bg-[#58a6ff]' : 'bg-[#30363d]'
                 }`}
-                onClick={() => setDebugRawJson(!debug_raw_json)}
               >
                 <div
                   className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${

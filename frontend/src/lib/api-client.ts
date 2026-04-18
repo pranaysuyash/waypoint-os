@@ -217,6 +217,19 @@ export interface Trip {
   dateWindow?: string;
   action?: string;
   overdue?: boolean;
+  origin?: string;
+  budget?: string;
+  // Pipeline result fields (returned by mock API, not yet in real API)
+  packet?: unknown;
+  validation?: unknown;
+  decision?: unknown;
+  strategy?: unknown;
+  internal_bundle?: unknown;
+  traveler_bundle?: unknown;
+  safety?: unknown;
+  // Input fields (returned by mock API)
+  customerMessage?: string;
+  agentNotes?: string;
 }
 
 export interface TripStats {

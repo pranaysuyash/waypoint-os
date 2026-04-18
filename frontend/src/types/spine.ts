@@ -61,6 +61,79 @@ export interface PromptBundle {
   audience: string;
 }
 
+export interface FollowUpQuestion {
+  field_name: string;
+  question: string;
+  priority: string;
+  suggested_values: unknown[];
+}
+
+export interface Rationale {
+  hard_blockers: string[];
+  soft_blockers: string[];
+  contradictions: string[];
+  confidence: number;
+  feasibility: string;
+}
+
+export interface DecisionOutput {
+  decision_state: string;
+  hard_blockers: string[];
+  soft_blockers: string[];
+  contradictions: string[];
+  risk_flags: string[];
+  follow_up_questions: FollowUpQuestion[];
+  rationale: Rationale;
+  confidence_score: number;
+  branch_options: string[];
+  commercial_decision: string;
+  budget_breakdown: BudgetBreakdownResult | null;
+}
+
+export interface StrategyOutput {
+  session_goal: string;
+  priority_sequence: string[];
+  tonal_guardrails: string[];
+  risk_flags: string[];
+  suggested_opening: string;
+  exit_criteria: string[];
+  next_action: string;
+  assumptions: string[];
+  suggested_tone: string;
+}
+
+export interface SlotValue {
+  value: unknown;
+  confidence: number;
+  authority_level: string;
+  extraction_mode: string;
+  evidence_refs?: Array<{ envelope_id: string; excerpt: string }>;
+}
+
+export interface Ambiguity {
+  field_name: string;
+  ambiguity_type: string;
+  raw_value: string;
+}
+
+export interface PacketUnknown {
+  field_name: string;
+  reason: string;
+  notes: string | null;
+}
+
+export interface PacketContradiction {
+  field_name: string;
+  values: unknown[];
+  sources: string[];
+}
+
+export interface ValidationReport {
+  is_valid: boolean;
+  errors: Array<{ severity: string; code: string; message: string; field: string }>;
+  warnings: Array<{ severity: string; code: string; message: string; field: string }>;
+}
+
 export interface RunMeta {
   stage: string;
   operating_mode: string;

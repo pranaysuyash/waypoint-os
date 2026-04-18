@@ -36,16 +36,24 @@ Full coverage of decision engine behavior.
 - `test_geography.py` - Geography utilities
 - `test_geography_regression.py` - Geography regression tests
 
+### Suitability Tests
+- `test_suitability.py` - 23 tests covering Tier 1 scoring, Tier 2 context rules, catalog functions, and integration
+
 ## Running Tests
 
 ### All tests
 ```bash
-python -m pytest tests/ -v
+uv run pytest
+```
+
+### All tests except integration tests (requires live spine-api)
+```bash
+uv run pytest -m 'not integration'
 ```
 
 ### Specific test file
 ```bash
-python -m pytest tests/test_nb02_v02.py -v
+uv run pytest tests/test_suitability.py -v
 ```
 
 ### Specific test class

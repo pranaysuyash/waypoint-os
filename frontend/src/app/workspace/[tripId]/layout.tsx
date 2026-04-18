@@ -148,19 +148,19 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
               {children}
             </main>
 
-            <aside
-              id="workspace-right-rail"
-              className={`rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 ${
-                isRailOpen ? "block" : "hidden"
-              } xl:block`}
-              aria-label="Right rail"
-            >
-              <h2 className="text-sm font-semibold text-[#c9d1d9]">AI Copilot Panel</h2>
-              <p className="text-xs text-[#8b949e] mt-2 leading-relaxed">
-                Collapsed-by-default Wave 2 container. Stage-aware copilots and insights will
-                land incrementally without reshaping the workspace frame.
-              </p>
-            </aside>
+            {isRailOpen && (
+              <aside
+                id="workspace-right-rail"
+                className="rounded-xl border border-[#1c2128] bg-[#0f1115] p-4"
+                aria-label="Right rail"
+              >
+                <h2 className="text-sm font-semibold text-[#c9d1d9]">AI Copilot Panel</h2>
+                <p className="text-xs text-[#8b949e] mt-2 leading-relaxed">
+                  Collapsed-by-default Wave 2 container. Stage-aware copilots and insights will
+                  land incrementally without reshaping the workspace frame.
+                </p>
+              </aside>
+            )}
           </div>
         </div>
       </div>

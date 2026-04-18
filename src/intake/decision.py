@@ -18,7 +18,7 @@ from .packet_models import (
     Slot,
     AuthorityLevel,
 )
-from .telemetry import emit_ambiguity_synthesis
+from src.intake.config.agency_settings import AgencySettings
 
 # =============================================================================
 # HYBRID DECISION ENGINE INTEGRATION
@@ -844,6 +844,7 @@ def get_numeric_budget(packet: CanonicalPacket) -> Optional[int]:
 def check_budget_feasibility(
     packet: CanonicalPacket,
     feasibility_table: Optional[Dict[str, Any]] = None,
+    agency_settings: Optional[AgencySettings] = None,
 ) -> Dict[str, Any]:
     """
     Compare stated budget against minimum viable cost for destination + party.
@@ -899,7 +900,11 @@ def check_budget_feasibility(
         return {"status": "unknown", "gap": None, "maturity": "heuristic"}
 
     min_per_person = entry.get("min_per_person", 0)
-    estimated_minimum = min_per_person * party_size
+    base_estimated_minimum = min_per_person * party_size
+    
+    # Apply agency margin correctly (Base Cost * (1 + Margin% / 100))
+    margin_pct = agency_settings.target_margin_pct if agency_settings else 15.0
+    estimated_minimum = base_estimated_minimum * (1.0 + margin_pct / 100.0)
 
     gap = budget_min - estimated_minimum
     if gap < -0.3 * estimated_minimum:
@@ -959,6 +964,7 @@ def decompose_budget(
     packet: CanonicalPacket,
     bucket_table: Optional[Dict[str, Dict[str, Tuple[int, int, float]]]] = None,
     cached_feasibility: Optional[Dict[str, Any]] = None,
+    agency_settings: Optional[AgencySettings] = None,
 ) -> BudgetBreakdownResult:
     """
     Decompose a trip budget into cost buckets with per-destination estimates.
@@ -1033,6 +1039,12 @@ def decompose_budget(
             high = round(high * _MULTI_COUNTRY_PENALTY)
         if has_toddler and bname in ("activities", "local_transport", "buffer"):
             high = round(high * 1.15)
+            
+        margin_pct = agency_settings.target_margin_pct if agency_settings else 15.0
+        margin_mult = 1.0 + margin_pct / 100.0
+        low = round(low * margin_mult)
+        high = round(high * margin_mult)
+
         if bname == "visa_insurance" and low == 0 and high == 0:
             buckets.append(CostBucketEstimate(
                 bucket=bname, low=0, high=0, covered=True, notes="Not applicable (domestic)",
@@ -1149,6 +1161,7 @@ def generate_risk_flags(
     packet: CanonicalPacket,
     stage: str,
     cached_feasibility: Optional[Dict[str, Any]] = None,
+    agency_settings: Optional[AgencySettings] = None,
 ) -> List[Dict[str, Any]]:
     """
     Generate contextual risk flags based on actual packet data.
@@ -1233,7 +1246,7 @@ def generate_risk_flags(
     # --- MARGIN RISK: Check if not already handled by hybrid engine ---
     margin_flags = [r for r in risks if r["flag"] == "margin_risk"]
     if not margin_flags:
-        feasibility = cached_feasibility if cached_feasibility is not None else check_budget_feasibility(packet)
+        feasibility = cached_feasibility if cached_feasibility is not None else check_budget_feasibility(packet, agency_settings=agency_settings)
         if feasibility["status"] == "infeasible":
             gap = feasibility["gap"]
             risks.append({
@@ -1299,7 +1312,21 @@ def generate_risk_flags(
             "severity": "critical",
             "message": f"Internal data present ({', '.join(reasons)}) — ensure traveler-safe boundary",
         })
-
+    
+    # --- SUITABILITY RISK FLAGS: Activity suitability scoring ---
+    # Only run suitability checks in shortlist/proposal/booking stages
+    if stage in ("shortlist", "proposal", "booking"):
+        try:
+            from suitability.integration import generate_suitability_risks
+            suitability_risks = generate_suitability_risks(packet)
+            risks.extend(suitability_risks)
+        except ImportError:
+            # Suitability module not available yet
+            pass
+        except Exception as e:
+            # Don't fail risk generation if suitability has issues
+            print(f"Warning: Suitability risk generation failed: {e}")
+    
     return risks
 
     # Coordination risk (multi-party)
@@ -1819,6 +1846,7 @@ def run_gap_and_decision(
     packet: CanonicalPacket,
     feasibility_table: Optional[Dict[str, Any]] = None,
     _cached_feasibility: Optional[Dict[str, Any]] = None,
+    agency_settings: Optional[AgencySettings] = None,
 ) -> DecisionResult:
     """
     Main entry point: CanonicalPacket v0.2 → DecisionResult.
@@ -1857,10 +1885,10 @@ def run_gap_and_decision(
     _synthesize_destination_ambiguity(packet, ambiguities)
 
     # --- Phase 2: Budget feasibility (computed once, reused downstream) ---
-    feasibility = _cached_feasibility if _cached_feasibility is not None else check_budget_feasibility(packet, feasibility_table)
+    feasibility = _cached_feasibility if _cached_feasibility is not None else check_budget_feasibility(packet, feasibility_table, agency_settings=agency_settings)
 
     # --- Phase 2b: Budget decomposition ---
-    budget_breakdown = decompose_budget(packet, cached_feasibility=feasibility)
+    budget_breakdown = decompose_budget(packet, cached_feasibility=feasibility, agency_settings=agency_settings)
 
     # --- Phase 3: Evaluate blockers ---
     hard_blockers = []

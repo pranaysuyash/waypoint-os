@@ -28,7 +28,7 @@ import {
 import { useTrips } from '@/hooks/useTrips';
 import { getTripRoute } from '@/lib/routes';
 import { InlineLoading } from '@/components/ui/loading';
-import { InlineError } from '@/components/error-boundary';;
+import { InlineError } from '@/components/error-boundary';
 import type { Trip } from '@/lib/api-client';
 
 // ============================================================================

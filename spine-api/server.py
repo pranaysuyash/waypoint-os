@@ -74,9 +74,12 @@ from run_events import (
     emit_run_completed,
     emit_run_failed,
     emit_run_blocked,
+    emit_stage_entered,
+    emit_stage_completed,
     get_run_events,
 )
 from run_ledger import RunLedger
+from src.intake.config.agency_settings import AgencySettingsStore
 
 logger = logging.getLogger("spine-api")
 
@@ -325,12 +328,14 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
     try:
         envelopes = build_envelopes(request.model_dump(exclude_none=True))
         fixture_expectations = load_fixture_expectations(request.scenario_id)
+        agency_settings = AgencySettingsStore.load("waypoint-hq")
 
         result = run_spine_once(
             envelopes=envelopes,
             stage=request.stage,
             operating_mode=request.operating_mode,
             fixture_expectations=fixture_expectations,
+            agency_settings=agency_settings,
         )
 
         execution_ms = (time.perf_counter() - t0) * 1000
@@ -364,21 +369,7 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
             logger.error("Failed to save trip: %s", e)
             # Don't fail the request if saving fails
 
-        # Wave A: checkpoint each step output in the ledger
-        try:
-            for step_name, step_attr in [
-                ("packet",     "packet"),
-                ("validation", "validation"),
-                ("decision",   "decision"),
-                ("strategy",   "strategy"),
-            ]:
-                if hasattr(result, step_attr):
-                    val = _to_dict(getattr(result, step_attr))
-                    if val is not None:
-                        RunLedger.save_step(run_id, step_name, val)
-        except Exception as e:
-            logger.error("Wave A: failed to checkpoint steps for run %s: %s", run_id, e)
-
+        # Compute leakage results first — used both by checkpoint and response
         all_leaks: List[str] = (
             result.leakage_result.get("leaks", [])
             if hasattr(result, "leakage_result") and result.leakage_result
@@ -389,6 +380,50 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
             if hasattr(result, "leakage_result") and result.leakage_result
             else len(all_leaks) == 0
         )
+
+        # Wave A: checkpoint each step with per-stage events (criteria 3 + 4)
+        # safety is checkpointed from leakage_result which is available post-run.
+        # emit_stage_entered / completed are emitted around each save_step to provide
+        # a granular event stream even though run_spine_once is a single call.
+        try:
+            for step_name, step_attr in [
+                ("packet",     "packet"),
+                ("validation", "validation"),
+                ("decision",   "decision"),
+                ("strategy",   "strategy"),
+            ]:
+                if hasattr(result, step_attr):
+                    val = _to_dict(getattr(result, step_attr))
+                    if val is not None:
+                        t_step = time.perf_counter()
+                        emit_stage_entered(run_id, step_name, trip_id=trip_id_saved)
+                        RunLedger.save_step(run_id, step_name, val)
+                        emit_stage_completed(
+                            run_id, step_name,
+                            execution_ms=(time.perf_counter() - t_step) * 1000,
+                            trip_id=trip_id_saved,
+                        )
+
+            # Checkpoint safety separately from leakage_result
+            if hasattr(result, "leakage_result") and result.leakage_result:
+                safety_payload = {
+                    "strict_leakage": request.strict_leakage,
+                    "leakage_passed": is_safe,
+                    "leakage_errors": all_leaks,
+                    "raw": result.leakage_result,
+                }
+                emit_stage_entered(run_id, "safety", trip_id=trip_id_saved)
+                RunLedger.save_step(run_id, "safety", safety_payload)
+                emit_stage_completed(run_id, "safety", execution_ms=0.0, trip_id=trip_id_saved)
+
+        except Exception as e:
+            logger.error(
+                "Wave A: step checkpoint failed run_id=%s error=%s",
+                run_id, e,
+            )
+
+
+
 
         assertions_out: Optional[List[AssertionResult]] = None
         if result.assertion_result is not None:

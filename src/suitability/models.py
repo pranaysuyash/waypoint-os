@@ -16,6 +16,7 @@ class ParticipantRef:
     ref_id: str
     label: str
     age: Optional[int] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

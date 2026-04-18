@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:doctor": "node ./tools/dev-doctor.mjs",
+    "dev:reset": "node ./tools/dev-reset.mjs",
     "build": "next build",
     "start": "next start",
     "test": "vitest",

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { Tabs } from '../tabs';
+import { Tabs, getTabPanelId, getTabButtonId } from '../tabs';
 
 describe('Tabs Component', () => {
   const mockTabs = [
@@ -61,7 +61,43 @@ describe('Tabs Component', () => {
     render(<Tabs tabs={mockTabs} activeTab='intake' onTabChange={vi.fn()} />);
 
     const intakeTab = screen.getByRole('tab', { name: 'New Inquiry' });
-    expect(intakeTab).toHaveAttribute('aria-controls', 'tabpanel-intake');
+    expect(intakeTab).toHaveAttribute('aria-controls', getTabPanelId('intake'));
+  });
+
+  it('uses custom ariaLabel when provided', () => {
+    render(<Tabs tabs={mockTabs} activeTab='intake' onTabChange={vi.fn()} ariaLabel='Trip workspace sections' />);
+
+    const tablist = screen.getByRole('tablist');
+    expect(tablist).toHaveAttribute('aria-label', 'Trip workspace sections');
+  });
+
+  it('defaults ariaLabel to "Tab navigation"', () => {
+    render(<Tabs tabs={mockTabs} activeTab='intake' onTabChange={vi.fn()} />);
+
+    const tablist = screen.getByRole('tablist');
+    expect(tablist).toHaveAttribute('aria-label', 'Tab navigation');
+  });
+
+  it('has a live region for screen reader announcements', () => {
+    render(<Tabs tabs={mockTabs} activeTab='intake' onTabChange={vi.fn()} />);
+
+    const liveRegion = document.querySelector('[role="status"][aria-live="polite"]');
+    expect(liveRegion).toBeInTheDocument();
+  });
+
+  it('announces tab changes via live region', () => {
+    const handleChange = vi.fn();
+    render(<Tabs tabs={mockTabs} activeTab='intake' onTabChange={handleChange} />);
+
+    const liveRegion = document.querySelector('[role="status"][aria-live="polite"]');
+    expect(liveRegion?.textContent).toBe('New Inquiry tab selected');
+  });
+
+  it('renders tab with id from getTabButtonId', () => {
+    render(<Tabs tabs={mockTabs} activeTab='intake' onTabChange={vi.fn()} />);
+
+    const intakeTab = screen.getByRole('tab', { name: 'New Inquiry' });
+    expect(intakeTab).toHaveAttribute('id', getTabButtonId('intake'));
   });
 
   it('displays tab count when provided', () => {

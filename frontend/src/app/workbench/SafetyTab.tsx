@@ -2,30 +2,18 @@
 
 import { useState } from "react";
 import { useWorkbenchStore } from "@/stores/workbench";
-import type { SafetyResult } from "@/types/spine";
+import type { SafetyResult, PromptBundle } from "@/types/spine";
 import styles from "./workbench.module.css";
-
-interface PromptBundle {
-  system_context: string;
-  user_message: string;
-  follow_up_sequence: Array<{
-    field_name: string;
-    question: string;
-    priority: string;
-  }>;
-  branch_prompts: unknown[];
-  internal_notes: string;
-  constraints: string[];
-  audience: string;
-}
 
 export function SafetyTab() {
   const {
     result_safety,
     result_traveler_bundle,
     result_internal_bundle,
+    debug_raw_json,
   } = useWorkbenchStore();
   const [showRaw, setShowRaw] = useState(false);
+  const effectiveShowRaw = debug_raw_json || showRaw;
 
   if (!result_safety) {
     return (
@@ -158,12 +146,12 @@ export function SafetyTab() {
       <button
         type="button"
         className={styles.jsonToggle}
-        onClick={() => setShowRaw(!showRaw)}
+        onClick={() => setShowRaw(!effectiveShowRaw)}
       >
-        {showRaw ? "Hide" : "Show"} Technical Data
+        {effectiveShowRaw ? "Hide" : "Show"} Technical Data
       </button>
 
-      {showRaw && (
+      {effectiveShowRaw && (
         <div className={styles.jsonOutput}>
           <pre>{JSON.stringify({
             safety: result_safety,
