@@ -177,20 +177,21 @@ def rule_visa_timeline_risk(packet: CanonicalPacket) -> Optional[Dict[str, Any]]
                     f"visa on arrival or fast processing. No timeline risk."
                 )
         else:
-            # Normal/low urgency
-            if lead_time_days > 30:
+            # Normal/low urgency - plenty of time to apply
+            # Only medium risk if visa requires unusually long time (>75 days)
+            if lead_time_days > 75:
                 risk_level = "medium"
                 reasoning = (
                     f"Trip to {destination} — "
                     f"visa requires ~{lead_time_days} days processing. "
-                    f"Start application soon to avoid delays."
+                    f"Start application well in advance."
                 )
             else:
                 risk_level = "low"
                 reasoning = (
                     f"Trip to {destination} — "
                     f"visa requires ~{lead_time_days} days processing. "
-                    f"Standard timeline, no special concerns."
+                    f"Low urgency trip with sufficient time for standard processing."
                 )
 
         return {

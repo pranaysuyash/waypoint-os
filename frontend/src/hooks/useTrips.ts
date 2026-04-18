@@ -12,6 +12,7 @@ import {
   getTrip,
   getTripStats,
   getPipeline,
+  updateTrip,
   type Trip,
   type TripStats,
   type PipelineStage,
@@ -173,6 +174,28 @@ export function useTripStats() {
   }, [fetch]);
 
   return { data, isLoading, error, refetch: fetch };
+}
+
+export function useUpdateTrip() {
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const mutate = useCallback(async (id: string, data: Partial<Trip>): Promise<Trip | null> => {
+    setIsSaving(true);
+    setError(null);
+    try {
+      const updated = await updateTrip(id, data);
+      return updated;
+    } catch (err) {
+      setError(err as Error);
+      console.error("Failed to update trip:", err);
+      return null;
+    } finally {
+      setIsSaving(false);
+    }
+  }, []);
+
+  return { mutate, isSaving, error };
 }
 
 export function usePipeline() {

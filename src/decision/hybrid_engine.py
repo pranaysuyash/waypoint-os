@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Callable
 from dataclasses import dataclass, field
@@ -27,6 +28,8 @@ from intake.packet_models import CanonicalPacket
 from decision.cache_schema import CachedDecision, CacheStats
 from decision.cache_storage import DecisionCacheStorage, get_default_storage
 from decision.cache_key import generate_cache_key
+from decision.telemetry import get_telemetry
+from decision.health import get_health_checker
 
 try:
     from llm import BaseLLMClient, create_llm_client
@@ -249,14 +252,48 @@ class HybridDecisionEngine:
                 rule_visa_timeline_risk,
                 rule_composition_risk,
             )
+            from decision.rules.not_applicable import (
+                rule_elderly_not_applicable,
+                rule_toddler_not_applicable,
+                rule_visa_not_applicable,
+                rule_composition_not_applicable,
+                rule_no_composition_info,
+                rule_elderly_toddler_no_composition,
+            )
+            from decision.rules.additional_rules import (
+                rule_budget_domestic_default,
+                rule_visa_international_default,
+                rule_elderly_domestic_low_risk,
+                rule_toddler_domestic_short_trip_low_risk,
+                rule_budget_not_applicable,
+                rule_party_size_from_composition,
+            )
 
+            # Register not-applicable rules first (handle "no risk" cases)
+            self.register_rule("elderly_mobility_risk", rule_elderly_toddler_no_composition)
+            self.register_rule("toddler_pacing_risk", rule_elderly_toddler_no_composition)
+            self.register_rule("composition_risk", rule_no_composition_info)
+            self.register_rule("elderly_mobility_risk", rule_elderly_not_applicable)
+            self.register_rule("toddler_pacing_risk", rule_toddler_not_applicable)
+            self.register_rule("visa_timeline_risk", rule_visa_not_applicable)
+            self.register_rule("composition_risk", rule_composition_not_applicable)
+            self.register_rule("budget_feasibility", rule_budget_not_applicable)
+
+            # Register additional specialized rules
+            self.register_rule("elderly_mobility_risk", rule_elderly_domestic_low_risk)
+            self.register_rule("toddler_pacing_risk", rule_toddler_domestic_short_trip_low_risk)
+            self.register_rule("budget_feasibility", rule_budget_domestic_default)
+            self.register_rule("budget_feasibility", rule_party_size_from_composition)
+            self.register_rule("visa_timeline_risk", rule_visa_international_default)
+
+            # Register main rules (handle actual risk assessments)
             self.register_rule("elderly_mobility_risk", rule_elderly_mobility_risk)
             self.register_rule("toddler_pacing_risk", rule_toddler_pacing_risk)
             self.register_rule("budget_feasibility", rule_budget_feasibility)
             self.register_rule("visa_timeline_risk", rule_visa_timeline_risk)
             self.register_rule("composition_risk", rule_composition_risk)
 
-            logger.debug("Registered 5 built-in decision rules")
+            logger.debug("Registered 18 built-in decision rules")
         except ImportError as e:
             logger.warning(f"Failed to import built-in rules: {e}")
 
@@ -304,6 +341,7 @@ class HybridDecisionEngine:
         Returns:
             DecisionResult with decision and metadata
         """
+        start_time = time.time()
         self.metrics.total_decisions += 1
 
         # Use default schema if not provided
@@ -319,6 +357,16 @@ class HybridDecisionEngine:
             cached = self._check_cache(decision_type, cache_key)
             if cached:
                 self.metrics.cache_hits += 1
+                latency_ms = (time.time() - start_time) * 1000
+                # Record telemetry
+                telemetry = get_telemetry()
+                telemetry.record_decision(
+                    decision_type=decision_type,
+                    source="cache",
+                    latency_ms=latency_ms,
+                    cache_hit=True,
+                    cost_inr=0.0,
+                )
                 return DecisionResult(
                     decision=cached.decision,
                     source="cache",
@@ -338,6 +386,15 @@ class HybridDecisionEngine:
                     cache_key=cache_key,
                     decision=rule_result,
                     source="rule_engine",
+                )
+                latency_ms = (time.time() - start_time) * 1000
+                # Record telemetry
+                telemetry = get_telemetry()
+                telemetry.record_decision(
+                    decision_type=decision_type,
+                    source="rule",
+                    latency_ms=latency_ms,
+                    cost_inr=0.0,
                 )
                 return DecisionResult(
                     decision=rule_result,
@@ -361,6 +418,19 @@ class HybridDecisionEngine:
                     llm_model=llm_result["model"],
                     cost=llm_result["cost"],
                 )
+                latency_ms = (time.time() - start_time) * 1000
+                cost = llm_result.get("cost", 0.0)
+                # Record telemetry and LLM success
+                telemetry = get_telemetry()
+                health_checker = get_health_checker()
+                telemetry.record_decision(
+                    decision_type=decision_type,
+                    source="llm",
+                    latency_ms=latency_ms,
+                    llm_used=True,
+                    cost_inr=cost,
+                )
+                health_checker.record_llm_success()
                 return DecisionResult(
                     decision=llm_result["decision"],
                     source="llm",
@@ -370,11 +440,24 @@ class HybridDecisionEngine:
                     cost_inr=llm_result["cost"],
                     decision_type=decision_type,
                 )
+            else:
+                # LLM call failed
+                health_checker = get_health_checker()
+                health_checker.record_llm_failure("LLM call returned no result")
 
         # Step 4: Fallback to default
         self.metrics.default_fallbacks += 1
         default = self.DEFAULT_DECISIONS.get(decision_type, {})
         logger.warning(f"Using default decision for {decision_type}")
+        latency_ms = (time.time() - start_time) * 1000
+        # Record telemetry
+        telemetry = get_telemetry()
+        telemetry.record_decision(
+            decision_type=decision_type,
+            source="default",
+            latency_ms=latency_ms,
+            cost_inr=0.0,
+        )
         return DecisionResult(
             decision=default,
             source="default",
@@ -596,6 +679,29 @@ Consider age diversity, mobility requirements, and special needs.""",
     def get_cache_stats(self) -> CacheStats:
         """Get cache statistics."""
         return self.cache_storage.get_stats()
+
+    def get_health_status(self) -> Dict[str, Any]:
+        """
+        Get health status of the hybrid engine.
+
+        Returns:
+            Dict with component status and metrics
+        """
+        from decision.health import health_check_dict
+        return health_check_dict()
+
+    def get_telemetry_snapshot(self, window_seconds: int = 300):
+        """
+        Get telemetry snapshot for monitoring.
+
+        Args:
+            window_seconds: Time window in seconds (default: 300 = 5 minutes)
+
+        Returns:
+            TelemetrySnapshot with current metrics
+        """
+        telemetry = get_telemetry()
+        return telemetry.get_snapshot(window_seconds=window_seconds)
 
 
 def create_hybrid_engine(

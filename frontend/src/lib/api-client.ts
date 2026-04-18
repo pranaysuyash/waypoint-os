@@ -257,6 +257,10 @@ export async function getPipeline(): Promise<PipelineStage[]> {
   return api.get<PipelineStage[]>("/api/pipeline");
 }
 
+export async function updateTrip(id: string, data: Partial<Trip>): Promise<Trip> {
+  return api.patch<Trip>(`/api/trips/${id}`, data);
+}
+
 // ============================================================================
 // SCENARIOS API (already exists, just re-exporting)
 // ============================================================================

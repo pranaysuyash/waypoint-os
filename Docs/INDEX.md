@@ -10,6 +10,8 @@
 - [Thesis Deep Dive Discussion (2026-04-16)](DISCUSSION_THESIS_DEEP_DIVE_2026-04-16.md) — Four-thread analysis of PROJECT_THESIS.md: copilot autonomy line, intelligence layer lead-gen model, sourcing hierarchy configurability, per-person suitability depth.
 - [Architecture Decision: D4+D6 Suitability & Audit (2026-04-16)](ARCHITECTURE_DECISION_D4_D6_SUITABILITY_AUDIT_2026-04-16.md) — Full production architecture for suitability engine (activity_matcher) and audit eval suite. Protocol-based plugin pattern, manifest-driven eval, phased by dependency.
 - [Architecture Decision: LLM Cache + NB05/NB06 (2026-04-16)](ARCHITECTURE_DECISION_LLM_CACHE_NB05_NB06_2026-04-16.md) — LLM output extraction/caching strategy, NB05 golden-path demo system, NB06 shadow-mode replay. Extends existing `src/decision/hybrid_engine.py` pattern to all LLM touchpoints.
+- [Architecture Decision Addendum: D4/D6 Sub-Decisions (2026-04-18)](ARCHITECTURE_DECISION_D4_SUBDECISIONS_ADDENDUM_2026-04-18.md) — Resolves D4.1–D4.3, D6.1–D6.2. Evolves scoring from per-activity to three-tier (deterministic tag rules → tour-context sequence rules → LLM contextual). Extends `SuitabilityContext` with day/trip activity lists. Fixture tiers: isolated → day-sequence → trip-sequence.
+- [Architecture Decision: D1 Autonomy Gradient (2026-04-18)](ARCHITECTURE_DECISION_D1_AUTONOMY_GRADIENT_2026-04-18.md) — Agency-level autonomy policy with per-decision_state approval gates. Safety invariant: STOP_NEEDS_REVIEW always blocks. Adaptive autonomy via customer+trip classification identified as evolution path, pending deep dive.
 - [Plugin System Exploration (Draft, 2026-04-17)](PLUGIN_SYSTEM_EXPLORATION_DRAFT_2026-04-17.md) — Draft exploration of protocol/registry plugin architecture, execution guardrails, fallback model, and phased rollout.
 - [Coverage Assessment (2026-04-15)](COVERAGE_ASSESSMENT_2026-04-15.md) — Summary of what is now covered across risks, stakeholders, scenarios, use cases, and markets, plus remaining documentation/runtime gaps.
 - [Coverage Matrix (2026-04-15)](COVERAGE_MATRIX_2026-04-15.md) — Control document separating what is documented, scenario-covered, tested, and implemented across risks, stakeholders, lifecycle, markets, and commercial logic.
@@ -28,6 +30,20 @@
 - [Vendor/Cost Tracking Gap Analysis (2026-04-16)](VENDOR_COST_TRACKING_GAP_ANALYSIS_2026-04-16.md) — Critical gap: no vendor management, margin calculation, or sourcing hierarchy logic. Documented as intentional deferral.
 - [Vendor/Cost/Sourcing Discovery Gap Analysis (2026-04-16)](VENDOR_COST_TRACKING_DISCOVERY_GAP_ANALYSIS_2026-04-16.md) — Full deep-dive: evidence inventory, gap taxonomy, dependency graph, data models, phase-in plan for vendor/supplier/cost/margin/sourcing.
 - [Master Gap Register (2026-04-16)](MASTER_GAP_REGISTER_2026-04-16.md) — ⭐ Single source of truth: ALL 17 gap areas with priority, dependencies, deep-dive status, and naming convention.
+- [Session Writeup: Trip Workspace Fix (2026-04-17)](SESSION_WRITEUP_TRIP_WORKSPACE_FIX_2026-04-17.md) — Fixed broken trip loading (blank workspace on click), enriched all 7 trips with full pipeline mock data, wired Process Trip button, cleaned up wording.
+- [Hybrid Decision Engine Validation (2026-04-17)](validation/hybrid_engine_validation_report.md) — ✅ Validation of hybrid decision engine with 100% accuracy, 34% rule hit rate, cache key bug fix, and production readiness.
+- [Validation Session Summary (2026-04-17)](validation/session_summary_20260417.md) — Implementation summary of hybrid engine validation, bug fixes, and test coverage expansion.
+
+### Validation and Testing (2026-04-17)
+
+- [Hybrid Decision Engine Architecture](HYBRID_DECISION_ARCHITECTURE_2026-04-16.md) — Core philosophy: Rules + LLM + Cache. Decision classification, cache schema, rule patterns, LLM integration, and cost optimization.
+- [LLM Decision Layer Migration Guide (2026-04-16)](LLM_DECISION_LAYER_MIGRATION_GUIDE_2026-04-16.md) — How to migrate from hardcoded decisions to hybrid engine, step-by-step migration patterns.
+- [How to Add a Decision Rule](development/how_to_add_a_decision_rule.md) — Step-by-step guide for adding new decision rules to increase free decision rate.
+- [Rule Expansion TODO](development/rule_expansion_todo.md) — 📋 Future exploration opportunities: push to 70%+ rule hit rate, learn from real traffic, dynamic rule compilation.
+
+### Exploration Backlog (2026-04-18)
+
+- [Exploration Backlog](exploration/backlog.md) — 📋 Living list of areas to explore: intake, safety, decisions, API, frontend, testing, observability, operations, integrations, security, and more. Add items freely.
 
 ### Discovery Gap Deep-Dives (2026-04-16)
 

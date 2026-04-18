@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useInsightsSummary, usePipelineMetrics, useTeamMetrics, useBottleneckAnalysis } from '@/hooks/useGovernance';
 import type { TimeRange, StageMetrics, TeamMemberMetrics, BottleneckAnalysis } from '@/types/governance';
+import { RevenueChart, PipelineFunnel, TeamPerformanceChart } from '@/components/visual';
 
 // ============================================================================
 // MOCK DATA
@@ -128,7 +129,7 @@ const VelocityBar = memo(function VelocityBar({
     <div className='mb-3'>
       <div className='flex items-center justify-between mb-1'>
         <span className='text-sm text-[#e6edf3]'>{label}</span>
-        <span className='text-sm font-mono text-[#8b949e]'>{value}h</span>
+        <span className='text-sm font-mono text-[#8b949e]'>{Math.round(value)}h</span>
       </div>
       <div className='h-2 bg-[#161b22] rounded-full overflow-hidden'>
         <div 
@@ -249,7 +250,7 @@ export default function OwnerInsightsPage() {
   const maxStageTime = Math.max(...pipelineMetrics.map(m => m.avgTimeInStage));
 
   return (
-    <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
+    <div className='p-5 pb-20 max-w-[1400px] mx-auto space-y-5'>
       {/* Header */}
       <header className='flex items-center justify-between pt-1'>
         <div>
@@ -388,7 +389,28 @@ export default function OwnerInsightsPage() {
           </div>
         </div>
 
-        {/* Team Performance */}
+        {/* Pipeline Funnel */}
+        <div className='lg:col-span-2'>
+          <PipelineFunnel data={pipelineMetrics} />
+        </div>
+
+        {/* Revenue Chart */}
+        <div className='lg:col-span-2'>
+          <RevenueChart data={MOCK_REVENUE_BY_MONTH} />
+        </div>
+
+        {/* Team Performance Chart */}
+        <div className='lg:col-span-2'>
+          <TeamPerformanceChart data={teamMetrics.map(member => ({
+            name: member.name,
+            conversionRate: member.conversionRate,
+            avgResponseTime: member.avgResponseTime,
+            customerSatisfaction: member.customerSatisfaction,
+            workloadScore: member.workloadScore,
+          }))} />
+        </div>
+
+        {/* Team Performance Table */}
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5 lg:col-span-2'>
           <h2 className='text-base font-semibold text-[#e6edf3] mb-4'>Team Performance</h2>
           

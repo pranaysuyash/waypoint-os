@@ -111,9 +111,31 @@ def _extract_value(container: Any, key: str) -> Any:
     """
     Extract a value from a packet container (facts, derived_signals, etc.).
 
-    Handles Slot objects and returns the underlying value.
+    Handles CanonicalPacket, dicts, and Slot objects.
     """
     if container is None:
+        return None
+
+    # Handle CanonicalPacket - look in facts first, then derived_signals
+    if hasattr(container, "facts"):
+        # This is a CanonicalPacket or similar
+        facts = container.facts if hasattr(container, "facts") else {}
+        derived = container.derived_signals if hasattr(container, "derived_signals") else {}
+
+        # Check facts first
+        if facts and key in facts:
+            value = facts[key]
+            if hasattr(value, "value"):
+                return value.value
+            return value
+
+        # Then check derived_signals
+        if derived and key in derived:
+            value = derived[key]
+            if hasattr(value, "value"):
+                return value.value
+            return value
+
         return None
 
     if hasattr(container, "get"):

@@ -11,6 +11,8 @@ import {
   MapPin,
   Activity,
   Zap,
+  Layers,
+  Wrench,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LiveRegion } from '@/lib/accessibility';
@@ -20,22 +22,22 @@ const NAV = [
     label: 'OPERATE',
     items: [
       {
-        href: '/',
-        label: 'Overview',
-        icon: LayoutDashboard,
-        description: 'Dashboard overview',
-      },
-      {
         href: '/inbox',
-        label: 'New Leads',
+        label: 'Inbox',
         icon: Inbox,
         description: 'Triage and prioritize incoming demand',
       },
       {
-        href: '/workbench',
-        label: 'Trip Workspace',
-        icon: Briefcase,
-        description: 'Process trips through the workspace stages',
+        href: '/workspace',
+        label: 'Workspaces',
+        icon: Layers,
+        description: 'Active trips in progress',
+      },
+      {
+        href: '/',
+        label: 'Overview',
+        icon: LayoutDashboard,
+        description: 'Dashboard and pipeline summary',
       },
     ],
   },
@@ -53,6 +55,17 @@ const NAV = [
         label: 'Analytics',
         icon: BarChart2,
         description: 'Monitor quality, throughput, and conversion',
+      },
+    ],
+  },
+  {
+    label: 'TOOLS',
+    items: [
+      {
+        href: '/workbench',
+        label: 'Workbench',
+        icon: Wrench,
+        description: 'Audit surface — fixture runs, QA, inspection',
       },
     ],
   },

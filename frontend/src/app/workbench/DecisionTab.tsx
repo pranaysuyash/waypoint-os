@@ -5,14 +5,37 @@ import { useWorkbenchStore } from "@/stores/workbench";
 import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate } from "@/types/spine";
 import styles from "./workbench.module.css";
 
+/**
+ * Canonical badge-class lookup.
+ * Only contains the correct spelling of each state key.
+ * Unknown states fall through to styles.stateBlue (visible, not silent).
+ */
 const STATE_BADGE_CLASS: Record<string, string> = {
-  PROCEED_TRAVERER_SAFE: styles.stateGreen,
-  PROCEED_TRAVELER_SAFE: styles.stateGreen,
-  PROCEED_INTERNAL_DRAFT: styles.stateAmber,
-  BRANCH_OPTIONS: styles.stateAmber,
-  STOP_NEEDS_REVIEW: styles.stateRed,
-  ASK_FOLLOWUP: styles.stateBlue,
+  PROCEED_TRAVELER_SAFE:   styles.stateGreen,
+  PROCEED_INTERNAL_DRAFT:  styles.stateAmber,
+  BRANCH_OPTIONS:          styles.stateAmber,
+  STOP_NEEDS_REVIEW:       styles.stateRed,
+  ASK_FOLLOWUP:            styles.stateBlue,
 };
+
+/**
+ * Known typo/alias variants emitted by older API responses.
+ * Maps to the canonical spelling before badge-class lookup.
+ * Add entries here when new variants are discovered; never add them
+ * to STATE_BADGE_CLASS directly.
+ */
+const STATE_ALIASES: Record<string, string> = {
+  PROCEED_TRAVERER_SAFE: 'PROCEED_TRAVELER_SAFE', // double-r typo (pre-hardening)
+};
+
+/**
+ * Normalize a raw decision-state string to its canonical form.
+ * Returns the original string if no alias matches, allowing the
+ * badge-class unknown fallback to render visibly rather than silently.
+ */
+function normalizeDecisionState(raw: string): string {
+  return STATE_ALIASES[raw] ?? raw;
+}
 
 const STATE_LABELS: Record<string, string> = {
   PROCEED_TRAVELER_SAFE: "Ready to Book",
@@ -74,8 +97,20 @@ const BUCKET_DISPLAY: Record<string, string> = {
   buffer: "Buffer",
 };
 
+const CURRENCY_FORMATTERS: Record<string, (n: number) => string> = {
+  INR: (n) => `₹${n.toLocaleString("en-IN")}`,
+  USD: (n) => `$${n.toLocaleString("en-US")}`,
+  EUR: (n) => `€${n.toLocaleString("de-DE")}`,
+  GBP: (n) => `£${n.toLocaleString("en-GB")}`,
+};
+
+function formatCurrency(n: number, currency?: string): string {
+  const formatter = CURRENCY_FORMATTERS[currency || "INR"] || CURRENCY_FORMATTERS.INR;
+  return formatter(n);
+}
+
 function formatINR(n: number): string {
-  return `₹${n.toLocaleString("en-IN")}`;
+  return formatCurrency(n, "INR");
 }
 
 export function DecisionTab() {
@@ -91,7 +126,12 @@ export function DecisionTab() {
   }
 
   const decision = result_decision as DecisionOutput;
-  const decisionState = (decision.decision_state as DecisionState) || "ASK_FOLLOWUP";
+  // Normalize state string before lookup — handles alias variants and makes
+  // unknown states visible (fallback) rather than silently unstyled.
+  const decisionState = normalizeDecisionState(
+    (decision.decision_state as string) || 'ASK_FOLLOWUP',
+  ) as DecisionState;
+  const badgeClass = STATE_BADGE_CLASS[decisionState] ?? styles.stateBlue;
 
   const hardBlockers = decision.hard_blockers || [];
   const softBlockers = decision.soft_blockers || [];
@@ -101,13 +141,14 @@ export function DecisionTab() {
   const rationale = decision.rationale || {};
   const branchOptions = decision.branch_options || [];
   const budgetBreakdown = decision.budget_breakdown || null;
+  const budgetCurrency = (budgetBreakdown as any)?.currency as string | undefined;
 
   return (
     <div>
       <div className={styles.section}>
         <h3 className={styles.sectionTitle}>Decision State</h3>
         <div className={styles.card}>
-          <span className={`${styles.badge} ${STATE_BADGE_CLASS[decisionState] || styles.stateBlue}`}>
+          <span className={`${styles.badge} ${badgeClass}`}>
             {STATE_LABELS[decisionState] || decisionState}
           </span>
           <div style={{ marginTop: "12px", fontSize: "13px", color: "var(--color-text-muted)" }}>
@@ -265,7 +306,7 @@ export function DecisionTab() {
               </span>
               {budgetBreakdown.budget_stated != null && (
                 <span style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>
-                  Budget: {formatINR(budgetBreakdown.budget_stated)} | Est. range: {formatINR(budgetBreakdown.total_estimated_low)} – {formatINR(budgetBreakdown.total_estimated_high)}
+                  Budget: {formatCurrency(budgetBreakdown.budget_stated, budgetCurrency)} | Est. range: {formatCurrency(budgetBreakdown.total_estimated_low, budgetCurrency)} – {formatCurrency(budgetBreakdown.total_estimated_high, budgetCurrency)}
                 </span>
               )}
             </div>
@@ -282,8 +323,8 @@ export function DecisionTab() {
                 {budgetBreakdown.buckets.map((b: CostBucketEstimate) => (
                   <tr key={b.bucket} style={{ borderBottom: "1px solid var(--color-border)" }}>
                     <td style={{ padding: "8px", fontSize: "13px" }}>{BUCKET_DISPLAY[b.bucket] || b.bucket}</td>
-                    <td style={{ padding: "8px", fontSize: "13px" }}>{formatINR(b.low)}</td>
-                    <td style={{ padding: "8px", fontSize: "13px" }}>{formatINR(b.high)}</td>
+                    <td style={{ padding: "8px", fontSize: "13px" }}>{formatCurrency(b.low, budgetCurrency)}</td>
+                    <td style={{ padding: "8px", fontSize: "13px" }}>{formatCurrency(b.high, budgetCurrency)}</td>
                     <td style={{ padding: "8px", fontSize: "13px" }}>
                       <span className={`${styles.badge} ${b.covered ? styles.stateGreen : styles.stateRed}`}>
                         {b.covered ? "Covered" : "Gap"}

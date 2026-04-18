@@ -13,6 +13,8 @@ Exports:
     - CachedDecision: Cache entry schema
     - DecisionCacheStorage: Cache persistence layer
     - generate_cache_key: Cache key generation
+    - DecisionTelemetry: Metrics and observability
+    - HybridEngineHealth: Health checks and circuit breaker
 """
 
 from .cache_schema import CachedDecision, CacheStats
@@ -24,6 +26,21 @@ from .hybrid_engine import (
     EngineMetrics,
     create_hybrid_engine,
 )
+
+# Production readiness
+try:
+    from .telemetry import DecisionTelemetry, TelemetrySnapshot, get_telemetry
+    from .health import (
+        CircuitState,
+        CircuitBreaker,
+        HealthStatus,
+        HybridEngineHealth,
+        get_health_checker,
+        health_check_dict,
+    )
+    TELEMETRY_AVAILABLE = True
+except ImportError:
+    TELEMETRY_AVAILABLE = False
 
 __all__ = [
     # Core engine
@@ -38,3 +55,18 @@ __all__ = [
     "get_default_storage",
     "generate_cache_key",
 ]
+
+if TELEMETRY_AVAILABLE:
+    __all__.extend([
+        # Telemetry
+        "DecisionTelemetry",
+        "TelemetrySnapshot",
+        "get_telemetry",
+        # Health
+        "CircuitState",
+        "CircuitBreaker",
+        "HealthStatus",
+        "HybridEngineHealth",
+        "get_health_checker",
+        "health_check_dict",
+    ])

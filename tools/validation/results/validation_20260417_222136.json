@@ -1,0 +1,139 @@
+{
+  "summary": {
+    "validation_date": "2026-04-17T22:21:36.334943",
+    "duration_seconds": 0.037077,
+    "total_scenarios": 3,
+    "total_decisions": 15,
+    "cache_hits": 9,
+    "rule_hits": 0,
+    "llm_calls": 0,
+    "default_fallbacks": 6,
+    "errors": 0,
+    "edge_cases_found": 6,
+    "cache_hit_rate": 0.6,
+    "rule_hit_rate": 0.0,
+    "llm_call_rate": 0.0,
+    "free_decision_rate": 0.6,
+    "total_cost_inr": 0.0,
+    "avg_cost_per_decision": 0.0
+  },
+  "errors": [],
+  "edge_cases": [
+    {
+      "scenario_id": "unknown",
+      "description": "elderly_mobility_risk fell through to default"
+    },
+    {
+      "scenario_id": "unknown",
+      "description": "visa_timeline_risk fell through to default"
+    },
+    {
+      "scenario_id": "unknown",
+      "description": "elderly_mobility_risk fell through to default"
+    },
+    {
+      "scenario_id": "unknown",
+      "description": "visa_timeline_risk fell through to default"
+    },
+    {
+      "scenario_id": "unknown",
+      "description": "elderly_mobility_risk fell through to default"
+    },
+    {
+      "scenario_id": "unknown",
+      "description": "visa_timeline_risk fell through to default"
+    }
+  ],
+  "decisions": [
+    {
+      "decision_type": "elderly_mobility_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "toddler_pacing_risk",
+      "source": "cache",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "composition_risk",
+      "source": "cache",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "visa_timeline_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "budget_feasibility",
+      "source": "cache",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "elderly_mobility_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "toddler_pacing_risk",
+      "source": "cache",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "composition_risk",
+      "source": "cache",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "visa_timeline_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "budget_feasibility",
+      "source": "cache",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "elderly_mobility_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "toddler_pacing_risk",
+      "source": "cache",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "composition_risk",
+      "source": "cache",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "visa_timeline_risk",
+      "source": "default",
+      "confidence": 0.5,
+      "cost_inr": 0.0
+    },
+    {
+      "decision_type": "budget_feasibility",
+      "source": "cache",
+      "confidence": 0.9,
+      "cost_inr": 0.0
+    }
+  ]
+}

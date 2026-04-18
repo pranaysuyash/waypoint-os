@@ -105,6 +105,50 @@ frontend/
 | `/api/scenarios` | GET — List all scenario fixtures |
 | `/api/scenarios/[id]` | GET — Load specific scenario (e.g. `/api/scenarios/clean-family-booking`) |
 
+## Owner Insights Visualizations
+
+The Owner Insights page includes three comprehensive data visualizations:
+
+### 1. Conversion Funnel (Pipeline Funnel)
+Shows pipeline stage conversion rates with:
+- Trip count by stage (horizontal bar chart)
+- Conversion percentages between consecutive stages
+- Visual funnel effect indicating drop-off at each stage
+
+Implementation:
+- Component: `src/components/visual/PipelineFunnel.tsx`
+- Integration: `src/app/owner/insights/page.tsx` (positioned after Stage Breakdown)
+- Test coverage: `src/components/visual/__tests__/PipelineFunnel.test.tsx` (4 tests)
+- Data source: Pipeline metrics (stages: New Inquiry → Trip Details → Ready to Quote → Build Options → Final Review)
+
+### 2. Monthly Trend (Revenue Chart)
+Displays monthly performance with:
+- Revenue (bar series in USD)
+- Booked count (line series overlay)
+- Dual Y-axes for different scales
+
+Implementation:
+- Component: `src/components/visual/RevenueChart.tsx`
+- Integration: `src/app/owner/insights/page.tsx` (positioned after Pipeline Funnel)
+- Test coverage: `src/components/visual/__tests__/RevenueChart.test.tsx` (3 tests)
+- Data source: Monthly aggregated revenue and booking data
+
+### 3. Agent Performance Metrics (Team Performance Chart)
+Shows individual agent performance across four dimensions:
+- Conversion rate (% of inquiries converted to bookings)
+- Response time (hours to first response)
+- Customer satisfaction (CSAT out of 5.0)
+- Workload score (% utilization with color-coded severity)
+
+Implementation:
+- Component: `src/components/visual/TeamPerformanceChart.tsx`
+- Integration: `src/app/owner/insights/page.tsx` (positioned after Revenue Chart)
+- Test coverage: `src/components/visual/__tests__/TeamPerformanceChart.test.tsx` (4 tests)
+- Features: Color-coded metrics (green/blue/amber/red) for quick health assessment
+- Data source: Team member metrics from mock or API
+
+**Test Coverage**: 11 total visualization tests across 3 components (all passing)
+
 ## Using the Workbench
 
 1. **Go to** http://localhost:3000/workbench

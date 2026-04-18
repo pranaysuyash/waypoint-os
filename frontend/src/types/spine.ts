@@ -33,6 +33,7 @@ export interface CostBucketEstimate {
 
 export interface BudgetBreakdownResult {
   verdict: "realistic" | "borderline" | "not_realistic";
+  currency?: string;
   buckets: CostBucketEstimate[];
   missing_buckets: string[];
   total_estimated_low: number;

@@ -925,3 +925,244 @@ User requested the discussion to be documented with a clear and proper name whil
 ### Traceability
 - Added to docs navigation:
   - `Docs/INDEX.md`
+
+## Log Entry: 2026-04-17 - Trip Workspace Fix (Blank Page + Mock Data + Wiring)
+
+### Context
+User reported two issues: (1) clicking recent trips from dashboard/inbox opened a blank workspace instead of showing trip data, and (2) UI still said "workbench" everywhere despite previous claims of wording fixes. Further investigation revealed that all 5 tabs showed empty states because no pipeline data was populated, the IntakeTab had a hardcoded dropdown of fake trips, and the Process Trip button was dead (no onClick).
+
+### Root Cause
+- Workbench page read `?tab=` URL param but never read `?trip=` param. The `useTrip(id)` hook existed but wasn't used.
+- IntakeTab had 4 hardcoded fake trip IDs (`sgp-family`, `dubai-corp`) unrelated to real trip data.
+- Trip detail API only had 2 of 7 trips with basic fields (no packet/decision/strategy/safety data).
+- Process Trip button rendered but had no onClick handler.
+- "Workbench" wording in 305+ references across source files.
+
+### Actions Completed
+1. **Trip detail API enrichment** (`api/trips/[id]/route.ts`): Expanded from 2 trips to all 7 trips with full pipeline mock data — packet (facts, derived signals, ambiguities), validation, decision (state, blockers, rationale, budget breakdown), strategy (goal, priority sequence, tonal guardrails, suggested opening), safety (leakage check), internal_bundle, traveler_bundle, customerMessage, agentNotes.
+2. **Workbench store hydration** (`workbench/page.tsx`): Added `useHydrateStoreFromTrip()` hook that reads `?trip=` param, fetches trip data, and pushes all pipeline results into Zustand store so all 5 tabs render populated.
+3. **IntakeTab rewrite** (`workbench/IntakeTab.tsx`): Removed hardcoded dropdown, added trip detail card (destination, party, dates, budget), connected textareas to Zustand store for pre-filled customer message and agent notes.
+4. **Process Trip button wiring**: Connected to `useSpineRun` hook, sends intake inputs to `POST /api/spine/run`, populates store with results on success, shows error banner on failure.
+5. **Reset button**: Clears all store state (inputs + results).
+6. **Wording cleanup**: "Open workbench" → "Open Trip Workspace", sidebar descriptions updated.
+
+### Key Decisions
+- Route paths (`/workbench`) kept as-is to avoid breaking navigation — only user-facing labels changed.
+- Store hydration uses `useRef` guard to prevent double-hydration in React strict mode.
+- Process Trip button disabled when both inputs are empty (nothing to process).
+- Mock data designed to cover all decision states: PROCEED_SAFE, ASK_FOLLOWUP, BRANCH_OPTIONS, STOP_NEEDS_REVIEW.
+
+### Verification
+- `npx next build` passes clean.
+- All 7 trips in list API have matching detail entries.
+- Full session writeup: `Docs/SESSION_WRITEUP_TRIP_WORKSPACE_FIX_2026-04-17.md`
+
+### Deferred to Real API Stage
+- Database-backed trip storage (replace all mock data)
+- Input persistence (PUT/PATCH endpoints)
+- Python spine API deployment for live Process Trip functionality
+- Local caching / offline support
+
+## Log Entry: 2026-04-18 - D4/D6 Sub-Decisions Resolved (D4.1–D4.3, D6.1–D6.2)
+
+### Context
+Five sub-decisions from `ARCHITECTURE_DECISION_D4_D6_SUITABILITY_AUDIT_2026-04-16.md` Part 8 were discussed. During D4.1 discussion, the owner identified a critical gap: suitability was being evaluated per-activity in isolation, which would break coherence within the same tour (e.g., temple walk after 3-hour hike in tropical heat for elderly ≠ temple walk on a rest day).
+
+### Evolution Trigger
+Owner challenge: "Shouldn't we also look at a hybrid LLM-based strategy for D4.1? I don't want later that the logic breaks within the same tour." This exposed that the `SuitabilityContext` had no awareness of other activities in the trip — scorer evaluated each activity independently.
+
+### Decisions Made
+
+**D4.1 — Activity Catalog + Scoring Architecture**: Hybrid three-tier scoring:
+- Tier 1: Per-activity deterministic tag rules (~40-60 rules), safety floor, ₹0
+- Tier 2: Tour-context deterministic sequence rules (~15-20 rules) evaluating cumulative intensity, back-to-back strain, rest-day gaps, climate×intensity, ₹0
+- Tier 3: LLM contextual scoring via existing `HybridDecisionEngine` for borderline/ambiguous cases. Cached, graduating to rules.
+- Catalog itself: activity-type tables (destination-agnostic), destination context enters through `SuitabilityContext` not catalog.
+
+**D4.2 — Suitability Matrix Granularity**: Tag-based matching with two rule sections:
+- Section A: per-activity rules (~40-60), feeds Tier 1
+- Section B: sequence rules (~15-20), feeds Tier 2
+
+**D4.3 — Module Placement**: `src/intake/suitability/` (NB02 judgment layer). Unchanged — tour-context scoring reinforces this is judgment, not planning.
+
+**D6.1 — Fixture Authoring**: Manual curation with three fixture tiers:
+- Tier A: isolated activity fixtures (~15-20)
+- Tier B: day-sequence fixtures (~15-20)
+- Tier C: trip-sequence fixtures (~10-15, adapted from existing `Docs/context/` scenarios)
+- Total: ~50-65 fixtures. Real-world fixtures added post-pilot via NB06 shadow collector.
+
+**D6.2 — Fixture Format**: YAML for data, Python dataclasses for schema/loading. Tour-context fixtures include `day_plan` section with per-day activity sequences.
+
+### Key Contract Changes
+- `SuitabilityContext`: extended with `day_activities`, `trip_activities`, `day_index`, `season_month`, `destination_climate`
+- `AuditSubject`: extended with `day_plan` for tour-context fixtures
+- All other parent document contracts (`ActivitySuitability`, `SuitabilityBundle`, `StructuredRisk`, `ParticipantRef`, `ActivityDefinition`): unchanged
+
+### Artifacts
+- Created: `Docs/ARCHITECTURE_DECISION_D4_SUBDECISIONS_ADDENDUM_2026-04-18.md`
+- Parent: `Docs/ARCHITECTURE_DECISION_D4_D6_SUITABILITY_AUDIT_2026-04-16.md`
+
+### Traceability
+- Added to `Docs/INDEX.md`
+
+## Log Entry: 2026-04-18 - D1 Autonomy Gradient Decision + Adaptive Autonomy Thread
+
+### Context
+Continued thesis deep dive sub-decisions. D1 (autonomy gradient) from `DISCUSSION_THESIS_DEEP_DIVE_2026-04-16.md` Thread 1 discussed.
+
+### Core Decision
+Agency-level `AgencyAutonomyPolicy` config with per-`decision_state` approval gates (`auto`/`review`/`block`). Default: `"review"` for all traveler-facing outputs. Safety invariant: `STOP_NEEDS_REVIEW` is always `"block"`, no override.
+
+### Evolution Thread: Adaptive Autonomy
+Owner proposed: "We can fine-tune or give more autonomy based on learning — start looking at the customer+trip classification problem and switch on/off controls later." This reframes autonomy from static config → learned adaptive policy. System observes override patterns per trip classification, suggests loosening/tightening controls. Owner approves changes.
+
+### Customer+Trip Classification Problem (Pending Deep Dive)
+Identified as prerequisite for adaptive autonomy. Candidate dimensions: trip complexity, destination familiarity, budget sensitivity, customer type, suitability risk, composition complexity, time pressure. Five sub-questions (D1.1–D1.5) deferred until pilot data available.
+
+### Remaining Open Items
+- D2 (free engine persona), D3 (sourcing configurability), D5 (override learning) — open for discussion
+- Plugin system — draft exists, decision needed
+- D4/D6 implementation — migration Steps 1-5 pending
+
+### Artifacts
+- Created: `Docs/ARCHITECTURE_DECISION_D1_AUTONOMY_GRADIENT_2026-04-18.md`
+
+### Traceability
+- Added to `Docs/INDEX.md`
+
+## Log Entry: 2026-04-18 - Cloudflare vs Postgres Clarification (Ease of Deployment + Cost)
+
+### Context
+Owner clarified original intent: **not anti-PostgreSQL**, but optimizing for **ease of deployment, lower operational cost, and simpler ops**. Request was to revisit Option B vs Option C in that framing.
+
+### Original Ask (as clarified)
+- "Not no PostgreSQL" 
+- Prioritize: easy deploy, lower recurring cost, less ops burden
+- Keep documenting findings and rationale in decision trail
+
+### What Was Found
+1. Project docs currently converge on: **FastAPI + PostgreSQL + managed hosting + R2 for files**.
+  - `Docs/TECHNICAL_INFRASTRUCTURE.md`
+  - `Docs/research/DATA_STRATEGY.md`
+  - `Docs/DISCOVERY_GAP_DATA_PERSISTENCE_2026-04-16.md`
+2. Cloudflare appears in existing architecture as:
+  - **R2 for object/document storage**
+  - edge/webhook infra options (Workers discussed, not adopted as primary system of record)
+3. Current codebase has:
+  - no DB deps yet (`pyproject.toml`)
+  - no DB service in compose (`docker-compose.yml`)
+  - JSON-file persistence (`spine-api/persistence.py`)
+  - mock-heavy API routes in frontend BFF
+
+### Option B vs Option C (deployment/cost lens)
+
+#### Option B — Hybrid (Recommended in this phase)
+**Shape**:
+- FastAPI app remains core runtime
+- PostgreSQL as system of record
+- Cloudflare R2 for file/document storage
+- Optional Cloudflare edge/CDN in front of app
+
+**Pros**:
+- Keeps architecture aligned with existing docs/specs
+- Minimal migration friction from current Python/FastAPI code
+- Strong long-term fit for analytics, RBAC, tenant scoping
+- Cost remains controlled via managed Postgres + R2
+
+**Cons**:
+- Two-vendor stack (compute + data/storage split)
+- Slightly more setup than all-in-one platform patterns
+
+#### Option C — Current trajectory (Render/Railway + Postgres + R2)
+**Shape**:
+- Managed app hosting (Render/Railway)
+- Managed PostgreSQL
+- R2/S3 for documents
+
+**Pros**:
+- Fastest path to production with lowest change risk
+- Operationally straightforward for solo/team-small stage
+- Matches all existing persistence/auth planning artifacts
+
+**Cons**:
+- Less edge-native than full Cloudflare approach
+- Still pays managed DB baseline costs (but predictable)
+
+### Recommendation (for this project stage)
+Use **Option C as default execution path**, while adopting **Option B elements incrementally** where they improve cost/ops:
+- Keep PostgreSQL as source of truth
+- Use Cloudflare R2 for documents from day one
+- Add Cloudflare edge only when traffic/perf pressure justifies it
+
+This satisfies owner's clarified constraint (easy deployment + lower cost) without forcing a high-risk platform pivot.
+
+### Decision Status
+- **No hard pivot away from PostgreSQL**
+- **Cost/ease-optimized path accepted**: Postgres + managed deploy + R2
+- Revisit full Cloudflare runtime only after persistence/auth/analytics backbone is live and measured
+
+## Log Entry: 2026-04-18 - Cost-Floor Deployment Plan (Option B/C Execution)
+
+### Context
+Owner confirmed priority order:
+1. ease of deployment,
+2. lower recurring cost,
+3. architecture upgrades later when cost viability/revenue is proven.
+
+### Original Ask (captured)
+- Keep documenting decision trail while moving forward
+- Do not optimize for maximum architecture complexity before commercial validation
+- Keep PostgreSQL in scope (not rejected), but avoid expensive/complex ops now
+
+### What Was Found in Current Repo State
+- Deploy assets already present for managed hosting (`render.yaml`, `fly.toml`).
+- Runtime is Python/FastAPI-first (`README.md`, `spine-api/server.py`).
+- Persistence is still JSON-file based (`spine-api/persistence.py`) and not yet DB-backed.
+- No DB dependencies/config yet in runtime (`pyproject.toml`, `docker-compose.yml`).
+
+### Cost-Floor Strategy (Practical)
+
+#### Phase 1 — Revenue-Validation Baseline (now)
+**Primary stance**: Option C default + Option B storage component
+- App hosting: managed web service (Render/Fly/Railway) with minimum viable plan.
+- DB: PostgreSQL as source of truth (single primary, no replicas).
+- File storage: Cloudflare R2 from day one for docs/uploads.
+- Observability: basic logs + health checks; defer heavy tooling.
+
+**Explicit defer list (to keep costs down)**:
+- No read replicas
+- No queue cluster (use simple background tasks first)
+- No multi-region active-active
+- No full edge rewrite to Workers/D1/DO
+- No premium observability stack until error volume justifies it
+
+#### Phase 2 — Early Revenue / Stability Upgrade
+Trigger: recurring revenue covers infra by comfortable margin or sustained reliability pain
+- Add alerting and error budget dashboards
+- Add migration-safe background job mechanism
+- Add DB backup automation verification cadence
+
+#### Phase 3 — Architecture Lift (only after viability)
+Trigger: measurable limits in cost-per-trip, latency, or ops toil
+- Introduce edge acceleration/CDN where evidence supports it
+- Evaluate deeper Option B expansion (Cloudflare edge/webhook routing)
+- Consider advanced tenancy and analytics scaling patterns
+
+### Option B vs C Operating Rule (Locked)
+- **Now**: Run Option C (fastest, lowest execution risk)
+- **Incremental**: Pull in Option B components only when they reduce cost/toil without forcing platform rewrite
+- **Later**: pursue broader architecture improvements when revenue and usage justify complexity
+
+### Cost Viability Checkpoints (Decision Gates)
+- Infra spend % of monthly revenue
+- Cost per active trip / per completed booking
+- On-call/ops hours per week
+- P95 API latency and error rate trend
+
+If checkpoints remain healthy, do not introduce architecture complexity.
+If checkpoints degrade beyond agreed thresholds, escalate to architecture uplift planning.
+
+### Decision Status
+- Cost-first execution confirmed.
+- Architecture evolution is explicitly staged behind viability checkpoints.
+- Documentation-first discipline maintained for all tradeoff decisions.

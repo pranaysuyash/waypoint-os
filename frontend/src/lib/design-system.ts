@@ -80,5 +80,5 @@ export function getPageTitle(pathname: string): string {
     return "Command Overview";
   }
 
-  return "Workspace";
+  return "Trip Workspace";
 }

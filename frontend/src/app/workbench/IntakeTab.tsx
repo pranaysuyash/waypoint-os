@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import {
   ChevronDown,
   FileText,
@@ -9,22 +8,11 @@ import {
   Calendar,
   Users,
   Wallet,
-  Sparkles,
   Settings,
+  Plane,
 } from 'lucide-react';
-
-interface Trip {
-  id: string;
-  title: string;
-  stage: string;
-}
-
-const trips: Trip[] = [
-  { id: 'sgp-family', title: 'Singapore Family Trip', stage: 'discovery' },
-  { id: 'dubai-corp', title: 'Dubai Corporate Retreat', stage: 'shortlist' },
-  { id: 'andaman-rom', title: 'Andaman Honeymoon', stage: 'discovery' },
-  { id: 'europe-multi', title: 'Europe Multi-City', stage: 'proposal' },
-];
+import type { Trip } from '@/lib/api-client';
+import { useWorkbenchStore } from '@/stores/workbench';
 
 const stages = [
   { value: 'discovery', label: 'Discovery' },
@@ -42,44 +30,71 @@ const modes = [
   { value: 'post_trip', label: 'Post Trip' },
 ];
 
-export function IntakeTab() {
-  const [selectedTrip, setSelectedTrip] = useState('');
-  const [stage, setStage] = useState('discovery');
-  const [mode, setMode] = useState('normal_intake');
-  const [customerMessage, setCustomerMessage] = useState('');
-  const [agentNotes, setAgentNotes] = useState('');
-  const [structuredJson, setStructuredJson] = useState('');
+interface IntakeTabProps {
+  trip?: Trip | null;
+}
+
+export function IntakeTab({ trip }: IntakeTabProps) {
+  const { input_raw_note, input_owner_note, setInputRawNote, setInputOwnerNote, stage, setStage, operating_mode, setOperatingMode } = useWorkbenchStore();
+
+  const richTrip = trip as Record<string, unknown> | null | undefined;
+  const origin = (richTrip?.origin as string) || '—';
+  const budget = (richTrip?.budget as string) || '—';
+  const party = trip?.party || '—';
+  const dateWindow = (richTrip?.dateWindow as string) || trip?.dateWindow || '—';
 
   return (
     <div className='space-y-6'>
-      {/* Trip Selection */}
       <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
         <div className='flex items-center gap-2 mb-4'>
-          <Sparkles className='w-4 h-4 text-[#a371f7]' />
+          <Plane className='w-4 h-4 text-[#58a6ff]' />
           <h3 className='text-sm font-semibold text-[#e6edf3]'>
-            Trip Selection
+            Trip Details
           </h3>
         </div>
-        <div className='relative'>
-          <select
-            value={selectedTrip}
-            onChange={(e) => setSelectedTrip(e.target.value)}
-            className='w-full px-4 py-2.5 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] appearance-none cursor-pointer'
-          >
-            <option value=''>Select a trip...</option>
-            {trips.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.title} ({t.stage})
-              </option>
-            ))}
-          </select>
-          <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8b949e] pointer-events-none' />
-        </div>
+        {trip ? (
+          <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3'>
+            <div>
+              <span className='text-xs text-[#8b949e] uppercase tracking-wide'>Destination</span>
+              <p className='text-sm text-[#e6edf3] font-medium mt-0.5 flex items-center gap-1'>
+                <MapPin className='w-3 h-3 text-[#58a6ff]' />{trip.destination}
+              </p>
+            </div>
+            <div>
+              <span className='text-xs text-[#8b949e] uppercase tracking-wide'>Type</span>
+              <p className='text-sm text-[#e6edf3] font-medium mt-0.5'>{trip.type}</p>
+            </div>
+            <div>
+              <span className='text-xs text-[#8b949e] uppercase tracking-wide'>Party Size</span>
+              <p className='text-sm text-[#e6edf3] font-medium mt-0.5 flex items-center gap-1'>
+                <Users className='w-3 h-3 text-[#8b949e]' />{party} pax
+              </p>
+            </div>
+            <div>
+              <span className='text-xs text-[#8b949e] uppercase tracking-wide'>Dates</span>
+              <p className='text-sm text-[#e6edf3] font-medium mt-0.5 flex items-center gap-1'>
+                <Calendar className='w-3 h-3 text-[#8b949e]' />{dateWindow}
+              </p>
+            </div>
+            <div>
+              <span className='text-xs text-[#8b949e] uppercase tracking-wide'>Budget</span>
+              <p className='text-sm text-[#e6edf3] font-medium mt-0.5 flex items-center gap-1'>
+                <Wallet className='w-3 h-3 text-[#3fb950]' />{budget}
+              </p>
+            </div>
+            <div>
+              <span className='text-xs text-[#8b949e] uppercase tracking-wide'>Reference</span>
+              <p className='text-sm text-[#e6edf3] font-mono mt-0.5'>{trip.id}</p>
+            </div>
+          </div>
+        ) : (
+          <p className='text-sm text-[#8b949e]'>
+            No trip loaded. Select a trip from the inbox or dashboard to view its details.
+          </p>
+        )}
       </div>
 
-      {/* Input Fields Grid */}
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-        {/* Customer Message */}
         <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
           <div className='flex items-center gap-2 mb-3'>
             <FileText className='w-4 h-4 text-[#8b949e]' />
@@ -88,15 +103,14 @@ export function IntakeTab() {
             </label>
           </div>
           <textarea
-            value={customerMessage}
-            onChange={(e) => setCustomerMessage(e.target.value)}
+            value={input_raw_note}
+            onChange={(e) => setInputRawNote(e.target.value)}
             placeholder='Paste the incoming traveler note here...'
             rows={6}
             className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder:text-[#8b949e] focus:outline-none focus:border-[#58a6ff] resize-none font-mono'
           />
         </div>
 
-        {/* Agent Notes */}
         <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
           <div className='flex items-center gap-2 mb-3'>
             <User className='w-4 h-4 text-[#58a6ff]' />
@@ -105,8 +119,8 @@ export function IntakeTab() {
             </label>
           </div>
           <textarea
-            value={agentNotes}
-            onChange={(e) => setAgentNotes(e.target.value)}
+            value={input_owner_note}
+            onChange={(e) => setInputOwnerNote(e.target.value)}
             placeholder="Add owner's comments or clarifications..."
             rows={6}
             className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder:text-[#8b949e] focus:outline-none focus:border-[#58a6ff] resize-none'
@@ -114,7 +128,6 @@ export function IntakeTab() {
         </div>
       </div>
 
-      {/* Configuration */}
       <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
         <h3 className='text-sm font-semibold text-[#e6edf3] mb-4 flex items-center gap-2'>
           <Settings className='w-4 h-4 text-[#8b949e]' />
@@ -128,7 +141,7 @@ export function IntakeTab() {
             <div className='relative'>
               <select
                 value={stage}
-                onChange={(e) => setStage(e.target.value)}
+                onChange={(e) => setStage(e.target.value as any)}
                 className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] appearance-none'
               >
                 {stages.map((s) => (
@@ -146,8 +159,8 @@ export function IntakeTab() {
             </label>
             <div className='relative'>
               <select
-                value={mode}
-                onChange={(e) => setMode(e.target.value)}
+                value={operating_mode}
+                onChange={(e) => setOperatingMode(e.target.value as any)}
                 className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] appearance-none'
               >
                 {modes.map((m) => (
@@ -162,7 +175,6 @@ export function IntakeTab() {
         </div>
       </div>
 
-      {/* Quick Actions */}
       <div className='flex items-center justify-between pt-4 border-t border-[#30363d]'>
         <div className='flex items-center gap-4 text-sm text-[#8b949e]'>
           <div className='flex items-center gap-2'>

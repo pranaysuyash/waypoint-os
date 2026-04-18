@@ -13,6 +13,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useTrips, useTripStats, usePipeline } from '@/hooks/useTrips';
+import { getTripRoute } from '@/lib/routes';
 import { InlineLoading } from '@/components/ui/loading';
 import { InlineError } from '@/components/error-boundary';
 
@@ -255,7 +256,7 @@ const ActivityRow = memo(function ActivityRow({
   const meta = STATE_META[item.state];
   return (
     <Link
-      href={`/workbench?trip=${item.id}`}
+      href={getTripRoute(item.id)}
       className='flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#161b22] transition-colors group'
     >
       <span
@@ -423,7 +424,7 @@ export default function DashboardPage() {
           href='/workbench'
           className='flex items-center gap-1.5 text-base text-[#58a6ff] hover:text-[#79b8ff] transition-colors'
         >
-          Open workbench{' '}
+          Open Trip Workspace{' '}
           <ArrowRight className='h-4 w-4' aria-hidden='true' />
         </Link>
       </header>

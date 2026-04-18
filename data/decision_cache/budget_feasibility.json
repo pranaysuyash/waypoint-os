@@ -1,6 +1,335 @@
 {
-  "7520b6f1ae32fde59dabe44f54649ada": {
-    "cache_key": "7520b6f1ae32fde59dabe44f54649ada",
+  "54c92033ef500431f18914d61d7f0371": {
+    "cache_key": "54c92033ef500431f18914d61d7f0371",
+    "decision_type": "budget_feasibility",
+    "decision": {
+      "feasible": null,
+      "risk_level": "medium",
+      "reasoning": "Budget information not provided. Cannot assess feasibility without knowing budget constraints.",
+      "recommendations": [
+        "Ask traveler for their budget range",
+        "Provide minimum viable cost estimate for destination"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.562987",
+    "last_used_at": "2026-04-18T12:36:54.562987",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "d190ac6fb3d8507d68c2890ff9a6663c": {
+    "cache_key": "d190ac6fb3d8507d68c2890ff9a6663c",
+    "decision_type": "budget_feasibility",
+    "decision": {
+      "feasible": null,
+      "risk_level": "medium",
+      "reasoning": "Budget information not provided. Cannot assess feasibility without knowing budget constraints.",
+      "recommendations": [
+        "Ask traveler for their budget range",
+        "Provide minimum viable cost estimate for destination"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.563742",
+    "last_used_at": "2026-04-18T12:36:54.563742",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "108ea0799687dfb4cc44c20f6563e4fb": {
+    "cache_key": "108ea0799687dfb4cc44c20f6563e4fb",
+    "decision_type": "budget_feasibility",
+    "decision": {
+      "feasible": null,
+      "risk_level": "medium",
+      "reasoning": "Budget information not provided. Cannot assess feasibility without knowing budget constraints.",
+      "recommendations": [
+        "Ask traveler for their budget range",
+        "Provide minimum viable cost estimate for destination"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.564831",
+    "last_used_at": "2026-04-18T12:36:54.564831",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "d38d6987b9c0b4d6b438d25d5ed07d58": {
+    "cache_key": "d38d6987b9c0b4d6b438d25d5ed07d58",
+    "decision_type": "budget_feasibility",
+    "decision": {
+      "feasible": null,
+      "risk_level": "medium",
+      "reasoning": "Budget information not provided. Cannot assess feasibility without knowing budget constraints.",
+      "recommendations": [
+        "Ask traveler for their budget range",
+        "Provide minimum viable cost estimate for destination"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.567074",
+    "last_used_at": "2026-04-18T12:36:54.567074",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "d9c3d420be02a25f84d62c1fbb45248e": {
+    "cache_key": "d9c3d420be02a25f84d62c1fbb45248e",
+    "decision_type": "budget_feasibility",
+    "decision": {
+      "feasible": true,
+      "risk_level": "low",
+      "budget_per_person": 25000.0,
+      "min_required": 30000,
+      "reasoning": "Domestic trip with \u20b925000/person (\u2265\u20b915000 minimum)"
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.567849",
+    "last_used_at": "2026-04-18T12:36:54.567849",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "0e8160c17b24b0945ff9cca5c7e1f3cf": {
+    "cache_key": "0e8160c17b24b0945ff9cca5c7e1f3cf",
+    "decision_type": "budget_feasibility",
+    "decision": {
+      "feasible": false,
+      "risk_level": "high",
+      "reasoning": "Budget \u20b950,000 is \u20b970,000 below minimum viable cost of \u20b9120,000 for 2 travelers to Singapore. Significant budget increase required.",
+      "estimated_cost_range": "\u20b9120,000 minimum",
+      "gap_amount": -70000,
+      "gap_percent": -58.3
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.568590",
+    "last_used_at": "2026-04-18T12:36:54.568590",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "b8578ef72e8a9426258fc46dd85f22cb": {
+    "cache_key": "b8578ef72e8a9426258fc46dd85f22cb",
+    "decision_type": "budget_feasibility",
+    "decision": {
+      "feasible": null,
+      "risk_level": "medium",
+      "reasoning": "Budget information not provided. Cannot assess feasibility without knowing budget constraints.",
+      "recommendations": [
+        "Ask traveler for their budget range",
+        "Provide minimum viable cost estimate for destination"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.569360",
+    "last_used_at": "2026-04-18T07:06:54.578340+00:00",
+    "use_count": 2,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "415b03256c5007fecb882d96e25c690f": {
+    "cache_key": "415b03256c5007fecb882d96e25c690f",
+    "decision_type": "budget_feasibility",
+    "decision": {
+      "feasible": null,
+      "risk_level": "medium",
+      "reasoning": "Budget information not provided. Cannot assess feasibility without knowing budget constraints.",
+      "recommendations": [
+        "Ask traveler for their budget range",
+        "Provide minimum viable cost estimate for destination"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.570395",
+    "last_used_at": "2026-04-18T07:06:54.575011+00:00",
+    "use_count": 2,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "8b70dab44caa1eef0e3e840e849c63b3": {
+    "cache_key": "8b70dab44caa1eef0e3e840e849c63b3",
+    "decision_type": "budget_feasibility",
+    "decision": {
+      "feasible": null,
+      "risk_level": "medium",
+      "reasoning": "Budget information not provided. Cannot assess feasibility without knowing budget constraints.",
+      "recommendations": [
+        "Ask traveler for their budget range",
+        "Provide minimum viable cost estimate for destination"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.571413",
+    "last_used_at": "2026-04-18T07:06:54.583207+00:00",
+    "use_count": 4,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "9cf91ded91b5ffb35a0fd4c20f6779c3": {
+    "cache_key": "9cf91ded91b5ffb35a0fd4c20f6779c3",
+    "decision_type": "budget_feasibility",
+    "decision": {
+      "feasible": null,
+      "risk_level": "medium",
+      "reasoning": "Budget information not provided. Cannot assess feasibility without knowing budget constraints.",
+      "recommendations": [
+        "Ask traveler for their budget range",
+        "Provide minimum viable cost estimate for destination"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.572562",
+    "last_used_at": "2026-04-18T12:36:54.572562",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "5d7a6dc18b2d1f86b61a046913cadd85": {
+    "cache_key": "5d7a6dc18b2d1f86b61a046913cadd85",
+    "decision_type": "budget_feasibility",
+    "decision": {
+      "feasible": null,
+      "risk_level": "medium",
+      "reasoning": "Budget information not provided. Cannot assess feasibility without knowing budget constraints.",
+      "recommendations": [
+        "Ask traveler for their budget range",
+        "Provide minimum viable cost estimate for destination"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.577111",
+    "last_used_at": "2026-04-18T12:36:54.577111",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "0bef9b2ddd8a3401e5d91e4195aadb61": {
+    "cache_key": "0bef9b2ddd8a3401e5d91e4195aadb61",
+    "decision_type": "budget_feasibility",
+    "decision": {
+      "feasible": null,
+      "risk_level": "medium",
+      "reasoning": "Budget information not provided. Cannot assess feasibility without knowing budget constraints.",
+      "recommendations": [
+        "Ask traveler for their budget range",
+        "Provide minimum viable cost estimate for destination"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.579455",
+    "last_used_at": "2026-04-18T12:36:54.579455",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "5f0c46f74e4eaf3b701c14ba06c74320": {
+    "cache_key": "5f0c46f74e4eaf3b701c14ba06c74320",
+    "decision_type": "budget_feasibility",
+    "decision": {
+      "feasible": true,
+      "risk_level": "low",
+      "reasoning": "Budget \u20b9200,000 is \u20b980,000 above minimum viable cost of \u20b9120,000 for 2 travelers to Singapore. Good budget for this destination.",
+      "estimated_cost_range": "\u20b9120,000 minimum",
+      "gap_amount": 80000,
+      "gap_percent": 66.7
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.580602",
+    "last_used_at": "2026-04-18T12:36:54.580602",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "a1bdce6cb4fd67b66591e2eaa5a1a7d5": {
+    "cache_key": "a1bdce6cb4fd67b66591e2eaa5a1a7d5",
+    "decision_type": "budget_feasibility",
+    "decision": {
+      "feasible": false,
+      "risk_level": "high",
+      "reasoning": "Budget \u20b950,000 is \u20b9550,000 below minimum viable cost of \u20b9600,000 for 4 travelers to Europe. Significant budget increase required.",
+      "estimated_cost_range": "\u20b9600,000 minimum",
+      "gap_amount": -550000,
+      "gap_percent": -91.7
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.581713",
+    "last_used_at": "2026-04-18T12:36:54.581713",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "08fc0cf3af48712d24af9a507fafd5d2": {
+    "cache_key": "08fc0cf3af48712d24af9a507fafd5d2",
+    "decision_type": "budget_feasibility",
+    "decision": {
+      "feasible": true,
+      "risk_level": "low",
+      "budget_per_person": 25000.0,
+      "min_required": 60000,
+      "reasoning": "Domestic trip with \u20b925000/person (\u2265\u20b915000 minimum)"
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.584553",
+    "last_used_at": "2026-04-18T12:36:54.584553",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "8ecd990f7b0f18e257637d7e80f8dd9c": {
+    "cache_key": "8ecd990f7b0f18e257637d7e80f8dd9c",
+    "decision_type": "budget_feasibility",
+    "decision": {
+      "feasible": null,
+      "risk_level": "medium",
+      "reasoning": "Budget information not provided. Cannot assess feasibility without knowing budget constraints.",
+      "recommendations": [
+        "Ask traveler for their budget range",
+        "Provide minimum viable cost estimate for destination"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:37:01.388093",
+    "last_used_at": "2026-04-18T12:37:01.388093",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "3405eb9ef953d26f9235411bd732b3b5": {
+    "cache_key": "3405eb9ef953d26f9235411bd732b3b5",
     "decision_type": "budget_feasibility",
     "decision": {
       "feasible": true,
@@ -13,9 +342,30 @@
     "confidence": 0.9,
     "source": "rule_engine",
     "llm_model_used": null,
-    "created_at": "2026-04-16T23:35:49.509530",
-    "last_used_at": "2026-04-17T06:46:17.163701+00:00",
-    "use_count": 15,
+    "created_at": "2026-04-18T12:37:01.389943",
+    "last_used_at": "2026-04-18T12:37:01.389943",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "9e4dc45bbcc5af955c3402eba08f882a": {
+    "cache_key": "9e4dc45bbcc5af955c3402eba08f882a",
+    "decision_type": "budget_feasibility",
+    "decision": {
+      "feasible": null,
+      "risk_level": "medium",
+      "reasoning": "Budget information not provided. Cannot assess feasibility without knowing budget constraints.",
+      "recommendations": [
+        "Ask traveler for their budget range",
+        "Provide minimum viable cost estimate for destination"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:37:02.902079",
+    "last_used_at": "2026-04-18T07:07:02.922330+00:00",
+    "use_count": 2,
     "success_rate": 1.0,
     "feedback_count": 0
   }

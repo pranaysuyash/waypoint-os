@@ -1,0 +1,426 @@
+{
+  "summary": {
+    "total": 50,
+    "rule_hits": 10,
+    "cache_hits": 21,
+    "llm_calls": 0,
+    "defaults": 19,
+    "correct": 8,
+    "incorrect": 2
+  },
+  "rates": {
+    "rule_hit_rate": 0.2,
+    "cache_hit_rate": 0.42,
+    "free_decision_rate": 0.62,
+    "accuracy": 0.8
+  },
+  "cost_analysis": {
+    "llm_cost_per_decision": 0.5,
+    "total_without_hybrid": 25.0,
+    "actual_cost": 0.0,
+    "savings": 25.0,
+    "savings_percent": 1.0
+  },
+  "test_cases": [
+    {
+      "name": "Elderly + Maldives",
+      "decisions": [
+        {
+          "type": "elderly_mobility_risk",
+          "source": "rule",
+          "risk_level": "high",
+          "feasible": null,
+          "status": "\u2713"
+        },
+        {
+          "type": "toddler_pacing_risk",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "budget_feasibility",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": true,
+          "status": "-"
+        },
+        {
+          "type": "visa_timeline_risk",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "composition_risk",
+          "source": "rule",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        }
+      ]
+    },
+    {
+      "name": "Elderly + Singapore",
+      "decisions": [
+        {
+          "type": "elderly_mobility_risk",
+          "source": "rule",
+          "risk_level": "low",
+          "feasible": null,
+          "status": "\u2713"
+        },
+        {
+          "type": "toddler_pacing_risk",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "budget_feasibility",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": true,
+          "status": "-"
+        },
+        {
+          "type": "visa_timeline_risk",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "composition_risk",
+          "source": "cache",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        }
+      ]
+    },
+    {
+      "name": "Toddler + Short Trip",
+      "decisions": [
+        {
+          "type": "elderly_mobility_risk",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "toddler_pacing_risk",
+          "source": "rule",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "\u2713"
+        },
+        {
+          "type": "budget_feasibility",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": true,
+          "status": "-"
+        },
+        {
+          "type": "visa_timeline_risk",
+          "source": "rule",
+          "risk_level": "low",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "composition_risk",
+          "source": "cache",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        }
+      ]
+    },
+    {
+      "name": "Toddler + Long Trip",
+      "decisions": [
+        {
+          "type": "elderly_mobility_risk",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "toddler_pacing_risk",
+          "source": "rule",
+          "risk_level": "high",
+          "feasible": null,
+          "status": "\u2713"
+        },
+        {
+          "type": "budget_feasibility",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": true,
+          "status": "-"
+        },
+        {
+          "type": "visa_timeline_risk",
+          "source": "cache",
+          "risk_level": "low",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "composition_risk",
+          "source": "cache",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        }
+      ]
+    },
+    {
+      "name": "Budget Feasible (Goa)",
+      "decisions": [
+        {
+          "type": "elderly_mobility_risk",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "toddler_pacing_risk",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "budget_feasibility",
+          "source": "rule",
+          "risk_level": "low",
+          "feasible": true,
+          "status": "\u2713"
+        },
+        {
+          "type": "visa_timeline_risk",
+          "source": "cache",
+          "risk_level": "low",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "composition_risk",
+          "source": "cache",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        }
+      ]
+    },
+    {
+      "name": "Budget Infeasible (Singapore)",
+      "decisions": [
+        {
+          "type": "elderly_mobility_risk",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "toddler_pacing_risk",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "budget_feasibility",
+          "source": "rule",
+          "risk_level": "high",
+          "feasible": false,
+          "status": "\u2713"
+        },
+        {
+          "type": "visa_timeline_risk",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "composition_risk",
+          "source": "cache",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        }
+      ]
+    },
+    {
+      "name": "Visa Timeline Risk (High Urgency)",
+      "decisions": [
+        {
+          "type": "elderly_mobility_risk",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "toddler_pacing_risk",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "budget_feasibility",
+          "source": "cache",
+          "risk_level": "high",
+          "feasible": false,
+          "status": "-"
+        },
+        {
+          "type": "visa_timeline_risk",
+          "source": "rule",
+          "risk_level": "high",
+          "feasible": null,
+          "status": "\u2713"
+        },
+        {
+          "type": "composition_risk",
+          "source": "cache",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        }
+      ]
+    },
+    {
+      "name": "Multi-Generational Family",
+      "decisions": [
+        {
+          "type": "elderly_mobility_risk",
+          "source": "cache",
+          "risk_level": "high",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "toddler_pacing_risk",
+          "source": "rule",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "budget_feasibility",
+          "source": "cache",
+          "risk_level": "low",
+          "feasible": true,
+          "status": "-"
+        },
+        {
+          "type": "visa_timeline_risk",
+          "source": "cache",
+          "risk_level": "low",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "composition_risk",
+          "source": "cache",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "\u2717 (expected high, got medium)"
+        }
+      ]
+    },
+    {
+      "name": "Adult-Only Group",
+      "decisions": [
+        {
+          "type": "elderly_mobility_risk",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "toddler_pacing_risk",
+          "source": "cache",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "budget_feasibility",
+          "source": "cache",
+          "risk_level": "low",
+          "feasible": true,
+          "status": "-"
+        },
+        {
+          "type": "visa_timeline_risk",
+          "source": "cache",
+          "risk_level": "low",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "composition_risk",
+          "source": "cache",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "\u2717 (expected low, got medium)"
+        }
+      ]
+    },
+    {
+      "name": "Domestic - No Visa",
+      "decisions": [
+        {
+          "type": "elderly_mobility_risk",
+          "source": "default",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "toddler_pacing_risk",
+          "source": "cache",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        },
+        {
+          "type": "budget_feasibility",
+          "source": "cache",
+          "risk_level": "low",
+          "feasible": true,
+          "status": "-"
+        },
+        {
+          "type": "visa_timeline_risk",
+          "source": "cache",
+          "risk_level": "low",
+          "feasible": null,
+          "status": "\u2713"
+        },
+        {
+          "type": "composition_risk",
+          "source": "cache",
+          "risk_level": "medium",
+          "feasible": null,
+          "status": "-"
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,222 @@
 {
+  "adf6b8a9c8f5d65c3d032fe412c41125": {
+    "cache_key": "adf6b8a9c8f5d65c3d032fe412c41125",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No toddlers in party - toddler pacing risks not applicable",
+      "concerns": [],
+      "recommendations": []
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.562819",
+    "last_used_at": "2026-04-18T12:36:54.562819",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "4389cd2e0bd25d14a978e7bebebf694c": {
+    "cache_key": "4389cd2e0bd25d14a978e7bebebf694c",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No toddlers in party - toddler pacing risks not applicable",
+      "concerns": [],
+      "recommendations": []
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.563580",
+    "last_used_at": "2026-04-18T07:07:02.997249+00:00",
+    "use_count": 76,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "246fa39c9844286dc60bb354ffd1d905": {
+    "cache_key": "246fa39c9844286dc60bb354ffd1d905",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "Short domestic trip (5 days) with toddler - manageable pacing",
+      "concerns": [],
+      "recommendations": [
+        "Plan 1-2 activities per day",
+        "Include nap time in schedule"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.564604",
+    "last_used_at": "2026-04-18T12:36:54.564604",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "06984be1c2652e4bd45103f4a76c3931": {
+    "cache_key": "06984be1c2652e4bd45103f4a76c3931",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "high",
+      "reasoning": "Toddler (3 years old) | Long trip duration (10 days) | Multiple destinations (2) \u2014 pacing and transfer complexity concerns",
+      "recommendations": [
+        "Plan for frequent breaks (every 2-3 hours)",
+        "Book direct transfers where possible",
+        "Choose accommodation with play areas or pools",
+        "Consider splitting the 10-day trip with rest days",
+        "Avoid more than 1 activity per day",
+        "Minimize transfers between 2 destinations",
+        "Consider base-camping instead of moving hotels",
+        "Consider postponing until child is older",
+        "Or reduce trip complexity significantly"
+      ],
+      "toddler_ages": [
+        3
+      ],
+      "duration_days": 10
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.566910",
+    "last_used_at": "2026-04-18T12:36:54.566910",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
   "ee4499cf489ddd10b95ea826f4e94ffd": {
     "cache_key": "ee4499cf489ddd10b95ea826f4e94ffd",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No traveler composition data available - unable to assess specific elderly/toddler risks",
+      "concerns": [],
+      "recommendations": [
+        "Gather traveler composition information for detailed risk assessment"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.567688",
+    "last_used_at": "2026-04-18T07:07:02.981435+00:00",
+    "use_count": 26,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "31844c3f8430e0b674eac30cae485059": {
+    "cache_key": "31844c3f8430e0b674eac30cae485059",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "medium",
+      "reasoning": "Toddler (0 years old) | Single destination: Kerala \u2014 pacing and transfer complexity concerns",
+      "recommendations": [
+        "Plan for frequent breaks (every 2-3 hours)",
+        "Book direct transfers where possible",
+        "Choose accommodation with play areas or pools"
+      ],
+      "toddler_ages": [
+        0
+      ],
+      "duration_days": null
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.570162",
+    "last_used_at": "2026-04-18T07:06:54.574840+00:00",
+    "use_count": 2,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "70447277b106c961044f725114a5798a": {
+    "cache_key": "70447277b106c961044f725114a5798a",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No toddlers in party - toddler pacing risks not applicable",
+      "concerns": [],
+      "recommendations": []
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.571181",
+    "last_used_at": "2026-04-18T07:07:02.886914+00:00",
+    "use_count": 6,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "37fc339f09c69b1a403e7a41e4f1767d": {
+    "cache_key": "37fc339f09c69b1a403e7a41e4f1767d",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No toddlers in party - toddler pacing risks not applicable",
+      "concerns": [],
+      "recommendations": []
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.576912",
+    "last_used_at": "2026-04-18T12:36:54.576912",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "956fefc3bea91dd38e6f5c8bfa7b5a65": {
+    "cache_key": "956fefc3bea91dd38e6f5c8bfa7b5a65",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "high",
+      "reasoning": "Toddler (2 years old) | Multiple destinations (2) \u2014 pacing and transfer complexity concerns",
+      "recommendations": [
+        "Plan for frequent breaks (every 2-3 hours)",
+        "Book direct transfers where possible",
+        "Choose accommodation with play areas or pools",
+        "Minimize transfers between 2 destinations",
+        "Consider base-camping instead of moving hotels",
+        "Consider postponing until child is older",
+        "Or reduce trip complexity significantly"
+      ],
+      "toddler_ages": [
+        2
+      ],
+      "duration_days": 7
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.579231",
+    "last_used_at": "2026-04-18T12:36:54.579231",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "c75f4797c2229a5466b41fad19ab55fd": {
+    "cache_key": "c75f4797c2229a5466b41fad19ab55fd",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No toddlers in party - toddler pacing risks not applicable",
+      "concerns": [],
+      "recommendations": []
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:36:54.584295",
+    "last_used_at": "2026-04-18T12:36:54.584295",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "8a4d6bbe5a10783c7ac7a6422cfc77d0": {
+    "cache_key": "8a4d6bbe5a10783c7ac7a6422cfc77d0",
     "decision_type": "toddler_pacing_risk",
     "decision": {
       "risk_level": "medium",
@@ -18,9 +234,321 @@
     "confidence": 0.9,
     "source": "rule_engine",
     "llm_model_used": null,
-    "created_at": "2026-04-16T23:35:44.530040",
-    "last_used_at": "2026-04-17T06:46:17.701323+00:00",
-    "use_count": 520,
+    "created_at": "2026-04-18T12:37:01.346921",
+    "last_used_at": "2026-04-18T07:07:01.350174+00:00",
+    "use_count": 2,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "866ebbd86feafbfd7ff0b844f436d06c": {
+    "cache_key": "866ebbd86feafbfd7ff0b844f436d06c",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No traveler composition data available - unable to assess specific elderly/toddler risks",
+      "concerns": [],
+      "recommendations": [
+        "Gather traveler composition information for detailed risk assessment"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:37:01.355850",
+    "last_used_at": "2026-04-18T07:07:03.002578+00:00",
+    "use_count": 7,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "713302ace248e2df593b4ed51cd10fe1": {
+    "cache_key": "713302ace248e2df593b4ed51cd10fe1",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No traveler composition data available - unable to assess specific elderly/toddler risks",
+      "concerns": [],
+      "recommendations": [
+        "Gather traveler composition information for detailed risk assessment"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:37:01.380777",
+    "last_used_at": "2026-04-18T07:07:02.982972+00:00",
+    "use_count": 2,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "8df724bde3fca0345119c5fe9c0a2283": {
+    "cache_key": "8df724bde3fca0345119c5fe9c0a2283",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No toddlers in party - toddler pacing risks not applicable",
+      "concerns": [],
+      "recommendations": []
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:37:01.430530",
+    "last_used_at": "2026-04-18T07:07:01.438836+00:00",
+    "use_count": 5,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "0d2ad91b3700b362c3a155f2d7a94387": {
+    "cache_key": "0d2ad91b3700b362c3a155f2d7a94387",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No toddlers in party - toddler pacing risks not applicable",
+      "concerns": [],
+      "recommendations": []
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:37:01.440817",
+    "last_used_at": "2026-04-18T07:07:01.446038+00:00",
+    "use_count": 4,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "5b93940cf85cac2942c7b16987df0e84": {
+    "cache_key": "5b93940cf85cac2942c7b16987df0e84",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No traveler composition data available - unable to assess specific elderly/toddler risks",
+      "concerns": [],
+      "recommendations": [
+        "Gather traveler composition information for detailed risk assessment"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:37:02.863629",
+    "last_used_at": "2026-04-18T12:37:02.863629",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "d238bf3c7254a43f0ec4f28fb7daa7a9": {
+    "cache_key": "d238bf3c7254a43f0ec4f28fb7daa7a9",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No toddlers in party - toddler pacing risks not applicable",
+      "concerns": [],
+      "recommendations": []
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:37:02.868020",
+    "last_used_at": "2026-04-18T12:37:02.868020",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "d6c5e360b8367d32fea8f1ac518ac5c9": {
+    "cache_key": "d6c5e360b8367d32fea8f1ac518ac5c9",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No traveler composition data available - unable to assess specific elderly/toddler risks",
+      "concerns": [],
+      "recommendations": [
+        "Gather traveler composition information for detailed risk assessment"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:37:02.872004",
+    "last_used_at": "2026-04-18T12:37:02.872004",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "195bc8474456412a07a29bddc4df9caa": {
+    "cache_key": "195bc8474456412a07a29bddc4df9caa",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No traveler composition data available - unable to assess specific elderly/toddler risks",
+      "concerns": [],
+      "recommendations": [
+        "Gather traveler composition information for detailed risk assessment"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:37:02.883223",
+    "last_used_at": "2026-04-18T12:37:02.883223",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "b4ef5872900a6dcd5d843f53431fa4c0": {
+    "cache_key": "b4ef5872900a6dcd5d843f53431fa4c0",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No traveler composition data available - unable to assess specific elderly/toddler risks",
+      "concerns": [],
+      "recommendations": [
+        "Gather traveler composition information for detailed risk assessment"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:37:02.924285",
+    "last_used_at": "2026-04-18T07:07:02.935053+00:00",
+    "use_count": 4,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "14b2a756f690ee907c7683136b23b7d2": {
+    "cache_key": "14b2a756f690ee907c7683136b23b7d2",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No toddlers in party - toddler pacing risks not applicable",
+      "concerns": [],
+      "recommendations": []
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:37:02.957211",
+    "last_used_at": "2026-04-18T12:37:02.957211",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "9fcfc733c9e7f65714d6a30c3e3225cf": {
+    "cache_key": "9fcfc733c9e7f65714d6a30c3e3225cf",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No traveler composition data available - unable to assess specific elderly/toddler risks",
+      "concerns": [],
+      "recommendations": [
+        "Gather traveler composition information for detailed risk assessment"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:37:02.987288",
+    "last_used_at": "2026-04-18T12:37:02.987288",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "568bea001d802cb31d983b25651148aa": {
+    "cache_key": "568bea001d802cb31d983b25651148aa",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No traveler composition data available - unable to assess specific elderly/toddler risks",
+      "concerns": [],
+      "recommendations": [
+        "Gather traveler composition information for detailed risk assessment"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:37:02.989216",
+    "last_used_at": "2026-04-18T12:37:02.989216",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "59d89ac96a939de0123e910a484ea3c1": {
+    "cache_key": "59d89ac96a939de0123e910a484ea3c1",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No traveler composition data available - unable to assess specific elderly/toddler risks",
+      "concerns": [],
+      "recommendations": [
+        "Gather traveler composition information for detailed risk assessment"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:37:02.991119",
+    "last_used_at": "2026-04-18T12:37:02.991119",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "461fee961afa27b76cfe3edbb6a430f2": {
+    "cache_key": "461fee961afa27b76cfe3edbb6a430f2",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No traveler composition data available - unable to assess specific elderly/toddler risks",
+      "concerns": [],
+      "recommendations": [
+        "Gather traveler composition information for detailed risk assessment"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:37:02.993120",
+    "last_used_at": "2026-04-18T12:37:02.993120",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "7d6e07351693d0bb99143821f3e2ae6c": {
+    "cache_key": "7d6e07351693d0bb99143821f3e2ae6c",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No traveler composition data available - unable to assess specific elderly/toddler risks",
+      "concerns": [],
+      "recommendations": [
+        "Gather traveler composition information for detailed risk assessment"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:37:02.995322",
+    "last_used_at": "2026-04-18T12:37:02.995322",
+    "use_count": 1,
+    "success_rate": 1.0,
+    "feedback_count": 0
+  },
+  "7c4140d2577cd698872e19a52f90a78c": {
+    "cache_key": "7c4140d2577cd698872e19a52f90a78c",
+    "decision_type": "toddler_pacing_risk",
+    "decision": {
+      "risk_level": "low",
+      "reasoning": "No traveler composition data available - unable to assess specific elderly/toddler risks",
+      "concerns": [],
+      "recommendations": [
+        "Gather traveler composition information for detailed risk assessment"
+      ]
+    },
+    "confidence": 0.9,
+    "source": "rule_engine",
+    "llm_model_used": null,
+    "created_at": "2026-04-18T12:37:03.000771",
+    "last_used_at": "2026-04-18T12:37:03.000771",
+    "use_count": 1,
     "success_rate": 1.0,
     "feedback_count": 0
   }

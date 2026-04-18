@@ -67,6 +67,17 @@ AssignmentStore = persistence.AssignmentStore
 AuditStore = persistence.AuditStore
 save_processed_trip = persistence.save_processed_trip
 
+# Wave A: run lifecycle modules
+from run_state import RunState, assert_can_transition, terminal_state_for_run_result
+from run_events import (
+    emit_run_started,
+    emit_run_completed,
+    emit_run_failed,
+    emit_run_blocked,
+    get_run_events,
+)
+from run_ledger import RunLedger
+
 logger = logging.getLogger("spine-api")
 
 # =============================================================================
@@ -296,6 +307,21 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
         execution_ms=0.0,
     )
 
+    # Wave A: create ledger entry and emit run_started
+    RunLedger.create(
+        run_id=run_id,
+        trip_id=None,  # trip_id assigned after save_processed_trip completes
+        stage=request.stage,
+        operating_mode=request.operating_mode,
+    )
+    RunLedger.set_state(run_id, RunState.RUNNING)
+    emit_run_started(
+        run_id=run_id,
+        trip_id=None,
+        stage=request.stage,
+        operating_mode=request.operating_mode,
+    )
+
     try:
         envelopes = build_envelopes(request.model_dump(exclude_none=True))
         fixture_expectations = load_fixture_expectations(request.scenario_id)
@@ -320,8 +346,9 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
         )
 
         # Save the trip to persistence
+        trip_id_saved: Optional[str] = None
         try:
-            trip_id = save_processed_trip(
+            trip_id_saved = save_processed_trip(
                 {
                     "run_id": run_id,
                     "packet": _to_dict(result.packet) if hasattr(result, "packet") else None,
@@ -332,10 +359,25 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
                 },
                 source="spine_api",
             )
-            logger.info("Trip saved: %s", trip_id)
+            logger.info("Trip saved: %s", trip_id_saved)
         except Exception as e:
             logger.error("Failed to save trip: %s", e)
             # Don't fail the request if saving fails
+
+        # Wave A: checkpoint each step output in the ledger
+        try:
+            for step_name, step_attr in [
+                ("packet",     "packet"),
+                ("validation", "validation"),
+                ("decision",   "decision"),
+                ("strategy",   "strategy"),
+            ]:
+                if hasattr(result, step_attr):
+                    val = _to_dict(getattr(result, step_attr))
+                    if val is not None:
+                        RunLedger.save_step(run_id, step_name, val)
+        except Exception as e:
+            logger.error("Wave A: failed to checkpoint steps for run %s: %s", run_id, e)
 
         all_leaks: List[str] = (
             result.leakage_result.get("leaks", [])
@@ -359,6 +401,13 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
                 )
                 for a in result.assertion_result.get("assertions", [])
             ]
+
+        # Wave A: complete the ledger and emit terminal event
+        try:
+            RunLedger.complete(run_id, total_ms=execution_ms)
+            emit_run_completed(run_id=run_id, trip_id=trip_id_saved, total_ms=execution_ms)
+        except Exception as e:
+            logger.error("Wave A: ledger complete failed for run %s: %s", run_id, e)
 
         return SpineRunResponse(
             ok=True,
@@ -395,6 +444,13 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
             execution_ms,
         )
 
+        # Wave A: mark as BLOCKED (distinct from FAILED)
+        try:
+            RunLedger.block(run_id, block_reason=error_message)
+            emit_run_blocked(run_id=run_id, block_reason=error_message, trip_id=None)
+        except Exception as ledger_err:
+            logger.error("Wave A: block ledger failed for run %s: %s", run_id, ledger_err)
+
         return SpineRunResponse(
             ok=False,
             run_id=run_id,
@@ -421,6 +477,19 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
             str(e),
             execution_ms,
         )
+
+        # Wave A: mark as FAILED
+        try:
+            RunLedger.fail(run_id, error_type=type(e).__name__, error_message=str(e))
+            emit_run_failed(
+                run_id=run_id,
+                error_type=type(e).__name__,
+                error_message=str(e),
+                trip_id=None,
+            )
+        except Exception as ledger_err:
+            logger.error("Wave A: fail ledger failed for run %s: %s", run_id, ledger_err)
+
         raise HTTPException(
             status_code=500,
             detail={
@@ -435,7 +504,69 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
         set_strict_mode(False)
 
 
-from spine-api.persistence import TripStore, AssignmentStore, AuditStore, save_processed_trip
+# =============================================================================
+# Run Status Endpoints (Wave A)
+# =============================================================================
+
+@app.get("/runs")
+def list_runs(
+    trip_id: Optional[str] = None,
+    state: Optional[str] = None,
+    limit: int = 50,
+):
+    """
+    List run records, newest first.
+    Optionally filter by trip_id and/or state (queued|running|completed|failed|blocked).
+    """
+    runs = RunLedger.list_runs(trip_id=trip_id, state=state, limit=limit)
+    return {"items": runs, "total": len(runs)}
+
+
+@app.get("/runs/{run_id}")
+def get_run_status(run_id: str):
+    """
+    Full run status including metadata and latest checkpointed steps.
+    Returns 404 if the run_id is not found in the ledger.
+    """
+    meta = RunLedger.get_meta(run_id)
+    if meta is None:
+        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
+
+    steps = RunLedger.get_all_steps(run_id)
+    return {
+        **meta,
+        "steps": {name: step.get("checkpointed_at") for name, step in steps.items()},
+        "steps_available": list(steps.keys()),
+    }
+
+
+@app.get("/runs/{run_id}/steps/{step_name}")
+def get_run_step(run_id: str, step_name: str):
+    """
+    Return the full checkpointed output for a single pipeline step.
+    Returns 404 if the step has not been checkpointed yet.
+    """
+    meta = RunLedger.get_meta(run_id)
+    if meta is None:
+        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
+
+    step = RunLedger.get_step(run_id, step_name)
+    if step is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Step '{step_name}' not yet checkpointed for run {run_id}",
+        )
+    return step
+
+
+@app.get("/runs/{run_id}/events")
+def get_run_event_stream(run_id: str):
+    """
+    Return the append-only event log for a run in chronological order.
+    Returns empty list if the run_id is unknown (no events written yet).
+    """
+    events = get_run_events(run_id)
+    return {"run_id": run_id, "events": events, "total": len(events)}
 
 
 # =============================================================================
@@ -498,9 +629,7 @@ def list_assignments(agent_id: Optional[str] = None):
     if agent_id:
         assignments = AssignmentStore.get_trips_for_agent(agent_id)
     else:
-        # Get all assignments
-        import json
-        from spine-api.persistence import AssignmentStore
+        # Get all assignments — AssignmentStore already imported at module level
         assignments = list(AssignmentStore._load_assignments().values())
     
     return {"items": assignments, "total": len(assignments)}

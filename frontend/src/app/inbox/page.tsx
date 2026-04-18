@@ -19,6 +19,7 @@ import {
   Flag,
 } from 'lucide-react';
 import { useTrips } from '@/hooks/useTrips';
+import { getTripRoute } from '@/lib/routes';
 import { InlineLoading } from '@/components/ui/loading';
 import { InlineError } from '@/components/error-boundary';
 import type { TeamMember } from '@/types/governance';
@@ -174,7 +175,7 @@ const TripCard = memo(function TripCard({
         )}
       </button>
 
-      <Link href={`/workbench?trip=${trip.id}`} className='block pl-6'>
+      <Link href={getTripRoute(trip.id)} className='block pl-6'>
         <div className='flex items-start justify-between gap-3 mb-2'>
           <div className='flex items-center gap-2 min-w-0'>
             <span className='text-[14px] font-semibold text-[#e6edf3] truncate' title={trip.destination}>

@@ -1,8 +1,12 @@
-export default function DecisionPage() {
-  return (
-    <div>
-      <h1>Ready to Quote?</h1>
-      <p>Explanation of quote status and blockers</p>
-    </div>
-  );
+/** Wave 1L compat redirect — replace with DecisionPanel in Wave 3. */
+import { redirect } from 'next/navigation';
+import { _getWorkbenchCompatRoute } from '@/lib/routes';
+
+interface PageProps {
+  params: Promise<{ tripId: string }>;
+}
+
+export default async function DecisionPage({ params }: PageProps) {
+  const { tripId } = await params;
+  redirect(_getWorkbenchCompatRoute(tripId, 'decision'));
 }

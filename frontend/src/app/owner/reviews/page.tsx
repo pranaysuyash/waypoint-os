@@ -16,6 +16,7 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 import { useReviews } from '@/hooks/useGovernance';
+import { getTripRoute } from '@/lib/routes';
 import type { TripReview, ReviewStatus, RiskFlag } from '@/types/governance';
 
 // ============================================================================
@@ -284,7 +285,7 @@ const ReviewCard = memo(function ReviewCard({
           )}
           
           <Link
-            href={`/workbench?trip=${review.tripId}`}
+            href={getTripRoute(review.tripId)}
             className='flex items-center justify-center gap-1 text-xs text-[#58a6ff] hover:text-[#79b8ff] transition-colors'
           >
             View Details <ChevronRight className='w-3 h-3' />
