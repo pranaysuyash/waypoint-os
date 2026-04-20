@@ -1,12 +1,14 @@
-/** Wave 1L compat redirect — replace with StrategyPanel in Wave 3. */
-import { redirect } from 'next/navigation';
-import { _getWorkbenchCompatRoute } from '@/lib/routes';
+'use client';
 
-interface PageProps {
-  params: Promise<{ tripId: string }>;
-}
+import { useTripContext } from '@/contexts/TripContext';
+import { StrategyPanel } from '@/components/workspace/panels/StrategyPanel';
 
-export default async function StrategyPage({ params }: PageProps) {
-  const { tripId } = await params;
-  redirect(_getWorkbenchCompatRoute(tripId, 'strategy'));
+export default function StrategyPage() {
+  const { tripId } = useTripContext();
+  
+  return (
+    <div className='p-6'>
+      <StrategyPanel tripId={tripId || ''} />
+    </div>
+  );
 }

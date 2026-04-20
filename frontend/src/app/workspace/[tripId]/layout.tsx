@@ -9,6 +9,7 @@ import { InlineLoading } from "@/components/ui/loading";
 import { useTrip } from "@/hooks/useTrips";
 import { getTripRoute, type WorkspaceStage } from "@/lib/routes";
 import { TripContextProvider } from "@/contexts/TripContext";
+import { useWorkbenchStore } from "@/stores/workbench";
 
 const STAGE_TABS: { id: WorkspaceStage; label: string }[] = [
   { id: "intake", label: "Intake" },
@@ -43,6 +44,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   const tripId = parseTripId(params?.tripId);
   const { data: trip, isLoading, error } = useTrip(tripId);
   const [isRailOpen, setIsRailOpen] = useState(false);
+  const { result_run_ts } = useWorkbenchStore();
 
   const activeStage = useMemo(() => getActiveStage(pathname), [pathname]);
   const stateMeta = STATE_META[trip?.state ?? "blue"] ?? STATE_META.blue;
@@ -101,6 +103,12 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                   <span>{trip.age}</span>
                   <span>•</span>
                   <span className="font-mono">{trip.id}</span>
+                  {result_run_ts && (
+                    <>
+                      <span>•</span>
+                      <span>Last processed: {new Date(result_run_ts).toLocaleString()}</span>
+                    </>
+                  )}
                 </div>
               </div>
 

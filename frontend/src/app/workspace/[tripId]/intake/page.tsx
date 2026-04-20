@@ -1,21 +1,14 @@
-/**
- * Wave 1L migration compatibility redirect.
- *
- * Routes users to the fully-functional workbench 'intake' tab until
- * workspace/[tripId]/intake has real content (Wave 3 — IntakePanel extraction).
- *
- * When to remove:
- *   - After workspace layout (Wave 2) and panel extraction (Wave 3) are complete.
- *   - Delete this file and replace with real IntakePage content.
- */
-import { redirect } from 'next/navigation';
-import { _getWorkbenchCompatRoute } from '@/lib/routes';
+'use client';
 
-interface PageProps {
-  params: Promise<{ tripId: string }>;
-}
+import { useTripContext } from '@/contexts/TripContext';
+import { IntakePanel } from '@/components/workspace/panels/IntakePanel';
 
-export default async function IntakePage({ params }: PageProps) {
-  const { tripId } = await params;
-  redirect(_getWorkbenchCompatRoute(tripId, 'intake'));
+export default function IntakePage() {
+  const { tripId, trip } = useTripContext();
+  
+  return (
+    <div className='p-6'>
+      <IntakePanel tripId={tripId || ''} trip={trip} />
+    </div>
+  );
 }

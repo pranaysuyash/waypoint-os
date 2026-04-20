@@ -1,12 +1,14 @@
-/** Wave 1L compat redirect — replace with SafetyPanel in Wave 3. */
-import { redirect } from 'next/navigation';
-import { _getWorkbenchCompatRoute } from '@/lib/routes';
+'use client';
 
-interface PageProps {
-  params: Promise<{ tripId: string }>;
-}
+import { useTripContext } from '@/contexts/TripContext';
+import { SafetyPanel } from '@/components/workspace/panels/SafetyPanel';
 
-export default async function SafetyPage({ params }: PageProps) {
-  const { tripId } = await params;
-  redirect(_getWorkbenchCompatRoute(tripId, 'safety'));
+export default function SafetyPage() {
+  const { tripId } = useTripContext();
+  
+  return (
+    <div className='p-6'>
+      <SafetyPanel tripId={tripId || ''} />
+    </div>
+  );
 }

@@ -92,7 +92,7 @@ function WorkbenchContent() {
   const [runSuccess, setRunSuccess] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const store = useWorkbenchStore();
-  const { execute: executeSpineRun } = useSpineRun();
+  const { execute: executeSpineRun, isLoading: isSpineRunning, error: spineError, reset: resetSpine } = useSpineRun();
   const { mutate: saveTrip, isSaving } = useUpdateTrip();
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -151,7 +151,8 @@ function WorkbenchContent() {
     store.setResultRunTs(null);
     setRunError(null);
     setRunSuccess(false);
-  }, [store]);
+    resetSpine();
+  }, [store, resetSpine]);
 
   const handleSave = useCallback(async () => {
     if (!tripId) return;
@@ -192,6 +193,11 @@ function WorkbenchContent() {
                 Failed to load trip: {tripError.message}
               </p>
             )}
+            {store.result_run_ts && (
+              <p className='text-xs text-[#8b949e] mt-1'>
+                Last processed: {new Date(store.result_run_ts).toLocaleString()}
+              </p>
+            )}
           </div>
           <div className='flex items-center gap-3 flex-wrap'>
             {runError && (
@@ -221,7 +227,7 @@ function WorkbenchContent() {
             <button
               type='button'
               onClick={handleProcessTrip}
-              disabled={isRunning || (!store.input_raw_note && !store.input_owner_note)}
+              disabled={isRunning || isSpineRunning || (!store.input_raw_note && !store.input_owner_note)}
               className='flex items-center gap-2 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg font-medium hover:bg-[#6eb5ff] disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
               aria-label={
                 isRunning ? 'Processing trip' : 'Process trip'

@@ -11,13 +11,8 @@ import hashlib
 import json
 from typing import Any, Dict, List, Optional
 
-import sys
-from pathlib import Path
+from src.intake.packet_models import CanonicalPacket
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
-from intake.packet_models import CanonicalPacket
 
 
 def generate_cache_key(

@@ -9,13 +9,8 @@ This reduces default fallback rate by handling negative cases explicitly.
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
-import sys
-from pathlib import Path
+from src.intake.packet_models import CanonicalPacket
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-
-from intake.packet_models import CanonicalPacket
 
 
 def rule_elderly_not_applicable(packet: CanonicalPacket) -> Optional[Dict[str, Any]]:

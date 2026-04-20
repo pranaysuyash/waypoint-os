@@ -8,13 +8,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional, List
 
-import sys
-from pathlib import Path
+from src.intake.packet_models import CanonicalPacket
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-
-from intake.packet_models import CanonicalPacket
 
 
 TODDLER_AGE_THRESHOLD = 4  # Under 4 years = pacing risk

@@ -40,7 +40,7 @@ def _get_hybrid_engine():
 
     if _hybrid_engine_instance is None:
         try:
-            from decision import create_hybrid_engine
+            from src.decision.hybrid_engine import create_hybrid_engine
             _hybrid_engine_instance = create_hybrid_engine(
                 enable_cache=True,
                 enable_rules=True,

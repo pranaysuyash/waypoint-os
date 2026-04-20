@@ -13,11 +13,17 @@
 - [Architecture Decision Addendum: D4/D6 Sub-Decisions (2026-04-18)](ARCHITECTURE_DECISION_D4_SUBDECISIONS_ADDENDUM_2026-04-18.md) — Resolves D4.1–D4.3, D6.1–D6.2. Evolves scoring from per-activity to three-tier (deterministic tag rules → tour-context sequence rules → LLM contextual). Extends `SuitabilityContext` with day/trip activity lists. Fixture tiers: isolated → day-sequence → trip-sequence.
 - [Suitability Module Implementation Summary (2026-04-18)](SUITABILITY_IMPLEMENTATION_SUMMARY_2026-04-18.md) — Complete implementation of Tier 1 and Tier 2 suitability scoring. Includes static activity catalog, integration with decision pipeline, and comprehensive test suite.
 - [Frontend Security & Quality Audit (2026-04-18)](FRONTEND_SECURITY_QUALITY_AUDIT_2026-04-18.md) — Comprehensive security and quality audit of Next.js frontend and FastAPI backend. Identifies critical security gaps (authentication, rate limiting) and quality improvements.
+- [Backend Code Quality & Architecture Audit (2026-04-18)](BACKEND_CODE_QUALITY_ARCHITECTURE_AUDIT_2026-04-18.md) — Python backend audit covering code quality, LLM integration, data persistence, and architecture compliance. Identifies critical issues: large files, no cost control, JSON file persistence.
+- [Missing Frontend Components Analysis (2026-04-18)](MISSING_FRONTEND_COMPONENTS_ANALYSIS_2026-04-18.md) — Comprehensive analysis of missing frontend components across 6 stakeholder personas, agency sizes, markets, and user types. Identifies 50+ missing components with priority matrix and implementation roadmap.
+- [Data Architecture & Flow Audit (2026-04-18)](DATA_ARCHITECTURE_FLOW_AUDIT_2026-04-18.md) — Comprehensive audit of data models, storage, flow, security, privacy, and compliance. Identifies critical gaps: JSON file persistence, no encryption, no GDPR/DPDP compliance.
 - [Architecture Decision: D1 Autonomy Gradient (2026-04-18)](ARCHITECTURE_DECISION_D1_AUTONOMY_GRADIENT_2026-04-18.md) — Agency-level autonomy policy with per-decision_state approval gates. Safety invariant: STOP_NEEDS_REVIEW always blocks. Adaptive autonomy via customer+trip classification identified as evolution path, pending deep dive.
 - [Architecture Decision: D2 Free Engine Persona (2026-04-18)](ARCHITECTURE_DECISION_D2_FREE_ENGINE_PERSONA_2026-04-18.md) — Shared pipeline for agency self-audit + consumer free engine. Empowerment framing ("things to discuss with your planner"), not adversarial. Consumer surface gated by D6 eval precision. Consolidates Funnel B = Itinerary Checker GTM Wedge.
+- [Architecture Decision: D3 Sourcing Hierarchy (2026-04-18)](ARCHITECTURE_DECISION_D3_SOURCING_HIERARCHY_2026-04-18.md) — Per-agency SourcingPolicy config: tier priority, margin floors, category overrides, supplier preferences, widen search behavior. Implementation blocked on Gap #01. Contract designed configurable from day one.
+- [Architecture Decision: D5 Override Learning (2026-04-18)](ARCHITECTURE_DECISION_D5_OVERRIDE_LEARNING_2026-04-18.md) — Feedback bus connecting D1/D3/D4. Three override categories (decision/suitability/sourcing) with OverrideEvent contract, required rationale, structured tags. Two-phase learning: frequency-based → outcome-based. Suggestions to owner, not auto-adjustments.
 - [Wave A: Backend Agentic Flow (2026-04-18)](BACKEND_WAVE_A_AGENTIC_FLOW_2026-04-18.md) — Core pipeline lifecycle, run audit trails, and deterministic step ledgers.
 - [Wave B: Agentic Automation & Flow Ideas (2026-04-18)](WAVE_B_AGENTIC_AUTOMATION_IDEAS_2026-04-18.md) — Proactive retrieval, autonomous clarification, self-healing evals, and multi-agent debate strategy.
 - [Moonshot Agentic Flows (2026-04-18)](MOONSHOT_AGENTIC_IDEAS_2026-04-18.md) — Multi-modal vibe decoding, autonomous boutique liaison, ghost lead recapture, and global disruption guardian.
+- [Exploration Frontiers: Out-of-the-Box AI Strategy (2026-04-18)](EXPLORATION_FRONTIERS_2026-04-18.md) — ⭐ Strategic research: taste graphs, adversarial trip auditing, visual intent extraction, and CTS monitoring.
 - [Plugin System Exploration (Draft, 2026-04-17)](PLUGIN_SYSTEM_EXPLORATION_DRAFT_2026-04-17.md) — Draft exploration of protocol/registry plugin architecture, execution guardrails, fallback model, and phased rollout.
 - [Coverage Assessment (2026-04-15)](COVERAGE_ASSESSMENT_2026-04-15.md) — Summary of what is now covered across risks, stakeholders, scenarios, use cases, and markets, plus remaining documentation/runtime gaps.
 - [Coverage Matrix (2026-04-15)](COVERAGE_MATRIX_2026-04-15.md) — Control document separating what is documented, scenario-covered, tested, and implemented across risks, stakeholders, lifecycle, markets, and commercial logic.
@@ -33,6 +39,7 @@
 - [Next.js Implementation Track (2026-04-15)](status/NEXTJS_IMPLEMENTATION_TRACK_2026-04-15.md) — Corrected execution plan with spine-aligned BFF enums and phased build order (foundation -> workspace core -> expansion).
 - [Activity Suitability Implementation Handoff (2026-04-16)](status/ACTIVITY_SUITABILITY_IMPLEMENTATION_HANDOFF_2026-04-16.md) — Execution-ready handoff: provider field mapping, scoring pseudocode, ingestion order, confidence model, and acceptance gates for Product B/GTM suitability matrix.
 - [Operator Workbench Component Spec (2026-04-15)](status/OPERATOR_WORKBENCH_COMPONENT_SPEC_2026-04-15.md) — Screen-level behavior reference for Workbench/Flow Simulation (not runtime stack authority).
+- [Missing Frontend Components by Persona (2026-04-18)](FRONTEND_PERSONA_COMPONENTS_2026-04-18.md) — Specialized business-logic components for Owners, Operators, and Travelers.
 - [Workbench Acceptance Checklist (2026-04-15)](status/WORKBENCH_ACCEPTANCE_CHECKLIST_2026-04-15.md) — Acceptance gates used as behavior validation reference for the Next.js workbench surface.
 - [Vendor/Cost Tracking Gap Analysis (2026-04-16)](VENDOR_COST_TRACKING_GAP_ANALYSIS_2026-04-16.md) — Critical gap: no vendor management, margin calculation, or sourcing hierarchy logic. Documented as intentional deferral.
 - [Vendor/Cost/Sourcing Discovery Gap Analysis (2026-04-16)](VENDOR_COST_TRACKING_DISCOVERY_GAP_ANALYSIS_2026-04-16.md) — Full deep-dive: evidence inventory, gap taxonomy, dependency graph, data models, phase-in plan for vendor/supplier/cost/margin/sourcing.
@@ -148,8 +155,9 @@
 
 - **[Jobs to be Done](UX_JOBS_TO_BE_DONE.md)** — What each persona (agency owner, agent, junior, traveler) is trying to accomplish. Functional, emotional, and social jobs.
 - **[User Journeys and Aha Moments](UX_USER_JOURNEYS_AND_AHA_MOMENTS.md)** — Detailed journey maps from pain to delight. Before/After states, emotional shifts, value realization.
-- **[Detailed User Flows](UX_DETAILED_USER_FLOWS.md)** — Screen-by-screen flows: onboarding, intake, processing, options generation, client presentation.
-- **[Synthetic Data and Fixtures](SYNTHETIC_DATA_AND_FIXTURES.md)** — Schemas, test messages, fixtures for development. Clean/moderate/messy/edge cases.
+- [Detailed User Flows](UX_DETAILED_USER_FLOWS.md) — Screen-by-screen flows: onboarding, intake, processing, options generation, client presentation.
+- [Persona & Global Market Simulation Framework (2026-04-18)](PERSONA_GLOBAL_SIMULATION_2026-04-18.md) — Extending stakeholder maps with global archetypes and simulated stress-test interviews.
+- [Synthetic Data and Fixtures](SYNTHETIC_DATA_AND_FIXTURES.md) — Schemas, test messages, fixtures for development. Clean/moderate/messy/edge cases.
 
 ### Fixture Files (data/fixtures/)
 

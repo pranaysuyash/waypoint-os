@@ -2,36 +2,31 @@
 
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate, DecisionOutput } from "@/types/spine";
-import styles from "./workbench.module.css";
+import styles from "@/app/workbench/workbench.module.css";
+
+interface DecisionPanelProps {
+  tripId: string;
+}
 
 /**
  * Canonical badge-class lookup.
- * Only contains the correct spelling of each state key.
- * Unknown states fall through to styles.stateBlue (visible, not silent).
  */
 const STATE_BADGE_CLASS: Record<string, string> = {
   PROCEED_TRAVELER_SAFE:   styles.stateGreen,
   PROCEED_INTERNAL_DRAFT:  styles.stateAmber,
   BRANCH_OPTIONS:          styles.stateAmber,
+  STOP_REVIEW:             styles.stateRed,
   STOP_NEEDS_REVIEW:       styles.stateRed,
   ASK_FOLLOWUP:            styles.stateBlue,
 };
 
 /**
- * Known typo/alias variants emitted by older API responses.
- * Maps to the canonical spelling before badge-class lookup.
- * Add entries here when new variants are discovered; never add them
- * to STATE_BADGE_CLASS directly.
+ * Known typo/alias variants.
  */
 const STATE_ALIASES: Record<string, string> = {
-  PROCEED_TRAVERER_SAFE: 'PROCEED_TRAVELER_SAFE', // double-r typo (pre-hardening)
+  PROCEED_TRAVERER_SAFE: 'PROCEED_TRAVELER_SAFE',
 };
 
-/**
- * Normalize a raw decision-state string to its canonical form.
- * Returns the original string if no alias matches, allowing the
- * badge-class unknown fallback to render visibly rather than silently.
- */
 function normalizeDecisionState(raw: string): string {
   return STATE_ALIASES[raw] ?? raw;
 }
@@ -41,6 +36,7 @@ const STATE_LABELS: Record<string, string> = {
   PROCEED_INTERNAL_DRAFT: "Draft Quote",
   BRANCH_OPTIONS: "Needs Options",
   STOP_NEEDS_REVIEW: "Needs Attention",
+  STOP_REVIEW: "Needs Attention",
   ASK_FOLLOWUP: "Need More Info",
 };
 
@@ -79,20 +75,18 @@ function formatCurrency(n: number, currency?: string): string {
   return formatter(n);
 }
 
-export function DecisionTab() {
+export function DecisionPanel({ tripId }: DecisionPanelProps) {
   const { result_decision, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
 
   if (!result_decision) {
     return (
       <div className={styles.emptyState}>
-        <p>No quote status data. Process a trip from the "New Inquiry" section first.</p>
+        <p>No quote status data for trip {tripId}. Process a trip from the "Packet" section first.</p>
       </div>
     );
   }
 
   const decision = result_decision as DecisionOutput;
-  // Normalize state string before lookup — handles alias variants and makes
-  // unknown states visible (fallback) rather than silently unstyled.
   const decisionState = normalizeDecisionState(
     (decision.decision_state as string) || 'ASK_FOLLOWUP',
   ) as DecisionState;
@@ -299,47 +293,6 @@ export function DecisionTab() {
                 ))}
               </tbody>
             </table>
-            {budgetBreakdown.missing_buckets.length > 0 && (
-              <div style={{ marginTop: "12px" }}>
-                <strong style={{ color: "var(--color-warning)" }}>Missing Buckets:</strong>{" "}
-                {budgetBreakdown.missing_buckets.map((m: string) => BUCKET_DISPLAY[m] || m).join(", ")}
-              </div>
-            )}
-            {budgetBreakdown.risks.length > 0 && (
-              <ul className={styles.list} style={{ marginTop: "12px" }}>
-                {budgetBreakdown.risks.map((r: string) => (
-                  <li key={`br-${r}`} className={styles.listItem}>
-                    <span className={`${styles.listIcon} ${styles.iconWarning}`}>!</span>
-                    <span style={{ fontSize: "13px" }}>{r.replace(/_/g, " ")}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {budgetBreakdown.critical_changes.length > 0 && (
-              <div style={{ marginTop: "12px" }}>
-                <strong>Critical Changes:</strong>
-                <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
-                  {budgetBreakdown.critical_changes.map((c: string, i: number) => (
-                    <li key={`cc-${i}`}>{c}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {budgetBreakdown.must_confirm.length > 0 && (
-              <div style={{ marginTop: "12px" }}>
-                <strong>Must Confirm:</strong>
-                <ul style={{ margin: "4px 0 0 16px", fontSize: "13px", color: "var(--color-text-muted)" }}>
-                  {budgetBreakdown.must_confirm.map((m: string, i: number) => (
-                    <li key={`mc-${i}`}>{m.replace(/_/g, " ")}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {budgetBreakdown.alternative && (
-              <div style={{ marginTop: "12px", padding: "8px 12px", background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "6px", fontSize: "13px" }}>
-                <strong>Alternative:</strong> {budgetBreakdown.alternative}
-              </div>
-            )}
           </div>
         </div>
       )}

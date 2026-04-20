@@ -1,0 +1,26 @@
+- [x] Task 1: Backend Import-Boundary Cleanup (A++ Hardening)
+    - [x] Remove `sys.path` hacks from `spine-api/server.py`
+    - [x] Remove `sys.path` hacks from `src/decision/hybrid_engine.py`
+    - [x] Remove `sys.path` hacks from `src/decision/cache_key.py`
+    - [x] Remove `sys.path` hacks from `src/decision/rules/*.py`
+    - [x] Verify with `pytest` and `grep` guard
+- [x] Task 2: Creation of Formal Traceability Artifacts
+    - [x] Create `implementation_plan_wave_3.md`
+    - [x] Create initial `task.md`
+- [x] Task 3: Frontend Panel Extraction
+    - [x] Create `frontend/src/components/workspace/panels/`
+    - [x] Extract `IntakePanel.tsx`
+    - [x] Extract `PacketPanel.tsx`
+    - [x] Extract `DecisionPanel.tsx`
+    - [x] Extract `StrategyPanel.tsx`
+    - [x] Extract `SafetyPanel.tsx`
+- [x] Task 4: Stage Route Implementation
+    - [x] Update `workspace/[tripId]/intake/page.tsx`
+    - [x] Update `workspace/[tripId]/packet/page.tsx`
+    - [x] Update `workspace/[tripId]/decision/page.tsx`
+    - [x] Update `workspace/[tripId]/strategy/page.tsx`
+    - [x] Update `workspace/[tripId]/safety/page.tsx`
+- [x] Final Verification & Documentation
+    - [x] Update `task.md`
+    - [x] Create `walkthrough.md` for Wave 3
+    - [x] Manual verification in browser (if possible)

@@ -1,22 +1,28 @@
 "use client";
 
+import { useState } from "react";
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { SafetyResult, PromptBundle } from "@/types/spine";
-import styles from "./workbench.module.css";
+import styles from "@/app/workbench/workbench.module.css";
 
-export function SafetyTab() {
+interface SafetyPanelProps {
+  tripId: string;
+}
+
+export function SafetyPanel({ tripId }: SafetyPanelProps) {
   const {
     result_safety,
     result_traveler_bundle,
     result_internal_bundle,
     debug_raw_json,
-    setDebugRawJson,
   } = useWorkbenchStore();
+  const [showRaw, setShowRaw] = useState(false);
+  const effectiveShowRaw = debug_raw_json || showRaw;
 
   if (!result_safety) {
     return (
       <div className={styles.emptyState}>
-        <p>No review data. Process a trip from the "New Inquiry" section first.</p>
+        <p>No review data for trip {tripId}. Process a trip from the "New Inquiry" section first.</p>
       </div>
     );
   }
@@ -111,16 +117,6 @@ export function SafetyTab() {
                   </ul>
                 </div>
               )}
-              {travelerBundle.constraints && travelerBundle.constraints.length > 0 && (
-                <div style={{ marginTop: "12px" }}>
-                  <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Constraints</strong>
-                  <ul style={{ margin: "4px 0 0 16px", fontSize: "12px" }}>
-                    {travelerBundle.constraints.map((c, i) => (
-                      <li key={`iconst-${c.slice(0, 20)}-${i}`}>{c}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
           ) : (
             <p style={{ color: "var(--color-text-muted)" }}>
@@ -130,26 +126,15 @@ export function SafetyTab() {
         </div>
       </div>
 
-      {internalBundle && (
-        <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Agent-Only Notes</h3>
-          <div className={styles.card}>
-            <pre className={styles.jsonOutput}>
-              {JSON.stringify(internalBundle, null, 2)}
-            </pre>
-          </div>
-        </div>
-      )}
-
       <button
         type="button"
         className={styles.jsonToggle}
-        onClick={() => setDebugRawJson(!debug_raw_json)}
+        onClick={() => setShowRaw(!effectiveShowRaw)}
       >
-        {debug_raw_json ? "Hide" : "Show"} Technical Data
+        {effectiveShowRaw ? "Hide" : "Show"} Technical Data
       </button>
 
-      {debug_raw_json && (
+      {effectiveShowRaw && (
         <div className={styles.jsonOutput}>
           <pre>{JSON.stringify({
             safety: result_safety,

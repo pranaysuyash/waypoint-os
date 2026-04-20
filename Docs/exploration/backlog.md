@@ -1270,6 +1270,716 @@ A living document of areas to explore, ideas to investigate, and potential impro
 
 ---
 
+## Frontend Components by Persona
+
+### Agency Owner Components
+
+#### Dashboard & Analytics
+- [ ] Revenue overview chart (daily/weekly/monthly)
+- [ ] Booking conversion funnel
+- [ ] Active leads vs qualified vs booked
+- [ ] Team performance leaderboard
+- [ ] Revenue per agent/month
+- [ ] Quote acceptance rate by agent
+- [ ] Average response time tracker
+- [ ] Profit margin analysis chart
+- [ ] Top selling destinations
+- [ ] Seasonal demand visualization
+
+#### Financial Management
+- [ ] Commission breakdown by supplier
+- [ ] Payment collection status (pending/overdue)
+- [ ] Supplier payment due tracker
+- [ ] P&L statement view
+- [ ] Expense categorization
+- [ ] Revenue forecast
+- [ ] Outstanding quotes value
+- [ ] Payment reconciliation interface
+
+#### Team Management
+- [ ] Team member list with status
+- [ ] Agent workload distribution
+- [ ] Lead assignment interface
+- [ ] Commission per agent tracker
+- [ ] Team performance reviews
+- [ ] Agent capacity planner
+- [ ] Onboarding checklist for new agents
+- [ ] Training progress tracker
+
+#### Agency Configuration
+- [ ] Agency branding settings (logo, colors, domain)
+- [ ] Quote template customization
+- [ ] Email template editor
+- [ ] WhatsApp template management
+- [ ] Supplier rate management
+- [ ] Approval workflow configuration
+- [ ] Role and permission management
+- [ ] Feature flag toggles
+
+#### Reports & Exports
+- [ ] Custom report builder
+- [ ] Schedule report generator
+- [ ] Export to CSV/PDF/Excel
+- [ ] Trip history report
+- [ ] Customer lifetime value report
+- [ ] Agent performance report
+
+---
+
+### Operator/Agent Components
+
+#### Inbox & Communication
+- [ ] Unified message inbox (WhatsApp, Email, SMS)
+- [ ] Message threading by customer
+- [ ] Quick reply templates
+- [ ] WhatsApp integration panel
+- [ ] Email composer with templates
+- [ ] Attachment handling
+- [ ] Message scheduling
+- [ ] Sent/delivered/read status
+- [ ] Customer context sidebar
+
+#### Lead Management
+- [ ] Lead list with filters (status, source, date)
+- [ ] Lead detail view
+- [ ] Lead qualification panel
+- [ ] Follow-up reminders
+- [ ] Lead temperature indicator (hot/warm/cold)
+- [ ] Last contact timestamp
+- [ ] Quick actions (call, WhatsApp, email)
+
+#### Trip Workspace
+- [ ] Trip timeline view
+- [ ] Customer profile card
+- [ ] Traveler details editor
+- [ ] Budget calculator
+- [ ] Destination research panel
+- [ ] Quote generator
+- [ ] Itinerary builder
+- [ ] Activity recommendation cards
+- [ ] Document upload interface
+- [ ] Safety/leakage review panel
+
+#### Quote & Proposal
+- [ ] Quote line item editor
+- [ ] Margin calculator
+- [ ] Cost breakdown view
+- [ ] Competitor comparison
+- [ ] Quote version history
+- [ ] PDF preview
+- [ ] Send quote interface
+- [ ] Quote expiry tracker
+- [ ] Follow-up reminder
+
+#### Supplier & Booking
+- [ ] Supplier search interface
+- [ ] Rate checker panel
+- [ ] Booking status tracker
+- [ ] PNR management
+- [ ] Booking modification interface
+- [ ] Cancellation workflow
+- [ ] Supplier contact shortcuts
+
+#### Calendar & Tasks
+- [ ] Personal calendar view
+- [ ] Task list with priorities
+- [ ] Follow-up reminders
+- [ ] Daily agenda
+- [ ] Upcoming deadlines
+- [ ] Meeting scheduler
+
+---
+
+### Junior Agent/Trainee Components
+
+#### Guided Workflows
+- [ ] Step-by-step quote builder
+- [ ] Contextual help tooltips
+- [ ] Best practice suggestions
+- [ ] Common objection responses
+- [ ] Approval request flow
+- [ ] Mentor assignment indicator
+- [ ] Learning mode toggle
+
+#### Knowledge Base
+- [ ] Destination information search
+- [ ] Visa requirement lookup
+- [ ] Supplier information
+- [ ] Process documentation
+- [ ] Training videos
+- [ ] FAQ quick access
+
+#### Practice Sandbox
+- [ ] Mock quote builder
+- [ ] Practice scenarios
+- [ ] Feedback on practice quotes
+- [ ] Comparison with approved quotes
+- [ ] Skill assessment dashboard
+
+---
+
+### Traveler/Customer Components (Self-Service)
+
+#### Trip Portal
+- [ ] Trip status tracker
+- [ ] Itinerary viewer
+- [ ] Download itinerary (PDF)
+- [ ] Day-by-day timeline
+- [ ] Activity details
+- [ ] Hotel information
+- [ ] Flight status tracker
+- [ ] Transfer details
+
+#### Document Management
+- [ ] Passport upload interface
+- [ ] Visa document upload
+- [ ] Document checklist
+- [ ] Expiry reminders
+- [ ] Document verification status
+
+#### Payment
+- [ ] Payment summary
+- [ ] Pay online interface
+- [ ] Payment history
+- [ ] Download invoice
+- [ ] Payment plan view
+- [ ] Refund status
+
+#### Communication
+- [ ] Message agent interface
+- [ ] Share trip via WhatsApp
+- [ ] Travel document access
+- [ ] Emergency contact info
+- [ ] Pre-departure information
+
+#### Feedback
+- [ ] Post-trip survey
+- [ ] Rate activities
+- [ ] Upload trip photos
+- [ ] Write review
+- [ ] Suggest improvements
+
+---
+
+### Shared UI Components
+
+#### Data Display
+- [ ] DataTable (sort, filter, pagination)
+- [ ] Card grid layout
+- [ ] Kanban board
+- [ ] Timeline view
+- [ ] Calendar view
+- [ ] Map integration
+- [ ] Charts (line, bar, pie, donut)
+- [ ] Stat cards
+- [ ] Progress bars
+- [ ] Badges and tags
+
+#### Forms & Input
+- [ ] Multi-step form wizard
+- [ ] Autocomplete input
+- [ ] Date range picker
+- [ ] Currency input
+- [ ] Phone number input (with country code)
+- [ ] Rich text editor
+- [ ] File upload (drag & drop)
+- [ ] Tag selector
+- [ ] Location picker
+- [ ] Passenger details form
+
+#### Feedback & Status
+- [ ] Toast notifications
+- [ ] Alert banners
+- [ ] Loading skeletons
+- [ ] Empty states
+- [ ] Error states
+- [ ] Success confirmations
+- [ ] Progress indicators
+- [ ] Spinners
+- [ ] Status badges
+
+#### Navigation
+- [ ] Sidebar navigation
+- [ ] Top navbar
+- [ ] Breadcrumbs
+- [ ] Tab navigation
+- [ ] Pagination
+- [ ] Back button
+- [ ] Quick actions menu
+- [ ] Command palette (Cmd+K)
+
+#### Modals & Overlays
+- [ ] Dialog/Modal
+- [ ] Slide-over panel
+- [ ] Popover
+- [ ] Tooltip
+- [ ] Dropdown menu
+- [ ] Context menu
+- [ ] Full-screen overlay
+
+#### Actions
+- [ ] Button variants (primary, secondary, ghost, danger)
+- [ ] Icon buttons
+- [ ] Action buttons (edit, delete, archive)
+- [ ] Bulk action bar
+- [ ] Floating action button
+- [ ] Link buttons
+
+#### Search & Filter
+- [ ] Search bar with suggestions
+- [ ] Advanced search panel
+- [ ] Filter sidebar
+- [ ] Filter chips
+- [ ] Sort dropdown
+- [ ] Saved searches
+
+#### Chat & Communication
+- [ ] Chat message bubble
+- [ ] Chat input with attachment
+- [ ] Typing indicator
+- [ ] Read receipts
+- [ ] Emoji picker
+- [ ] Quick reply buttons
+
+---
+
+### Specialized Travel Components
+
+#### Itinerary Builder
+- [ ] Day card component
+- [ ] Activity drag-and-drop
+- [ ] Time slot selector
+- [ ] Map marker picker
+- [ ] Route visualization
+- [ ] Transfer connection display
+- [ ] Accommodation card
+- [ ] Activity card with booking status
+
+#### Quote Builder
+- [ ] Line item editor
+- [ ] Cost/margin breakdown
+- [ ] Supplier selector
+- [ ] Date range picker
+- [ ] Passenger count selector
+- [ ] Room configuration
+- [ ] Add-on suggestions
+- [ ] Alternative options
+
+#### Customer Profile
+- [ ] Customer avatar and info
+- [ ] Passport details card
+- [ ] Visa status tracker
+- [ ] Travel history timeline
+- [ ] Preference tags
+- [ ] Family members list
+- [ ] Document vault
+- [ ] Loyalty tier display
+
+#### Booking Status
+- [ ] Booking status badge
+- [ ] PNR reference display
+- [ ] Confirmation card
+- [ ] Cancellation status
+- [ ] Refund progress
+- [ ] Modification history
+- [ ] Document upload status
+
+#### Risk & Alert Display
+- [ ] Risk level indicator (low/medium/high)
+- [ ] Alert banner for urgent issues
+- [ ] Visa deadline countdown
+- [ ] Passport expiry warning
+- [ ] Budget variance indicator
+- [ ] Safety concern highlight
+- [ ] Travel advisory alert
+
+#### Dashboard Widgets
+- [ ] Revenue sparkline
+- [ ] Booking funnel widget
+- [ ] Lead count card
+- [ ] Team availability grid
+- [ ] Upcoming deadlines list
+- [ ] Recent activity feed
+- [ ] Quick action buttons
+- [ ] Performance KPI cards
+
+---
+
+### Mobile-Specific Components
+
+#### Mobile Navigation
+- [ ] Bottom tab bar
+- [ ] Hamburger menu
+- [ ] Swipe to go back
+- [ ] Pull to refresh
+- [ ] Infinite scroll
+- [ ] Mobile search bar
+
+#### Mobile Actions
+- [ ] Floating action button
+- [ ] Swipe actions (archive, delete)
+- [ ] Long press context menu
+- [ ] Shake to undo
+- [ ] Haptic feedback
+
+#### Mobile Optimizations
+- [ ] Touch-friendly targets (44px minimum)
+- [ ] Mobile form inputs
+- [ ] Mobile file picker (camera + gallery)
+- [ ] Biometric authentication
+- [ ] Offline indicator
+- [ ] Mobile-optimized tables
+
+---
+
+### Design Patterns & Systems
+
+#### Color System
+- [ ] Primary color palette
+- [ ] Secondary color palette
+- [ ] Semantic colors (success, warning, danger, info)
+- [ ] Dark mode color overrides
+- [ ] Accessibility-compliant contrast ratios
+
+#### Typography
+- [ ] Font family selection
+- [ ] Type scale (headings, body, caption)
+- [ ] Font weight system
+- [ ] Line height standards
+- [ ] Letter spacing guidelines
+
+#### Spacing & Layout
+- [ ] Spacing scale (4px base unit)
+- [ ] Container max-widths
+- [ ] Grid system
+- [ ] Responsive breakpoints
+- [ ] Gap utilities
+
+#### Animation & Motion
+- [ ] Transition duration tokens
+- [ ] Easing functions
+- [ ] Loading animations
+- [ ] Micro-interactions
+- [ ] Page transitions
+- [ ] Skeleton loading states
+
+#### Icon System
+- [ ] Icon library (Lucide, Heroicons, custom)
+- [ ] Icon size variants
+- [ ] Icon color variants
+- [ ] Animated icons
+- [ ] Brand icons
+
+---
+
+### Accessibility Components
+
+#### Screen Reader Support
+- [ ] ARIA labels on all interactive elements
+- [ ] Screen reader-only text
+- [ ] Live regions for dynamic content
+- [ ] Skip to main content link
+- [ ] Landmark regions
+
+#### Keyboard Navigation
+- [ ] Visible focus indicators
+- [ ] Tab order optimization
+- [ ] Keyboard shortcuts
+- [ ] Escape to close modals
+- [ ] Arrow key navigation
+
+#### Color & Contrast
+- [ ] Color contrast checker
+- [ ] Color blind mode simulation
+- [ ] High contrast mode
+- [ ] Text resize support (up to 200%)
+
+---
+
+### State Management
+
+#### Data Fetching
+- [ ] Query cache management
+- [ ] Optimistic updates
+- [ ] Invalidated mutations
+- [ ] Background refetching
+- [ ] Infinite scroll queries
+
+#### Form State
+- [ ] Form validation
+- [ ] Dirty state tracking
+- [ ] Auto-save drafts
+- [ ] Form reset functionality
+- [ ] Multi-step form state
+
+#### Global State
+- [ ] User authentication state
+- [ ] Agency context
+- [ ] Theme preference
+- [ ] Notification preferences
+- [ ] Feature flags
+
+---
+
+## User Research & Persona Exploration
+
+### Agency Owner Personas
+
+#### By Agency Size
+- [ ] Solo Agent (1-person, 50-200 trips/year)
+  - Limited budget, needs automation
+  - Hands-on approach, wants control
+  - Price-sensitive, values ROI
+- [ ] Small Agency (2-10 agents, 200-1000 trips/year)
+  - Growing team, needs coordination
+  - Looking to scale operations
+  - Interested in team performance
+- [ ] Mid-sized Agency (10-50 agents, 1000-5000 trips/year)
+  - Multiple departments, needs specialization
+  - Focus on efficiency and margins
+  - Interested in analytics and reporting
+- [ ] Large Agency (50+ agents, 5000+ trips/year)
+  - Complex operations, enterprise needs
+  - Multi-location, multi-brand
+  - Needs custom integrations and SLAs
+
+#### By Business Model
+- [ ] Home-Based Agents (independent contractors)
+- [ ] Traditional Brick-and-Mortar Agencies
+- [ ] Online-Only Travel Agencies
+- [ ] Niche/Specialist Agencies (luxury, adventure, corporate)
+- [ ] Host Agencies (supporting independent agents)
+- [ ] Franchise Models (Choice, Cruise Planners, etc.)
+
+#### By Geographic Market
+- [ ] Metro/Urban Agencies (Mumbai, Delhi, Bangalore)
+- [ ] Tier 2 City Agencies (Jaipur, Lucknow, Cochin)
+- [ ] Resort/Tourism Town Agencies (Goa, Kerala, Himalayan towns)
+- [ ] International Agencies (Singapore, Dubai, London, New York)
+- [ ] Cross-Border Agencies (serving multiple countries)
+
+### Agent Personas
+
+#### By Experience Level
+- [ ] Junior/Trainee Agent (0-2 years)
+  - Needs guidance, templates, training
+  - Higher error rate, needs approvals
+  - Looking to learn and grow
+- [ ] Mid-Level Agent (2-5 years)
+  - Independent but needs support on complex cases
+  - Focuses on efficiency
+  - Building customer relationships
+- [ ] Senior Agent (5+ years)
+  - Handles complex trips and VIPs
+  - Mentors juniors
+  - Focuses on high-value clients
+- [ ] Specialist Agent (destination or product specialist)
+  - Deep expertise in niche area
+  - Handles specialized inquiries
+  - Knowledge base contributor
+
+#### By Working Style
+- [ ] Relationship-Builders (focus on long-term customer relationships)
+- [ ] Transaction Agents (high volume, quick turnover)
+- [ ] Specialist/Expert Agents (deep niche knowledge)
+- [ ] Generalist Agents (handle all trip types)
+- [ ] Corporate Travel Specialists (B2B focus)
+
+### Traveler/Customer Personas
+
+#### By Traveler Type
+- [ ] Leisure Travelers (vacations, holidays, getaways)
+- [ ] Corporate Travelers (business trips, conferences)
+- [ ] Bleisure Travelers (business + leisure combined)
+- [ ] VFR Travelers (visiting friends and relatives)
+- [ ] Adventure Travelers (trekking, expeditions, sports)
+- [ ] Luxury Travelers (high-end, premium experiences)
+- [ ] Budget Travelers (price-sensitive, backpackers)
+- [ ] Group Travelers (family reunions, weddings, corporate)
+
+#### By Demographics
+- [ ] Solo Travelers (individual, solo adventurers)
+- [ ] Couples (honeymoon, anniversary, getaways)
+- [ ] Families (nuclear family with kids)
+- [ ] Multi-Generational Groups (grandparents to toddlers)
+- [ ] Friend Groups (friends traveling together)
+- [ ] Student Groups (educational tours, grad trips)
+- [ ] Senior Travelers (retired, elderly travelers)
+- [ ]Accessible Travelers (mobility challenges, special needs)
+
+#### By Digital Sophistication
+- [ ] Digital Natives (book everything online, self-sufficient)
+- [ ] Digital Comfortables (use apps but want human backup)
+- [ ] Digital Reluctants (prefer phone/in-person)
+- [ ] Tech-Challenged (need hand-holding)
+
+#### By Budget Sensitivity
+- [ ] Value-Conscious (want best deal, comparison shoppers)
+- [ ] Mid-Range (balance of quality and price)
+- [ ] Premium/Quality-Focused (price secondary to experience)
+- [ ] Luxury/No-Limit (money is not a constraint)
+
+### Stakeholder Interviews - Simulation Topics
+
+#### Agency Owner Interviews
+- [ ] "Walk me through your day-to-day operations"
+- [ ] "What's your biggest pain point in managing leads?"
+- [ ] "How do you track agent performance?"
+- [ ] "What does your quote-to-booking funnel look like?"
+- [ ] "How do you handle supplier relationships?"
+- [ ] "What metrics do you track monthly?"
+- [ ] "How do you train new agents?"
+- [ ] "What would make you switch from your current system?"
+
+#### Agent Interviews
+- [ ] "Walk me through how you handle a new inquiry"
+- [ ] "What information do you need from a customer first?"
+- [ ] "How do you build quotes? What tools do you use?"
+- [ ] "What takes up most of your time?"
+- [ ] "Where do you get stuck or need help?"
+- [ ] "How do you follow up with leads?"
+- [ ] "What would make you more productive?"
+- [ ] "How do you handle difficult customers?"
+
+#### Traveler Interviews
+- [ ] "How do you plan a trip? Where do you start?"
+- [ ] "What information do you look for first?"
+- [ ] "What frustrates you about current booking process?"
+- [ ] "How do you prefer to communicate with agents?"
+- [ ] "What would make you trust an online agent?"
+- [ ] "What's your biggest fear when booking travel?"
+- [ ] "Would you share documents online? Why/why not?"
+- [ ] "What would make you book again?"
+
+### Market-Specific Research
+
+#### Asia-Pacific Markets
+- [ ] India: Family vacation planning, religious tourism, wedding destinations
+- [ ] Singapore: Corporate travel, luxury leisure, regional getaways
+- [ ] Australia: Adventure travel, working holiday makers, gap years
+- [ ] Japan: Domestic travel, inbound tourism, cultural experiences
+- [ ] Thailand: Wedding destinations, beach tourism, wellness retreats
+- [ ] UAE: Luxury shopping, family entertainment, stopover traffic
+
+#### European Markets
+- [ ] UK: City breaks, European summer holidays, winter sun
+- [ ] Germany: Package tours, camping, outdoor activities
+- [ ] France: Wine tourism, skiing, countryside retreats
+- [ ] Italy: Cultural tourism, food tourism, romantic getaways
+- [ ] Spain: Beach resorts, island hopping, festival tourism
+
+#### North American Markets
+- [ ] USA: National parks, road trips, Disney/theme parks
+- [ ] Canada: Nature/wildlife, winter sports, summer cottages
+- [ ] Mexico: Beach resorts, Mayan ruins, cruise departures
+
+#### Middle East Markets
+- [ ] Saudi Arabia: Religious tourism (Umrah/Hajj), family entertainment
+- [ ] UAE: Luxury tourism, shopping, entertainment
+- [ ] Qatar: Sports events, cultural tourism, stopovers
+
+### Agency Size - Specific Research
+
+#### Solo Agent Research
+- [ ] What tools do they currently use? (spreadsheets, WhatsApp, email)
+- [ ] What's their monthly budget for software?
+- [ ] What's their average trip value?
+- [ ] How many hours do they spend per trip?
+- [ ] What would make them pay for a tool?
+
+#### Small Agency Research
+- [ ] How do they assign leads to agents?
+- [ ] How do they track team performance?
+- [ ] What's their biggest operational bottleneck?
+- [ ] How do they handle supplier negotiations?
+- [ ] What's their growth plan?
+
+#### Large Agency Research
+- [ ] What enterprise features do they need?
+- [ ] How do they handle multi-location operations?
+- [ ] What integrations are critical?
+- [ ] What's their procurement process?
+- [ ] What SLAs do they require?
+
+### Simulated Interview Scenarios
+
+#### Scenario 1: Last-Minute Corporate Booking
+- [ ] Agent receives urgent request for tomorrow's travel
+- [ ] Customer needs visa, hotel, flights in 24 hours
+- [ ] Budget is flexible but timing is critical
+- [ ] Research: How does agent prioritize? What shortcuts are taken?
+
+#### Scenario 2: Complex Multi-Generational Family Trip
+- [ ] 12 family members, ages 3 to 75
+- [ ] Different budgets, different interests
+- [ ] Some need visa assistance, some don't
+- [ ] Research: How does agent manage complexity? What tools help?
+
+#### Scenario 3: Price-Sensitive Comparison Shopper
+- [ ] Customer has quotes from 3 agencies
+- [ ] Wants the best deal but worried about quality
+- [ ] Asks lots of questions, takes time
+- [ ] Research: How does agent convert? What persuades?
+
+#### Scenario 4: Luxury VIP Customer
+- [ ] High-net-worth individual, expects white-glove service
+- [ ] Money is not a constraint, time is precious
+- [ ] Wants unique experiences, not off-the-shelf
+- [ ] Research: How does agent deliver premium service? What personalization works?
+
+#### Scenario 5: First-Time International Traveler
+- [ ] Never traveled abroad, anxious and confused
+- [ ] Lots of basic questions (visa, currency, safety)
+- [ ] Needs reassurance and hand-holding
+- [ ] Research: How does agent build trust? What educational content helps?
+
+### Competitive Research
+
+#### Direct Competitors
+- [ ] Travel Agency SaaS: Host Agency reviews, TravelJoy, CRM.Travel
+- [ ] Tour Operator Platforms: Rezdy, Checkfront, FareHarbor
+- [ ] Corporate Travel: Egencia, CWT, TravelPerk
+- [ ] Indian Platforms: PickYourTrail, TravelTrips, Pickyourtrail
+
+#### Indirect Competitors
+- [ ] Direct Booking: Expedia, Booking.com, Airbnb Experiences
+- [ ] Meta-Search: Google Flights, Kayak, Skyscanner
+- [ ] Social Planning: Instagram, Pinterest, TikTok travel
+- [ ] ChatGPT/AI Planning: Free AI travel planners
+
+#### Competitive Analysis Questions
+- [ ] What features do they offer that we don't?
+- [ ] What's their pricing model?
+- [ ] What are their customers complaining about?
+- [ ] What's their unique value proposition?
+- [ ] Where are they winning? Where are they weak?
+
+### Cultural & Regional Considerations
+
+#### Communication Preferences by Region
+- [ ] India: WhatsApp-first, phone calls, high context needed
+- [ ] Singapore: Email, formal, efficiency-focused
+- [ ] UK: Email, polite but direct, value time
+- [ ] USA: Email/text, casual, direct
+- [ ] Middle East: WhatsApp, relationship-first, personal touch
+- [ ] Australia: Email, casual, friendly
+
+#### Payment Preferences by Region
+- [ ] India: UPI, cards, net banking, EMI options
+- [ ] Singapore: Cards, PayNow, bank transfer
+- [ ] UK: Cards, PayPal, bank transfer
+- [ ] USA: Cards, Venmo, Zelle
+- [ ] Middle East: Cards, cash on delivery, bank transfer
+
+#### Trust Signals by Region
+- [ ] India: Personal recommendations, Google reviews, WhatsApp presence
+- [ ] Singapore: Certifications, professional website, case studies
+- [ ] UK: Reviews, certifications, years in business
+- [ ] USA: Reviews, social media, influencers
+- [ ] Middle East: Personal connections, WhatsApp, family recommendations
+
+---
+
 ## Trends & Emerging Markets
 
 - [ ] Bleisure travel (business + leisure) detection

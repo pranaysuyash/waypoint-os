@@ -44,14 +44,6 @@ _DESTINATION_RE = re.compile(
     r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b",
 )
 
-# Past trip indicators - used to distinguish current vs historical mentions
-_PAST_TRIP_INDICATORS = frozenset({
-    "last time", "previous trip", "past trip", "went to", "visited last",
-    "came back from", "returned from", "their last", "earlier trip",
-    "last year", "last month", "last summer", "last winter",
-    "recently visited", "we went to",
-})
-
 
 def _extract_relevant_span(text: str, match_str: str, window: int = 80) -> str:
     """
@@ -71,6 +63,7 @@ _PAST_TRIP_INDICATORS = frozenset({
     "last time", "previous trip", "past trip", "went to", "visited last",
     "came back from", "returned from", "their last", "earlier trip",
     "last year", "last month", "last summer", "last winter",
+    "recently visited", "we went to",
 })
 
 

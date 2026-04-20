@@ -2,15 +2,19 @@
 
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { SlotValue, Ambiguity, PacketUnknown, PacketContradiction, ValidationReport } from "@/types/spine";
-import styles from "./workbench.module.css";
+import styles from "@/app/workbench/workbench.module.css";
 
-export function PacketTab() {
+interface PacketPanelProps {
+  tripId: string;
+}
+
+export function PacketPanel({ tripId }: PacketPanelProps) {
   const { result_packet, result_validation, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
 
   if (!result_packet) {
     return (
       <div className={styles.emptyState}>
-        <p>No booking request data. Process a trip from the "New Inquiry" section first.</p>
+        <p>No booking request data for trip {tripId}. Process a trip from the "Intake" section first.</p>
       </div>
     );
   }

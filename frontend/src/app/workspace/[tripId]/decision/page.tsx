@@ -1,12 +1,14 @@
-/** Wave 1L compat redirect — replace with DecisionPanel in Wave 3. */
-import { redirect } from 'next/navigation';
-import { _getWorkbenchCompatRoute } from '@/lib/routes';
+'use client';
 
-interface PageProps {
-  params: Promise<{ tripId: string }>;
-}
+import { useTripContext } from '@/contexts/TripContext';
+import { DecisionPanel } from '@/components/workspace/panels/DecisionPanel';
 
-export default async function DecisionPage({ params }: PageProps) {
-  const { tripId } = await params;
-  redirect(_getWorkbenchCompatRoute(tripId, 'decision'));
+export default function DecisionPage() {
+  const { tripId } = useTripContext();
+  
+  return (
+    <div className='p-6'>
+      <DecisionPanel tripId={tripId || ''} />
+    </div>
+  );
 }

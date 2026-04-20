@@ -214,9 +214,9 @@ These are **deferred for deep dive after pilot data is available**. The static `
 | # | Decision | Status | Next Step |
 |---|----------|--------|-----------|
 | D1 | Autonomy gradient | ✅ Core decided (agency-level policy). Adaptive autonomy pending deep dive. | Deep dive customer+trip classification when pilot data available |
-| D2 | Free engine target persona | ⬜ Open | Discuss — GTM sequencing question |
-| D3 | Sourcing hierarchy configurability | ⬜ Open | Discuss — depends on Gap #01 vendor/supplier models |
-| D5 | Override learning | ⬜ Open (partially addressed by D1 adaptive autonomy) | Discuss — connected to Gap #06 customer lifecycle |
+| D2 | Free engine target persona | ✅ Decided (`ARCHITECTURE_DECISION_D2_FREE_ENGINE_PERSONA_2026-04-18.md`). Shared pipeline, empowerment framing. | Implementation sequenced by D6 eval precision gates |
+| D3 | Sourcing hierarchy configurability | ✅ Contract decided (`ARCHITECTURE_DECISION_D3_SOURCING_HIERARCHY_2026-04-18.md`). Implementation blocked on Gap #01. | Implement with Gap #01 vendor/supplier models |
+| D5 | Override learning | ✅ Contract decided (`ARCHITECTURE_DECISION_D5_OVERRIDE_LEARNING_2026-04-18.md`). Phased by Gap #02 + Gap #06. | Phase 1 with persistence, Phase 2 with lifecycle |
 | — | Plugin system | ⬜ Draft exists (`PLUGIN_SYSTEM_EXPLORATION_DRAFT_2026-04-17.md`) | Discuss — architecture decision needed |
 | — | D4/D6 implementation | ⬜ Open | Migration Steps 1-5 from parent architecture doc |
 

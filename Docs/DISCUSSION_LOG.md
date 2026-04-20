@@ -1189,3 +1189,45 @@ If checkpoints degrade beyond agreed thresholds, escalate to architecture uplift
 - Cost-first execution confirmed.
 - Architecture evolution is explicitly staged behind viability checkpoints.
 - Documentation-first discipline maintained for all tradeoff decisions.
+
+## Log Entry: 2026-04-18 - Thesis Deep Dive Decisions D1, D2, D3 (Session 2)
+
+### Context
+Continuing sequential discussion of thesis deep dive decisions D1-D6 from `Docs/DISCUSSION_THESIS_DEEP_DIVE_2026-04-16.md`. D4 sub-decisions (D4.1-D4.3, D6.1-D6.2) were completed in a prior session.
+
+### Decisions Made
+
+**D1 — Agency Autonomy Gradient** (`Docs/ARCHITECTURE_DECISION_D1_AUTONOMY_GRADIENT_2026-04-18.md`)
+- Agency-level `AgencyAutonomyPolicy` with per-`decision_state` approval gates (`auto`/`review`/`block`).
+- Safety invariant: `STOP_NEEDS_REVIEW` always blocks — non-negotiable.
+- Adaptive autonomy via customer+trip classification identified as evolution path — separate deep dive when pilot data available.
+- Owner directive: fine-tune autonomy based on learning, start with customer+trip classification problem.
+
+**D2 — Free Engine Target Persona** (`Docs/ARCHITECTURE_DECISION_D2_FREE_ENGINE_PERSONA_2026-04-18.md`)
+- Shared NB01→NB02→NB03 pipeline for both agency self-audit and consumer free engine.
+- `presentation_profile: Literal["agency", "consumer"]` controls NB03 builder selection, finding filtering, and language register.
+- Owner-directed positioning correction: free engine is "here are things worth discussing with your planner before you finalize" — NOT adversarial ("your plan is bad"). Empowerment framing.
+- Consumer surface gated by D6 eval suite `gating` category precision thresholds (≥ 0.95).
+- Consolidated Funnel B and Itinerary Checker GTM Wedge as same initiative.
+
+**D3 — Sourcing Hierarchy Configurability** (`Docs/ARCHITECTURE_DECISION_D3_SOURCING_HIERARCHY_2026-04-18.md`)
+- Per-agency `SourcingPolicy` config object — tier priority, margin floors, category-tier overrides, supplier preferences, widen search behavior.
+- Sourcing is the agency's competitive advantage: system must plan the way THEIR agency plans.
+- Margin floors are advisory (flagged, not hidden) — hiding options silently erodes trust.
+- Blocked suppliers are hard blocks — only agency owner can unblock.
+- `widen_requires_approval` connects to D1 autonomy gate.
+- Implementation blocked on Gap #01 (zero production sourcing logic). Contract is the deliverable now.
+- Open questions deferred: per-category margin floors, supplier preference scoping (destination/category), network/consortium tier semantics.
+
+**D5 — Override Learning** (`Docs/ARCHITECTURE_DECISION_D5_OVERRIDE_LEARNING_2026-04-18.md`)
+- D5 is the feedback bus that makes D1, D3, D4 compound over time.
+- Three override categories: decision (→ autonomy), suitability (→ traveler memory), sourcing (→ supplier quality).
+- `OverrideEvent` contract with required rationale + structured rationale tags.
+- Suggestions, not auto-adjustments — owner approves policy changes. Exception: per-traveler suitability memory auto-updates.
+- Two-phase learning: Phase 1 frequency-based (ships with persistence), Phase 2 outcome-based (ships with customer lifecycle).
+- Blocked on Gap #02 (persistence) and Gap #06 (customer lifecycle) for full implementation.
+
+### Still Open
+- Plugin system — draft exists, architecture decision needed.
+- Customer+trip classification — separate deep dive thread.
+- D4/D6 implementation — migration Steps 1-5.

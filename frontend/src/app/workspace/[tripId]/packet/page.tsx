@@ -1,12 +1,14 @@
-/** Wave 1L compat redirect — replace with PacketPanel in Wave 3. */
-import { redirect } from 'next/navigation';
-import { _getWorkbenchCompatRoute } from '@/lib/routes';
+'use client';
 
-interface PageProps {
-  params: Promise<{ tripId: string }>;
-}
+import { useTripContext } from '@/contexts/TripContext';
+import { PacketPanel } from '@/components/workspace/panels/PacketPanel';
 
-export default async function PacketPage({ params }: PageProps) {
-  const { tripId } = await params;
-  redirect(_getWorkbenchCompatRoute(tripId, 'packet'));
+export default function PacketPage() {
+  const { tripId } = useTripContext();
+  
+  return (
+    <div className='p-6'>
+      <PacketPanel tripId={tripId || ''} />
+    </div>
+  );
 }

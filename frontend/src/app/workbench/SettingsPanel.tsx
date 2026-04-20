@@ -18,7 +18,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     scenario_id,
     setScenarioId,
   } = useWorkbenchStore();
-  const { data: scenarios, isLoading: scenariosLoading } = useScenarios();
+  const { data: scenarios, isLoading: scenariosLoading, error: scenariosError } = useScenarios();
 
   if (!open) return null;
 
@@ -149,6 +149,11 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             <p className='text-xs text-[#8b949e]'>
               Pre-loaded test scenario for pipeline runs
             </p>
+            {scenariosError && (
+              <p className='text-xs text-[#f85149] mt-1'>
+                Failed to load scenarios: {scenariosError.message}
+              </p>
+            )}
           </div>
         </div>
       </aside>

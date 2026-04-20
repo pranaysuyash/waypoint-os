@@ -18,18 +18,13 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Callable
 from dataclasses import dataclass, field
 
-import sys
-from pathlib import Path
+from src.intake.packet_models import CanonicalPacket
+from .cache_schema import CachedDecision, CacheStats
+from .cache_storage import DecisionCacheStorage, get_default_storage
+from .cache_key import generate_cache_key
+from .telemetry import get_telemetry
+from .health import get_health_checker
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
-from intake.packet_models import CanonicalPacket
-from decision.cache_schema import CachedDecision, CacheStats
-from decision.cache_storage import DecisionCacheStorage, get_default_storage
-from decision.cache_key import generate_cache_key
-from decision.telemetry import get_telemetry
-from decision.health import get_health_checker
 
 try:
     from llm import BaseLLMClient, create_llm_client

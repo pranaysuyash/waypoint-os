@@ -2,15 +2,19 @@
 
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { StrategyOutput, PromptBundle } from "@/types/spine";
-import styles from "./workbench.module.css";
+import styles from "@/app/workbench/workbench.module.css";
 
-export function StrategyTab() {
+interface StrategyPanelProps {
+  tripId: string;
+}
+
+export function StrategyPanel({ tripId }: StrategyPanelProps) {
   const { result_strategy, result_internal_bundle, result_traveler_bundle, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
 
   if (!result_strategy) {
     return (
       <div className={styles.emptyState}>
-        <p>No options data. Process a trip from the "New Inquiry" section first.</p>
+        <p>No options data for trip {tripId}. Process a trip from the "New Inquiry" section first.</p>
       </div>
     );
   }
@@ -84,7 +88,6 @@ export function StrategyTab() {
       <div className={styles.section}>
         <h3 className={styles.sectionTitle}>Agent View vs Customer View</h3>
         <div className={styles.splitView}>
-          {/* Internal Bundle */}
           <div className={`${styles.splitPanel} ${styles.internalPanel}`}>
             <div className={styles.splitTitle}>For You (Agent)</div>
             {internalBundle ? (
@@ -111,21 +114,12 @@ export function StrategyTab() {
                     </ul>
                   </div>
                 )}
-                {internalBundle.internal_notes && (
-                  <div style={{ marginTop: "12px" }}>
-                    <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Internal Notes</strong>
-                    <p style={{ fontSize: "13px", whiteSpace: "pre-wrap", marginTop: "4px" }}>
-                      {internalBundle.internal_notes}
-                    </p>
-                  </div>
-                )}
               </div>
             ) : (
               <p style={{ color: "var(--color-text-muted)" }}>No agent notes</p>
             )}
           </div>
 
-          {/* Traveler-safe Bundle */}
           <div className={`${styles.splitPanel} ${styles.travelerPanel}`}>
             <div className={styles.splitTitle}>For Customer</div>
             {travelerBundle ? (

@@ -7,13 +7,8 @@ These rules cover additional patterns to increase rule hit rate toward 60%+.
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
-import sys
-from pathlib import Path
+from src.intake.packet_models import CanonicalPacket
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-
-from intake.packet_models import CanonicalPacket
 
 
 def rule_budget_domestic_default(packet: CanonicalPacket) -> Optional[Dict[str, Any]]:

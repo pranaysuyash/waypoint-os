@@ -42,26 +42,25 @@ import uuid
 from pathlib import Path
 from typing import Any, List, Optional
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
+# Standard imports follow package structure
+
 
 from src.intake.orchestration import run_spine_once
 from src.intake.packet_models import SourceEnvelope
 from src.intake.safety import set_strict_mode
 
-# Import persistence (handle hyphen in path)
-import importlib.util
-import sys
-from pathlib import Path
-_persistence_path = Path(__file__).parent / "persistence.py"
-spec = importlib.util.spec_from_file_location("persistence", _persistence_path)
-persistence = importlib.util.module_from_spec(spec)
-sys.modules["persistence"] = persistence
-spec.loader.exec_module(persistence)
+# Import persistence logic
+try:
+    from . import persistence
+except (ImportError, ValueError):
+    import persistence
+
 TripStore = persistence.TripStore
 AssignmentStore = persistence.AssignmentStore
 AuditStore = persistence.AuditStore

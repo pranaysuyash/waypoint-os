@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { useInsightsSummary, usePipelineMetrics, useTeamMetrics, useBottleneckAnalysis } from '@/hooks/useGovernance';
 import type { TimeRange, StageMetrics, TeamMemberMetrics, BottleneckAnalysis } from '@/types/governance';
+
+const VALID_TIME_RANGES = new Set<TimeRange>(['7d', '30d', '90d', 'mtd', 'ytd', 'custom']);
 import { RevenueChart, PipelineFunnel, TeamPerformanceChart } from '@/components/visual';
 
 // ============================================================================
@@ -264,7 +266,10 @@ export default function OwnerInsightsPage() {
           <div className='relative'>
             <select
               value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value as TimeRange)}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (VALID_TIME_RANGES.has(v as TimeRange)) setTimeRange(v as TimeRange);
+              }}
               className='appearance-none bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:border-[#58a6ff]'
             >
               <option value='7d'>Last 7 days</option>
