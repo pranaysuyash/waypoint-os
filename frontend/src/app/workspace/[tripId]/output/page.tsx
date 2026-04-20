@@ -1,16 +1,23 @@
-/**
- * Wave 1L compat redirect — 'output' maps to 'strategy' in workbench
- * (traveller-safe bundle lives there pre-Wave 3).
- * Replace with OutputPanel in Wave 3.
- */
-import { redirect } from 'next/navigation';
-import { _getWorkbenchCompatRoute } from '@/lib/routes';
+'use client';
 
-interface PageProps {
-  params: Promise<{ tripId: string }>;
-}
+import { useTripContext } from '@/contexts/TripContext';
+import { OutputPanel } from '@/components/workspace/panels/OutputPanel';
 
-export default async function OutputPage({ params }: PageProps) {
-  const { tripId } = await params;
-  redirect(_getWorkbenchCompatRoute(tripId, 'output'));
+export default function WorkspaceOutputPage() {
+  const { tripId } = useTripContext();
+
+  return (
+    <div className='p-6'>
+      <div className='mb-6'>
+        <h2 className='text-xl flex items-center gap-2 text-[#e6edf3] font-semibold'>
+          Outgoing Deliverables
+        </h2>
+        <p className='text-sm text-[#8b949e] mt-1'>
+          Constructed agent notes and client-facing responses based on strategy.
+        </p>
+      </div>
+
+      <OutputPanel tripId={tripId || ''} />
+    </div>
+  );
 }

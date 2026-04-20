@@ -24,3 +24,16 @@
     - [x] Update `task.md`
     - [x] Create `walkthrough.md` for Wave 3
     - [x] Manual verification in browser (if possible)
+
+- [x] Task 5: Core AI Loop Wiring (Wave 4)
+    - [x] IntakePanel Copilot Binding (`handleProcessTrip`, `handleSave`)
+    - [x] Auto-navigation to Packet on success
+    - [x] Workspace Layout Display (`result_run_ts`)
+    - [x] Update intake testing suite
+
+- [x] Task 6: Output Panel Extraction (Wave 5)
+    - [x] Extract `OutputPanel.tsx` from `StrategyPanel`
+    - [x] Remove Agent/Customer bundles from `StrategyPanel.tsx`
+    - [x] Update `output/page.tsx` redirect to use `OutputPanel`
+    - [x] Add `OutputPanel.test.tsx` checking agent vs customer bundle visualizations
+    - [x] Verify 97/97 tests passing

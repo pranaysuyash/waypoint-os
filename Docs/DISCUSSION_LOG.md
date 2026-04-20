@@ -1227,6 +1227,12 @@ Continuing sequential discussion of thesis deep dive decisions D1-D6 from `Docs/
 - Two-phase learning: Phase 1 frequency-based (ships with persistence), Phase 2 outcome-based (ships with customer lifecycle).
 - Blocked on Gap #02 (persistence) and Gap #06 (customer lifecycle) for full implementation.
 
+**Cross-Project Agentic Pattern Exchange** (`Docs/CROSS_PROJECT_AGENTIC_PATTERNS_2026-04-20.md`)
+- Living document cross-referencing WaypointOS and AdShot (`opencode_buidathon`) agentic pipeline patterns.
+- Identified 4 patterns each direction: AdShot→WaypointOS (quality gates, 3-layer scorecard, artifact lineage, deterministic-first principle) and WaypointOS→AdShot (cache→rule graduation, override learning, manifest-driven eval, per-tenant policy config).
+- Distilled 10 meta-principles for building agentic pipelines from both projects.
+- Mirror doc at `docs/discussions/2026-04-20-013-cross-project-agentic-patterns.md` in AdShot.
+
 ### Still Open
 - Plugin system — draft exists, architecture decision needed.
 - Customer+trip classification — separate deep dive thread.

@@ -37,6 +37,20 @@ Mapped Routes:
 - [x] Verified zero remaining `sys.path.insert` hacks in backend rules.
 - [x] Verified all 5 new workspace pages are mapped to their respective panels.
 
+## Wave 4 and 5 Updates
+
+### Wave 4: Core AI Loop Wiring
+The standalone AI generation loop has been wired tightly to the Intake stage rather than existing generically:
+- `IntakePanel.tsx` now supports `useSpineRun` to parse `input_raw_note` and pipe results throughout the application pipeline via `handleProcessTrip`.
+- Auto-navigation effortlessly diverts the user to the `packet` view immediately upon a successful generation loop.
+- Overall processing UI state (`last_processed_ts`) is accurately monitored globally via `WorkspaceTripLayoutShell` for the entire active Workspace session.
+
+### Wave 5: Output Panel Extraction
+- Destroyed the remaining `output` component route redirect wrapper stub.
+- Abstracted and partitioned the `result_internal_bundle` and `result_traveler_bundle` components securely out of the generic `StrategyPanel` space into a newly-constructed discrete `OutputPanel.tsx`. 
+- Refined automated rendering verification checking both DOM UI rendering and JSON technical representations sequentially inside `OutputPanel.test.tsx`. 
+- Entire Frontend Vitest suite is rigorously passing all `12 files, 97 tasks`.
+
 ## Next Steps
-- Implement `OutputPanel` once the "traveller-safe bundle" evolves into a dedicated output stage.
-- Enhance the AI Copilot Rail (Right Rail) with stage-aware tools.
+- Governance wiring (re-implementing Dashboard telemetry metrics).
+- Expansion of the Copilot Right-Rail to serve dedicated stage-aware tooling contexts.
