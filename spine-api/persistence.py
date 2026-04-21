@@ -211,6 +211,8 @@ class AuditStore:
         ]
 
 
+from src.analytics.engine import process_trip_analytics
+
 # Convenience functions
 def save_processed_trip(spine_output: dict, source: str = "unknown") -> str:
     """
@@ -222,6 +224,7 @@ def save_processed_trip(spine_output: dict, source: str = "unknown") -> str:
     packet = spine_output.get("packet", {}) or {}
     validation = spine_output.get("validation", {}) or {}
     decision = spine_output.get("decision", {}) or {}
+    safety = spine_output.get("safety", {}) or {}
     
     trip = {
         "id": f"trip_{uuid4().hex[:12]}",
@@ -232,8 +235,17 @@ def save_processed_trip(spine_output: dict, source: str = "unknown") -> str:
         "extracted": packet,
         "validation": validation,
         "decision": decision,
+        "safety": safety,
         "raw_input": spine_output.get("meta", {}),
     }
+
+    # Calculate analytics payload securely inside python ecosystem
+    try:
+        analytics = process_trip_analytics(trip)
+        trip["analytics"] = analytics.model_dump()
+    except Exception as e:
+        print(f"Analytics calculation failed: {e}")
+        trip["analytics"] = None
     
     trip_id = TripStore.save_trip(trip)
     

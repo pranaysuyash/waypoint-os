@@ -677,6 +677,48 @@ def get_audit_events(limit: int = 100):
 
 
 # =============================================================================
+# Analytics Endpoints (Wave 1 Governance)
+# =============================================================================
+
+from src.analytics.metrics import (
+    aggregate_insights,
+    compute_pipeline_metrics,
+    compute_team_metrics,
+    compute_bottlenecks
+)
+from src.analytics.models import (
+    InsightsSummary,
+    StageMetrics,
+    TeamMemberMetrics,
+    BottleneckAnalysis
+)
+
+@app.get("/analytics/summary", response_model=InsightsSummary)
+def get_analytics_summary(range: str = "30d"):
+    trips = TripStore.list_trips(limit=1000)
+    return aggregate_insights(trips)
+
+
+@app.get("/analytics/pipeline", response_model=List[StageMetrics])
+def get_analytics_pipeline(range: str = "30d"):
+    trips = TripStore.list_trips(limit=1000)
+    return compute_pipeline_metrics(trips)
+
+
+@app.get("/analytics/team", response_model=List[TeamMemberMetrics])
+def get_analytics_team(range: str = "30d"):
+    trips = TripStore.list_trips(limit=1000)
+    assignments = list(AssignmentStore._load_assignments().values())
+    return compute_team_metrics(trips, assignments)
+
+
+@app.get("/analytics/bottlenecks", response_model=List[BottleneckAnalysis])
+def get_analytics_bottlenecks(range: str = "30d"):
+    trips = TripStore.list_trips(limit=1000)
+    return compute_bottlenecks(trips)
+
+
+# =============================================================================
 # Dev entrypoint
 # =============================================================================
 

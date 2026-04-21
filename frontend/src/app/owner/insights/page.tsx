@@ -21,52 +21,7 @@ import { RevenueChart, PipelineFunnel, TeamPerformanceChart } from '@/components
 // MOCK DATA
 // ============================================================================
 
-const MOCK_INSIGHTS_SUMMARY = {
-  totalInquiries: 47,
-  convertedToBooked: 31,
-  conversionRate: 66,
-  avgResponseTime: 4.2,
-  pipelineValue: 184200,
-  pipelineVelocity: {
-    stage1To2: 0.8,
-    stage2To3: 1.2,
-    stage3To4: 2.8,
-    stage4To5: 1.5,
-    stage5ToBooked: 0.6,
-    averageTotal: 6.9,
-  },
-};
-
-const MOCK_PIPELINE_METRICS: StageMetrics[] = [
-  { stageId: 'intake', stageName: 'New Inquiry', tripCount: 12, avgTimeInStage: 18, exitRate: 92, avgTimeToExit: 18 },
-  { stageId: 'packet', stageName: 'Trip Details', tripCount: 8, avgTimeInStage: 28, exitRate: 88, avgTimeToExit: 28 },
-  { stageId: 'decision', stageName: 'Ready to Quote?', tripCount: 6, avgTimeInStage: 67, exitRate: 75, avgTimeToExit: 67 },
-  { stageId: 'strategy', stageName: 'Build Options', tripCount: 4, avgTimeInStage: 36, exitRate: 85, avgTimeToExit: 36 },
-  { stageId: 'safety', stageName: 'Final Review', tripCount: 3, avgTimeInStage: 14, exitRate: 95, avgTimeToExit: 14 },
-];
-
-const MOCK_TEAM_METRICS: TeamMemberMetrics[] = [
-  { userId: 'agent-001', name: 'Sarah Chen', role: 'Senior Agent', activeTrips: 12, completedTrips: 48, conversionRate: 72, avgResponseTime: 3.2, customerSatisfaction: 4.8, currentWorkload: 'optimal', workloadScore: 75 },
-  { userId: 'agent-002', name: 'Mike Johnson', role: 'Agent', activeTrips: 16, completedTrips: 42, conversionRate: 68, avgResponseTime: 5.1, customerSatisfaction: 4.5, currentWorkload: 'over', workloadScore: 92 },
-  { userId: 'agent-003', name: 'Alex Kim', role: 'Agent', activeTrips: 8, completedTrips: 35, conversionRate: 74, avgResponseTime: 2.8, customerSatisfaction: 4.9, currentWorkload: 'under', workloadScore: 55 },
-  { userId: 'agent-004', name: 'Emily Rodriguez', role: 'Agent', activeTrips: 11, completedTrips: 28, conversionRate: 65, avgResponseTime: 4.5, customerSatisfaction: 4.6, currentWorkload: 'optimal', workloadScore: 78 },
-];
-
-const MOCK_BOTTLENECKS: BottleneckAnalysis[] = [
-  {
-    stageId: 'decision',
-    stageName: 'Ready to Quote?',
-    avgTimeInStage: 67,
-    isBottleneck: true,
-    severity: 'high',
-    primaryCauses: [
-      { cause: 'Supplier response delays', percentage: 60, affectedTrips: 12, suggestedAction: 'Set up automated supplier follow-ups' },
-      { cause: 'Incomplete trip details', percentage: 25, affectedTrips: 5, suggestedAction: 'Add required fields validation' },
-      { cause: 'Client clarification needed', percentage: 15, affectedTrips: 3, suggestedAction: 'Add clarifying question templates' },
-    ],
-  },
-];
-
+// MOCK REVENUE kept for Wave 3 as per plan
 const MOCK_REVENUE_BY_MONTH = [
   { month: 'Jan', inquiries: 12, booked: 8, revenue: 42000 },
   { month: 'Feb', inquiries: 15, booked: 10, revenue: 58000 },
@@ -243,13 +198,17 @@ const BottleneckCard = memo(function BottleneckCard({ analysis }: { analysis: Bo
 export default function OwnerInsightsPage() {
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
   
-  // Using mock data - replace with actual hooks when API is ready
-  const summary = MOCK_INSIGHTS_SUMMARY;
-  const pipelineMetrics = MOCK_PIPELINE_METRICS;
-  const teamMetrics = MOCK_TEAM_METRICS;
-  const bottlenecks = MOCK_BOTTLENECKS;
+  const { data: summary, isLoading: isSummaryLoading, error: summaryError } = useInsightsSummary(timeRange);
+  const { data: pipelineMetrics, isLoading: isPipelineLoading, error: pipelineError } = usePipelineMetrics(timeRange);
+  const { data: teamMetrics, isLoading: isTeamLoading, error: teamError } = useTeamMetrics(timeRange);
+  const { data: bottlenecks, isLoading: isBottlenecksLoading, error: bottlenecksError } = useBottleneckAnalysis(timeRange);
 
-  const maxStageTime = Math.max(...pipelineMetrics.map(m => m.avgTimeInStage));
+  const isLoading = isSummaryLoading || isPipelineLoading || isTeamLoading || isBottlenecksLoading;
+  const hasError = summaryError || pipelineError || teamError || bottlenecksError;
+
+  const maxStageTime = useMemo(() => 
+    pipelineMetrics.length > 0 ? Math.max(...pipelineMetrics.map(m => m.avgTimeInStage)) : 100
+  , [pipelineMetrics]);
 
   return (
     <div className='p-5 pb-20 max-w-[1400px] mx-auto space-y-5'>
@@ -286,6 +245,24 @@ export default function OwnerInsightsPage() {
           </button>
         </div>
       </header>
+
+      {isLoading && (
+        <div className="flex flex-col items-center justify-center py-20 bg-[#0f1115] border border-[#1c2128] rounded-xl">
+          <div className="h-10 w-10 border-4 border-[#58a6ff] border-t-transparent rounded-full animate-spin mb-4" />
+          <p className="text-[#8b949e]">Calculating latest dashboard telemetry...</p>
+        </div>
+      )}
+
+      {hasError && (
+        <div className="flex flex-col items-center justify-center py-20 bg-[#f85149]/5 border border-[#f85149]/30 rounded-xl">
+          <AlertTriangle className="h-10 w-10 text-[#f85149] mb-4" />
+          <p className="text-[#e6edf3] font-semibold">Failed to fetch live data</p>
+          <p className="text-[#8b949e] text-sm mt-1">Please ensure the backend analytics service is running.</p>
+        </div>
+      )}
+
+      {!isLoading && !hasError && summary && (
+        <>
 
       {/* Summary Stats */}
       <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
@@ -459,6 +436,8 @@ export default function OwnerInsightsPage() {
         </div>
 
       </div>
+      </>
+      )}
     </div>
   );
 }
