@@ -2,6 +2,7 @@
 
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate, DecisionOutput } from "@/types/spine";
+import type { Trip } from "@/lib/api-client";
 import styles from "./workbench.module.css";
 
 /**
@@ -79,10 +80,16 @@ function formatCurrency(n: number, currency?: string): string {
   return formatter(n);
 }
 
-export function DecisionTab() {
+interface DecisionTabProps {
+  trip?: Trip | null;
+}
+
+export function DecisionTab({ trip }: DecisionTabProps) {
   const { result_decision, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
 
-  if (!result_decision) {
+  const activeDecision = result_decision || (trip?.decision as DecisionOutput | null);
+
+  if (!activeDecision) {
     return (
       <div className={styles.emptyState}>
         <p>No quote status data. Process a trip from the "New Inquiry" section first.</p>
@@ -90,7 +97,7 @@ export function DecisionTab() {
     );
   }
 
-  const decision = result_decision as DecisionOutput;
+  const decision = activeDecision;
   // Normalize state string before lookup — handles alias variants and makes
   // unknown states visible (fallback) rather than silently unstyled.
   const decisionState = normalizeDecisionState(
@@ -117,7 +124,7 @@ export function DecisionTab() {
             {STATE_LABELS[decisionState] || decisionState}
           </span>
           <div style={{ marginTop: "12px", fontSize: "13px", color: "var(--color-text-muted)" }}>
-            Confidence: {Math.round((decision.confidence_score || 0) * 100)}%
+            Overall Confidence: {Math.round((decision.confidence?.overall || 0) * 100)}%
           </div>
         </div>
       </div>

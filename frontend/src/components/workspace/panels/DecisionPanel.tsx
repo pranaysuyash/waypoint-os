@@ -111,7 +111,21 @@ export function DecisionPanel({ tripId }: DecisionPanelProps) {
             {STATE_LABELS[decisionState] || decisionState}
           </span>
           <div style={{ marginTop: "12px", fontSize: "13px", color: "var(--color-text-muted)" }}>
-            Confidence: {Math.round((decision.confidence_score || 0) * 100)}%
+            Overall Confidence: {Math.round((decision.confidence?.overall || 0) * 100)}%
+          </div>
+          <div style={{ marginTop: "12px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", fontSize: "11px" }}>
+            <div style={{ padding: "4px", background: "rgba(0,0,0,0.03)", borderRadius: "4px", textAlign: "center" }}>
+              <div style={{ color: "var(--color-text-muted)", marginBottom: "2px" }}>Data</div>
+              <strong>{Math.round((decision.confidence?.data_quality || 0) * 100)}%</strong>
+            </div>
+            <div style={{ padding: "4px", background: "rgba(0,0,0,0.03)", borderRadius: "4px", textAlign: "center" }}>
+              <div style={{ color: "var(--color-text-muted)", marginBottom: "2px" }}>Judgment</div>
+              <strong>{Math.round((decision.confidence?.judgment_confidence || 0) * 100)}%</strong>
+            </div>
+            <div style={{ padding: "4px", background: "rgba(0,0,0,0.03)", borderRadius: "4px", textAlign: "center" }}>
+              <div style={{ color: "var(--color-text-muted)", marginBottom: "2px" }}>Comm.</div>
+              <strong>{Math.round((decision.confidence?.commercial_confidence || 0) * 100)}%</strong>
+            </div>
           </div>
         </div>
       </div>

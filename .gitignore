@@ -78,8 +78,16 @@ data/audit/
 # Data files — generated trip seed data (runtime-created per test/seed run)
 data/trips/trip_seed_*.json
 
+# Data files — generated runtime trips and runs
+# Keep fixture-style files tracked separately if needed; ignore runtime trip artifacts.
+data/trips/trip_*.json
+data/runs/
+
 # Data files — shadow mode runtime outputs
 data/shadow/outputs/
+
+# Local scratch workspace
+scratch/
 
 # Design reference files (HTML assets)
 Archive/design_refs/

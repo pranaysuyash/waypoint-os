@@ -32,6 +32,7 @@ from .safety import (
     SanitizedPacketView,
 )
 from .config.agency_settings import AgencySettings
+from .gates import NB01CompletionGate, NB02JudgmentGate, GateVerdict
 
 
 # =============================================================================
@@ -102,6 +103,7 @@ def run_spine_once(
         SpineResult with all outputs from the spine
     """
     run_timestamp = datetime.now(timezone.utc).isoformat()
+    actual_settings = agency_settings or AgencySettings(agency_id="default")
 
     # --- Phase 1: Extraction ---
     pipeline = ExtractionPipeline()
@@ -115,19 +117,55 @@ def run_spine_once(
     # --- Phase 2: Validation ---
     validation = validate_packet(packet, stage=stage)
 
+    # --- Quality Gate: NB01 Completion ---
+    nb01_gate = NB01CompletionGate()
+    nb01_result = nb01_gate.evaluate(packet, validation)
+
+    if nb01_result.verdict == GateVerdict.ESCALATE:
+        # If extraction is structurally broken, we must stop
+        from .decision import DecisionResult
+        decision = DecisionResult(
+            packet_id=packet.packet_id,
+            current_stage=stage,
+            operating_mode=packet.operating_mode,
+            decision_state="STOP_NEEDS_REVIEW",
+            hard_blockers=["extraction_quality"],
+            rationale={"gate_failure": "NB01_ESCALATE", "reasons": nb01_result.reasons}
+        )
+        return _create_empty_spine_result(packet, validation, decision, run_timestamp)
+
     # --- Phase 3: Decision ---
-    decision = run_gap_and_decision(packet, feasibility_table=feasibility_table, agency_settings=agency_settings)
+    decision = run_gap_and_decision(packet, feasibility_table=feasibility_table, agency_settings=actual_settings)
 
     # Update packet decision_state from decision result
     packet.decision_state = decision.decision_state
 
+    # --- Quality Gate: NB02 Judgment ---
+    # This gate enforces the agency's autonomy policy
+    nb02_gate = NB02JudgmentGate()
+    nb02_result = nb02_gate.evaluate(decision, actual_settings)
+
+    if nb02_result.verdict == GateVerdict.ESCALATE:
+        decision.decision_state = "STOP_NEEDS_REVIEW"
+        decision.hard_blockers.append("confidence_threshold")
+        decision.rationale["gate_failure"] = "NB02_ESCALATE"
+        decision.rationale["gate_reasons"] = nb02_result.reasons
+        packet.decision_state = "STOP_NEEDS_REVIEW"
+    elif nb02_result.verdict == GateVerdict.DEGRADE:
+        if decision.decision_state == "PROCEED_TRAVELER_SAFE":
+            decision.decision_state = "PROCEED_INTERNAL_DRAFT"
+            decision.rationale["gate_degraded"] = True
+            decision.rationale["gate_reasons"] = nb02_result.reasons
+            packet.decision_state = "PROCEED_INTERNAL_DRAFT"
+
     # --- Phase 4: Strategy ---
-    strategy = build_session_strategy(decision, packet, agency_settings=agency_settings)
+    strategy = build_session_strategy(decision, packet, agency_settings=actual_settings)
 
     # --- Phase 5: Internal Bundle ---
     internal_bundle = build_internal_bundle(strategy, decision, packet)
 
     # --- Phase 6: Traveler-Safe Bundle ---
+    # If decision state dropped to INTERNAL_DRAFT or STOP, traveler bundle should be empty/minimal
     traveler_bundle = build_traveler_safe_bundle(strategy, decision)
 
     # --- Phase 7: Sanitized View ---
@@ -167,6 +205,23 @@ def run_spine_once(
         leakage_result=leakage_result,
         assertion_result=assertion_result,
         run_timestamp=run_timestamp,
+    )
+
+
+def _create_empty_spine_result(packet, validation, decision, timestamp):
+    """Helper for early exit on gate failure."""
+    from .strategy import SessionStrategy, PromptBundle
+    from .safety import SanitizedPacketView
+    return SpineResult(
+        packet=packet,
+        validation=validation,
+        decision=decision,
+        strategy=SessionStrategy(decision_state=decision.decision_state),
+        internal_bundle=PromptBundle(),
+        traveler_bundle=PromptBundle(),
+        sanitized_view=SanitizedPacketView(packet_id=packet.packet_id),
+        leakage_result={"leaks": [], "is_safe": True},
+        run_timestamp=timestamp
     )
 
 

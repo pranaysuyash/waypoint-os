@@ -294,7 +294,7 @@ class TestDataclassStructures:
             "follow_up_questions",
             "branch_options",
             "rationale",
-            "confidence_score",
+            "confidence",
             "risk_flags",
             "commercial_decision",
             "intent_scores",
@@ -325,6 +325,7 @@ class TestDataclassStructures:
             "updated_at",
             "notes",
             "maturity",
+            "derived_from",
         }
 
         # Check all expected fields are present

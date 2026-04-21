@@ -20,109 +20,13 @@ import { getTripRoute } from '@/lib/routes';
 import type { TripReview, ReviewStatus, RiskFlag } from '@/types/governance';
 
 // ============================================================================
-// MOCK DATA - Replace with real API calls
-// ============================================================================
-
-const MOCK_REVIEWS: TripReview[] = [
-  {
-    id: 'rev-001',
-    tripId: 'trip-001',
-    tripReference: 'TRP-2026-MSC-0422',
-    destination: 'Moscow, Russia',
-    tripType: 'Solo Adventure',
-    partySize: 1,
-    dateWindow: 'Jun 10–20, 2026',
-    value: 12400,
-    currency: 'USD',
-    agentId: 'agent-001',
-    agentName: 'Sarah Chen',
-    submittedAt: '2026-04-14T10:30:00Z',
-    status: 'pending',
-    reason: 'High-value trip to destination requiring special visas',
-    agentNotes: 'Client has visa concerns, needs guidance on documentation requirements. Has traveled extensively before.',
-    riskFlags: ['high_value', 'unusual_destination', 'visa_required'],
-  },
-  {
-    id: 'rev-002',
-    tripId: 'trip-002',
-    tripReference: 'TRP-2026-AND-0420',
-    destination: 'Andaman Islands',
-    tripType: 'Honeymoon',
-    partySize: 2,
-    dateWindow: 'May 15–22, 2026',
-    value: 8200,
-    currency: 'USD',
-    agentId: 'agent-002',
-    agentName: 'Mike Johnson',
-    submittedAt: '2026-04-12T14:15:00Z',
-    status: 'pending',
-    reason: 'Supplier quote pending for 48+ hours',
-    agentNotes: 'Waiting on Andaman resort confirmation. Client flexible on dates.',
-    riskFlags: ['supplier_delay'],
-  },
-  {
-    id: 'rev-003',
-    tripId: 'trip-003',
-    tripReference: 'TRP-2026-EMR-0418',
-    destination: 'Dubai, UAE',
-    tripType: 'Corporate Retreat',
-    partySize: 8,
-    dateWindow: 'Jul 3–7, 2026',
-    value: 15600,
-    currency: 'USD',
-    agentId: 'agent-001',
-    agentName: 'Sarah Chen',
-    submittedAt: '2026-04-10T09:00:00Z',
-    status: 'pending',
-    reason: 'Group size exceeds standard approval threshold',
-    agentNotes: 'Corporate client, needs meeting facilities + leisure activities. Budget approved by client.',
-    riskFlags: ['high_value', 'complex_itinerary'],
-  },
-  {
-    id: 'rev-004',
-    tripId: 'trip-004',
-    tripReference: 'TRP-2026-PAR-0415',
-    destination: 'Paris, France',
-    tripType: 'Anniversary',
-    partySize: 2,
-    dateWindow: 'Oct 14–21, 2026',
-    value: 9500,
-    currency: 'USD',
-    agentId: 'agent-003',
-    agentName: 'Alex Kim',
-    submittedAt: '2026-04-08T16:45:00Z',
-    status: 'pending',
-    reason: 'Client requested owner involvement for luxury upgrades',
-    agentNotes: 'Repeat client, wants to confirm luxury package details directly.',
-    riskFlags: [],
-  },
-  {
-    id: 'rev-005',
-    tripId: 'trip-005',
-    tripReference: 'TRP-2026-NYC-0410',
-    destination: 'New York, USA',
-    tripType: 'Family Vacation',
-    partySize: 5,
-    dateWindow: 'Dec 20–28, 2026',
-    value: 18700,
-    currency: 'USD',
-    agentId: 'agent-002',
-    agentName: 'Mike Johnson',
-    submittedAt: '2026-04-05T11:20:00Z',
-    status: 'pending',
-    reason: 'High-value booking during peak holiday season',
-    agentNotes: 'Christmas week, premium pricing. Client aware of costs.',
-    riskFlags: ['high_value', 'tight_deadline'],
-  },
-];
-
-// ============================================================================
 // COMPONENTS
 // ============================================================================
 
 const StatusBadge = memo(function StatusBadge({ status }: { status: ReviewStatus }) {
   const styles = {
     pending: { bg: 'rgba(210,153,34,0.12)', color: '#d29922', label: 'Pending Review' },
+    revision_needed: { bg: 'rgba(255,166,0,0.14)', color: '#ffb347', label: 'Revision Needed' },
     approved: { bg: 'rgba(63,185,80,0.12)', color: '#3fb950', label: 'Approved' },
     rejected: { bg: 'rgba(248,81,73,0.12)', color: '#f85149', label: 'Rejected' },
     escalated: { bg: 'rgba(88,166,255,0.12)', color: '#58a6ff', label: 'Escalated' },
@@ -136,6 +40,7 @@ const StatusBadge = memo(function StatusBadge({ status }: { status: ReviewStatus
       style={{ background: style.bg, color: style.color }}
     >
       {status === 'pending' && <Clock className='w-3 h-3' />}
+      {status === 'revision_needed' && <RefreshCw className='w-3 h-3' />}
       {status === 'approved' && <CheckCircle className='w-3 h-3' />}
       {status === 'rejected' && <XCircle className='w-3 h-3' />}
       {status === 'escalated' && <AlertTriangle className='w-3 h-3' />}
@@ -302,8 +207,7 @@ const ReviewCard = memo(function ReviewCard({
 
 export default function OwnerReviewsPage() {
   const [statusFilter, setStatusFilter] = useState<ReviewStatus | 'all'>('all');
-  const [selectedReviews, setSelectedReviews] = useState<Set<string>>(new Set());
-  const [reviews, setReviews] = useState(MOCK_REVIEWS);
+  const { data: reviews, isLoading, error, refetch, submitAction } = useReviews();
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Filter reviews
@@ -320,51 +224,52 @@ export default function OwnerReviewsPage() {
     return b.value - a.value;
   });
 
-  const handleApprove = useCallback((id: string) => {
+  const handleAction = useCallback(async (id: string, action: 'approve' | 'reject' | 'request_changes', notes: string = '') => {
     setIsProcessing(true);
-    setTimeout(() => {
-      setReviews((prev) =>
-        prev.map((r) =>
-          r.id === id ? { ...r, status: 'approved', reviewedAt: new Date().toISOString() } : r
-        )
-      );
+    try {
+      const internalAction = action === 'approve' ? 'approve' : action === 'reject' ? 'reject' : 'request_changes';
+      await submitAction({
+        reviewId: id,
+        action: internalAction as any,
+        notes: notes || `Owner ${action} action submitted via dashboard.`
+      });
+      await refetch();
+    } catch (err) {
+      console.error(`Failed to ${action} review:`, err);
+      alert(`Error: Failed to process ${action}. Please try again.`);
+    } finally {
       setIsProcessing(false);
-    }, 500);
-  }, []);
+    }
+  }, [submitAction, refetch]);
 
-  const handleReject = useCallback((id: string) => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      setReviews((prev) =>
-        prev.map((r) =>
-          r.id === id ? { ...r, status: 'rejected', reviewedAt: new Date().toISOString() } : r
-        )
-      );
-      setIsProcessing(false);
-    }, 500);
-  }, []);
+  const handleApprove = (id: string) => handleAction(id, 'approve');
+  const handleReject = (id: string) => handleAction(id, 'reject');
+  const handleRequestChanges = (id: string) => handleAction(id, 'request_changes');
 
-  const handleRequestChanges = useCallback((id: string) => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      setReviews((prev) =>
-        prev.map((r) =>
-          r.id === id ? { ...r, status: 'escalated', reviewedAt: new Date().toISOString() } : r
-        )
-      );
-      setIsProcessing(false);
-    }, 500);
-  }, []);
+  if (error) {
+    return (
+      <div className='p-12 text-center'>
+        <div className='inline-flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20'>
+          <AlertTriangle className='w-5 h-5' />
+          <span>Error loading reviews: {error.message}</span>
+        </div>
+        <button 
+          onClick={() => refetch()}
+          className='block mx-auto mt-4 text-[#58a6ff] hover:underline'
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
 
-  const stats = {
-    pending: reviews.filter((r) => r.status === 'pending').length,
-    approved: reviews.filter((r) => r.status === 'approved').length,
-    rejected: reviews.filter((r) => r.status === 'rejected').length,
-    escalated: reviews.filter((r) => r.status === 'escalated').length,
-    totalValue: reviews
-      .filter((r) => r.status === 'pending')
-      .reduce((sum, r) => sum + r.value, 0),
-  };
+  const pendingCount = reviews.filter((r) => r.status === 'pending').length;
+  const approvedCount = reviews.filter((r) => r.status === 'approved').length;
+  const rejectedCount = reviews.filter((r) => r.status === 'rejected').length;
+  const escalatedCount = reviews.filter((r) => r.status === 'escalated').length;
+  const totalValue = reviews
+    .filter((r) => r.status === 'pending')
+    .reduce((sum, r) => sum + r.value, 0);
 
   return (
     <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
@@ -378,38 +283,41 @@ export default function OwnerReviewsPage() {
         </div>
         
         <div className='flex items-center gap-3'>
-          <button className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#8b949e] rounded-lg text-sm hover:text-[#e6edf3] transition-colors'>
-            <Filter className='w-4 h-4' /> Filters
+          <button 
+            onClick={() => refetch()}
+            className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#8b949e] rounded-lg text-sm hover:text-[#e6edf3] transition-colors'
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> Refresh
           </button>
           
           <button className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#8b949e] rounded-lg text-sm hover:text-[#e6edf3] transition-colors'>
-            <MoreHorizontal className='w-4 h-4' /> Bulk Actions
+            <Filter className='w-4 h-4' /> Filters
           </button>
         </div>
       </header>
 
       {/* Stats */}
       <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
-        <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
+        <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 font-inter'>
           <span className='text-sm text-[#8b949e]'>Pending Review</span>
-          <div className='text-2xl font-bold text-[#e6edf3] mt-1'>{stats.pending}</div>
+          <div className='text-2xl font-bold text-[#e6edf3] mt-1'>{pendingCount}</div>
         </div>
         
-        <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
-          <span className='text-sm text-[#8b949e]'>Total Value in Progress</span>
+        <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 font-inter'>
+          <span className='text-sm text-[#8b949e] font-inter'>Total Value in Progress</span>
           <div className='text-2xl font-bold text-[#e6edf3] mt-1'>
-            ${(stats.totalValue / 1000).toFixed(1)}k
+            ${(totalValue / 1000).toFixed(1)}k
           </div>
         </div>
         
-        <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
+        <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 font-inter'>
           <span className='text-sm text-[#8b949e]'>Approved (30d)</span>
-          <div className='text-2xl font-bold text-[#3fb950] mt-1'>{stats.approved}</div>
+          <div className='text-2xl font-bold text-[#3fb950] mt-1'>{approvedCount}</div>
         </div>
         
-        <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
+        <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 font-inter'>
           <span className='text-sm text-[#8b949e]'>Escalated</span>
-          <div className='text-2xl font-bold text-[#58a6ff] mt-1'>{stats.escalated}</div>
+          <div className='text-2xl font-bold text-[#58a6ff] mt-1'>{escalatedCount}</div>
         </div>
       </div>
 
@@ -417,9 +325,9 @@ export default function OwnerReviewsPage() {
       <div className='flex items-center gap-2 border-b border-[#1c2128] pb-3'>
         {[
           { key: 'all', label: 'All', count: reviews.length },
-          { key: 'pending', label: 'Pending', count: stats.pending },
-          { key: 'approved', label: 'Approved', count: stats.approved },
-          { key: 'escalated', label: 'Escalated', count: stats.escalated },
+          { key: 'pending', label: 'Pending', count: pendingCount },
+          { key: 'approved', label: 'Approved', count: approvedCount },
+          { key: 'escalated', label: 'Escalated', count: escalatedCount },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -438,7 +346,12 @@ export default function OwnerReviewsPage() {
 
       {/* Review Queue */}
       <div className='space-y-3'>
-        {sortedReviews.length === 0 ? (
+        {isLoading && reviews.length === 0 ? (
+          <div className='flex flex-col items-center justify-center py-20 gap-4 text-[#8b949e]'>
+            <div className='w-8 h-8 border-2 border-[#58a6ff]/30 border-t-[#58a6ff] rounded-full animate-spin' />
+            <p>Loading review queue...</p>
+          </div>
+        ) : sortedReviews.length === 0 ? (
           <div className='text-center py-12 text-[#8b949e]'>
             <p>No reviews match this filter.</p>
           </div>
@@ -458,9 +371,9 @@ export default function OwnerReviewsPage() {
       {/* Processing Overlay */}
       {isProcessing && (
         <div className='fixed inset-0 bg-[#0d1117]/80 flex items-center justify-center z-50'>
-          <div className='flex items-center gap-3 text-[#e6edf3]'>
-            <div className='w-6 h-6 border-2 border-[#58a6ff]/30 border-t-[#58a6ff] rounded-full' />
-            Processing...
+          <div className='flex items-center gap-3 text-[#e6edf3] font-inter'>
+            <div className='w-6 h-6 border-2 border-[#58a6ff]/30 border-t-[#58a6ff] rounded-full animate-spin' />
+            Processing decision...
           </div>
         </div>
       )}

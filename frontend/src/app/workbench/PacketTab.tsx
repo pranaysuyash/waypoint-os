@@ -1,13 +1,19 @@
-"use client";
-
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { SlotValue, Ambiguity, PacketUnknown, PacketContradiction, ValidationReport } from "@/types/spine";
+import type { Trip } from "@/lib/api-client";
 import styles from "./workbench.module.css";
 
-export function PacketTab() {
+interface PacketTabProps {
+  trip?: Trip | null;
+}
+
+export function PacketTab({ trip }: PacketTabProps) {
   const { result_packet, result_validation, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
 
-  if (!result_packet) {
+  const activePacket = result_packet || trip?.packet;
+  const activeValidation = result_validation || (trip?.validation as ValidationReport | null);
+
+  if (!activePacket) {
     return (
       <div className={styles.emptyState}>
         <p>No booking request data. Process a trip from the "New Inquiry" section first.</p>
@@ -15,8 +21,8 @@ export function PacketTab() {
     );
   }
 
-  const bookingRequest = result_packet as Record<string, unknown>;
-  const validation = result_validation as ValidationReport | null;
+  const bookingRequest = activePacket as Record<string, unknown>;
+  const validation = activeValidation;
 
   // Extract summary data from facts
   const facts = (bookingRequest.facts || {}) as Record<string, SlotValue>;

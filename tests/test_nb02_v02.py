@@ -304,8 +304,8 @@ class TestDecisionResultStructure:
         assert isinstance(result.follow_up_questions, list)
         assert isinstance(result.branch_options, list)
         assert isinstance(result.rationale, dict)
-        assert isinstance(result.confidence_score, float)
-        assert 0.0 <= result.confidence_score <= 1.0
+        assert isinstance(result.confidence.overall, float)
+        assert 0.0 <= result.confidence.overall <= 1.0
         assert isinstance(result.risk_flags, list)
 
 

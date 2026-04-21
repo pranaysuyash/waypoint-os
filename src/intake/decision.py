@@ -19,6 +19,7 @@ from .packet_models import (
     AuthorityLevel,
 )
 from src.intake.config.agency_settings import AgencySettings
+from src.intake.telemetry import emit_ambiguity_synthesis
 
 # =============================================================================
 # HYBRID DECISION ENGINE INTEGRATION
@@ -209,6 +210,20 @@ class AmbiguityRef:
 
 
 @dataclass
+class ConfidenceScorecard:
+    """Structured confidence across three orthogonal axes."""
+    data_quality: float = 0.0          # Evidence density and extraction confidence
+    judgment_confidence: float = 0.0    # Rule-hit strength and LLM consistency
+    commercial_confidence: float = 0.0 # Budget alignment and feasibility
+    overall: float = 0.0               # Weighted average
+
+    def calculate_overall(self) -> float:
+        """Simple weighted average for backward compatibility."""
+        self.overall = (self.data_quality * 0.4) + (self.judgment_confidence * 0.4) + (self.commercial_confidence * 0.2)
+        return self.overall
+
+
+@dataclass
 class DecisionResult:
     """The complete output of the NB02 gap and decision pipeline."""
     packet_id: str
@@ -222,7 +237,7 @@ class DecisionResult:
     follow_up_questions: List[Dict[str, Any]] = field(default_factory=list)
     branch_options: List[Dict[str, Any]] = field(default_factory=list)
     rationale: Dict[str, Any] = field(default_factory=dict)
-    confidence_score: float = 0.0
+    confidence: ConfidenceScorecard = field(default_factory=ConfidenceScorecard)
     risk_flags: List[Dict[str, Any]] = field(default_factory=list)
     commercial_decision: str = "NONE"          # One of COMMERCIAL_DECISIONS
     intent_scores: Dict[str, float] = field(default_factory=dict)
@@ -1653,12 +1668,15 @@ def apply_operating_mode(
 # SECTION 10: CONFIDENCE SCORING
 # =============================================================================
 
-def calculate_confidence(packet: CanonicalPacket) -> float:
+def calculate_confidence(
+    packet: CanonicalPacket, 
+    feasibility: Optional[Dict[str, Any]] = None
+) -> ConfidenceScorecard:
     """
-    Authority-weighted confidence based on:
-    - Fact confidence (authority-weighted)
-    - Hypothesis confidence (discounted)
-    - Unknown penalties
+    Authority-weighted confidence across three layers:
+    - Data Quality: Fact density and authority weights
+    - Judgment: Hypothesis strength and rule applicability
+    - Commercial: Budget feasibility alignment
     """
     AUTHORITY_WEIGHTS = {
         "manual_override": 1.0,
@@ -1670,33 +1688,54 @@ def calculate_confidence(packet: CanonicalPacket) -> float:
         "unknown": 0.0,
     }
 
-    # Authority-weighted fact confidence
-    fact_weight = 0.0
+    # 1. Data Quality (Fact density and authority)
+    data_quality = 0.0
     fact_count = 0
     for slot in packet.facts.values():
         auth_weight = AUTHORITY_WEIGHTS.get(slot.authority_level, 0.0)
-        fact_weight += slot.confidence * auth_weight
+        data_quality += slot.confidence * auth_weight
         fact_count += 1
 
     if fact_count > 0:
-        fact_weight /= fact_count
+        data_quality /= fact_count
 
-    # Hypothesis confidence (discounted)
-    hypothesis_weight = 0.0
+    # Apply penalty for unknowns
+    unknown_penalty = len(packet.unknowns) * 0.1
+    data_quality = max(0.0, data_quality - unknown_penalty)
+
+    # 2. Judgment Confidence (Hypothesis strength)
+    judgment_confidence = 0.0
     hyp_count = 0
     for slot in packet.hypotheses.values():
-        hypothesis_weight += slot.confidence * 0.5
+        judgment_confidence += slot.confidence * 0.5
         hyp_count += 1
 
     if hyp_count > 0:
-        hypothesis_weight /= hyp_count
+        judgment_confidence /= hyp_count
+    else:
+        # If no hypotheses, and facts are high quality, judgment is stronger
+        judgment_confidence = data_quality
 
-    # Unknown penalty
-    unknown_penalty = len(packet.unknowns) * 0.1
+    # 3. Commercial Confidence (Feasibility alignment)
+    commercial_confidence = 0.0
+    if feasibility:
+        if feasibility.get("status") == "healthy":
+            commercial_confidence = 1.0
+        elif feasibility.get("status") == "borderline":
+            commercial_confidence = 0.6
+        else:
+            commercial_confidence = 0.2
+    else:
+        # Default if feasibility not provided
+        commercial_confidence = 0.5
 
-    # Combine
-    raw = fact_weight + (hypothesis_weight * 0.2) - unknown_penalty
-    return min(1.0, max(0.0, raw))
+    scorecard = ConfidenceScorecard(
+        data_quality=round(data_quality, 3),
+        judgment_confidence=round(judgment_confidence, 3),
+        commercial_confidence=round(commercial_confidence, 3),
+    )
+    scorecard.calculate_overall()
+    return scorecard
 
 
 # =============================================================================
@@ -1943,7 +1982,8 @@ def run_gap_and_decision(
             critical_contradictions.append({**c, "action": action, "type": ctype})
 
     # --- Phase 8: Confidence ---
-    confidence = calculate_confidence(packet)
+    confidence_scorecard = calculate_confidence(packet, feasibility=feasibility)
+    overall_confidence = confidence_scorecard.overall
 
     # --- Phase 9: Decision state machine ---
     follow_up_questions = []
@@ -2059,7 +2099,7 @@ def run_gap_and_decision(
                 decision_state = "ASK_FOLLOWUP"
             else:
                 # Confidence below threshold but no blockers
-                if confidence < 0.6:
+                if overall_confidence < 0.6:
                     decision_state = "PROCEED_INTERNAL_DRAFT"
                 else:
                     decision_state = "PROCEED_TRAVELER_SAFE"
@@ -2090,7 +2130,12 @@ def run_gap_and_decision(
         "hard_blockers": hard_blockers,
         "soft_blockers": soft_blockers,
         "contradictions": [c.get("field_name", "unknown") for c in contradictions],
-        "confidence": round(confidence, 3),
+        "confidence": round(overall_confidence, 3),
+        "confidence_scorecard": {
+            "data": confidence_scorecard.data_quality,
+            "judgment": confidence_scorecard.judgment_confidence,
+            "commercial": confidence_scorecard.commercial_confidence,
+        },
         "feasibility": feasibility["status"],
         "operating_mode": mode,
         "commercial_decision": commercial_decision,
@@ -2111,7 +2156,7 @@ def run_gap_and_decision(
         follow_up_questions=follow_up_questions,
         branch_options=branch_options,
         rationale=rationale,
-        confidence_score=round(confidence, 3),
+        confidence=confidence_scorecard,
         risk_flags=risk_flags,
         commercial_decision=commercial_decision,
         intent_scores=intent_scores,

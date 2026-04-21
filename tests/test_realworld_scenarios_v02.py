@@ -657,8 +657,8 @@ class TestInferredDestination:
         # All blockers filled by derived signal
         assert len(r.hard_blockers) == 0
         # But confidence is lower (derived signal has 0.7)
-        assert r.confidence_score < 0.85, \
-            f"Derived signal should give lower confidence, got {r.confidence_score}"
+        assert r.confidence.overall < 0.85, \
+            f"Derived signal should give lower confidence, got {r.confidence.overall}"
 
 
 # ===========================================================================

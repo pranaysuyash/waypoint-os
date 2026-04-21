@@ -42,8 +42,16 @@ It plans the next turn. That is all.
     "decision_state": str,             # ASK_FOLLOWUP | BRANCH_OPTIONS | PROCEED_INTERNAL_DRAFT | PROCEED_TRAVELER_SAFE | STOP_NEEDS_REVIEW
     "follow_up_questions": List[dict], # e.g. [{"field_name": "...", "question": "...", "priority": "critical", "can_infer": bool, "inference_confidence": float, "suggested_values": [...]}, ...]
     "branch_options": List[dict],      # e.g. [{"label": "Budget-tier options", "description": "...", "contradictions": [...]}]
-    "rationale": dict,                 # e.g. {"hard_blockers": [...], "confidence": 0.824, "reason": "..."}
-    "confidence_score": float          # 0.0 - 1.0
+    "rationale": {
+        "hard_blockers": List[str],
+        "confidence_scorecard": {
+            "data": float,
+            "judgment": float,
+            "commercial": float
+        },
+        "reason": str
+    },
+    "confidence": ConfidenceScorecard  # The structured scorecard (D1)
 }
 ```
 
@@ -373,6 +381,8 @@ The session strategy adjusts tone based on confidence score:
 | 0.6 - 0.8 | Confident | Proceed with draft, note remaining gaps |
 | 0.8 - 1.0 | Direct | Produce final output, no hedging |
 
+> **Note**: Confidence refers to `decision.confidence.overall`.
+
 ---
 
 ## Test Requirements
@@ -418,10 +428,9 @@ The session strategy adjusts tone based on confidence score:
 - Input: DecisionResult with 5 hard blockers (custom MVB)
 - Expected: Only first 3 questions in first turn
 
-### Test 10: Confidence → Tone scaling
-- Input: DecisionResult with confidence 0.2
+- Input: DecisionResult with confidence.overall 0.2
 - Expected: Cautious tone, uncertainty stated explicitly
-- Input: DecisionResult with confidence 0.9
+- Input: DecisionResult with confidence.overall 0.9
 - Expected: Direct tone, no hedging
 
 ---

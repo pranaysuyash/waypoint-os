@@ -44,6 +44,11 @@ from typing import Any, List, Optional
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
+# Add spine-api directory to Python path for local imports
+SPINE_API_DIR = Path(__file__).resolve().parent
+if str(SPINE_API_DIR) not in sys.path:
+    sys.path.insert(0, str(SPINE_API_DIR))
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -684,13 +689,15 @@ from src.analytics.metrics import (
     aggregate_insights,
     compute_pipeline_metrics,
     compute_team_metrics,
-    compute_bottlenecks
+    compute_bottlenecks,
+    compute_revenue_metrics
 )
 from src.analytics.models import (
     InsightsSummary,
     StageMetrics,
     TeamMemberMetrics,
-    BottleneckAnalysis
+    BottleneckAnalysis,
+    RevenueMetrics
 )
 
 @app.get("/analytics/summary", response_model=InsightsSummary)
@@ -716,6 +723,58 @@ def get_analytics_team(range: str = "30d"):
 def get_analytics_bottlenecks(range: str = "30d"):
     trips = TripStore.list_trips(limit=1000)
     return compute_bottlenecks(trips)
+
+
+@app.get("/analytics/revenue", response_model=RevenueMetrics)
+def get_analytics_revenue(range: str = "30d"):
+    trips = TripStore.list_trips(limit=1000)
+    return compute_revenue_metrics(trips)
+
+
+# =============================================================================
+# Review Management Endpoints (Wave 4)
+# =============================================================================
+
+from src.analytics.review import process_review_action, trip_to_review
+
+class ReviewActionRequest(BaseModel):
+    action: str
+    notes: str
+    reassign_to: Optional[str] = None
+
+
+@app.get("/analytics/reviews")
+def get_pending_reviews():
+    """List all trips currently flagged for owner review."""
+    trips = TripStore.list_trips(limit=1000)
+    # Filter for trips requiring review (per engine.py / review.py logic)
+    pending = [
+        trip_to_review(t) 
+        for t in trips 
+        if t.get("analytics", {}).get("requires_review") is True
+    ]
+    return {"items": pending, "total": len(pending)}
+
+
+@app.post("/trips/{trip_id}/review/action")
+def post_review_action(trip_id: str, request: ReviewActionRequest):
+    """Apply a review action (approve/reject/request_changes/escalate) to a trip."""
+    try:
+        updated_trip = process_review_action(
+            trip_id=trip_id,
+            action=request.action,
+            notes=request.notes,
+            user_id="owner",  # Hardcoded for now, should come from auth
+            reassign_to=request.reassign_to
+        )
+        return {"success": True, "trip": updated_trip}
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error("Review action failed: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error during review action")
 
 
 # =============================================================================

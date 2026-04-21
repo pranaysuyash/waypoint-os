@@ -411,7 +411,7 @@ def build_session_strategy(
     "Given the decision state and context, how should the next interaction be structured?"
     """
     # Determine tone from confidence, then apply agency overrides
-    tone = determine_tone(decision.confidence_score)
+    tone = determine_tone(decision.confidence.overall)
     if agency_settings and agency_settings.brand_tone:
         tone = agency_settings.brand_tone
     tonal_guardrails = get_tonal_guardrails(tone)
@@ -589,8 +589,8 @@ def _build_assumptions(
             assumptions.append(f"Assuming {amb.field_name} ambiguity ({amb.raw_value}) is acceptable for draft")
 
     # Document low-confidence signals
-    if decision.confidence_score < 0.6:
-        assumptions.append(f"Low confidence ({decision.confidence_score:.2f}) — draft requires review")
+    if decision.confidence.overall < 0.6:
+        assumptions.append(f"Low confidence ({decision.confidence.overall:.2f}) — draft requires review")
 
     return assumptions
 
@@ -713,7 +713,7 @@ def _build_internal_system_context(
         "=" * 40,
         f"Decision State: {decision.decision_state}",
         f"Operating Mode: {decision.operating_mode}",
-        f"Confidence: {decision.confidence_score:.2f}",
+        f"Confidence: {decision.confidence.overall:.2f}",
         "",
         "Tonal Guardrails:",
     ]
@@ -781,7 +781,7 @@ def _build_internal_notes(
         "INTERNAL NOTES (AGENT-ONLY)",
         "=" * 40,
         f"Decision State: {decision.decision_state}",
-        f"Confidence: {decision.confidence_score:.2f}",
+        f"Confidence: {decision.confidence.overall:.2f}",
         f"Hard Blockers: {decision.hard_blockers}",
         f"Soft Blockers: {decision.soft_blockers}",
     ]

@@ -9,6 +9,15 @@ _DATA_ROOT = os.path.join(
 )
 
 @dataclass
+class AgencyAutonomyPolicy:
+    """Policy-as-config for AI autonomy gates."""
+    min_proceed_confidence: float = 0.8
+    min_draft_confidence: float = 0.5
+    require_review_on_infeasible_budget: bool = True
+    auto_escalate_high_risk: bool = True
+
+
+@dataclass
 class AgencySettings:
     """Configuration set for an agency."""
     agency_id: str
@@ -19,6 +28,7 @@ class AgencySettings:
     operating_days: List[str] = field(default_factory=lambda: ["mon", "tue", "wed", "thu", "fri", "sat"])
     preferred_channels: List[str] = field(default_factory=lambda: ["whatsapp", "email"])
     brand_tone: str = "professional"  # cautious | measured | confident | direct | professional
+    autonomy: AgencyAutonomyPolicy = field(default_factory=AgencyAutonomyPolicy)
 
     @classmethod
     def from_dict(cls, data: dict) -> "AgencySettings":

@@ -68,11 +68,23 @@ export interface FollowUpQuestion {
   suggested_values: unknown[];
 }
 
+export interface ConfidenceScorecard {
+  data_quality: number;
+  judgment_confidence: number;
+  commercial_confidence: number;
+  overall: number;
+}
+
 export interface Rationale {
   hard_blockers: string[];
   soft_blockers: string[];
   contradictions: string[];
   confidence: number;
+  confidence_scorecard: {
+    data: number;
+    judgment: number;
+    commercial: number;
+  };
   feasibility: string;
 }
 
@@ -84,7 +96,7 @@ export interface DecisionOutput {
   risk_flags: string[];
   follow_up_questions: FollowUpQuestion[];
   rationale: Rationale;
-  confidence_score: number;
+  confidence: ConfidenceScorecard;
   branch_options: string[];
   commercial_decision: string;
   budget_breakdown: BudgetBreakdownResult | null;
@@ -108,6 +120,7 @@ export interface SlotValue {
   authority_level: string;
   extraction_mode: string;
   evidence_refs?: Array<{ envelope_id: string; excerpt: string }>;
+  derived_from: string[];
 }
 
 export interface Ambiguity {

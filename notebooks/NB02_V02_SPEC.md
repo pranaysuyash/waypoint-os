@@ -66,13 +66,17 @@ class DecisionResult:
     follow_up_questions: List[dict]              # Ordered questions
     branch_options: List[dict]                   # Alternative paths
     rationale: dict                              # Why this decision
-    confidence_score: float                      # 0.0–1.0
+    confidence: ConfidenceScorecard               # Multi-axis scorecard (D1)
     risk_flags: List[dict]                       # Computed risks (suitability, documents, etc.)
 ```
 
-### New: AmbiguityRef
+@dataclass
+class ConfidenceScorecard:
+    data_quality: float          # [0.0-1.0] Field presence + authority check
+    judgment_confidence: float   # [0.0-1.0] Contradiction + ambiguity severity
+    commercial_confidence: float # [0.0-1.0] Budget feasibility check
+    overall: float               # Weighted average for gating
 
-```python
 @dataclass
 class AmbiguityRef:
     field_name: str

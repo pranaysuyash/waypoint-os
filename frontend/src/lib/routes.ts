@@ -28,42 +28,9 @@ export type WorkspaceStage =
 /** Workbench tab identifiers (matches tab search-param values in /workbench). */
 export type WorkbenchTab = 'intake' | 'packet' | 'decision' | 'strategy' | 'safety';
 
-/**
- * Maps workspace stage → nearest workbench tab equivalent.
- * Used by the compat-redirect layer during Wave 1L.
- * 'output' maps to 'strategy' (traveller-safe bundle lives there pre-Wave 3).
- */
-export const WORKSPACE_TO_WORKBENCH_TAB: Record<WorkspaceStage, WorkbenchTab> = {
-  intake: 'intake',
-  packet: 'packet',
-  decision: 'decision',
-  strategy: 'strategy',
-  output: 'strategy',   // closest pre-Wave-3 equivalent
-  safety: 'safety',
-};
-
-/**
- * Canonical trip URL.
- * Always use this — never write /workspace/${id}/stage inline.
- */
 export function getTripRoute(
   tripId: string,
   stage: WorkspaceStage = 'intake',
 ): string {
   return `/workspace/${tripId}/${stage}`;
-}
-
-/**
- * Workbench compat URL for the migration redirect layer.
- * Used internally by workspace stage pages during Wave 1L.
- * Do not call this from UI code — call getTripRoute() instead.
- *
- * @internal Remove when Wave 2+3 workspace pages reach parity.
- */
-export function _getWorkbenchCompatRoute(
-  tripId: string,
-  stage: WorkspaceStage = 'intake',
-): string {
-  const tab = WORKSPACE_TO_WORKBENCH_TAB[stage];
-  return `/workbench?trip=${tripId}&tab=${tab}`;
 }

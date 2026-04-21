@@ -10,7 +10,7 @@ import { useTrip } from '@/hooks/useTrips';
 import { useWorkbenchStore } from '@/stores/workbench';
 import { useSpineRun } from '@/hooks/useSpineRun';
 import { useUpdateTrip } from '@/hooks/useTrips';
-import type { SpineRunRequest } from '@/types/spine';
+import type { SpineRunRequest, SpineStage, OperatingMode } from '@/types/spine';
 import type { SafetyResult } from '@/types/spine';
 import type { Trip } from '@/lib/api-client';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -63,26 +63,50 @@ function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
     if (!store.result_safety && trip.safety) store.setResultSafety(trip.safety as SafetyResult | null);
     if (!store.input_raw_note && trip.customerMessage) store.setInputRawNote(trip.customerMessage);
     if (!store.input_owner_note && trip.agentNotes) store.setInputOwnerNote(trip.agentNotes);
-  }, [trip, store]);
+  }, [trip, store.input_raw_note, store.input_owner_note, store.setInputRawNote, store.setInputOwnerNote, store.setResultPacket, store.setResultValidation, store.setResultDecision, store.setResultStrategy, store.setResultInternalBundle, store.setResultTravelerBundle, store.setResultSafety, store.result_packet, store.result_validation, store.result_decision, store.result_strategy, store.result_internal_bundle, store.result_traveler_bundle, store.result_safety]);
 }
 
 function WorkbenchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const tripId = searchParams.get('trip');
+  const stageParam = searchParams.get('stage') as SpineStage | null;
+  const modeParam = searchParams.get('mode') as OperatingMode | null;
+  const scenarioParam = searchParams.get('scenario');
+
+  const currentStage = stageParam || 'discovery';
+  const currentMode = modeParam || 'normal_intake';
+  const currentScenario = scenarioParam || '';
+
   const { data: trip, isLoading: tripLoading, error: tripError } = useTrip(tripId);
   useHydrateStoreFromTrip(trip);
+
   const tabParam = searchParams.get('tab') as WorkspaceTabId | null;
   const activeTab =
     tabParam && workspaceTabs.some((t) => t.id === tabParam)
       ? tabParam
       : 'intake';
 
+  const store = useWorkbenchStore();
+
+  // Invalidation logic: clear results if config changes
+  const prevConfigRef = useRef({ stage: currentStage, mode: currentMode, scenario: currentScenario });
+  useEffect(() => {
+    if (
+      prevConfigRef.current.stage !== currentStage ||
+      prevConfigRef.current.mode !== currentMode ||
+      prevConfigRef.current.scenario !== currentScenario
+    ) {
+      store.clearResults();
+      prevConfigRef.current = { stage: currentStage, mode: currentMode, scenario: currentScenario };
+    }
+  }, [currentStage, currentMode, currentScenario, store.clearResults]);
+
   const handleTabChange = useCallback(
     (tab: WorkspaceTabId) => {
       const params = new URLSearchParams(searchParams.toString());
       params.set('tab', tab);
-      router.push(`?${params.toString()}`, { scroll: false });
+      router.replace(`?${params.toString()}`, { scroll: false });
     },
     [searchParams, router]
   );
@@ -109,10 +133,10 @@ function WorkbenchContent() {
         owner_note: store.input_owner_note || null,
         structured_json: store.input_structured_json ? JSON.parse(store.input_structured_json) : null,
         itinerary_text: store.input_itinerary_text || null,
-        stage: store.stage,
-        operating_mode: store.operating_mode,
+        stage: currentStage,
+        operating_mode: currentMode,
         strict_leakage: store.strict_leakage,
-        scenario_id: store.scenario_id || null,
+        scenario_id: currentScenario || null,
       };
 
       const result = await executeSpineRun(request);
@@ -137,22 +161,9 @@ function WorkbenchContent() {
   }, [store, executeSpineRun]);
 
   const handleReset = useCallback(() => {
-    store.setInputRawNote('');
-    store.setInputOwnerNote('');
-    store.setInputStructuredJson('');
-    store.setInputItineraryText('');
-    store.setResultPacket(null);
-    store.setResultValidation(null);
-    store.setResultDecision(null);
-    store.setResultStrategy(null);
-    store.setResultInternalBundle(null);
-    store.setResultTravelerBundle(null);
-    store.setResultSafety(null);
-    store.setResultRunTs(null);
-    setRunError(null);
-    setRunSuccess(false);
+    store.resetAll();
     resetSpine();
-  }, [store, resetSpine]);
+  }, [store.resetAll, resetSpine]);
 
   const handleSave = useCallback(async () => {
     if (!tripId) return;
@@ -309,10 +320,10 @@ function WorkbenchContent() {
           <div className='p-6'>
             <Suspense fallback={<InlineLoading message='Loading tab...' />}>
               {activeTab === 'intake' && <IntakeTab trip={trip} />}
-              {activeTab === 'packet' && <PacketTab />}
-              {activeTab === 'decision' && <DecisionTab />}
-              {activeTab === 'strategy' && <StrategyTab />}
-              {activeTab === 'safety' && <SafetyTab />}
+              {activeTab === 'packet' && <PacketTab trip={trip} />}
+              {activeTab === 'decision' && <DecisionTab trip={trip} />}
+              {activeTab === 'strategy' && <StrategyTab trip={trip} />}
+              {activeTab === 'safety' && <SafetyTab trip={trip} />}
             </Suspense>
           </div>
         </div>

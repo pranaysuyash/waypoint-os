@@ -6,6 +6,7 @@
  */
 
 import { SpineRunRequest, SpineRunResponse } from "@/types/spine";
+import type { ReviewStatus } from "@/types/governance";
 
 // ============================================================================
 // TYPES
@@ -230,6 +231,15 @@ export interface Trip {
   // Input fields (returned by mock API)
   customerMessage?: string;
   agentNotes?: string;
+  // Review metadata (Wave 8)
+  review_status?: ReviewStatus;
+  review_metadata?: {
+    reviewedAt?: string;
+    reviewedBy?: string;
+    notes?: string;
+    assignee?: string;
+    previousAssignee?: string;
+  };
 }
 
 export interface TripStats {

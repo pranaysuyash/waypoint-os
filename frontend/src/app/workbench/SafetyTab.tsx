@@ -1,10 +1,13 @@
-"use client";
-
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { SafetyResult, PromptBundle } from "@/types/spine";
+import type { Trip } from "@/lib/api-client";
 import styles from "./workbench.module.css";
 
-export function SafetyTab() {
+interface SafetyTabProps {
+  trip?: Trip | null;
+}
+
+export function SafetyTab({ trip }: SafetyTabProps) {
   const {
     result_safety,
     result_traveler_bundle,
@@ -13,7 +16,11 @@ export function SafetyTab() {
     setDebugRawJson,
   } = useWorkbenchStore();
 
-  if (!result_safety) {
+  const activeSafety = result_safety || (trip?.safety as SafetyResult | null);
+  const activeTravelerBundle = result_traveler_bundle || (trip?.traveler_bundle as PromptBundle | null);
+  const activeInternalBundle = result_internal_bundle || (trip?.internal_bundle as PromptBundle | null);
+
+  if (!activeSafety) {
     return (
       <div className={styles.emptyState}>
         <p>No review data. Process a trip from the "New Inquiry" section first.</p>
@@ -21,9 +28,9 @@ export function SafetyTab() {
     );
   }
 
-  const safety = result_safety as SafetyResult;
-  const travelerBundle = result_traveler_bundle as PromptBundle | null;
-  const internalBundle = result_internal_bundle as PromptBundle | null;
+  const safety = activeSafety;
+  const travelerBundle = activeTravelerBundle;
+  const internalBundle = activeInternalBundle;
 
   const strippedFields = safety.leakage_errors || [];
   const isStrictFail = safety.strict_leakage && !safety.leakage_passed;
@@ -152,9 +159,9 @@ export function SafetyTab() {
       {debug_raw_json && (
         <div className={styles.jsonOutput}>
           <pre>{JSON.stringify({
-            safety: result_safety,
-            traveler_bundle: result_traveler_bundle,
-            internal_bundle: result_internal_bundle,
+            safety: activeSafety,
+            traveler_bundle: activeTravelerBundle,
+            internal_bundle: activeInternalBundle,
           }, null, 2)}</pre>
         </div>
       )}

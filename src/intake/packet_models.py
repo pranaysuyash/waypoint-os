@@ -96,6 +96,7 @@ class Slot:
     authority_level: str = AuthorityLevel.UNKNOWN
     extraction_mode: str = "unknown"
     evidence_refs: List[EvidenceRef] = field(default_factory=list)
+    derived_from: List[str] = field(default_factory=list)  # Lineage: IDs of upstream slots/envelopes
     updated_at: str = field(default_factory=lambda: datetime.now().isoformat())
     notes: Optional[str] = None
     # Maturity tag for derived signals: stub | heuristic | verified

@@ -5,12 +5,22 @@ import random
 from src.analytics.models import (
     InsightsSummary,
     PipelineVelocity,
-    PipelineStage,  # Will fake this for logic output
     StageMetrics,
     TeamMemberMetrics,
     BottleneckAnalysis,
-    BottleneckCause
+    BottleneckCause,
+    RevenueMetrics,
+    MonthlyRevenue
 )
+
+STAGE_CONVERSION_PROBABILITIES = {
+    "discovery": 0.10,
+    "packet": 0.25,
+    "decision": 0.50,
+    "strategy": 0.75,
+    "output": 0.90,
+    "safety": 0.95,
+}
 
 def aggregate_insights(trips: list, days: int = 30) -> InsightsSummary:
     # Just basic counts for now
@@ -114,3 +124,101 @@ def compute_bottlenecks(trips: list, days: int = 30) -> List[BottleneckAnalysis]
             ]
         )
     ]
+
+def compute_revenue_metrics(trips: list, days: int = 30) -> RevenueMetrics:
+    """
+    Calculate revenue and forecasting metrics from trip data.
+    
+    Booked Revenue = Σ(budget where status == booked)
+    Projected Revenue = Σ(budget * stage_probability)
+    Total Pipeline Value = Σ(budget for non-booked active trips)
+    Near Close Revenue = Σ(budget for output/safety stages)
+    """
+    now = datetime.now(timezone.utc)
+    
+    booked_revenue = 0.0
+    projected_revenue = 0.0
+    pipeline_value = 0.0
+    near_close_revenue = 0.0
+    total_value = 0.0
+    trip_count = 0
+    
+    # Monthly aggregation
+    monthly_data = {} # "YYYY-MM" -> {"revenue": 0.0, "inquiries": 0, "booked": 0}
+    
+    # Sort trips by date for stable grouping
+    sorted_trips = sorted(
+        trips, 
+        key=lambda t: t.get("created_at", ""), 
+        reverse=False
+    )
+    
+    for trip in sorted_trips:
+        created_at_str = trip.get("created_at")
+        if not created_at_str:
+            continue
+            
+        try:
+            created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+            
+        month_key = created_at.strftime("%Y-%m")
+        if month_key not in monthly_data:
+            monthly_data[month_key] = {"revenue": 0.0, "inquiries": 0, "booked": 0}
+        
+        monthly_data[month_key]["inquiries"] += 1
+        
+        # Determine value
+        packet = trip.get("extracted", {}) or trip.get("packet", {}) or {}
+        budget = packet.get("budget", {}) or {}
+        # Some sample data has "value" as a string or nested. Normalise to float.
+        raw_val = budget.get("value", 0)
+        try:
+            val = float(raw_val) if raw_val is not None else 0.0
+        except (ValueError, TypeError):
+            val = 0.0
+            
+        status = trip.get("status", "new")
+        stage = trip.get("meta", {}).get("stage", "discovery")
+        
+        if status == "booked":
+            booked_revenue += val
+            monthly_data[month_key]["revenue"] += val
+            monthly_data[month_key]["booked"] += 1
+            projected_revenue += val # 100% probability
+        else:
+            # Active pipeline
+            total_value += val
+            trip_count += 1
+            pipeline_value += val
+            
+            # Weighted projection
+            prob = STAGE_CONVERSION_PROBABILITIES.get(stage, 0.0)
+            projected_revenue += val * prob
+            
+            # Near close revenue (output or safety)
+            if stage in ("output", "safety"):
+                near_close_revenue += val
+                
+    # Format monthly results
+    revenue_by_month = [
+        MonthlyRevenue(
+            month=m,
+            revenue=data["revenue"],
+            inquiries=data["inquiries"],
+            booked=data["booked"]
+        ) for m, data in sorted(monthly_data.items())
+    ]
+    
+    avg_val = (total_value / trip_count) if trip_count > 0 else 0.0
+    
+    return RevenueMetrics(
+        period=f"{days}d",
+        totalPipelineValue=round(pipeline_value, 2),
+        bookedRevenue=round(booked_revenue, 2),
+        projectedRevenue=round(projected_revenue, 2),
+        nearCloseRevenue=round(near_close_revenue, 2),
+        avgTripValue=round(avg_val, 2),
+        revenueByMonth=revenue_by_month
+    )

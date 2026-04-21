@@ -143,6 +143,7 @@ For each recommendation, document:
 
 Before removing **any** code (function, type, component, export), apply this workflow. No exceptions.
 
+0. **Re-read instruction files** — Before starting any removal analysis, re-read `AGENTS.md` (Code Preservation section), `.agent/AGENT_KICKOFF_PROMPT.txt`, and `.agent/SESSION_CONTEXT.md` to check for project-specific constraints or guardrails that may apply to this removal. If sources conflict, surface the conflict and ask before proceeding.
 1. **Identify the candidate for removal** and its supposed superset/replacement.
 2. **Field-by-field comparison**: Compare all features, exports, props, type fields, and behavioral contracts. If the candidate has ANY feature the replacement lacks, the replacement is NOT a superset — stop and merge the missing features first.
 3. **Call-site audit**: Grep for all references to the candidate. If any call site relies on a feature the replacement doesn't provide, the candidate is NOT redundant — stop.
@@ -154,6 +155,7 @@ Before removing **any** code (function, type, component, export), apply this wor
    Call sites: <N> — all migrated
    ```
 6. **Post-removal verification**: Run build + tests immediately after removal. If anything breaks, revert and re-analyze.
+7. **Ask if unclear** — If at any step the deletion is unclear (e.g., the candidate has unique items, the replacement is not a strict superset, or intent is ambiguous), STOP and ask the user before proceeding. Do not assume.
 
 ### Issue Review Naming
 - When an issue is identified and explicitly requires a review note, name the document:

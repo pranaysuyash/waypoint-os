@@ -11,24 +11,13 @@ import {
   ChevronDown,
   Download,
 } from 'lucide-react';
-import { useInsightsSummary, usePipelineMetrics, useTeamMetrics, useBottleneckAnalysis } from '@/hooks/useGovernance';
+import { useInsightsSummary, usePipelineMetrics, useTeamMetrics, useBottleneckAnalysis, useRevenueMetrics } from '@/hooks/useGovernance';
 import type { TimeRange, StageMetrics, TeamMemberMetrics, BottleneckAnalysis } from '@/types/governance';
 
 const VALID_TIME_RANGES = new Set<TimeRange>(['7d', '30d', '90d', 'mtd', 'ytd', 'custom']);
 import { RevenueChart, PipelineFunnel, TeamPerformanceChart } from '@/components/visual';
 
-// ============================================================================
-// MOCK DATA
-// ============================================================================
-
-// MOCK REVENUE kept for Wave 3 as per plan
-const MOCK_REVENUE_BY_MONTH = [
-  { month: 'Jan', inquiries: 12, booked: 8, revenue: 42000 },
-  { month: 'Feb', inquiries: 15, booked: 10, revenue: 58000 },
-  { month: 'Mar', inquiries: 18, booked: 12, revenue: 72000 },
-  { month: 'Apr', inquiries: 14, booked: 9, revenue: 51000 },
-  { month: 'May', inquiries: 20, booked: 14, revenue: 89000 },
-];
+// MOCK DATA REMOVED - Using live telemetry
 
 // ============================================================================
 // COMPONENTS
@@ -202,9 +191,10 @@ export default function OwnerInsightsPage() {
   const { data: pipelineMetrics, isLoading: isPipelineLoading, error: pipelineError } = usePipelineMetrics(timeRange);
   const { data: teamMetrics, isLoading: isTeamLoading, error: teamError } = useTeamMetrics(timeRange);
   const { data: bottlenecks, isLoading: isBottlenecksLoading, error: bottlenecksError } = useBottleneckAnalysis(timeRange);
+  const { data: revenueData, isLoading: isRevenueLoading, error: revenueError } = useRevenueMetrics(timeRange);
 
-  const isLoading = isSummaryLoading || isPipelineLoading || isTeamLoading || isBottlenecksLoading;
-  const hasError = summaryError || pipelineError || teamError || bottlenecksError;
+  const isLoading = isSummaryLoading || isPipelineLoading || isTeamLoading || isBottlenecksLoading || isRevenueLoading;
+  const hasError = summaryError || pipelineError || teamError || bottlenecksError || revenueError;
 
   const maxStageTime = useMemo(() => 
     pipelineMetrics.length > 0 ? Math.max(...pipelineMetrics.map(m => m.avgTimeInStage)) : 100
@@ -265,37 +255,45 @@ export default function OwnerInsightsPage() {
         <>
 
       {/* Summary Stats */}
-      <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
+      <div className='grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3'>
         <StatCard
           title='Total Inquiries'
           value={summary.totalInquiries.toString()}
-          subtext='+12% vs last period'
+          subtext={`${summary.conversionRate}% conversion`}
           trend='up'
           icon={TrendingUp}
         />
         
         <StatCard
-          title='Conversion Rate'
-          value={`${summary.conversionRate}%`}
-          subtext='31 of 47 inquiries'
+          title='Booked Revenue'
+          value={`$${(revenueData?.bookedRevenue || 0).toLocaleString()}`}
+          subtext='Confirmed revenue'
           trend='up'
-          icon={Users}
+          icon={CheckCircle}
         />
         
         <StatCard
-          title='Avg Response Time'
-          value={`${summary.avgResponseTime}h`}
-          subtext='Target: 4h'
+          title='Pipeline Value'
+          value={`$${((revenueData?.totalPipelineValue || 0) / 1000).toFixed(0)}k`}
+          subtext='In progress'
+          trend='neutral'
+          icon={DollarSign}
+        />
+        
+        <StatCard
+          title='Projected'
+          value={`$${((revenueData?.projectedRevenue || 0) / 1000).toFixed(0)}k`}
+          subtext='Weighted probability'
+          trend='up'
+          icon={TrendingUp}
+        />
+
+        <StatCard
+          title='Near Close'
+          value={`$${((revenueData?.nearCloseRevenue || 0) / 1000).toFixed(0)}k`}
+          subtext='Safety/Output stage'
           trend='neutral'
           icon={Clock}
-        />
-        
-        <StatCard
-          title='Total Value in Progress'
-          value={`$${(summary.pipelineValue / 1000).toFixed(0)}k`}
-          subtext='Across 33 active trips'
-          trend='up'
-          icon={DollarSign}
         />
       </div>
 
@@ -378,7 +376,7 @@ export default function OwnerInsightsPage() {
 
         {/* Revenue Chart */}
         <div className='lg:col-span-2'>
-          <RevenueChart data={MOCK_REVENUE_BY_MONTH} />
+          <RevenueChart data={revenueData?.revenueByMonth || []} />
         </div>
 
         {/* Team Performance Chart */}

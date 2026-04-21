@@ -1,6 +1,6 @@
 import pytest
 from src.intake.config.agency_settings import AgencySettings
-from src.intake.decision import check_budget_feasibility, DecisionResult
+from src.intake.decision import check_budget_feasibility, DecisionResult, ConfidenceScorecard
 from src.intake.strategy import build_session_strategy
 from src.intake.packet_models import CanonicalPacket, Slot, AuthorityLevel
 
@@ -82,9 +82,8 @@ def test_settings_affect_brand_tone():
         current_stage="discovery",
         operating_mode="normal_intake",
         decision_state="PROCEED_INTERNAL_DRAFT",
-        confidence_score=0.9
-    )
-    
+        confidence=ConfidenceScorecard(overall=0.9, data_quality=0.9, judgment_confidence=0.9, commercial_confidence=0.9)
+    )    
     settings_direct = AgencySettings(agency_id="direct", brand_tone="direct")
     strategy_direct = build_session_strategy(decision, agency_settings=settings_direct)
     assert strategy_direct.suggested_tone == "direct"

@@ -11,6 +11,7 @@ import {
   Settings,
   Plane,
 } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import type { Trip } from '@/lib/api-client';
 import { useWorkbenchStore } from '@/stores/workbench';
 import type { SpineStage, OperatingMode } from '@/types/spine';
@@ -40,7 +41,18 @@ interface IntakeTabProps {
 }
 
 export function IntakeTab({ trip }: IntakeTabProps) {
-  const { input_raw_note, input_owner_note, setInputRawNote, setInputOwnerNote, stage, setStage, operating_mode, setOperatingMode } = useWorkbenchStore();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { input_raw_note, input_owner_note, setInputRawNote, setInputOwnerNote } = useWorkbenchStore();
+
+  const stage = (searchParams.get('stage') as SpineStage) || 'discovery';
+  const operatingMode = (searchParams.get('mode') as OperatingMode) || 'normal_intake';
+
+  const updateUrlParam = (key: string, value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set(key, value);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  };
 
   const origin = trip?.origin || '—';
   const budget = trip?.budget || '—';
@@ -147,7 +159,7 @@ export function IntakeTab({ trip }: IntakeTabProps) {
                 value={stage}
                 onChange={(e) => {
                   const v = e.target.value;
-                  if (VALID_STAGES.has(v as SpineStage)) setStage(v as SpineStage);
+                  if (VALID_STAGES.has(v as SpineStage)) updateUrlParam('stage', v);
                 }}
                 className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] appearance-none'
               >
@@ -166,10 +178,10 @@ export function IntakeTab({ trip }: IntakeTabProps) {
             </label>
             <div className='relative'>
               <select
-                value={operating_mode}
+                value={operatingMode}
                 onChange={(e) => {
                   const v = e.target.value;
-                  if (VALID_MODES.has(v as OperatingMode)) setOperatingMode(v as OperatingMode);
+                  if (VALID_MODES.has(v as OperatingMode)) updateUrlParam('mode', v);
                 }}
                 className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] appearance-none'
               >

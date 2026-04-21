@@ -632,8 +632,8 @@ class TestConfidenceScoring:
         r = run_gap_and_decision(pkt)
 
         # Default confidence should be reasonably high
-        assert r.confidence_score > 0.7, \
-            f"All facts should give high confidence, got {r.confidence_score}"
+        assert r.confidence.overall > 0.7, \
+            f"All facts should give high confidence, got {r.confidence.overall}"
 
     def test_low_confidence_hypotheses_only(self):
         """Hypotheses only → low overall confidence."""
@@ -664,8 +664,8 @@ class TestConfidenceScoring:
         r = run_gap_and_decision(pkt)
 
         # Hypotheses should give lower confidence
-        assert r.confidence_score < 0.7, \
-            f"Hypotheses only should give lower confidence, got {r.confidence_score}"
+        assert r.confidence.overall < 0.7, \
+            f"Hypotheses only should give lower confidence, got {r.confidence.overall}"
 
     def test_confidence_affects_decision(self):
         """Confidence affects TRAVELER_SAFE vs INTERNAL_DRAFT decision."""
@@ -684,7 +684,7 @@ class TestConfidenceScoring:
         r_low = run_gap_and_decision(pkt_low)
 
         # High confidence might get TRAVELER_SAFE, low gets INTERNAL_DRAFT
-        assert r_high.confidence_score > r_low.confidence_score, \
+        assert r_high.confidence.overall > r_low.confidence.overall, \
             "High confidence packet should have higher score"
 
 

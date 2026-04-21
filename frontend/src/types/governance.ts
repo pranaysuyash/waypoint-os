@@ -12,7 +12,7 @@
 // REVIEWS & APPROVALS
 // ============================================================================
 
-export type ReviewStatus = 'pending' | 'approved' | 'rejected' | 'escalated';
+export type ReviewStatus = 'pending' | 'approved' | 'rejected' | 'escalated' | 'revision_needed';
 
 export interface TripReview {
   id: string;
@@ -128,6 +128,7 @@ export interface RevenueMetrics {
   totalPipelineValue: number;
   bookedRevenue: number;
   projectedRevenue: number;
+  nearCloseRevenue: number;
   avgTripValue: number;
   revenueByMonth: MonthlyRevenue[];
 }

@@ -54,6 +54,14 @@ export function OutputPanel({ tripId }: OutputPanelProps) {
                     </ul>
                   </div>
                 )}
+                {internalBundle.internal_notes && (
+                  <div style={{ marginTop: "12px" }}>
+                    <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Internal Notes</strong>
+                    <p style={{ fontSize: "13px", whiteSpace: "pre-wrap", marginTop: "4px" }}>
+                      {internalBundle.internal_notes}
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               <p style={{ color: "var(--color-text-muted)" }}>No agent notes</p>

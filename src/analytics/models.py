@@ -2,6 +2,24 @@ from typing import List, Dict, Optional, Literal
 from pydantic import BaseModel, Field
 
 
+class MonthlyRevenue(BaseModel):
+    month: str
+    revenue: float = Field(default=0.0)
+    inquiries: int = Field(default=0)
+    booked: int = Field(default=0)
+
+
+class RevenueMetrics(BaseModel):
+    period: str = Field(default="30d")
+    totalPipelineValue: float = Field(default=0.0)
+    bookedRevenue: float = Field(default=0.0)
+    projectedRevenue: float = Field(default=0.0)
+    nearCloseRevenue: float = Field(default=0.0)
+    avgTripValue: float = Field(default=0.0)
+    revenueByMonth: List[MonthlyRevenue] = Field(default_factory=list)
+
+
+
 class PipelineVelocity(BaseModel):
     stage1To2: float = Field(default=0.0)
     stage2To3: float = Field(default=0.0)

@@ -28,6 +28,7 @@ from intake.packet_models import (
 from intake.extractors import ExtractionPipeline
 from intake.decision import (
     DecisionResult,
+    ConfidenceScorecard,
     run_gap_and_decision,
 )
 from intake.strategy import (
@@ -390,7 +391,7 @@ class TestInternalDraftAssumptions:
                 "confidence" in str(a).lower()
                 for a in strategy.assumptions
             )
-            assert has_soft_blocker_mention or has_low_confidence or decision.confidence_score < 0.8
+            assert has_soft_blocker_mention or has_low_confidence or decision.confidence.overall < 0.8
 
 
 # ===========================================================================
@@ -593,10 +594,10 @@ class TestToneScaling:
             current_stage="discovery",
             operating_mode="normal_intake",
             decision_state="ASK_FOLLOWUP",
-            confidence_score=0.2,
+            confidence=ConfidenceScorecard(overall=0.2, data_quality=0.2, judgment_confidence=0.2, commercial_confidence=0.2),
         )
 
-        tone = determine_tone(decision.confidence_score)
+        tone = determine_tone(decision.confidence.overall)
         assert tone == "cautious", f"0.2 confidence should be cautious, got {tone}"
 
         guardrails = get_tonal_guardrails(tone)
@@ -612,10 +613,10 @@ class TestToneScaling:
             current_stage="discovery",
             operating_mode="normal_intake",
             decision_state="PROCEED_TRAVELER_SAFE",
-            confidence_score=0.9,
+            confidence=ConfidenceScorecard(overall=0.9, data_quality=0.9, judgment_confidence=0.9, commercial_confidence=0.9),
         )
 
-        tone = determine_tone(decision.confidence_score)
+        tone = determine_tone(decision.confidence.overall)
         assert tone == "direct", f"0.9 confidence should be direct, got {tone}"
 
         guardrails = get_tonal_guardrails(tone)

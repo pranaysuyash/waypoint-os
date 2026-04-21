@@ -20,6 +20,12 @@ Ask only: **"Which layer owns this?"**
 | NB05  | Honest golden-path demos               |
 | NB06  | Honest shadow-mode replay              |
 
+## The Governing Principles
+
+### 1. Deterministic-First
+**Prefer rules over LLMs.**
+Always attempt to solve a judgment or extraction task with deterministic rules first. Use LLMs only when the answer requires world knowledge, cross-field semantic judgment, or complex intent classification. Every repeated LLM judgment should be considered a candidate for graduation into a deterministic rule (see `src/decision/hybrid_engine.py`).
+
 ## The Clean Cut
 
 Everything the travel-agency OS needs gets modeled **now**.
