@@ -6,7 +6,6 @@ import {
   Briefcase,
   ChevronDown,
   ChevronUp,
-  ChevronRight,
   Clock,
   Users,
   Calendar,
@@ -15,90 +14,30 @@ import {
   CheckSquare,
   Square,
   UserPlus,
-  MoreHorizontal,
-  Download,
-  Filter,
   Search,
   Flag,
   ArrowUpDown,
 } from 'lucide-react';
-import { useTrips } from '@/hooks/useTrips';
+import { useInboxTrips } from '@/hooks/useGovernance';
 import { getTripRoute } from '@/lib/routes';
-import { InlineLoading } from '@/components/ui/loading';
 import { InlineError } from '@/components/error-boundary';
-import type { TeamMember } from '@/types/governance';
+import type { InboxTrip, TripPriority } from '@/types/governance';
 
-// ============================================================================
-// MOCK TEAM DATA - Replace with real API
-// ============================================================================
-
-const TEAM_MEMBERS: TeamMember[] = [
-  { id: 'agent-001', name: 'Sarah Chen', email: 'sarah@agency.com', role: 'agent', isActive: true, joinedAt: '2026-01-15', capacity: 15, currentAssignments: 12 },
-  { id: 'agent-002', name: 'Mike Johnson', email: 'mike@agency.com', role: 'agent', isActive: true, joinedAt: '2026-02-01', capacity: 15, currentAssignments: 16 },
-  { id: 'agent-003', name: 'Alex Kim', email: 'alex@agency.com', role: 'agent', isActive: true, joinedAt: '2026-03-10', capacity: 10, currentAssignments: 8 },
-  { id: 'unassigned', name: 'Unassigned', email: '', role: 'agent', isActive: true, joinedAt: '', capacity: 0, currentAssignments: 3 },
-];
-
-// ============================================================================
-// TYPES
-// ============================================================================
-
-type StateKey = 'green' | 'amber' | 'red' | 'blue';
-type PriorityKey = 'low' | 'medium' | 'high' | 'critical';
+type PriorityKey = TripPriority;
 type SLAStatus = 'on_track' | 'at_risk' | 'breached';
-type SortKey = 'priority' | 'destination' | 'value' | 'party' | 'dates' | 'state' | 'age' | 'sla';
+type SortKey = 'priority' | 'destination' | 'value' | 'party' | 'dates' | 'sla';
 type SortDirection = 'asc' | 'desc';
-
-interface TripItem {
-  id: string;
-  destination: string;
-  type: string;
-  party: number;
-  dateWindow: string;
-  state: StateKey;
-  age: string;
-  action: string;
-  overdue?: boolean;
-  assignedTo?: string;
-  assignedToName?: string;
-  priority: PriorityKey;
-  slaStatus: SLAStatus;
-  daysInStage: number;
-  value?: number;
-}
 
 // ============================================================================
 // STATE CONFIGURATION
 // ============================================================================
 
-const STATE_META: Record<
-  StateKey,
-  { color: string; bg: string; border: string; label: string }
-> = {
-  green: {
-    color: '#3fb950',
-    bg: 'rgba(63,185,80,0.12)',
-    border: 'rgba(63,185,80,0.25)',
-    label: 'Ready',
-  },
-  amber: {
-    color: '#d29922',
-    bg: 'rgba(210,153,34,0.12)',
-    border: 'rgba(210,153,34,0.25)',
-    label: 'In Progress',
-  },
-  red: {
-    color: '#f85149',
-    bg: 'rgba(248,81,73,0.12)',
-    border: 'rgba(248,81,73,0.25)',
-    label: 'Needs Review',
-  },
-  blue: {
-    color: '#58a6ff',
-    bg: 'rgba(88,166,255,0.12)',
-    border: 'rgba(88,166,255,0.25)',
-    label: 'Awaiting Info',
-  },
+const STAGE_LABELS: Record<string, { color: string; bg: string; label: string }> = {
+  intake: { color: '#58a6ff', bg: 'rgba(88,166,255,0.12)', label: 'Intake' },
+  details: { color: '#d29922', bg: 'rgba(210,153,34,0.12)', label: 'Details' },
+  options: { color: '#58a6ff', bg: 'rgba(88,166,255,0.12)', label: 'Options' },
+  review: { color: '#f85149', bg: 'rgba(248,81,73,0.12)', label: 'Review' },
+  booking: { color: '#3fb950', bg: 'rgba(63,185,80,0.12)', label: 'Booking' },
 };
 
 const PRIORITY_META: Record<
@@ -117,8 +56,6 @@ const SORT_OPTIONS: Record<SortKey, { label: string; icon: React.ComponentType<{
   value: { label: 'Value', icon: Wallet },
   party: { label: 'Party Size', icon: Users },
   dates: { label: 'Dates', icon: Calendar },
-  state: { label: 'State', icon: CheckSquare },
-  age: { label: 'Age', icon: Clock },
   sla: { label: 'SLA Status', icon: AlertTriangle },
 };
 
@@ -165,12 +102,12 @@ const TripCard = memo(function TripCard({
   isSelected,
   onSelect,
 }: {
-  trip: TripItem;
+  trip: InboxTrip;
   isSelected: boolean;
   onSelect: (id: string, selected: boolean) => void;
 }) {
-  const meta = STATE_META[trip.state];
-  
+  const stageMeta = STAGE_LABELS[trip.stage] || STAGE_LABELS.intake;
+
   return (
     <div
       className='group relative rounded-xl border bg-[#0f1115] p-4 transition-all hover:border-[#30363d]'
@@ -198,40 +135,38 @@ const TripCard = memo(function TripCard({
             <span className='text-[14px] font-semibold text-[#e6edf3] truncate' title={trip.destination}>
               {trip.destination}
             </span>
-            <span className='text-xs text-[#8b949e]'>{trip.type}</span>
+            <span className='text-xs text-[#8b949e]'>{trip.tripType}</span>
           </div>
           <div className='flex items-center gap-1'>
             <PriorityBadge priority={trip.priority} />
             <span
               className='shrink-0 text-xs font-mono font-semibold px-2 py-0.5 rounded-md whitespace-nowrap'
-              style={{ color: meta.color, background: meta.bg }}
+              style={{ color: stageMeta.color, background: stageMeta.bg }}
             >
-              {meta.label}
+              {stageMeta.label}
             </span>
           </div>
         </div>
 
         <div className='flex items-center gap-4 text-xs text-[#8b949e] mb-2'>
           <span className='flex items-center gap-1'>
-            <Users className='h-3 w-3' aria-hidden='true' /> {trip.party} pax
+            <Users className='h-3 w-3' aria-hidden='true' /> {trip.partySize} pax
           </span>
           <span className='flex items-center gap-1'>
             <Calendar className='h-3 w-3' aria-hidden='true' /> {trip.dateWindow}
           </span>
           <span className='flex items-center gap-1 font-mono text-[#484f58]'>
-            <Clock className='h-3 w-3' aria-hidden='true' /> {trip.age}
+            <Clock className='h-3 w-3' aria-hidden='true' /> {trip.daysInCurrentStage}d
           </span>
-          {trip.value && (
-            <span className='font-mono text-[#58a6ff]'>
-              ${(trip.value / 1000).toFixed(1)}k
-            </span>
-          )}
+          <span className='font-mono text-[#58a6ff]'>
+            ${(trip.value / 1000).toFixed(1)}k
+          </span>
         </div>
 
         <div className='flex items-center justify-between'>
           <div className='flex items-center gap-2'>
             <Briefcase className='h-3 w-3 text-[#484f58]' aria-hidden='true' />
-            <span className='text-xs text-[#8b949e]'>{trip.action}</span>
+            <span className='text-xs text-[#8b949e]'>{trip.stage} stage · {trip.customerName}</span>
           </div>
           <div className='flex items-center gap-2'>
             {trip.assignedToName ? (
@@ -243,7 +178,7 @@ const TripCard = memo(function TripCard({
                 👤 Unassigned
               </span>
             )}
-            <SLABadge status={trip.slaStatus} daysInStage={trip.daysInStage} />
+            <SLABadge status={trip.slaStatus} daysInStage={trip.daysInCurrentStage} />
           </div>
         </div>
 
@@ -262,11 +197,13 @@ function BulkActionsToolbar({
   onClearSelection,
   onAssign,
   onExport,
+  agents,
 }: {
   selectedCount: number;
   onClearSelection: () => void;
-  onAssign: () => void;
+  onAssign: (agentId: string) => void;
   onExport: () => void;
+  agents: { id: string; name: string }[];
 }) {
   const [showAssignDropdown, setShowAssignDropdown] = useState(false);
 
@@ -296,24 +233,19 @@ function BulkActionsToolbar({
           
           {showAssignDropdown && (
             <div className='absolute top-full right-0 mt-1 w-48 bg-[#0f1115] border border-[#30363d] rounded-lg shadow-xl z-10'>
-              {TEAM_MEMBERS.filter(m => m.id !== 'unassigned').map((member) => (
+              {agents.map((agent) => (
                 <button
-                  key={member.id}
+                  key={agent.id}
                   onClick={() => {
-                    onAssign();
+                    onAssign(agent.id);
                     setShowAssignDropdown(false);
                   }}
                   className='w-full flex items-center gap-2 px-3 py-2 text-left text-sm text-[#e6edf3] hover:bg-[#161b22] first:rounded-t-lg last:rounded-b-lg'
                 >
                   <div className='h-6 w-6 rounded-full bg-[#58a6ff]/20 flex items-center justify-center text-[#58a6ff] text-xs font-bold'>
-                    {member.name.split(' ').map(n => n[0]).join('')}
+                    {agent.name.split(' ').map(n => n[0]).join('')}
                   </div>
-                  <div>
-                    <div>{member.name}</div>
-                    <div className='text-xs text-[#8b949e]'>
-                      {member.currentAssignments}/{member.capacity} trips
-                    </div>
-                  </div>
+                  <div>{agent.name}</div>
                 </button>
               ))}
             </div>
@@ -343,76 +275,45 @@ export default function InboxPage() {
   const [sortBy, setSortBy] = useState<SortKey>('priority');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const { data: trips, isLoading, error, refetch } = useTrips();
+  const { data: inboxTrips, isLoading, error, refetch, assignTrips } = useInboxTrips();
 
-  // Convert API trips with enhanced fields
-  const tripItems: TripItem[] = useMemo(() => {
-    return trips.map((trip, index) => {
-      // Simulate assignment (in real app, comes from API)
-      const assignments = ['agent-001', 'agent-002', 'agent-003', undefined];
-      const assignedTo = assignments[index % 4];
-      const assignedMember = assignedTo ? TEAM_MEMBERS.find(m => m.id === assignedTo) : undefined;
-      
-      // Simulate priority based on value/overdue
-      const priorities: PriorityKey[] = ['low', 'medium', 'high', 'critical'];
-      const priority = trip.overdue ? 'critical' : priorities[index % 4];
-      
-      // Simulate SLA status
-      const daysInStage = Math.floor(Math.random() * 5) + 1;
-      const slaStatus: SLAStatus = daysInStage > 3 ? 'breached' : daysInStage > 2 ? 'at_risk' : 'on_track';
-      
-      return {
-        id: trip.id,
-        destination: trip.destination,
-        type: trip.type,
-        state: trip.state,
-        age: trip.age,
-        party: 2 + (index % 6),
-        dateWindow: ['Jun 10-20', 'Jul 3-7', 'Aug 15-22', 'Sep 5-12'][index % 4],
-        action: ['Needs supplier quote', 'Awaiting client confirmation', 'Ready to book', 'Draft itinerary'][index % 4],
-        overdue: trip.overdue || slaStatus === 'breached',
-        assignedTo,
-        assignedToName: assignedMember?.name,
-        priority,
-        slaStatus,
-        daysInStage,
-        value: 5000 + (index * 2500),
-      };
-    });
-  }, [trips]);
+  const agents = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const t of inboxTrips) {
+      if (t.assignedTo && t.assignedToName && !seen.has(t.assignedTo)) {
+        seen.set(t.assignedTo, t.assignedToName);
+      }
+    }
+    return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
+  }, [inboxTrips]);
 
-  // Filter counts
   const filterCounts = useMemo(() => ({
-    all: tripItems.length,
-    pending: tripItems.filter((t) => t.state === 'amber' || t.state === 'blue').length,
-    review: tripItems.filter((t) => t.state === 'red').length,
-    unassigned: tripItems.filter((t) => !t.assignedTo).length,
-  }), [tripItems]);
+    all: inboxTrips.length,
+    pending: inboxTrips.filter((t) => t.slaStatus === 'at_risk').length,
+    review: inboxTrips.filter((t) => t.slaStatus === 'breached' || t.priority === 'critical').length,
+    unassigned: inboxTrips.filter((t) => !t.assignedTo).length,
+  }), [inboxTrips]);
 
-  // Filter and search
   const filtered = useMemo(() => {
-    let result = tripItems;
+    let result = [...inboxTrips];
 
-    // Apply status filter
     if (activeFilter === 'pending') {
-      result = result.filter((t) => t.state === 'amber' || t.state === 'blue');
+      result = result.filter((t) => t.slaStatus === 'at_risk');
     } else if (activeFilter === 'review') {
-      result = result.filter((t) => t.state === 'red');
+      result = result.filter((t) => t.slaStatus === 'breached' || t.priority === 'critical');
     } else if (activeFilter === 'unassigned') {
       result = result.filter((t) => !t.assignedTo);
     }
 
-    // Apply search
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter((t) =>
         t.destination.toLowerCase().includes(query) ||
         t.id.toLowerCase().includes(query) ||
-        t.type.toLowerCase().includes(query)
+        t.tripType.toLowerCase().includes(query)
       );
     }
 
-    // Apply sorting
     const dir = sortDirection === 'asc' ? 1 : -1;
     return result.sort((a, b) => {
       switch (sortBy) {
@@ -421,24 +322,17 @@ export default function InboxPage() {
           const pa = priorityOrder[a.priority];
           const pb = priorityOrder[b.priority];
           if (pa !== pb) return (pa - pb) * dir;
-          // Tie-break by SLA
           const slaOrder = { breached: 0, at_risk: 1, on_track: 2 };
           return (slaOrder[a.slaStatus] - slaOrder[b.slaStatus]) * dir;
         }
         case 'destination':
           return a.destination.localeCompare(b.destination) * dir;
         case 'value':
-          return ((a.value || 0) - (b.value || 0)) * dir;
+          return (a.value - b.value) * dir;
         case 'party':
-          return (a.party - b.party) * dir;
+          return (a.partySize - b.partySize) * dir;
         case 'dates':
           return a.dateWindow.localeCompare(b.dateWindow) * dir;
-        case 'state': {
-          const stateOrder = { red: 0, amber: 1, blue: 2, green: 3 };
-          return (stateOrder[a.state] - stateOrder[b.state]) * dir;
-        }
-        case 'age':
-          return a.age.localeCompare(b.age) * dir;
         case 'sla': {
           const slaOrder = { breached: 0, at_risk: 1, on_track: 2 };
           return (slaOrder[a.slaStatus] - slaOrder[b.slaStatus]) * dir;
@@ -447,7 +341,7 @@ export default function InboxPage() {
           return 0;
       }
     });
-  }, [tripItems, activeFilter, searchQuery, sortBy, sortDirection]);
+  }, [inboxTrips, activeFilter, searchQuery, sortBy, sortDirection]);
 
   const handleSelect = useCallback((id: string, selected: boolean) => {
     setSelectedTrips((prev) => {
@@ -465,17 +359,26 @@ export default function InboxPage() {
     setSelectedTrips(new Set());
   }, []);
 
-  const handleAssign = useCallback(() => {
-    // Simulate assignment
-    alert(`Assigning ${selectedTrips.size} trips...`);
+  const handleAssign = useCallback((agentId: string) => {
+    assignTrips({ tripIds: Array.from(selectedTrips), assignTo: agentId, notifyAssignee: true });
     handleClearSelection();
-  }, [selectedTrips.size, handleClearSelection]);
+  }, [selectedTrips, handleClearSelection, assignTrips]);
 
   const handleExport = useCallback(() => {
-    alert(`Exporting ${selectedTrips.size} trips...`);
-  }, [selectedTrips.size]);
+    const selected = inboxTrips.filter((t) => selectedTrips.has(t.id));
+    const csv = [
+      'ID,Destination,Priority,SLA,Agent',
+      ...selected.map((t) => `${t.id},${t.destination},${t.priority},${t.slaStatus},${t.assignedToName || 'Unassigned'}`),
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `inbox-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [selectedTrips, inboxTrips]);
 
-  // Error state
   if (error) {
     return (
       <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
@@ -486,7 +389,7 @@ export default function InboxPage() {
           </div>
         </div>
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-8 text-center'>
-          <InlineError message='Failed to load trips' />
+          <InlineError message='Failed to load inbox' />
           <button
             type='button'
             onClick={() => refetch()}
@@ -500,7 +403,7 @@ export default function InboxPage() {
   }
 
   return (
-    <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
+    <div className='p-5 pb-4 max-w-[1400px] mx-auto space-y-5'>
       {/* Header */}
       <header className='flex items-center justify-between pt-1'>
         <div>
@@ -591,7 +494,7 @@ export default function InboxPage() {
           </div>
 
           <span className='text-sm text-[#8b949e]'>
-            {isLoading ? 'Loading...' : `${tripItems.length} trips total`}
+            {isLoading ? 'Loading...' : `${inboxTrips.length} trips total`}
           </span>
         </div>
       </header>
@@ -603,6 +506,7 @@ export default function InboxPage() {
           onClearSelection={handleClearSelection}
           onAssign={handleAssign}
           onExport={handleExport}
+          agents={agents}
         />
       )}
 
@@ -610,8 +514,8 @@ export default function InboxPage() {
       <div className='flex items-center gap-1' role='tablist'>
         {[
           { key: 'all', label: 'All' },
-          { key: 'pending', label: 'Pending' },
-          { key: 'review', label: 'Needs Review' },
+          { key: 'pending', label: 'At Risk' },
+          { key: 'review', label: 'Critical' },
           { key: 'unassigned', label: 'Unassigned' },
         ].map((f) => (
           <button
@@ -636,7 +540,7 @@ export default function InboxPage() {
       </div>
 
       {/* Trip Grid */}
-      {isLoading && tripItems.length === 0 ? (
+      {isLoading && inboxTrips.length === 0 ? (
         <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'>
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div

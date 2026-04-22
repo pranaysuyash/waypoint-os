@@ -204,5 +204,23 @@ Create the following follow-up artifacts so these don't drop:
 
 ---
 
+## External References Created in This Session
+
+| Document | Purpose | Status |
+|----------|---------|--------|
+| `Docs/HYBRID_ENGINE_AUDIT_2026-04-22.md` | Phase A: cache key stability, rule coverage, graduation logic, cost telemetry, decision layer separation | Complete |
+| `Docs/D6_EVAL_CONTRACT_DESIGN_2026-04-22.md` | Phase B: golden path fixtures, shadow mode protocol, consumer surface gate | Complete |
+| `Docs/D2_CONSUMER_SURFACE_CONTRACT_DESIGN_2026-04-22.md` | Consumer surface API split, empowerment framing, GTM wedge alignment | Complete |
+| `Docs/D5_OVERRIDE_LEARNING_PLAN_2026-04-22.md` | Override event schema, capture loop, learning phases (frequency→context→ML) | Complete |
+| `Docs/PLUGIN_SYSTEM_ADR_2026-04-22.md` | Formal plugin contract, registry, execution wrapper, maturity progression | Complete (replaces draft) |
+
+---
+
+## 11. Documentation Maintenance
+
+All new docs have been added to the project INDEX at `Docs/INDEX.md` and categorized under "Architecture Decision Records" and "Exploration Backlog".
+
+---
+
 Checklist applied: IMPLEMENTATION_AGENT_REVIEW_HANDOFF_CHECKLIST.md
 Session end: 2026-04-22

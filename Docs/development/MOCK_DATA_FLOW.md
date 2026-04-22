@@ -25,11 +25,15 @@ Two data sources:
 
 | Route | File | Returns | Used By |
 |-------|------|---------|---------|
-| `GET /api/trips` | `api/trips/route.ts` | 7 trips (SGP, BKK, PAR, TYO, NYC, DEL, DXB) | `useTrips` → dashboard, inbox, workspace |
+| `GET /api/trips` | `api/trips/route.ts` | 7 trips (SGP, BKK, PAR, TYO, NYC, DEL, DXB) | `useTrips` → dashboard, workspace |
 | `GET /api/stats` | `api/stats/route.ts` | `{active:7, pendingReview:2, readyToBook:2, needsAttention:1}` derived from trips | dashboard |
 | `GET /api/pipeline` | `api/pipeline/route.ts` | 5 pipeline stages | dashboard |
 | `GET /api/reviews` | `api/reviews/route.ts` | 3 reviews (2 pending, 1 escalated) | `useReviews` → owner/reviews |
 | `POST /api/reviews/action` | `api/reviews/action/route.ts` | `{success: true}` | owner/reviews approve/reject |
+| `GET /api/inbox` | `api/inbox/route.ts` | 7 inbox trips with priority/SLA/assignments | `useInboxTrips` → inbox |
+| `GET /api/inbox/stats` | `api/inbox/stats/route.ts` | `{total:7, unassigned:1, critical:1, atRisk:2}` | `useInboxStats` |
+| `POST /api/inbox/assign` | `api/inbox/assign/route.ts` | `{success: true, assigned: N}` | inbox bulk assign |
+| `POST /api/inbox/[tripId]/snooze` | `api/inbox/[tripId]/snooze/route.ts` | `{success: true}` | inbox snooze |
 | `GET /api/insights/revenue` | `api/insights/revenue/route.ts` | Revenue metrics ($52k pipeline, $18k booked) | `useRevenueMetrics` → owner/insights |
 | `GET /api/insights/alerts` | `api/insights/alerts/route.ts` | `[]` (empty — no alerts) | `useOperationalAlerts` → owner/insights |
 
@@ -46,10 +50,9 @@ Two data sources:
 
 | Route | Issue |
 |-------|-------|
-| `GET /api/insights/escalations` | Proxies to nonexistent spine-api endpoint |
-| `GET /api/insights/funnel` | Proxies to nonexistent spine-api endpoint |
-| `GET /api/team/*` | No route handlers exist |
-| `GET /api/inbox/*` | No route handlers exist |
+| `GET /api/insights/escalations` | Empty directory, no route.ts |
+| `GET /api/insights/funnel` | Empty directory, no route.ts |
+| `GET /api/team/*` | No route handlers exist (intentionally deferred) |
 | `GET /api/audit/*` | No route handlers exist |
 
 ## Data Flow by Page
@@ -60,8 +63,9 @@ Two data sources:
 - `getPipeline()` → `GET /api/pipeline` → pipeline visualization
 
 ### Inbox (`/inbox`)
-- `useInboxTrips()` → `GET /api/inbox` → **no handler** → will fail silently
-- `useInboxStats()` → `GET /api/inbox/stats` → **no handler** → will fail silently
+- `useInboxTrips()` → `GET /api/inbox` → 7 trips with server-computed priority/SLA/assignments
+- Assignment action → `POST /api/inbox/assign` → mock success
+- Export action → client-side CSV generation from inbox data
 
 ### Workspace (`/workspace`)
 - `useTrips()` → `GET /api/trips` → 7 trips → active workspace cards
@@ -92,9 +96,9 @@ useGovernance.ts hooks
   ├── useBottleneckAnalysis(range) → governance-api.getBottleneckAnalysis() → GET /api/insights/bottlenecks?range=30d
   ├── useRevenueMetrics(range)  → governance-api.getRevenueMetrics()  → GET /api/insights/revenue?range=30d
   ├── useOperationalAlerts()    → governance-api.getOperationalAlerts() → GET /api/insights/alerts
-  ├── useTeamMembers()          → governance-api.getTeamMembers()      → GET /api/team/members (NO HANDLER)
-  ├── useWorkloadDistribution() → governance-api.getWorkloadDistribution() → GET /api/team/workload (NO HANDLER)
-  └── useInboxTrips(filters)    → governance-api.getInboxTrips()       → GET /api/inbox (NO HANDLER)
+  ├── useTeamMembers()          → governance-api.getTeamMembers()      → GET /api/team/members (DEFERRED — no auth yet)
+  ├── useWorkloadDistribution() → governance-api.getWorkloadDistribution() → GET /api/team/workload (DEFERRED — no auth yet)
+  └── useInboxTrips(filters,page,limit) → governance-api.getInboxTrips() → GET /api/inbox (MOCK)
 
 useTrips.ts hooks
   └── useTrips(params)          → api-client.getTrips()              → GET /api/trips

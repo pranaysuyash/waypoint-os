@@ -36,6 +36,7 @@
 
 | Feature | Document | Status |
 |---------|----------|--------|
+| Owner Onboarding Flow | [DESIGN_BRIEF_Onboarding_Flow.md](./DESIGN_BRIEF_Onboarding_Flow.md) | ✅ Ready for implementation |
 | Command Palette (Cmd+K) | [DESIGN_BRIEF_Command_Palette.md](./DESIGN_BRIEF_Command_Palette.md) | ✅ Ready for implementation |
 | Quality/Confidence Indicators | — | ⏳ Pending |
 | Customer Profile Sidebar | — | ⏳ Pending |

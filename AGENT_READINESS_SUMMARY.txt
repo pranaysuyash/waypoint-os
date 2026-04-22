@@ -1,0 +1,48 @@
+TRAVEL AGENCY AGENT — MULTI-AGENT READINESS (2026-04-22)
+========================================================
+
+BUILT (Deterministic Core):
+- Spine pipeline: NB01→NB02→NB03 (orchestration.py)
+- Hybrid decision: rules + LLM (decision.py)  
+- Suitability scoring: Tier 1/2 (18 activities)
+- Gates/autonomy: NB01/NB02 with outcomes
+- Fee calculation: trip fees
+- Frontend: 5-screen workbench
+
+MISSING (Multi-Agent Infrastructure):
+- ❌ Agent orchestrator/router
+- ❌ Agent registry/pool  
+- ❌ Inter-agent communication bus
+- ❌ Agent state persistence
+- ❌ src/agents/ (empty)
+- ❌ src/llm/agents/ (empty)
+
+AGENT CONCEPTS (Design Only):
+- Scout: Proactive info retrieval (WAVE_B Sec 1)
+- Communicator: Autonomous clarification drafting (WAVE_B Sec 2) ← HIGHEST VALUE
+- QA Agent: Self-healing eval loop (WAVE_B Sec 3)
+- Budget/Experience Optimizers: Multi-perspective debate (WAVE_B Sec 4)
+- Operator Copilot: Conversational state intervention (WAVE_B Sec 5)
+
+FEEDBACK LOOP (Spec Written, Not Built):
+- Override API: POST /trips/{id}/override (spec complete)
+- feedback_count schema exists (unused)
+- learn_from_overrides flag exists (unused)
+
+PERSONA GAPS (P1 Solo Agent):
+- No customer recognition/history
+- No quote/proposal builder  
+- No output delivery (send to client)
+- No follow-up tracking
+- No budget feasibility check
+- No document/trip scoping
+
+RECOMMENDED BUILD ORDER:
+1. Run lifecycle state machine (Wave A prereq)
+2. Agent orchestrator pattern
+3. Communicator agent (plugs into blocked state)
+4. Operator Copilot (conversational patch)
+5. Scout agent (external APIs)
+6. Committee (multi-agent debate)
+
+DOCUMENTED: AGENT_READINESS_ASSESSMENT_2026-04-22.md (full details)

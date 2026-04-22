@@ -3,7 +3,9 @@
 **Date**: 2026-04-16  
 **Source Basis**: `Docs/ACTIVITY_SUITABILITY_MATRIX_WEB_FINDINGS_2026-04-16.md`  
 **Status**: Partially Implemented (Tier 1 & 2 complete, Tier 3 and external APIs pending)
+**Frontend Display Status**: Pending. The frontend currently surfaces generic `risk_flags` in `frontend/src/components/workspace/panels/DecisionPanel.tsx`, but it does not yet include a dedicated activity suitability panel, iconography, or user-facing suitability presentation.
 **Implementation Summary**: `Docs/SUITABILITY_IMPLEMENTATION_SUMMARY_2026-04-18.md`
+**Frontend Display Spec**: `Docs/FRONTEND_SUITABILITY_DISPLAY_SPEC.md`
 
 ---
 
