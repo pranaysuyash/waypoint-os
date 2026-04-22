@@ -297,6 +297,7 @@ class CanonicalPacket:
     derived_signals: Dict[str, Slot] = field(default_factory=dict)
     hypotheses: Dict[str, Slot] = field(default_factory=dict)
     lifecycle: Optional[LifecycleInfo] = None
+    feedback: Optional[Dict[str, Any]] = None
 
     # Explicit tracking
     ambiguities: List[Ambiguity] = field(default_factory=list)

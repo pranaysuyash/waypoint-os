@@ -29,13 +29,25 @@ TAG_RULES: Dict[Tuple[str, str], Tuple[str, str]] = {
         "exclude",
         "Height-based participation restriction excludes toddler cohort.",
     ),
+    ("late_night", "toddler"): (
+        "exclude",
+        "Late night activity (post-21:00) is unsuitable for toddlers.",
+    ),
     ("physical_intense", "elderly"): (
         "discourage",
         "Physical intensity may create strain for elderly travelers.",
     ),
+    ("extreme_intensity", "elderly"): (
+        "exclude",
+        "Extreme physical intensity is unsafe for elderly travelers.",
+    ),
     ("walking_heavy", "elderly"): (
         "discourage",
         "Walking-heavy activity may not suit elderly mobility profile.",
+    ),
+    ("stairs_heavy", "elderly"): (
+        "exclude",
+        "Stairs-heavy activity is unsuitable for travelers with elderly mobility profiles.",
     ),
     ("seated_show", "toddler"): (
         "recommend",
@@ -60,6 +72,10 @@ TAG_RULES: Dict[Tuple[str, str], Tuple[str, str]] = {
     ("height_required", "elderly"): (
         "discourage",
         "Height-based activities may not be suitable for elderly travelers.",
+    ),
+    ("luxury", "budget_conscious"): (
+        "discourage",
+        "Luxury-tier activity exceeds the identified budget-conscious traveler profile.",
     ),
 }
 
@@ -134,6 +150,15 @@ def evaluate_activity(
         else:
             warnings.append(reason)
         score_components[f"tag::{tag}"] = TIER_SCORE[tier]
+
+    # Budget-based rules (if budget conscious)
+    if context.budget_preference == "low" and "luxury" in activity.tags:
+        rule = TAG_RULES.get(("luxury", "budget_conscious"))
+        if rule:
+            tier, reason = rule
+            fired_tiers.append(tier)
+            warnings.append(reason)
+            score_components["budget_alignment"] = TIER_SCORE[tier]
 
     # Intensity-based scoring
     intensity_scores = {

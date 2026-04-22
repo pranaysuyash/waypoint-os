@@ -27,6 +27,7 @@ import type {
   InboxFilters,
   BulkActionRequest,
   AssignmentRequest,
+  OperationalAlert,
 } from "@/types/governance";
 import * as governanceApi from "@/lib/governance-api";
 
@@ -317,6 +318,60 @@ export function useRevenueMetrics(timeRange: TimeRange = "30d") {
   }, [fetch]);
 
   return { data, isLoading, error, refetch: fetch };
+}
+
+export function useOperationalAlerts() {
+  const [data, setData] = useState<OperationalAlert[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const fetch = useCallback(async () => {
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+    }
+
+    loadingTimeoutRef.current = setTimeout(() => {
+      setIsLoading(true);
+    }, LOADING_DELAY_MS);
+
+    setError(null);
+    
+    try {
+      const result = await governanceApi.getOperationalAlerts();
+      setData(result);
+    } catch (err) {
+      setError(err as Error);
+      setData([]);
+      console.error("Failed to fetch operational alerts:", err);
+    } finally {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
+      }
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetch();
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    };
+  }, [fetch]);
+
+  const dismiss = useCallback(async (id: string) => {
+    try {
+      await governanceApi.dismissAlert(id);
+      setData(prev => prev.filter(a => a.id !== id));
+    } catch (err) {
+      console.error("Failed to dismiss alert:", err);
+    }
+  }, []);
+
+  return { data, isLoading, error, refetch: fetch, dismiss };
 }
 
 // ============================================================================

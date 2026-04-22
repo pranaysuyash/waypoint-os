@@ -104,6 +104,18 @@ class AssertionResult(BaseModel):
     field: Optional[str] = None
 
 
+class AutonomyOutcome(BaseModel):
+    """D1 autonomy policy outcome — separates raw NB02 verdict from agency policy."""
+    raw_verdict: str
+    effective_action: str
+    approval_required: bool
+    rule_source: str
+    safety_invariant_applied: bool
+    mode_override_applied: Optional[str] = None
+    warning_override_applied: bool = False
+    reasons: List[str] = Field(default_factory=list)
+
+
 class RunMeta(BaseModel):
     stage: str = "discovery"
     operating_mode: str = "normal_intake"
@@ -121,6 +133,8 @@ class SpineRunResponse(BaseModel):
     traveler_bundle: Optional[dict[str, Any]] = None
     internal_bundle: Optional[dict[str, Any]] = None
     safety: SafetyResult = Field(default_factory=SafetyResult)
+    fees: Optional[dict[str, Any]] = None
+    autonomy_outcome: Optional[AutonomyOutcome] = None
     assertions: Optional[List[AssertionResult]] = None
     meta: RunMeta = Field(default_factory=RunMeta)
 
@@ -369,6 +383,14 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
                 source="spine_api",
             )
             logger.info("Trip saved: %s", trip_id_saved)
+            
+            # Wave 10: Feedback-Driven Recovery Trigger
+            if trip_id_saved:
+                trip_post = TripStore.get_trip(trip_id_saved)
+                if trip_post and trip_post.get("analytics", {}).get("feedback_reopen"):
+                    from src.analytics.review import trigger_feedback_recovery
+                    trigger_feedback_recovery(trip_id_saved, reason=trip_post["analytics"].get("review_reason"))
+                    logger.info("Feedback recovery triggered for trip: %s", trip_id_saved)
         except Exception as e:
             logger.error("Failed to save trip: %s", e)
             # Don't fail the request if saving fails
@@ -466,6 +488,10 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
                 leakage_passed=is_safe,
                 leakage_errors=all_leaks,
             ),
+            fees=_to_dict(result.fees) if hasattr(result, "fees") else None,
+            autonomy_outcome=AutonomyOutcome(**result.autonomy_outcome.to_dict())
+            if hasattr(result, "autonomy_outcome") and result.autonomy_outcome is not None
+            else None,
             assertions=assertions_out,
             meta=meta,
         )
@@ -685,19 +711,18 @@ def get_audit_events(limit: int = 100):
 # Analytics Endpoints (Wave 1 Governance)
 # =============================================================================
 
+from src.analytics.models import InsightsSummary, StageMetrics
 from src.analytics.metrics import (
     aggregate_insights,
     compute_pipeline_metrics,
     compute_team_metrics,
     compute_bottlenecks,
-    compute_revenue_metrics
-)
-from src.analytics.models import (
-    InsightsSummary,
-    StageMetrics,
+    compute_revenue_metrics,
+    compute_alerts,
     TeamMemberMetrics,
     BottleneckAnalysis,
-    RevenueMetrics
+    RevenueMetrics,
+    OperationalAlert
 )
 
 @app.get("/analytics/summary", response_model=InsightsSummary)
@@ -729,6 +754,29 @@ def get_analytics_bottlenecks(range: str = "30d"):
 def get_analytics_revenue(range: str = "30d"):
     trips = TripStore.list_trips(limit=1000)
     return compute_revenue_metrics(trips)
+
+
+@app.get("/analytics/alerts", response_model=List[OperationalAlert])
+def get_analytics_alerts():
+    """List pending operational alerts (Wave 10)."""
+    trips = TripStore.list_trips(limit=1000)
+    return compute_alerts(trips)
+
+
+@app.post("/analytics/alerts/{alert_id}/dismiss")
+def post_dismiss_alert(alert_id: str):
+    """Dismiss an operational alert by flagging the source trip."""
+    # Alert ID format is alert_{trip_id}
+    trip_id = alert_id.replace("alert_", "")
+    trip = TripStore.get_trip(trip_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail=f"Target trip for alert {alert_id} not found")
+    
+    analytics = trip.get("analytics") or {}
+    analytics["feedback_dismissed"] = True
+    
+    TripStore.update_trip(trip_id, {"analytics": analytics})
+    return {"success": True}
 
 
 # =============================================================================
@@ -777,6 +825,118 @@ def post_review_action(trip_id: str, request: ReviewActionRequest):
         raise HTTPException(status_code=500, detail="Internal server error during review action")
 
 
+# ============================================================================
+# Agency Autonomy Settings (D1)
+# ============================================================================
+
+@app.get("/api/settings")
+def get_agency_settings(agency_id: str = "waypoint-hq"):
+    """Return the complete agency configuration (operational + autonomy)."""
+    settings = AgencySettingsStore.load(agency_id)
+    return {
+        "agency_id": settings.agency_id,
+        "operational": {
+            "target_margin_pct": settings.target_margin_pct,
+            "default_currency": settings.default_currency,
+            "operating_hours": {
+                "start": settings.operating_hours_start,
+                "end": settings.operating_hours_end,
+            },
+            "operating_days": settings.operating_days,
+            "preferred_channels": settings.preferred_channels,
+            "brand_tone": settings.brand_tone,
+        },
+        "autonomy": {
+            "approval_gates": settings.autonomy.approval_gates,
+            "mode_overrides": settings.autonomy.mode_overrides,
+            "auto_proceed_with_warnings": settings.autonomy.auto_proceed_with_warnings,
+            "learn_from_overrides": settings.autonomy.learn_from_overrides,
+            "min_proceed_confidence": settings.autonomy.min_proceed_confidence,
+            "min_draft_confidence": settings.autonomy.min_draft_confidence,
+        },
+    }
+
+@app.get("/api/settings/autonomy")
+def get_agency_autonomy_settings(agency_id: str = "waypoint-hq"):
+    """Return the agency autonomy policy (gates, overrides, flags)."""
+    settings = AgencySettingsStore.load(agency_id)
+    policy = settings.autonomy
+    return {
+        "agency_id": settings.agency_id,
+        "approval_gates": policy.approval_gates,
+        "mode_overrides": policy.mode_overrides,
+        "auto_proceed_with_warnings": policy.auto_proceed_with_warnings,
+        "learn_from_overrides": policy.learn_from_overrides,
+        "min_proceed_confidence": policy.min_proceed_confidence,
+        "min_draft_confidence": policy.min_draft_confidence,
+    }
+
+
+class UpdateAutonomyPolicy(BaseModel):
+    approval_gates: Optional[dict[str, str]] = None
+    mode_overrides: Optional[dict[str, dict[str, str]]] = None
+    auto_proceed_with_warnings: Optional[bool] = None
+    learn_from_overrides: Optional[bool] = None
+
+
+@app.post("/api/settings/autonomy")
+def update_agency_autonomy_settings(
+    request: UpdateAutonomyPolicy,
+    agency_id: str = "waypoint-hq",
+):
+    """
+    Update the agency autonomy policy.
+
+    - Rejects any attempt to set STOP_NEEDS_REVIEW to anything other than block.
+    - Persists to the file-backed AgencySettingsStore.
+    """
+    settings = AgencySettingsStore.load(agency_id)
+    policy = settings.autonomy
+    changes: list[str] = []
+
+    if request.approval_gates is not None:
+        for state, action in request.approval_gates.items():
+            if state == "STOP_NEEDS_REVIEW" and action != "block":
+                raise HTTPException(
+                    status_code=400,
+                    detail="Safety invariant: STOP_NEEDS_REVIEW must always be 'block'",
+                )
+            if action not in ("auto", "review", "block"):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid action '{action}' for state '{state}'. Must be auto|review|block.",
+                )
+            policy.approval_gates[state] = action
+        changes.append("approval_gates")
+
+    if request.mode_overrides is not None:
+        policy.mode_overrides = {
+            k: dict(v) if isinstance(v, dict) else {}
+            for k, v in request.mode_overrides.items()
+        }
+        changes.append("mode_overrides")
+
+    if request.auto_proceed_with_warnings is not None:
+        policy.auto_proceed_with_warnings = request.auto_proceed_with_warnings
+        changes.append("auto_proceed_with_warnings")
+
+    if request.learn_from_overrides is not None:
+        policy.learn_from_overrides = request.learn_from_overrides
+        changes.append("learn_from_overrides")
+
+    # Persist
+    AgencySettingsStore.save(settings)
+
+    return {
+        "agency_id": settings.agency_id,
+        "approval_gates": policy.approval_gates,
+        "mode_overrides": policy.mode_overrides,
+        "auto_proceed_with_warnings": policy.auto_proceed_with_warnings,
+        "learn_from_overrides": policy.learn_from_overrides,
+        "changes": changes,
+    }
+
+
 # =============================================================================
 # Dev entrypoint
 # =============================================================================
@@ -794,5 +954,5 @@ if __name__ == "__main__":
         host=HOST,
         port=PORT,
         workers=WORKERS,
-        reload=bool(os.environ.get("SPINE_API_RELOAD", "1")),
+        reload=os.environ.get("SPINE_API_RELOAD", "1") == "1",
     )

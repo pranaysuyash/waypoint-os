@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 import pytest
 from dataclasses import is_dataclass, fields
 
-from intake.packet_models import (
+from src.intake.packet_models import (
     Ambiguity,
     AuthorityLevel,
     CanonicalPacket,
@@ -29,7 +29,7 @@ from intake.packet_models import (
     SubGroup,
     UnknownField,
 )
-from intake.decision import (
+from src.intake.decision import (
     DecisionResult,
     LEGACY_ALIASES,
     MVB_BY_STAGE,

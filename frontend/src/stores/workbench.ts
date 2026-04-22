@@ -4,6 +4,9 @@ import type {
   OperatingMode,
   SafetyResult,
   SpineRunResponse,
+  DecisionOutput,
+  StrategyOutput,
+  PromptBundle,
 } from "@/types/spine";
 
 // ============================================================================
@@ -37,19 +40,21 @@ interface WorkbenchConfigState {
 interface WorkbenchResultState {
   result_packet: SpineRunResponse["packet"] | null;
   result_validation: SpineRunResponse["validation"] | null;
-  result_decision: SpineRunResponse["decision"] | null;
-  result_strategy: SpineRunResponse["strategy"] | null;
-  result_internal_bundle: SpineRunResponse["internal_bundle"] | null;
-  result_traveler_bundle: SpineRunResponse["traveler_bundle"] | null;
+  result_decision: DecisionOutput | null;
+  result_strategy: StrategyOutput | null;
+  result_internal_bundle: PromptBundle | null;
+  result_traveler_bundle: PromptBundle | null;
   result_safety: SafetyResult | null;
+  result_fees: SpineRunResponse["fees"] | null;
   result_run_ts: string | null;
   setResultPacket: (value: SpineRunResponse["packet"] | null) => void;
   setResultValidation: (value: SpineRunResponse["validation"] | null) => void;
-  setResultDecision: (value: SpineRunResponse["decision"] | null) => void;
-  setResultStrategy: (value: SpineRunResponse["strategy"] | null) => void;
+  setResultDecision: (value: DecisionOutput | null) => void;
+  setResultStrategy: (value: StrategyOutput | null) => void;
   setResultInternalBundle: (value: SpineRunResponse["internal_bundle"] | null) => void;
   setResultTravelerBundle: (value: SpineRunResponse["traveler_bundle"] | null) => void;
   setResultSafety: (value: SafetyResult | null) => void;
+  setResultFees: (value: SpineRunResponse["fees"] | null) => void;
   setResultRunTs: (value: string | null) => void;
   clearResults: () => void;
   resetAll: () => void;
@@ -94,6 +99,7 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
   result_internal_bundle: null,
   result_traveler_bundle: null,
   result_safety: null,
+  result_fees: null,
   result_run_ts: null,
   setResultPacket: (value) => set({ result_packet: value }),
   setResultValidation: (value) => set({ result_validation: value }),
@@ -102,6 +108,7 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
   setResultInternalBundle: (value) => set({ result_internal_bundle: value }),
   setResultTravelerBundle: (value) => set({ result_traveler_bundle: value }),
   setResultSafety: (value) => set({ result_safety: value }),
+  setResultFees: (value) => set({ result_fees: value }),
   setResultRunTs: (value) => set({ result_run_ts: value }),
 
   clearResults: () => set({
@@ -112,6 +119,7 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
     result_internal_bundle: null,
     result_traveler_bundle: null,
     result_safety: null,
+    result_fees: null,
     result_run_ts: null,
   }),
 

@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional, Literal
+from typing import List, Dict, Optional, Literal, Any
 from pydantic import BaseModel, Field
 
 
@@ -90,3 +90,29 @@ class AnalyticsPayload(BaseModel):
     quality_breakdown: Dict[str, float]
     requires_review: bool
     review_reason: Optional[str] = None
+    
+    # Wave 10: Feedback-Driven Actioning
+    feedback_reopen: bool = Field(default=False)
+    feedback_severity: Optional[Literal["low", "medium", "high", "critical"]] = None
+    followup_needed: bool = Field(default=False)
+    recovery_status: Optional[str] = None # e.g. "PENDING_NOTIFY", "IN_RECOVERY"
+
+    # Wave 11: Real-time SLA Tracking
+    recovery_started_at: Optional[str] = None
+    recovery_deadline: Optional[str] = None
+    is_escalated: bool = Field(default=False)
+    sla_status: Optional[Literal["on_track", "at_risk", "breached"]] = None
+
+
+class OperationalAlert(BaseModel):
+    """
+    High-priority incident alert for the owner dashboard.
+    """
+    id: str
+    tripId: str
+    type: Literal["critical_feedback", "trend_decline", "sla_breach"]
+    severity: Literal["high", "critical"]
+    message: str
+    timestamp: str
+    isDismissed: bool = False
+    metadata: Dict[str, Any] = Field(default_factory=dict)

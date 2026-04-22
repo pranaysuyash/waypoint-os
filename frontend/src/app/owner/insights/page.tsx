@@ -11,8 +11,8 @@ import {
   ChevronDown,
   Download,
 } from 'lucide-react';
-import { useInsightsSummary, usePipelineMetrics, useTeamMetrics, useBottleneckAnalysis, useRevenueMetrics } from '@/hooks/useGovernance';
-import type { TimeRange, StageMetrics, TeamMemberMetrics, BottleneckAnalysis } from '@/types/governance';
+import { useInsightsSummary, usePipelineMetrics, useTeamMetrics, useBottleneckAnalysis, useRevenueMetrics, useOperationalAlerts } from '@/hooks/useGovernance';
+import type { TimeRange, StageMetrics, TeamMemberMetrics, BottleneckAnalysis, OperationalAlert } from '@/types/governance';
 
 const VALID_TIME_RANGES = new Set<TimeRange>(['7d', '30d', '90d', 'mtd', 'ytd', 'custom']);
 import { RevenueChart, PipelineFunnel, TeamPerformanceChart } from '@/components/visual';
@@ -83,6 +83,110 @@ const VelocityBar = memo(function VelocityBar({
           style={{ width: `${percentage}%`, background: color }}
         />
       </div>
+    </div>
+  );
+});
+
+const TimeRemaining = ({ deadline }: { deadline: string }) => {
+  const [now, setNow] = useState(new Date());
+  
+  // Update every minute
+  useMemo(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const diff = new Date(deadline).getTime() - now.getTime();
+  const mins = Math.floor(diff / 60000);
+  
+  if (mins <= 0) return <span className="font-bold">BREACHED</span>;
+  if (mins < 60) return <span>{mins}m remaining</span>;
+  return <span>{Math.floor(mins / 60)}h {mins % 60}m remaining</span>;
+};
+
+const CriticalAlertBanner = memo(function CriticalAlertBanner({ 
+  alerts, 
+  onDismiss 
+}: { 
+  alerts: OperationalAlert[];
+  onDismiss: (id: string) => void;
+}) {
+  if (alerts.length === 0) return null;
+
+  return (
+    <div className='mb-6 space-y-3'>
+      {alerts.map(alert => {
+        const slaStatus = alert.metadata?.sla_status as string;
+        const isEscalated = alert.metadata?.is_escalated as boolean;
+        const deadline = alert.metadata?.deadline as string;
+        
+        const isBreached = slaStatus === 'breached' || alert.type === 'sla_breach';
+        const isAtRisk = slaStatus === 'at_risk';
+
+        return (
+          <div 
+            key={alert.id}
+            className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
+              isBreached 
+                ? 'bg-[#2b1011] border-[#6b2a2b] text-[#ff7b72] shadow-lg shadow-red-900/20' 
+                : isAtRisk
+                ? 'bg-[#211a0d] border-[#4e3a12] text-[#d29922]'
+                : 'bg-[#161b22] border-[#30363d] text-[#e6edf3]'
+            }`}
+          >
+            <div className='flex items-center gap-3'>
+              <div className="relative">
+                <AlertTriangle className={`h-5 w-5 flex-shrink-0 ${isBreached ? 'animate-pulse' : ''}`} />
+                {isEscalated && (
+                  <div className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full border border-[#2b1011]" />
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className='font-semibold text-sm'>{alert.message}</p>
+                  {isEscalated && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#ff7b72] text-[#2b1011] uppercase tracking-wider">
+                      Escalated
+                    </span>
+                  )}
+                </div>
+                <div className='text-xs opacity-80 flex items-center gap-2 mt-0.5'>
+                  <span>Trip ID: {alert.tripId}</span>
+                  <span>•</span>
+                  <span>{new Date(alert.timestamp).toLocaleString()}</span>
+                  {deadline && (
+                    <>
+                      <span>•</span>
+                      <span className={`font-mono ${isBreached ? 'font-bold' : ''}`}>
+                        <TimeRemaining deadline={deadline} />
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className='flex items-center gap-2'>
+              <a 
+                href={`/workbench?tripId=${alert.tripId}`}
+                className={`px-3 py-1.5 text-xs font-medium border rounded-md transition-colors ${
+                  isBreached
+                    ? 'bg-[#ff7b72] text-[#2b1011] border-[#ff7b72] hover:bg-[#ff7b72]/90'
+                    : 'bg-[#161b22] text-[#e6edf3] border-[#30363d] hover:bg-[#1c2128]'
+                }`}
+              >
+                Recover Now
+              </a>
+              <button 
+                onClick={() => onDismiss(alert.id)}
+                className='p-1.5 hover:bg-black/20 rounded-md transition-colors text-[#8b949e] hover:text-[#e6edf3]'
+                title="Acknowledge & Dismiss"
+              >
+                <CheckCircle className='h-4 w-4' />
+              </button>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 });
@@ -192,6 +296,7 @@ export default function OwnerInsightsPage() {
   const { data: teamMetrics, isLoading: isTeamLoading, error: teamError } = useTeamMetrics(timeRange);
   const { data: bottlenecks, isLoading: isBottlenecksLoading, error: bottlenecksError } = useBottleneckAnalysis(timeRange);
   const { data: revenueData, isLoading: isRevenueLoading, error: revenueError } = useRevenueMetrics(timeRange);
+  const { data: alertsData, dismiss: dismissAlert } = useOperationalAlerts();
 
   const isLoading = isSummaryLoading || isPipelineLoading || isTeamLoading || isBottlenecksLoading || isRevenueLoading;
   const hasError = summaryError || pipelineError || teamError || bottlenecksError || revenueError;
@@ -201,7 +306,7 @@ export default function OwnerInsightsPage() {
   , [pipelineMetrics]);
 
   return (
-    <div className='p-5 pb-20 max-w-[1400px] mx-auto space-y-5'>
+    <div className='p-5 pb-4 max-w-[1400px] mx-auto space-y-5'>
       {/* Header */}
       <header className='flex items-center justify-between pt-1'>
         <div>
@@ -235,6 +340,12 @@ export default function OwnerInsightsPage() {
           </button>
         </div>
       </header>
+
+      {/* Wave 10: Critical Alert Banner */}
+      <CriticalAlertBanner 
+        alerts={alertsData} 
+        onDismiss={dismissAlert} 
+      />
 
       {isLoading && (
         <div className="flex flex-col items-center justify-center py-20 bg-[#0f1115] border border-[#1c2128] rounded-xl">

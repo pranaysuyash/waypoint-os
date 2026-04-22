@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { submitReviewAction } from "@/lib/governance-api";
-import type { ReviewActionRequest } from "@/types/governance";
+import { submitTripReviewAction } from "@/lib/api-client";
+import type { ReviewActionRequest, ReviewStatus } from "@/types/governance";
 import type { Trip } from "@/lib/api-client";
 import styles from "@/app/workbench/workbench.module.css";
 
@@ -24,7 +24,7 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
   const [error, setError] = useState<string | null>(null);
 
   const currentStatus = trip.review_status || "pending";
-  const metadata = trip.review_metadata;
+  const metadata = trip; // The trip object itself contains review metadata
 
   const handleAction = async (action: ReviewActionRequest["action"]) => {
     // Validation: Notes mandatory for non-approval actions
@@ -37,26 +37,16 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
     setError(null);
 
     try {
-      // Use existing governance API
-      const response = await submitReviewAction({
-        reviewId: trip.id,
-        action,
-        notes,
-        // Backend handles default reassignment to original assignee per Wave 8 requirement
-      });
+      // Use trip-specific review API
+      const response = await submitTripReviewAction(trip.id, action, notes);
 
       if (response.success) {
         if (onActionComplete) {
           // Construct updated trip object for optimistic/immediate UI feedback
           const updatedTrip: Trip = {
             ...trip,
-            review_status: response.review.status,
-            review_metadata: {
-              reviewedAt: response.review.reviewedAt,
-              reviewedBy: response.review.reviewedBy,
-              notes: response.review.ownerNotes,
-              assignee: response.review.agentId,
-            }
+            review_status: response.review.status as ReviewStatus,
+            // Note: Other review metadata would be updated via API refresh
           };
           onActionComplete(updatedTrip);
         }
@@ -75,12 +65,12 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
       <div className={styles.reviewStatusBanner}>
         <div className={styles.reviewInfo}>
           <strong>Status: {currentStatus.toUpperCase()}</strong>
-          {metadata?.reviewedBy && <span> by {metadata.reviewedBy}</span>}
-          {metadata?.reviewedAt && <span> on {new Date(metadata.reviewedAt).toLocaleDateString()}</span>}
+          {trip?.reviewedBy && <span> by {trip.reviewedBy}</span>}
+          {trip?.reviewedAt && <span> on {new Date(trip.reviewedAt).toLocaleDateString()}</span>}
         </div>
-        {metadata?.notes && (
+        {trip?.reviewNotes && (
           <div className={styles.reviewNotes}>
-            <em>"{metadata.notes}"</em>
+            <em>"{trip.reviewNotes}"</em>
           </div>
         )}
       </div>

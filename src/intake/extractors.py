@@ -603,6 +603,48 @@ def _classify_operating_mode(texts: List[str]) -> str:
     return "normal_intake"
 
 
+def _extract_feedback(text: str) -> Optional[Dict[str, Any]]:
+    """
+    Extract satisfaction rating (1-5) and feedback notes.
+    """
+    text_lower = text.lower()
+    
+    rating = None
+    # 5/5, 4/5, 5 out of 5
+    score_match = re.search(r"(\d)\s*(?:/|out of)\s*5", text_lower)
+    if score_match:
+        rating = int(score_match.group(1))
+    
+    # 5 star, 4 stars
+    if not rating:
+        star_match = re.search(r"(\d)\s*star", text_lower)
+        if star_match:
+            rating = int(star_match.group(1))
+            
+    # Keywords: "great", "excellent" (5), "bad", "terrible" (1)
+    if not rating:
+        if any(kw in text_lower for kw in ["excellent", "amazing", "perfect", "loved it"]):
+            rating = 5
+        elif any(kw in text_lower for kw in ["good", "great", "nice"]):
+            rating = 4
+        elif any(kw in text_lower for kw in ["okay", "average", "fine"]):
+            rating = 3
+        elif any(kw in text_lower for kw in ["poor", "bad", "disappointed"]):
+            rating = 2
+        elif any(kw in text_lower for kw in ["terrible", "awful", "horrible"]):
+            rating = 1
+            
+    if rating:
+        # Clamp between 1 and 5
+        rating = max(1, min(5, rating))
+        
+    return {
+        "rating": rating,
+        "notes": text.strip() if rating else None,
+        "is_simulated": False
+    }
+
+
 # =============================================================================
 # SECTION 9: PASSPORT / VISA EXTRACTION
 # =============================================================================
@@ -747,6 +789,11 @@ class ExtractionPipeline:
 
         # Set operating mode (top-level, NOT in facts)
         packet.operating_mode = _classify_operating_mode(all_texts)
+
+        # Extraction feedback loop signals
+        if packet.operating_mode == "post_trip":
+            combined_text = "\n".join(all_texts)
+            packet.feedback = _extract_feedback(combined_text)
 
         # After extraction, compute derived signals
         self._compute_derived_signals(packet)

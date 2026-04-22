@@ -1,0 +1,30 @@
+# Suitability Test Scenario: Elderly Activity Overload
+# This scenario represents a high-risk itinerary for an elderly traveler cohort.
+
+scenario_id: day_overload_elderly
+description: "Elderly traveler with two high-intensity activities in one day."
+
+participants:
+  - ref_id: elderly_1
+    label: elderly
+    kind: person
+    age: 72
+
+activities:
+  - activity_id: jungle_trek_extreme
+    canonical_name: "Extreme Jungle Trek"
+    intensity: extreme
+    tags: ["physical_intense", "walking_heavy"]
+  
+  - activity_id: rock_climbing_high
+    canonical_name: "Technical Rock Climbing"
+    intensity: high
+    tags: ["physical_intense"]
+
+expected_risks:
+  - flag: suitability_overload_elderly
+    severity: medium
+    category: pacing
+  - flag: suitability_exclusion_jungle_trek_extreme
+    severity: high
+    category: activity

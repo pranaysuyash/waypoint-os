@@ -7,6 +7,7 @@
 
 import { SpineRunRequest, SpineRunResponse } from "@/types/spine";
 import type { ReviewStatus } from "@/types/governance";
+import type { ValidationReport, FeeCalculationResult, DecisionOutput, StrategyOutput, PromptBundle } from "@/types/spine";
 
 // ============================================================================
 // TYPES
@@ -222,23 +223,36 @@ export interface Trip {
   budget?: string;
   // Pipeline result fields (returned by mock API, not yet in real API)
   packet?: unknown;
-  validation?: unknown;
-  decision?: unknown;
-  strategy?: unknown;
-  internal_bundle?: unknown;
-  traveler_bundle?: unknown;
+  validation?: ValidationReport;
+  decision?: DecisionOutput;
+  strategy?: StrategyOutput;
+  internal_bundle?: PromptBundle;
+  traveler_bundle?: PromptBundle;
   safety?: unknown;
+  fees?: FeeCalculationResult;
   // Input fields (returned by mock API)
   customerMessage?: string;
   agentNotes?: string;
   // Review metadata (Wave 8)
   review_status?: ReviewStatus;
-  review_metadata?: {
-    reviewedAt?: string;
-    reviewedBy?: string;
-    notes?: string;
-    assignee?: string;
-    previousAssignee?: string;
+  assignee?: string;
+  previousAssignee?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  reviewNotes?: string;
+  // Customer Feedback (Wave 9)
+  feedback?: {
+    rating: number;
+    notes: string;
+    is_simulated?: boolean;
+    simulated_at?: string;
+  };
+  // Analytics (Wave 10)
+  analytics?: {
+    feedback_reopen?: boolean;
+    recovery_status?: string;
+    recovery_started_at?: string;
+    recovery_deadline?: string;
   };
 }
 
@@ -282,6 +296,18 @@ export async function getPipeline(): Promise<PipelineStage[]> {
 
 export async function updateTrip(id: string, data: Partial<Trip>): Promise<Trip> {
   return api.patch<Trip>(`/api/trips/${id}`, data);
+}
+
+// ============================================================================
+// TRIP REVIEW API
+// ============================================================================
+
+export async function submitTripReviewAction(
+  tripId: string,
+  action: string,
+  notes?: string
+): Promise<{ success: boolean; review: any }> {
+  return api.post(`/api/trips/${tripId}/review/action`, { action, notes });
 }
 
 // ============================================================================

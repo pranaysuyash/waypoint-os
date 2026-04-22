@@ -403,6 +403,7 @@ def build_session_strategy(
     session_context: Optional[dict] = None,
     agent_profile: Optional[dict] = None,
     agency_settings: Optional[AgencySettings] = None,
+    autonomy_outcome: Optional[Any] = None,
 ) -> SessionStrategy:
     """
     Main entry point: DecisionResult + CanonicalPacket → SessionStrategy.

@@ -67,6 +67,54 @@ def extract_participants_from_packet(packet) -> List[ParticipantRef]:
     return participants
 
 
+def evaluate_itinerary_coherence(
+    activities: List[ActivityDefinition],
+    participants: List[ParticipantRef],
+    context: SuitabilityContext,
+) -> List[Dict[str, Any]]:
+    """
+    Tier 2 coherence check for an itinerary.
+    
+    Checks for sequence-based risks like activity overload for specific cohorts.
+    """
+    coherence_risks = []
+    
+    # 1. Elderly Overload Check
+    elderly_participants = [p for p in participants if p.label == "elderly"]
+    if elderly_participants:
+        high_intensity_count = sum(1 for a in activities if a.intensity in ["high", "extreme"])
+        if high_intensity_count >= 2:
+            coherence_risks.append({
+                "flag": "suitability_overload_elderly",
+                "severity": "medium",
+                "message": f"Potential overload: {high_intensity_count} high-intensity activities in one day for elderly travelers.",
+                "category": "pacing",
+                "details": {
+                    "high_intensity_count": high_intensity_count,
+                    "affected_cohort": "elderly",
+                },
+                "maturity": "heuristic",
+            })
+
+    # 2. Toddler Pacing Check
+    toddler_participants = [p for p in participants if p.label == "toddler"]
+    if toddler_participants:
+        if len(activities) > 3:
+            coherence_risks.append({
+                "flag": "suitability_pacing_toddler",
+                "severity": "medium",
+                "message": f"High density: {len(activities)} activities in one day may exceed toddler stamina.",
+                "category": "pacing",
+                "details": {
+                    "activity_count": len(activities),
+                    "affected_cohort": "toddler",
+                },
+                "maturity": "heuristic",
+            })
+
+    return coherence_risks
+
+
 def generate_suitability_risks(
     packet,
     activity_ids: Optional[List[str]] = None,
@@ -94,8 +142,7 @@ def generate_suitability_risks(
         activities = [get_activity(aid) for aid in activity_ids if get_activity(aid)]
     else:
         # For now, check a subset of common activities
-        # In the future, this could come from a trip itinerary
-        activities = STATIC_ACTIVITIES[:5]  # Check first 5 activities
+        activities = STATIC_ACTIVITIES[:5]
     
     # Create suitability context
     destination = packet.facts.get("destination_candidates")
@@ -105,11 +152,17 @@ def generate_suitability_risks(
     elif destination and isinstance(destination.value, str):
         destination_keys = [destination.value]
     
+    # Extract budget preference
+    budget_pref_slot = packet.facts.get("budget_preference")
+    budget_preference = budget_pref_slot.value if budget_pref_slot else None
+    
     context = SuitabilityContext(
         destination_keys=destination_keys,
+        budget_preference=budget_preference,
+        day_activities=activities,
     )
     
-    # Score each activity for each participant
+    # Tier 1: Score each activity for each participant
     for activity in activities:
         for participant in participants:
             result = evaluate_activity(activity, participant, context)
@@ -147,5 +200,9 @@ def generate_suitability_risks(
                     },
                     "maturity": "heuristic",
                 })
+    
+    # Tier 2: Check itinerary coherence
+    coherence_risks = evaluate_itinerary_coherence(activities, participants, context)
+    risks.extend(coherence_risks)
     
     return risks

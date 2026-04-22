@@ -86,6 +86,7 @@ class SuitabilityContext:
             "coastal_humid",
         ]
     ] = None
+    budget_preference: Optional[Literal["low", "mid", "high", "premium"]] = None
 
 
 @dataclass

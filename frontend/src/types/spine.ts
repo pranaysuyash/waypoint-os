@@ -147,6 +147,21 @@ export interface ValidationReport {
   warnings: Array<{ severity: string; code: string; message: string; field: string }>;
 }
 
+export interface FeeBreakdown {
+  service: string;
+  base_fee: number;
+  multiplier: number;
+  adjusted_fee: number;
+}
+
+export interface FeeCalculationResult {
+  service_breakdowns: Record<string, FeeBreakdown>;
+  total_base_fee: number;
+  total_adjusted_fee: number;
+  fee_adjustment: number;
+  risk_summary: string;
+}
+
 export interface RunMeta {
   stage: string;
   operating_mode: string;
@@ -165,12 +180,23 @@ export interface SpineRunResponse {
   ok: boolean;
   run_id: string;
   packet: unknown | null;
-  validation: unknown | null;
-  decision: unknown | null;
-  strategy: unknown | null;
-  internal_bundle: unknown | null;
-  traveler_bundle: unknown | null;
+  validation: ValidationReport | null;
+  decision: DecisionOutput | null;
+  strategy: StrategyOutput | null;
+  internal_bundle: PromptBundle | null;
+  traveler_bundle: PromptBundle | null;
   safety: SafetyResult;
+  fees: FeeCalculationResult | null;
+  autonomy_outcome: {
+    raw_verdict: string;
+    effective_action: string;
+    approval_required: boolean;
+    rule_source: string;
+    safety_invariant_applied: boolean;
+    mode_override_applied: string | null;
+    warning_override_applied: boolean;
+    reasons: string[];
+  } | null;
   assertions: AssertionResult[] | null;
   meta: RunMeta;
 }

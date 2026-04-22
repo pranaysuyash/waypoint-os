@@ -25,15 +25,15 @@ import type { TripReview, ReviewStatus, RiskFlag } from '@/types/governance';
 
 const StatusBadge = memo(function StatusBadge({ status }: { status: ReviewStatus }) {
   const styles = {
-    pending: { bg: 'rgba(210,153,34,0.12)', color: '#d29922', label: 'Pending Review' },
-    revision_needed: { bg: 'rgba(255,166,0,0.14)', color: '#ffb347', label: 'Revision Needed' },
-    approved: { bg: 'rgba(63,185,80,0.12)', color: '#3fb950', label: 'Approved' },
-    rejected: { bg: 'rgba(248,81,73,0.12)', color: '#f85149', label: 'Rejected' },
-    escalated: { bg: 'rgba(88,166,255,0.12)', color: '#58a6ff', label: 'Escalated' },
+    pending:         { bg: 'rgba(210,153,34,0.12)', color: '#d29922', label: 'Pending Review' },
+    revision_needed: { bg: 'rgba(170,70,20,0.12)',  color: '#e36f2f', label: 'Revision Needed' },
+    approved:        { bg: 'rgba(63,185,80,0.12)',  color: '#3fb950', label: 'Approved' },
+    rejected:        { bg: 'rgba(248,81,73,0.12)',   color: '#f85149', label: 'Rejected' },
+    escalated:       { bg: 'rgba(163,113,247,0.12)', color: '#a371f7', label: 'Escalated' },  // purple, distinct from amber/blue
   };
-  
+
   const style = styles[status];
-  
+
   return (
     <span
       className='inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium'
@@ -50,18 +50,22 @@ const StatusBadge = memo(function StatusBadge({ status }: { status: ReviewStatus
 });
 
 const RiskFlagBadge = memo(function RiskFlagBadge({ flag }: { flag: RiskFlag }) {
-  const labels: Record<RiskFlag, string> = {
-    high_value: 'High Value',
-    unusual_destination: 'Unusual',
-    tight_deadline: 'Tight Deadline',
-    complex_itinerary: 'Complex',
-    visa_required: 'Visa Required',
-    supplier_delay: 'Supplier Delay',
+  /* one colour per flag so identical flags are identical and distinct flags are distinct */
+  const config: Record<RiskFlag, { label: string; color: string; bg: string }> = {
+    high_value:        { label: 'High Value', color: '#e36f2f', bg: 'rgba(227,111,47,0.12)' },
+    unusual_destination:{ label: 'Unusual',   color: '#a371f7', bg: 'rgba(163,113,247,0.12)' },
+    tight_deadline:    { label: 'Tight',     color: '#d29922', bg: 'rgba(210,153,34,0.12)' },
+    complex_itinerary: { label: 'Complex',   color: '#58a6ff', bg: 'rgba(88,166,255,0.12)' },
+    visa_required:     { label: 'Visa',      color: '#58a6ff', bg: 'rgba(88,166,255,0.12)' },
+    supplier_delay:    { label: 'Supplier',  color: '#d29922', bg: 'rgba(210,153,34,0.12)' },
   };
-  
+
+  const c = config[flag];
   return (
-    <span className='inline-block px-1.5 py-0.5 bg-[#f85149]/10 text-[#f85149] text-xs rounded'>
-      {labels[flag]}
+    <span className='inline-block px-1.5 py-0.5 text-xs rounded-md font-medium'
+      style={{ color: c.color, background: c.bg }}
+    >
+      {c.label}
     </span>
   );
 });

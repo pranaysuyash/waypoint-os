@@ -34,6 +34,26 @@ export interface TripReview {
   reviewedAt?: string;
   reviewedBy?: string;
   riskFlags: RiskFlag[];
+  // Wave 10: Feedback-Driven Actioning
+  feedbackSeverity?: 'low' | 'medium' | 'high' | 'critical';
+  followupNeeded?: boolean;
+  recoveryStatus?: 'PENDING_NOTIFY' | 'IN_RECOVERY' | 'RESOLVED';
+  // Wave 11: SLA Tracking
+  recoveryStartedAt?: string;
+  recoveryDeadline?: string;
+  isEscalated?: boolean;
+  slaStatus?: 'on_track' | 'at_risk' | 'breached';
+}
+
+export interface OperationalAlert {
+  id: string;
+  tripId: string;
+  type: 'critical_feedback' | 'trend_decline' | 'sla_breach';
+  severity: 'high' | 'critical';
+  message: string;
+  timestamp: string;
+  isDismissed: boolean;
+  metadata?: Record<string, unknown>;
 }
 
 export type RiskFlag = 
@@ -56,7 +76,7 @@ export interface ReviewFilters {
 
 export interface ReviewActionRequest {
   reviewId: string;
-  action: 'approve' | 'reject' | 'escalate' | 'request_changes';
+  action: 'approve' | 'reject' | 'escalate' | 'request_changes' | 'resolve';
   notes?: string;
   reassignTo?: string; // Agent ID for reassignment
 }

@@ -33,6 +33,8 @@ export function useTrips(params?: {
   const hasFetched = useRef(false);
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const paramsKey = JSON.stringify(params);
+
   const fetch = useCallback(async () => {
     // Clear any existing loading timeout
     if (loadingTimeoutRef.current) {
@@ -53,7 +55,7 @@ export function useTrips(params?: {
       hasFetched.current = true;
     } catch (err) {
       setError(err as Error);
-      setData([]); // Reset to empty on error
+      setData([]);
       console.error("Failed to fetch trips:", err);
     } finally {
       // Clear loading timeout and hide loading
@@ -63,7 +65,8 @@ export function useTrips(params?: {
       }
       setIsLoading(false);
     }
-  }, [params]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramsKey]);
 
   useEffect(() => {
     fetch();

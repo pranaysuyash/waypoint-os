@@ -1289,3 +1289,132 @@ Items that have completed architecture decisions and NO gap dependencies:
 
 ### Decision
 - Pending user direction on which thread to pursue first.
+
+## Log Entry: 2026-04-21 - D1–D4 Status Reconciliation + Gemini Review
+
+### Context
+User asked for a clean answer to "what's done, what's open, and what wasn't yet fully discussed" across D1–D4, and provided an external Gemini review claiming D4 is only Tier 1+2 ready.
+
+Environment date checked before this documentation update:
+- `2026-04-21 23:35:39 IST`
+
+### Artifact Created
+- `Docs/D1_D4_STATUS_RECONCILIATION_2026-04-21.md`
+
+### Key Findings
+
+**D1 correction to prior coarse status:**
+- D1 is not fully absent from code.
+- `src/intake/config/agency_settings.py` already contains an `AgencyAutonomyPolicy` and `AgencySettings.autonomy` field.
+- `src/intake/gates.py` and `src/intake/orchestration.py` already enforce that older threshold-based autonomy model.
+- However, this is not the ADR-complete D1 model. The per-`decision_state` approval-gate contract (`auto` / `review` / `block`) remains unimplemented.
+
+**D2 status:**
+- Shared pipeline direction is decided.
+- `audit` mode already exists in packet models, routing, tests, and frontend mode selectors.
+- Consumer-facing `presentation_profile` / public itinerary-checker surface is still not implemented.
+
+**D3 status:**
+- `SourcingPolicy` is fully decided at contract level.
+- Runtime sourcing is still a stub in `src/intake/extractors.py`.
+- Gap #01 remains the real blocker.
+
+**D4 status:**
+- Gemini's core claim is correct: Tier 1 + Tier 2 are implemented, Tier 3 is not.
+- `src/suitability/scoring.py` + `src/suitability/context_rules.py` + `src/suitability/models.py` + `src/suitability/integration.py` form a working deterministic suitability foundation.
+- Tier 3 LLM contextual scoring, scorer registry/plugin pattern, and Tier 3 eval fixtures remain open.
+
+### External Review Evaluation Verdict
+
+Applied the repo's external review evaluation workflow:
+- **ACCEPT**: "D4 is Tier 1+2 ready, not full-green"
+- **ACCEPT**: "Tier 3 scorer is not implemented"
+- **ACCEPT**: "Plugin/registry shape for scorers remains paper-only"
+- **ACCEPT+MODIFY**: "To reach green, implement Tier 3" — true directionally, but ADR-complete green also requires trigger calibration, cache/hybrid integration, and eval coverage; not just a new scorer file
+
+### Decision
+- Going forward, use the following wording:
+  - D1: partially implemented, ADR not complete
+  - D2: agency audit foundation present, consumer surface pending D6
+  - D3: contract decided, blocked on Gap #01
+  - D4: Tier 1 + 2 complete, Tier 3 deferred/unimplemented
+
+## Log Entry: 2026-04-21 - Status Assessment Corrections + Was/Is/Should Execution Note
+
+### Context
+After the D1–D4 reconciliation pass, the existing `STATUS_ASSESSMENT_2026-04-21.md` was found to understate current implementation in several places. User asked for both: a corrected status read and a detailed "what was / what is / what should" explanation.
+
+Environment date checked before this documentation update:
+- `2026-04-21 23:41:31 IST`
+
+### Artifacts Updated / Created
+- Updated: `Docs/STATUS_ASSESSMENT_2026-04-21.md`
+- Created: `Docs/D1_D4_D6_WAS_IS_SHOULD_2026-04-21.md`
+
+### Corrections Applied To Status Assessment
+
+**D1 corrected from "missing" to "partial":**
+- The audit previously said D1 was not in `src/`.
+- Corrected to reflect that an older threshold-based `AgencyAutonomyPolicy` is already implemented in `src/intake/config/agency_settings.py` and enforced via `src/intake/gates.py` / `src/intake/orchestration.py`.
+- Remaining gap is ADR alignment, not total absence.
+
+**D2 corrected from "not wired" to "partial":**
+- The audit previously implied no audit path existed.
+- Corrected to reflect that `audit` mode is already wired through packet models, decision routing, tests, and frontend selectors.
+- Remaining gap is the consumer-facing presentation split and D6-gated public surface.
+
+**Cross-project pattern corrections:**
+- Quality gates are already partially adopted (`src/intake/gates.py`).
+- Structured `ConfidenceScorecard` already exists in `src/intake/decision.py`.
+- `Slot.derived_from` lineage already exists in `src/intake/packet_models.py`.
+
+### New Was / Is / Should Note
+
+Created a dedicated note to answer the user's framing directly:
+- **What was**: what the ADRs and discussion threads intended
+- **What is**: what actually exists in code right now
+- **What should**: what should happen next in dependency order
+
+The recommended execution sequence documented there is:
+1. Correct stale baseline docs
+2. Finish D1 as an upgrade, not a rewrite
+3. Build D6 scaffold
+4. Tighten plugin/registry direction for D4 Tier 3
+5. Implement D4 Tier 3 conservatively
+6. Expand D2 to consumer surface only after D6 gating exists
+7. Revisit D3 with Gap #01
+
+### Decision
+- Treat D1 as an upgrade path, D2 as partially live for agency audit only, D3 as honestly blocked, D4 as deterministic foundation complete but not full-green, and D6 as the missing quality gate that should precede consumer-surface expansion.
+
+## Log Entry: 2026-04-21 - D1 Implementation Agent Handoff Authored
+
+### Context
+User requested a handoff they can share directly with an implementation agent for D1 — specifically not a superficial touch-up, but a real upgrade from a full long-term perspective.
+
+### Artifact Created
+- `Docs/D1_IMPLEMENTATION_AGENT_HANDOFF_2026-04-21.md`
+
+### Evidence Used
+- D1 ADR: `Docs/ARCHITECTURE_DECISION_D1_AUTONOMY_GRADIENT_2026-04-18.md`
+- Current config/gate path: `src/intake/config/agency_settings.py`, `src/intake/gates.py`, `src/intake/orchestration.py`
+- Runtime/API context: `spine-api/server.py`
+- Frontend placeholder settings contracts: `frontend/src/lib/governance-api.ts`, `frontend/src/types/governance.ts`, `frontend/src/app/workbench/SettingsPanel.tsx`
+- Fresh verification command:
+  - `uv run pytest tests/test_settings_behavioral.py tests/test_nb02_v02.py -q`
+  - Result: `25 passed`
+
+### Key Handoff Decisions
+
+- D1 must be implemented as a **policy layer at the NB02/NB03 boundary**, not as more branching inside NB02.
+- The implementation agent must **preserve the raw NB02 verdict** and add a first-class autonomy outcome, rather than continuing the current pattern of mutating `decision_state` in place.
+- The current `AgencyAutonomyPolicy` should be treated as a working precursor to upgrade, not discarded.
+- The handoff includes atomic tasks for:
+  1. policy contract upgrade
+  2. autonomy outcome model + raw verdict preservation
+  3. runtime/API contract wiring
+  4. owner-facing settings path
+  5. future D5/D2-ready hooks
+
+### Decision
+- Recommended implementation posture: **GO**, but only as a structured multi-task upgrade. Anything that merely adds `approval_gates` while keeping raw verdict mutation is explicitly below the D1 completion bar.

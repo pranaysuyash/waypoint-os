@@ -381,7 +381,7 @@ export default function DashboardPage() {
       {
         href: '/inbox',
         label: 'Inbox queue',
-        sub: '5 pending',
+        sub: `${stats?.pendingReview ?? '—'} pending`,
         icon: Inbox,
         dot: '#d29922',
       },
@@ -395,12 +395,12 @@ export default function DashboardPage() {
       {
         href: '/owner/reviews',
         label: 'Reviews',
-        sub: '2 awaiting',
+        sub: `${stats?.needsAttention ?? '—'} awaiting`,
         icon: CheckCircle2,
         dot: '#f85149',
       },
     ],
-    []
+    [stats?.pendingReview, stats?.needsAttention]
   );
 
   // Memoize state meta entries for decision states

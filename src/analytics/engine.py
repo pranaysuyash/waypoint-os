@@ -122,6 +122,38 @@ def process_trip_analytics(trip: dict) -> AnalyticsPayload:
         requires_review = True
         review_reason = f"Low margin detected ({margin_pct}%)"
 
+    # Wave 10: Detection of critical feedback
+    feedback = packet.get("feedback")
+    feedback_reopen = False
+    feedback_severity = None
+    followup_needed = False
+    recovery_status = None
+    
+    # Wave 11: SLA Tracking
+    existing_analytics = trip.get("analytics") or {}
+    recovery_started_at = existing_analytics.get("recovery_started_at")
+    recovery_deadline = existing_analytics.get("recovery_deadline")
+    is_escalated = existing_analytics.get("is_escalated", False)
+    sla_status = existing_analytics.get("sla_status")
+
+    if feedback and isinstance(feedback, dict):
+        rating = feedback.get("rating")
+        if rating and isinstance(rating, (int, float)) and rating <= 2:
+            requires_review = True
+            review_reason = f"Critical Negative Feedback ({rating}/5)"
+            feedback_reopen = True
+            feedback_severity = "critical" if rating == 1 else "high"
+            followup_needed = True
+            recovery_status = existing_analytics.get("recovery_status") or "PENDING_NOTIFY"
+            
+            # Wave 11: Initialize SLA if not already set
+            if not recovery_deadline:
+                from datetime import datetime, timedelta, timezone
+                now = datetime.now(timezone.utc)
+                hours = 2 if rating == 1 else 6
+                recovery_deadline = (now + timedelta(hours=hours)).isoformat()
+                sla_status = "on_track"
+
     return AnalyticsPayload(
         margin_pct=round(margin_pct, 1),
         quality_score=round(overall, 1),
@@ -132,5 +164,13 @@ def process_trip_analytics(trip: dict) -> AnalyticsPayload:
             "profitability": round(profitability, 1),
         },
         requires_review=requires_review,
-        review_reason=review_reason
+        review_reason=review_reason,
+        feedback_reopen=feedback_reopen,
+        feedback_severity=feedback_severity,
+        followup_needed=followup_needed,
+        recovery_status=recovery_status,
+        recovery_started_at=recovery_started_at,
+        recovery_deadline=recovery_deadline,
+        is_escalated=is_escalated,
+        sla_status=sla_status
     )

@@ -1,11 +1,13 @@
 "use client";
 
 import { useWorkbenchStore } from "@/stores/workbench";
+import { useTripContext } from "@/contexts/TripContext";
 import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate, DecisionOutput } from "@/types/spine";
 import styles from "@/app/workbench/workbench.module.css";
 
 interface DecisionPanelProps {
-  tripId: string;
+  trip?: any;
+  tripId?: string;
 }
 
 /**
@@ -75,18 +77,27 @@ function formatCurrency(n: number, currency?: string): string {
   return formatter(n);
 }
 
-export function DecisionPanel({ tripId }: DecisionPanelProps) {
+export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPanelProps) {
+  let context;
+  try {
+    context = useTripContext();
+  } catch (e) {}
+
+  const trip = propTrip || context?.trip || null;
+  const tripId = propTripId || trip?.id || context?.tripId || "";
+
   const { result_decision, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
 
-  if (!result_decision) {
+  const decision = (result_decision || trip?.decision) as DecisionOutput;
+
+  if (!decision) {
     return (
       <div className={styles.emptyState}>
-        <p>No quote status data for trip {tripId}. Process a trip from the "Packet" section first.</p>
+        <p>No quote status data for trip {tripId || "unknown"}. Process a trip from the "Packet" section first.</p>
       </div>
     );
   }
 
-  const decision = result_decision as DecisionOutput;
   const decisionState = normalizeDecisionState(
     (decision.decision_state as string) || 'ASK_FOLLOWUP',
   ) as DecisionState;
@@ -98,12 +109,29 @@ export function DecisionPanel({ tripId }: DecisionPanelProps) {
   const riskFlags = decision.risk_flags || [];
   const followupQuestions = decision.follow_up_questions || [];
   const rationale = decision.rationale || {};
+  
+  const reviewStatus = trip?.review_status;
+  const reviewMetadata = trip?.review_metadata;
   const branchOptions = decision.branch_options || [];
   const budgetBreakdown = decision.budget_breakdown || null;
   const budgetCurrency = budgetBreakdown?.currency as string | undefined;
 
   return (
     <div>
+      {reviewStatus && (
+        <div className={styles.reviewStatusBanner}>
+          <div className={styles.reviewInfo}>
+            <strong className="text-sm">Latest Review Status: {reviewStatus.toUpperCase()}</strong>
+            {reviewMetadata?.reviewedBy && <span className="text-xs text-[#8b949e]">checked by {reviewMetadata.reviewedBy}</span>}
+          </div>
+          {reviewMetadata?.notes && (
+            <div className={styles.reviewNotes}>
+              <em>"{reviewMetadata.notes}"</em>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className={styles.section}>
         <h3 className={styles.sectionTitle}>Decision State</h3>
         <div className={styles.card}>

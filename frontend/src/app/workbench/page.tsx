@@ -14,6 +14,7 @@ import type { SpineRunRequest, SpineStage, OperatingMode } from '@/types/spine';
 import type { SafetyResult } from '@/types/spine';
 import type { Trip } from '@/lib/api-client';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { submitTripReviewAction } from "@/lib/api-client";
 
 const IntakeTab = lazy(() =>
   import('./IntakeTab').then((m) => ({ default: m.IntakeTab }))
@@ -33,6 +34,12 @@ const SafetyTab = lazy(() =>
 const SettingsPanel = lazy(() =>
   import('./SettingsPanel').then((m) => ({ default: m.SettingsPanel }))
 );
+const OutputPanel = lazy(() =>
+  import('@/components/workspace/panels/OutputPanel').then((m) => ({ default: m.OutputPanel }))
+);
+const FeedbackPanel = lazy(() =>
+  import('@/components/workspace/panels/FeedbackPanel').then((m) => ({ default: m.FeedbackPanel }))
+);
 
 const workspaceTabs = [
   { id: 'intake', label: 'New Inquiry' },
@@ -40,6 +47,8 @@ const workspaceTabs = [
   { id: 'decision', label: 'Ready to Quote?' },
   { id: 'strategy', label: 'Build Options' },
   { id: 'safety', label: 'Final Review' },
+  { id: 'output', label: 'Output Delivery' },
+  { id: 'feedback', label: 'Feedback' },
 ];
 
 type WorkspaceTabId = (typeof workspaceTabs)[number]['id'];
@@ -61,9 +70,10 @@ function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
     if (!store.result_internal_bundle && trip.internal_bundle) store.setResultInternalBundle(trip.internal_bundle);
     if (!store.result_traveler_bundle && trip.traveler_bundle) store.setResultTravelerBundle(trip.traveler_bundle);
     if (!store.result_safety && trip.safety) store.setResultSafety(trip.safety as SafetyResult | null);
+    if (!store.result_fees && trip.fees) store.setResultFees(trip.fees);
     if (!store.input_raw_note && trip.customerMessage) store.setInputRawNote(trip.customerMessage);
     if (!store.input_owner_note && trip.agentNotes) store.setInputOwnerNote(trip.agentNotes);
-  }, [trip, store.input_raw_note, store.input_owner_note, store.setInputRawNote, store.setInputOwnerNote, store.setResultPacket, store.setResultValidation, store.setResultDecision, store.setResultStrategy, store.setResultInternalBundle, store.setResultTravelerBundle, store.setResultSafety, store.result_packet, store.result_validation, store.result_decision, store.result_strategy, store.result_internal_bundle, store.result_traveler_bundle, store.result_safety]);
+  }, [trip, store.input_raw_note, store.input_owner_note, store.setInputRawNote, store.setInputOwnerNote, store.setResultPacket, store.setResultValidation, store.setResultDecision, store.setResultStrategy, store.setResultInternalBundle, store.setResultTravelerBundle, store.setResultSafety, store.setResultFees, store.result_packet, store.result_validation, store.result_decision, store.result_strategy, store.result_internal_bundle, store.result_traveler_bundle, store.result_safety, store.result_fees]);
 }
 
 function WorkbenchContent() {
@@ -115,7 +125,6 @@ function WorkbenchContent() {
   const [runError, setRunError] = useState<string | null>(null);
   const [runSuccess, setRunSuccess] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const store = useWorkbenchStore();
   const { execute: executeSpineRun, isLoading: isSpineRunning, error: spineError, reset: resetSpine } = useSpineRun();
   const { mutate: saveTrip, isSaving } = useUpdateTrip();
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -148,6 +157,7 @@ function WorkbenchContent() {
       if (result.internal_bundle) store.setResultInternalBundle(result.internal_bundle);
       if (result.traveler_bundle) store.setResultTravelerBundle(result.traveler_bundle);
       if (result.safety) store.setResultSafety(result.safety);
+      if (result.fees) store.setResultFees(result.fees);
       store.setResultRunTs(new Date().toISOString());
 
       setRunSuccess(true);
@@ -158,12 +168,7 @@ function WorkbenchContent() {
     } finally {
       setIsRunning(false);
     }
-  }, [store, executeSpineRun]);
-
-  const handleReset = useCallback(() => {
-    store.resetAll();
-    resetSpine();
-  }, [store.resetAll, resetSpine]);
+  }, [store, executeSpineRun, currentStage, currentMode, currentScenario]);
 
   const handleSave = useCallback(async () => {
     if (!tripId) return;
@@ -181,8 +186,42 @@ function WorkbenchContent() {
     }
   }, [tripId, saveTrip, store.input_raw_note, store.input_owner_note]);
 
+  const handleReset = useCallback(() => {
+    store.resetAll();
+    resetSpine();
+  }, [store, resetSpine]);
+
+  const handleResolve = useCallback(async () => {
+    if (!tripId) return;
+    try {
+      await submitTripReviewAction(tripId, 'resolve', 'Recovery completed. Feedback addressed.');
+      // Refresh trip data to clear recovery state
+      router.refresh();
+    } catch (err) {
+      console.error('Failed to resolve recovery:', err);
+    }
+  }, [tripId, router]);
+
+  const isRecoveryMode = trip?.analytics?.feedback_reopen === true || trip?.analytics?.recovery_status === 'IN_RECOVERY';
+
   return (
     <div className='min-h-screen bg-[#080a0c]'>
+      {isRecoveryMode && (
+        <div className='bg-[#2b1011] border-b border-[#6b2a2b] px-6 py-2 flex items-center justify-between'>
+          <div className='flex items-center gap-3 text-[#ff7b72]'>
+            <AlertTriangle className='h-4 w-4' />
+            <span className='text-xs font-bold uppercase tracking-wider'>Recovery Mode: Critical Feedback Detected</span>
+          </div>
+          <button 
+            onClick={handleResolve}
+            className='flex items-center gap-1.5 px-3 py-1 bg-[#ff7b72]/10 hover:bg-[#ff7b72]/20 border border-[#ff7b72]/30 rounded-md text-[#ff7b72] text-xs font-semibold transition-all'
+          >
+            <CheckCircle className='h-3.5 w-3.5' />
+            Mark Resolved
+          </button>
+        </div>
+      )}
+      
       <PipelineFlow currentStage={activeTab} />
 
       <div className='px-6 py-6'>
@@ -324,6 +363,8 @@ function WorkbenchContent() {
               {activeTab === 'decision' && <DecisionTab trip={trip} />}
               {activeTab === 'strategy' && <StrategyTab trip={trip} />}
               {activeTab === 'safety' && <SafetyTab trip={trip} />}
+              {activeTab === 'output' && <OutputPanel trip={trip} />}
+              {activeTab === 'feedback' && trip && <FeedbackPanel trip={trip} />}
             </Suspense>
           </div>
         </div>

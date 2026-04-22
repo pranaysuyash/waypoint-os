@@ -1,7 +1,7 @@
 "use client";
 
 import { useWorkbenchStore } from "@/stores/workbench";
-import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate, DecisionOutput } from "@/types/spine";
+import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate, DecisionOutput, FollowUpQuestion, Rationale } from "@/types/spine";
 import type { Trip } from "@/lib/api-client";
 import styles from "./workbench.module.css";
 
@@ -85,9 +85,9 @@ interface DecisionTabProps {
 }
 
 export function DecisionTab({ trip }: DecisionTabProps) {
-  const { result_decision, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
+  const { result_decision, result_fees, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
 
-  const activeDecision = result_decision || (trip?.decision as DecisionOutput | null);
+  const activeDecision: DecisionOutput | null = result_decision || trip?.decision || null;
 
   if (!activeDecision) {
     return (
@@ -97,7 +97,7 @@ export function DecisionTab({ trip }: DecisionTabProps) {
     );
   }
 
-  const decision = activeDecision;
+  const decision: DecisionOutput = activeDecision!;
   // Normalize state string before lookup — handles alias variants and makes
   // unknown states visible (fallback) rather than silently unstyled.
   const decisionState = normalizeDecisionState(
@@ -105,14 +105,14 @@ export function DecisionTab({ trip }: DecisionTabProps) {
   ) as DecisionState;
   const badgeClass = STATE_BADGE_CLASS[decisionState] ?? styles.stateBlue;
 
-  const hardBlockers = decision.hard_blockers || [];
-  const softBlockers = decision.soft_blockers || [];
-  const contradictions = decision.contradictions || [];
-  const riskFlags = decision.risk_flags || [];
-  const followupQuestions = decision.follow_up_questions || [];
-  const rationale = decision.rationale || {};
-  const branchOptions = decision.branch_options || [];
-  const budgetBreakdown = decision.budget_breakdown || null;
+  const hardBlockers: string[] = (decision as any).hard_blockers ?? [];
+  const softBlockers: string[] = (decision as any).soft_blockers ?? [];
+  const contradictions: string[] = (decision as any).contradictions ?? [];
+  const riskFlags: string[] = (decision as any).risk_flags ?? [];
+  const followupQuestions: FollowUpQuestion[] = (decision as any).follow_up_questions ?? [];
+  const rationale: Rationale = (decision as any).rationale ?? {};
+  const branchOptions: string[] = (decision as any).branch_options ?? [];
+  const budgetBreakdown: BudgetBreakdownResult | null = (decision as any).budget_breakdown ?? null;
   const budgetCurrency = budgetBreakdown?.currency as string | undefined;
 
   return (
@@ -345,6 +345,51 @@ export function DecisionTab({ trip }: DecisionTabProps) {
             {budgetBreakdown.alternative && (
               <div style={{ marginTop: "12px", padding: "8px 12px", background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "6px", fontSize: "13px" }}>
                 <strong>Alternative:</strong> {budgetBreakdown.alternative}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Fee Breakdown */}
+      {result_fees && (
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Fee Breakdown</h3>
+          <div className={styles.card}>
+            <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "12px" }}>
+              <span style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>
+                {result_fees.risk_summary}
+              </span>
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--color-border)" }}>
+                  <th style={{ textAlign: "left", padding: "8px", fontSize: "12px", color: "var(--color-text-muted)" }}>Service</th>
+                  <th style={{ textAlign: "left", padding: "8px", fontSize: "12px", color: "var(--color-text-muted)" }}>Base Fee</th>
+                  <th style={{ textAlign: "left", padding: "8px", fontSize: "12px", color: "var(--color-text-muted)" }}>Multiplier</th>
+                  <th style={{ textAlign: "left", padding: "8px", fontSize: "12px", color: "var(--color-text-muted)" }}>Adjusted Fee</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(result_fees.service_breakdowns).map(([service, breakdown]) => (
+                  <tr key={service} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                    <td style={{ padding: "8px", fontSize: "13px", textTransform: "capitalize" }}>{service}</td>
+                    <td style={{ padding: "8px", fontSize: "13px" }}>{formatCurrency(breakdown.base_fee, "USD")}</td>
+                    <td style={{ padding: "8px", fontSize: "13px" }}>{breakdown.multiplier}x</td>
+                    <td style={{ padding: "8px", fontSize: "13px" }}>{formatCurrency(breakdown.adjusted_fee, "USD")}</td>
+                  </tr>
+                ))}
+                <tr style={{ borderTop: "2px solid var(--color-border)", fontWeight: "bold" }}>
+                  <td style={{ padding: "8px", fontSize: "13px" }}>Total</td>
+                  <td style={{ padding: "8px", fontSize: "13px" }}>{formatCurrency(result_fees.total_base_fee, "USD")}</td>
+                  <td style={{ padding: "8px", fontSize: "13px" }}>-</td>
+                  <td style={{ padding: "8px", fontSize: "13px" }}>{formatCurrency(result_fees.total_adjusted_fee, "USD")}</td>
+                </tr>
+              </tbody>
+            </table>
+            {(result_fees.fee_adjustment !== 0) && (
+              <div style={{ marginTop: "12px", fontSize: "13px", color: result_fees.fee_adjustment > 0 ? "var(--color-warning)" : "var(--color-success)" }}>
+                <strong>Adjustment:</strong> {formatCurrency(result_fees.fee_adjustment, "USD")} ({result_fees.fee_adjustment > 0 ? "risk premium" : "discount"})
               </div>
             )}
           </div>

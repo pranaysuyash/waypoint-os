@@ -32,7 +32,8 @@ from .safety import (
     SanitizedPacketView,
 )
 from .config.agency_settings import AgencySettings
-from .gates import NB01CompletionGate, NB02JudgmentGate, GateVerdict
+from .gates import NB01CompletionGate, NB02JudgmentGate, GateVerdict, AutonomyOutcome
+from src.fees.calculation import calculate_trip_fees
 
 
 # =============================================================================
@@ -58,6 +59,12 @@ class SpineResult:
 
     # Safety outputs
     leakage_result: Dict[str, Any]  # { "leaks": [...], "is_safe": bool }
+
+    # Fee calculation
+    fees: Optional[Dict[str, Any]] = None
+
+    # D1 Autonomy outcomes (raw verdict preserved, effective gate recorded)
+    autonomy_outcome: Optional["AutonomyOutcome"] = None
 
     # Optional compare-mode output
     assertion_result: Optional[Dict[str, Any]] = None
@@ -140,23 +147,23 @@ def run_spine_once(
     # Update packet decision_state from decision result
     packet.decision_state = decision.decision_state
 
-    # --- Quality Gate: NB02 Judgment ---
-    # This gate enforces the agency's autonomy policy
+    # --- Quality Gate: NB02 Judgment (D1 Autonomy Gate) ---
+    # This gate enforces the agency autonomy policy WITHOUT mutating decision_state.
+    # The raw NB02 verdict is preserved in autonomy_outcome.raw_verdict.
     nb02_gate = NB02JudgmentGate()
-    nb02_result = nb02_gate.evaluate(decision, actual_settings)
+    autonomy_outcome = nb02_gate.evaluate(decision, actual_settings)
 
-    if nb02_result.verdict == GateVerdict.ESCALATE:
-        decision.decision_state = "STOP_NEEDS_REVIEW"
-        decision.hard_blockers.append("confidence_threshold")
-        decision.rationale["gate_failure"] = "NB02_ESCALATE"
-        decision.rationale["gate_reasons"] = nb02_result.reasons
-        packet.decision_state = "STOP_NEEDS_REVIEW"
-    elif nb02_result.verdict == GateVerdict.DEGRADE:
-        if decision.decision_state == "PROCEED_TRAVELER_SAFE":
-            decision.decision_state = "PROCEED_INTERNAL_DRAFT"
-            decision.rationale["gate_degraded"] = True
-            decision.rationale["gate_reasons"] = nb02_result.reasons
-            packet.decision_state = "PROCEED_INTERNAL_DRAFT"
+    # Record gate metadata on the decision rationale (additive, not destructive)
+    decision.rationale["autonomy"] = {
+        "raw_verdict": autonomy_outcome.raw_verdict,
+        "effective_action": autonomy_outcome.effective_action,
+        "approval_required": autonomy_outcome.approval_required,
+        "rule_source": autonomy_outcome.rule_source,
+        "safety_invariant_applied": autonomy_outcome.safety_invariant_applied,
+        "mode_override_applied": autonomy_outcome.mode_override_applied,
+        "warning_override_applied": autonomy_outcome.warning_override_applied,
+        "reasons": autonomy_outcome.reasons,
+    }
 
     # --- Phase 4: Strategy ---
     strategy = build_session_strategy(decision, packet, agency_settings=actual_settings)
@@ -183,7 +190,10 @@ def run_spine_once(
         "sanitized_view_leaks": sanitized_leaks,
     }
 
-    # --- Phase 9: Fixture Compare (optional) ---
+    # --- Phase 9.5: Fee Calculation ---
+    fees = calculate_trip_fees(packet, decision)
+
+    # --- Phase 10: Fixture Compare (optional) ---
     assertion_result = None
     if fixture_expectations is not None:
         assertion_result = _compare_against_fixture(
@@ -203,6 +213,8 @@ def run_spine_once(
         traveler_bundle=traveler_bundle,
         sanitized_view=sanitized_view,
         leakage_result=leakage_result,
+        fees=fees,
+        autonomy_outcome=autonomy_outcome,
         assertion_result=assertion_result,
         run_timestamp=run_timestamp,
     )
@@ -216,11 +228,38 @@ def _create_empty_spine_result(packet, validation, decision, timestamp):
         packet=packet,
         validation=validation,
         decision=decision,
-        strategy=SessionStrategy(decision_state=decision.decision_state),
-        internal_bundle=PromptBundle(),
-        traveler_bundle=PromptBundle(),
-        sanitized_view=SanitizedPacketView(packet_id=packet.packet_id),
+        strategy=SessionStrategy(
+            session_goal="Gate failure — early exit.",
+            priority_sequence=[],
+            tonal_guardrails=[],
+            risk_flags=[],
+            suggested_opening="",
+            exit_criteria=[],
+            next_action=decision.decision_state,
+        ),
+        internal_bundle=PromptBundle(
+            system_context="",
+            user_message="",
+            follow_up_sequence=[],
+            branch_prompts=[],
+            internal_notes="",
+            constraints=[],
+        ),
+        traveler_bundle=PromptBundle(
+            system_context="",
+            user_message="",
+            follow_up_sequence=[],
+            branch_prompts=[],
+            internal_notes="",
+            constraints=[],
+        ),
+        sanitized_view=SanitizedPacketView(
+            facts={},
+            derived_signals={},
+        ),
         leakage_result={"leaks": [], "is_safe": True},
+        fees=None,
+        autonomy_outcome=None,
         run_timestamp=timestamp
     )
 

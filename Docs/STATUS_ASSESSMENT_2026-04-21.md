@@ -94,8 +94,8 @@
 
 | Decision | Document | Contract Designed? | In Code? | Blocker |
 |----------|----------|-------------------|----------|---------|
-| **D1**: Autonomy Gradient | `ARCHITECTURE_DECISION_D1_AUTONOMY_GRADIENT_2026-04-18.md` | ✅ `AgencyAutonomyPolicy` dataclass with per-`decision_state` gates | ❌ Not in `src/` — `AgencySettings` has no autonomy fields | **None** — can implement now on existing `AgencySettings` |
-| **D2**: Free Engine Persona | `ARCHITECTURE_DECISION_D2_FREE_ENGINE_PERSONA_2026-04-18.md` | ✅ Shared pipeline spec, empowerment framing | ❌ No audit intake path wired | D6 eval precision gate |
+| **D1**: Autonomy Gradient | `ARCHITECTURE_DECISION_D1_AUTONOMY_GRADIENT_2026-04-18.md` | ✅ `AgencyAutonomyPolicy` ADR with per-`decision_state` gates | ⚠️ **Partial** — older threshold-based `AgencyAutonomyPolicy` exists in `src/intake/config/agency_settings.py` and is enforced by `gates.py` / `orchestration.py`, but the ADR's explicit `auto/review/block` approval model is not implemented | **None** — upgrade path exists on current config layer |
+| **D2**: Free Engine Persona | `ARCHITECTURE_DECISION_D2_FREE_ENGINE_PERSONA_2026-04-18.md` | ✅ Shared pipeline spec, empowerment framing | ⚠️ **Partial** — `audit` operating mode is wired in packet models, decision routing, tests, and frontend selectors; consumer-facing `presentation_profile` and public surface are not implemented | D6 eval precision gate for consumer surface |
 | **D3**: Sourcing Hierarchy | `ARCHITECTURE_DECISION_D3_SOURCING_HIERARCHY_2026-04-18.md` | ✅ `SourcingPolicy` with tier priority, margin floors, category overrides, supplier preferences | ❌ Not in `src/` — no vendor/supplier model exists | **Gap #01** (vendor/cost/sourcing) |
 | **D4**: Suitability Depth | `ARCHITECTURE_DECISION_D4_D6_SUITABILITY_AUDIT_2026-04-16.md` + `D4_SUBDECISIONS_ADDENDUM_2026-04-18.md` | ✅ Three-tier scoring: deterministic → context → LLM | ⚠️ **Tier 1+2 implemented**, Tier 3 (LLM) not built | LLM integration wiring |
 | **D5**: Override Learning | `ARCHITECTURE_DECISION_D5_OVERRIDE_LEARNING_2026-04-18.md` | ✅ `OverrideEvent` with 3 categories, 2-phase learning, required rationale | ❌ Not in `src/` — no feedback bus, no override storage | **Gap #02** (persistence), **Gap #06** (customer lifecycle) |
@@ -105,9 +105,9 @@
 
 | Pattern | Source | Status in Codebase | Blocker |
 |---------|--------|--------------------|---------|
-| **Quality Gates** at every pipeline stage | AdShot → WaypointOS | ❌ Not adopted — MVB check is implicit logic in `decision.py`, no typed gate contract | **None** — design decision needed |
-| **3-Layer Confidence Scorecard** (data/judgment/commercial) | AdShot → WaypointOS | ❌ Not adopted — `DecisionResult` uses single `confidence_score: float` | **None** — can implement now |
-| **Artifact Lineage** (`derived_from` on Slot) | AdShot → WaypointOS | ❌ Not adopted — `Slot` model has no `derived_from` field | **None** — can implement now |
+| **Quality Gates** at every pipeline stage | AdShot → WaypointOS | ⚠️ **Partially adopted** — typed `PipelineGate`, `NB01CompletionGate`, and `NB02JudgmentGate` exist in `src/intake/gates.py`, but the broader architectural framing hasn't been fully propagated across all pipeline boundaries/docs | **None** — expand/document current implementation |
+| **3-Layer Confidence Scorecard** (data/judgment/commercial) | AdShot → WaypointOS | ✅ Adopted — `ConfidenceScorecard` exists in `src/intake/decision.py` and is used by gating/orchestration | — |
+| **Artifact Lineage** (`derived_from` on Slot) | AdShot → WaypointOS | ✅ Adopted — `Slot.derived_from` exists in `src/intake/packet_models.py` | — |
 | **Deterministic-First as Governing Principle** | AdShot → WaypointOS | ⚠️ Practiced but not codified — `V02_GOVERNING_PRINCIPLES.md` doesn't state this explicitly | **None** — doc update |
 | Cache → Rule Graduation | WaypointOS → AdShot | ✅ Implemented in `src/decision/hybrid_engine.py` | — |
 | Override Learning / Feedback Bus | WaypointOS → AdShot | ✅ Designed (D5) — not yet in code | Gap #02 |
@@ -163,49 +163,42 @@ All 17 gap deep-dives are **documented complete**. None are **implemented**.
 
 ## 4. What Can Be Implemented NOW (Zero Gap Dependencies)
 
-These items have completed architecture decisions and **no gap blockers**:
+These items remain dependency-light and can move forward without waiting on the major gap register blockers:
 
-### A. 3-Layer Confidence Scorecard
-- **Current**: `DecisionResult.confidence_score` is a single `float`
-- **Target**: Structured `{data_quality: float, judgment_confidence: float, commercial_confidence: float}`
-- **Location**: `src/intake/decision.py` (L212-231 area)
-- **Why now**: No persistence needed. Immediately improves debuggability. Feeds into D1 autonomy gates.
-- **Cross-ref**: `CROSS_PROJECT_AGENTIC_PATTERNS_2026-04-20.md` Pattern #2
-
-### B. Artifact Lineage on Slot
-- **Current**: `Slot` in `packet_models.py` has no provenance tracking
-- **Target**: Add `derived_from: list[str]` field
-- **Location**: `src/intake/packet_models.py`
-- **Why now**: Pure data model extension. Compounds with D5 override UX.
-- **Cross-ref**: `CROSS_PROJECT_AGENTIC_PATTERNS_2026-04-20.md` Pattern #3
-
-### C. Quality Gate Contracts
-- **Current**: MVB check is implicit logic inside `decision.py`
-- **Target**: Typed `PipelineGate` protocol with `GateVerdict = proceed | retry | escalate | degrade`, formalized as `NB01CompletionGate` and `NB02JudgmentGate`
-- **Location**: New protocol, referenced by `orchestration.py`
-- **Why now**: No persistence needed. Wraps existing logic in typed contract.
-- **Cross-ref**: `CROSS_PROJECT_AGENTIC_PATTERNS_2026-04-20.md` Pattern #1
-
-### D. D1 AutonomyPolicy Stub
-- **Current**: `AgencySettings` has `target_margin_pct`, `brand_tone`, etc. — no autonomy fields
-- **Target**: Add `AgencyAutonomyPolicy` as a field on `AgencySettings` with conservative defaults
-- **Location**: `src/intake/config/agency_settings.py`
-- **Why now**: Policy-as-config, not code branches. Decision pipeline can reference it immediately.
+### A. D1 ADR Alignment Upgrade
+- **Current**: threshold-based `AgencyAutonomyPolicy` exists and is enforced
+- **Target**: extend it to the ADR-native per-`decision_state` `auto/review/block` model with mode overrides
+- **Location**: `src/intake/config/agency_settings.py`, `src/intake/gates.py`, `src/intake/orchestration.py`
+- **Why now**: builds on existing code rather than introducing a net-new system
 - **Cross-ref**: `ARCHITECTURE_DECISION_D1_AUTONOMY_GRADIENT_2026-04-18.md`
 
-### E. NB05/NB06 Scaffold
+### B. D6 Eval Scaffold
 - **Current**: `src/evals/` doesn't exist
 - **Target**: Create `src/evals/golden_path/` and `src/evals/shadow/` with base protocols and first fixture
 - **Location**: New directory
 - **Why now**: Framework only — doesn't need production data.
 - **Cross-ref**: `ARCHITECTURE_DECISION_LLM_CACHE_NB05_NB06_2026-04-16.md`
 
-### F. Deterministic-First Governing Principle
+### C. Deterministic-First Governing Principle
 - **Current**: Practiced but not codified in `V02_GOVERNING_PRINCIPLES.md`
 - **Target**: Add explicit principle: "Deterministic rules first. LLM only when the answer requires world knowledge or semantic judgment."
 - **Location**: `Docs/V02_GOVERNING_PRINCIPLES.md`
 - **Why now**: Pure documentation. Validates existing hybrid engine pattern as standard.
 - **Cross-ref**: `CROSS_PROJECT_AGENTIC_PATTERNS_2026-04-20.md` Pattern #4
+
+### D. D2 Presentation Split Preparation
+- **Current**: `audit` operating mode exists, but there is no `presentation_profile`
+- **Target**: define the request/response surface split needed for `agency` vs `consumer` presentation without yet shipping the public funnel
+- **Location**: packet/request contracts + NB03 builder selection layer
+- **Why now**: keeps D2 planning concrete while still respecting the D6 gate
+- **Cross-ref**: `ARCHITECTURE_DECISION_D2_FREE_ENGINE_PERSONA_2026-04-18.md`
+
+### E. D4 Tier 3 Trigger + Registry Design Tightening
+- **Current**: Tier 1+2 exist, but Tier 3 implementation details remain intentionally deferred
+- **Target**: settle scorer registration shape, trigger conditions, and hybrid-engine/caching touchpoints before writing the Tier 3 scorer
+- **Location**: plugin/scorer architecture, suitability integration, hybrid engine boundary
+- **Why now**: avoids a throwaway one-off Tier 3 implementation
+- **Cross-ref**: `ARCHITECTURE_DECISION_D4_SUBDECISIONS_ADDENDUM_2026-04-18.md`
 
 ---
 
@@ -236,7 +229,7 @@ These items have completed architecture decisions and **no gap blockers**:
 ## 7. Recommended Next Threads (Dependency-Ordered)
 
 ### Thread A: Close No-Blocker Architecture Gap
-Items A–F from Section 4. Zero gap dependencies, immediate compound value. Implements 4 cross-project patterns from AdShot and stubs 2 architecture decisions into running code.
+Items A–E from Section 4. Zero gap dependencies, immediate compound value. Focus shifts from "add missing primitives" to "finish/align the partially landed ones and scaffold D6."
 
 ### Thread B: Plugin System Architecture Decision
 Formalize the draft into an ADR. Resolves the path for D4 Tier 3, audit rule plugins, and data-source plugins. Design conversation — no implementation blockers.
@@ -246,4 +239,4 @@ The single biggest architectural unlock. Everything stateful (D5, Gap #06, Gap #
 
 ---
 
-*This assessment is point-in-time (2026-04-21). Update when implementation work changes the reality map.*
+*This assessment is point-in-time (2026-04-21) and should be read together with `Docs/D1_D4_STATUS_RECONCILIATION_2026-04-21.md` and `Docs/D1_D4_D6_WAS_IS_SHOULD_2026-04-21.md` for the corrected D1/D2 status nuance and next-step ordering.*

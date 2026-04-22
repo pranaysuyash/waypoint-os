@@ -10,7 +10,8 @@ from src.analytics.models import (
     BottleneckAnalysis,
     BottleneckCause,
     RevenueMetrics,
-    MonthlyRevenue
+    MonthlyRevenue,
+    OperationalAlert
 )
 
 STAGE_CONVERSION_PROBABILITIES = {
@@ -77,33 +78,68 @@ def compute_pipeline_metrics(trips: list, days: int = 30) -> List[StageMetrics]:
 
 
 def compute_team_metrics(trips: list, assignments: list, days: int = 30) -> List[TeamMemberMetrics]:
-    # Hardcoded team for Wave 1
-    return [
-        TeamMemberMetrics(
-            userId="usr_123",
-            name="Alice Agent",
-            role="agent",
-            activeTrips=12,
-            completedTrips=45,
-            conversionRate=68.5,
-            avgResponseTime=2.4,
-            customerSatisfaction=4.8,
-            currentWorkload="optimal",
-            workloadScore=75.0
-        ),
-        TeamMemberMetrics(
-            userId="usr_456",
-            name="Bob Broker",
-            role="agent",
-            activeTrips=28,
-            completedTrips=31,
-            conversionRate=42.1,
-            avgResponseTime=8.5,
-            customerSatisfaction=4.1,
-            currentWorkload="over",
-            workloadScore=92.0
-        )
-    ]
+    """
+    Calculate performance metrics for each team member.
+    CSAT is derived from extracted feedback ratings (1-5).
+    """
+    # Group trips and ratings by assignee
+    agent_data = {} # userId -> { ratings: [], active: 0, completed: 0 }
+    
+    # Initialize from assignments list
+    for user in assignments:
+        uid = user.get("user_id")
+        if not uid: continue
+        agent_data[uid] = {
+            "name": user.get("name"),
+            "role": user.get("role", "agent"),
+            "ratings": [],
+            "active": 0,
+            "completed": 0
+        }
+
+    for trip in trips:
+        uid = trip.get("assigned_to")
+        if not uid or uid not in agent_data:
+            continue
+            
+        status = trip.get("status", "new")
+        if status in ("booked", "delivered", "completed"):
+            agent_data[uid]["completed"] += 1
+        else:
+            agent_data[uid]["active"] += 1
+            
+        # Extract quality signal: Feedback Rating
+        # Try both packet/feedback (Wave 9) and analytics/latest_feedback
+        packet = trip.get("extracted") or trip.get("packet") or {}
+        feedback = packet.get("feedback") or trip.get("analytics", {}).get("latest_feedback")
+        
+        if feedback and isinstance(feedback, dict):
+            rating = feedback.get("rating")
+            if rating and isinstance(rating, (int, float)):
+                agent_data[uid]["ratings"].append(float(rating))
+
+    # Build final metrics objects
+    team_metrics = []
+    for uid, stats in agent_data.items():
+        ratings = stats["ratings"]
+        # Use simple mean for CSAT; default to 4.5 if no ratings yet (baseline expectation)
+        csat = round(sum(ratings) / len(ratings), 1) if ratings else 4.5
+        
+        # Simulated workload/response metrics for now (Wave 1-3 heritage)
+        team_metrics.append(TeamMemberMetrics(
+            userId=uid,
+            name=stats["name"],
+            role=stats["role"],
+            activeTrips=stats["active"],
+            completedTrips=stats["completed"],
+            conversionRate=65.0 + random.uniform(-10, 10),
+            avgResponseTime=2.0 + random.uniform(0.5, 5.0),
+            customerSatisfaction=csat,
+            currentWorkload="optimal" if stats["active"] < 15 else "over",
+            workloadScore=min(100.0, stats["active"] * 6.0)
+        ))
+        
+    return team_metrics
 
 
 def compute_bottlenecks(trips: list, days: int = 30) -> List[BottleneckAnalysis]:
@@ -222,3 +258,79 @@ def compute_revenue_metrics(trips: list, days: int = 30) -> RevenueMetrics:
         avgTripValue=round(avg_val, 2),
         revenueByMonth=revenue_by_month
     )
+
+
+def compute_alerts(trips: list) -> List[OperationalAlert]:
+    """
+    Identify trips requiring manual recovery/intervention.
+    Currently focuses on Wave 10: Feedback-Driven Recovery.
+    """
+    alerts = []
+    
+    for trip in trips:
+        analytics = trip.get("analytics") or {}
+        
+        # Check for feedback re-open condition
+        if analytics.get("feedback_reopen") and not analytics.get("feedback_dismissed"):
+            trip_id = trip.get("id") or trip.get("trip_id")
+            severity = analytics.get("feedback_severity", "high")
+            
+            # Wave 11: SLA Tracking & Escalation Logic
+            deadline_str = analytics.get("recovery_deadline")
+            sla_status = analytics.get("sla_status", "on_track")
+            is_escalated = analytics.get("is_escalated", False)
+            
+            if deadline_str:
+                try:
+                    deadline = datetime.fromisoformat(deadline_str.replace("Z", "+00:00"))
+                    now = datetime.now(timezone.utc)
+                    diff = (deadline - now).total_seconds() / 60.0 # minutes
+                    
+                    if diff <= 0:
+                        sla_status = "breached"
+                        is_escalated = True
+                        # Persist the escalation back to the trip if not already set
+                        if not analytics.get("is_escalated") or analytics.get("sla_status") != "breached":
+                            from persistence import TripStore
+                            analytics["is_escalated"] = True
+                            analytics["sla_status"] = "breached"
+                            TripStore.update_trip(trip_id, {"analytics": analytics})
+                    elif diff <= 30:
+                        sla_status = "at_risk"
+                        if analytics.get("sla_status") != "at_risk":
+                            from persistence import TripStore
+                            analytics["sla_status"] = "at_risk"
+                            TripStore.update_trip(trip_id, {"analytics": analytics})
+                    else:
+                        sla_status = "on_track"
+                except Exception:
+                    pass
+
+            alert_type = "sla_breach" if sla_status == "breached" else "critical_feedback"
+            alert_severity = "critical" if severity == "critical" or sla_status == "breached" else "high"
+            
+            message = analytics.get("review_reason", "Critical Feedback Recovery Required")
+            if sla_status == "breached":
+                message = f"SLA BREACHED: {message}"
+            elif sla_status == "at_risk":
+                message = f"AT RISK (30m): {message}"
+
+            alerts.append(OperationalAlert(
+                id=f"alert_{trip_id}",
+                tripId=trip_id,
+                type=alert_type,
+                severity=alert_severity,
+                message=message,
+                timestamp=trip.get("updated_at") or trip.get("saved_at") or analytics.get("proactive_feedback_at") or datetime.now(timezone.utc).isoformat(),
+                isDismissed=False,
+                metadata={
+                    "rating": analytics.get("feedback", {}).get("rating"),
+                    "agent_id": trip.get("assigned_to"),
+                    "sla_status": sla_status,
+                    "is_escalated": is_escalated,
+                    "deadline": deadline_str
+                }
+            ) )
+            
+    # Sort by timestamp descending
+    return sorted(alerts, key=lambda a: a.timestamp, reverse=True)

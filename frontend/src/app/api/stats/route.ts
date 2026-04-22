@@ -1,13 +1,27 @@
 import { NextResponse } from "next/server";
 
-// Mock stats data (in production, this would be calculated from actual trip data)
+const MOCK_TRIPS = [
+  { state: "green" },
+  { state: "blue" },
+  { state: "amber" },
+  { state: "red" },
+  { state: "green" },
+  { state: "amber" },
+  { state: "blue" },
+];
+
 export async function GET() {
   try {
+    const active = MOCK_TRIPS.length;
+    const pendingReview = MOCK_TRIPS.filter((t) => t.state === "amber").length;
+    const readyToBook = MOCK_TRIPS.filter((t) => t.state === "green").length;
+    const needsAttention = MOCK_TRIPS.filter((t) => t.state === "red").length;
+
     return NextResponse.json({
-      active: 12,
-      pendingReview: 5,
-      readyToBook: 8,
-      needsAttention: 2,
+      active,
+      pendingReview,
+      readyToBook,
+      needsAttention,
     });
   } catch (error) {
     console.error("Error fetching stats:", error);

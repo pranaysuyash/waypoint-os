@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ChevronDown,
@@ -16,6 +16,9 @@ import {
   Save,
   CheckCircle,
   AlertTriangle,
+  Edit2,
+  X,
+  Globe,
 } from 'lucide-react';
 import type { Trip } from '@/lib/api-client';
 import { useWorkbenchStore } from '@/stores/workbench';
@@ -23,6 +26,18 @@ import { useSpineRun } from '@/hooks/useSpineRun';
 import { useUpdateTrip } from '@/hooks/useTrips';
 import { getTripRoute } from '@/lib/routes';
 import type { SpineStage, OperatingMode, SpineRunRequest } from '@/types/spine';
+import {
+  CURRENCY_CONFIG,
+  type SupportedCurrency,
+  formatMoney,
+  formatMoneyCompact,
+  parseBudgetString,
+  getCurrencyOptions,
+} from '@/lib/currency';
+import { TRIP_TYPE_OPTIONS, DESTINATION_OPTIONS } from '@/lib/combobox';
+import { SmartCombobox } from '@/components/ui/SmartCombobox';
+import { useFieldAuditLog } from '@/hooks/useFieldAuditLog';
+import { getChangeDescription } from '@/types/audit';
 
 const stages: { value: SpineStage; label: string }[] = [
   { value: 'discovery', label: 'Discovery' },
@@ -51,15 +66,15 @@ interface IntakePanelProps {
 
 export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const store = useWorkbenchStore();
-  const { 
-    input_raw_note, 
-    input_owner_note, 
-    setInputRawNote, 
-    setInputOwnerNote, 
-    stage, 
-    setStage, 
-    operating_mode, 
-    setOperatingMode 
+  const {
+    input_raw_note,
+    input_owner_note,
+    setInputRawNote,
+    setInputOwnerNote,
+    stage,
+    setStage,
+    operating_mode,
+    setOperatingMode
   } = store;
 
   const router = useRouter();
@@ -71,6 +86,41 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const { mutate: saveTrip, isSaving } = useUpdateTrip();
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Audit log for tracking field changes
+  const { logChange, getLatestChangeForField } = useFieldAuditLog({
+    tripId,
+    userId: 'agent', // In production, get from auth context
+    userName: 'Agent', // In production, get from auth context
+  });
+
+  // Budget state with currency
+  const [budgetAmount, setBudgetAmount] = useState('');
+  const [budgetCurrency, setBudgetCurrency] = useState<SupportedCurrency>('INR');
+
+  // Editable trip details state
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState({
+    destination: trip?.destination || '',
+    type: trip?.type || '',
+    party: trip?.party?.toString() || '',
+    dateWindow: trip?.dateWindow || '',
+    budget: trip?.budget || '',
+    budgetCurrency: budgetCurrency,
+  });
+
+  // Parse existing budget to get currency and amount
+  useMemo(() => {
+    if (trip?.budget) {
+      const parsed = parseBudgetString(trip.budget);
+      if (parsed) {
+        setBudgetAmount(parsed.amount.toString());
+        setBudgetCurrency(parsed.currency);
+      }
+    }
+  }, [trip?.budget]);
+
+  const currencyOptions = getCurrencyOptions();
 
   const handleProcessTrip = useCallback(async () => {
     if (!store.input_raw_note && !store.input_owner_note) return;
@@ -99,6 +149,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       if (result.internal_bundle) store.setResultInternalBundle(result.internal_bundle);
       if (result.traveler_bundle) store.setResultTravelerBundle(result.traveler_bundle);
       if (result.safety) store.setResultSafety(result.safety);
+      if (result.fees) store.setResultFees(result.fees);
       store.setResultRunTs(new Date().toISOString());
 
       setRunSuccess(true);
@@ -115,22 +166,332 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const handleSave = useCallback(async () => {
     if (!tripId) return;
     setSaveError(null);
-    const result = await saveTrip(tripId, {
+
+    // Prepare update data with editable fields
+    const updateData: Partial<Trip> = {
       customerMessage: store.input_raw_note,
       agentNotes: store.input_owner_note,
-    });
+    };
+
+    // Include trip detail edits
+    if (editingField) {
+      if (editValues.destination) updateData.destination = editValues.destination;
+      if (editValues.type) updateData.type = editValues.type;
+      if (editValues.party) updateData.party = parseInt(editValues.party, 10) || undefined;
+      if (editValues.dateWindow) updateData.dateWindow = editValues.dateWindow;
+      if (budgetAmount) {
+        updateData.budget = `${formatMoney(parseFloat(budgetAmount), budgetCurrency)}`;
+      }
+    }
+
+    const result = await saveTrip(tripId, updateData);
     if (result) {
       setSaveSuccess(true);
+      setEditingField(null);
       setTimeout(() => setSaveSuccess(false), 3000);
     } else {
       setSaveError('Failed to save. Check connection and try again.');
       setTimeout(() => setSaveError(null), 8000);
     }
-  }, [tripId, saveTrip, store.input_raw_note, store.input_owner_note]);
+  }, [tripId, saveTrip, store.input_raw_note, store.input_owner_note, editingField, editValues, budgetAmount, budgetCurrency]);
 
-  const budget = trip?.budget || '—';
-  const party = trip?.party || '—';
-  const dateWindow = trip?.dateWindow || '—';
+  const startEditing = useCallback((field: string, currentValue: string) => {
+    setEditValues(prev => ({ ...prev, [field]: currentValue }));
+    setEditingField(field);
+  }, []);
+
+  const cancelEditing = useCallback(() => {
+    setEditingField(null);
+    // Reset edit values to current trip values
+    if (trip) {
+      setEditValues({
+        destination: trip.destination || '',
+        type: trip.type || '',
+        party: trip.party?.toString() || '',
+        dateWindow: trip.dateWindow || '',
+        budget: trip.budget || '',
+        budgetCurrency: budgetCurrency,
+      });
+    }
+  }, [trip, budgetCurrency]);
+
+  const saveFieldEdit = useCallback(async (field: string) => {
+    if (!tripId) return;
+    setSaveError(null);
+
+    const updateData: Partial<Trip> = {};
+    let previousValue: string | number | null = null;
+    let newValue: string | number | null = null;
+
+    switch (field) {
+      case 'destination':
+        previousValue = trip?.destination || null;
+        newValue = editValues.destination;
+        updateData.destination = editValues.destination;
+        break;
+      case 'type':
+        previousValue = trip?.type || null;
+        newValue = editValues.type;
+        updateData.type = editValues.type;
+        break;
+      case 'party':
+        previousValue = trip?.party || null;
+        newValue = parseInt(editValues.party, 10);
+        updateData.party = Number.isNaN(newValue) ? undefined : newValue;
+        break;
+      case 'dateWindow':
+        previousValue = trip?.dateWindow || null;
+        newValue = editValues.dateWindow;
+        updateData.dateWindow = editValues.dateWindow;
+        break;
+      case 'budget':
+        previousValue = trip?.budget || null;
+        newValue = budgetAmount ? `${CURRENCY_CONFIG[budgetCurrency].symbol}${budgetAmount}` : null;
+        updateData.budget = newValue ?? undefined;
+        break;
+    }
+
+    const result = await saveTrip(tripId, updateData);
+    if (result) {
+      // Log the change to audit trail
+      if (previousValue !== newValue) {
+        logChange(
+          field as any,
+          'update',
+          previousValue,
+          newValue,
+          'Field edited from workspace'
+        );
+      }
+
+      setSaveSuccess(true);
+      setEditingField(null);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } else {
+      setSaveError('Failed to save. Check connection and try again.');
+      setTimeout(() => setSaveError(null), 8000);
+    }
+  }, [tripId, trip, saveTrip, editValues, budgetAmount, budgetCurrency, logChange]);
+
+  // Editable field component
+  const EditableField = ({
+    label,
+    value,
+    displayValue,
+    field,
+    icon: Icon,
+    type = 'text',
+    options,
+  }: {
+    label: string;
+    value: string;
+    displayValue?: string;
+    field: string;
+    icon?: React.ComponentType<{ className?: string }>;
+    type?: 'text' | 'select' | 'number' | 'combobox';
+    options?: Array<{ value: string; label: string; symbol?: string; flag?: string }>;
+  }) => {
+    const isEditing = editingField === field;
+
+    // For combobox fields (trip type, destination), use SmartCombobox
+    if (field === 'type' && isEditing) {
+      return (
+        <div className='bg-[#0f1115] border border-[#58a6ff] rounded-lg p-2 -m-1'>
+          <div className='flex items-center justify-between gap-1'>
+            <span className='text-[10px] text-[#58a6ff] uppercase tracking-wide'>{label}</span>
+            <div className='flex items-center gap-1'>
+              <button
+                onClick={() => saveFieldEdit(field)}
+                className='p-1 bg-[#3fb950] text-[#0d1117] rounded hover:bg-[#2ea043]'
+                title='Save'
+              >
+                <CheckCircle className='w-3 h-3' />
+              </button>
+              <button
+                onClick={cancelEditing}
+                className='p-1 bg-[#f85149] text-[#0d1117] rounded hover:bg-[#da3633]'
+                title='Cancel'
+              >
+                <X className='w-3 h-3' />
+              </button>
+            </div>
+          </div>
+          <SmartCombobox
+            value={value}
+            onChange={(val) => setEditValues(prev => ({ ...prev, [field]: val }))}
+            options={TRIP_TYPE_OPTIONS}
+            placeholder='Select or type trip type...'
+            allowCustom={true}
+          />
+        </div>
+      );
+    }
+
+    if (field === 'destination' && isEditing) {
+      return (
+        <div className='bg-[#0f1115] border border-[#58a6ff] rounded-lg p-2 -m-1'>
+          <div className='flex items-center justify-between gap-1'>
+            <span className='text-[10px] text-[#58a6ff] uppercase tracking-wide'>{label}</span>
+            <div className='flex items-center gap-1'>
+              <button
+                onClick={() => saveFieldEdit(field)}
+                className='p-1 bg-[#3fb950] text-[#0d1117] rounded hover:bg-[#2ea043]'
+                title='Save'
+              >
+                <CheckCircle className='w-3 h-3' />
+              </button>
+              <button
+                onClick={cancelEditing}
+                className='p-1 bg-[#f85149] text-[#0d1117] rounded hover:bg-[#da3633]'
+                title='Cancel'
+              >
+                <X className='w-3 h-3' />
+              </button>
+            </div>
+          </div>
+          <SmartCombobox
+            value={value}
+            onChange={(val) => setEditValues(prev => ({ ...prev, [field]: val }))}
+            options={DESTINATION_OPTIONS}
+            placeholder='Select or type destination...'
+            allowCustom={true}
+          />
+        </div>
+      );
+    }
+
+    if (isEditing) {
+      return (
+        <div className='bg-[#0f1115] border border-[#58a6ff] rounded-lg p-2 -m-1'>
+          <div className='flex items-center gap-1 mb-1'>
+            <span className='text-[10px] text-[#58a6ff] uppercase tracking-wide'>{label}</span>
+          </div>
+          <div className='flex items-center gap-1'>
+            {type === 'select' && options ? (
+              <select
+                value={value}
+                onChange={(e) => setEditValues(prev => ({ ...prev, [field]: e.target.value }))}
+                className='flex-1 px-2 py-1 bg-[#161b22] border border-[#30363d] rounded text-xs text-[#e6edf3] focus:outline-none focus:border-[#58a6ff]'
+              >
+                {options.map(opt => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.flag} {opt.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type={type === 'number' ? 'number' : 'text'}
+                value={value}
+                onChange={(e) => setEditValues(prev => ({ ...prev, [field]: e.target.value }))}
+                className='flex-1 px-2 py-1 bg-[#161b22] border border-[#30363d] rounded text-xs text-[#e6edf3] focus:outline-none focus:border-[#58a6ff]'
+                autoFocus
+              />
+            )}
+            <button
+              onClick={() => saveFieldEdit(field)}
+              className='p-1 bg-[#3fb950] text-[#0d1117] rounded hover:bg-[#2ea043]'
+              title='Save'
+            >
+              <CheckCircle className='w-3 h-3' />
+            </button>
+            <button
+              onClick={cancelEditing}
+              className='p-1 bg-[#f85149] text-[#0d1117] rounded hover:bg=[#da3633]'
+              title='Cancel'
+            >
+              <X className='w-3 h-3' />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className='group relative'>
+        <span className='text-xs text-[#8b949e] uppercase tracking-wide'>{label}</span>
+        <p className='text-sm text-[#e6edf3] font-medium mt-0.5 flex items-center gap-1'>
+          {Icon && <Icon className='w-3 h-3 text-[#8b949e]' />}
+          {displayValue || value}
+          <button
+            onClick={() => startEditing(field, value)}
+            className='ml-1 opacity-0 group-hover:opacity-100 transition-opacity'
+            title={`Edit ${label}`}
+          >
+            <Edit2 className='w-3 h-3 text-[#58a6ff]' />
+          </button>
+        </p>
+      </div>
+    );
+  };
+
+  // Budget edit component with currency selector
+  const BudgetField = () => {
+    const isEditing = editingField === 'budget';
+    const displayBudget = trip?.budget || '—';
+
+    if (isEditing) {
+      return (
+        <div className='bg-[#0f1115] border border-[#58a6ff] rounded-lg p-2 -m-1'>
+          <div className='flex items-center gap-1 mb-1'>
+            <span className='text-[10px] text-[#58a6ff] uppercase tracking-wide'>Budget</span>
+          </div>
+          <div className='flex items-center gap-1'>
+            <input
+              type='number'
+              value={budgetAmount}
+              onChange={(e) => setBudgetAmount(e.target.value)}
+              placeholder='Amount'
+              className='flex-1 px-2 py-1 bg-[#161b22] border border-[#30363d] rounded text-xs text-[#e6edf3] focus:outline-none focus:border-[#58a6ff]'
+              autoFocus
+            />
+            <select
+              value={budgetCurrency}
+              onChange={(e) => setBudgetCurrency(e.target.value as SupportedCurrency)}
+              className='px-2 py-1 bg-[#161b22] border border-[#30363d] rounded text-xs text-[#e6edf3] focus:outline-none focus:border-[#58a6ff]'
+            >
+              {currencyOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.flag} {opt.value}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => saveFieldEdit('budget')}
+              className='p-1 bg-[#3fb950] text-[#0d1117] rounded hover:bg-[#2ea043]'
+              title='Save'
+            >
+              <CheckCircle className='w-3 h-3' />
+            </button>
+            <button
+              onClick={cancelEditing}
+              className='p-1 bg-[#f85149] text-[#0d1117] rounded hover:bg-[#da3633]'
+              title='Cancel'
+            >
+              <X className='w-3 h-3' />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className='group relative'>
+        <span className='text-xs text-[#8b949e] uppercase tracking-wide'>Budget</span>
+        <p className='text-sm text-[#e6edf3] font-medium mt-0.5 flex items-center gap-1'>
+          <Wallet className='w-3 h-3 text-[#3fb950]' />
+          {displayBudget}
+          <button
+            onClick={() => setEditingField('budget')}
+            className='ml-1 opacity-0 group-hover:opacity-100 transition-opacity'
+            title='Edit Budget'
+          >
+            <Edit2 className='w-3 h-3 text-[#58a6ff]' />
+          </button>
+        </p>
+      </div>
+    );
+  };
 
   return (
     <div className='space-y-6'>
@@ -143,34 +504,35 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
         </div>
         {trip ? (
           <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3'>
-            <div>
-              <span className='text-xs text-[#8b949e] uppercase tracking-wide'>Destination</span>
-              <p className='text-sm text-[#e6edf3] font-medium mt-0.5 flex items-center gap-1'>
-                <MapPin className='w-3 h-3 text-[#58a6ff]' />{trip.destination}
-              </p>
-            </div>
-            <div>
-              <span className='text-xs text-[#8b949e] uppercase tracking-wide'>Type</span>
-              <p className='text-sm text-[#e6edf3] font-medium mt-0.5'>{trip.type}</p>
-            </div>
-            <div>
-              <span className='text-xs text-[#8b949e] uppercase tracking-wide'>Party Size</span>
-              <p className='text-sm text-[#e6edf3] font-medium mt-0.5 flex items-center gap-1'>
-                <Users className='w-3 h-3 text-[#8b949e]' />{party} pax
-              </p>
-            </div>
-            <div>
-              <span className='text-xs text-[#8b949e] uppercase tracking-wide'>Dates</span>
-              <p className='text-sm text-[#e6edf3] font-medium mt-0.5 flex items-center gap-1'>
-                <Calendar className='w-3 h-3 text-[#8b949e]' />{dateWindow}
-              </p>
-            </div>
-            <div>
-              <span className='text-xs text-[#8b949e] uppercase tracking-wide'>Budget</span>
-              <p className='text-sm text-[#e6edf3] font-medium mt-0.5 flex items-center gap-1'>
-                <Wallet className='w-3 h-3 text-[#3fb950]' />{budget}
-              </p>
-            </div>
+            <EditableField
+              label='Destination'
+              value={editValues.destination}
+              displayValue={trip.destination}
+              field='destination'
+              icon={MapPin}
+            />
+            <EditableField
+              label='Type'
+              value={editValues.type}
+              displayValue={trip.type}
+              field='type'
+            />
+            <EditableField
+              label='Party Size'
+              value={editValues.party}
+              displayValue={trip.party ? `${trip.party} pax` : '—'}
+              field='party'
+              icon={Users}
+              type='number'
+            />
+            <EditableField
+              label='Dates'
+              value={editValues.dateWindow}
+              displayValue={trip.dateWindow || '—'}
+              field='dateWindow'
+              icon={Calendar}
+            />
+            <BudgetField />
             <div>
               <span className='text-xs text-[#8b949e] uppercase tracking-wide'>Reference</span>
               <p className='text-sm text-[#e6edf3] font-mono mt-0.5'>{tripId}</p>

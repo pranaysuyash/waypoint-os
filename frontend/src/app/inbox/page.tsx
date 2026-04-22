@@ -4,10 +4,13 @@ import { useState, useCallback, memo, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Briefcase,
+  ChevronDown,
+  ChevronUp,
   ChevronRight,
   Clock,
   Users,
   Calendar,
+  Wallet,
   AlertTriangle,
   CheckSquare,
   Square,
@@ -17,6 +20,7 @@ import {
   Filter,
   Search,
   Flag,
+  ArrowUpDown,
 } from 'lucide-react';
 import { useTrips } from '@/hooks/useTrips';
 import { getTripRoute } from '@/lib/routes';
@@ -42,6 +46,8 @@ const TEAM_MEMBERS: TeamMember[] = [
 type StateKey = 'green' | 'amber' | 'red' | 'blue';
 type PriorityKey = 'low' | 'medium' | 'high' | 'critical';
 type SLAStatus = 'on_track' | 'at_risk' | 'breached';
+type SortKey = 'priority' | 'destination' | 'value' | 'party' | 'dates' | 'state' | 'age' | 'sla';
+type SortDirection = 'asc' | 'desc';
 
 interface TripItem {
   id: string;
@@ -103,6 +109,17 @@ const PRIORITY_META: Record<
   medium: { color: '#58a6ff', label: 'Medium', icon: Flag },
   high: { color: '#d29922', label: 'High', icon: Flag },
   critical: { color: '#f85149', label: 'Critical', icon: AlertTriangle },
+};
+
+const SORT_OPTIONS: Record<SortKey, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
+  priority: { label: 'Priority', icon: Flag },
+  destination: { label: 'Destination', icon: Briefcase },
+  value: { label: 'Value', icon: Wallet },
+  party: { label: 'Party Size', icon: Users },
+  dates: { label: 'Dates', icon: Calendar },
+  state: { label: 'State', icon: CheckSquare },
+  age: { label: 'Age', icon: Clock },
+  sla: { label: 'SLA Status', icon: AlertTriangle },
 };
 
 // ============================================================================
@@ -323,6 +340,9 @@ export default function InboxPage() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'pending' | 'review' | 'unassigned'>('all');
   const [selectedTrips, setSelectedTrips] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<SortKey>('priority');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
   const { data: trips, isLoading, error, refetch } = useTrips();
 
   // Convert API trips with enhanced fields
@@ -372,7 +392,7 @@ export default function InboxPage() {
   // Filter and search
   const filtered = useMemo(() => {
     let result = tripItems;
-    
+
     // Apply status filter
     if (activeFilter === 'pending') {
       result = result.filter((t) => t.state === 'amber' || t.state === 'blue');
@@ -381,7 +401,7 @@ export default function InboxPage() {
     } else if (activeFilter === 'unassigned') {
       result = result.filter((t) => !t.assignedTo);
     }
-    
+
     // Apply search
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -391,17 +411,43 @@ export default function InboxPage() {
         t.type.toLowerCase().includes(query)
       );
     }
-    
-    // Sort by priority (critical first) then by SLA status
+
+    // Apply sorting
+    const dir = sortDirection === 'asc' ? 1 : -1;
     return result.sort((a, b) => {
-      const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-      if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
-        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      switch (sortBy) {
+        case 'priority': {
+          const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+          const pa = priorityOrder[a.priority];
+          const pb = priorityOrder[b.priority];
+          if (pa !== pb) return (pa - pb) * dir;
+          // Tie-break by SLA
+          const slaOrder = { breached: 0, at_risk: 1, on_track: 2 };
+          return (slaOrder[a.slaStatus] - slaOrder[b.slaStatus]) * dir;
+        }
+        case 'destination':
+          return a.destination.localeCompare(b.destination) * dir;
+        case 'value':
+          return ((a.value || 0) - (b.value || 0)) * dir;
+        case 'party':
+          return (a.party - b.party) * dir;
+        case 'dates':
+          return a.dateWindow.localeCompare(b.dateWindow) * dir;
+        case 'state': {
+          const stateOrder = { red: 0, amber: 1, blue: 2, green: 3 };
+          return (stateOrder[a.state] - stateOrder[b.state]) * dir;
+        }
+        case 'age':
+          return a.age.localeCompare(b.age) * dir;
+        case 'sla': {
+          const slaOrder = { breached: 0, at_risk: 1, on_track: 2 };
+          return (slaOrder[a.slaStatus] - slaOrder[b.slaStatus]) * dir;
+        }
+        default:
+          return 0;
       }
-      const slaOrder = { breached: 0, at_risk: 1, on_track: 2 };
-      return slaOrder[a.slaStatus] - slaOrder[b.slaStatus];
     });
-  }, [tripItems, activeFilter, searchQuery]);
+  }, [tripItems, activeFilter, searchQuery, sortBy, sortDirection]);
 
   const handleSelect = useCallback((id: string, selected: boolean) => {
     setSelectedTrips((prev) => {
@@ -473,7 +519,77 @@ export default function InboxPage() {
               className='w-full pl-9 pr-3 py-2 bg-[#161b22] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]'
             />
           </div>
-          
+
+          <div className='relative'>
+            <button
+              onClick={() => setShowSortDropdown(!showSortDropdown)}
+              className='flex items-center gap-2 px-3 py-2 bg-[#161b22] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] hover:border-[#484f58] transition-colors'
+            >
+              <ArrowUpDown className='w-4 h-4 text-[#8b949e]' />
+              <span>Sort by {SORT_OPTIONS[sortBy].label}</span>
+              {sortDirection === 'asc' ? (
+                <ChevronUp className='w-4 h-4 text-[#8b949e]' />
+              ) : (
+                <ChevronDown className='w-4 h-4 text-[#8b949e]' />
+              )}
+            </button>
+
+            {showSortDropdown && (
+              <div className='absolute top-full right-0 mt-1 w-56 bg-[#0f1115] border border-[#30363d] rounded-lg shadow-xl z-10'>
+                <div className='p-2 border-b border-[#30363d]'>
+                  <div className='flex items-center justify-between px-2 py-1'>
+                    <span className='text-xs text-[#8b949e] font-medium'>Direction</span>
+                    <div className='flex items-center gap-1'>
+                      <button
+                        onClick={() => setSortDirection('asc')}
+                        className={`p-1 rounded transition-colors ${
+                          sortDirection === 'asc'
+                            ? 'bg-[#58a6ff] text-[#0d1117]'
+                            : 'text-[#8b949e] hover:text-[#e6edf3]'
+                        }`}
+                      >
+                        <ChevronUp className='w-4 h-4' />
+                      </button>
+                      <button
+                        onClick={() => setSortDirection('desc')}
+                        className={`p-1 rounded transition-colors ${
+                          sortDirection === 'desc'
+                            ? 'bg-[#58a6ff] text-[#0d1117]'
+                            : 'text-[#8b949e] hover:text-[#e6edf3]'
+                        }`}
+                      >
+                        <ChevronDown className='w-4 h-4' />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className='p-1'>
+                  {(Object.keys(SORT_OPTIONS) as SortKey[]).map((key) => {
+                    const option = SORT_OPTIONS[key];
+                    const Icon = option.icon;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => {
+                          setSortBy(key);
+                          setShowSortDropdown(false);
+                        }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md transition-colors ${
+                          sortBy === key
+                            ? 'bg-[#58a6ff] text-[#0d1117]'
+                            : 'text-[#e6edf3] hover:bg-[#161b22]'
+                        }`}
+                      >
+                        <Icon className='w-4 h-4' />
+                        <span>{option.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
           <span className='text-sm text-[#8b949e]'>
             {isLoading ? 'Loading...' : `${tripItems.length} trips total`}
           </span>

@@ -16,7 +16,7 @@ from persistence import TripStore, AuditStore
 
 
 # Actions accepted from the backend endpoint (post-normalisation)
-VALID_ACTIONS = {"approved", "rejected", "escalated", "revision_needed"}
+VALID_ACTIONS = {"approved", "rejected", "escalated", "revision_needed", "recovery", "resolved"}
 
 # Map frontend action names → internal status names
 ACTION_MAP = {
@@ -24,6 +24,7 @@ ACTION_MAP = {
     "reject": "rejected",
     "escalate": "escalated",
     "request_changes": "revision_needed",
+    "resolve": "resolved",
 }
 
 
@@ -86,7 +87,18 @@ def process_review_action(
     update_fields: dict[str, Any] = {"analytics": analytics}
 
     # Policy-specific logic
-    if normalised == "revision_needed":
+    if normalised == "approved":
+        # Automated state change to 'delivered' upon approval
+        update_fields["status"] = "delivered"
+        analytics["delivery_status"] = "delivered"
+        analytics["proactive_feedback_asked"] = True
+        analytics["proactive_feedback_at"] = datetime.now(timezone.utc).isoformat()
+        
+        # Mocking an automated email/WhatsApp dispatch
+        _emit_notification(trip_id, pre_state["assignee"], "DELIVERY_ASK_FEEDBACK", 
+                           "Trip approved and delivered. Automated feedback request sent to customer.")
+
+    elif normalised == "revision_needed":
         # Mandatory reassignment: reassign_to if provided, else original assignee (already in pre_state)
         new_assignee = reassign_to or pre_state["assignee"]
         update_fields["assigned_to"] = new_assignee
@@ -180,4 +192,65 @@ def trip_to_review(trip: dict) -> dict:
         "reviewedAt": review_meta.get("reviewed_at") or None,
         "reviewedBy": review_meta.get("reviewed_by") or None,
         "riskFlags": risk_flags,
+        # Wave 10: Feedback-Driven Actioning
+        "feedbackSeverity": analytics.get("feedback_severity"),
+        "followupNeeded": analytics.get("followup_needed", False),
+        "recoveryStatus": analytics.get("recovery_status"),
+        # Wave 11: SLA Tracking
+        "recoveryStartedAt": analytics.get("recovery_started_at"),
+        "recoveryDeadline": analytics.get("recovery_deadline"),
+        "isEscalated": analytics.get("is_escalated", False),
+        "slaStatus": analytics.get("sla_status", "on_track"),
     }
+
+
+def trigger_feedback_recovery(trip_id: str, reason: str = "Critical Negative Feedback"):
+    """
+    Automated transition for low-CSAT recovery.
+    Assigns back to original agent and moves to 'recovery' status.
+    """
+    trip = TripStore.get_trip(trip_id)
+    if not trip:
+        return
+
+    analytics = trip.get("analytics") or {}
+    pre_assignee = trip.get("assigned_to", "unassigned")
+
+    # Update analytics and status
+    now = datetime.now(timezone.utc)
+    analytics["recovery_status"] = "IN_RECOVERY"
+    analytics["recovery_started_at"] = now.isoformat()
+    analytics["requires_review"] = True  # Surface on owner dashboard
+    analytics["review_status"] = "recovery"
+    
+    # Initialize SLA if missing (should be set by engine, but safety first)
+    if not analytics.get("recovery_deadline"):
+        from datetime import timedelta
+        severity = analytics.get("feedback_severity", "high")
+        hours = 2 if severity == "critical" else 6
+        analytics["recovery_deadline"] = (now + timedelta(hours=hours)).isoformat()
+        analytics["sla_status"] = "on_track"
+
+    update_fields: dict[str, Any] = {
+        "status": "recovery",
+        "analytics": analytics,
+        "assigned_to": pre_assignee  # Confirmed Choice: Re-assign to original agent
+    }
+
+    TripStore.update_trip(trip_id, update_fields)
+
+    # Audit log
+    AuditStore.log_event(
+        "feedback_recovery_triggered",
+        "system",
+        {
+            "trip_id": trip_id,
+            "reason": reason,
+            "assigned_to": pre_assignee,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    )
+
+    # Operator Notification
+    _emit_notification(trip_id, pre_assignee, "RECOVERY_ASSIGNED", 
+                       f"CRITICAL FEEDBACK RECOVERY: Trip re-opened due to low CSAT. Reason: {reason}")
