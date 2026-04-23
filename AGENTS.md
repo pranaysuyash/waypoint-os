@@ -178,3 +178,278 @@ Before removing **any** code (function, type, component, export), apply this wor
 - Preserve existing `memory/` contents; do not remove memory artifacts unless explicitly instructed.
 - Keep institutional-memory and GTM decision artifacts under `Docs/context/`.
 - Keep internal-only process notes under `Archive/context_ingest/internal_notes_*`.
+
+## Development Discipline & Comprehensive Quality Framework
+
+### Core Principle
+
+**Code-ready ≠ Feature-ready ≠ Launch-ready.**
+
+A feature can have perfect code (all tests passing, zero bugs) yet be operationally incomplete (operators can't understand it) and not launchable (missing critical controls). This discipline establishes mandatory frameworks to prevent shipping incomplete features.
+
+### Why This Matters
+
+Single-pass code reviews miss defensive gaps. Mocked tests hide integration bugs. Code-only perspectives miss operator gaps. Without systematic discipline, quality plateaus at "code works, but users are confused."
+
+This framework emerged from real work (Timeline schema fix, 2026-04-23) where code was production-ready (618 tests passing) but the feature was incomplete (missing suitability signals and override controls). The framework catches issues across three dimensions: code quality, feature completeness, and operator readiness.
+
+### The 4-Phase Workflow
+
+Every development task follows this mandatory cycle:
+
+**Phase 1: Fix & Verify**
+- Implement the change
+- Run tests (baseline + after change)
+- Build (zero compiler errors, clean TypeScript)
+- Document what was changed and why
+- Do not commit yet
+
+**Phase 2: Review & Iterate** (Minimum 2 cycles on schema changes)
+- Get first code review (focus: logic errors, data loss, breaking changes)
+- Fix all findings
+- Verify tests still pass (mandatory retest)
+- Get second code review (focus: defensive gaps, fallback inconsistencies, edge cases)
+- Fix all findings
+- Verify tests still pass (mandatory retest)
+- For non-schema changes, 1 review cycle is acceptable if reviewer approves
+
+**Phase 3: Audit & Assess**
+- Apply 11-dimension audit checklist (see below)
+- Document status for each dimension (✅/🟡/❌)
+- Identify gaps that block feature/launch
+- Estimate effort and timeline for next phase
+- Note: Some dimensions may be "N/A" for small changes
+
+**Phase 4: Handoff & Document**
+- Create comprehensive handoff document (minimum 10k characters)
+- State explicit verdicts: Merge? Feature-ready? Launch-ready? Why or why not?
+- Identify specific blocking dependencies (not vague, actionable)
+- Provide realistic timeline and effort estimate
+- Include architecture verification and verification evidence
+
+### 11-Dimension Audit Checklist (Mandatory for All Features)
+
+Apply to every feature. For small fixes, some dimensions may be N/A (document this).
+
+| Dimension | What to Verify | Verdict |
+|-----------|----------------|---------|
+| **Code** | Compiles, linter clean, tests pass, zero regressions, error handling explicit | ✅/🟡/❌ |
+| **Operational** | Can operators use day 1? UI complete? Audit trail visible? State changes clear? | ✅/🟡/❌ |
+| **User Experience** | Solves stated problem? UX intuitive? Error messages helpful? Performance OK? | ✅/🟡/❌ |
+| **Logical Consistency** | Assumptions documented? Edge cases handled? Business logic sound? State transitions correct? | ✅/🟡/❌ |
+| **Commercial** | Enables monetization? Reduces cost? Improves retention? Defensible vs competitors? | ✅/🟡/❌ |
+| **Data Integrity** | No silent data loss? Invalid values clamped (not skipped)? Audit trail complete? Recoverable on failure? | ✅/🟡/❌ |
+| **Quality & Reliability** | All code paths tested? Fallback paths consistent? Defensive programming applied? No flaky tests? | ✅/🟡/❌ |
+| **Compliance** | Regulatory requirements met? PII handled correctly? Access controls enforced? Logging sufficient? | ✅/🟡/❌ |
+| **Operational Readiness** | Deployment steps documented? Rollback clear? Monitoring configured? Runbooks written? | ✅/🟡/❌ |
+| **Critical Path** | Blocking dependencies identified? What must ship first? What can run in parallel? Timeline clear? | ✅/🟡/❌ |
+| **Final Verdict** | Merge: Yes/No/Depends? Feature-ready: Yes/No/Partial? Launch-ready: Yes/No/Pending X? | Explicit |
+
+For each dimension marked 🟡 or ❌, document the specific gap and what would fix it.
+
+### Code Review Iteration Pattern
+
+**Mandatory minimum: 2 cycles for schema/contract changes.**
+
+**Cycle 1 (Logic & Bugs):**
+1. Reviewer reads diff
+2. Looks for: logic errors, data loss, breaking changes, missing validation
+3. Checks: Does the fix actually solve the stated problem?
+4. Provides feedback
+5. Author fixes all findings
+6. Author reruns tests (must pass — no regressions allowed)
+
+**Cycle 2 (Defensive & Edges):**
+1. Reviewer reads changes again (now with context from cycle 1 fixes)
+2. Looks for: defensive gaps, fallback path inconsistencies, edge cases, error handling symmetry
+3. Checks: Are all error paths handled the same way? Do fallback paths behave like primary paths?
+4. Provides feedback
+5. Author fixes all findings
+6. Author reruns tests (must pass)
+
+**Real example (Timeline schema fix):**
+- Cycle 1 found: confidence scores being skipped on validation failure → silent data loss
+- Fix 1: Changed skip-on-invalid to clamp-to-0-100 + log error
+- Tests rerun: 618 backend + 9 frontend ✅
+- Cycle 2 found: fallback code path not applying same clamping logic → defensive inconsistency
+- Fix 2: Added clamping to fallback path (lines 1103-1110)
+- Tests rerun: all still passing ✅
+
+**Non-schema changes:** 1 cycle is acceptable if reviewer explicitly approves and no data loss issues exist.
+
+### Test Schema Validation Strategy
+
+**Critical rule: Tests must validate REAL schema contracts between systems.**
+
+**The Problem:**
+- Old tests: TimelinePanel tests mocked schema as `{state: ...}`
+- Actual backend: sends `{status: ...}`
+- Result: Tests passed locally, failed against real backend
+- Root cause: False confidence from mocked schemas
+
+**The Solution:**
+1. When schema changes, update backend implementation first
+2. Verify backend tests pass
+3. Update ALL frontend test mocks to use actual backend schema (not approximations)
+4. Verify frontend tests pass
+5. Tests now act as integration validators (fail if schema diverges)
+
+**Pattern:**
+- Never use old or simplified schemas in tests
+- Every test mock must match the actual API contract exactly
+- If test mocks diverge from real schema, tests give false confidence
+- Real schema contracts catch integration bugs immediately
+
+### 7 Reusable Development Patterns
+
+These patterns are saved to AI memory and auto-suggested during future development tasks.
+
+**Pattern 1: Comprehensive Development Workflow**
+- Use the 4-phase approach (Fix → Review → Audit → Handoff) for all tasks
+- Prevents ad-hoc processes and inconsistent quality
+
+**Pattern 2: Code Review Iteration Strategy**
+- Minimum 2 cycles on schema/contract changes
+- First cycle catches logic errors
+- Second cycle catches defensive gaps
+- Reruns tests after each cycle (mandatory)
+
+**Pattern 3: 11-Dimension Audit Checklist**
+- Apply to every feature (even small ones)
+- Documents status explicitly (✅/🟡/❌)
+- Prevents shipping incomplete features
+- Identifies blocking dependencies upfront
+
+**Pattern 4: Test Schema Validation Approach**
+- Real contracts, never mocks
+- If backend schema changes, tests fail immediately
+- Catches integration bugs in review, not production
+
+**Pattern 5: Data Loss Prevention Pattern**
+- Never skip data on validation failure
+- Instead: clamp invalid values to valid range + preserve event + log error
+- Example: confidence score 250 → clamp to 100 + log + preserve event
+- Prevents information loss while maintaining integrity
+
+**Pattern 6: Defensive Programming Fallback Paths**
+- Apply identical validation rules to fallback code as primary code
+- If primary path clamps values, fallback must also clamp
+- Inconsistency = latent production bug
+- Non-negotiable for production code
+
+**Pattern 7: Feature vs Code Readiness Distinction**
+- Code-ready = tests pass (no guarantee feature is complete)
+- Feature-ready = solves user problem (no guarantee operators can use it)
+- Launch-ready = operators can use day 1 with all controls
+- Never claim "done" without explicit verdict on all three levels
+
+### Handoff Document Template
+
+Every work completion produces a handoff. Minimum structure:
+
+**1. Executive Summary** (1 paragraph)
+- What was done
+- Current state: Code ✅? Feature 🟡? Launch ❌?
+- Next immediate action
+
+**2. Technical Changes** (detailed list)
+- Files modified (with line numbers and why)
+- Files created (with purpose)
+- Schema changes (explicit contract)
+- API changes (if any)
+
+**3. Code Review Findings** (by cycle)
+- Cycle 1: Issues found and fixed
+- Cycle 2: Defensive gaps found and fixed
+- Final verdict: Approved for merge? Why or why not?
+
+**4. Test Results** (with evidence)
+- Baseline tests passing (X count)
+- After-change tests passing (X count)
+- Regressions: zero (or explain)
+- Coverage: percentage
+
+**5. Audit Assessment** (one line per dimension)
+- Dimension: verdict (✅/🟡/❌)
+- Notable findings or gaps
+- What would fix any 🟡 or ❌ items
+
+**6. Launch Readiness** (explicit verdicts)
+- Code ready: ✅ Yes / ❌ No (why?)
+- Feature ready: ✅ Yes / 🟡 Partial (missing what?) / ❌ No
+- Launch ready: ✅ Yes / 🟡 Pending X / ❌ No (blocking what?)
+
+**7. Next Phase** (actionable)
+- Specific blocking dependencies (not vague)
+- Effort estimate and timeline
+- What can start in parallel?
+- Who owns next phase?
+
+### When to Apply This Framework
+
+**Apply full framework to:**
+- Any feature development
+- Schema or data contract changes
+- Integration work
+- Bug fixes affecting data flow
+
+**Apply simplified (1-2 cycles, audit optional) to:**
+- Documentation-only changes
+- Typo / comment fixes
+- Dependency updates (if build passes)
+- Configuration file tweaks (if fully reversible)
+
+### Real Example: Timeline Schema Fix (2026-04-23)
+
+This framework was applied to resolve a production integration bug:
+
+**Problem:** Frontend expected `{state: ...}` but backend sends `{status: ...}`
+- TimelinePanel.tsx had wrong field names
+- Tests mocked old schema, so they passed locally
+- Real backend data caused failures
+
+**Phase 1:** Fixed schema mappings in frontend and backend
+**Phase 2 Cycle 1:** Found confidence scores being silently skipped on validation
+- Changed to clamp instead of skip (preserves data)
+- All tests rerun: 618 backend + 9 frontend passing ✅
+
+**Phase 2 Cycle 2:** Found fallback code path not applying clamping
+- Applied same clamping logic to fallback (defensive consistency)
+- All tests rerun: still passing ✅
+
+**Phase 3 Audit Results:**
+- Code: ✅ (618 tests, zero regressions)
+- Operational: 🟡 (can see timeline, but can't see why decisions were made)
+- User: 🟡 (timeline visible, but operators still confused)
+- Commercial: ❌ (missing controls prevent AI override decisions)
+
+**Phase 4 Handoff:**
+- Code ready: ✅ Yes, merge immediately
+- Feature ready: 🟡 Partial (infrastructure complete, suitability signals missing)
+- Launch ready: ❌ No (blocked on P0-01: suitability renderer, P1-02: override controls)
+- Blocking dependencies explicit: P0-01 must ship before operators can launch
+
+**Result:** Clear verdict prevented false "done" claim. Next team knows exactly what's blocking them.
+
+### What This Framework Prevents
+
+This discipline prevents:
+- ❌ Code-only reviews missing operator gaps (11-dimension audit catches this)
+- ❌ Single-pass reviews missing defensive gaps (2-cycle pattern catches this)
+- ❌ Mocked tests hiding integration bugs (real schema validation catches this)
+- ❌ Silent data loss on validation errors (clamping pattern prevents this)
+- ❌ Fallback paths behaving differently (defensive consistency checks this)
+- ❌ "Done" claims when feature incomplete (explicit verdict structure prevents this)
+- ❌ Confusion about merge vs launch readiness (handoff template clarifies this)
+
+### Getting Started
+
+For your next development task:
+
+1. **Read:** "The 4-Phase Workflow" section above
+2. **Follow:** Phase 1 (Fix & Verify) → Phase 2 (2 review cycles) → Phase 3 (11-dim audit) → Phase 4 (handoff)
+3. **Use:** Memory patterns auto-suggest during work (they're listed in your AI system)
+4. **Apply:** 11-dimension audit checklist (even for small features)
+5. **Document:** Explicit verdicts (code/feature/launch) in handoff
+
+The discipline takes ~20% extra time upfront and saves 80% rework downstream. Apply it consistently.
