@@ -216,16 +216,16 @@ Clicking ✕ removes that criterion. "Clear all" resets to defaults.
 
 ### 5.4 Quick Presets
 
-Below the filter bar, offer 3-4 saved presets that apply common combos:
+Ship **2 default presets** initially. Gate the rest for post-launch validation.
 
-| Preset | Filters Applied | Rationale |
-|--------|-----------------|-----------|
-| **My Urgent** | Assigned to me + Priority ≥ High | Agent's daily driver |
-| **Needs Owner** | Unassigned + SLA Breached | Manager triage |
-| **High Value Pipeline** | Value > $100k + Stage ≠ Booked | Finance review |
-| **Stale Bookings** | Stage = Booking + Days > 7 | Vendor coordination |
+| Preset | Filters Applied | Rationale | Status |
+|--------|-----------------|-----------|--------|
+| **My Urgent** | Assigned to me + Priority ≥ High | Agent's daily driver | **Ship** |
+| **Needs Owner** | Unassigned + SLA Breached | Manager triage | **Ship** |
+| **Stale Bookings** | Stage = Booking + Days > 7 | Fulfillment coordination | **Gate** — validate workflow volume first |
+| **High Value Pipeline** | Value > $100k + Stage ≠ Booked | Finance review | **Gate** — too speculative without usage data |
 
-**UX note**: Since we have no launched usage data, these presets are hypotheses. They should be easy to rename/replace. The preset system should support CRUD (create, rename, update, delete) for power users.
+**UX note**: Since we have no launched usage data, presets are hypotheses. The preset system should support applying saved combos, but **preset CRUD (create, rename, update, delete) is out of scope for the first implementation wave**. Add CRUD only after proving preset usage > 15% of sessions.
 
 ### 5.5 URL Persistence
 
@@ -264,15 +264,17 @@ On card hover, show compact text buttons:
 
 **Actions**:
 - `Assign`: Opens inline agent dropdown (same as bulk assign)
-- `Snooze`: Opens date picker for temporary hide
 - `View workspace`: Standard navigation
+- `Snooze`: *Only if snooze already exists in the current workflow backend*. If snooze mutation does not exist, omit this action from first pass. Do not invent new workflow state for UI sugar.
+
+**Touch fallback**: On touch devices where hover is unavailable, quick actions are always visible as compact icon buttons (not hover-dependent).
 
 ### 6.3 View Profile Toggle
 
 A subtle icon-toggle near the sort dropdown:
 
 ```
-[👤 Operations] [📊 Manager] [💰 Finance] [📦 Vendor]
+[👤 Operations] [📊 Team Lead] [💰 Finance] [📦 Fulfillment]
 ```
 
 - Default: Operations
@@ -297,13 +299,15 @@ Future: Consider value-range search (`value:>50000`) as advanced syntax.
 
 ### 7.1 Mandatory Token Usage
 
-The current `TripCard` uses inline styles (`style={{ color: meta.color }}`). V2 must use:
+The current `TripCard` uses inline styles (`style={{ color: meta.color }}`). V2 must use existing design tokens where available:
 
 - `STATE_COLORS` from `tokens.ts` for all status badges
 - `COLORS` tokens for text, backgrounds, borders
 - `SPACING` tokens for padding/gaps
 - `RADIUS` tokens for border radius
 - `FONT_SIZE` / `FONT_WEIGHT` for typography
+
+**Verification gate (before Phase 1)**: Confirm `STATE_COLORS` and `CardAccent` are importable and compile in the inbox context. If token names differ from what is documented in `DESIGN.md`, adapt to the canonical token surface rather than inventing aliases. Do not add new token definitions unless the existing system is genuinely missing a required value.
 
 ### 7.2 Card Accent Bar
 
@@ -329,12 +333,25 @@ Map priority to color keys:
 
 ## 8. Data Flow & API
 
-### 8.1 No New Backend Endpoints Required
+### 8.1 Backend Changes: Target Minimal, Verify First
 
-All V2 features consume existing data:
-- `InboxTrip` fields already carry everything needed
-- `InboxFilters` already supports multi-select (UI didn't expose it)
-- `PipelineStage.slaHours` is available for contextual SLA computation
+**Target**: No new backend endpoints.
+
+**Precondition verification required** before Phase 1:
+
+| Field / Capability | Where Defined | Runtime Verification Needed |
+|--------------------|---------------|----------------------------|
+| `trip.flags` | `InboxTrip` type | Confirm populated in actual API response |
+| `trip.priorityScore` | `InboxTrip` type | Confirm populated in actual API response |
+| `trip.customerName` | `InboxTrip` type | Confirm populated in actual API response |
+| `trip.assignedToName` | `InboxTrip` type | Confirm populated in actual API response |
+| `daysInCurrentStage` | `InboxTrip` type | Already used; confirmed |
+| Stage-to-SLA mapping | `PipelineStage.slaHours` | Confirm available in runtime payload or deriveable |
+| Multi-select filtering | `InboxFilters` type | Confirm `useInboxTrips` hook + API support multi-select, not just type definition |
+
+**Fallback**: If any field is absent in the runtime payload, allow a narrow contract extension (add field to response shape) rather than contorting the frontend. This is data contract evolution, not new endpoint creation.
+
+**No changes to `InboxTrip` or `InboxFilters` types** — V2 is a pure UI/UX layer on top of existing contracts, assuming runtime data matches type definitions.
 
 ### 8.2 Frontend-Only Changes
 
