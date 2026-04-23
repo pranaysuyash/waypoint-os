@@ -1,6 +1,7 @@
 # Settings Dashboard Specification (Draft)
 
 **Status**: Planning / Prototyping
+**Relationship to newer docs**: This draft is now subordinate to `WORKSPACE_GOVERNANCE_ROADMAP_LIVING_2026-04-22.md` and should be reconciled with the canonical governance docs rather than treated as an independent source of truth.
 **Goal**: Centralize agency configuration, autonomy control, and persona management in a non-binding, extensible UI.
 
 ---

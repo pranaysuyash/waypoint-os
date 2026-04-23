@@ -134,18 +134,34 @@ Quick reference: [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md)
 - Audit trail
 
 ### Next (Wave 3)
-1. **Command Palette (Cmd+K)** — Phase 1: Foundation
+
+**Priority Re-evaluated:** Timeline/Story Panel now highest priority based on user feedback
+
+1. **Trip Timeline Panel** — Phase 1: Foundation
+   - Complete story from inquiry to current state
+   - AI analysis trail with rationale
+   - Conversation history
+   - Decision timeline with reversals
+   - Mock scenarios for demo
+
+2. **Owner Onboarding Flow** — Phase 1: Foundation
+   - Email + password signup
+   - Immediate workspace access
+   - Workspace code generation
+   - Team invitation
+
+3. **Command Palette (Cmd+K)** — Phase 1: Foundation
    - Global search across trips
    - Navigate to trip from search
    - Recent trips tracking
    - Core actions (New trip, Go to inbox)
 
-2. **Quality/Confidence Indicators**
+4. **Quality/Confidence Indicators**
    - Progress bars for quote completeness
    - Validation badges
    - Confidence scores
 
-3. **Customer Profile Panel**
+5. **Customer Profile Panel**
    - Trip history
    - Preferences
    - Notes

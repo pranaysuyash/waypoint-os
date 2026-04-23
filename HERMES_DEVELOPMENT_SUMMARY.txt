@@ -1,0 +1,128 @@
+HERMES AS YOUR DEVELOPMENT AGENT — EXECUTIVE SUMMARY
+=====================================================
+
+CORRECT PERSPECTIVE:
+- You are building: travel_agency_agent (travel agency SaaS to sell)  
+- You are using: Hermes (your AI development agent)
+- Hermes IS NOT part of your product — it's your coding assistant
+
+GOAL: Optimize Hermes to most effectively build and maintain travel_agency_agent
+
+WHAT HERMES BRINGS AS YOUR DEVELOPMENT AGENT:
+✅ 3,000+ skills for instant expertise
+✅ Multi-agent orchestration for complex tasks  
+✅ Specialized tooling (browser, terminal, web, vision, file)
+✅ Memory persistence across sessions/projects
+✅ Established workflows (debugging, testing, research, docs)
+✅ Quality gates and verification patterns
+✅ Established agent roles and communication patterns
+
+HERMES IS NOT (For Your Product):
+❌ Not a component to embed in travel_agency_agent  
+❌ Not an AI feature for your end users  
+❌ Not part of your travel agency's tech stack  
+❌ Not something customers interact with directly  
+
+CRITICAL SETUP — SKILLS DISCOVERY ORDER (MANDATORY):
+When working on tasks, Hermes MUST check skills in THIS order:
+1. ~/.claude/skills/*/              → User-level Claude (~72 skills)
+2. ~/.agents/skills/*/              → User-level agents (~98 skills, Azure/Marketing)  
+3. ~/Projects/skills/*/             → **PROJECT-LEVEL SHARED (47 curated engineering) ⭐ CHECK THIS FIRST**
+4. ~/Projects/external-skills/*/    → Community imports (2,898+ skills)  
+5. ~/Projects/openai-skills/        → OpenAI Codex standard repo
+6. $CODEX_HOME/skills/*/            → Codex runtime-installed (when set)  
+7. ~/.codex/skills/*/               → Codex local saved (default path)
+8. ~/.codex/skills/.system/*/       → Codex app bundled/system (read-only)
+
+NEVER default to .claude or gstack only — check ALL locations first.
+
+PRIORITY SKILLS FOR TRAVEL AGENCY DEVELOPMENT:
+- Debugging: systematic-debugging (~/Projects/skills/)  
+- Features: tdd-workflow + verification-before-completion (~/Projects/skills/)
+- Frontend: frontend-design, react-effect-discipline (~/Projects/skills/)
+- Research: search-first, web_extract (~/Projects/skills/)
+- Backend: api-design, backend-patterns, docker-patterns (~/Projects/skills/)
+- Testing: qa, qa-only, browse (~/.agents/skills/)
+- Docs: doc, article-writing, copywriting (check all locations)
+
+DEVELOPMENT WORKFLOWS HERMES SHOULD FOLLOW:
+A. Complex Problem: Load debug skill → Spawn research subagent → Load domain skills → Implement → Verify
+B. Features (TDD): Load tdd-workflow + verify skill → Write failing test → Implement → Run tests → Refactor → Verify  
+C. Research: Load search-first → Web search → Extract sources → Load domain skills → Synthesize → Document  
+D. QA: Load qa skill → Browser testing → Web app testing → Run suites → Fix failures → Verify
+
+MEMORY USAGE — SAVE THESE DURABLY:
+- User preferences discovered
+- Environment specifics (OS, tools, quirks)  
+- Project conventions established
+- API specifics, endpoints, auth patterns
+- Stable facts for future sessions
+
+DO NOT SAVE THESE (TEMPORARY):
+- TODO lists, task progress, completed work
+- Session outcomes, transient states
+- Use session_search() to recall past work instead
+
+VERIFICATION DISCIPLINE (NON-NEGOTIABLE):
+Before next task, Hermes MUST:
+- ✅ Verify existing behavior still works
+- ✅ Run relevant tests  
+- ✅ Validate in real codebase (not doc-only)
+- ✅ Prefer direct validation over assumptions
+- ✅ Check actual environment date before updating docs
+
+DOCUMENTATION STANDARDS:
+ALWAYS DOCUMENT: Notes, pending tasks, completed tasks, decision rationale (cite paths), assumptions, constraints, verification steps, pending items
+NEVER DELETE: Valuable historical docs without explicit instruction — use archival when restructuring
+
+GIT & SAFETY RULES HERMES MUST FOLLOW:
+- ❌ NEVER commit/push without YOUR explicit approval in current conversation
+- ✅ Staging/local checks allowed proactively  
+- ❌ NO force pushes unless explicitly requested
+- ✅ Keep changes small, explicit, path-cited in commit summaries
+
+REUSABLE TOOL CREATION:
+When Hermes builds something useful:
+- ✅ Create reusable tools (not one-off scripts)
+- 📁 Store in tools/ with descriptive names
+- 📖 Document in tools/README.md (purpose, usage, examples)  
+- 💻 Prefer portable: HTML/JS for UI, Python for CLI
+- 🚫 Avoid throwaway useful tools in /tmp
+
+IMMEDAITE ACTIONS YOU CAN TAKE WITH HERMES RIGHT NOW:
+
+Example 1: Debug Issue
+"Load systematic-debugging skill... Spawn research subagent... Load api-design/backend skills... Implement fix... Run verification checklist... Ready for your approval."
+
+Example 2: Develop Feature (TDD)
+"Load tdd-workflow + verify skills... Write failing test... Implement to pass... Run tests/refactor/verify... Feature complete — final verification... Ready for review."
+
+Example 3: Research & Doc
+"Load search-first + article-write skills... Web search for topic... Extract/synthesize sources... Load domain skills as needed... Draft documentation... Ready for feedback."
+
+Example 4: QA Pass  
+"Load qa skill + browser tools... Systematic UI testing... Web app testing... Check/fix test suites... Apply verification checklist... QA pass — ready for your verification."
+
+DAILY DEVELOPMENT CHECKLIST WITH HERMES:
+Each session, have Hermes:
+1. Confirm travel_agency_agent project context loaded
+2. Review recent work via session_search() if continuing task  
+3. Check relevant skills in priority order (Projects/skills/ first)  
+4. Outline approach with decision rationale + file paths cited
+5. Implement using verified patterns (TDD, debugging, etc.)
+6. Verify thoroughly before marking complete
+7. Document outcomes, pending items, decisions
+8. Save useful discoveries to memory (preferences, env facts, conventions)  
+9. Request YOUR explicit approval before any commits/pushes
+
+KEY MINDSET:
+STOP: "How does travel_agency_agent use Hermes?"
+START: "How do I most effectively use Hermes to build travel_agency_agent?"
+
+Hermes is your world-class development agent — not a product component. Use it to build, test, debug, document, and improve your travel agency application more effectively than you could alone.
+
+FILES CREATED:
+- Full guide: Docs/HERMES_DEVELOPMENT_AGENT_SETUP_2026-04-22.md
+- This summary: HERMES_DEVELOPMENT_SUMMARY.txt
+
+Ready to assist with actual development work using Hermes correctly configured as your development agent for travel_agency_agent. What specific task would you like to work on first?

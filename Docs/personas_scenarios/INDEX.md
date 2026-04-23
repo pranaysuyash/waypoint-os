@@ -38,6 +38,162 @@ personas_scenarios/
 │       Demographics, pain points, goals, quotes
 │       Stakeholder matrix (power vs interest)
 │
+├── P1_SINGLE_AGENT_HAPPY_PATH.md
+│   └── 1 real flow scenario: Solo agent intake to proposal
+├── P2_QUOTE_DISASTER_REVIEW.md
+│   └── 1 real flow scenario: Owner catches a bad quote
+├── P2_AGENT_WHO_LEFT.md
+│   └── 1 real flow scenario: Agent departure handoff
+├── P2_MARGIN_EROSION_PROBLEM.md
+│   └── 1 real flow scenario: Margin erosion alerting
+├── P2_TRAINING_TIME_PROBLEM.md
+│   └── 1 real flow scenario: Junior agent onboarding support
+├── P2_WEEKEND_PANIC_NO_VISIBILITY.md
+│   └── 1 real flow scenario: Owner weekend urgent visibility
+├── S1_TRIP_EMERGENCY.md
+│   └── 1 real flow scenario: Customer emergency response
+├── P3_FIRST_SOLO_QUOTE.md
+│   └── 1 real flow scenario: Junior agent builds first quote
+├── P3_VISA_MISTAKE_PREVENTION.md
+│   └── 1 real flow scenario: Junior agent visa/document safety
+├── P1_GROUP_WITH_DIFFERENT_PAYING_PARTIES.md
+│   └── 1 real flow scenario: Multi-family group booking coordination
+├── P3_IS_THIS_RIGHT_CHECK.md
+│   └── 1 real flow scenario: Junior agent quote validation
+├── P3_DONT_KNOW_ANSWER.md
+│   └── 1 real flow scenario: Junior agent uncertainty support
+├── P3_COMPARISON_TRAP.md
+│   └── 1 real flow scenario: Junior agent comparison coaching
+├── S1_COMPARISON_SHOPPER.md
+│   └── 1 real flow scenario: Customer comparison shopping
+├── S1_POST_BOOKING_ANXIETY.md
+│   └── 1 real flow scenario: Customer post-booking reassurance
+├── S2_PREFERENCE_COLLECTION_NIGHTMARE.md
+│   └── 1 real flow scenario: Family preference coordination
+├── S2_DOCUMENT_CHAOS.md
+│   └── 1 real flow scenario: Document collection chaos
+├── S2_BUDGET_REALITY_CONVERSATION.md
+│   └── 1 real flow scenario: Budget reality conversation
+├── ADDITIONAL_SCENARIOS_26_LAST_MINUTE_CANCELLATION.md
+│   └── 1 real flow scenario: Last-minute cancellation
+├── ADDITIONAL_SCENARIOS_27_REFERRAL_REQUEST.md
+│   └── 1 real flow scenario: Referral request
+├── ADDITIONAL_SCENARIOS_28_SEASONAL_RUSH.md
+│   └── 1 real flow scenario: Peak-season rush explanation
+├── ADDITIONAL_SCENARIOS_29_PACKAGE_CUSTOMIZATION.md
+│   └── 1 real flow scenario: Package customization path
+├── ADDITIONAL_SCENARIOS_30_REVIEW_REQUEST_POST_TRIP.md
+│   └── 1 real flow scenario: Post-trip review request
+├── ADDITIONAL_SCENARIOS_31_HEALTH_RESTRICTIONS.md
+│   └── 1 real flow scenario: Health restrictions coordination
+├── ADDITIONAL_SCENARIOS_32_MULTICITY_ITINERARY.md
+│   └── 1 real flow scenario: Multicity itinerary logistics
+├── ADDITIONAL_SCENARIOS_33_FLIGHT_MISMATCH.md
+│   └── 1 real flow scenario: Flight/hotel date mismatch catch
+├── ADDITIONAL_SCENARIOS_34_TRAVEL_DOCUMENTS_CHECKLIST.md
+│   └── 1 real flow scenario: Travel documents checklist
+├── ADDITIONAL_SCENARIOS_35_UPSELL_OPPORTUNITY.md
+│   └── 1 real flow scenario: Contextual upsell opportunity
+├── ADDITIONAL_SCENARIOS_36_LOYALTY_DISCOUNT_REQUEST.md
+│   └── 1 real flow scenario: Return-customer loyalty discount request
+├── ADDITIONAL_SCENARIOS_37_WEATHER_DISRUPTION_CONTINGENCY.md
+│   └── 1 real flow scenario: Weather disruption contingency
+├── ADDITIONAL_SCENARIOS_38_UNCLEAR_SCOPE_EXPLORATION.md
+│   └── 1 real flow scenario: Ambiguous brief exploration
+├── ADDITIONAL_SCENARIOS_39_MULTI_CURRENCY_PRICING_CONFUSION.md
+│   └── 1 real flow scenario: Multi-currency pricing confusion
+├── ADDITIONAL_SCENARIOS_40_AGENT_HANDOFF_READINESS.md
+│   └── 1 real flow scenario: Agent handoff readiness
+├── ADDITIONAL_SCENARIOS_41_SUPPLIER_INVOICE_DISCREPANCY.md
+│   └── 1 real flow scenario: Supplier invoice discrepancy
+├── ADDITIONAL_SCENARIOS_42_AGE_MIX_GROUP_COMPLEXITY.md
+│   └── 1 real flow scenario: Mixed-age group complexity
+├── ADDITIONAL_SCENARIOS_43_VISA_EXPIRATION_MID_TRIP.md
+│   └── 1 real flow scenario: Visa expiration mid-trip
+├── ADDITIONAL_SCENARIOS_44_PRICING_NEGOTIATION_LOOP.md
+│   └── 1 real flow scenario: Pricing negotiation loop
+├── ADDITIONAL_SCENARIOS_45_ECO_CONSCIOUS_TRAVELER_REQUEST.md
+│   └── 1 real flow scenario: Eco-conscious traveler request
+├── ADDITIONAL_SCENARIOS_46_OFF_HOURS_URGENT_BOOKING.md
+│   └── 1 real flow scenario: Off-hours urgent booking
+├── ADDITIONAL_SCENARIOS_47_SPECIAL_EVENT_SEATING.md
+│   └── 1 real flow scenario: Special event seating coordination
+├── ADDITIONAL_SCENARIOS_48_PET_TRAVEL_ARRANGEMENT.md
+│   └── 1 real flow scenario: Pet travel arrangement
+├── ADDITIONAL_SCENARIOS_49_TRAVEL_INSURANCE_CLAIM_SUPPORT.md
+│   └── 1 real flow scenario: Travel insurance claim support
+├── ADDITIONAL_SCENARIOS_50_GROUP_DEPOSIT_COORDINATION.md
+│   └── 1 real flow scenario: Group deposit coordination
+├── ADDITIONAL_SCENARIOS_51_LANGUAGE_BARRIER_SUPPORT.md
+│   └── 1 real flow scenario: Language barrier support
+├── ADDITIONAL_SCENARIOS_52_POLITICAL_UNREST_ALTERNATIVE_PLAN.md
+│   └── 1 real flow scenario: Political unrest alternative plan
+├── ADDITIONAL_SCENARIOS_53_MULTI_VENDOR_REFUND_COORDINATION.md
+│   └── 1 real flow scenario: Multi-vendor refund coordination
+├── ADDITIONAL_SCENARIOS_54_LAST_MINUTE_ROOM_UPGRADE.md
+│   └── 1 real flow scenario: Last-minute room upgrade
+├── ADDITIONAL_SCENARIOS_55_GROUP_LEADER_DROPOUT.md
+│   └── 1 real flow scenario: Group leader dropout handoff
+├── ADDITIONAL_SCENARIOS_56_REMOTE_WORK_TRAVEL.md
+│   └── 1 real flow scenario: Remote work travel readiness
+├── ADDITIONAL_SCENARIOS_57_SOLO_FEMALE_TRAVELER_SAFETY.md
+│   └── 1 real flow scenario: Solo female traveler safety
+├── ADDITIONAL_SCENARIOS_58_CLIMATE_EVENT_RESCHEDULE.md
+│   └── 1 real flow scenario: Climate event reschedule
+├── ADDITIONAL_SCENARIOS_59_VIP_ESCALATION_SERVICE.md
+│   └── 1 real flow scenario: VIP escalation service
+├── ADDITIONAL_SCENARIOS_60_WEDDING_GROUP_PLANNING.md
+│   └── 1 real flow scenario: Wedding group planning
+├── ADDITIONAL_SCENARIOS_61_EARLY_CHECKIN_REQUEST.md
+│   └── 1 real flow scenario: Early check-in request
+├── ADDITIONAL_SCENARIOS_62_CUSTOM_DIETARY_MENU_REQUEST.md
+│   └── 1 real flow scenario: Custom dietary menu request
+├── ADDITIONAL_SCENARIOS_63_RESTRICTED_VOLUME_LUGGAGE.md
+│   └── 1 real flow scenario: Restricted volume luggage
+├── ADDITIONAL_SCENARIOS_64_CULTURAL_SENSITIVITY_GUIDANCE.md
+│   └── 1 real flow scenario: Cultural sensitivity guidance
+├── ADDITIONAL_SCENARIOS_65_EMERGENCY_CONTACT_UPDATE.md
+│   └── 1 real flow scenario: Emergency contact update
+├── ADDITIONAL_SCENARIOS_66_LOUNGE_ACCESS_REDEMPTION.md
+│   └── 1 real flow scenario: Lounge access redemption
+├── ADDITIONAL_SCENARIOS_67_MOBILITY_ACCESSIBILITY_SUPPORT.md
+│   └── 1 real flow scenario: Mobility accessibility support
+├── ADDITIONAL_SCENARIOS_68_LOST_DOCUMENTS_ABROAD.md
+│   └── 1 real flow scenario: Lost documents abroad support
+├── ADDITIONAL_SCENARIOS_69_CURRENCY_AND_CASH_SHORTAGE.md
+│   └── 1 real flow scenario: Currency and cash shortage
+├── ADDITIONAL_SCENARIOS_70_HEALTH_ADVISORY_TRAVEL_RESTRICTIONS.md
+│   └── 1 real flow scenario: Health advisory travel restrictions
+├── ADDITIONAL_SCENARIOS_71_MULTI_NATIONALITY_VISA_COORDINATION.md
+│   └── 1 real flow scenario: Multi-nationality visa coordination
+├── ADDITIONAL_SCENARIOS_72_FESTIVAL_POWER_OUTAGE_PLAN.md
+│   └── 1 real flow scenario: Festival power outage plan
+├── ADDITIONAL_SCENARIOS_73_SURPRISE_EXPERIENCE_CONCIERGE.md
+│   └── 1 real flow scenario: Surprise experience concierge
+├── ADDITIONAL_SCENARIOS_74_DIGITAL_NOMAD_LONG_STAY_VISA_PLAN.md
+│   └── 1 real flow scenario: Digital nomad long-stay visa plan
+├── ADDITIONAL_SCENARIOS_75_COMMUNITY_IMPACT_TRAVEL_PLAN.md
+│   └── 1 real flow scenario: Community impact travel plan
+├── ADDITIONAL_SCENARIOS_76_TRAVEL_WARNING_CANCELLATION.md
+│   └── 1 real flow scenario: Travel warning cancellation
+├── ADDITIONAL_SCENARIOS_77_PAYMENT_RECONCILIATION_ISSUE.md
+│   └── 1 real flow scenario: Payment reconciliation issue
+├── ADDITIONAL_SCENARIOS_78_LAST_MINUTE_ACTIVITY_CONFIRMATION.md
+│   └── 1 real flow scenario: Last-minute activity confirmation
+├── ADDITIONAL_SCENARIOS_79_SLOW_CUSTOMER_RESPONSE_RISK.md
+│   └── 1 real flow scenario: Slow customer response risk
+├── ADDITIONAL_SCENARIOS_80_CONFLICTING_PREFERENCES_MEDIATION.md
+│   └── 1 real flow scenario: Conflicting preferences mediation
+├── ADDITIONAL_SCENARIOS_81_INTERMODAL_TRAVEL_FAILURE_RECOVERY.md
+│   └── 1 real flow scenario: Intermodal travel failure recovery
+├── ADDITIONAL_SCENARIOS_82_INFLUENCER_CONTENT_REQUIREMENTS.md
+│   └── 1 real flow scenario: Influencer content requirements
+├── ADDITIONAL_SCENARIOS_83_SCHOOL_GROUP_SUPERVISION_PLAN.md
+│   └── 1 real flow scenario: School group supervision plan
+├── ADDITIONAL_SCENARIOS_84_EXPERIENCE_BOOKING_CONFLICTS.md
+│   └── 1 real flow scenario: Experience booking conflicts
+├── ADDITIONAL_SCENARIOS_85_FINANCIAL_REFUND_TIMELINE_COMMUNICATION.md
+│   └── 1 real flow scenario: Financial refund timeline communication
 ├── P1_SOLO_AGENT_SCENARIOS.md
 │   └── 5 real scenarios:
 │       P1-S1: 11 PM WhatsApp Panic

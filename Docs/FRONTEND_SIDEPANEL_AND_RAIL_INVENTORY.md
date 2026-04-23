@@ -56,11 +56,10 @@ Based on the **Autonomy Gradient (D1)** and **Audit Findings (2026-04-16)**, the
 - **Content**: Last 3 trips, past feedback scores, and "Style Profile" (e.g., "Prefers boutique hotels over chains").
 - **Status**: Currently listed in `Docs/exploration/backlog.md`.
 
-### D. Help & Process Panel
-- **Purpose**: Onboarding and exception handling.
-- **Trigger**: Help icon in the header or "Process Guide" link.
-- **Content**: Step-by-step guides for the current workbench stage.
-- **Design Spec**: See `frontend/docs/IN_APP_MESSAGING_SYSTEM.md`.
+### E. Decision Timeline Panel (New)
+- **Purpose**: Evolutionary log of trip state changes, AI decisions, and human overrides.
+- **Reference**: See `Docs/DECISION_LIFECYCLE_TRACEABILITY_STRATEGY.md` for full implementation details.
+
 
 ---
 
