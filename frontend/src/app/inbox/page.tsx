@@ -17,6 +17,7 @@ import {
   Search,
   Flag,
   ArrowUpDown,
+  Download,
 } from 'lucide-react';
 import { useInboxTrips } from '@/hooks/useGovernance';
 import { getTripRoute } from '@/lib/routes';

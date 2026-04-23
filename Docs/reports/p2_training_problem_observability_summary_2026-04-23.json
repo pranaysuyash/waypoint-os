@@ -1,0 +1,36 @@
+{
+  "scenario_id": "P2-S4",
+  "scenario_doc": "Docs/personas_scenarios/P2_TRAINING_TIME_PROBLEM.md",
+  "report_doc": "Docs/reports/P2_TRAINING_TIME_PROBLEM_OBSERVABILITY_2026-04-23.md",
+  "run_date": "2026-04-23",
+  "backend": {
+    "artifact": "Docs/reports/p2_training_problem_backend_2026-04-23.xml",
+    "timing_artifact": "Docs/reports/p2_training_problem_backend_timing_2026-04-23.txt",
+    "total": 6,
+    "passed": 6,
+    "failed": 0,
+    "wall_time_seconds": 1.19
+  },
+  "frontend": {
+    "artifact": "Docs/reports/p2_training_problem_frontend_2026-04-23.json",
+    "timing_artifact": "Docs/reports/p2_training_problem_frontend_timing_2026-04-23.txt",
+    "total": 41,
+    "passed": 27,
+    "failed": 14,
+    "failed_suites": 3,
+    "suite_setup_failure": "jest is not defined",
+    "wall_time_seconds": 1.51
+  },
+  "overall": {
+    "total": 47,
+    "passed": 33,
+    "failed": 14,
+    "wall_time_seconds": 2.70
+  },
+  "key_findings": [
+    "Backend training confidence and owner-review decision path is stable in sampled coverage.",
+    "Frontend coaching/suitability tests show major contract drift and one framework setup break.",
+    "DecisionPanel suitability integration test is blocked by jest/vitest mismatch."
+  ],
+  "agents_used": []
+}

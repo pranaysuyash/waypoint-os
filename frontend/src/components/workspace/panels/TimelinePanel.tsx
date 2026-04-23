@@ -4,12 +4,16 @@ import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 interface TimelineEvent {
+  trip_id: string;
   timestamp: string;
   stage: string;
-  state: string;
-  version: string;
-  decision_type?: string;
+  status: string;
+  state_snapshot: Record<string, any>;
+  decision?: string;
+  confidence?: number;
   reason?: string;
+  pre_state?: Record<string, any>;
+  post_state?: Record<string, any>;
 }
 
 interface TimelineResponse {
@@ -20,6 +24,7 @@ interface TimelineResponse {
 interface TimelinePanelProps {
   trip?: any;
   tripId?: string;
+  onStageFilter?: (stage: string | null) => void;
 }
 
 const STAGE_COLORS: Record<string, { bg: string; badge: string; dot: string }> = {
@@ -71,7 +76,7 @@ function TimelineEventCard({
                 {event.stage.toUpperCase()}
               </span>
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {event.state}
+                {event.status}
               </span>
             </div>
             <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
@@ -80,12 +85,12 @@ function TimelineEventCard({
           </div>
 
           {/* Optional details */}
-          {(event.decision_type || event.reason) && (
+          {(event.decision || event.reason) && (
             <div className="mt-2 flex items-start gap-2">
               <div className="flex-1">
-                {event.decision_type && (
+                {event.decision && (
                   <p className="text-xs text-gray-600 dark:text-gray-400">
-                    <span className="font-semibold">Type:</span> {event.decision_type}
+                    <span className="font-semibold">Decision:</span> {event.decision}
                   </p>
                 )}
                 {event.reason && (
@@ -123,11 +128,19 @@ function TimelineEventCard({
   );
 }
 
-export function TimelinePanel({ trip: propTrip, tripId: propTripId }: TimelinePanelProps) {
+const AVAILABLE_STAGES = ["intake", "packet", "decision", "strategy", "safety"];
+
+export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilter }: TimelinePanelProps) {
   const [tripId] = useState(propTripId || propTrip?.id);
   const [timeline, setTimeline] = useState<TimelineResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedStage, setSelectedStage] = useState<string | null>(null);
+
+  const handleStageFilter = (stage: string | null) => {
+    setSelectedStage(stage);
+    onStageFilter?.(stage);
+  };
 
   useEffect(() => {
     if (!tripId) return;
@@ -136,7 +149,10 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId }: TimelinePa
       try {
         setIsLoading(true);
         setError(null);
-        const response = await fetch(`/api/trips/${tripId}/timeline`);
+        const url = selectedStage 
+          ? `/api/trips/${tripId}/timeline?stage=${selectedStage}`
+          : `/api/trips/${tripId}/timeline`;
+        const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`Failed to fetch timeline: ${response.statusText}`);
         }
@@ -150,7 +166,7 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId }: TimelinePa
     };
 
     fetchTimeline();
-  }, [tripId]);
+  }, [tripId, selectedStage]);
 
   if (isLoading) {
     return (
@@ -180,21 +196,56 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId }: TimelinePa
 
   return (
     <div className="p-6">
-      <div className="space-y-3">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          Decision Timeline
-        </h2>
-        {timeline.events.map((event, index) => (
-          <TimelineEventCard key={`${event.timestamp}-${index}`} event={event} index={index} />
-        ))}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+            Decision Timeline
+          </h2>
+          
+          {/* Stage Filter */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              onClick={() => handleStageFilter(null)}
+              className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                selectedStage === null
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+              }`}
+            >
+              All
+            </button>
+            {AVAILABLE_STAGES.map((stage) => (
+              <button
+                key={stage}
+                onClick={() => handleStageFilter(stage)}
+                className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                  selectedStage === stage
+                    ? `${STAGE_COLORS[stage]?.badge} opacity-100`
+                    : "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                }`}
+              >
+                {stage.charAt(0).toUpperCase() + stage.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Timeline Events */}
+        <div className="space-y-3">
+          {timeline?.events.map((event, index) => (
+            <TimelineEventCard key={`${event.timestamp}-${index}`} event={event} index={index} />
+          ))}
+        </div>
       </div>
 
       {/* Summary stats */}
-      <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-        <p className="text-xs text-gray-600 dark:text-gray-400">
-          <span className="font-semibold">{timeline.events.length} events</span> captured in this timeline
-        </p>
-      </div>
+      {timeline && timeline.events.length > 0 && (
+        <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+          <p className="text-xs text-gray-600 dark:text-gray-400">
+            <span className="font-semibold">{timeline.events.length} events</span> {selectedStage && `in ${selectedStage}`} captured in this timeline
+          </p>
+        </div>
+      )}
     </div>
   );
 }

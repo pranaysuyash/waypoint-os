@@ -1,17 +1,13 @@
-/**
- * frontend/src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx
- *
- * Tests for SuitabilityPanel component.
- */
-
+import { describe, it, expect, vi } from "vitest";
 import React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import { SuitabilityPanel, type SuitabilityFlag } from '../SuitabilityPanel';
 
 describe('SuitabilityPanel', () => {
   const mockFlags: SuitabilityFlag[] = [
     {
+      flag: 'suitability_exclude_white_water_rafting',
       flag_type: 'suitability_exclude_white_water_rafting',
       severity: 'critical',
       reason: 'Toddler participant excluded from White Water Rafting: Height-based participation restriction excludes toddler cohort.',
@@ -24,6 +20,7 @@ describe('SuitabilityPanel', () => {
       affected_travelers: ['child_1'],
     },
     {
+      flag: 'suitability_discourage_hiking_difficult',
       flag_type: 'suitability_discourage_hiking_difficult',
       severity: 'high',
       reason: 'Elderly participant discouraged from Difficult Mountain Hike: Walking-heavy activity may not suit elderly mobility profile.',
@@ -36,6 +33,7 @@ describe('SuitabilityPanel', () => {
       affected_travelers: ['elderly_1'],
     },
     {
+      flag: 'suitability_pacing_toddler',
       flag_type: 'suitability_pacing_toddler',
       severity: 'medium',
       reason: 'High density: 4 activities in one day may exceed toddler stamina.',
@@ -53,14 +51,14 @@ describe('SuitabilityPanel', () => {
 
   it('renders critical flags with red background', () => {
     render(<SuitabilityPanel flags={mockFlags} />);
-    const criticalSection = screen.getByText('Critical Concerns').closest('div');
-    expect(criticalSection).toHaveClass('bg-red-50');
+    const criticalFlagCard = screen.getByText(/Toddler participant excluded/).closest('div.bg-red-50');
+    expect(criticalFlagCard).toBeInTheDocument();
   });
 
   it('renders high severity flags with orange background', () => {
     render(<SuitabilityPanel flags={mockFlags} />);
-    const highSection = screen.getByText('Important Warnings').closest('div');
-    expect(highSection).toHaveClass('bg-orange-50');
+    const highFlagCard = screen.getByText(/Elderly participant discouraged/).closest('div.bg-orange-50');
+    expect(highFlagCard).toBeInTheDocument();
   });
 
   it('renders critical flags with acknowledgment checkbox', () => {
@@ -70,37 +68,34 @@ describe('SuitabilityPanel', () => {
   });
 
   it('disables continue button when critical flags are not acknowledged', () => {
-    const handleAcknowledge = jest.fn();
+    const handleAcknowledge = vi.fn();
     render(<SuitabilityPanel flags={mockFlags} onAcknowledge={handleAcknowledge} />);
-    
+
     const continueButton = screen.getByRole('button', { name: /Continue to Send/ });
     expect(continueButton).toBeDisabled();
   });
 
-  it('enables continue button when all critical flags are acknowledged', async () => {
-    const handleAcknowledge = jest.fn();
+  it('enables continue button when all critical flags are acknowledged', () => {
+    const handleAcknowledge = vi.fn();
     render(<SuitabilityPanel flags={mockFlags} onAcknowledge={handleAcknowledge} />);
-    
+
     const checkboxes = screen.getAllByRole('checkbox');
-    // Click first checkbox (the critical flag's acknowledgment)
     fireEvent.click(checkboxes[0]);
-    
+
     const continueButton = screen.getByRole('button', { name: /Continue to Send/ });
     expect(continueButton).not.toBeDisabled();
   });
 
-  it('calls onAcknowledge with flag IDs when continue is clicked', async () => {
-    const handleAcknowledge = jest.fn();
+  it('calls onAcknowledge with flag IDs when continue is clicked', () => {
+    const handleAcknowledge = vi.fn();
     render(<SuitabilityPanel flags={mockFlags} onAcknowledge={handleAcknowledge} />);
-    
-    // Check the critical flag checkbox
+
     const checkboxes = screen.getAllByRole('checkbox');
     fireEvent.click(checkboxes[0]);
-    
-    // Click continue button
+
     const continueButton = screen.getByRole('button', { name: /Continue to Send/ });
     fireEvent.click(continueButton);
-    
+
     expect(handleAcknowledge).toHaveBeenCalledWith(
       expect.arrayContaining(['suitability_exclude_white_water_rafting'])
     );
@@ -108,29 +103,26 @@ describe('SuitabilityPanel', () => {
 
   it('displays confidence percentage for each flag', () => {
     render(<SuitabilityPanel flags={mockFlags} />);
-    
-    // Check for confidence percentages
+
     expect(screen.getByText('Confidence: 95%')).toBeInTheDocument();
     expect(screen.getByText('Confidence: 88%')).toBeInTheDocument();
   });
 
   it('displays activity name when available in details', () => {
     render(<SuitabilityPanel flags={mockFlags} />);
-    
+
     expect(screen.getByText('Activity: White Water Rafting')).toBeInTheDocument();
     expect(screen.getByText('Activity: Difficult Mountain Hike')).toBeInTheDocument();
   });
 
   it('handles unchecking acknowledgment checkboxes', () => {
-    const handleAcknowledge = jest.fn();
+    const handleAcknowledge = vi.fn();
     render(<SuitabilityPanel flags={mockFlags} onAcknowledge={handleAcknowledge} />);
-    
+
     const checkboxes = screen.getAllByRole('checkbox');
-    // Check the checkbox
     fireEvent.click(checkboxes[0]);
-    // Uncheck it
     fireEvent.click(checkboxes[0]);
-    
+
     const continueButton = screen.getByRole('button', { name: /Continue to Send/ });
     expect(continueButton).toBeDisabled();
   });
@@ -143,13 +135,14 @@ describe('SuitabilityPanel', () => {
   it('only shows continue button when there are critical flags', () => {
     const lowFlagOnly: SuitabilityFlag[] = [
       {
+        flag: 'test_low',
         flag_type: 'test_low',
         severity: 'low',
         reason: 'Minor concern',
         confidence: 0.8,
       },
     ];
-    
+
     render(<SuitabilityPanel flags={lowFlagOnly} />);
     expect(screen.queryByRole('button', { name: /Continue to Send/ })).not.toBeInTheDocument();
   });
@@ -157,33 +150,35 @@ describe('SuitabilityPanel', () => {
   it('sorts flags by severity correctly', () => {
     const unsortedFlags: SuitabilityFlag[] = [
       {
+        flag: 'low1',
         flag_type: 'low1',
         severity: 'low',
         reason: 'Low severity',
         confidence: 0.7,
       },
       {
+        flag: 'critical1',
         flag_type: 'critical1',
         severity: 'critical',
         reason: 'Critical severity',
         confidence: 0.95,
       },
       {
+        flag: 'high1',
         flag_type: 'high1',
         severity: 'high',
         reason: 'High severity',
         confidence: 0.9,
       },
     ];
-    
+
     render(<SuitabilityPanel flags={unsortedFlags} />);
-    
-    // Verify sections appear in correct order
+
     const criticalText = screen.getByText('Critical Concerns');
     const warningText = screen.getByText('Important Warnings');
     const infoText = screen.getByText('Additional Information');
-    
-    expect(criticalText.compareDocumentPosition(warningText)).toBe(4); // Critical before High
-    expect(warningText.compareDocumentPosition(infoText)).toBe(4); // High before Low
+
+    expect(criticalText.compareDocumentPosition(warningText)).toBe(4);
+    expect(warningText.compareDocumentPosition(infoText)).toBe(4);
   });
 });

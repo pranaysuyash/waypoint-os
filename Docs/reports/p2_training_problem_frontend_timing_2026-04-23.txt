@@ -1,0 +1,2994 @@
+
+> frontend@0.1.0 test
+> vitest --run --reporter=verbose --reporter=json --outputFile=../Docs/reports/p2_training_problem_frontend_2026-04-23.json src/components/workspace/panels/__tests__/DecisionPanel.SuitabilitySignal.integration.test.tsx src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx
+
+
+ RUN  v3.2.4 /Users/pranay/Projects/travel_agency_agent/frontend
+
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Rendering > should return null when no flags provided 7ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Rendering > should render section when flags present 18ms
+ × src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Rendering > should display flag count in summary 12ms
+   → Unable to find an element with the text: /2 suitability issues detected/. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"_section_2bab33"[39m
+    [36m>[39m
+      [36m<h3[39m
+        [33mclass[39m=[32m"_sectionTitle_2bab33"[39m
+      [36m>[39m
+        [0mSuitability Audit Results[0m
+      [36m</h3>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"_card_2bab33"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-sm text-gray-700 dark:text-gray-300"[39m
+          [36m>[39m
+            [36m<strong>[39m
+              [0m2[0m
+            [36m</strong>[39m
+            [0m suitability issue[0m
+            [0ms[0m
+            [0m detected[0m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+            [36m>[39m
+              [0m [0m
+              [0m— [0m
+              [36m<strong>[39m
+                [0m1[0m
+              [36m</strong>[39m
+              [0m hard blocker[0m
+              [0mrequire resolution before send[0m
+            [36m</span>[39m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-6"[39m
+        [36m>[39m
+          [36m<h4[39m
+            [33mclass[39m=[32m"font-semibold text-red-700 dark:text-red-400 text-sm mb-3 flex items-center gap-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 9v4"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 17h.01"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mTier 1: Hard Blockers (Must Resolve)[0m
+          [36m</h4>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-red-50 dark:bg-red-950 border-l-4 border-red-500 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-red-600 dark:text-red-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 9v4"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 17h.01"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mWater Activity Not Safe for Toddlers[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mWater-based activities pose safety risks for toddlers.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100"[39m
+                    [36m>[39m
+                      [0mCRITICAL[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m95[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mChild[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div>[39m
+          [36m<h4[39m
+            [33mclass[39m=[32m"font-semibold text-yellow-700 dark:text-yellow-400 text-sm mb-3 flex items-center gap-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-circle-alert"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"12"[39m
+                [33mcy[39m=[32m"12"[39m
+                [33mr[39m=[32m"10"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"12"[39m
+                [33mx2[39m=[32m"12"[39m
+                [33my1[39m=[32m"8"[39m
+                [33my2[39m=[32m"12"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"12"[39m
+                [33mx2[39m=[32m"12.01"[39m
+                [33my1[39m=[32m"16"[39m
+                [33my2[39m=[32m"16"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mTier 2: Warnings (Review Recommended)[0m
+          [36m</h4>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-yellow-50 dark:bg-yellow-950 border-l-4 border-yellow-500 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-yellow-600 dark:text-yellow-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-circle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<circle[39m
+                      [33mcx[39m=[32m"12"[39m
+                      [33mcy[39m=[32m"12"[39m
+                      [33mr[39m=[32m"10"[39m
+                    [36m/>[39m
+                    [36m<line[39m
+                      [33mx1[39m=[32m"12"[39m
+                      [33mx2[39m=[32m"12"[39m
+                      [33my1[39m=[32m"8"[39m
+                      [33my2[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<line[39m
+                      [33mx1[39m=[32m"12"[39m
+                      [33mx2[39m=[32m"12.01"[39m
+                      [33my1[39m=[32m"16"[39m
+                      [33my2[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mPhysical Intensity Unsafe for Elderly[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mPhysical intensity of this activity may strain elderly travelers.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-yellow-200 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-100"[39m
+                    [36m>[39m
+                      [0mHIGH[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m85[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mGrandparent[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ × src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Tier 1 Hard Blockers (Critical) > should separate critical flags as Tier 1 6ms
+   → Unable to find an element with the text: Water-based activity is unsafe for toddlers.. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"_section_2bab33"[39m
+    [36m>[39m
+      [36m<h3[39m
+        [33mclass[39m=[32m"_sectionTitle_2bab33"[39m
+      [36m>[39m
+        [0mSuitability Audit Results[0m
+      [36m</h3>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"_card_2bab33"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-sm text-gray-700 dark:text-gray-300"[39m
+          [36m>[39m
+            [36m<strong>[39m
+              [0m1[0m
+            [36m</strong>[39m
+            [0m suitability issue[0m
+            [0m detected[0m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+            [36m>[39m
+              [0m [0m
+              [0m— [0m
+              [36m<strong>[39m
+                [0m1[0m
+              [36m</strong>[39m
+              [0m hard blocker[0m
+              [0mrequire resolution before send[0m
+            [36m</span>[39m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-6"[39m
+        [36m>[39m
+          [36m<h4[39m
+            [33mclass[39m=[32m"font-semibold text-red-700 dark:text-red-400 text-sm mb-3 flex items-center gap-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 9v4"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 17h.01"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mTier 1: Hard Blockers (Must Resolve)[0m
+          [36m</h4>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-red-50 dark:bg-red-950 border-l-4 border-red-500 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-red-600 dark:text-red-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 9v4"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 17h.01"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mWater Activity Not Safe for Toddlers[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mWater-based activities pose safety risks for toddlers.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100"[39m
+                    [36m>[39m
+                      [0mCRITICAL[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m95[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mChild[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ × src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Tier 1 Hard Blockers (Critical) > should show blocked count in summary for Tier 1 flags 6ms
+   → Unable to find an element with the text: /2 hard blockers/. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"_section_2bab33"[39m
+    [36m>[39m
+      [36m<h3[39m
+        [33mclass[39m=[32m"_sectionTitle_2bab33"[39m
+      [36m>[39m
+        [0mSuitability Audit Results[0m
+      [36m</h3>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"_card_2bab33"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-sm text-gray-700 dark:text-gray-300"[39m
+          [36m>[39m
+            [36m<strong>[39m
+              [0m2[0m
+            [36m</strong>[39m
+            [0m suitability issue[0m
+            [0ms[0m
+            [0m detected[0m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+            [36m>[39m
+              [0m [0m
+              [0m— [0m
+              [36m<strong>[39m
+                [0m2[0m
+              [36m</strong>[39m
+              [0m hard blocker[0m
+              [0ms[0m
+              [0mrequire resolution before send[0m
+            [36m</span>[39m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-6"[39m
+        [36m>[39m
+          [36m<h4[39m
+            [33mclass[39m=[32m"font-semibold text-red-700 dark:text-red-400 text-sm mb-3 flex items-center gap-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 9v4"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 17h.01"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mTier 1: Hard Blockers (Must Resolve)[0m
+          [36m</h4>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-red-50 dark:bg-red-950 border-l-4 border-red-500 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-red-600 dark:text-red-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 9v4"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 17h.01"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mWater Activity Not Safe for Toddlers[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mWater-based activities pose safety risks for toddlers.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100"[39m
+                    [36m>[39m
+                      [0mCRITICAL[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m95[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mChild[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-red-50 dark:bg-red-950 border-l-4 border-red-500 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-red-600 dark:text-red-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 9v4"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 17h.01"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mPhysical Intensity Unsafe for Elderly[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mPhysical intensity of this activity may strain elderly travelers.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100"[39m
+                    [36m>[39m
+                      [0mCRITICAL[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m90[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mElderly[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Tier 1 Hard Blockers (Critical) > should render critical icon for Tier 1 flags 3ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Tier 2 Warnings (High/Medium/Low) > should separate high flags as Tier 2 2ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Tier 2 Warnings (High/Medium/Low) > should group medium severity flags as Tier 2 2ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Tier 2 Warnings (High/Medium/Low) > should group low severity flags as Tier 2 3ms
+ × src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Flag Labels and Explanations > should display semantic labels instead of raw flag_type 3ms
+   → Unable to find an element with the text: Water-based activity is unsafe for toddlers.. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"_section_2bab33"[39m
+    [36m>[39m
+      [36m<h3[39m
+        [33mclass[39m=[32m"_sectionTitle_2bab33"[39m
+      [36m>[39m
+        [0mSuitability Audit Results[0m
+      [36m</h3>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"_card_2bab33"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-sm text-gray-700 dark:text-gray-300"[39m
+          [36m>[39m
+            [36m<strong>[39m
+              [0m1[0m
+            [36m</strong>[39m
+            [0m suitability issue[0m
+            [0m detected[0m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+            [36m>[39m
+              [0m [0m
+              [0m— [0m
+              [36m<strong>[39m
+                [0m1[0m
+              [36m</strong>[39m
+              [0m hard blocker[0m
+              [0mrequire resolution before send[0m
+            [36m</span>[39m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-6"[39m
+        [36m>[39m
+          [36m<h4[39m
+            [33mclass[39m=[32m"font-semibold text-red-700 dark:text-red-400 text-sm mb-3 flex items-center gap-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 9v4"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 17h.01"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mTier 1: Hard Blockers (Must Resolve)[0m
+          [36m</h4>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-red-50 dark:bg-red-950 border-l-4 border-red-500 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-red-600 dark:text-red-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 9v4"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 17h.01"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mWater Activity Not Safe for Toddlers[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mWater-based activities pose safety risks for toddlers.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100"[39m
+                    [36m>[39m
+                      [0mCRITICAL[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m95[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mChild[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Flag Labels and Explanations > should fallback to flag_type if label not found 2ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Flag Labels and Explanations > should display explanation text for known flags 2ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Confidence Display > should display confidence as percentage 2ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Confidence Display > should round confidence values correctly 3ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Affected Travelers Display > should display affected travelers list 2ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Affected Travelers Display > should display fallback text when no travelers specified 2ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Affected Travelers Display > should display single traveler correctly 2ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Severity Badges > should display severity badge for critical flags 2ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Severity Badges > should display severity badge for high flags 1ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Severity Badges > should display severity badge for medium flags 2ms
+ × src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Drill-down Interaction > should call onDrill when flag clicked and tripId provided 0ms
+   → jest is not defined
+ × src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Drill-down Interaction > should not call onDrill when tripId not provided 0ms
+   → jest is not defined
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Drill-down Interaction > should be drillable when tripId provided 3ms
+ × src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Edge Cases > should handle flags with details object 2ms
+   → Unable to find an element with the text: Water-based activity is unsafe for toddlers.. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"_section_2bab33"[39m
+    [36m>[39m
+      [36m<h3[39m
+        [33mclass[39m=[32m"_sectionTitle_2bab33"[39m
+      [36m>[39m
+        [0mSuitability Audit Results[0m
+      [36m</h3>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"_card_2bab33"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-sm text-gray-700 dark:text-gray-300"[39m
+          [36m>[39m
+            [36m<strong>[39m
+              [0m1[0m
+            [36m</strong>[39m
+            [0m suitability issue[0m
+            [0m detected[0m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+            [36m>[39m
+              [0m [0m
+              [0m— [0m
+              [36m<strong>[39m
+                [0m1[0m
+              [36m</strong>[39m
+              [0m hard blocker[0m
+              [0mrequire resolution before send[0m
+            [36m</span>[39m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-6"[39m
+        [36m>[39m
+          [36m<h4[39m
+            [33mclass[39m=[32m"font-semibold text-red-700 dark:text-red-400 text-sm mb-3 flex items-center gap-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 9v4"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 17h.01"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mTier 1: Hard Blockers (Must Resolve)[0m
+          [36m</h4>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-red-50 dark:bg-red-950 border-l-4 border-red-500 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-red-600 dark:text-red-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 9v4"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 17h.01"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mWater Activity Not Safe for Toddlers[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mWater-based activities pose safety risks for toddlers.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100"[39m
+                    [36m>[39m
+                      [0mCRITICAL[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m95[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mChild[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ × src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Edge Cases > should handle mixed severity levels 4ms
+   → Unable to find an element with the text: /3 suitability issues detected/. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"_section_2bab33"[39m
+    [36m>[39m
+      [36m<h3[39m
+        [33mclass[39m=[32m"_sectionTitle_2bab33"[39m
+      [36m>[39m
+        [0mSuitability Audit Results[0m
+      [36m</h3>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"_card_2bab33"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-sm text-gray-700 dark:text-gray-300"[39m
+          [36m>[39m
+            [36m<strong>[39m
+              [0m3[0m
+            [36m</strong>[39m
+            [0m suitability issue[0m
+            [0ms[0m
+            [0m detected[0m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+            [36m>[39m
+              [0m [0m
+              [0m— [0m
+              [36m<strong>[39m
+                [0m1[0m
+              [36m</strong>[39m
+              [0m hard blocker[0m
+              [0mrequire resolution before send[0m
+            [36m</span>[39m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-6"[39m
+        [36m>[39m
+          [36m<h4[39m
+            [33mclass[39m=[32m"font-semibold text-red-700 dark:text-red-400 text-sm mb-3 flex items-center gap-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 9v4"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 17h.01"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mTier 1: Hard Blockers (Must Resolve)[0m
+          [36m</h4>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-red-50 dark:bg-red-950 border-l-4 border-red-500 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-red-600 dark:text-red-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 9v4"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 17h.01"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mWater Activity Not Safe for Toddlers[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mWater-based activities pose safety risks for toddlers.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100"[39m
+                    [36m>[39m
+                      [0mCRITICAL[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m95[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mChild[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div>[39m
+          [36m<h4[39m
+            [33mclass[39m=[32m"font-semibold text-yellow-700 dark:text-yellow-400 text-sm mb-3 flex items-center gap-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-circle-alert"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"12"[39m
+                [33mcy[39m=[32m"12"[39m
+                [33mr[39m=[32m"10"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"12"[39m
+                [33mx2[39m=[32m"12"[39m
+                [33my1[39m=[32m"8"[39m
+                [33my2[39m=[32m"12"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"12"[39m
+                [33mx2[39m=[32m"12.01"[39m
+                [33my1[39m=[32m"16"[39m
+                [33my2[39m=[32m"16"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mTier 2: Warnings (Review Recommended)[0m
+          [36m</h4>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-yellow-50 dark:bg-yellow-950 border-l-4 border-yellow-500 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-yellow-600 dark:text-yellow-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-circle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<circle[39m
+                      [33mcx[39m=[32m"12"[39m
+                      [33mcy[39m=[32m"12"[39m
+                      [33mr[39m=[32m"10"[39m
+                    [36m/>[39m
+                    [36m<line[39m
+                      [33mx1[39m=[32m"12"[39m
+                      [33mx2[39m=[32m"12"[39m
+                      [33my1[39m=[32m"8"[39m
+                      [33my2[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<line[39m
+                      [33mx1[39m=[32m"12"[39m
+                      [33mx2[39m=[32m"12.01"[39m
+                      [33my1[39m=[32m"16"[39m
+                      [33my2[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mPhysical Intensity Unsafe for Elderly[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mPhysical intensity of this activity may strain elderly travelers.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-yellow-200 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-100"[39m
+                    [36m>[39m
+                      [0mHIGH[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m85[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mElderly[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-blue-50 dark:bg-blue-950 border-l-4 border-blue-400 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-blue-600 dark:text-blue-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-circle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<circle[39m
+                      [33mcx[39m=[32m"12"[39m
+                      [33mcy[39m=[32m"12"[39m
+                      [33mr[39m=[32m"10"[39m
+                    [36m/>[39m
+                    [36m<line[39m
+                      [33mx1[39m=[32m"12"[39m
+                      [33mx2[39m=[32m"12"[39m
+                      [33my1[39m=[32m"8"[39m
+                      [33my2[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<line[39m
+                      [33mx1[39m=[32m"12"[39m
+                      [33mx2[39m=[32m"12.01"[39m
+                      [33my1[39m=[32m"16"[39m
+                      [33my2[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mItinerary Pacing Concern[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mThe itinerary structure may not provide adequate pacing and recovery time.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-blue-200 text-blue-900 dark:bg-blue-900 dark:text-blue-100"[39m
+                    [36m>[39m
+                      [0mMEDIUM[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m70[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mGroup[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Edge Cases > should handle very long affected travelers list 1ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Edge Cases > should handle flags with 0% confidence 1ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Edge Cases > should handle flags with 100% confidence 1ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > renders no flags message when flags array is empty 16ms
+ × src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > renders critical flags with red background 15ms
+   → expect(element).toHaveClass("bg-red-50")
+
+Expected the element to have class:
+  bg-red-50
+Received:
+  space-y-3
+ × src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > renders high severity flags with orange background 5ms
+   → expect(element).toHaveClass("bg-orange-50")
+
+Expected the element to have class:
+  bg-orange-50
+Received:
+  space-y-3
+ ✓ src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > renders critical flags with acknowledgment checkbox 61ms
+ × src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > disables continue button when critical flags are not acknowledged 0ms
+   → jest is not defined
+ × src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > enables continue button when all critical flags are acknowledged 0ms
+   → jest is not defined
+ × src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > calls onAcknowledge with flag IDs when continue is clicked 0ms
+   → jest is not defined
+ ✓ src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > displays confidence percentage for each flag 7ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > displays activity name when available in details 4ms
+ × src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > handles unchecking acknowledgment checkboxes 0ms
+   → jest is not defined
+ ✓ src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > renders operator review message for critical flags 2ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > only shows continue button when there are critical flags 2ms
+ ✓ src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > sorts flags by severity correctly 4ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/workspace/panels/__tests__/DecisionPanel.SuitabilitySignal.integration.test.tsx [ src/components/workspace/panels/__tests__/DecisionPanel.SuitabilitySignal.integration.test.tsx ]
+ReferenceError: jest is not defined
+ ❯ src/components/workspace/panels/__tests__/DecisionPanel.SuitabilitySignal.integration.test.tsx:8:1
+      6| 
+      7| // Mock the workbench store
+      8| jest.mock("@/stores/workbench", () => ({
+       | ^
+      9|   useWorkbenchStore: () => ({
+     10|     result_decision: null,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/15]⎯
+
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 14 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > renders critical flags with red background
+Error: expect(element).toHaveClass("bg-red-50")
+
+Expected the element to have class:
+  bg-red-50
+Received:
+  space-y-3
+ ❯ src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx:57:29
+     55|     render(<SuitabilityPanel flags={mockFlags} />);
+     56|     const criticalSection = screen.getByText('Critical Concerns').clos…
+     57|     expect(criticalSection).toHaveClass('bg-red-50');
+       |                             ^
+     58|   });
+     59| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/15]⎯
+
+ FAIL  src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > renders high severity flags with orange background
+Error: expect(element).toHaveClass("bg-orange-50")
+
+Expected the element to have class:
+  bg-orange-50
+Received:
+  space-y-3
+ ❯ src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx:63:25
+     61|     render(<SuitabilityPanel flags={mockFlags} />);
+     62|     const highSection = screen.getByText('Important Warnings').closest…
+     63|     expect(highSection).toHaveClass('bg-orange-50');
+       |                         ^
+     64|   });
+     65| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/15]⎯
+
+ FAIL  src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > disables continue button when critical flags are not acknowledged
+ReferenceError: jest is not defined
+ ❯ src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx:73:31
+     71| 
+     72|   it('disables continue button when critical flags are not acknowledge…
+     73|     const handleAcknowledge = jest.fn();
+       |                               ^
+     74|     render(<SuitabilityPanel flags={mockFlags} onAcknowledge={handleAc…
+     75|     
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/15]⎯
+
+ FAIL  src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > enables continue button when all critical flags are acknowledged
+ReferenceError: jest is not defined
+ ❯ src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx:81:31
+     79| 
+     80|   it('enables continue button when all critical flags are acknowledged…
+     81|     const handleAcknowledge = jest.fn();
+       |                               ^
+     82|     render(<SuitabilityPanel flags={mockFlags} onAcknowledge={handleAc…
+     83|     
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/15]⎯
+
+ FAIL  src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > calls onAcknowledge with flag IDs when continue is clicked
+ReferenceError: jest is not defined
+ ❯ src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx:93:31
+     91| 
+     92|   it('calls onAcknowledge with flag IDs when continue is clicked', asy…
+     93|     const handleAcknowledge = jest.fn();
+       |                               ^
+     94|     render(<SuitabilityPanel flags={mockFlags} onAcknowledge={handleAc…
+     95|     
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/15]⎯
+
+ FAIL  src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx > SuitabilityPanel > handles unchecking acknowledgment checkboxes
+ReferenceError: jest is not defined
+ ❯ src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx:125:31
+    123| 
+    124|   it('handles unchecking acknowledgment checkboxes', () => {
+    125|     const handleAcknowledge = jest.fn();
+       |                               ^
+    126|     render(<SuitabilityPanel flags={mockFlags} onAcknowledge={handleAc…
+    127|     
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/15]⎯
+
+ FAIL  src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Rendering > should display flag count in summary
+TestingLibraryElementError: Unable to find an element with the text: /2 suitability issues detected/. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"_section_2bab33"[39m
+    [36m>[39m
+      [36m<h3[39m
+        [33mclass[39m=[32m"_sectionTitle_2bab33"[39m
+      [36m>[39m
+        [0mSuitability Audit Results[0m
+      [36m</h3>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"_card_2bab33"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-sm text-gray-700 dark:text-gray-300"[39m
+          [36m>[39m
+            [36m<strong>[39m
+              [0m2[0m
+            [36m</strong>[39m
+            [0m suitability issue[0m
+            [0ms[0m
+            [0m detected[0m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+            [36m>[39m
+              [0m [0m
+              [0m— [0m
+              [36m<strong>[39m
+                [0m1[0m
+              [36m</strong>[39m
+              [0m hard blocker[0m
+              [0mrequire resolution before send[0m
+            [36m</span>[39m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-6"[39m
+        [36m>[39m
+          [36m<h4[39m
+            [33mclass[39m=[32m"font-semibold text-red-700 dark:text-red-400 text-sm mb-3 flex items-center gap-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 9v4"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 17h.01"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mTier 1: Hard Blockers (Must Resolve)[0m
+          [36m</h4>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-red-50 dark:bg-red-950 border-l-4 border-red-500 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-red-600 dark:text-red-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 9v4"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 17h.01"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mWater Activity Not Safe for Toddlers[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mWater-based activities pose safety risks for toddlers.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100"[39m
+                    [36m>[39m
+                      [0mCRITICAL[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m95[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mChild[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div>[39m
+          [36m<h4[39m
+            [33mclass[39m=[32m"font-semibold text-yellow-700 dark:text-yellow-400 text-sm mb-3 flex items-center gap-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-circle-alert"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"12"[39m
+                [33mcy[39m=[32m"12"[39m
+                [33mr[39m=[32m"10"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"12"[39m
+                [33mx2[39m=[32m"12"[39m
+                [33my1[39m=[32m"8"[39m
+                [33my2[39m=[32m"12"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"12"[39m
+                [33mx2[39m=[32m"12.01"[39m
+                [33my1[39m=[32m"16"[39m
+                [33my2[39m=[32m"16"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mTier 2: Warnings (Review Recommended)[0m
+          [36m</h4>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-yellow-50 dark:bg-yellow-950 border-l-4 border-yellow-500 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-yellow-600 dark:text-yellow-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-circle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<circle[39m
+                      [33mcx[39m=[32m"12"[39m
+                      [33mcy[39m=[32m"12"[39m
+                      [33mr[39m=[32m"10"[39m
+                    [36m/>[39m
+                    [36m<line[39m
+                      [33mx1[39m=[32m"12"[39m
+                      [33mx2[39m=[32m"12"[39m
+                      [33my1[39m=[32m"8"[39m
+                      [33my2[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<line[39m
+                      [33mx1[39m=[32m"12"[39m
+                      [33mx2[39m=[32m"12.01"[39m
+                      [33my1[39m=[32m"16"[39m
+                      [33my2[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mPhysical Intensity Unsafe for Elderly[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mPhysical intensity of this activity may strain elderly travelers.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-yellow-200 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-100"[39m
+                    [36m>[39m
+                      [0mHIGH[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m85[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mGrandparent[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx:45:21
+     43|       ];
+     44|       render(<SuitabilitySignal flags={flags} />);
+     45|       expect(screen.getByText(/2 suitability issues detected/)).toBeIn…
+       |                     ^
+     46|     });
+     47|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/15]⎯
+
+ FAIL  src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Tier 1 Hard Blockers (Critical) > should separate critical flags as Tier 1
+TestingLibraryElementError: Unable to find an element with the text: Water-based activity is unsafe for toddlers.. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"_section_2bab33"[39m
+    [36m>[39m
+      [36m<h3[39m
+        [33mclass[39m=[32m"_sectionTitle_2bab33"[39m
+      [36m>[39m
+        [0mSuitability Audit Results[0m
+      [36m</h3>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"_card_2bab33"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-sm text-gray-700 dark:text-gray-300"[39m
+          [36m>[39m
+            [36m<strong>[39m
+              [0m1[0m
+            [36m</strong>[39m
+            [0m suitability issue[0m
+            [0m detected[0m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+            [36m>[39m
+              [0m [0m
+              [0m— [0m
+              [36m<strong>[39m
+                [0m1[0m
+              [36m</strong>[39m
+              [0m hard blocker[0m
+              [0mrequire resolution before send[0m
+            [36m</span>[39m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-6"[39m
+        [36m>[39m
+          [36m<h4[39m
+            [33mclass[39m=[32m"font-semibold text-red-700 dark:text-red-400 text-sm mb-3 flex items-center gap-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 9v4"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 17h.01"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mTier 1: Hard Blockers (Must Resolve)[0m
+          [36m</h4>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-red-50 dark:bg-red-950 border-l-4 border-red-500 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-red-600 dark:text-red-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 9v4"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 17h.01"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mWater Activity Not Safe for Toddlers[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mWater-based activities pose safety risks for toddlers.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100"[39m
+                    [36m>[39m
+                      [0mCRITICAL[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m95[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mChild[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx:62:21
+     60|       render(<SuitabilitySignal flags={flags} />);
+     61|       expect(screen.getByText("Tier 1: Hard Blockers (Must Resolve)"))…
+     62|       expect(screen.getByText("Water-based activity is unsafe for todd…
+       |                     ^
+     63|     });
+     64| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/15]⎯
+
+ FAIL  src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Tier 1 Hard Blockers (Critical) > should show blocked count in summary for Tier 1 flags
+TestingLibraryElementError: Unable to find an element with the text: /2 hard blockers/. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"_section_2bab33"[39m
+    [36m>[39m
+      [36m<h3[39m
+        [33mclass[39m=[32m"_sectionTitle_2bab33"[39m
+      [36m>[39m
+        [0mSuitability Audit Results[0m
+      [36m</h3>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"_card_2bab33"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-sm text-gray-700 dark:text-gray-300"[39m
+          [36m>[39m
+            [36m<strong>[39m
+              [0m2[0m
+            [36m</strong>[39m
+            [0m suitability issue[0m
+            [0ms[0m
+            [0m detected[0m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+            [36m>[39m
+              [0m [0m
+              [0m— [0m
+              [36m<strong>[39m
+                [0m2[0m
+              [36m</strong>[39m
+              [0m hard blocker[0m
+              [0ms[0m
+              [0mrequire resolution before send[0m
+            [36m</span>[39m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-6"[39m
+        [36m>[39m
+          [36m<h4[39m
+            [33mclass[39m=[32m"font-semibold text-red-700 dark:text-red-400 text-sm mb-3 flex items-center gap-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 9v4"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 17h.01"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mTier 1: Hard Blockers (Must Resolve)[0m
+          [36m</h4>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-red-50 dark:bg-red-950 border-l-4 border-red-500 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-red-600 dark:text-red-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 9v4"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 17h.01"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mWater Activity Not Safe for Toddlers[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mWater-based activities pose safety risks for toddlers.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100"[39m
+                    [36m>[39m
+                      [0mCRITICAL[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m95[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mChild[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-red-50 dark:bg-red-950 border-l-4 border-red-500 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-red-600 dark:text-red-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 9v4"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 17h.01"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mPhysical Intensity Unsafe for Elderly[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mPhysical intensity of this activity may strain elderly travelers.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100"[39m
+                    [36m>[39m
+                      [0mCRITICAL[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m90[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mElderly[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx:83:21
+     81|       ];
+     82|       render(<SuitabilitySignal flags={flags} />);
+     83|       expect(screen.getByText(/2 hard blockers/)).toBeInTheDocument();
+       |                     ^
+     84|     });
+     85| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/15]⎯
+
+ FAIL  src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Flag Labels and Explanations > should display semantic labels instead of raw flag_type
+TestingLibraryElementError: Unable to find an element with the text: Water-based activity is unsafe for toddlers.. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"_section_2bab33"[39m
+    [36m>[39m
+      [36m<h3[39m
+        [33mclass[39m=[32m"_sectionTitle_2bab33"[39m
+      [36m>[39m
+        [0mSuitability Audit Results[0m
+      [36m</h3>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"_card_2bab33"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-sm text-gray-700 dark:text-gray-300"[39m
+          [36m>[39m
+            [36m<strong>[39m
+              [0m1[0m
+            [36m</strong>[39m
+            [0m suitability issue[0m
+            [0m detected[0m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+            [36m>[39m
+              [0m [0m
+              [0m— [0m
+              [36m<strong>[39m
+                [0m1[0m
+              [36m</strong>[39m
+              [0m hard blocker[0m
+              [0mrequire resolution before send[0m
+            [36m</span>[39m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-6"[39m
+        [36m>[39m
+          [36m<h4[39m
+            [33mclass[39m=[32m"font-semibold text-red-700 dark:text-red-400 text-sm mb-3 flex items-center gap-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 9v4"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 17h.01"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mTier 1: Hard Blockers (Must Resolve)[0m
+          [36m</h4>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-red-50 dark:bg-red-950 border-l-4 border-red-500 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-red-600 dark:text-red-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 9v4"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 17h.01"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mWater Activity Not Safe for Toddlers[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mWater-based activities pose safety risks for toddlers.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100"[39m
+                    [36m>[39m
+                      [0mCRITICAL[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m95[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mChild[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx:158:21
+    156|       ];
+    157|       render(<SuitabilitySignal flags={flags} />);
+    158|       expect(screen.getByText("Water-based activity is unsafe for todd…
+       |                     ^
+    159|       expect(screen.getByText("Water-based activities pose safety risk…
+    160|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/15]⎯
+
+ FAIL  src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Drill-down Interaction > should call onDrill when flag clicked and tripId provided
+ReferenceError: jest is not defined
+ ❯ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx:310:25
+    308|   describe("Drill-down Interaction", () => {
+    309|     it("should call onDrill when flag clicked and tripId provided", ()…
+    310|       const mockDrill = jest.fn();
+       |                         ^
+    311|       const flags: SuitabilityFlagData[] = [
+    312|         {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/15]⎯
+
+ FAIL  src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Drill-down Interaction > should not call onDrill when tripId not provided
+ReferenceError: jest is not defined
+ ❯ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx:335:25
+    333| 
+    334|     it("should not call onDrill when tripId not provided", () => {
+    335|       const mockDrill = jest.fn();
+       |                         ^
+    336|       const flags: SuitabilityFlagData[] = [
+    337|         {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/15]⎯
+
+ FAIL  src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Edge Cases > should handle flags with details object
+TestingLibraryElementError: Unable to find an element with the text: Water-based activity is unsafe for toddlers.. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"_section_2bab33"[39m
+    [36m>[39m
+      [36m<h3[39m
+        [33mclass[39m=[32m"_sectionTitle_2bab33"[39m
+      [36m>[39m
+        [0mSuitability Audit Results[0m
+      [36m</h3>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"_card_2bab33"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-sm text-gray-700 dark:text-gray-300"[39m
+          [36m>[39m
+            [36m<strong>[39m
+              [0m1[0m
+            [36m</strong>[39m
+            [0m suitability issue[0m
+            [0m detected[0m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+            [36m>[39m
+              [0m [0m
+              [0m— [0m
+              [36m<strong>[39m
+                [0m1[0m
+              [36m</strong>[39m
+              [0m hard blocker[0m
+              [0mrequire resolution before send[0m
+            [36m</span>[39m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-6"[39m
+        [36m>[39m
+          [36m<h4[39m
+            [33mclass[39m=[32m"font-semibold text-red-700 dark:text-red-400 text-sm mb-3 flex items-center gap-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 9v4"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 17h.01"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mTier 1: Hard Blockers (Must Resolve)[0m
+          [36m</h4>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-red-50 dark:bg-red-950 border-l-4 border-red-500 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-red-600 dark:text-red-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 9v4"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 17h.01"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mWater Activity Not Safe for Toddlers[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mWater-based activities pose safety risks for toddlers.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100"[39m
+                    [36m>[39m
+                      [0mCRITICAL[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m95[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mChild[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx:396:21
+    394|       ];
+    395|       render(<SuitabilitySignal flags={flags} />);
+    396|       expect(screen.getByText("Water-based activity is unsafe for todd…
+       |                     ^
+    397|     });
+    398| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/15]⎯
+
+ FAIL  src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx > SuitabilitySignal Component > Edge Cases > should handle mixed severity levels
+TestingLibraryElementError: Unable to find an element with the text: /3 suitability issues detected/. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"_section_2bab33"[39m
+    [36m>[39m
+      [36m<h3[39m
+        [33mclass[39m=[32m"_sectionTitle_2bab33"[39m
+      [36m>[39m
+        [0mSuitability Audit Results[0m
+      [36m</h3>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"_card_2bab33"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-sm text-gray-700 dark:text-gray-300"[39m
+          [36m>[39m
+            [36m<strong>[39m
+              [0m3[0m
+            [36m</strong>[39m
+            [0m suitability issue[0m
+            [0ms[0m
+            [0m detected[0m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-red-600 dark:text-red-400"[39m
+            [36m>[39m
+              [0m [0m
+              [0m— [0m
+              [36m<strong>[39m
+                [0m1[0m
+              [36m</strong>[39m
+              [0m hard blocker[0m
+              [0mrequire resolution before send[0m
+            [36m</span>[39m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mb-6"[39m
+        [36m>[39m
+          [36m<h4[39m
+            [33mclass[39m=[32m"font-semibold text-red-700 dark:text-red-400 text-sm mb-3 flex items-center gap-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 9v4"[39m
+              [36m/>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M12 17h.01"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mTier 1: Hard Blockers (Must Resolve)[0m
+          [36m</h4>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-red-50 dark:bg-red-950 border-l-4 border-red-500 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-red-600 dark:text-red-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-triangle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 9v4"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 17h.01"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mWater Activity Not Safe for Toddlers[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mWater-based activities pose safety risks for toddlers.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100"[39m
+                    [36m>[39m
+                      [0mCRITICAL[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m95[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mChild[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div>[39m
+          [36m<h4[39m
+            [33mclass[39m=[32m"font-semibold text-yellow-700 dark:text-yellow-400 text-sm mb-3 flex items-center gap-2"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"lucide lucide-circle-alert"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"16"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"16"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<circle[39m
+                [33mcx[39m=[32m"12"[39m
+                [33mcy[39m=[32m"12"[39m
+                [33mr[39m=[32m"10"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"12"[39m
+                [33mx2[39m=[32m"12"[39m
+                [33my1[39m=[32m"8"[39m
+                [33my2[39m=[32m"12"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"12"[39m
+                [33mx2[39m=[32m"12.01"[39m
+                [33my1[39m=[32m"16"[39m
+                [33my2[39m=[32m"16"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0mTier 2: Warnings (Review Recommended)[0m
+          [36m</h4>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-2"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-yellow-50 dark:bg-yellow-950 border-l-4 border-yellow-500 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-yellow-600 dark:text-yellow-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-circle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<circle[39m
+                      [33mcx[39m=[32m"12"[39m
+                      [33mcy[39m=[32m"12"[39m
+                      [33mr[39m=[32m"10"[39m
+                    [36m/>[39m
+                    [36m<line[39m
+                      [33mx1[39m=[32m"12"[39m
+                      [33mx2[39m=[32m"12"[39m
+                      [33my1[39m=[32m"8"[39m
+                      [33my2[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<line[39m
+                      [33mx1[39m=[32m"12"[39m
+                      [33mx2[39m=[32m"12.01"[39m
+                      [33my1[39m=[32m"16"[39m
+                      [33my2[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mPhysical Intensity Unsafe for Elderly[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mPhysical intensity of this activity may strain elderly travelers.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-yellow-200 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-100"[39m
+                    [36m>[39m
+                      [0mHIGH[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m85[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mElderly[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-blue-50 dark:bg-blue-950 border-l-4 border-blue-400 p-3 rounded-md transition-all "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-shrink-0 mt-0.5 text-blue-600 dark:text-blue-400"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-circle-alert"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<circle[39m
+                      [33mcx[39m=[32m"12"[39m
+                      [33mcy[39m=[32m"12"[39m
+                      [33mr[39m=[32m"10"[39m
+                    [36m/>[39m
+                    [36m<line[39m
+                      [33mx1[39m=[32m"12"[39m
+                      [33mx2[39m=[32m"12"[39m
+                      [33my1[39m=[32m"8"[39m
+                      [33my2[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<line[39m
+                      [33mx1[39m=[32m"12"[39m
+                      [33mx2[39m=[32m"12.01"[39m
+                      [33my1[39m=[32m"16"[39m
+                      [33my2[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex-1 min-w-0"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-start justify-between gap-2"[39m
+                  [36m>[39m
+                    [36m<div>[39m
+                      [36m<h4[39m
+                        [33mclass[39m=[32m"font-semibold text-sm text-gray-900 dark:text-gray-100"[39m
+                      [36m>[39m
+                        [0mItinerary Pacing Concern[0m
+                      [36m</h4>[39m
+                      [36m<p[39m
+                        [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400 mt-1"[39m
+                      [36m>[39m
+                        [0mThe itinerary structure may not provide adequate pacing and recovery time.[0m
+                      [36m</p>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2 mt-2 flex-wrap"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs px-2 py-1 rounded bg-blue-200 text-blue-900 dark:bg-blue-900 dark:text-blue-100"[39m
+                    [36m>[39m
+                      [0mMEDIUM[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mConfidence: [0m
+                      [0m70[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xs text-gray-600 dark:text-gray-400"[39m
+                    [36m>[39m
+                      [0mGroup[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx:427:21
+    425|       expect(screen.getByText("Tier 1: Hard Blockers (Must Resolve)"))…
+    426|       expect(screen.getByText("Tier 2: Warnings (Review Recommended)")…
+    427|       expect(screen.getByText(/3 suitability issues detected/)).toBeIn…
+       |                     ^
+    428|       expect(screen.getByText(/1 hard blocker/)).toBeInTheDocument();
+    429|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/15]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  14 failed | 27 passed (41)
+   Start at  11:10:03
+   Duration  1.10s (transform 236ms, setup 313ms, collect 351ms, tests 214ms, environment 1.10s, prepare 278ms)
+
+JSON report written to /Users/pranay/Projects/travel_agency_agent/Docs/reports/p2_training_problem_frontend_2026-04-23.json
+real 1.51
+user 4.23
+sys 0.93

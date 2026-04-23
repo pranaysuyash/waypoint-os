@@ -1,21 +1,23 @@
 import { NextResponse } from "next/server";
 
-// Mock pipeline data (in production, this would be calculated from actual trip data)
-const MOCK_PIPELINE = [
-  { label: "Lead", count: 4 },
-  { label: "Qualified", count: 3 },
-  { label: "Planning", count: 6 },
-  { label: "Quoted", count: 5 },
-  { label: "Booked", count: 8 },
-  { label: "Traveling", count: 2 },
-  { label: "Complete", count: 12 },
-];
-
 export async function GET() {
   try {
-    return NextResponse.json(MOCK_PIPELINE);
+    // Forward request to spine-api analytics endpoint
+    const response = await fetch("http://localhost:8000/analytics/pipeline", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Spine API returned ${response.status}`);
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
   } catch (error) {
-    console.error("Error fetching pipeline:", error);
+    console.error("Error fetching pipeline from spine-api:", error);
     return NextResponse.json(
       { error: "Failed to fetch pipeline" },
       { status: 500 }

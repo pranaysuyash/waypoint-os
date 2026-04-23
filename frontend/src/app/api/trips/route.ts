@@ -1,122 +1,212 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Mock trip data (in production, this would come from a database)
-const MOCK_TRIPS = [
-  {
-    id: "TRP-2026-SGP-0315",
-    destination: "Singapore",
-    type: "Family",
-    state: "green" as const,
-    age: "2h ago",
-    createdAt: "2026-04-16T08:00:00Z",
-    updatedAt: "2026-04-16T10:00:00Z",
-    party: 4,
-    dateWindow: "Aug 1–10",
-    action: "Ready to proceed",
-    overdue: false,
-  },
-  {
-    id: "TRP-2026-DXB-0418",
-    destination: "Dubai",
-    type: "Corporate",
-    state: "blue" as const,
-    age: "5h ago",
-    createdAt: "2026-04-16T05:00:00Z",
-    updatedAt: "2026-04-16T07:00:00Z",
-    party: 8,
-    dateWindow: "Jul 3–7",
-    action: "Clarification requested from client",
-    overdue: false,
-  },
-  {
-    id: "TRP-2026-AND-0420",
-    destination: "Andaman",
-    type: "Honeymoon",
-    state: "amber" as const,
-    age: "1d ago",
-    createdAt: "2026-04-15T12:00:00Z",
-    updatedAt: "2026-04-15T14:00:00Z",
-    party: 2,
-    dateWindow: "May 15–22",
-    action: "Draft itinerary branch pending",
-    overdue: false,
-  },
-  {
-    id: "TRP-2026-MSC-0422",
-    destination: "Moscow",
-    type: "Solo",
-    state: "red" as const,
-    age: "2d ago",
-    createdAt: "2026-04-14T10:00:00Z",
-    updatedAt: "2026-04-14T12:00:00Z",
-    party: 1,
-    dateWindow: "Jun 10–20",
-    action: "Requires owner review",
-    overdue: true,
-  },
-  {
-    id: "TRP-2026-BKK-0401",
-    destination: "Bangkok",
-    type: "Group",
-    state: "green" as const,
-    age: "3d ago",
-    createdAt: "2026-04-13T08:00:00Z",
-    updatedAt: "2026-04-13T10:00:00Z",
-    party: 12,
-    dateWindow: "Sep 5–12",
-    action: "Booking confirmation pending",
-    overdue: false,
-  },
-  {
-    id: "TRP-2026-PAR-0430",
-    destination: "Paris",
-    type: "Anniversary",
-    state: "amber" as const,
-    age: "4d ago",
-    createdAt: "2026-04-12T08:00:00Z",
-    updatedAt: "2026-04-12T10:00:00Z",
-    party: 2,
-    dateWindow: "Oct 14–21",
-    action: "Visa docs incomplete",
-    overdue: false,
-  },
-  {
-    id: "TRP-2026-NYC-0512",
-    destination: "New York",
-    type: "Family",
-    state: "blue" as const,
-    age: "6h ago",
-    createdAt: "2026-04-16T06:00:00Z",
-    updatedAt: "2026-04-16T08:00:00Z",
-    party: 5,
-    dateWindow: "Dec 20–28",
-    action: "Budget clarification needed",
-    overdue: false,
-  },
-];
+// Map spine-api status values to frontend state values
+const statusMap: Record<string, "green" | "amber" | "red" | "blue"> = {
+  new: 'blue',
+  assigned: 'amber',
+  in_progress: 'amber',
+  completed: 'green',
+  cancelled: 'red',
+};
+
+// Calculate age string from ISO date string
+function calculateAge(isoDateString: string): string {
+  const created = new Date(isoDateString);
+  const now = new Date();
+  const diffMs = now.getTime() - created.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w`;
+  return `${Math.floor(diffDays / 30)}mo`;
+}
+
+// Helper function to safely get nested values
+function getNestedValue(obj: any, path: string, defaultValue: any = null): any {
+  const parts = path.split('.');
+  let current = obj;
+  
+  for (const part of parts) {
+    if (current === null || current === undefined) {
+      return defaultValue;
+    }
+    current = current[part];
+  }
+  
+  return current === undefined ? defaultValue : current;
+}
+
+// Transform spine-api trip to frontend Trip format
+function transformTrip(spineTrip: any): any {
+  // Extract destination from facts if available, otherwise from extracted.trip_metadata
+  const destination = getNestedValue(spineTrip, 'extracted.facts.destination_candidates.value.0') ||
+                     getNestedValue(spineTrip, 'extracted.trip_metadata.destination') ||
+                     getNestedValue(spineTrip, 'extracted.destination') ||
+                     'Unknown';
+                     
+  // Extract trip type from facts if available, otherwise from extracted.trip_metadata
+  const tripType = getNestedValue(spineTrip, 'extracted.facts.primary_intent.value.0') ||
+                   getNestedValue(spineTrip, 'extracted.facts.trip_purpose.value.0') ||
+                   getNestedValue(spineTrip, 'extracted.trip_metadata.primary_intent') ||
+                   getNestedValue(spineTrip, 'extracted.trip_metadata.trip_purpose') ||
+                   getNestedValue(spineTrip, 'extracted.primary_intent') ||
+                   getNestedValue(spineTrip, 'extracted.trip_purpose') ||
+                   'leisure';
+                   
+  // Extract party size from facts if available, otherwise from extracted.trip_metadata
+  const partySize = getNestedValue(spineTrip, 'extracted.facts.party_profile.value') ||
+                    getNestedValue(spineTrip, 'extracted.facts.party_size.value') ||
+                    getNestedValue(spineTrip, 'extracted.trip_metadata.party_profile.size') ||
+                    getNestedValue(spineTrip, 'extracted.trip_metadata.party_size') ||
+                    getNestedValue(spineTrip, 'extracted.party_profile.size') ||
+                    getNestedValue(spineTrip, 'extracted.party_size') ||
+                    1;
+                    
+  // Extract budget value from facts if available, otherwise from extracted.trip_metadata
+  const budgetValue = getNestedValue(spineTrip, 'extracted.facts.budget.value') ||
+                      getNestedValue(spineTrip, 'extracted.trip_metadata.budget.value') ||
+                      getNestedValue(spineTrip, 'extracted.budget.value') ||
+                      getNestedValue(spineTrip, 'extracted.budget') ||
+                      0;
+                      
+  // Extract date window from facts if available, otherwise from extracted.trip_metadata
+  const dateWindow = getNestedValue(spineTrip, 'extracted.facts.date_window.value') ||
+                     getNestedValue(spineTrip, 'extracted.trip_metadata.date_window.value') ||
+                     getNestedValue(spineTrip, 'extracted.trip_metadata.date_window') ||
+                     getNestedValue(spineTrip, 'extracted.date_window') ||
+                     'TBD';
+                     
+  // Extract origin city from facts if available, otherwise from extracted.trip_metadata
+  const originCity = getNestedValue(spineTrip, 'extracted.facts.origin_city.value') ||
+                     getNestedValue(spineTrip, 'extracted.trip_metadata.origin_city.value') ||
+                     getNestedValue(spineTrip, 'extracted.trip_metadata.origin_city') ||
+                     getNestedValue(spineTrip, 'extracted.origin_city') ||
+                     getNestedValue(spineTrip, 'extracted.origin') ||
+                     'TBD';
+
+  return {
+    id: spineTrip.id,
+    destination: String(destination),
+    type: String(tripType),
+    state: statusMap[spineTrip.status] || spineTrip.status || 'blue',
+    age: calculateAge(spineTrip.created_at || new Date().toISOString()),
+    createdAt: spineTrip.created_at || new Date().toISOString(),
+    updatedAt: spineTrip.updated_at || spineTrip.created_at || new Date().toISOString(),
+    // Additional fields for UI display
+    party: partySize,
+    dateWindow: String(dateWindow),
+    origin: String(originCity),
+    budget: `$${budgetValue.toLocaleString()}`,
+    // Map decision action
+    action: spineTrip.decision?.action || 'PENDING',
+    // Map analytics data
+    analytics: {
+      marginPct: spineTrip.analytics?.margin_pct || 0,
+      qualityScore: spineTrip.analytics?.quality_score || 0,
+      qualityBreakdown: spineTrip.analytics?.quality_breakdown || {
+        completeness: 0,
+        feasibility: 0,
+        risk: 0,
+        profitability: 0
+      },
+      requiresReview: spineTrip.analytics?.requires_review || false,
+      reviewReason: spineTrip.analytics?.review_reason || ''
+    },
+    // Map validation info
+    validation: {
+      isValid: spineTrip.validation?.is_valid || false,
+      errors: spineTrip.validation?.errors || [],
+      warnings: spineTrip.validation?.warnings || [],
+      ambiguityReport: spineTrip.validation?.ambiguity_report || [],
+      evidenceCoverage: spineTrip.validation?.evidence_coverage || {}
+    },
+    // Map decision info
+    decision: {
+      packetId: spineTrip.decision?.packet_id || '',
+      currentStage: spineTrip.decision?.current_stage || 'discovery',
+      operatingMode: spineTrip.decision?.operating_mode || 'normal_intake',
+      decisionState: spineTrip.decision?.decision_state || 'ASK_FOLLOWUP',
+      hardBlockers: spineTrip.decision?.hard_blockers || [],
+      softBlockers: spineTrip.decision?.soft_blockers || [],
+      ambiguities: spineTrip.decision?.ambiguities || [],
+      contradictions: spineTrip.decision?.contradictions || [],
+      followUpQuestions: spineTrip.decision?.follow_up_questions || [],
+      branchOptions: spineTrip.decision?.branch_options || [],
+      rationale: spineTrip.decision?.rationale || {},
+      confidenceScore: spineTrip.decision?.confidence_score || 0,
+      riskFlags: spineTrip.decision?.risk_flags || [],
+      commercialDecision: spineTrip.decision?.commercial_decision || 'NONE',
+      intentScores: spineTrip.decision?.intent_scores || {},
+      nextBestAction: spineTrip.decision?.next_best_action || null,
+      budgetBreakdown: spineTrip.decision?.budget_breakdown || {
+        verdict: 'not_realistic',
+        buckets: [],
+        missing_buckets: [],
+        total_estimated_low: 0,
+        total_estimated_high: 0,
+        budget_stated: null,
+        gap: null,
+        risks: ['budget_unknown'],
+        critical_changes: ['Provide a numeric budget for decomposition'],
+        must_confirm: [],
+        alternative: null,
+        maturity: 'heuristic'
+      }
+    },
+    // Map safety info
+    safety: spineTrip.safety || {},
+    // Map raw input
+    rawInput: spineTrip.raw_input || {
+      stage: 'discovery',
+      operating_mode: 'normal_intake',
+      fixture_id: null,
+      execution_ms: 0
+    }
+  };
+}
 
 export async function GET(request: NextRequest) {
   try {
+    // Forward query parameters to spine-api
     const searchParams = request.nextUrl.searchParams;
-    const state = searchParams.get("state");
-    const limit = parseInt(searchParams.get("limit") || "10");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const query = searchParams.toString();
+    const spineApiUrl = `http://localhost:8000/trips${query ? `?${query}` : ""}`;
 
-    // Filter by state if provided
-    let filtered = MOCK_TRIPS;
-    if (state) {
-      filtered = filtered.filter((trip) => trip.state === state);
+    const response = await fetch(spineApiUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Spine API returned ${response.status}`);
     }
 
-    // Apply pagination
-    const paginated = filtered.slice(offset, offset + limit);
-
-    return NextResponse.json({
-      items: paginated,
-      total: filtered.length,
-    });
+    const spineApiData = await response.json();
+    
+    // Transform the data to match frontend expectations
+    // spine-api returns { items: [...], total: N }
+    if (spineApiData.items && Array.isArray(spineApiData.items)) {
+      const transformedItems = spineApiData.items.map(transformTrip);
+      return NextResponse.json({
+        items: transformedItems,
+        total: spineApiData.total
+      });
+    } else {
+      // Handle case where spine-api might return just an array
+      const transformedItems = Array.isArray(spineApiData) 
+        ? spineApiData.map(transformTrip) 
+        : [transformTrip(spineApiData)];
+      return NextResponse.json({
+        items: transformedItems,
+        total: transformedItems.length
+      });
+    }
   } catch (error) {
-    console.error("Error fetching trips:", error);
+    console.error("Error fetching trips from spine-api:", error);
     return NextResponse.json(
       { error: "Failed to fetch trips" },
       { status: 500 }

@@ -12,14 +12,11 @@ from pathlib import Path
 from typing import Optional, Any
 from uuid import uuid4
 from dataclasses import asdict, is_dataclass
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Data directories
-DATA_DIR = Path(__file__).parent.parent / "data"
-TRIPS_DIR = DATA_DIR / "trips"
-ASSIGNMENTS_DIR = DATA_DIR / "assignments"
-AUDIT_DIR = DATA_DIR / "audit"
-
-# Ensure directories exist
 DATA_DIR = Path(__file__).parent.parent / "data"
 TRIPS_DIR = DATA_DIR / "trips"
 ASSIGNMENTS_DIR = DATA_DIR / "assignments"
@@ -438,16 +435,22 @@ def save_processed_trip(spine_output: dict, source: str = "unknown") -> str:
         "safety": safety,
         "raw_input": spine_output.get("meta", {}),
     }
-
+    
     # Calculate analytics payload securely inside python ecosystem
     try:
         analytics = process_trip_analytics(trip)
         trip["analytics"] = analytics.model_dump()
     except Exception as e:
-        print(f"Analytics calculation failed: {e}")
+        logger.warning(f"Analytics calculation failed: {e}")
         trip["analytics"] = None
     
-    trip_id = TripStore.save_trip(trip)
+    logger.debug(f"Saving trip with data keys: {list(trip.keys())}")
+    
+    # Make the entire trip JSON serializable before saving
+    serializable_trip = _make_json_serializable(trip)
+    logger.debug(f"Serializable trip keys: {list(serializable_trip.keys())}")
+    
+    trip_id = TripStore.save_trip(serializable_trip)
     
     # Log creation
     AuditStore.log_event("trip_created", "system", {

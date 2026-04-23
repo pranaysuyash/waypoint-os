@@ -112,7 +112,7 @@ const PipelineBar = memo(function PipelineBar({
 }) {
   const safeData = data ?? [];
   const total = useMemo(() => {
-    return safeData.reduce((s, x) => s + x.count, 0);
+    return safeData.reduce((s, x) => s + (Number(x.count) || 0), 0);
   }, [safeData]);
 
   // Collapsed state for minimal view
@@ -176,7 +176,7 @@ const PipelineBar = memo(function PipelineBar({
             <div className='h-2 bg-[#161b22] rounded-full overflow-hidden flex'>
               {safeData.map((stage, i) => (
                 <div
-                  key={stage.label}
+                  key={stage.label || `stage-${i}`}
                   className='h-full'
                   style={{
                     width: `${(stage.count / total) * 100}%`,
@@ -253,7 +253,7 @@ const ActivityRow = memo(function ActivityRow({
     age: string;
   };
 }) {
-  const meta = STATE_META[item.state];
+  const meta = STATE_META[item.state] ?? STATE_META.blue;
   return (
     <Link
       href={getTripRoute(item.id)}

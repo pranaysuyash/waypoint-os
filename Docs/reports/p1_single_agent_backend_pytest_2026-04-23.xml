@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="13" time="1.141" timestamp="2026-04-23T10:11:16.401262+05:30" hostname="pranay.local"><testcase classname="tests.test_e2e_freeze_pack.TestScenario1_MessyFamilyDiscovery" name="test_extraction_from_messy_note" time="0.456" /><testcase classname="tests.test_e2e_freeze_pack.TestScenario1_MessyFamilyDiscovery" name="test_decision_state" time="0.003" /><testcase classname="tests.test_e2e_freeze_pack.TestScenario1_MessyFamilyDiscovery" name="test_traveler_safe_no_leakage" time="0.003" /><testcase classname="tests.test_e2e_freeze_pack.TestScenario1_MessyFamilyDiscovery" name="test_internal_bundle_has_full_context" time="0.002" /><testcase classname="tests.test_e2e_freeze_pack.TestScenario1_MessyFamilyDiscovery" name="test_sanitized_view_removes_internal_data" time="0.002" /><testcase classname="tests.test_realworld_scenarios_v02.TestVagueLead" name="test_vague_lead_asks_followup_with_missing_blockers" time="0.002" /><testcase classname="tests.test_realworld_scenarios_v02.TestWhatsAppDump" name="test_whatsapp_dump_reveals_ambiguity_gap" time="0.002" /><testcase classname="tests.test_realworld_scenarios_v02.TestLastMinuteBooker" name="test_last_minute_booker_reveals_soft_blocker_gap" time="0.002" /><testcase classname="tests.test_realworld_scenarios_v02.TestStageProgressionScenarios" name="test_shortlist_asks_for_selected_destination" time="0.005" /><testcase classname="tests.test_realworld_scenarios_v02.TestStageProgressionScenarios" name="test_proposal_asks_for_selected_itinerary" time="0.002" /><testcase classname="tests.test_timeline_e2e" name="test_spine_run_emits_audit_events" time="0.411"><failure message="AssertionError: Details missing state&#10;assert 'state' in {'trip_id': 'pkt_fdaea866', 'stage': 'intake', 'description': 'Stage: intake | State: extracted | Reason: Extraction pipeline completed', 'confidence': 1.0, 'pre_state': {'state': 'previous'}, 'post_state': {'state': 'extracted'}, 'timestamp': '2026-04-23T04:41:17.490479+00:00'}">def test_spine_run_emits_audit_events():
+        """
+        E2E: Run a full spine and verify audit events are created.
+    
+        Verifies that AuditStore captures timeline events for all stages.
+        """
+        # Create a test envelope
+        envelopes = [
+            SourceEnvelope.from_freeform(
+                """
+                Trip Details:
+                - Destination: Paris, France
+                - Duration: 7 days
+                - Travelers: 2 adults
+                - Budget: €4000
+                - Dates: May 2025
+                - Interests: Museums, food, walking tours
+                """,
+                "agency_notes",
+                "agent",
+            )
+        ]
+    
+        # Run the spine
+        result = run_spine_once(
+            envelopes=envelopes,
+            stage="discovery",
+        )
+    
+        # Get the trip ID from the result
+        trip_id = result.packet.packet_id
+        assert trip_id, "Spine should return a trip ID"
+    
+        # Retrieve events from AuditStore
+        all_events = AuditStore.get_events_for_trip(trip_id)
+    
+        # Filter to this trip's events
+        events = [e for e in all_events if e["details"].get("trip_id") == trip_id]
+    
+        # Verify we have at least 2 events (intake and packet minimum)
+        assert len(events) &gt;= 2, f"Expected at least 2 timeline events, got {len(events)}"
+    
+        # Verify event structure
+        for event in events:
+            assert "type" in event, "Event missing type"
+            assert "timestamp" in event, "Event missing timestamp"
+            assert "details" in event, "Event missing details"
+    
+            details = event["details"]
+            assert "stage" in details, "Details missing stage"
+&gt;           assert "state" in details, "Details missing state"
+E           AssertionError: Details missing state
+E           assert 'state' in {'trip_id': 'pkt_fdaea866', 'stage': 'intake', 'description': 'Stage: intake | State: extracted | Reason: Extraction pipeline completed', 'confidence': 1.0, 'pre_state': {'state': 'previous'}, 'post_state': {'state': 'extracted'}, 'timestamp': '2026-04-23T04:41:17.490479+00:00'}
+
+tests/test_timeline_e2e.py:72: AssertionError</failure></testcase><testcase classname="tests.test_timeline_rest_endpoint" name="test_timeline_endpoint_response_structure" time="0.004" /><testcase classname="tests.test_timeline_rest_endpoint" name="test_timeline_endpoint_accepts_stage_filter" time="0.022" /></testsuite></testsuites>

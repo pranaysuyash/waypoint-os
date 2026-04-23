@@ -88,12 +88,22 @@ export interface Rationale {
   feasibility: string;
 }
 
+export interface SuitabilityFlagData {
+  flag_type: string;
+  severity: "low" | "medium" | "high" | "critical";
+  reason: string;
+  confidence: number;
+  details?: Record<string, any>;
+  affected_travelers?: string[];
+}
+
 export interface DecisionOutput {
   decision_state: string;
   hard_blockers: string[];
   soft_blockers: string[];
   contradictions: string[];
   risk_flags: string[];
+  suitability_flags?: SuitabilityFlagData[];
   follow_up_questions: FollowUpQuestion[];
   rationale: Rationale;
   confidence: ConfidenceScorecard;

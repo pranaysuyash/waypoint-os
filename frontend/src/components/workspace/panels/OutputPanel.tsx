@@ -72,29 +72,29 @@ export function OutputPanel({ trip: propTrip, tripId: propTripId }: OutputPanelP
       )}
 
       {/* Internal vs Traveler-safe Split View */}
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Agent View vs Customer View</h3>
-        <div className={styles.splitView}>
-          <div className={`${styles.splitPanel} ${styles.internalPanel}`}>
-            <div className={styles.splitTitle}>For You (Agent)</div>
+      <div className="border border-[#1c2128] rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-gray-200 mb-4">Agent View vs Customer View</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 rounded-lg bg-[#0a0d11] border border-[#1c2128]">
+            <h4 className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-3">For You (Agent)</h4>
             {internalBundle ? (
-              <div>
-                <div style={{ marginBottom: "12px" }}>
-                  <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>System Context</strong>
-                  <p style={{ fontSize: "13px", whiteSpace: "pre-wrap", marginTop: "4px" }}>
+              <div className="space-y-4">
+                <div>
+                  <div className="text-xs font-semibold text-gray-500 uppercase">System Context</div>
+                  <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                     {internalBundle.system_context || "—"}
                   </p>
                 </div>
-                <div style={{ marginBottom: "12px" }}>
-                  <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>User Message</strong>
-                  <p style={{ fontSize: "13px", whiteSpace: "pre-wrap", marginTop: "4px" }}>
+                <div>
+                  <div className="text-xs font-semibold text-gray-500 uppercase">User Message</div>
+                  <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                     {internalBundle.user_message || "—"}
                   </p>
                 </div>
                 {internalBundle.constraints && internalBundle.constraints.length > 0 && (
                   <div>
-                    <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Constraints</strong>
-                    <ul style={{ margin: "4px 0 0 16px", fontSize: "12px" }}>
+                    <div className="text-xs font-semibold text-gray-500 uppercase">Constraints</div>
+                    <ul className="mt-1 list-disc list-inside text-xs text-gray-400 space-y-0.5">
                       {internalBundle.constraints.map((c, i) => (
                         <li key={`icon-${c.slice(0, 20)}-${i}`}>{c}</li>
                       ))}
@@ -102,39 +102,39 @@ export function OutputPanel({ trip: propTrip, tripId: propTripId }: OutputPanelP
                   </div>
                 )}
                 {internalBundle.internal_notes && (
-                  <div style={{ marginTop: "12px" }}>
-                    <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Internal Notes</strong>
-                    <p style={{ fontSize: "13px", whiteSpace: "pre-wrap", marginTop: "4px" }}>
+                  <div>
+                    <div className="text-xs font-semibold text-gray-500 uppercase">Internal Notes</div>
+                    <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                       {internalBundle.internal_notes}
                     </p>
                   </div>
                 )}
               </div>
             ) : (
-              <p style={{ color: "var(--color-text-muted)" }}>No agent notes</p>
+              <p className="text-gray-500 text-sm">No agent notes</p>
             )}
           </div>
 
-          <div className={`${styles.splitPanel} ${styles.travelerPanel}`}>
-            <div className={styles.splitTitle}>For Customer</div>
+          <div className="p-4 rounded-lg bg-[#0a0d11] border border-[#1c2128]">
+            <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3">For Customer</h4>
             {travelerBundle ? (
-              <div>
-                <div style={{ marginBottom: "12px" }}>
-                  <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>System Context</strong>
-                  <p style={{ fontSize: "13px", whiteSpace: "pre-wrap", marginTop: "4px" }}>
+              <div className="space-y-4">
+                <div>
+                  <div className="text-xs font-semibold text-gray-500 uppercase">System Context</div>
+                  <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                     {travelerBundle.system_context || "—"}
                   </p>
                 </div>
-                <div style={{ marginBottom: "12px" }}>
-                  <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>User Message</strong>
-                  <p style={{ fontSize: "13px", whiteSpace: "pre-wrap", marginTop: "4px" }}>
+                <div>
+                  <div className="text-xs font-semibold text-gray-500 uppercase">User Message</div>
+                  <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                     {travelerBundle.user_message || "—"}
                   </p>
                 </div>
                 {travelerBundle.follow_up_sequence && travelerBundle.follow_up_sequence.length > 0 && (
                   <div>
-                    <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Follow-up Sequence</strong>
-                    <ul style={{ margin: "4px 0 0 16px", fontSize: "12px" }}>
+                    <div className="text-xs font-semibold text-gray-500 uppercase">Follow-up Sequence</div>
+                    <ul className="mt-1 list-disc list-inside text-xs text-gray-400 space-y-0.5">
                       {travelerBundle.follow_up_sequence.map((f, i) => (
                         <li key={`fseq-${f.field_name}-${i}`}>{f.question}</li>
                       ))}
@@ -143,7 +143,7 @@ export function OutputPanel({ trip: propTrip, tripId: propTripId }: OutputPanelP
                 )}
               </div>
             ) : (
-              <p style={{ color: "var(--color-text-muted)" }}>No customer message</p>
+              <p className="text-gray-500 text-sm">No customer message</p>
             )}
           </div>
         </div>

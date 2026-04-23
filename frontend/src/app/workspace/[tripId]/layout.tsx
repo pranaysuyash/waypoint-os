@@ -10,6 +10,7 @@ import { useTrip } from "@/hooks/useTrips";
 import { getTripRoute, type WorkspaceStage } from "@/lib/routes";
 import { TripContextProvider } from "@/contexts/TripContext";
 import { useWorkbenchStore } from "@/stores/workbench";
+import { TimelinePanel } from "@/components/workspace/panels/TimelinePanel";
 
 const STAGE_TABS: { id: WorkspaceStage; label: string }[] = [
   { id: "intake", label: "Intake" },
@@ -160,14 +161,14 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
             {isRailOpen && (
               <aside
                 id="workspace-right-rail"
-                className="rounded-xl border border-[#1c2128] bg-[#0f1115] p-4"
+                className="rounded-xl border border-[#1c2128] bg-[#0f1115] h-[calc(100vh-140px)] overflow-hidden flex flex-col"
                 aria-label="Right rail"
               >
-                <h2 className="text-sm font-semibold text-[#c9d1d9]">AI Copilot Panel</h2>
-                <p className="text-xs text-[#8b949e] mt-2 leading-relaxed">
-                  Collapsed-by-default Wave 2 container. Stage-aware copilots and insights will
-                  land incrementally without reshaping the workspace frame.
-                </p>
+                <div className="flex-1 overflow-y-auto">
+                  <ErrorBoundary>
+                    <TimelinePanel tripId={tripId as string} />
+                  </ErrorBoundary>
+                </div>
               </aside>
             )}
           </div>

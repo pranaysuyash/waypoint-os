@@ -36,62 +36,46 @@ from .gates import NB01CompletionGate, NB02JudgmentGate, GateVerdict, AutonomyOu
 from src.fees.calculation import calculate_trip_fees
 from src.suitability.integration import assess_activity_suitability
 import json
-import pathlib
 
 
 # =============================================================================
-# SECTION 0: TIMELINE EVENT LOGGING
+# SECTION 0: AUDIT EVENT LOGGING (via AuditStore)
 # =============================================================================
 
-def _emit_timeline_event(
+def _emit_audit_event(
     trip_id: str,
     stage: str,
     state: str,
     decision_type: Optional[str] = None,
     reason: Optional[str] = None,
-    version: str = "1.0"
 ) -> None:
     """
-    Emit a timeline event to the trip's JSONL log file.
-    
-    Creates a JSONL audit trail at data/logs/trips/{trip_id}.jsonl.
-    Events are append-only and immutable.
-    
-    Args:
-        trip_id: Unique trip identifier
-        stage: Pipeline stage (intake, packet, decision, strategy, safety)
-        state: Current state in that stage
-        decision_type: Optional decision type (used in decision stage)
-        reason: Optional reason for state transition
-        version: Schema version (default: "1.0")
+    Emit an audit event via TripEventLogger (unified timeline source of truth).
     """
     try:
-        logs_dir = pathlib.Path(__file__).resolve().parent.parent.parent / "data" / "logs" / "trips"
-        logs_dir.mkdir(parents=True, exist_ok=True)
+        from src.analytics.logger import TripEventLogger
         
-        log_file = logs_dir / f"{trip_id}.jsonl"
-        
-        event = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "stage": stage,
-            "state": state,
-            "version": version,
-        }
-        
-        if decision_type is not None:
-            event["decision_type"] = decision_type
-        
-        if reason is not None:
-            event["reason"] = reason
-        
-        # Append-only: open in append mode, write event as JSON line
-        with open(log_file, "a") as f:
-            f.write(json.dumps(event) + "\n")
+        description = f"Stage: {stage} | State: {state}"
+        if reason:
+            description += f" | Reason: {reason}"
+        if decision_type:
+            description += f" | Decision Type: {decision_type}"
+            
+        TripEventLogger.log_stage_transition(
+            trip_id=trip_id,
+            stage=stage,
+            actor="system",
+            description=description,
+            pre_state={"state": "previous"}, # Placeholder for actual packet delta
+            post_state={"state": state},
+            state=state,
+            decision_type=decision_type,
+            reason=reason,
+        )
     except Exception as e:
-        # Log emission failures should not block spine execution
         import logging
-        logger = logging.getLogger("orchestration.timeline")
-        logger.warning(f"Failed to emit timeline event for trip {trip_id}: {e}")
+        logger = logging.getLogger("orchestration.audit")
+        logger.warning(f"Failed to emit audit event for trip {trip_id}: {e}")
 
 
 # =============================================================================
@@ -179,8 +163,8 @@ def run_spine_once(
     if operating_mode is not None:
         packet.operating_mode = operating_mode
 
-    # Emit intake event
-    _emit_timeline_event(
+    # Emit intake event to AuditStore
+    _emit_audit_event(
         trip_id=packet.packet_id,
         stage="intake",
         state="extracted",
@@ -205,8 +189,8 @@ def run_spine_once(
             hard_blockers=["extraction_quality"],
             rationale={"gate_failure": "NB01_ESCALATE", "reasons": nb01_result.reasons}
         )
-        # Emit escalation event
-        _emit_timeline_event(
+        # Emit escalation event to AuditStore
+        _emit_audit_event(
             trip_id=packet.packet_id,
             stage="packet",
             state="escalated",
@@ -214,8 +198,8 @@ def run_spine_once(
         )
         return _create_empty_spine_result(packet, validation, decision, run_timestamp)
 
-    # Emit packet stage completion
-    _emit_timeline_event(
+    # Emit packet stage completion to AuditStore
+    _emit_audit_event(
         trip_id=packet.packet_id,
         stage="packet",
         state="validated",
@@ -228,8 +212,8 @@ def run_spine_once(
     # Update packet decision_state from decision result
     packet.decision_state = decision.decision_state
 
-    # Emit decision stage event
-    _emit_timeline_event(
+    # Emit decision stage event to AuditStore
+    _emit_audit_event(
         trip_id=packet.packet_id,
         stage="decision",
         state=decision.decision_state,
@@ -271,8 +255,8 @@ def run_spine_once(
     # --- Phase 4: Strategy ---
     strategy = build_session_strategy(decision, packet, agency_settings=actual_settings)
 
-    # Emit strategy stage event
-    _emit_timeline_event(
+    # Emit strategy stage event to AuditStore
+    _emit_audit_event(
         trip_id=packet.packet_id,
         stage="strategy",
         state="built",
@@ -301,8 +285,8 @@ def run_spine_once(
         "sanitized_view_leaks": sanitized_leaks,
     }
 
-    # Emit safety stage event
-    _emit_timeline_event(
+    # Emit safety stage event to AuditStore
+    _emit_audit_event(
         trip_id=packet.packet_id,
         stage="safety",
         state="validated",

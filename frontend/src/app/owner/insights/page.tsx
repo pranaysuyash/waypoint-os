@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, memo } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   TrendingUp,
   Users,
@@ -13,9 +14,11 @@ import {
 } from 'lucide-react';
 import { useInsightsSummary, usePipelineMetrics, useTeamMetrics, useBottleneckAnalysis, useRevenueMetrics, useOperationalAlerts } from '@/hooks/useGovernance';
 import type { TimeRange, StageMetrics, TeamMemberMetrics, BottleneckAnalysis, OperationalAlert } from '@/types/governance';
+import { RevenueChart, PipelineFunnel, TeamPerformanceChart } from '@/components/visual';
+import type { DrillDownMetric } from '@/components/visual/TeamPerformanceChart';
+import { MetricDrillDownDrawer } from '@/components/workspace/panels/MetricDrillDownDrawer';
 
 const VALID_TIME_RANGES = new Set<TimeRange>(['7d', '30d', '90d', 'mtd', 'ytd', 'custom']);
-import { RevenueChart, PipelineFunnel, TeamPerformanceChart } from '@/components/visual';
 
 // MOCK DATA REMOVED - Using live telemetry
 
@@ -290,6 +293,13 @@ const BottleneckCard = memo(function BottleneckCard({ analysis }: { analysis: Bo
 
 export default function OwnerInsightsPage() {
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
+  const [drillDownState, setDrillDownState] = useState<{
+    isOpen: boolean;
+    agentId: string;
+    agentName: string;
+    metric: DrillDownMetric | null;
+  } | null>(null);
+  const router = useRouter();
   
   const { data: summary, isLoading: isSummaryLoading, error: summaryError } = useInsightsSummary(timeRange);
   const { data: pipelineMetrics, isLoading: isPipelineLoading, error: pipelineError } = usePipelineMetrics(timeRange);
@@ -300,6 +310,20 @@ export default function OwnerInsightsPage() {
 
   const isLoading = isSummaryLoading || isPipelineLoading || isTeamLoading || isBottlenecksLoading || isRevenueLoading;
   const hasError = summaryError || pipelineError || teamError || bottlenecksError || revenueError;
+
+  const handleMetricDrillDown = (agentId: string, metric: DrillDownMetric) => {
+    const agent = teamMetrics.find((m) => m.userId === agentId);
+    setDrillDownState({
+      isOpen: true,
+      agentId,
+      agentName: agent?.name || agentId,
+      metric,
+    });
+  };
+
+  const handleTripSelect = (tripId: string) => {
+    router.push(`/workspace/${tripId}`);
+  };
 
   const maxStageTime = useMemo(() => 
     pipelineMetrics.length > 0 ? Math.max(...pipelineMetrics.map(m => m.avgTimeInStage)) : 100
@@ -492,13 +516,17 @@ export default function OwnerInsightsPage() {
 
         {/* Team Performance Chart */}
         <div className='lg:col-span-2'>
-          <TeamPerformanceChart data={teamMetrics.map(member => ({
-            name: member.name,
-            conversionRate: member.conversionRate,
-            avgResponseTime: member.avgResponseTime,
-            customerSatisfaction: member.customerSatisfaction,
-            workloadScore: member.workloadScore,
-          }))} />
+          <TeamPerformanceChart 
+            data={teamMetrics.map(member => ({
+              name: member.name,
+              userId: member.userId,
+              conversionRate: member.conversionRate,
+              avgResponseTime: member.avgResponseTime,
+              customerSatisfaction: member.customerSatisfaction,
+              workloadScore: member.workloadScore,
+            }))} 
+            onDrillDown={handleMetricDrillDown}
+          />
         </div>
 
         {/* Team Performance Table */}
@@ -546,6 +574,18 @@ export default function OwnerInsightsPage() {
 
       </div>
       </>
+      )}
+
+      {/* Metric Drill-Down Drawer */}
+      {drillDownState && (
+        <MetricDrillDownDrawer
+          isOpen={drillDownState.isOpen}
+          agentId={drillDownState.agentId}
+          agentName={drillDownState.agentName}
+          metric={drillDownState.metric!}
+          onClose={() => setDrillDownState(null)}
+          onTripSelect={handleTripSelect}
+        />
       )}
     </div>
   );

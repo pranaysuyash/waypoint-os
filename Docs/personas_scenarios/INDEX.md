@@ -20,6 +20,15 @@
 **"Map scenarios to notebooks"**  
 → Read: [SCENARIOS_TO_PIPELINE_MAPPING.md](SCENARIOS_TO_PIPELINE_MAPPING.md)
 
+**"Show latest scenario case-study execution evidence"**  
+→ Read: [CASE_STUDY_EXECUTION_LOG.md](CASE_STUDY_EXECUTION_LOG.md)
+
+**"Replicate the same deep case-study method on another scenario"**  
+→ Read: [SCENARIO_CASE_STUDY_REPLICATION_PLAYBOOK.md](SCENARIO_CASE_STUDY_REPLICATION_PLAYBOOK.md) → Use [templates/SCENARIO_CASE_STUDY_REPORT_TEMPLATE.md](templates/SCENARIO_CASE_STUDY_REPORT_TEMPLATE.md)
+
+**"Show open implementation items per scenario (technical + logical)"**  
+→ Read: [task_lists/](task_lists) and the links inside each scenario file
+
 ---
 
 ## Document Map
@@ -37,6 +46,22 @@ personas_scenarios/
 │   └── Persona definitions (P1, P2, P3, S1, S2)
 │       Demographics, pain points, goals, quotes
 │       Stakeholder matrix (power vs interest)
+│
+├── CASE_STUDY_EXECUTION_LOG.md
+│   └── Scenario-wise execution registry linking:
+│       user-facing case-study outputs + code-backed evidence artifacts
+│
+├── SCENARIO_CASE_STUDY_REPLICATION_PLAYBOOK.md
+│   └── Standard scenario execution method:
+│       what to test, how to run, what to document, and evidence standards
+│
+├── templates/SCENARIO_CASE_STUDY_REPORT_TEMPLATE.md
+│   └── Reusable report template including:
+│       i/p -> intermediate -> o/p, edge matrix, dependencies, timings, layman section
+│
+├── task_lists/
+│   └── Scenario-scoped open-item trackers split into:
+│       technical tasks and logical/product decisions
 │
 ├── P1_SINGLE_AGENT_HAPPY_PATH.md
 │   └── 1 real flow scenario: Solo agent intake to proposal
@@ -254,6 +279,286 @@ personas_scenarios/
 │   └── 1 real flow scenario: Multiple timezone meeting support
 ├── ADDITIONAL_SCENARIOS_115_SUSTAINABLE_HOTEL_RATING_COMPARISON.md
 │   └── 1 real flow scenario: Sustainable hotel rating comparison
+├── ADDITIONAL_SCENARIOS_116_DATA_PRIVACY_ENCRYPTION_REQUEST.md
+│   └── 1 real flow scenario: Data privacy encryption request
+├── ADDITIONAL_SCENARIOS_117_TRAVEL_BUDGET_FLEXIBILITY_SCENARIO.md
+│   └── 1 real flow scenario: Travel budget flexibility scenario
+├── ADDITIONAL_SCENARIOS_118_AUTHENTICATION_FOR_HIGH_VALUE_BOOKING.md
+│   └── 1 real flow scenario: Authentication for high-value booking
+├── ADDITIONAL_SCENARIOS_119_ECO_TRAVEL_CARBON_OFFSET_PLAN.md
+│   └── 1 real flow scenario: Eco travel carbon offset plan
+├── ADDITIONAL_SCENARIOS_120_INTERNAL_STAFF_TRAVEL_SUPPORT.md
+│   └── 1 real flow scenario: Internal staff travel support
+├── ADDITIONAL_SCENARIOS_121_HIGH_RISK_DESTINATION_ADVISORY.md
+│   └── 1 real flow scenario: High-risk destination advisory
+├── ADDITIONAL_SCENARIOS_122_LOYALTY_PROGRAM_AWARD_OPTIMIZATION.md
+│   └── 1 real flow scenario: Loyalty program award optimization
+├── ADDITIONAL_SCENARIOS_123_VIRTUAL_HEALTH_SCREENING_REQUIREMENT.md
+│   └── 1 real flow scenario: Virtual health screening requirement
+├── ADDITIONAL_SCENARIOS_124_MULTI_AIRLINE_BAGGAGE_TRANSFER_COORDINATION.md
+│   └── 1 real flow scenario: Multi-airline baggage transfer coordination
+├── ADDITIONAL_SCENARIOS_125_REPEAT_GUEST_PREFERENCE_CONTINUITY.md
+│   └── 1 real flow scenario: Repeat guest preference continuity
+├── ADDITIONAL_SCENARIOS_126_CRISIS_COMMUNICATION_DURING_DISRUPTION.md
+│   └── 1 real flow scenario: Crisis communication during disruption
+├── ADDITIONAL_SCENARIOS_127_CROSS_BORDER_PAYMENT_COMPLIANCE.md
+│   └── 1 real flow scenario: Cross-border payment compliance
+├── ADDITIONAL_SCENARIOS_128_ACCESSIBLE_TRANSPORT_TRANSFER_COORDINATION.md
+│   └── 1 real flow scenario: Accessible transport transfer coordination
+├── ADDITIONAL_SCENARIOS_129_HOTEL_LOYALTY_BENEFIT_MATCHING.md
+│   └── 1 real flow scenario: Hotel loyalty benefit matching
+├── ADDITIONAL_SCENARIOS_130_LAST_MINUTE_SUSTAINABLE_ALTERNATIVE_SWAP.md
+│   └── 1 real flow scenario: Last-minute sustainable alternative swap
+├── ADDITIONAL_SCENARIOS_131_EMERGENCY_MEDICAL_INSURANCE_CLARIFICATION.md
+│   └── 1 real flow scenario: Emergency medical insurance clarification
+├── ADDITIONAL_SCENARIOS_132_TECHNOLOGY_FAILOVER_FOR_REMOTE_WORK.md
+│   └── 1 real flow scenario: Technology failover for remote work
+├── ADDITIONAL_SCENARIOS_133_CHAIN_OF_CUSTODY_FOR_HIGH_VALUE_SHIPMENTS.md
+│   └── 1 real flow scenario: Chain of custody for high-value shipments
+├── ADDITIONAL_SCENARIOS_134_INFANT_AND_FAMILY_TRAVEL_LOGISTICS.md
+│   └── 1 real flow scenario: Infant and family travel logistics
+├── ADDITIONAL_SCENARIOS_135_MULTIPLE_LANGUAGE_TRANSLATION_SUPPORT.md
+│   └── 1 real flow scenario: Multiple language translation support
+├── ADDITIONAL_SCENARIOS_136_INTERNATIONAL_VACCINATION_DOCUMENT_MANAGEMENT.md
+│   └── 1 real flow scenario: International vaccination document management
+├── ADDITIONAL_SCENARIOS_137_CULTURAL_EVENT_TICKET_ALLOCATION.md
+│   └── 1 real flow scenario: Cultural event ticket allocation
+├── ADDITIONAL_SCENARIOS_138_ADVENTURE_ACTIVITY_SAFETY_SCREENING.md
+│   └── 1 real flow scenario: Adventure activity safety screening
+├── ADDITIONAL_SCENARIOS_139_SENIOR_TRAVEL_MEDICAL_SUPPORT.md
+│   └── 1 real flow scenario: Senior travel medical support
+├── ADDITIONAL_SCENARIOS_140_DESTINATION_EVENT_PERMITTING_AND_LOGISTICS.md
+│   └── 1 real flow scenario: Destination event permitting and logistics
+├── ADDITIONAL_SCENARIOS_141_INCLUSIVE_DIETARY_MEAL_PLANNING.md
+│   └── 1 real flow scenario: Inclusive dietary meal planning
+├── ADDITIONAL_SCENARIOS_142_REMOTE_CONFERENCE_ATTENDANCE_SUPPORT.md
+│   └── 1 real flow scenario: Remote conference attendance support
+├── ADDITIONAL_SCENARIOS_143_LATE_NIGHT_ARRIVAL_TRANSPORT_ARRANGEMENTS.md
+│   └── 1 real flow scenario: Late-night arrival transport arrangements
+├── ADDITIONAL_SCENARIOS_144_INTERNATIONAL_BANKING_ACCESS_SUPPORT.md
+│   └── 1 real flow scenario: International banking access support
+├── ADDITIONAL_SCENARIOS_145_MULTI_LEG_TRANSPORT_BUNDLING.md
+│   └── 1 real flow scenario: Multi-leg transport bundling
+├── ADDITIONAL_SCENARIOS_146_ACCESSIBLE_TRAVEL_ACCOMMODATION_MATCHING.md
+│   └── 1 real flow scenario: Accessible travel accommodation matching
+├── ADDITIONAL_SCENARIOS_147_EMERGENCY_MEDICAL_TRAVEL_ARRANGEMENTS.md
+│   └── 1 real flow scenario: Emergency medical travel arrangements
+├── ADDITIONAL_SCENARIOS_148_SUSTAINABLE_TRAVEL_OPTION_OPTIMIZATION.md
+│   └── 1 real flow scenario: Sustainable travel option optimization
+├── ADDITIONAL_SCENARIOS_149_BUSINESS_TRAVEL_EXPENSE_TRACKING.md
+│   └── 1 real flow scenario: Business travel expense tracking
+├── ADDITIONAL_SCENARIOS_150_CULTURAL_IMMERSION_ACTIVITY_CURATION.md
+│   └── 1 real flow scenario: Cultural immersion activity curation
+├── ADDITIONAL_SCENARIOS_151_FAMILY_TRAVEL_ITINERARY_COORDINATION.md
+│   └── 1 real flow scenario: Family travel itinerary coordination
+├── ADDITIONAL_SCENARIOS_152_REMOTE_WORK_TRAVEL_SETUP.md
+│   └── 1 real flow scenario: Remote work travel setup
+├── ADDITIONAL_SCENARIOS_153_ADVENTURE_SPORT_EQUIPMENT_RENTAL.md
+│   └── 1 real flow scenario: Adventure sport equipment rental
+├── ADDITIONAL_SCENARIOS_154_PET_TRAVEL_DOCUMENTATION_AND_LOGISTICS.md
+│   └── 1 real flow scenario: Pet travel documentation and logistics
+├── ADDITIONAL_SCENARIOS_155_CORPORATE_GROUP_TRAVEL_MANAGEMENT.md
+│   └── 1 real flow scenario: Corporate group travel management
+├── ADDITIONAL_SCENARIOS_156_HONEYMOON_TRAVEL_PLANNING.md
+│   └── 1 real flow scenario: Honeymoon travel planning
+├── ADDITIONAL_SCENARIOS_157_STUDENT_EDUCATIONAL_TRAVEL_PROGRAMS.md
+│   └── 1 real flow scenario: Student educational travel programs
+├── ADDITIONAL_SCENARIOS_158_CRUISE_TRAVEL_SPECIALIST_SERVICES.md
+│   └── 1 real flow scenario: Cruise travel specialist services
+├── ADDITIONAL_SCENARIOS_159_SOLO_FEMALE_TRAVELER_SAFETY_PLANNING.md
+│   └── 1 real flow scenario: Solo female traveler safety planning
+├── ADDITIONAL_SCENARIOS_160_LUXURY_TRAVEL_CONCIERGE_SERVICES.md
+│   └── 1 real flow scenario: Luxury travel concierge services
+├── ADDITIONAL_SCENARIOS_161_VOLUNTEER_TRAVEL_AND_SERVICE_PROJECTS.md
+│   └── 1 real flow scenario: Volunteer travel and service projects
+├── ADDITIONAL_SCENARIOS_162_MEDICAL_TOURISM_COORDINATION.md
+│   └── 1 real flow scenario: Medical tourism coordination
+├── ADDITIONAL_SCENARIOS_163_BACKPACKING_BUDGET_TRAVEL_PLANNING.md
+│   └── 1 real flow scenario: Backpacking budget travel planning
+├── ADDITIONAL_SCENARIOS_164_SENIOR_TRAVEL_ASSISTANCE_SERVICES.md
+│   └── 1 real flow scenario: Senior travel assistance services
+├── ADDITIONAL_SCENARIOS_165_RELIGIOUS_AND_SPIRITUAL_TRAVEL_PILGRIMAGES.md
+│   └── 1 real flow scenario: Religious and spiritual travel pilgrimages
+├── ADDITIONAL_SCENARIOS_166_WELLNESS_AND_SPA_RETREAT_BOOKING.md
+│   └── 1 real flow scenario: Wellness and spa retreat booking
+├── ADDITIONAL_SCENARIOS_167_EXTREME_ADVENTURE_TRAVEL_COORDINATION.md
+│   └── 1 real flow scenario: Extreme adventure travel coordination
+├── ADDITIONAL_SCENARIOS_168_CULINARY_TOURISM_AND_FOOD_EXPERIENCES.md
+│   └── 1 real flow scenario: Culinary tourism and food experiences
+├── ADDITIONAL_SCENARIOS_169_PHOTOGRAPHY_AND_DOCUMENTARY_TRAVEL.md
+│   └── 1 real flow scenario: Photography and documentary travel
+├── ADDITIONAL_SCENARIOS_170_DISASTER_RECOVERY_TRAVEL_ASSISTANCE.md
+│   └── 1 real flow scenario: Disaster recovery travel assistance
+├── ADDITIONAL_SCENARIOS_171_SPORTS_EVENT_TRAVEL_PACKAGES.md
+│   └── 1 real flow scenario: Sports event travel packages
+├── ADDITIONAL_SCENARIOS_172_MUSIC_FESTIVAL_AND_CONCERT_TRAVEL.md
+│   └── 1 real flow scenario: Music festival and concert travel
+├── ADDITIONAL_SCENARIOS_173_WINE_AND_BEVERAGE_TOURISM.md
+│   └── 1 real flow scenario: Wine and beverage tourism
+├── ADDITIONAL_SCENARIOS_174_ART_AND_CULTURE_FESTIVAL_TRAVEL.md
+│   └── 1 real flow scenario: Art and culture festival travel
+├── ADDITIONAL_SCENARIOS_175_GAMING_AND_ESPORTS_EVENT_TRAVEL.md
+│   └── 1 real flow scenario: Gaming and esports event travel
+├── ADDITIONAL_SCENARIOS_176_SAFARI_AND_WILDLIFE_VIEWING_TRAVEL.md
+│   └── 1 real flow scenario: Safari and wildlife viewing travel
+├── ADDITIONAL_SCENARIOS_177_HISTORICAL_AND_ARCHAEOLOGICAL_SITE_TOURS.md
+│   └── 1 real flow scenario: Historical and archaeological site tours
+├── ADDITIONAL_SCENARIOS_178_SCUBA_DIVING_AND_WATER_SPORTS_TRAVEL.md
+│   └── 1 real flow scenario: Scuba diving and water sports travel
+├── ADDITIONAL_SCENARIOS_179_ROAD_TRIP_AND_SELF_DRIVE_ADVENTURES.md
+│   └── 1 real flow scenario: Road trip and self-drive adventures
+├── ADDITIONAL_SCENARIOS_180_SPACE_TOURISM_AND_ASTRONOMY_TRAVEL.md
+│   └── 1 real flow scenario: Space tourism and astronomy travel
+├── ADDITIONAL_SCENARIOS_181_POLITICAL_AND_DIPLOMATIC_TRAVEL.md
+│   └── 1 real flow scenario: Political and diplomatic travel
+├── ADDITIONAL_SCENARIOS_182_SCIENTIFIC_RESEARCH_AND_ACADEMIC_TRAVEL.md
+│   └── 1 real flow scenario: Scientific research and academic travel
+├── ADDITIONAL_SCENARIOS_183_MILITARY_AND_VETERAN_TRAVEL_ASSISTANCE.md
+│   └── 1 real flow scenario: Military and veteran travel assistance
+├── ADDITIONAL_SCENARIOS_184_HUMANITARIAN_AND_AID_WORKER_TRAVEL.md
+│   └── 1 real flow scenario: Humanitarian and aid worker travel
+├── ADDITIONAL_SCENARIOS_185_CORPORATE_EXECUTIVE_AND_BUSINESS_CLASS_TRAVEL.md
+│   └── 1 real flow scenario: Corporate executive and business class travel
+├── ADDITIONAL_SCENARIOS_186_ENTERTAINMENT_INDUSTRY_AND_CELEBRITY_TRAVEL.md
+│   └── 1 real flow scenario: Entertainment industry and celebrity travel
+├── ADDITIONAL_SCENARIOS_187_SPORTS_AND_ATHLETIC_EVENT_TRAVEL.md
+│   └── 1 real flow scenario: Sports and athletic event travel
+├── ADDITIONAL_SCENARIOS_188_RELIGIOUS_AND_SPIRITUAL_PILGRIMAGE_TRAVEL.md
+│   └── 1 real flow scenario: Religious and spiritual pilgrimage travel
+├── ADDITIONAL_SCENARIOS_189_EDUCATIONAL_AND_STUDY_ABROAD_TRAVEL.md
+│   └── 1 real flow scenario: Educational and study abroad travel
+├── ADDITIONAL_SCENARIOS_190_LUXURY_AND_HIGH_END_TRAVEL_EXPERIENCES.md
+│   └── 1 real flow scenario: Luxury and high-end travel experiences
+├── ADDITIONAL_SCENARIOS_191_MEDICAL_AND_HEALTH_TOURISM_TRAVEL.md
+│   └── 1 real flow scenario: Medical and health tourism travel
+├── ADDITIONAL_SCENARIOS_192_ECOTOURISM_AND_SUSTAINABLE_TRAVEL.md
+│   └── 1 real flow scenario: Ecotourism and sustainable travel
+├── ADDITIONAL_SCENARIOS_193_DIGITAL_NOMAD_AND_REMOTE_WORK_TRAVEL.md
+│   └── 1 real flow scenario: Digital nomad and remote work travel
+├── ADDITIONAL_SCENARIOS_194_FAMILY_AND_MULTIGENERATIONAL_TRAVEL.md
+│   └── 1 real flow scenario: Family and multigenerational travel
+├── ADDITIONAL_SCENARIOS_195_CULINARY_AND_FOOD_TOURISM_TRAVEL.md
+│   └── 1 real flow scenario: Culinary and food tourism travel
+├── ADDITIONAL_SCENARIOS_196_PHOTOGRAPHY_AND_DOCUMENTARY_TRAVEL.md
+│   └── 1 real flow scenario: Photography and documentary travel
+├── ADDITIONAL_SCENARIOS_197_VOLUNTEER_AND_COMMUNITY_SERVICE_TRAVEL.md
+│   └── 1 real flow scenario: Volunteer and community service travel
+├── ADDITIONAL_SCENARIOS_198_BACKPACKING_AND_BUDGET_TRAVEL.md
+│   └── 1 real flow scenario: Backpacking and budget travel
+├── ADDITIONAL_SCENARIOS_199_WELLNESS_AND_SPIRITUAL_RETREAT_TRAVEL.md
+│   └── 1 real flow scenario: Wellness and spiritual retreat travel
+├── ADDITIONAL_SCENARIOS_200_ADVENTURE_AND_EXTREME_SPORTS_TRAVEL.md
+│   └── 1 real flow scenario: Adventure and extreme sports travel
+├── ADDITIONAL_SCENARIOS_201_MUSIC_AND_ARTS_FESTIVAL_TRAVEL.md
+│   └── 1 real flow scenario: Music and arts festival travel
+├── ADDITIONAL_SCENARIOS_202_HISTORICAL_REENACTMENT_AND_LIVING_HISTORY_TRAVEL.md
+│   └── 1 real flow scenario: Historical reenactment and living history travel
+├── ADDITIONAL_SCENARIOS_203_WINE_AND_BEVERAGE_TOURISM_TRAVEL.md
+│   └── 1 real flow scenario: Wine and beverage tourism travel
+├── ADDITIONAL_SCENARIOS_204_GAMBLING_AND_CASINO_TRAVEL.md
+│   └── 1 real flow scenario: Gambling and casino travel
+├── ADDITIONAL_SCENARIOS_205_THERMAL_AND_MINERAL_SPRINGS_TRAVEL.md
+│   └── 1 real flow scenario: Thermal and mineral springs travel
+├── ADDITIONAL_SCENARIOS_206_ARCHITECTURAL_AND_DESIGN_TRAVEL.md
+│   └── 1 real flow scenario: Architectural and design travel
+├── ADDITIONAL_SCENARIOS_207_LITERARY_AND_WRITING_TRAVEL.md
+│   └── 1 real flow scenario: Literary and writing travel
+├── ADDITIONAL_SCENARIOS_208_SCIENCE_AND_TECHNOLOGY_TRAVEL.md
+│   └── 1 real flow scenario: Science and technology travel
+├── ADDITIONAL_SCENARIOS_209_THEATER_AND_PERFORMING_ARTS_TRAVEL.md
+│   └── 1 real flow scenario: Theater and performing arts travel
+├── ADDITIONAL_SCENARIOS_210_FASHION_AND_STYLE_TRAVEL.md
+│   └── 1 real flow scenario: Fashion and style travel
+├── ADDITIONAL_SCENARIOS_211_JOURNALISM_AND_MEDIA_TRAVEL.md
+│   └── 1 real flow scenario: Journalism and media travel
+├── ADDITIONAL_SCENARIOS_212_INDUSTRIAL_AND_MANUFACTURING_TRAVEL.md
+│   └── 1 real flow scenario: Industrial and manufacturing travel
+├── ADDITIONAL_SCENARIOS_213_AGRICULTURAL_AND_FARM_TRAVEL.md
+│   └── 1 real flow scenario: Agricultural and farm travel
+├── ADDITIONAL_SCENARIOS_214_MARITIME_AND_SHIPPING_TRAVEL.md
+│   └── 1 real flow scenario: Maritime and shipping travel
+├── ADDITIONAL_SCENARIOS_215_ENERGY_AND_UTILITIES_TRAVEL.md
+│   └── 1 real flow scenario: Energy and utilities travel
+├── ADDITIONAL_SCENARIOS_216_PHARMACEUTICAL_AND_BIOTECH_TRAVEL.md
+│   └── 1 real flow scenario: Pharmaceutical and biotech travel
+├── ADDITIONAL_SCENARIOS_217_CONSTRUCTION_AND_ENGINEERING_TRAVEL.md
+│   └── 1 real flow scenario: Construction and engineering travel
+├── ADDITIONAL_SCENARIOS_218_FINANCIAL_AND_BANKING_TRAVEL.md
+│   └── 1 real flow scenario: Financial and banking travel
+├── ADDITIONAL_SCENARIOS_219_REAL_ESTATE_AND_PROPERTY_TRAVEL.md
+│   └── 1 real flow scenario: Real estate and property travel
+├── ADDITIONAL_SCENARIOS_220_TECHNOLOGY_AND_INNOVATION_TRAVEL.md
+│   └── 1 real flow scenario: Technology and innovation travel
+├── ADDITIONAL_SCENARIOS_221_MANUFACTURING_AND_PRODUCTION_TRAVEL.md
+│   └── 1 real flow scenario: Manufacturing and production travel
+├── ADDITIONAL_SCENARIOS_222_AGRICULTURE_AND_FARMING_TRAVEL.md
+│   └── 1 real flow scenario: Agriculture and farming travel
+├── ADDITIONAL_SCENARIOS_223_MINING_AND_EXTRACTIVE_INDUSTRIES_TRAVEL.md
+│   └── 1 real flow scenario: Mining and extractive industries travel
+├── ADDITIONAL_SCENARIOS_224_TRANSPORTATION_AND_LOGISTICS_TRAVEL.md
+│   └── 1 real flow scenario: Transportation and logistics travel
+├── ADDITIONAL_SCENARIOS_225_RETAIL_AND_CONSUMER_GOODS_TRAVEL.md
+│   └── 1 real flow scenario: Retail and consumer goods travel
+├── ADDITIONAL_SCENARIOS_226_TELECOMMUNICATIONS_AND_MEDIA_TRAVEL.md
+│   └── 1 real flow scenario: Telecommunications and media travel
+├── ADDITIONAL_SCENARIOS_227_INSURANCE_AND_RISK_MANAGEMENT_TRAVEL.md
+│   └── 1 real flow scenario: Insurance and risk management travel
+├── ADDITIONAL_SCENARIOS_228_LEGAL_AND_COMPLIANCE_TRAVEL.md
+│   └── 1 real flow scenario: Legal and compliance travel
+├── ADDITIONAL_SCENARIOS_229_EDUCATION_AND_RESEARCH_TRAVEL.md
+│   └── 1 real flow scenario: Education and research travel
+├── ADDITIONAL_SCENARIOS_230_NON_PROFIT_AND_NGO_TRAVEL.md
+│   └── 1 real flow scenario: Non-profit and NGO travel
+├── ADDITIONAL_SCENARIOS_231_GOVERNMENT_AND_PUBLIC_SECTOR_TRAVEL.md
+│   └── 1 real flow scenario: Government and public sector travel
+├── ADDITIONAL_SCENARIOS_232_DEFENSE_AND_SECURITY_TRAVEL.md
+│   └── 1 real flow scenario: Defense and security travel
+├── ADDITIONAL_SCENARIOS_233_ENVIRONMENTAL_AND_SUSTAINABILITY_TRAVEL.md
+│   └── 1 real flow scenario: Environmental and sustainability travel
+├── ADDITIONAL_SCENARIOS_234_HOSPITALITY_AND_TOURISM_TRAVEL.md
+│   └── 1 real flow scenario: Hospitality and tourism travel
+├── ADDITIONAL_SCENARIOS_235_ENTERTAINMENT_AND_GAMING_TRAVEL.md
+│   └── 1 real flow scenario: Entertainment and gaming travel
+├── ADDITIONAL_SCENARIOS_236_SPORTS_AND_FITNESS_TRAVEL.md
+│   └── 1 real flow scenario: Sports and fitness travel
+├── ADDITIONAL_SCENARIOS_237_HEALTHCARE_AND_PHARMACEUTICAL_TRAVEL.md
+│   └── 1 real flow scenario: Healthcare and pharmaceutical travel
+├── ADDITIONAL_SCENARIOS_238_AUTOMOTIVE_AND_TRANSPORTATION_TRAVEL.md
+│   └── 1 real flow scenario: Automotive and transportation travel
+├── ADDITIONAL_SCENARIOS_239_FOOD_AND_BEVERAGE_TRAVEL.md
+│   └── 1 real flow scenario: Food and beverage travel
+├── ADDITIONAL_SCENARIOS_240_TEXTILE_AND_FASHION_TRAVEL.md
+│   └── 1 real flow scenario: Textile and fashion travel
+├── ADDITIONAL_SCENARIOS_241_CHEMICAL_AND_PETROCHEMICAL_TRAVEL.md
+│   └── 1 real flow scenario: Chemical and petrochemical travel
+├── ADDITIONAL_SCENARIOS_242_AEROSPACE_AND_AVIATION_TRAVEL.md
+│   └── 1 real flow scenario: Aerospace and aviation travel
+├── ADDITIONAL_SCENARIOS_243_MARITIME_AND_SHIPPING_TRAVEL.md
+│   └── 1 real flow scenario: Maritime and shipping travel
+├── ADDITIONAL_SCENARIOS_244_CONSTRUCTION_AND_BUILDING_TRAVEL.md
+│   └── 1 real flow scenario: Construction and building travel
+├── ADDITIONAL_SCENARIOS_245_UTILITIES_AND_INFRASTRUCTURE_TRAVEL.md
+│   └── 1 real flow scenario: Utilities and infrastructure travel
+├── ADDITIONAL_SCENARIOS_246_ELECTRONICS_AND_SEMICONDUCTOR_TRAVEL.md
+│   └── 1 real flow scenario: Electronics and semiconductor travel
+├── ADDITIONAL_SCENARIOS_247_MINING_AND_METALS_TRAVEL.md
+│   └── 1 real flow scenario: Mining and metals travel
+├── ADDITIONAL_SCENARIOS_248_PAPER_AND_PULP_TRAVEL.md
+│   └── 1 real flow scenario: Paper and pulp travel
+├── ADDITIONAL_SCENARIOS_249_GLASS_AND_CERAMICS_TRAVEL.md
+│   └── 1 real flow scenario: Glass and ceramics travel
+├── ADDITIONAL_SCENARIOS_250_RUBBER_AND_PLASTICS_TRAVEL.md
+│   └── 1 real flow scenario: Rubber and plastics travel
+├── ADDITIONAL_SCENARIOS_251_SOLAR_AND_RENEWABLE_ENERGY_TRAVEL.md
+│   └── 1 real flow scenario: Solar and renewable energy travel
+├── ADDITIONAL_SCENARIOS_252_FASHION_AND_TEXTILE_TRADE_SHOW_TRAVEL.md
+│   └── 1 real flow scenario: Fashion and textile trade show travel
+├── ADDITIONAL_SCENARIOS_253_FILM_AND_MEDIA_PRODUCTION_TRAVEL.md
+│   └── 1 real flow scenario: Film and media production travel
+├── ADDITIONAL_SCENARIOS_254_FINANCIAL_AND_CAPITAL_MARKETS_TRAVEL.md
+│   └── 1 real flow scenario: Financial and capital markets travel
+├── ADDITIONAL_SCENARIOS_255_LUXURY_YACHT_AND_MARINA_TRAVEL.md
+│   └── 1 real flow scenario: Luxury yacht and marina travel
 ├── P1_SOLO_AGENT_SCENARIOS.md
 │   └── 5 real scenarios:
 │       P1-S1: 11 PM WhatsApp Panic

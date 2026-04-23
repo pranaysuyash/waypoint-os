@@ -8,10 +8,25 @@ export interface TeamMember {
   avgResponseTime: number;
   customerSatisfaction: number;
   workloadScore: number;
+  userId?: string;
 }
 
-export function TeamPerformanceChart({ data }: { data: TeamMember[] }) {
+export interface DrillDownMetric {
+  type: 'conversion' | 'response_time' | 'csat' | 'workload';
+  value: number;
+  label: string;
+  tripCount?: number;
+}
+
+export function TeamPerformanceChart({ 
+  data,
+  onDrillDown 
+}: { 
+  data: TeamMember[];
+  onDrillDown?: (agentId: string, metric: DrillDownMetric) => void;
+}) {
   const [isMounted, setIsMounted] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -36,36 +51,47 @@ export function TeamPerformanceChart({ data }: { data: TeamMember[] }) {
   }
 
   const getResponseTimeColor = (time: number) => {
-    if (time <= 3) return '#3fb950'; // green - fast
-    if (time <= 4) return '#58a6ff'; // blue - good
-    if (time <= 5) return '#d29922'; // amber - acceptable
-    return '#f85149'; // red - slow
+    if (time <= 3) return '#3fb950';
+    if (time <= 4) return '#58a6ff';
+    if (time <= 5) return '#d29922';
+    return '#f85149';
   };
 
   const getConversionColor = (rate: number) => {
-    if (rate >= 72) return '#3fb950'; // green - excellent
-    if (rate >= 68) return '#58a6ff'; // blue - good
-    if (rate >= 65) return '#d29922'; // amber - acceptable
-    return '#f85149'; // red - needs improvement
+    if (rate >= 72) return '#3fb950';
+    if (rate >= 68) return '#58a6ff';
+    if (rate >= 65) return '#d29922';
+    return '#f85149';
   };
 
   const getCsatColor = (rating: number) => {
-    if (rating >= 4.7) return '#3fb950'; // green - excellent
-    if (rating >= 4.5) return '#58a6ff'; // blue - good
-    if (rating >= 4.2) return '#d29922'; // amber - acceptable
-    return '#f85149'; // red - needs attention
+    if (rating >= 4.7) return '#3fb950';
+    if (rating >= 4.5) return '#58a6ff';
+    if (rating >= 4.2) return '#d29922';
+    return '#f85149';
   };
 
   const getWorkloadColor = (score: number) => {
-    if (score <= 60) return '#3fb950'; // green - optimal
-    if (score <= 80) return '#58a6ff'; // blue - good
-    if (score <= 90) return '#d29922'; // amber - high
-    return '#f85149'; // red - critical
+    if (score <= 60) return '#3fb950';
+    if (score <= 80) return '#58a6ff';
+    if (score <= 90) return '#d29922';
+    return '#f85149';
+  };
+
+  const handleMetricClick = (agentId: string | undefined, metric: DrillDownMetric) => {
+    if (onDrillDown && agentId) {
+      onDrillDown(agentId, metric);
+      setSelectedAgent(agentId);
+    }
   };
 
   return (
     <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5'>
       <h2 className='text-base font-semibold text-[#e6edf3] mb-4'>Agent Performance Metrics</h2>
+
+      {onDrillDown && (
+        <p className='text-xs text-[#8b949e] mb-4'>💡 Click on any metric to drill down and see trip details</p>
+      )}
 
       {/* Legend */}
       <div className='grid grid-cols-2 md:grid-cols-4 gap-3 mb-5 text-xs'>
@@ -90,7 +116,14 @@ export function TeamPerformanceChart({ data }: { data: TeamMember[] }) {
       {/* Agent Cards */}
       <div className='space-y-4'>
         {data.map((agent, index) => (
-          <div key={index} className='rounded-lg border border-[#30363d] bg-[#161b22] p-4'>
+          <div
+            key={index}
+            className={`rounded-lg border transition-all ${
+              selectedAgent === agent.userId
+                ? 'border-[#58a6ff] bg-[#161b22]'
+                : 'border-[#30363d] bg-[#161b22]'
+            } p-4`}
+          >
             <div className='flex items-center justify-between mb-3'>
               <h3 className='text-sm font-medium text-[#e6edf3]'>{agent.name}</h3>
             </div>
@@ -98,7 +131,18 @@ export function TeamPerformanceChart({ data }: { data: TeamMember[] }) {
             {/* Metrics Grid */}
             <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
               {/* Conversion Rate */}
-              <div>
+              <div
+                onClick={() =>
+                  handleMetricClick(agent.userId, {
+                    type: 'conversion',
+                    value: agent.conversionRate,
+                    label: 'Conversion Rate',
+                  })
+                }
+                className={`rounded p-2 transition-colors ${
+                  onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : ''
+                }`}
+              >
                 <div className='flex items-center justify-between mb-1'>
                   <span className='text-xs text-[#8b949e]'>Conversion</span>
                   <span
@@ -120,7 +164,18 @@ export function TeamPerformanceChart({ data }: { data: TeamMember[] }) {
               </div>
 
               {/* Response Time */}
-              <div>
+              <div
+                onClick={() =>
+                  handleMetricClick(agent.userId, {
+                    type: 'response_time',
+                    value: agent.avgResponseTime,
+                    label: 'Response Time',
+                  })
+                }
+                className={`rounded p-2 transition-colors ${
+                  onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : ''
+                }`}
+              >
                 <div className='flex items-center justify-between mb-1'>
                   <span className='text-xs text-[#8b949e]'>Response</span>
                   <span
@@ -142,7 +197,18 @@ export function TeamPerformanceChart({ data }: { data: TeamMember[] }) {
               </div>
 
               {/* Customer Satisfaction */}
-              <div>
+              <div
+                onClick={() =>
+                  handleMetricClick(agent.userId, {
+                    type: 'csat',
+                    value: agent.customerSatisfaction,
+                    label: 'Customer Satisfaction',
+                  })
+                }
+                className={`rounded p-2 transition-colors ${
+                  onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : ''
+                }`}
+              >
                 <div className='flex items-center justify-between mb-1'>
                   <span className='text-xs text-[#8b949e]'>CSAT</span>
                   <span
@@ -164,7 +230,18 @@ export function TeamPerformanceChart({ data }: { data: TeamMember[] }) {
               </div>
 
               {/* Workload */}
-              <div>
+              <div
+                onClick={() =>
+                  handleMetricClick(agent.userId, {
+                    type: 'workload',
+                    value: agent.workloadScore,
+                    label: 'Workload',
+                  })
+                }
+                className={`rounded p-2 transition-colors ${
+                  onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : ''
+                }`}
+              >
                 <div className='flex items-center justify-between mb-1'>
                   <span className='text-xs text-[#8b949e]'>Workload</span>
                   <span

@@ -1,0 +1,36 @@
+{
+  "scenario": "P1_SINGLE_AGENT_HAPPY_PATH",
+  "date": "2026-04-23",
+  "sources": [
+    "Docs/personas_scenarios/P1_SINGLE_AGENT_HAPPY_PATH.md",
+    "Docs/personas_scenarios/SCENARIOS_TO_PIPELINE_MAPPING.md",
+    "Docs/personas_scenarios/TEST_IDENTIFICATION_STRATEGY.md",
+    "Docs/personas_scenarios/SCENARIO_COVERAGE_GAPS.md"
+  ],
+  "runs": {
+    "backend_targeted": {
+      "artifact": "Docs/reports/p1_single_agent_backend_pytest_2026-04-23.xml",
+      "tests": 13,
+      "passed": 12,
+      "failed": 1
+    },
+    "backend_edge_modes": {
+      "artifact": "Docs/reports/p1_single_agent_edge_modes_pytest_2026-04-23.xml",
+      "tests": 7,
+      "passed": 7,
+      "failed": 0
+    },
+    "frontend_targeted": {
+      "artifact": "Docs/reports/p1_single_agent_frontend_vitest_2026-04-23.json",
+      "tests": 25,
+      "passed": 25,
+      "failed": 0
+    }
+  },
+  "critical_findings": [
+    "Timeline event schema mismatch: tests expect details.state but payload emits pre_state/post_state",
+    "Ambiguous destination handling remains known NB02 gap for hard-blocker semantics",
+    "No true UI E2E from inbox selection to process completion and return-to-inbox"
+  ],
+  "report": "Docs/reports/P1_SINGLE_AGENT_HAPPY_PATH_OBSERVABILITY_2026-04-23.md"
+}

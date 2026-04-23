@@ -72,6 +72,13 @@ AuditStore = persistence.AuditStore
 OverrideStore = persistence.OverrideStore
 save_processed_trip = persistence.save_processed_trip
 
+# Import TimelineEventMapper from analytics
+# Note: logger not available yet, so we suppress warnings here
+try:
+    from src.analytics.logger import TimelineEventMapper
+except ImportError:
+    TimelineEventMapper = None
+
 # Wave A: run lifecycle modules
 from run_state import RunState, assert_can_transition, terminal_state_for_run_result
 from run_events import (
@@ -87,6 +94,9 @@ from run_ledger import RunLedger
 from src.intake.config.agency_settings import AgencySettingsStore
 
 logger = logging.getLogger("spine-api")
+
+if TimelineEventMapper is None:
+    logger.warning("TimelineEventMapper not available - timeline endpoint will use fallback")
 
 # =============================================================================
 # Pydantic models — canonical contract
@@ -188,12 +198,21 @@ class HealthResponse(BaseModel):
 
 
 class TimelineEvent(BaseModel):
-    timestamp: str
-    stage: str
-    state: str
-    version: str = "1.0"
-    decision_type: Optional[str] = None
-    reason: Optional[str] = None
+    """Presentation-ready timeline event for frontend consumption.
+    
+    This is the Translation Layer between backend deltas (pre_state/post_state)
+    and frontend-ready state.
+    """
+    trip_id: str
+    timestamp: str  # ISO 8601
+    stage: str  # "intake", "packet", "decision", "strategy", "safety"
+    status: str  # Normalized: "started", "in_progress", "completed", "approved", "rejected", "error"
+    state_snapshot: dict  # Human-readable summary of state at this stage
+    decision: Optional[str] = None  # If applicable: "approve", "reject", "ask_followup"
+    confidence: Optional[float] = None  # 0-100 confidence score
+    reason: Optional[str] = None  # Why this stage/decision happened
+    pre_state: Optional[dict] = None  # Raw delta (for debugging)
+    post_state: Optional[dict] = None  # Raw delta (for debugging)
 
 
 class TimelineResponse(BaseModel):
@@ -987,9 +1006,9 @@ def get_trip_timeline(
     stage: Optional[str] = None,
 ) -> TimelineResponse:
     """
-    Retrieve the decision timeline log for a trip.
+    Retrieve the unified timeline for a trip from AuditStore.
     
-    Returns all events from data/logs/trips/{trip_id}.jsonl as a JSON array.
+    Returns all audit events related to the trip, transformed to presentation-ready format.
     Events are sorted by timestamp (ascending).
     
     Args:
@@ -997,34 +1016,117 @@ def get_trip_timeline(
         stage: Optional filter by stage (intake, packet, decision, strategy, safety)
     
     Returns:
-        TimelineResponse with all events, or empty events list if no timeline exists
+        TimelineResponse with mapped events, or empty events list if no events exist
+    
+    Raises:
+        HTTPException 400: If stage parameter is invalid
+        HTTPException 500: If timeline retrieval fails
     """
-    logs_dir = PROJECT_ROOT / "data" / "logs" / "trips"
-    log_file = logs_dir / f"{trip_id}.jsonl"
+    # Validate stage parameter if provided
+    if stage:
+        valid_stages = {"intake", "packet", "decision", "strategy", "safety"}
+        if stage.lower() not in valid_stages:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid stage parameter. Must be one of: {', '.join(valid_stages)}"
+            )
     
-    events: List[TimelineEvent] = []
-    
-    if log_file.exists():
-        try:
-            with open(log_file, "r") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    event_dict = json.loads(line)
-                    
-                    # Apply stage filter if provided
-                    if stage and event_dict.get("stage") != stage:
-                        continue
-                    
-                    events.append(TimelineEvent(**event_dict))
-            
-            # Sort by timestamp
-            events.sort(key=lambda e: e.timestamp)
-        except Exception as e:
-            logger.warning(f"Failed to read timeline for trip {trip_id}: {e}")
-    
-    return TimelineResponse(trip_id=trip_id, events=events)
+    try:
+        # Fetch all audit events for this trip
+        audit_events = AuditStore.get_events_for_trip(trip_id)
+        
+        # Use mapper to transform raw audit events to presentation format
+        if TimelineEventMapper:
+            mapped_events = TimelineEventMapper.map_events_for_trip(
+                audit_events,
+                stage_filter=stage
+            )
+            # Convert mapped TimelineEvent objects (from logger) to dicts for server.py's TimelineEvent validation
+            events: List[TimelineEvent] = []
+            for mapped_event in mapped_events:
+                # Clamp confidence score to 0-100 if present
+                confidence = mapped_event.confidence
+                if confidence is not None:
+                    if isinstance(confidence, (int, float)):
+                        # Clamp to valid range
+                        confidence = max(0, min(100, float(confidence)))
+                    else:
+                        logger.error(f"Invalid confidence type {type(confidence)} for trip {trip_id}, using None")
+                        confidence = None
+                
+                # The mapper returns logger.TimelineEvent objects, convert to dict then to server.py TimelineEvent
+                event_dict = {
+                    "trip_id": mapped_event.trip_id,
+                    "timestamp": mapped_event.timestamp,
+                    "stage": mapped_event.stage,
+                    "status": mapped_event.status,
+                    "state_snapshot": mapped_event.state_snapshot,
+                }
+                if mapped_event.decision is not None:
+                    event_dict["decision"] = mapped_event.decision
+                if confidence is not None:
+                    event_dict["confidence"] = confidence
+                if mapped_event.reason is not None:
+                    event_dict["reason"] = mapped_event.reason
+                if mapped_event.pre_state is not None:
+                    event_dict["pre_state"] = mapped_event.pre_state
+                if mapped_event.post_state is not None:
+                    event_dict["post_state"] = mapped_event.post_state
+                
+                events.append(TimelineEvent(**event_dict))
+        else:
+            # Fallback: use old schema if mapper unavailable
+            events: List[TimelineEvent] = []
+            for audit_event in audit_events:
+                details = audit_event.get("details", {})
+                
+                if details.get("trip_id") != trip_id:
+                    continue
+                
+                resolved_state = details.get("state")
+                if not resolved_state and isinstance(details.get("post_state"), dict):
+                    resolved_state = details.get("post_state", {}).get("state")
+                
+                event_dict = {
+                    "trip_id": trip_id,
+                    "timestamp": audit_event.get("timestamp", ""),
+                    "stage": details.get("stage", "unknown"),
+                    "status": resolved_state or "unknown",
+                    "state_snapshot": {"stage": details.get("stage", "unknown")},
+                }
+                
+                if details.get("decision_type"):
+                    event_dict["decision"] = details.get("decision_type")
+                
+                if details.get("reason"):
+                    event_dict["reason"] = details.get("reason")
+                
+                # Defensive clamping: if confidence is ever extracted from audit events,
+                # ensure it's within valid range (0-100)
+                if details.get("confidence") is not None:
+                    try:
+                        confidence = float(details.get("confidence"))
+                        event_dict["confidence"] = max(0, min(100, confidence))
+                    except (ValueError, TypeError):
+                        logger.error(f"Invalid confidence value in fallback: {details.get('confidence')}")
+                
+                if stage and event_dict.get("stage") != stage:
+                    continue
+                
+                events.append(TimelineEvent(**event_dict))
+        
+        return TimelineResponse(trip_id=trip_id, events=events)
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"Failed to retrieve timeline for trip {trip_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve trip timeline"
+        )
+
 
 
 # =============================================================================
