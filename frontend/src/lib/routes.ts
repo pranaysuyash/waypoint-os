@@ -31,8 +31,12 @@ export type WorkspaceStage =
 export type WorkbenchTab = 'intake' | 'packet' | 'decision' | 'strategy' | 'safety';
 
 export function getTripRoute(
-  tripId: string,
+  tripId: string | undefined | null,
   stage: WorkspaceStage = 'intake',
 ): string {
+  if (!tripId) {
+    console.warn('[routes] getTripRoute called with falsy tripId — falling back to /workspace');
+    return '/workspace';
+  }
   return `/workspace/${tripId}/${stage}`;
 }

@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     const reviews = spineApiData.items || [];
     
     // Transform each review to match frontend expectations
-    const frontendReviews = reviews.map(review => transformReviewToFrontendFormat(review));
+    const frontendReviews = reviews.map((review: any) => transformReviewToFrontendFormat(review));
     
     // Apply filtering based on status query parameter
     const searchParams = request.nextUrl.searchParams;

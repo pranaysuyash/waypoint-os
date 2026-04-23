@@ -1,6 +1,6 @@
-# Personas & Scenarios - Master Index
-
 **For Future Agents**: Start here when asked to "review test coverage" or "identify what to test"
+
+**Strategic Context**: Read the [Industry Domain Knowledge](../industry_domain/INDEX.md) to understand the business mechanics behind these scenarios.
 
 ---
 
@@ -26,8 +26,15 @@
 **"Replicate the same deep case-study method on another scenario"**  
 → Read: [SCENARIO_CASE_STUDY_REPLICATION_PLAYBOOK.md](SCENARIO_CASE_STUDY_REPLICATION_PLAYBOOK.md) → Use [templates/SCENARIO_CASE_STUDY_REPORT_TEMPLATE.md](templates/SCENARIO_CASE_STUDY_REPORT_TEMPLATE.md)
 
+**"Testing philosophy beyond green tests"**  
+→ Read: [TESTING_PHILOSOPHY_CASE_STUDIES.md](TESTING_PHILOSOPHY_CASE_STUDIES.md)
+
 **"Show open implementation items per scenario (technical + logical)"**  
 → Read: [task_lists/](task_lists) and the links inside each scenario file
+
+**"Understand strategic coverage gaps and deep dives"**  
+→ Read: [COVERAGE_GAP_ANALYSIS.md](COVERAGE_GAP_ANALYSIS.md) → Check Deep Dives: [Operations](AREA_DEEP_DIVE_OPERATIONAL_WORKFLOWS.md), [Risk/Compliance](AREA_DEEP_DIVE_RISK_COMPLIANCE.md), [Specialized Verticals](AREA_DEEP_DIVE_INDUSTRY_VERTICALS.md), [Luxury](AREA_DEEP_DIVE_LUXURY_CONCIERGE.md), [MICE/Events](AREA_DEEP_DIVE_MICE_EVENTS.md), [Sustainability](AREA_DEEP_DIVE_SUSTAINABLE_TRAVEL.md), [Financial/Treasury](AREA_DEEP_DIVE_FINANCIAL_TREASURY.md)  
+→ See: [Targeted Expansion Batch 01](SCENARIOS_TARGETED_EXPANSION_BATCH_01.md), [Batch 02](SCENARIOS_TARGETED_EXPANSION_BATCH_02.md), [Batch 03](SCENARIOS_TARGETED_EXPANSION_BATCH_03.md)
 
 ---
 
@@ -54,6 +61,10 @@ personas_scenarios/
 ├── SCENARIO_CASE_STUDY_REPLICATION_PLAYBOOK.md
 │   └── Standard scenario execution method:
 │       what to test, how to run, what to document, and evidence standards
+│
+├── TESTING_PHILOSOPHY_CASE_STUDIES.md
+│   └── Quality bar for scenario tests:
+│       green + logical + architectural + product correctness
 │
 ├── templates/SCENARIO_CASE_STUDY_REPORT_TEMPLATE.md
 │   └── Reusable report template including:
@@ -98,7 +109,17 @@ personas_scenarios/
 ├── S2_DOCUMENT_CHAOS.md
 │   └── 1 real flow scenario: Document collection chaos
 ├── S2_BUDGET_REALITY_CONVERSATION.md
-│   └── 1 real flow scenario: Budget reality conversation
+│   └── 1 real flow scenario: Family budget stretch
+│
+├── COVERAGE_GAP_ANALYSIS.md ← NEW (Strategic taxonomy & gap audit)
+│
+├── AREA_DEEP_DIVE_OPERATIONAL_WORKFLOWS.md ← NEW (Deep dive: Operations & Handoffs)
+├── AREA_DEEP_DIVE_RISK_COMPLIANCE.md ← NEW (Deep dive: Risk, Compliance & Policy)
+├── AREA_DEEP_DIVE_INDUSTRY_VERTICALS.md ← NEW (Deep dive: Maritime, Energy, Healthcare)
+├── AREA_DEEP_DIVE_LUXURY_CONCIERGE.md ← NEW (Deep dive: HNWIs & Bespoke Travel)
+├── AREA_DEEP_DIVE_MICE_EVENTS.md ← NEW (Deep dive: Corporate Groups & Events)
+├── AREA_DEEP_DIVE_SUSTAINABLE_TRAVEL.md ← NEW (Deep dive: Carbon Metrics & Ethical Vetting)
+├── AREA_DEEP_DIVE_FINANCIAL_TREASURY.md ← NEW (Deep dive: Forex, Credit & Statutory Tax)
 ├── ADDITIONAL_SCENARIOS_26_LAST_MINUTE_CANCELLATION.md
 │   └── 1 real flow scenario: Last-minute cancellation
 ├── ADDITIONAL_SCENARIOS_27_REFERRAL_REQUEST.md
@@ -569,6 +590,100 @@ personas_scenarios/
 │   └── 1 real flow scenario: Wellness retreat and health resort travel
 ├── ADDITIONAL_SCENARIOS_260_HOSPITALITY_INDUSTRY_TRAINING_TRAVEL.md
 │   └── 1 real flow scenario: Hospitality industry training travel
+├── ADDITIONAL_SCENARIOS_261_PUBLIC_HEALTH_AND_EPIDEMIOLOGY_TRAVEL.md
+│   └── 1 real flow scenario: Public health and epidemiology travel
+├── ADDITIONAL_SCENARIOS_262_FRANCHISE_AND_RETAIL_EXPANSION_TRAVEL.md
+│   └── 1 real flow scenario: Franchise and retail expansion travel
+├── ADDITIONAL_SCENARIOS_263_STARTUP_PITCH_AND_INVESTOR_ROADSHOW_TRAVEL.md
+│   └── 1 real flow scenario: Startup pitch and investor roadshow travel
+├── ADDITIONAL_SCENARIOS_264_HIGHER_EDUCATION_AND_RECRUITMENT_TRAVEL.md
+│   └── 1 real flow scenario: Higher education and recruitment travel
+├── ADDITIONAL_SCENARIOS_265_BUILDING_AND_INFRASTRUCTURE_INSPECTION_TRAVEL.md
+│   └── 1 real flow scenario: Building and infrastructure inspection travel
+├── ADDITIONAL_SCENARIOS_266_AGILE_SOFTWARE_DEVELOPMENT_TRAVEL.md
+│   └── 1 real flow scenario: Agile software development travel
+├── ADDITIONAL_SCENARIOS_267_EMERGING_TECHNOLOGY_LAB_VISIT_TRAVEL.md
+│   └── 1 real flow scenario: Emerging technology lab visit travel
+├── ADDITIONAL_SCENARIOS_268_PUBLIC_RELATIONS_AND_MEDIA_PRESS_TRAVEL.md
+│   └── 1 real flow scenario: Public relations and media press travel
+├── ADDITIONAL_SCENARIOS_269_CRITICAL_INFRASTRUCTURE_RENEWAL_TRAVEL.md
+│   └── 1 real flow scenario: Critical infrastructure renewal travel
+├── ADDITIONAL_SCENARIOS_270_INTERNATIONAL_TRADE_AND_EXPORT_TRAVEL.md
+│   └── 1 real flow scenario: International trade and export travel
+├── ADDITIONAL_SCENARIOS_271_ENTERPRISE_CYBERSECURITY_AND_RANSOMWARE_RESPONSE_TRAVEL.md
+│   └── 1 real flow scenario: Enterprise cybersecurity and ransomware response travel
+├── ADDITIONAL_SCENARIOS_272_WILDLIFE_CONSERVATION_AND_BIOSECURITY_TRAVEL.md
+│   └── 1 real flow scenario: Wildlife conservation and biosecurity travel
+├── ADDITIONAL_SCENARIOS_273_ARCHAEOLOGICAL_FIELDWORK_AND_RESEARCH_TRAVEL.md
+│   └── 1 real flow scenario: Archaeological fieldwork and research travel
+├── ADDITIONAL_SCENARIOS_274_AGRITECH_AND_PRECISION_FARMING_TRAVEL.md
+│   └── 1 real flow scenario: Agritech and precision farming travel
+├── ADDITIONAL_SCENARIOS_275_SMART_CITY_AND_URBAN_PLANNING_TRAVEL.md
+│   └── 1 real flow scenario: Smart city and urban planning travel
+├── ADDITIONAL_SCENARIOS_276_GREEN_FINANCE_AND_IMPACT_INVESTMENT_TRAVEL.md
+│   └── 1 real flow scenario: Green finance and impact investment travel
+├── ADDITIONAL_SCENARIOS_277_REMOTE_WORKFORCE_RELOCATION_TRAVEL.md
+│   └── 1 real flow scenario: Remote workforce relocation travel
+├── ADDITIONAL_SCENARIOS_278_INDUSTRIAL_AUTOMATION_AND_ROBOTICS_TRAVEL.md
+│   └── 1 real flow scenario: Industrial automation and robotics travel
+├── ADDITIONAL_SCENARIOS_279_LAUNCH_EVENT_AND_PRODUCT_DEMO_TRAVEL.md
+│   └── 1 real flow scenario: Launch event and product demo travel
+├── ADDITIONAL_SCENARIOS_280_BROADCAST_AND_LIVE_EVENT_PRODUCTION_TRAVEL.md
+│   └── 1 real flow scenario: Broadcast and live event production travel
+├── ADDITIONAL_SCENARIOS_281_GOVERNMENT_CONTRACTOR_COMPLIANCE_TRAVEL.md
+│   └── 1 real flow scenario: Government contractor compliance travel
+├── ADDITIONAL_SCENARIOS_282_CLINICAL_TRIALS_AND_PHARMACEUTICAL_SITE_MONITORING_TRAVEL.md
+│   └── 1 real flow scenario: Clinical trials and pharmaceutical site monitoring travel
+├── ADDITIONAL_SCENARIOS_283_BATTERY_SUPPLY_CHAIN_AND_EV_CHARGING_INFRASTRUCTURE_TRAVEL.md
+│   └── 1 real flow scenario: Battery supply chain and EV charging infrastructure travel
+├── ADDITIONAL_SCENARIOS_284_ARCHITECTURAL_AWARDS_JURY_AND_DESIGN_REVIEW_TRAVEL.md
+│   └── 1 real flow scenario: Architectural awards jury and design review travel
+├── ADDITIONAL_SCENARIOS_285_DISASTER_RECOVERY_LOGISTICS_AND_RELIEF_TRAVEL.md
+│   └── 1 real flow scenario: Disaster recovery logistics and relief travel
+├── ADDITIONAL_SCENARIOS_286_INTERNATIONAL_SPORTS_TEAM_TRAINING_AND_FACILITY_SCOUTING_TRAVEL.md
+│   └── 1 real flow scenario: International sports team training and facility scouting travel
+├── ADDITIONAL_SCENARIOS_287_RETAIL_INNOVATION_LAB_AND_POPUP_STORE_TRAVEL.md
+│   └── 1 real flow scenario: Retail innovation lab and popup store travel
+├── ADDITIONAL_SCENARIOS_288_URBAN_RESILIENCE_AND_CLIMATE_ADAPTATION_TRAVEL.md
+│   └── 1 real flow scenario: Urban resilience and climate adaptation travel
+├── ADDITIONAL_SCENARIOS_289_INTERNATIONAL_CULTURAL_EXCHANGE_AND_DIPLOMATIC_TRAVEL.md
+│   └── 1 real flow scenario: International cultural exchange and diplomatic travel
+├── ADDITIONAL_SCENARIOS_290_MEDICAL_EQUIPMENT_DEPLOYMENT_AND_TRAINING_TRAVEL.md
+│   └── 1 real flow scenario: Medical equipment deployment and training travel
+├── ADDITIONAL_SCENARIOS_291_HIGH_SPEED_RAIL_AND_TRANSPORT_INNOVATION_TRAVEL.md
+│   └── 1 real flow scenario: High-speed rail and transport innovation travel
+├── ADDITIONAL_SCENARIOS_292_EMERGENCY_POWER_AND_GRID_RESILIENCE_TRAVEL.md
+│   └── 1 real flow scenario: Emergency power and grid resilience travel
+├── ADDITIONAL_SCENARIOS_293_INTERNATIONAL_EDUCATION_CONFERENCE_AND_FACULTY_EXCHANGE_TRAVEL.md
+│   └── 1 real flow scenario: International education conference and faculty exchange travel
+├── ADDITIONAL_SCENARIOS_294_ADVANCED_MANUFACTURING_AND_3D_PRINTING_TRAVEL.md
+│   └── 1 real flow scenario: Advanced manufacturing and 3D printing travel
+├── ADDITIONAL_SCENARIOS_295_ARCHAEOLOGICAL_TOURISM_AND_HERITAGE_SITE_TRAVEL.md
+│   └── 1 real flow scenario: Archaeological tourism and heritage site travel
+├── ADDITIONAL_SCENARIOS_296_SUPPLY_CHAIN_CYBERSECURITY_AND_LOGISTICS_TRAVEL.md
+│   └── 1 real flow scenario: Supply chain cybersecurity and logistics travel
+├── ADDITIONAL_SCENARIOS_297_PHARMA_REGULATORY_SUBMISSION_AND_CLINICAL_TRIAL_TRAVEL.md
+│   └── 1 real flow scenario: Pharma regulatory submission and clinical trial travel
+├── ADDITIONAL_SCENARIOS_298_RENEWABLE_ENERGY_PROJECT_FINANCE_AND_DUE_DILIGENCE_TRAVEL.md
+│   └── 1 real flow scenario: Renewable energy project finance and due diligence travel
+├── ADDITIONAL_SCENARIOS_299_MEDIA_TECH_AND_VIRTUAL_PRODUCTION_TRAVEL.md
+│   └── 1 real flow scenario: Media tech and virtual production travel
+├── ADDITIONAL_SCENARIOS_300_HIGH_PERFORMANCE_COMPUTING_AND_DATA_CENTER_TRAVEL.md
+│   └── 1 real flow scenario: High-performance computing and data center travel
+├── ADDITIONAL_SCENARIOS_301_WORLD_HEALTH_ORGANIZATION_AND_GLOBAL_HEALTH_SUMMIT_TRAVEL.md
+│   └── 1 real flow scenario: World Health Organization and global health summit travel
+├── ADDITIONAL_SCENARIOS_302_SPONSORED_SPORTS_FAN_TRAVEL_AND_HOSPITALITY_TRAVEL.md
+│   └── 1 real flow scenario: Sponsored sports fan travel and hospitality travel
+├── ADDITIONAL_SCENARIOS_303_MARITIME_PORT_DIGITALIZATION_AND_AUTOMATION_TRAVEL.md
+│   └── 1 real flow scenario: Maritime port digitalization and automation travel
+├── ADDITIONAL_SCENARIOS_304_SOLAR_PLUS_STORAGE_AND_GRID_INTEGRATION_TRAVEL.md
+│   └── 1 real flow scenario: Solar plus storage and grid integration travel
+├── ADDITIONAL_SCENARIOS_305_EDTECH_INNOVATION_LAUNCH_AND_RECRUITMENT_TRAVEL.md
+│   └── 1 real flow scenario: EdTech innovation launch and recruitment travel
+├── ADDITIONAL_SCENARIOS_306_VIRTUAL_CONCERT_AND_DIGITAL_ENTERTAINMENT_PRODUCTION_TRAVEL.md
+│   └── 1 real flow scenario: Virtual concert and digital entertainment production travel
+├── ADDITIONAL_SCENARIOS_307_FINTECH_REGTECH_CONFERENCE_AND_PARTNER_TRAVEL.md
+│   └── 1 real flow scenario: FinTech RegTech conference and partner travel
 ├── P1_SOLO_AGENT_SCENARIOS.md
 │   └── 5 real scenarios:
 │       P1-S1: 11 PM WhatsApp Panic

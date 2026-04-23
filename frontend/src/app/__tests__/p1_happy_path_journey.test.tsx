@@ -30,6 +30,7 @@ vi.mock("@/hooks/useSpineRun", () => ({
 
 vi.mock("next/navigation", () => ({
   useRouter: vi.fn(),
+  useSearchParams: vi.fn(),
 }));
 
 describe("P1 Happy Path Journey", () => {
@@ -81,6 +82,10 @@ describe("P1 Happy Path Journey", () => {
     vi.mocked(nextNavigation.useRouter).mockReturnValue({
       push: pushMock,
     } as any);
+
+    vi.mocked(nextNavigation.useSearchParams).mockReturnValue(
+      new URLSearchParams() as any
+    );
 
     vi.mocked(governanceHooks.useInboxTrips).mockReturnValue({
       data: [inboxTrip],

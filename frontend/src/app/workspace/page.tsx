@@ -16,7 +16,7 @@
  */
 
 import Link from 'next/link';
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState, useCallback, useEffect } from 'react';
 import {
   Briefcase,
   Clock,
@@ -24,12 +24,15 @@ import {
   Calendar,
   ChevronRight,
   AlertTriangle,
+  LayoutGrid,
+  Table2,
 } from 'lucide-react';
 import { useTrips } from '@/hooks/useTrips';
 import { getTripRoute } from '@/lib/routes';
 import { InlineLoading } from '@/components/ui/loading';
 import { InlineError } from '@/components/error-boundary';
 import type { Trip } from '@/lib/api-client';
+import { WorkspaceTable, type SortField, type SortDirection } from './WorkspaceTable';
 
 // ============================================================================
 // DOMAIN BOUNDARY DEFINITION
@@ -55,6 +58,82 @@ const STATE_META: Record<string, { color: string; bg: string; label: string }> =
 };
 
 // ============================================================================
+// VIEW PERSISTENCE
+// ============================================================================
+
+const VIEW_STORAGE_KEY = 'waypoint:workspace:view';
+
+function getSavedView(): 'card' | 'table' {
+  if (typeof window === 'undefined') return 'card';
+  try {
+    const saved = localStorage.getItem(VIEW_STORAGE_KEY);
+    return saved === 'table' ? 'table' : 'card';
+  } catch {
+    return 'card';
+  }
+}
+
+function saveView(view: 'card' | 'table') {
+  try {
+    localStorage.setItem(VIEW_STORAGE_KEY, view);
+  } catch {
+    /* ignore */
+  }
+}
+
+// ============================================================================
+// SORTING
+// ============================================================================
+
+function sortTrips(
+  trips: Trip[],
+  field: SortField,
+  direction: SortDirection,
+): Trip[] {
+  const sorted = [...trips];
+
+  sorted.sort((a, b) => {
+    // Always promote blocked (red) trips to top when sorting by state
+    if (field === 'state') {
+      const aBlocked = a.state === 'red' ? 1 : 0;
+      const bBlocked = b.state === 'red' ? 1 : 0;
+      if (aBlocked !== bBlocked) {
+        return bBlocked - aBlocked; // blocked (1) always before non-blocked (0)
+      }
+      // Within same blocked status, sort by state name
+      if (a.state !== b.state) {
+        return direction === 'asc'
+          ? a.state.localeCompare(b.state)
+          : b.state.localeCompare(a.state);
+      }
+    }
+
+    if (field === 'destination') {
+      return direction === 'asc'
+        ? a.destination.localeCompare(b.destination)
+        : b.destination.localeCompare(a.destination);
+    }
+
+    if (field === 'type') {
+      return direction === 'asc'
+        ? a.type.localeCompare(b.type)
+        : b.type.localeCompare(a.type);
+    }
+
+    if (field === 'age') {
+      // Extract numeric portion for comparison (e.g. "2h" vs "1d")
+      const aNum = parseInt(a.age, 10) || 0;
+      const bNum = parseInt(b.age, 10) || 0;
+      return direction === 'asc' ? aNum - bNum : bNum - aNum;
+    }
+
+    return 0;
+  });
+
+  return sorted;
+}
+
+// ============================================================================
 // WORKSPACE TRIP CARD
 // ============================================================================
 
@@ -64,7 +143,7 @@ const WorkspaceCard = memo(function WorkspaceCard({ trip }: { trip: Trip }) {
 
   return (
     <Link
-      href={getTripRoute(trip.id)}
+      href={trip.id ? getTripRoute(trip.id) : '/workspace'}
       className={`group block rounded-xl border p-4 transition-all hover:border-[#30363d] ${
         isBlocked
           ? 'border-[#f85149]/30 bg-[#f85149]/5'
@@ -136,11 +215,64 @@ function EmptyWorkspace() {
 }
 
 // ============================================================================
+// VIEW TOGGLE
+// ============================================================================
+
+function ViewToggle({
+  view,
+  onChange,
+}: {
+  view: 'card' | 'table';
+  onChange: (v: 'card' | 'table') => void;
+}) {
+  return (
+    <div className='flex items-center rounded-md border border-[#1c2128] bg-[#0a0d11] p-0.5'>
+      <button
+        type='button'
+        onClick={() => onChange('card')}
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium transition-all ${
+          view === 'card'
+            ? 'bg-[#161b22] text-[#e6edf3]'
+            : 'text-[#8b949e] hover:text-[#e6edf3]'
+        }`}
+        aria-pressed={view === 'card'}
+        aria-label='Card view'
+      >
+        <LayoutGrid className='h-3.5 w-3.5' aria-hidden='true' />
+        <span className='hidden sm:inline'>Cards</span>
+      </button>
+      <button
+        type='button'
+        onClick={() => onChange('table')}
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium transition-all ${
+          view === 'table'
+            ? 'bg-[#161b22] text-[#e6edf3]'
+            : 'text-[#8b949e] hover:text-[#e6edf3]'
+        }`}
+        aria-pressed={view === 'table'}
+        aria-label='Table view'
+      >
+        <Table2 className='h-3.5 w-3.5' aria-hidden='true' />
+        <span className='hidden sm:inline'>Table</span>
+      </button>
+    </div>
+  );
+}
+
+// ============================================================================
 // PAGE
 // ============================================================================
 
 export default function WorkspacesPage() {
   const { data: allTrips, isLoading, error, refetch } = useTrips();
+  const [viewMode, setViewMode] = useState<'card' | 'table'>(getSavedView);
+  const [sortField, setSortField] = useState<SortField>('state');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  // Persist view preference
+  useEffect(() => {
+    saveView(viewMode);
+  }, [viewMode]);
 
   const workspaceTrips = useMemo(
     () => allTrips.filter(isInWorkspace),
@@ -152,17 +284,33 @@ export default function WorkspacesPage() {
     [workspaceTrips],
   );
 
+  const sortedTrips = useMemo(
+    () => sortTrips(workspaceTrips, sortField, sortDirection),
+    [workspaceTrips, sortField, sortDirection],
+  );
+
+  const handleSort = useCallback((field: SortField) => {
+    setSortField((current) => {
+      if (current === field) {
+        setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
+        return current;
+      }
+      setSortDirection('asc');
+      return field;
+    });
+  }, []);
+
   return (
     <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
       {/* Header */}
-      <header className='flex items-center justify-between pt-1'>
+      <header className='flex items-center justify-between pt-1 flex-wrap gap-3'>
         <div>
           <h1 className='text-xl font-semibold text-[#e6edf3]'>Workspaces</h1>
           <p className='text-sm text-[#8b949e] mt-0.5'>
             Active trips · engaged and in progress
           </p>
         </div>
-        <div className='flex items-center gap-4'>
+        <div className='flex items-center gap-3'>
           {blockedCount > 0 && (
             <span className='flex items-center gap-1.5 text-sm text-[#f85149]'>
               <AlertTriangle className='h-3.5 w-3.5' aria-hidden='true' />
@@ -172,6 +320,7 @@ export default function WorkspacesPage() {
           <span className='text-sm text-[#8b949e]'>
             {isLoading ? 'Loading…' : `${workspaceTrips.length} active`}
           </span>
+          <ViewToggle view={viewMode} onChange={setViewMode} />
         </div>
       </header>
 
@@ -204,15 +353,27 @@ export default function WorkspacesPage() {
         </div>
       )}
 
-      {/* Grid */}
+      {/* Empty state */}
       {!error && !isLoading && workspaceTrips.length === 0 && <EmptyWorkspace />}
 
+      {/* Content */}
       {!error && workspaceTrips.length > 0 && (
-        <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'>
-          {workspaceTrips.map((trip) => (
-            <WorkspaceCard key={trip.id} trip={trip} />
-          ))}
-        </div>
+        <>
+          {viewMode === 'card' ? (
+            <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'>
+              {sortedTrips.map((trip) => (
+                <WorkspaceCard key={trip.id} trip={trip} />
+              ))}
+            </div>
+          ) : (
+            <WorkspaceTable
+              trips={sortedTrips}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+            />
+          )}
+        </>
       )}
 
       {/* Cross-link to inbox for context */}

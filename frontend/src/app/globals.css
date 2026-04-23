@@ -358,22 +358,6 @@ a {
   box-shadow: 0 0 20px rgba(63, 185, 80, 0.15);
 }
 
-/* Data card left border accent */
-.data-card-accent {
-  position: relative;
-}
-
-.data-card-accent::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 16px;
-  bottom: 16px;
-  width: 3px;
-  background: var(--accent-color, var(--border-default));
-  border-radius: 0 2px 2px 0;
-}
-
 /* ============================================================================
  * Accessibility Utilities
  * ============================================================================ */

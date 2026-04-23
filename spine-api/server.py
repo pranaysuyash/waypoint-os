@@ -49,7 +49,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -83,7 +83,17 @@ except ImportError:
 try:
     from .watchdog import watchdog
 except (ImportError, ValueError):
-    from watchdog import watchdog
+    try:
+        from watchdog import watchdog  # type: ignore[attr-defined]
+    except ImportError:
+        # When spine-api is not a package (e.g., uvicorn spine-api.server:app),
+        # load the local watchdog module directly from the filesystem.
+        import importlib.util
+        _watchdog_path = str(Path(__file__).resolve().parent / "watchdog.py")
+        _watchdog_spec = importlib.util.spec_from_file_location("_local_watchdog", _watchdog_path)
+        _watchdog_mod = importlib.util.module_from_spec(_watchdog_spec)  # type: ignore[arg-type]
+        _watchdog_spec.loader.exec_module(_watchdog_mod)  # type: ignore[union-attr]
+        watchdog = _watchdog_mod.watchdog
 
 # Wave A: run lifecycle modules
 from run_state import RunState, assert_can_transition, terminal_state_for_run_result
@@ -98,6 +108,23 @@ from run_events import (
 )
 from run_ledger import RunLedger
 from src.intake.config.agency_settings import AgencySettingsStore
+
+# Auth — Phase 1
+try:
+    from routers import auth as auth_router
+    from routers import workspace as workspace_router
+except (ImportError, ValueError):
+    import importlib.util
+    _base = Path(__file__).resolve().parent
+    _auth_spec = importlib.util.spec_from_file_location("routers.auth", _base / "routers" / "auth.py")
+    _auth_mod = importlib.util.module_from_spec(_auth_spec)
+    _auth_spec.loader.exec_module(_auth_mod)
+    auth_router = _auth_mod
+
+    _ws_spec = importlib.util.spec_from_file_location("routers.workspace", _base / "routers" / "workspace.py")
+    _ws_mod = importlib.util.module_from_spec(_ws_spec)
+    _ws_spec.loader.exec_module(_ws_mod)
+    workspace_router = _ws_mod
 
 logger = logging.getLogger("spine-api")
 
@@ -262,6 +289,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Phase 1: Auth + Workspace routers
+app.include_router(auth_router.router)
+app.include_router(workspace_router.router)
 
 
 @app.on_event("startup")
@@ -949,10 +980,17 @@ def post_review_action(trip_id: str, request: ReviewActionRequest):
 
 @app.get("/api/settings")
 def get_agency_settings(agency_id: str = "waypoint-hq"):
-    """Return the complete agency configuration (operational + autonomy)."""
+    """Return the complete agency configuration (profile + operational + autonomy)."""
     settings = AgencySettingsStore.load(agency_id)
     return {
         "agency_id": settings.agency_id,
+        "profile": {
+            "agency_name": settings.agency_name,
+            "contact_email": settings.contact_email,
+            "contact_phone": settings.contact_phone,
+            "logo_url": settings.logo_url,
+            "website": settings.website,
+        },
         "operational": {
             "target_margin_pct": settings.target_margin_pct,
             "default_currency": settings.default_currency,
@@ -973,6 +1011,99 @@ def get_agency_settings(agency_id: str = "waypoint-hq"):
             "min_draft_confidence": settings.autonomy.min_draft_confidence,
         },
     }
+
+class UpdateOperationalSettings(BaseModel):
+    agency_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    logo_url: Optional[str] = None
+    website: Optional[str] = None
+    target_margin_pct: Optional[float] = Field(None, ge=0, le=100)
+    default_currency: Optional[str] = None
+    operating_hours_start: Optional[str] = None
+    operating_hours_end: Optional[str] = None
+    operating_days: Optional[List[str]] = None
+    preferred_channels: Optional[List[str]] = None
+    brand_tone: Optional[str] = None
+
+
+@app.post("/api/settings/operational")
+def update_agency_operational_settings(
+    request: UpdateOperationalSettings,
+    agency_id: str = "waypoint-hq",
+):
+    """
+    Update agency operational and profile settings.
+    Only fields provided in the request are modified; others remain unchanged.
+    """
+    settings = AgencySettingsStore.load(agency_id)
+    changes: list[str] = []
+
+    # Profile fields
+    if request.agency_name is not None:
+        settings.agency_name = request.agency_name
+        changes.append("agency_name")
+    if request.contact_email is not None:
+        settings.contact_email = request.contact_email
+        changes.append("contact_email")
+    if request.contact_phone is not None:
+        settings.contact_phone = request.contact_phone
+        changes.append("contact_phone")
+    if request.logo_url is not None:
+        settings.logo_url = request.logo_url
+        changes.append("logo_url")
+    if request.website is not None:
+        settings.website = request.website
+        changes.append("website")
+
+    # Operational fields
+    if request.target_margin_pct is not None:
+        settings.target_margin_pct = request.target_margin_pct
+        changes.append("target_margin_pct")
+    if request.default_currency is not None:
+        settings.default_currency = request.default_currency
+        changes.append("default_currency")
+    if request.operating_hours_start is not None:
+        settings.operating_hours_start = request.operating_hours_start
+        changes.append("operating_hours_start")
+    if request.operating_hours_end is not None:
+        settings.operating_hours_end = request.operating_hours_end
+        changes.append("operating_hours_end")
+    if request.operating_days is not None:
+        settings.operating_days = request.operating_days
+        changes.append("operating_days")
+    if request.preferred_channels is not None:
+        settings.preferred_channels = request.preferred_channels
+        changes.append("preferred_channels")
+    if request.brand_tone is not None:
+        settings.brand_tone = request.brand_tone
+        changes.append("brand_tone")
+
+    AgencySettingsStore.save(settings)
+
+    return {
+        "agency_id": settings.agency_id,
+        "changes": changes,
+        "profile": {
+            "agency_name": settings.agency_name,
+            "contact_email": settings.contact_email,
+            "contact_phone": settings.contact_phone,
+            "logo_url": settings.logo_url,
+            "website": settings.website,
+        },
+        "operational": {
+            "target_margin_pct": settings.target_margin_pct,
+            "default_currency": settings.default_currency,
+            "operating_hours": {
+                "start": settings.operating_hours_start,
+                "end": settings.operating_hours_end,
+            },
+            "operating_days": settings.operating_days,
+            "preferred_channels": settings.preferred_channels,
+            "brand_tone": settings.brand_tone,
+        },
+    }
+
 
 @app.get("/api/settings/autonomy")
 def get_agency_autonomy_settings(agency_id: str = "waypoint-hq"):

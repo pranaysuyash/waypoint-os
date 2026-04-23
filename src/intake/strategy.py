@@ -950,13 +950,14 @@ def build_session_strategy_and_bundle(
     audience: Literal["internal", "traveler", "both"] = "traveler",
     session_context: Optional[dict] = None,
     agent_profile: Optional[dict] = None,
+    agency_settings: Optional["AgencySettings"] = None,
 ) -> Tuple[SessionStrategy, PromptBundle]:
     """
     Convenience entry point: build both strategy and bundle in one call.
 
     This is the primary NB03 entry point for external callers.
     """
-    strategy = build_session_strategy(decision, packet, session_context, agent_profile)
+    strategy = build_session_strategy(decision, packet, session_context, agent_profile, agency_settings=agency_settings)
 
     if audience == "both":
         # Build both internal and traveler bundles

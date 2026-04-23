@@ -14,11 +14,14 @@ import {
   Zap,
   Layers,
   Wrench,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LiveRegion } from '@/lib/accessibility';
 import { useUnifiedState } from '@/hooks/useUnifiedState';
+import { useAgencySettings } from '@/hooks/useAgencySettings';
 import { AlertTriangle } from 'lucide-react';
+import { UserMenu } from './UserMenu';
 
 const NAV = [
   {
@@ -59,6 +62,12 @@ const NAV = [
         icon: BarChart2,
         description: 'Monitor quality, throughput, and conversion',
       },
+      {
+        href: '/settings',
+        label: 'Settings',
+        icon: Settings,
+        description: 'Agency profile, autonomy, and operations',
+      },
     ],
   },
   {
@@ -95,6 +104,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { versionLabel, detailsLabel } = useRuntimeVersion();
   const { isConsistent } = useUnifiedState();
+  const { data: agencySettings } = useAgencySettings();
+  const brandName = agencySettings?.profile?.agency_name || 'Waypoint';
+
+  // Auth pages render without the shell chrome
+  if (pathname.startsWith('/login') || pathname.startsWith('/signup')) {
+    return <>{children}</>;
+  }
 
   return (
     <div className='flex h-screen overflow-hidden bg-[#080a0c] text-[#e6edf3]'>
@@ -118,7 +134,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
           <div className='min-w-0 hidden md:block'>
             <div className='text-xs font-semibold leading-tight tracking-tight truncate'>
-              Waypoint
+              {brandName}
             </div>
             <div className='text-xs text-[#8b949e] leading-tight font-mono'>
               {versionLabel}
@@ -217,7 +233,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               href='/'
               className='text-[#484f58] hover:text-[#8b949e] text-[12px] transition-colors'
             >
-              Waypoint
+              {brandName}
             </Link>
             {pathname !== '/' && (
               <>
@@ -242,12 +258,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <Zap className='h-3 w-3 text-[#d29922]' aria-hidden='true' />
               <span>ready</span>
             </div>
-            <div
-              className='h-6 w-6 rounded-md bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-xs font-semibold'
-              aria-label='Current operator: OP'
-            >
-              OP
-            </div>
+            <UserMenu />
           </div>
         </header>
 

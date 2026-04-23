@@ -1,6 +1,5 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { COLORS } from "@/lib/tokens";
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: "default" | "elevated" | "bordered" | "ghost";
@@ -102,29 +101,5 @@ const CardFooter = React.forwardRef<HTMLDivElement, CardFooterProps>(
   )
 );
 CardFooter.displayName = "CardFooter";
-
-export interface CardAccentProps {
-  color?: keyof typeof COLORS;
-  position?: "left" | "top" | "right" | "bottom";
-}
-
-export function CardAccent({ color = "accentBlue", position = "left" }: CardAccentProps) {
-  const colorValue = COLORS[color as keyof typeof COLORS] || COLORS.accentBlue;
-
-  const positionStyles: Record<typeof position, string> = {
-    left: "left-0 top-4 bottom-4 w-0.5 rounded-r",
-    top: "top-0 left-4 right-4 h-0.5 rounded-b",
-    right: "right-0 top-4 bottom-4 w-0.5 rounded-l",
-    bottom: "bottom-0 left-4 right-4 h-0.5 rounded-t",
-  };
-
-  return (
-    <div
-      className={`absolute ${positionStyles[position]} transition-colors`}
-      style={{ backgroundColor: colorValue }}
-      aria-hidden="true"
-    />
-  );
-}
 
 export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent };

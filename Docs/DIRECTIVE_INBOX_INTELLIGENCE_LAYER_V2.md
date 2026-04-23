@@ -1,9 +1,11 @@
 # Inbox Intelligence Layer v2 — Comprehensive Directive
 
 **Date**: Thursday, April 23, 2026
+**Revised**: Thursday, April 23, 2026 (post-review)
 **Priority**: High (P1)
 **Goal**: Transform the Inbox from a static link-list into a role-aware, progressively disclosed Active Inspection Portal that teaches new operators while accelerating experienced ones.
 **Supersedes**: [`DIRECTIVE_INBOX_COCKPIT_EVOLUTION.md`](./DIRECTIVE_INBOX_COCKPIT_EVOLUTION.md) (dated 2026-04-22)
+**Review Status**: Reviewed. Revised per feedback. Ready for implementation.
 
 ---
 
@@ -17,7 +19,7 @@ The current inbox (`frontend/src/app/inbox/page.tsx`) presents 12+ data points p
 
 2. **Comparison Friction**: Nielsen Norman Group card research confirms that card layouts deemphasize ranking and make comparison harder than list views. Our agents' core job is to compare 20 trips and pick one. The current layout makes this harder because value, days, party size, and date all compete for attention in the same row.
 
-3. **One-Size-Fits-All Failure**: The card assumes every user cares about the same fields in the same order. A finance reviewer scanning for pipeline value has different needs than a vendor coordinator checking booking confirmations. The existing directive had no mechanism for this.
+3. **One-Size-Fits-All Failure**: The card assumes every user cares about the same fields in the same order. A finance reviewer scanning for pipeline value has different needs than a fulfillment coordinator checking booking confirmations. The existing directive had no mechanism for this.
 
 ### What the Data Tells Us
 
@@ -157,7 +159,7 @@ If `slaHours` is not available at runtime, implement a narrow contract extension
 - `at_risk`: amber (`STATE_COLORS.amber`)
 - `breached`: red (`STATE_COLORS.red`)
 
-**Why**: A vendor agent seeing `6d` on a Booking card knows it's fine. An intake agent seeing `6d` knows it's catastrophic. Same number, different meaning.
+**Why**: A fulfillment agent seeing `6d` on a Booking card knows it's fine. An intake agent seeing `6d` knows it's catastrophic. Same number, different meaning.
 
 ### 4.4 Progressive Micro-Labels
 
@@ -221,7 +223,7 @@ Ship **2 default presets** initially. Gate the rest for post-launch validation.
 | Preset | Filters Applied | Rationale | Status |
 |--------|-----------------|-----------|--------|
 | **My Urgent** | Assigned to me + Priority ≥ High | Agent's daily driver | **Ship** |
-| **Needs Owner** | Unassigned + SLA Breached | Manager triage | **Ship** |
+| **Needs Owner** | Unassigned + SLA Breached | Team Lead triage | **Ship** |
 | **Stale Bookings** | Stage = Booking + Days > 7 | Fulfillment coordination | **Gate** — validate workflow volume first |
 | **High Value Pipeline** | Value > $100k + Stage ≠ Booked | Finance review | **Gate** — too speculative without usage data |
 
@@ -292,6 +294,28 @@ Search by destination, customer, agent, or trip ID
 ```
 
 Future: Consider value-range search (`value:>50000`) as advanced syntax.
+
+### 6.5 Sort Behavior Definition
+
+The directive must define how sort interacts with filters, presets, and view profiles:
+
+**Canonical sort options**:
+| Sort Key | Default Direction | Rationale |
+|----------|-------------------|-----------|
+| `priority` | `desc` | Most urgent first |
+| `sla` | `asc` | Most at-risk first |
+| `value` | `desc` | Highest value first |
+| `destination` | `asc` | Alphabetical |
+| `party` | `desc` | Larger groups first |
+| `dates` | `asc` | Soonest first |
+
+**Interaction rules**:
+- Sort is independent of filters and view profiles
+- Presets do NOT override sort; they only set filters
+- View profiles do NOT override sort; they only reorder visible metrics
+- Default sort: `priority` descending
+- Sort state persists to URL query params (`?sort=priority&dir=desc`) and `localStorage`
+- URL sort params take precedence over `localStorage` on load
 
 ---
 
@@ -365,30 +389,54 @@ Map priority to color keys:
 | `frontend/src/hooks/useInboxView.ts` | NEW: localStorage persistence for view state |
 | `frontend/src/lib/inbox-helpers.ts` | NEW: SLA computation, filter serialization |
 
-### 8.3 Type Safety
-
-No changes to `InboxTrip` or `InboxFilters` types. V2 is a pure UI/UX layer on top of existing contracts.
+---
 
 ---
 
 ## 9. Implementation Phases
 
-### Phase 1: Foundation (Card Restructure + Progressive Labels)
-**Effort**: Medium | **Files**: 3-4 new, 1 modified
+**Reordering rationale**: Do semantic correctness before behavioral sugar. Data helpers and contextual SLA affect meaning. Micro-label fade logic and presets are convenience layers that belong last.
 
-1. Extract `TripCard` to standalone component
-2. Implement left accent bar, row grouping, de-emphasized ID
-3. Add progressive micro-labels system (`localStorage` visit counting)
-4. Add persistent tooltips to all badges
-5. Use `STATE_COLORS` tokens throughout
+---
+
+### Phase 1: Semantic Foundation + Data Helpers
+**Effort**: Small | **Files**: 1-2 new
+
+1. Verify runtime payload fields (`flags`, `priorityScore`, `customerName`, `assignedToName`)
+2. Verify `STATE_COLORS`, `CardAccent` imports compile in inbox context
+3. Build `frontend/src/lib/inbox-helpers.ts`:
+   - SLA percentage computation
+   - Filter serialization / deserialization
+   - Sort behavior definitions (see 9.6)
+   - `MICRO_LABEL_THRESHOLD` constant (default: 3)
+4. Expand search logic to include `customerName`, `assignedToName`
+
+**Success criteria**:
+- Runtime payload audit documented (which fields present/absent)
+- Token imports compile without error
+- Helpers unit-tested
+- Search finds trips by customer name and agent name
+
+---
+
+### Phase 2: Card Restructure
+**Effort**: Medium | **Files**: 2 new, 1 modified
+
+1. Extract `TripCard` to standalone component (`frontend/src/components/inbox/TripCard.tsx`)
+2. Implement left accent bar (`CardAccent`), row grouping, de-emphasized trip ID
+3. Implement contextual SLA badge (using helpers from Phase 1)
+4. Implement status row (SLA + assignee + flags)
+5. Use verified design tokens throughout
 
 **Success criteria**:
 - Card renders all existing data with new hierarchy
-- New user sees micro-labels; returning user sees clean badges
+- Contextual SLA displays correctly per stage
 - No visual regressions on existing functionality
 - All tests pass
 
-### Phase 2: Composable Filters
+---
+
+### Phase 3: Composable Filters
 **Effort**: Medium | **Files**: 2-3 new, 1 modified
 
 1. Build `FilterBar` with multi-select dropdowns
@@ -396,53 +444,49 @@ No changes to `InboxTrip` or `InboxFilters` types. V2 is a pure UI/UX layer on t
 3. Add active filter chips with remove functionality
 4. Add URL serialization for filter state
 5. Replace existing tab bar
+6. Define canonical sort behavior (see 9.6)
 
 **Success criteria**:
 - User can combine Priority + SLA + Assignment filters
 - Filter state survives page refresh (URL)
+- Sort state persists to URL and `localStorage`
 - "Clear all" resets to default
 - No performance degradation with 20 trips
 
-### Phase 3: Role-Based Views + Presets
-**Effort**: Medium | **Files**: 3-4 new, 2 modified
+---
 
-1. Build `ViewProfileToggle` with 4 profiles
+### Phase 4: View Profiles
+**Effort**: Small | **Files**: 1-2 new, 1 modified
+
+1. Build `ViewProfileToggle` with 4 profiles (Operations, Team Lead, Finance, Fulfillment)
 2. Implement role-dependent `MetricsRow` ordering
 3. Add `localStorage` persistence for selected profile
-4. Build `QuickPresets` system with 4 default presets
-5. Add preset CRUD (save current filters as new preset)
 
 **Success criteria**:
 - Switching profile reorders metrics instantly
 - Selected profile persists across sessions
+- All 4 profiles render correctly
+
+---
+
+### Phase 5: Onboarding + Presets + Quick Actions + Polish
+**Effort**: Small-Medium | **Files**: 2-3 new, 2 modified
+
+1. Implement progressive micro-labels (`localStorage` visit counting)
+2. Add persistent tooltips to all badges
+3. Implement hover-revealed quick-action chips (Assign, View workspace; Snooze only if backend exists)
+4. Add touch fallback for quick actions (always-visible icon buttons)
+5. Implement 2 default presets (My Urgent, Needs Owner)
+6. Add smooth transitions (200ms, ease)
+7. Keyboard accessibility audit
+8. Mobile responsiveness check
+
+**Success criteria**:
+- New user sees micro-labels; returning user sees clean badges
+- Hover/touch actions visible and clickable
 - Presets apply correct filter combinations
-- Users can save custom presets
-
-### Phase 4: Contextual SLA + Search Expansion
-**Effort**: Small | **Files**: 1 new, 2 modified
-
-1. Add SLA percentage computation using `PipelineStage.slaHours`
-2. Update `SLABadge` to show contextual expression
-3. Expand search to `customerName` and `assignedToName`
-4. Add search hint text
-
-**Success criteria**:
-- Same `daysInCurrentStage` shows different percentages per stage
-- Search finds trips by customer name or agent name
-- No backend changes required
-
-### Phase 5: Polish & Quick Actions
-**Effort**: Small | **Files**: 1 modified
-
-1. Implement hover-revealed quick-action chips
-2. Add smooth transitions (200ms, ease)
-3. Keyboard accessibility audit
-4. Mobile responsiveness check
-
-**Success criteria**:
-- Hover actions visible and clickable
 - Keyboard navigable throughout
-- Mobile layout functional (may stack to single column)
+- Mobile layout functional (single column stack)
 
 ---
 
@@ -453,8 +497,8 @@ No changes to `InboxTrip` or `InboxFilters` types. V2 is a pure UI/UX layer on t
 | Component | Test |
 |-----------|------|
 | `TripCard` | Renders correct row order for each view profile |
-| `TripCard` | Shows micro-labels when visitCount < 3 |
-| `TripCard` | Hides micro-labels when visitCount >= 3 |
+| `TripCard` | Shows micro-labels when visitCount < `MICRO_LABEL_THRESHOLD` |
+| `TripCard` | Hides micro-labels when visitCount >= `MICRO_LABEL_THRESHOLD` |
 | `FilterBar` | Applies multiple filters correctly |
 | `FilterBar` | URL serialization round-trips |
 | `useInboxView` | Persists to localStorage |
@@ -465,8 +509,8 @@ No changes to `InboxTrip` or `InboxFilters` types. V2 is a pure UI/UX layer on t
 | Flow | Test |
 |------|------|
 | Filter → Sort → View Profile | All three states compose correctly |
-| Preset apply → modify → save | Custom preset created and reloads |
-| New user journey | First visit shows labels, 4th visit hides them |
+| Preset apply → clear → URL share | Preset loads, clears, and link shares correctly |
+| New user journey | First visit shows labels, `MICRO_LABEL_THRESHOLD+1` visit hides them |
 
 ### 10.3 Visual Regression
 
@@ -480,7 +524,7 @@ No changes to `InboxTrip` or `InboxFilters` types. V2 is a pure UI/UX layer on t
 If any phase causes issues:
 1. **Phase 1-2**: Feature-flag the new card/filter components. Keep old components in codebase under `_legacy` suffix. Toggle via env var.
 2. **Phase 3-5**: Purely additive. Can be disabled individually.
-3. **Data safety**: No backend changes. Frontend-only. Rollback = revert commit + redeploy.
+3. **Data safety**: Target is frontend-only. If a narrow backend contract extension was needed for SLA data, rollback includes reverting that extension.
 
 ---
 
@@ -510,4 +554,4 @@ Since we have no pre-launch usage data, define success metrics now:
 
 ---
 
-*This directive was written through code-level analysis, persona review, design system audit, and UX research synthesis. All implementation work should reference this document. Questions or ambiguities should be resolved by re-reading the Problem Statement and Design Principles sections before making assumptions.*
+*This directive was written through code-level analysis, persona review, design system audit, and UX research synthesis. It was reviewed against project standards (`IMPLEMENTATION_AGENT_REVIEW_HANDOFF_CHECKLIST.md`, `DESIGN.md`, and persona documents) and revised to address verification gaps, role-model overfitting, and scope discipline. All implementation work should reference this document. Questions or ambiguities should be resolved by re-reading the Problem Statement and Design Principles sections before making assumptions.*

@@ -49,6 +49,15 @@ const DEFAULT_RETRY = 0;
 const DEFAULT_RETRY_DELAY = 1000;
 
 // ============================================================================
+// AUTH HELPERS
+// ============================================================================
+
+function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("access_token");
+}
+
+// ============================================================================
 // CLIENT
 // ============================================================================
 
@@ -91,13 +100,20 @@ class ApiClient {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+        // Build headers with auth token if available
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+          ...fetchOptions.headers,
+        };
+        const token = getAuthToken();
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+
         const response = await fetch(url, {
           ...fetchOptions,
           signal: controller.signal,
-          headers: {
-            "Content-Type": "application/json",
-            ...fetchOptions.headers,
-          },
+          headers,
         });
 
         clearTimeout(timeoutId);

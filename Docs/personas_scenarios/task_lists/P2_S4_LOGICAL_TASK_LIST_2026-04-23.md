@@ -13,3 +13,16 @@
 | P2S4-L-03 | P1 | Open | Define coaching language policy (strict/neutral/supportive, confidence phrasing rules) | Keep junior guidance consistent and reduce confusion |
 | P2S4-L-04 | P1 | Open | Define pre-send policy for critical suitability flags (block vs override with acknowledgment) | Align user safety and business accountability |
 | P2S4-L-05 | P1 | Open | Define customer-communication approval policy for junior-generated drafts | Clarifies what can be sent directly vs needs owner approval |
+
+## Plan to Work (Logical/Product)
+
+1. Define onboarding operating model:
+   - set KPI definitions and measurement cadence (`P2S4-L-01`)
+   - set escalation trigger + SLA matrix for owner intervention (`P2S4-L-02`)
+2. Define communication and safety policy:
+   - coaching tone matrix by confidence band (`P2S4-L-03`)
+   - block/override/acknowledge rules for critical suitability flags (`P2S4-L-04`)
+   - approval policy for junior-to-customer outbound messaging (`P2S4-L-05`)
+3. Operationalize:
+   - publish policy addendum doc and link from P2 scenario
+   - add acceptance checklist so future case studies must reference these approved policies before marking scenario fully complete.

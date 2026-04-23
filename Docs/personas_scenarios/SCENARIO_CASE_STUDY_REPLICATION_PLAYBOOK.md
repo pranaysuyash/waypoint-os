@@ -173,3 +173,9 @@ Use this skill instruction bundle:
 
 Use this report template:
 - `Docs/personas_scenarios/templates/SCENARIO_CASE_STUDY_REPORT_TEMPLATE.md`
+
+
+## Quality reference
+
+Testing philosophy reference:
+- `Docs/personas_scenarios/TESTING_PHILOSOPHY_CASE_STUDIES.md`

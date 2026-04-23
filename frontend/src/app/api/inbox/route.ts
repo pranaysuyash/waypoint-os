@@ -248,7 +248,7 @@ export async function GET(request: NextRequest) {
     const total = spineApiData.total || trips.length;
     
     // Transform each trip to match the frontend inbox expectations
-    const inboxTrips = trips.map(trip => transformTripToInboxFormat(trip));
+    const inboxTrips = trips.map((trip: any) => transformTripToInboxFormat(trip));
     
     // Apply pagination
     const page = parseInt(searchParams.get("page") || "1", 10);

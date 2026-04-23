@@ -1,3 +1,4 @@
+- [Industry Domain Knowledge](industry_domain/INDEX.md) — Core mechanics of travel agencies: roles, vendors, pricing, and compliance.
 - [Product Vision and Model](PRODUCT_VISION_AND_MODEL.md) — The B2B Agency OS thesis and sourcing hierarchy.
 - [Detailed Agent Map](DETAILED_AGENT_MAP.md) — Catalog of all 20+ agents, roles, and v1 stack.
 - [Voice Intake and Orchestration](VOICE_ORCHESTRATION_AND_SESSIONS.md) — 2-screen model, routing loop, and "brackets" logic.
@@ -22,6 +23,7 @@
 - [Architecture Decision: D3 Sourcing Hierarchy (2026-04-18)](ARCHITECTURE_DECISION_D3_SOURCING_HIERARCHY_2026-04-18.md) — Per-agency SourcingPolicy config: tier priority, margin floors, category overrides, supplier preferences, widen search behavior. Implementation blocked on Gap #01. Contract designed configurable from day one.
 - [Architecture Decision: D5 Override Learning (2026-04-18)](ARCHITECTURE_DECISION_D5_OVERRIDE_LEARNING_2026-04-18.md) — Feedback bus connecting D1/D3/D4. Three override categories (decision/suitability/sourcing) with OverrideEvent contract, required rationale, structured tags. Two-phase learning: frequency-based → outcome-based. Suggestions to owner, not auto-adjustments.
 - [Workspace Governance Roadmap (Living, 2026-04-22)](WORKSPACE_GOVERNANCE_ROADMAP_LIVING_2026-04-22.md) — Umbrella roadmap for roles, settings, assignments, escalation, AI workforce governance, and adaptive control loops. Phased by dependency, not scope reduction.
+- **[Onboarding, Auth, Workspace & Multi-Tenant Roadmap (2026-04-23)](ONBOARDING_AUTH_WORKSPACE_MULTI_TENANT_ROADMAP_2026-04-23.md)** — ⭐ **ACTIVE IMPLEMENTATION ROADMAP**. Custom JWT auth, PostgreSQL + SQLAlchemy 2.0 async, full onboarding flow, first-trip experience, team invitation, and multi-tenant isolation. Production-grade phases 0-8.
 - [Settings / Profile Exploration (2026-04-22)](SETTINGS_PROFILE_EXPLORATION_2026-04-22.md) — Clarifies why `/settings` should be a real route-level governance surface instead of a profile-only page or workbench drawer.
 - [Role, Assignment, and AI Agent Governance Exploration (2026-04-22)](ROLE_ASSIGNMENT_AND_AI_AGENT_GOVERNANCE_EXPLORATION_2026-04-22.md) — Exploration pass separating human roles, assignment flow, and AI workforce governance.
 - [Canonical Role & Permission Matrix (2026-04-22)](CANONICAL_ROLE_PERMISSION_MATRIX_2026-04-22.md) — Canonical role catalog, creator bootstrap model, route visibility, and permission matrix for Owner/Admin/SeniorAgent/JuniorAgent/Viewer.
@@ -121,7 +123,7 @@
 - **[GTM & Data Network Effects](GTM_AND_DATA_NETWORK_EFFECTS.md)** — ⭐ GTM strategy, recommendation engines, data sharing: first principles analysis.
 - **[Platform-Led vs White-Label](PLATFORM_LED_VS_WHITE_LABEL.md)** — Re-thought: Why white-label? Be like Calendly/Notion/Typeform instead.
 - **[Business Model Correction](BUSINESS_MODEL_CORRECTION.md)** — You're building the platform FOR agencies, not running an agency.
-- **[Single-Tenant MVP Strategy](SINGLE_TENANT_MVP_STRATEGY.md)** — Start simple: one agency first, add complexity later.
+- **[Single-Tenant MVP Strategy](SINGLE_TENANT_MVP_STRATEGY.md)** — ⚠️ **DEPRECATED** (exploratory draft). Historical reference only. Current direction is multi-tenant with full governance.
 - **[Pricing and Customer Acquisition](PRICING_AND_CUSTOMER_ACQUISITION.md)** — Pricing tiers, free trials, and GTM channels: Facebook groups, host agencies, SEO.
 - **[Pricing Packaging Discussion (Draft, 2026-04-17)](PRICING_PACKAGING_DISCUSSION_DRAFT_2026-04-17.md)** — Working packaging direction: ₹6k default plan (1 owner/admin + 4 team), team packs, and modular add-ons. Explicitly non-final.
 - **[Pilot and Customer Discovery Strategy](PILOT_AND_CUSTOMER_DISCOVERY_STRATEGY.md)** — How to find willing agencies, run discovery calls, and structure pilots.

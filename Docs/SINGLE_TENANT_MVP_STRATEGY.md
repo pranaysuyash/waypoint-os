@@ -1,5 +1,13 @@
 # Single-Tenant MVP Strategy
 
+> **⚠️ DEPRECATED — EXPLORATORY DRAFT (2026-04-13)**
+>
+> This document represents an early exploratory phase and **does not reflect the current architecture direction**. The system is now being built as a **multi-tenant platform** with full workspace governance, comprehensive onboarding, and production-grade auth from the outset.
+>
+> **Current direction**: See [`ONBOARDING_AUTH_WORKSPACE_MULTI_TENANT_ROADMAP_2026-04-23.md`](ONBOARDING_AUTH_WORKSPACE_MULTI_TENANT_ROADMAP_2026-04-23.md) and [`WORKSPACE_GOVERNANCE_ROADMAP_LIVING_2026-04-22.md`](WORKSPACE_GOVERNANCE_ROADMAP_LIVING_2026-04-22.md).
+>
+> This document is preserved for historical reference and contains useful discussion on deployment sequencing and cost constraints that remain relevant.
+
 **Date**: 2026-04-13
 **Purpose**: Simplified architecture for solo developer - one agency first
 **Related**: `BUSINESS_MODEL_CORRECTION.md`, `UX_TECHNICAL_ARCHITECTURE.md`

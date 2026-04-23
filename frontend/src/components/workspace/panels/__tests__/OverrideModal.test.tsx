@@ -1,61 +1,95 @@
-"""
-Frontend tests for Override components (P1-02)
+import { describe, it, expect, vi } from "vitest";
+import React from "react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import { OverrideModal } from "../../modals/OverrideModal";
+import { SuitabilityPanel } from "../SuitabilityPanel";
 
-Tests for:
-- OverrideModal rendering and validation
-- Override reason validation (min 10 chars)
-- Severity dropdown behavior
-- Optimistic UI updates
-"""
+describe("OverrideModal (panel-linked coverage)", () => {
+  const defaultProps = {
+    isOpen: true,
+    flag: {
+      flag: "toddler_water_unsafe",
+      severity: "critical",
+      reason: "Water activities unsafe for toddlers",
+    },
+    tripId: "trip-123",
+    userId: "agent-1",
+    onClose: vi.fn(),
+    onSubmit: vi.fn().mockResolvedValue(undefined),
+  };
 
-import pytest
+  it("renders modal content with flag metadata", () => {
+    render(<OverrideModal {...defaultProps} />);
 
+    expect(screen.getByText("Override Risk Flag")).toBeInTheDocument();
+    expect(screen.getByText(/toddler water unsafe/i)).toBeInTheDocument();
+    expect(screen.getByText("CRITICAL")).toBeInTheDocument();
+  });
 
-class TestOverrideModal:
-    """Test OverrideModal component."""
-    
-    def test_modal_renders_with_flag_info(self):
-        """Modal should render flag name and current severity."""
-        # This would require setting up React Testing Library
-        # For now, verify the component exists and exports correctly
-        pass
-    
-    def test_reason_validation_min_length(self):
-        """Reason field should validate minimum 10 characters."""
-        pass
-    
-    def test_severity_dropdown_shows_valid_options(self):
-        """Downgrade action should show only lower severity options."""
-        pass
-    
-    def test_action_selection_enables_appropriate_fields(self):
-        """Action selection should enable/disable relevant form fields."""
-        pass
+  it("enforces minimum reason length before submit", () => {
+    render(<OverrideModal {...defaultProps} />);
 
+    const textarea = screen.getByPlaceholderText(/minimum 10 characters/i);
+    const submitButton = screen.getByRole("button", { name: /Submit Override/i });
 
-class TestSuitabilityPanelOverride:
-    """Test override controls in SuitabilityPanel."""
-    
-    def test_override_button_shows_for_critical_and_high_flags(self):
-        """Override button should appear for CRITICAL and HIGH severity flags."""
-        pass
-    
-    def test_optimistic_ui_update_on_submit(self):
-        """Flag should be marked as pending when override is submitted."""
-        pass
-    
-    def test_error_toast_on_failed_override(self):
-        """Toast should show error message if override submission fails."""
-        pass
+    fireEvent.change(textarea, { target: { value: "short" } });
+    expect(submitButton).toBeDisabled();
 
+    fireEvent.change(textarea, { target: { value: "Owner approved after manual review" } });
+    expect(submitButton).not.toBeDisabled();
+  });
 
-class TestOverrideIntegration:
-    """Integration tests for override workflow."""
-    
-    def test_override_modal_closes_after_successful_submission(self):
-        """Modal should close when override is successfully submitted."""
-        pass
-    
-    def test_flag_marked_acknowledged_after_override(self):
-        """Flag should be marked as acknowledged after override."""
-        pass
+  it("submits a valid override request payload", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const onClose = vi.fn();
+
+    render(<OverrideModal {...defaultProps} onSubmit={onSubmit} onClose={onClose} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/minimum 10 characters/i), {
+      target: { value: "Owner approved after discussing with customer" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Submit Override/i }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          flag: "toddler_water_unsafe",
+          action: "suppress",
+          overridden_by: "agent-1",
+          scope: "this_trip",
+          original_severity: "critical",
+        })
+      );
+    });
+
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+  });
+});
+
+describe("SuitabilityPanel override controls", () => {
+  const criticalFlags = [
+    {
+      flag: "toddler_water_unsafe",
+      flag_type: "toddler_water_unsafe",
+      severity: "critical" as const,
+      reason: "Water activities unsafe for toddlers",
+      confidence: 0.95,
+    },
+  ];
+
+  it("shows override action for critical flags when tripId is present", () => {
+    render(<SuitabilityPanel flags={criticalFlags} tripId="trip-123" />);
+
+    expect(screen.getByText("Override")).toBeInTheDocument();
+  });
+
+  it("hides override action when tripId is not provided", () => {
+    render(<SuitabilityPanel flags={criticalFlags} />);
+
+    expect(screen.queryByText("Override")).not.toBeInTheDocument();
+  });
+});

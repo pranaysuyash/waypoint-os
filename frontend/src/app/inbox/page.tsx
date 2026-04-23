@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useCallback, memo, useMemo, useEffect } from 'react';
+import { useState, useCallback, memo, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import {
   Briefcase,
   ChevronDown,
@@ -19,11 +18,23 @@ import {
   Flag,
   ArrowUpDown,
   Download,
+  Zap,
+  UserX,
 } from 'lucide-react';
 import { useInboxTrips } from '@/hooks/useGovernance';
-import { getTripRoute } from '@/lib/routes';
 import { InlineError } from '@/components/error-boundary';
-import type { InboxTrip, TripPriority } from '@/types/governance';
+import {
+  tripMatchesQuery,
+  type ViewProfile,
+  getSavedViewProfile,
+  saveViewProfile,
+  roleToViewProfile,
+  viewProfileToRole,
+} from '@/lib/inbox-helpers';
+import { TripCard } from '@/components/inbox/TripCard';
+import { InboxFilterBar, type FilterKey, type RoleKey } from '@/components/inbox/InboxFilterBar';
+import { InboxEmptyState } from '@/components/inbox/InboxEmptyState';
+import type { TripPriority } from '@/types/governance';
 
 type PriorityKey = TripPriority;
 type SLAStatus = 'on_track' | 'at_risk' | 'breached';
@@ -60,148 +71,6 @@ const SORT_OPTIONS: Record<SortKey, { label: string; icon: React.ComponentType<{
   dates: { label: 'Dates', icon: Calendar },
   sla: { label: 'SLA Status', icon: AlertTriangle },
 };
-
-// ============================================================================
-// COMPONENTS
-// ============================================================================
-
-const PriorityBadge = memo(function PriorityBadge({ priority }: { priority: PriorityKey }) {
-  const meta = PRIORITY_META[priority];
-  const Icon = meta.icon;
-  
-  return (
-    <span
-      className='inline-flex items-center gap-1 text-xs'
-      style={{ color: meta.color }}
-    >
-      <Icon className='w-3 h-3' />
-      {meta.label}
-    </span>
-  );
-});
-
-const SLABadge = memo(function SLABadge({ status, daysInStage }: { status: SLAStatus; daysInStage: number }) {
-  const styles = {
-    on_track: { color: '#3fb950', bg: 'rgba(63,185,80,0.1)', label: 'On Track' },
-    at_risk: { color: '#d29922', bg: 'rgba(210,153,34,0.1)', label: `${daysInStage}d` },
-    breached: { color: '#f85149', bg: 'rgba(248,81,73,0.1)', label: `${daysInStage}d overdue` },
-  };
-  
-  const style = styles[status];
-  
-  return (
-    <span
-      className='inline-block px-1.5 py-0.5 rounded text-xs font-medium'
-      style={{ color: style.color, background: style.bg }}
-    >
-      {style.label}
-    </span>
-  );
-});
-
-const TripCard = memo(function TripCard({
-  trip,
-  isSelected,
-  onSelect,
-}: {
-  trip: InboxTrip;
-  isSelected: boolean;
-  onSelect: (id: string, selected: boolean) => void;
-}) {
-  const stageMeta = STAGE_LABELS[trip.stage] || STAGE_LABELS.intake;
-  const slaColor = trip.slaStatus === 'breached' ? '#f85149' : trip.slaStatus === 'at_risk' ? '#d29922' : '#3fb950';
-
-  return (
-    <div
-      className='group relative rounded-xl border bg-[#0f1115] transition-all hover:border-[#30363d] overflow-hidden flex'
-      style={{ borderColor: trip.slaStatus === 'breached' ? 'rgba(248,81,73,0.4)' : '#1c2128' }}
-    >
-      {/* SLA Accent Bar */}
-      <div 
-        className='w-1.5 shrink-0 h-full' 
-        style={{ background: slaColor, opacity: isSelected ? 1 : 0.6 }} 
-      />
-
-      <div className='p-4 flex-1'>
-        {/* Selection Checkbox (moved to better position) */}
-        <button
-          type='button'
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect(trip.id, !isSelected);
-          }}
-          className='absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity'
-        >
-          {isSelected ? (
-            <CheckSquare className='w-4 h-4 text-[#58a6ff]' />
-          ) : (
-            <Square className='w-4 h-4 text-[#484f58]' />
-          )}
-        </button>
-
-        <Link href={getTripRoute(trip.id)} className='block'>
-          <div className='flex items-start justify-between gap-3 mb-1'>
-            <div className='flex flex-col min-w-0'>
-              <span className='text-[14px] font-semibold text-[#e6edf3] truncate leading-tight' title={trip.destination}>
-                {trip.destination}
-              </span>
-              <span className='text-[10px] uppercase tracking-wider text-[#484f58] font-bold mt-0.5'>
-                {trip.tripType} · {trip.id.split('_')[1]}
-              </span>
-            </div>
-            <div className='flex items-center gap-1 shrink-0'>
-              <PriorityBadge priority={trip.priority} />
-            </div>
-          </div>
-
-          <div className='flex items-center gap-3 text-[11px] text-[#8b949e] my-3 py-2 border-y border-[#1c2128]/50'>
-            <div className='flex flex-col gap-0.5'>
-              <span className='text-[10px] text-[#484f58] uppercase font-medium'>Pax</span>
-              <span className='text-[#e6edf3] font-medium'>{trip.partySize}</span>
-            </div>
-            <div className='w-px h-6 bg-[#1c2128]' />
-            <div className='flex flex-col gap-0.5'>
-              <span className='text-[10px] text-[#484f58] uppercase font-medium'>Budget</span>
-              <span className='text-[#58a6ff] font-mono font-medium'>${(trip.value / 1000).toFixed(1)}k</span>
-            </div>
-            <div className='w-px h-6 bg-[#1c2128]' />
-            <div className='flex flex-col gap-0.5 flex-1'>
-              <span className='text-[10px] text-[#484f58] uppercase font-medium'>Dates</span>
-              <span className='text-[#e6edf3] truncate'>{trip.dateWindow}</span>
-            </div>
-          </div>
-
-          <div className='flex items-center justify-between mt-2'>
-            <div className='flex items-center gap-2'>
-              <span
-                className='text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tight'
-                style={{ color: stageMeta.color, background: stageMeta.bg }}
-              >
-                {stageMeta.label}
-              </span>
-              <span className='text-[11px] text-[#484f58] font-mono'>{trip.daysInCurrentStage}d</span>
-            </div>
-            
-            <div className='flex items-center gap-2'>
-              {trip.assignedToName ? (
-                <div className='flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#161b22] border border-[#30363d]'>
-                  <span className='text-[10px] text-[#8b949e]'>
-                    {trip.assignedToName}
-                  </span>
-                </div>
-              ) : (
-                <span className='text-[10px] text-[#d29922] font-bold uppercase italic'>
-                  Unassigned
-                </span>
-              )}
-              <SLABadge status={trip.slaStatus} daysInStage={trip.daysInCurrentStage} />
-            </div>
-          </div>
-        </Link>
-      </div>
-    </div>
-  );
-});
 
 // ============================================================================
 // BULK ACTIONS TOOLBAR
@@ -288,11 +157,18 @@ export default function InboxPage() {
   const searchParams = useSearchParams();
   
   // URL Persistence Sync
-  const activeFilter = (searchParams.get('filter') as any) || 'all';
+  const activeFilter = (searchParams.get('filter') as FilterKey) || 'all';
   const sortBy = (searchParams.get('sort') as SortKey) || 'priority';
   const sortDirection = (searchParams.get('dir') as SortDirection) || 'desc';
   const searchQuery = searchParams.get('q') || '';
-  const currentRole = (searchParams.get('role') as 'ops' | 'mgr') || 'ops';
+
+  // View profile: URL param takes precedence, then localStorage, then default
+  const urlRole = searchParams.get('role') as RoleKey | null;
+  const savedProfile = getSavedViewProfile();
+  const viewProfile: ViewProfile = urlRole
+    ? roleToViewProfile(urlRole)
+    : savedProfile || 'operations';
+  const currentRole: RoleKey = urlRole || (savedProfile ? viewProfileToRole(savedProfile) : 'ops');
 
   const updateParams = useCallback((updates: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -302,6 +178,13 @@ export default function InboxPage() {
     });
     router.push(`?${params.toString()}`);
   }, [router, searchParams]);
+
+  // Persist view profile to localStorage when role changes via URL
+  const handleRoleChange = useCallback((role: RoleKey) => {
+    const profile = roleToViewProfile(role);
+    saveViewProfile(profile);
+    updateParams({ role });
+  }, [updateParams]);
 
   const [selectedTrips, setSelectedTrips] = useState<Set<string>>(new Set());
   const [showSortDropdown, setShowSortDropdown] = useState(false);
@@ -318,31 +201,70 @@ export default function InboxPage() {
     return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
   }, [inboxTrips]);
 
-  const filterCounts = useMemo(() => ({
-    all: inboxTrips.length,
-    pending: inboxTrips.filter((t) => t.slaStatus === 'at_risk').length,
-    review: inboxTrips.filter((t) => t.slaStatus === 'breached' || t.priority === 'critical').length,
-    unassigned: inboxTrips.filter((t) => !t.assignedTo).length,
-  }), [inboxTrips]);
+  // ============================================================================
+  // FILTER CONFIGURATION
+  // ============================================================================
+
+  const filterConfigs = useMemo(() => [
+    { key: 'all' as FilterKey, label: 'All' },
+    { key: 'at_risk' as FilterKey, label: 'At Risk' },
+    { key: 'critical' as FilterKey, label: 'Critical' },
+    { key: 'unassigned' as FilterKey, label: 'Unassigned' },
+  ], []);
+
+  const presetConfigs = useMemo(() => [
+    {
+      key: 'my_urgent',
+      label: 'My Urgent',
+      icon: <Zap className="w-3 h-3" />,
+      test: (t: InboxTrip) =>
+        (t.priority === 'high' || t.priority === 'critical') &&
+        (t.slaStatus === 'at_risk' || t.slaStatus === 'breached'),
+    },
+    {
+      key: 'needs_owner',
+      label: 'Needs Owner',
+      icon: <UserX className="w-3 h-3" />,
+      test: (t: InboxTrip) => !t.assignedTo,
+    },
+  ], []);
+
+  const filterCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      all: inboxTrips.length,
+      at_risk: inboxTrips.filter((t) => t.slaStatus === 'at_risk').length,
+      critical: inboxTrips.filter((t) => t.slaStatus === 'breached' || t.priority === 'critical').length,
+      unassigned: inboxTrips.filter((t) => !t.assignedTo).length,
+    };
+
+    // Preset counts
+    for (const preset of presetConfigs) {
+      counts[preset.key] = inboxTrips.filter(preset.test).length;
+    }
+
+    return counts;
+  }, [inboxTrips, presetConfigs]);
 
   const filtered = useMemo(() => {
     let result = [...inboxTrips];
 
-    if (activeFilter === 'pending') {
+    // Standard filters
+    if (activeFilter === 'at_risk') {
       result = result.filter((t) => t.slaStatus === 'at_risk');
-    } else if (activeFilter === 'review') {
+    } else if (activeFilter === 'critical') {
       result = result.filter((t) => t.slaStatus === 'breached' || t.priority === 'critical');
     } else if (activeFilter === 'unassigned') {
       result = result.filter((t) => !t.assignedTo);
     }
 
+    // Preset filters
+    const activePreset = presetConfigs.find((p) => p.key === activeFilter);
+    if (activePreset) {
+      result = result.filter(activePreset.test);
+    }
+
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter((t) =>
-        t.destination.toLowerCase().includes(query) ||
-        t.id.toLowerCase().includes(query) ||
-        t.tripType.toLowerCase().includes(query)
-      );
+      result = result.filter((t) => tripMatchesQuery(t, searchQuery));
     }
 
     const dir = sortDirection === 'asc' ? 1 : -1;
@@ -372,7 +294,7 @@ export default function InboxPage() {
           return 0;
       }
     });
-  }, [inboxTrips, activeFilter, searchQuery, sortBy, sortDirection]);
+  }, [inboxTrips, activeFilter, searchQuery, sortBy, sortDirection, presetConfigs]);
 
   const handleSelect = useCallback((id: string, selected: boolean) => {
     setSelectedTrips((prev) => {
@@ -388,6 +310,10 @@ export default function InboxPage() {
 
   const handleClearSelection = useCallback(() => {
     setSelectedTrips(new Set());
+  }, []);
+
+  const handleQuickAssign = useCallback((tripId: string) => {
+    setSelectedTrips(new Set([tripId]));
   }, []);
 
   const handleAssign = useCallback((agentId: string) => {
@@ -447,31 +373,11 @@ export default function InboxPage() {
             <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8b949e]' />
             <input
               type='text'
-              placeholder='Search trips...'
+              placeholder='Search destination, customer, agent...'
               value={searchQuery}
               onChange={(e) => updateParams({ q: e.target.value || null })}
               className='w-full pl-9 pr-3 py-2 bg-[#161b22] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]'
             />
-          </div>
-
-          {/* Role Toggle */}
-          <div className='flex items-center bg-[#161b22] border border-[#30363d] rounded-lg p-1'>
-            <button
-              onClick={() => updateParams({ role: 'ops' })}
-              className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all ${
-                currentRole === 'ops' ? 'bg-[#58a6ff] text-[#0d1117]' : 'text-[#8b949e]'
-              }`}
-            >
-              Ops
-            </button>
-            <button
-              onClick={() => updateParams({ role: 'mgr' })}
-              className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all ${
-                currentRole === 'mgr' ? 'bg-[#58a6ff] text-[#0d1117]' : 'text-[#8b949e]'
-              }`}
-            >
-              Mgr
-            </button>
           </div>
 
           <div className='relative'>
@@ -562,33 +468,19 @@ export default function InboxPage() {
       )}
 
       {/* Filters */}
-      <div className='flex items-center gap-1' role='tablist'>
-        {[
-          { key: 'all', label: 'All' },
-          { key: 'pending', label: 'At Risk' },
-          { key: 'review', label: 'Critical' },
-          { key: 'unassigned', label: 'Unassigned' },
-        ].map((f) => (
-          <button
-            key={f.key}
-            onClick={() => updateParams({ filter: f.key })}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              activeFilter === f.key
-                ? 'bg-[#161b22] text-[#e6edf3] border-l-2 border-[#58a6ff]'
-                : 'text-[#8b949e] hover:text-[#e6edf3]'
-            }`}
-          >
-            {f.label}
-            <span className={`tabular-nums px-1.5 py-0.5 rounded-md text-xs ${
-              activeFilter === f.key
-                ? 'bg-[rgba(88,166,255,0.15)] text-[#58a6ff]'
-                : 'bg-[#161b22] text-[#484f58]'
-            }`}>
-              {filterCounts[f.key as keyof typeof filterCounts]}
-            </span>
-          </button>
-        ))}
-      </div>
+      <InboxFilterBar
+        activeFilter={activeFilter}
+        onFilterChange={(filter) => updateParams({ filter })}
+        activeRole={currentRole}
+        onRoleChange={handleRoleChange}
+        filters={filterConfigs.map((f) => ({ ...f, count: filterCounts[f.key] || 0 }))}
+        presets={presetConfigs.map((p) => ({
+          key: p.key,
+          label: p.label,
+          count: filterCounts[p.key] || 0,
+          icon: p.icon,
+        }))}
+      />
 
       {/* Trip Grid */}
       {isLoading && inboxTrips.length === 0 ? (
@@ -612,20 +504,17 @@ export default function InboxPage() {
               trip={trip}
               isSelected={selectedTrips.has(trip.id)}
               onSelect={handleSelect}
+              viewProfile={viewProfile}
+              onAssign={handleQuickAssign}
             />
           ))}
           {filtered.length === 0 && !isLoading && (
-            <div className='col-span-full py-12 text-center'>
-              <p className='text-[#8b949e]'>No trips match this filter.</p>
-              {searchQuery && (
-                <button
-                  onClick={() => updateParams({ q: null })}
-                  className='mt-2 text-sm text-[#58a6ff] hover:text-[#79b8ff]'
-                >
-                  Clear search
-                </button>
-              )}
-            </div>
+            <InboxEmptyState
+              hasSearch={!!searchQuery}
+              activeFilter={activeFilter}
+              onClearSearch={() => updateParams({ q: null })}
+              onClearFilter={() => updateParams({ filter: null })}
+            />
           )}
         </div>
       )}
