@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const ANALYTICS_SERVICE_URL = process.env.ANALYTICS_SERVICE_URL || "http://127.0.0.1:8000";
+const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const response = await fetch(
-      `${ANALYTICS_SERVICE_URL}/analytics/alerts?range=${range}`,
+      `${SPINE_API_URL}/analytics/alerts?range=${range}`,
       {
         cache: "no-store",
       }
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     
     // Forward to spine-api
     const response = await fetch(
-      `${process.env.ANALYTICS_SERVICE_URL || "http://127.0.0.1:8000"}/analytics/alerts/${alertId}/dismiss`,
+      `${SPINE_API_URL}/analytics/alerts/${encodeURIComponent(alertId)}/dismiss`,
       {
         method: "POST",
         headers: {

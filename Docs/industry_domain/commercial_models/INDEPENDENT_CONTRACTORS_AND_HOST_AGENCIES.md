@@ -1,37 +1,29 @@
-# Domain Knowledge: Independent Contractors & Host Agencies
+# INDUSTRY_DOMAIN: Independent Contractors & Host Agencies
 
-**Category**: Quality, Resilience & Gig Economy  
-**Focus**: The economics and logistics of the "Freelance" travel agent world.
+## 1. Overview
+The "Home-Based Agent" or **Independent Contractor (IC)** model is the fastest-growing segment of the travel industry. ICs operate their own businesses but "Host" their bookings through a larger **Host Agency** to gain access to GDS systems, higher commission tiers, and insurance.
 
----
+## 2. Commercial Structure
+### A. Commission Splits
+- Typical splits range from 70/30 to 90/10 in favor of the IC, depending on fees and volume.
+- Host Agency provides the "PCC" (Pseudo City Code) and back-office support.
 
-## 1. The Host Agency Model
-- **Logic**: A large agency (The Host) provides the IATA number, GDS access, and backend accounting.
-- **The IC**: The Independent Contractor (Freelancer) brings the clients and manages the bookings.
-- **Split**: Usually 70/30 or 80/20 (IC gets the larger share).
+### B. Liability & Insurance
+- "Errors & Omissions" (E&O) insurance: Who is covered? The Host often provides a group policy, but the IC may need their own.
+- Contractual Indemnity: Protecting the Host from the IC's professional blunders.
 
----
+### C. The "Host" Tech Stack
+- Mid-office systems designed for multi-tenant users (e.g., Travefy, ClientBase, TESS).
+- Commission tracking and automated payout engines.
 
-## 2. E&O Insurance (Errors & Omissions)
-- **Logic**: If an IC forgets to book a flight and the client sues for $100k, who pays?
-- **SOP**: The IC must have their own **E&O Insurance**, or be "Covered" by the Host Agency's policy for a fee.
+## 3. Operational Workflow
+- **The Booking Flow**: IC researches -> IC books in Host's GDS -> Host's back-office captures data -> Host receives commission -> Host pays IC.
+- **Support Tiers**: Hosts provide "Ticketing Desks" for ICs who aren't GDS-proficient.
 
----
+## 4. Role in Frontier OS
+- **The "Virtual Agency" Platform**: Providing a "White-Label OS" for ICs to run their own high-end boutique agencies using the Frontier Engine.
+- **Micro-Agency Orchestration**: The OS can manage hundreds of ICs as "Satellites", handling their complex commission splits and compliance automatically.
 
-## 3. Commission "Clawbacks"
-- **Logic**: A trip is booked, commission is paid, but the client cancels and gets a refund. The airline "Claws back" the commission.
-- **SOP**: The Host Agency deducts the clawback from the IC's next "Pay Cycle."
-
----
-
-## 4. Branding vs. Reality
-- **Logic**: The client thinks they are dealing with "VVIP Travels Inc," but it's just one person (the IC) working from their home.
-- **SOP**: The IC uses the Host Agency's **"White Label"** documents (Itineraries, Invoices) to maintain a professional image.
-
----
-
-## 5. Proposed Scenarios
-- **The "Rogue" IC**: An IC takes a $20k cash payment from a client and "Disappears." The Host Agency (IATA holder) is liable for the booking. The Host must have a **"Bonded IC"** policy.
-- **The "Expired" Insurance**: An IC's E&O insurance expires. A claim comes in. The Host Agency must "Freeze" the IC's GDS access immediately.
-- **Host Bankruptcy**: The Host Agency goes bankrupt. 500 ICs lose access to their GDS and their commissions. The ICs must "Pivot" their PNRs to a new Host Agency via a **"Bulk PNR Migration"**.
-- **The "Service Level" Conflict**: An IC is on vacation and their client has an emergency. The Host Agency's "After Hours" team must step in to help, but they don't know the client's "Soft Preferences."
+## 5. Cross-Reference
+- [GLOBAL_AGENCY_MODELS.md](../agency_operations/GLOBAL_AGENCY_MODELS.md)
+- [PRICING_PACKAGES_AND_FEE_STRUCTURES.md](../commercial_models/PRICING_PACKAGES_AND_FEE_STRUCTURES.md)

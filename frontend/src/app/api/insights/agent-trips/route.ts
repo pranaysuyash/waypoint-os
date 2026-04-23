@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const ANALYTICS_SERVICE_URL = process.env.ANALYTICS_SERVICE_URL || 'http://127.0.0.1:8000';
+const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 
 interface TripData {
   tripId: string;
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const response = await fetch(
-      `${ANALYTICS_SERVICE_URL}/analytics/agent/${agentId}/drill-down?metric=${metric}`,
+      `${SPINE_API_URL}/analytics/agent/${encodeURIComponent(agentId)}/drill-down?metric=${metric}`,
       {
         cache: 'no-store',
       }

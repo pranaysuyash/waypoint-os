@@ -1,39 +1,30 @@
-# Domain Knowledge: Supply Chain Audits & Quality Control
+# INDUSTRY_DOMAIN: Supply Chain Audits & Quality Control
 
-**Category**: Quality, Resilience & Gig Economy  
-**Focus**: Verifying that suppliers (Hotels, Ground, Air) actually deliver the "VIP Experience" promised.
+## 1. Overview
+The travel supply chain is fragmented. A travel agency is often held responsible for the failures of a third-party supplier (hotel, transfer, airline). **Supply Chain Audits & Quality Control (QC)** are the mechanisms by which agencies ensure their partners meet the "Agency Standard" for safety, sanitation, and service.
 
----
+## 2. Key Components
+### A. The "Mystery Shopper" Program
+- Agencies send anonymous auditors to test the end-to-end experience (e.g., booking a transfer, checking in, using the spa).
+- Focus on "Friction Points" and "Brand Alignment".
 
-## 1. The "Mystery Shopper" Protocol
-- **Logic**: Hotels often promise "Renovated Suites" but provide "Old" ones.
-- **SOP**: The agency hires an "Audit Agent" to check-in as a normal guest 48 hours before the VVIP arrival.
-- **Checklist**:
-    - **Acoustics**: decibel level in the bedroom.
-    - **Connectivity**: Real-world Wi-Fi speed (Up/Down).
-    - **Service**: Time taken for "Room Service" to arrive.
+### B. Sanitation & Safety Audits
+- Post-pandemic standards for air filtration, surface cleaning, and contactless service.
+- Verification of local fire safety, pool safety, and food hygiene certificates (especially in emerging markets).
 
----
+### C. SLA (Service Level Agreement) Monitoring
+- Tracking response times for booking confirmations, refund processing, and complaint resolution.
+- Penalties or "Preferred Status" removal for consistent SLA breaches.
 
-## 2. The "Suitability" Certification
-- **Logic**: A hotel may be "Luxury" but not "Child-friendly" or "Accessibility-certified."
-- **SOP**: The agency maintains its own **"Internal Ratings"** (e.g., "The G-Rating" for Security) that override the public 5-star rating.
+## 3. Operational Logic
+- **Risk-Based Auditing**: Prioritize audits for high-volume suppliers or those in high-risk jurisdictions.
+- **Supplier Scorecards**: Aggregated data from traveler feedback, agent reports, and physical audits.
+- **Remediation Workflows**: Giving a supplier a chance to fix a "Failed" audit before termination.
 
----
+## 4. Role in Frontier OS
+- **Autonomous Auditor Deployment**: The OS can trigger "Audit Requests" to local partners automatically based on declining CSAT (Customer Satisfaction) scores.
+- **Real-Time Compliance Sync**: Digital certificates are synced to the OS; if a hotel's insurance expires, the OS automatically flags/blocks new bookings.
 
-## 3. Ground Transport "Vehicle Audit"
-- **Logic**: A local car company says they have a "New S-Class" but sends a 5-year-old E-Class.
-- **SOP**: Mandatory "Photos of the License Plate and Odometer" sent to the agent 2 hours before the pickup.
-
----
-
-## 4. Food & Allergy Verification
-- **SOP**: For clients with lethal allergies, the agent must speak directly with the **"Executive Chef"** (not just the waiter) to verify the "Cross-contamination" protocols.
-
----
-
-## 5. Proposed Scenarios
-- **The "Stale" Suite**: A hotel provides a room that smells like smoke to a non-smoking VVIP. The agent must have the **"Audit Report"** from the 48-hour check-in to prove the hotel failed the quality check.
-- **The "Broken" Wi-Fi**: A client needs to trade stocks at 4 PM. The hotel Wi-Fi is 1Mbps. The agent must have a **"Mobile Hotspot"** courier-delivered to the hotel room within 30 minutes.
-- **Vehicle Swap Scam**: The driver arrives in a different car than promised. The agent must "Cancel" the trip and use the **"Secondary Backup Driver"** who is on 15-minute standby.
-- **The "Allergy" Miscommunication**: The chef says "No nuts," but the dessert contains almond flour. The agent must have the **"Ingredient List"** pre-vetted by a medical consultant.
+## 5. Cross-Reference
+- [CUSTOMER_EXCELLENCE_PROTOCOLS.md](../agency_operations/CUSTOMER_EXCELLENCE_PROTOCOLS.md)
+- [THE_TRAVEL_SUPPLY_CHAIN_PIPE.md](../supplier_ecosystem/THE_TRAVEL_SUPPLY_CHAIN_PIPE.md)

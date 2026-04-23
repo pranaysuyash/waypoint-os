@@ -1,37 +1,29 @@
-# Domain Knowledge: Scientific Exploration & Sensitive Samples
+# INDUSTRY_DOMAIN: Scientific Exploration & Sensitive Samples
 
-**Category**: Quality, Resilience & Gig Economy  
-**Focus**: Traveling with isotopes, bio-samples, and deep-sea cores.
+## 1. Overview
+Moving scientists and their equipment is complex; moving their **Samples** (Biological, Geological, Chemical) is a high-stakes logistical nightmare. This vertical requires deep knowledge of customs, dangerous goods regulations, and cold-chain integrity.
 
----
+## 2. Technical Logistics
+### A. The "Cold-Chain" Chain of Custody
+- **Dry Ice / Liquid Nitrogen Logistics**: Ensuring constant re-icing during long-haul transits.
+- **Data Loggers**: Real-time temperature and shock monitoring integrated into the PNR/OS.
 
-## 1. Dangerous Goods (DGR) Class 7
-- **Logic**: Radioactive isotopes for research.
-- **SOP**: Mandatory **"Lead-lined"** containers. Coordination with the airline's "Dangerous Goods" desk.
-- **Tracking**: Real-time radiation monitoring during transit.
+### B. Regulatory & Permit Maze
+- **ATA Carnets**: For scientific equipment (telescopes, sensors) to move across borders without duty.
+- **CITES & Nagoya Protocol**: Ensuring samples (e.g., rare plants, DNA) are moved legally and ethically.
+- **Dangerous Goods (DG)**: Handling isotopes, pressurized canisters, or hazardous chemicals.
 
----
+### C. The "On-Board Scientist" Protocol
+- Many samples require a scientist to "Chaperone" them in the cabin (e.g., hand-carrying sensitive embryos or ice cores).
 
-## 2. Cold Chain Persistence (Liquid Nitrogen)
-- **Logic**: Bio-samples (DNA, Virus strains) must stay at -80°C or -196°C.
-- **SOP**: The agent coordinates **"Dry Shipper"** rentals (de-war flasks) and ensures the airline allows "Venting" of nitrogen gas.
+## 3. Operational Workflow
+- **Pre-Clearance**: Coordination with airport customs and agricultural inspectors *before* arrival.
+- **Dedicated Handling**: Avoiding the standard cargo-belt; "Hand-to-Hand" transfers between plane and lab-van.
 
----
+## 4. Role in Frontier OS
+- **Sample-Tracking Module**: A specialized "Inventory Type" in the OS for non-human cargo that has its own "Itinerary" and "Health Status".
+- **Permit Auto-Verification**: AI-driven scanning of permit documents against the latest global regulations for sensitive materials.
 
-## 3. CITES & Nagoya Protocol
-- **Logic**: Moving biological material across borders (e.g., a rare orchid or a soil sample).
-- **SOP**: The agent ensures the traveler has the **"ABS" (Access and Benefit Sharing)** permit to avoid "Bio-piracy" charges.
-
----
-
-## 4. "Research" Fares & Permits
-- **Logic**: Scientists traveling on limited grants.
-- **SOP**: Accessing **"Missionary/Humanitarian"** fares for research expeditions. Securing "Scientific Visas" that allow for "Field Work" (different from standard Tourist/Business visas).
-
----
-
-## 5. Proposed Scenarios
-- **The "Warm" Sample**: A "Dry Shipper" is delayed in a 40°C warehouse. The samples are worth 5 years of research. The agent must coordinate an **"Emergency Recharge"** of liquid nitrogen at the transit airport.
-- **Customs "Seizure" of DNA**: Customs seizes a box of blood samples because the "Nagoya Permit" is in the wrong language. The agent must provide a **"Certified Translation"** within 2 hours.
-- **Isotope Expiry**: A radioactive sample has a "Half-life" of 24 hours. The flight is cancelled. The agent must find a **"Private Charter"** immediately; otherwise, the sample becomes useless.
-- **The "Bio-piracy" Arrest**: A scientist is arrested for carrying "Local Seeds" in their luggage. The agent must coordinate with the **"Embassy Science Attaché"** to prove the research is legal.
+## 5. Cross-Reference
+- [ON_BOARD_COURIER_OBC_OPERATIONS.md](../specialized_logistics/ON_BOARD_COURIER_OBC_OPERATIONS.md)
+- [ACADEMIC_AND_RESEARCH_LOGISTICS.md](../specialized_logistics/ACADEMIC_AND_RESEARCH_LOGISTICS.md)

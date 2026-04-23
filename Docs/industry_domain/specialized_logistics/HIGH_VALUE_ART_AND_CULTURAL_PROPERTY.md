@@ -1,36 +1,28 @@
-# Domain Knowledge: High-Value Art & Cultural Property
+# INDUSTRY_DOMAIN: High-Value Art & Cultural Property
 
-**Category**: Quality, Resilience & Gig Economy  
-**Focus**: Traveling with $50M paintings, antiquities, and "Non-fungible" cultural assets.
+## 1. Overview
+When a museum or a private collector moves a $100M painting, they don't call FedEx. They call specialized **Fine Art Couriers**. This domain involves extreme security, climate control, and specialized insurance ("Nail-to-Nail" coverage).
 
----
+## 2. Core Logistics
+### A. Climate & Environment Control
+- Constant 20°C / 50% Humidity environments for sensitive canvases or manuscripts.
+- Vibration-dampened crates and air-ride trucks.
 
-## 1. Climate-Controlled "Couriering"
-- **Logic**: A canvas cannot tolerate humidity spikes or vibrations.
-- **SOP**: The agent coordinates a **"Tarmac-side"** handover. The art never goes through the standard luggage belt. It travels in a "Crate" with a dedicated "Art Courier" who sits next to it (or in the hold with a real-time sensor link).
+### B. Security & Escorts
+- **"Armored-to-Airport"**: Armed transport from the vault to the tarmac.
+- **Airport Tarmac Access**: Specialized permits for couriers to stay with the art until the cargo door is sealed.
 
----
+### C. The "Art Courier" Passenger
+- Professional art handlers who fly in the same plane (often in Business/First) to monitor the cargo manifest and handle the "Last Mile" installation.
 
-## 2. "Immunity from Seizure"
-- **Logic**: Art traveling for an exhibition.
-- **SOP**: The agent ensures the artwork has a **"Certificate of Immunity"** (under the Immunity from Seizure Act) so it cannot be legally confiscated by a local court while in the country.
+## 3. Financial & Legal
+- **"Nail-to-Nail" Insurance**: Insurance that starts when the art is taken off the wall and ends when it is hung at the destination.
+- **Customs Valuation & Bonds**: Managing the temporary import/export of high-value cultural assets.
 
----
+## 4. Role in Frontier OS
+- **Asset-Manifest Integration**: Linking the "Art Asset" PNR to the "Courier" PNR in a single parent "Event".
+- **Vibration/Humidity Telemetry**: Streaming sensor data from the crate directly into the agency's monitoring dashboard.
 
-## 3. Insurance "Nail-to-Nail"
-- **Logic**: Coverage from the moment it leaves the wall in Paris to the moment it is hung in New York.
-- **SOP**: The agent must verify the **"Consignment Agreement"** and the "Condition Report" at every handover point.
-
----
-
-## 4. CITES (Ivory/Tortoiseshell) in Art
-- **Logic**: Antique instruments or paintings with ivory frames.
-- **SOP**: The agent must secure an **"Antique Certificate"** to bypass modern ivory bans.
-
----
-
-## 5. Proposed Scenarios
-- **The "Humidity" Alert**: The sensor inside the $10M painting's crate shows a 20% spike in humidity. The agent must notify the **"Conservation Team"** and the insurance underwriter immediately.
-- **Customs "Antique" Dispute**: Customs claims a "17th Century" map is a "Modern Fake" and tries to charge 20% import duty. The agent must produce the **"Museum Provenance"** and "Expert Appraisal."
-- **The "Stolen" Provenance**: A client buys a painting at an auction. While in transit, it is flagged as "Nazi Looted Art." The agent must "Freeze" the shipment and coordinate with the **"Interpol Art Crime"** unit.
-- **Crate Damage**: The courier notices a "Crack" in the crate during transit. The agent must initiate the **"Emergency Conservation Protocol"** and stop the transit until an expert arrives.
+## 5. Cross-Reference
+- [HIGH_VALUE_ASSET_TRANSPORT_ART_INSTRUMENTS.md](../specialized_logistics/HIGH_VALUE_ASSET_TRANSPORT_ART_INSTRUMENTS.md)
+- [SUPERYACHT_AND_PRIVATE_ISLAND_LOGISTICS.md](../specialized_logistics/SUPERYACHT_AND_PRIVATE_ISLAND_LOGISTICS.md)

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const ANALYTICS_SERVICE_URL = process.env.ANALYTICS_SERVICE_URL || "http://127.0.0.1:8000";
+const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const range = searchParams.get("range") || "30d";
 
   try {
-    const response = await fetch(`${ANALYTICS_SERVICE_URL}/analytics/team?range=${range}`, {
+    const response = await fetch(`${SPINE_API_URL}/analytics/team?range=${range}`, {
       cache: "no-store",
     });
 
