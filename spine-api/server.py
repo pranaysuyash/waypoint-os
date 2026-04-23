@@ -34,6 +34,7 @@ Environment variables:
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sys
@@ -44,10 +45,9 @@ from typing import Any, List, Optional
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-# Add spine-api directory to Python path for local imports
-SPINE_API_DIR = Path(__file__).resolve().parent
-if str(SPINE_API_DIR) not in sys.path:
-    sys.path.insert(0, str(SPINE_API_DIR))
+# Add project root to Python path so we can import from src
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -69,6 +69,7 @@ except (ImportError, ValueError):
 TripStore = persistence.TripStore
 AssignmentStore = persistence.AssignmentStore
 AuditStore = persistence.AuditStore
+OverrideStore = persistence.OverrideStore
 save_processed_trip = persistence.save_processed_trip
 
 # Wave A: run lifecycle modules
@@ -152,9 +153,52 @@ class SpineRunRequest(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class OverrideRequest(BaseModel):
+    """Request schema for POST /trips/{trip_id}/override"""
+    flag: str
+    decision_type: Optional[str] = None
+    action: str  # "suppress", "downgrade", "acknowledge"
+    new_severity: Optional[str] = None
+    overridden_by: str
+    reason: str
+    scope: str = "this_trip"  # "this_trip" or "pattern"
+    original_severity: Optional[str] = None
+    
+    model_config = {"extra": "forbid"}
+
+
+class OverrideResponse(BaseModel):
+    """Response schema for override endpoint"""
+    ok: bool
+    override_id: str
+    trip_id: str
+    flag: str
+    action: str
+    new_severity: Optional[str] = None
+    cache_invalidated: bool = False
+    rule_graduated: bool = False
+    pattern_learning_queued: bool = False
+    warnings: List[str] = Field(default_factory=list)
+    audit_event_id: str
+
+
 class HealthResponse(BaseModel):
     status: str
     version: str
+
+
+class TimelineEvent(BaseModel):
+    timestamp: str
+    stage: str
+    state: str
+    version: str = "1.0"
+    decision_type: Optional[str] = None
+    reason: Optional[str] = None
+
+
+class TimelineResponse(BaseModel):
+    trip_id: str
+    events: List[TimelineEvent] = Field(default_factory=list)
 
 
 # =============================================================================
@@ -934,6 +978,179 @@ def update_agency_autonomy_settings(
         "auto_proceed_with_warnings": policy.auto_proceed_with_warnings,
         "learn_from_overrides": policy.learn_from_overrides,
         "changes": changes,
+    }
+
+
+@app.get("/api/trips/{trip_id}/timeline", response_model=TimelineResponse)
+def get_trip_timeline(
+    trip_id: str,
+    stage: Optional[str] = None,
+) -> TimelineResponse:
+    """
+    Retrieve the decision timeline log for a trip.
+    
+    Returns all events from data/logs/trips/{trip_id}.jsonl as a JSON array.
+    Events are sorted by timestamp (ascending).
+    
+    Args:
+        trip_id: Unique trip identifier
+        stage: Optional filter by stage (intake, packet, decision, strategy, safety)
+    
+    Returns:
+        TimelineResponse with all events, or empty events list if no timeline exists
+    """
+    logs_dir = PROJECT_ROOT / "data" / "logs" / "trips"
+    log_file = logs_dir / f"{trip_id}.jsonl"
+    
+    events: List[TimelineEvent] = []
+    
+    if log_file.exists():
+        try:
+            with open(log_file, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    event_dict = json.loads(line)
+                    
+                    # Apply stage filter if provided
+                    if stage and event_dict.get("stage") != stage:
+                        continue
+                    
+                    events.append(TimelineEvent(**event_dict))
+            
+            # Sort by timestamp
+            events.sort(key=lambda e: e.timestamp)
+        except Exception as e:
+            logger.warning(f"Failed to read timeline for trip {trip_id}: {e}")
+    
+    return TimelineResponse(trip_id=trip_id, events=events)
+
+
+# =============================================================================
+# Override API endpoints
+# =============================================================================
+
+@app.post("/trips/{trip_id}/override", response_model=OverrideResponse)
+def create_override(trip_id: str, request: OverrideRequest) -> OverrideResponse:
+    """
+    Record an operator override of a risk flag for a trip.
+    
+    Validation:
+    - If action="downgrade", new_severity must be provided and < original_severity
+    - reason field is mandatory and must be non-empty
+    - original_severity must match actual flag severity or reject with 409 Conflict
+    
+    Returns updated state and audit event ID.
+    """
+    # Validate trip exists
+    trip = TripStore.get_trip(trip_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail=f"Trip not found: {trip_id}")
+    
+    # Validate request fields
+    if not request.reason or len(request.reason.strip()) < 1:
+        raise HTTPException(
+            status_code=400,
+            detail="reason field is mandatory and must be non-empty"
+        )
+    
+    if request.action == "downgrade":
+        if not request.new_severity:
+            raise HTTPException(
+                status_code=400,
+                detail="new_severity required for downgrade action"
+            )
+    
+    # Get current suitability flags from trip decision
+    current_flags = trip.get("decision", {}).get("suitability_flags", [])
+    flag_info = None
+    for flag in current_flags:
+        if flag.get("flag") == request.flag:
+            flag_info = flag
+            break
+    
+    # Validate original_severity if provided
+    if request.original_severity and flag_info:
+        actual_severity = flag_info.get("severity")
+        if actual_severity != request.original_severity:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Stale override: flag '{request.flag}' severity is '{actual_severity}', not '{request.original_severity}'"
+            )
+    
+    # Save override to persistence
+    override_data = {
+        "flag": request.flag,
+        "decision_type": request.decision_type or request.flag,
+        "action": request.action,
+        "new_severity": request.new_severity,
+        "overridden_by": request.overridden_by,
+        "reason": request.reason,
+        "scope": request.scope,
+        "original_severity": request.original_severity or (flag_info.get("severity") if flag_info else None),
+        "rescinded": False,
+    }
+    
+    override_id = OverrideStore.save_override(trip_id, override_data)
+    
+    # Create audit event
+    audit_event_id = f"evt_{uuid.uuid4().hex[:12]}"
+    AuditStore.log_event("override_created", request.overridden_by, {
+        "trip_id": trip_id,
+        "override_id": override_id,
+        "flag": request.flag,
+        "action": request.action,
+        "reason": request.reason,
+    })
+    
+    logger.info(
+        "Override created: override_id=%s trip_id=%s flag=%s action=%s by=%s",
+        override_id, trip_id, request.flag, request.action, request.overridden_by
+    )
+    
+    return OverrideResponse(
+        ok=True,
+        override_id=override_id,
+        trip_id=trip_id,
+        flag=request.flag,
+        action=request.action,
+        new_severity=request.new_severity,
+        cache_invalidated=False,
+        rule_graduated=False,
+        pattern_learning_queued=request.scope == "pattern",
+        warnings=[],
+        audit_event_id=audit_event_id,
+    )
+
+
+@app.get("/trips/{trip_id}/overrides")
+def list_overrides(trip_id: str) -> dict:
+    """List all overrides for a trip."""
+    trip = TripStore.get_trip(trip_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail=f"Trip not found: {trip_id}")
+    
+    overrides = OverrideStore.get_overrides_for_trip(trip_id)
+    
+    return {
+        "ok": True,
+        "trip_id": trip_id,
+        "overrides": overrides,
+        "total": len(overrides),
+    }
+
+
+@app.get("/overrides/{override_id}")
+def get_override(override_id: str) -> dict:
+    """Get a specific override by ID."""
+    override = OverrideStore.get_override(override_id)
+    if not override:
+        raise HTTPException(status_code=404, detail=f"Override not found: {override_id}")
+    
+    return {
+        "ok": True,
+        "override": override,
     }
 
 

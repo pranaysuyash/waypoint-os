@@ -82,6 +82,7 @@ data/trips/trip_seed_*.json
 # Keep fixture-style files tracked separately if needed; ignore runtime trip artifacts.
 data/trips/trip_*.json
 data/runs/
+data/logs/trips
 
 # Data files — shadow mode runtime outputs
 data/shadow/outputs/

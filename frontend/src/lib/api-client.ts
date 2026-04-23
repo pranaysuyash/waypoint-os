@@ -311,6 +311,50 @@ export async function submitTripReviewAction(
 }
 
 // ============================================================================
+// OVERRIDE API (P1-02: Agent Feedback Loop)
+// ============================================================================
+
+export interface OverrideRequest {
+  flag: string;
+  decision_type?: string;
+  action: "suppress" | "downgrade" | "acknowledge";
+  new_severity?: string;
+  overridden_by: string;
+  reason: string;
+  scope: "this_trip" | "pattern";
+  original_severity?: string;
+}
+
+export interface OverrideResponse {
+  ok: boolean;
+  override_id: string;
+  trip_id: string;
+  flag: string;
+  action: string;
+  new_severity?: string;
+  cache_invalidated: boolean;
+  rule_graduated: boolean;
+  pattern_learning_queued: boolean;
+  warnings: string[];
+  audit_event_id: string;
+}
+
+export async function submitOverride(
+  tripId: string,
+  request: OverrideRequest
+): Promise<OverrideResponse> {
+  return api.post<OverrideResponse>(`/api/trips/${tripId}/override`, request);
+}
+
+export async function getOverrides(tripId: string): Promise<{ ok: boolean; trip_id: string; overrides: any[]; total: number }> {
+  return api.get(`/api/trips/${tripId}/overrides`);
+}
+
+export async function getOverride(overrideId: string): Promise<{ ok: boolean; override: any }> {
+  return api.get(`/api/overrides/${overrideId}`);
+}
+
+// ============================================================================
 // SCENARIOS API (already exists, just re-exporting)
 // ============================================================================
 

@@ -194,6 +194,66 @@ personas_scenarios/
 │   └── 1 real flow scenario: Experience booking conflicts
 ├── ADDITIONAL_SCENARIOS_85_FINANCIAL_REFUND_TIMELINE_COMMUNICATION.md
 │   └── 1 real flow scenario: Financial refund timeline communication
+├── ADDITIONAL_SCENARIOS_86_HIGH_ALTITUDE_ACCLIMATIZATION_GUIDANCE.md
+│   └── 1 real flow scenario: High-altitude acclimatization guidance
+├── ADDITIONAL_SCENARIOS_87_BUSINESS_LEISURE_BLEND_PLAN.md
+│   └── 1 real flow scenario: Business-leisure blend plan
+├── ADDITIONAL_SCENARIOS_88_VENDOR_CONTRACT_AUDIT_BEFORE_BOOKING.md
+│   └── 1 real flow scenario: Vendor contract audit before booking
+├── ADDITIONAL_SCENARIOS_89_VIP_COMPLAINT_TRIAGE.md
+│   └── 1 real flow scenario: VIP complaint triage
+├── ADDITIONAL_SCENARIOS_90_SEASONAL_PACKING_CHECKLIST.md
+│   └── 1 real flow scenario: Seasonal packing checklist
+├── ADDITIONAL_SCENARIOS_91_PRIVATE_JET_OR_VIP_TRANSFER_COORDINATION.md
+│   └── 1 real flow scenario: Private jet or VIP transfer coordination
+├── ADDITIONAL_SCENARIOS_92_CHILD_FRIENDLY_ACTIVITIES_SCORING.md
+│   └── 1 real flow scenario: Child-friendly activities scoring
+├── ADDITIONAL_SCENARIOS_93_DELIVERY_OF_PHYSICAL_TRAVEL_DOCS.md
+│   └── 1 real flow scenario: Delivery of physical travel documents
+├── ADDITIONAL_SCENARIOS_94_TRIP_CONCIERGE_POST_BOOKING_CARE.md
+│   └── 1 real flow scenario: Trip concierge post-booking care
+├── ADDITIONAL_SCENARIOS_95_VACATION_RENTAL_CONTRACT_REVIEW.md
+│   └── 1 real flow scenario: Vacation rental contract review
+├── ADDITIONAL_SCENARIOS_96_CORPORATE_TRAVEL_POLICY_APPROVAL.md
+│   └── 1 real flow scenario: Corporate travel policy approval
+├── ADDITIONAL_SCENARIOS_97_MOBILE_SIM_AND_E_SIM_SETUP.md
+│   └── 1 real flow scenario: Mobile SIM and eSIM setup
+├── ADDITIONAL_SCENARIOS_98_MEDICAL_EVACUATION_READINESS.md
+│   └── 1 real flow scenario: Medical evacuation readiness
+├── ADDITIONAL_SCENARIOS_99_POST_TRIP_LOYALTY_NURTURE.md
+│   └── 1 real flow scenario: Post-trip loyalty nurture
+├── ADDITIONAL_SCENARIOS_100_GROUP_SEAT_ASSIGNMENT_COORDINATION.md
+│   └── 1 real flow scenario: Group seat assignment coordination
+├── ADDITIONAL_SCENARIOS_101_PERSONAL_SECURITY_AND_BODYGUARD_SERVICE.md
+│   └── 1 real flow scenario: Personal security and bodyguard service
+├── ADDITIONAL_SCENARIOS_102_DRONE_PERMISSION_AND_FILMING_COORDINATION.md
+│   └── 1 real flow scenario: Drone permission and filming coordination
+├── ADDITIONAL_SCENARIOS_103_CHRONIC_MEDICATION_REFILL_ABROAD.md
+│   └── 1 real flow scenario: Chronic medication refill abroad
+├── ADDITIONAL_SCENARIOS_104_CONCERT_FESTIVAL_CAMPING_LOGISTICS.md
+│   └── 1 real flow scenario: Concert or festival camping logistics
+├── ADDITIONAL_SCENARIOS_105_PRIVACY_COMPLIANCE_AND_DATA_SHARING.md
+│   └── 1 real flow scenario: Privacy compliance and data sharing
+├── ADDITIONAL_SCENARIOS_106_PANDEMIC_REENTRY_REQUIREMENTS.md
+│   └── 1 real flow scenario: Pandemic reentry requirements
+├── ADDITIONAL_SCENARIOS_107_ZERO_CASH_OR_CARDLESS_DESTINATION_GUIDANCE.md
+│   └── 1 real flow scenario: Zero cash/cardless destination guidance
+├── ADDITIONAL_SCENARIOS_108_REPEAT_TRAVELER_PERSONALIZATION.md
+│   └── 1 real flow scenario: Repeat traveler personalization
+├── ADDITIONAL_SCENARIOS_109_TEAM_BUILDING_RETREAT_LOGISTICS.md
+│   └── 1 real flow scenario: Team building retreat logistics
+├── ADDITIONAL_SCENARIOS_110_TRAINING_AIRPORT_LOUNGE_TRANSITION_SUPPORT.md
+│   └── 1 real flow scenario: Airport lounge transition support
+├── ADDITIONAL_SCENARIOS_111_CREDIT_CARD_REWARDS_OPTIMIZATION.md
+│   └── 1 real flow scenario: Credit card rewards optimization
+├── ADDITIONAL_SCENARIOS_112_LAST_MINUTE_ROOM_BLOCK_ADJUSTMENT.md
+│   └── 1 real flow scenario: Last-minute room block adjustment
+├── ADDITIONAL_SCENARIOS_113_SPECIAL_NEEDS_VISITOR_ASSISTANCE.md
+│   └── 1 real flow scenario: Special needs visitor assistance
+├── ADDITIONAL_SCENARIOS_114_MULTIPLE_TIMEZONE_MEETING_SUPPORT.md
+│   └── 1 real flow scenario: Multiple timezone meeting support
+├── ADDITIONAL_SCENARIOS_115_SUSTAINABLE_HOTEL_RATING_COMPARISON.md
+│   └── 1 real flow scenario: Sustainable hotel rating comparison
 ├── P1_SOLO_AGENT_SCENARIOS.md
 │   └── 5 real scenarios:
 │       P1-S1: 11 PM WhatsApp Panic

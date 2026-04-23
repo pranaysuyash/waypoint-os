@@ -32,6 +32,7 @@ from .catalog import (
 from .integration import (
     extract_participants_from_packet,
     generate_suitability_risks,
+    assess_activity_suitability,
 )
 
 __all__ = [
@@ -55,4 +56,5 @@ __all__ = [
     # Integration functions
     "extract_participants_from_packet",
     "generate_suitability_risks",
+    "assess_activity_suitability",
 ]

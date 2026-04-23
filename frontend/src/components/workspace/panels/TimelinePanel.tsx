@@ -1,0 +1,200 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
+
+interface TimelineEvent {
+  timestamp: string;
+  stage: string;
+  state: string;
+  version: string;
+  decision_type?: string;
+  reason?: string;
+}
+
+interface TimelineResponse {
+  trip_id: string;
+  events: TimelineEvent[];
+}
+
+interface TimelinePanelProps {
+  trip?: any;
+  tripId?: string;
+}
+
+const STAGE_COLORS: Record<string, { bg: string; badge: string; dot: string }> = {
+  intake: { bg: "bg-blue-50 dark:bg-blue-950", badge: "bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100", dot: "bg-blue-500" },
+  packet: { bg: "bg-orange-50 dark:bg-orange-950", badge: "bg-orange-100 text-orange-900 dark:bg-orange-900 dark:text-orange-100", dot: "bg-orange-500" },
+  decision: { bg: "bg-green-50 dark:bg-green-950", badge: "bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-100", dot: "bg-green-500" },
+  strategy: { bg: "bg-purple-50 dark:bg-purple-950", badge: "bg-purple-100 text-purple-900 dark:bg-purple-900 dark:text-purple-100", dot: "bg-purple-500" },
+  safety: { bg: "bg-red-50 dark:bg-red-950", badge: "bg-red-100 text-red-900 dark:bg-red-900 dark:text-red-100", dot: "bg-red-500" },
+};
+
+function formatTimestamp(iso: string): string {
+  const date = new Date(iso);
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
+}
+
+function TimelineEventCard({
+  event,
+  index,
+}: {
+  event: TimelineEvent;
+  index: number;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const colors = STAGE_COLORS[event.stage] || STAGE_COLORS.intake;
+
+  return (
+    <div className="relative">
+      {/* Timeline line (not on last item) */}
+      {index < 0 && (
+        <div className="absolute left-5 top-12 w-0.5 h-8 bg-gray-300 dark:bg-gray-600" />
+      )}
+
+      <div className={`flex gap-4 ${colors.bg} p-4 rounded-lg border border-gray-200 dark:border-gray-700`}>
+        {/* Timeline dot */}
+        <div className="flex-shrink-0">
+          <div className={`w-3 h-3 rounded-full ${colors.dot} mt-1`} />
+        </div>
+
+        {/* Event content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`text-xs font-semibold px-2 py-1 rounded ${colors.badge}`}>
+                {event.stage.toUpperCase()}
+              </span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {event.state}
+              </span>
+            </div>
+            <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+              {formatTimestamp(event.timestamp)}
+            </span>
+          </div>
+
+          {/* Optional details */}
+          {(event.decision_type || event.reason) && (
+            <div className="mt-2 flex items-start gap-2">
+              <div className="flex-1">
+                {event.decision_type && (
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    <span className="font-semibold">Type:</span> {event.decision_type}
+                  </p>
+                )}
+                {event.reason && (
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                    <span className="font-semibold">Reason:</span> {event.reason}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Expandable JSON */}
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="mt-2 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          >
+            {isExpanded ? (
+              <ChevronDown className="w-3 h-3" />
+            ) : (
+              <ChevronRight className="w-3 h-3" />
+            )}
+            <span>View JSON</span>
+          </button>
+
+          {isExpanded && (
+            <div className="mt-2 p-2 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
+              <pre className="text-xs text-gray-600 dark:text-gray-400 font-mono">
+                {JSON.stringify(event, null, 2)}
+              </pre>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function TimelinePanel({ trip: propTrip, tripId: propTripId }: TimelinePanelProps) {
+  const [tripId] = useState(propTripId || propTrip?.id);
+  const [timeline, setTimeline] = useState<TimelineResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!tripId) return;
+
+    const fetchTimeline = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const response = await fetch(`/api/trips/${tripId}/timeline`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch timeline: ${response.statusText}`);
+        }
+        const data = await response.json();
+        setTimeline(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load timeline");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTimeline();
+  }, [tripId]);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-sm text-gray-500 dark:text-gray-400">Loading timeline...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-4">
+          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!timeline || timeline.events.length === 0) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-sm text-gray-500 dark:text-gray-400">No timeline events found</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6">
+      <div className="space-y-3">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+          Decision Timeline
+        </h2>
+        {timeline.events.map((event, index) => (
+          <TimelineEventCard key={`${event.timestamp}-${index}`} event={event} index={index} />
+        ))}
+      </div>
+
+      {/* Summary stats */}
+      <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+        <p className="text-xs text-gray-600 dark:text-gray-400">
+          <span className="font-semibold">{timeline.events.length} events</span> captured in this timeline
+        </p>
+      </div>
+    </div>
+  );
+}

@@ -34,6 +34,64 @@ from .safety import (
 from .config.agency_settings import AgencySettings
 from .gates import NB01CompletionGate, NB02JudgmentGate, GateVerdict, AutonomyOutcome
 from src.fees.calculation import calculate_trip_fees
+from src.suitability.integration import assess_activity_suitability
+import json
+import pathlib
+
+
+# =============================================================================
+# SECTION 0: TIMELINE EVENT LOGGING
+# =============================================================================
+
+def _emit_timeline_event(
+    trip_id: str,
+    stage: str,
+    state: str,
+    decision_type: Optional[str] = None,
+    reason: Optional[str] = None,
+    version: str = "1.0"
+) -> None:
+    """
+    Emit a timeline event to the trip's JSONL log file.
+    
+    Creates a JSONL audit trail at data/logs/trips/{trip_id}.jsonl.
+    Events are append-only and immutable.
+    
+    Args:
+        trip_id: Unique trip identifier
+        stage: Pipeline stage (intake, packet, decision, strategy, safety)
+        state: Current state in that stage
+        decision_type: Optional decision type (used in decision stage)
+        reason: Optional reason for state transition
+        version: Schema version (default: "1.0")
+    """
+    try:
+        logs_dir = pathlib.Path(__file__).resolve().parent.parent.parent / "data" / "logs" / "trips"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        
+        log_file = logs_dir / f"{trip_id}.jsonl"
+        
+        event = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "stage": stage,
+            "state": state,
+            "version": version,
+        }
+        
+        if decision_type is not None:
+            event["decision_type"] = decision_type
+        
+        if reason is not None:
+            event["reason"] = reason
+        
+        # Append-only: open in append mode, write event as JSON line
+        with open(log_file, "a") as f:
+            f.write(json.dumps(event) + "\n")
+    except Exception as e:
+        # Log emission failures should not block spine execution
+        import logging
+        logger = logging.getLogger("orchestration.timeline")
+        logger.warning(f"Failed to emit timeline event for trip {trip_id}: {e}")
 
 
 # =============================================================================
@@ -121,6 +179,14 @@ def run_spine_once(
     if operating_mode is not None:
         packet.operating_mode = operating_mode
 
+    # Emit intake event
+    _emit_timeline_event(
+        trip_id=packet.packet_id,
+        stage="intake",
+        state="extracted",
+        reason="Extraction pipeline completed"
+    )
+
     # --- Phase 2: Validation ---
     validation = validate_packet(packet, stage=stage)
 
@@ -139,13 +205,50 @@ def run_spine_once(
             hard_blockers=["extraction_quality"],
             rationale={"gate_failure": "NB01_ESCALATE", "reasons": nb01_result.reasons}
         )
+        # Emit escalation event
+        _emit_timeline_event(
+            trip_id=packet.packet_id,
+            stage="packet",
+            state="escalated",
+            reason="NB01 gate escalation - extraction quality issues"
+        )
         return _create_empty_spine_result(packet, validation, decision, run_timestamp)
+
+    # Emit packet stage completion
+    _emit_timeline_event(
+        trip_id=packet.packet_id,
+        stage="packet",
+        state="validated",
+        reason="Validation completed successfully"
+    )
 
     # --- Phase 3: Decision ---
     decision = run_gap_and_decision(packet, feasibility_table=feasibility_table, agency_settings=actual_settings)
 
     # Update packet decision_state from decision result
     packet.decision_state = decision.decision_state
+
+    # Emit decision stage event
+    _emit_timeline_event(
+        trip_id=packet.packet_id,
+        stage="decision",
+        state=decision.decision_state,
+        decision_type="gap_and_decision",
+        reason="Decision engine analysis completed"
+    )
+
+    # --- Phase 3.5: Suitability Assessment (P0-01) ---
+    suitability_flags = assess_activity_suitability(packet)
+    packet.suitability_flags = suitability_flags
+    
+    # Check for CRITICAL flags
+    critical_flags = [f for f in suitability_flags if f.severity == "critical"]
+    if critical_flags:
+        # Override decision_state to require operator review
+        packet.decision_state = "suitability_review_required"
+        decision.decision_state = "suitability_review_required"
+        # Add hard blockers to decision for tracking
+        decision.hard_blockers.append("suitability_critical_flags_present")
 
     # --- Quality Gate: NB02 Judgment (D1 Autonomy Gate) ---
     # This gate enforces the agency autonomy policy WITHOUT mutating decision_state.
@@ -168,6 +271,14 @@ def run_spine_once(
     # --- Phase 4: Strategy ---
     strategy = build_session_strategy(decision, packet, agency_settings=actual_settings)
 
+    # Emit strategy stage event
+    _emit_timeline_event(
+        trip_id=packet.packet_id,
+        stage="strategy",
+        state="built",
+        reason="Session strategy constructed"
+    )
+
     # --- Phase 5: Internal Bundle ---
     internal_bundle = build_internal_bundle(strategy, decision, packet)
 
@@ -189,6 +300,14 @@ def run_spine_once(
         "traveler_bundle_leaks": traveler_leaks,
         "sanitized_view_leaks": sanitized_leaks,
     }
+
+    # Emit safety stage event
+    _emit_timeline_event(
+        trip_id=packet.packet_id,
+        stage="safety",
+        state="validated",
+        reason=f"Leakage check completed - {'safe' if leakage_result['is_safe'] else 'unsafe'}"
+    )
 
     # --- Phase 9.5: Fee Calculation ---
     fees = calculate_trip_fees(packet, decision)

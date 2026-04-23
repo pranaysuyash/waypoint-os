@@ -23,7 +23,9 @@ export type WorkspaceStage =
   | 'decision'
   | 'strategy'
   | 'output'
-  | 'safety';
+  | 'safety'
+  | 'suitability'
+  | 'timeline';
 
 /** Workbench tab identifiers (matches tab search-param values in /workbench). */
 export type WorkbenchTab = 'intake' | 'packet' | 'decision' | 'strategy' | 'safety';

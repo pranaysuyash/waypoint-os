@@ -14,6 +14,21 @@ from typing import Any, Dict, List, Literal, Optional, Union
 
 
 # =============================================================================
+# SECTION 0: SUITABILITY MODELS
+# =============================================================================
+
+@dataclass
+class SuitabilityFlag:
+    """Activity suitability assessment flag for a packet."""
+    flag_type: str
+    severity: Literal["low", "medium", "high", "critical"]
+    reason: str
+    confidence: float
+    details: Dict[str, Any] = field(default_factory=dict)
+    affected_travelers: List[str] = field(default_factory=list)
+
+
+# =============================================================================
 # SECTION 1: AUTHORITY & EXTRACTION MODELS
 # =============================================================================
 
@@ -298,6 +313,9 @@ class CanonicalPacket:
     hypotheses: Dict[str, Slot] = field(default_factory=dict)
     lifecycle: Optional[LifecycleInfo] = None
     feedback: Optional[Dict[str, Any]] = None
+
+    # Suitability assessment
+    suitability_flags: List[SuitabilityFlag] = field(default_factory=list)
 
     # Explicit tracking
     ambiguities: List[Ambiguity] = field(default_factory=list)

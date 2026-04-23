@@ -18,6 +18,7 @@ const STAGE_TABS: { id: WorkspaceStage; label: string }[] = [
   { id: "strategy", label: "Strategy" },
   { id: "output", label: "Output" },
   { id: "safety", label: "Safety" },
+  { id: "timeline", label: "Timeline" },
 ];
 
 const STATE_META: Record<string, { label: string; className: string }> = {
