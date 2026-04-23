@@ -1,8 +1,10 @@
 'use client';
 
-import { X, Settings, ToggleLeft, ToggleRight, FileCode2 } from 'lucide-react';
+import { X, Settings, ToggleLeft, ToggleRight, FileCode2, RotateCcw, ShieldAlert, Wrench, CheckCircle2 } from 'lucide-react';
 import { useWorkbenchStore } from '@/stores/workbench';
 import { useScenarios } from '@/hooks/useScenarios';
+import { useUnifiedState } from '@/hooks/useUnifiedState';
+import { useState } from 'react';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -19,6 +21,35 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     setScenarioId,
   } = useWorkbenchStore();
   const { data: scenarios, isLoading: scenariosLoading, error: scenariosError } = useScenarios();
+  const { state: unifiedState, refresh: refreshUnified } = useUnifiedState();
+  const [repairingId, setRepairingId] = useState<string | null>(null);
+  const [repairStatus, setRepairStatus] = useState<{ id: string, success: boolean } | null>(null);
+
+  const orphans = unifiedState?.orphans || [];
+
+  const handleRepair = async (id: string) => {
+    setRepairingId(id);
+    try {
+      const response = await fetch(`/api/trips/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'new' })
+      });
+      
+      if (response.ok) {
+        setRepairStatus({ id, success: true });
+        refreshUnified();
+        setTimeout(() => setRepairStatus(null), 3000);
+      } else {
+        setRepairStatus({ id, success: false });
+      }
+    } catch (err) {
+      console.error('Repair failed:', err);
+      setRepairStatus({ id, success: false });
+    } finally {
+      setRepairingId(null);
+    }
+  };
 
   if (!open) return null;
 
@@ -154,6 +185,63 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 Failed to load scenarios: {scenariosError.message}
               </p>
             )}
+          </div>
+
+          <div className='space-y-3 pt-4 border-t border-[#30363d]'>
+            <div className='flex items-center justify-between'>
+              <h3 className='text-xs font-semibold text-[#8b949e] uppercase tracking-wide flex items-center gap-2'>
+                <ShieldAlert className='w-3 h-3 text-[#e3b341]' />
+                Orphan Recovery
+              </h3>
+              {orphans.length > 0 && (
+                <span className='px-1.5 py-0.5 rounded-full bg-[#e3b341]/20 text-[#e3b341] text-[10px] font-bold animate-pulse'>
+                  {orphans.length} ISSUE{orphans.length !== 1 ? 'S' : ''}
+                </span>
+              )}
+            </div>
+            
+            {orphans.length === 0 ? (
+              <div className='p-3 rounded-lg bg-[#161b22] border border-[#30363d] text-center'>
+                <p className='text-xs text-[#8b949e] italic'>No orphan records detected. Integrity is 100%.</p>
+              </div>
+            ) : (
+              <div className='space-y-2 max-h-60 overflow-y-auto pr-1'>
+                {orphans.map((orphan) => (
+                  <div key={orphan.id} className='p-3 rounded-lg bg-[#161b22] border border-[#30363d] space-y-2'>
+                    <div className='flex justify-between items-start'>
+                      <div>
+                        <p className='text-[10px] font-mono text-[#8b949e] truncate w-40'>{orphan.id}</p>
+                        <p className='text-xs text-[#e6edf3] font-medium'>{orphan.destination}</p>
+                      </div>
+                      <button
+                        onClick={() => handleRepair(orphan.id)}
+                        disabled={repairingId === orphan.id}
+                        className={`p-1.5 rounded transition-all ${
+                          repairStatus?.id === orphan.id && repairStatus.success
+                            ? 'bg-green-500/20 text-green-400'
+                            : 'bg-[#21262d] text-[#58a6ff] hover:bg-[#30363d] hover:scale-105'
+                        }`}
+                        title="Repair Record"
+                      >
+                        {repairingId === orphan.id ? (
+                          <RotateCcw className='w-3 h-3 animate-spin' />
+                        ) : repairStatus?.id === orphan.id && repairStatus.success ? (
+                          <CheckCircle2 className='w-3 h-3' />
+                        ) : (
+                          <Wrench className='w-3 h-3' />
+                        )}
+                      </button>
+                    </div>
+                    {repairStatus?.id === orphan.id && !repairStatus.success && (
+                      <p className='text-[10px] text-[#f85149]'>Failed to repair. Try again.</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className='text-[10px] text-[#8b949e] leading-relaxed'>
+              Repairing resets an orphan trip to "New" status, moving it back into the canonical discovery pipeline.
+            </p>
           </div>
         </div>
       </aside>

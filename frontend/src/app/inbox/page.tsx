@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, memo, useMemo } from 'react';
+import { useState, useCallback, memo, useMemo, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Briefcase,
@@ -108,83 +109,96 @@ const TripCard = memo(function TripCard({
   onSelect: (id: string, selected: boolean) => void;
 }) {
   const stageMeta = STAGE_LABELS[trip.stage] || STAGE_LABELS.intake;
+  const slaColor = trip.slaStatus === 'breached' ? '#f85149' : trip.slaStatus === 'at_risk' ? '#d29922' : '#3fb950';
 
   return (
     <div
-      className='group relative rounded-xl border bg-[#0f1115] p-4 transition-all hover:border-[#30363d]'
-      style={{ borderColor: trip.slaStatus === 'breached' ? '#f85149' : '#1c2128' }}
+      className='group relative rounded-xl border bg-[#0f1115] transition-all hover:border-[#30363d] overflow-hidden flex'
+      style={{ borderColor: trip.slaStatus === 'breached' ? 'rgba(248,81,73,0.4)' : '#1c2128' }}
     >
-      {/* Selection Checkbox */}
-      <button
-        type='button'
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect(trip.id, !isSelected);
-        }}
-        className='absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity'
-      >
-        {isSelected ? (
-          <CheckSquare className='w-4 h-4 text-[#58a6ff]' />
-        ) : (
-          <Square className='w-4 h-4 text-[#484f58]' />
-        )}
-      </button>
+      {/* SLA Accent Bar */}
+      <div 
+        className='w-1.5 shrink-0 h-full' 
+        style={{ background: slaColor, opacity: isSelected ? 1 : 0.6 }} 
+      />
 
-      <Link href={getTripRoute(trip.id)} className='block pl-6'>
-        <div className='flex items-start justify-between gap-3 mb-2'>
-          <div className='flex items-center gap-2 min-w-0'>
-            <span className='text-[14px] font-semibold text-[#e6edf3] truncate' title={trip.destination}>
-              {trip.destination}
-            </span>
-            <span className='text-xs text-[#8b949e]'>{trip.tripType}</span>
-          </div>
-          <div className='flex items-center gap-1'>
-            <PriorityBadge priority={trip.priority} />
-            <span
-              className='shrink-0 text-xs font-mono font-semibold px-2 py-0.5 rounded-md whitespace-nowrap'
-              style={{ color: stageMeta.color, background: stageMeta.bg }}
-            >
-              {stageMeta.label}
-            </span>
-          </div>
-        </div>
+      <div className='p-4 flex-1'>
+        {/* Selection Checkbox (moved to better position) */}
+        <button
+          type='button'
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(trip.id, !isSelected);
+          }}
+          className='absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity'
+        >
+          {isSelected ? (
+            <CheckSquare className='w-4 h-4 text-[#58a6ff]' />
+          ) : (
+            <Square className='w-4 h-4 text-[#484f58]' />
+          )}
+        </button>
 
-        <div className='flex items-center gap-4 text-xs text-[#8b949e] mb-2'>
-          <span className='flex items-center gap-1'>
-            <Users className='h-3 w-3' aria-hidden='true' /> {trip.partySize} pax
-          </span>
-          <span className='flex items-center gap-1'>
-            <Calendar className='h-3 w-3' aria-hidden='true' /> {trip.dateWindow}
-          </span>
-          <span className='flex items-center gap-1 font-mono text-[#484f58]'>
-            <Clock className='h-3 w-3' aria-hidden='true' /> {trip.daysInCurrentStage}d
-          </span>
-          <span className='font-mono text-[#58a6ff]'>
-            ${(trip.value / 1000).toFixed(1)}k
-          </span>
-        </div>
-
-        <div className='flex items-center justify-between'>
-          <div className='flex items-center gap-2'>
-            <Briefcase className='h-3 w-3 text-[#484f58]' aria-hidden='true' />
-            <span className='text-xs text-[#8b949e]'>{trip.stage} stage · {trip.customerName}</span>
-          </div>
-          <div className='flex items-center gap-2'>
-            {trip.assignedToName ? (
-              <span className='text-xs text-[#8b949e]'>
-                👤 {trip.assignedToName}
+        <Link href={getTripRoute(trip.id)} className='block'>
+          <div className='flex items-start justify-between gap-3 mb-1'>
+            <div className='flex flex-col min-w-0'>
+              <span className='text-[14px] font-semibold text-[#e6edf3] truncate leading-tight' title={trip.destination}>
+                {trip.destination}
               </span>
-            ) : (
-              <span className='text-xs text-[#d29922]'>
-                👤 Unassigned
+              <span className='text-[10px] uppercase tracking-wider text-[#484f58] font-bold mt-0.5'>
+                {trip.tripType} · {trip.id.split('_')[1]}
               </span>
-            )}
-            <SLABadge status={trip.slaStatus} daysInStage={trip.daysInCurrentStage} />
+            </div>
+            <div className='flex items-center gap-1 shrink-0'>
+              <PriorityBadge priority={trip.priority} />
+            </div>
           </div>
-        </div>
 
-        <div className='text-xs font-mono text-[#484f58] mt-2'>{trip.id}</div>
-      </Link>
+          <div className='flex items-center gap-3 text-[11px] text-[#8b949e] my-3 py-2 border-y border-[#1c2128]/50'>
+            <div className='flex flex-col gap-0.5'>
+              <span className='text-[10px] text-[#484f58] uppercase font-medium'>Pax</span>
+              <span className='text-[#e6edf3] font-medium'>{trip.partySize}</span>
+            </div>
+            <div className='w-px h-6 bg-[#1c2128]' />
+            <div className='flex flex-col gap-0.5'>
+              <span className='text-[10px] text-[#484f58] uppercase font-medium'>Budget</span>
+              <span className='text-[#58a6ff] font-mono font-medium'>${(trip.value / 1000).toFixed(1)}k</span>
+            </div>
+            <div className='w-px h-6 bg-[#1c2128]' />
+            <div className='flex flex-col gap-0.5 flex-1'>
+              <span className='text-[10px] text-[#484f58] uppercase font-medium'>Dates</span>
+              <span className='text-[#e6edf3] truncate'>{trip.dateWindow}</span>
+            </div>
+          </div>
+
+          <div className='flex items-center justify-between mt-2'>
+            <div className='flex items-center gap-2'>
+              <span
+                className='text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tight'
+                style={{ color: stageMeta.color, background: stageMeta.bg }}
+              >
+                {stageMeta.label}
+              </span>
+              <span className='text-[11px] text-[#484f58] font-mono'>{trip.daysInCurrentStage}d</span>
+            </div>
+            
+            <div className='flex items-center gap-2'>
+              {trip.assignedToName ? (
+                <div className='flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#161b22] border border-[#30363d]'>
+                  <span className='text-[10px] text-[#8b949e]'>
+                    {trip.assignedToName}
+                  </span>
+                </div>
+              ) : (
+                <span className='text-[10px] text-[#d29922] font-bold uppercase italic'>
+                  Unassigned
+                </span>
+              )}
+              <SLABadge status={trip.slaStatus} daysInStage={trip.daysInCurrentStage} />
+            </div>
+          </div>
+        </Link>
+      </div>
     </div>
   );
 });
@@ -270,12 +284,28 @@ function BulkActionsToolbar({
 // ============================================================================
 
 export default function InboxPage() {
-  const [activeFilter, setActiveFilter] = useState<'all' | 'pending' | 'review' | 'unassigned'>('all');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // URL Persistence Sync
+  const activeFilter = (searchParams.get('filter') as any) || 'all';
+  const sortBy = (searchParams.get('sort') as SortKey) || 'priority';
+  const sortDirection = (searchParams.get('dir') as SortDirection) || 'desc';
+  const searchQuery = searchParams.get('q') || '';
+  const currentRole = (searchParams.get('role') as 'ops' | 'mgr') || 'ops';
+
+  const updateParams = useCallback((updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null) params.delete(key);
+      else params.set(key, value);
+    });
+    router.push(`?${params.toString()}`);
+  }, [router, searchParams]);
+
   const [selectedTrips, setSelectedTrips] = useState<Set<string>>(new Set());
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<SortKey>('priority');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  
   const { data: inboxTrips, isLoading, error, refetch, assignTrips } = useInboxTrips();
 
   const agents = useMemo(() => {
@@ -419,9 +449,29 @@ export default function InboxPage() {
               type='text'
               placeholder='Search trips...'
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => updateParams({ q: e.target.value || null })}
               className='w-full pl-9 pr-3 py-2 bg-[#161b22] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]'
             />
+          </div>
+
+          {/* Role Toggle */}
+          <div className='flex items-center bg-[#161b22] border border-[#30363d] rounded-lg p-1'>
+            <button
+              onClick={() => updateParams({ role: 'ops' })}
+              className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all ${
+                currentRole === 'ops' ? 'bg-[#58a6ff] text-[#0d1117]' : 'text-[#8b949e]'
+              }`}
+            >
+              Ops
+            </button>
+            <button
+              onClick={() => updateParams({ role: 'mgr' })}
+              className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all ${
+                currentRole === 'mgr' ? 'bg-[#58a6ff] text-[#0d1117]' : 'text-[#8b949e]'
+              }`}
+            >
+              Mgr
+            </button>
           </div>
 
           <div className='relative'>
@@ -445,7 +495,7 @@ export default function InboxPage() {
                     <span className='text-xs text-[#8b949e] font-medium'>Direction</span>
                     <div className='flex items-center gap-1'>
                       <button
-                        onClick={() => setSortDirection('asc')}
+                        onClick={() => updateParams({ dir: 'asc' })}
                         className={`p-1 rounded transition-colors ${
                           sortDirection === 'asc'
                             ? 'bg-[#58a6ff] text-[#0d1117]'
@@ -455,7 +505,7 @@ export default function InboxPage() {
                         <ChevronUp className='w-4 h-4' />
                       </button>
                       <button
-                        onClick={() => setSortDirection('desc')}
+                        onClick={() => updateParams({ dir: 'desc' })}
                         className={`p-1 rounded transition-colors ${
                           sortDirection === 'desc'
                             ? 'bg-[#58a6ff] text-[#0d1117]'
@@ -475,7 +525,7 @@ export default function InboxPage() {
                       <button
                         key={key}
                         onClick={() => {
-                          setSortBy(key);
+                          updateParams({ sort: key });
                           setShowSortDropdown(false);
                         }}
                         className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md transition-colors ${
@@ -521,7 +571,7 @@ export default function InboxPage() {
         ].map((f) => (
           <button
             key={f.key}
-            onClick={() => setActiveFilter(f.key as typeof activeFilter)}
+            onClick={() => updateParams({ filter: f.key })}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
               activeFilter === f.key
                 ? 'bg-[#161b22] text-[#e6edf3] border-l-2 border-[#58a6ff]'
@@ -569,7 +619,7 @@ export default function InboxPage() {
               <p className='text-[#8b949e]'>No trips match this filter.</p>
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => updateParams({ q: null })}
                   className='mt-2 text-sm text-[#58a6ff] hover:text-[#79b8ff]'
                 >
                   Clear search

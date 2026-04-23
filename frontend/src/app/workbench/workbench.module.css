@@ -624,3 +624,9 @@
 .formGroup {
   margin-bottom: 16px;
 }
+
+.helpText {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}

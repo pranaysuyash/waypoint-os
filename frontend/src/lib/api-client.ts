@@ -305,9 +305,10 @@ export async function updateTrip(id: string, data: Partial<Trip>): Promise<Trip>
 export async function submitTripReviewAction(
   tripId: string,
   action: string,
-  notes?: string
+  notes?: string,
+  errorCategory?: string
 ): Promise<{ success: boolean; review: any }> {
-  return api.post(`/api/trips/${tripId}/review/action`, { action, notes });
+  return api.post(`/api/trips/${tripId}/review/action`, { action, notes, error_category: errorCategory });
 }
 
 // ============================================================================

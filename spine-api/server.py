@@ -79,6 +79,12 @@ try:
 except ImportError:
     TimelineEventMapper = None
 
+# Import Watchdog
+try:
+    from .watchdog import watchdog
+except (ImportError, ValueError):
+    from watchdog import watchdog
+
 # Wave A: run lifecycle modules
 from run_state import RunState, assert_can_transition, terminal_state_for_run_result
 from run_events import (
@@ -256,6 +262,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Tasks to run on server startup."""
+    watchdog.start()
+    logger.info("Spine API startup complete")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Tasks to run on server shutdown."""
+    watchdog.stop()
+    logger.info("Spine API shutdown complete")
 
 
 # =============================================================================
@@ -724,6 +744,36 @@ def get_trip(trip_id: str):
     return trip
 
 
+@app.patch("/trips/{trip_id}")
+def patch_trip(trip_id: str, updates: Dict[str, Any]):
+    """Update trip fields (e.g. status)."""
+    trip = TripStore.get_trip(trip_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    old_status = trip.get("status")
+    new_status = updates.get("status")
+    
+    # Perform update
+    updated_trip = TripStore.update_trip(trip_id, updates)
+    
+    # Handle status-specific side effects
+    if new_status and new_status != old_status:
+        # Log status change
+        AuditStore.log_event("trip_status_changed", "operator", {
+            "trip_id": trip_id,
+            "old_status": old_status,
+            "new_status": new_status,
+            "reason": "manual_update"
+        })
+        
+        # If moving back to 'new', ensure it's unassigned
+        if new_status == "new":
+            AssignmentStore.unassign_trip(trip_id, "operator")
+            
+    return updated_trip
+
+
 @app.post("/trips/{trip_id}/assign")
 def assign_trip(trip_id: str, agent_id: str, agent_name: str, assigned_by: str = "system"):
     """Assign a trip to an agent."""
@@ -790,14 +840,17 @@ from src.analytics.metrics import (
 
 @app.get("/analytics/summary", response_model=InsightsSummary)
 def get_analytics_summary(range: str = "30d"):
-    trips = TripStore.list_trips(limit=1000)
-    return aggregate_insights(trips)
+    trips = TripStore.list_trips(limit=10000)
+    # Ensure consistency with DashboardAggregator by only including trips with IDs
+    canonical_trips = [t for t in trips if t.get("id")]
+    return aggregate_insights(canonical_trips)
 
 
 @app.get("/analytics/pipeline", response_model=List[StageMetrics])
 def get_analytics_pipeline(range: str = "30d"):
-    trips = TripStore.list_trips(limit=1000)
-    return compute_pipeline_metrics(trips)
+    trips = TripStore.list_trips(limit=10000)
+    canonical_trips = [t for t in trips if t.get("id")]
+    return compute_pipeline_metrics(canonical_trips)
 
 
 @app.get("/analytics/team", response_model=List[TeamMemberMetrics])
@@ -852,6 +905,7 @@ class ReviewActionRequest(BaseModel):
     action: str
     notes: str
     reassign_to: Optional[str] = None
+    error_category: Optional[str] = None
 
 
 @app.get("/analytics/reviews")
@@ -876,7 +930,8 @@ def post_review_action(trip_id: str, request: ReviewActionRequest):
             action=request.action,
             notes=request.notes,
             user_id="owner",  # Hardcoded for now, should come from auth
-            reassign_to=request.reassign_to
+            reassign_to=request.reassign_to,
+            error_category=request.error_category
         )
         return {"success": True, "trip": updated_trip}
     except KeyError as e:
@@ -1259,6 +1314,28 @@ def get_override(override_id: str) -> dict:
 # =============================================================================
 # Dev entrypoint
 # =============================================================================
+
+
+# =============================================================================
+# System Integrity API
+# =============================================================================
+
+from src.services.dashboard_aggregator import DashboardAggregator
+
+@app.get("/api/system/unified-state")
+def get_unified_state():
+    """
+    Canonical SSOT for dashboard metrics.
+    Returns mathematically consistent data for Inbox, Overview, and Analytics.
+    """
+    try:
+        return DashboardAggregator.get_unified_state()
+    except Exception as e:
+        logger.error(f"Failed to aggregate unified state: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal integrity error"
+        )
 
 if __name__ == "__main__":
     import uvicorn

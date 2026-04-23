@@ -13,6 +13,9 @@ from typing import Optional, Any
 from uuid import uuid4
 from dataclasses import asdict, is_dataclass
 import logging
+import threading
+import fcntl
+from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +54,21 @@ def _make_json_serializable(obj: Any) -> Any:
         return str(obj)
 
 
+@contextmanager
+def file_lock(filepath: Path):
+    """Simple cross-process file lock using fcntl."""
+    lock_file = filepath.with_suffix(".lock")
+    with open(lock_file, "w") as f:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            yield
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
+
+
 class TripStore:
     """File-based trip storage using JSON."""
+    _lock = threading.Lock()
     
     @staticmethod
     def save_trip(trip_data: dict) -> str:
@@ -101,21 +117,24 @@ class TripStore:
     @staticmethod
     def update_trip(trip_id: str, updates: dict) -> Optional[dict]:
         """Update trip fields."""
-        trip = TripStore.get_trip(trip_id)
-        if not trip:
-            return None
-        
-        trip.update(updates)
-        trip["updated_at"] = datetime.now(timezone.utc).isoformat()
-        
-        # Convert to JSON-serializable format
-        serializable_trip = _make_json_serializable(trip)
-        
         filepath = TRIPS_DIR / f"{trip_id}.json"
-        with open(filepath, "w") as f:
-            json.dump(serializable_trip, f, indent=2)
         
-        return trip
+        with TripStore._lock:
+            with file_lock(filepath):
+                trip = TripStore.get_trip(trip_id)
+                if not trip:
+                    return None
+                
+                trip.update(updates)
+                trip["updated_at"] = datetime.now(timezone.utc).isoformat()
+                
+                # Convert to JSON-serializable format
+                serializable_trip = _make_json_serializable(trip)
+                
+                with open(filepath, "w") as f:
+                    json.dump(serializable_trip, f, indent=2)
+                
+                return trip
 
 
 class AssignmentStore:
@@ -193,6 +212,7 @@ class AuditStore:
     
     AUDIT_FILE = AUDIT_DIR / "events.json"
     MAX_EVENTS = 10000  # Rotate after this many
+    _lock = threading.Lock()
     
     @staticmethod
     def _load_events() -> list:
@@ -216,17 +236,19 @@ class AuditStore:
     @staticmethod
     def log_event(event_type: str, user_id: str, details: dict):
         """Log an audit event."""
-        events = AuditStore._load_events()
-        
-        events.append({
-            "id": f"evt_{uuid4().hex[:12]}",
-            "type": event_type,
-            "user_id": user_id,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "details": details,
-        })
-        
-        AuditStore._save_events(events)
+        with AuditStore._lock:
+            with file_lock(AuditStore.AUDIT_FILE):
+                events = AuditStore._load_events()
+                
+                events.append({
+                    "id": f"evt_{uuid4().hex[:12]}",
+                    "type": event_type,
+                    "user_id": user_id,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "details": details,
+                })
+                
+                AuditStore._save_events(events)
     
     @staticmethod
     def get_events(limit: int = 100) -> list:

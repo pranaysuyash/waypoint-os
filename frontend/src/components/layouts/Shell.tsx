@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LiveRegion } from '@/lib/accessibility';
+import { useUnifiedState } from '@/hooks/useUnifiedState';
+import { AlertTriangle } from 'lucide-react';
 
 const NAV = [
   {
@@ -92,6 +94,7 @@ function getPageLabel(pathname: string): string {
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { versionLabel, detailsLabel } = useRuntimeVersion();
+  const { isConsistent } = useUnifiedState();
 
   return (
     <div className='flex h-screen overflow-hidden bg-[#080a0c] text-[#e6edf3]'>
@@ -196,6 +199,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       {/* ── Main column ── */}
       <div className='flex flex-col flex-1 min-w-0 overflow-hidden'>
+        {/* Integrity Warning Banner */}
+        {!isConsistent && (
+          <div className='bg-[#f85149] text-white py-1.5 px-4 text-center text-[11px] font-bold tracking-wider uppercase flex items-center justify-center gap-2 z-50'>
+            <AlertTriangle className='h-3 w-3' />
+            CRITICAL: SYSTEM INTEGRITY ERROR - Dashboard sums do not match canonical total.
+          </div>
+        )}
+
         {/* Command bar */}
         <header className='flex items-center justify-between h-11 px-5 border-b border-[#1c2128] bg-[#0a0d11]/80 backdrop-blur-xl shrink-0'>
           <nav

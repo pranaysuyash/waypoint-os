@@ -12,7 +12,8 @@ import {
   Activity,
   ChevronRight,
 } from 'lucide-react';
-import { useTrips, useTripStats, usePipeline } from '@/hooks/useTrips';
+import { useTrips } from '@/hooks/useTrips';
+import { useUnifiedState } from '@/hooks/useUnifiedState';
 import { getTripRoute } from '@/lib/routes';
 import { InlineLoading } from '@/components/ui/loading';
 import { InlineError } from '@/components/error-boundary';
@@ -364,16 +365,25 @@ function useMounted() {
 
 export default function DashboardPage() {
   const mounted = useMounted();
-  const {
-    data: stats,
-    isLoading: statsLoading,
-    error: statsError,
-  } = useTripStats();
-  const {
-    data: pipeline,
-    isLoading: pipelineLoading,
-    error: pipelineError,
-  } = usePipeline();
+  const { state, loading: unifiedLoading, error: unifiedError } = useUnifiedState();
+
+  const stats = useMemo(() => {
+    if (!state) return null;
+    return {
+      active: state.canonical_total - (state.stages.completed || 0) - (state.stages.cancelled || 0),
+      pendingReview: state.stages.new || 0,
+      readyToBook: state.stages.in_progress || 0,
+      needsAttention: state.orphans.length || 0,
+    };
+  }, [state]);
+
+  const pipeline = useMemo(() => {
+    if (!state) return null;
+    return Object.entries(state.stages).map(([label, count]) => ({
+      label: label.charAt(0).toUpperCase() + label.slice(1).replace('_', ' '),
+      count
+    }));
+  }, [state]);
 
   // Memoize navigation items to prevent recreation on every render
   const navItems = useMemo(
@@ -433,38 +443,38 @@ export default function DashboardPage() {
         <StatCard
           title='Active Trips'
           value={stats?.active ?? '—'}
-          sub={stats ? '+3 this week' : 'Loading...'}
+          sub={state ? `${state.canonical_total} canonical total` : 'Loading...'}
           icon={Briefcase}
           state='blue'
-          isLoading={statsLoading}
-          error={statsError}
+          isLoading={unifiedLoading}
+          error={unifiedError as any}
         />
         <StatCard
-          title='Pending Review'
+          title='Pending Triage'
           value={stats?.pendingReview ?? '—'}
-          sub={stats ? '2 overdue' : 'Loading...'}
+          sub={state ? 'new entries' : 'Loading...'}
           icon={Clock}
           state='amber'
-          isLoading={statsLoading}
-          error={statsError}
+          isLoading={unifiedLoading}
+          error={unifiedError as any}
         />
         <StatCard
           title='Ready to Book'
           value={stats?.readyToBook ?? '—'}
-          sub={stats ? '+1 today' : 'Loading...'}
+          sub={state ? 'approved' : 'Loading...'}
           icon={CheckCircle2}
           state='green'
-          isLoading={statsLoading}
-          error={statsError}
+          isLoading={unifiedLoading}
+          error={unifiedError as any}
         />
         <StatCard
           title='Needs Attention'
           value={stats?.needsAttention ?? '—'}
-          sub='action required'
+          sub={state ? 'integrity orphans' : 'Loading...'}
           icon={AlertTriangle}
           state='red'
-          isLoading={statsLoading}
-          error={statsError}
+          isLoading={unifiedLoading}
+          error={unifiedError as any}
         />
       </div>
 
@@ -493,8 +503,8 @@ export default function DashboardPage() {
         <aside className='space-y-4'>
           <PipelineBar
             data={pipeline}
-            isLoading={pipelineLoading}
-            error={pipelineError}
+            isLoading={unifiedLoading}
+            error={unifiedError}
           />
           <nav className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4' aria-label='Quick navigation'>
             <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e] mb-3'>

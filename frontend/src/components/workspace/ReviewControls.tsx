@@ -20,17 +20,34 @@ interface ReviewControlsProps {
  */
 export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) {
   const [notes, setNotes] = useState("");
+  const [errorCategory, setErrorCategory] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const ERROR_CATEGORIES = [
+    { id: "safety_too_strict", label: "Safety: Too Strict (False Positive)" },
+    { id: "safety_too_lenient", label: "Safety: Too Lenient (Missed Leakage)" },
+    { id: "logic_calculation", label: "Logic: Calculation Error" },
+    { id: "logic_itinerary", label: "Logic: Poor Itinerary Quality" },
+    { id: "logic_cohort", label: "Logic: Wrong Cohort Mapping" },
+    { id: "formatting_broken", label: "Formatting: Broken UI/Markdown" },
+    { id: "other", label: "Other (describe in notes)" },
+  ];
 
   const currentStatus = trip.review_status || "pending";
   const metadata = trip; // The trip object itself contains review metadata
 
   const handleAction = async (action: ReviewActionRequest["action"]) => {
-    // Validation: Notes mandatory for non-approval actions
-    if ((action === "request_changes" || action === "reject") && !notes.trim()) {
-      setError("Please provide notes explaining the reason for this action.");
-      return;
+    // Validation: Notes and Error Category mandatory for non-approval actions
+    if (action !== "approve") {
+      if (!notes.trim()) {
+        setError("Please provide notes explaining the reason for this action.");
+        return;
+      }
+      if (!errorCategory) {
+        setError("Please select an error category for systemic feedback.");
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -38,7 +55,7 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
 
     try {
       // Use trip-specific review API
-      const response = await submitTripReviewAction(trip.id, action, notes);
+      const response = await submitTripReviewAction(trip.id, action, notes, errorCategory);
 
       if (response.success) {
         if (onActionComplete) {
@@ -94,6 +111,24 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
             disabled={isSubmitting}
           />
           {error && <p className={styles.errorText}>{error}</p>}
+        </div>
+
+        <div className={styles.formGroup}>
+          <label className={styles.label}>Systemic Error Category (Mandatory for Overrides)</label>
+          <select 
+            className={styles.select}
+            value={errorCategory}
+            onChange={(e) => setErrorCategory(e.target.value)}
+            disabled={isSubmitting}
+          >
+            <option value="">-- Select Error Category --</option>
+            {ERROR_CATEGORIES.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.label}</option>
+            ))}
+          </select>
+          <p className={styles.helpText} style={{ fontSize: '11px', marginTop: '4px', opacity: 0.7 }}>
+            This data is used to fine-tune the AI engine and reduce future overrides.
+          </p>
         </div>
 
         <div className={styles.reviewActions}>

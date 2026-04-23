@@ -51,26 +51,29 @@ def aggregate_insights(trips: list, days: int = 30) -> InsightsSummary:
 
 def compute_pipeline_metrics(trips: list, days: int = 30) -> List[StageMetrics]:
     metrics = []
-    stages = [
-        ("discovery", "Discovery & Intake"),
-        ("packet", "Signal Extraction"),
-        ("decision", "Feasibility & Decision"),
-        ("strategy", "Strategy & Budget"),
-        ("output", "Deliverables"),
-        ("safety", "Safety & Compliance")
+    # Map internal stages to display names
+    stages_config = [
+        ("new", "Discovery & Intake"),
+        ("assigned", "Signal Extraction"),
+        ("in_progress", "Feasibility & Decision"),
+        ("completed", "Deliverables"),
+        ("cancelled", "Safety & Compliance")
     ]
     
-    total = len(trips)
-    dist = []
+    # Count actual occurrences in canonical trips
+    stage_counts = {s[0]: 0 for s in stages_config}
+    for t in trips:
+        stage = t.get("status", "new")
+        if stage in stage_counts:
+            stage_counts[stage] += 1
     
-    # Simple mocked simulation to give nice presentation from trips length
-    for stage_id, stage_name in stages:
-        stage_cnt = max(1, int(total * random.uniform(0.1, 0.4)))
+    for stage_id, stage_name in stages_config:
+        count = stage_counts[stage_id]
         metrics.append(StageMetrics(
-            stageId=stage_id,
+            stageId=str(stage_id),
             stageName=stage_name,
-            tripCount=stage_cnt,
-            avgTimeInStage=round(random.uniform(1.0, 15.0), 1),
+            tripCount=count,
+            avgTimeInStage=round(random.uniform(1.0, 15.0), 1), # Keep simulated timing for now as we don't track it well yet
             exitRate=round(random.uniform(30.0, 95.0), 1),
             avgTimeToExit=round(random.uniform(2.0, 20.0), 1)
         ))

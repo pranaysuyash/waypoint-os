@@ -2,7 +2,6 @@
 
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { StrategyOutput } from "@/types/spine";
-import styles from "@/app/workbench/workbench.module.css";
 
 interface StrategyPanelProps {
   tripId: string;
@@ -10,90 +9,85 @@ interface StrategyPanelProps {
 
 export function StrategyPanel({ tripId }: StrategyPanelProps) {
   const { result_strategy, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
+  const strategy = result_strategy as StrategyOutput | null;
 
-  if (!result_strategy) {
+  if (!strategy) {
     return (
-      <div className={styles.emptyState}>
-        <p>No options data for trip {tripId}. Process a trip from the "New Inquiry" section first.</p>
+      <div className="p-4 text-sm text-gray-500 italic">
+        No options data for trip {tripId}. Process a trip from the "New Inquiry" section first.
       </div>
     );
   }
 
-  const strategy = result_strategy as StrategyOutput;
-
   return (
-    <div>
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Session Goal</h3>
-        <div className={styles.card}>
-          <p>{strategy.session_goal || "—"}</p>
+    <div className="space-y-6">
+      <section>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Session Goal</h3>
+        <div className="bg-[#0a0d11] rounded-lg border border-[#1c2128] p-4 text-sm text-gray-300">
+          {strategy.session_goal || "—"}
         </div>
-      </div>
+      </section>
 
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Suggested Opening</h3>
-        <div className={styles.card}>
-          <p>"{strategy.suggested_opening || "—"}"</p>
+      <section>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Suggested Opening</h3>
+        <div className="bg-[#0a0d11] rounded-lg border border-[#1c2128] p-4 text-sm text-gray-300 italic">
+          "{strategy.suggested_opening || "—"}"
         </div>
-      </div>
+      </section>
 
       {strategy.priority_sequence && strategy.priority_sequence.length > 0 && (
-        <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Priority Sequence</h3>
-          <div className={styles.card}>
-            <ol style={{ margin: "0 0 0 20px", padding: 0 }}>
-              {strategy.priority_sequence.map((item, i) => (
-                <li key={`priority-${item.slice(0, 20)}-${i}`} style={{ padding: "4px 0" }}>{item}</li>
-              ))}
-            </ol>
-          </div>
-        </div>
+        <section>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Priority Sequence</h3>
+          <ol className="list-decimal list-inside space-y-2 bg-[#0a0d11] rounded-lg border border-[#1c2128] p-4 text-sm text-gray-300">
+            {strategy.priority_sequence.map((item, i) => (
+              <li key={`priority-${item.slice(0, 20)}-${i}`}>{item}</li>
+            ))}
+          </ol>
+        </section>
       )}
 
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Tone: {strategy.suggested_tone || "—"}</h3>
+      <section>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
+          Tone: {strategy.suggested_tone || "—"}
+        </h3>
         {strategy.tonal_guardrails && strategy.tonal_guardrails.length > 0 && (
-          <div className={styles.card}>
-            <ul className={styles.list}>
-              {strategy.tonal_guardrails.map((guardrail, i) => (
-                <li key={`guard-${guardrail.slice(0, 20)}-${i}`} className={styles.listItem}>
-                  <span className={`${styles.listIcon} ${styles.iconInfo}`}>•</span>
-                  {guardrail}
-                </li>
-              ))}
-            </ul>
-          </div>
+          <ul className="bg-[#0a0d11] rounded-lg border border-[#1c2128] p-4 space-y-2 text-sm text-gray-300">
+            {strategy.tonal_guardrails.map((guardrail, i) => (
+              <li key={`guard-${guardrail.slice(0, 20)}-${i}`} className="flex items-start gap-2">
+                <span className="text-blue-400 mt-0.5">•</span>
+                {guardrail}
+              </li>
+            ))}
+          </ul>
         )}
-      </div>
+      </section>
 
       {strategy.assumptions && strategy.assumptions.length > 0 && (
-        <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Assumptions</h3>
-          <div className={styles.card}>
-            <ul className={styles.list}>
-              {strategy.assumptions.map((assumption, i) => (
-                <li key={`assume-${assumption.slice(0, 20)}-${i}`} className={styles.listItem}>
-                  <span className={`${styles.listIcon} ${styles.iconWarning}`}>?</span>
-                  {assumption}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+        <section>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Assumptions</h3>
+          <ul className="bg-[#0a0d11] rounded-lg border border-[#1c2128] p-4 space-y-2 text-sm text-gray-300">
+            {strategy.assumptions.map((assumption, i) => (
+              <li key={`assume-${assumption.slice(0, 20)}-${i}`} className="flex items-start gap-2">
+                <span className="text-amber-500 mt-0.5">?</span>
+                {assumption}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <button
         type="button"
-        className={styles.jsonToggle}
+        className="text-xs text-blue-400 hover:text-blue-300 underline"
         onClick={() => setDebugRawJson(!debug_raw_json)}
       >
         {debug_raw_json ? "Hide" : "Show"} Technical Data
       </button>
 
       {debug_raw_json && (
-        <div className={styles.jsonOutput}>
-          <pre>{JSON.stringify({ strategy }, null, 2)}</pre>
-        </div>
+        <pre className="bg-[#0a0d11] p-4 rounded text-xs font-mono text-gray-400 overflow-x-auto">
+          {JSON.stringify({ strategy }, null, 2)}
+        </pre>
       )}
     </div>
   );

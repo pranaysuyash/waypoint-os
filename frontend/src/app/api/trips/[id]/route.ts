@@ -183,6 +183,7 @@ const PATCHABLE_FIELDS = new Set([
   "destination",
   "type",
   "state",
+  "status",
 ]);
 
 export async function PATCH(
@@ -191,53 +192,47 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    
-    // For PATCH, we could proxy to spine-api as well, but for now
-    // we'll keep local updates since spine-api may not have PATCH endpoint
-    // TODO: Implement PATCH proxy to spine-api when available
-    
-    // Since we don't have a mock data store anymore, we need to get the current trip first
-    const currentTripResponse = await fetch(`http://localhost:8000/trips/${id}`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    });
-    
-    if (!currentTripResponse.ok) {
-      return NextResponse.json(
-        { error: "Failed to fetch current trip" },
-        { status: currentTripResponse.status }
-      );
-    }
-    
-    const currentTrip = await currentTripResponse.json();
     const body = await request.json();
-    const updates: Record<string, unknown> = {};
-
-    for (const [key, value] of Object.entries(body)) {
-      if (PATCHABLE_FIELDS.has(key)) {
-        updates[key] = value;
-      }
+    
+    // Map frontend 'state' to backend 'status' if present
+    const updates: Record<string, any> = { ...body };
+    if (updates.state && !updates.status) {
+      // Inverse map for state -> status
+      const inverseStatusMap: Record<string, string> = {
+        'blue': 'new',
+        'amber': 'assigned',
+        'green': 'completed',
+        'red': 'cancelled'
+      };
+      updates.status = inverseStatusMap[updates.state as string] || updates.state;
+      delete updates.state;
     }
 
-    if (Object.keys(updates).length === 0) {
+    // Forward request to spine-api
+    const spineApiUrl = `http://localhost:8000/trips/${id}`;
+    
+    const response = await fetch(spineApiUrl, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
       return NextResponse.json(
-        { error: "No patchable fields provided" },
-        { status: 400 }
+        { error: errorData.detail || `Spine API returned ${response.status}` },
+        { status: response.status }
       );
     }
 
-    // Merge updates with current trip data
-    const updatedTrip = {
-      ...currentTrip,
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    };
+    const spineApiData = await response.json();
+    const transformedTrip = transformTrip(spineApiData);
     
-    // For now, we'll return the updated trip but note that it's not persisted
-    // In a full implementation, we'd PATCH to spine-api as well
-    return NextResponse.json(updatedTrip);
+    return NextResponse.json(transformedTrip);
   } catch (error) {
-    console.error("Error patching trip:", error);
+    console.error("Error patching trip via proxy:", error);
     return NextResponse.json(
       { error: "Failed to update trip" },
       { status: 500 }

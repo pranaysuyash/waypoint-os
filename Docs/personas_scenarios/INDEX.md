@@ -559,6 +559,16 @@ personas_scenarios/
 │   └── 1 real flow scenario: Financial and capital markets travel
 ├── ADDITIONAL_SCENARIOS_255_LUXURY_YACHT_AND_MARINA_TRAVEL.md
 │   └── 1 real flow scenario: Luxury yacht and marina travel
+├── ADDITIONAL_SCENARIOS_256_SUSTAINABLE_MOBILITY_AND_MICROMOBILITY_TRAVEL.md
+│   └── 1 real flow scenario: Sustainable mobility and micromobility travel
+├── ADDITIONAL_SCENARIOS_257_ARTISAN_AND_CRAFTSMAN_TRAVEL.md
+│   └── 1 real flow scenario: Artisan and craftsman travel
+├── ADDITIONAL_SCENARIOS_258_EXHIBITION_AND_MUSEUM_TRAVEL.md
+│   └── 1 real flow scenario: Exhibition and museum travel
+├── ADDITIONAL_SCENARIOS_259_WELLNESS_RETREAT_AND_HEALTH_RESORT_TRAVEL.md
+│   └── 1 real flow scenario: Wellness retreat and health resort travel
+├── ADDITIONAL_SCENARIOS_260_HOSPITALITY_INDUSTRY_TRAINING_TRAVEL.md
+│   └── 1 real flow scenario: Hospitality industry training travel
 ├── P1_SOLO_AGENT_SCENARIOS.md
 │   └── 5 real scenarios:
 │       P1-S1: 11 PM WhatsApp Panic

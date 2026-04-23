@@ -151,8 +151,42 @@ function transformTripToInboxFormat(trip: any): any {
     priorityScore = 90;
   }
   
-  // Calculate days in current stage (simplified)
-  const daysInCurrentStage = Math.floor(Math.random() * 10) + 1; // Placeholder
+   // Calculate days in current stage based on trip events
+   let daysInCurrentStage = 0;
+   
+   try {
+     // Get all timestamps from events and created_at
+     const timestamps: string[] = [];
+     
+     // Add created_at if available
+     if (trip.created_at) {
+       timestamps.push(trip.created_at);
+     }
+     
+     // Add all event timestamps
+     if (Array.isArray(trip.extracted?.events)) {
+       trip.extracted.events.forEach((event: any) => {
+         if (event.timestamp) {
+           timestamps.push(event.timestamp);
+         }
+       });
+     }
+     
+     // Find the most recent timestamp
+     if (timestamps.length > 0) {
+       const dates = timestamps.map(ts => new Date(ts));
+       const mostRecent = new Date(Math.max(...dates.map(d => d.getTime())));
+       const now = new Date();
+       const diffTime = now.getTime() - mostRecent.getTime();
+       daysInCurrentStage = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+       // Ensure we don't have negative days (in case of clock issues)
+       daysInCurrentStage = Math.max(0, daysInCurrentStage);
+     }
+   } catch (error) {
+     // Fallback to a reasonable default if calculation fails
+     console.warn('Failed to calculate daysInCurrentStage, using fallback:', error);
+     daysInCurrentStage = 3; // Reasonable default for trips in progress
+   }
   
   // Determine SLA status based on days in stage
   let slaStatus: "on_track" | "at_risk" | "breached" = "on_track";

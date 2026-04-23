@@ -33,7 +33,8 @@ def process_review_action(
     action: str,
     notes: str,
     user_id: str,
-    reassign_to: Optional[str] = None
+    reassign_to: Optional[str] = None,
+    error_category: Optional[str] = None
 ) -> dict:
     """Apply a review action to a trip and log an audit event.
 
@@ -132,6 +133,7 @@ def process_review_action(
             "trip_id": trip_id,
             "action": normalised,
             "notes": notes,
+            "error_category": error_category,
             "pre_state": pre_state,
             "post_state": post_state,
             "timestamp": review_meta["reviewed_at"]
@@ -142,9 +144,21 @@ def process_review_action(
 
 
 def _emit_notification(trip_id: str, recipient: str, type: str, message: str):
-    """Stub for notification service (WhatsApp/Email/In-app)."""
-    # In a real system, this would push to a message outbox or trigger a webhook
-    pass
+    """Emit a notification and log it to the AuditStore for traceability."""
+    # In a real system, this would push to a message outbox or trigger a webhook.
+    # For now, we ensure it's recorded in the AuditStore so the UI can surface it.
+    AuditStore.log_event(
+        "notification_emitted",
+        "system",
+        {
+            "trip_id": trip_id,
+            "recipient": recipient,
+            "notification_type": type,
+            "message": message,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    )
+    logger.info(f"Notification emitted: {type} to {recipient} for trip {trip_id}")
 
 
 def trip_to_review(trip: dict) -> dict:

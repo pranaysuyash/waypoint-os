@@ -13,6 +13,7 @@ import {
   Download,
 } from 'lucide-react';
 import { useInsightsSummary, usePipelineMetrics, useTeamMetrics, useBottleneckAnalysis, useRevenueMetrics, useOperationalAlerts } from '@/hooks/useGovernance';
+import { useUnifiedState } from '@/hooks/useUnifiedState';
 import type { TimeRange, StageMetrics, TeamMemberMetrics, BottleneckAnalysis, OperationalAlert } from '@/types/governance';
 import { RevenueChart, PipelineFunnel, TeamPerformanceChart } from '@/components/visual';
 import type { DrillDownMetric } from '@/components/visual/TeamPerformanceChart';
@@ -307,6 +308,7 @@ export default function OwnerInsightsPage() {
   const { data: bottlenecks, isLoading: isBottlenecksLoading, error: bottlenecksError } = useBottleneckAnalysis(timeRange);
   const { data: revenueData, isLoading: isRevenueLoading, error: revenueError } = useRevenueMetrics(timeRange);
   const { data: alertsData, dismiss: dismissAlert } = useOperationalAlerts();
+  const { state: unifiedState } = useUnifiedState();
 
   const isLoading = isSummaryLoading || isPipelineLoading || isTeamLoading || isBottlenecksLoading || isRevenueLoading;
   const hasError = summaryError || pipelineError || teamError || bottlenecksError || revenueError;
@@ -393,7 +395,7 @@ export default function OwnerInsightsPage() {
       <div className='grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3'>
         <StatCard
           title='Total Inquiries'
-          value={summary.totalInquiries.toString()}
+          value={unifiedState?.canonical_total?.toString() ?? summary.totalInquiries.toString()}
           subtext={`${summary.conversionRate}% conversion`}
           trend='up'
           icon={TrendingUp}

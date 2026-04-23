@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useDeferredValue } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ChevronDown,
@@ -76,6 +76,9 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
     operating_mode,
     setOperatingMode
   } = store;
+
+  const deferredRawNote = useDeferredValue(input_raw_note);
+  const deferredOwnerNote = useDeferredValue(input_owner_note);
 
   const router = useRouter();
   const [isRunning, setIsRunning] = useState(false);
@@ -304,6 +307,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
                 onClick={() => saveFieldEdit(field)}
                 className='p-1 bg-[#3fb950] text-[#0d1117] rounded hover:bg-[#2ea043]'
                 title='Save'
+                aria-label='Save trip type'
               >
                 <CheckCircle className='w-3 h-3' />
               </button>
@@ -311,6 +315,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
                 onClick={cancelEditing}
                 className='p-1 bg-[#f85149] text-[#0d1117] rounded hover:bg-[#da3633]'
                 title='Cancel'
+                aria-label='Cancel editing'
               >
                 <X className='w-3 h-3' />
               </button>
@@ -337,6 +342,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
                 onClick={() => saveFieldEdit(field)}
                 className='p-1 bg-[#3fb950] text-[#0d1117] rounded hover:bg-[#2ea043]'
                 title='Save'
+                aria-label='Save destination'
               >
                 <CheckCircle className='w-3 h-3' />
               </button>
@@ -344,6 +350,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
                 onClick={cancelEditing}
                 className='p-1 bg-[#f85149] text-[#0d1117] rounded hover:bg-[#da3633]'
                 title='Cancel'
+                aria-label='Cancel editing'
               >
                 <X className='w-3 h-3' />
               </button>
@@ -392,13 +399,15 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
               onClick={() => saveFieldEdit(field)}
               className='p-1 bg-[#3fb950] text-[#0d1117] rounded hover:bg-[#2ea043]'
               title='Save'
+              aria-label={`Save ${label}`}
             >
               <CheckCircle className='w-3 h-3' />
             </button>
             <button
               onClick={cancelEditing}
-              className='p-1 bg-[#f85149] text-[#0d1117] rounded hover:bg=[#da3633]'
+              className='p-1 bg-[#f85149] text-[#0d1117] rounded hover:bg-[#da3633]'
               title='Cancel'
+              aria-label='Cancel editing'
             >
               <X className='w-3 h-3' />
             </button>
@@ -417,6 +426,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             onClick={() => startEditing(field, value)}
             className='ml-1 opacity-0 group-hover:opacity-100 transition-opacity'
             title={`Edit ${label}`}
+            aria-label={`Edit ${label}`}
           >
             <Edit2 className='w-3 h-3 text-[#58a6ff]' />
           </button>
@@ -460,6 +470,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
               onClick={() => saveFieldEdit('budget')}
               className='p-1 bg-[#3fb950] text-[#0d1117] rounded hover:bg-[#2ea043]'
               title='Save'
+              aria-label='Save budget'
             >
               <CheckCircle className='w-3 h-3' />
             </button>
@@ -467,6 +478,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
               onClick={cancelEditing}
               className='p-1 bg-[#f85149] text-[#0d1117] rounded hover:bg-[#da3633]'
               title='Cancel'
+              aria-label='Cancel editing'
             >
               <X className='w-3 h-3' />
             </button>
@@ -485,6 +497,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             onClick={() => setEditingField('budget')}
             className='ml-1 opacity-0 group-hover:opacity-100 transition-opacity'
             title='Edit Budget'
+            aria-label='Edit budget'
           >
             <Edit2 className='w-3 h-3 text-[#58a6ff]' />
           </button>
@@ -554,7 +567,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             </label>
           </div>
           <textarea
-            value={input_raw_note}
+            value={deferredRawNote}
             onChange={(e) => setInputRawNote(e.target.value)}
             placeholder='Paste the incoming traveler note here...'
             rows={6}
@@ -570,7 +583,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             </label>
           </div>
           <textarea
-            value={input_owner_note}
+            value={deferredOwnerNote}
             onChange={(e) => setInputOwnerNote(e.target.value)}
             placeholder="Add owner's comments or clarifications..."
             rows={6}

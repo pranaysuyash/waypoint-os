@@ -46,11 +46,11 @@ This document tracks all potential areas for deep exploration and research withi
 
 ---
 
-### 🔄 Output Panel / Bundle Generation (In Progress)
+### ✅ Output Panel / Bundle Generation (Complete)
 
 **Description:** Quote, itinerary, and document generation system
 
-**Documentation:** 15 documents planned (13 complete)
+**Documentation:** 15 documents (all complete) ✅
 
 | # | Document | Status |
 |---|----------|--------|
@@ -67,14 +67,37 @@ This document tracks all potential areas for deep exploration and research withi
 | 11 | `OUTPUT_11_BUNDLE_TYPES_COMPLETE.md` | ✅ |
 | 12 | `OUTPUT_12_TEMPLATE_REFERENCE_COMPLETE.md` | ✅ |
 | 13 | `OUTPUT_13_API_SPECIFICATION_COMPLETE.md` | ✅ |
-| 14 | `OUTPUT_14_TESTING_SCENARIOS_COMPLETE.md` | ⏳ |
-| 15 | `OUTPUT_15_METRICS_DEFINITIONS_COMPLETE.md` | ⏳ |
+| 14 | `OUTPUT_14_TESTING_SCENARIOS_COMPLETE.md` | ✅ |
+| 15 | `OUTPUT_15_METRICS_DEFINITIONS_COMPLETE.md` | ✅ |
 
 **Master Index:** `OUTPUT_DEEP_DIVE_MASTER_INDEX.md`
 
 ---
 
-## Part 2: Planned Explorations
+## Part 2: Active Explorations
+
+### 🔄 Decision Engine / Strategy System (Active)
+
+**Description:** AI decision-making, state transitions, recommendations, and workflow orchestration
+
+**Documentation:** 8 documents planned (1 complete)
+
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `DECISION_01_TECHNICAL_DEEP_DIVE.md` | ✅ |
+| 2 | `DECISION_02_UX_UI_DEEP_DIVE.md` | ⏳ |
+| 3 | `DECISION_03_BUSINESS_VALUE_DEEP_DIVE.md` | ⏳ |
+| 4 | `DECISION_04_COMPETITIVE_ANALYSIS_DEEP_DIVE.md` | ⏳ |
+| 5 | `DECISION_05_ALGORITHM_DEEP_DIVE.md` | ⏳ |
+| 6 | `DECISION_06_HUMAN_IN_LOOP_DEEP_DIVE.md` | ⏳ |
+| 7 | `DECISION_07_ANALYTICS_DEEP_DIVE.md` | ⏳ |
+| 8 | `DECISION_08_FUTURE_VISION_DEEP_DIVE.md` | ⏳ |
+
+**Master Index:** `DECISION_DEEP_DIVE_MASTER_INDEX.md`
+
+---
+
+## Part 3: Planned Explorations
 
 ### ⏳ Decision Engine / Strategy System
 
@@ -443,4 +466,4 @@ Based on product impact and dependencies:
 
 **Last Updated:** 2026-04-23
 
-**Next:** Continue with Output Panel Deep Dive (OUTPUT_14)
+**Next:** Decision Engine / Strategy System (next exploration area)

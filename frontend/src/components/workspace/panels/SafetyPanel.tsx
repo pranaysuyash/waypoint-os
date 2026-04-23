@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { SafetyResult, PromptBundle } from "@/types/spine";
-import styles from "@/app/workbench/workbench.module.css";
+import { AlertCircle, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 
 interface SafetyPanelProps {
   tripId: string;
@@ -21,7 +21,7 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
 
   if (!result_safety) {
     return (
-      <div className={styles.emptyState}>
+      <div className="p-4 text-sm text-gray-500 italic">
         <p>No review data for trip {tripId}. Process a trip from the "New Inquiry" section first.</p>
       </div>
     );
@@ -29,119 +29,117 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
 
   const safety = result_safety as SafetyResult;
   const travelerBundle = result_traveler_bundle as PromptBundle | null;
-  const internalBundle = result_internal_bundle as PromptBundle | null;
-
-  const strippedFields = safety.leakage_errors || [];
   const isStrictFail = safety.strict_leakage && !safety.leakage_passed;
 
   return (
-    <div>
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Content Review</h3>
+    <div className="space-y-6">
+      <section>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Content Review</h3>
         {safety.leakage_passed ? (
-          <div className={styles.leakagePass}>
-            <div className={styles.leakageTitle}>
-              <span className={`${styles.listIcon} ${styles.iconSuccess}`} style={{ marginRight: "8px" }}>✓</span>
+          <div className="border border-[#1c2128] rounded-lg p-4 bg-[#0a0d11]">
+            <div className="flex items-center text-emerald-400 font-semibold mb-1">
+              <CheckCircle className="w-4 h-4 mr-2" />
               PASS — Safe for Customer
             </div>
-            <p style={{ fontSize: "13px", color: "var(--color-text-muted)", margin: "8px 0 0 0" }}>
+            <p className="text-sm text-gray-400">
               No internal jargon or sensitive details found in the customer-facing message.
             </p>
           </div>
         ) : (
-          <div className={styles.leakageFail}>
-            <div className={styles.leakageTitle}>
-              <span className={`${styles.listIcon} ${styles.iconDanger}`} style={{ marginRight: "8px" }}>✗</span>
+          <div className="border border-rose-900/30 rounded-lg p-4 bg-rose-950/10">
+            <div className="flex items-center text-rose-400 font-semibold mb-1">
+              <XCircle className="w-4 h-4 mr-2" />
               FAIL — Internal Jargon Found
             </div>
-            <p style={{ fontSize: "13px", color: "var(--color-text-muted)", margin: "8px 0 0 0" }}>
+            <p className="text-sm text-gray-400">
               Internal-only terms were found in the message the customer would see.
             </p>
           </div>
         )}
-      </div>
+      </section>
 
       {safety.strict_leakage && !safety.leakage_passed && (
-        <div className={styles.leakageFail} style={{ border: "2px solid rgba(239, 68, 68, 0.5)", marginBottom: "16px" }}>
-          <div className={styles.leakageTitle} style={{ color: "var(--color-danger)", fontWeight: 700 }}>
+        <div className="border-2 border-rose-500/50 rounded-lg p-4 bg-rose-950/20">
+          <div className="flex items-center text-rose-500 font-bold text-sm mb-1">
+            <AlertTriangle className="w-4 h-4 mr-2" />
             NOT SAFE TO SEND
           </div>
-          <p style={{ fontSize: "13px", margin: "8px 0 0 0" }}>
+          <p className="text-sm text-gray-200">
             Customer message contains internal jargon and cannot be sent until fixed.
           </p>
         </div>
       )}
 
-      {strippedFields.length > 0 && (
-        <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Jargon Found in Customer Message</h3>
-          <div className={styles.card}>
-            <ul className={styles.list}>
-              {strippedFields.map((item, i) => (
-                <li key={`leak-${item.slice(0, 15)}-${i}`} className={styles.listItem}>
-                  <span className={`${styles.listIcon} ${styles.iconDanger}`}>X</span>
+      {safety.leakage_errors && safety.leakage_errors.length > 0 && (
+        <section>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Jargon Found in Customer Message</h3>
+          <div className="bg-[#0a0d11] rounded-lg border border-[#1c2128] p-4">
+            <ul className="space-y-2">
+              {safety.leakage_errors.map((item, i) => (
+                <li key={`leak-${item.slice(0, 15)}-${i}`} className="flex items-center text-sm text-rose-400">
+                  <AlertCircle className="w-3.5 h-3.5 mr-2 shrink-0" />
                   {item}
                 </li>
               ))}
             </ul>
           </div>
-        </div>
+        </section>
       )}
 
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Customer-Facing Message</h3>
-        <div className={styles.card}>
+      <section>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Customer-Facing Message</h3>
+        <div className="bg-[#0a0d11] rounded-lg border border-[#1c2128] p-4 space-y-4">
           {travelerBundle && !isStrictFail ? (
-            <div>
-              <div style={{ marginBottom: "12px" }}>
-                <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>System Context</strong>
-                <p style={{ fontSize: "13px", whiteSpace: "pre-wrap", marginTop: "4px" }}>
+            <>
+              <div>
+                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">System Context</div>
+                <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                   {travelerBundle.system_context || "—"}
                 </p>
               </div>
-              <div style={{ marginBottom: "12px" }}>
-                <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>User Message</strong>
-                <p style={{ fontSize: "13px", whiteSpace: "pre-wrap", marginTop: "4px" }}>
+              <div>
+                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">User Message</div>
+                <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                   {travelerBundle.user_message || "—"}
                 </p>
               </div>
               {travelerBundle.follow_up_sequence && travelerBundle.follow_up_sequence.length > 0 && (
                 <div>
-                  <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Follow-up Sequence</strong>
-                  <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
+                  <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Follow-up Sequence</div>
+                  <ul className="mt-1 space-y-1">
                     {travelerBundle.follow_up_sequence.map((f, i) => (
-                      <li key={`fseq-${f.field_name}-${i}`} style={{ marginBottom: "4px" }}>
-                        <strong>[{f.priority}]</strong> {f.question}
+                      <li key={`fseq-${f.field_name}-${i}`} className="text-sm text-gray-400">
+                        <span className="font-semibold text-gray-500">[{f.priority}]</span> {f.question}
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
-            </div>
+            </>
           ) : (
-            <p style={{ color: "var(--color-text-muted)" }}>
+            <p className="text-sm text-gray-500 italic">
               {isStrictFail ? "Cannot be sent — contains internal jargon" : "No customer message available"}
             </p>
           )}
         </div>
-      </div>
+      </section>
 
       <button
         type="button"
-        className={styles.jsonToggle}
+        className="text-xs text-blue-400 hover:text-blue-300 underline mt-2"
         onClick={() => setShowRaw(!effectiveShowRaw)}
       >
         {effectiveShowRaw ? "Hide" : "Show"} Technical Data
       </button>
 
       {effectiveShowRaw && (
-        <div className={styles.jsonOutput}>
-          <pre>{JSON.stringify({
+        <pre className="bg-[#0a0d11] p-4 rounded text-xs font-mono text-gray-400 overflow-x-auto border border-[#1c2128]">
+          {JSON.stringify({
             safety: result_safety,
             traveler_bundle: result_traveler_bundle,
             internal_bundle: result_internal_bundle,
-          }, null, 2)}</pre>
-        </div>
+          }, null, 2)}
+        </pre>
       )}
     </div>
   );

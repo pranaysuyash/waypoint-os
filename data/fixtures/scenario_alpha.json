@@ -1,0 +1,872 @@
+[
+  {
+    "id": "trip_alpha_001",
+    "status": "new",
+    "created_at": "2026-04-17T13:30:25.473031",
+    "updated_at": "2026-04-22T15:30:25.473041",
+    "extracted": {
+      "destination": "Rome",
+      "trip_purpose": "business",
+      "party_size": 2,
+      "budget": 15124,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.22,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 38,
+      "quality_score": 44,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": null,
+    "assignedToName": null
+  },
+  {
+    "id": "trip_alpha_002",
+    "status": "new",
+    "created_at": "2026-04-17T13:30:25.473054",
+    "updated_at": "2026-04-22T18:30:25.473056",
+    "extracted": {
+      "destination": "New York",
+      "trip_purpose": "family",
+      "party_size": 2,
+      "budget": 16816,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.81,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 19,
+      "quality_score": 56,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": null,
+    "assignedToName": null
+  },
+  {
+    "id": "trip_alpha_003",
+    "status": "new",
+    "created_at": "2026-04-18T13:30:25.473064",
+    "updated_at": "2026-04-23T08:30:25.473065",
+    "extracted": {
+      "destination": "Sydney",
+      "trip_purpose": "honeymoon",
+      "party_size": 4,
+      "budget": 19694,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.51,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 10,
+      "quality_score": 84,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": null,
+    "assignedToName": null
+  },
+  {
+    "id": "trip_alpha_004",
+    "status": "new",
+    "created_at": "2026-04-23T13:30:25.473069",
+    "updated_at": "2026-04-23T06:30:25.473071",
+    "extracted": {
+      "destination": "Singapore",
+      "trip_purpose": "leisure",
+      "party_size": 3,
+      "budget": 4536,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.41,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 12,
+      "quality_score": 73,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": null,
+    "assignedToName": null
+  },
+  {
+    "id": "trip_alpha_005",
+    "status": "new",
+    "created_at": "2026-04-17T13:30:25.473075",
+    "updated_at": "2026-04-23T02:30:25.473076",
+    "extracted": {
+      "destination": "Bali",
+      "trip_purpose": "family",
+      "party_size": 5,
+      "budget": 12904,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.62,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 38,
+      "quality_score": 82,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": null,
+    "assignedToName": null
+  },
+  {
+    "id": "trip_alpha_006",
+    "status": "new",
+    "created_at": "2026-04-15T13:30:25.473080",
+    "updated_at": "2026-04-22T16:30:25.473081",
+    "extracted": {
+      "destination": "Bali",
+      "trip_purpose": "honeymoon",
+      "party_size": 1,
+      "budget": 2477,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.9,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 27,
+      "quality_score": 79,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": null,
+    "assignedToName": null
+  },
+  {
+    "id": "trip_alpha_007",
+    "status": "new",
+    "created_at": "2026-04-23T13:30:25.473086",
+    "updated_at": "2026-04-23T03:30:25.473087",
+    "extracted": {
+      "destination": "New York",
+      "trip_purpose": "honeymoon",
+      "party_size": 3,
+      "budget": 13399,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.2,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 37,
+      "quality_score": 65,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": false
+    },
+    "assignedTo": null,
+    "assignedToName": null
+  },
+  {
+    "id": "trip_alpha_008",
+    "status": "new",
+    "created_at": "2026-04-18T13:30:25.473097",
+    "updated_at": "2026-04-22T17:30:25.473099",
+    "extracted": {
+      "destination": "Rome",
+      "trip_purpose": "business",
+      "party_size": 3,
+      "budget": 2602,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.57,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 10,
+      "quality_score": 85,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": null,
+    "assignedToName": null
+  },
+  {
+    "id": "trip_alpha_009",
+    "status": "new",
+    "created_at": "2026-04-13T13:30:25.473104",
+    "updated_at": "2026-04-22T16:30:25.473105",
+    "extracted": {
+      "destination": "Tokyo",
+      "trip_purpose": "leisure",
+      "party_size": 5,
+      "budget": 9239,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.3,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 38,
+      "quality_score": 44,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": null,
+    "assignedToName": null
+  },
+  {
+    "id": "trip_alpha_010",
+    "status": "new",
+    "created_at": "2026-04-23T13:30:25.473109",
+    "updated_at": "2026-04-23T05:30:25.473111",
+    "extracted": {
+      "destination": "Singapore",
+      "trip_purpose": "leisure",
+      "party_size": 3,
+      "budget": 15970,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.72,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 6,
+      "quality_score": 46,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": null,
+    "assignedToName": null
+  },
+  {
+    "id": "trip_alpha_011",
+    "status": "assigned",
+    "created_at": "2026-04-19T13:30:25.473115",
+    "updated_at": "2026-04-23T04:30:25.473116",
+    "extracted": {
+      "destination": "Sydney",
+      "trip_purpose": "leisure",
+      "party_size": 5,
+      "budget": 7328,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.44,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 36,
+      "quality_score": 63,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": "agent_001",
+    "assignedToName": "Agent Smith"
+  },
+  {
+    "id": "trip_alpha_012",
+    "status": "assigned",
+    "created_at": "2026-04-13T13:30:25.473120",
+    "updated_at": "2026-04-23T07:30:25.473121",
+    "extracted": {
+      "destination": "Paris",
+      "trip_purpose": "adventure",
+      "party_size": 5,
+      "budget": 10208,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.51,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 14,
+      "quality_score": 70,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": false
+    },
+    "assignedTo": "agent_001",
+    "assignedToName": "Agent Smith"
+  },
+  {
+    "id": "trip_alpha_013",
+    "status": "assigned",
+    "created_at": "2026-04-22T13:30:25.473124",
+    "updated_at": "2026-04-23T02:30:25.473126",
+    "extracted": {
+      "destination": "Paris",
+      "trip_purpose": "honeymoon",
+      "party_size": 3,
+      "budget": 11817,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.5,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 23,
+      "quality_score": 52,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": "agent_001",
+    "assignedToName": "Agent Smith"
+  },
+  {
+    "id": "trip_alpha_014",
+    "status": "assigned",
+    "created_at": "2026-04-22T13:30:25.473129",
+    "updated_at": "2026-04-22T14:30:25.473130",
+    "extracted": {
+      "destination": "Singapore",
+      "trip_purpose": "leisure",
+      "party_size": 3,
+      "budget": 2419,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.38,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 31,
+      "quality_score": 89,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": "agent_001",
+    "assignedToName": "Agent Smith"
+  },
+  {
+    "id": "trip_alpha_015",
+    "status": "assigned",
+    "created_at": "2026-04-17T13:30:25.473134",
+    "updated_at": "2026-04-22T22:30:25.473135",
+    "extracted": {
+      "destination": "Iceland",
+      "trip_purpose": "honeymoon",
+      "party_size": 1,
+      "budget": 15621,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.9,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 17,
+      "quality_score": 85,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": "agent_001",
+    "assignedToName": "Agent Smith"
+  },
+  {
+    "id": "trip_alpha_016",
+    "status": "assigned",
+    "created_at": "2026-04-21T13:30:25.473140",
+    "updated_at": "2026-04-22T15:30:25.473141",
+    "extracted": {
+      "destination": "Dubai",
+      "trip_purpose": "family",
+      "party_size": 4,
+      "budget": 14661,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.78,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 23,
+      "quality_score": 89,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": false
+    },
+    "assignedTo": "agent_001",
+    "assignedToName": "Agent Smith"
+  },
+  {
+    "id": "trip_alpha_017",
+    "status": "assigned",
+    "created_at": "2026-04-13T13:30:25.473145",
+    "updated_at": "2026-04-22T20:30:25.473146",
+    "extracted": {
+      "destination": "Singapore",
+      "trip_purpose": "family",
+      "party_size": 2,
+      "budget": 19357,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.46,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 8,
+      "quality_score": 72,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": "agent_001",
+    "assignedToName": "Agent Smith"
+  },
+  {
+    "id": "trip_alpha_018",
+    "status": "assigned",
+    "created_at": "2026-04-14T13:30:25.473150",
+    "updated_at": "2026-04-23T02:30:25.473151",
+    "extracted": {
+      "destination": "Dubai",
+      "trip_purpose": "honeymoon",
+      "party_size": 5,
+      "budget": 2038,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.63,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 6,
+      "quality_score": 43,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": "agent_001",
+    "assignedToName": "Agent Smith"
+  },
+  {
+    "id": "trip_alpha_019",
+    "status": "assigned",
+    "created_at": "2026-04-23T13:30:25.473155",
+    "updated_at": "2026-04-23T03:30:25.473156",
+    "extracted": {
+      "destination": "London",
+      "trip_purpose": "business",
+      "party_size": 1,
+      "budget": 11466,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.51,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 39,
+      "quality_score": 76,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": "agent_001",
+    "assignedToName": "Agent Smith"
+  },
+  {
+    "id": "trip_alpha_020",
+    "status": "assigned",
+    "created_at": "2026-04-22T13:30:25.473160",
+    "updated_at": "2026-04-23T04:30:25.473161",
+    "extracted": {
+      "destination": "Bali",
+      "trip_purpose": "business",
+      "party_size": 6,
+      "budget": 6525,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.63,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 28,
+      "quality_score": 80,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": "agent_001",
+    "assignedToName": "Agent Smith"
+  },
+  {
+    "id": "trip_alpha_021",
+    "status": "in_progress",
+    "created_at": "2026-04-16T13:30:25.473165",
+    "updated_at": "2026-04-23T00:30:25.473166",
+    "extracted": {
+      "destination": "Tokyo",
+      "trip_purpose": "adventure",
+      "party_size": 6,
+      "budget": 7533,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.53,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 14,
+      "quality_score": 89,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": "agent_001",
+    "assignedToName": "Agent Smith"
+  },
+  {
+    "id": "trip_alpha_022",
+    "status": "in_progress",
+    "created_at": "2026-04-14T13:30:25.473170",
+    "updated_at": "2026-04-23T06:30:25.473171",
+    "extracted": {
+      "destination": "Bali",
+      "trip_purpose": "adventure",
+      "party_size": 2,
+      "budget": 5808,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.63,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 20,
+      "quality_score": 48,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": "agent_001",
+    "assignedToName": "Agent Smith"
+  },
+  {
+    "id": "trip_alpha_023",
+    "status": "in_progress",
+    "created_at": "2026-04-18T13:30:25.473176",
+    "updated_at": "2026-04-23T10:30:25.473177",
+    "extracted": {
+      "destination": "Rome",
+      "trip_purpose": "honeymoon",
+      "party_size": 4,
+      "budget": 3824,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.39,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 6,
+      "quality_score": 54,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": "agent_001",
+    "assignedToName": "Agent Smith"
+  },
+  {
+    "id": "trip_alpha_024",
+    "status": "in_progress",
+    "created_at": "2026-04-20T13:30:25.473181",
+    "updated_at": "2026-04-23T08:30:25.473182",
+    "extracted": {
+      "destination": "London",
+      "trip_purpose": "honeymoon",
+      "party_size": 6,
+      "budget": 16831,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.32,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 9,
+      "quality_score": 80,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": "agent_001",
+    "assignedToName": "Agent Smith"
+  },
+  {
+    "id": "trip_alpha_025",
+    "status": "in_progress",
+    "created_at": "2026-04-23T13:30:25.473185",
+    "updated_at": "2026-04-23T04:30:25.473186",
+    "extracted": {
+      "destination": "Iceland",
+      "trip_purpose": "business",
+      "party_size": 5,
+      "budget": 11352,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.49,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 10,
+      "quality_score": 60,
+      "requires_review": true
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": "agent_001",
+    "assignedToName": "Agent Smith"
+  },
+  {
+    "id": "trip_alpha_026",
+    "status": "completed",
+    "created_at": "2026-04-14T13:30:25.473190",
+    "updated_at": "2026-04-23T10:30:25.473191",
+    "extracted": {
+      "destination": "Paris",
+      "trip_purpose": "family",
+      "party_size": 5,
+      "budget": 8231,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.78,
+      "decision_state": "PROCEED_SAFE",
+      "action": "AUTO_PILOT"
+    },
+    "analytics": {
+      "margin_pct": 37,
+      "quality_score": 94,
+      "requires_review": false
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": null,
+    "assignedToName": null
+  },
+  {
+    "id": "trip_alpha_027",
+    "status": "completed",
+    "created_at": "2026-04-16T13:30:25.473195",
+    "updated_at": "2026-04-23T11:30:25.473196",
+    "extracted": {
+      "destination": "London",
+      "trip_purpose": "leisure",
+      "party_size": 4,
+      "budget": 11693,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.93,
+      "decision_state": "PROCEED_SAFE",
+      "action": "AUTO_PILOT"
+    },
+    "analytics": {
+      "margin_pct": 29,
+      "quality_score": 88,
+      "requires_review": false
+    },
+    "validation": {
+      "is_valid": false
+    },
+    "assignedTo": null,
+    "assignedToName": null
+  },
+  {
+    "id": "trip_alpha_028",
+    "status": "completed",
+    "created_at": "2026-04-23T13:30:25.473200",
+    "updated_at": "2026-04-23T03:30:25.473201",
+    "extracted": {
+      "destination": "Rome",
+      "trip_purpose": "leisure",
+      "party_size": 3,
+      "budget": 2558,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.11,
+      "decision_state": "PROCEED_SAFE",
+      "action": "AUTO_PILOT"
+    },
+    "analytics": {
+      "margin_pct": 19,
+      "quality_score": 87,
+      "requires_review": false
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": null,
+    "assignedToName": null
+  },
+  {
+    "id": "trip_alpha_029",
+    "status": "cancelled",
+    "created_at": "2026-04-21T13:30:25.473204",
+    "updated_at": "2026-04-22T18:30:25.473205",
+    "extracted": {
+      "destination": "Tokyo",
+      "trip_purpose": "honeymoon",
+      "party_size": 5,
+      "budget": 11263,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.18,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 37,
+      "quality_score": 75,
+      "requires_review": false
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": null,
+    "assignedToName": null
+  },
+  {
+    "id": "trip_alpha_030",
+    "status": "cancelled",
+    "created_at": "2026-04-20T13:30:25.473209",
+    "updated_at": "2026-04-23T06:30:25.473210",
+    "extracted": {
+      "destination": "Singapore",
+      "trip_purpose": "family",
+      "party_size": 2,
+      "budget": 9750,
+      "date_window": "Summer 2026",
+      "origin": "London"
+    },
+    "decision": {
+      "confidence_score": 0.77,
+      "decision_state": "ASK_FOLLOWUP",
+      "action": "MANUAL_REVIEW"
+    },
+    "analytics": {
+      "margin_pct": 29,
+      "quality_score": 47,
+      "requires_review": false
+    },
+    "validation": {
+      "is_valid": true
+    },
+    "assignedTo": null,
+    "assignedToName": null
+  }
+]
