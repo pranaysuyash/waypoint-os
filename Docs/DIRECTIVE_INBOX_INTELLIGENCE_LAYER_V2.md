@@ -79,8 +79,6 @@ InboxPage
 | `viewProfile` | `'operations' \| 'teamLead' \| 'finance' \| 'fulfillment'` | `localStorage` | Per-user preference, survives sessions |
 | `sortBy` / `sortDirection` | `SortKey` / `SortDirection` | `localStorage` + URL | URL takes precedence if present; `localStorage` is fallback |
 | `showMicroLabels` | `boolean` | `localStorage` + auto-detect | True for first `MICRO_LABEL_THRESHOLD` visits, then false |
-| `showMicroLabels` | `boolean` | `localStorage` + auto-detect | True for first 3 visits, then false |
-| `sortBy` / `sortDirection` | `SortKey` / `SortDirection` | `localStorage` | Per-user preference |
 
 ---
 
@@ -116,14 +114,14 @@ InboxPage
 **Operations view** (default):
 `[Party] · [Date] · [Value] · [Days in stage]`
 
-**Manager view**:
-`[Assignee] · [Days in stage] · [Value] · [Priority score]`
+**Team Lead view**:
+`[Assignee] · [SLA status] · [Days in stage] · [Priority score]`
 
 **Finance view**:
-`[Value] · [Priority] · [Stage] · [Date]`
+`[Value] · [Stage] · [Date] · [Priority]`
 
-**Vendor view**:
-`[Date] · [Stage] · [Destination] · [Party]`
+**Fulfillment view**:
+`[Date] · [Assignee] · [Stage] · [Party]`
 
 **Rationale**: The same four fields, reordered by what that role compares across cards.
 
@@ -146,7 +144,13 @@ Replace the current flat `SLABadge` with a semantic expression:
 | Booking | 14d | 6d | `6d · 43% of SLA` |
 | Options | 72h | 3d | `3d · 100% of SLA` |
 
-**Implementation**: Use `PipelineStage.slaHours` from backend. Compute `percentage = (daysInCurrentStage * 24) / slaHours * 100`. Display raw days + percentage.
+**Implementation**: Compute `percentage = (daysInCurrentStage * 24) / slaHours * 100`. Display raw days + percentage.
+
+**Precondition / Verification Gate**: Before Phase 1, confirm the runtime inbox payload includes either:
+- `slaHours` per stage (from `PipelineStage` or embedded in trip metadata), or
+- Enough information to derive it (e.g., `stage` + a client-side lookup table as fallback)
+
+If `slaHours` is not available at runtime, implement a narrow contract extension (add `slaHours` to the stage metadata in the inbox response) rather than contorting the frontend. This is a data contract addition, not a new endpoint.
 
 **Color logic** (unchanged):
 - `on_track`: green (`STATE_COLORS.green`)
@@ -157,13 +161,13 @@ Replace the current flat `SLABadge` with a semantic expression:
 
 ### 4.4 Progressive Micro-Labels
 
-For users with < 3 inbox visits (tracked in `localStorage`):
+For users with < `MICRO_LABEL_THRESHOLD` inbox visits (tracked in `localStorage`):
 
 ```
 [🔴 Critical · needs human review]  [Intake · just arrived]  [On Track · within SLA]
 ```
 
-After 3 visits, collapse to:
+After `MICRO_LABEL_THRESHOLD` visits, collapse to:
 ```
 [🔴 Critical]  [Intake]  [On Track]
 ```
