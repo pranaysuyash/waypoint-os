@@ -9,6 +9,11 @@ const statusMap: Record<string, "green" | "amber" | "red" | "blue"> = {
   cancelled: 'red',
 };
 
+// Canonical definition of which frontend states count as "in workspace".
+// Single source of truth — workspace page and any future consumer must use
+// the ?view=workspace param rather than client-side filtering.
+const WORKSPACE_STATES = new Set(["green", "amber", "red"] as const);
+
 // Calculate age string from ISO date string
 function calculateAge(isoDateString: string): string {
   const created = new Date(isoDateString);
@@ -169,9 +174,13 @@ function transformTrip(spineTrip: any): any {
 
 export async function GET(request: NextRequest) {
   try {
-    // Forward query parameters to spine-api
     const searchParams = request.nextUrl.searchParams;
-    const query = searchParams.toString();
+    const view = searchParams.get("view");
+
+    // Strip our custom param before forwarding to spine-api
+    const forwardParams = new URLSearchParams(searchParams.toString());
+    forwardParams.delete("view");
+    const query = forwardParams.toString();
     const spineApiUrl = `http://localhost:8000/trips${query ? `?${query}` : ""}`;
 
     const response = await fetch(spineApiUrl, {
@@ -187,24 +196,27 @@ export async function GET(request: NextRequest) {
 
     const spineApiData = await response.json();
     
-    // Transform the data to match frontend expectations
-    // spine-api returns { items: [...], total: N }
+    let transformedItems: any[];
+
     if (spineApiData.items && Array.isArray(spineApiData.items)) {
-      const transformedItems = spineApiData.items.map(transformTrip);
-      return NextResponse.json({
-        items: transformedItems,
-        total: spineApiData.total
-      });
+      transformedItems = spineApiData.items.map(transformTrip);
     } else {
-      // Handle case where spine-api might return just an array
-      const transformedItems = Array.isArray(spineApiData) 
-        ? spineApiData.map(transformTrip) 
+      transformedItems = Array.isArray(spineApiData)
+        ? spineApiData.map(transformTrip)
         : [transformTrip(spineApiData)];
-      return NextResponse.json({
-        items: transformedItems,
-        total: transformedItems.length
-      });
     }
+
+    // Server-side view filter — canonical definitions live here
+    if (view === "workspace") {
+      transformedItems = transformedItems.filter(
+        (trip: any) => WORKSPACE_STATES.has(trip.state)
+      );
+    }
+
+    return NextResponse.json({
+      items: transformedItems,
+      total: transformedItems.length,
+    });
   } catch (error) {
     console.error("Error fetching trips from spine-api:", error);
     return NextResponse.json(

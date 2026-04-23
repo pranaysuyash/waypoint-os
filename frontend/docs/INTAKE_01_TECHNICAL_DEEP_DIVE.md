@@ -1,0 +1,1542 @@
+# Intake & Packet Processing Technical Deep Dive
+
+> How raw customer inquiries become structured, actionable trip data
+
+**Document:** INTAKE_01_TECHNICAL_DEEP_DIVE.md
+**Series:** Intake / Packet Processing Deep Dive
+**Status:** ✅ Complete
+**Last Updated:** 2026-04-23
+**Related:** [Decision Engine documents](./DECISION_DEEP_DIVE_MASTER_INDEX.md)
+
+---
+
+## Table of Contents
+
+1. [System Overview](#system-overview)
+2. [Architecture](#architecture)
+3. [Channel Integration Layer](#channel-integration-layer)
+4. [Extraction Pipeline](#extraction-pipeline)
+5. [Packet Data Model](#packet-data-model)
+6. [Validation & Quality](#validation-quality)
+7. [Triage System](#triage-system)
+8. [State Machine](#state-machine)
+9. [Implementation Reference](#implementation-reference)
+
+---
+
+## 1. System Overview
+
+### What is Intake & Packet Processing?
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         INTAKE & PACKET PROCESSING                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  PURPOSE: Transform unstructured customer inquiries into structured data    │
+│           that the Decision Engine can act upon                             │
+│                                                                             │
+│  INPUT: Raw customer messages from any channel                              │
+│  OUTPUT: Structured Trip Packet with validated, enriched data               │
+│                                                                             │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌───────────┐│
+│  │  CUSTOMER   │ ──▶ │   INTAKE    │ ──▶ │  PACKET     │ ──▶ │ DECISION  ││
+│  │  INQUIRY   │     │   PIPELINE  │     │    READY    │     │  ENGINE   ││
+│  │             │     │             │     │             │     │           ││
+│  │ "Planning   │     │ • Extract   │     │ {          │     │ State:    ││
+│  │  trip to    │     │ • Validate  │     │   dest:    │     │ QUOTE_    ││
+│  │  Goa in     │     │ • Enrich    │     │   "Goa",   │     │ READY     ││
+│  │  May..."    │     │ • Triage    │     │   dates:   │     │           ││
+│  └─────────────┘     └─────────────┘     │   [...],   │     └───────────┘│
+│                                          │   score:   │                  │
+│                                          │   0.87     │                  │
+│                                          │ }          │                  │
+│                                          └─────────────┘                  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Core Responsibilities
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       INTAKE SYSTEM RESPONSIBILITIES                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1. INGESTION                                                               │
+│     • Receive messages from all channels in real-time                       │
+│     • Handle different formats (text, images, files, audio)                 │
+│     • Normalize for processing                                             │
+│                                                                             │
+│  2. EXTRACTION                                                              │
+│     • Identify trip intent from unstructured text                          │
+│     • Extract key fields (destination, dates, budget, travelers)           │
+│     • Handle multi-language input (English, Hindi, regional)               │
+│                                                                             │
+│  3. VALIDATION                                                              │
+│     • Verify extracted data quality and completeness                       │
+│     • Flag missing or inconsistent information                             │
+│     • Apply business rules (e.g., minimum lead time requirements)          │
+│                                                                             │
+│  4. ENRICHMENT                                                              │
+│     • Look up customer history and preferences                             │
+│     • Add context from CRM and past trips                                  │
+│     • Append supplementary data (destination info, seasonal data)          │
+│                                                                             │
+│  5. TRIAGE                                                                  │
+│     • Assess inquiry urgency and complexity                                │
+│     • Route to appropriate agent or queue                                  │
+│     • Identify high-value or VIP customers                                 │
+│                                                                             │
+│  6. PACKET CREATION                                                         │
+│     • Assemble all data into structured Trip Packet                        │
+│     • Generate extraction confidence scores                                │
+│     │  Create audit trail of all processing steps                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 2. Architecture
+
+### System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        INTAKE SYSTEM ARCHITECTURE                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                         CHANNEL LAYER                               │   │
+│  │  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐           │   │
+│  │  │  WhatsApp │  │   Email   │  │   Web     │  │   Phone   │           │   │
+│  │  │  (Twilio) │  │  (SendGrid)│  │  (Form)   │  │  (VoIP)   │           │   │
+│  │  └─────┬─────┘ └─────┬─────┘ └─────┬─────┘ └─────┬─────┘           │   │
+│  └────────┼──────────────┼──────────────┼──────────────┼─────────────────┘   │
+│           │              │              │              │                     │
+│           ▼              ▼              ▼              ▼                     │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                       MESSAGE BUS (Kafka)                           │   │
+│  │  Topic: inbound-messages                                            │   │
+│  └───────────────────────────────┬─────────────────────────────────────┘   │
+│                                   │                                         │
+│                                   ▼                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                    INGESTION SERVICE                                │   │
+│  │  • Normalize message format                                        │   │
+│  │  • Extract attachments/media                                       │   │
+│  │  • Detect language                                                 │   │
+│  │  • Deduplicate                                                     │   │
+│  └───────────────────────────────┬─────────────────────────────────────┘   │
+│                                   │                                         │
+│                                   ▼                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                    EXTRACTION PIPELINE                              │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                 │   │
+│  │  │   NLP /     │  │    RULE     │  │   MANUAL    │                 │   │
+│  │  │    LLM      │  │  BASED      │  │  REVIEW     │                 │   │
+│  │  │  Extraction │  │  Extraction │  │  Fallback   │                 │   │
+│  │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘                 │   │
+│  └─────────┼──────────────────┼──────────────────┼─────────────────────┘   │
+│           │                  │                  │                         │
+│           └──────────────────┴──────────────────┘                         │
+│                              │                                             │
+│                              ▼                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                    VALIDATION & ENRICHMENT                          │   │
+│  │  • Data quality checks                                              │   │
+│  │  • Business rule validation                                        │   │
+│  │  • CRM lookup                                                      │   │
+│  │  • History enrichment                                              │   │
+│  └───────────────────────────────┬─────────────────────────────────────┘   │
+│                                   │                                         │
+│                                   ▼                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                       TRIAGE ENGINE                                 │   │
+│  │  • Urgency scoring                                                 │   │
+│  │  • Complexity assessment                                           │   │
+│  │  • Agent matching                                                  │   │
+│  └───────────────────────────────┬─────────────────────────────────────┘   │
+│                                   │                                         │
+│                                   ▼                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                      PACKET ASSEMBLY                                │   │
+│  │  • Create TripPacket                                               │   │
+│  │  • Attach all metadata                                             │   │
+│  │  • Generate confidence scores                                      │   │
+│  │  • Persist to database                                             │   │
+│  └───────────────────────────────┬─────────────────────────────────────┘   │
+│                                   │                                         │
+│                                   ▼                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                    DECISION ENGINE                                  │   │
+│  │  "Now I have structured data to make decisions"                     │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Service Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        MICROSERVICE ARCHITECTURE                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  intake-api (FastAPI)                                               │   │
+│  │  • REST endpoints for web submissions                               │   │
+│  │  • Webhook handlers for external services                            │   │
+│  │  • Authentication & rate limiting                                    │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                │                                           │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  channel-ingestor (Go)                                              │   │
+│  │  • Kafka consumer for all channel messages                          │   │
+│  │  • Message normalization and deduplication                          │   │
+│  │  • Attachment processing and storage                               │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                │                                           │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  extraction-engine (Python)                                         │   │
+│  │  • NLP/LLM-based field extraction                                   │   │
+│  │  • Rule-based pattern matching                                     │   │
+│  │  • Confidence scoring for each field                                │   │
+│  │  • Multi-language support                                           │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                │                                           │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  validation-service (TypeScript/Node)                              │   │
+│  │  • Schema validation                                               │   │
+│  │  • Business rule engine                                            │   │
+│  │  • Data quality scoring                                            │   │
+│  │  • Missing field detection                                          │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                │                                           │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  enrichment-service (Python)                                        │   │
+│  │  • CRM integration                                                  │   │
+│  │  • Customer history lookup                                         │   │
+│  │  • Destination metadata fetching                                    │   │
+│  │  • Seasonal context enrichment                                      │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                │                                           │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  triage-engine (Python)                                             │   │
+│  │  • Urgency scoring                                                  │   │
+│  │  • Complexity assessment                                            │   │
+│  │  • Agent-queue assignment                                           │   │
+│  │  • Priority routing                                                 │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                │                                           │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  packet-store (PostgreSQL + S3)                                     │   │
+│  │  • TripPacket persistence                                           │   │
+│  │  • Audit trail                                                     │   │
+│  │  • Attachment storage                                              │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 3. Channel Integration Layer
+
+### Supported Channels
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          CHANNEL INTEGRATION                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  WHATSAPP (Primary - 60% of inquiries)                              │   │
+│  ├─────────────────────────────────────────────────────────────────────┤   │
+│  │  Provider: Twilio API for WhatsApp                                  │   │
+│  │  Capabilities:                                                      │   │
+│  │    • Text messages (emojis, multi-language)                         │   │
+│  │    • Images (screenshots, documents)                                │   │
+│  │    • Audio notes (voice messages)                                   │   │
+│  │    • Documents (PDFs, itineraries)                                  │   │
+│  │  Processing:                                                        │   │
+│  │    • Webhook on message received                                    │   │
+│  │    • Media downloaded and extracted                                 │   │
+│  │    • OCR for images                                                 │   │
+│  │    • STT for audio notes                                            │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  EMAIL (Secondary - 25% of inquiries)                               │   │
+│  ├─────────────────────────────────────────────────────────────────────┤   │
+│  │  Provider: SendGrid Inbound Parse                                   │   │
+│  │  Capabilities:                                                      │   │
+│  │    • Structured email parsing                                       │   │
+│  │    • Thread detection and grouping                                  │   │
+│  │    • Attachment extraction                                          │   │
+│  │    • Signature detection and removal                                │   │
+│  │  Processing:                                                        │   │
+│  │    • Parse email body and all attachments                           │   │
+│  │    • Extract quoted reply text                                      │   │
+│  │    • Detect forwarded messages                                       │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  WEB FORM (Direct - 10% of inquiries)                               │   │
+│  ├─────────────────────────────────────────────────────────────────────┤   │
+│  │  Provider: Custom React form + intake-api                           │   │
+│  │  Capabilities:                                                      │   │
+│  │    • Structured input (dropdowns, dates, travelers)                 │   │
+│  │    • File uploads                                                   │   │
+│  │    • Real-time validation                                           │   │
+│  │  Processing:                                                        │   │
+│  │    • Direct JSON payload to intake-api                              │   │
+│  │    • Pre-validated on client side                                   │   │
+│  │    │  Fastest processing path                                       │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  PHONE (VoIP - 5% of inquiries)                                     │   │
+│  ├─────────────────────────────────────────────────────────────────────┤   │
+│  │  Provider: Exotel / Twilio                                          │   │
+│  │  Capabilities:                                                      │   │
+│  │    • Call recording                                                 │   │
+│  │    • IVR data collection                                            │   │
+│  │    • Agent call notes                                               │   │
+│  │  Processing:                                                        │   │
+│  │    • Speech-to-text for call recording                              │   │
+│  │    • Extract structured IVR inputs                                  │   │
+│  │    • Process agent notes after call                                 │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Message Normalization
+
+```typescript
+// Unified message format after normalization
+interface NormalizedMessage {
+  // Metadata
+  id: string;                       // Unique message ID
+  channel: MessageChannel;
+  timestamp: Date;
+  customer: CustomerIdentifier;
+
+  // Content
+  text: string;                     // Primary text content
+  language: string;                 // Detected language (en, hi, etc.)
+
+  // Media attachments
+  attachments: Attachment[];
+
+  // Channel-specific metadata
+  channelMetadata: {
+    whatsapp?: {
+      from: string;                 // Phone number
+      messageSid: string;
+    };
+    email?: {
+      from: string;                 // Email address
+      subject: string;
+      threadId?: string;
+      isForward?: boolean;
+      signature?: string;
+    };
+    web?: {
+      userAgent: string;
+      referrer?: string;
+    };
+    phone?: {
+      from: string;
+      recordingUrl?: string;
+      ivrInputs?: Record<string, string>;
+    };
+  };
+
+  // Processing metadata
+  processing: {
+    receivedAt: Date;
+    normalizedAt: Date;
+    deduplicationKey?: string;      // For duplicate detection
+  };
+}
+
+interface Attachment {
+  id: string;
+  type: 'image' | 'document' | 'audio' | 'video';
+  mimeType: string;
+  url: string;
+  extractedText?: string;          // OCR/STT output
+  metadata?: {
+    filename?: string;
+    size?: number;
+    pages?: number;
+    duration?: number;
+  };
+}
+```
+
+---
+
+## 4. Extraction Pipeline
+
+### Pipeline Stages
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         EXTRACTION PIPELINE                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  STAGE 1: PRE-PROCESSING                                                   │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ • Language detection (fastText)                                     │   │
+│  │ • Text normalization (lowercase, trim)                              │   │
+│  │ • Channel-specific cleanup (remove signatures, etc.)               │   │
+│  │ • Attachment processing (OCR, STT)                                 │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                │                                           │
+│                                ▼                                           │
+│  STAGE 2: INTENT CLASSIFICATION                                            │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ • Classify message purpose:                                        │   │
+│  │   - New inquiry                                                    │   │
+│  │   - Follow-up on existing trip                                     │   │
+│  │   - Information request                                            │   │
+│  │   - Complaint/Support                                              │   │
+│  │ • Confidence score for classification                              │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                │                                           │
+│                                ▼                                           │
+│  STAGE 3: FIELD EXTRACTION (LLM-based)                                   │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ • Extract structured fields using prompted LLM                     │   │
+│  │ • Fields: destination, dates, budget, travelers, preferences...    │   │
+│  │ • Return with confidence scores                                    │   │
+│  │ • Handle ambiguous or missing values                               │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                │                                           │
+│                                ▼                                           │
+│  STAGE 4: RULE-BASED EXTRACTION                                          │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ • Apply regex patterns for specific formats:                       │   │
+│  │   - Phone numbers                                                   │   │
+│  │   - Email addresses                                                 │   │
+│  │   - Dates (multiple formats)                                        │   │
+│  │   - Indian phone formats                                            │   │
+│  │ • Cross-reference with LLM extraction                               │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                │                                           │
+│                                ▼                                           │
+│  STAGE 5: CONFIDENCE SCORING                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ • Calculate per-field confidence:                                  │   │
+│  │   - Source agreement (LLM + rules agree = higher)                  │   │
+│  │   - Text clarity (explicit vs implied)                             │   │
+│  │   - Format validity (valid date = higher)                          │   │
+│  │ • Aggregate overall extraction confidence                          │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                │                                           │
+│                                ▼                                           │
+│  STAGE 6: ASSEMBLY                                                        │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ • Merge all extraction results                                     │   │
+│  │ • Resolve conflicts between sources                                │   │
+│  │ • Create extraction audit trail                                    │   │
+│  │ • Output: RawExtractionData                                        │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### LLM Extraction Prompt
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    LLM EXTRACTION PROMPT TEMPLATE                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  SYSTEM:                                                                   │
+│  You are a travel data extraction assistant. Extract structured trip        │
+│  information from customer messages. Return ONLY valid JSON.               │
+│                                                                             │
+│  INSTRUCTIONS:                                                             │
+│  1. Extract only information explicitly mentioned                          │
+│  2. Do not infer or assume values not stated                               │
+│  3. For ambiguous information, note in the field_notes                     │
+│  4. Use null for missing values (not empty string)                         │
+│  5. Dates must be in ISO 8601 format or null if unparseable                │
+│  6. Budget values should be numeric (no currency symbols)                   │
+│  7. Destination should be the most specific location mentioned             │
+│                                                                             │
+│  OUTPUT SCHEMA:                                                            │
+│  {                                                                         │
+│    "destination": string | null,                                           │
+│    "destination_type": "domestic" | "international" | null,               │
+│    "start_date": string (ISO) | null,                                     │
+│    "end_date": string (ISO) | null,                                       │
+│    "dates_flexible": boolean | null,                                      │
+│    "travelers_adults": number | null,                                     │
+│    "travelers_children": number | null,                                   │
+│    "budget_amount": number | null,                                        │
+│    "budget_currency": string | null,                                      │
+│    "trip_type": string | null,                                            │
+│    "preferences": string[] | null,                                        │
+│    "special_requests": string | null,                                     │
+│    "field_notes": {                                                       │
+│      "destination": string | null,                                        │
+│      "dates": string | null,                                              │
+│      "budget": string | null,                                             │
+│      "travelers": string | null                                           │
+│    },                                                                     │
+│    "confidence": {                                                        │
+│      "overall": number (0-1),                                             │
+│      "per_field": {                                                       │
+│        "destination": number (0-1),                                       │
+│        "dates": number (0-1),                                             │
+│        "budget": number (0-1),                                            │
+│        "travelers": number (0-1)                                          │
+│      }                                                                    │
+│    },                                                                     │
+│    "extraction_method": "explicit" | "implied" | "missing" per field       │
+│  }                                                                         │
+│                                                                             │
+│  EXAMPLES:                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ INPUT: "Hi, planning a trip to Goa in May. 2 adults. Budget around │   │
+│  │        50k. Want to visit North Goa."                               │   │
+│  │ OUTPUT: {                                                           │   │
+│  │   "destination": "Goa",                                             │   │
+│  │   "destination_type": "domestic",                                   │   │
+│  │   "start_date": null,                                               │   │
+│  │   "end_date": null,                                                 │   │
+│  │   "dates_flexible": true,                                           │   │
+│  │   "travelers_adults": 2,                                            │   │
+│  │   "travelers_children": 0,                                          │   │
+│  │   "budget_amount": 50000,                                           │   │
+│  │   "budget_currency": "INR",                                         │   │
+│  │   "trip_type": null,                                                │   │
+│  │   "preferences": ["North Goa"],                                     │   │
+│  │   "special_requests": null,                                         │   │
+│  │   "field_notes": {                                                  │   │
+│  │     "dates": "Month specified but no exact dates given",            │   │
+│  │     "destination": "North Goa specified as preference"              │   │
+│  │   },                                                                │   │
+│  │   "confidence": {                                                   │   │
+│  │     "overall": 0.85,                                                │   │
+│  │     "per_field": {                                                  │   │
+│  │       "destination": 0.95,                                          │   │
+│  │       "dates": 0.65,                                                │   │
+│  │       "budget": 0.90,                                               │   │
+│  │       "travelers": 1.0                                              │   │
+│  │     }                                                               │   │
+│  │   },                                                                │   │
+│  │   "extraction_method": {                                            │   │
+│  │     "destination": "explicit",                                      │   │
+│  │     "dates": "implied",                                             │   │
+│  │     "budget": "implied",                                            │   │
+│  │     "travelers": "explicit"                                         │   │
+│  │   }                                                                 │   │
+│  │ }                                                                   │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  INPUT MESSAGE:                                                            │
+│  {customer_message}                                                        │
+│                                                                             │
+│  OUTPUT JSON:                                                              │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Extraction Output Schema
+
+```typescript
+interface ExtractionResult {
+  // Extracted fields
+  fields: TripFields;
+
+  // Confidence metrics
+  confidence: {
+    overall: number;                 // 0-1
+    perField: Record<keyof TripFields, FieldConfidence>;
+    sourceAgreement: number;         // How much LLM and rules agreed
+  };
+
+  // Extraction metadata
+  metadata: {
+    extractedAt: Date;
+    extractionMethod: 'llm' | 'rules' | 'hybrid' | 'manual';
+    llmModel?: string;
+    processingTimeMs: number;
+    tokensUsed?: number;
+  };
+
+  // Field-specific notes
+  notes: Record<string, string>;     // Per-field extraction notes
+}
+
+interface TripFields {
+  // Core trip details
+  destination: string | null;
+  destinationType: 'domestic' | 'international' | null;
+  startDate: Date | null;
+  endDate: Date | null;
+  datesFlexible: boolean | null;
+  duration: number | null;           // In nights
+
+  // Travelers
+  travelersAdults: number | null;
+  travelersChildren: number | null;
+  travelersInfants: number | null;
+  totalTravelers: number | null;
+
+  // Budget
+  budgetAmount: number | null;
+  budgetCurrency: string | null;
+  budgetRange: {
+    min: number | null;
+    max: number | null;
+  } | null;
+
+  // Trip classification
+  tripType: TripType | null;
+  tripPurpose: TripPurpose | null;
+  occasion: string | null;           // e.g., "honeymoon", "anniversary"
+
+  // Preferences
+  preferences: {
+    accommodation: string[] | null;  // Hotel types, areas
+    transportation: string[] | null; // Flight class, train, etc.
+    activities: string[] | null;     // Sightseeing, adventure, etc.
+    food: string[] | null;           // Dietary requirements
+    special: string[] | null;        // Any other preferences
+  } | null;
+
+  // Special requests
+  specialRequests: string | null;
+
+  // Contact info
+  customerName: string | null;
+  customerPhone: string | null;
+  customerEmail: string | null;
+}
+
+interface FieldConfidence {
+  score: number;                     // 0-1
+  method: 'explicit' | 'implied' | 'inferred' | 'missing';
+  source: 'llm' | 'rules' | 'both';
+  ambiguous: boolean;
+  alternativeValues?: string[];      // Other possible values
+}
+
+type TripType =
+  | 'leisure'
+  | 'honeymoon'
+  | 'family'
+  | 'group'
+  | 'business'
+  | 'pilgrimage'
+  | 'adventure'
+  | 'luxury'
+  | 'backpacking'
+  | 'other';
+
+type TripPurpose =
+  | 'vacation'
+  | 'celebration'
+  | 'business'
+  | 'family_visit'
+  | 'pilgrimage'
+  | 'honeymoon'
+  | 'anniversary'
+  | 'other';
+```
+
+---
+
+## 5. Packet Data Model
+
+### TripPacket Structure
+
+```typescript
+interface TripPacket {
+  // Identity
+  id: string;
+  customerId: string | null;        // Linked if existing customer
+  inquiryId: string;                // Original inquiry ID
+
+  // Source
+  source: {
+    channel: MessageChannel;
+    messageId: string;
+    receivedAt: Date;
+    rawMessage?: string;            // For audit trail
+  };
+
+  // Extracted data
+  extracted: ExtractionResult;
+
+  // Validated data (after validation)
+  validated: {
+    fields: ValidatedTripFields;
+    status: 'valid' | 'incomplete' | 'invalid';
+    missingFields: MissingField[];
+    inconsistentFields: InconsistentField[];
+    warnings: ValidationWarning[];
+  };
+
+  // Enriched data (after enrichment)
+  enriched: {
+    customer: CustomerContext | null;
+    history: TripHistory | null;
+    destination: DestinationInfo | null;
+    seasonal: SeasonalInfo | null;
+    similarTrips: SimilarTrip[] | null;
+  };
+
+  // Triage data
+  triage: TriageData;
+
+  // State tracking
+  state: PacketState;
+  stateHistory: PacketStateTransition[];
+
+  // Audit trail
+  audit: {
+    createdAt: Date;
+    updatedAt: Date;
+    updatedBy: string | null;       // Agent or system
+    version: number;
+    changes: ChangeRecord[];
+  };
+
+  // Metadata
+  metadata: {
+    processingTimeMs: number;
+    confidence: number;
+    priority: Priority;
+    assignedTo?: string;            // Agent ID
+    dueDate?: Date;
+  };
+}
+
+interface ValidatedTripFields extends TripFields {
+  // All fields are guaranteed to be either valid values or marked as required-null
+  validation: Record<keyof TripFields, FieldValidation>;
+}
+
+interface FieldValidation {
+  isValid: boolean;
+  isRequired: boolean;
+  isPresent: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+interface MissingField {
+  field: string;
+  severity: 'critical' | 'important' | 'nice_to_have';
+  reason: string;
+  suggestedQuestion: string;        // What to ask customer
+}
+
+interface CustomerContext {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  tier: 'vip' | 'regular' | 'new';
+  preferences: CustomerPreferences;
+  history: {
+    totalTrips: number;
+    lastTripDate: Date | null;
+    favoriteDestinations: string[];
+    averageBudget: number;
+    cancellationRate: number;
+  };
+}
+
+interface DestinationInfo {
+  name: string;
+  type: 'domestic' | 'international';
+  region: string;
+  seasonality: {
+    peakSeason: string[];
+    offPeakSeason: string[];
+    bestTimeToVisit: string[];
+  };
+  visaRequired: boolean;
+  currency: string;
+  typicalDuration: {
+    min: number;
+    max: number;
+    average: number;
+  };
+  pricing: {
+    budget: { min: number; max: number };
+    midRange: { min: number; max: number };
+    luxury: { min: number; max: number };
+  };
+}
+
+interface TriageData {
+  urgency: UrgencyLevel;
+  complexity: ComplexityLevel;
+  value: CustomerValue;
+  priority: Priority;
+  suggestedAgent?: string;          // Agent ID if specific match
+  routing: {
+    queue: string;
+    reason: string;
+  };
+}
+
+type UrgencyLevel = 'immediate' | 'urgent' | 'normal' | 'low';
+type ComplexityLevel = 'simple' | 'moderate' | 'complex' | 'expert';
+type CustomerValue = 'vip' | 'high' | 'medium' | 'low';
+type Priority = 'p0' | 'p1' | 'p2' | 'p3' | 'p4';
+```
+
+### Packet State Machine
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         PACKET STATE MACHINE                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐             │
+│  │ CREATED │ ──▶ │EXTRACTED│ ──▶ │VALIDATED│ ──▶ │ ENRICHED│             │
+│  └────┬────┘     └────┬────┘     └────┬────┘     └────┬────┘             │
+│       │               │               │               │                   │
+│       │               │               ▼               │                   │
+│       │               │          ┌─────────┐          │                   │
+│       │               │          │ INVALID │          │                   │
+│       │               │          └────┬────┘          │                   │
+│       │               │               │               │                   │
+│       │               │               └───────────────┘                   │
+│       │               │                       (needs review)              │
+│       │               │                                                   │
+│       │               ▼                                                   │
+│       │          ┌─────────┐                                              │
+│       │          │NEEDS_  │ ──▶ ┌─────────┐                               │
+│       │          │  INFO   │     │TRIAGED │                               │
+│       │          └────┬────┘     └────┬────┘                               │
+│       │               │               │                                   │
+│       │               │               ▼                                   │
+│       │               │          ┌─────────┐                              │
+│       │               │          │ ASSIGNED│                              │
+│       │               │          │ TO AGENT│                              │
+│       │               │          └─────────┘                              │
+│       │               │               │                                   │
+│       ▼               ▼               ▼                                   │
+│  ┌─────────────────────────────────────────────────┐                     │
+│  │              READY FOR DECISION ENGINE          │                     │
+│  └─────────────────────────────────────────────────┘                     │
+│                                                                             │
+│  STATE DEFINITIONS:                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ CREATED     │ Packet created from inbound message                   │   │
+│  │ EXTRACTED   │ Field extraction completed                            │   │
+│  │ VALIDATED   │ Validation completed (may be incomplete/invalid)      │   │
+│  │ INVALID     │ Validation failed, needs manual review                │   │
+│  │ NEEDS_INFO  │ Missing critical fields, needs customer follow-up     │   │
+│  │ ENRICHED    │ Customer and destination data appended                 │   │
+│  │ TRIAGED     │ Priority, complexity, and routing determined          │   │
+│  │ ASSIGNED    │ Assigned to specific agent or queue                   │   │
+│  │ READY       │ Complete and ready for Decision Engine                │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 6. Validation & Quality
+
+### Validation Rules
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        VALIDATION RULE ENGINE                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  CATEGORY 1: REQUIRED FIELDS                                               │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ Rule: At minimum, need destination OR general preference            │   │
+│  │ Error if: Both destination and preferences are null                 │   │
+│  │                                                                     │   │
+│  │ Rule: Must have some date indication (specific or flexible)        │   │
+│  │ Error if: No date information at all                               │   │
+│  │                                                                     │   │
+│  │ Rule: Must have traveler count                                     │   │
+│  │ Warning if: Traveler count not specified (default to 2 adults)     │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  CATEGORY 2: BUSINESS RULES                                                │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ Rule: Minimum lead time for international trips                    │   │
+│  │ Error if: International trip with < 7 days to departure            │   │
+│  │ Action: Flag as urgent, warn about visa/risk issues                │   │
+│  │                                                                     │   │
+│  │ Rule: Budget plausibility                                          │   │
+│  │ Warning if: Budget < minimum viable amount for destination         │   │
+│  │ Example: "5-day Europe trip for ₹20,000" → Flag as unrealistic     │   │
+│  │                                                                     │   │
+│  │ Rule: Date logic                                                    │   │
+│  │ Error if: End date before start date                               │   │
+│  │ Warning if: Duration < 2 nights or > 30 nights                     │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  CATEGORY 3: DATA QUALITY                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ Rule: Field confidence threshold                                    │   │
+│  │ Flag if: Critical field confidence < 0.5                            │   │
+│  │ Action: Request manual review or clarification                      │   │
+│  │                                                                     │   │
+│  │ Rule: Internal consistency                                          │   │
+│  │ Warning if: Budget_currency doesn't match destination              │   │
+│  │ Example: Europe trip with INR budget (not wrong, but flag)         │   │
+│  │                                                                     │   │
+│  │ Rule: Contact information                                          │   │
+│  │ Warning if: No phone or email provided                             │   │
+│  │ Error if: Both phone and email are invalid formats                 │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  CATEGORY 4: FORMAT VALIDATION                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ Rule: Phone number format                                          │   │
+│  │ Valid formats: +91 XXXXX XXXXX, 0XXXX XXXXX                        │   │
+│  │                                                                     │   │
+│  │ Rule: Email format                                                  │   │
+│  │ Standard: RFC 5322                                                 │   │
+│  │                                                                     │   │
+│  │ Rule: Date format                                                   │   │
+│  │ Must parse to valid Date object                                    │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Validation Output
+
+```typescript
+interface ValidationResult {
+  isValid: boolean;
+  status: 'valid' | 'incomplete' | 'invalid';
+  completeness: number;             // 0-1, what % of required fields present
+
+  // Field-level validation
+  fieldValidation: Record<string, FieldValidationResult>;
+
+  // Issues found
+  errors: ValidationError[];
+  warnings: ValidationWarning[];
+  info: ValidationInfo[];
+
+  // Action recommendations
+  recommendations: ValidationRecommendation[];
+
+  // Next steps
+  nextSteps: {
+    canProceed: boolean;
+    needsAgentReview: boolean;
+    needsCustomerInfo: boolean;
+    fieldsToAsk: string[];
+    suggestedQuestions: SuggestedQuestion[];
+  };
+}
+
+interface FieldValidationResult {
+  field: string;
+  isValid: boolean;
+  isPresent: boolean;
+  isRequired: boolean;
+  confidence: number;
+  errors: string[];
+  warnings: string[];
+}
+
+interface SuggestedQuestion {
+  field: string;
+  question: string;
+  priority: 'critical' | 'important' | 'nice_to_have';
+  context: string;                  // Why we're asking
+}
+
+// Example validation output
+const exampleValidation: ValidationResult = {
+  isValid: false,
+  status: 'incomplete',
+  completeness: 0.65,
+
+  fieldValidation: {
+    destination: {
+      field: 'destination',
+      isValid: true,
+      isPresent: true,
+      isRequired: true,
+      confidence: 0.95,
+      errors: [],
+      warnings: []
+    },
+    startDate: {
+      field: 'startDate',
+      isValid: false,
+      isPresent: false,
+      isRequired: true,
+      confidence: 0,
+      errors: ['Start date is required'],
+      warnings: []
+    },
+    budgetAmount: {
+      field: 'budgetAmount',
+      isValid: true,
+      isPresent: true,
+      isRequired: false,
+      confidence: 0.85,
+      errors: [],
+      warnings: ['Budget seems low for Europe, consider confirming']
+    }
+  },
+
+  errors: [
+    {
+      field: 'startDate',
+      code: 'MISSING_REQUIRED',
+      message: 'Start date is required for trip planning',
+      severity: 'error'
+    }
+  ],
+
+  warnings: [
+    {
+      field: 'budgetAmount',
+      code: 'BUDGET_LOW',
+      message: 'Budget of ₹50,000 may be insufficient for Europe trip',
+      severity: 'warning',
+      context: 'Typical Europe trip costs ₹80,000-150,000 per person'
+    }
+  ],
+
+  recommendations: [
+    {
+      type: 'request_info',
+      priority: 'high',
+      action: 'Ask customer for specific travel dates',
+      field: 'startDate'
+    },
+    {
+      type: 'confirm',
+      priority: 'medium',
+      action: 'Confirm budget with customer',
+      field: 'budgetAmount'
+    }
+  ],
+
+  nextSteps: {
+    canProceed: false,
+    needsAgentReview: false,
+    needsCustomerInfo: true,
+    fieldsToAsk: ['startDate', 'endDate'],
+    suggestedQuestions: [
+      {
+        field: 'startDate',
+        question: 'What dates are you planning to travel?',
+        priority: 'critical',
+        context: 'Need dates to check availability and pricing'
+      },
+      {
+        field: 'endDate',
+        question: 'How many days are you planning to travel?',
+        priority: 'critical',
+        context: 'Helps determine itinerary pacing'
+      }
+    ]
+  }
+};
+```
+
+---
+
+## 7. Triage System
+
+### Triage Scoring
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           TRIAGE SCORING                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  DIMENSION 1: URGENCY (0-100)                                               │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ • Time sensitivity (0-40)                                            │   │
+│  │   - Departure in < 3 days: +40                                      │   │
+│  │   - Departure in 3-7 days: +30                                      │   │
+│  │   - Departure in 7-14 days: +20                                     │   │
+│  │   - Departure in 14-30 days: +10                                    │   │
+│  │   - Departure > 30 days: 0                                          │   │
+│  │                                                                     │   │
+│  │ • Customer state (0-30)                                              │   │
+│  │   - VIP customer: +15                                               │   │
+│  │   - Repeat customer with urgency: +20                               │   │
+│  │   - First-time inquirer: +5                                        │   │
+│  │                                                                     │   │
+│  │ • Market conditions (0-30)                                           │   │
+│  │   - Peak season: +15                                                │   │
+│  │   - High demand destination: +10                                    │   │
+│  │   - Limited availability: +20                                       │   │
+│  │                                                                     │   │
+│  │ URGENCY LEVELS:                                                      │   │
+│  │   80-100: IMMEDIATE (drop everything)                               │   │
+│  │   60-79: URGENT (respond within 1 hour)                             │   │
+│  │   40-59: NORMAL (respond within 4 hours)                            │   │
+│  │   0-39: LOW (respond within 24 hours)                               │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  DIMENSION 2: COMPLEXITY (0-100)                                           │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ • Trip complexity (0-40)                                             │   │
+│  │   - Single destination, standard dates: +5                          │   │
+│  │   - Multi-city: +15                                                 │   │
+│  │   - Multi-country: +25                                              │   │
+│  │   - Complex itinerary: +40                                          │   │
+│  │                                                                     │   │
+│  │ • Special requirements (0-30)                                        │   │
+│  │   - Visa processing needed: +15                                     │   │
+│  │   - Special assistance: +10                                         │   │
+│  │   - Large group (>10): +20                                          │   │
+│  │   - Special occasion (honeymoon, etc.): +10                         │   │
+│  │                                                                     │   │
+│  │ • Data clarity (0-30)                                                │   │
+│  │   - All fields clear: +5                                            │   │
+│  │   - Some ambiguity: +15                                             │   │
+│  │   - Very unclear: +30                                               │   │
+│  │                                                                     │   │
+│  │ COMPLEXITY LEVELS:                                                    │   │
+│  │   0-30: SIMPLE (any agent)                                          │   │
+│  │   31-60: MODERATE (experienced agent)                               │   │
+│  │   61-80: COMPLEX (specialized agent)                                │   │
+│  │   81-100: EXPERT (senior specialist)                                │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  DIMENSION 3: CUSTOMER VALUE (0-100)                                       │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ • Historical value (0-50)                                            │   │
+│  │   - VIP tier: +50                                                   │   │
+│  │   - High lifetime value: +35                                        │   │
+│  │   - Regular customer: +20                                           │   │
+│  │   - First-time: +5                                                  │   │
+│  │                                                                     │   │
+│  │ • Trip value (0-30)                                                  │   │
+│  │   - Luxury budget: +20                                              │   │
+│  │   - High budget: +15                                                │   │
+│  │   - Average budget: +10                                             │   │
+│  │   - Budget-conscious: +5                                            │   │
+│  │                                                                     │   │
+│  │ • Referral potential (0-20)                                          │   │
+│  │   - Corporate account: +20                                          │   │
+│  │   - Large family/group: +15                                         │   │
+│  │   - Social media presence: +5                                       │   │
+│  │                                                                     │   │
+│  │ VALUE LEVELS:                                                         │   │
+│  │   80-100: VIP (priority handling)                                   │   │
+│  │   50-79: HIGH (special attention)                                   │   │
+│  │   20-49: MEDIUM (standard service)                                  │   │
+│  │   0-19: LOW (standard service)                                      │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Priority Calculation
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        PRIORITY CALCULATION                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  PRIORITY = (URGENCY × 0.5) + (VALUE × 0.3) + (COMPLEXITY × 0.2)           │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ EXAMPLE 1: VIP last-minute booking                                  │   │
+│  │ Urgency: 90 (3 days to departure, VIP, peak season)                │   │
+│  │ Complexity: 40 (standard trip, visa needed)                         │   │
+│  │ Value: 95 (VIP customer, high budget)                               │   │
+│  │                                                                     │   │
+│  │ Priority = (90 × 0.5) + (95 × 0.3) + (40 × 0.2)                     │   │
+│  │          = 45 + 28.5 + 8 = 81.5                                     │   │
+│  │          = P0 (CRITICAL)                                            │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ EXAMPLE 2: Standard inquiry                                         │   │
+│  │ Urgency: 30 (2 months out, regular customer)                       │   │
+│  │ Complexity: 20 (simple trip, clear requirements)                   │   │
+│  │ Value: 25 (first-time, average budget)                             │   │
+│  │                                                                     │   │
+│  │ Priority = (30 × 0.5) + (25 × 0.3) + (20 × 0.2)                     │   │
+│  │          = 15 + 7.5 + 4 = 26.5                                      │   │
+│  │          = P2 (NORMAL)                                              │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  PRIORITY MAPPING:                                                          │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ P0 (80-100)  │ CRITICAL     │ Immediate attention                   │   │
+│  │ P1 (60-79)   │ HIGH         │ Respond within 30 min                │   │
+│  │ P2 (40-59)   │ MEDIUM       │ Respond within 2 hours               │   │
+│  │ P3 (20-39)   │ LOW          │ Respond within 8 hours               │   │
+│  │ P4 (0-19)    │ BACKLOG      │ Respond within 24 hours             │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 8. State Machine
+
+### Packet States and Transitions
+
+```typescript
+type PacketState =
+  | 'created'
+  | 'extracted'
+  | 'validated'
+  | 'invalid'
+  | 'needs_info'
+  | 'enriched'
+  | 'triaged'
+  | 'assigned'
+  | 'ready';
+
+interface StateTransition {
+  from: PacketState;
+  to: PacketState;
+  trigger: string;
+  guard?: () => boolean;
+  action?: () => void | Promise<void>;
+}
+
+// State machine definition
+const packetStateMachine: StateTransition[] = [
+  // Extraction flow
+  { from: 'created', to: 'extracted', trigger: 'extraction_complete' },
+  { from: 'created', to: 'invalid', trigger: 'extraction_failed' },
+
+  // Validation flow
+  { from: 'extracted', to: 'validated', trigger: 'validation_complete' },
+  { from: 'extracted', to: 'invalid', trigger: 'validation_failed' },
+
+  // Branch based on validation
+  { from: 'validated', to: 'needs_info',
+    trigger: 'missing_critical_fields',
+    guard: () => hasCriticalMissingFields()
+  },
+  { from: 'validated', to: 'enriched',
+    trigger: 'can_proceed',
+    guard: () => !hasCriticalMissingFields()
+  },
+
+  // Enrichment flow
+  { from: 'enriched', to: 'triaged', trigger: 'enrichment_complete' },
+
+  // Assignment flow
+  { from: 'triaged', to: 'assigned', trigger: 'agent_assigned' },
+  { from: 'triaged', to: 'ready', trigger: 'queue_assignment' },
+
+  // Ready for decision engine
+  { from: 'assigned', to: 'ready', trigger: 'info_sufficient' },
+  { from: 'needs_info', to: 'ready', trigger: 'info_provided' },
+
+  // Error handling
+  { from: 'invalid', to: 'extracted', trigger: 'retry_extraction' },
+  { from: 'needs_info', to: 'validated', trigger: 're_validate' }
+];
+```
+
+### State Transition Handler
+
+```typescript
+class PacketStateMachine {
+  private currentState: PacketState;
+  private history: PacketStateTransition[] = [];
+
+  constructor(initialState: PacketState = 'created') {
+    this.currentState = initialState;
+    this.recordTransition(null, initialState, 'initialized');
+  }
+
+  async transition(trigger: string, context?: any): Promise<PacketState> {
+    const transition = this.findTransition(this.currentState, trigger);
+
+    if (!transition) {
+      throw new Error(
+        `Invalid transition: ${this.currentState} --[${trigger}]--> ?`
+      );
+    }
+
+    // Check guard if present
+    if (transition.guard && !transition.guard()) {
+      throw new Error(
+        `Transition blocked by guard: ${this.currentState} --[${trigger}]--> ${transition.to}`
+      );
+    }
+
+    // Execute action if present
+    if (transition.action) {
+      await transition.action();
+    }
+
+    // Record and update state
+    const previousState = this.currentState;
+    this.currentState = transition.to;
+    this.recordTransition(previousState, this.currentState, trigger, context);
+
+    return this.currentState;
+  }
+
+  getState(): PacketState {
+    return this.currentState;
+  }
+
+  getHistory(): PacketStateTransition[] {
+    return [...this.history];
+  }
+
+  private findTransition(from: PacketState, trigger: string): StateTransition | undefined {
+    return packetStateMachine.find(
+      t => t.from === from && t.trigger === trigger
+    );
+  }
+
+  private recordTransition(
+    from: PacketState | null,
+    to: PacketState,
+    trigger: string,
+    context?: any
+  ): void {
+    this.history.push({
+      from,
+      to,
+      trigger,
+      timestamp: new Date(),
+      context
+    });
+  }
+}
+
+// Usage example
+async function processPacket(message: NormalizedMessage): Promise<TripPacket> {
+  const packet = createEmptyPacket(message);
+  const stateMachine = new PacketStateMachine();
+
+  // Extract
+  const extraction = await extractFields(message);
+  await stateMachine.transition('extraction_complete');
+  packet.extracted = extraction;
+
+  // Validate
+  const validation = await validatePacket(packet);
+  await stateMachine.transition('validation_complete');
+  packet.validated = validation;
+
+  // Branch based on validation
+  if (hasCriticalMissingFields(validation)) {
+    await stateMachine.transition('missing_critical_fields');
+    // Request info from customer...
+  } else {
+    await stateMachine.transition('can_proceed');
+  }
+
+  // Continue enrichment...
+  return packet;
+}
+```
+
+---
+
+## 9. Implementation Reference
+
+### Intake Service API
+
+```typescript
+// Intake Service API
+interface IntakeService {
+  // Ingest message from any channel
+  ingestMessage(message: RawMessage): Promise<string>;  // Returns inquiryId
+
+  // Get packet by ID
+  getPacket(inquiryId: string): Promise<TripPacket>;
+
+  // Update packet (manual correction)
+  updatePacket(inquiryId: string, updates: Partial<TripPacket>): Promise<TripPacket>;
+
+  // Get packet state
+  getPacketState(inquiryId: string): Promise<PacketState>;
+
+  // Request additional info from customer
+  requestInfo(inquiryId: string, fields: string[]): Promise<void>;
+
+  // Assign to agent
+  assignToAgent(inquiryId: string, agentId: string): Promise<void>;
+
+  // Get queue for agent
+  getAgentQueue(agentId: string): Promise<TripPacket[]>;
+}
+
+// REST endpoints
+const intakeApiRoutes = {
+  // Webhook endpoints
+  'POST /webhooks/whatsapp': handleWhatsAppWebhook,
+  'POST /webhooks/email': handleEmailWebhook,
+  'POST /webhooks/call': handleCallWebhook,
+
+  // API endpoints
+  'POST /api/v1/inquiries/web': handleWebSubmission,
+  'GET /api/v1/inquiries/:id': getInquiry,
+  'PUT /api/v1/inquiries/:id': updateInquiry,
+  'POST /api/v1/inquiries/:id/assign': assignInquiry,
+
+  // Queue endpoints
+  'GET /api/v1/queue/:agentId': getAgentQueue,
+  'POST /api/v1/queue/:agentId/claim': claimNextInquiry,
+  'POST /api/v1/inquiries/:id/release': releaseInquiry,
+};
+```
+
+### Extraction Service
+
+```python
+# Extraction Service (Python)
+from typing import Dict, Any, Optional
+from dataclasses import dataclass
+from datetime import datetime
+import asyncio
+from llm_extractor import LLMExtractor
+from rule_extractor import RuleExtractor
+
+@dataclass
+class ExtractionConfig:
+    llm_model: str = "claude-3-5-sonnet-20241022"
+    temperature: float = 0.0
+    max_tokens: int = 2000
+    timeout_seconds: int = 30
+
+class ExtractionService:
+    def __init__(self, config: ExtractionConfig):
+        self.config = config
+        self.llm_extractor = LLMExtractor(config)
+        self.rule_extractor = RuleExtractor()
+
+    async def extract(self, message: NormalizedMessage) -> ExtractionResult:
+        """Extract trip fields from normalized message."""
+        # Run LLM and rule extraction in parallel
+        llm_task = asyncio.create_task(
+            self.llm_extractor.extract(message.text)
+        )
+        rule_task = asyncio.create_task(
+            self.rule_extractor.extract(message.text)
+        )
+
+        llm_result, rule_result = await asyncio.gather(
+            llm_task, rule_task
+        )
+
+        # Merge results
+        merged = self.merge_results(llm_result, rule_result)
+
+        # Calculate confidence
+        confidence = self.calculate_confidence(llm_result, rule_result)
+
+        return ExtractionResult(
+            fields=merged,
+            confidence=confidence,
+            metadata={
+                'extracted_at': datetime.utcnow(),
+                'extraction_method': 'hybrid',
+                'llm_model': self.config.llm_model,
+                'processing_time_ms': 0  # Track actual time
+            }
+        )
+
+    def merge_results(
+        self,
+        llm: Dict[str, Any],
+        rules: Dict[str, Any]
+    ) -> TripFields:
+        """Merge LLM and rule extraction results."""
+        merged = {}
+
+        for field in TripFields.__annotations__:
+            llm_value = llm.get(field)
+            rule_value = rules.get(field)
+
+            # Prefer rule extraction for structured fields
+            if field in ['customerPhone', 'customerEmail']:
+                merged[field] = rule_value or llm_value
+            # Prefer LLM for semantic fields
+            else:
+                merged[field] = llm_value or rule_value
+
+        return TripFields(**merged)
+
+    def calculate_confidence(
+        self,
+        llm: Dict[str, Any],
+        rules: Dict[str, Any]
+    ) -> ConfidenceScore:
+        """Calculate confidence based on source agreement."""
+        per_field = {}
+        agreement_count = 0
+        total_fields = 0
+
+        for field in TripFields.__annotations__:
+            llm_value = llm.get(field)
+            rule_value = rules.get(field)
+
+            if llm_value and rule_value:
+                if llm_value == rule_value:
+                    per_field[field] = 0.95
+                    agreement_count += 1
+                else:
+                    per_field[field] = 0.6  # Conflict
+            elif llm_value or rule_value:
+                per_field[field] = 0.75  # Single source
+            else:
+                per_field[field] = 0.0
+
+            total_fields += 1
+
+        source_agreement = agreement_count / total_fields if total_fields > 0 else 0
+        overall = sum(per_field.values()) / len(per_field)
+
+        return ConfidenceScore(
+            overall=overall,
+            per_field=per_field,
+            source_agreement=source_agreement
+        )
+```
+
+---
+
+## Summary
+
+The Intake & Packet Processing system is the foundation of the travel agency workspace:
+
+1. **Channel Integration**: Unified processing from WhatsApp, Email, Web, and Phone
+2. **Extraction Pipeline**: Hybrid LLM + rule-based extraction with confidence scoring
+3. **TripPacket Model**: Structured data model with validation, enrichment, and triage
+4. **Validation Engine**: Business rules, data quality checks, and completeness scoring
+5. **Triage System**: Multi-dimensional scoring (urgency, complexity, value)
+6. **State Machine**: Clear progression from inquiry to decision-ready packet
+
+**Key Metrics**:
+- Extraction accuracy: Target >90% for core fields
+- Processing time: <5 seconds from message to packet
+- Validation coverage: 100% of packets validated
+- Triage accuracy: >85% appropriate agent assignments
+
+---
+
+**Next Document:** INTAKE_02_UX_UI_DEEP_DIVE.md — Packet panel, extraction review UI, and follow-up workflows

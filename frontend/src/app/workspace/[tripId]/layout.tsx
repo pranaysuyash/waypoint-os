@@ -126,7 +126,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                 ) : (
                   <PanelRightOpen className="w-4 h-4" aria-hidden="true" />
                 )}
-                {isRailOpen ? "Hide AI rail" : "Show AI rail"}
+                {isRailOpen ? "Hide timeline" : "Show timeline"}
               </button>
             </div>
 
@@ -162,7 +162,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
               <aside
                 id="workspace-right-rail"
                 className="rounded-xl border border-[#1c2128] bg-[#0f1115] h-[calc(100vh-140px)] overflow-hidden flex flex-col"
-                aria-label="Right rail"
+                aria-label="Trip timeline"
               >
                 <div className="flex-1 overflow-y-auto">
                   <ErrorBoundary>

@@ -504,7 +504,7 @@ export default function DashboardPage() {
           <PipelineBar
             data={pipeline}
             isLoading={unifiedLoading}
-            error={unifiedError}
+            error={unifiedError as any}
           />
           <nav className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4' aria-label='Quick navigation'>
             <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e] mb-3'>

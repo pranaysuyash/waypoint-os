@@ -8,11 +8,27 @@ Follows Hybrid Policy B:
 - reject: sets rejected, requires_review=false
 - escalate: sets escalated
 """
+import sys
+import logging
+from pathlib import Path
+
+# Add project root to path - must be before any other imports in chain
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_SPINE_API_DIR = _PROJECT_ROOT / "spine-api"
+
+# Add both project root and spine-api directory
+for p in [str(_PROJECT_ROOT), str(_SPINE_API_DIR)]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
 from datetime import datetime, timezone
 from typing import Any, Optional
+from src.analytics.policy_rules import apply_owner_escalation_policy
 
-# Expected in PYTHONPATH: spine-api/
+# Import via the path we just added
 from persistence import TripStore, AuditStore
+
+logger = logging.getLogger(__name__)
 
 
 # Actions accepted from the backend endpoint (post-normalisation)
@@ -103,6 +119,15 @@ def process_review_action(
         # Mandatory reassignment: reassign_to if provided, else original assignee (already in pre_state)
         new_assignee = reassign_to or pre_state["assignee"]
         update_fields["assigned_to"] = new_assignee
+        analytics["revision_count"] = int(analytics.get("revision_count") or 0) + 1
+        # Escalate automatically on repeated correction loops.
+        analytics = apply_owner_escalation_policy(
+            {"decision": trip.get("decision") or {}, "analytics": analytics},
+            analytics,
+        )
+        update_fields["analytics"] = analytics
+        if analytics.get("review_status") == "escalated":
+            update_fields["assigned_to"] = "management_queue"
         _emit_notification(trip_id, new_assignee, "REVISION_NEEDED", notes)
 
     elif normalised == "rejected":

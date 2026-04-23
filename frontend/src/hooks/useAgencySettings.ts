@@ -78,7 +78,7 @@ export function useAgencySettings() {
   const [error, setError] = useState<Error | null>(null);
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetch = useCallback(async () => {
+  const loadSettings = useCallback(async () => {
     if (loadingTimeoutRef.current) {
       clearTimeout(loadingTimeoutRef.current);
     }
@@ -115,15 +115,15 @@ export function useAgencySettings() {
   }, []);
 
   useEffect(() => {
-    fetch();
+    loadSettings();
     return () => {
       if (loadingTimeoutRef.current) {
         clearTimeout(loadingTimeoutRef.current);
       }
     };
-  }, [fetch]);
+  }, [loadSettings]);
 
-  return { data, isLoading, error, refetch: fetch };
+  return { data, isLoading, error, refetch: loadSettings };
 }
 
 // =============================================================================

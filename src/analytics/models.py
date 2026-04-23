@@ -102,6 +102,11 @@ class AnalyticsPayload(BaseModel):
     recovery_deadline: Optional[str] = None
     is_escalated: bool = Field(default=False)
     sla_status: Optional[Literal["on_track", "at_risk", "breached"]] = None
+    owner_review_deadline: Optional[str] = None
+    escalation_severity: Optional[Literal["high", "critical"]] = None
+    approval_required_for_send: bool = Field(default=False)
+    send_policy_reason: Optional[str] = None
+    revision_count: int = Field(default=0)
 
 
 class OperationalAlert(BaseModel):

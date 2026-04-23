@@ -14,7 +14,13 @@ const GATE_OPTIONS: Array<{ value: 'auto' | 'review' | 'block'; label: string; c
   { value: 'block', label: 'Block', color: 'bg-[#f85149] text-white' },
 ];
 
-const DECISION_STATES = [
+const DECISION_STATES: Array<{
+  key: string;
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  locked?: boolean;
+}> = [
   {
     key: 'ASK_FOLLOWUP',
     label: 'Ask Follow-up',

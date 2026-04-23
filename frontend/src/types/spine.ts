@@ -1,3 +1,37 @@
+/**
+ * Spine Types
+ *
+ * Re-exports all auto-generated types from the backend contract.
+ * Frontend-only types that have no backend counterpart remain here.
+ *
+ * DO NOT manually define types that exist in the generated file.
+ * To regenerate: uv run python scripts/generate_types.py
+ */
+
+// Re-export all generated contract types
+export type {
+  SafetyResult,
+  AssertionResult,
+  AutonomyOutcome,
+  RunMeta,
+  SpineRunRequest,
+  SpineRunResponse,
+  OverrideResponse,
+  HealthResponse,
+  TimelineEvent,
+  TimelineResponse,
+  DashboardStatsResponse,
+  UnifiedStateResponse,
+  IntegrityMeta,
+  SystemicError,
+  OrphanTrip,
+  SuitabilitySignal,
+} from '@/types/generated/spine-api';
+
+// ============================================================================
+// Frontend-only types (not in backend contract — UI presentation layer)
+// ============================================================================
+
 export type SpineStage = "discovery" | "shortlist" | "proposal" | "booking";
 
 export type OperatingMode =
@@ -16,12 +50,6 @@ export type DecisionState =
   | "PROCEED_TRAVELER_SAFE"
   | "BRANCH_OPTIONS"
   | "STOP_NEEDS_REVIEW";
-
-export interface SafetyResult {
-  strict_leakage: boolean;
-  leakage_passed: boolean;
-  leakage_errors: string[];
-}
 
 export interface CostBucketEstimate {
   bucket: string;
@@ -170,54 +198,4 @@ export interface FeeCalculationResult {
   total_adjusted_fee: number;
   fee_adjustment: number;
   risk_summary: string;
-}
-
-export interface RunMeta {
-  stage: string;
-  operating_mode: string;
-  fixture_id: string | null;
-  execution_ms: number;
-}
-
-export interface AssertionResult {
-  type: string;
-  passed: boolean;
-  message: string;
-  field?: string;
-}
-
-export interface SpineRunResponse {
-  ok: boolean;
-  run_id: string;
-  packet: unknown | null;
-  validation: ValidationReport | null;
-  decision: DecisionOutput | null;
-  strategy: StrategyOutput | null;
-  internal_bundle: PromptBundle | null;
-  traveler_bundle: PromptBundle | null;
-  safety: SafetyResult;
-  fees: FeeCalculationResult | null;
-  autonomy_outcome: {
-    raw_verdict: string;
-    effective_action: string;
-    approval_required: boolean;
-    rule_source: string;
-    safety_invariant_applied: boolean;
-    mode_override_applied: string | null;
-    warning_override_applied: boolean;
-    reasons: string[];
-  } | null;
-  assertions: AssertionResult[] | null;
-  meta: RunMeta;
-}
-
-export interface SpineRunRequest {
-  raw_note?: string | null;
-  owner_note?: string | null;
-  structured_json?: Record<string, unknown> | null;
-  itinerary_text?: string | null;
-  stage: SpineStage;
-  operating_mode: OperatingMode;
-  strict_leakage: boolean;
-  scenario_id?: string | null;
 }

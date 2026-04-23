@@ -1,15 +1,30 @@
 /**
  * Governance Types
- * 
- * Type definitions for owner/management features:
- * - Reviews and approvals
- * - Analytics and insights
- * - Team management
- * - Audit logging
+ *
+ * Re-exports analytics types from the generated backend contract.
+ * Frontend-only types (reviews, team management, inbox triage, settings)
+ * remain here as they represent UI presentation concerns.
+ *
+ * DO NOT manually define types that exist in the generated file.
+ * To regenerate: uv run python scripts/generate_types.py
  */
 
+// Re-export generated analytics/contract types
+export type {
+  InsightsSummary,
+  PipelineVelocity,
+  StageMetrics,
+  TeamMemberMetrics,
+  BottleneckAnalysis,
+  BottleneckCause,
+  RevenueMetrics,
+  MonthlyRevenue,
+  OperationalAlert,
+  AnalyticsPayload,
+} from '@/types/generated/spine-api';
+
 // ============================================================================
-// REVIEWS & APPROVALS
+// REVIEWS & APPROVALS (frontend-only presentation)
 // ============================================================================
 
 export type ReviewStatus = 'pending' | 'approved' | 'rejected' | 'escalated' | 'revision_needed';
@@ -28,38 +43,25 @@ export interface TripReview {
   agentName: string;
   submittedAt: string;
   status: ReviewStatus;
-  reason: string; // Why it needs review
+  reason: string;
   agentNotes?: string;
   ownerNotes?: string;
   reviewedAt?: string;
   reviewedBy?: string;
   riskFlags: RiskFlag[];
-  // Wave 10: Feedback-Driven Actioning
   feedbackSeverity?: 'low' | 'medium' | 'high' | 'critical';
   followupNeeded?: boolean;
   recoveryStatus?: 'PENDING_NOTIFY' | 'IN_RECOVERY' | 'RESOLVED';
-  // Wave 11: SLA Tracking
   recoveryStartedAt?: string;
   recoveryDeadline?: string;
   isEscalated?: boolean;
   slaStatus?: 'on_track' | 'at_risk' | 'breached';
 }
 
-export interface OperationalAlert {
-  id: string;
-  tripId: string;
-  type: 'critical_feedback' | 'trend_decline' | 'sla_breach';
-  severity: 'high' | 'critical';
-  message: string;
-  timestamp: string;
-  isDismissed: boolean;
-  metadata?: Record<string, unknown>;
-}
-
-export type RiskFlag = 
-  | 'high_value' 
-  | 'unusual_destination' 
-  | 'tight_deadline' 
+export type RiskFlag =
+  | 'high_value'
+  | 'unusual_destination'
+  | 'tight_deadline'
   | 'complex_itinerary'
   | 'visa_required'
   | 'supplier_delay';
@@ -78,104 +80,17 @@ export interface ReviewActionRequest {
   reviewId: string;
   action: 'approve' | 'reject' | 'escalate' | 'request_changes' | 'resolve';
   notes?: string;
-  reassignTo?: string; // Agent ID for reassignment
+  reassignTo?: string;
 }
 
 // ============================================================================
-// ANALYTICS & INSIGHTS
+// TIME RANGE (frontend-only filter concern)
 // ============================================================================
 
 export type TimeRange = '7d' | '30d' | '90d' | 'mtd' | 'ytd' | 'custom';
 
-export interface InsightsSummary {
-  totalInquiries: number;
-  convertedToBooked: number;
-  conversionRate: number; // 0-100
-  avgResponseTime: number; // in hours
-  pipelineValue: number;
-  pipelineVelocity: PipelineVelocity;
-}
-
-export interface PipelineVelocity {
-  stage1To2: number; // days
-  stage2To3: number;
-  stage3To4: number;
-  stage4To5: number;
-  stage5ToBooked: number;
-  averageTotal: number;
-}
-
-export interface StageMetrics {
-  stageId: string;
-  stageName: string;
-  tripCount: number;
-  avgTimeInStage: number; // hours
-  exitRate: number; // % that proceed to next stage
-  avgTimeToExit: number; // hours
-}
-
-export interface TeamMemberMetrics {
-  userId: string;
-  name: string;
-  role: string;
-  activeTrips: number;
-  completedTrips: number;
-  conversionRate: number;
-  avgResponseTime: number; // hours
-  customerSatisfaction: number; // 1-5
-  currentWorkload: 'under' | 'optimal' | 'over' | 'critical';
-  workloadScore: number; // 0-100
-}
-
-export interface BottleneckAnalysis {
-  stageId: string;
-  stageName: string;
-  avgTimeInStage: number;
-  isBottleneck: boolean;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  primaryCauses: BottleneckCause[];
-}
-
-export interface BottleneckCause {
-  cause: string;
-  percentage: number; // % of delays attributed to this cause
-  affectedTrips: number;
-  suggestedAction: string;
-}
-
-export interface RevenueMetrics {
-  period: string;
-  totalPipelineValue: number;
-  bookedRevenue: number;
-  projectedRevenue: number;
-  nearCloseRevenue: number;
-  avgTripValue: number;
-  revenueByMonth: MonthlyRevenue[];
-}
-
-export interface MonthlyRevenue {
-  month: string;
-  inquiries: number;
-  booked: number;
-  revenue: number;
-}
-
-export interface EscalationHeatmap {
-  date: string;
-  escalationCount: number;
-  avgResolutionTime: number;
-}
-
-export interface ConversionFunnel {
-  stage: string;
-  count: number;
-  conversionRate: number; // from previous stage
-  dropOffRate: number;
-  avgTimeToConvert: number;
-}
-
 // ============================================================================
-// TEAM MANAGEMENT
+// TEAM MANAGEMENT (frontend-only presentation)
 // ============================================================================
 
 export type UserRole = 'owner' | 'manager' | 'agent' | 'viewer';
@@ -189,9 +104,9 @@ export interface TeamMember {
   isActive: boolean;
   joinedAt: string;
   lastActiveAt?: string;
-  capacity: number; // max trips they can handle
+  capacity: number;
   currentAssignments: number;
-  expertise?: string[]; // e.g., ['luxury', 'corporate', 'adventure']
+  expertise?: string[];
 }
 
 export interface WorkloadDistribution {
@@ -214,7 +129,7 @@ export interface WorkloadTrip {
 
 export interface AssignmentRequest {
   tripIds: string[];
-  assignTo: string; // userId
+  assignTo: string;
   reason?: string;
   notifyAssignee: boolean;
 }
@@ -227,7 +142,7 @@ export interface ReassignmentRequest {
 }
 
 // ============================================================================
-// INBOX & TRIAGE
+// INBOX & TRIAGE (frontend-only presentation)
 // ============================================================================
 
 export type TripPriority = 'low' | 'medium' | 'high' | 'critical';
@@ -241,7 +156,7 @@ export interface InboxTrip {
   dateWindow: string;
   value: number;
   priority: TripPriority;
-  priorityScore: number; // 0-100
+  priorityScore: number;
   stage: string;
   stageNumber: number;
   assignedTo?: string;
@@ -271,10 +186,10 @@ export interface BulkActionRequest {
 }
 
 // ============================================================================
-// AUDIT & COMPLIANCE
+// AUDIT & COMPLIANCE (frontend-only presentation)
 // ============================================================================
 
-export type AuditEventType = 
+export type AuditEventType =
   | 'trip_created'
   | 'trip_updated'
   | 'trip_assigned'
@@ -298,7 +213,7 @@ export interface AuditEvent {
 }
 
 // ============================================================================
-// SETTINGS & CONFIGURATION
+// SETTINGS & CONFIGURATION (frontend-only presentation)
 // ============================================================================
 
 export interface PipelineStage {
@@ -309,12 +224,12 @@ export interface PipelineStage {
   isActive: boolean;
   requiredFields: string[];
   autoAdvanceRules?: AutoAdvanceRule[];
-  slaHours: number; // expected time in this stage
+  slaHours: number;
 }
 
 export interface AutoAdvanceRule {
   id: string;
-  condition: string; // e.g., "all_fields_complete AND supplier_confirmed"
+  condition: string;
   action: 'advance' | 'notify' | 'alert';
   targetStageId?: string;
 }
@@ -337,4 +252,18 @@ export interface NotificationTemplate {
   subject: string;
   body: string;
   isActive: boolean;
+}
+
+export interface ConversionFunnel {
+  stage: string;
+  count: number;
+  conversionRate: number;
+  dropOffRate: number;
+  avgTimeToConvert: number;
+}
+
+export interface EscalationHeatmap {
+  date: string;
+  escalationCount: number;
+  avgResolutionTime: number;
 }

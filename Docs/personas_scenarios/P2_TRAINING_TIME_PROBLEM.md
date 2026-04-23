@@ -145,3 +145,10 @@ In simple terms: `junior starts quote -> system coaches and checks risk -> owner
   - [/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/task_lists/P2_S4_TECHNICAL_TASK_LIST_2026-04-23.md](/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/task_lists/P2_S4_TECHNICAL_TASK_LIST_2026-04-23.md)
 - Logical tasks:
   - [/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/task_lists/P2_S4_LOGICAL_TASK_LIST_2026-04-23.md](/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/task_lists/P2_S4_LOGICAL_TASK_LIST_2026-04-23.md)
+
+### Logical Policy Ratification (2026-04-23)
+
+- Ratified policy reference:
+  - [/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/LOGICAL_POLICY_DECISIONS_RATIFIED_2026-04-23.md](/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/LOGICAL_POLICY_DECISIONS_RATIFIED_2026-04-23.md)
+- Implementation note:
+  - Escalation + junior send-approval policy is implemented through shared analytics policy rules and existing engine/review lifecycle paths (no parallel implementation).

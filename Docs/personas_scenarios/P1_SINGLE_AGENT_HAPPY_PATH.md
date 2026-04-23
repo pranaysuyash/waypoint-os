@@ -208,3 +208,10 @@ In simple terms: `inbox request -> system organizes + decides -> ready-to-use re
   - [/Users/pranay/Projects/travel_agency_agent/Docs/reports/p1_happy_path_modes_2026-04-23.xml](/Users/pranay/Projects/travel_agency_agent/Docs/reports/p1_happy_path_modes_2026-04-23.xml)
 - Frontend (journey + panels): all pass
   - [/Users/pranay/Projects/travel_agency_agent/Docs/reports/p1_happy_path_frontend_2026-04-23.json](/Users/pranay/Projects/travel_agency_agent/Docs/reports/p1_happy_path_frontend_2026-04-23.json)
+
+### Logical Policy Ratification (2026-04-23)
+
+- Ratified policy reference:
+  - [/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/LOGICAL_POLICY_DECISIONS_RATIFIED_2026-04-23.md](/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/LOGICAL_POLICY_DECISIONS_RATIFIED_2026-04-23.md)
+- Implementation note:
+  - Ready-gate policy is enforced through the existing canonical `PATCH /trips/{trip_id}` path (no parallel route).

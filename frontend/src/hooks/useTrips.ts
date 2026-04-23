@@ -25,6 +25,7 @@ export function useTrips(params?: {
   state?: string;
   limit?: number;
   offset?: number;
+  view?: string;
 }) {
   const [data, setData] = useState<Trip[]>([]);
   const [total, setTotal] = useState(0);

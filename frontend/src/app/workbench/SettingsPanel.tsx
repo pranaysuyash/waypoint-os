@@ -217,7 +217,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                         onClick={() => handleRepair(orphan.id)}
                         disabled={repairingId === orphan.id}
                         className={`p-1.5 rounded transition-all ${
-                          repairStatus?.id === orphan.id && repairStatus.success
+                          repairStatus?.id === orphan.id && repairStatus?.success
                             ? 'bg-green-500/20 text-green-400'
                             : 'bg-[#21262d] text-[#58a6ff] hover:bg-[#30363d] hover:scale-105'
                         }`}
@@ -225,14 +225,14 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                       >
                         {repairingId === orphan.id ? (
                           <RotateCcw className='w-3 h-3 animate-spin' />
-                        ) : repairStatus?.id === orphan.id && repairStatus.success ? (
+                        ) : repairStatus?.id === orphan.id && repairStatus?.success ? (
                           <CheckCircle2 className='w-3 h-3' />
                         ) : (
                           <Wrench className='w-3 h-3' />
                         )}
                       </button>
                     </div>
-                    {repairStatus?.id === orphan.id && !repairStatus.success && (
+                      {repairStatus?.id === orphan.id && !repairStatus?.success && (
                       <p className='text-[10px] text-[#f85149]'>Failed to repair. Try again.</p>
                     )}
                   </div>

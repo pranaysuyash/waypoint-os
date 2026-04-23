@@ -4,6 +4,9 @@
 
 This note captures additional discovery and documentation areas that we can explore after continuing the current scenario build. These are intentionally broad and extensible so future work can add more focus areas without being blocked.
 
+## Current focus
+We are shifting the immediate work away from adding more persona scenario files and toward broader industry-domain research. This persona exploration list is a living artifact and will continue to grow later as we revisit scenario-driven discovery.
+
 ## Note
 We will explore these areas later. The current scenario work continues, and this list is open to addition.
 

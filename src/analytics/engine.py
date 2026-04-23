@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional
 from src.analytics.models import AnalyticsPayload
+from src.analytics.policy_rules import apply_owner_escalation_policy, compute_send_policy
 
 
 def calculate_completeness_score(packet: Dict[str, Any]) -> float:
@@ -154,7 +155,14 @@ def process_trip_analytics(trip: dict) -> AnalyticsPayload:
                 recovery_deadline = (now + timedelta(hours=hours)).isoformat()
                 sla_status = "on_track"
 
-    return AnalyticsPayload(
+    revision_count = 0
+    if isinstance(existing_analytics, dict):
+        try:
+            revision_count = int(existing_analytics.get("revision_count") or 0)
+        except (TypeError, ValueError):
+            revision_count = 0
+
+    payload = AnalyticsPayload(
         margin_pct=round(margin_pct, 1),
         quality_score=round(overall, 1),
         quality_breakdown={
@@ -172,5 +180,23 @@ def process_trip_analytics(trip: dict) -> AnalyticsPayload:
         recovery_started_at=recovery_started_at,
         recovery_deadline=recovery_deadline,
         is_escalated=is_escalated,
-        sla_status=sla_status
+        sla_status=sla_status,
+        revision_count=revision_count,
     )
+
+    # Apply owner-escalation policy for onboarding/review operations.
+    escalated = apply_owner_escalation_policy(trip, payload.model_dump())
+    payload = AnalyticsPayload(**escalated)
+
+    # Compute customer-send policy (stored as guidance for FE/BE flow checks).
+    send_policy = compute_send_policy(
+        {
+            "decision": decision,
+            "analytics": payload.model_dump(),
+        },
+        role="junior_agent",
+    )
+    payload.approval_required_for_send = bool(send_policy["owner_approval_required"])
+    payload.send_policy_reason = str(send_policy["reason"])
+
+    return payload

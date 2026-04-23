@@ -101,9 +101,10 @@ class ApiClient {
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
         // Build headers with auth token if available
+        const incomingHeaders = fetchOptions.headers as Record<string, string> | undefined;
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
-          ...fetchOptions.headers,
+          ...(incomingHeaders || {}),
         };
         const token = getAuthToken();
         if (token) {
@@ -201,10 +202,11 @@ class ApiClient {
 // API INSTANCE
 // ============================================================================
 
-// Export default instance (for relative URLs within the same origin)
+// Export default instance - point to own server for SSR/API routes
 export const api = new ApiClient({
+  baseUrl: '',  // Empty = relative URLs hit this origin
   timeout: DEFAULT_TIMEOUT,
-  retry: 2, // Retry failed requests twice
+  retry: 2,
   retryDelay: DEFAULT_RETRY_DELAY,
 });
 
@@ -284,15 +286,28 @@ export interface PipelineStage {
   count: number;
 }
 
+/**
+ * Analytics pipeline stage — returned by /analytics/pipeline.
+ * Contains runtime metrics, not configuration.
+ */
+export interface AnalyticsPipelineStage {
+  stageId: string;
+  tripCount: number;
+  exitRate: number;
+  avgTimeInStage: number;
+}
+
 export async function getTrips(params?: {
   state?: string;
   limit?: number;
   offset?: number;
+  view?: string;
 }): Promise<{ items: Trip[]; total: number }> {
   const searchParams = new URLSearchParams();
   if (params?.state) searchParams.set("state", params.state);
   if (params?.limit) searchParams.set("limit", params.limit.toString());
   if (params?.offset) searchParams.set("offset", params.offset.toString());
+  if (params?.view) searchParams.set("view", params.view);
 
   const query = searchParams.toString();
   return api.get<{ items: Trip[]; total: number }>(`/api/trips${query ? `?${query}` : ""}`);

@@ -179,3 +179,9 @@ Use this report template:
 
 Testing philosophy reference:
 - `Docs/personas_scenarios/TESTING_PHILOSOPHY_CASE_STUDIES.md`
+
+Implementation architecture reference:
+- `Docs/personas_scenarios/LOGICAL_POLICY_DECISIONS_RATIFIED_2026-04-23.md`
+
+Non-negotiable implementation rule:
+- implement through existing canonical routes/modules only; do not create parallel implementations for the same policy.

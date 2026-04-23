@@ -5,11 +5,24 @@ Runs periodically to ensure the DashboardAggregator SSOT remains consistent.
 Emits system alerts if drift is detected.
 """
 
+import sys
+from pathlib import Path
+
+# Ensure project root is in path - MUST be first before any other imports
+_project_root = Path(__file__).resolve().parent.parent.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
+
+# Now we can import from src and root-level modules
 import time
 import logging
 import threading
 from datetime import datetime, timezone
+
+# Import after path is set
 from src.services.dashboard_aggregator import DashboardAggregator
+
+# This imports 'persistence' at root level - works now with path set
 from src.analytics.review import _emit_notification
 
 logger = logging.getLogger("watchdog")

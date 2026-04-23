@@ -34,7 +34,7 @@ import {
 import { TripCard } from '@/components/inbox/TripCard';
 import { InboxFilterBar, type FilterKey, type RoleKey } from '@/components/inbox/InboxFilterBar';
 import { InboxEmptyState } from '@/components/inbox/InboxEmptyState';
-import type { TripPriority } from '@/types/governance';
+import type { TripPriority, InboxTrip } from '@/types/governance';
 
 type PriorityKey = TripPriority;
 type SLAStatus = 'on_track' | 'at_risk' | 'breached';
@@ -168,7 +168,7 @@ export default function InboxPage() {
   const viewProfile: ViewProfile = urlRole
     ? roleToViewProfile(urlRole)
     : savedProfile || 'operations';
-  const currentRole: RoleKey = urlRole || (savedProfile ? viewProfileToRole(savedProfile) : 'ops');
+  const currentRole: RoleKey = urlRole || (savedProfile ? viewProfileToRole(savedProfile) as RoleKey : 'ops');
 
   const updateParams = useCallback((updates: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());

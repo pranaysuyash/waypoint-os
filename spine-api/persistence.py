@@ -454,6 +454,9 @@ def save_processed_trip(spine_output: dict, source: str = "unknown") -> str:
         "extracted": packet,
         "validation": validation,
         "decision": decision,
+        "strategy": spine_output.get("strategy"),
+        "traveler_bundle": spine_output.get("traveler_bundle"),
+        "internal_bundle": spine_output.get("internal_bundle"),
         "safety": safety,
         "raw_input": spine_output.get("meta", {}),
     }

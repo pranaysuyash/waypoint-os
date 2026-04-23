@@ -69,11 +69,28 @@ describe("workspace/[tripId]/layout", () => {
     expect(screen.getByText("Stage content")).toBeInTheDocument();
   });
 
-  it("keeps right rail collapsed by default and toggles open", () => {
+  it("keeps timeline panel collapsed by default and toggles open", async () => {
     vi.mocked(tripsHook.useTrip).mockReturnValue({
       data: baseTrip,
       isLoading: false,
       error: null,
+    });
+
+    // Mock fetch for TimelinePanel
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        trip_id: "TRIP-123",
+        events: [
+          {
+            trip_id: "TRIP-123",
+            timestamp: "2026-04-18T10:00:00Z",
+            stage: "intake",
+            status: "completed",
+            state_snapshot: {},
+          },
+        ],
+      }),
     });
 
     render(
@@ -82,11 +99,12 @@ describe("workspace/[tripId]/layout", () => {
       </WorkspaceTripLayoutShell>,
     );
 
-    expect(screen.queryByText("AI Copilot Panel")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Trip timeline")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Show AI rail" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show timeline" }));
 
-    expect(screen.getByText("AI Copilot Panel")).toBeInTheDocument();
+    expect(screen.getByLabelText("Trip timeline")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Decision Timeline" })).toBeInTheDocument();
   });
 
   it("renders not-found/error fallback when trip fails", () => {

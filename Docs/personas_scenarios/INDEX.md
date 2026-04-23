@@ -29,12 +29,15 @@
 **"Testing philosophy beyond green tests"**  
 → Read: [TESTING_PHILOSOPHY_CASE_STUDIES.md](TESTING_PHILOSOPHY_CASE_STUDIES.md)
 
+**"What is the approved logical/product policy for P1-S0 and P2-S4?"**  
+→ Read: [LOGICAL_POLICY_DECISIONS_RATIFIED_2026-04-23.md](LOGICAL_POLICY_DECISIONS_RATIFIED_2026-04-23.md)
+
 **"Show open implementation items per scenario (technical + logical)"**  
 → Read: [task_lists/](task_lists) and the links inside each scenario file
 
 **"Understand strategic coverage gaps and deep dives"**  
-→ Read: [COVERAGE_GAP_ANALYSIS.md](COVERAGE_GAP_ANALYSIS.md) → Check Deep Dives: [Operations](AREA_DEEP_DIVE_OPERATIONAL_WORKFLOWS.md), [Risk/Compliance](AREA_DEEP_DIVE_RISK_COMPLIANCE.md), [Specialized Verticals](AREA_DEEP_DIVE_INDUSTRY_VERTICALS.md), [Luxury](AREA_DEEP_DIVE_LUXURY_CONCIERGE.md), [MICE/Events](AREA_DEEP_DIVE_MICE_EVENTS.md), [Sustainability](AREA_DEEP_DIVE_SUSTAINABLE_TRAVEL.md), [Financial/Treasury](AREA_DEEP_DIVE_FINANCIAL_TREASURY.md)  
-→ See: [Targeted Expansion Batch 01](SCENARIOS_TARGETED_EXPANSION_BATCH_01.md), [Batch 02](SCENARIOS_TARGETED_EXPANSION_BATCH_02.md), [Batch 03](SCENARIOS_TARGETED_EXPANSION_BATCH_03.md)
+→ Read: [COVERAGE_GAP_ANALYSIS.md](COVERAGE_GAP_ANALYSIS.md) → Check Deep Dives: [Operations](AREA_DEEP_DIVE_OPERATIONAL_WORKFLOWS.md), [Risk/Compliance](AREA_DEEP_DIVE_RISK_COMPLIANCE.md), [Specialized Verticals](AREA_DEEP_DIVE_INDUSTRY_VERTICALS.md), [Luxury](AREA_DEEP_DIVE_LUXURY_CONCIERGE.md), [MICE/Events](AREA_DEEP_DIVE_MICE_EVENTS.md), [Sustainability](AREA_DEEP_DIVE_SUSTAINABLE_TRAVEL.md), [Financial/Treasury](AREA_DEEP_DIVE_FINANCIAL_TREASURY.md), [Travel Tech](AREA_DEEP_DIVE_TRAVEL_TECH.md), [Crisis Management](AREA_DEEP_DIVE_CRISIS_MANAGEMENT.md), [Visa/Immigration](AREA_DEEP_DIVE_VISA_IMMIGRATION.md), [Workcations](AREA_DEEP_DIVE_WORKCATIONS.md), [Adventure](AREA_DEEP_DIVE_ADVENTURE_TRAVEL.md), [Wellness/Medical](AREA_DEEP_DIVE_WELLNESS_MEDICAL.md), [Sport/Events](AREA_DEEP_DIVE_SPORT_EVENTS.md)  
+→ See: [Targeted Expansion Batch 01](SCENARIOS_TARGETED_EXPANSION_BATCH_01.md), [Batch 02](SCENARIOS_TARGETED_EXPANSION_BATCH_02.md), [Batch 03](SCENARIOS_TARGETED_EXPANSION_BATCH_03.md), [Batch 04](SCENARIOS_TARGETED_EXPANSION_BATCH_04.md)
 
 ---
 
@@ -120,6 +123,13 @@ personas_scenarios/
 ├── AREA_DEEP_DIVE_MICE_EVENTS.md ← NEW (Deep dive: Corporate Groups & Events)
 ├── AREA_DEEP_DIVE_SUSTAINABLE_TRAVEL.md ← NEW (Deep dive: Carbon Metrics & Ethical Vetting)
 ├── AREA_DEEP_DIVE_FINANCIAL_TREASURY.md ← NEW (Deep dive: Forex, Credit & Statutory Tax)
+├── AREA_DEEP_DIVE_TRAVEL_TECH.md ← NEW (Deep dive: NDC, GDS & API Fragmentation)
+├── AREA_DEEP_DIVE_CRISIS_MANAGEMENT.md ← NEW (Deep dive: Duty of Care & Extraction)
+├── AREA_DEEP_DIVE_VISA_IMMIGRATION.md ← NEW (Deep dive: Complex Visas & Border Control)
+├── AREA_DEEP_DIVE_WORKCATIONS.md ← NEW (Deep dive: Bleisure & Remote Work)
+├── AREA_DEEP_DIVE_ADVENTURE_TRAVEL.md ← NEW (Deep dive: High-Risk & Gear Logistics)
+├── AREA_DEEP_DIVE_WELLNESS_MEDICAL.md ← NEW (Deep dive: Retreats & PII Privacy)
+├── AREA_DEEP_DIVE_SPORT_EVENTS.md ← NEW (Deep dive: Peak Demand & Fan Logistics)
 ├── ADDITIONAL_SCENARIOS_26_LAST_MINUTE_CANCELLATION.md
 │   └── 1 real flow scenario: Last-minute cancellation
 ├── ADDITIONAL_SCENARIOS_27_REFERRAL_REQUEST.md

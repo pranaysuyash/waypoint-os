@@ -36,15 +36,10 @@ import { WorkspaceTable, type SortField, type SortDirection } from './WorkspaceT
 
 // ============================================================================
 // DOMAIN BOUNDARY DEFINITION
-// Decision states that indicate a trip is actively in the execution queue.
-// Change here propagates everywhere — do not hardcode elsewhere.
+// The "workspace" filter is now applied server-side via /api/trips?view=workspace.
+// The canonical WORKSPACE_STATES set lives in the trips API route.
+// This file does NOT duplicate that definition.
 // ============================================================================
-
-const IN_WORKSPACE_STATES = new Set(['green', 'amber', 'red'] as const);
-
-function isInWorkspace(trip: Trip): boolean {
-  return IN_WORKSPACE_STATES.has(trip.state as 'green' | 'amber' | 'red');
-}
 
 // ============================================================================
 // STATE METADATA
@@ -264,7 +259,7 @@ function ViewToggle({
 // ============================================================================
 
 export default function WorkspacesPage() {
-  const { data: allTrips, isLoading, error, refetch } = useTrips();
+  const { data: workspaceTrips, isLoading, error, refetch } = useTrips({ view: 'workspace' });
   const [viewMode, setViewMode] = useState<'card' | 'table'>(getSavedView);
   const [sortField, setSortField] = useState<SortField>('state');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -273,11 +268,6 @@ export default function WorkspacesPage() {
   useEffect(() => {
     saveView(viewMode);
   }, [viewMode]);
-
-  const workspaceTrips = useMemo(
-    () => allTrips.filter(isInWorkspace),
-    [allTrips],
-  );
 
   const blockedCount = useMemo(
     () => workspaceTrips.filter((t) => t.state === 'red').length,

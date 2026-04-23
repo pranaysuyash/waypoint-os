@@ -40,6 +40,7 @@ import os
 import sys
 import time
 import uuid
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, List, Optional
 
@@ -53,8 +54,24 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-# Standard imports follow package structure
-
+from spine_api.contract import (
+    SafetyResult,
+    AssertionResult,
+    AutonomyOutcome,
+    RunMeta,
+    SpineRunRequest,
+    SpineRunResponse,
+    OverrideRequest,
+    OverrideResponse,
+    HealthResponse,
+    TimelineEvent,
+    TimelineResponse,
+    ReviewActionRequest,
+    UpdateOperationalSettings,
+    UpdateAutonomyPolicy,
+    UnifiedStateResponse,
+    DashboardStatsResponse,
+)
 
 from src.intake.orchestration import run_spine_once
 from src.intake.packet_models import SourceEnvelope
@@ -108,6 +125,7 @@ from run_events import (
 )
 from run_ledger import RunLedger
 from src.intake.config.agency_settings import AgencySettingsStore
+from src.analytics.policy_rules import ready_gate_failures
 
 # Auth — Phase 1
 try:
@@ -131,126 +149,8 @@ logger = logging.getLogger("spine-api")
 if TimelineEventMapper is None:
     logger.warning("TimelineEventMapper not available - timeline endpoint will use fallback")
 
-# =============================================================================
-# Pydantic models — canonical contract
-# =============================================================================
-
-class SafetyResult(BaseModel):
-    strict_leakage: bool = False
-    leakage_passed: bool = True
-    leakage_errors: List[str] = Field(default_factory=list)
-
-
-class AssertionResult(BaseModel):
-    type: str
-    passed: bool
-    message: str
-    field: Optional[str] = None
-
-
-class AutonomyOutcome(BaseModel):
-    """D1 autonomy policy outcome — separates raw NB02 verdict from agency policy."""
-    raw_verdict: str
-    effective_action: str
-    approval_required: bool
-    rule_source: str
-    safety_invariant_applied: bool
-    mode_override_applied: Optional[str] = None
-    warning_override_applied: bool = False
-    reasons: List[str] = Field(default_factory=list)
-
-
-class RunMeta(BaseModel):
-    stage: str = "discovery"
-    operating_mode: str = "normal_intake"
-    fixture_id: Optional[str] = None
-    execution_ms: float = 0.0
-
-
-class SpineRunResponse(BaseModel):
-    ok: bool = True
-    run_id: str = ""
-    packet: Optional[dict[str, Any]] = None
-    validation: Optional[dict[str, Any]] = None
-    decision: Optional[dict[str, Any]] = None
-    strategy: Optional[dict[str, Any]] = None
-    traveler_bundle: Optional[dict[str, Any]] = None
-    internal_bundle: Optional[dict[str, Any]] = None
-    safety: SafetyResult = Field(default_factory=SafetyResult)
-    fees: Optional[dict[str, Any]] = None
-    autonomy_outcome: Optional[AutonomyOutcome] = None
-    assertions: Optional[List[AssertionResult]] = None
-    meta: RunMeta = Field(default_factory=RunMeta)
-
-
-class SpineRunRequest(BaseModel):
-    raw_note: Optional[str] = Field(default=None)
-    owner_note: Optional[str] = Field(default=None)
-    structured_json: Optional[dict[str, Any]] = Field(default=None)
-    itinerary_text: Optional[str] = Field(default=None)
-    stage: str = Field(default="discovery")
-    operating_mode: str = Field(default="normal_intake")
-    strict_leakage: bool = Field(default=False)
-    scenario_id: Optional[str] = Field(default=None)
-
-    model_config = {"extra": "forbid"}
-
-
-class OverrideRequest(BaseModel):
-    """Request schema for POST /trips/{trip_id}/override"""
-    flag: str
-    decision_type: Optional[str] = None
-    action: str  # "suppress", "downgrade", "acknowledge"
-    new_severity: Optional[str] = None
-    overridden_by: str
-    reason: str
-    scope: str = "this_trip"  # "this_trip" or "pattern"
-    original_severity: Optional[str] = None
-    
-    model_config = {"extra": "forbid"}
-
-
-class OverrideResponse(BaseModel):
-    """Response schema for override endpoint"""
-    ok: bool
-    override_id: str
-    trip_id: str
-    flag: str
-    action: str
-    new_severity: Optional[str] = None
-    cache_invalidated: bool = False
-    rule_graduated: bool = False
-    pattern_learning_queued: bool = False
-    warnings: List[str] = Field(default_factory=list)
-    audit_event_id: str
-
-
-class HealthResponse(BaseModel):
-    status: str
-    version: str
-
-
-class TimelineEvent(BaseModel):
-    """Presentation-ready timeline event for frontend consumption.
-    
-    This is the Translation Layer between backend deltas (pre_state/post_state)
-    and frontend-ready state.
-    """
-    trip_id: str
-    timestamp: str  # ISO 8601
-    stage: str  # "intake", "packet", "decision", "strategy", "safety"
-    status: str  # Normalized: "started", "in_progress", "completed", "approved", "rejected", "error"
-    state_snapshot: dict  # Human-readable summary of state at this stage
-    decision: Optional[str] = None  # If applicable: "approve", "reject", "ask_followup"
-    confidence: Optional[float] = None  # 0-100 confidence score
-    reason: Optional[str] = None  # Why this stage/decision happened
-    pre_state: Optional[dict] = None  # Raw delta (for debugging)
-    post_state: Optional[dict] = None  # Raw delta (for debugging)
-
-
-class TimelineResponse(BaseModel):
-    trip_id: str
-    events: List[TimelineEvent] = Field(default_factory=list)
+# Pydantic models imported from spine-api/types.py (canonical contract)
+# All response schemas are defined there. Do not add new models here.
 
 
 # =============================================================================
@@ -297,9 +197,79 @@ app.include_router(workspace_router.router)
 
 @app.on_event("startup")
 async def startup_event():
-    """Tasks to run on server startup."""
     watchdog.start()
+    _seed_scenario()
     logger.info("Spine API startup complete")
+
+
+def _seed_scenario():
+    """
+    Load a scenario fixture at startup if SEED_SCENARIO env var is set.
+
+    Usage: SEED_SCENARIO=scenario_alpha uvicorn spine-api.server:app
+
+    This seeds the TripStore with fixture data for deterministic testing.
+    If the env var is set to a filename (without .json) in data/fixtures/,
+    all trips from that file are loaded into persistence.
+    """
+    seed_name = os.environ.get("SEED_SCENARIO", "").strip()
+    if not seed_name:
+        return
+
+    fixture_path = PROJECT_ROOT / "data" / "fixtures" / f"{seed_name}.json"
+    if not fixture_path.exists():
+        logger.warning("SEED_SCENARIO: fixture not found: %s", fixture_path)
+        return
+
+    try:
+        with open(fixture_path) as f:
+            trips = json.load(f)
+
+        if not isinstance(trips, list):
+            logger.warning("SEED_SCENARIO: fixture must be a JSON array of trips")
+            return
+
+        loaded = 0
+        for trip_data in trips:
+            trip_id = trip_data.get("id")
+            if not trip_id:
+                continue
+
+            existing = TripStore.get_trip(trip_id)
+            if existing:
+                continue
+
+            trip_record = {
+                "id": trip_id,
+                "run_id": f"seed_{trip_id}",
+                "source": "seed_scenario",
+                "status": trip_data.get("status", "new"),
+                "created_at": trip_data.get("created_at", datetime.now(timezone.utc).isoformat()),
+                "updated_at": trip_data.get("updated_at"),
+                "extracted": trip_data.get("extracted"),
+                "validation": trip_data.get("validation"),
+                "decision": trip_data.get("decision"),
+                "analytics": trip_data.get("analytics"),
+                "assigned_to": trip_data.get("assignedTo"),
+                "assigned_to_name": trip_data.get("assignedToName"),
+                "meta": trip_data.get("meta", {"stage": trip_data.get("status", "new"), "seed": True}),
+            }
+
+            TripStore.save_trip(trip_record)
+
+            if trip_data.get("assignedTo"):
+                AssignmentStore.assign_trip(
+                    trip_id,
+                    trip_data["assignedTo"],
+                    trip_data.get("assignedToName", "Unknown"),
+                    "seed",
+                )
+
+            loaded += 1
+
+        logger.info("SEED_SCENARIO: loaded %d trips from %s", loaded, seed_name)
+    except Exception as e:
+        logger.error("SEED_SCENARIO: failed to load fixture: %s", e)
 
 
 @app.on_event("shutdown")
@@ -784,6 +754,23 @@ def patch_trip(trip_id: str, updates: Dict[str, Any]):
     
     old_status = trip.get("status")
     new_status = updates.get("status")
+
+    # Enforce ready gate when marking trip as completed/ready.
+    if new_status == "completed":
+        overrides_by_flag: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for ov in OverrideStore.get_overrides_for_trip(trip_id):
+            flag_key = str(ov.get("flag") or "").strip()
+            if flag_key:
+                overrides_by_flag[flag_key].append(ov)
+        failures = ready_gate_failures(trip, dict(overrides_by_flag))
+        if failures:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "Ready gate failed",
+                    "failures": failures,
+                },
+            )
     
     # Perform update
     updated_trip = TripStore.update_trip(trip_id, updates)
@@ -932,12 +919,6 @@ def post_dismiss_alert(alert_id: str):
 
 from src.analytics.review import process_review_action, trip_to_review
 
-class ReviewActionRequest(BaseModel):
-    action: str
-    notes: str
-    reassign_to: Optional[str] = None
-    error_category: Optional[str] = None
-
 
 @app.get("/analytics/reviews")
 def get_pending_reviews():
@@ -1011,21 +992,6 @@ def get_agency_settings(agency_id: str = "waypoint-hq"):
             "min_draft_confidence": settings.autonomy.min_draft_confidence,
         },
     }
-
-class UpdateOperationalSettings(BaseModel):
-    agency_name: Optional[str] = None
-    contact_email: Optional[str] = None
-    contact_phone: Optional[str] = None
-    logo_url: Optional[str] = None
-    website: Optional[str] = None
-    target_margin_pct: Optional[float] = Field(None, ge=0, le=100)
-    default_currency: Optional[str] = None
-    operating_hours_start: Optional[str] = None
-    operating_hours_end: Optional[str] = None
-    operating_days: Optional[List[str]] = None
-    preferred_channels: Optional[List[str]] = None
-    brand_tone: Optional[str] = None
-
 
 @app.post("/api/settings/operational")
 def update_agency_operational_settings(
@@ -1119,13 +1085,6 @@ def get_agency_autonomy_settings(agency_id: str = "waypoint-hq"):
         "min_proceed_confidence": policy.min_proceed_confidence,
         "min_draft_confidence": policy.min_draft_confidence,
     }
-
-
-class UpdateAutonomyPolicy(BaseModel):
-    approval_gates: Optional[dict[str, str]] = None
-    mode_overrides: Optional[dict[str, dict[str, str]]] = None
-    auto_proceed_with_warnings: Optional[bool] = None
-    learn_from_overrides: Optional[bool] = None
 
 
 @app.post("/api/settings/autonomy")
@@ -1466,6 +1425,22 @@ def get_unified_state():
         raise HTTPException(
             status_code=500,
             detail="Internal integrity error"
+        )
+
+
+@app.get("/api/dashboard/stats", response_model=DashboardStatsResponse)
+def get_dashboard_stats():
+    """
+    Dashboard stat cards — computed entirely by the backend aggregator.
+    Replaces all frontend Math.floor / filter / reduce logic.
+    """
+    try:
+        return DashboardAggregator.get_dashboard_stats()
+    except Exception as e:
+        logger.error(f"Failed to compute dashboard stats: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to compute dashboard stats"
         )
 
 if __name__ == "__main__":
