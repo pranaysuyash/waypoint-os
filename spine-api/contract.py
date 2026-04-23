@@ -161,6 +161,58 @@ class ReviewActionRequest(BaseModel):
     error_category: Optional[str] = None
 
 
+class SuitabilityAcknowledgeRequest(BaseModel):
+    acknowledged_flags: List[str]
+
+
+class SnoozeRequest(BaseModel):
+    snooze_until: str
+
+
+class TeamMember(BaseModel):
+    id: str
+    email: str
+    name: str
+    role: str
+    capacity: int = 5
+    active: bool = True
+    created_at: str
+    updated_at: Optional[str] = None
+
+
+class InviteTeamMemberRequest(BaseModel):
+    email: str
+    name: str
+    role: str
+    capacity: int = 5
+
+
+class PipelineStageConfig(BaseModel):
+    stage_id: str
+    label: str
+    order: int
+    sla_hours: Optional[int] = None
+    auto_actions: List[str] = Field(default_factory=list)
+
+
+class ApprovalThresholdConfig(BaseModel):
+    threshold_id: str
+    gate: str
+    condition: str
+    value: float
+    action: str
+
+
+class ExportRequest(BaseModel):
+    time_range: str = "30d"
+    format: str = "csv"
+
+
+class ExportResponse(BaseModel):
+    download_url: str
+    expires_at: str
+
+
 # =============================================================================
 # Settings models
 # =============================================================================

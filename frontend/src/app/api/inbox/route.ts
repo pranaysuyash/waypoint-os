@@ -227,7 +227,7 @@ export async function GET(request: NextRequest) {
     // Forward request to spine-api with all query parameters
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.toString();
-    const spineApiUrl = `http://localhost:8000/trips${query ? `?${query}` : ""}`;
+    const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/trips${query ? `?${query}` : ""}`;
 
     const response = await fetch(spineApiUrl, {
       method: "GET",

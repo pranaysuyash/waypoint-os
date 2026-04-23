@@ -432,6 +432,137 @@ class OverrideStore:
             json.dump(index, f, indent=2)
 
 
+# =============================================================================
+# Team Member Store
+# =============================================================================
+
+TEAM_DIR = DATA_DIR / "team"
+TEAM_DIR.mkdir(parents=True, exist_ok=True)
+
+
+class TeamStore:
+    """File-based team member storage using JSON."""
+
+    TEAM_FILE = TEAM_DIR / "members.json"
+    _lock = threading.Lock()
+
+    @staticmethod
+    def _load_members() -> dict:
+        if not TeamStore.TEAM_FILE.exists():
+            return {}
+        with open(TeamStore.TEAM_FILE) as f:
+            return json.load(f)
+
+    @staticmethod
+    def _save_members(data: dict):
+        with open(TeamStore.TEAM_FILE, "w") as f:
+            json.dump(data, f, indent=2)
+
+    @staticmethod
+    def create_member(member_data: dict) -> str:
+        member_id = f"agent_{uuid4().hex[:12]}"
+        member_data["id"] = member_id
+        member_data["created_at"] = datetime.now(timezone.utc).isoformat()
+        member_data["active"] = True
+
+        with TeamStore._lock:
+            members = TeamStore._load_members()
+            members[member_id] = member_data
+            TeamStore._save_members(members)
+
+        AuditStore.log_event("team_member_created", "owner", {
+            "member_id": member_id,
+            "email": member_data.get("email"),
+            "role": member_data.get("role"),
+        })
+        return member_id
+
+    @staticmethod
+    def get_member(member_id: str) -> Optional[dict]:
+        members = TeamStore._load_members()
+        return members.get(member_id)
+
+    @staticmethod
+    def list_members(active_only: bool = False) -> list:
+        members = TeamStore._load_members()
+        result = list(members.values())
+        if active_only:
+            result = [m for m in result if m.get("active", True)]
+        return result
+
+    @staticmethod
+    def update_member(member_id: str, updates: dict) -> Optional[dict]:
+        with TeamStore._lock:
+            members = TeamStore._load_members()
+            if member_id not in members:
+                return None
+            members[member_id].update(updates)
+            members[member_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
+            TeamStore._save_members(members)
+            return members[member_id]
+
+    @staticmethod
+    def deactivate_member(member_id: str) -> bool:
+        with TeamStore._lock:
+            members = TeamStore._load_members()
+            if member_id not in members:
+                return False
+            members[member_id]["active"] = False
+            members[member_id]["updated_at"] = datetime.now(timezone.utc).isoformat()
+            TeamStore._save_members(members)
+
+            AuditStore.log_event("team_member_deactivated", "owner", {
+                "member_id": member_id,
+            })
+            return True
+
+
+# =============================================================================
+# Config Store (pipeline stages + approval thresholds)
+# =============================================================================
+
+CONFIG_DIR = DATA_DIR / "config"
+CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+
+class ConfigStore:
+    """File-based configuration storage for pipeline stages and approval thresholds."""
+
+    PIPELINE_FILE = CONFIG_DIR / "pipeline.json"
+    APPROVALS_FILE = CONFIG_DIR / "approvals.json"
+    _lock = threading.Lock()
+
+    @staticmethod
+    def _load_file(filepath: Path) -> list:
+        if not filepath.exists():
+            return []
+        with open(filepath) as f:
+            return json.load(f)
+
+    @staticmethod
+    def _save_file(filepath: Path, data: list):
+        with open(filepath, "w") as f:
+            json.dump(data, f, indent=2)
+
+    @staticmethod
+    def get_pipeline_stages() -> list:
+        return ConfigStore._load_file(ConfigStore.PIPELINE_FILE)
+
+    @staticmethod
+    def set_pipeline_stages(stages: list):
+        with ConfigStore._lock:
+            ConfigStore._save_file(ConfigStore.PIPELINE_FILE, stages)
+
+    @staticmethod
+    def get_approval_thresholds() -> list:
+        return ConfigStore._load_file(ConfigStore.APPROVALS_FILE)
+
+    @staticmethod
+    def set_approval_thresholds(thresholds: list):
+        with ConfigStore._lock:
+            ConfigStore._save_file(ConfigStore.APPROVALS_FILE, thresholds)
+
+
 # Convenience functions
 def save_processed_trip(spine_output: dict, source: str = "unknown") -> str:
     """

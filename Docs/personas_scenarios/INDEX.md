@@ -694,6 +694,40 @@ personas_scenarios/
 │   └── 1 real flow scenario: Virtual concert and digital entertainment production travel
 ├── ADDITIONAL_SCENARIOS_307_FINTECH_REGTECH_CONFERENCE_AND_PARTNER_TRAVEL.md
 │   └── 1 real flow scenario: FinTech RegTech conference and partner travel
+├── ADDITIONAL_SCENARIOS_308_PHARMACEUTICAL_SUPPLY_CHAIN_AND_LOGISTICS_TRAVEL.md
+│   └── 1 real flow scenario: Pharmaceutical supply chain logistics
+├── ADDITIONAL_SCENARIOS_315_LCC_COLLAPSE.md
+│   └── 1 real flow scenario: Low-Cost Carrier Collapse (OE-001)
+├── ADDITIONAL_SCENARIOS_316_TAX_RECONCILIATION_GHOST.md
+│   └── 1 real flow scenario: Multi-Jurisdiction Tax Reconciliation (OE-002)
+├── ADDITIONAL_SCENARIOS_317_SILENT_HANDOFF_FAILURE.md
+│   └── 1 real flow scenario: AI-to-Human Handoff SLA Breach (OE-003)
+├── ADDITIONAL_SCENARIOS_318_MID_AIR_SANCTION.md
+│   └── 1 real flow scenario: Mid-Air Sanction Trigger (RC-001)
+├── ADDITIONAL_SCENARIOS_319_GDPR_CLEANSE.md
+│   └── 1 real flow scenario: Post-Trip VVIP Data Purge (RC-002)
+├── ADDITIONAL_SCENARIOS_320_MARITIME_MISS_ROTATION.md
+│   └── 1 real flow scenario: Maritime Crew Missed Rotation (VS-001)
+├── ADDITIONAL_SCENARIOS_321_MEDICAL_OXYGEN_FAIL.md
+│   └── 1 real flow scenario: Medical Oxygen POC Failure (VS-002)
+├── ADDITIONAL_SCENARIOS_322_COLD_CHAIN_MEDS_FAIL.md
+│   └── 1 real flow scenario: Cold-Chain Medication Compromise (VS-003)
+├── ADDITIONAL_SCENARIOS_323_ORBITAL_LAUNCH_SCRUB.md
+│   └── 1 real flow scenario: Orbital Launch Window Postponement
+├── ADDITIONAL_SCENARIOS_324_QUANTUM_IDENTITY_ATTACK.md
+│   └── 1 real flow scenario: Post-Quantum Identity Theft Attempt
+├── ADDITIONAL_SCENARIOS_325_SAFE_PASSAGE_REQUEST.md
+│   └── 1 real flow scenario: Autonomous Diplomacy Safe-Passage
+├── ADDITIONAL_SCENARIOS_326_ANNIVERSARY_LOOP.md
+│   └── 1 real flow scenario: Anniversary Surprise & Delight Loop
+├── ADDITIONAL_SCENARIOS_327_REFUND_ARBITRATION.md
+│   └── 1 real flow scenario: Automated Supplier Refund Arbitration
+├── ADDITIONAL_SCENARIOS_328_LOYALTY_STRATEGIST.md
+│   └── 1 real flow scenario: Post-Trip Loyalty Status Optimizer
+├── ADDITIONAL_SCENARIOS_329_NOMAD_PIVOT.md
+│   └── 1 real flow scenario: Digital Nomad Long-Stay Pivot
+├── ADDITIONAL_SCENARIOS_330_ETHICAL_IMPACT_REPORT.md
+│   └── 1 real flow scenario: Ethical Insetting & Community Impact Proof
 ├── P1_SOLO_AGENT_SCENARIOS.md
 │   └── 5 real scenarios:
 │       P1-S1: 11 PM WhatsApp Panic

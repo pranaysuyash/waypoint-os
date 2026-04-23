@@ -67,6 +67,13 @@ from spine_api.contract import (
     TimelineEvent,
     TimelineResponse,
     ReviewActionRequest,
+    SuitabilityAcknowledgeRequest,
+    SnoozeRequest,
+    InviteTeamMemberRequest,
+    PipelineStageConfig,
+    ApprovalThresholdConfig,
+    ExportRequest,
+    ExportResponse,
     UpdateOperationalSettings,
     UpdateAutonomyPolicy,
     UnifiedStateResponse,
@@ -87,6 +94,8 @@ TripStore = persistence.TripStore
 AssignmentStore = persistence.AssignmentStore
 AuditStore = persistence.AuditStore
 OverrideStore = persistence.OverrideStore
+TeamStore = persistence.TeamStore
+ConfigStore = persistence.ConfigStore
 save_processed_trip = persistence.save_processed_trip
 
 # Import TimelineEventMapper from analytics
@@ -819,6 +828,47 @@ def unassign_trip(trip_id: str, unassigned_by: str = "system"):
     return {"success": True, "trip_id": trip_id}
 
 
+@app.post("/trips/{trip_id}/snooze")
+def snooze_trip(trip_id: str, request: SnoozeRequest):
+    """Snooze a trip until a specified time."""
+    trip = TripStore.get_trip(trip_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    analytics = trip.get("analytics") or {}
+    analytics["snooze_until"] = request.snooze_until
+    TripStore.update_trip(trip_id, {"analytics": analytics})
+    
+    AuditStore.log_event("trip_snoozed", "owner", {
+        "trip_id": trip_id,
+        "snooze_until": request.snooze_until,
+    })
+    
+    return {"success": True, "trip_id": trip_id, "snooze_until": request.snooze_until}
+
+
+@app.post("/trips/{trip_id}/suitability/acknowledge")
+def acknowledge_suitability_flags(trip_id: str, request: SuitabilityAcknowledgeRequest):
+    """Acknowledge suitability flags for a trip, allowing it to proceed."""
+    trip = TripStore.get_trip(trip_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    analytics = trip.get("analytics") or {}
+    existing = analytics.get("acknowledged_flags", [])
+    updated = list(set(existing + request.acknowledged_flags))
+    analytics["acknowledged_flags"] = updated
+    analytics["suitability_acknowledged_at"] = datetime.now(timezone.utc).isoformat()
+    TripStore.update_trip(trip_id, {"analytics": analytics})
+    
+    AuditStore.log_event("suitability_acknowledged", "owner", {
+        "trip_id": trip_id,
+        "acknowledged_flags": request.acknowledged_flags,
+    })
+    
+    return {"success": True, "trip_id": trip_id, "acknowledged_flags": updated}
+
+
 @app.get("/assignments")
 def list_assignments(agent_id: Optional[str] = None):
     """List assignments, optionally filtered by agent."""
@@ -888,6 +938,23 @@ def get_analytics_bottlenecks(range: str = "30d"):
 def get_analytics_revenue(range: str = "30d"):
     trips = TripStore.list_trips(limit=1000)
     return compute_revenue_metrics(trips)
+
+
+@app.get("/analytics/agent/{agent_id}/drill-down")
+def get_agent_drill_down(agent_id: str, metric: str = "conversion"):
+    """Return trips and metrics for a specific agent."""
+    trips = TripStore.list_trips(limit=1000)
+    agent_trips = [
+        t for t in trips
+        if t.get("assigned_to") == agent_id or t.get("agent_id") == agent_id
+    ]
+    
+    return {
+        "agent_id": agent_id,
+        "metric": metric,
+        "trips": agent_trips,
+        "count": len(agent_trips),
+    }
 
 
 @app.get("/analytics/alerts", response_model=List[OperationalAlert])
@@ -1442,6 +1509,310 @@ def get_dashboard_stats():
             status_code=500,
             detail="Failed to compute dashboard stats"
         )
+
+# =============================================================================
+# System Integrity API
+# =============================================================================
+
+from src.services.dashboard_aggregator import DashboardAggregator
+
+@app.get("/api/system/unified-state")
+def get_unified_state():
+    """
+    Canonical SSOT for dashboard metrics.
+    Returns mathematically consistent data for Inbox, Overview, and Analytics.
+    """
+    try:
+        return DashboardAggregator.get_unified_state()
+    except Exception as e:
+        logger.error(f"Failed to aggregate unified state: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal integrity error"
+        )
+
+
+@app.get("/api/dashboard/stats", response_model=DashboardStatsResponse)
+def get_dashboard_stats():
+    """
+    Dashboard stat cards — computed entirely by the backend aggregator.
+    Replaces all frontend Math.floor / filter / reduce logic.
+    """
+    try:
+        return DashboardAggregator.get_dashboard_stats()
+    except Exception as e:
+        logger.error(f"Failed to compute dashboard stats: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to compute dashboard stats"
+        )
+
+
+# =============================================================================
+# Team Management API
+# =============================================================================
+
+@app.get("/api/team/members")
+def list_team_members():
+    """List all team members."""
+    members = TeamStore.list_members(active_only=False)
+    return {"items": members, "total": len(members)}
+
+
+@app.get("/api/team/members/{member_id}")
+def get_team_member(member_id: str):
+    """Get a team member by ID."""
+    member = TeamStore.get_member(member_id)
+    if not member:
+        raise HTTPException(status_code=404, detail="Team member not found")
+    return member
+
+
+@app.post("/api/team/invite")
+def invite_team_member(request: InviteTeamMemberRequest):
+    """Invite a new team member."""
+    member_id = TeamStore.create_member(request.model_dump())
+    member = TeamStore.get_member(member_id)
+    return {"success": True, "member": member}
+
+
+@app.patch("/api/team/members/{member_id}")
+def update_team_member(member_id: str, request: InviteTeamMemberRequest):
+    """Update a team member."""
+    updates = request.model_dump(exclude_none=True)
+    member = TeamStore.update_member(member_id, updates)
+    if not member:
+        raise HTTPException(status_code=404, detail="Team member not found")
+    return member
+
+
+@app.delete("/api/team/members/{member_id}")
+def deactivate_team_member(member_id: str):
+    """Deactivate a team member."""
+    success = TeamStore.deactivate_member(member_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Team member not found")
+    return {"success": True}
+
+
+@app.get("/api/team/workload")
+def get_workload_distribution():
+    """Get workload distribution across active team members."""
+    members = TeamStore.list_members(active_only=True)
+    assignments = AssignmentStore._load_assignments()
+    
+    distribution = []
+    for member in members:
+        member_id = member["id"]
+        assigned_trips = [a for a in assignments.values() if a.get("agent_id") == member_id]
+        distribution.append({
+            "member_id": member_id,
+            "name": member.get("name"),
+            "role": member.get("role"),
+            "capacity": member.get("capacity", 5),
+            "assigned": len(assigned_trips),
+            "available": max(0, member.get("capacity", 5) - len(assigned_trips)),
+        })
+    
+    return {"items": distribution, "total": len(distribution)}
+
+
+# =============================================================================
+# Single Review + Bulk Review Actions
+# =============================================================================
+
+@app.get("/analytics/reviews/{review_id}")
+def get_review(review_id: str):
+    """Get a single review by trip ID."""
+    trip = TripStore.get_trip(review_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Review not found")
+    
+    from src.analytics.review import trip_to_review
+    return trip_to_review(trip)
+
+
+@app.post("/analytics/reviews/bulk-action")
+def bulk_review_action(actions: List[dict]):
+    """Apply review actions in bulk."""
+    from src.analytics.review import process_review_action
+    
+    processed = 0
+    failed = 0
+    results = []
+    
+    for action in actions:
+        try:
+            trip_id = action.get("trip_id") or action.get("review_id")
+            if not trip_id:
+                failed += 1
+                continue
+            
+            process_review_action(
+                trip_id=trip_id,
+                action=action.get("action", "approve"),
+                notes=action.get("notes", ""),
+                user_id="owner",
+                reassign_to=action.get("reassign_to"),
+                error_category=action.get("error_category"),
+            )
+            processed += 1
+            results.append({"trip_id": trip_id, "status": "processed"})
+        except Exception as e:
+            logger.error(f"Bulk review action failed for {action}: {e}")
+            failed += 1
+            results.append({"trip_id": action.get("trip_id"), "status": "failed", "error": str(e)})
+    
+    return {"success": failed == 0, "processed": processed, "failed": failed, "results": results}
+
+
+# =============================================================================
+# Escalations + Funnel Insights
+# =============================================================================
+
+@app.get("/analytics/escalations")
+def get_escalation_heatmap():
+    """Return escalation heatmap data."""
+    trips = TripStore.list_trips(limit=1000)
+    
+    heatmap = defaultdict(lambda: {"total": 0, "escalated": 0})
+    for trip in trips:
+        agent = trip.get("assigned_to") or trip.get("agent_id") or "unassigned"
+        heatmap[agent]["total"] += 1
+        if trip.get("analytics", {}).get("escalation_severity") in ("high", "critical"):
+            heatmap[agent]["escalated"] += 1
+    
+    return {
+        "items": [
+            {"agent_id": k, "total": v["total"], "escalated": v["escalated"]}
+            for k, v in heatmap.items()
+        ],
+        "total": len(heatmap),
+    }
+
+
+@app.get("/analytics/funnel")
+def get_conversion_funnel():
+    """Return conversion funnel metrics."""
+    trips = TripStore.list_trips(limit=1000)
+    
+    stages = ["new", "assigned", "in_progress", "review", "completed", "cancelled"]
+    funnel = {stage: 0 for stage in stages}
+    
+    for trip in trips:
+        status = trip.get("status", "new")
+        if status in funnel:
+            funnel[status] += 1
+    
+    return {
+        "items": [
+            {"stage": stage, "count": count}
+            for stage, count in funnel.items()
+        ],
+        "total": len(trips),
+    }
+
+
+# =============================================================================
+# Inbox Reassign + Bulk Actions
+# =============================================================================
+
+@app.post("/trips/{trip_id}/reassign")
+def reassign_trip(trip_id: str, agent_id: str, agent_name: str, reassigned_by: str = "owner"):
+    """Reassign a trip to a different agent."""
+    trip = TripStore.get_trip(trip_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    # Unassign first if already assigned
+    existing = AssignmentStore.get_assignment(trip_id)
+    if existing:
+        AssignmentStore.unassign_trip(trip_id, reassigned_by)
+    
+    AssignmentStore.assign_trip(trip_id, agent_id, agent_name, reassigned_by)
+    TripStore.update_trip(trip_id, {"status": "assigned"})
+    
+    return {"success": True, "trip_id": trip_id, "reassigned_to": agent_id}
+
+
+@app.post("/inbox/bulk")
+def bulk_inbox_action(request: dict):
+    """Apply bulk actions to inbox items."""
+    action = request.get("action")
+    trip_ids = request.get("trip_ids", [])
+    
+    if not action or not trip_ids:
+        raise HTTPException(status_code=400, detail="action and trip_ids are required")
+    
+    processed = 0
+    failed = 0
+    
+    for trip_id in trip_ids:
+        try:
+            if action == "assign":
+                agent_id = request.get("agent_id", "system")
+                AssignmentStore.assign_trip(trip_id, agent_id, agent_id, "bulk")
+                TripStore.update_trip(trip_id, {"status": "assigned"})
+            elif action == "unassign":
+                AssignmentStore.unassign_trip(trip_id, "bulk")
+            elif action == "archive":
+                TripStore.update_trip(trip_id, {"status": "archived"})
+            processed += 1
+        except Exception as e:
+            logger.error(f"Bulk action failed for {trip_id}: {e}")
+            failed += 1
+    
+    return {"success": failed == 0, "processed": processed, "failed": failed}
+
+
+# =============================================================================
+# Pipeline Stages + Approval Thresholds Settings
+# =============================================================================
+
+@app.get("/api/settings/pipeline")
+def get_pipeline_stages():
+    """Get pipeline stage configuration."""
+    stages = ConfigStore.get_pipeline_stages()
+    return {"items": stages}
+
+
+@app.put("/api/settings/pipeline")
+def set_pipeline_stages(request: List[PipelineStageConfig]):
+    """Update pipeline stage configuration."""
+    ConfigStore.set_pipeline_stages([s.model_dump() for s in request])
+    return {"success": True}
+
+
+@app.get("/api/settings/approvals")
+def get_approval_thresholds():
+    """Get approval threshold configuration."""
+    thresholds = ConfigStore.get_approval_thresholds()
+    return {"items": thresholds}
+
+
+@app.put("/api/settings/approvals")
+def set_approval_thresholds(request: List[ApprovalThresholdConfig]):
+    """Update approval threshold configuration."""
+    ConfigStore.set_approval_thresholds([t.model_dump() for t in request])
+    return {"success": True}
+
+
+# =============================================================================
+# Insights Export
+# =============================================================================
+
+@app.post("/analytics/export")
+def export_insights(request: ExportRequest):
+    """Export insights data. Returns a mock export URL for now."""
+    export_id = f"export_{uuid.uuid4().hex[:12]}"
+    expires = datetime.now(timezone.utc).isoformat()
+    
+    # In production this would generate a real file and return a signed URL
+    return ExportResponse(
+        download_url=f"/api/exports/{export_id}.{request.format}",
+        expires_at=expires,
+    )
+
 
 if __name__ == "__main__":
     import uvicorn

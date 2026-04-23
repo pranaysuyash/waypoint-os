@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth';
 import { api, ApiException } from '@/lib/api-client';
 
 export default function SignupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const login = useAuthStore((s) => s.login);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -40,7 +41,7 @@ export default function SignupPage() {
         role: data.membership.role,
         isPrimary: data.membership.is_primary,
       });
-      router.push('/');
+      router.push(searchParams.get('redirect') || '/overview');
     } catch (err) {
       if (err instanceof ApiException) {
         setError(err.message || 'Signup failed');

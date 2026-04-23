@@ -1,4 +1,5 @@
 - [Industry Domain Knowledge](industry_domain/INDEX.md) — Core mechanics of travel agencies: roles, vendors, pricing, and compliance.
+- [Product Features & Functionalities](product_features/INDEX.md) — Specific system capabilities from Business and User POV.
 - [Product Vision and Model](PRODUCT_VISION_AND_MODEL.md) — The B2B Agency OS thesis and sourcing hierarchy.
 - [Detailed Agent Map](DETAILED_AGENT_MAP.md) — Catalog of all 20+ agents, roles, and v1 stack.
 - [Voice Intake and Orchestration](VOICE_ORCHESTRATION_AND_SESSIONS.md) — 2-screen model, routing loop, and "brackets" logic.
@@ -31,6 +32,7 @@
 - [AI Workforce Registry Contract (2026-04-22)](AI_WORKFORCE_REGISTRY_CONTRACT_2026-04-22.md) — Canonical registry, policy schema, activation model, and governance split for specialist AI workers.
 - [Settings Route + Subroute UX Contract (2026-04-23)](SETTINGS_ROUTE_SUBROUTE_UX_CONTRACT_2026-04-23.md) — Canonical `/settings` shell, role-aware subroute model, draft/publish behavior, and migration rules for replacing the workbench drawer and placeholder settings endpoints.
 - [Governance Audit Event Taxonomy (2026-04-23)](GOVERNANCE_AUDIT_EVENT_TAXONOMY_2026-04-23.md) — Canonical audit envelope, domain-specific event families, migration map from current generic events, and D1/D5-ready governance history contract.
+- [Blind Comparison Arena Exploration (2026-04-23)](BLIND_COMPARISON_ARENA_EXPLORATION_2026-04-23.md) — Exploration of an internal blind adjudication system for human-vs-AI and variant-vs-variant comparison, tied to D1 autonomy, D5 override learning, D6 evals, and settings governance.
 - [Status Assessment (2026-04-21)](STATUS_ASSESSMENT_2026-04-21.md) — ⭐ Full codebase audit against D1–D6, cross-project patterns, and gap register. Maps implemented vs. partial vs. blocked, and highlights dependency-light next threads.
 - [D1–D4 Status Reconciliation + Gemini Review (2026-04-21)](D1_D4_STATUS_RECONCILIATION_2026-04-21.md) — Corrects the coarse D1 status, separates done vs open vs not-yet-closed across D1–D4, and evaluates the external Gemini D4 review using repo evidence.
 - [D1–D4 + D6: What Was / What Is / What Should (2026-04-21)](D1_D4_D6_WAS_IS_SHOULD_2026-04-21.md) — Detailed past/present/future execution note. Explains what the ADRs originally intended, what is actually landed in code now, and the dependency-ordered path that should happen next.

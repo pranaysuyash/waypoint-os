@@ -20,8 +20,8 @@ export async function GET(
 
   try {
     const url = stage
-      ? `${SPINE_API_URL}/api/trips/${tripId}/timeline?stage=${stage}`
-      : `${SPINE_API_URL}/api/trips/${tripId}/timeline`;
+      ? `${SPINE_API_URL}/api/trips/${encodeURIComponent(tripId)}/timeline?stage=${stage}`
+      : `${SPINE_API_URL}/api/trips/${encodeURIComponent(tripId)}/timeline`;
 
     const response = await fetch(url, {
       cache: "no-store",

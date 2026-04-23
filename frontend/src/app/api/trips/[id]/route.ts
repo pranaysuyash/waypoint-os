@@ -149,9 +149,10 @@ export async function GET(
   try {
     const { id } = await params;
     
+    const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
     // Forward request to spine-api
-    const spineApiUrl = `http://localhost:8000/trips/${id}`;
-    
+    const spineApiUrl = `${SPINE_API_URL}/trips/${encodeURIComponent(id)}`;
+
     const response = await fetch(spineApiUrl, {
       method: "GET",
       headers: {
@@ -219,8 +220,9 @@ export async function PATCH(
     }
 
     // Forward request to spine-api
-    const spineApiUrl = `http://localhost:8000/trips/${id}`;
-    
+    const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
+    const spineApiUrl = `${SPINE_API_URL}/trips/${encodeURIComponent(id)}`;
+
     const response = await fetch(spineApiUrl, {
       method: "PATCH",
       headers: {

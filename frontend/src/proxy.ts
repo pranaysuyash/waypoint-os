@@ -2,15 +2,14 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const AUTH_ROUTES = ['/login', '/signup', '/forgot-password', '/reset-password'];
-const PROTECTED_ROUTES = ['/', '/inbox', '/workspace', '/owner', '/settings', '/workbench'];
+const PROTECTED_ROUTES = ['/overview', '/inbox', '/workspace', '/owner', '/settings', '/workbench'];
 
 function isAuthRoute(pathname: string): boolean {
   return AUTH_ROUTES.some((route) => pathname.startsWith(route));
 }
 
 function isProtectedRoute(pathname: string): boolean {
-  if (pathname === '/') return true;
-  return PROTECTED_ROUTES.some((route) => route !== '/' && pathname.startsWith(route));
+  return PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
 }
 
 export function proxy(request: NextRequest) {
@@ -24,7 +23,7 @@ export function proxy(request: NextRequest) {
 
   // Redirect authenticated users away from auth pages
   if (isAuthRoute(pathname) && hasAuth) {
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL('/overview', request.url));
   }
 
   // Redirect unauthenticated users to login

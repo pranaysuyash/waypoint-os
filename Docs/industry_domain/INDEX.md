@@ -7,39 +7,39 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 ## 1. Agency Ecosystem & Business Models
 *How agencies are structured, their size, and their value proposition.*
 - [x] [GLOBAL_AGENCY_MODELS.md](agency_operations/GLOBAL_AGENCY_MODELS.md) (Host, IC, Sub-Agency)
-- [ ] [AGENCY_SIZES_AND_SPECIALIZATIONS.md](agency_operations/AGENCY_SIZES_AND_SPECIALIZATIONS.md) (Boutique vs. Mid-size vs. Mega TMC)
-- [ ] [CURATED_VS_FIXED_PACKAGES.md](agency_operations/CURATED_VS_FIXED_PACKAGES.md) (Bespoke/Tailor-made vs. Wholesale/Charter)
+- [x] [AGENCY_SIZES_AND_SPECIALIZATIONS.md](agency_operations/AGENCY_SIZES_AND_SPECIALIZATIONS.md) (Boutique vs. Mid-size vs. Mega TMC)
+- [x] [CURATED_VS_FIXED_PACKAGES.md](agency_operations/CURATED_VS_FIXED_PACKAGES.md) (Bespoke/Tailor-made vs. Wholesale/Charter)
 - [x] [WHITE_LABEL_AND_B2B2C_PARTNERSHIPS.md](commercial_models/WHITE_LABEL_AND_B2B2C_PARTNERSHIPS.md)
 
 ## 2. Roles & Human Capital (Direct & Indirect)
 *Every role involved in moving a traveler from A to B.*
 - [x] [ROLES_AND_RESPONSIBILITIES.md](agency_operations/ROLES_AND_RESPONSIBILITIES.md) (Front Office)
-- [ ] [MID_AND_BACK_OFFICE_ROLES.md](agency_operations/MID_AND_BACK_OFFICE_ROLES.md) (Ticketing, QC, Accounts)
-- [ ] [INDIRECT_SUPPLY_CHAIN_ROLES.md](agency_operations/INDIRECT_SUPPLY_CHAIN_ROLES.md) (Consolidators, GDS Reps, DMC Ops)
+- [x] [MID_AND_BACK_OFFICE_ROLES.md](agency_operations/MID_AND_BACK_OFFICE_ROLES.md) (Ticketing, QC, Accounts)
+- [x] [INDIRECT_SUPPLY_CHAIN_ROLES.md](agency_operations/INDIRECT_SUPPLY_CHAIN_ROLES.md) (Consolidators, GDS Reps, DMC Ops)
 
 ## 3. Traveler Taxonomy & Route Logic
 *Types of travelers, how they move, and the logic of the route.*
-- [ ] [TRAVELER_SEGMENTATION_AND_BEHAVIOR.md](agency_operations/TRAVELER_SEGMENTATION_AND_BEHAVIOR.md) (Solo, VFR, Digital Nomad)
-- [ ] [ROUTE_TYPES_AND_PNR_LOGIC.md](agency_operations/ROUTE_TYPES_AND_PNR_LOGIC.md) (Open-jaw, RTW, Point-to-Point)
-- [ ] [CONNECTION_MECHANICS_AND_INTERLINING.md](agency_operations/CONNECTION_MECHANICS_AND_INTERLINING.md) (Interline, Self-transfer, Virtual Interlining)
+- [x] [TRAVELER_SEGMENTATION_AND_BEHAVIOR.md](agency_operations/TRAVELER_SEGMENTATION_AND_BEHAVIOR.md) (Solo, VFR, Digital Nomad)
+- [x] [ROUTE_TYPES_AND_PNR_LOGIC.md](agency_operations/ROUTE_TYPES_AND_PNR_LOGIC.md) (Open-jaw, RTW, Point-to-Point)
+- [x] [CONNECTION_MECHANICS_AND_INTERLINING.md](agency_operations/CONNECTION_MECHANICS_AND_INTERLINING.md) (Interline, Self-transfer, Virtual Interlining)
 
 ## 4. The Documentation & Health Ecosystem
 *The "Paper Trail" and physical requirements for travel.*
-- [ ] [THE_TRAVEL_DOCUMENT_Blueprints.md](regulatory_compliance/THE_TRAVEL_DOCUMENT_Blueprints.md) (PNRs, Vouchers, Manifests)
+- [x] [THE_TRAVEL_DOCUMENT_Blueprints.md](regulatory_compliance/THE_TRAVEL_DOCUMENT_Blueprints.md) (PNRs, Vouchers, Manifests)
 - [x] [VISA_AND_DOCUMENTATION_FUNDAMENTALS.md](regulatory_compliance/VISA_AND_DOCUMENTATION_FUNDAMENTALS.md)
-- [ ] [HEALTH_PROTOCOLS_AND_MEDICAL_LOGISTICS.md](regulatory_compliance/HEALTH_PROTOCOLS_AND_MEDICAL_LOGISTICS.md) (Vaccines, PCR, Fit-to-fly)
+- [x] [HEALTH_PROTOCOLS_AND_MEDICAL_LOGISTICS.md](regulatory_compliance/HEALTH_PROTOCOLS_AND_MEDICAL_LOGISTICS.md) (Vaccines, PCR, Fit-to-fly)
 - [x] [ACCESSIBILITY_AND_INCLUSIVE_TRAVEL.md](regulatory_compliance/ACCESSIBILITY_AND_INCLUSIVE_TRAVEL.md)
 
 ## 5. Global Risk & Crisis Taxonomy
 *What can go wrong and how to categorize the threat.*
-- [ ] [GLOBAL_TRAVEL_RISK_MATRIX.md](specialized_logistics/GLOBAL_TRAVEL_RISK_MATRIX.md) (Geopolitical, Health, Financial)
+- [x] [GLOBAL_TRAVEL_RISK_MATRIX.md](specialized_logistics/GLOBAL_TRAVEL_RISK_MATRIX.md) (Geopolitical, Health, Financial)
 - [x] [CRISIS_AND_DUTY_OF_CARE.md](specialized_logistics/CRISIS_AND_DUTY_OF_CARE.md)
 - [x] [CRISIS_RECOVERY_AND_REFUND_ARBITRATION.md](agency_operations/CRISIS_RECOVERY_AND_REFUND_ARBITRATION.md)
 
 ## 6. Connectivity & The Supply Chain "Pipe"
 *The technical plumbing of the industry.*
-- [ ] [THE_TRAVEL_SUPPLY_CHAIN_PIPE.md](supplier_ecosystem/THE_TRAVEL_SUPPLY_CHAIN_PIPE.md) (Wholesaler -> GDS -> Agency)
-- [ ] [GDS_VS_NDC_VS_API_CONNECTIVITY.md](travel_technology/GDS_VS_NDC_VS_API_CONNECTIVITY.md) (Technical Connectivity Types)
+- [x] [THE_TRAVEL_SUPPLY_CHAIN_PIPE.md](supplier_ecosystem/THE_TRAVEL_SUPPLY_CHAIN_PIPE.md) (Wholesaler -> GDS -> Agency)
+- [x] [GDS_VS_NDC_VS_API_CONNECTIVITY.md](travel_technology/GDS_VS_NDC_VS_API_CONNECTIVITY.md) (Technical Connectivity Types)
 - [x] [MID_BACK_OFFICE_INTEGRATION.md](travel_technology/MID_BACK_OFFICE_INTEGRATION.md)
 
 ---
@@ -79,20 +79,63 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [BOUTIQUE_AND_INDEPENDENT_HOTEL_RETAILING.md](supplier_ecosystem/BOUTIQUE_AND_INDEPENDENT_HOTEL_RETAILING.md)
 
 ## 12. Elite & Specialized Verticals (The "Dark" Logistics)
-- [ ] [MARINE_AND_OFFSHORE_LOGISTICS.md](specialized_logistics/MARINE_AND_OFFSHORE_LOGISTICS.md) (Seaman Fares, Port Agents)
-- [ ] [ON_BOARD_COURIER_OBC_OPERATIONS.md](specialized_logistics/ON_BOARD_COURIER_OBC_OPERATIONS.md) (Human-Carried Critical Cargo)
-- [ ] [DIPLOMATIC_AND_GOVERNMENT_TRAVEL.md](specialized_logistics/DIPLOMATIC_AND_GOVERNMENT_TRAVEL.md) (Official Passports, Security Protocols)
-- [ ] [REPATRIATION_AND_EVACUATION_LOGISTICS.md](specialized_logistics/REPATRIATION_AND_EVACUATION_LOGISTICS.md) (Mass Extraction, Medical Shuttles)
+- [x] [MARINE_AND_OFFSHORE_LOGISTICS.md](specialized_logistics/MARINE_AND_OFFSHORE_LOGISTICS.md) (Seaman Fares, Port Agents)
+- [x] [ON_BOARD_COURIER_OBC_OPERATIONS.md](specialized_logistics/ON_BOARD_COURIER_OBC_OPERATIONS.md) (Human-Carried Critical Cargo)
+- [x] [DIPLOMATIC_AND_GOVERNMENT_TRAVEL.md](specialized_logistics/DIPLOMATIC_AND_GOVERNMENT_TRAVEL.md) (Official Passports, Security Protocols)
+- [x] [REPATRIATION_AND_EVACUATION_LOGISTICS.md](specialized_logistics/REPATRIATION_AND_EVACUATION_LOGISTICS.md) (Mass Extraction, Medical Shuttles)
 
 ## 13. Advanced Technical & Legal "Ground Truth"
-- [ ] [ADVANCED_GDS_FARE_LOGIC_CAT25_35.md](travel_technology/ADVANCED_GDS_FARE_LOGIC_CAT25_35.md) (Negotiated & Net Fare Tech)
-- [ ] [IATA_RESOLUTIONS_AND_LEGAL_CONTRACTS.md](regulatory_compliance/IATA_RESOLUTIONS_AND_LEGAL_CONTRACTS.md) (The Global Industry Rules)
+- [x] [ADVANCED_GDS_FARE_LOGIC_CAT25_35.md](travel_technology/ADVANCED_GDS_FARE_LOGIC_CAT25_35.md) (Negotiated & Net Fare Tech)
+- [x] [IATA_RESOLUTIONS_AND_LEGAL_CONTRACTS.md](regulatory_compliance/IATA_RESOLUTIONS_AND_LEGAL_CONTRACTS.md) (The Global Industry Rules)
 ## 14. Ultra-Luxury & Frontier Verticals
-- [ ] [SUPERYACHT_AND_PRIVATE_ISLAND_LOGISTICS.md](specialized_logistics/SUPERYACHT_AND_PRIVATE_ISLAND_LOGISTICS.md) (Provisioning, NDA, Buyouts)
-- [ ] [HIGH_VALUE_ASSET_TRANSPORT_ART_INSTRUMENTS.md](specialized_logistics/HIGH_VALUE_ASSET_TRANSPORT_ART_INSTRUMENTS.md) (Stradivarius, Pianos, Fine Art)
-- [ ] [ORBITAL_AND_SUBORBITAL_SPACE_LOGISTICS.md](specialized_logistics/ORBITAL_AND_SUBORBITAL_SPACE_LOGISTICS.md) (Medical Isolation, Centrifuge Prep)
+- [x] [SUPERYACHT_AND_PRIVATE_ISLAND_LOGISTICS.md](specialized_logistics/SUPERYACHT_AND_PRIVATE_ISLAND_LOGISTICS.md) (Provisioning, NDA, Buyouts)
+- [x] [HIGH_VALUE_ASSET_TRANSPORT_ART_INSTRUMENTS.md](specialized_logistics/HIGH_VALUE_ASSET_TRANSPORT_ART_INSTRUMENTS.md) (Stradivarius, Pianos, Fine Art)
+- [x] [ORBITAL_AND_SUBORBITAL_SPACE_LOGISTICS.md](specialized_logistics/ORBITAL_AND_SUBORBITAL_SPACE_LOGISTICS.md) (Medical Isolation, Centrifuge Prep)
 
 ## 15. Advanced Operations & Arbitrage
-- [ ] [CHARTER_BROKERAGE_ACMI_AND_EMPTY_LEGS.md](specialized_logistics/CHARTER_BROKERAGE_ACMI_AND_EMPTY_LEGS.md) (Wet/Dry Lease, Empty Leg Monetization)
-- [ ] [HUMANITARIAN_AND_NGO_FIELD_LOGISTICS.md](specialized_logistics/HUMANITARIAN_AND_NGO_FIELD_LOGISTICS.md) (Missionary Fares, NGO Visa Waivers)
-- [ ] [LOYALTY_ARBITRAGE_AND_STATUS_MANAGEMENT.md](commercial_models/LOYALTY_ARBITRAGE_AND_STATUS_MANAGEMENT.md) (Points + Cash, Status Challenges)
+- [x] [CHARTER_BROKERAGE_ACMI_AND_EMPTY_LEGS.md](specialized_logistics/CHARTER_BROKERAGE_ACMI_AND_EMPTY_LEGS.md) (Wet/Dry Lease, Empty Leg Monetization)
+- [x] [HUMANITARIAN_AND_NGO_FIELD_LOGISTICS.md](specialized_logistics/HUMANITARIAN_AND_NGO_FIELD_LOGISTICS.md) (Missionary Fares, NGO Visa Waivers)
+## 16. Niche Global Logistics
+- [x] [ANTARCTIC_AND_EXTREME_EXPEDITION_LOGISTICS.md](specialized_logistics/ANTARCTIC_AND_EXTREME_EXPEDITION_LOGISTICS.md) (IAATO, Permits, Medical Evac)
+- [x] [HUMAN_REMAINS_REPATRIATION_FUNERAL_LOGISTICS.md](specialized_logistics/HUMAN_REMAINS_REPATRIATION_FUNERAL_LOGISTICS.md) (Zinc Coffins, Consular Deaths, HUM Coding)
+- [x] [PROFESSIONAL_SPORTS_TRANSFER_LOGISTICS.md](specialized_logistics/PROFESSIONAL_SPORTS_TRANSFER_LOGISTICS.md) (Deadline Day, Medical NDAs)
+
+## 17. Advanced Financial & Architecture
+- [x] [GLOBAL_MULTI_PCC_ARCHITECTURE.md](travel_technology/GLOBAL_MULTI_PCC_ARCHITECTURE.md) (Follow-the-Sun, Office ID Brackets)
+- [x] [FINANCIAL_ARBITRATION_ADM_ACM_CHARGEBACKS.md](commercial_models/FINANCIAL_ARBITRATION_ADM_ACM_CHARGEBACKS.md) (The Industry 'Courtroom')
+## 18. Behavioral & Psychological Engineering
+- [x] [DOPAMINE_CYCLE_AND_BEHAVIORAL_ECONOMICS.md](agency_operations/DOPAMINE_CYCLE_AND_BEHAVIORAL_ECONOMICS.md) (FOMO, Surprise, Post-Trip High)
+- [x] [GAME_THEORY_OF_OVERBOOKING_AND_VOUCHERS.md](commercial_models/GAME_THEORY_OF_OVERBOOKING_AND_VOUCHERS.md) (Optimal Denial Calculus)
+
+## 19. The "Invisible" Global System
+- [x] [THE_GHOST_ECONOMY_SLOTS_AND_DARK_HOTELS.md](supplier_ecosystem/THE_GHOST_ECONOMY_SLOTS_AND_DARK_HOTELS.md) (Ghost Flights, Unlisted Properties)
+- [x] [CONNECTIVITY_GEOGRAPHY_AND_SUBMARINE_PIPES.md](travel_technology/CONNECTIVITY_GEOGRAPHY_AND_SUBMARINE_PIPES.md) (Physical Internet Infrastructure)
+
+## 20. Advanced Security & Ethical Systems
+- [x] [IDENTITY_FRAGMENTATION_AND_COUNTER_SURVEILLANCE.md](specialized_logistics/IDENTITY_FRAGMENTATION_AND_COUNTER_SURVEILLANCE.md) (VVIP Security, Burner Protocols)
+- [x] [HYPER_INFLATIONARY_MARKETS_AND_CRISIS_ARBITRAGE.md](commercial_models/HYPER_INFLATIONARY_MARKETS_AND_CRISIS_ARBITRAGE.md) (Collapsing Currencies, Parallel Markets)
+## 21. Frontier & Future Logistics
+- [x] [SUB_AQUATIC_HABITAT_AND_UNDERSEA_LOGISTICS.md](specialized_logistics/SUB_AQUATIC_HABITAT_AND_UNDERSEA_LOGISTICS.md) (Pressure Seals, O2 Logistics)
+- [x] [POST_SCARCITY_AND_GIFT_ECONOMY_TRAVEL.md](commercial_models/POST_SCARCITY_AND_GIFT_ECONOMY_TRAVEL.md) (De-monetized Zones, Resource Barter)
+- [x] [POST_QUANTUM_GDS_ENCRYPTION_AND_SECURITY.md](travel_technology/POST_QUANTUM_GDS_ENCRYPTION_AND_SECURITY.md) (Hardening Traveler Data)
+## 24. Quality, Resilience & Gig Economy
+- [ ] [SUPPLY_CHAIN_AUDITS_AND_QUALITY_CONTROL.md](supplier_ecosystem/SUPPLY_CHAIN_AUDITS_AND_QUALITY_CONTROL.md) (Mystery Shoppers, Verification)
+- [ ] [BUSINESS_CONTINUITY_AND_GDS_OUTAGE_PROTOCOLS.md](agency_operations/BUSINESS_CONTINUITY_AND_GDS_OUTAGE_PROTOCOLS.md) (Offline Ops, PNR Recovery)
+- [ ] [INDEPENDENT_CONTRACTORS_AND_HOST_AGENCIES.md](commercial_models/INDEPENDENT_CONTRACTORS_AND_HOST_AGENCIES.md) (IC Economics, Commissions)
+- [ ] [SCIENTIFIC_EXPLORATION_AND_SENSITIVE_SAMPLES.md](specialized_logistics/SCIENTIFIC_EXPLORATION_AND_SENSITIVE_SAMPLES.md) (Isotopes, Bio-samples)
+- [ ] [HIGH_VALUE_ART_AND_CULTURAL_PROPERTY.md](specialized_logistics/HIGH_VALUE_ART_AND_CULTURAL_PROPERTY.md) (Climate Control, Fine Art Couriers)
+
+## 23. Communication & Data Intake Architecture
+- [x] [OMNICHANNEL_COMMUNICATION_PROTOCOLS.md](agency_operations/OMNICHANNEL_COMMUNICATION_PROTOCOLS.md) (WhatsApp, Signal, WeChat, Voice)
+- [x] [DATA_INTAKE_NLP_AND_STRUCTURED_CAPTURE.md](travel_technology/DATA_INTAKE_NLP_AND_STRUCTURED_CAPTURE.md) (Unstructured to GDS Mapping)
+- [x] [CLIENT_PROFILE_MANAGEMENT_AND_PREFERENCES.md](agency_operations/CLIENT_PROFILE_MANAGEMENT_AND_PREFERENCES.md) (CRM & Preference Sync)
+- [x] [COMMUNICATION_COMPLIANCE_AND_CONSENT.md](regulatory_compliance/COMMUNICATION_COMPLIANCE_AND_CONSENT.md) (GDPR for Chat & Logs)
+
+## 22. The Metaphysical & Philosophical Horizon (Open Exploration)
+- [x] [TEMPORAL_ENGINEERING_AND_CIRCADIAN_LOGISTICS.md](agency_operations/TEMPORAL_ENGINEERING_AND_CIRCADIAN_LOGISTICS.md) (Sleep-Cycle Optimization)
+- [x] [AGENTIC_AUTONOMY_AND_RISK_ETHICS.md](agency_operations/AGENTIC_AUTONOMY_AND_RISK_ETHICS.md) (Autonomous Decision Thresholds)
+- [x] [HIGH_PROTOCOL_AND_DIPLOMATIC_HOSPITALITY.md](specialized_logistics/HIGH_PROTOCOL_AND_DIPLOMATIC_HOSPITALITY.md) (Majlis & Eastern Elite Protocols)
+
+---
+> [!NOTE]
+> This index is a living "Source of Truth." It remains **open to exploration** and will expand as the global travel ecosystem evolves into new frontiers (orbital, sub-aquatic, and digital).

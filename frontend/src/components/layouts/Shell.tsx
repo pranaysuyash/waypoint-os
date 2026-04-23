@@ -40,7 +40,7 @@ const NAV = [
         description: 'Active trips in progress',
       },
       {
-        href: '/',
+        href: '/overview',
         label: 'Overview',
         icon: LayoutDashboard,
         description: 'Dashboard and pipeline summary',
@@ -86,11 +86,7 @@ const NAV = [
 function getPageLabel(pathname: string): string {
   for (const section of NAV) {
     for (const item of section.items) {
-      if (
-        item.href === '/'
-          ? pathname === '/'
-          : pathname === item.href || pathname.startsWith(item.href + '/')
-      ) {
+      if (pathname === item.href || pathname.startsWith(item.href + '/')) {
         return item.label;
       }
     }
@@ -107,8 +103,15 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const { data: agencySettings } = useAgencySettings();
   const brandName = agencySettings?.profile?.agency_name || 'Waypoint';
 
-  // Auth pages render without the shell chrome
-  if (pathname.startsWith('/login') || pathname.startsWith('/signup')) {
+  // Public marketing + auth pages render without the app shell chrome
+  if (
+    pathname === '/' ||
+    pathname.startsWith('/itinerary-checker') ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/signup') ||
+    pathname.startsWith('/forgot-password') ||
+    pathname.startsWith('/reset-password')
+  ) {
     return <>{children}</>;
   }
 
@@ -156,10 +159,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 {section.items.map((item) => {
                   const Icon = item.icon;
                   const isActive =
-                    item.href === '/'
-                      ? pathname === '/'
-                      : pathname === item.href ||
-                        pathname.startsWith(item.href + '/');
+                    pathname === item.href || pathname.startsWith(item.href + '/');
                   return (
                     <li key={item.href}>
                       <Link
@@ -230,12 +230,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
             aria-label='Breadcrumb navigation'
           >
             <Link
-              href='/'
+              href='/overview'
               className='text-[#484f58] hover:text-[#8b949e] text-[12px] transition-colors'
             >
               {brandName}
             </Link>
-            {pathname !== '/' && (
+            {pathname !== '/overview' && (
               <>
                 <span className='text-[#30363d]' aria-hidden='true'>
                   /

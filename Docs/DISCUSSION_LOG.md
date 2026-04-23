@@ -1445,3 +1445,30 @@ Fresh repo evidence confirmed that both were still needed before implementation:
 
 ### Immediate Execution Implication
 - Phase 1 and Phase 4 implementation work should now treat the roadmap, role matrix, assignment state machine, AI workforce registry, settings UX contract, and governance audit taxonomy as one connected contract set.
+
+## Log Entry: 2026-04-23 - Blind Comparison Arena Exploration Added
+
+### Context
+User requested exploration of an LMSYS-arena-like pattern for Waypoint, but specifically as a research/documentation pass first, not implementation. The idea was not a generic model-battle toy. It had two concrete variants:
+
+- owner makes their decision while AI also decides in hidden shadow mode, then compare later,
+- or two hidden variants run and the evaluator selects the better result before reveal.
+
+### Evidence Read Before Writing
+- `Docs/ARCHITECTURE_DECISION_D1_AUTONOMY_GRADIENT_2026-04-18.md`
+- `Docs/ARCHITECTURE_DECISION_D5_OVERRIDE_LEARNING_2026-04-18.md`
+- `Docs/D5_OVERRIDE_LEARNING_PLAN_2026-04-22.md`
+- `Docs/D6_EVAL_CONTRACT_DESIGN_2026-04-22.md`
+- `Docs/AGENT_FEEDBACK_LOOP_SPEC_2026-04-22.md`
+- `Docs/research/EVALUATION_FRAMEWORK.md`
+- `Docs/research/REAL_WORLD_VALIDATION.md`
+
+### External Research Used
+- LMSYS Chatbot Arena blog for anonymous randomized battles, reveal-after-vote flow, and pairwise ranking.
+- Liip "blind testing your chatbot, arena style" for seeded randomization, evaluator comments, inter-rater agreement, and admin-UI evaluation patterns.
+
+### Artifact Created
+- `Docs/BLIND_COMPARISON_ARENA_EXPLORATION_2026-04-23.md`
+
+### Key Conclusion
+- The best framing is not "public leaderboard" or "model battle". It is a governed internal blind adjudication layer for human-vs-AI and variant-vs-variant operational comparison, feeding D1 autonomy calibration, D5 override learning, and D6 evaluation.

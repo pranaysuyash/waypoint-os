@@ -10,10 +10,10 @@ export async function GET() {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Spine API settings error:", errorText);
+      const errorData = await response.json().catch(() => ({}));
+      console.error("Spine API settings error:", errorData.detail || response.status);
       return NextResponse.json(
-        { error: "Failed to fetch settings" },
+        { error: errorData.detail || "Failed to fetch settings" },
         { status: response.status }
       );
     }

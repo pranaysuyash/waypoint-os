@@ -159,8 +159,6 @@ class TestPydanticContract:
     """Verify that Pydantic models serialize correctly and match expected schemas."""
 
     def test_unified_state_response_schema(self):
-        from spine_api.contract import UnifiedStateResponse
-
         data = {
             "canonical_total": 30,
             "stages": {"new": 10, "assigned": 10, "in_progress": 5, "completed": 3, "cancelled": 2},
@@ -185,8 +183,6 @@ class TestPydanticContract:
         assert serialized["stages"] == data["stages"]
 
     def test_dashboard_stats_response_schema(self):
-        from spine_api.contract import DashboardStatsResponse
-
         data = {
             "active": 3,
             "pending_review": 27,
@@ -203,8 +199,6 @@ class TestPydanticContract:
             assert key in serialized
 
     def test_suitability_signal_schema(self):
-        from spine_api.contract import SuitabilitySignal
-
         data = {
             "trip_id": "trip_001",
             "flag_type": "low_margin",

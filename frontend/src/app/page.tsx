@@ -1,572 +1,363 @@
-'use client';
-
 import Link from 'next/link';
-import { memo, useMemo, useCallback, useState, useEffect } from 'react';
 import {
-  Briefcase,
   ArrowRight,
+  Briefcase,
+  Building2,
   CheckCircle2,
-  AlertTriangle,
-  Clock,
-  Inbox,
-  Activity,
-  ChevronRight,
+  ClipboardCheck,
+  Clock3,
+  FolderKanban,
+  Layers3,
+  MessageSquareText,
+  Shield,
+  Sparkles,
+  Workflow,
 } from 'lucide-react';
-import { useTrips } from '@/hooks/useTrips';
-import { useUnifiedState } from '@/hooks/useUnifiedState';
-import { getTripRoute } from '@/lib/routes';
-import { InlineLoading } from '@/components/ui/loading';
-import { InlineError } from '@/components/error-boundary';
+import {
+  BulletList,
+  CtaBand,
+  HeroStat,
+  Kicker,
+  ProofChip,
+  PublicFooter,
+  PublicHeader,
+  PublicPage,
+  SectionIntro,
+} from '@/components/marketing/marketing';
+import styles from '@/components/marketing/marketing.module.css';
 
-type StateKey = 'green' | 'amber' | 'red' | 'blue';
-
-const STATE_META: Record<
-  StateKey,
-  { color: string; bg: string; label: string }
-> = {
-  green: {
-    color: '#3fb950',
-    bg: 'rgba(63,185,80,0.12)',
-    label: 'PROCEED_SAFE',
+const surfaces = [
+  {
+    icon: MessageSquareText,
+    title: 'Inbox + intent extraction',
+    body: 'Turn WhatsApp chaos, notes, and half-complete asks into a structured brief with blocker-aware follow-up.',
+    details: ['What we know', 'Need to clarify', 'Suggested next move'],
   },
-  amber: {
-    color: '#d29922',
-    bg: 'rgba(210,153,34,0.12)',
-    label: 'BRANCH / DRAFT',
+  {
+    icon: Layers3,
+    title: 'Intake workspace',
+    body: 'Keep raw context, extracted facts, traveler fit, and operator notes in one working surface.',
+    details: ['Raw note and evidence', 'Trip packet maturity', 'Traveler-safe draft'],
   },
-  red: { color: '#f85149', bg: 'rgba(248,81,73,0.12)', label: 'STOP_REVIEW' },
-  blue: {
-    color: '#58a6ff',
-    bg: 'rgba(88,166,255,0.12)',
-    label: 'ASK_FOLLOWUP',
+  {
+    icon: Workflow,
+    title: 'Decision + clarification',
+    body: 'Expose hard blockers, soft blockers, feasibility tension, and the exact questions that unlock quoting.',
+    details: ['Decision state', 'Risk flags', 'Follow-up pack'],
   },
-};
+  {
+    icon: FolderKanban,
+    title: 'Quote and option builder',
+    body: 'Sequence the commercial logic behind your proposal before anything reaches the traveler.',
+    details: ['Option framing', 'Trade-off logic', 'Internal notes'],
+  },
+  {
+    icon: ClipboardCheck,
+    title: 'Booking readiness',
+    body: 'Prevent operational mistakes with checklists for docs, payments, confirmations, and execution handoff.',
+    details: ['Readiness checks', 'Vendor coordination', 'Trip master record'],
+  },
+  {
+    icon: Building2,
+    title: 'Owner console',
+    body: 'Give owners SLA visibility, review queues, exception control, and quality oversight across the team.',
+    details: ['Reviews queue', 'Workload radar', 'Conversion diagnostics'],
+  },
+];
 
-const StatCard = memo(function StatCard({
-  title,
-  value,
-  sub,
-  icon: Icon,
-  state,
-  isLoading,
-  error,
-}: {
-  title: string;
-  value: string | number;
-  sub: string;
-  icon: React.FC<{ className?: string; style?: React.CSSProperties }>;
-  state: StateKey;
-  isLoading?: boolean;
-  error?: Error | null;
-}) {
-  const meta = STATE_META[state];
+const personaCards = [
+  {
+    title: 'Solo agents',
+    body: 'Respond faster, ask sharper follow-ups, and protect quality without hiring a second brain.',
+    bullets: ['Inbox-to-options in minutes', 'Traveler memory across repeat trips', 'Less rework on vague inquiries'],
+  },
+  {
+    title: 'Agency owners',
+    body: 'Turn institutional knowledge into an operating system instead of depending on whoever is online.',
+    bullets: ['Quality visibility across the team', 'Owner review where it matters', 'Fewer silent operational misses'],
+  },
+  {
+    title: 'Junior agents',
+    body: 'Teach judgment in the flow of work instead of through scattered corrections after the fact.',
+    bullets: ['Prompted questions and next steps', 'Coaching signals before mistakes ship', 'Clear internal vs customer-facing output'],
+  },
+];
 
-  if (error) {
-    return (
-      <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 flex flex-col gap-3'>
-        <div className='flex items-center justify-between'>
-          <span className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
-            {title}
-          </span>
-          <AlertTriangle className='h-4 w-4 text-[#f85149]' />
-        </div>
-        <span className='text-sm text-[#f85149]'>Failed to load</span>
-      </div>
-    );
-  }
+const proofCards = [
+  {
+    title: 'Commercially grounded sourcing',
+    body: 'Waypoint OS mirrors the real agency hierarchy: preferred supply first, open market only when justified.',
+  },
+  {
+    title: 'Traveler-safe output boundaries',
+    body: 'Internal confidence, blocker logic, and rationale stay on the operator side. The traveler sees a safe message.',
+  },
+  {
+    title: 'Operational risk reduction',
+    body: 'Suitability, pacing, logistics, visa/document checks, and review states live inside the workflow instead of outside it.',
+  },
+];
 
-  const displayValue = isLoading && value === '—' ? '—' : value;
-  const displaySub = isLoading && sub === 'Loading...' ? 'Loading...' : sub;
-
+export default function HomePage() {
   return (
-    <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 flex flex-col gap-3 hover:border-[#30363d] transition-colors'>
-      <div className='flex items-center justify-between'>
-        <span className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
-          {title}
-        </span>
-        <div
-          className='h-8 w-8 rounded-lg flex items-center justify-center'
-          style={{ background: meta.bg }}
-        >
-          <Icon className='h-4 w-4' style={{ color: meta.color }} />
+    <PublicPage>
+      <PublicHeader ctaHref='/signup' ctaLabel='Create workspace' />
+
+      <section className={styles.hero}>
+        <div className={styles.heroCopy}>
+          <div className={styles.eyebrow}>Agency Copilot for real travel operations</div>
+          <h1 className={styles.heroTitle}>The operating system for boutique travel agencies</h1>
+          <p className={styles.heroBody}>
+            Waypoint OS compresses the workflow from messy lead intake to confident, traveler-safe execution.
+            It is built for the one-person planner, the growing agency owner, and the junior agent who needs
+            guidance before mistakes reach the client.
+          </p>
+
+          <div className={styles.heroActions}>
+            <Link href='/signup' className={styles.primaryButton}>
+              Create workspace
+              <ArrowRight className='h-4 w-4' />
+            </Link>
+            <Link href='/itinerary-checker' className={styles.secondaryButton}>
+              Explore the itinerary checker
+            </Link>
+          </div>
+
+          <div className={styles.heroStats}>
+            <HeroStat value='Lead intake -> option framing' label='One continuous workflow, not six disconnected tools.' />
+            <HeroStat value='Internal + traveler-safe' label='Separate what the agency needs to know from what the traveler should see.' />
+            <HeroStat value='Owner visibility included' label='Reviews, SLAs, and quality drift live inside the same operating surface.' />
+          </div>
         </div>
-      </div>
-      <span
-        className='text-3xl font-bold tabular-nums'
-        style={{ color: meta.color }}
-      >
-        {displayValue}
-      </span>
-      <span className='text-sm text-[#8b949e] font-mono'>{displaySub}</span>
-    </div>
-  );
-});
 
-const PipelineBar = memo(function PipelineBar({
-  data,
-  isLoading,
-  error,
-}: {
-  data: Array<{ label: string; count: number }> | null;
-  isLoading: boolean;
-  error: Error | null;
-}) {
-  const safeData = data ?? [];
-  const total = useMemo(() => {
-    return safeData.reduce((s, x) => s + (Number(x.count) || 0), 0);
-  }, [safeData]);
+        <div className={styles.previewFrame}>
+          <div className={styles.previewGlow} />
+          <div className={styles.previewTop}>
+            <div>
+              <Kicker>Waypoint workspace</Kicker>
+              <h2 className='mt-3 text-[28px] font-semibold tracking-[-0.04em] text-[#f5fbff]'>Inbox, decisioning, owner oversight, and traveler-safe output in one system.</h2>
+            </div>
+            <span className={styles.previewBadge}>System live</span>
+          </div>
 
-  // Collapsed state for minimal view
-  const [isExpanded, setIsExpanded] = useState(false);
+          <div className={styles.previewGrid}>
+            <div className={styles.previewColumn}>
+              <div className={styles.moduleList}>
+                <div className={styles.moduleItem}>
+                  <div>
+                    <strong>Inbox triage</strong>
+                    <span>Europe family inquiry, June peak season, elderly + kids, budget tension detected.</span>
+                  </div>
+                  <span className='rounded-full bg-[#58a6ff]/10 px-3 py-1 text-[12px] text-[#9fd0ff]'>ASK_FOLLOWUP</span>
+                </div>
+                <div className={styles.moduleItem}>
+                  <div>
+                    <strong>Decision view</strong>
+                    <span>Hard blockers surfaced before quote generation. Follow-up questions ready to send.</span>
+                  </div>
+                  <span className='rounded-full bg-[#d29922]/10 px-3 py-1 text-[12px] text-[#f2d48e]'>2 blockers</span>
+                </div>
+                <div className={styles.moduleItem}>
+                  <div>
+                    <strong>Owner review</strong>
+                    <span>High-risk trips and exception paths show up with rationale, not just a badge.</span>
+                  </div>
+                  <span className='rounded-full bg-[#f85149]/10 px-3 py-1 text-[12px] text-[#ffc4c0]'>Needs sign-off</span>
+                </div>
+              </div>
+            </div>
 
-  if (error) {
-    return (
-      <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
-        <InlineError message='Failed to load pipeline data' />
-      </div>
-    );
-  }
-
-  if (isLoading && safeData.length === 0) {
-    return (
-      <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
-        <div className='flex items-center justify-between mb-3'>
-          <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
-            Progress
-          </h2>
-          <span className='text-sm font-mono text-[#8b949e]'>Loading...</span>
-        </div>
-        <div className='h-2 bg-[#161b22] rounded-full overflow-hidden'>
-          <div className='h-full bg-[#58a6ff]' style={{ width: '30%' }} />
-        </div>
-      </div>
-    );
-  }
-
-  if (safeData.length === 0) {
-    return (
-      <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
-        <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e] mb-2'>
-          Pipeline
-        </h2>
-        <p className='text-sm text-[#8b949e]'>No active trips in pipeline</p>
-        <Link href='/workbench' className='text-sm text-[#58a6ff] hover:text-[#79b8ff] mt-2 inline-block'>
-          Process your first trip →
-        </Link>
-      </div>
-    );
-  }
-
-  // Collapsed view - just summary
-  if (!isExpanded) {
-    return (
-      <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
-        <div className='flex items-center justify-between mb-2'>
-          <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
-            Trip Progress
-          </h2>
-          <button 
-            onClick={() => setIsExpanded(true)}
-            className='text-xs text-[#58a6ff] hover:text-[#79b8ff]'
-          >
-            Expand
-          </button>
-        </div>
-        <div className='flex items-center gap-3'>
-          <div className='flex-1'>
-            <div className='h-2 bg-[#161b22] rounded-full overflow-hidden flex'>
-              {safeData.map((stage, i) => (
-                <div
-                  key={stage.label || `stage-${i}`}
-                  className='h-full'
-                  style={{
-                    width: `${(stage.count / total) * 100}%`,
-                    background: ['#3fb950', '#58a6ff', '#d29922', '#f85149', '#a371f7'][i % 5],
-                  }}
-                />
-              ))}
+            <div className={styles.previewColumn}>
+              <div className={styles.metricList}>
+                <div className={styles.metricRow}>
+                  <div>
+                    <strong>Traveler-safe output</strong>
+                    <span>Customer-facing message preview plus agent-only context.</span>
+                  </div>
+                  <CheckCircle2 className='mt-1 h-5 w-5 text-[#3fb950]' />
+                </div>
+                <div className={styles.metricRow}>
+                  <div>
+                    <strong>Booking readiness</strong>
+                    <span>Docs, confirmations, transfers, and payment coordination tracked together.</span>
+                  </div>
+                  <Clock3 className='mt-1 h-5 w-5 text-[#39d0d8]' />
+                </div>
+                <div className={styles.metricRow}>
+                  <div>
+                    <strong>Operator memory</strong>
+                    <span>Past traveler preferences, supplier trust, and commercial fit stay reusable.</span>
+                  </div>
+                  <Sparkles className='mt-1 h-5 w-5 text-[#58a6ff]' />
+                </div>
+              </div>
             </div>
           </div>
-          <span className='text-sm font-semibold text-[#e6edf3] tabular-nums'>
-            {total}
-          </span>
         </div>
-        <p className='text-xs text-[#8b949e] mt-2'>
-          {safeData.length} stages · Most in {safeData.reduce((m, s) => s.count > m.count ? s : m).label}
-        </p>
-      </div>
-    );
-  }
+      </section>
 
-  // Expanded view with vertical list
-  return (
-    <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
-      <div className='flex items-center justify-between mb-4'>
-        <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
-          Trip Progress
-        </h2>
-        <div className='flex items-center gap-2'>
-          <span className='text-sm font-mono text-[#8b949e]'>{total} total</span>
-          <button 
-            onClick={() => setIsExpanded(false)}
-            className='text-xs text-[#8b949e] hover:text-[#e6edf3]'
-          >
-            Collapse
-          </button>
-        </div>
-      </div>
-      
-      <div className='space-y-2'>
-        {safeData.map((stage, i) => {
-          const percentage = total > 0 ? (stage.count / total) * 100 : 0;
-          const color = ['#3fb950', '#58a6ff', '#d29922', '#f85149', '#a371f7'][i % 5];
-          
-          return (
-            <div key={stage.label} className='group'>
-              <div className='flex items-center justify-between mb-1'>
-                <span className='text-sm text-[#e6edf3]'>{stage.label}</span>
-                <span className='text-sm font-mono text-[#8b949e] tabular-nums'>
-                  {stage.count}
-                </span>
+      <section className={styles.section} id='product'>
+        <SectionIntro
+          eyebrow='Product surfaces'
+          title='Designed as a real agency workspace, not a consumer trip planner.'
+          body='The homepage has to communicate the operating surface clearly: where work lands, how judgment is made, how output is controlled, and how owners stay in control as the team scales.'
+        />
+
+        <div className={styles.surfaceGrid}>
+          {surfaces.map(({ icon: Icon, title, body, details }) => (
+            <article key={title} className={styles.surfaceCard}>
+              <div className={styles.surfaceCardHeader}>
+                <Kicker>{title}</Kicker>
+                <Icon className='h-5 w-5 text-[#58a6ff]' />
               </div>
-              <div className='h-1.5 bg-[#161b22] rounded-full overflow-hidden'>
-                <div
-                  className='h-full rounded-full transition-all'
-                  style={{ width: `${percentage}%`, background: color }}
-                />
+              <h3 className='text-[22px] font-semibold tracking-[-0.04em]'>{title}</h3>
+              <p className='mt-3 text-[15px] leading-7'>{body}</p>
+              <div className={styles.surfaceMini}>
+                {details.map((detail) => (
+                  <div key={detail} className={styles.miniPanel}>
+                    <strong>{detail}</strong>
+                    <span>Visible without leaving the workflow.</span>
+                  </div>
+                ))}
               </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className={styles.section} id='workflow'>
+        <SectionIntro
+          eyebrow='Workflow compression'
+          title='From messy inquiry to ready-to-send output without losing the commercial and operational logic.'
+          body='This is the real operating story the page needs to sell: intake, blocker analysis, strategic option building, booking readiness, and owner visibility all belong to the same decision system.'
+        />
+
+        <div className={styles.storyGrid}>
+          <article className={styles.storyCardLarge}>
+            <div className={styles.storyHeader}>
+              <Kicker>How the work moves</Kicker>
+              <span className='rounded-full bg-[#39d0d8]/10 px-3 py-1 text-[12px] text-[#b9f4f6]'>Agency workflow</span>
             </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-});
 
-const ActivityRow = memo(function ActivityRow({
-  item,
-}: {
-  item: {
-    id: string;
-    destination: string;
-    type: string;
-    state: StateKey;
-    age: string;
-  };
-}) {
-  const meta = STATE_META[item.state] ?? STATE_META.blue;
-  return (
-    <Link
-      href={getTripRoute(item.id)}
-      className='flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#161b22] transition-colors group'
-    >
-      <span
-        className='inline-block h-1.5 w-1.5 rounded-full shrink-0'
-        style={{ background: meta.color }}
-        aria-hidden='true'
-      />
-      <div className='flex-1 min-w-0'>
-        <div className='flex items-center gap-2'>
-          <span className='text-base font-medium text-[#e6edf3] truncate'>
-            {item.destination}
-          </span>
-          <span className='text-sm text-[#8b949e]'>{item.type}</span>
-        </div>
-        <div className='text-sm font-mono text-[#8b949e]'>{item.id}</div>
-      </div>
-      <div className='flex items-center gap-2 shrink-0'>
-        <span
-          className='text-sm font-mono px-2 py-0.5 rounded-md'
-          style={{ color: meta.color, background: meta.bg }}
-        >
-          {meta.label}
-        </span>
-        <span className='text-sm text-[#8b949e]'>{item.age}</span>
-        <ChevronRight
-          className='h-4 w-4 text-[#30363d] group-hover:text-[#8b949e] transition-colors'
-          aria-hidden='true'
-        />
-      </div>
-    </Link>
-  );
-});
-
-function RecentTrips() {
-  const { data: trips, isLoading, error } = useTrips({ limit: 5 });
-
-  const tripItems = useMemo(() => {
-    if (trips.length === 0) return [];
-
-    return trips.map((trip) => ({
-      id: trip.id,
-      destination: trip.destination,
-      type: trip.type,
-      state: trip.state,
-      age: trip.age,
-    }));
-  }, [trips]);
-
-  if (error) {
-    return (
-      <div className='p-4'>
-        <InlineError message='Failed to load recent trips' />
-      </div>
-    );
-  }
-
-  if (isLoading && trips.length === 0) {
-    return (
-      <div className='p-4 space-y-2'>
-        {[1, 2, 3].map((i) => (
-          <div key={i} className='h-16 bg-[#161b22] rounded-lg' />
-        ))}
-      </div>
-    );
-  }
-
-  if (tripItems.length === 0) {
-    return (
-      <div className='p-6 text-center'>
-        <div className='w-12 h-12 rounded-full bg-[#161b22] flex items-center justify-center mx-auto mb-3'>
-          <Briefcase className='w-6 h-6 text-[#6e7681]' />
-        </div>
-        <p className='text-base text-[#e6edf3] font-medium mb-1'>No trips yet</p>
-        <p className='text-sm text-[#8b949e] mb-4'>
-          Get started by processing your first customer inquiry
-        </p>
-        <Link
-          href='/workbench'
-          className='inline-flex items-center gap-2 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg text-sm font-medium hover:bg-[#6eb5ff] transition-colors'
-        >
-          Process Your First Trip
-          <ArrowRight className='w-4 h-4' />
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className='p-2 space-y-0.5'>
-      {tripItems.map((item) => (
-        <ActivityRow key={item.id} item={item} />
-      ))}
-    </div>
-  );
-}
-
-// Hook to prevent hydration mismatch - only render data after client mount
-function useMounted() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-  return mounted;
-}
-
-export default function DashboardPage() {
-  const mounted = useMounted();
-  const { state, loading: unifiedLoading, error: unifiedError } = useUnifiedState();
-
-  const stats = useMemo(() => {
-    if (!state) return null;
-    return {
-      active: state.canonical_total - (state.stages.completed || 0) - (state.stages.cancelled || 0),
-      pendingReview: state.stages.new || 0,
-      readyToBook: state.stages.in_progress || 0,
-      needsAttention: state.orphans.length || 0,
-    };
-  }, [state]);
-
-  const pipeline = useMemo(() => {
-    if (!state) return null;
-    return Object.entries(state.stages).map(([label, count]) => ({
-      label: label.charAt(0).toUpperCase() + label.slice(1).replace('_', ' '),
-      count
-    }));
-  }, [state]);
-
-  // Memoize navigation items to prevent recreation on every render
-  const navItems = useMemo(
-    () => [
-      {
-        href: '/inbox',
-        label: 'Inbox queue',
-        sub: `${stats?.pendingReview ?? '—'} pending`,
-        icon: Inbox,
-        dot: '#d29922',
-      },
-      {
-        href: '/workbench',
-        label: 'Trip Workspace',
-        sub: 'analyze trip',
-        icon: Briefcase,
-        dot: '#58a6ff',
-      },
-      {
-        href: '/owner/reviews',
-        label: 'Reviews',
-        sub: `${stats?.needsAttention ?? '—'} awaiting`,
-        icon: CheckCircle2,
-        dot: '#f85149',
-      },
-    ],
-    [stats?.pendingReview, stats?.needsAttention]
-  );
-
-  // Memoize state meta entries for decision states
-  const stateEntries = useMemo(
-    () => Object.entries(STATE_META) as [StateKey, (typeof STATE_META)[StateKey]][],
-    []
-  );
-
-  return (
-    <main className='p-5 max-w-[1400px] mx-auto space-y-5'>
-      <header className='flex items-center justify-between pt-1'>
-        <div>
-          <h1 className='text-2xl font-semibold text-[#e6edf3]'>
-            Operations Overview
-          </h1>
-          <p className='text-base text-[#a8b3c1] mt-0.5'>
-            Waypoint OS · decision intelligence
-          </p>
-        </div>
-        <Link
-          href='/workbench'
-          className='flex items-center gap-1.5 text-base text-[#58a6ff] hover:text-[#79b8ff] transition-colors'
-        >
-          Open Trip Workspace{' '}
-          <ArrowRight className='h-4 w-4' aria-hidden='true' />
-        </Link>
-      </header>
-
-      <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>
-        <StatCard
-          title='Active Trips'
-          value={stats?.active ?? '—'}
-          sub={state ? `${state.canonical_total} canonical total` : 'Loading...'}
-          icon={Briefcase}
-          state='blue'
-          isLoading={unifiedLoading}
-          error={unifiedError as any}
-        />
-        <StatCard
-          title='Pending Triage'
-          value={stats?.pendingReview ?? '—'}
-          sub={state ? 'new entries' : 'Loading...'}
-          icon={Clock}
-          state='amber'
-          isLoading={unifiedLoading}
-          error={unifiedError as any}
-        />
-        <StatCard
-          title='Ready to Book'
-          value={stats?.readyToBook ?? '—'}
-          sub={state ? 'approved' : 'Loading...'}
-          icon={CheckCircle2}
-          state='green'
-          isLoading={unifiedLoading}
-          error={unifiedError as any}
-        />
-        <StatCard
-          title='Needs Attention'
-          value={stats?.needsAttention ?? '—'}
-          sub={state ? 'integrity orphans' : 'Loading...'}
-          icon={AlertTriangle}
-          state='red'
-          isLoading={unifiedLoading}
-          error={unifiedError as any}
-        />
-      </div>
-
-      <div className='grid grid-cols-1 lg:grid-cols-3 gap-4'>
-        <section className='lg:col-span-2 rounded-xl border border-[#1c2128] bg-[#0f1115] overflow-hidden'>
-          <header className='flex items-center justify-between px-4 py-3 border-b border-[#1c2128]'>
-            <div className='flex items-center gap-2'>
-              <Activity
-                className='h-4 w-4 text-[#8b949e]'
-                aria-hidden='true'
-              />
-              <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
-                Recent Trips
-              </h2>
-            </div>
-            <Link
-              href='/inbox'
-              className='text-sm text-[#58a6ff] hover:text-[#79b8ff] flex items-center gap-1 transition-colors'
-            >
-              See all <ArrowRight className='h-4 w-4' aria-hidden='true' />
-            </Link>
-          </header>
-          <RecentTrips />
-        </section>
-
-        <aside className='space-y-4'>
-          <PipelineBar
-            data={pipeline}
-            isLoading={unifiedLoading}
-            error={unifiedError as any}
-          />
-          <nav className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4' aria-label='Quick navigation'>
-            <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e] mb-3'>
-              Jump To
-            </h2>
-            <ul className='space-y-1'>
-              {navItems.map((nav) => {
-                const Icon = nav.icon;
-                return (
-                  <li key={nav.href}>
-                    <Link
-                      href={nav.href}
-                      className='flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#161b22] transition-colors group'
-                    >
-                      <div className='h-8 w-8 rounded-lg bg-[#161b22] flex items-center justify-center shrink-0'>
-                        <Icon
-                          className='h-4 w-4 text-[#a8b3c1]'
-                          aria-hidden='true'
-                        />
-                      </div>
-                      <div className='flex-1 min-w-0'>
-                        <div className='text-base text-[#e6edf3]'>
-                          {nav.label}
-                        </div>
-                        <div
-                          className='text-sm font-mono'
-                          style={{ color: nav.dot }}
-                        >
-                          {nav.sub}
-                        </div>
-                      </div>
-                      <ChevronRight
-                        className='h-4 w-4 text-[#30363d] group-hover:text-[#8b949e] transition-colors'
-                        aria-hidden='true'
-                      />
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-          <section className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
-            <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
-              Decision States
-            </h2>
-            <div className='mt-3 space-y-2'>
-              {stateEntries.map(([, meta]) => (
-                <div key={meta.label} className='flex items-center gap-2'>
-                  <span
-                    className='h-1.5 w-1.5 rounded-full shrink-0'
-                    style={{ background: meta.color }}
-                    aria-hidden='true'
-                  />
-                  <span className='text-sm font-mono text-[#8b949e]'>
-                    {meta.label}
-                  </span>
+            <div className={styles.storySteps}>
+              {[
+                ['01', 'Capture the messy brief', 'WhatsApp, notes, PDFs, and half-specified asks get normalized into an operator-readable packet.'],
+                ['02', 'Expose what blocks quoting', 'Decision state, hard blockers, and follow-up questions surface before anyone wastes time on impossible research.'],
+                ['03', 'Build options with internal logic', 'Commercial fit, traveler fit, and operational ease stay visible as options are shaped.'],
+                ['04', 'Ship traveler-safe output', 'The traveler sees a polished response while owners and agents keep the internal rationale and control plane.'],
+              ].map(([index, title, body]) => (
+                <div key={title} className={styles.storyStep}>
+                  <div className={styles.stepIndex}>{index}</div>
+                  <div>
+                    <strong>{title}</strong>
+                    <p>{body}</p>
+                  </div>
                 </div>
               ))}
             </div>
-          </section>
-        </aside>
-      </div>
-    </main>
+
+            <div className={styles.inlineMetrics}>
+              <div className={styles.inlineMetric}>
+                <strong>What we know / need to clarify / next steps</strong>
+                <span>The core interface pattern throughout the product.</span>
+              </div>
+              <div className={styles.inlineMetric}>
+                <strong>Ops and selling stay connected</strong>
+                <span>No context loss between intake, quoting, and execution.</span>
+              </div>
+            </div>
+          </article>
+
+          <article className={styles.quoteCard}>
+            <div className={styles.exampleHeader}>
+              <Kicker>Operator view</Kicker>
+              <Shield className='h-5 w-5 text-[#3fb950]' />
+            </div>
+            <h3 className='text-[24px] font-semibold tracking-[-0.04em]'>A homepage that shows the real product architecture.</h3>
+            <p className='mt-3 text-[15px] leading-7'>Not just a floating hero. The public front door should make the internal system legible to owners, planners, and future hires.</p>
+            <div className='mt-5 grid gap-3'>
+              <ProofChip>Preferred supply before open market</ProofChip>
+              <ProofChip>Traveler fit + operational fit + commercial fit</ProofChip>
+              <ProofChip>Owner review and quality control in the same surface</ProofChip>
+            </div>
+            <div className='mt-6 rounded-[22px] border border-[rgba(48,54,61,0.82)] bg-[#161b22] p-4'>
+              <p className='text-[12px] uppercase tracking-[0.18em] text-[#8b949e]'>Surface summary</p>
+              <div className='mt-3 grid gap-3'>
+                <div className='flex items-start justify-between gap-3 rounded-[16px] bg-[#0f1115] px-4 py-3'>
+                  <div>
+                    <strong className='text-[14px] text-[#eff6fb]'>Inbox {'->'} Workspace</strong>
+                    <p className='mt-1 text-[13px] leading-6 text-[#8b949e]'>The handoff from demand capture to execution is explicit.</p>
+                  </div>
+                  <Briefcase className='mt-1 h-4 w-4 text-[#39d0d8]' />
+                </div>
+                <div className='flex items-start justify-between gap-3 rounded-[16px] bg-[#0f1115] px-4 py-3'>
+                  <div>
+                    <strong className='text-[14px] text-[#eff6fb]'>Decision {'->'} Strategy {'->'} Output</strong>
+                    <p className='mt-1 text-[13px] leading-6 text-[#8b949e]'>The reasoning path is visible instead of buried behind one button.</p>
+                  </div>
+                  <Workflow className='mt-1 h-4 w-4 text-[#58a6ff]' />
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section className={styles.section} id='personas'>
+        <SectionIntro
+          eyebrow='Persona fit'
+          title='Different users. Same system. Different value density.'
+          body='The homepage should reassure each buyer that the system understands their actual job-to-be-done, not just generic travel-software category copy.'
+        />
+
+        <div className={styles.personaGrid}>
+          {personaCards.map((card) => (
+            <article key={card.title} className={styles.personaCard}>
+              <div className={styles.surfaceCardHeader}>
+                <Kicker>{card.title}</Kicker>
+                <span className='rounded-full bg-[#58a6ff]/10 px-3 py-1 text-[12px] text-[#9fd0ff]'>Role-specific</span>
+              </div>
+              <h3 className='text-[24px] font-semibold tracking-[-0.04em]'>{card.title}</h3>
+              <p className='mt-3 text-[15px] leading-7'>{card.body}</p>
+              <div className='mt-5'>
+                <BulletList items={card.bullets} />
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <SectionIntro
+          eyebrow='Operational trust'
+          title='Built around how agencies actually work, not how travel software demos itself.'
+          body='Commercial sourcing hierarchy, traveler-safe output boundaries, and risk reduction are part of the product story. They are not hidden implementation details.'
+        />
+
+        <div className={styles.proofGrid}>
+          {proofCards.map((card) => (
+            <article key={card.title} className={styles.proofCard}>
+              <div className={styles.surfaceCardHeader}>
+                <Kicker>{card.title}</Kicker>
+                <CheckCircle2 className='h-5 w-5 text-[#3fb950]' />
+              </div>
+              <h3 className='text-[21px] font-semibold tracking-[-0.04em]'>{card.title}</h3>
+              <p className='mt-3 text-[15px] leading-7'>{card.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <CtaBand
+        title='See the operating system, then try the acquisition wedge.'
+        body='Waypoint OS is the internal product. The itinerary checker is the public intelligence surface that creates demand, trust, and better-structured briefs.'
+        primaryHref='/signup'
+        primaryLabel='Create workspace'
+        secondaryHref='/itinerary-checker'
+        secondaryLabel='Open itinerary checker'
+      />
+
+      <PublicFooter />
+    </PublicPage>
   );
 }

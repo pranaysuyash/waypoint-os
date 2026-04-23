@@ -14,7 +14,7 @@ export async function POST(
     }
 
     // Forward to spine-api
-    const spineApiUrl = process.env.SPINE_API_URL || "http://localhost:8000";
+    const spineApiUrl = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
     const response = await fetch(`${spineApiUrl}/trips/${tripId}/review/action`, {
       method: "POST",
       headers: {
@@ -27,8 +27,11 @@ export async function POST(
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      return NextResponse.json({ error }, { status: response.status });
+      const errorData = await response.json().catch(() => ({}));
+      return NextResponse.json(
+        { error: errorData.detail || `Spine API returned ${response.status}` },
+        { status: response.status }
+      );
     }
 
     const result = await response.json();

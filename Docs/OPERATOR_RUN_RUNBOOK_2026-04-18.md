@@ -1,3 +1,5 @@
+
+> **Stale Doc Notice**: All issues resolved — see `API_ROUTE_FIX_PLAN_2026-04-24.md` for current status.
 # Operator Run Runbook
 **Date**: 2026-04-18  
 **Scope**: Inspecting, debugging, and safely retrying spine runs  

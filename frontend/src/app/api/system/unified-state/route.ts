@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
  */
 export async function GET() {
   try {
-    const response = await fetch('http://localhost:8000/api/system/unified-state', {
+    const response = await fetch(`${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/api/system/unified-state`, {
       next: { revalidate: 0 },
     });
 

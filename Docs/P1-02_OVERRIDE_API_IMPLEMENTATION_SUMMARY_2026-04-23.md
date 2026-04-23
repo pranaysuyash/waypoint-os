@@ -1,3 +1,5 @@
+
+> **Stale Doc Notice**: All issues resolved — see `API_ROUTE_FIX_PLAN_2026-04-24.md` for current status.
 # P1-02: Agent Feedback Loop / Override API — Implementation Summary
 
 **Date**: 2026-04-23  
