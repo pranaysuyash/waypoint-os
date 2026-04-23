@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary
 
-Fixed 6 hardcoded URL issues, added 1 new BFF route, fixed 1 React infinite loop, and improved error handling patterns across the frontend API layer. All changes follow the Vercel React Best Practices skill.
+Fixed hardcoded URL issues across 11 frontend API routes, added 1 new BFF route, fixed 1 React infinite loop, replaced `ANALYTICS_SERVICE_URL` with `SPINE_API_URL` in 6 routes, and improved error handling patterns. All changes follow the Vercel React Best Practices skill.
 
 **Current State**:
 - Code: ✅ Ready (build passes, 670 backend tests pass)
@@ -21,7 +21,7 @@ Fixed 6 hardcoded URL issues, added 1 new BFF route, fixed 1 React infinite loop
 
 ## 2. Technical Changes
 
-### Files Modified:
+### Files Modified (Phase 1 - Hardcoded URLs):
 
 | File | Change | Lines |
 |------|--------|-------|
@@ -34,6 +34,17 @@ Fixed 6 hardcoded URL issues, added 1 new BFF route, fixed 1 React infinite loop
 | `frontend/src/app/api/trips/[id]/route.ts` | Fix unencoded URL params | 154, 224 |
 | `frontend/src/app/api/trips/[id]/timeline/route.ts` | Fix unencoded URL params | 23-24 |
 | `frontend/src/app/(auth)/login/page.tsx` | Fix React infinite loop (split Zustand selector) | 12 |
+
+### Files Modified (Phase 4 - ANALYTICS_SERVICE_URL Fix):
+
+| File | Change |
+|------|--------|
+| `frontend/src/app/api/insights/agent-trips/route.ts` | `ANALYTICS_SERVICE_URL` → `SPINE_API_URL` + encode agentId |
+| `frontend/src/app/api/insights/pipeline/route.ts` | `ANALYTICS_SERVICE_URL` → `SPINE_API_URL` (2 locations) |
+| `frontend/src/app/api/insights/alerts/route.ts` | `ANALYTICS_SERVICE_URL` → `SPINE_API_URL` (3 locations) |
+| `frontend/src/app/api/insights/team/route.ts` | `ANALYTICS_SERVICE_URL` → `SPINE_API_URL` (2 locations) |
+| `frontend/src/app/api/insights/bottlenecks/route.ts` | `ANALYTICS_SERVICE_URL` → `SPINE_API_URL` (2 locations) |
+| `frontend/src/app/api/insights/summary/route.ts` | `ANALYTICS_SERVICE_URL` → `SPINE_API_URL` (2 locations) |
 
 ### Files Created:
 
@@ -53,6 +64,7 @@ Fixed 6 hardcoded URL issues, added 1 new BFF route, fixed 1 React infinite loop
 - New BFF route follows existing pattern from `review/action/route.ts`
 - URL params now properly encoded with `encodeURIComponent()`
 - Error handling improved to parse FastAPI JSON `detail` field
+- `ANALYTICS_SERVICE_URL` replaced with `SPINE_API_URL` across 6 routes
 
 ### Cycle 2 (Defensive Gaps): ✅ Passed
 - All routes now use consistent error handling pattern
@@ -75,12 +87,16 @@ Fixed 6 hardcoded URL issues, added 1 new BFF route, fixed 1 React infinite loop
 ✓ TypeScript check passed
 ✓ New route `/api/trips/[id]/suitability/acknowledge` included
 ✓ No hardcoded `localhost:8000` URLs remain (verified via grep)
+✓ No `ANALYTICS_SERVICE_URL` references remain (verified via grep)
 ```
 
 ### Verification Commands:
 ```bash
 # Verify no hardcoded URLs remain
 grep -r "localhost:8000" frontend/src/app/api --include="*.ts" | grep -v "127.0.0.1"
+
+# Verify no ANALYTICS_SERVICE_URL references
+grep -rn "ANALYTICS_SERVICE_URL" frontend/src/app/api --include="*.ts"
 
 # Run backend tests
 cd /Users/pranay/Projects/travel_agency_agent && source .venv/bin/activate && python -m pytest tests/ -q
@@ -127,10 +143,11 @@ cd frontend && npm run build
 - PR creation (if desired): 5 minutes
 
 ### What Can Start in Parallel:
-- **Phase 4**: Fix BFF `insights/agent-trips/route.ts` to call real backend `/analytics/agent/{agent_id}/drill-down` (backend endpoint already exists at `spine-api/server.py:936`)
+- **Orphaned backend routes**: 12 backend endpoints without BFF routes (from API_ROUTE_AUDIT_2026-04-23.md)
+- **Phase 2 items**: All verified working, no fixes needed
 
 ### Who Owns Next Phase:
-- **Same agent** — Phase 4 is a natural continuation
+- **Same agent** — can continue with orphaned backend routes if desired
 
 ---
 

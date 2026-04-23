@@ -2,7 +2,7 @@
 
 **Date**: 2026-04-24
 **Scope**: Close all P0/P1 gaps from API_ROUTE_AUDIT_2026-04-23.md
-**Status**: Phase 1 ✅ COMPLETED, Phase 3 ✅ COMPLETED, Phase 2 🟡 PARTIAL, Phase 4 ❌ NOT STARTED
+**Status**: ALL PHASES ✅ COMPLETED 2026-04-24
 
 ---
 
@@ -21,7 +21,7 @@
 9. **Fix `trips/[id]/review/action/route.ts`** — hardcoded URL ✅ COMPLETED
 10. **Fix `stats/route.ts`** — hardcoded URL ✅ COMPLETED
 
-### Phase 2: Inbox Routes 🟡 PARTIAL
+### Phase 2: Inbox Routes ✅ COMPLETED 2026-04-24
 
 11. **Fix `inbox/stats/route.ts`** — computes from `/trips` backend data ✅ Already working
 12. **Fix `inbox/assign/route.ts`** — proxies to backend `/trips/{trip_id}/assign` ✅ Already working
@@ -32,10 +32,11 @@
 14. ~~**Add backend endpoint** `POST /trips/{trip_id}/suitability/acknowledge` in `server.py`~~ ✅ Already existed (line 843)
 15. **Add BFF route** `frontend/src/app/api/trips/[id]/suitability/acknowledge/route.ts` ✅ COMPLETED
 
-### Phase 4: Agent Drill-Down ❌ NOT STARTED
+### Phase 4: Agent Drill-Down ✅ COMPLETED 2026-04-24
 
-16. **Add backend endpoint** `GET /analytics/agent/{agent_id}/drill-down` in `server.py` ✅ Already exists (line 936)
-17. **Fix BFF** `insights/agent-trips/route.ts` to call real backend endpoint — PENDING
+16. ~~**Add backend endpoint** `GET /analytics/agent/{agent_id}/drill-down` in `server.py`~~ ✅ Already exists (line 936)
+17. **Fix BFF** `insights/agent-trips/route.ts` to call real backend endpoint ✅ COMPLETED
+18. **Fix ANALYTICS_SERVICE_URL** in 6 insight routes → `SPINE_API_URL` ✅ COMPLETED
 
 ---
 

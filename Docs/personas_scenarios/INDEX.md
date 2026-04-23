@@ -728,6 +728,13 @@ personas_scenarios/
 │   └── 1 real flow scenario: Digital Nomad Long-Stay Pivot
 ├── ADDITIONAL_SCENARIOS_330_ETHICAL_IMPACT_REPORT.md
 │   └── 1 real flow scenario: Ethical Insetting & Community Impact Proof
+├── SCENARIOS_331_335_BLACK_SWAN_RESILIENCE.md
+│   └── 5 extreme resilience scenarios:
+│       331: Digital Identity Hijack
+│       332: Kessler Syndrome (Satellite Outage)
+│       333: Sovereign Wealth Freeze
+│       334: Quantum Decryption Crisis
+│       335: AI Ethics Arbitration
 ├── P1_SOLO_AGENT_SCENARIOS.md
 │   └── 5 real scenarios:
 │       P1-S1: 11 PM WhatsApp Panic
