@@ -35,6 +35,7 @@ export default function SignupPage() {
         membership: { role: string; is_primary: boolean };
       }>('/api/auth/signup', body);
 
+      // Store in Zustand for client-side state
       login(data.access_token, data.user, data.agency, {
         role: data.membership.role,
         isPrimary: data.membership.is_primary,

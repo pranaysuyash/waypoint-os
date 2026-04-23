@@ -1,5 +1,5 @@
 """
-spine-api/types.py — Canonical contract between backend and frontend.
+spine-api/contract.py — Canonical contract between backend and frontend.
 
 ALL API response schemas are defined here. Frontend TypeScript types are
 auto-generated from these models. If the backend schema changes, the frontend

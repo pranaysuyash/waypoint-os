@@ -90,6 +90,11 @@ No alternate API route or duplicate pipeline was introduced.
 - `src/analytics/engine.py` (owner escalation + send-policy computation)
 - `src/analytics/review.py` (revision-loop escalation handling)
 - `spine-api/persistence.py` (traveler/internal bundle persisted for readiness checks)
+- `frontend/src/components/workspace/panels/IntakePanel.tsx` (mark-ready action + ready-gate error surfacing)
+- `frontend/src/components/workspace/panels/OutputPanel.tsx` (send-policy gating and reason banner)
+- `frontend/src/components/workspace/ReviewControls.tsx` (approval vs ready/send gate clarification)
+- `frontend/src/lib/api-client.ts` (structured backend error parsing for ready-gate failures)
+- `frontend/src/app/api/trips/[id]/route.ts` and `frontend/src/app/api/trips/route.ts` (policy analytics fields mapped to FE shape)
 
 ## Verification Evidence
 
@@ -104,6 +109,20 @@ PYTHONPATH=. uv run pytest -q \
 
 Result:
 - 9 passed
+- 0 failed
+
+Frontend validation:
+
+```bash
+cd frontend && npm test -- --run \
+  src/components/workspace/panels/__tests__/OutputPanel.test.tsx \
+  src/components/workspace/panels/__tests__/IntakePanel.test.tsx \
+  src/app/__tests__/p1_happy_path_journey.test.tsx \
+  src/app/__tests__/p2_owner_onboarding_journey.test.tsx
+```
+
+Result:
+- 16 passed
 - 0 failed
 
 ---

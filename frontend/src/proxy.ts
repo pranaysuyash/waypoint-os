@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const AUTH_ROUTES = ['/login', '/signup'];
+const AUTH_ROUTES = ['/login', '/signup', '/forgot-password', '/reset-password'];
 const PROTECTED_ROUTES = ['/', '/inbox', '/workspace', '/owner', '/settings', '/workbench'];
 
 function isAuthRoute(pathname: string): boolean {
@@ -13,13 +13,14 @@ function isProtectedRoute(pathname: string): boolean {
   return PROTECTED_ROUTES.some((route) => route !== '/' && pathname.startsWith(route));
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get('access_token')?.value;
 
-  // Check for token in Authorization header pattern (via cookie or localStorage)
-  // Note: middleware can't access localStorage, so we use a session cookie approach
-  const hasAuth = !!token;
+  // Check for access_token cookie (set on login/signup)
+  const accessToken = request.cookies.get('access_token')?.value;
+  // Also check refresh_token cookie (long-lived session)
+  const refreshToken = request.cookies.get('refresh_token')?.value;
+  const hasAuth = !!accessToken || !!refreshToken;
 
   // Redirect authenticated users away from auth pages
   if (isAuthRoute(pathname) && hasAuth) {

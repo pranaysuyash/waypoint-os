@@ -7,6 +7,8 @@ import type {
   DecisionOutput,
   StrategyOutput,
   PromptBundle,
+  FeeCalculationResult,
+  ValidationReport,
 } from "@/types/spine";
 
 // ============================================================================
@@ -38,23 +40,23 @@ interface WorkbenchConfigState {
 }
 
 interface WorkbenchResultState {
-  result_packet: SpineRunResponse["packet"] | null;
-  result_validation: SpineRunResponse["validation"] | null;
+  result_packet: unknown;
+  result_validation: ValidationReport | null;
   result_decision: DecisionOutput | null;
   result_strategy: StrategyOutput | null;
-  result_internal_bundle: PromptBundle | null;
-  result_traveler_bundle: PromptBundle | null;
+  result_internal_bundle: unknown;
+  result_traveler_bundle: unknown;
   result_safety: SafetyResult | null;
-  result_fees: SpineRunResponse["fees"] | null;
+  result_fees: FeeCalculationResult | null;
   result_run_ts: string | null;
-  setResultPacket: (value: SpineRunResponse["packet"] | null) => void;
-  setResultValidation: (value: SpineRunResponse["validation"] | null) => void;
+  setResultPacket: (value: unknown) => void;
+  setResultValidation: (value: ValidationReport | null) => void;
   setResultDecision: (value: DecisionOutput | null) => void;
   setResultStrategy: (value: StrategyOutput | null) => void;
-  setResultInternalBundle: (value: SpineRunResponse["internal_bundle"] | null) => void;
-  setResultTravelerBundle: (value: SpineRunResponse["traveler_bundle"] | null) => void;
+  setResultInternalBundle: (value: unknown) => void;
+  setResultTravelerBundle: (value: unknown) => void;
   setResultSafety: (value: SafetyResult | null) => void;
-  setResultFees: (value: SpineRunResponse["fees"] | null) => void;
+  setResultFees: (value: FeeCalculationResult | null) => void;
   setResultRunTs: (value: string | null) => void;
   clearResults: () => void;
   resetAll: () => void;

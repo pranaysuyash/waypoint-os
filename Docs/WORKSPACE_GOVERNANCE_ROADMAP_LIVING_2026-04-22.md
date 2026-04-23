@@ -636,8 +636,8 @@ The next planning documents that should follow this roadmap are:
 1. **Canonical Role & Permission Matrix** — drafted: `CANONICAL_ROLE_PERMISSION_MATRIX_2026-04-22.md`
 2. **Assignment / Escalation State Machine Spec** — drafted: `ASSIGNMENT_ESCALATION_STATE_MACHINE_SPEC_2026-04-22.md`
 3. **AI Workforce Registry Contract** — drafted: `AI_WORKFORCE_REGISTRY_CONTRACT_2026-04-22.md`
-4. **Settings Route + Subroute UX Contract**
-5. **Governance Audit Event Taxonomy**
+4. **Settings Route + Subroute UX Contract** — drafted: `SETTINGS_ROUTE_SUBROUTE_UX_CONTRACT_2026-04-23.md`
+5. **Governance Audit Event Taxonomy** — drafted: `GOVERNANCE_AUDIT_EVENT_TAXONOMY_2026-04-23.md`
 
 ---
 

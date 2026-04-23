@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth';
@@ -8,7 +8,7 @@ import { api, ApiException } from '@/lib/api-client';
 
 export default function LoginPage() {
   const router = useRouter();
-  const login = useAuthStore((s) => s.login);
+  const { login, hydrate } = useAuthStore((s) => ({ login: s.login, hydrate: s.hydrate }));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -28,6 +28,7 @@ export default function LoginPage() {
         membership: { role: string; is_primary: boolean };
       }>('/api/auth/login', { email, password });
 
+      // Store in Zustand for client-side state
       login(data.access_token, data.user, data.agency, {
         role: data.membership.role,
         isPrimary: data.membership.is_primary,
@@ -76,6 +77,12 @@ export default function LoginPage() {
             required
             autoComplete='current-password'
           />
+        </div>
+
+        <div className='auth-footer' style={{ marginBottom: '1rem', textAlign: 'right' }}>
+          <Link href='/forgot-password' style={{ fontSize: '0.875rem' }}>
+            Forgot password?
+          </Link>
         </div>
 
         <button className='auth-button' type='submit' disabled={loading}>

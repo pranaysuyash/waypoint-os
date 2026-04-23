@@ -167,6 +167,9 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
             Escalate
           </button>
         </div>
+        <p className={styles.helpText} style={{ fontSize: '11px', marginTop: '6px', opacity: 0.8 }}>
+          Approval sets review state. Final completion/send still follows ready and send policy gates.
+        </p>
       </div>
     </div>
   );

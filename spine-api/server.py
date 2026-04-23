@@ -149,7 +149,7 @@ logger = logging.getLogger("spine-api")
 if TimelineEventMapper is None:
     logger.warning("TimelineEventMapper not available - timeline endpoint will use fallback")
 
-# Pydantic models imported from spine-api/types.py (canonical contract)
+# Pydantic models imported from spine-api/contract.py (canonical contract)
 # All response schemas are defined there. Do not add new models here.
 
 

@@ -27,6 +27,7 @@
 
 - `uv run pytest -q tests/test_timeline_e2e.py::test_spine_run_emits_audit_events tests/test_p1_backend_regressions.py` -> `25 passed`
 - `cd frontend && npm test -- --run src/app/__tests__/p1_happy_path_journey.test.tsx src/app/__tests__/mode_selector_spine_payload.test.tsx` -> passed
+- `cd frontend && npm test -- --run src/components/workspace/panels/__tests__/IntakePanel.test.tsx` -> `4 passed` (includes ready-gate error surfacing UX)
 - `bash tools/run_p1_happy_path_case_study.sh` -> passed (backend + frontend case-study suites)
 
 ## Completion Note

@@ -20,4 +20,5 @@
 
 - `cd frontend && npm test -- --run src/components/workspace/panels/__tests__/DecisionPanel.SuitabilitySignal.integration.test.tsx src/components/workspace/panels/__tests__/SuitabilitySignal.test.tsx src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx` -> `54 passed`
 - `cd frontend && npm test -- --run src/app/__tests__/p2_owner_onboarding_journey.test.tsx` -> `5 passed`
+- `cd frontend && npm test -- --run src/components/workspace/panels/__tests__/OutputPanel.test.tsx` -> `6 passed` (includes send-policy gating/visibility assertions)
 - `uv run pytest -q tests/test_p1_backend_regressions.py` -> passed (includes confidence->coaching severity contract tests)

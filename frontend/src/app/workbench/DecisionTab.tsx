@@ -358,7 +358,7 @@ export function DecisionTab({ trip }: DecisionTabProps) {
           <div className={styles.card}>
             <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "12px" }}>
               <span style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>
-                {result_fees.risk_summary}
+                {String(result_fees.risk_summary ?? "")}
               </span>
             </div>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>

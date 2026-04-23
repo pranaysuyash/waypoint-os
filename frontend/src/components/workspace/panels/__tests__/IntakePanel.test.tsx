@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { IntakePanel } from '../IntakePanel';
 import { useWorkbenchStore } from '@/stores/workbench';
+import { ApiException, updateTrip } from '@/lib/api-client';
 
 // Mock dependencies
 vi.mock('@/stores/workbench', () => ({
@@ -33,6 +34,14 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/lib/routes', () => ({
   getTripRoute: vi.fn((id, stage) => `/workspace/${id}/${stage}`),
 }));
+
+vi.mock('@/lib/api-client', async () => {
+  const actual = await vi.importActual<any>('@/lib/api-client');
+  return {
+    ...actual,
+    updateTrip: vi.fn(),
+  };
+});
 
 describe('IntakePanel', () => {
   const mockStore = {
@@ -87,6 +96,9 @@ describe('IntakePanel', () => {
 
     const saveButton = screen.getByRole('button', { name: /Save changes/i });
     expect(saveButton).toBeInTheDocument();
+
+    const readyButton = screen.getByRole('button', { name: /Mark ready/i });
+    expect(readyButton).toBeInTheDocument();
   });
 
   it('disables process button when no notes are present', () => {
@@ -100,5 +112,20 @@ describe('IntakePanel', () => {
 
     const processButton = screen.getByRole('button', { name: /Process trip/i });
     expect(processButton).toBeDisabled();
+  });
+
+  it('shows ready-gate failure details when mark ready is rejected', async () => {
+    (updateTrip as any).mockRejectedValue(
+      new ApiException('Ready gate failed', 400, undefined, ['Traveler-safe output is missing.'])
+    );
+
+    render(<IntakePanel tripId="TRIP-123" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Mark ready/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Ready blocked:/i)).toBeInTheDocument();
+      expect(screen.getByText(/Traveler-safe output is missing/i)).toBeInTheDocument();
+    });
   });
 });

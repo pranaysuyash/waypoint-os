@@ -215,3 +215,4 @@ In simple terms: `inbox request -> system organizes + decides -> ready-to-use re
   - [/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/LOGICAL_POLICY_DECISIONS_RATIFIED_2026-04-23.md](/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/LOGICAL_POLICY_DECISIONS_RATIFIED_2026-04-23.md)
 - Implementation note:
   - Ready-gate policy is enforced through the existing canonical `PATCH /trips/{trip_id}` path (no parallel route).
+  - Intake UI now exposes mark-ready flow with explicit ready-gate failure reasons for operators.

@@ -21,11 +21,12 @@ import {
   Globe,
 } from 'lucide-react';
 import type { Trip } from '@/lib/api-client';
+import { updateTrip, ApiException } from '@/lib/api-client';
 import { useWorkbenchStore } from '@/stores/workbench';
 import { useSpineRun } from '@/hooks/useSpineRun';
 import { useUpdateTrip } from '@/hooks/useTrips';
 import { getTripRoute } from '@/lib/routes';
-import type { SpineStage, OperatingMode, SpineRunRequest } from '@/types/spine';
+import type { SpineStage, OperatingMode, SpineRunRequest, ValidationReport, DecisionOutput, StrategyOutput, SafetyResult, FeeCalculationResult } from '@/types/spine';
 import {
   CURRENCY_CONFIG,
   type SupportedCurrency,
@@ -89,6 +90,9 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const { mutate: saveTrip, isSaving } = useUpdateTrip();
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [isMarkingReady, setIsMarkingReady] = useState(false);
+  const [readySuccess, setReadySuccess] = useState(false);
+  const [readyError, setReadyError] = useState<string | null>(null);
 
   // Audit log for tracking field changes
   const { logChange, getLatestChangeForField } = useFieldAuditLog({
@@ -146,13 +150,13 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       const result = await executeSpineRun(request);
 
       if (result.packet) store.setResultPacket(result.packet);
-      if (result.validation) store.setResultValidation(result.validation);
-      if (result.decision) store.setResultDecision(result.decision);
-      if (result.strategy) store.setResultStrategy(result.strategy);
+      if (result.validation) store.setResultValidation(result.validation as unknown as ValidationReport);
+      if (result.decision) store.setResultDecision(result.decision as unknown as DecisionOutput);
+      if (result.strategy) store.setResultStrategy(result.strategy as unknown as StrategyOutput);
       if (result.internal_bundle) store.setResultInternalBundle(result.internal_bundle);
       if (result.traveler_bundle) store.setResultTravelerBundle(result.traveler_bundle);
-      if (result.safety) store.setResultSafety(result.safety);
-      if (result.fees) store.setResultFees(result.fees);
+      if (result.safety) store.setResultSafety(result.safety as unknown as SafetyResult);
+      if (result.fees) store.setResultFees(result.fees as unknown as FeeCalculationResult);
       store.setResultRunTs(new Date().toISOString());
 
       setRunSuccess(true);
@@ -197,6 +201,34 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       setTimeout(() => setSaveError(null), 8000);
     }
   }, [tripId, saveTrip, store.input_raw_note, store.input_owner_note, editingField, editValues, budgetAmount, budgetCurrency]);
+
+  const handleMarkReady = useCallback(async () => {
+    if (!tripId) return;
+    setReadyError(null);
+    setReadySuccess(false);
+    setIsMarkingReady(true);
+    try {
+      await updateTrip(tripId, { status: 'completed' } as Partial<Trip>);
+      setReadySuccess(true);
+      setTimeout(() => setReadySuccess(false), 4000);
+    } catch (err) {
+      if (err instanceof ApiException) {
+        const failures = Array.isArray(err.details) ? err.details.filter((x) => typeof x === 'string') as string[] : [];
+        if (failures.length > 0) {
+          setReadyError(`Ready blocked: ${failures.join(' | ')}`);
+        } else {
+          setReadyError(err.message || 'Ready gate failed.');
+        }
+      } else if (err instanceof Error) {
+        setReadyError(err.message);
+      } else {
+        setReadyError('Failed to mark ready.');
+      }
+      setTimeout(() => setReadyError(null), 10000);
+    } finally {
+      setIsMarkingReady(false);
+    }
+  }, [tripId]);
 
   const startEditing = useCallback((field: string, currentValue: string) => {
     setEditValues(prev => ({ ...prev, [field]: currentValue }));
@@ -675,6 +707,18 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
               <span className='max-w-xs truncate'>{saveError}</span>
             </div>
           )}
+          {readySuccess && (
+            <div className='flex items-center gap-2 px-3 py-1.5 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-lg text-xs text-[#3fb950]'>
+              <CheckCircle className='w-3 h-3' />
+              Ready state set
+            </div>
+          )}
+          {readyError && (
+            <div className='flex items-center gap-2 px-3 py-1.5 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg text-xs text-[#f85149]'>
+              <AlertTriangle className='w-3 h-3' />
+              <span className='max-w-[42rem] truncate'>{readyError}</span>
+            </div>
+          )}
         </div>
         <div className='flex items-center gap-3'>
           <button
@@ -696,6 +740,28 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
               <>
                 <Save className='w-4 h-4' aria-hidden='true' />
                 Save
+              </>
+            )}
+          </button>
+          <button
+            type='button'
+            onClick={handleMarkReady}
+            disabled={isMarkingReady || !tripId}
+            className='flex items-center gap-2 px-3 py-2 bg-[#2da44e] text-[#0d1117] rounded-lg text-sm font-medium hover:bg-[#3fb950] disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+            aria-label={isMarkingReady ? 'Marking ready' : 'Mark ready'}
+          >
+            {isMarkingReady ? (
+              <>
+                <div
+                  className='w-4 h-4 border-2 border-[#0d1117]/30 border-t-[#0d1117] rounded-full animate-spin'
+                  aria-hidden='true'
+                />
+                Checking...
+              </>
+            ) : (
+              <>
+                <CheckCircle className='w-4 h-4' aria-hidden='true' />
+                Mark Ready
               </>
             )}
           </button>

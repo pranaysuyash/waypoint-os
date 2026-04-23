@@ -1418,3 +1418,30 @@ User requested a handoff they can share directly with an implementation agent fo
 
 ### Decision
 - Recommended implementation posture: **GO**, but only as a structured multi-task upgrade. Anything that merely adds `approval_gates` while keeping raw verdict mutation is explicitly below the D1 completion bar.
+
+## Log Entry: 2026-04-23 - Governance Phase 0 UX And Audit Contracts Added
+
+### Context
+The governance roadmap named two remaining Phase 0 artifacts after the role matrix, assignment state machine, and AI workforce registry were written: a route-level settings UX contract and a canonical governance audit taxonomy.
+
+Fresh repo evidence confirmed that both were still needed before implementation:
+
+- [frontend/src/components/layouts/Shell.tsx](file:///Users/pranay/Projects/travel_agency_agent/frontend/src/components/layouts/Shell.tsx) still had no `/settings` entry.
+- [frontend/src/app/workbench/SettingsPanel.tsx](file:///Users/pranay/Projects/travel_agency_agent/frontend/src/app/workbench/SettingsPanel.tsx) remained a workbench-only debug drawer.
+- [frontend/src/lib/governance-api.ts](file:///Users/pranay/Projects/travel_agency_agent/frontend/src/lib/governance-api.ts) still exposed placeholder `/api/settings/pipeline` and `/api/settings/approvals` alongside `/api/settings/autonomy`.
+- [spine-api/persistence.py](file:///Users/pranay/Projects/travel_agency_agent/spine-api/persistence.py) and [src/analytics/review.py](file:///Users/pranay/Projects/travel_agency_agent/src/analytics/review.py) still used lightweight generic audit events.
+
+### Artifacts Created
+- `Docs/SETTINGS_ROUTE_SUBROUTE_UX_CONTRACT_2026-04-23.md`
+- `Docs/GOVERNANCE_AUDIT_EVENT_TAXONOMY_2026-04-23.md`
+
+### Decisions Captured
+- `/settings` remains the single canonical governance route family.
+- The workbench settings drawer is explicitly not the future app settings surface.
+- `/settings` should redirect by role: Owner/Admin -> agency, other roles -> profile.
+- Agency-wide sections use draft + publish; personal profile remains immediate-save.
+- `/settings/pipeline` is the D1 home and should retire the old approvals placeholder model.
+- Governance audit history must move from generic `type + details` events toward domain-specific names such as `assignment_reassigned`, `review_approved`, `autonomy_policy_published`, and `ai_worker_visibility_scope_changed`.
+
+### Immediate Execution Implication
+- Phase 1 and Phase 4 implementation work should now treat the roadmap, role matrix, assignment state machine, AI workforce registry, settings UX contract, and governance audit taxonomy as one connected contract set.

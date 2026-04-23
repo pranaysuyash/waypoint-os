@@ -3,9 +3,12 @@
  *
  * Manages:
  * - User session (user, agency, role)
- * - JWT token (persisted in localStorage)
- * - Authentication status
+ * - Authentication status (synced with cookies, not localStorage)
  * - Login/logout actions
+ *
+ * NOTE: Token storage is now cookie-based (httpOnly) for security.
+ * Zustand store holds in-memory state only; persistence is via cookies.
+ * On page load, /api/auth/me is called to rehydrate state from the cookie.
  */
 
 import { create } from "zustand";
@@ -36,7 +39,7 @@ export interface AuthState {
   user: AuthUser | null;
   agency: AuthAgency | null;
   membership: AuthMembership | null;
-  token: string | null;
+  token: string | null; // In-memory only, synced from cookie via /me endpoint
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -44,47 +47,26 @@ export interface AuthState {
   // Actions
   login: (token: string, user: AuthUser, agency: AuthAgency, membership: AuthMembership) => void;
   logout: () => void;
-  setToken: (token: string) => void;
+  hydrate: () => Promise<void>;
   clearError: () => void;
   setLoading: (loading: boolean) => void;
-}
-
-// ============================================================================
-// STORAGE HELPERS
-// ============================================================================
-
-const TOKEN_KEY = "access_token";
-
-function getStoredToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-function setStoredToken(token: string | null): void {
-  if (typeof window === "undefined") return;
-  if (token) {
-    localStorage.setItem(TOKEN_KEY, token);
-  } else {
-    localStorage.removeItem(TOKEN_KEY);
-  }
 }
 
 // ============================================================================
 // STORE
 // ============================================================================
 
-export const useAuthStore = create<AuthState>((set) => ({
-  // Initial state — check localStorage for existing token
+export const useAuthStore = create<AuthState>((set, get) => ({
+  // Initial state — not reading from localStorage anymore (cookies are httpOnly)
   user: null,
   agency: null,
   membership: null,
-  token: getStoredToken(),
-  isAuthenticated: !!getStoredToken(),
+  token: null,
+  isAuthenticated: false,
   isLoading: false,
   error: null,
 
   login: (token, user, agency, membership) => {
-    setStoredToken(token);
     set({
       token,
       user,
@@ -95,8 +77,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
   },
 
-  logout: () => {
-    setStoredToken(null);
+  logout: async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+      // Ignore network errors — cookies will be cleared by the route
+    }
     set({
       token: null,
       user: null,
@@ -107,9 +93,31 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
   },
 
-  setToken: (token) => {
-    setStoredToken(token);
-    set({ token, isAuthenticated: !!token });
+  hydrate: async () => {
+    // Rehydrate auth state from the httpOnly cookie via /api/auth/me
+    // This is called on app startup to check if user has a valid session
+    try {
+      set({ isLoading: true, error: null });
+      const response = await fetch('/api/auth/me');
+      if (!response.ok) {
+        set({ isAuthenticated: false, isLoading: false });
+        return;
+      }
+      const data = await response.json();
+      if (data.ok && data.user) {
+        set({
+          user: data.user,
+          agency: data.agency,
+          membership: data.membership,
+          isAuthenticated: true,
+          isLoading: false,
+        });
+      } else {
+        set({ isAuthenticated: false, isLoading: false });
+      }
+    } catch (err) {
+      set({ isAuthenticated: false, isLoading: false });
+    }
   },
 
   clearError: () => set({ error: null }),

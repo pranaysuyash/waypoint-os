@@ -395,7 +395,7 @@ export default function OwnerInsightsPage() {
       <div className='grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3'>
         <StatCard
           title='Total Inquiries'
-          value={unifiedState?.canonical_total?.toString() ?? summary.totalInquiries.toString()}
+          value={unifiedState?.canonical_total?.toString() ?? (summary.totalInquiries ?? 0).toString()}
           subtext={`${summary.conversionRate}% conversion`}
           trend='up'
           icon={TrendingUp}
@@ -441,37 +441,37 @@ export default function OwnerInsightsPage() {
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5'>
           <div className='flex items-center justify-between mb-4'>
             <h2 className='text-base font-semibold text-[#e6edf3]'>Average Time to Complete</h2>
-            <span className='text-xs text-[#8b949e]'>Avg: {summary.pipelineVelocity.averageTotal} days total</span>
+            <span className='text-xs text-[#8b949e]'>Avg: {(summary.pipelineVelocity?.averageTotal ?? 0)} days total</span>
           </div>
           
           <div className='space-y-1'>
             <VelocityBar 
               label='New Inquiry → Details' 
-              value={summary.pipelineVelocity.stage1To2 * 24} 
+              value={(summary.pipelineVelocity?.stage1To2 ?? 0) * 24} 
               max={maxStageTime}
               color='#3fb950'
             />
             <VelocityBar 
               label='Details → Ready to Quote' 
-              value={summary.pipelineVelocity.stage2To3 * 24} 
+              value={(summary.pipelineVelocity?.stage2To3 ?? 0) * 24} 
               max={maxStageTime}
               color='#58a6ff'
             />
             <VelocityBar 
               label='Ready to Quote → Build Options' 
-              value={summary.pipelineVelocity.stage3To4 * 24} 
+              value={(summary.pipelineVelocity?.stage3To4 ?? 0) * 24} 
               max={maxStageTime}
               color='#d29922'
             />
             <VelocityBar 
               label='Build Options → Final Review' 
-              value={summary.pipelineVelocity.stage4To5 * 24} 
+              value={(summary.pipelineVelocity?.stage4To5 ?? 0) * 24} 
               max={maxStageTime}
               color='#58a6ff'
             />
             <VelocityBar 
               label='Final Review → Booked' 
-              value={summary.pipelineVelocity.stage5ToBooked * 24} 
+              value={(summary.pipelineVelocity?.stage5ToBooked ?? 0) * 24} 
               max={maxStageTime}
               color='#3fb950'
             />
@@ -513,7 +513,12 @@ export default function OwnerInsightsPage() {
 
         {/* Revenue Chart */}
         <div className='lg:col-span-2'>
-          <RevenueChart data={revenueData?.revenueByMonth || []} />
+          <RevenueChart data={(revenueData?.revenueByMonth || []).map(d => ({
+            month: d.month ?? '',
+            inquiries: d.inquiries ?? 0,
+            booked: d.booked ?? 0,
+            revenue: d.revenue ?? 0,
+          }))} />
         </div>
 
         {/* Team Performance Chart */}

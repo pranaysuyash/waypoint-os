@@ -10,8 +10,8 @@ import { useTrip } from '@/hooks/useTrips';
 import { useWorkbenchStore } from '@/stores/workbench';
 import { useSpineRun } from '@/hooks/useSpineRun';
 import { useUpdateTrip } from '@/hooks/useTrips';
-import type { SpineRunRequest, SpineStage, OperatingMode } from '@/types/spine';
-import type { SafetyResult } from '@/types/spine';
+import type { SpineRunRequest, SpineStage, OperatingMode, DecisionOutput, StrategyOutput, PromptBundle } from '@/types/spine';
+import type { SafetyResult, ValidationReport, FeeCalculationResult } from '@/types/spine';
 import type { Trip } from '@/lib/api-client';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { submitTripReviewAction } from "@/lib/api-client";
@@ -151,13 +151,13 @@ function WorkbenchContent() {
       const result = await executeSpineRun(request);
 
       if (result.packet) store.setResultPacket(result.packet);
-      if (result.validation) store.setResultValidation(result.validation);
-      if (result.decision) store.setResultDecision(result.decision);
-      if (result.strategy) store.setResultStrategy(result.strategy);
+      if (result.validation) store.setResultValidation(result.validation as unknown as ValidationReport);
+      if (result.decision) store.setResultDecision(result.decision as unknown as DecisionOutput);
+      if (result.strategy) store.setResultStrategy(result.strategy as unknown as StrategyOutput);
       if (result.internal_bundle) store.setResultInternalBundle(result.internal_bundle);
       if (result.traveler_bundle) store.setResultTravelerBundle(result.traveler_bundle);
-      if (result.safety) store.setResultSafety(result.safety);
-      if (result.fees) store.setResultFees(result.fees);
+      if (result.safety) store.setResultSafety(result.safety as unknown as SafetyResult);
+      if (result.fees) store.setResultFees(result.fees as unknown as FeeCalculationResult);
       store.setResultRunTs(new Date().toISOString());
 
       setRunSuccess(true);

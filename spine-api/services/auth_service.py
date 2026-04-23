@@ -258,3 +258,105 @@ async def refresh_access_token(
         "access_token": new_access,
         "refresh_token": new_refresh,
     }
+
+
+# ============================================================================
+# PASSWORD RESET
+# ============================================================================
+
+import hashlib
+
+
+async def request_password_reset(db: AsyncSession, email: str) -> dict:
+    """
+    Generate a password reset token and return it.
+    In production, this would send an email with the reset link.
+    For now, returns the plain token so the frontend can simulate the reset flow.
+
+    Returns:
+        dict with reset_token (to be sent via email in production)
+    """
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        # Don't reveal that the email doesn't exist (security best practice)
+        return {"ok": True, "message": "If the email exists, a reset link has been sent"}
+
+    # Invalidate old tokens for this user
+    await db.execute(
+        PasswordResetToken.__table__.delete().where(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used_at.is_(None),
+        )
+    )
+
+    # Generate a secure token
+    import secrets
+    plain_token = secrets.token_urlsafe(32)
+
+    # Hash token for storage (we never store the plain token)
+    token_hash = hashlib.sha256(plain_token.encode()).hexdigest()
+
+    reset_token = PasswordResetToken(
+        user_id=user.id,
+        token_hash=token_hash,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    db.add(reset_token)
+    await db.commit()
+
+    logger.info("Password reset requested: user=%s", user.id)
+
+    # In production: send email with /reset-password?token=plain_token
+    # For now, return the token so the frontend can use it
+    return {
+        "ok": True,
+        "message": "If the email exists, a reset link has been sent",
+        "reset_token": plain_token,  # Remove in production (use email instead)
+    }
+
+
+async def confirm_password_reset(db: AsyncSession, token: str, new_password: str) -> dict:
+    """
+    Validate a password reset token and set a new password.
+
+    Returns:
+        dict with ok=True on success
+
+    Raises:
+        ValueError: if token is invalid or expired
+    """
+    if len(new_password) < 8:
+        raise ValueError("Password must be at least 8 characters")
+
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+
+    result = await db.execute(
+        select(PasswordResetToken)
+        .where(PasswordResetToken.token_hash == token_hash)
+        .where(PasswordResetToken.used_at.is_(None))
+    )
+    reset_record = result.scalar_one_or_none()
+
+    if not reset_record:
+        raise ValueError("Invalid or expired reset token")
+
+    if reset_record.expires_at < datetime.now(timezone.utc):
+        raise ValueError("Reset token has expired")
+
+    # Update password
+    result = await db.execute(select(User).where(User.id == reset_record.user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise ValueError("User not found")
+
+    user.password_hash = hash_password(new_password)
+    reset_record.used_at = datetime.now(timezone.utc)
+
+    await db.commit()
+
+    logger.info("Password reset completed: user=%s", user.id)
+
+    return {"ok": True, "message": "Password has been reset successfully"}

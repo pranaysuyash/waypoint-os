@@ -1,9 +1,9 @@
 """
-Auth router — signup, login, logout, me, refresh endpoints.
+Auth router — signup, login, logout, me, refresh, password reset endpoints.
 
 Token delivery strategy:
-- Access token returned in response body (frontend stores in localStorage)
-- Refresh token set as httpOnly cookie for security
+- Access token returned in response body + set as httpOnly cookie
+- Refresh token set as httpOnly cookie (path: /api/auth) for security
 """
 
 import logging
@@ -14,8 +14,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.auth import get_current_user, get_current_membership
-from models.tenant import User, Membership
-from services.auth_service import signup as signup_service, login as login_service, refresh_access_token
+from models.tenant import User, Membership, PasswordResetToken
+from services.auth_service import (
+    signup as signup_service,
+    login as login_service,
+    refresh_access_token,
+    request_password_reset,
+    confirm_password_reset,
+)
 
 logger = logging.getLogger("spine-api.auth")
 
@@ -179,3 +185,37 @@ async def post_refresh(request: RefreshRequest, response: Response, db: AsyncSes
     )
 
     return RefreshResponse(ok=True, access_token=result["access_token"])
+
+
+# ============================================================================
+# PASSWORD RESET
+# ============================================================================
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+@router.post("/request-password-reset")
+async def post_request_password_reset(
+    request: PasswordResetRequest, db: AsyncSession = Depends(get_db)
+):
+    result = await request_password_reset(db=db, email=request.email)
+    return result
+
+
+@router.post("/confirm-password-reset")
+async def post_confirm_password_reset(
+    request: PasswordResetConfirm, db: AsyncSession = Depends(get_db)
+):
+    try:
+        result = await confirm_password_reset(
+            db=db, token=request.token, new_password=request.new_password
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

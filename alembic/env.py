@@ -5,7 +5,10 @@ Supports autogenerate with SQLAlchemy 2.0 async models.
 """
 
 import asyncio
+import sys
+import importlib
 from logging.config import fileConfig
+from pathlib import Path
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
@@ -13,10 +16,19 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-# Import models so autogenerate can discover them
-from models import Base
+# Hardcode project root - adjust if project structure changes
+PROJECT_ROOT = Path("/Users/pranay/Projects/travel_agency_agent")
+SPINE_API_PATH = PROJECT_ROOT / "spine-api"
+sys.path.insert(0, str(SPINE_API_PATH))
 
-# this is the Alembic Config object
+# Import Base directly from the tenant module
+tenant_path = SPINE_API_PATH / "models" / "tenant.py"
+spec = importlib.util.spec_from_file_location("tenant_module", tenant_path)
+tenant_mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(tenant_mod)
+Base = tenant_mod.Base
+
+# This is the Alembic Config object
 config = context.config
 
 # Interpret the config file for Python logging

@@ -40,6 +40,12 @@ export function OutputPanel({ trip: propTrip, tripId: propTripId }: OutputPanelP
   // Fallback chain: Store (transient) > Trip (persisted)
   const internalBundle = (result_internal_bundle || trip?.internal_bundle) as PromptBundle | null;
   const travelerBundle = (result_traveler_bundle || trip?.traveler_bundle) as PromptBundle | null;
+  const reviewStatus = trip?.review_status ?? null;
+  const reviewBlocksSend = reviewStatus !== null && reviewStatus !== "approved";
+  const policyBlocksSend = Boolean(trip?.analytics?.approvalRequiredForSend);
+  const sendBlockReason =
+    trip?.analytics?.sendPolicyReason ||
+    (reviewBlocksSend ? "Trip must be approved by owner before sending." : "");
 
   const handleSendToCustomer = () => {
     setIsSending(true);
@@ -151,6 +157,11 @@ export function OutputPanel({ trip: propTrip, tripId: propTripId }: OutputPanelP
 
       {/* Delivery Action - Wave 8 */}
       <div className={styles.deliveryActions}>
+        {policyBlocksSend && (
+          <div className="mb-3 rounded-md border border-[#f85149]/40 bg-[#f85149]/10 px-3 py-2 text-xs text-[#ffb4b4]">
+            <strong>Send blocked by policy:</strong> {sendBlockReason}
+          </div>
+        )}
         {sendSuccess ? (
           <div className="flex items-center gap-2 text-[#3fb950] font-medium mr-4">
             <CheckCircle className="w-5 h-5" />
@@ -160,8 +171,8 @@ export function OutputPanel({ trip: propTrip, tripId: propTripId }: OutputPanelP
           <button 
             className={styles.sendButton}
             onClick={handleSendToCustomer}
-            disabled={isSending || Boolean(trip && trip.review_status !== "approved" && trip.review_status !== null)}
-            title={trip && trip.review_status !== "approved" ? "Trip must be approved by owner before sending" : ""}
+            disabled={isSending || reviewBlocksSend || policyBlocksSend}
+            title={reviewBlocksSend || policyBlocksSend ? sendBlockReason : ""}
           >
             {isSending ? (
               "Sending..."

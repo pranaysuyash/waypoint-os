@@ -84,4 +84,29 @@ describe('OutputPanel', () => {
     const elements = screen.getAllByText(/Internal Context Test/);
     expect(elements.length).toBeGreaterThan(1); // One in UI, one in JSON
   });
+
+  it('keeps send enabled when review status is undefined', () => {
+    render(<OutputPanel tripId="TRIP-123" trip={{ id: "TRIP-123" } as any} />);
+    const sendButton = screen.getByRole('button', { name: /Send to Customer/i });
+    expect(sendButton).not.toBeDisabled();
+  });
+
+  it('blocks send with policy reason when approval is required', () => {
+    render(
+      <OutputPanel
+        tripId="TRIP-123"
+        trip={{
+          id: "TRIP-123",
+          analytics: {
+            approvalRequiredForSend: true,
+            sendPolicyReason: "Confidence below threshold (0.75)",
+          },
+        } as any}
+      />
+    );
+    expect(screen.getByText(/Send blocked by policy/i)).toBeInTheDocument();
+    const sendButton = screen.getByRole('button', { name: /Send to Customer/i });
+    expect(sendButton).toBeDisabled();
+    expect(sendButton).toHaveAttribute('title', expect.stringContaining('Confidence below threshold'));
+  });
 });

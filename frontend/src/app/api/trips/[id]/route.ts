@@ -64,6 +64,11 @@ function transformTrip(spineTrip: any): any {
     dateWindow: String(dateWindow),
     origin: String(originCity),
     budget: `$${budgetValue.toLocaleString()}`,
+    status: spineTrip.status || 'new',
+    review_status: spineTrip.analytics?.review_status || null,
+    reviewedBy: spineTrip.analytics?.review_metadata?.reviewed_by || null,
+    reviewedAt: spineTrip.analytics?.review_metadata?.reviewed_at || null,
+    reviewNotes: spineTrip.analytics?.review_metadata?.notes || null,
     // Map decision action
     action: spineTrip.decision?.action || 'PENDING',
     // Map analytics data
@@ -77,7 +82,12 @@ function transformTrip(spineTrip: any): any {
         profitability: 0
       },
       requiresReview: spineTrip.analytics?.requires_review || false,
-      reviewReason: spineTrip.analytics?.review_reason || ''
+      reviewReason: spineTrip.analytics?.review_reason || '',
+      approvalRequiredForSend: spineTrip.analytics?.approval_required_for_send || false,
+      sendPolicyReason: spineTrip.analytics?.send_policy_reason || '',
+      ownerReviewDeadline: spineTrip.analytics?.owner_review_deadline || null,
+      escalationSeverity: spineTrip.analytics?.escalation_severity || null,
+      revisionCount: spineTrip.analytics?.revision_count || 0,
     },
     // Map validation info
     validation: {
@@ -221,8 +231,20 @@ export async function PATCH(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      const detail = errorData.detail;
+      const detailMessage =
+        typeof detail === "string"
+          ? detail
+          : typeof detail?.message === "string"
+            ? detail.message
+            : undefined;
+      const detailFailures = Array.isArray(detail?.failures) ? detail.failures : undefined;
       return NextResponse.json(
-        { error: errorData.detail || `Spine API returned ${response.status}` },
+        {
+          message: detailMessage || `Spine API returned ${response.status}`,
+          details: detailFailures,
+          error: detail || errorData.error || null,
+        },
         { status: response.status }
       );
     }

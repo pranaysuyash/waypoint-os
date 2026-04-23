@@ -18,6 +18,8 @@ export interface ApiError {
   status?: number;
   code?: string;
   details?: unknown[];
+  error?: unknown;
+  detail?: unknown;
 }
 
 export class ApiException extends Error {
@@ -129,11 +131,13 @@ class ApiClient {
             // Use default error message if JSON parsing fails
           }
 
+          const normalized = this.normalizeErrorPayload(errorData, response.statusText);
+
           throw new ApiException(
-            errorData.message,
+            normalized.message,
             response.status,
-            errorData.code,
-            errorData.details
+            normalized.code,
+            normalized.details
           );
         }
 
@@ -162,6 +166,39 @@ class ApiClient {
 
     // All retries exhausted
     throw lastError || new Error("Request failed");
+  }
+
+  private normalizeErrorPayload(
+    payload: ApiError,
+    fallbackMessage: string
+  ): { message: string; code?: string; details?: unknown[] } {
+    let message = payload.message || fallbackMessage;
+    let details = payload.details;
+    const code = payload.code;
+
+    if (!message && typeof payload.error === "string") {
+      message = payload.error;
+    }
+
+    if (payload.error && typeof payload.error === "object") {
+      const errObj = payload.error as Record<string, unknown>;
+      if (typeof errObj.message === "string") message = errObj.message;
+      if (Array.isArray(errObj.failures)) details = errObj.failures;
+    }
+
+    if (payload.detail && typeof payload.detail === "string") {
+      message = payload.detail;
+    } else if (payload.detail && typeof payload.detail === "object") {
+      const detailObj = payload.detail as Record<string, unknown>;
+      if (typeof detailObj.message === "string") message = detailObj.message;
+      if (Array.isArray(detailObj.failures)) details = detailObj.failures;
+    }
+
+    return {
+      message: message || fallbackMessage || "Request failed",
+      code,
+      details,
+    };
   }
 
   // HTTP methods
@@ -239,6 +276,7 @@ export interface Trip {
   overdue?: boolean;
   origin?: string;
   budget?: string;
+  status?: string;
   // Pipeline result fields (returned by mock API, not yet in real API)
   packet?: unknown;
   validation?: ValidationReport;
@@ -267,10 +305,25 @@ export interface Trip {
   };
   // Analytics (Wave 10)
   analytics?: {
+    marginPct?: number;
+    qualityScore?: number;
+    qualityBreakdown?: {
+      completeness: number;
+      feasibility: number;
+      risk: number;
+      profitability: number;
+    };
+    requiresReview?: boolean;
+    reviewReason?: string;
     feedback_reopen?: boolean;
     recovery_status?: string;
     recovery_started_at?: string;
     recovery_deadline?: string;
+    approvalRequiredForSend?: boolean;
+    sendPolicyReason?: string;
+    ownerReviewDeadline?: string;
+    escalationSeverity?: "high" | "critical";
+    revisionCount?: number;
   };
 }
 

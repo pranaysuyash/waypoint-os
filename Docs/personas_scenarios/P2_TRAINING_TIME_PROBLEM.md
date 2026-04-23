@@ -152,3 +152,4 @@ In simple terms: `junior starts quote -> system coaches and checks risk -> owner
   - [/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/LOGICAL_POLICY_DECISIONS_RATIFIED_2026-04-23.md](/Users/pranay/Projects/travel_agency_agent/Docs/personas_scenarios/LOGICAL_POLICY_DECISIONS_RATIFIED_2026-04-23.md)
 - Implementation note:
   - Escalation + junior send-approval policy is implemented through shared analytics policy rules and existing engine/review lifecycle paths (no parallel implementation).
+  - Output UI now surfaces send-policy blocks and reasons so junior agents see why owner approval is required.

@@ -17,8 +17,8 @@ export function SafetyTab({ trip }: SafetyTabProps) {
   } = useWorkbenchStore();
 
   const activeSafety = result_safety || (trip?.safety as SafetyResult | null);
-  const activeTravelerBundle = result_traveler_bundle || (trip?.traveler_bundle as PromptBundle | null);
-  const activeInternalBundle = result_internal_bundle || (trip?.internal_bundle as PromptBundle | null);
+  const activeTravelerBundle = (result_traveler_bundle as PromptBundle | null) ?? (trip?.traveler_bundle as PromptBundle | null);
+  const activeInternalBundle = (result_internal_bundle as PromptBundle | null) ?? (trip?.internal_bundle as PromptBundle | null);
 
   if (!activeSafety) {
     return (
@@ -96,8 +96,8 @@ export function SafetyTab({ trip }: SafetyTabProps) {
             <div>
               <div style={{ marginBottom: "12px" }}>
                 <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>System Context</strong>
-                <p style={{ fontSize: "13px", whiteSpace: "pre-wrap", marginTop: "4px" }}>
-                  {travelerBundle.system_context || "—"}
+                  <p style={{ fontSize: "13px", whiteSpace: "pre-wrap", marginTop: "4px" }}>
+                    {travelerBundle?.system_context || "—"}
                 </p>
               </div>
               <div style={{ marginBottom: "12px" }}>
