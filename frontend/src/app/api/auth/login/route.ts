@@ -14,11 +14,12 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
-      return NextResponse.json(data, { status: response.status });
+      const errorData = await response.json().catch(() => ({}));
+      return NextResponse.json(errorData, { status: response.status });
     }
+
+    const data = await response.json();
 
     // The backend returns access_token in body and sets refresh_token as httpOnly cookie.
     // We forward the refresh_token cookie and also set access_token as a cookie

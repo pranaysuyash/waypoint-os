@@ -14,6 +14,16 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     });
 
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return NextResponse.json(errorData, { status: response.status });
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return NextResponse.json(errorData, { status: response.status });
+    }
+
     const data = await response.json();
     return NextResponse.json(data, { status: response.status });
   } catch (error) {

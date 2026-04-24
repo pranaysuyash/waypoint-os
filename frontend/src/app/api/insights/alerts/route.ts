@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
     );
 
     if (!response.ok) {
-      throw new Error(`Analytics service responded with ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Analytics service responded with ${response.status}`);
     }
 
     const data = await response.json();
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error proxying to analytics alerts:", error);
     return NextResponse.json(
-      { error: "Failed to fetch alerts" },
+      { error: error instanceof Error ? error.message : "Failed to fetch alerts" },
       { status: 500 }
     );
   }
@@ -45,7 +46,11 @@ export async function POST(request: Request) {
     );
 
     if (!response.ok) {
-      throw new Error(`Analytics service responded with ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      return NextResponse.json(
+        { error: errorData.detail || `Analytics service responded with ${response.status}` },
+        { status: response.status }
+      );
     }
 
     const data = await response.json();
@@ -53,7 +58,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error dismissing alert:", error);
     return NextResponse.json(
-      { error: "Failed to dismiss alert" },
+      { error: error instanceof Error ? error.message : "Failed to dismiss alert" },
       { status: 500 }
     );
   }

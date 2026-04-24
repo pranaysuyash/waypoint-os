@@ -20,11 +20,12 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
-      return NextResponse.json(data, { status: response.status });
+      const errorData = await response.json().catch(() => ({}));
+      return NextResponse.json(errorData, { status: response.status });
     }
+
+    const data = await response.json();
 
     const nextResponse = NextResponse.json(data, { status: response.status });
 

@@ -13,7 +13,8 @@ export async function GET() {
     });
 
     if (!response.ok) {
-      throw new Error(`Spine API unified-state returned ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Spine API unified-state returned ${response.status}`);
     }
 
     const data = await response.json();

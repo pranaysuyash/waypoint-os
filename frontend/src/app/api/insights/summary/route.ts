@@ -12,7 +12,8 @@ export async function GET(request: NextRequest) {
     });
 
     if (!response.ok) {
-      throw new Error(`Analytics service responded with ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Analytics service responded with ${response.status}`);
     }
 
     const data = await response.json();
