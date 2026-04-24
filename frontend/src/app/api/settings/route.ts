@@ -6,11 +6,13 @@ export async function GET() {
   try {
     const response = await fetch(`${SPINE_API_URL}/api/settings`, {
       method: "GET",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
       console.error("Spine API settings error:", errorData.detail || response.status);
       return NextResponse.json(
         { error: errorData.detail || "Failed to fetch settings" },
@@ -19,7 +21,9 @@ export async function GET() {
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+    const nextResponse = NextResponse.json(data);
+    nextResponse.headers.set("Cache-Control", "public, max-age=300, s-maxage=300");
+    return nextResponse;
   } catch (error) {
     console.error("Error fetching settings from spine-api:", error);
     return NextResponse.json(

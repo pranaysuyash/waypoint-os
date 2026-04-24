@@ -10,16 +10,16 @@ export async function GET(request: Request) {
       ? `${spineApiUrl}/assignments?agent_id=${encodeURIComponent(agentId)}`
       : `${spineApiUrl}/assignments`;
 
-    const response = await fetch(url, {
-      cache: "no-store",
-    });
+    const response = await fetch(url);
 
     if (!response.ok) {
       throw new Error(`Spine API returned ${response.status}`);
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+    const nextResponse = NextResponse.json(data);
+    nextResponse.headers.set("Cache-Control", "public, max-age=30, s-maxage=30");
+    return nextResponse;
   } catch (error) {
     console.error("Error fetching assignments from spine-api:", error);
     return NextResponse.json(

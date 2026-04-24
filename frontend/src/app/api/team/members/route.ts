@@ -5,7 +5,6 @@ const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 export async function GET() {
   try {
     const response = await fetch(`${SPINE_API_URL}/api/team/members`, {
-      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
       },
@@ -16,7 +15,9 @@ export async function GET() {
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+    const nextResponse = NextResponse.json(data);
+    nextResponse.headers.set("Cache-Control", "public, max-age=60, s-maxage=60");
+    return nextResponse;
   } catch (error) {
     console.error("Error fetching team members from spine-api:", error);
     return NextResponse.json(
