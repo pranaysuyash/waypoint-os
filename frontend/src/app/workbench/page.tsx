@@ -40,6 +40,9 @@ const OutputPanel = lazy(() =>
 const FeedbackPanel = lazy(() =>
   import('@/components/workspace/panels/FeedbackPanel').then((m) => ({ default: m.FeedbackPanel }))
 );
+const FrontierDashboard = lazy(() =>
+  import('@/components/workspace/FrontierDashboard').then((m) => ({ FrontierDashboard: m.FrontierDashboard }))
+);
 
 const workspaceTabs = [
   { id: 'intake', label: 'New Inquiry' },
@@ -48,6 +51,7 @@ const workspaceTabs = [
   { id: 'strategy', label: 'Build Options' },
   { id: 'safety', label: 'Final Review' },
   { id: 'output', label: 'Output Delivery' },
+  { id: 'frontier', label: 'Frontier OS' },
   { id: 'feedback', label: 'Feedback' },
 ];
 
@@ -158,6 +162,7 @@ function WorkbenchContent() {
       if (result.traveler_bundle) store.setResultTravelerBundle(result.traveler_bundle);
       if (result.safety) store.setResultSafety(result.safety as unknown as SafetyResult);
       if (result.fees) store.setResultFees(result.fees as unknown as FeeCalculationResult);
+      if (result.frontier_result) store.setResultFrontier(result.frontier_result);
       store.setResultRunTs(new Date().toISOString());
 
       setRunSuccess(true);
@@ -364,6 +369,16 @@ function WorkbenchContent() {
               {activeTab === 'strategy' && <StrategyTab trip={trip} />}
               {activeTab === 'safety' && <SafetyTab trip={trip} />}
               {activeTab === 'output' && <OutputPanel trip={trip} />}
+              {activeTab === 'frontier' && (
+                <FrontierDashboard 
+                  packetId={trip?.id}
+                  sentiment={store.result_frontier?.sentiment_score ?? trip?.analytics?.sentiment_score}
+                  isAnxious={store.result_frontier?.anxiety_alert ?? (trip?.analytics?.sentiment_score !== undefined ? trip.analytics.sentiment_score < 0.4 : false)}
+                  ghostActive={store.result_frontier?.ghost_triggered ?? (trip?.analytics?.autonomic_mode === 'active')}
+                  intelHits={store.result_frontier?.intelligence_hits ?? trip?.analytics?.intelligence_alerts ?? []}
+                  logicRationale={store.result_frontier?.audit_reason || store.result_decision?.rationale || trip?.decision?.rationale}
+                />
+              )}
               {activeTab === 'feedback' && trip && <FeedbackPanel trip={trip} />}
             </Suspense>
           </div>

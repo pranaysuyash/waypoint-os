@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { TripReview, ReviewStatus } from "@/types/governance";
+import { forwardAuthHeaders } from "@/lib/proxy-utils";
 
 // ============================================================================
 // SPINE API RAW TYPES
@@ -69,9 +70,7 @@ export async function GET(request: NextRequest) {
     const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
     const response = await fetch(`${SPINE_API_URL}/analytics/reviews`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: forwardAuthHeaders(request),
     });
 
     if (!response.ok) {

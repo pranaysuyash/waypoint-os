@@ -5,23 +5,30 @@ import ItineraryCheckerPage from '@/app/itinerary-checker/page';
 
 describe('public marketing pages', () => {
   it('renders the B2B landing page copy and CTA surfaces', () => {
-    render(<HomePage />);
+    const { container } = render(<HomePage />);
 
-    expect(screen.getByText('Waypoint OS')).toBeInTheDocument();
+    expect(screen.getAllByText('Waypoint OS').length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole('heading', {
+        name: /Waypoint OS/i,
+        level: 1,
+      }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', {
         name: /The operating system for boutique travel agencies/i,
+        level: 2,
       }),
     ).toBeInTheDocument();
     expect(
       screen
-        .getAllByRole('link', { name: /Create workspace/i })
+        .getAllByRole('link', { name: /Book a demo/i })
         .every((link) => link.getAttribute('href') === '/signup'),
     ).toBe(true);
     expect(
-      screen.getByRole('link', { name: /Explore the itinerary checker/i }),
-    ).toHaveAttribute('href', '/itinerary-checker');
-    expect(screen.getByLabelText('Waypoint logo directions')).toBeInTheDocument();
+      screen.getByRole('link', { name: /Explore the product/i }),
+    ).toHaveAttribute('href', '#product');
+    expect(container.querySelector('img[src="/brand/waypoint-logo-compass.svg"]')).toBeInTheDocument();
   });
 
   it('renders the itinerary checker landing page with upload-first framing', () => {

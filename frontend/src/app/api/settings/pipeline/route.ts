@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { forwardAuthHeaders } from "@/lib/proxy-utils";
 
 const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const response = await fetch(`${SPINE_API_URL}/api/settings/pipeline`, {
       cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: forwardAuthHeaders(request),
     });
 
     if (!response.ok) {
@@ -32,9 +31,7 @@ export async function PUT(request: NextRequest) {
 
     const response = await fetch(`${SPINE_API_URL}/api/settings/pipeline`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: forwardAuthHeaders(request),
       body: JSON.stringify(body),
     });
 

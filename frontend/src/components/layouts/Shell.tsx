@@ -25,13 +25,13 @@ import { UserMenu } from './UserMenu';
 
 const NAV = [
   {
-    label: 'OPERATE',
+    label: 'WORK',
     items: [
       {
         href: '/inbox',
         label: 'Inbox',
         icon: Inbox,
-        description: 'Triage and prioritize incoming demand',
+        description: 'Sort and prioritize new inquiries',
       },
       {
         href: '/workspace',
@@ -48,7 +48,7 @@ const NAV = [
     ],
   },
   {
-    label: 'GOVERN',
+    label: 'MANAGE',
     items: [
       {
         href: '/owner/reviews',
@@ -71,13 +71,13 @@ const NAV = [
     ],
   },
   {
-    label: 'TOOLS',
+    label: 'REVIEW',
     items: [
       {
         href: '/workbench',
         label: 'Workbench',
         icon: Wrench,
-        description: 'Audit surface — fixture runs, QA, inspection',
+        description: 'Review tools — testing, checks',
       },
     ],
   },
@@ -126,13 +126,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </a>
 
       {/* ── Sidebar ── */}
-      <aside
-        className='flex flex-col w-[72px] md:w-[220px] shrink-0 border-r border-[#1c2128] bg-[#0a0d11]'
-        aria-label='Main navigation'
-      >
+       <aside
+         className='flex flex-col w-[72px] md:w-[220px] shrink-0 border-r border-[rgba(96,111,128,0.16)] bg-[#0a0d11] shell-sidebar'
+         aria-label='Main navigation'
+       >
         {/* Brand */}
         <div className='flex items-center gap-2.5 px-3 md:px-4 h-14 border-b border-[#1c2128] shrink-0 justify-center md:justify-start'>
-          <div className='flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-[#2563eb] to-[#39d0d8] shrink-0'>
+          <div className='flex h-7 w-7 items-center justify-center rounded-sm bg-gradient-to-br from-[#2563eb] to-[#39d0d8] shrink-0 shadow-[0_8px_24px_rgba(37,99,235,0.3)] ring-1 ring-white/10'>
             <MapPin className='h-3.5 w-3.5 text-white' aria-hidden='true' />
           </div>
           <div className='min-w-0 hidden md:block'>
@@ -152,7 +152,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         >
           {NAV.map((section) => (
             <div key={section.label}>
-              <div className='hidden md:block px-2 pb-1.5 text-xs font-semibold tracking-widest text-[#484f58] uppercase'>
+              <div className='hidden md:block px-2 pb-1.5 text-xs font-semibold tracking-widest text-[#8b949e] uppercase'>
                 {section.label}
               </div>
               <ul className='space-y-0.5' role='list'>
@@ -165,9 +165,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
                       <Link
                         href={item.href}
                         className={cn(
-                          'flex items-center justify-center md:justify-start gap-2.5 px-2.5 py-2 rounded-md text-[13px] transition-all duration-150',
+                          'flex items-center justify-center md:justify-start gap-2.5 px-2.5 py-2 rounded-sm text-[13px] transition-all duration-200',
                           isActive
-                            ? 'bg-[#161b22] text-[#e6edf3] border-l-2 border-[#58a6ff]'
+                            ? 'bg-[#58a6ff]/10 text-[#e6edf3] shadow-[inset_0_0_12px_rgba(88,166,255,0.15)] border-l-0'
                             : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#0f1115]',
                         )}
                         aria-current={isActive ? 'page' : undefined}
@@ -201,7 +201,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               className='text-xs text-[#8b949e] font-mono'
               aria-live='polite'
             >
-              system · live
+              Operations live
             </span>
           </div>
           <div className='mt-1 flex items-center gap-1.5 text-xs text-[#484f58]'>

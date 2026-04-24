@@ -8,6 +8,8 @@ Token delivery strategy:
 
 import logging
 
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +26,9 @@ from services.auth_service import (
 )
 
 logger = logging.getLogger("spine-api.auth")
+
+# Environment-aware secure flag for cookies
+_COOKIE_SECURE = os.environ.get("ENVIRONMENT", "development").lower() == "production"
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -81,7 +86,7 @@ async def post_signup(request: SignupRequest, response: Response, db: AsyncSessi
         key="refresh_token",
         value=result["refresh_token"],
         httponly=True,
-        secure=False,
+        secure=_COOKIE_SECURE,
         samesite="lax",
         max_age=7 * 24 * 60 * 60,
         path="/api/auth",
@@ -107,7 +112,7 @@ async def post_login(request: LoginRequest, response: Response, db: AsyncSession
         key="refresh_token",
         value=result["refresh_token"],
         httponly=True,
-        secure=False,
+        secure=_COOKIE_SECURE,
         samesite="lax",
         max_age=7 * 24 * 60 * 60,
         path="/api/auth",
@@ -178,7 +183,7 @@ async def post_refresh(request: RefreshRequest, response: Response, db: AsyncSes
         key="refresh_token",
         value=result["refresh_token"],
         httponly=True,
-        secure=False,
+        secure=_COOKIE_SECURE,
         samesite="lax",
         max_age=7 * 24 * 60 * 60,
         path="/api/auth",

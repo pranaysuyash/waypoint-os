@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { forwardAuthHeaders } from "@/lib/proxy-utils";
 
 const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 
@@ -8,9 +9,7 @@ export async function POST(request: NextRequest) {
 
     const response = await fetch(`${SPINE_API_URL}/api/team/invite`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: forwardAuthHeaders(request),
       body: JSON.stringify(body),
     });
 

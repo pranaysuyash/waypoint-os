@@ -35,6 +35,7 @@ from .config.agency_settings import AgencySettings
 from .gates import NB01CompletionGate, NB02JudgmentGate, GateVerdict, AutonomyOutcome
 from src.fees.calculation import calculate_trip_fees
 from src.suitability.integration import assess_activity_suitability
+from .frontier_orchestrator import run_frontier_orchestration, FrontierOrchestrationResult
 import json
 
 
@@ -110,6 +111,9 @@ class SpineResult:
 
     # Optional compare-mode output
     assertion_result: Optional[Dict[str, Any]] = None
+
+    # Frontier Autonomic outcomes
+    frontier_result: Optional[FrontierOrchestrationResult] = None
 
     # Metadata
     run_timestamp: str = ""
@@ -252,6 +256,18 @@ def run_spine_once(
         "reasons": autonomy_outcome.reasons,
     }
 
+    # --- Phase 3.2: Frontier Orchestration (Ghost Concierge & Sentiment) ---
+    frontier_result = run_frontier_orchestration(packet, decision, agency_settings=actual_settings)
+    
+    # Record frontier metadata in decision rationale
+    decision.rationale["frontier"] = {
+        "ghost_triggered": frontier_result.ghost_triggered,
+        "ghost_workflow_id": frontier_result.ghost_workflow_id,
+        "sentiment_score": frontier_result.sentiment_score,
+        "anxiety_alert": frontier_result.anxiety_alert,
+        "intelligence_hits": frontier_result.intelligence_hits,
+    }
+
     # --- Phase 4: Strategy ---
     strategy = build_session_strategy(decision, packet, agency_settings=actual_settings)
 
@@ -319,6 +335,7 @@ def run_spine_once(
         fees=fees,
         autonomy_outcome=autonomy_outcome,
         assertion_result=assertion_result,
+        frontier_result=frontier_result,
         run_timestamp=run_timestamp,
     )
 
@@ -363,6 +380,8 @@ def _create_empty_spine_result(packet, validation, decision, timestamp):
         leakage_result={"leaks": [], "is_safe": True},
         fees=None,
         autonomy_outcome=None,
+        assertion_result=None,
+        frontier_result=None,
         run_timestamp=timestamp
     )
 

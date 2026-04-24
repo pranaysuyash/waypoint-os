@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { forwardAuthHeaders } from "@/lib/proxy-utils";
 
 export async function POST(
   request: NextRequest,
@@ -17,9 +18,7 @@ export async function POST(
     const spineApiUrl = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
     const response = await fetch(`${spineApiUrl}/trips/${tripId}/review/action`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: forwardAuthHeaders(request),
       body: JSON.stringify({
         action,
         notes,

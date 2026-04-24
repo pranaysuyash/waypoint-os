@@ -9,7 +9,7 @@ import {
   CircleDashed,
   FileText,
   Loader2,
-  MapPinned,
+  MessageSquareText,
   NotebookPen,
   Plane,
   Search,
@@ -19,14 +19,11 @@ import {
 import styles from './marketing.module.css';
 
 type HeroSceneProps = {
-  mode: 'agency' | 'checker';
+  mode: 'checker';
 };
 
-export function HeroScene({ mode }: HeroSceneProps) {
-  const nodes =
-    mode === 'agency'
-      ? ['Lead lands', 'Blockers found', 'Options framed', 'Owner review', 'Traveler-safe reply']
-      : ['Plan uploaded', 'Transfers checked', 'Pacing reviewed', 'Brief written'];
+export function HeroScene({ mode: _mode }: HeroSceneProps) {
+  const nodes = ['Plan uploaded', 'Transfers checked', 'Pacing reviewed', 'Brief written'];
 
   return (
     <div className={styles.heroScene} aria-hidden='true'>
@@ -44,37 +41,186 @@ export function HeroScene({ mode }: HeroSceneProps) {
         ))}
       </div>
       <div className={styles.sceneArtifact}>
-        {mode === 'agency' ? (
-          <>
-            <MapPinned className='h-5 w-5 text-[#39d0d8]' />
-            <strong>Agency command graph</strong>
-            <span>Inbox to output, with judgment preserved.</span>
-          </>
-        ) : (
-          <>
-            <NotebookPen className='h-5 w-5 text-[#d29922]' />
-            <strong>Trip notebook active</strong>
-            <span>Findings become questions worth asking.</span>
-          </>
-        )}
+        <NotebookPen className='h-5 w-5 text-[#39d0d8]' />
+        <strong>Trip notebook active</strong>
+        <span>Findings become questions worth asking.</span>
       </div>
     </div>
   );
 }
 
-export function LogoShowcase() {
+export function DataTransformationHero() {
+  const [isStructured, setIsStructured] = useState(false);
+
+  // Toggle every 4 seconds to show the transformation
+  useMemo(() => {
+    const timer = setInterval(() => {
+      setIsStructured((prev) => !prev);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
-    <div className={styles.logoShowcase} aria-label='Waypoint logo directions'>
-      {[
-        ['/brand/waypoint-logo-primary.svg', 'Primary lockup'],
-        ['/brand/waypoint-logo-compass.svg', 'Compass mark'],
-        ['/brand/waypoint-logo-notebook.svg', 'Notebook wedge mark'],
-      ].map(([src, label]) => (
-        <div key={src} className={styles.logoTile}>
-          <img src={src} alt={`Waypoint ${label}`} />
-          <span>{label}</span>
+    <div className={styles.agencyCockpit} aria-label='Waypoint OS product preview'>
+      <div className={styles.cockpitHeader}>
+        <div>
+          <span>OPERATOR WORKSPACE</span>
+          <strong>{isStructured ? 'Structured Brief' : 'Raw Inquiry'}</strong>
         </div>
-      ))}
+        <div className={styles.cockpitPill} style={{ background: isStructured ? '#39d0d822' : '#58a6ff22', color: isStructured ? '#39d0d8' : '#58a6ff' }}>
+          {isStructured ? 'NORMALIZED' : 'PROCESSING'}
+        </div>
+      </div>
+
+      <div className={styles.transformationContainer}>
+        {isStructured ? (
+          <div className={styles.structuredView}>
+            <div className={styles.cockpitPanelWide}>
+              <div className={styles.panelTitle}>
+                <FileText className='h-4 w-4' />
+                <span>TRIP PACKET v0.2</span>
+              </div>
+              <div className={styles.packetGrid}>
+                <div className={styles.packetItem}>
+                  <span>Destination</span>
+                  <strong>Amalfi Coast, Italy</strong>
+                </div>
+                <div className={styles.packetItem}>
+                  <span>Travelers</span>
+                  <strong>2 Adults, 2 Kids (8, 11)</strong>
+                </div>
+                <div className={styles.packetItem}>
+                  <span>Dates</span>
+                  <strong>June 14 - June 28</strong>
+                </div>
+                <div className={styles.packetItem}>
+                  <span>Budget</span>
+                  <strong>Premium ($25k - $30k)</strong>
+                </div>
+              </div>
+              <div className={styles.blockerAlert}>
+                <CircleDashed className='h-4 w-4 text-[#d29922]' />
+                <span>Detected: Passport validity under 6 months for 1 passenger</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className={styles.rawView}>
+            <div className={styles.cockpitPanelWide}>
+              <div className={styles.panelTitle}>
+                <MessageSquareText className='h-4 w-4' />
+                <span>UNSTRUCTURED INTAKE</span>
+              </div>
+              <div className={styles.rawText}>
+                "Hey Alex, looking at Italy again for the summer. Maybe Amalfi? 2 weeks in June. 
+                Same group as last time. Need big rooms for the kids. One of the passports might be 
+                expiring soon though, can we check that? Budget is around what we spent in Japan..."
+              </div>
+              <div className={styles.scanLine} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className={styles.cockpitFooter}>
+        <div className={styles.footerStep}>
+          <div className={isStructured ? styles.stepActive : styles.stepInactive}>1</div>
+          <span>Intake</span>
+        </div>
+        <div className={styles.footerLine} />
+        <div className={styles.footerStep}>
+          <div className={isStructured ? styles.stepActive : styles.stepInactive}>2</div>
+          <span>Normalize</span>
+        </div>
+        <div className={styles.footerLine} />
+        <div className={styles.footerStep}>
+          <div className={isStructured ? styles.stepActive : styles.stepInactive}>3</div>
+          <span>Detect Risks</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function AgencyHeroCockpit() {
+  return (
+    <div className={styles.agencyCockpit} aria-label='Waypoint OS product preview'>
+      <div className={styles.cockpitHeader}>
+        <div>
+          <span>Good morning, Alex</span>
+          <strong>Here is what is moving today.</strong>
+        </div>
+        <div className={styles.cockpitCounters}>
+          <span>Unread <strong>12</strong></span>
+          <span>Action <strong>28</strong></span>
+          <span>Trips <strong>74</strong></span>
+        </div>
+      </div>
+
+      <div className={styles.dashboardGrid}>
+        <section className={`${styles.cockpitPanel} ${styles.inboxPanel}`}>
+          <div className={styles.panelTitle}>
+            <UploadCloud className='h-4 w-4' />
+            <span>Inbox</span>
+          </div>
+          {[
+            ['New inquiry', 'Honeymoon in Italy', '5m', '#39d0d8'],
+            ['Follow up', 'Family trip to Japan', '18m', '#58a6ff'],
+            ['Change request', 'Photo safari route', '1h', '#8fb0c9'],
+            ['Supplier update', 'DMC response', '2h', '#39d0d8'],
+          ].map(([title, body, time, color]) => (
+            <div key={title} className={styles.inboxRow}>
+              <i style={{ background: color }} />
+              <span><strong>{title}</strong>{body}</span>
+              <em>{time}</em>
+            </div>
+          ))}
+        </section>
+
+        <section className={`${styles.cockpitPanel} ${styles.workspacePanel}`}>
+          <div className={styles.panelTitle}>
+            <NotebookPen className='h-4 w-4' />
+            <span>Workspaces</span>
+          </div>
+          <div className={styles.stateRows}>
+            {[
+              ['Intake', '8', '#39d0d8'],
+              ['Decision & Clarification', '12', '#58a6ff'],
+              ['Quotes & Options', '15', '#39d0d8'],
+              ['Booking Readiness', '9', '#8fb0c9'],
+            ].map(([label, value, color]) => (
+              <div key={label}>
+                <span style={{ background: color }} />
+                <strong>{label}</strong>
+                <em>{value}</em>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className={`${styles.cockpitPanel} ${styles.revenuePanel}`}>
+          <div className={styles.panelTitle}>
+            <Search className='h-4 w-4' />
+            <span>Revenue MTD</span>
+          </div>
+          <div className={styles.revenueValue}>$284,600</div>
+          <p className={styles.revenueDelta}>+18% vs last month</p>
+          <div className={styles.routeMiniChart}>
+            <i />
+            <i />
+            <i />
+            <i />
+          </div>
+        </section>
+
+        <section className={`${styles.cockpitPanel} ${styles.aiPanel}`}>
+          <div className={styles.panelTitle}>
+            <Sparkles className='h-4 w-4' />
+            <span>AI Copilot</span>
+          </div>
+          <p className={styles.outputText}>27 tasks completed. 21 hours saved this week.</p>
+        </section>
+      </div>
     </div>
   );
 }

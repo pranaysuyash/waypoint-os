@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { forwardAuthHeaders } from "@/lib/proxy-utils";
 
 // Map spine-api status values to frontend state values
 const statusMap: Record<string, "green" | "amber" | "red" | "blue"> = {
@@ -195,9 +196,7 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(spineApiUrl, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: forwardAuthHeaders(request),
     });
 
     if (!response.ok) {

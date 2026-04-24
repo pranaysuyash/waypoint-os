@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { forwardAuthHeaders } from "@/lib/proxy-utils";
 
 // Helper function to safely get nested values
 function getNestedValue(obj: any, path: string, defaultValue: any = null): any {
@@ -231,9 +232,7 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(spineApiUrl, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: forwardAuthHeaders(request),
     });
 
     if (!response.ok) {

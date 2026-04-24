@@ -170,12 +170,29 @@ TONE_BY_CONFIDENCE = {
     (0.8, 1.0): "direct",
 }
 
+SENTIMENT_OVERRIDE_TONE = {
+    "anxiety_alert": "measured_empathy",
+    "crisis": "direct_crisis_support",
+}
+
 TONAL_GUARDRAILS = {
     "cautious": [
         "State uncertainty explicitly",
         "Ask more questions before making suggestions",
         "Avoid definitive statements",
         "Offer multiple possibilities",
+    ],
+    "measured_empathy": [
+        "Acknowledge any stress or urgency mentioned",
+        "Keep responses brief and calming",
+        "Focus on immediate next steps to resolve anxiety",
+        "Use supportive, reassuring language",
+    ],
+    "direct_crisis_support": [
+        "Provide zero-distraction instructions",
+        "Highlight emergency contacts immediately",
+        "Acknowledge the situation with high authority",
+        "Omit all marketing or future-planning content",
     ],
     "measured": [
         "Focus questions on gaps",
@@ -413,8 +430,17 @@ def build_session_strategy(
     """
     # Determine tone from confidence, then apply agency overrides
     tone = determine_tone(decision.confidence.overall)
+    
+    # --- Frontier Sentiment Pivot ---
+    frontier_data = decision.rationale.get("frontier", {})
+    if frontier_data.get("anxiety_alert"):
+        tone = "measured_empathy"
+    if decision.operating_mode == "emergency" or frontier_data.get("ghost_triggered"):
+        tone = "direct_crisis_support"
+
     if agency_settings and agency_settings.brand_tone:
         tone = agency_settings.brand_tone
+    
     tonal_guardrails = get_tonal_guardrails(tone)
 
     # Get mode-specific goal and opening

@@ -95,9 +95,11 @@ When standard workflows break, the AI must guide the agent through specific "Exc
 
 ## 5. Operational Readiness Roadmap
 
-| Phase | Component | Readiness Goal |
-|-------|-----------|----------------|
-| **Hardening** | Schema Expansion | Add `GhostWorkflow`, `EmotionalLog`, `IntelligencePool` tables. |
-| **Operational** | Playbook Training | Red-team simulations for each playbook using the Digital Twin. |
-| **Audit** | Integrity Watchdog | Background service monitoring cross-database consistency. |
-| **Handoff** | Brief Generation | Automated LLM-driven synthesis of "Crisis State" for humans. |
+| Phase | Component | Readiness Goal | Status |
+|-------|-----------|----------------|--------|
+| **Hardening** | Schema Expansion | Add `GhostWorkflow`, `EmotionalLog`, `IntelligencePool` tables. | ✅ Implemented (`models/frontier.py`) |
+| **Operational** | API Scaffolding | Endpoints for workflow tracking and emotion logging. | ✅ Implemented (`routers/frontier.py`) |
+| **Delivery** | WhatsApp Comms | "Copy-for-WhatsApp" high-fidelity formatter. | ✅ Implemented (`whatsapp_formatter.py`) |
+| **Functional** | Playbook Training | Red-team simulations for each playbook using the Digital Twin. | 🟡 In Progress |
+| **Audit** | Integrity Watchdog | Background service monitoring cross-database consistency. | 🟡 In Progress |
+| **Handoff** | Brief Generation | Automated LLM-driven synthesis of "Crisis State" for humans. | 🟡 In Progress |

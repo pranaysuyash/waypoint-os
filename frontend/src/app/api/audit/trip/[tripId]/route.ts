@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { forwardAuthHeaders } from "@/lib/proxy-utils";
 
 const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 
@@ -12,9 +13,7 @@ export async function GET(
     // Backend doesn't have a dedicated /audit/trip endpoint, so we filter client-side
     const response = await fetch(`${SPINE_API_URL}/audit?limit=1000`, {
       cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: forwardAuthHeaders(request),
     });
 
     if (!response.ok) {

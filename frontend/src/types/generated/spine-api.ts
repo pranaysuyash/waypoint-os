@@ -79,6 +79,18 @@ export interface HealthResponse {
   status: string;
   version: string;
 }
+export interface FrontierOrchestrationResult {
+  ghost_triggered: boolean;
+  ghost_workflow_id?: string | null;
+  sentiment_score: number;
+  anxiety_alert: boolean;
+  intelligence_hits: {
+    [k: string]: unknown;
+  }[];
+  mitigation_applied: boolean;
+  requires_manual_audit: boolean;
+  audit_reason?: string | null;
+}
 export interface InsightsSummary {
   totalInquiries?: number;
   convertedToBooked?: number;
@@ -221,6 +233,7 @@ export interface SpineRunResponse {
   } | null;
   autonomy_outcome?: AutonomyOutcome | null;
   assertions?: AssertionResult[] | null;
+  frontier_result?: FrontierOrchestrationResult | null;
   meta?: RunMeta;
 }
 export interface StageMetrics {

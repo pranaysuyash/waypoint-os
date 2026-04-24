@@ -48,6 +48,17 @@ class AutonomyOutcome(BaseModel):
     reasons: List[str] = Field(default_factory=list)
 
 
+class FrontierOrchestrationResult(BaseModel):
+    ghost_triggered: bool = False
+    ghost_workflow_id: Optional[str] = None
+    sentiment_score: float = 0.5
+    anxiety_alert: bool = False
+    intelligence_hits: List[Dict[str, Any]] = Field(default_factory=list)
+    mitigation_applied: bool = False
+    requires_manual_audit: bool = False
+    audit_reason: Optional[str] = None
+
+
 class RunMeta(BaseModel):
     stage: str = "discovery"
     operating_mode: str = "normal_intake"
@@ -85,6 +96,7 @@ class SpineRunResponse(BaseModel):
     fees: Optional[Dict[str, Any]] = None
     autonomy_outcome: Optional[AutonomyOutcome] = None
     assertions: Optional[List[AssertionResult]] = None
+    frontier_result: Optional[FrontierOrchestrationResult] = None
     meta: RunMeta = Field(default_factory=RunMeta)
 
 
@@ -361,4 +373,5 @@ __all__ = [
     "QualityScore",
     "AnalyticsPayload",
     "OperationalAlert",
+    "FrontierOrchestrationResult",
 ]

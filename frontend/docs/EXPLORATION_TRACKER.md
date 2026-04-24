@@ -139,7 +139,21 @@ This document tracks all potential areas for deep exploration and research withi
 
 ---
 
-### ⏳ Safety / Risk Systems
+### ✅ Safety / Risk Systems (Complete)
+
+**Description:** Budget validation, risk flagging, compliance checks, and safety nets
+
+**Documentation:** 5 documents (all complete) ✅
+
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `SAFETY_01_TECHNICAL_DEEP_DIVE.md` | ✅ |
+| 2 | `SAFETY_02_UX_UI_DEEP_DIVE.md` | ✅ |
+| 3 | `SAFETY_03_BUSINESS_VALUE_DEEP_DIVE.md` | ✅ |
+| 4 | `SAFETY_04_COMPLIANCE_DEEP_DIVE.md` | ✅ |
+| 5 | `SAFETY_05_ESCALATION_DEEP_DIVE.md` | ✅ |
+
+**Master Index:** `SAFETY_DEEP_DIVE_MASTER_INDEX.md`
 
 **Description:** Budget validation, risk flagging, compliance checks, and safety nets
 
@@ -159,22 +173,20 @@ This document tracks all potential areas for deep exploration and research withi
 
 ---
 
-### ⏳ SmartCombobox / Field Editing
+### 🔄 SmartCombobox / Field Editing (Active)
 
 **Description:** Intelligent form editing, autocomplete, validation, and change tracking
 
-**Key Questions:**
-- How does the smart autocomplete work?
-- What validation rules exist?
-- How are changes tracked and displayed?
-- What's the conflict resolution strategy?
-- How does bulk editing work?
+**Documentation:** 4 documents planned (3 complete)
 
-**Proposed Documents:**
-1. Technical Deep Dive — Autocomplete engine, validation
-2. UX/UI Deep Dive — Field components, edit experience
-3. Data Dictionary Deep Dive — All field types, formats
-4. Change Tracking Deep Dive — Audit trail implementation
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `FIELD_01_TECHNICAL_DEEP_DIVE.md` | ✅ |
+| 2 | `FIELD_02_UX_UI_DEEP_DIVE.md` | ✅ |
+| 3 | `FIELD_03_DATA_DICT_DEEP_DIVE.md` | ✅ |
+| 4 | `FIELD_04_CHANGE_TRACKING_DEEP_DIVE.md` | ⏳ |
+
+**Master Index:** `FIELD_DEEP_DIVE_MASTER_INDEX.md`
 
 ---
 
@@ -394,8 +406,9 @@ This document tracks all potential areas for deep exploration and research withi
 
 | Category | Count |
 |----------|-------|
-| **Complete** | 4 (Timeline, Output, Decision, Intake) + 44 docs |
-| **Planned** | 12 areas |
+| **Complete** | 5 (Timeline, Output, Decision, Intake, Safety) + 48 docs |
+| **In Progress** | 1 (Field Editing) + 3 docs |
+| **Planned** | 10 areas |
 | **Proposed** | 4 cross-cutting |
 | **Total** | 19 areas |
 
@@ -403,8 +416,8 @@ This document tracks all potential areas for deep exploration and research withi
 
 | Area | Exploration Status | Documents |
 |------|-------------------|-----------|
-| **Workspace Core** | Timeline ✅, Output ✅, Decision ✅ | 38 |
-| **Trip Management** | Intake ✅, Safety ⏳ | 6 |
+| **Workspace Core** | Timeline ✅, Output ✅, Decision ✅, Field 🔄 | 41 |
+| **Trip Management** | Intake ✅, Safety ✅ | 11 |
 | **Communication** | Inbox ⏳, Comm Hub ⏳ | 0 |
 | **Customer-Facing** | Customer Portal ⏳, Mobile ⏳ | 0 (Timeline has customer section) |
 | **Business Ops** | Analytics ⏳, Reporting ⏳, Settings ⏳ | 0 |
@@ -461,4 +474,4 @@ Based on product impact and dependencies:
 
 **Last Updated:** 2026-04-24
 
-**Next:** Safety / Risk Systems or Inbox Management (select next exploration area)
+**Next:** Field Change Tracking Deep Dive (FIELD_04) — currently in progress

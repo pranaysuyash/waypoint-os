@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { forwardAuthHeaders } from "@/lib/proxy-utils";
 
 /**
  * Unified State API — Pure proxy to backend aggregator.
@@ -6,7 +7,7 @@ import { NextResponse } from 'next/server';
  * The backend (DashboardAggregator) is the sole source of truth.
  * No local aggregation or fallback logic exists in the frontend.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const response = await fetch(`${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/api/system/unified-state`, {
       next: { revalidate: 0 },

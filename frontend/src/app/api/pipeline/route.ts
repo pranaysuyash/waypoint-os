@@ -1,14 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { forwardAuthHeaders } from "@/lib/proxy-utils";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // Forward request to spine-api analytics endpoint
     const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
     const response = await fetch(`${SPINE_API_URL}/analytics/pipeline`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: forwardAuthHeaders(request),
     });
 
     if (!response.ok) {

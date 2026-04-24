@@ -1,6 +1,6 @@
 'use client';
 
-import { X, Settings, ToggleLeft, ToggleRight, FileCode2, RotateCcw, ShieldAlert, Wrench, CheckCircle2 } from 'lucide-react';
+import { X, Settings, ToggleLeft, ToggleRight, FileCode2, RotateCcw, ShieldAlert, Wrench, CheckCircle2, Ghost, Heart, Network, ShieldCheck } from 'lucide-react';
 import { useWorkbenchStore } from '@/stores/workbench';
 import { useScenarios } from '@/hooks/useScenarios';
 import { useUnifiedState } from '@/hooks/useUnifiedState';
@@ -19,6 +19,14 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     setDebugRawJson,
     scenario_id,
     setScenarioId,
+    enable_ghost_concierge,
+    setEnableGhostConcierge,
+    enable_sentiment_analysis,
+    setEnableSentimentAnalysis,
+    federated_intelligence_opt_in,
+    setFederatedIntelligenceOptIn,
+    audit_confidence_threshold,
+    setAuditConfidenceThreshold,
   } = useWorkbenchStore();
   const { data: scenarios, isLoading: scenariosLoading, error: scenariosError } = useScenarios();
   const { state: unifiedState, refresh: refreshUnified } = useUnifiedState();
@@ -120,41 +128,133 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           </div>
 
           <div className='space-y-3'>
-            <h3 className='text-xs font-semibold text-[#8b949e] uppercase tracking-wide'>
-              Debug
+            <h3 className='text-xs font-semibold text-[#8b949e] uppercase tracking-wide flex items-center gap-2'>
+              <Ghost className='w-3 h-3 text-[#bb86fc]' />
+              Frontier & Autonomic
             </h3>
+            
             <label className='flex items-center justify-between cursor-pointer group'>
               <div className='flex items-center gap-2'>
-                {debug_raw_json ? (
-                  <FileCode2 className='w-5 h-5 text-[#58a6ff]' />
+                {enable_ghost_concierge ? (
+                  <Ghost className='w-5 h-5 text-[#bb86fc]' />
                 ) : (
-                  <FileCode2 className='w-5 h-5 text-[#8b949e] group-hover:text-[#e6edf3]' />
+                  <Ghost className='w-5 h-5 text-[#8b949e] group-hover:text-[#e6edf3]' />
                 )}
                 <div>
-                  <p className='text-sm text-[#e6edf3]'>Show Technical Data</p>
+                  <p className='text-sm text-[#e6edf3]'>Ghost Concierge</p>
                   <p className='text-xs text-[#8b949e]'>
-                    Auto-expand raw JSON in all tabs
+                    Enable autonomic recovery workflows
                   </p>
                 </div>
               </div>
               <input
                 type='checkbox'
-                checked={debug_raw_json}
-                onChange={(e) => setDebugRawJson(e.target.checked)}
+                checked={enable_ghost_concierge}
+                onChange={(e) => setEnableGhostConcierge(e.target.checked)}
                 className='sr-only'
               />
               <div
                 className={`w-9 h-5 rounded-full transition-colors relative ${
-                  debug_raw_json ? 'bg-[#58a6ff]' : 'bg-[#30363d]'
+                  enable_ghost_concierge ? 'bg-[#bb86fc]' : 'bg-[#30363d]'
                 }`}
               >
                 <div
                   className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
-                    debug_raw_json ? 'left-[18px]' : 'left-0.5'
+                    enable_ghost_concierge ? 'left-[18px]' : 'left-0.5'
                   }`}
                 />
               </div>
             </label>
+
+            <label className='flex items-center justify-between cursor-pointer group'>
+              <div className='flex items-center gap-2'>
+                {enable_sentiment_analysis ? (
+                  <Heart className='w-5 h-5 text-[#ff79c6]' />
+                ) : (
+                  <Heart className='w-5 h-5 text-[#8b949e] group-hover:text-[#e6edf3]' />
+                )}
+                <div>
+                  <p className='text-sm text-[#e6edf3]'>Sentiment Detection</p>
+                  <p className='text-xs text-[#8b949e]'>
+                    Real-time tonal adaptation
+                  </p>
+                </div>
+              </div>
+              <input
+                type='checkbox'
+                checked={enable_sentiment_analysis}
+                onChange={(e) => setEnableSentimentAnalysis(e.target.checked)}
+                className='sr-only'
+              />
+              <div
+                className={`w-9 h-5 rounded-full transition-colors relative ${
+                  enable_sentiment_analysis ? 'bg-[#ff79c6]' : 'bg-[#30363d]'
+                }`}
+              >
+                <div
+                  className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                    enable_sentiment_analysis ? 'left-[18px]' : 'left-0.5'
+                  }`}
+                />
+              </div>
+            </label>
+
+            <label className='flex items-center justify-between cursor-pointer group'>
+              <div className='flex items-center gap-2'>
+                {federated_intelligence_opt_in ? (
+                  <Network className='w-5 h-5 text-[#50fa7b]' />
+                ) : (
+                  <Network className='w-5 h-5 text-[#8b949e] group-hover:text-[#e6edf3]' />
+                )}
+                <div>
+                  <p className='text-sm text-[#e6edf3]'>Federated Intelligence</p>
+                  <p className='text-xs text-[#8b949e]'>
+                    Share anonymized risk data
+                  </p>
+                </div>
+              </div>
+              <input
+                type='checkbox'
+                checked={federated_intelligence_opt_in}
+                onChange={(e) => setFederatedIntelligenceOptIn(e.target.checked)}
+                className='sr-only'
+              />
+              <div
+                className={`w-9 h-5 rounded-full transition-colors relative ${
+                  federated_intelligence_opt_in ? 'bg-[#50fa7b]' : 'bg-[#30363d]'
+                }`}
+              >
+                <div
+                  className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                    federated_intelligence_opt_in ? 'left-[18px]' : 'left-0.5'
+                  }`}
+                />
+              </div>
+            </label>
+
+            <div className='pt-2 space-y-2'>
+              <div className='flex justify-between items-center'>
+                <p className='text-xs text-[#e6edf3] flex items-center gap-1'>
+                  <ShieldCheck className='w-3 h-3 text-[#58a6ff]' />
+                  Audit Threshold
+                </p>
+                <span className='text-[10px] font-mono text-[#58a6ff]'>
+                  {(audit_confidence_threshold * 100).toFixed(0)}%
+                </span>
+              </div>
+              <input
+                type='range'
+                min='0.5'
+                max='1.0'
+                step='0.05'
+                value={audit_confidence_threshold}
+                onChange={(e) => setAuditConfidenceThreshold(parseFloat(e.target.value))}
+                className='w-full h-1 bg-[#30363d] rounded-lg appearance-none cursor-pointer accent-[#58a6ff]'
+              />
+              <p className='text-[10px] text-[#8b949e]'>
+                Confidence score below which human audit is triggered
+              </p>
+            </div>
           </div>
 
           <div className='space-y-3'>

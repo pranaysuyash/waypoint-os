@@ -25,6 +25,38 @@ import requests
 
 API_BASE = os.environ.get("TEST_SPINE_API_URL", "http://127.0.0.1:8000")
 
+
+# ---------------------------------------------------------------------------
+# Auth helpers for integration tests
+# ---------------------------------------------------------------------------
+
+_TEST_USER = {"email": "test-integration@waypoint.example", "password": "TestPass123!", "name": "Integration Test"}
+_test_token: str | None = None
+
+def _ensure_test_user() -> str:
+    """Sign up (if needed) and log in to get an access token."""
+    global _test_token
+    if _test_token:
+        return _test_token
+
+    # Try signup (idempotent if user already exists)
+    requests.post(f"{API_BASE}/api/auth/signup", json=_TEST_USER, timeout=10)
+
+    # Login
+    resp = requests.post(f"{API_BASE}/api/auth/login", json={
+        "email": _TEST_USER["email"],
+        "password": _TEST_USER["password"],
+    }, timeout=10)
+    assert resp.status_code == 200, f"Login failed: {resp.status_code} {resp.text}"
+    data = resp.json()
+    _test_token = data["access_token"]
+    return _test_token
+
+
+def _auth_headers() -> dict:
+    return {"Authorization": f"Bearer {_ensure_test_user()}"}
+
+
 # ---------------------------------------------------------------------------
 # pytest marker
 # ---------------------------------------------------------------------------
@@ -38,21 +70,21 @@ pytestmark = pytest.mark.integration
 
 
 def post_run(payload: dict, timeout: int = 30) -> dict:
-    resp = requests.post(f"{API_BASE}/run", json=payload, timeout=timeout)
+    resp = requests.post(f"{API_BASE}/run", json=payload, timeout=timeout, headers=_auth_headers())
     assert resp.status_code == 200, f"POST /run failed: {resp.status_code} {resp.text}"
     return resp.json()
 
 
 def get_status(run_id: str):
-    return requests.get(f"{API_BASE}/runs/{run_id}", timeout=10)
+    return requests.get(f"{API_BASE}/runs/{run_id}", timeout=10, headers=_auth_headers())
 
 
 def get_events(run_id: str):
-    return requests.get(f"{API_BASE}/runs/{run_id}/events", timeout=10)
+    return requests.get(f"{API_BASE}/runs/{run_id}/events", timeout=10, headers=_auth_headers())
 
 
 def get_step(run_id: str, step_name: str):
-    return requests.get(f"{API_BASE}/runs/{run_id}/steps/{step_name}", timeout=10)
+    return requests.get(f"{API_BASE}/runs/{run_id}/steps/{step_name}", timeout=10, headers=_auth_headers())
 
 
 GOLDEN_PAYLOAD = {
@@ -258,7 +290,7 @@ class TestWriteFailureIsolation:
 
     def test_golden_run_returns_200_not_500(self, api_health):
         """Basic smoke: /run returns 200 not 500 even with file writes happening."""
-        resp = requests.post(f"{API_BASE}/run", json=GOLDEN_PAYLOAD, timeout=30)
+        resp = requests.post(f"{API_BASE}/run", json=GOLDEN_PAYLOAD, timeout=30, headers=_auth_headers())
         assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
         assert resp.json()["ok"] is True
 
@@ -343,7 +375,7 @@ class TestEndpointEdgeCases:
         assert resp.status_code == 404
 
     def test_runs_list_returns_200(self, api_health):
-        resp = requests.get(f"{API_BASE}/runs", timeout=10)
+        resp = requests.get(f"{API_BASE}/runs", timeout=10, headers=_auth_headers())
         assert resp.status_code == 200
         body = resp.json()
         assert "items" in body
@@ -353,7 +385,7 @@ class TestEndpointEdgeCases:
     def test_runs_list_state_filter(self, api_health):
         """state= filter must accept valid state values without error."""
         for state in ("queued", "running", "completed", "failed", "blocked"):
-            resp = requests.get(f"{API_BASE}/runs?state={state}&limit=5", timeout=10)
+            resp = requests.get(f"{API_BASE}/runs?state={state}&limit=5", timeout=10, headers=_auth_headers())
             assert resp.status_code == 200, f"state={state!r} filter returned {resp.status_code}"
 
     def test_runs_list_limit_param(self, api_health):
@@ -361,12 +393,12 @@ class TestEndpointEdgeCases:
         post_run(GOLDEN_PAYLOAD)
         post_run(GOLDEN_PAYLOAD)
         time.sleep(0.2)
-        resp = requests.get(f"{API_BASE}/runs?limit=1", timeout=10)
+        resp = requests.get(f"{API_BASE}/runs?limit=1", timeout=10, headers=_auth_headers())
         assert resp.status_code == 200
         assert len(resp.json()["items"]) <= 1
 
     def test_runs_list_trip_id_filter_unknown_returns_empty(self, api_health):
-        resp = requests.get(f"{API_BASE}/runs?trip_id=trip_nonexistent_xyz", timeout=10)
+        resp = requests.get(f"{API_BASE}/runs?trip_id=trip_nonexistent_xyz", timeout=10, headers=_auth_headers())
         assert resp.status_code == 200
         assert resp.json()["items"] == []
 

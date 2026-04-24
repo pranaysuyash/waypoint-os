@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { forwardAuthHeaders } from "@/lib/proxy-utils";
 
 const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 
@@ -11,6 +12,7 @@ export async function GET(request: NextRequest) {
       `${SPINE_API_URL}/analytics/alerts?range=${range}`,
       {
         cache: "no-store",
+        headers: forwardAuthHeaders(request),
       }
     );
 
@@ -30,7 +32,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const { alertId } = await request.json();
     
@@ -39,9 +41,7 @@ export async function POST(request: Request) {
       `${SPINE_API_URL}/analytics/alerts/${encodeURIComponent(alertId)}/dismiss`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: forwardAuthHeaders(request),
       }
     );
 

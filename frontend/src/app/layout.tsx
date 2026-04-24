@@ -3,6 +3,7 @@ import { IBM_Plex_Sans, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Shell } from '@/components/layouts/Shell';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { AuthProvider } from '@/components/auth/AuthProvider';
 
 const ibmPlexSans = IBM_Plex_Sans({
   variable: '--font-display',
@@ -32,7 +33,9 @@ export default function RootLayout({
     >
       <body>
         <ErrorBoundary>
-          <Shell>{children}</Shell>
+          <AuthProvider>
+            <Shell>{children}</Shell>
+          </AuthProvider>
         </ErrorBoundary>
       </body>
     </html>

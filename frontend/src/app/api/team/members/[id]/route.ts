@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { forwardAuthHeaders } from "@/lib/proxy-utils";
 
 const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 
@@ -13,9 +14,7 @@ export async function GET(
       `${SPINE_API_URL}/api/team/members/${encodeURIComponent(id)}`,
       {
         cache: "no-store",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: forwardAuthHeaders(request),
       }
     );
 
@@ -50,9 +49,7 @@ export async function PATCH(
       `${SPINE_API_URL}/api/team/members/${encodeURIComponent(id)}`,
       {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: forwardAuthHeaders(request),
         body: JSON.stringify(body),
       }
     );
@@ -87,9 +84,7 @@ export async function DELETE(
       `${SPINE_API_URL}/api/team/members/${encodeURIComponent(id)}`,
       {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: forwardAuthHeaders(request),
       }
     );
 

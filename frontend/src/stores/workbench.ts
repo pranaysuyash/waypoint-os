@@ -32,11 +32,19 @@ interface WorkbenchConfigState {
   scenario_id: string;
   strict_leakage: boolean;
   debug_raw_json: boolean;
+  enable_ghost_concierge: boolean;
+  enable_sentiment_analysis: boolean;
+  federated_intelligence_opt_in: boolean;
+  audit_confidence_threshold: number;
   setOperatingMode: (value: OperatingMode) => void;
   setStage: (value: SpineStage) => void;
   setScenarioId: (value: string) => void;
   setStrictLeakage: (value: boolean) => void;
   setDebugRawJson: (value: boolean) => void;
+  setEnableGhostConcierge: (value: boolean) => void;
+  setEnableSentimentAnalysis: (value: boolean) => void;
+  setFederatedIntelligenceOptIn: (value: boolean) => void;
+  setAuditConfidenceThreshold: (value: number) => void;
 }
 
 interface WorkbenchResultState {
@@ -48,6 +56,7 @@ interface WorkbenchResultState {
   result_traveler_bundle: unknown;
   result_safety: SafetyResult | null;
   result_fees: FeeCalculationResult | null;
+  result_frontier: any | null;
   result_run_ts: string | null;
   setResultPacket: (value: unknown) => void;
   setResultValidation: (value: ValidationReport | null) => void;
@@ -57,6 +66,7 @@ interface WorkbenchResultState {
   setResultTravelerBundle: (value: unknown) => void;
   setResultSafety: (value: SafetyResult | null) => void;
   setResultFees: (value: FeeCalculationResult | null) => void;
+  setResultFrontier: (value: any | null) => void;
   setResultRunTs: (value: string | null) => void;
   clearResults: () => void;
   resetAll: () => void;
@@ -87,11 +97,19 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
   scenario_id: "",
   strict_leakage: false,
   debug_raw_json: false,
+  enable_ghost_concierge: true,
+  enable_sentiment_analysis: true,
+  federated_intelligence_opt_in: true,
+  audit_confidence_threshold: 0.9,
   setOperatingMode: (value) => set({ operating_mode: value }),
   setStage: (value) => set({ stage: value }),
   setScenarioId: (value) => set({ scenario_id: value }),
   setStrictLeakage: (value) => set({ strict_leakage: value }),
   setDebugRawJson: (value) => set({ debug_raw_json: value }),
+  setEnableGhostConcierge: (value) => set({ enable_ghost_concierge: value }),
+  setEnableSentimentAnalysis: (value) => set({ enable_sentiment_analysis: value }),
+  setFederatedIntelligenceOptIn: (value) => set({ federated_intelligence_opt_in: value }),
+  setAuditConfidenceThreshold: (value) => set({ audit_confidence_threshold: value }),
 
   // Result state
   result_packet: null,
@@ -102,6 +120,7 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
   result_traveler_bundle: null,
   result_safety: null,
   result_fees: null,
+  result_frontier: null,
   result_run_ts: null,
   setResultPacket: (value) => set({ result_packet: value }),
   setResultValidation: (value) => set({ result_validation: value }),
@@ -111,6 +130,7 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
   setResultTravelerBundle: (value) => set({ result_traveler_bundle: value }),
   setResultSafety: (value) => set({ result_safety: value }),
   setResultFees: (value) => set({ result_fees: value }),
+  setResultFrontier: (value) => set({ result_frontier: value }),
   setResultRunTs: (value) => set({ result_run_ts: value }),
 
   clearResults: () => set({
@@ -122,6 +142,7 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
     result_traveler_bundle: null,
     result_safety: null,
     result_fees: null,
+    result_frontier: null,
     result_run_ts: null,
   }),
 
@@ -137,6 +158,7 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
     result_internal_bundle: null,
     result_traveler_bundle: null,
     result_safety: null,
+    result_frontier: null,
     result_run_ts: null,
   }),
 }));

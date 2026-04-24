@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { forwardAuthHeaders } from "@/lib/proxy-utils";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const spineApiUrl = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
     const response = await fetch(`${spineApiUrl}/runs`, {

@@ -55,6 +55,8 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from core.middleware import AuthMiddleware
+
 from spine_api.contract import (
     SafetyResult,
     AssertionResult,
@@ -205,6 +207,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Enforce authentication on all routes except public paths
+app.add_middleware(AuthMiddleware)
 
 # Phase 1: Auth + Workspace routers
 app.include_router(auth_router.router)

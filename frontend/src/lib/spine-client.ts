@@ -28,13 +28,15 @@ export type { SpineRunResponse };
 const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 
 export async function runSpine(
-  request: SpineRunRequest
+  request: SpineRunRequest,
+  extraHeaders?: Record<string, string>
 ): Promise<SpineRunResponse> {
   const response = await fetch(`${SPINE_API_URL}/run`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
+      ...extraHeaders,
     },
     body: JSON.stringify(request),
   });
