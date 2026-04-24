@@ -2,7 +2,7 @@
 
 **Date**: 2026-04-24
 **Scope**: Close all P0/P1 gaps from API_ROUTE_AUDIT_2026-04-23.md
-**Status**: ALL PHASES ✅ COMPLETED 2026-04-24
+**Status**: ALL PHASES ✅ COMPLETED + ORPHANED ROUTES ✅ COMPLETED 2026-04-24
 
 ---
 
@@ -37,6 +37,17 @@
 16. ~~**Add backend endpoint** `GET /analytics/agent/{agent_id}/drill-down` in `server.py`~~ ✅ Already exists (line 936)
 17. **Fix BFF** `insights/agent-trips/route.ts` to call real backend endpoint ✅ COMPLETED
 18. **Fix ANALYTICS_SERVICE_URL** in 6 insight routes → `SPINE_API_URL` ✅ COMPLETED
+
+### Phase 5: Orphaned Routes ✅ COMPLETED 2026-04-24
+
+19. **BFF** `api/assignments/route.ts` → proxy to `GET /assignments` ✅ COMPLETED
+20. **BFF** `api/health/route.ts` → proxy to `GET /health` ✅ COMPLETED
+21. **BFF** `api/items/route.ts` → proxy to `GET /items` ✅ COMPLETED
+22. **BFF** `api/runs/route.ts` → proxy to `GET /runs` ✅ COMPLETED
+23. **BFF** `api/runs/[id]/route.ts` → proxy to `GET /runs/{run_id}` ✅ COMPLETED
+24. **BFF** `api/runs/[id]/events/route.ts` → proxy to `GET /runs/{run_id}/events` ✅ COMPLETED
+25. **BFF** `api/runs/[id]/steps/[step_name]/route.ts` → proxy to `GET /runs/{run_id}/steps/{step_name}` ✅ COMPLETED
+26. **BFF** `api/trips/[id]/unassign/route.ts` → proxy to `POST /trips/{trip_id}/unassign` ✅ COMPLETED
 
 ---
 

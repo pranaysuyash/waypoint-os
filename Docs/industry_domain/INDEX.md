@@ -16,6 +16,7 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [ROLES_AND_RESPONSIBILITIES.md](agency_operations/ROLES_AND_RESPONSIBILITIES.md) (Front Office)
 - [x] [MID_AND_BACK_OFFICE_ROLES.md](agency_operations/MID_AND_BACK_OFFICE_ROLES.md) (Ticketing, QC, Accounts)
 - [x] [INDIRECT_SUPPLY_CHAIN_ROLES.md](agency_operations/INDIRECT_SUPPLY_CHAIN_ROLES.md) (Consolidators, GDS Reps, DMC Ops)
+- [x] [AGENCY_TEAM_STRUCTURE_AND_FUNCTIONAL_ROLES.md](agency_operations/AGENCY_TEAM_STRUCTURE_AND_FUNCTIONAL_ROLES.md) (Matrix, Specializations, PnL Owners)
 
 ## 3. Traveler Taxonomy & Route Logic
 *Types of travelers, how they move, and the logic of the route.*
@@ -29,6 +30,14 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [VISA_AND_DOCUMENTATION_FUNDAMENTALS.md](regulatory_compliance/VISA_AND_DOCUMENTATION_FUNDAMENTALS.md)
 - [x] [HEALTH_PROTOCOLS_AND_MEDICAL_LOGISTICS.md](regulatory_compliance/HEALTH_PROTOCOLS_AND_MEDICAL_LOGISTICS.md) (Vaccines, PCR, Fit-to-fly)
 - [x] [ACCESSIBILITY_AND_INCLUSIVE_TRAVEL.md](regulatory_compliance/ACCESSIBILITY_AND_INCLUSIVE_TRAVEL.md)
+- [x] [IATA_STANDARDS_AND_ACCREDITATION.md](regulatory_compliance/IATA_STANDARDS_AND_ACCREDITATION.md) (IATA, BSP, Accreditation)
+- [x] [SUSTAINABLE_TRAVEL_AND_ESG_COMPLIANCE.md](regulatory_compliance/SUSTAINABLE_TRAVEL_AND_ESG_COMPLIANCE.md) (ESG Reporting, Carbon)
+- [x] [CONSUMER_RIGHTS_AND_AIRLINE_COMPENSATION.md](regulatory_compliance/CONSUMER_RIGHTS_AND_AIRLINE_COMPENSATION.md) (EU261, Delays, Refunds)
+- [x] [REGENERATIVE_TRAVEL_AND_ETHICAL_INSETTING.md](regulatory_compliance/REGENERATIVE_TRAVEL_AND_ETHICAL_INSETTING.md) (Ethical Offsets, Insetting)
+- [x] [EU_PACKAGE_TRAVEL_DIRECTIVE.md](regulatory_compliance/EU_PACKAGE_TRAVEL_DIRECTIVE.md) (Package Liability, Duty of Care)
+- [x] [DATA_PRIVACY_AND_SECURITY.md](regulatory_compliance/DATA_PRIVACY_AND_SECURITY.md) (Traveler Data, Privacy-by-Design)
+- [x] [DATA_PRIVACY_AND_SECURITY_SOP.md](regulatory_compliance/DATA_PRIVACY_AND_SECURITY_SOP.md) (Operational Controls, Breach Response)
+- [x] [TRAVEL_INSURANCE_AND_RISK_MANAGEMENT.md](regulatory_compliance/TRAVEL_INSURANCE_AND_RISK_MANAGEMENT.md) (Policy Architecture, Claims)
 
 ## 5. Global Risk & Crisis Taxonomy
 *What can go wrong and how to categorize the threat.*
@@ -41,6 +50,12 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [THE_TRAVEL_SUPPLY_CHAIN_PIPE.md](supplier_ecosystem/THE_TRAVEL_SUPPLY_CHAIN_PIPE.md) (Wholesaler -> GDS -> Agency)
 - [x] [GDS_VS_NDC_VS_API_CONNECTIVITY.md](travel_technology/GDS_VS_NDC_VS_API_CONNECTIVITY.md) (Technical Connectivity Types)
 - [x] [MID_BACK_OFFICE_INTEGRATION.md](travel_technology/MID_BACK_OFFICE_INTEGRATION.md)
+- [x] [GDS_SYSTEM_MASTERY.md](travel_technology/GDS_SYSTEM_MASTERY.md) (GDS Tools, Fare Search, Compliance)
+- [x] [NDC_AND_MODERN_RETAILING.md](travel_technology/NDC_AND_MODERN_RETAILING.md) (Retailing, Ancillaries, Bundling)
+- [x] [NDC_AND_API_INTEGRATION.md](travel_technology/NDC_AND_API_INTEGRATION.md) (APIs, Legacy, Modern Retailing)
+- [x] [SUPPLIER_CONNECTIVITY_AND_API_ECOSYSTEMS.md](travel_technology/SUPPLIER_CONNECTIVITY_AND_API_ECOSYSTEMS.md) (API Gateways, Inventory Pools)
+- [x] [TRAVEL_DATA_SYNC_AND_MASTER_DATA.md](travel_technology/TRAVEL_DATA_SYNC_AND_MASTER_DATA.md) (Profiles, Master Data, Sync)
+- [x] [CRM_AND_TASK_AUTOMATION_WORKFLOWS.md](travel_technology/CRM_AND_TASK_AUTOMATION_WORKFLOWS.md) (CRM, Bots, Task Routing)
 
 ---
 
@@ -53,6 +68,12 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [POST_TRIP_ANALYTICS_AND_REPORTING.md](agency_operations/POST_TRIP_ANALYTICS_AND_REPORTING.md)
 - [x] [AI_AND_AUTOMATION_IN_THE_WORKFLOW.md](agency_operations/AI_AND_AUTOMATION_IN_THE_WORKFLOW.md)
 - [x] [LUXURY_TRAIN_OPERATIONS.md](agency_operations/LUXURY_TRAIN_OPERATIONS.md)
+- [x] [CLIENT_ONBOARDING_AND_KYC.md](agency_operations/CLIENT_ONBOARDING_AND_KYC.md) (Know Your Customer, Compliance Workflow)
+- [x] [CLIENT_LIFECYCLE_AND_SERVICE_TIERING.md](agency_operations/CLIENT_LIFECYCLE_AND_SERVICE_TIERING.md) (Lifecycle Segments, Service SLA)
+- [x] [AGENCY_PERFORMANCE_METRICS_AND_KPIS.md](agency_operations/AGENCY_PERFORMANCE_METRICS_AND_KPIS.md) (Revenue, Productivity, Quality)
+- [x] [THE_GREY_AREAS_ADM_AVOIDANCE.md](agency_operations/THE_GREY_AREAS_ADM_AVOIDANCE.md) (EDIFACT Reissue Risk, ADMs)
+- [x] [INTERNAL_WORKFLOWS_SOP.md](agency_operations/INTERNAL_WORKFLOWS_SOP.md) (SOPs, Handoffs, Exception Management)
+- [x] [TRAVEL_AGENCY_TECHNOLOGY_AND_OPERATIONS.md](agency_operations/TRAVEL_AGENCY_TECHNOLOGY_AND_OPERATIONS.md) (Platform, Workflow, Back Office)
 
 ## 8. Commercial & Financial (Established)
 - [x] [PRICING_PACKAGES_AND_FEE_STRUCTURES.md](commercial_models/PRICING_PACKAGES_AND_FEE_STRUCTURES.md)
@@ -60,6 +81,12 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [CHARGEBACK_PROTECTION_AND_FRAUD.md](commercial_models/CHARGEBACK_PROTECTION_AND_FRAUD.md)
 - [x] [FINANCIAL_HEDGING_AND_CURRENCY_RISK.md](commercial_models/FINANCIAL_HEDGING_AND_CURRENCY_RISK.md)
 - [x] [PAYMENT_ORCHESTRATION_AND_VCN_STRATEGY.md](financial_management/PAYMENT_ORCHESTRATION_AND_VCN_STRATEGY.md)
+- [x] [LOYALTY_ARBITRAGE_AND_STATUS_MANAGEMENT.md](commercial_models/LOYALTY_ARBITRAGE_AND_STATUS_MANAGEMENT.md) (Status, Tier, Redemption, Breakage)
+- [x] [PRICING_AND_MARGINS.md](commercial_models/PRICING_AND_MARGINS.md) (Rate Structure, Markups, Net Rate)
+- [x] [TAX_COMPLIANCE_GST_TCS.md](commercial_models/TAX_COMPLIANCE_GST_TCS.md) (India GST, TCS, Cross-Border Tax)
+- [x] [LUXURY_ASSET_ACQUISITION_VAT_LOGISTICS.md](commercial_models/LUXURY_ASSET_ACQUISITION_VAT_LOGISTICS.md) (Yacht, Artefact, VAT Structuring)
+- [x] [STATUTORY_TAX_COMPLIANCE_INDIA.md](financial_management/STATUTORY_TAX_COMPLIANCE_INDIA.md)
+- [x] [SETTLEMENT_AND_CASHFLOW_MANAGEMENT.md](financial_management/SETTLEMENT_AND_CASHFLOW_MANAGEMENT.md)
 
 ## 9. Specialized Logistics (Established)
 - [x] [CHARTER_AND_PRIVATE_AVIATION.md](specialized_logistics/CHARTER_AND_PRIVATE_AVIATION.md)
@@ -77,6 +104,10 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [CRUISE_LINE_OPERATIONS_AND_GDS.md](supplier_ecosystem/CRUISE_LINE_OPERATIONS_AND_GDS.md)
 - [x] [CAR_RENTAL_AND_GROUND_TRANSFER_NETWORKS.md](supplier_ecosystem/CAR_RENTAL_AND_GROUND_TRANSFER_NETWORKS.md)
 - [x] [BOUTIQUE_AND_INDEPENDENT_HOTEL_RETAILING.md](supplier_ecosystem/BOUTIQUE_AND_INDEPENDENT_HOTEL_RETAILING.md)
+- [x] [VENDOR_TYPES_AND_FLOWS.md](supplier_ecosystem/VENDOR_TYPES_AND_FLOWS.md) (Supplier Types, Contract Flow)
+- [x] [VENDOR_SELECTION_AND_ONBOARDING.md](supplier_ecosystem/VENDOR_SELECTION_AND_ONBOARDING.md) (RFP, Onboarding, Performance)
+- [x] [SUPPLIER_QUALITY_AND_CONTRACT_MANAGEMENT.md](supplier_ecosystem/SUPPLIER_QUALITY_AND_CONTRACT_MANAGEMENT.md) (SLA, Audit, Penalties)
+- [x] [VENDOR_MANAGEMENT_SOP.md](supplier_ecosystem/VENDOR_MANAGEMENT_SOP.md) (Partner Governance, Escalations)
 
 ## 12. Elite & Specialized Verticals (The "Dark" Logistics)
 - [x] [MARINE_AND_OFFSHORE_LOGISTICS.md](specialized_logistics/MARINE_AND_OFFSHORE_LOGISTICS.md) (Seaman Fares, Port Agents)

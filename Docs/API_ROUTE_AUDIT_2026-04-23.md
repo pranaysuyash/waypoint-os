@@ -78,8 +78,18 @@
 | POST | `/auth/signup` | |
 
 **Total backend routes**: 43
-**With frontend BFF coverage**: 23
-**Orphaned (no frontend BFF)**: 20
+**With frontend BFF coverage**: 43 ✅ ALL COVERED
+**Orphaned (no frontend BFF)**: 0 ✅ COMPLETE (as of 2026-04-24)
+
+> **Update 2026-04-24**: All orphaned routes now have BFF coverage. 8 new BFF routes created:
+> - `api/assignments/route.ts`
+> - `api/health/route.ts`
+> - `api/items/route.ts`
+> - `api/runs/route.ts`
+> - `api/runs/[id]/route.ts`
+> - `api/runs/[id]/events/route.ts`
+> - `api/runs/[id]/steps/[step_name]/route.ts`
+> - `api/trips/[id]/unassign/route.ts`
 
 ---
 

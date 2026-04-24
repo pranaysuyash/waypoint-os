@@ -1472,3 +1472,39 @@ User requested exploration of an LMSYS-arena-like pattern for Waypoint, but spec
 
 ### Key Conclusion
 - The best framing is not "public leaderboard" or "model battle". It is a governed internal blind adjudication layer for human-vs-AI and variant-vs-variant operational comparison, feeding D1 autonomy calibration, D5 override learning, and D6 evaluation.
+
+## Log Entry: 2026-04-24 - Auto-Assignment And Learned Routing Exploration Added
+
+### Context
+User requested the next research pass after the governance roadmap and arena exploration: how Waypoint should eventually auto-assign cases to operators based on skills, workload, continuity, and what the system learns about how different operators perform on different kinds of work.
+
+This was intentionally framed as a documentation and architecture pass first, not as implementation.
+
+### Evidence Read Before Writing
+- `Docs/WORKSPACE_GOVERNANCE_ROADMAP_LIVING_2026-04-22.md`
+- `Docs/CANONICAL_ROLE_PERMISSION_MATRIX_2026-04-22.md`
+- `Docs/ASSIGNMENT_ESCALATION_STATE_MACHINE_SPEC_2026-04-22.md`
+- `Docs/SETTINGS_ROUTE_SUBROUTE_UX_CONTRACT_2026-04-23.md`
+- `Docs/GOVERNANCE_AUDIT_EVENT_TAXONOMY_2026-04-23.md`
+- `Docs/INDUSTRY_ROLES_AND_AI_AGENT_MAPPING.md`
+- `spine-api/persistence.py`
+- `spine-api/server.py`
+- `src/analytics/metrics.py`
+- `src/analytics/review.py`
+- `frontend/src/types/governance.ts`
+- `frontend/docs/TIMELINE_11_EVENT_TAXONOMY_COMPLETE.md`
+
+### External Reference Patterns Used
+- Skills-based routing documentation from ServiceNow and Zendesk to anchor the baseline model around explicit skill determination, ranking, workload, and availability.
+- Operations-research skills-based routing literature to reinforce that routing is a queueing and system-balance problem, not just a single best-agent score.
+- Algorithmic work-assignment / algorithmic HRM fairness research to preserve the split between objective matching decisions and judgment-heavy worker evaluation.
+
+### Artifact Created
+- `Docs/AUTO_ASSIGNMENT_AND_LEARNED_ROUTING_EXPLORATION_2026-04-24.md`
+
+### Key Conclusions
+- The correct framing is governed case-to-operator matching, not hidden algorithmic performance management.
+- Learned routing should inherit the canonical routing model and must not silently turn escalation into reassignment.
+- The delivery sequence should be deterministic eligibility -> transparent ranked suggestions -> bounded learning calibration -> limited low-risk auto-assign.
+- Continuity should remain a first-class routing signal.
+- Current runtime metrics are not yet trustworthy enough for learned auto-assignment because some operator metrics remain simulated and the runtime still uses a one-slot assignment store plus generic audit events.

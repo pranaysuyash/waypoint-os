@@ -18,6 +18,7 @@ import {
   PublicPage,
   SectionIntro,
 } from '@/components/marketing/marketing';
+import { HeroScene, NotebookAnalyzer } from '@/components/marketing/MarketingVisuals';
 import styles from '@/components/marketing/marketing.module.css';
 
 const checks = [
@@ -70,13 +71,15 @@ export default function ItineraryCheckerPage() {
         ctaLabel='Start free analysis'
         navItems={[
           { href: '#upload', label: 'Upload' },
+          { href: '#notebook', label: 'Notebook mode' },
           { href: '#checks', label: 'What it checks' },
           { href: '#proof', label: 'Why trust it' },
           { href: '/', label: 'For agencies' },
         ]}
       />
 
-      <section className={styles.hero}>
+      <section className={`${styles.hero} ${styles.visualHero}`}>
+        <HeroScene mode='checker' />
         <div className={styles.heroCopy}>
           <div className={styles.eyebrow}>Itinerary stress test</div>
           <h1 className={styles.heroTitle}>Find what your travel plan missed.</h1>
@@ -93,6 +96,9 @@ export default function ItineraryCheckerPage() {
             <Link href='/signup' className={styles.secondaryButton}>
               For agencies using Waypoint OS
             </Link>
+            <a href='#notebook' className={styles.ghostButton}>
+              Try notebook mode
+            </a>
           </div>
 
           <div className='mt-7 flex flex-wrap gap-3'>
@@ -102,7 +108,7 @@ export default function ItineraryCheckerPage() {
           </div>
         </div>
 
-        <div className={styles.previewFrame} id='upload'>
+        <div className={`${styles.previewFrame} ${styles.heroDock}`} id='upload'>
           <div className={styles.previewGlow} />
           <div className={styles.previewGrid}>
             <article className={styles.uploadCard}>
@@ -167,6 +173,15 @@ export default function ItineraryCheckerPage() {
             </article>
           </div>
         </div>
+      </section>
+
+      <section className={styles.section}>
+        <SectionIntro
+          eyebrow='Interactive wedge'
+          title='A quieter path: upload a trip and let the notebook work.'
+          body='This parallel version keeps the page minimal until the user gives it a plan. Then the interface becomes the experience: reading, checking, writing, and handing back better questions.'
+        />
+        <NotebookAnalyzer />
       </section>
 
       <section className={styles.section} id='checks'>

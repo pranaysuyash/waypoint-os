@@ -1,5 +1,12 @@
 - [Industry Domain Knowledge](industry_domain/INDEX.md) — Core mechanics of travel agencies: roles, vendors, pricing, and compliance.
 - [Product Features & Functionalities](product_features/INDEX.md) — Specific system capabilities from Business and User POV.
+    - [Ghost Concierge Autonomic Engine](product_features/GHOST_CONCIERGE_AUTONOMIC_ENGINE.md)
+    - [Yield Arbitrage & Margin Optimizer](product_features/YIELD_ARBITRAGE_AND_MARGIN_OPTIMIZER.md)
+    - [System Autonomic Immune Response](product_features/SYSTEM_AUTONOMIC_IMMUNE_RESPONSE.md)
+    - [Ethical Sensitivity Advisory Engine](product_features/ETHICAL_SENSITIVITY_ADVISORY_ENGINE.md)
+    - [Regenerative Tourism Impact Tracker](product_features/REGENERATIVE_TOURISM_IMPACT_TRACKER.md)
+    - [Community Host Direct Orchestration](product_features/COMMUNITY_HOST_DIRECT_ORCHESTRATION.md)
+    - [Legacy Milestone Visioning Engine](product_features/LEGACY_MILESTONE_VISIONING_ENGINE.md)
 - [Product Vision and Model](PRODUCT_VISION_AND_MODEL.md) — The B2B Agency OS thesis and sourcing hierarchy.
 - [Detailed Agent Map](DETAILED_AGENT_MAP.md) — Catalog of all 20+ agents, roles, and v1 stack.
 - [Voice Intake and Orchestration](VOICE_ORCHESTRATION_AND_SESSIONS.md) — 2-screen model, routing loop, and "brackets" logic.
@@ -9,6 +16,9 @@
 - [Sourcing and Decision Policy](Sourcing_And_Decision_Policy.md) — Sourcing hierarchy and "Proceed/Ask" gating logic.
 - [Lead Lifecycle and Retention](LEAD_LIFECYCLE_AND_RETENTION.md) — Unified state machine, schema, scoring, and interventions for repeat, ghosting, window-shopping, and churn.
 - [Discussion Log](DISCUSSION_LOG.md) — Audit trail of pivots and agent feedback.
+- [Unified Communication & Channel Strategy](UNIFIED_COMMUNICATION_AND_CHANNEL_STRATEGY.md) — Omnichannel intake, data capture, and communication playbooks.
+- [Technical Spec: Schema Hardening](SCHEMA_HARDENING_FRONTIER_MODELS_SPEC.md) — Database models for Ghost, Emotional, and Intelligence features.
+- [Autonomic Immune Response Rules](SYSTEM_AUTONOMIC_IMMUNE_RESPONSE_RULES.md) — Detection antigens and antibody response protocols.
 - [Thesis Deep Dive Discussion (2026-04-16)](DISCUSSION_THESIS_DEEP_DIVE_2026-04-16.md) — Four-thread analysis of PROJECT_THESIS.md: copilot autonomy line, intelligence layer lead-gen model, sourcing hierarchy configurability, per-person suitability depth.
 - [Architecture Decision: D4+D6 Suitability & Audit (2026-04-16)](ARCHITECTURE_DECISION_D4_D6_SUITABILITY_AUDIT_2026-04-16.md) — Full production architecture for suitability engine (activity_matcher) and audit eval suite. Protocol-based plugin pattern, manifest-driven eval, phased by dependency.
 - [Architecture Decision: LLM Cache + NB05/NB06 (2026-04-16)](ARCHITECTURE_DECISION_LLM_CACHE_NB05_NB06_2026-04-16.md) — LLM output extraction/caching strategy, NB05 golden-path demo system, NB06 shadow-mode replay. Extends existing `src/decision/hybrid_engine.py` pattern to all LLM touchpoints.
@@ -33,6 +43,7 @@
 - [Settings Route + Subroute UX Contract (2026-04-23)](SETTINGS_ROUTE_SUBROUTE_UX_CONTRACT_2026-04-23.md) — Canonical `/settings` shell, role-aware subroute model, draft/publish behavior, and migration rules for replacing the workbench drawer and placeholder settings endpoints.
 - [Governance Audit Event Taxonomy (2026-04-23)](GOVERNANCE_AUDIT_EVENT_TAXONOMY_2026-04-23.md) — Canonical audit envelope, domain-specific event families, migration map from current generic events, and D1/D5-ready governance history contract.
 - [Blind Comparison Arena Exploration (2026-04-23)](BLIND_COMPARISON_ARENA_EXPLORATION_2026-04-23.md) — Exploration of an internal blind adjudication system for human-vs-AI and variant-vs-variant comparison, tied to D1 autonomy, D5 override learning, D6 evals, and settings governance.
+- [Auto-Assignment and Learned Routing Exploration (2026-04-24)](AUTO_ASSIGNMENT_AND_LEARNED_ROUTING_EXPLORATION_2026-04-24.md) — Exploration of governed case-to-operator matching using skills, workload, continuity, and bounded learning, with a suggestion-first posture before any low-risk auto-assign modes.
 - [Status Assessment (2026-04-21)](STATUS_ASSESSMENT_2026-04-21.md) — ⭐ Full codebase audit against D1–D6, cross-project patterns, and gap register. Maps implemented vs. partial vs. blocked, and highlights dependency-light next threads.
 - [D1–D4 Status Reconciliation + Gemini Review (2026-04-21)](D1_D4_STATUS_RECONCILIATION_2026-04-21.md) — Corrects the coarse D1 status, separates done vs open vs not-yet-closed across D1–D4, and evaluates the external Gemini D4 review using repo evidence.
 - [D1–D4 + D6: What Was / What Is / What Should (2026-04-21)](D1_D4_D6_WAS_IS_SHOULD_2026-04-21.md) — Detailed past/present/future execution note. Explains what the ADRs originally intended, what is actually landed in code now, and the dependency-ordered path that should happen next.

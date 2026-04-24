@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { ArrowRight, Check, MapPin, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowRight, Check, ShieldCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import styles from './marketing.module.css';
 
@@ -29,9 +29,7 @@ export function PublicHeader({
   return (
     <header className={styles.header}>
       <Link href='/' className={styles.brand}>
-        <span className={styles.brandMark}>
-          <MapPin className='h-4 w-4' />
-        </span>
+        <img className={styles.brandLogo} src='/brand/waypoint-logo-compass.svg' alt='' />
         <span>
           <strong className='block text-[14px] font-semibold tracking-tight'>Waypoint OS</strong>
           <span className='block text-[12px] text-[#8b949e]'>Travel agency operating system</span>

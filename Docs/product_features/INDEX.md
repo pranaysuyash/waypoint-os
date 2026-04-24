@@ -21,7 +21,7 @@ This directory codifies the specific system capabilities required to translate *
 - [x] [PROFILE_HYPER_PERSONALIZATION_SYNC.md](PROFILE_HYPER_PERSONALIZATION_SYNC.md) (Syncing 'Soft' data with GDS)
 - [x] [PAYMENT_AND_MULTI_CURRENCY_ARBITRAGE.md](PAYMENT_AND_MULTI_CURRENCY_ARBITRAGE.md) (Handling parallel markets)
 - [x] [AUTONOMOUS_RESOURCE_FUTURES.md](AUTONOMOUS_RESOURCE_FUTURES.md) (Inventory betting & hedging)
-- [x] [INVENTORY_YIELD_ARBITRAGE_ENGINE.md](INVENTORY_YIELD_ARBITRAGE_ENGINE.md) [NEW] (Real-time decisioning)
+- [x] [YIELD_ARBITRAGE_AND_MARGIN_OPTIMIZER.md](YIELD_ARBITRAGE_AND_MARGIN_OPTIMIZER.md) [NEW] (Real-time decisioning)
 
 ## 4. High-Intelligence & AI Specializations
 - [x] [VISUAL_INTENT_EXTRACTION_ENGINE.md](VISUAL_INTENT_EXTRACTION_ENGINE.md) (Vibe photos, Document OCR, Visual search)
@@ -34,7 +34,7 @@ This directory codifies the specific system capabilities required to translate *
 - [x] [HYPER_LOCAL_LAST_MILE_ORCHESTRATION.md](HYPER_LOCAL_LAST_MILE_ORCHESTRATION.md) (SIMs, Rail-to-Road, Local handoffs)
 - [x] [POST_TRIP_AFTERGLOW_AND_RETENTION_LOOPS.md](POST_TRIP_AFTERGLOW_AND_RETENTION_LOOPS.md) (Sentiment analysis, Retention triggers)
 - [x] [CLIMATE_ADAPTIVE_ITINERARY_ENGINEERING.md](CLIMATE_ADAPTIVE_ITINERARY_ENGINEERING.md) (Proactive weather rerouting)
-- [x] [PROACTIVE_GHOST_CONCIERGE_MICRO_WORKFLOWS.md](PROACTIVE_GHOST_CONCIERGE_MICRO_WORKFLOWS.md) [NEW] (Autonomic execution)
+- [x] [GHOST_CONCIERGE_AUTONOMIC_ENGINE.md](GHOST_CONCIERGE_AUTONOMIC_ENGINE.md) [NEW] (Autonomic execution)
 
 ## 6. Network & B2B Ecosystem
 - [x] [ANONYMIZED_SUPPLIER_BLACKLIST_NETWORK.md](ANONYMIZED_SUPPLIER_BLACKLIST_NETWORK.md) (Crowdsourced risk intel)

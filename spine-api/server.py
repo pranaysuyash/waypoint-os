@@ -141,6 +141,7 @@ from src.analytics.policy_rules import ready_gate_failures
 try:
     from routers import auth as auth_router
     from routers import workspace as workspace_router
+    from routers import frontier as frontier_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -153,6 +154,11 @@ except (ImportError, ValueError):
     _ws_mod = importlib.util.module_from_spec(_ws_spec)
     _ws_spec.loader.exec_module(_ws_mod)
     workspace_router = _ws_mod
+
+    _fr_spec = importlib.util.spec_from_file_location("routers.frontier", _base / "routers" / "frontier.py")
+    _fr_mod = importlib.util.module_from_spec(_fr_spec)
+    _fr_spec.loader.exec_module(_fr_mod)
+    frontier_router = _fr_mod
 
 logger = logging.getLogger("spine-api")
 
@@ -203,6 +209,7 @@ app.add_middleware(
 # Phase 1: Auth + Workspace routers
 app.include_router(auth_router.router)
 app.include_router(workspace_router.router)
+app.include_router(frontier_router.router)
 
 
 @app.on_event("startup")

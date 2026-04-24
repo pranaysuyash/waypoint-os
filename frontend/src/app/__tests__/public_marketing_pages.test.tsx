@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import HomePage from '@/app/page';
 import ItineraryCheckerPage from '@/app/itinerary-checker/page';
 
@@ -21,6 +21,7 @@ describe('public marketing pages', () => {
     expect(
       screen.getByRole('link', { name: /Explore the itinerary checker/i }),
     ).toHaveAttribute('href', '/itinerary-checker');
+    expect(screen.getByLabelText('Waypoint logo directions')).toBeInTheDocument();
   });
 
   it('renders the itinerary checker landing page with upload-first framing', () => {
@@ -36,5 +37,28 @@ describe('public marketing pages', () => {
     expect(
       screen.getAllByRole('link', { name: /Start free analysis/i })[0],
     ).toHaveAttribute('href', '/itinerary-checker#upload');
+    expect(screen.getByRole('link', { name: /Try notebook mode/i })).toHaveAttribute(
+      'href',
+      '#notebook',
+    );
+  });
+
+  it('enables the notebook checker once trip context is provided', () => {
+    render(<ItineraryCheckerPage />);
+
+    const button = screen.getByRole('button', { name: /Start notebook check/i });
+    expect(button).toBeDisabled();
+
+    fireEvent.change(
+      screen.getByPlaceholderText(/Paste a rough itinerary/i),
+      {
+        target: {
+          value:
+            'Paris to Rome in May, hotel near Termini, airport transfer on arrival, Vatican day, Amalfi day trip.',
+        },
+      },
+    );
+
+    expect(button).not.toBeDisabled();
   });
 });

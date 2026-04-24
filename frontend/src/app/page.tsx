@@ -24,6 +24,7 @@ import {
   PublicPage,
   SectionIntro,
 } from '@/components/marketing/marketing';
+import { HeroScene, LogoShowcase } from '@/components/marketing/MarketingVisuals';
 import styles from '@/components/marketing/marketing.module.css';
 
 const surfaces = [
@@ -103,7 +104,8 @@ export default function HomePage() {
     <PublicPage>
       <PublicHeader ctaHref='/signup' ctaLabel='Create workspace' />
 
-      <section className={styles.hero}>
+      <section className={`${styles.hero} ${styles.visualHero}`}>
+        <HeroScene mode='agency' />
         <div className={styles.heroCopy}>
           <div className={styles.eyebrow}>Agency Copilot for real travel operations</div>
           <h1 className={styles.heroTitle}>The operating system for boutique travel agencies</h1>
@@ -130,7 +132,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className={styles.previewFrame}>
+        <div className={`${styles.previewFrame} ${styles.heroDock}`}>
           <div className={styles.previewGlow} />
           <div className={styles.previewTop}>
             <div>
@@ -194,6 +196,14 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className={styles.logoSection} aria-label='Waypoint brand marks'>
+        <div>
+          <Kicker>Brand system</Kicker>
+          <h2>Three logo directions for the OS and wedge.</h2>
+        </div>
+        <LogoShowcase />
       </section>
 
       <section className={styles.section} id='product'>
