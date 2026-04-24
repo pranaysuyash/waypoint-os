@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       failures: failures.length > 0 ? failures : undefined,
     });
   } catch (error) {
-    console.error("Error assigning trips via spine-api:", error);
+    console.error("Error assigning trips via spine_api:", error);
     return NextResponse.json(
       { error: "Failed to assign trips" },
       { status: 500 }

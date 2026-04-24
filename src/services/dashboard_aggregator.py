@@ -28,7 +28,7 @@ class DashboardAggregator:
         except ImportError:
             import sys
             import os
-            sys.path.append(os.path.join(os.getcwd(), "spine-api"))
+            sys.path.append(os.path.join(os.getcwd(), "spine_api"))
             import persistence
             TripStore = persistence.TripStore
             AuditStore = persistence.AuditStore
@@ -108,7 +108,7 @@ class DashboardAggregator:
         except ImportError:
             import sys
             import os
-            sys.path.append(os.path.join(os.getcwd(), "spine-api"))
+            sys.path.append(os.path.join(os.getcwd(), "spine_api"))
             import persistence
             TripStore = persistence.TripStore
 

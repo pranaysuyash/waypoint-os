@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     nextResponse.headers.set("Cache-Control", "public, max-age=300, s-maxage=300");
     return nextResponse;
   } catch (error) {
-    console.error("Error fetching settings from spine-api:", error);
+    console.error("Error fetching settings from spine_api:", error);
     return NextResponse.json(
       { error: "Failed to fetch settings" },
       { status: 500 }

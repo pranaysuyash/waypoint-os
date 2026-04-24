@@ -41,8 +41,8 @@ This audit verifies whether the critical findings from the previous comprehensiv
 
 **Verification**:
 - `frontend/src/lib/spine-wrapper.py` lines 104-107: Now properly imports and calls `set_strict_mode(True)`
-- `spine-api/server.py` lines 225-227: FastAPI endpoint sets strict mode via `set_strict_mode(True)` when `request.strict_leakage` is True
-- `spine-api/server.py` lines 290-318: Properly catches `ValueError` from strict mode failures and returns 422 response
+- `spine_api/server.py` lines 225-227: FastAPI endpoint sets strict mode via `set_strict_mode(True)` when `request.strict_leakage` is True
+- `spine_api/server.py` lines 290-318: Properly catches `ValueError` from strict mode failures and returns 422 response
 - `src/intake/strategy.py` lines 885-892: `build_traveler_safe_bundle` calls `enforce_no_leakage()` and handles leakage
 
 **Status**: **RESOLVED** - Strict leakage is now fully wired through both subprocess and HTTP API paths.
@@ -84,8 +84,8 @@ This audit verifies whether the critical findings from the previous comprehensiv
 
 **Verification**:
 - `frontend/src/lib/spine-client.ts` lines 13-60: **Completely refactored**
-- Now calls `spine-api` (FastAPI HTTP service) at `SPINE_API_URL` instead of spawning subprocess
-- `spine-api/server.py`: Persistent FastAPI service with pre-loaded modules
+- Now calls `spine_api` (FastAPI HTTP service) at `SPINE_API_URL` instead of spawning subprocess
+- `spine_api/server.py`: Persistent FastAPI service with pre-loaded modules
 
 **Status**: **RESOLVED** - No longer uses subprocess per request; uses persistent HTTP service.
 
@@ -215,9 +215,9 @@ riskFlags.map((item, i) => (
 | Finding | Severity | Status | File(s) |
 |---------|----------|--------|---------|
 | Licensing documentation | High | ✅ RESOLVED | data/README.md, data/fixtures/README.md |
-| Strict leakage wiring | High | ✅ RESOLVED | spine-wrapper.py, spine-api/server.py, strategy.py |
+| Strict leakage wiring | High | ✅ RESOLVED | spine-wrapper.py, spine_api/server.py, strategy.py |
 | Payload shape mismatches | High | ⚠️ PARTIAL | Multiple Tab components |
-| Subprocess performance | Medium | ✅ RESOLVED | spine-client.ts, spine-api/ |
+| Subprocess performance | Medium | ✅ RESOLVED | spine-client.ts, spine_api/ |
 | Scenario loader drops mode/stage | Medium | ❌ NOT RESOLVED | scenario-loader.ts, IntakeTab.tsx |
 | SafetyTab undefined variable | High | ❌ NEW | SafetyTab.tsx line 109 |
 | Risk flags type mismatch | Medium | ❌ NEW | DecisionTab.tsx |
@@ -252,8 +252,8 @@ riskFlags.map((item, i) => (
 ## Verification Commands
 
 ```bash
-# Check that spine-api starts correctly
-uv run python -m spine-api.server
+# Check that spine_api starts correctly
+uv run python -m spine_api.server
 
 # Run frontend type checking
 cd frontend && npm run type-check 2>/dev/null || npx tsc --noEmit
@@ -274,7 +274,7 @@ curl http://localhost:3000/api/scenarios/clean-family-booking | jq .
 - `data/fixtures/README.md` - License documentation corrected  
 - `src/intake/safety.py` - Strict mode implementation
 - `src/intake/strategy.py` - Leakage enforcement in build_traveler_safe_bundle
-- `spine-api/server.py` - FastAPI service with strict mode wiring
+- `spine_api/server.py` - FastAPI service with strict mode wiring
 
 ### Frontend (Unresolved Issues)
 - `frontend/src/app/workbench/SafetyTab.tsx` - Undefined `isStrictFail` variable (line 109)

@@ -3,7 +3,7 @@ import { forwardAuthHeaders } from "@/lib/proxy-utils";
 
 export async function GET(request: NextRequest) {
   try {
-    // Forward request to spine-api analytics endpoint
+    // Forward request to spine_api analytics endpoint
     const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
     const response = await fetch(`${SPINE_API_URL}/analytics/pipeline`, {
       method: "GET",
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error fetching pipeline from spine-api:", error);
+    console.error("Error fetching pipeline from spine_api:", error);
     return NextResponse.json(
       { error: "Failed to fetch pipeline" },
       { status: 500 }

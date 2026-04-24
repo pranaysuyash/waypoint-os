@@ -5,7 +5,7 @@ This plan addresses the remaining architectural debt in the backend (path hacks)
 ## User Review Required
 
 > [!IMPORTANT]
-> **Import Hardening**: Removing `sys.path.insert` from production code ensures architectural purity but requires the project root to be in the `PYTHONPATH` during execution (e.g., `PYTHONPATH=. python spine-api/server.py`).
+> **Import Hardening**: Removing `sys.path.insert` from production code ensures architectural purity but requires the project root to be in the `PYTHONPATH` during execution (e.g., `PYTHONPATH=. python spine_api/server.py`).
 > **Wave 3 Transition**: This moves the app to a "Routed Stage" architecture, allowing deep-linking into specific pipeline steps (Intake, Decision, etc.).
 
 ## Proposed Changes
@@ -17,7 +17,7 @@ We will remove manual `sys.path` manipulations from library modules and entry po
 #### [MODIFY] [hybrid_engine.py](file:///Users/pranay/Projects/travel_agency_agent/src/decision/hybrid_engine.py)
 #### [MODIFY] [cache_key.py](file:///Users/pranay/Projects/travel_agency_agent/src/decision/cache_key.py)
 #### [MODIFY] [decision/rules/*.py](file:///Users/pranay/Projects/travel_agency_agent/src/decision/rules/budget_feasibility.py) [and others]
-#### [MODIFY] [server.py](file:///Users/pranay/Projects/travel_agency_agent/spine-api/server.py)
+#### [MODIFY] [server.py](file:///Users/pranay/Projects/travel_agency_agent/spine_api/server.py)
 
 ---
 
@@ -38,7 +38,7 @@ Migrating monolithic workbench tabs into atomic, reusable panels.
 
 ### Automated Tests
 - **Backend**: `pytest -q tests/test_agency_settings.py tests/test_run_state_unit.py tests/test_settings_behavioral.py`
-- **Grep Check**: `grep -r "sys.path.insert" src/ spine-api/` should return zero hits in production code.
+- **Grep Check**: `grep -r "sys.path.insert" src/ spine_api/` should return zero hits in production code.
 
 ### Manual Verification
 - Verify high-fidelity rendering of all 5 stages in the new routed workspace.

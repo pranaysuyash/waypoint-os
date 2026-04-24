@@ -55,7 +55,7 @@ Financial compliance is a binary success/fail.
 
 ## 4. Implementation Grounding: Compliance Models
 
-To support these "Hard Scenarios", the `spine-api` requires specific compliance-aware extensions:
+To support these "Hard Scenarios", the `spine_api` requires specific compliance-aware extensions:
 
 | Model | Purpose in Compliance |
 |-------|-----------------------|

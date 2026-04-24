@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.tenant import Agency, WorkspaceCode
 
-logger = logging.getLogger("spine-api.workspace_service")
+logger = logging.getLogger("spine_api.workspace_service")
 
 
 async def get_workspace(db: AsyncSession, agency_id: str) -> Optional[dict]:

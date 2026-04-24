@@ -1,7 +1,7 @@
 # Travel Agency Agent — Python Backend Codebase Audit
 
 **Date**: 2026-04-19
-**Scope**: `src/intake/`, `src/decision/`, `src/llm/`, `src/suitability/`, `spine-api/`, `src/` root files
+**Scope**: `src/intake/`, `src/decision/`, `src/llm/`, `src/suitability/`, `spine_api/`, `src/` root files
 **Mode**: Read-only — no fixes applied
 **Auditor**: AI assistant (automated static review)
 
@@ -23,7 +23,7 @@
 
 ### P0-1: `PROJECT_ROOT` undefined — `NameError` at runtime
 
-- **File**: `spine-api/server.py:259`
+- **File**: `spine_api/server.py:259`
 - **Issue**: `load_fixture_expectations()` references `PROJECT_ROOT` but this variable is never defined in the file. When `scenario_id` is provided to the `/run` endpoint, this function is called and will raise `NameError: name 'PROJECT_ROOT' is not defined`.
 - **Fix**: Define `PROJECT_ROOT = Path(__file__).resolve().parent.parent` at module level (consistent with how other modules resolve the project root).
 
@@ -32,7 +32,7 @@
 ### P0-2: Broken absolute import for hybrid engine
 
 - **File**: `src/intake/decision.py:43`
-- **Issue**: `from decision import create_hybrid_engine` uses an absolute import that only works if `decision` is a top-level package on `sys.path`. Since `decision.py` itself lives inside `src/intake/`, this import path is fragile and will fail in most execution contexts (e.g., when running `spine-api/server.py` as a module). The actual module is `src/decision/hybrid_engine.py`.
+- **Issue**: `from decision import create_hybrid_engine` uses an absolute import that only works if `decision` is a top-level package on `sys.path`. Since `decision.py` itself lives inside `src/intake/`, this import path is fragile and will fail in most execution contexts (e.g., when running `spine_api/server.py` as a module). The actual module is `src/decision/hybrid_engine.py`.
 - **Fix**: Change to `from src.decision.hybrid_engine import create_hybrid_engine` or use a relative import pattern consistent with the project's package structure. Verify `sys.path` configuration in all entry points.
 
 ---
@@ -63,7 +63,7 @@
 
 ### P1-4: Race condition — non-atomic read-modify-write in persistence stores
 
-- **File**: `spine-api/persistence.py` (AssignmentStore, AuditStore, and any store using `json.load` → modify → `json.dump`)
+- **File**: `spine_api/persistence.py` (AssignmentStore, AuditStore, and any store using `json.load` → modify → `json.dump`)
 - **Issue**: All persistence stores read a JSON file, modify the in-memory dict, and write it back without any file locking or atomic write strategy. Under concurrent requests (e.g., two `/run` calls hitting the same trip), this can cause data loss: both reads see the same state, both writes overwrite, and the second write loses the first's changes.
 - **Fix**: Use `fcntl.flock` (POSIX) or `filelock` library for cross-platform file locking. Alternatively, use atomic writes (write to `.tmp`, then `os.rename`) combined with locking.
 
@@ -85,10 +85,10 @@
 
 ---
 
-### P2-3: Import fragility in `spine-api/server.py`
+### P2-3: Import fragility in `spine_api/server.py`
 
-- **File**: `spine-api/server.py:57–78`
-- **Issue**: The server uses try/except to import `persistence` as either relative or absolute, and imports `run_state`, `run_events`, `run_ledger` as absolute modules. These only work if `spine-api/` is on `sys.path`. Running the server as `python spine-api/server.py` vs `python -m spine-api.server` may produce different import behavior.
+- **File**: `spine_api/server.py:57–78`
+- **Issue**: The server uses try/except to import `persistence` as either relative or absolute, and imports `run_state`, `run_events`, `run_ledger` as absolute modules. These only work if `spine_api/` is on `sys.path`. Running the server as `python spine_api/server.py` vs `python -m spine_api.server` may produce different import behavior.
 - **Fix**: Standardize on one invocation method. Add `sys.path` manipulation in an `if __name__ == "__main__"` block, or convert to a proper package with `__init__.py` and use relative imports throughout.
 
 ---
@@ -133,7 +133,7 @@
 | `src/decision/` | 9 | 2 |
 | `src/llm/` | 4 | 0 |
 | `src/suitability/` | 6 | 0 |
-| `spine-api/` | 5 | 3 |
+| `spine_api/` | 5 | 3 |
 | `src/` root | 2 | 0 |
 | **Total** | **39** | **13** (2 + 4 + 6 + 1) |
 

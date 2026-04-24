@@ -49,7 +49,7 @@ The initial P0-02 implementation created a **parallel timeline logging system** 
    - Added `_emit_audit_event()` → calls `AuditStore.log_event()`
    - All 5 stage transitions now call AuditStore
 
-2. **Unified Endpoint** (`spine-api/server.py`):
+2. **Unified Endpoint** (`spine_api/server.py`):
    - Updated `GET /api/trips/{trip_id}/timeline`
    - Merged all AuditStore events for the trip
    - Sorted by timestamp, supports `?stage=<stage>` filter
@@ -76,7 +76,7 @@ The initial P0-02 implementation created a **parallel timeline logging system** 
 | File | Changes | Lines |
 |------|---------|-------|
 | `src/intake/orchestration.py` | Rewrote event logging function, updated all 5 stage calls | -pathlib, +sys.path |
-| `spine-api/server.py` | Updated `/api/trips/{trip_id}/timeline` to use AuditStore | +40 (merged logic) |
+| `spine_api/server.py` | Updated `/api/trips/{trip_id}/timeline` to use AuditStore | +40 (merged logic) |
 | `tests/test_timeline_P0_02.py` | Rewrote all unit tests for AuditStore | 273 → 260 (refactored) |
 | `tests/test_timeline_e2e.py` | Rewrote E2E tests to validate audit events | 191 → 150 (simplified) |
 | `tests/test_timeline_rest_endpoint.py` | No changes (already generic) | — |
@@ -144,7 +144,7 @@ Frontend consumes via REST endpoint:
 
 ```
 ✅ src/intake/orchestration.py — syntax OK
-✅ spine-api/server.py — syntax OK
+✅ spine_api/server.py — syntax OK
 ✅ Full test suite — 564 passed
 ✅ No import errors
 ✅ No circular dependencies
@@ -154,14 +154,14 @@ Frontend consumes via REST endpoint:
 
 ## Path Handling Insight
 
-One technical challenge: When `orchestration.py` imports AuditStore, it needs the `spine-api/` directory in sys.path. Solution implemented:
+One technical challenge: When `orchestration.py` imports AuditStore, it needs the `spine_api/` directory in sys.path. Solution implemented:
 
 ```python
 # In _emit_audit_event()
 import sys
 from pathlib import Path
 
-spine_api_path = str(Path(__file__).resolve().parent.parent.parent / "spine-api")
+spine_api_path = str(Path(__file__).resolve().parent.parent.parent / "spine_api")
 if spine_api_path not in sys.path:
     sys.path.insert(0, spine_api_path)
 
@@ -221,5 +221,5 @@ Now that Spine emits events to AuditStore:
 
 - `Docs/REFACTORING_TIMELINE_UNIFICATION_2026-04-23.md` (this document)
 - Updated `src/intake/orchestration.py`
-- Updated `spine-api/server.py`
+- Updated `spine_api/server.py`
 - Updated test files (timeline tests)

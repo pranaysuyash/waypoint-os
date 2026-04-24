@@ -1,5 +1,5 @@
 """
-run_ledger.py — Deterministic step ledger for Waypoint OS spine-api.
+run_ledger.py — Deterministic step ledger for Waypoint OS spine_api.
 
 Persists per-run metadata and per-stage step outputs so any run can be
 inspected or replayed from disk without re-execution.

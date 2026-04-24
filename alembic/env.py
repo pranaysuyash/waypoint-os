@@ -18,7 +18,7 @@ from alembic import context
 
 # Hardcode project root - adjust if project structure changes
 PROJECT_ROOT = Path("/Users/pranay/Projects/travel_agency_agent")
-SPINE_API_PATH = PROJECT_ROOT / "spine-api"
+SPINE_API_PATH = PROJECT_ROOT / "spine_api"
 sys.path.insert(0, str(SPINE_API_PATH))
 
 # Import Base directly from the tenant module

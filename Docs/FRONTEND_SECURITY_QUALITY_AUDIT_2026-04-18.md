@@ -2,7 +2,7 @@
 
 **Date**: 2026-04-18  
 **Auditor**: Automated Audit (Security-Review + Manual Inspection)  
-**Scope**: Next.js Frontend + FastAPI Backend (spine-api)  
+**Scope**: Next.js Frontend + FastAPI Backend (spine_api)  
 **Status**: Complete
 
 ---
@@ -62,12 +62,12 @@ export function validateSpineRequest(request: unknown): {
 **Critical Issue**: No authentication or authorization implemented.
 
 **Impact**:
-- Anyone with network access can call the spine-api
+- Anyone with network access can call the spine_api
 - No user identity verification
 - No role-based access control
 
 **Recommendation**:
-1. Implement API key authentication for spine-api
+1. Implement API key authentication for spine_api
 2. Add JWT token validation for frontend API routes
 3. Implement role-based access control (operator vs admin)
 
@@ -203,7 +203,7 @@ allow_headers=["*"],  # Too broad
 ## 5. Recommendations
 
 ### Immediate (This Week)
-1. **Implement authentication** for spine-api
+1. **Implement authentication** for spine_api
 2. **Add rate limiting** to all API endpoints
 3. **Tighten CORS configuration**
 

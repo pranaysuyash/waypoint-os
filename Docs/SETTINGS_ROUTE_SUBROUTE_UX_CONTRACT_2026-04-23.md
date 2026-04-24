@@ -54,7 +54,7 @@ The repo currently has governance-adjacent settings scattered across multiple la
 - [frontend/src/app/workbench/SettingsPanel.tsx](file:///Users/pranay/Projects/travel_agency_agent/frontend/src/app/workbench/SettingsPanel.tsx) only controls strict leakage, raw JSON visibility, and fixture scenario selection.
 - [frontend/src/lib/governance-api.ts](file:///Users/pranay/Projects/travel_agency_agent/frontend/src/lib/governance-api.ts) still exposes placeholder `getPipelineStages()`, `getApprovalThresholds()`, and `getAutonomyPolicy()` paths at the same time.
 - [frontend/src/types/governance.ts](file:///Users/pranay/Projects/travel_agency_agent/frontend/src/types/governance.ts) still uses the older `owner | manager | agent | viewer` vocabulary.
-- [spine-api/server.py](file:///Users/pranay/Projects/travel_agency_agent/spine-api/server.py) already has a combined `GET /api/settings`, a separate `POST /api/settings/operational`, and a separate `GET/POST /api/settings/autonomy` surface.
+- [spine_api/server.py](file:///Users/pranay/Projects/travel_agency_agent/spine_api/server.py) already has a combined `GET /api/settings`, a separate `POST /api/settings/operational`, and a separate `GET/POST /api/settings/autonomy` surface.
 
 If implementation starts without a UX contract, the app will likely ship:
 

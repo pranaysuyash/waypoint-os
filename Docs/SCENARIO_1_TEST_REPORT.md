@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-23
 **Tester:** AI Agent (Systematic Browser Testing)
-**Environment:** Local dev (frontend: localhost:3000, spine-api: localhost:8000)
+**Environment:** Local dev (frontend: localhost:3000, spine_api: localhost:8000)
 **Test Objective:** Verify an agency agent can take an incoming trip request from queue, review it, process it through the AI pipeline, and move it toward a customer-facing proposal.
 
 ---
@@ -90,8 +90,8 @@
 - **Status: WORKING**
 
 **Issues Found:**
-- Many trips show "$0.0k" budget and "TBD" dates because spine-api extraction didn't capture these fields
-- All real (non-seed) trips show "Unknown" destination because they lack destination data in spine-api
+- Many trips show "$0.0k" budget and "TBD" dates because spine_api extraction didn't capture these fields
+- All real (non-seed) trips show "Unknown" destination because they lack destination data in spine_api
 - All trips are "Unassigned" - no assignment functionality appears to be wired up
 - Days in stage shows 0d for some trips (just created) which is correct
 
@@ -200,7 +200,7 @@
 **What Actually Happened:**
 - Button click succeeded
 - Network log shows: `POST http://localhost:3000/api/spine/run → 200 (144ms, 7242B)`
-- API call to spine-api succeeded
+- API call to spine_api succeeded
 - However, UI showed NO visible change after processing
 - All tabs remained empty or showed only "Show Technical Data" buttons
 - No loading spinner, no progress indicator, no success message
@@ -334,7 +334,7 @@
 ## Data Quality Observations
 
 ### What's Working Well
-- Real data flows from spine-api to frontend (no mock data)
+- Real data flows from spine_api to frontend (no mock data)
 - Inbox shows 20 real trips with prioritization
 - Workspace shows 12 active trips with correct status labels
 - Status mapping works: new→blue, assigned→amber, completed→green, cancelled→red
@@ -342,7 +342,7 @@
 
 ### Data Gaps
 - Many extracted trips show "Unknown" destination, "TBD" dates, "$0" budget
-- This is because spine-api extraction failed to capture these fields from raw input
+- This is because spine_api extraction failed to capture these fields from raw input
 - Seed trips show better data with actual destinations and budgets
 - All trips are unassigned - no agent assignment system visible
 
@@ -359,7 +359,7 @@
 4. Add loading states/progress indicators during pipeline processing
 5. Display trip details inline (not hidden behind edit buttons)
 6. Add success/error toasts after processing
-7. Improve data extraction quality in spine-api (fewer "Unknown" fields)
+7. Improve data extraction quality in spine_api (fewer "Unknown" fields)
 
 ### Medium Term
 8. Implement trip assignment system (assign to agent from inbox)

@@ -48,6 +48,23 @@ If instructions conflict, follow the stricter rule and cite concrete file paths.
 - Do not claim platform limitations when the gap is implementable; state what is possible, what is implemented, and the concrete path.
 - For skill discovery, prioritize project-level skills under `/Users/pranay/Projects/skills/` before defaulting to other skill stores.
 
+## Naming Conventions (Critical — Prevent Future Symlinks)
+
+**Problem prevented**: `spine-api/` (hyphen) vs `spine_api` (underscore) required a symlink because Python imports need underscores. This is pre-launch — no backward compat needed.
+
+**Rules**:
+1. **Directory names** must match the language convention:
+   - Python projects: Use `underscores` (e.g., `spine_api/`, not `spine-api/`)
+   - JavaScript/TypeScript projects: Use `hyphens` or `camelCase` per project convention
+2. **Never create symlinks** to fix naming mismatches. Fix the directory name instead.
+3. **Pre-launch products**: No backward compatibility concerns — rename confidently.
+4. **Verify imports** after rename: `grep -r "old_name" --include="*.py" --include="*.ts" .`
+
+**Enforcement**:
+- Before creating any directory: check if the language requires underscores (Python) or hyphens (JS/TS)
+- If you find a symlink fixing a naming mismatch: **delete symlink + rename directory** immediately
+- Add this check to every task: "Does the directory name match language conventions?"
+
 ## Default Task Lifecycle (Adopted)
 
 1. Analyze request and constraints.

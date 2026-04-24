@@ -2,7 +2,7 @@
 
 **Date**: 2026-04-23
 **Auditor**: Hermes
-**Scope**: Frontend BFF routes vs Backend spine-api routes
+**Scope**: Frontend BFF routes vs Backend spine_api routes
 **Status**: ✅ FIXED — See `API_ROUTE_FIX_PLAN_2026-04-24.md` for resolution
 
 > **Stale Doc Notice**: All issues identified here were resolved on 2026-04-24.
@@ -20,7 +20,7 @@
 
 ## Methodology
 
-1. Extract all backend routes from `spine-api/server.py` and `spine-api/routers/*.py`
+1. Extract all backend routes from `spine_api/server.py` and `spine_api/routers/*.py`
 2. Extract all frontend BFF routes from `frontend/src/app/api/**/route.ts`
 3. Extract all frontend fetch calls (client-side) to `/api/*` endpoints
 4. Cross-reference each frontend call against:
@@ -250,7 +250,7 @@ These backend routes exist but the frontend has no way to call them:
 
 ### Backend routes extracted from:
 ```bash
-grep -rh "@router\.\|@app\." spine-api/ --include="*.py" | grep -E "get\(|post\(|put\(|delete\(|patch\("
+grep -rh "@router\.\|@app\." spine_api/ --include="*.py" | grep -E "get\(|post\(|put\(|delete\(|patch\("
 ```
 
 ### Frontend BFF routes extracted from:

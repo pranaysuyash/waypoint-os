@@ -1,5 +1,5 @@
 """
-run_state.py — Run lifecycle state machine for Waypoint OS spine-api.
+run_state.py — Run lifecycle state machine for Waypoint OS spine_api.
 
 States
 ------

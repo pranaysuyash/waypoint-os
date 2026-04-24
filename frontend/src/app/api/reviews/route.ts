@@ -4,7 +4,7 @@ import { forwardAuthHeaders } from "@/lib/proxy-utils";
 
 // ============================================================================
 // SPINE API RAW TYPES
-// Types returned by the spine-api /analytics/reviews endpoint.
+// Types returned by the spine_api /analytics/reviews endpoint.
 // These are transformed into canonical TripReview types for the frontend.
 // ============================================================================
 
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
       total: filteredReviews.length,
     });
   } catch (error) {
-    console.error("Error fetching reviews from spine-api:", error);
+    console.error("Error fetching reviews from spine_api:", error);
     return NextResponse.json(
       { error: "Failed to fetch reviews" },
       { status: 500 }

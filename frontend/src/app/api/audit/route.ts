@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error fetching audit events from spine-api:", error);
+    console.error("Error fetching audit events from spine_api:", error);
     return NextResponse.json(
       { error: "Failed to fetch audit events" },
       { status: 500 }

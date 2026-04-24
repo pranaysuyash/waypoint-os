@@ -26,7 +26,7 @@ D1 is not missing; it already has a working threshold-based precursor. But it is
 - The gate is already executed in orchestration in [src/intake/orchestration.py](file:///Users/pranay/Projects/travel_agency_agent/src/intake/orchestration.py).
 - `DecisionResult` already has a structured confidence scorecard in [src/intake/decision.py](file:///Users/pranay/Projects/travel_agency_agent/src/intake/decision.py).
 - `AgencySettingsStore` already persists settings in the current file-backed model in [src/intake/config/agency_settings.py](file:///Users/pranay/Projects/travel_agency_agent/src/intake/config/agency_settings.py).
-- The API server already loads agency settings before running the pipeline in [spine-api/server.py](file:///Users/pranay/Projects/travel_agency_agent/spine-api/server.py#L335-L342).
+- The API server already loads agency settings before running the pipeline in [spine_api/server.py](file:///Users/pranay/Projects/travel_agency_agent/spine_api/server.py#L335-L342).
 
 ### Verified partially implemented
 
@@ -37,7 +37,7 @@ D1 is not missing; it already has a working threshold-based precursor. But it is
 
 ### Claimed but unverified / not implemented
 
-- No canonical autonomy settings API route exists in `spine-api/server.py`.
+- No canonical autonomy settings API route exists in `spine_api/server.py`.
 - No owner-facing autonomy settings UI exists.
 - No explicit override event capture loop for D1 exists yet.
 - No adaptive customer+trip classification exists yet.
@@ -110,11 +110,11 @@ The frontend already has misleading placeholder approval APIs and types in [fron
 
 If the implementer ignores this, D1 will remain backend-only and operationally incomplete.
 
-### 5. `spine-api` settings binding is still single-agency and hardcoded
+### 5. `spine_api` settings binding is still single-agency and hardcoded
 
 **Risk:** medium
 
-[spine-api/server.py](file:///Users/pranay/Projects/travel_agency_agent/spine-api/server.py#L335-L342) currently loads `AgencySettingsStore.load("waypoint-hq")` directly.
+[spine_api/server.py](file:///Users/pranay/Projects/travel_agency_agent/spine_api/server.py#L335-L342) currently loads `AgencySettingsStore.load("waypoint-hq")` directly.
 
 This is acceptable for the current single-tenant state, but the implementer should not deepen that assumption. D1 should be implemented in a way that makes later request/auth-based agency resolution straightforward.
 
@@ -298,7 +298,7 @@ Expose the autonomy outcome through the runtime/API contract so workbench, owner
 **Expected Files To Edit**
 
 - [src/intake/orchestration.py](file:///Users/pranay/Projects/travel_agency_agent/src/intake/orchestration.py)
-- [spine-api/server.py](file:///Users/pranay/Projects/travel_agency_agent/spine-api/server.py)
+- [spine_api/server.py](file:///Users/pranay/Projects/travel_agency_agent/spine_api/server.py)
 - [frontend/src/types/spine.ts](file:///Users/pranay/Projects/travel_agency_agent/frontend/src/types/spine.ts)
 - relevant API contract tests
 
@@ -350,7 +350,7 @@ Give the owner a real way to read and update the autonomy policy instead of leav
 
 **Expected Files To Edit**
 
-- [spine-api/server.py](file:///Users/pranay/Projects/travel_agency_agent/spine-api/server.py)
+- [spine_api/server.py](file:///Users/pranay/Projects/travel_agency_agent/spine_api/server.py)
 - [frontend/src/lib/governance-api.ts](file:///Users/pranay/Projects/travel_agency_agent/frontend/src/lib/governance-api.ts)
 - [frontend/src/types/governance.ts](file:///Users/pranay/Projects/travel_agency_agent/frontend/src/types/governance.ts)
 - either:

@@ -103,7 +103,7 @@ print(f"Tier: {result.tier}, Score: {result.score}, Compatible: {result.compatib
 ## Notes
 
 ### Integration Tests
-The integration tests in `tests/test_run_lifecycle.py` require a live spine-api instance and are marked with `@pytest.mark.integration`. These tests are currently failing because no spine-api is running, but this is expected behavior. To run all tests except integration tests:
+The integration tests in `tests/test_run_lifecycle.py` require a live spine_api instance and are marked with `@pytest.mark.integration`. These tests are currently failing because no spine_api is running, but this is expected behavior. To run all tests except integration tests:
 
 ```bash
 uv run pytest -m 'not integration' -q

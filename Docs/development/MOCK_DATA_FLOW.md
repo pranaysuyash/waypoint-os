@@ -9,7 +9,7 @@
 [Next.js App Router]          [React Hooks]           [Page Components]
   /api/* routes  ──────────►  useGovernance.ts  ────►  owner/reviews/page.tsx
   (mock data or               useTrips.ts             owner/insights/page.tsx
-   spine-api proxy)                                   page.tsx (dashboard)
+   spine_api proxy)                                   page.tsx (dashboard)
                                                      inbox/page.tsx
                                                      workspace/page.tsx
                                                      workbench/page.tsx
@@ -124,7 +124,7 @@ All governance hooks use the delayed-loading pattern:
 | `/analytics/team` | GET | Working |
 | `/analytics/bottlenecks` | GET | Working |
 
-**Missing from spine-api** (would need mock fallbacks or implementation):
+**Missing from spine_api** (would need mock fallbacks or implementation):
 - `/analytics/revenue`
 - `/analytics/reviews`
 - `/analytics/escalations`
@@ -135,8 +135,8 @@ All governance hooks use the delayed-loading pattern:
 
 When switching from mock to real data:
 
-1. **Replace mock routes with spine-api proxy** — the pattern already exists in `insights/summary/route.ts` etc.
-2. **Implement missing spine-api endpoints** — revenue, reviews, alerts
+1. **Replace mock routes with spine_api proxy** — the pattern already exists in `insights/summary/route.ts` etc.
+2. **Implement missing spine_api endpoints** — revenue, reviews, alerts
 3. **Add missing route handlers** — inbox, team, audit
 4. **Ensure data shapes match TypeScript types** — `governance.ts` defines the contracts
 5. **Remove hardcoded mock data** — each mock route has a `MOCK_*` constant at the top

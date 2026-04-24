@@ -1,8 +1,8 @@
 """
-spine-api — FastAPI service exposing run_spine_once as an HTTP endpoint.
+spine_api — FastAPI service exposing run_spine_once as an HTTP endpoint.
 
 Architecture:
-    Next.js (BFF)  →  HTTP POST /run  →  FastAPI spine-api  →  run_spine_once
+    Next.js (BFF)  →  HTTP POST /run  →  FastAPI spine_api  →  run_spine_once
                                                            (persistent process,
                                                             modules pre-loaded)
 
@@ -115,7 +115,7 @@ except (ImportError, ValueError):
     try:
         from watchdog import watchdog  # type: ignore[attr-defined]
     except ImportError:
-        # When spine-api is not a package (e.g., uvicorn spine-api.server:app),
+        # When spine_api is not a package (e.g., uvicorn spine_api.server:app),
         # load the local watchdog module directly from the filesystem.
         import importlib.util
         _watchdog_path = str(Path(__file__).resolve().parent / "watchdog.py")
@@ -162,12 +162,12 @@ except (ImportError, ValueError):
     _fr_spec.loader.exec_module(_fr_mod)
     frontier_router = _fr_mod
 
-logger = logging.getLogger("spine-api")
+logger = logging.getLogger("spine_api")
 
 if TimelineEventMapper is None:
     logger.warning("TimelineEventMapper not available - timeline endpoint will use fallback")
 
-# Pydantic models imported from spine-api/contract.py (canonical contract)
+# Pydantic models imported from spine_api/contract.py (canonical contract)
 # All response schemas are defined there. Do not add new models here.
 
 
@@ -228,7 +228,7 @@ def _seed_scenario():
     """
     Load a scenario fixture at startup if SEED_SCENARIO env var is set.
 
-    Usage: SEED_SCENARIO=scenario_alpha uvicorn spine-api.server:app
+    Usage: SEED_SCENARIO=scenario_alpha uvicorn spine_api.server:app
 
     This seeds the TripStore with fixture data for deterministic testing.
     If the env var is set to a filename (without .json) in data/fixtures/,
@@ -1836,7 +1836,7 @@ if __name__ == "__main__":
     )
 
     uvicorn.run(
-        "spine-api.server:app",
+        "spine_api.server:app",
         host=HOST,
         port=PORT,
         workers=WORKERS,

@@ -541,7 +541,7 @@ flowchart TB
         
         subgraph BUILT_STACK["✅ Built"]
             FE_SHELL["Next.js Shell + Design System"]
-            SPINE_API["spine-api FastAPI server"]
+            SPINE_API["spine_api FastAPI server"]
             NB_PIPELINE["NB01/NB02/NB03 Pipeline"]
             FIXTURES["Scenario Fixtures"]
             TESTS_BE["315 Backend Tests"]
@@ -656,7 +656,7 @@ flowchart LR
 | `GET /api/scenarios` | ⚠️ Partial | Reads from filesystem but no scenario management |
 | `GET /api/stats` | ⚠️ Mock only | Returns computed stats from mock trips |
 | `GET /api/pipeline` | ⚠️ Mock only | Returns computed pipeline from mock trips |
-| `POST /api/spine/run` | ✅ Real | Proxies to spine-api correctly |
+| `POST /api/spine/run` | ✅ Real | Proxies to spine_api correctly |
 | **Missing: POST /api/trips** | ❌ | Cannot create trips from UI |
 | **Missing: PUT /api/trips/[id]** | ❌ | Cannot update trip state |
 | **Missing: POST /api/trips/[id]/process** | ❌ | Cannot trigger pipeline for specific trip |
@@ -702,9 +702,9 @@ The README documents a "Two-Loop System":
 | `fly.toml` | Fly.io deployment | ⚠️ Exists but likely targets Streamlit |
 | `render.yaml` | Render deployment | ⚠️ Exists but likely stale |
 | `Procfile` | Heroku/process runner | ⚠️ Exists but needs verification |
-| `dev.sh` | Local dev orchestration | ✅ Works — starts spine-api + Next.js |
+| `dev.sh` | Local dev orchestration | ✅ Works — starts spine_api + Next.js |
 
-**Gap:** Deployment configs target the old Streamlit app, not the Next.js + spine-api architecture.
+**Gap:** Deployment configs target the old Streamlit app, not the Next.js + spine_api architecture.
 
 ### A8. TESTS — BACKEND STRONG, FRONTEND WEAK
 
@@ -714,7 +714,7 @@ The README documents a "Two-Loop System":
 | Frontend (Vitest) | 68 total | ⚠️ 5 failing (SkeletonAvatar/Card), only UI primitives tested |
 | Frontend pages | 0 | ❌ No page-level tests (Dashboard, Inbox, Workbench) |
 | E2E tests | 0 | ❌ No Playwright/Cypress |
-| Integration tests (FE↔BE) | 0 | ❌ Frontend mocks everything; never tests real spine-api |
+| Integration tests (FE↔BE) | 0 | ❌ Frontend mocks everything; never tests real spine_api |
 | API route tests | 0 | ❌ No tests for BFF routes |
 
 ### A9. CROSS-CUTTING WORKFLOWS THAT DON'T EXIST
@@ -738,7 +738,7 @@ The README documents a "Two-Loop System":
 | **Settings / preferences** | Agency preferences, default margins, specializations | ❌ No settings page |
 | **Onboarding wizard** | First-use setup (market, budget range, specializations) | ❌ Not built (documented in UX_DETAILED_USER_FLOWS screens 2-4) |
 | **Webhook / event system** | External systems notify Waypoint of events (payment received, flight cancelled) | ❌ No event ingestion |
-| **Rate limiting / throttling** | Protect spine-api from abuse | ❌ No rate limiting on spine-api |
+| **Rate limiting / throttling** | Protect spine_api from abuse | ❌ No rate limiting on spine_api |
 | **Error recovery** | Spine run fails mid-pipeline → partial results saved, retry possible | ❌ Spine runs are all-or-nothing |
 
 ### A10. TELEMETRY / OBSERVABILITY — MINIMAL
@@ -746,7 +746,7 @@ The README documents a "Two-Loop System":
 | Component | State |
 |-----------|-------|
 | `telemetry.py` | ⚠️ Writes JSONL to `~/.gstack/telemetry/` — local only |
-| Structured logging | ⚠️ Basic `logger.info()` in spine-api |
+| Structured logging | ⚠️ Basic `logger.info()` in spine_api |
 | Metrics (response time, throughput) | ❌ No Prometheus/StatsD |
 | Distributed tracing | ❌ No OpenTelemetry |
 | Error tracking | ❌ No Sentry/Bugsnag |
@@ -778,7 +778,7 @@ The README documents a "Two-Loop System":
 
 ### What Actually Works End-to-End Today
 
-1. `./dev.sh` → starts spine-api + Next.js ✅
+1. `./dev.sh` → starts spine_api + Next.js ✅
 2. Open `localhost:3000` → see dashboard with mock data ✅
 3. Go to `/workbench` → paste text → click "Process Trip" → see pipeline results ✅
 4. View packet/decision/strategy/safety tabs ✅

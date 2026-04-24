@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ total, unassigned, critical, atRisk });
   } catch (error) {
-    console.error("Error fetching inbox stats from spine-api:", error);
+    console.error("Error fetching inbox stats from spine_api:", error);
     return NextResponse.json(
       { error: "Failed to fetch inbox stats" },
       { status: 500 }

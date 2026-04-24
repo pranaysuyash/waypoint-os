@@ -20,14 +20,14 @@ All documentation has been updated to reflect the suitability module implementat
 
 ### 4. Test Documentation
 - **tests/README.md** - Updated test commands to use `uv run pytest` instead of `python -m pytest`
-- Added note about integration tests requiring live spine-api: `uv run pytest -m 'not integration'`
+- Added note about integration tests requiring live spine_api: `uv run pytest -m 'not integration'`
 
 ## Key Changes Documented
 
 ### Test Invocation Fix
 - Added `pythonpath = ["."]` to `pyproject.toml`
 - Both `uv run pytest` and `.venv/bin/python -m pytest` now work without manual `PYTHONPATH`
-- Integration tests (`test_run_lifecycle.py`) are marked with `@pytest.mark.integration` and require live spine-api
+- Integration tests (`test_run_lifecycle.py`) are marked with `@pytest.mark.integration` and require live spine_api
 
 ### Suitability Module
 - **Tier 1**: Deterministic scoring with age/weight/tag/intensity rules

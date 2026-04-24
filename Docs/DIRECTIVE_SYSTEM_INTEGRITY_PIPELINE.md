@@ -13,7 +13,7 @@ Stop all screen-specific data mocking and client-side arithmetic. Every dashboar
 - **Implement `src/services/dashboard_aggregator.py`**:
     - Build a single, high-performance query that retrieves all trip data and aggregates metrics.
     - **Canonical Schema**: Return a unified object: `{"canonical_total": N, "stages": { ... }, "sla_breached": N, "orphans": [...]}`.
-- **Expose Endpoint**: Update `spine-api/server.py` to expose `GET /api/system/unified-state`. All components (Inbox, Overview, Analytics) MUST call this endpoint.
+- **Expose Endpoint**: Update `spine_api/server.py` to expose `GET /api/system/unified-state`. All components (Inbox, Overview, Analytics) MUST call this endpoint.
 - **Orphan Audit**: The aggregator must explicitly identify "orphans" (trips in DB with no valid stage) and expose them in the `orphans` array for recovery triage.
 
 ### B. Frontend: Thin Client Projection

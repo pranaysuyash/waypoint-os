@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error performing bulk review action via spine-api:", error);
+    console.error("Error performing bulk review action via spine_api:", error);
     return NextResponse.json(
       { error: "Failed to perform bulk review action" },
       { status: 500 }

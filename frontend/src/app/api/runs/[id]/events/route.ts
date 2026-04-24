@@ -29,7 +29,7 @@ export async function GET(
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error fetching run events from spine-api:", error);
+    console.error("Error fetching run events from spine_api:", error);
     return NextResponse.json(
       { error: "Failed to fetch run events" },
       { status: 500 }

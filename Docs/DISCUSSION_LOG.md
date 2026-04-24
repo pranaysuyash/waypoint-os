@@ -1074,7 +1074,7 @@ Owner clarified original intent: **not anti-PostgreSQL**, but optimizing for **e
 3. Current codebase has:
   - no DB deps yet (`pyproject.toml`)
   - no DB service in compose (`docker-compose.yml`)
-  - JSON-file persistence (`spine-api/persistence.py`)
+  - JSON-file persistence (`spine_api/persistence.py`)
   - mock-heavy API routes in frontend BFF
 
 ### Option B vs Option C (deployment/cost lens)
@@ -1139,8 +1139,8 @@ Owner confirmed priority order:
 
 ### What Was Found in Current Repo State
 - Deploy assets already present for managed hosting (`render.yaml`, `fly.toml`).
-- Runtime is Python/FastAPI-first (`README.md`, `spine-api/server.py`).
-- Persistence is still JSON-file based (`spine-api/persistence.py`) and not yet DB-backed.
+- Runtime is Python/FastAPI-first (`README.md`, `spine_api/server.py`).
+- Persistence is still JSON-file based (`spine_api/persistence.py`) and not yet DB-backed.
 - No DB dependencies/config yet in runtime (`pyproject.toml`, `docker-compose.yml`).
 
 ### Cost-Floor Strategy (Practical)
@@ -1398,7 +1398,7 @@ User requested a handoff they can share directly with an implementation agent fo
 ### Evidence Used
 - D1 ADR: `Docs/ARCHITECTURE_DECISION_D1_AUTONOMY_GRADIENT_2026-04-18.md`
 - Current config/gate path: `src/intake/config/agency_settings.py`, `src/intake/gates.py`, `src/intake/orchestration.py`
-- Runtime/API context: `spine-api/server.py`
+- Runtime/API context: `spine_api/server.py`
 - Frontend placeholder settings contracts: `frontend/src/lib/governance-api.ts`, `frontend/src/types/governance.ts`, `frontend/src/app/workbench/SettingsPanel.tsx`
 - Fresh verification command:
   - `uv run pytest tests/test_settings_behavioral.py tests/test_nb02_v02.py -q`
@@ -1429,7 +1429,7 @@ Fresh repo evidence confirmed that both were still needed before implementation:
 - [frontend/src/components/layouts/Shell.tsx](file:///Users/pranay/Projects/travel_agency_agent/frontend/src/components/layouts/Shell.tsx) still had no `/settings` entry.
 - [frontend/src/app/workbench/SettingsPanel.tsx](file:///Users/pranay/Projects/travel_agency_agent/frontend/src/app/workbench/SettingsPanel.tsx) remained a workbench-only debug drawer.
 - [frontend/src/lib/governance-api.ts](file:///Users/pranay/Projects/travel_agency_agent/frontend/src/lib/governance-api.ts) still exposed placeholder `/api/settings/pipeline` and `/api/settings/approvals` alongside `/api/settings/autonomy`.
-- [spine-api/persistence.py](file:///Users/pranay/Projects/travel_agency_agent/spine-api/persistence.py) and [src/analytics/review.py](file:///Users/pranay/Projects/travel_agency_agent/src/analytics/review.py) still used lightweight generic audit events.
+- [spine_api/persistence.py](file:///Users/pranay/Projects/travel_agency_agent/spine_api/persistence.py) and [src/analytics/review.py](file:///Users/pranay/Projects/travel_agency_agent/src/analytics/review.py) still used lightweight generic audit events.
 
 ### Artifacts Created
 - `Docs/SETTINGS_ROUTE_SUBROUTE_UX_CONTRACT_2026-04-23.md`
@@ -1487,8 +1487,8 @@ This was intentionally framed as a documentation and architecture pass first, no
 - `Docs/SETTINGS_ROUTE_SUBROUTE_UX_CONTRACT_2026-04-23.md`
 - `Docs/GOVERNANCE_AUDIT_EVENT_TAXONOMY_2026-04-23.md`
 - `Docs/INDUSTRY_ROLES_AND_AI_AGENT_MAPPING.md`
-- `spine-api/persistence.py`
-- `spine-api/server.py`
+- `spine_api/persistence.py`
+- `spine_api/server.py`
 - `src/analytics/metrics.py`
 - `src/analytics/review.py`
 - `frontend/src/types/governance.ts`

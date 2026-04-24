@@ -12,7 +12,7 @@ However, it is currently a "calculator," not an Operating System. If the server 
 ---
 
 ## 1. Missing Persistence & State (The "Brain Amnesia")
-The current backend uses local JSON file-backing (`spine-api/persistence.py`) for audit logs and run states. There is no relational database.
+The current backend uses local JSON file-backing (`spine_api/persistence.py`) for audit logs and run states. There is no relational database.
 
 *   **No Relational DB**: Missing Postgres/Supabase schema for `agencies`, `users`, `customers`, `trips`, and `vendors`.
 *   **No Cross-Run Memory**: If a client asks a question on Tuesday and follows up on Thursday, the system treats it as two entirely separate events. It cannot stitch `CanonicalPackets` together over time.

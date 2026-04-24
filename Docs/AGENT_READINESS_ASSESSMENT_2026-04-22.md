@@ -150,4 +150,4 @@ To go multi-agent while preserving deterministic core:
 Review `AGENTS.md` for skill locations and workflows, then begin implementing:
 1. Agent orchestrator in `src/agents/orchestrator.py`
 2. Communicator agent in `src/agents/communicator.py`
-3. Override API endpoint in `spine-api/server.py`
+3. Override API endpoint in `spine_api/server.py`

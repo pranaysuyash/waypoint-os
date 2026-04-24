@@ -46,7 +46,7 @@ Full coverage of decision engine behavior.
 uv run pytest
 ```
 
-### All tests except integration tests (requires live spine-api)
+### All tests except integration tests (requires live spine_api)
 ```bash
 uv run pytest -m 'not integration'
 ```

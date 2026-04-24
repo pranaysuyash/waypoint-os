@@ -3,7 +3,7 @@
 # Operator Run Runbook
 **Date**: 2026-04-18  
 **Scope**: Inspecting, debugging, and safely retrying spine runs  
-**Applies to**: spine-api Wave A and later
+**Applies to**: spine_api Wave A and later
 
 ---
 

@@ -89,7 +89,7 @@ A living document of areas to explore, ideas to investigate, and potential impro
 
 ## API & Server
 
-- [ ] spine-api performance optimization
+- [ ] spine_api performance optimization
 - [ ] Additional health check endpoints
 - [ ] Rate limiting and request queuing
 - [ ] WebSocket support for real-time updates
@@ -118,7 +118,7 @@ A living document of areas to explore, ideas to investigate, and potential impro
 - [ ] Real-world scenario expansion
 - [ ] Shadow mode comparison framework
 - [ ] Regression prevention tools
-- [ ] Load testing for spine-api
+- [ ] Load testing for spine_api
 - [ ] Property-based testing
 - [ ] Visual regression tests
 - [ ] Chaos engineering for resilience

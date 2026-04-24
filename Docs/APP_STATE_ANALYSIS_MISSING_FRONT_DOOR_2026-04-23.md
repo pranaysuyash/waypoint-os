@@ -61,7 +61,7 @@ interface WorkspaceCode {
 
 ## What Actually Exists
 
-### Backend (`spine-api/`)
+### Backend (`spine_api/`)
 
 | Component | Status | Notes |
 |-----------|--------|-------|
@@ -132,7 +132,7 @@ The AI spine pipeline works. The workbench can process a raw note and populate 7
 ## Current User Journey (Reality)
 
 ```
-Developer starts spine-api on :8000
+Developer starts spine_api on :8000
 Developer starts Next.js on :3000
 Developer opens localhost:3000
 → Lands on Operations Overview
@@ -214,8 +214,8 @@ Developer opens localhost:3000
 
 | File | Issue |
 |------|-------|
-| `spine-api/server.py` | No auth middleware, no user routes, hardcoded `waypoint-hq` |
-| `spine-api/persistence.py` | No UserStore, no WorkspaceStore, no tenant scoping |
+| `spine_api/server.py` | No auth middleware, no user routes, hardcoded `waypoint-hq` |
+| `spine_api/persistence.py` | No UserStore, no WorkspaceStore, no tenant scoping |
 | `frontend/src/app/page.tsx` | Assumes user is already authenticated |
 | `frontend/src/components/layouts/Shell.tsx` | Hardcoded "OP" avatar, no user menu |
 | `frontend/src/lib/api-client.ts` | No auth header injection |

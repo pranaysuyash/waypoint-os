@@ -31,7 +31,7 @@ export async function POST(
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error dismissing alert via spine-api:", error);
+    console.error("Error dismissing alert via spine_api:", error);
     return NextResponse.json(
       { error: "Failed to dismiss alert" },
       { status: 500 }

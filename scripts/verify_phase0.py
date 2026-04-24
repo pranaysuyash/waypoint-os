@@ -1,13 +1,13 @@
 """
 Phase 0 verification script.
 
-Run with: PYTHONPATH=spine-api:. uv run python scripts/verify_phase0.py
+Run with: PYTHONPATH=spine_api:. uv run python scripts/verify_phase0.py
 """
 
 import asyncio
 import sys
 
-sys.path.insert(0, "spine-api")
+sys.path.insert(0, "spine_api")
 
 
 async def verify_database():

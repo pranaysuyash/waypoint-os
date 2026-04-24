@@ -51,7 +51,7 @@
 
 **Implementation**:
 - Async route handler with proper Next.js 16 parameter handling (`await params`)
-- Proxies requests to backend spine-api `/api/trips/{id}/timeline`
+- Proxies requests to backend spine_api `/api/trips/{id}/timeline`
 - Full error handling: 400 for bad requests, 500 for server errors, 200 for success
 - Includes stage filtering support
 
@@ -75,7 +75,7 @@
 ---
 
 ### 4. Backend Error Handling & Validation ✅
-**File**: `spine-api/server.py`
+**File**: `spine_api/server.py`
 
 **Primary Fix** (lines 1047-1055):
 - Added confidence score clamping: if confidence < 0 or > 100, normalize to 0-100 range
@@ -300,7 +300,7 @@ TimelinePanel shows:
    - Changes: Updated 9 test mocks to real schema
    - Status: ✅ Tested (9/9 passing)
 
-4. **spine-api/server.py**
+4. **spine_api/server.py**
    - Lines: 1021-1028 (stage validation), 1047-1055 (confidence clamping), 1103-1110 (defensive fallback clamping)
    - Changes: Validation, clamping, error handling
    - Status: ✅ Tested (618/618 passing)

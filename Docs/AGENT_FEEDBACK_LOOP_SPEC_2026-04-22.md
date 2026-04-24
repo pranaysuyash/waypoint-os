@@ -740,8 +740,8 @@ FLAG_TO_DECISION_TYPE = {
 
 | File | Change |
 |------|--------|
-| `spine-api/server.py` | Add OverrideRequest/OverrideResponse models, POST/GET/PUT/DELETE endpoints |
-| `spine-api/persistence.py` | Add `OverrideStore` class |
+| `spine_api/server.py` | Add OverrideRequest/OverrideResponse models, POST/GET/PUT/DELETE endpoints |
+| `spine_api/persistence.py` | Add `OverrideStore` class |
 | `src/intake/decision.py` | Add `apply_override_adjustments()`, integrate into `run_gap_and_decision()` |
 | `src/decision/hybrid_engine.py` | Add `invalidate_cache()` helper, graduated rule registration path |
 | `src/decision/cache_schema.py` | Already has `record_feedback()`, `is_valid()` — no changes needed |

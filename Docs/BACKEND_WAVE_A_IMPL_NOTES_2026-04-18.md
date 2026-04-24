@@ -9,9 +9,9 @@
 
 | File | Purpose |
 |---|---|
-| `spine-api/run_state.py` | State machine enum + transition guards |
-| `spine-api/run_events.py` | Append-only JSONL event emitter per run |
-| `spine-api/run_ledger.py` | Deterministic step ledger (read/write) |
+| `spine_api/run_state.py` | State machine enum + transition guards |
+| `spine_api/run_events.py` | Append-only JSONL event emitter per run |
+| `spine_api/run_ledger.py` | Deterministic step ledger (read/write) |
 | `tests/test_run_lifecycle.py` | Golden/leakage paths + state machine unit tests |
 | `Docs/OPERATOR_RUN_RUNBOOK_2026-04-18.md` | Operator inspection + retry doc |
 
@@ -19,7 +19,7 @@
 
 | File | What |
 |---|---|
-| `spine-api/server.py` | Fixed 2 broken `from spine-api.persistence` imports (hyphen = invalid Python). Added Wave A imports. Instrumented `/run` handler with ledger + events. Added `/runs`, `/runs/{run_id}`, `/runs/{run_id}/steps/{step}`, `/runs/{run_id}/events` endpoints. |
+| `spine_api/server.py` | Fixed 2 broken `from spine_api.persistence` imports (hyphen = invalid Python). Added Wave A imports. Instrumented `/run` handler with ledger + events. Added `/runs`, `/runs/{run_id}`, `/runs/{run_id}/steps/{step}`, `/runs/{run_id}/events` endpoints. |
 
 ---
 
@@ -54,8 +54,8 @@
 
 ### Bug Fixes in `server.py`
 
-Two pre-existing import bugs fixed (`from spine-api.persistence import ...` — hyphen makes the module name invalid Python syntax; these lines would have caused `SyntaxError` at import time):
-- Line 438: removed entirely (was a duplicate `from spine-api.persistence import ...` block)
+Two pre-existing import bugs fixed (`from spine_api.persistence import ...` — hyphen makes the module name invalid Python syntax; these lines would have caused `SyntaxError` at import time):
+- Line 438: removed entirely (was a duplicate `from spine_api.persistence import ...` block)
 - Line 634 (inside `list_assignments`): replaced with a comment noting `AssignmentStore` is already available at module scope
 
 ---
@@ -93,8 +93,8 @@ State machine unit tests require no live API — run with:
 pytest tests/test_run_lifecycle.py::TestRunStateMachine -v
 ```
 
-Full integration tests (golden + leakage paths) require a live `spine-api`:
+Full integration tests (golden + leakage paths) require a live `spine_api`:
 ```bash
-# Start spine-api, then:
+# Start spine_api, then:
 pytest tests/test_run_lifecycle.py -v
 ```

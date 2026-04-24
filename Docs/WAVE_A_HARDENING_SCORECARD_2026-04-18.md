@@ -1,7 +1,7 @@
 # Wave A Hardening Scorecard
 **Date**: 2026-04-18  
 **Purpose**: Production-readiness review gate for backend agentic flow v0  
-**Scope**: `spine-api` run lifecycle, eventing, ledger, run status APIs, eval harness
+**Scope**: `spine_api` run lifecycle, eventing, ledger, run status APIs, eval harness
 
 ---
 

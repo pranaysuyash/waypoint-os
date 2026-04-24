@@ -16,7 +16,7 @@ function getNestedValue(obj: any, path: string, defaultValue: any = null): any {
   return current === undefined ? defaultValue : current;
 }
 
-// Map spine-api status to inbox stage
+// Map spine_api status to inbox stage
 const stageMap: Record<string, string> = {
   new: 'intake',
   assigned: 'options',
@@ -92,7 +92,7 @@ function getStageNumber(stage: string): number {
   return stageMap[stage] || 0;
 }
 
-// Transform spine-api trip to frontend inbox trip format
+// Transform spine_api trip to frontend inbox trip format
 function transformTripToInboxFormat(trip: any): any {
   // Extract destination from facts if available, otherwise from extracted.trip_metadata
   const destination = getNestedValue(trip, 'extracted.facts.destination_candidates.value.0') ||
@@ -132,7 +132,7 @@ function transformTripToInboxFormat(trip: any): any {
                      getNestedValue(trip, 'extracted.date_window') ||
                      'TBD';
                      
-  // Map spine-api status to inbox stage
+  // Map spine_api status to inbox stage
   const spineStatus = trip.status || 'new';
   const stage = stageMap[spineStatus] || spineStatus || 'options';
   
@@ -225,7 +225,7 @@ function transformTripToInboxFormat(trip: any): any {
 
 export async function GET(request: NextRequest) {
   try {
-    // Forward request to spine-api with all query parameters
+    // Forward request to spine_api with all query parameters
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.toString();
     const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/trips${query ? `?${query}` : ""}`;
@@ -241,8 +241,8 @@ export async function GET(request: NextRequest) {
 
     const spineApiData = await response.json();
     
-    // Transform spine-api trips to frontend inbox format
-    // spine-api returns { items: [...], total: N }
+    // Transform spine_api trips to frontend inbox format
+    // spine_api returns { items: [...], total: N }
     const trips = spineApiData.items || [];
     const total = spineApiData.total || trips.length;
     
@@ -262,7 +262,7 @@ export async function GET(request: NextRequest) {
       hasMore 
     });
   } catch (error) {
-    console.error("Error fetching inbox from spine-api:", error);
+    console.error("Error fetching inbox from spine_api:", error);
     return NextResponse.json(
       { error: "Failed to fetch inbox" },
       { status: 500 }
@@ -282,7 +282,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // For now, we'll simulate the bulk action since spine-api may not have bulk endpoints
+    // For now, we'll simulate the bulk action since spine_api may not have bulk endpoints
     // In a full implementation, we'd make individual API calls or use a bulk endpoint
     return NextResponse.json({
       success: true,

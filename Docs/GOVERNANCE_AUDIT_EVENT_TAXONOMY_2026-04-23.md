@@ -20,7 +20,7 @@ The repo already emits audit-like events, but the current model is too lightweig
 
 Today the codebase still relies on a generic shape:
 
-- backend writes `{id, type, user_id, timestamp, details}` via [spine-api/persistence.py](file:///Users/pranay/Projects/travel_agency_agent/spine-api/persistence.py),
+- backend writes `{id, type, user_id, timestamp, details}` via [spine_api/persistence.py](file:///Users/pranay/Projects/travel_agency_agent/spine_api/persistence.py),
 - frontend types expose a small enum with values like `trip_assigned` and `settings_changed` in [frontend/src/types/governance.ts](file:///Users/pranay/Projects/travel_agency_agent/frontend/src/types/governance.ts),
 - review actions are collapsed into a single `review_action` event in [src/analytics/review.py](file:///Users/pranay/Projects/travel_agency_agent/src/analytics/review.py).
 
@@ -460,7 +460,7 @@ The audit layer therefore needs to distinguish:
 
 ## Persistence Guidance
 
-The current [spine-api/persistence.py](file:///Users/pranay/Projects/travel_agency_agent/spine-api/persistence.py) file-based `AuditStore` may remain temporarily, but the stored shape should evolve toward the canonical envelope instead of accumulating more `type + details` shortcuts.
+The current [spine_api/persistence.py](file:///Users/pranay/Projects/travel_agency_agent/spine_api/persistence.py) file-based `AuditStore` may remain temporarily, but the stored shape should evolve toward the canonical envelope instead of accumulating more `type + details` shortcuts.
 
 That means:
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { forwardAuthHeaders } from "@/lib/proxy-utils";
 
-// Map spine-api status values to frontend state values
+// Map spine_api status values to frontend state values
 const statusMap: Record<string, "green" | "amber" | "red" | "blue"> = {
   new: 'blue',
   assigned: 'amber',
@@ -24,7 +24,7 @@ function calculateAge(isoDateString: string): string {
   return `${Math.floor(diffDays / 30)}mo`;
 }
 
-// Transform spine-api trip to frontend Trip format
+// Transform spine_api trip to frontend Trip format
 function transformTrip(spineTrip: any): any {
   // Handle case where extracted or nested fields might be null/undefined
   const destination = spineTrip.extracted?.trip_metadata?.destination || 
@@ -151,7 +151,7 @@ export async function GET(
     const { id } = await params;
     
     const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
-    // Forward request to spine-api
+    // Forward request to spine_api
     const spineApiUrl = `${SPINE_API_URL}/trips/${encodeURIComponent(id)}`;
 
     const response = await fetch(spineApiUrl, {
@@ -174,7 +174,7 @@ export async function GET(
     
     return NextResponse.json(transformedTrip);
   } catch (error) {
-    console.error("Error fetching trip from spine-api:", error);
+    console.error("Error fetching trip from spine_api:", error);
     return NextResponse.json(
       { error: "Failed to fetch trip" },
       { status: 500 }
@@ -218,7 +218,7 @@ export async function PATCH(
       delete updates.state;
     }
 
-    // Forward request to spine-api
+    // Forward request to spine_api
     const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
     const spineApiUrl = `${SPINE_API_URL}/trips/${encodeURIComponent(id)}`;
 

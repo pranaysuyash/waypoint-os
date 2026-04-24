@@ -73,7 +73,7 @@ The codebase already has partial ingredients for assignment, workload, and opera
 
 ### 1. Assignment is still a single-slot storage model
 
-Current persistence in `spine-api/persistence.py` stores one assignment record per trip with:
+Current persistence in `spine_api/persistence.py` stores one assignment record per trip with:
 
 - `trip_id`
 - `agent_id`
@@ -103,13 +103,13 @@ This means the current team-metrics layer is not yet reliable enough to drive le
 
 ### 4. Workload signals exist, but only in coarse form
 
-`spine-api/server.py` exposes `/api/team/workload`, which already counts assigned trips and compares them against a stored capacity value.
+`spine_api/server.py` exposes `/api/team/workload`, which already counts assigned trips and compares them against a stored capacity value.
 
 That is useful as a deterministic seed signal, but it is not yet a full routing model.
 
 ### 5. Audit and frontend types are not yet on canonical governance contracts
 
-- `spine-api/persistence.py` still emits generic events such as `trip_assigned` and `trip_unassigned`.
+- `spine_api/persistence.py` still emits generic events such as `trip_assigned` and `trip_unassigned`.
 - `src/analytics/review.py` still emits umbrella `review_action` events.
 - `frontend/src/types/governance.ts` still uses the older `owner | manager | agent | viewer` vocabulary instead of `Owner | Admin | SeniorAgent | JuniorAgent | Viewer`.
 

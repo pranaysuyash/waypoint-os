@@ -21,7 +21,7 @@ from pathlib import Path
 import sys
 
 # Setup imports
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "spine-api"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "spine_api"))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from server import app

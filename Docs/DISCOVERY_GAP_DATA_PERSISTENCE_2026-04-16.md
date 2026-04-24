@@ -13,7 +13,7 @@ The system has **zero persistence**. Every spine run produces results that vanis
 
 The DATA_STRATEGY research doc (524 lines) defines 10+ PostgreSQL tables. TECHNICAL_INFRASTRUCTURE recommends PostgreSQL + SQLAlchemy 2.0. The single-tenant MVP strategy defines a simplified schema. None of it is implemented.
 
-The only "persistence" that exists: one `spine-api/persistence.py` file (246 lines) that writes JSON files to disk. And one localStorage usage (theme preferences).
+The only "persistence" that exists: one `spine_api/persistence.py` file (246 lines) that writes JSON files to disk. And one localStorage usage (theme preferences).
 
 **Bottom line**: Without this gap resolved, every other gap is academic. The system cannot be an operating system if it forgets everything.
 
@@ -39,7 +39,7 @@ The only "persistence" that exists: one `spine-api/persistence.py` file (246 lin
 
 | Layer | Technology | What It Stores | Limitations |
 |-------|-----------|---------------|-------------|
-| **spine-api/persistence.py** | JSON file I/O | TripStore (individual trip JSONs in `data/trips/`), AssignmentStore (single `assignments.json`), AuditStore (single `events.json` with 10K rotation) | No concurrency safety, no transactions, no querying, no relations |
+| **spine_api/persistence.py** | JSON file I/O | TripStore (individual trip JSONs in `data/trips/`), AssignmentStore (single `assignments.json`), AuditStore (single `events.json` with 10K rotation) | No concurrency safety, no transactions, no querying, no relations |
 | **Frontend: themeStore.ts** | localStorage via Zustand persist | Theme, component variants, density | Only cosmetic state |
 | **Frontend: workbench.ts** | URL query params | Workbench stage, mode, scenario | Lost on refresh; no data persistence |
 | **geography.py** | Runtime JSON file | accumulated_cities.json | Concurrency issues documented |
@@ -221,7 +221,7 @@ PI-03 (Lifecycle Transitions)
 2. Add sqlalchemy + asyncpg + alembic to pyproject.toml
 3. Add DATABASE_URL to .env.example
 4. Create initial migration with 5 core tables (agencies, agents, customers, trips, events)
-5. Wire spine-api `save_processed_trip()` to write to DB instead of JSON files
+5. Wire spine_api `save_processed_trip()` to write to DB instead of JSON files
 
 **Acceptance**: `docker-compose up` starts Postgres. `alembic upgrade head` creates tables. Spine run persists to trips table. Frontend reads from `/api/trips` (now real DB data, not mock).
 
@@ -267,7 +267,7 @@ PI-03 (Lifecycle Transitions)
 |------|----------|------------|
 | Schema design wrong — need migration early | High | Start with Alembic from day 1. Keep schema minimal (5 tables max). Evolve incrementally. |
 | JSONB becomes unqueryable mess | Medium | Index key JSONB paths. Extract stable query fields to columns. Review per table. |
-| No migration path from JSON file persistence | Low | spine-api/persistence.py is 246 lines. Write migration script to load JSON files into DB. Then deprecate. |
+| No migration path from JSON file persistence | Low | spine_api/persistence.py is 246 lines. Write migration script to load JSON files into DB. Then deprecate. |
 | PostgreSQL too heavy for solo dev | Low | Docker makes Postgres trivial. Render free tier covers dev. |
 | Premature optimization — building schema before features | Medium | Only create tables for features that exist. Don't pre-create supplier/bookings tables until those features are started. |
 
@@ -281,7 +281,7 @@ PI-03 (Lifecycle Transitions)
 - `Docs/FEEDBACK_LOOPS_AND_IMPROVEMENT.md` — Trip logs, error logs tables
 - `Docs/PERSONA_PROCESS_GAP_ANALYSIS_2026-04-16.md` — Persistence severity 6/6
 - `Docs/CODEBASE_ANALYSIS_2026-04-12.md` — P0 gap assessment
-- `spine-api/persistence.py` — Only persistence implementation (JSON files)
+- `spine_api/persistence.py` — Only persistence implementation (JSON files)
 - `docker-compose.yml` — No DB service
 - `.env.example` — No DATABASE_URL
 - `pyproject.toml` — No DB dependencies

@@ -5,13 +5,13 @@ Next.js frontend for the Travel Agency Agent system. The frontend communicates w
 ## Architecture
 
 ```
-Browser → Next.js (localhost:3000) → spine-api (FastAPI, port 8000) → run_spine_once
+Browser → Next.js (localhost:3000) → spine_api (FastAPI, port 8000) → run_spine_once
                                                              (persistent process,
                                                               modules pre-loaded)
 ```
 
 - **Frontend**: Next.js 16.2.3 with App Router, TypeScript, Zustand
-- **Backend**: Python 3.13+ via `spine-api` FastAPI service (persistent process)
+- **Backend**: Python 3.13+ via `spine_api` FastAPI service (persistent process)
 - **State**: Zustand store for workbench state (no rerun on tab switch)
 
 ## Prerequisites
@@ -66,7 +66,7 @@ frontend/
 ├── src/
 │   ├── app/
 │   │   ├── api/
-│   │   │   ├── spine/run/route.ts     # POST /api/spine/run (BFF → spine-api)
+│   │   │   ├── spine/run/route.ts     # POST /api/spine/run (BFF → spine_api)
 │   │   │   └── scenarios/            # GET /api/scenarios, /api/scenarios/[id]
 │   │   ├── workbench/                 # Main workbench UI
 │   │   │   ├── page.tsx              # 5-tab workbench
@@ -77,7 +77,7 @@ frontend/
 │   │   │   └── SafetyTab.tsx          # Leakage + assertions
 │   │   └── globals.css               # Design tokens
 │   ├── lib/
-│   │   ├── spine-client.ts           # HTTP client → spine-api (port 8000)
+│   │   ├── spine-client.ts           # HTTP client → spine_api (port 8000)
 │   │   ├── scenario-loader.ts        # Scenario file loader
 │   │   └── design-system.ts          # State color constants
 │   ├── stores/
@@ -101,7 +101,7 @@ frontend/
 │   │   │   └── SafetyTab.tsx          # Leakage + assertions
 │   │   └── globals.css               # Design tokens
 │   ├── lib/
-│   │   ├── spine-client.ts           # HTTP client → spine-api (port 8000)
+│   │   ├── spine-client.ts           # HTTP client → spine_api (port 8000)
 │   │   ├── scenario-loader.ts        # Scenario file loader
 │   │   └── design-system.ts          # State color constants
 │   ├── stores/
@@ -203,16 +203,16 @@ Implementation:
 
 ## Troubleshooting
 
-### Start spine-api first
-The Next.js BFF calls the spine-api FastAPI service on port 8000. Start it with:
+### Start spine_api first
+The Next.js BFF calls the spine_api FastAPI service on port 8000. Start it with:
 ```bash
 cd /Users/pranay/Projects/travel_agency_agent
-uv run uvicorn spine-api.server:app --port 8000
+uv run uvicorn spine_api.server:app --port 8000
 ```
 
-### "spine-api connection failed"
+### "spine_api connection failed"
 ```bash
-# Verify spine-api is running
+# Verify spine_api is running
 curl http://127.0.0.1:8000/health
 # Should return: {"status":"ok","version":"1.0.0"}
 

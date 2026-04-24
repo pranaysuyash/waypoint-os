@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error fetching approval settings from spine-api:", error);
+    console.error("Error fetching approval settings from spine_api:", error);
     return NextResponse.json(
       { error: "Failed to fetch approval settings" },
       { status: 500 }
@@ -46,7 +46,7 @@ export async function PUT(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error updating approval settings via spine-api:", error);
+    console.error("Error updating approval settings via spine_api:", error);
     return NextResponse.json(
       { error: "Failed to update approval settings" },
       { status: 500 }

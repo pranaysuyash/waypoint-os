@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { forwardAuthHeaders } from "@/lib/proxy-utils";
 
-// Map spine-api status values to frontend state values
+// Map spine_api status values to frontend state values
 const statusMap: Record<string, "green" | "amber" | "red" | "blue"> = {
   new: 'blue',
   assigned: 'amber',
@@ -44,7 +44,7 @@ function getNestedValue(obj: any, path: string, defaultValue: any = null): any {
   return current === undefined ? defaultValue : current;
 }
 
-// Transform spine-api trip to frontend Trip format
+// Transform spine_api trip to frontend Trip format
 function transformTrip(spineTrip: any): any {
   // Extract destination from facts if available, otherwise from extracted.trip_metadata
   const destination = getNestedValue(spineTrip, 'extracted.facts.destination_candidates.value.0') ||
@@ -188,7 +188,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const view = searchParams.get("view");
 
-    // Strip our custom param before forwarding to spine-api
+    // Strip our custom param before forwarding to spine_api
     const forwardParams = new URLSearchParams(searchParams.toString());
     forwardParams.delete("view");
     const query = forwardParams.toString();
@@ -227,7 +227,7 @@ export async function GET(request: NextRequest) {
       total: transformedItems.length,
     });
   } catch (error) {
-    console.error("Error fetching trips from spine-api:", error);
+    console.error("Error fetching trips from spine_api:", error);
     return NextResponse.json(
       { error: "Failed to fetch trips" },
       { status: 500 }

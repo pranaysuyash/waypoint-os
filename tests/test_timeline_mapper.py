@@ -12,7 +12,7 @@ import sys
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "spine-api"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "spine_api"))
 
 from analytics.logger import TimelineEventMapper, TimelineEvent
 

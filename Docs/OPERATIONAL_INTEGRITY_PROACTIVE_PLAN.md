@@ -10,7 +10,7 @@ This document outlines the final phase of "Cockpit" hardening: shifting from rea
 ## 1. Proactive Integrity Watchdog (Drift-Detection)
 **Objective**: Automate data consistency checks to ensure the SSOT pipeline never drifts silently.
 
-- **Implementation**: Implement a background cron job within `spine-api` that runs the `DashboardAggregator` every 5-15 minutes.
+- **Implementation**: Implement a background cron job within `spine_api` that runs the `DashboardAggregator` every 5-15 minutes.
 - **Alerting**: If `integrity_meta.consistent` returns `False`, trigger an automated alert via `src/analytics/review.py`'s `_emit_notification` function.
 - **Goal**: Proactive awareness. System failures should be detected by the system, not the operator.
 

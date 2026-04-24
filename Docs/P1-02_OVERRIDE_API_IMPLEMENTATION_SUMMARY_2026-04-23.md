@@ -25,7 +25,7 @@ This implementation delivers:
 
 ### 1. Backend Implementation
 
-#### OverrideStore (spine-api/persistence.py)
+#### OverrideStore (spine_api/persistence.py)
 File-based persistence layer following existing patterns:
 - `save_override(trip_id, override_data)` → `override_id`
 - `get_overrides_for_trip(trip_id)` → `[Override]`
@@ -46,7 +46,7 @@ data/
     index.json                  # Global index: override_id → (trip_id, file_path)
 ```
 
-#### Override Endpoints (spine-api/server.py)
+#### Override Endpoints (spine_api/server.py)
 Three REST endpoints with comprehensive validation:
 
 **POST /trips/{trip_id}/override**
@@ -237,8 +237,8 @@ No alerts to stakeholders. Future enhancement.
 ## File Manifest
 
 ### Backend
-- **spine-api/persistence.py** — Added `OverrideStore` class (145 lines)
-- **spine-api/server.py** — Added override endpoints + models (130 lines)
+- **spine_api/persistence.py** — Added `OverrideStore` class (145 lines)
+- **spine_api/server.py** — Added override endpoints + models (130 lines)
 - **tests/test_override_api.py** — 17 unit tests (400+ lines)
 
 ### Frontend

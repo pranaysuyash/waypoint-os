@@ -46,7 +46,7 @@ Maps various state representations to 6 canonical statuses:
 - `rejected` - Decision rejected
 - `error` - Stage failed
 
-### 2. New TimelineEvent Schema (`spine-api/server.py`)
+### 2. New TimelineEvent Schema (`spine_api/server.py`)
 
 **Old (Broken) Schema**:
 ```python
@@ -238,11 +238,11 @@ def get_trip_timeline(...):
 
 ### Modified Files
 - ✅ `src/analytics/logger.py` - Added TimelineEventMapper class (220+ lines)
-- ✅ `spine-api/server.py` - Updated timeline endpoint + models
+- ✅ `spine_api/server.py` - Updated timeline endpoint + models
 - ✅ `tests/test_timeline_e2e_lifecycle.py` - Updated tests for new schema
 
 ### Unchanged
-- ✅ `spine-api/persistence.py` - AuditStore unchanged
+- ✅ `spine_api/persistence.py` - AuditStore unchanged
 - ✅ All other test files passing
 
 ---

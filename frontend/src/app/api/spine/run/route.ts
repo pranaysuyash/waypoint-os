@@ -3,13 +3,13 @@
  *
  * BFF route handler for the spine run endpoint.
  *
- * Calls spine-api (persistent FastAPI service) and forwards the canonical
+ * Calls spine_api (persistent FastAPI service) and forwards the canonical
  * SpineRunResponse directly without ad-hoc remapping.
  *
  * Error handling:
  *   - 400: bad request / validation failure
- *   - 422: strict leakage failure (ok=false from spine-api)
- *   - 500: spine-api internal error
+ *   - 422: strict leakage failure (ok=false from spine_api)
+ *   - 500: spine_api internal error
  *
  * Canonical contract: SpineRunResponse {
  *   ok: boolean,

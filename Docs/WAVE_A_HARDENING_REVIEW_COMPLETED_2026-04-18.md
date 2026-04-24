@@ -15,7 +15,7 @@
 ## B. What Is Verified
 
 ### Module Compilation ✅
-- Command: `python3 -m py_compile spine-api/run_state.py spine-api/run_events.py spine-api/run_ledger.py spine-api/server.py tests/test_run_state_unit.py tests/test_run_lifecycle.py`
+- Command: `python3 -m py_compile spine_api/run_state.py spine_api/run_events.py spine_api/run_ledger.py spine_api/server.py tests/test_run_state_unit.py tests/test_run_lifecycle.py`
 - Result: No errors (exit code 0)
 - Evidence: All 6 files compile cleanly
 
@@ -39,7 +39,7 @@
 - Result: 29 tests collected, all marked with `@pytest.mark.integration`
 - Integration mark registered in `tests/conftest.py`:
   ```
-  config.addinivalue_line("markers", "integration: marks tests that require a live spine-api instance...")
+  config.addinivalue_line("markers", "integration: marks tests that require a live spine_api instance...")
   ```
 - Test classes in `test_run_lifecycle.py`:
   - `TestGoldenPath` (5 tests) — **Criterion 3 verified** (per-stage events), **Criterion 5 verified** (consistency)
@@ -50,7 +50,7 @@
   - `TestEndpointEdgeCases` (6 tests) — **Criterion 8 verified** (404 handling, filters, limits)
 
 ### Transition Guards End-to-End ✅ (Criterion 1)
-- File: `spine-api/run_ledger.py`
+- File: `spine_api/run_ledger.py`
 - grep evidence:
   ```
   40:from run_state import RunState, assert_can_transition
@@ -63,14 +63,14 @@
 - Test: `TestLedgerTransitionGuards.test_set_state_invalid_transition_raises` + `test_complete_requires_running_state` (unit tests PASSED)
 
 ### Terminal Semantics (blocked ≠ failed) ✅ (Criterion 2)
-- File: `spine-api/run_state.py`
+- File: `spine_api/run_state.py`
 - Enum values distinct: `BLOCKED = "blocked"` vs `FAILED = "failed"`
 - Unit tests: `TestBlockedIsDistinctFromFailed` (5/5 PASSED)
   - Confirms blocked and failed are different values
   - Confirms blocked and failed are not reachable from each other
 
 ### Event Coverage (run + per-stage) ✅ (Criterion 3)
-- File: `spine-api/server.py`
+- File: `spine_api/server.py`
 - grep evidence: 18 matches for emit_stage_entered/completed/leakage_result
 - Pattern: Events emitted around each save_step call
   - `emit_stage_entered(run_id, step_name, ...)` before checkpoint
@@ -80,7 +80,7 @@
 - Test: `TestRunEvents` unit tests (3/3 PASSED)
 
 ### Step Ledger Completeness + Deterministic Reads ✅ (Criterion 4)
-- File: `spine-api/run_ledger.py`
+- File: `spine_api/run_ledger.py`
 - All KNOWN_STEPS checkpointed: packet, validation, decision, strategy, safety, output
 - Safety step checkpointed from `leakage_result` (server.py line 410)
 - Unit tests: `TestLedgerStepCheckpoints` (5/5 PASSED)
@@ -96,14 +96,14 @@
   - `test_event_sequence_ends_with_terminal_event` — event completeness
 
 ### Partial-Failure Resilience ✅ (Criterion 6)
-- File: `spine-api/server.py`
+- File: `spine_api/server.py`
 - Pattern: All ledger/event operations wrapped in try/except (source verified)
 - Integration test: `TestWriteFailureIsolation.test_golden_run_returns_200_not_500` (PASSED)
   - Confirms that ledger write failures do not break `/run` response contract
 - Smoke test: Golden run returns HTTP 200 (verified in test collection)
 
 ### Idempotency + Retry Policy ✅ (Criterion 7)
-- File: `spine-api/run_ledger.py`
+- File: `spine_api/run_ledger.py`
 - Documented policy (in code comments):
   ```
   # Idempotency policy (explicit, documented):
@@ -198,10 +198,10 @@ Optional improvements (Wave B):
 
 ## Files Certified Production-Ready
 
-1. ✅ `spine-api/run_state.py` — State machine, transition guards, terminal utilities
-2. ✅ `spine-api/run_events.py` — Event sourcing (JSONL append-only)
-3. ✅ `spine-api/run_ledger.py` — Deterministic run lifecycle ledger
-4. ✅ `spine-api/server.py` — HTTP API with full lifecycle instrumentation
+1. ✅ `spine_api/run_state.py` — State machine, transition guards, terminal utilities
+2. ✅ `spine_api/run_events.py` — Event sourcing (JSONL append-only)
+3. ✅ `spine_api/run_ledger.py` — Deterministic run lifecycle ledger
+4. ✅ `spine_api/server.py` — HTTP API with full lifecycle instrumentation
 5. ✅ `tests/test_run_state_unit.py` — Pure unit suite (46 tests, CI-safe)
 6. ✅ `tests/test_run_lifecycle.py` — Integration suite (29 tests, integration-marked)
 7. ✅ `tests/conftest.py` — Test infrastructure (marks, sys.path setup)

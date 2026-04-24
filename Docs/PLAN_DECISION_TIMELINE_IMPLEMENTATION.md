@@ -10,7 +10,7 @@
 
 ### Step 1: Create Timeline Endpoint
 We need a unified view that merges historical audit logs with current state transitions.
-- **File**: `spine-api/server.py`
+- **File**: `spine_api/server.py`
 - **Logic**: 
   - `GET /api/trips/{tripId}/timeline`
   - Merge: `AuditStore.get_events(tripId)` + Current `Spine` execution state.

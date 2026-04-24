@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ pipeline, summary });
   } catch (error) {
-    console.error("Error fetching stats from spine-api:", error);
+    console.error("Error fetching stats from spine_api:", error);
     return NextResponse.json(
       { error: "Failed to fetch stats" },
       { status: 500 }

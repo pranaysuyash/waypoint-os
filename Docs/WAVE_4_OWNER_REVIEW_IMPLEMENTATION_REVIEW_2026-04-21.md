@@ -20,7 +20,7 @@ Initial review found 3 blockers and 2 partial-compliance gaps. All were remediat
 
 | Deliverable | Verdict | Notes |
 |---|---|---|
-| `spine-api/server.py` review endpoints | PASS | Endpoints present and wired: `GET /analytics/reviews`, `POST /trips/{trip_id}/review/action` |
+| `spine_api/server.py` review endpoints | PASS | Endpoints present and wired: `GET /analytics/reviews`, `POST /trips/{trip_id}/review/action` |
 | `frontend/src/app/api/reviews/route.ts` | PASS | BFF proxy correctly targets backend reviews endpoint |
 | `frontend/src/app/api/reviews/action/route.ts` | PASS | BFF action proxy correctly maps `reassignTo -> reassign_to` |
 | `src/analytics/review.py` | FAIL → FIXED | `request_changes` status normalization incorrect (`request_changes` vs required `revision_needed`) |
@@ -88,7 +88,7 @@ Initial review found 3 blockers and 2 partial-compliance gaps. All were remediat
 All checks executed after fixes:
 
 1. Focused Wave 4 review tests
-   - Command: `PYTHONPATH=spine-api uv run pytest tests/test_review_logic.py -v`
+   - Command: `PYTHONPATH=spine_api uv run pytest tests/test_review_logic.py -v`
    - Result: **3 passed**
 
 2. Full backend suite

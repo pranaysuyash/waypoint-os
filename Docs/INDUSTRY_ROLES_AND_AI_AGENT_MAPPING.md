@@ -125,12 +125,12 @@ In the broader global market:
 |---|---|---|
 | Override/approval authority | Owner can override any decision, with audit trail | `src/analytics/review.py`, OverrideModal frontend |
 | Autonomy policy configuration | Per-agency rules for what requires owner approval | `src/intake/config/agency_settings.py` |
-| Review workflow | Pending reviews queue with approve/reject/escalate actions | `spine-api/server.py` review endpoints, `/owner/reviews` page |
+| Review workflow | Pending reviews queue with approve/reject/escalate actions | `spine_api/server.py` review endpoints, `/owner/reviews` page |
 | Margin calculation | Risk-adjusted fee calculation with multipliers | `src/fees/calculation.py` |
 | Dashboard overview | Pipeline funnel, SLA tracking, trip counts by stage | `src/services/dashboard_aggregator.py`, Dashboard page |
 | Timeline with provenance | Full audit trail of every decision and who made it | `src/analytics/logger.py`, TimelinePanel |
 | Agency settings | Brand tone, target margin, approval gates | Settings page, agency_settings.db |
-| Multi-tenant awareness | Architecture supports multiple agencies | `spine-api/` tenant model, auth system |
+| Multi-tenant awareness | Architecture supports multiple agencies | `spine_api/` tenant model, auth system |
 
 #### Gaps (What Should Exist)
 
@@ -216,8 +216,8 @@ In agencies with 3+ planners, the operations manager is the air traffic controll
 
 | Capability | Implementation | Location |
 |---|---|---|
-| Trip assignment | Trips can be assigned to users | `spine-api/persistence.py` AssignmentStore |
-| Assignment API | GET /api/assignments endpoint | `spine-api/server.py` |
+| Trip assignment | Trips can be assigned to users | `spine_api/persistence.py` AssignmentStore |
+| Assignment API | GET /api/assignments endpoint | `spine_api/server.py` |
 | SLA breach detection | New >4h and Assigned >24h thresholds | `src/services/dashboard_aggregator.py` |
 | Pipeline state | Trip counts by stage | `src/services/dashboard_aggregator.py` |
 | Inbox with filters | Filter by stage, priority, SLA, role | `/inbox` page, InboxFilterBar |

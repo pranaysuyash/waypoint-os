@@ -24,11 +24,11 @@ Resolved all critical (P0) and high (P1) gaps from the API Route Audit. During i
 **Problem**: `/api/trips/${tripId}/suitability/acknowledge` called from workspace but no BFF or backend route existed.
 
 **Fix**:
-- **Backend**: Added `POST /trips/{trip_id}/suitability/acknowledge` in `spine-api/server.py`
+- **Backend**: Added `POST /trips/{trip_id}/suitability/acknowledge` in `spine_api/server.py`
   - Stores acknowledged flags in `trip.analytics.acknowledged_flags`
   - Sets `suitability_acknowledged_at` timestamp
   - Logs audit event
-- **Contract**: Added `SuitabilityAcknowledgeRequest` to `spine-api/contract.py`
+- **Contract**: Added `SuitabilityAcknowledgeRequest` to `spine_api/contract.py`
 - **BFF**: Created `frontend/src/app/api/trips/[id]/suitability/acknowledge/route.ts`
 
 ### 2. Agent Drill-Down
@@ -36,7 +36,7 @@ Resolved all critical (P0) and high (P1) gaps from the API Route Audit. During i
 **Problem**: `/api/insights/agent-trips` called non-existent `/analytics/agent/{id}/drill-down`.
 
 **Fix**:
-- **Backend**: Added `GET /analytics/agent/{agent_id}/drill-down` in `spine-api/server.py`
+- **Backend**: Added `GET /analytics/agent/{agent_id}/drill-down` in `spine_api/server.py`
   - Filters trips by `assigned_to` or `agent_id`
   - Returns trips array + count
 - **BFF**: No changes needed — existing `insights/agent-trips/route.ts` already calls the correct URL pattern
@@ -124,8 +124,8 @@ Do not leave them as silent 404s — the API client will throw `ApiException` wh
 ## Files Changed
 
 ### Backend
-- `spine-api/server.py` — Added 3 new endpoints (snooze, suitability acknowledge, agent drill-down)
-- `spine-api/contract.py` — Added `SuitabilityAcknowledgeRequest`, `SnoozeRequest`
+- `spine_api/server.py` — Added 3 new endpoints (snooze, suitability acknowledge, agent drill-down)
+- `spine_api/contract.py` — Added `SuitabilityAcknowledgeRequest`, `SnoozeRequest`
 
 ### Frontend BFF
 - `frontend/src/app/api/pipeline/route.ts` — Fixed hardcoded URL

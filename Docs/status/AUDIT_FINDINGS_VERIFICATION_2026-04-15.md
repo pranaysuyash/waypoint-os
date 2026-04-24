@@ -108,7 +108,7 @@ The original audit was **substantially accurate** when written. Key claims confi
 |----------|--------|-------|
 | Low | Fix typo in DecisionTab.tsx line 9: `PROCEED_TRAVERER_SAFE` → `PROCEED_TRAVELER_SAFE` | Frontend |
 | Low | Verify or remove unused `spine-wrapper.py` | Architecture |
-| Medium | Verify FastAPI spine-api service contract | Backend |
+| Medium | Verify FastAPI spine_api service contract | Backend |
 | Medium | Expand scenario fixtures toward 8+ target | Tests |
 | Low | Add comment to `app.py` noting it's a dev tool | Docs |
 

@@ -13,7 +13,7 @@ D1 was a **partially landed precursor**, not a missing feature entirely. Pieces 
 | `src/intake/config/agency_settings.py` | `AgencyAutonomyPolicy` dataclass | Threshold-only; no approval_gates, no mode overrides, no backward compat |
 | `src/intake/gates.py` | `NB02JudgmentGate.evaluate()` | Mutated `decision.decision_state` directly after NB02; raw NB02 lossy |
 | `src/intake/orchestration.py` | Gate wired into pipeline | No autonomy outcome layer; decision_state rewritten, not preserved additively |
-| `spine-api/server.py` | Skeleton `/api/settings/approvals` | No canonical D1 resource; no AutonomyOutcome in `SpineResult` |
+| `spine_api/server.py` | Skeleton `/api/settings/approvals` | No canonical D1 resource; no AutonomyOutcome in `SpineResult` |
 | `frontend/src/types/spine.ts` | Spine types | No autonomy type |
 | `frontend/src/lib/governance-api.ts` | Governance client | No D1 settings read/write |
 
@@ -73,15 +73,15 @@ uv run pytest tests/test_settings_behavioral.py tests/test_nb02_v02.py -q
 - Packet strategy builder still works because autonomy evaluation runs after it and targets a separate layer.
 
 ### Task 3 — Runtime / API Contract Wiring
-**Files:** `spine-api/server.py`, `frontend/src/types/spine.ts`
-- Added `AutonomyOutcome` Pydantic model to `spine-api/server.py`.
+**Files:** `spine_api/server.py`, `frontend/src/types/spine.ts`
+- Added `AutonomyOutcome` Pydantic model to `spine_api/server.py`.
 - Embedded `autonomy_outcome` into `SpineResult`.
 - `SpineRunResponse` now serialises autonomy so the frontend can render:
   - "NB02 verdict: X → policy required human review"
 - Frontend `spine.ts` got inline `AutonomyOutcome` type.
 
 ### Task 4 — Owner-Facing Settings Path
-**Files:** `spine-api/server.py`, `frontend/src/lib/governance-api.ts`, `frontend/src/types/governance.ts`
+**Files:** `spine_api/server.py`, `frontend/src/lib/governance-api.ts`, `frontend/src/types/governance.ts`
 - Replaced placeholder `/api/settings/approvals` with canonical D1 resource:
   - `GET /api/settings/autonomy`
   - `POST /api/settings/autonomy`
@@ -90,7 +90,7 @@ uv run pytest tests/test_settings_behavioral.py tests/test_nb02_v02.py -q
 - No duplicate settings endpoints; single source of truth.
 
 ### Task 5 — D5/D2-Ready Hooks
-**Files:** `src/intake/gates.py` (embedded), `spine-api/server.py` (response model)
+**Files:** `src/intake/gates.py` (embedded), `spine_api/server.py` (response model)
 - `rule_source` machine-readable reason codes for every resolution path:
   - `safety_invariant`, `mode_override:emergency`, `warning_policy`, `approval_gates:<gate_name>`, etc.
 - `learn_from_overrides` boolean on policy available for future D5 override learning.
@@ -139,7 +139,7 @@ uv run pytest tests/test_settings_behavioral.py tests/test_nb02_v02.py tests/tes
 | `src/intake/config/agency_settings.py` | Rewritten: ADR-aligned policy contract, legacy compat, safety invariant |
 | `src/intake/gates.py` | Rewritten: `AutonomyOutcome` model + new `NB02JudgmentGate.evaluate()`, no state mutation |
 | `src/intake/orchestration.py` | Patched: autonomy outcome stored additively in rationale |
-| `spine-api/server.py` | Patched: `AutonomyOutcome` Pydantic model, D1 settings endpoints, safety validation |
+| `spine_api/server.py` | Patched: `AutonomyOutcome` Pydantic model, D1 settings endpoints, safety validation |
 | `frontend/src/types/spine.ts` | Patched: inline `autonomy_outcome` type |
 | `frontend/src/types/governance.ts` | Added: canonical D1 policy type |
 | `frontend/src/lib/governance-api.ts` | Added: `getAutonomyPolicy()`, `updateAutonomyPolicy()` |

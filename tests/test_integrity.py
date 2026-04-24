@@ -17,8 +17,8 @@ from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch, MagicMock
 
-# Ensure spine-api is importable
-_spine_api_dir = str(Path(__file__).resolve().parent.parent / "spine-api")
+# Ensure spine_api is importable
+_spine_api_dir = str(Path(__file__).resolve().parent.parent / "spine_api")
 if _spine_api_dir not in sys.path:
     sys.path.insert(0, _spine_api_dir)
 

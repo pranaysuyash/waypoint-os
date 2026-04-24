@@ -2,7 +2,7 @@ import sys
 import os
 from pathlib import Path
 
-# Add spine-api to path
+# Add spine_api to path
 sys.path.append(os.getcwd())
 
 try:

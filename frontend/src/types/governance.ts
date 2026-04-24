@@ -21,7 +21,7 @@ export type {
   MonthlyRevenue,
   OperationalAlert,
   AnalyticsPayload,
-} from '@/types/generated/spine-api';
+} from '@/types/generated/spine_api';
 
 // ============================================================================
 // REVIEWS & APPROVALS (frontend-only presentation)

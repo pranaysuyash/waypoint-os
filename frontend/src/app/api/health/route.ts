@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     nextResponse.headers.set("Cache-Control", "public, max-age=10, s-maxage=10");
     return nextResponse;
   } catch (error) {
-    console.error("Error fetching health from spine-api:", error);
+    console.error("Error fetching health from spine_api:", error);
     return NextResponse.json(
       { status: "error", error: "Failed to fetch health" },
       { status: 500 }

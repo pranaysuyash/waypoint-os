@@ -2,7 +2,7 @@
  * Proxy utilities for Next.js BFF routes.
  *
  * Provides helpers to forward authentication cookies from the incoming
- * request to the spine-api backend, ensuring sessions are maintained
+ * request to the spine_api backend, ensuring sessions are maintained
  * across the proxy boundary.
  */
 
@@ -11,7 +11,7 @@ import type { NextRequest } from "next/server";
 const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 
 /**
- * Build headers that forward the incoming request's cookies to spine-api.
+ * Build headers that forward the incoming request's cookies to spine_api.
  * Preserves Content-Type and adds the Cookie header if present.
  */
 export function forwardAuthHeaders(request: NextRequest): Record<string, string> {
@@ -28,7 +28,7 @@ export function forwardAuthHeaders(request: NextRequest): Record<string, string>
 }
 
 /**
- * Build headers that forward the incoming request's cookies to spine-api
+ * Build headers that forward the incoming request's cookies to spine_api
  * for non-JSON requests (e.g., file uploads).
  */
 export function forwardAuthHeadersRaw(request: NextRequest): Record<string, string> {
@@ -43,7 +43,7 @@ export function forwardAuthHeadersRaw(request: NextRequest): Record<string, stri
 }
 
 /**
- * Construct the spine-api base URL.
+ * Construct the spine_api base URL.
  */
 export function getSpineApiUrl(): string {
   return SPINE_API_URL;

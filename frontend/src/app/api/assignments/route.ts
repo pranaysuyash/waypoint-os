@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     nextResponse.headers.set("Cache-Control", "public, max-age=30, s-maxage=30");
     return nextResponse;
   } catch (error) {
-    console.error("Error fetching assignments from spine-api:", error);
+    console.error("Error fetching assignments from spine_api:", error);
     return NextResponse.json(
       { error: "Failed to fetch assignments" },
       { status: 500 }

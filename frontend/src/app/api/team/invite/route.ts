@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error inviting team member via spine-api:", error);
+    console.error("Error inviting team member via spine_api:", error);
     return NextResponse.json(
       { error: "Failed to invite team member" },
       { status: 500 }

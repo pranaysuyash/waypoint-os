@@ -25,9 +25,9 @@
 | File | Action | Lines | Why |
 |------|--------|-------|-----|
 | `src/intake/config/agency_settings.py` | Rewrote persistence: JSON → SQLite | +55 / −15 | Real persistence, migration path, profile fields |
-| `spine-api/server.py` | Added `POST /api/settings/operational` | +85 | Full operational + profile update endpoint |
-| `spine-api/server.py` | Updated `GET /api/settings` response | +10 | Include profile section |
-| `spine-api/server.py` | Fixed watchdog import for uvicorn | +10 | Server can start outside package context |
+| `spine_api/server.py` | Added `POST /api/settings/operational` | +85 | Full operational + profile update endpoint |
+| `spine_api/server.py` | Updated `GET /api/settings` response | +10 | Include profile section |
+| `spine_api/server.py` | Fixed watchdog import for uvicorn | +10 | Server can start outside package context |
 | `tests/test_agency_settings.py` | Rewrote for SQLite + legacy migration + profile | +75 | Comprehensive coverage |
 
 **Schema changes (AgencySettings dataclass):**
@@ -139,7 +139,7 @@
 
 **Modified (5 files):**
 - `src/intake/config/agency_settings.py` — SQLite persistence, profile fields
-- `spine-api/server.py` — New endpoints, profile in response, watchdog import fix
+- `spine_api/server.py` — New endpoints, profile in response, watchdog import fix
 - `tests/test_agency_settings.py` — SQLite-aware tests, migration tests, profile tests
 - `frontend/src/components/layouts/Shell.tsx` — Added Settings nav item
 

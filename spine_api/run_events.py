@@ -1,5 +1,5 @@
 """
-run_events.py — Append-only run event log for Waypoint OS spine-api.
+run_events.py — Append-only run event log for Waypoint OS spine_api.
 
 Events are written to data/runs/{run_id}/events.jsonl (one JSON object per line).
 Reading events back is done via get_run_events(run_id).

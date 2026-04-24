@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   try {
     const { alertId } = await request.json();
     
-    // Forward to spine-api
+    // Forward to spine_api
     const response = await fetch(
       `${SPINE_API_URL}/analytics/alerts/${encodeURIComponent(alertId)}/dismiss`,
       {

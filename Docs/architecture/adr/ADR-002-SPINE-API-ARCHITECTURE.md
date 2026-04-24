@@ -29,7 +29,7 @@ The original system used a **subprocess-based approach** for frontend-backend co
 
 - **Removed:** `frontend/src/lib/spine-wrapper.py` (subprocess wrapper)
 - **New:** `frontend/src/lib/spine-client.ts` (HTTP client)
-- **New:** `spine-api/server.py` (FastAPI service)
+- **New:** `spine_api/server.py` (FastAPI service)
 - **Core Logic:** `src/intake/orchestration.py:run_spine_once()`
 
 ---
@@ -82,7 +82,7 @@ Frontend (Next.js) ← HTTP → Spine API (FastAPI) ← Python → Core Logic
 
 ### Key Components
 
-1. **Spine API Service** (`spine-api/server.py`)
+1. **Spine API Service** (`spine_api/server.py`)
    - FastAPI application with `/run` endpoint
    - Pre-loads all Python modules on startup
    - Handles JSON request/response serialization
@@ -112,7 +112,7 @@ Frontend (Next.js) ← HTTP → Spine API (FastAPI) ← Python → Core Logic
 
 ### Deployment Considerations
 
-- **Development**: Run `uv run fastapi dev spine-api/server.py` for hot reload
+- **Development**: Run `uv run fastapi dev spine_api/server.py` for hot reload
 - **Production**: Deploy as containerized service with proper health checks
 - **Monitoring**: HTTP service enables standard monitoring (Prometheus, health endpoints)
 - **Scaling**: Can be load-balanced horizontally
@@ -168,7 +168,7 @@ Frontend (Next.js) ← HTTP → Spine API (FastAPI) ← Python → Core Logic
 ## Testing Strategy
 
 - **Unit Tests**: Test spine-client.ts HTTP logic and error handling
-- **Integration Tests**: Test full request flow through spine-api service
+- **Integration Tests**: Test full request flow through spine_api service
 - **Load Tests**: Verify concurrent request handling capabilities
 - **Fallback Tests**: Ensure graceful degradation if service unavailable
 
@@ -179,7 +179,7 @@ Frontend (Next.js) ← HTTP → Spine API (FastAPI) ← Python → Core Logic
 - **Backward Compatibility**: No breaking changes to core spine logic
 - **Gradual Rollout**: Can run both approaches during transition
 - **Monitoring**: Implement service health checks before full migration
-- **Documentation**: Update developer setup instructions for running spine-api service
+- **Documentation**: Update developer setup instructions for running spine_api service
 
 ---
 

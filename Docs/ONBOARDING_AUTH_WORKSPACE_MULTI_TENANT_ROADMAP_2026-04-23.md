@@ -151,7 +151,7 @@ PERMISSIONS = {
 ### 3.1 Core Entities (SQLAlchemy 2.0)
 
 ```python
-# spine-api/models/tenant.py
+# spine_api/models/tenant.py
 import uuid
 from datetime import datetime
 from typing import Optional, List
@@ -244,7 +244,7 @@ class WorkspaceCode(Base):
 ### 3.2 Routing State Model (Phase 4)
 
 ```python
-# spine-api/models/routing.py
+# spine_api/models/routing.py
 class TripRoutingState(Base):
     """Operational routing state for a trip."""
     __tablename__ = "trip_routing_states"
@@ -280,7 +280,7 @@ class TripRoutingState(Base):
 ### 3.3 AI Worker Registry Model (Phase 6)
 
 ```python
-# spine-api/models/ai_workforce.py
+# spine_api/models/ai_workforce.py
 class AIWorkerConfig(Base):
     """Governance configuration for a specialist AI worker."""
     __tablename__ = "ai_worker_configs"
@@ -438,11 +438,11 @@ class AIWorkerConfig(Base):
 
 | File | Purpose |
 |------|---------|
-| `spine-api/core/database.py` | Async SQLAlchemy engine, session factory, dependency `get_db()` |
-| `spine-api/core/security.py` | Password hashing (bcrypt), JWT encode/decode, token validation |
-| `spine-api/core/auth.py` | FastAPI dependencies: `get_current_user()`, `require_auth()`, `require_permission()` |
-| `spine-api/models/tenant.py` | Agency, User, Membership, WorkspaceCode models |
-| `spine-api/models/__init__.py` | Model registry for Alembic |
+| `spine_api/core/database.py` | Async SQLAlchemy engine, session factory, dependency `get_db()` |
+| `spine_api/core/security.py` | Password hashing (bcrypt), JWT encode/decode, token validation |
+| `spine_api/core/auth.py` | FastAPI dependencies: `get_current_user()`, `require_auth()`, `require_permission()` |
+| `spine_api/models/tenant.py` | Agency, User, Membership, WorkspaceCode models |
+| `spine_api/models/__init__.py` | Model registry for Alembic |
 | `alembic.ini` | Alembic configuration |
 | `alembic/env.py` | Async Alembic environment |
 | `alembic/versions/001_init_tenant_schema.py` | Initial migration |
@@ -481,11 +481,11 @@ class AIWorkerConfig(Base):
 
 | File | Purpose |
 |------|---------|
-| `spine-api/routers/auth.py` | Signup, login, logout, me, refresh endpoints |
-| `spine-api/services/auth_service.py` | Business logic: create user, create agency, create membership, generate workspace code |
-| `spine-api/services/workspace_service.py` | Workspace CRUD, code generation |
-| `spine-api/routers/workspace.py` | GET /api/workspace, PATCH /api/workspace |
-| `spine-api/server.py` | Wire auth router, apply `require_auth` to ALL existing routes (with tenant scoping) |
+| `spine_api/routers/auth.py` | Signup, login, logout, me, refresh endpoints |
+| `spine_api/services/auth_service.py` | Business logic: create user, create agency, create membership, generate workspace code |
+| `spine_api/services/workspace_service.py` | Workspace CRUD, code generation |
+| `spine_api/routers/workspace.py` | GET /api/workspace, PATCH /api/workspace |
+| `spine_api/server.py` | Wire auth router, apply `require_auth` to ALL existing routes (with tenant scoping) |
 
 **API Contract:**
 - `POST /api/auth/signup` → creates User + Agency + Membership (Owner) + WorkspaceCode
@@ -532,9 +532,9 @@ class AIWorkerConfig(Base):
 
 | File | Purpose |
 |------|---------|
-| `spine-api/routers/trips.py` | `POST /api/trips` for manual trip creation (no AI processing) |
-| `spine-api/services/trip_service.py` | Create trip with agency_id scoping, basic validation |
-| `spine-api/models/trip.py` | SQLAlchemy Trip model (initial, will evolve in Phase 8) |
+| `spine_api/routers/trips.py` | `POST /api/trips` for manual trip creation (no AI processing) |
+| `spine_api/services/trip_service.py` | Create trip with agency_id scoping, basic validation |
+| `spine_api/models/trip.py` | SQLAlchemy Trip model (initial, will evolve in Phase 8) |
 
 **Frontend Deliverables:**
 
@@ -590,10 +590,10 @@ Workbench becomes available with real trip data
 
 | File | Purpose |
 |------|---------|
-| `spine-api/routers/team.py` | CRUD for team members, role changes |
-| `spine-api/services/team_service.py` | Invite logic, code validation, role assignment |
-| `spine-api/routers/workspace_codes.py` | Generate, list, revoke workspace codes |
-| `spine-api/services/workspace_codes.py` | Code generation algorithm (syllable-based) |
+| `spine_api/routers/team.py` | CRUD for team members, role changes |
+| `spine_api/services/team_service.py` | Invite logic, code validation, role assignment |
+| `spine_api/routers/workspace_codes.py` | Generate, list, revoke workspace codes |
+| `spine_api/services/workspace_codes.py` | Code generation algorithm (syllable-based) |
 
 **API Contract:**
 - `POST /api/workspace/codes` → generates new internal/external code
@@ -653,11 +653,11 @@ Agent appears in TeamMemberList with "Agent" role
 
 | File | Purpose |
 |------|---------|
-| `spine-api/models/routing.py` | TripRoutingState model |
-| `spine-api/routers/assignments.py` | Assign, claim, handoff, escalate, reassign endpoints |
-| `spine-api/services/routing_service.py` | Business logic for routing state transitions |
-| `spine-api/services/sla_service.py` | SLA tracking: ownership SLA, review SLA, handoff SLA |
-| `spine-api/routers/review_queue.py` | Review queue for low-confidence trips and junior agent actions |
+| `spine_api/models/routing.py` | TripRoutingState model |
+| `spine_api/routers/assignments.py` | Assign, claim, handoff, escalate, reassign endpoints |
+| `spine_api/services/routing_service.py` | Business logic for routing state transitions |
+| `spine_api/services/sla_service.py` | SLA tracking: ownership SLA, review SLA, handoff SLA |
+| `spine_api/routers/review_queue.py` | Review queue for low-confidence trips and junior agent actions |
 
 **Routing State Machine:**
 ```
@@ -708,9 +708,9 @@ Returned (back to assigned, with reviewer notes)
 
 | File | Purpose |
 |------|---------|
-| `spine-api/routers/settings.py` | Unified settings router |
-| `spine-api/services/settings_service.py` | Settings CRUD with change tracking |
-| `spine-api/models/settings.py` | SettingsAuditLog model |
+| `spine_api/routers/settings.py` | Unified settings router |
+| `spine_api/services/settings_service.py` | Settings CRUD with change tracking |
+| `spine_api/models/settings.py` | SettingsAuditLog model |
 
 **Frontend Deliverables:**
 
@@ -750,10 +750,10 @@ Returned (back to assigned, with reviewer notes)
 
 | File | Purpose |
 |------|---------|
-| `spine-api/models/ai_workforce.py` | AIWorkerConfig model |
-| `spine-api/routers/ai_workforce.py` | CRUD for worker configurations |
-| `spine-api/services/ai_workforce_service.py` | Worker registry, policy enforcement |
-| `spine-api/core/ai_policy.py` | Decorator to check worker permissions before AI actions |
+| `spine_api/models/ai_workforce.py` | AIWorkerConfig model |
+| `spine_api/routers/ai_workforce.py` | CRUD for worker configurations |
+| `spine_api/services/ai_workforce_service.py` | Worker registry, policy enforcement |
+| `spine_api/core/ai_policy.py` | Decorator to check worker permissions before AI actions |
 
 **Frontend Deliverables:**
 
@@ -787,10 +787,10 @@ Returned (back to assigned, with reviewer notes)
 
 | File | Purpose |
 |------|---------|
-| `spine-api/services/adaptive_governance.py` | Pattern detection from override events |
-| `spine-api/models/adaptive.py` | PolicySuggestion model |
-| `spine-api/routers/adaptive.py` | Suggestion inbox, approve/reject endpoints |
-| `spine-api/core/event_bus.py` | D5 override event bus (publish/subscribe) |
+| `spine_api/services/adaptive_governance.py` | Pattern detection from override events |
+| `spine_api/models/adaptive.py` | PolicySuggestion model |
+| `spine_api/routers/adaptive.py` | Suggestion inbox, approve/reject endpoints |
+| `spine_api/core/event_bus.py` | D5 override event bus (publish/subscribe) |
 
 **Frontend Deliverables:**
 
@@ -823,14 +823,14 @@ Returned (back to assigned, with reviewer notes)
 
 | File | Purpose |
 |------|---------|
-| `spine-api/models/trip.py` | Full SQLAlchemy Trip model (migrate from JSON) |
-| `spine-api/models/assignment.py` | Assignment model (migrate from JSON) |
-| `spine-api/models/audit.py` | AuditEvent model (migrate from JSON) |
-| `spine-api/repositories/trip_repository.py` | Trip CRUD with agency scoping |
-| `spine-api/repositories/assignment_repository.py` | Assignment CRUD with agency scoping |
-| `spine-api/repositories/audit_repository.py` | Audit CRUD with agency scoping |
-| `spine-api/services/migration_service.py` | One-time migration: JSON files → Postgres |
-| `spine-api/core/rls.py` | PostgreSQL RLS policy setup |
+| `spine_api/models/trip.py` | Full SQLAlchemy Trip model (migrate from JSON) |
+| `spine_api/models/assignment.py` | Assignment model (migrate from JSON) |
+| `spine_api/models/audit.py` | AuditEvent model (migrate from JSON) |
+| `spine_api/repositories/trip_repository.py` | Trip CRUD with agency scoping |
+| `spine_api/repositories/assignment_repository.py` | Assignment CRUD with agency scoping |
+| `spine_api/repositories/audit_repository.py` | Audit CRUD with agency scoping |
+| `spine_api/services/migration_service.py` | One-time migration: JSON files → Postgres |
+| `spine_api/core/rls.py` | PostgreSQL RLS policy setup |
 
 **Migration Strategy:**
 ```
@@ -911,11 +911,11 @@ To begin implementation:
 1. **Add dependencies** to `pyproject.toml`: `sqlalchemy[asyncio]`, `asyncpg`, `alembic`, `pyjwt`, `bcrypt`, `python-multipart`
 2. **Set up local PostgreSQL** (Docker Compose or local install)
 3. **Initialize Alembic**: `alembic init alembic`
-4. **Create `spine-api/core/database.py`** with async engine and session factory
-5. **Create `spine-api/models/tenant.py`** with Agency, User, Membership, WorkspaceCode
+4. **Create `spine_api/core/database.py`** with async engine and session factory
+5. **Create `spine_api/models/tenant.py`** with Agency, User, Membership, WorkspaceCode
 6. **Generate first migration**: `alembic revision --autogenerate -m "init tenant schema"`
-7. **Create `spine-api/core/security.py`** with bcrypt + JWT utilities
-8. **Create `spine-api/core/auth.py`** with FastAPI dependencies
+7. **Create `spine_api/core/security.py`** with bcrypt + JWT utilities
+8. **Create `spine_api/core/auth.py`** with FastAPI dependencies
 
 These 8 steps complete Phase 0 foundation and enable Phase 1 auth routes.
 

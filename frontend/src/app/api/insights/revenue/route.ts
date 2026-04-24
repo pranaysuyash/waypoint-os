@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error fetching revenue metrics from spine-api:", error);
+    console.error("Error fetching revenue metrics from spine_api:", error);
     return NextResponse.json(
       { error: "Failed to fetch revenue metrics" },
       { status: 500 }

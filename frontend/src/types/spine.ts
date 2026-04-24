@@ -26,7 +26,7 @@ export type {
   SystemicError,
   OrphanTrip,
   SuitabilitySignal,
-} from '@/types/generated/spine-api';
+} from '@/types/generated/spine_api';
 
 // ============================================================================
 // Frontend-only types (not in backend contract — UI presentation layer)

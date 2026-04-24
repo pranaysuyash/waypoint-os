@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error fetching pipeline settings from spine-api:", error);
+    console.error("Error fetching pipeline settings from spine_api:", error);
     return NextResponse.json(
       { error: "Failed to fetch pipeline settings" },
       { status: 500 }
@@ -46,7 +46,7 @@ export async function PUT(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error updating pipeline settings via spine-api:", error);
+    console.error("Error updating pipeline settings via spine_api:", error);
     return NextResponse.json(
       { error: "Failed to update pipeline settings" },
       { status: 500 }

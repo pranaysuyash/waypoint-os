@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-24  
 **Auditor:** Hermes (systematic inspection)  
-**Scope:** Full auth stack — Frontend UI → Next.js Proxy → spine-api Auth → Database  
+**Scope:** Full auth stack — Frontend UI → Next.js Proxy → spine_api Auth → Database  
 **Method:** Code inspection, contract tracing, architecture review  
 
 ---
@@ -13,7 +13,7 @@ The auth system is **schizophrenic**: the backend has a production-grade JWT aut
 
 | Layer | Status | Verdict |
 |-------|--------|---------|
-| **Backend Auth (spine-api)** | Built but unused | 7/10 |
+| **Backend Auth (spine_api)** | Built but unused | 7/10 |
 | **Frontend Auth UI** | Complete | 8/10 |
 | **Frontend State Management** | Broken (no rehydration) | 3/10 |
 | **Proxy / BFF Layer** | Missing auth forwarding | 2/10 |
@@ -27,18 +27,18 @@ The auth system is **schizophrenic**: the backend has a production-grade JWT aut
 
 ## 1. What Exists (The Good)
 
-### 1.1 Backend Auth Implementation (spine-api)
+### 1.1 Backend Auth Implementation (spine_api)
 
 | Component | File | Status | Notes |
 |-----------|------|--------|-------|
-| Auth routes | `spine-api/routers/auth.py` | Complete | signup, login, logout, me, refresh, password reset request/confirm |
-| Auth service | `spine-api/services/auth_service.py` | Complete | bcrypt hashing, JWT create/refresh, password reset with SHA-256 token storage |
-| Auth dependencies | `spine-api/core/auth.py` | Complete | `get_current_user`, `get_current_membership`, `get_current_agency_id`, `require_permission` |
-| Security utils | `spine-api/core/security.py` | Complete | HS256 JWT, bcrypt (12 rounds), access + refresh tokens |
-| Tenant models | `spine-api/models/tenant.py` | Complete | `User`, `Agency`, `Membership`, `WorkspaceCode`, `PasswordResetToken` |
-| Database | `spine-api/core/database.py` | Complete | Async SQLAlchemy 2.0, PostgreSQL+asyncpg |
+| Auth routes | `spine_api/routers/auth.py` | Complete | signup, login, logout, me, refresh, password reset request/confirm |
+| Auth service | `spine_api/services/auth_service.py` | Complete | bcrypt hashing, JWT create/refresh, password reset with SHA-256 token storage |
+| Auth dependencies | `spine_api/core/auth.py` | Complete | `get_current_user`, `get_current_membership`, `get_current_agency_id`, `require_permission` |
+| Security utils | `spine_api/core/security.py` | Complete | HS256 JWT, bcrypt (12 rounds), access + refresh tokens |
+| Tenant models | `spine_api/models/tenant.py` | Complete | `User`, `Agency`, `Membership`, `WorkspaceCode`, `PasswordResetToken` |
+| Database | `spine_api/core/database.py` | Complete | Async SQLAlchemy 2.0, PostgreSQL+asyncpg |
 | Migrations | `alembic/versions/` | Complete | `init_tenant_schema`, `add_password_reset_tokens_table` |
-| RBAC matrix | `spine-api/core/auth.py:119-138` | Complete | 5 roles: owner, admin, senior_agent, junior_agent, viewer |
+| RBAC matrix | `spine_api/core/auth.py:119-138` | Complete | 5 roles: owner, admin, senior_agent, junior_agent, viewer |
 
 **Evidence of quality:**
 - Password reset tokens are hashed with SHA-256 before storage (not stored plain)
@@ -79,17 +79,17 @@ The auth system is **schizophrenic**: the backend has a production-grade JWT aut
 
 ### 2.1 ZERO Authentication on Data API Routes
 
-**Finding:** Not a single non-auth spine-api route requires authentication.
+**Finding:** Not a single non-auth spine_api route requires authentication.
 
 **Evidence:**
 ```bash
-$ grep -rn "get_current_user\|require_auth\|require_permission" spine-api/server.py
+$ grep -rn "get_current_user\|require_auth\|require_permission" spine_api/server.py
 # (no output)
 
-$ grep -rn "get_current_user\|require_auth\|require_permission" spine-api/routers/workspace.py
+$ grep -rn "get_current_user\|require_auth\|require_permission" spine_api/routers/workspace.py
 # (no output)
 
-$ grep -rn "get_current_user\|require_auth\|require_permission" spine-api/routers/frontier.py
+$ grep -rn "get_current_user\|require_auth\|require_permission" spine_api/routers/frontier.py
 # (no output)
 ```
 
@@ -111,7 +111,7 @@ $ grep -rn "get_current_user\|require_auth\|require_permission" spine-api/router
 
 ### 2.2 Frontend Proxy Does NOT Forward Auth Credentials
 
-**Finding:** Next.js API proxy routes for data do not send the access token to spine-api.
+**Finding:** Next.js API proxy routes for data do not send the access token to spine_api.
 
 **Evidence from `/api/trips/route.ts`:**
 ```typescript
@@ -132,7 +132,7 @@ if (cookie) headers['cookie'] = cookie;
 if (authHeader) headers['authorization'] = authHeader;
 ```
 
-**Inconsistency:** Auth routes forward credentials. Data routes do not. This means even if the user is logged in with a valid cookie, the spine-api receives no auth context for trip data requests.
+**Inconsistency:** Auth routes forward credentials. Data routes do not. This means even if the user is logged in with a valid cookie, the spine_api receives no auth context for trip data requests.
 
 **Affected proxy routes:** All non-auth routes in `frontend/src/app/api/` — trips, stats, pipeline, reviews, overrides, settings, team, insights, runs, scenarios, etc.
 
@@ -207,7 +207,7 @@ The `api-client` expects localStorage but login writes to Zustand. The auth stor
 
 **Finding:** Backend auth routes set `secure=False` on cookies unconditionally.
 
-**Evidence from `spine-api/routers/auth.py`:**
+**Evidence from `spine_api/routers/auth.py`:**
 ```python
 response.set_cookie(
     key="refresh_token",
@@ -229,7 +229,7 @@ response.set_cookie(
 
 **Finding:** `request_password_reset` returns the plain reset token in the JSON response.
 
-**Evidence from `spine-api/services/auth_service.py:316`:**
+**Evidence from `spine_api/services/auth_service.py:316`:**
 ```python
 return {
     "ok": True,
@@ -248,7 +248,7 @@ While the comment says "Remove in production," there is no environment check. Th
 
 **Finding:** Even if auth were enforced, trip endpoints do not filter by `agency_id`.
 
-**Evidence from `spine-api/server.py` (trip routes):**
+**Evidence from `spine_api/server.py` (trip routes):**
 - No `agency_id` parameter in trip query handlers
 - No `get_current_agency_id` dependency injection
 - `TripStore.get_trip()` does not validate tenant ownership
@@ -272,7 +272,7 @@ While the comment says "Remove in production," there is no environment check. Th
 
 **Finding:** CORS is overly permissive.
 
-**Evidence from `spine-api/server.py:201-207`:**
+**Evidence from `spine_api/server.py:201-207`:**
 ```python
 app.add_middleware(
     CORSMiddleware,
@@ -291,7 +291,7 @@ While this is acceptable for development, it should be restricted in production.
 
 **Finding:** `JWT_SECRET` falls back to a hardcoded development secret.
 
-**Evidence from `spine-api/core/security.py:17`:**
+**Evidence from `spine_api/core/security.py:17`:**
 ```python
 JWT_SECRET = os.getenv("JWT_SECRET", "waypoint-dev-secret-change-in-production")
 ```
@@ -329,7 +329,7 @@ This bypasses the design system and creates maintenance overhead.
 
 ```
 ┌─────────────┐     ┌──────────────────┐     ┌─────────────────┐     ┌──────────┐
-│   Browser   │────▶│  Next.js Proxy   │────▶│   spine-api     │────▶│  PostgreSQL  │
+│   Browser   │────▶│  Next.js Proxy   │────▶│   spine_api     │────▶│  PostgreSQL  │
 │             │     │  /api/trips      │     │  /trips         │     │          │
 └─────────────┘     │  (NO auth sent)  │     │  (NO auth req)  │     └──────────┘
                     └──────────────────┘     └─────────────────┘
@@ -346,7 +346,7 @@ This bypasses the design system and creates maintenance overhead.
 
 ```
 ┌─────────────┐     ┌──────────────────────┐     ┌─────────────────────┐     ┌──────────┐
-│   Browser   │────▶│  Next.js Middleware  │────▶│  Next.js Proxy      │────▶│ spine-api│
+│   Browser   │────▶│  Next.js Middleware  │────▶│  Next.js Proxy      │────▶│ spine_api│
 │  (cookie)   │     │  (redirect if no     │     │  (forwards cookie   │     │ (validate│
 │             │     │   session)           │     │   + header)         │     │  JWT)    │
 └─────────────┘     └──────────────────────┘     └─────────────────────┘     └────┬─────┘
@@ -366,39 +366,39 @@ This bypasses the design system and creates maintenance overhead.
 
 | # | Issue | Files to Change | Effort |
 |---|-------|-----------------|--------|
-| 1 | Add `require_auth` to ALL non-public spine-api routes | `spine-api/server.py`, `spine-api/routers/*.py` | 2-3 hours |
+| 1 | Add `require_auth` to ALL non-public spine_api routes | `spine_api/server.py`, `spine_api/routers/*.py` | 2-3 hours |
 | 2 | Forward auth cookies/headers in ALL Next.js proxy routes | `frontend/src/app/api/**/route.ts` | 2-3 hours |
 | 3 | Create `frontend/src/middleware.ts` for route protection | New file | 1-2 hours |
 | 4 | Call `hydrate()` on app mount + fix token storage contract | `frontend/src/app/layout.tsx`, `frontend/src/stores/auth.ts`, `frontend/src/lib/api-client.ts` | 2-3 hours |
-| 5 | Make cookie `secure` flag environment-aware | `spine-api/routers/auth.py` | 30 min |
-| 6 | Remove or gate `reset_token` from password reset response | `spine-api/services/auth_service.py` | 30 min |
+| 5 | Make cookie `secure` flag environment-aware | `spine_api/routers/auth.py` | 30 min |
+| 6 | Remove or gate `reset_token` from password reset response | `spine_api/services/auth_service.py` | 30 min |
 
 ### P1 — Fix Before Beta
 
 | # | Issue | Files to Change | Effort |
 |---|-------|-----------------|--------|
-| 7 | Add tenant isolation (agency_id filtering) to all data queries | `spine-api/persistence.py`, `spine-api/server.py` | 4-6 hours |
-| 8 | Add rate limiting to auth endpoints | `spine-api/routers/auth.py` or middleware | 2 hours |
-| 9 | Restrict CORS in production | `spine-api/server.py` | 30 min |
-| 10 | Enforce `JWT_SECRET` env var (fail startup if default) | `spine-api/core/security.py` | 30 min |
+| 7 | Add tenant isolation (agency_id filtering) to all data queries | `spine_api/persistence.py`, `spine_api/server.py` | 4-6 hours |
+| 8 | Add rate limiting to auth endpoints | `spine_api/routers/auth.py` or middleware | 2 hours |
+| 9 | Restrict CORS in production | `spine_api/server.py` | 30 min |
+| 10 | Enforce `JWT_SECRET` env var (fail startup if default) | `spine_api/core/security.py` | 30 min |
 | 11 | Add auth provider component with loading state | `frontend/src/components/providers/AuthProvider.tsx` | 1-2 hours |
 
 ### P2 — Hardening
 
 | # | Issue | Files to Change | Effort |
 |---|-------|-----------------|--------|
-| 12 | Add refresh token rotation | `spine-api/services/auth_service.py` | 2 hours |
-| 13 | Add CSRF protection for cookie-based auth | `spine-api/core/auth.py` | 2 hours |
-| 14 | Add audit logging for auth events | `spine-api/services/auth_service.py` | 2 hours |
+| 12 | Add refresh token rotation | `spine_api/services/auth_service.py` | 2 hours |
+| 13 | Add CSRF protection for cookie-based auth | `spine_api/core/auth.py` | 2 hours |
+| 14 | Add audit logging for auth events | `spine_api/services/auth_service.py` | 2 hours |
 | 15 | Remove inline styles from auth pages | `frontend/src/app/(auth)/**/*.tsx` | 1 hour |
 
 ---
 
 ## 7. Specific Code Fixes (Ready to Implement)
 
-### 7.1 Fix: Add Auth to spine-api Routes
+### 7.1 Fix: Add Auth to spine_api Routes
 
-In `spine-api/server.py`, import and apply auth to all data routes:
+In `spine_api/server.py`, import and apply auth to all data routes:
 
 ```python
 from core.auth import get_current_user, get_current_agency_id, require_auth
@@ -468,7 +468,7 @@ export const config = {
 - Remove `getAuthToken()` from `api-client.ts`
 - Remove `token` from Zustand auth store
 - Keep access token in httpOnly cookie only
-- Frontend proxy routes automatically include cookies in requests to spine-api
+- Frontend proxy routes automatically include cookies in requests to spine_api
 - `api-client.ts` relies on cookies being sent automatically by browser
 
 **Option B (Hybrid): Cookie + Memory**

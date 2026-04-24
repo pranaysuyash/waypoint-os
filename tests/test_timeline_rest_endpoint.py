@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 
 # We need to import and set up the FastAPI app
 import sys
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "spine-api"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "spine_api"))
 
 from server import app
 

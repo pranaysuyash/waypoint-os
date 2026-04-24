@@ -2,7 +2,7 @@
 
 **Date**: 2026-04-18  
 **Auditor**: Automated Audit (python-patterns + Manual Inspection)  
-**Scope**: Python backend (src/, spine-api/, tools/)  
+**Scope**: Python backend (src/, spine_api/, tools/)  
 **Status**: Complete
 
 ---
@@ -183,7 +183,7 @@ src/intake/          # Core pipeline
 src/decision/        # Decision engine
 src/llm/             # LLM clients
 src/suitability/     # Suitability scoring
-spine-api/           # FastAPI server
+spine_api/           # FastAPI server
 ```
 
 ### 4.2 Dependency Management ✅ PASS

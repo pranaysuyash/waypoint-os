@@ -12,7 +12,7 @@ try:
 except ImportError:
     import sys
     from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).parent.parent / "spine-api"))
+    sys.path.insert(0, str(Path(__file__).parent.parent / "spine_api"))
     from persistence import AuditStore
 
 from src.intake.orchestration import run_spine_once

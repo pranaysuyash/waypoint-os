@@ -29,7 +29,7 @@ export async function GET(
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error fetching team member from spine-api:", error);
+    console.error("Error fetching team member from spine_api:", error);
     return NextResponse.json(
       { error: "Failed to fetch team member" },
       { status: 500 }
@@ -65,7 +65,7 @@ export async function PATCH(
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error updating team member via spine-api:", error);
+    console.error("Error updating team member via spine_api:", error);
     return NextResponse.json(
       { error: "Failed to update team member" },
       { status: 500 }
@@ -99,7 +99,7 @@ export async function DELETE(
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error deactivating team member via spine-api:", error);
+    console.error("Error deactivating team member via spine_api:", error);
     return NextResponse.json(
       { error: "Failed to deactivate team member" },
       { status: 500 }

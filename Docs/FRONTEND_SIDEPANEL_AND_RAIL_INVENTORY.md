@@ -42,7 +42,7 @@ Based on the **Autonomy Gradient (D1)** and **Audit Findings (2026-04-16)**, the
 - **Purpose**: Transparency and trust.
 - **Trigger**: Clicking on a confidence score or fact in the `PacketPanel`.
 - **Content**: Surfaces the raw source text (provenance) from which a fact was extracted, highlighting relevant sentences.
-- **Dependency**: Requires `spine-api` to expose `evidence_nodes` in the packet JSON.
+- **Dependency**: Requires `spine_api` to expose `evidence_nodes` in the packet JSON.
 
 ### B. Contextual Knowledge Sidebar (Playbooks)
 - **Purpose**: Operational intelligence.

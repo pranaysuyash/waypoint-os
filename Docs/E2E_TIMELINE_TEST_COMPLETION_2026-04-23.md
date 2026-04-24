@@ -261,7 +261,7 @@ All existing timeline tests continue to pass:
 
 ## Schema Validation
 
-The TimelineEvent Pydantic model in `spine-api/server.py` defines:
+The TimelineEvent Pydantic model in `spine_api/server.py` defines:
 
 ```python
 class TimelineEvent(BaseModel):
@@ -341,7 +341,7 @@ const TimelinePanel = ({ events }: { events: TimelineEvent[] }) => {
 - Complete lifecycle validation
 - Covers happy path, edge cases, error handling
 
-### 2. Modified: spine-api/server.py
+### 2. Modified: spine_api/server.py
 - Fixed timeline endpoint to properly handle TimelineEventMapper results
 - Conversion from logger.TimelineEvent to server.py TimelineEvent
 - Proper error handling with fallback schema

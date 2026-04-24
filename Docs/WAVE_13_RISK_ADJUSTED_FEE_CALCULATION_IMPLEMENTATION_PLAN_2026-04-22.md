@@ -22,7 +22,7 @@ This implementation plan outlines the development of a risk-adjusted fee calcula
 - **REQ-004**: Fee adjustments must be transparent and explainable to users
 - **SEC-001**: Fee calculations must prevent negative fees or unreasonable multipliers
 - **CON-001**: Must maintain backward compatibility with existing trip pricing
-- **GUD-001**: Follow existing codebase patterns for fee handling in spine-api
+- **GUD-001**: Follow existing codebase patterns for fee handling in spine_api
 - **PAT-001**: Use deterministic calculation logic without external API dependencies
 
 ## 2. Implementation Steps

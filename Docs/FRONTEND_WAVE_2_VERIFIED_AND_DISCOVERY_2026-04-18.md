@@ -21,7 +21,7 @@ I reviewed the gap analysis documents for the Analytics Pipeline and Configurati
 ### Gap 1: Analytics Pipeline (`DISCOVERY_GAP_ANALYTICS_REPORTING...`)
 * **Current State**: Frontend has a fully typed and mocked analytics page (`/owner/insights`). Backend endpoints (`/api/pipeline`, `/api/revenue`, etc.) do not exist (404). 9 core KPIs are undefined in the backend. 
 * **MVP Implementation Plan (Phase 1)**:
-  * Create an analytics router/service in `spine-api`.
+  * Create an analytics router/service in `spine_api`.
   * Scaffold a hybrid engine: query the immutable event trail (`events.jsonl`) or step ledgers to calculate current open pipeline states (won/booked/lost).
   * Expose the 4 core KPI endpoints needed by the existing frontend hooks to replace the mock data.
 

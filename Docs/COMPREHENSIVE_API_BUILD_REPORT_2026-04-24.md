@@ -23,7 +23,7 @@ Next.js API Routes (proxy + transform)
     |
     |  HTTP fetch
     v
-FastAPI spine-api (new endpoints)
+FastAPI spine_api (new endpoints)
     |
     |  JSON file I/O
     v
@@ -102,7 +102,7 @@ All routes use `process.env.SPINE_API_URL || "http://127.0.0.1:8000"` for backen
 
 ## Data Layer
 
-### New Persistence Stores (`spine-api/persistence.py`)
+### New Persistence Stores (`spine_api/persistence.py`)
 
 **TeamStore** — `data/team.json`
 - `create_member(data)` → generates UUID, timestamps
@@ -117,7 +117,7 @@ All routes use `process.env.SPINE_API_URL || "http://127.0.0.1:8000"` for backen
 - `get_approval_thresholds()` → list of threshold configs
 - `set_approval_thresholds(thresholds)` → overwrite
 
-### New Pydantic Models (`spine-api/contract.py`)
+### New Pydantic Models (`spine_api/contract.py`)
 
 ```python
 class TeamMember(BaseModel):
@@ -192,9 +192,9 @@ class ExportResponse(BaseModel):
 ## Files Changed
 
 ### Backend
-- `spine-api/server.py` — +300 lines (15 new endpoint handlers)
-- `spine-api/persistence.py` — +200 lines (TeamStore, ConfigStore)
-- `spine-api/contract.py` — +8 new models, updated `__all__`
+- `spine_api/server.py` — +300 lines (15 new endpoint handlers)
+- `spine_api/persistence.py` — +200 lines (TeamStore, ConfigStore)
+- `spine_api/contract.py` — +8 new models, updated `__all__`
 
 ### Frontend (BFF)
 - `frontend/src/app/api/team/members/route.ts` — NEW

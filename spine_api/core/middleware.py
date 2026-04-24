@@ -18,7 +18,7 @@ from core.database import async_session_maker
 from core.security import decode_token_safe
 from models.tenant import User
 
-logger = logging.getLogger("spine-api.middleware")
+logger = logging.getLogger("spine_api.middleware")
 
 
 class AuthMiddleware(BaseHTTPMiddleware):

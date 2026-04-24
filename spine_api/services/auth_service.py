@@ -26,7 +26,7 @@ from core.security import (
 )
 from models.tenant import Agency, User, Membership, WorkspaceCode
 
-logger = logging.getLogger("spine-api.auth_service")
+logger = logging.getLogger("spine_api.auth_service")
 
 
 def _slug_from_name(name: str) -> str:

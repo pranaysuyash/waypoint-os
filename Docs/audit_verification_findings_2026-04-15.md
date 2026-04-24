@@ -123,10 +123,10 @@ The original audit was partially correct. While the main packet/strategy/bundle 
 - ✅ `/Users/pranay/Projects/travel_agency_agent/frontend/src/lib/spine-client.ts` (line 28):
   - `const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";`
 - ✅ **Lines 30-60:** Uses HTTP fetch to persistent FastAPI service, NOT subprocess
-- ✅ `/Users/pranay/Projects/travel_agency_agent/spine-api/server.py` exists as persistent service
+- ✅ `/Users/pranay/Projects/travel_agency_agent/spine_api/server.py` exists as persistent service
 - ✅ Server pre-loads all Python modules on startup
 
-**Resolution:** The system now uses a persistent FastAPI service (spine-api) instead of spawning Python per request.
+**Resolution:** The system now uses a persistent FastAPI service (spine_api) instead of spawning Python per request.
 
 ---
 
@@ -135,7 +135,7 @@ The original audit was partially correct. While the main packet/strategy/bundle 
 **Finding:** request accepts strict_leakage but Python wrapper ignores it
 
 **Current State:**
-- ✅ `/Users/pranay/Projects/travel_agency_agent/spine-api/server.py` (lines 225-227):
+- ✅ `/Users/pranay/Projects/travel_agency_agent/spine_api/server.py` (lines 225-227):
   ```python
   # Set strict mode for this request
   if request.strict_leakage:
@@ -378,8 +378,8 @@ CITY_BLACKLIST = {...}
 |---|---------|----------|--------|---------|
 | 1 | Licensing Risk (ODbL vs MIT) | HIGH | ⚠️ PARTIAL | data/fixtures/README.md |
 | 2 | Next.js Workbench Shape | HIGH | ⚠️ PARTIAL | Multiple tab files |
-| 3 | Python Subprocess Per Request | HIGH | ✅ RESOLVED | spine-client.ts, spine-api/server.py |
-| 4 | Strict Leakage Wiring | HIGH | ✅ RESOLVED | spine-api/server.py, spine-wrapper.py |
+| 3 | Python Subprocess Per Request | HIGH | ✅ RESOLVED | spine-client.ts, spine_api/server.py |
+| 4 | Strict Leakage Wiring | HIGH | ✅ RESOLVED | spine_api/server.py, spine-wrapper.py |
 | 5 | Scenario Loader Mode/Stage | MEDIUM | ❌ OPEN | scenario-loader.ts |
 | 6 | Blacklist Casing | MEDIUM | ⚠️ UNVERIFIED | geography.py |
 | 7 | Doc Inconsistencies | MEDIUM | ⚠️ PARTIAL | README.md, app.py existence |
@@ -441,7 +441,7 @@ CITY_BLACKLIST = {...}
 - `/Users/pranay/Projects/travel_agency_agent/frontend/src/app/workbench/StrategyTab.tsx`
 - `/Users/pranay/Projects/travel_agency_agent/frontend/src/app/workbench/SafetyTab.tsx`
 - `/Users/pranay/Projects/travel_agency_agent/frontend/src/app/api/spine/run/route.ts`
-- `/Users/pranay/Projects/travel_agency_agent/spine-api/server.py`
+- `/Users/pranay/Projects/travel_agency_agent/spine_api/server.py`
 - `/Users/pranay/Projects/travel_agency_agent/data/fixtures/scenarios/*.json`
 
 ---

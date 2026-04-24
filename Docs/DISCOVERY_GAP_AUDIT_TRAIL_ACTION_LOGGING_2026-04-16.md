@@ -29,8 +29,8 @@ The system has a `JSON`-file-based `AuditStore` that logs 3 event types (`trip_c
 
 | Code | What | Status |
 |------|------|--------|
-| `spine-api/persistence.py` L158-211 | `AuditStore` class: `log_event()`, `get_events()`, `get_events_for_trip()`. JSON file, 10K rotation | **Working but inadequate** |
-| `spine-api/server.py` L67 | `GET /api/audit` returns recent events | **Working** — returns limited data |
+| `spine_api/persistence.py` L158-211 | `AuditStore` class: `log_event()`, `get_events()`, `get_events_for_trip()`. JSON file, 10K rotation | **Working but inadequate** |
+| `spine_api/server.py` L67 | `GET /api/audit` returns recent events | **Working** — returns limited data |
 | `frontend/src/types/governance.ts` L256-277 | `AuditEvent` with 9 types: `trip_created/updated/assigned/approved/rejected/completed`, `user_invited/removed`, `settings_changed`, `review_submitted` | **Types only** — 6 of 9 never emitted |
 | `frontend/src/lib/governance-api.ts` L213-226 | `getAuditEvents()` and `getAuditEventsByTrip()` | **API client** — backend only has GET /api/audit |
 | `persistence.py` L123-124, L152, L241-244 | `AuditStore.log_event()` called for `trip_created`, `trip_assigned`, `trip_unassigned` | **Partial** — only 3 of 9 event types |

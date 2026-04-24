@@ -1,7 +1,7 @@
 # Architecture Decision: Spine API Service (2026-04-15)
 
 **Date**: 2026-04-15
-**Decision**: Replace `spine-wrapper.py` (subprocess wrapper) with `spine-api` (FastAPI HTTP service)
+**Decision**: Replace `spine-wrapper.py` (subprocess wrapper) with `spine_api` (FastAPI HTTP service)
 **Status**: Implemented and committed
 **Commit**: `42f561a50674aed1537e5953f360407c849ef4c5`
 
@@ -16,7 +16,7 @@
 - **Process**: Spawn → Import modules → Run → Serialize → Exit (per request)
 
 ### After (Current)
-- **File**: `spine-api/server.py`
+- **File**: `spine_api/server.py`
 - **Pattern**: Next.js BFF → HTTP POST to persistent FastAPI service
 - **Communication**: HTTP with Pydantic models
 - **Process**: Persistent Python process, modules pre-loaded, HTTP endpoint
@@ -69,7 +69,7 @@ JSON result
 
 ### After (HTTP Service)
 ```
-Next.js BFF → HTTP POST /run → FastAPI (spine-api)
+Next.js BFF → HTTP POST /run → FastAPI (spine_api)
                                       ├── Modules pre-loaded
                                       ├── Pydantic validation
                                       ├── run_spine_once()
@@ -88,7 +88,7 @@ const result = await spawn('python', ['frontend/src/lib/spine-wrapper.py'], {
 });
 ```
 
-### After (spine-api + spine-client.ts)
+### After (spine_api + spine-client.ts)
 ```typescript
 import { runSpine } from '@/lib/spine-client';
 
@@ -107,10 +107,10 @@ const result = await runSpine({
 
 ### Development
 ```bash
-# Start the spine-api service
-uv run python spine-api/server.py
+# Start the spine_api service
+uv run python spine_api/server.py
 # Or with reload
-SPINE_API_RELOAD=1 uv run python spine-api/server.py
+SPINE_API_RELOAD=1 uv run python spine_api/server.py
 
 # Frontend automatically connects to localhost:8000
 ```
@@ -132,12 +132,12 @@ SPINE_API_RELOAD=1 uv run python spine-api/server.py
 
 ### For Frontend Developers
 - Replace direct subprocess calls with `runSpine()` from `@/lib/spine-client`
-- Ensure `spine-api` service is running (`uv run python spine-api/server.py`)
+- Ensure `spine_api` service is running (`uv run python spine_api/server.py`)
 - Response shape changed: now includes `safety` and `assertions` fields
 - Errors are now HTTP errors with structured detail, not exit codes
 
 ### For Backend/Deployment
-- spine-api is a standalone FastAPI service
+- spine_api is a standalone FastAPI service
 - Requires Python environment with `src/intake` modules on path
 - Can be containerized separately from Next.js
 - Consider `SPINE_API_WORKERS` > 1 for production load
@@ -149,7 +149,7 @@ SPINE_API_RELOAD=1 uv run python spine-api/server.py
 | File | Change | Purpose |
 |------|--------|---------|
 | `frontend/src/lib/spine-wrapper.py` | **DELETED** | Old subprocess wrapper |
-| `spine-api/server.py` | **CREATED** | FastAPI HTTP service |
+| `spine_api/server.py` | **CREATED** | FastAPI HTTP service |
 | `frontend/src/lib/spine-client.ts` | **CREATED** | TypeScript HTTP client |
 | `frontend/src/types/spine.ts` | **CREATED** | TypeScript type definitions |
 
@@ -162,7 +162,7 @@ This change aligns with the **frozen spine** principle:
 - **Phase A (UI/Workbench)**: Stable API contract for frontend to build against
 - The HTTP service provides a **stable, versioned contract** (`SpineRunResponse`)
 - Frontend can build independently while backend implementation evolves
-- **Phase B (Hybrid Extraction)**: Will plug into the same `spine-api` endpoint
+- **Phase B (Hybrid Extraction)**: Will plug into the same `spine_api` endpoint
 - NER/LLM results will flow through the same HTTP interface
 - Frontend sees same contract, different backend implementation
 
@@ -185,7 +185,7 @@ This change aligns with the **frozen spine** principle:
 
 ## References
 
-- `spine-api/server.py` — FastAPI implementation
+- `spine_api/server.py` — FastAPI implementation
 - `frontend/src/lib/spine-client.ts` — TypeScript client
 - `frontend/src/types/spine.ts` — Type definitions
 - Commit `42f561a` — Implementation (note: bundled with unrelated docs commit)
@@ -195,7 +195,7 @@ This change aligns with the **frozen spine** principle:
 
 ## Open Questions
 
-1. **Production deployment**: Should spine-api be containerized separately or co-located with Next.js?
+1. **Production deployment**: Should spine_api be containerized separately or co-located with Next.js?
 2. **Scaling**: At what load does `SPINE_API_WORKERS` need to increase? Need metrics.
 3. **Health checks**: Should `/health` endpoint be added for k8s/docker-compose?
 4. **Graceful shutdown**: Current implementation — sufficient for production?

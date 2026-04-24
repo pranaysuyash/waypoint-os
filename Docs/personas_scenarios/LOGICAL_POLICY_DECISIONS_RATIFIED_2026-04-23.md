@@ -7,14 +7,14 @@
 ## Canonical Implementation Path (No Parallel Implementation)
 
 - Ready gate enforcement uses existing endpoint:
-  - `PATCH /trips/{trip_id}` in `spine-api/server.py`
+  - `PATCH /trips/{trip_id}` in `spine_api/server.py`
 - Escalation/send policy uses shared policy module:
   - `src/analytics/policy_rules.py`
 - Policy outputs are applied through existing analytics/review flow:
   - `src/analytics/engine.py`
   - `src/analytics/review.py`
 - Trip persistence remains single route:
-  - `spine-api/persistence.py` via existing save path
+  - `spine_api/persistence.py` via existing save path
 
 No alternate API route or duplicate pipeline was introduced.
 
@@ -86,10 +86,10 @@ No alternate API route or duplicate pipeline was introduced.
 ## Implementation Evidence
 
 - `src/analytics/policy_rules.py` (single-source policy logic)
-- `spine-api/server.py` (`PATCH /trips/{trip_id}` ready-gate enforcement)
+- `spine_api/server.py` (`PATCH /trips/{trip_id}` ready-gate enforcement)
 - `src/analytics/engine.py` (owner escalation + send-policy computation)
 - `src/analytics/review.py` (revision-loop escalation handling)
-- `spine-api/persistence.py` (traveler/internal bundle persisted for readiness checks)
+- `spine_api/persistence.py` (traveler/internal bundle persisted for readiness checks)
 - `frontend/src/components/workspace/panels/IntakePanel.tsx` (mark-ready action + ready-gate error surfacing)
 - `frontend/src/components/workspace/panels/OutputPanel.tsx` (send-policy gating and reason banner)
 - `frontend/src/components/workspace/ReviewControls.tsx` (approval vs ready/send gate clarification)

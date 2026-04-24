@@ -162,8 +162,8 @@ This is exactly why D6 (eval) exists. The NB05 golden-path fixtures would genera
 
 ### Search Evidence
 ```
-grep -rn "EngineMetrics\|CacheStats\|get_stats\|metrics.to_dict" src/ spine-api/
-grep -rn "total_cost_inr\|metrics" spine-api/server.py
+grep -rn "EngineMetrics\|CacheStats\|get_stats\|metrics.to_dict" src/ spine_api/
+grep -rn "total_cost_inr\|metrics" spine_api/server.py
 # No server.py references to engine metrics
 ```
 
@@ -233,7 +233,7 @@ The hybrid engine is a **sidecar** to NB02. It generates risk flags that NB02 ma
 
 ### Short-term (P1)
 3. **Add cache key stability test** — Create `tests/test_cache_key_stability.py` that verifies equivalent packets produce identical keys for each decision type.
-4. **Wire EngineMetrics to telemetry** — Persist metrics per-request and aggregate. At minimum, log to stdout in structured JSON. Better: add `/stats/engine-metrics` endpoint to spine-api.
+4. **Wire EngineMetrics to telemetry** — Persist metrics per-request and aggregate. At minimum, log to stdout in structured JSON. Better: add `/stats/engine-metrics` endpoint to spine_api.
 5. **Map risk flags to decision_state impact** — For each decision type, document whether and how its output affects NB02 state transitions. If a risk flag never blocks, that may be a bug or by design — it should be explicit.
 
 ### Medium-term (P2)
@@ -252,7 +252,7 @@ The hybrid engine is a **sidecar** to NB02. It generates risk flags that NB02 ma
 grep -r "graduate\|promote.*rule\|cache.*to.*rule" src/decision/
 
 # Check for metrics persistence in API (should return nothing)
-grep -rn "EngineMetrics\|CacheStats\|total_cost_inr" spine-api/server.py
+grep -rn "EngineMetrics\|CacheStats\|total_cost_inr" spine_api/server.py
 
 # Run existing tests
 uv run pytest tests/test_decision_cache.py tests/test_hybrid_engine.py tests/test_decision_rules.py -q

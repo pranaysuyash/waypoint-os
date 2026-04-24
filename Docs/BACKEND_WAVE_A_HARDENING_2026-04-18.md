@@ -38,10 +38,10 @@
 .venv/bin/pytest tests/test_run_state_unit.py -v
 ```
 
-### Integration tests (requires live spine-api):
+### Integration tests (requires live spine_api):
 ```bash
-# Start spine-api first
-python -m uvicorn spine-api.server:app --host 127.0.0.1 --port 8000 &
+# Start spine_api first
+python -m uvicorn spine_api.server:app --host 127.0.0.1 --port 8000 &
 sleep 2
 .venv/bin/pytest tests/test_run_lifecycle.py -v -m integration
 ```
@@ -51,7 +51,7 @@ sleep 2
 .venv/bin/pytest -v -m "not integration"
 ```
 
-### Full suite (requires live spine-api):
+### Full suite (requires live spine_api):
 ```bash
 .venv/bin/pytest -v
 ```

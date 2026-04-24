@@ -19,21 +19,21 @@
 - Current status mapping used by FE proxy:
   - `frontend/src/app/api/trips/[id]/route.ts`
 - Current trip status update endpoint:
-  - `spine-api/server.py` (`PATCH /trips/{trip_id}`)
+  - `spine_api/server.py` (`PATCH /trips/{trip_id}`)
 
 ### P2 coaching/review/escalation
 - Scenario expectation:
   - `Docs/personas_scenarios/P2_TRAINING_TIME_PROBLEM.md`
 - Review action state machine:
   - `src/analytics/review.py`
-  - `spine-api/server.py` (`POST /trips/{trip_id}/review/action`)
+  - `spine_api/server.py` (`POST /trips/{trip_id}/review/action`)
 - Autonomy policy controls:
   - `src/intake/config/agency_settings.py`
   - `frontend/src/app/settings/components/AutonomyTab.tsx`
 - Suitability warning/override behavior:
   - `frontend/src/components/workspace/panels/SuitabilitySignal.tsx`
   - `frontend/src/components/workspace/panels/SuitabilityPanel.tsx`
-  - `spine-api/server.py` (`POST /trips/{trip_id}/override`)
+  - `spine_api/server.py` (`POST /trips/{trip_id}/override`)
 - Escalation/SLA reference model:
   - `Docs/ASSIGNMENT_ESCALATION_STATE_MACHINE_SPEC_2026-04-22.md`
   - `Docs/SUPPORT_AND_CUSTOMER_SUCCESS.md` (service tier SLA baseline)

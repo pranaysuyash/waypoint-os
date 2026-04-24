@@ -19,8 +19,8 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 from uuid import uuid4
 
-# Add spine-api directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "spine-api"))
+# Add spine_api directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent / "spine_api"))
 
 # Import the persistence module to test OverrideStore directly
 from persistence import (

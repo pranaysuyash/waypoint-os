@@ -568,7 +568,7 @@ def save_processed_trip(spine_output: dict, source: str = "unknown") -> str:
     """
     Convert spine output to a savable trip and persist it.
     
-    This is called by the spine-api after processing.
+    This is called by the spine_api after processing.
     """
     # Extract data from spine output
     packet = spine_output.get("packet", {}) or {}

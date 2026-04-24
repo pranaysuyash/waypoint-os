@@ -81,7 +81,7 @@
 
 ### 1.3 API - Response Schema Updates
 
-- [ ] Update `spine-api/server.py`
+- [ ] Update `spine_api/server.py`
   - [ ] Add structured risk serialization
   - [ ] Include scenario analysis in response
 
@@ -90,7 +90,7 @@
   - [ ] Pass scenario data to frontend
 
 **Files to Modify:**
-- `spine-api/server.py`
+- `spine_api/server.py`
 - `frontend/src/app/api/spine/run/route.ts`
 
 ---

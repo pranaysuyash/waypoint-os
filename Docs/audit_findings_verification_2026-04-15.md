@@ -11,9 +11,9 @@
 | Finding | Severity | Status | Notes |
 |---------|----------|--------|-------|
 | Secondary dataset license (ODbL-1.0 vs MIT) | HIGH | ✅ **FIXED** | README correctly documents ODbL-1.0 |
-| strict_leakage wiring in Next.js path | HIGH | ✅ **FIXED** | Fully wired through spine-api FastAPI service |
+| strict_leakage wiring in Next.js path | HIGH | ✅ **FIXED** | Fully wired through spine_api FastAPI service |
 | Frontend/backend payload shape mismatches | HIGH | ⚠️ **PARTIAL** | Core response shape matches; UI expects some fields that differ from backend |
-| Python subprocess per spine run | HIGH | ✅ **FIXED** | Now uses persistent FastAPI spine-api service |
+| Python subprocess per spine run | HIGH | ✅ **FIXED** | Now uses persistent FastAPI spine_api service |
 | Scenario loader drops stage/mode | MEDIUM | ⚠️ **CONFIRMED** | Issue exists as documented |
 | Blacklist casing inconsistent | MEDIUM | ⚠️ **CONFIRMED** | Mixed case checks exist |
 | Record seen city JSON corruption risk | MEDIUM | ✅ **ACKNOWLEDGED** | Documented limitation |
@@ -51,13 +51,13 @@ If proprietary licensing is required, replace with an MIT/CC0-licensed alternati
 
 ### 2. Strict Leakage Mode Wiring (HIGH) — ✅ FIXED
 
-**Location**: `spine-api/server.py`, `frontend/src/lib/spine-wrapper.py`
+**Location**: `spine_api/server.py`, `frontend/src/lib/spine-wrapper.py`
 
 **Finding**: Audit claimed `strict_leakage` accepted by API but Python wrapper ignored it.
 
 **Verification Result**: ✅ **FULLY WIRED**
 
-In `spine-api/server.py` (lines 225-228, 265-269, 290-318):
+In `spine_api/server.py` (lines 225-228, 265-269, 290-318):
 ```python
 # Set strict mode for this request
 if request.strict_leakage:
@@ -148,7 +148,7 @@ if strict_leakage:
 
 **Verification Result**: ✅ **NOW USES PERSISTENT FASTAPI SERVICE**
 
-Current architecture (from `spine-api/server.py`):
+Current architecture (from `spine_api/server.py`):
 ```python
 # FastAPI service with persistent Python process
 app = FastAPI(...)

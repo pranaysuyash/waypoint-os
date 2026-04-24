@@ -9,7 +9,7 @@
 ## Backend Implementation
 
 ### API Endpoint Validation
-- ✅ `POST /trips/{trip_id}/override` endpoint created in spine-api/server.py
+- ✅ `POST /trips/{trip_id}/override` endpoint created in spine_api/server.py
 - ✅ Validates all request fields:
   - ✅ flag (required)
   - ✅ decision_type (optional, defaults to flag)
@@ -28,7 +28,7 @@
 - ✅ pattern-scope checks agency settings (placeholder for Wave B)
 
 ### Persistence Implementation
-- ✅ OverrideStore class implemented in spine-api/persistence.py
+- ✅ OverrideStore class implemented in spine_api/persistence.py
 - ✅ Overrides stored in `data/overrides/per_trip/{trip_id}.jsonl` (append-only)
 - ✅ Pattern overrides stored in `data/overrides/patterns/{decision_type}.jsonl`
 - ✅ Global index stored in `data/overrides/index.json` for fast lookup
@@ -175,7 +175,7 @@
 ## Code Quality
 
 ### Backend
-- ✅ Follows existing spine-api patterns
+- ✅ Follows existing spine_api patterns
 - ✅ Proper error handling with HTTPException
 - ✅ Comprehensive logging
 - ✅ No code duplication
@@ -246,8 +246,8 @@
 ### Backend Files
 | File | Lines | Status | Purpose |
 |------|-------|--------|---------|
-| spine-api/persistence.py | +145 | Modified | Added OverrideStore class |
-| spine-api/server.py | +130 | Modified | Added override endpoints + models |
+| spine_api/persistence.py | +145 | Modified | Added OverrideStore class |
+| spine_api/server.py | +130 | Modified | Added override endpoints + models |
 | tests/test_override_api.py | +400 | Created | 17 comprehensive tests |
 
 ### Frontend Files

@@ -1,10 +1,10 @@
 """
 test_spine_api_contract.py — Smoke test for the canonical SpineRunResponse contract.
 
-Run against the live spine-api service (started separately):
+Run against the live spine_api service (started separately):
     pytest tests/test_spine_api_contract.py -v
 
-Or via docker (if spine-api is running in a container):
+Or via docker (if spine_api is running in a container):
     pytest tests/test_spine_api_contract.py -v --api-url http://localhost:8000
 
 This test validates the acceptance gate from the post-audit action memo:
@@ -102,18 +102,18 @@ REQUIRED_META_FIELDS = {"stage", "operating_mode", "fixture_id", "execution_ms"}
 
 @pytest.fixture(scope="module")
 def api_health():
-    """Verify spine-api is running before tests."""
+    """Verify spine_api is running before tests."""
     try:
         resp = requests.get(f"{API_BASE}/health", timeout=5)
         assert resp.status_code == 200, f"Health check failed: {resp.status_code}"
         return resp.json()
     except requests.ConnectionError:
-        pytest.skip(f"spine-api not reachable at {API_BASE}")
+        pytest.skip(f"spine_api not reachable at {API_BASE}")
 
 
 @pytest.fixture(scope="module")
 def SC_001_payload() -> dict:
-    """Load the SC-001 clean family booking fixture as spine-api input."""
+    """Load the SC-001 clean family booking fixture as spine_api input."""
     fixture_path = (
         Path(__file__).resolve().parent.parent / "data/fixtures/scenarios/SC-001_clean_family_booking.json"
     )
@@ -123,7 +123,7 @@ def SC_001_payload() -> dict:
     with open(fixture_path) as f:
         raw = json.load(f)
 
-    # Convert fixture format to spine-api request format
+    # Convert fixture format to spine_api request format
     return {
         "raw_note": raw.get("input_note", ""),
         "owner_note": raw.get("owner_note", ""),
@@ -323,7 +323,7 @@ class TestStrictLeakageMode:
             "strict_leakage": True,
         }
         resp = requests.post(f"{API_BASE}/run", json=payload, timeout=30, headers=_auth_headers())
-        # spine-api itself returns 200 with ok=False (canonical contract)
+        # spine_api itself returns 200 with ok=False (canonical contract)
         # BFF route.ts converts this to 422
         assert resp.status_code in (200, 422)
         if resp.status_code == 200:

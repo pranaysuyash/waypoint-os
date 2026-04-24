@@ -4,7 +4,7 @@ from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from uuid import uuid4
 
-# Add the project root to sys.path so we can import from src and spine-api
+# Add the project root to sys.path so we can import from src and spine_api
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 

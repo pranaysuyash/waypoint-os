@@ -1,11 +1,11 @@
 /**
  * spine-client.ts - TypeScript client for calling the Python spine via HTTP.
  *
- * Calls spine-api (FastAPI service) instead of spawning a subprocess per request.
- * The spine-api service is persistent and pre-loads all Python modules.
+ * Calls spine_api (FastAPI service) instead of spawning a subprocess per request.
+ * The spine_api service is persistent and pre-loads all Python modules.
  *
- * In development: connect to localhost:8000 (spine-api running via `uv run ...`)
- * In production: connect to the deployed spine-api service URL
+ * In development: connect to localhost:8000 (spine_api running via `uv run ...`)
+ * In production: connect to the deployed spine_api service URL
  *
  * Set SPINE_API_URL env var to override the default (e.g., in docker-compose / k8s).
  */

@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     nextResponse.headers.set("Cache-Control", "public, max-age=60, s-maxage=60");
     return nextResponse;
   } catch (error) {
-    console.error("Error fetching items from spine-api:", error);
+    console.error("Error fetching items from spine_api:", error);
     return NextResponse.json(
       { error: "Failed to fetch items" },
       { status: 500 }

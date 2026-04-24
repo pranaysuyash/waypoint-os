@@ -26,9 +26,9 @@ DATABASE_URL="postgresql+asyncpg://waypoint:waypoint_dev_password@localhost:5432
 
 ## Key Fixes Applied (2026-04-23)
 
-1. **`spine-api/__init__.py`** - Created empty file to make spine-api a Python package for imports
+1. **`spine_api/__init__.py`** - Created empty file to make spine_api a Python package for imports
 2. **`src/analytics/review.py`** - Added sys.path setup for `persistence` module import
-3. **`spine-api/watchdog.py`** - Added sys.path fix for imports
+3. **`spine_api/watchdog.py`** - Added sys.path fix for imports
 4. **`frontend/src/lib/api-client.ts`** - Fixed baseUrl to empty string for relative URLs
 5. **`frontend/src/app/api/auth/signup/route.ts`** - Created auth proxy route
 6. **`frontend/src/app/api/auth/login/route.ts`** - Created auth proxy route

@@ -14,7 +14,7 @@ export async function POST(
       return NextResponse.json({ error: "action is required" }, { status: 400 });
     }
 
-    // Forward to spine-api
+    // Forward to spine_api
     const spineApiUrl = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
     const response = await fetch(`${spineApiUrl}/trips/${tripId}/review/action`, {
       method: "POST",

@@ -17,7 +17,7 @@ export async function POST(
       );
     }
 
-    // Forward to spine-api
+    // Forward to spine_api
     const spineApiUrl = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
     const response = await fetch(
       `${spineApiUrl}/trips/${encodeURIComponent(tripId)}/suitability/acknowledge`,

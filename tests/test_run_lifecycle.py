@@ -1,13 +1,13 @@
 """
 test_run_lifecycle.py — Integration tests for Wave A run lifecycle.
 
-Requires a live spine-api instance. Automatically skipped if API unreachable.
+Requires a live spine_api instance. Automatically skipped if API unreachable.
 
 Run:
     pytest tests/test_run_lifecycle.py -v -m integration
 
 Marks:
-    @pytest.mark.integration  — requires live spine-api
+    @pytest.mark.integration  — requires live spine_api
 
 State machine unit tests have been moved to:
     tests/test_run_state_unit.py  (no live API required)
@@ -114,7 +114,7 @@ def api_health():
         assert resp.status_code == 200
         return resp.json()
     except requests.ConnectionError:
-        pytest.skip(f"spine-api not reachable at {API_BASE}")
+        pytest.skip(f"spine_api not reachable at {API_BASE}")
 
 
 @pytest.fixture(scope="module")
@@ -299,7 +299,7 @@ class TestWriteFailureIsolation:
         Static verification: confirm try/except guards are present in server.py.
         This is the contractual guarantee for write-failure isolation.
         """
-        server_path = Path(__file__).resolve().parent.parent / "spine-api" / "server.py"
+        server_path = Path(__file__).resolve().parent.parent / "spine_api" / "server.py"
         source = server_path.read_text(encoding="utf-8")
         assert "Wave A: step checkpoint failed" in source, (
             "server.py must wrap step checkpointing in try/except"

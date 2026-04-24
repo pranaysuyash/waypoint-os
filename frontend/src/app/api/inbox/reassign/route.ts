@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error reassigning trip via spine-api:", error);
+    console.error("Error reassigning trip via spine_api:", error);
     return NextResponse.json(
       { error: "Failed to reassign trip" },
       { status: 500 }

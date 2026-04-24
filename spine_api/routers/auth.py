@@ -25,7 +25,7 @@ from services.auth_service import (
     confirm_password_reset,
 )
 
-logger = logging.getLogger("spine-api.auth")
+logger = logging.getLogger("spine_api.auth")
 
 # Environment-aware secure flag for cookies
 _COOKIE_SECURE = os.environ.get("ENVIRONMENT", "development").lower() == "production"

@@ -17,7 +17,7 @@ from core.database import get_db
 from core.auth import get_current_agency_id
 from services.workspace_service import get_workspace, update_workspace
 
-logger = logging.getLogger("spine-api.workspace")
+logger = logging.getLogger("spine_api.workspace")
 
 router = APIRouter(prefix="/api/workspace", tags=["workspace"])
 

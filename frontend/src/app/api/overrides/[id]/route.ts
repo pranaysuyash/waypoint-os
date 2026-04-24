@@ -31,7 +31,7 @@ export async function GET(
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error fetching override from spine-api:", error);
+    console.error("Error fetching override from spine_api:", error);
     return NextResponse.json(
       { error: "Failed to fetch override" },
       { status: 500 }

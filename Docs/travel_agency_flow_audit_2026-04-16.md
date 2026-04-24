@@ -1,7 +1,7 @@
 # Travel Agency App — Full User Flow Audit
 
 **Date:** 2026-04-16  
-**Environment:** Next.js dev (localhost:3000) + FastAPI spine-api (localhost:8000)  
+**Environment:** Next.js dev (localhost:3000) + FastAPI spine_api (localhost:8000)  
 **Auditor:** Automated walkthrough via source code analysis + live HTTP testing
 
 ---
@@ -302,7 +302,7 @@ Uses browser `alert()` instead of a toast or inline confirmation.
 ### Flow 7: API-Level Spine Run
 
 1. **POST `/api/spine/run`** with valid payload: ✅ Full response with packet, decision, strategy, bundles, safety.
-2. **The spine-api works perfectly.** The issue is the frontend doesn't call it from the workbench.
+2. **The spine_api works perfectly.** The issue is the frontend doesn't call it from the workbench.
 
 ---
 

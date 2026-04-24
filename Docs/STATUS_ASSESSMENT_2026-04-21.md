@@ -24,7 +24,7 @@
 | `src/schemas/` | 0 files | Empty directory | ⬜ Placeholder only |
 | `src/utils/` | 0 files | Empty directory | ⬜ Placeholder only |
 
-### Spine API — `spine-api/`
+### Spine API — `spine_api/`
 
 | File | Lines | Purpose |
 |------|-------|---------|

@@ -37,8 +37,8 @@ This report verifies whether findings from the previous comprehensive audit have
 
 **Verification**:
 - `frontend/src/lib/spine-wrapper.py` lines 104-107: Now properly sets strict mode via `set_strict_mode(True)`
-- `spine-api/server.py` lines 226-227: FastAPI server also sets strict mode per-request
-- `spine-api/server.py` lines 290-318: Properly catches ValueError for strict leakage failures and returns `ok: false` response
+- `spine_api/server.py` lines 226-227: FastAPI server also sets strict mode per-request
+- `spine_api/server.py` lines 290-318: Properly catches ValueError for strict leakage failures and returns `ok: false` response
 
 **Status**: **FIXED** - Strict leakage mode now correctly hard-fails as required.
 
@@ -50,8 +50,8 @@ This report verifies whether findings from the previous comprehensive audit have
 
 **Verification**:
 - `frontend/src/lib/spine-client.ts` lines 28-60: Now uses HTTP client to persistent FastAPI service
-- Comments explicitly state: "Calls spine-api (FastAPI service) instead of spawning a subprocess per request"
-- `spine-api/server.py`: Persistent process with pre-loaded modules
+- Comments explicitly state: "Calls spine_api (FastAPI service) instead of spawning a subprocess per request"
+- `spine_api/server.py`: Persistent process with pre-loaded modules
 
 **Status**: **FIXED** - Architecture now uses persistent Python service via HTTP.
 
@@ -191,7 +191,7 @@ return {
 
 **Impact**: First API call after server start will be slow.
 
-**Mitigation**: spine-api pre-loads modules, so only affects server restart.
+**Mitigation**: spine_api pre-loads modules, so only affects server restart.
 
 **Status**: **ACCEPTED** - Acceptable trade-off for persistent service.
 
@@ -285,8 +285,8 @@ To verify fixes:
 # Run backend tests
 uv run pytest
 
-# Start spine-api and run frontend
-uv run python -m spine-api.server &
+# Start spine_api and run frontend
+uv run python -m spine_api.server &
 cd frontend && npm run dev
 
 # Test strict leakage mode

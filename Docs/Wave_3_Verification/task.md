@@ -1,5 +1,5 @@
 - [x] Task 1: Backend Import-Boundary Cleanup (A++ Hardening)
-    - [x] Remove `sys.path` hacks from `spine-api/server.py`
+    - [x] Remove `sys.path` hacks from `spine_api/server.py`
     - [x] Remove `sys.path` hacks from `src/decision/hybrid_engine.py`
     - [x] Remove `sys.path` hacks from `src/decision/cache_key.py`
     - [x] Remove `sys.path` hacks from `src/decision/rules/*.py`

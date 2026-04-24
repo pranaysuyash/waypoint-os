@@ -41,7 +41,7 @@ export async function POST(
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error snoozing trip via spine-api:", error);
+    console.error("Error snoozing trip via spine_api:", error);
     return NextResponse.json(
       { error: "Failed to snooze trip" },
       { status: 500 }

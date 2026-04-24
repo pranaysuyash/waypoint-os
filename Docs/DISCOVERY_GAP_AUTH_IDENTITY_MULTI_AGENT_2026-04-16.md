@@ -33,7 +33,7 @@ The frontend has extensive governance types defined (`UserRole`, `TeamMember`, `
 |------|-------------|--------|
 | `safety.py` (545 lines) | `INTERNAL_ONLY_FIELDS`, `FORBIDDEN_TRAVELER_CONCEPTS`, `SanitizedPacketView`, `sanitize_for_traveler()`, `check_no_leakage()`, `enforce_no_leakage()` | **Working** — information-flow control, not user auth |
 | `packet_models.py` | `AuthorityLevel` hierarchy (manual_override > explicit_user > ... > unknown), `OwnerConstraint.visibility` ("internal_only" vs "traveler_safe_transformable"), `SourceEnvelope.actor_type` ("agent" | "traveler" | "owner" | "system") | **Working** — data provenance, not access control |
-| `spine-api/server.py` | FastAPI app with CORS middleware (permissive `allow_origins=["*"]`) | **No auth** — all endpoints unauthenticated |
+| `spine_api/server.py` | FastAPI app with CORS middleware (permissive `allow_origins=["*"]`) | **No auth** — all endpoints unauthenticated |
 | `persistence.py` (246 lines) | JSON file I/O for trips, assignments, audit events | **No auth** — no multi-user isolation |
 | `frontend/src/types/governance.ts` (319 lines) | `UserRole`, `TeamMember`, `ApprovalThreshold`, `AuditEvent` TypeScript types | **Types only** — no backend enforcement |
 | `frontend/src/lib/governance-api.ts` (262 lines) | API client for reviews, team management, inbox, audit, settings | **API calls exist** — backend endpoints return nothing |

@@ -17,7 +17,7 @@ from pathlib import Path
 # Import the mapper from src
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "spine-api"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "spine_api"))
 
 from src.analytics.logger import TimelineEventMapper, TimelineEvent
 from persistence import AuditStore

@@ -40,7 +40,7 @@
 **Files to create/modify**:
 - `src/analytics/calculations.py` — Core analytics functions
 - `src/analytics/models.py` — Analytics data models
-- `spine-api/server.py` — Add `/analytics/*` endpoints
+- `spine_api/server.py` — Add `/analytics/*` endpoints
 
 **Implementation**:
 ```python

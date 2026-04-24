@@ -46,19 +46,19 @@ This report verifies the findings from the comprehensive project audit against t
 2. ✅ spine-client passes it through
    - File: `frontend/src/lib/spine-client.ts` (lines 21-22, 30-60)
    
-3. ✅ spine-api FastAPI service receives and processes it
-   - File: `spine-api/server.py` (lines 103, 226-227)
+3. ✅ spine_api FastAPI service receives and processes it
+   - File: `spine_api/server.py` (lines 103, 226-227)
    
-4. ✅ spine-api calls `set_strict_mode(True)` when strict_leakage is enabled
-   - File: `spine-api/server.py` (line 227)
+4. ✅ spine_api calls `set_strict_mode(True)` when strict_leakage is enabled
+   - File: `spine_api/server.py` (line 227)
    
 5. ✅ Leakage enforcement raises ValueError in strict mode
    - File: `src/intake/strategy.py` (lines 885-891)
    
-6. ✅ spine-api catches ValueError and returns ok=False with leakage errors
-   - File: `spine-api/server.py` (lines 290-318)
+6. ✅ spine_api catches ValueError and returns ok=False with leakage errors
+   - File: `spine_api/server.py` (lines 290-318)
 
-**Note**: The old `spine-wrapper.py` subprocess path (which the audit criticized) still exists but is **NOT used** by the current implementation. The active path uses the persistent FastAPI spine-api service.
+**Note**: The old `spine-wrapper.py` subprocess path (which the audit criticized) still exists but is **NOT used** by the current implementation. The active path uses the persistent FastAPI spine_api service.
 
 ---
 
@@ -127,13 +127,13 @@ This report verifies the findings from the comprehensive project audit against t
 
 **Verification**:
 - ✅ spine-client.ts NO LONGER spawns subprocess
-- ✅ It now calls HTTP POST to `spine-api` service (port 8000)
-- ✅ spine-api is a persistent FastAPI process with pre-loaded modules
-- ✅ Cold-start cost is paid once at spine-api startup, not per-request
+- ✅ It now calls HTTP POST to `spine_api` service (port 8000)
+- ✅ spine_api is a persistent FastAPI process with pre-loaded modules
+- ✅ Cold-start cost is paid once at spine_api startup, not per-request
 
 **Files**:
 - `frontend/src/lib/spine-client.ts` (lines 28-60) — HTTP client
-- `spine-api/server.py` — Persistent FastAPI service
+- `spine_api/server.py` — Persistent FastAPI service
 
 ---
 
@@ -311,7 +311,7 @@ This will NOT match "March" (in blacklist) against "march" (input lowercased).
 
 **Details**:
 - The file was updated to properly handle `strict_leakage` (lines 104-107)
-- But it's NOT called by anything — spine-client.ts uses HTTP to spine-api instead
+- But it's NOT called by anything — spine-client.ts uses HTTP to spine_api instead
 - This creates confusion about which path is canonical
 
 **Recommendation**: Either:
@@ -359,9 +359,9 @@ def to_dict(self) -> dict:
 | Finding | Priority | Status | Notes |
 |---------|----------|--------|-------|
 | 1. ODbL License Risk | High | ⚠️ Partial | Docs fixed, but dataset still used |
-| 2. Strict Leakage Wiring | High | ✅ Resolved | Fully wired through spine-api |
+| 2. Strict Leakage Wiring | High | ✅ Resolved | Fully wired through spine_api |
 | 3. Payload Shape Mismatches | High | 🔴 Open | Risk flags type mismatch confirmed |
-| 4. Python Subprocess | High | ✅ Resolved | Using persistent spine-api now |
+| 4. Python Subprocess | High | ✅ Resolved | Using persistent spine_api now |
 | 5. Scenario Mode/Stage | Medium | ⚠️ Partial | Fixture has it, loader drops it |
 | 6. Blacklist Casing | Medium | 🔴 Open | Case normalization bug found |
 | 7. Streamlit vs Docs | Medium | 🔴 Open | Streamlit still exists |
@@ -390,7 +390,7 @@ def to_dict(self) -> dict:
 7. **Replace ODbL dataset** with MIT-licensed alternative (Simplemaps)
 8. **Add GeoNames attribution** to UI footer
 9. **Create separate serialisation views** for traveler vs internal bundles
-10. **Add performance benchmarks** for spine-api cold start
+10. **Add performance benchmarks** for spine_api cold start
 
 ### Long Term
 11. **Expand scenario fixtures** to promised 8+ scenarios
