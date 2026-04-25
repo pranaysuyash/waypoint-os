@@ -187,7 +187,9 @@ For each recommendation, document:
 ### Documentation and Tracking
 
 - Always document work including notes, pending tasks, and completed tasks.
-- Do not delete historical documentation. Preserve and archive instead.
+- No documentation should be lost. Do not delete historical, planning, review, research, scenario, status, or worklog documentation unless the user explicitly authorizes that exact deletion in the current conversation.
+- Preserve and archive instead of deleting. If a doc is obsolete, superseded, renamed, or moved, keep a pointer or archive copy with rationale and date.
+- During stash/reset/reflog recovery, any doc deletion in a candidate patch is rejected by default. Only accept doc changes that add, preserve, clarify, or relocate content without losing history.
 - When updating docs, preserve prior context using archival files where needed.
 - Maintain clear phase separation and rationale for documentation changes.
 - Always check actual environment date before updating documentation.
@@ -245,6 +247,15 @@ Before removing **any** code (function, type, component, export), apply this wor
 - Never commit or push without explicit user approval in the current conversation.
 - Staging and checks are allowed proactively.
 - Commit/push/merge only when user explicitly asks.
+
+### Stash / Reset / Recovery Discipline (Critical)
+
+- Do not use `git reset`, `git checkout --`, `git restore`, `git clean`, `git stash pop`, or `git stash apply` as workflow shortcuts. These commands can hide, delete, or regress other agents' and users' work.
+- If a stash or reflog commit might contain useful work, inspect it first with read-only commands (`git stash show`, `git show`, `git diff`, `git diff-tree`, `git reflog`). Compare each touched file against the current tree before deciding what to keep.
+- Never apply a stash wholesale unless the user explicitly authorizes that exact operation in the current conversation. Prefer selective patching of only changes that are additive, better, comprehensive, and compatible with current architecture.
+- Reject any stash/commit fragment that reintroduces duplicate API routes, stale imports, deleted documentation, removed tests, downgraded validation, or behavior that current commits already fixed.
+- When recovering from another agent's stash/reset, document the decision per file: merged, already present, rejected, or needs user decision. Keep the stash intact unless the user explicitly asks to drop it.
+- If an agent previously used stash/reset carelessly, treat that as a process defect: add or update a repo-local guardrail and run verification before claiming recovery is complete.
 
 ### Commit Message Rules (Critical)
 

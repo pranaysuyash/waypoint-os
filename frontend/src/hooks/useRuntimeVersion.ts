@@ -32,7 +32,10 @@ export function useRuntimeVersion(): RuntimeVersionState {
 
     const run = async () => {
       try {
-        const response = await fetch("/api/version", { cache: "no-store" });
+        const response = await fetch("/api/version", {
+          cache: "no-store",
+          credentials: "include",
+        });
         if (!response.ok) return;
 
         const payload = (await response.json()) as RuntimeVersionResponse;

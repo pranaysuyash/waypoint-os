@@ -9,7 +9,7 @@ Rules are registered with HybridDecisionEngine and are tried before LLM calls.
 
 from .elderly_mobility import rule_elderly_mobility_risk
 from .toddler_pacing import rule_toddler_pacing_risk
-from .budget_feasibility import rule_budget_feasibility
+from .budget_feasibility import BUDGET_FEASIBILITY_TABLE, rule_budget_feasibility
 from .visa_timeline import rule_visa_timeline_risk
 from .composition_risk import rule_composition_risk
 from .not_applicable import (
@@ -23,6 +23,7 @@ __all__ = [
     "rule_elderly_mobility_risk",
     "rule_toddler_pacing_risk",
     "rule_budget_feasibility",
+    "BUDGET_FEASIBILITY_TABLE",
     "rule_visa_timeline_risk",
     "rule_composition_risk",
     "rule_elderly_not_applicable",

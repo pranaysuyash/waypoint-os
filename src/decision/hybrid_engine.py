@@ -240,14 +240,14 @@ class HybridDecisionEngine:
     def _register_builtin_rules(self) -> None:
         """Register built-in decision rules."""
         try:
-            from decision.rules import (
+            from src.decision.rules import (
                 rule_elderly_mobility_risk,
                 rule_toddler_pacing_risk,
                 rule_budget_feasibility,
                 rule_visa_timeline_risk,
                 rule_composition_risk,
             )
-            from decision.rules.not_applicable import (
+            from src.decision.rules.not_applicable import (
                 rule_elderly_not_applicable,
                 rule_toddler_not_applicable,
                 rule_visa_not_applicable,
@@ -255,7 +255,7 @@ class HybridDecisionEngine:
                 rule_no_composition_info,
                 rule_elderly_toddler_no_composition,
             )
-            from decision.rules.additional_rules import (
+            from src.decision.rules.additional_rules import (
                 rule_budget_domestic_default,
                 rule_visa_international_default,
                 rule_elderly_domestic_low_risk,
@@ -682,7 +682,7 @@ Consider age diversity, mobility requirements, and special needs.""",
         Returns:
             Dict with component status and metrics
         """
-        from decision.health import health_check_dict
+        from src.decision.health import health_check_dict
         return health_check_dict()
 
     def get_telemetry_snapshot(self, window_seconds: int = 300):

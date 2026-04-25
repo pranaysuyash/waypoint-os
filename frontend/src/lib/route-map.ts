@@ -7,8 +7,8 @@
  * Explicit routes (e.g., app/api/trips/route.ts) handle their own mapping
  * and do NOT use this registry — they know their own backend path directly.
  * 
- * If a path is NOT in this registry, the catch-all forwards verbatim:
- *   /api/foo/bar → SPINE_API_URL/foo/bar
+ * If a path is NOT in this registry, the catch-all returns 404. Add only
+ * backend-backed routes here; frontend-local routes should stay explicit.
  */
 
 const BACKEND_ROUTE_ENTRIES: Array<[string, string]> = [
@@ -53,6 +53,8 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, string]> = [
   ["system/unified-state", "api/system/unified-state"],
 
   // ── Core resources ───────────────────────────────────────────
+  ["spine/run", "run"],
+  ["scenarios", "scenarios"],
   ["assignments", "assignments"],
   ["items", "items"],
   ["health", "health"],
@@ -108,7 +110,7 @@ function isIdLike(segment: string): boolean {
  * Resolve a frontend path to the backend path.
  * 
  * @param segments - URL path segments relative to /api/ (e.g., ["settings", "pipeline"])
- * @returns The backend path to forward to, or null for passthrough (unknown path).
+ * @returns The backend path to forward to, or null for deny-by-default 404.
  */
 export function resolveBackendPath(segments: string[]): string | null {
   const exactKey = segments.join("/");
@@ -133,6 +135,6 @@ export function resolveBackendPath(segments: string[]): string | null {
     return result;
   }
 
-  // 3. Fallback: unknown → passthrough verbatim
+  // 3. Fallback: unknown → deny-by-default 404 in the catch-all route.
   return null;
 }

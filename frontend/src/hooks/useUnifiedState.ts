@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 
 export interface UnifiedState {
   canonical_total: number;
@@ -18,10 +18,11 @@ export interface UnifiedState {
 
 /**
  * useUnifiedState Hook
- * 
- * Mandate: Single Source of Truth for all dashboard metrics.
- * Fetches the unified system state and provides it to the UI.
- * Prevents local screen-specific calculations.
+ *
+ * Fetches the unified system state from the backend.
+ * Keeps raw fetch() (not api-client.ts) because this is a polling endpoint.
+ * Always passes credentials: "include" so auth cookies travel securely.
+ * cache: "no-store" prevents stale dashboard data.
  */
 export function useUnifiedState() {
   const [state, setState] = useState<UnifiedState | null>(null);
@@ -31,17 +32,20 @@ export function useUnifiedState() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      // Use the local API route which handles proxying to Python backend
-      const response = await fetch('/api/system/unified-state');
+      const response = await fetch("/api/system/unified-state", {
+        // Explicit cookie-auth for cross-subdomain safety.
+        credentials: "include",
+        cache: "no-store",
+      });
       if (!response.ok) {
         throw new Error(`Integrity fetch failed: ${response.statusText}`);
       }
-      const data = await response.json();
+      const data = (await response.json()) as UnifiedState;
       setState(data);
       setError(null);
     } catch (err: any) {
-      console.error('Unified State Hook Error:', err);
-      setError(err.message || 'Unknown integrity error');
+      console.error("Unified State Hook Error:", err);
+      setError(err.message || "Unknown integrity error");
     } finally {
       setLoading(false);
     }
@@ -56,6 +60,6 @@ export function useUnifiedState() {
     loading,
     error,
     refresh,
-    isConsistent: state?.integrity_meta.consistent ?? true
+    isConsistent: state?.integrity_meta.consistent ?? true,
   };
 }

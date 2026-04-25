@@ -375,6 +375,85 @@ export async function updateTrip(id: string, data: Partial<Trip>): Promise<Trip>
 }
 
 // ============================================================================
+// AGENCY SETTINGS API
+// ============================================================================
+
+export interface AgencySettingsResponse {
+  agency_id: string;
+  profile: {
+    agency_name: string;
+    contact_email: string;
+    contact_phone: string;
+    logo_url: string;
+    website: string;
+  };
+  operational: {
+    target_margin_pct: number;
+    default_currency: string;
+    operating_hours: {
+      start: string;
+      end: string;
+    };
+    operating_days: string[];
+    preferred_channels: string[];
+    brand_tone: string;
+  };
+  autonomy: AgencyAutonomyResponse;
+}
+
+export interface AgencyAutonomyResponse {
+  approval_gates: Record<string, "auto" | "review" | "block">;
+  mode_overrides: Record<string, Record<string, string>>;
+  auto_proceed_with_warnings: boolean;
+  learn_from_overrides: boolean;
+  min_proceed_confidence: number;
+  min_draft_confidence: number;
+}
+
+export interface UpdateAgencyOperationalRequest {
+  agency_name?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  logo_url?: string;
+  website?: string;
+  target_margin_pct?: number;
+  default_currency?: string;
+  operating_hours_start?: string;
+  operating_hours_end?: string;
+  operating_days?: string[];
+  preferred_channels?: string[];
+  brand_tone?: string;
+}
+
+export interface UpdateAgencyAutonomyRequest {
+  approval_gates?: Record<string, "auto" | "review" | "block">;
+  mode_overrides?: Record<string, Record<string, string>>;
+  auto_proceed_with_warnings?: boolean;
+  learn_from_overrides?: boolean;
+}
+
+export type AgencySettings = AgencySettingsResponse;
+export type AgencyAutonomy = AgencyAutonomyResponse;
+export type UpdateOperationalPayload = UpdateAgencyOperationalRequest;
+export type UpdateAutonomyPayload = UpdateAgencyAutonomyRequest;
+
+export async function getAgencySettings(): Promise<AgencySettingsResponse> {
+  return api.get<AgencySettingsResponse>("/api/settings");
+}
+
+export async function updateAgencyOperational(
+  request: UpdateAgencyOperationalRequest
+): Promise<AgencySettingsResponse> {
+  return api.post<AgencySettingsResponse>("/api/settings/operational", request);
+}
+
+export async function updateAgencyAutonomy(
+  request: UpdateAgencyAutonomyRequest
+): Promise<AgencyAutonomyResponse> {
+  return api.post<AgencyAutonomyResponse>("/api/settings/autonomy", request);
+}
+
+// ============================================================================
 // TRIP REVIEW API
 // ============================================================================
 

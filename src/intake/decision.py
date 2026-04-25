@@ -239,6 +239,7 @@ class DecisionResult:
     rationale: Dict[str, Any] = field(default_factory=dict)
     confidence: ConfidenceScorecard = field(default_factory=ConfidenceScorecard)
     risk_flags: List[Dict[str, Any]] = field(default_factory=list)
+    suitability_profile: Optional[Any] = None  # Shadow field — zero breakage
     commercial_decision: str = "NONE"          # One of COMMERCIAL_DECISIONS
     intent_scores: Dict[str, float] = field(default_factory=dict)
     next_best_action: Optional[str] = None
@@ -498,38 +499,7 @@ def field_fills_blocker(
 # SECTION 6: BUDGET FEASIBILITY (stub/heuristic)
 # =============================================================================
 
-# Coarse destination tier costs (INR per person, minimum viable)
-# These are heuristic placeholders — marked as such.
-BUDGET_FEASIBILITY_TABLE = {
-    "Singapore": {"min_per_person": 60000, "maturity": "heuristic"},
-    "Japan": {"min_per_person": 120000, "maturity": "heuristic"},
-    "Dubai": {"min_per_person": 80000, "maturity": "heuristic"},
-    "Thailand": {"min_per_person": 50000, "maturity": "heuristic"},
-    "Maldives": {"min_per_person": 100000, "maturity": "heuristic"},
-    "Europe": {"min_per_person": 150000, "maturity": "heuristic"},
-    "Sri Lanka": {"min_per_person": 40000, "maturity": "heuristic"},
-    "Andaman": {"min_per_person": 35000, "maturity": "heuristic"},
-    "Andamans": {"min_per_person": 35000, "maturity": "heuristic"},
-    "Goa": {"min_per_person": 15000, "maturity": "heuristic"},
-    "Kerala": {"min_per_person": 20000, "maturity": "heuristic"},
-    "Kashmir": {"min_per_person": 25000, "maturity": "heuristic"},
-    "Bangkok": {"min_per_person": 50000, "maturity": "heuristic"},
-    "Bali": {"min_per_person": 60000, "maturity": "heuristic"},
-    "Vietnam": {"min_per_person": 50000, "maturity": "heuristic"},
-    "Nepal": {"min_per_person": 20000, "maturity": "heuristic"},
-    "Bhutan": {"min_per_person": 40000, "maturity": "heuristic"},
-    "Mauritius": {"min_per_person": 100000, "maturity": "heuristic"},
-    "Seychelles": {"min_per_person": 120000, "maturity": "heuristic"},
-    "Turkey": {"min_per_person": 80000, "maturity": "heuristic"},
-    "Istanbul": {"min_per_person": 80000, "maturity": "heuristic"},
-    "Paris": {"min_per_person": 150000, "maturity": "heuristic"},
-    "London": {"min_per_person": 150000, "maturity": "heuristic"},
-    "Tokyo": {"min_per_person": 120000, "maturity": "heuristic"},
-    "Osaka": {"min_per_person": 120000, "maturity": "heuristic"},
-    "New York": {"min_per_person": 180000, "maturity": "heuristic"},
-    "__default_domestic__": {"min_per_person": 15000, "maturity": "heuristic"},
-    "__default_international__": {"min_per_person": 50000, "maturity": "heuristic"},
-}
+from src.decision.rules import BUDGET_FEASIBILITY_TABLE
 
 
 BUDGET_BUCKET_RANGES: Dict[str, Dict[str, Tuple[int, int, float]]] = {
@@ -1402,6 +1372,91 @@ def generate_risk_flags(
     return risks
 
 
+def _build_suitability_profile(
+    risk_flags: List[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    """Map raw risk flags to structured SuitabilityProfile for frontend.
+
+    Only dimensions flagged by the suitability subsystem are included.
+    Zero-breakage: if no suitability flags are present, returns None so the
+    frontend falls back to the generic risk_flags list.
+    """
+    # Filter flags that originated from the suitability subsystem.
+    # The ``flag`` field uses a ``suitability_<tier>_`` prefix for those.
+    suitability_prefixes = ("suitability_",)
+    dimensions = []
+    for flag in risk_flags:
+        flag_name = flag.get("flag", "")
+        if not flag_name.startswith(suitability_prefixes):
+            continue
+        # Derive dimension "type" from the flag identifier.
+        # Examples:
+        #   suitability_exclude_scuba  -> type: "intensity"
+        #   suitability_discourage_trekking -> type: "mobility"
+        #   suitability_coherence      -> type: "other"
+        _parts = flag_name.split("_")
+        # Default mapping heuristic; explicit mapping is preferred when it grows.
+        dimension_type: str = "other"
+        if len(_parts) >= 3:
+            activity_id = "_".join(_parts[2:])
+            if activity_id in {"scuba", "skydiving", "bungy", "white_water_rafting"}:
+                dimension_type = "intensity"
+            elif activity_id in {
+                "trekking", "hiking", "city_walk", "walking_tour",
+            }:
+                dimension_type = "mobility"
+            elif activity_id in {"sauna", "hot_spring", "desert_safari"}:
+                dimension_type = "climate"
+            else:
+                dimension_type = "other"
+        severity_map = {
+            "low": "low",
+            "medium": "medium",
+            "high": "high",
+            "critical": "high",
+        }
+        dimensions.append({
+            "type": dimension_type,
+            "severity": severity_map.get(flag.get("severity", "low"), "low"),
+            "score": round(flag.get("confidence", 0.5) * 100, 1),
+            "reason": flag.get("message", ""),
+            "evidence_id": flag.get("details", {}).get("activity_id"),
+        })
+
+    if not dimensions:
+        return None
+
+    # Derive summary.status from the highest severity present.
+    severity_order = {"low": 0, "medium": 1, "high": 2}
+    max_severity = max(
+        dimensions, key=lambda d: severity_order.get(d["severity"], 0)
+    )["severity"]
+    status_map = {
+        "low": "suitable",
+        "medium": "caution",
+        "high": "unsuitable",
+    }
+    # Derive overallScore: average of dimension scores, clamped 0-100.
+    avg_score = sum(d["score"] for d in dimensions) / len(dimensions)
+    primary_reason = "Multiple suitability concerns detected."
+    if max_severity == "high":
+        primary_reason = "One or more activities unsuitable for traveler profile."
+    elif max_severity == "medium":
+        primary_reason = "Some activities require additional review."
+    else:
+        primary_reason = "All activities suitable for traveler profile."
+
+    return {
+        "summary": {
+            "status": status_map.get(max_severity, "caution"),
+            "primaryReason": primary_reason,
+            "overallScore": round(avg_score, 1),
+        },
+        "dimensions": dimensions,
+        "overrides": [],
+    }
+
+
 # =============================================================================
 # SECTION 9: LIFECYCLE SCORING & COMMERCIAL DECISION
 # =============================================================================
@@ -2105,6 +2160,9 @@ def run_gap_and_decision(
     # --- Phase 10: Risk flags (reuse cached feasibility) ---
     risk_flags = generate_risk_flags(packet, stage, cached_feasibility=feasibility)
 
+    # --- Phase 10b: SuitabilityProfile (structured output for frontend) ---
+    suitability_profile = _build_suitability_profile(risk_flags)
+
     # --- Phase 11: Post-trip mode skips blocker logic ---
     if mode == "post_trip":
         decision_state = "PROCEED_TRAVELER_SAFE"
@@ -2156,6 +2214,7 @@ def run_gap_and_decision(
         rationale=rationale,
         confidence=confidence_scorecard,
         risk_flags=risk_flags,
+        suitability_profile=suitability_profile,
         commercial_decision=commercial_decision,
         intent_scores=intent_scores,
         next_best_action=next_best_action,

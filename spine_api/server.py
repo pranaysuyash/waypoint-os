@@ -356,6 +356,7 @@ def serialize_bundle(bundle: Any, traveler_safe: bool = False) -> Optional[dict[
     if bundle is None:
         return None
     if traveler_safe and hasattr(bundle, "to_traveler_dict"):
+        # Prefer traveler-safe serialization to prevent internal field leakage.
         return bundle.to_traveler_dict()
     return _to_dict(bundle)
 
