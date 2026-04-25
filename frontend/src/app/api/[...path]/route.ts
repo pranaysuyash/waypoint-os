@@ -10,11 +10,9 @@
  *   FastAPI get_current_user reads access_token cookie
  *
  * Security note:
- *   - Mapped routes (via route-map.ts) are preferred and safer.
- *   - Unknown paths fall through to passthrough for rapid dev.
- *   - If a path is NOT in route-map.ts, a console.warn is emitted.
- *   - Before production launch, tighten by removing fallback passthrough
- *     and requiring every route to be explicitly mapped.
+ *   - Mapped routes (via route-map.ts) are the ONLY paths forwarded.
+ *   - Unknown paths return 404 — no fallback passthrough.
+ *   - Every route must be explicitly mapped before use.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -37,15 +35,11 @@ function handler(method: string) {
 
     const backendPath = resolveBackendPath(segments);
     if (backendPath == null) {
-      // Passthrough — unknown path. Log so we know what to add to route-map.ts.
-      const joined = segments.join("/");
-      console.warn(
-        `[proxy] Unmapped route: ${request.method} /api/${joined} → falling through to ${joined}`
+      // Unknown route — deny. Map it in route-map.ts before use.
+      return NextResponse.json(
+        { error: "Not found" },
+        { status: 404 }
       );
-      return proxyRequest(request, {
-        backendPath: joined,
-        method,
-      });
     }
 
     return proxyRequest(request, {
