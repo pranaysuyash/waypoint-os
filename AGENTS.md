@@ -79,12 +79,32 @@ If instructions conflict, follow the stricter rule and cite concrete file paths.
 
 ## Package / Dependency Preference
 
-When implementing functionality that involves parsing, validation, formatting, or other well-understood concerns:
+Before writing custom code for any well-understood functionality, **always search for an existing package first.**
 
-1. **Search for an existing dependency first.** If the project already depends on a library that does what you need (e.g. `set-cookie-parser` for cookie parsing), **use it.**
-2. Do not hand-roll parsers (e.g. regex-based date parsing, manual cookie attribute splitting) if a reputable, well-tested package exists in the project's dependency tree or can be added with `npm install` / `pip install`.
-3. Rationale: vendor code is battle-tested, typed, and maintained. Hand-rolled code introduces bugs, bloats the codebase, and wastes time.
-4. Exception: one-liner utilities where introducing a dependency is heavier than the code (e.g. a single `Array.prototype.map` call).
+1. **Prefer battle-tested dependencies.** If a reputable library already solves the problem (e.g. `date-fns` for date math, `zod` for validation, `set-cookie-parser` for cookie parsing, `lodash` for utilities), use it — whether or not it's already in the dependency tree.
+2. **Do not build from scratch** unless:
+   - no package exists that does exactly what you need
+   - the package has security issues, is unmaintained, or is poorly tested
+   - the custom implementation is genuinely simpler and more correct than adding a dependency
+3. **Rationale:** Vendor code is battle-tested, typed, and maintained by domain experts. Hand-rolling equivalent logic introduces bugs, bloats the codebase, and wastes engineering time.
+4. **Exception:** one-liner utilities where introducing a dependency is heavier than the code (e.g. a single `Array.prototype.map` call).
+
+### Scope (Non-exhaustive)
+- Date/time math, formatting, parsing
+- Form validation, schema validation
+- Cookie parsing / serialization
+- Query string / URL parsing
+- Deep cloning / merging
+- Debounce / throttle / memoization
+- UUID / nanoid generation
+- CSV / JSON parsing
+- Color manipulation
+- Unit conversion
+- Currency formatting
+- Slug generation
+- HTML sanitization
+- Markdown parsing
+- Anything else where npm registry or PyPI has a well-maintained solution
 
 ## Default Task Lifecycle (Adopted)
 
