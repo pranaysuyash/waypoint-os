@@ -1322,6 +1322,13 @@
   flex-wrap: wrap;
 }
 
+.footerLinks a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 0;
+}
+
 .screenshotWrap {
   position: relative;
   overflow: hidden;
