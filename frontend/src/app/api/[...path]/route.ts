@@ -5,9 +5,16 @@
  * Next.js guarantees that explicit routes always win over this catch-all.
  *
  * Auth flow:
- *   Browser → Next.js middleware checks access_token cookie
- *   Browser → This proxy forwards all cookies to FastAPI
- *   FastAPI → get_current_user reads access_token cookie
+ *   Browser → access_token httpOnly cookie travels automatically
+ *   This proxy forwards cookies + safe headers to FastAPI
+ *   FastAPI get_current_user reads access_token cookie
+ *
+ * Security note:
+ *   - Mapped routes (via route-map.ts) are preferred and safer.
+ *   - Unknown paths fall through to passthrough for rapid dev.
+ *   - If a path is NOT in route-map.ts, a console.warn is emitted.
+ *   - Before production launch, tighten by removing fallback passthrough
+ *     and requiring every route to be explicitly mapped.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -21,7 +28,6 @@ function handler(method: string) {
   ) => {
     const { path: segments } = await params;
 
-    // Not every /api/* call has extra segments; a request to just /api/ is unlikely
     if (!segments || segments.length === 0) {
       return NextResponse.json(
         { error: "No path provided" },
@@ -31,9 +37,13 @@ function handler(method: string) {
 
     const backendPath = resolveBackendPath(segments);
     if (backendPath == null) {
-      // Unknown path — passthrough verbatim as a fallback
+      // Passthrough — unknown path. Log so we know what to add to route-map.ts.
+      const joined = segments.join("/");
+      console.warn(
+        `[proxy] Unmapped route: ${request.method} /api/${joined} → falling through to ${joined}`
+      );
       return proxyRequest(request, {
-        backendPath: segments.join("/"),
+        backendPath: joined,
         method,
       });
     }

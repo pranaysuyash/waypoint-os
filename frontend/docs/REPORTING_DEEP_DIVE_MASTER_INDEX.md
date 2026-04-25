@@ -7,7 +7,7 @@
 ## Series Overview
 
 **Topic:** Reporting Module / Custom Reports & Business Intelligence
-**Status:** In Progress (0 of 4 documents complete)
+**Status:** In Progress (2 of 4 documents complete)
 **Last Updated:** 2026-04-25
 
 ---
@@ -16,8 +16,8 @@
 
 | # | Document | Focus | Status |
 |---|----------|-------|--------|
-| 1 | [Technical Deep Dive](#reporting-01) | Report engine, data warehouse, query builder | ⏳ Planned |
-| 2 | [UX/UI Deep Dive](#reporting-02) | Report builder UI, visualization, filters | ⏳ Planned |
+| 1 | [Technical Deep Dive](#reporting-01) | Report engine, data warehouse, query builder | ✅ Complete |
+| 2 | [UX/UI Deep Dive](#reporting-02) | Report builder UI, visualization, filters | ✅ Complete |
 | 3 | [Export Deep Dive](#reporting-03) | Excel, CSV, PDF export formats | ⏳ Planned |
 | 4 | [Scheduling Deep Dive](#reporting-04) | Automated reports, subscriptions, delivery | ⏳ Planned |
 
@@ -156,4 +156,4 @@
 
 **Last Updated:** 2026-04-25
 
-**Current Progress:** 0 of 4 documents complete (0%)
+**Current Progress:** 2 of 4 documents complete (50%)

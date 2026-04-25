@@ -83,6 +83,7 @@ _The "Paper Trail" and physical requirements for travel._
 - [x] [CREATOR_TRAVEL_REGULATORY_PLAYBOOK_US.md](regulatory_compliance/CREATOR_TRAVEL_REGULATORY_PLAYBOOK_US.md) (US creator travel regulatory playbook, compliance and partner rules)
 - [x] [CREATOR_TRAVEL_REGULATORY_PLAYBOOK_EU_SCHENGEN.md](regulatory_compliance/CREATOR_TRAVEL_REGULATORY_PLAYBOOK_EU_SCHENGEN.md) (EU / Schengen creator travel regulatory playbook)
 - [x] [CREATOR_TRAVEL_REGULATORY_PLAYBOOK_LATIN_AMERICA.md](regulatory_compliance/CREATOR_TRAVEL_REGULATORY_PLAYBOOK_LATIN_AMERICA.md) (Latin America creator travel regulatory playbook)
+- [x] [CREATOR_TRAVEL_REGULATORY_PLAYBOOK_INDIA.md](regulatory_compliance/CREATOR_TRAVEL_REGULATORY_PLAYBOOK_INDIA.md) (India creator travel regulatory playbook)
 - [x] [TRAVEL_CREATOR_TRUST_AND_SAFETY_STANDARDS.md](regulatory_compliance/TRAVEL_CREATOR_TRUST_AND_SAFETY_STANDARDS.md) (Creator trust, safety, verification)
 - [x] [AI_BIAS_AND_TRAVEL_DECISION_FAIRNESS.md](regulatory_compliance/AI_BIAS_AND_TRAVEL_DECISION_FAIRNESS.md) (Bias mitigation, fair decisioning)
 
