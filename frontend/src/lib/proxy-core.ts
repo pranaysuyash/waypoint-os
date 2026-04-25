@@ -119,7 +119,7 @@ async function buildFetchOptions(
     try {
       const body = await req.arrayBuffer();
       if (body.byteLength > 0) {
-        fetchOptions.body = new Uint8Array(body);
+        fetchOptions.body = body;
       }
     } catch {
       // Request has no readable body.
@@ -209,7 +209,8 @@ export async function proxyRequest(
     // 204 No Content → short-circuit without touching body
     if (backendResponse.status === 204) {
       const response = new NextResponse(null, {
-        status: 204,
+        status: backendResponse.status,
+        statusText: backendResponse.statusText,
         headers: responseHeaders,
       });
       applyCookies(response, rawCookies);
