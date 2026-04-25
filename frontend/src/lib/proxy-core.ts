@@ -38,7 +38,7 @@ const RESPONSE_HEADER_ALLOWLIST = [
   "x-ratelimit-reset",
   "retry-after",
   "content-disposition",
-];
+] as const;
 
 export interface ProxyOptions {
   backendPath: string;
@@ -98,7 +98,7 @@ async function buildFetchOptions(
   req: NextRequest,
   opts: ProxyOptions
 ): Promise<RequestInit> {
-  const method = opts.method || req.method;
+  const method = (opts.method || req.method).toUpperCase();
 
   const headers = new Headers(forwardAuthHeaders(req));
   if (opts.extraHeaders) {
@@ -117,8 +117,10 @@ async function buildFetchOptions(
   // Read body only for non-safe methods, using the *effective* method
   if (method !== "GET" && method !== "HEAD") {
     try {
-      const body = await req.text();
-      if (body) fetchOptions.body = body;
+      const body = await req.arrayBuffer();
+      if (body.byteLength > 0) {
+        fetchOptions.body = new Uint8Array(body);
+      }
     } catch {
       // Request has no readable body.
     }
@@ -182,7 +184,10 @@ function applyCookies(response: NextResponse, rawSetCookieHeaders: string[]) {
 
 /** Map proxy-level errors to correct HTTP status codes. */
 function getProxyErrorStatus(error: unknown): number {
-  if (error instanceof DOMException && error.name === "TimeoutError") {
+  if (
+    error instanceof Error &&
+    (error.name === "TimeoutError" || error.name === "AbortError")
+  ) {
     return 504;
   }
   return 502;
@@ -233,6 +238,7 @@ export async function proxyRequest(
 
       const response = NextResponse.json(payload, {
         status: backendResponse.status,
+        statusText: backendResponse.statusText,
         headers: responseHeaders,
       });
       applyCookies(response, rawCookies);
