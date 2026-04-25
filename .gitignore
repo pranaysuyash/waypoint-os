@@ -103,3 +103,5 @@ Docs/responsive-audit/
 *.db
 *.sqlite
 *.sqlite3
+# Trip processing lock files (should not be tracked)
+data/trips/*.lock
