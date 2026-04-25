@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { TripReview, ReviewStatus } from "@/types/governance";
-import { forwardAuthHeaders } from "@/lib/proxy-utils";
+import { forwardAuthHeaders } from "@/lib/proxy-core";
 
 // ============================================================================
 // SPINE API RAW TYPES

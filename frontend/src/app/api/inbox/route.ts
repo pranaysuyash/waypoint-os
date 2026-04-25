@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { forwardAuthHeaders } from "@/lib/proxy-utils";
+import { forwardAuthHeaders } from "@/lib/proxy-core";
 
 // Helper function to safely get nested values
 function getNestedValue(obj: any, path: string, defaultValue: any = null): any {

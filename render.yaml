@@ -5,7 +5,7 @@
 #
 # Or connect directly on render.com to this repo and use:
 #   Build Command: uv sync --frozen
-#   Start Command: uvicorn spine-api.server:app --host 0.0.0.0 --port 8000 --workers 4
+#   Start Command: uvicorn spine_api.server:app --host 0.0.0.0 --port 8000 --workers 4
 
 services:
   - type: web
@@ -14,7 +14,7 @@ services:
     region: oregon
     plan: starter
     buildCommand: uv sync --frozen
-    startCommand: uvicorn spine-api.server:app --host 0.0.0.0 --port 8000 --workers 4
+    startCommand: uvicorn spine_api.server:app --host 0.0.0.0 --port 8000 --workers 4
     healthCheckPath: /health
     envVars:
       - key: SPINE_API_PORT

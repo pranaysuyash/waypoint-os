@@ -48,8 +48,10 @@ def _ensure_test_user() -> str:
         "password": _TEST_USER["password"],
     }, timeout=10)
     assert resp.status_code == 200, f"Login failed: {resp.status_code} {resp.text}"
-    data = resp.json()
-    _test_token = data["access_token"]
+    # Cookie-only transport: token is in httpOnly cookie, not JSON body
+    token = resp.cookies.get("access_token")
+    assert token, "Login did not set access_token cookie"
+    _test_token = token
     return _test_token
 
 

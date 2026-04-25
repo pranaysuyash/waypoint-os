@@ -1,37 +1,28 @@
-import { NextResponse } from 'next/server';
+import { NextRequest } from "next/server";
+import { proxyRequest } from "@/lib/proxy-core";
 
-const SPINE_API_URL = process.env.SPINE_API_URL || 'http://127.0.0.1:8000';
+export async function POST(request: NextRequest) {
+  const response = await proxyRequest(request, {
+    backendPath: "api/auth/logout",
+  });
 
-export async function POST(request: Request) {
-  try {
-    // Forward logout to backend to clear refresh_token cookie
-    await fetch(`${SPINE_API_URL}/api/auth/logout`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-  } catch (error) {
-    console.error('Backend logout error:', error);
-    // Continue to clear cookies even if backend call fails
-  }
+  const isProd = process.env.NODE_ENV === "production";
 
-  // Clear both cookies on the frontend response
-  const nextResponse = NextResponse.json({ ok: true });
-  nextResponse.cookies.set('access_token', '', {
+  // Clear both auth cookies on the frontend domain
+  response.cookies.set("access_token", "", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
+    secure: isProd,
+    sameSite: "lax",
+    path: "/",
     maxAge: 0,
   });
-  nextResponse.cookies.set('refresh_token', '', {
+  response.cookies.set("refresh_token", "", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/api/auth',
+    secure: isProd,
+    sameSite: "lax",
+    path: "/api/auth",
     maxAge: 0,
   });
 
-  return nextResponse;
+  return response;
 }

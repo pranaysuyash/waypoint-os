@@ -15,9 +15,9 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from core.database import get_db
-from core.security import decode_token_safe
-from models.tenant import User, Membership
+from spine_api.core.database import get_db
+from spine_api.core.security import decode_token_safe
+from spine_api.models.tenant import User, Membership
 
 # Security scheme for Swagger docs
 security_bearer = HTTPBearer(auto_error=False)

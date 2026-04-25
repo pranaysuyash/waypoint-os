@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth';
@@ -9,7 +9,6 @@ import { api, ApiException } from '@/lib/api-client';
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const login = useAuthStore((s) => s.login);
   const hydrate = useAuthStore((s) => s.hydrate);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,20 +21,23 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // Login sets httpOnly cookies (access_token, refresh_token).
+      // No tokens are returned in the response body — they are cookie-only.
       const data = await api.post<{
         ok: boolean;
-        access_token: string;
         user: { id: string; email: string; name?: string };
         agency: { id: string; name: string; slug: string; logo_url?: string };
         membership: { role: string; is_primary: boolean };
       }>('/api/auth/login', { email, password });
 
-      // Store in Zustand for client-side state
-      login(data.access_token, data.user, data.agency, {
-        role: data.membership.role,
-        isPrimary: data.membership.is_primary,
-      });
-      router.push(searchParams.get('redirect') || '/overview');
+      if (!data.ok) {
+        setError('Login failed');
+        return;
+      }
+
+      // Rehydrate auth state from the httpOnly cookies via /api/auth/me
+      await hydrate();
+      router.push(searchParams.get('redirect') || searchParams.get('next') || '/overview');
     } catch (err) {
       if (err instanceof ApiException) {
         setError(err.message || 'Invalid email or password');

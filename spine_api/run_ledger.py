@@ -37,7 +37,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from run_state import RunState, assert_can_transition
+from spine_api.run_state import RunState, assert_can_transition
 
 # ---------------------------------------------------------------------------
 # Storage root

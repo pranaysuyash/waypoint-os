@@ -9,7 +9,7 @@ import { api, ApiException } from '@/lib/api-client';
 export default function SignupPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const login = useAuthStore((s) => s.login);
+  const hydrate = useAuthStore((s) => s.hydrate);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,18 +30,19 @@ export default function SignupPage() {
 
       const data = await api.post<{
         ok: boolean;
-        access_token: string;
         user: { id: string; email: string; name?: string };
         agency: { id: string; name: string; slug: string; logo_url?: string };
         membership: { role: string; is_primary: boolean };
       }>('/api/auth/signup', body);
 
-      // Store in Zustand for client-side state
-      login(data.access_token, data.user, data.agency, {
-        role: data.membership.role,
-        isPrimary: data.membership.is_primary,
-      });
-      router.push(searchParams.get('redirect') || '/overview');
+      if (!data.ok) {
+        setError('Signup failed');
+        return;
+      }
+
+      // Rehydrate auth state from the httpOnly cookies via /api/auth/me
+      await hydrate();
+      router.push(searchParams.get('redirect') || searchParams.get('next') || '/overview');
     } catch (err) {
       if (err instanceof ApiException) {
         setError(err.message || 'Signup failed');

@@ -36,6 +36,8 @@ interface WorkbenchConfigState {
   enable_sentiment_analysis: boolean;
   federated_intelligence_opt_in: boolean;
   audit_confidence_threshold: number;
+  enable_auto_negotiation: boolean;
+  negotiation_margin_threshold: number;
   setOperatingMode: (value: OperatingMode) => void;
   setStage: (value: SpineStage) => void;
   setScenarioId: (value: string) => void;
@@ -45,6 +47,8 @@ interface WorkbenchConfigState {
   setEnableSentimentAnalysis: (value: boolean) => void;
   setFederatedIntelligenceOptIn: (value: boolean) => void;
   setAuditConfidenceThreshold: (value: number) => void;
+  setEnableAutoNegotiation: (value: boolean) => void;
+  setNegotiationMarginThreshold: (value: number) => void;
 }
 
 interface WorkbenchResultState {
@@ -110,6 +114,10 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
   setEnableSentimentAnalysis: (value) => set({ enable_sentiment_analysis: value }),
   setFederatedIntelligenceOptIn: (value) => set({ federated_intelligence_opt_in: value }),
   setAuditConfidenceThreshold: (value) => set({ audit_confidence_threshold: value }),
+  enable_auto_negotiation: true,
+  negotiation_margin_threshold: 0.15,
+  setEnableAutoNegotiation: (value) => set({ enable_auto_negotiation: value }),
+  setNegotiationMarginThreshold: (value) => set({ negotiation_margin_threshold: value }),
 
   // Result state
   result_packet: null,

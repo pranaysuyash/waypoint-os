@@ -48,6 +48,10 @@ class Base(DeclarativeBase):
     pass
 
 
+# Force clear any stale tables on module reload (uvicorn --reload safety)
+Base.metadata.clear()
+
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency that yields an async database session.

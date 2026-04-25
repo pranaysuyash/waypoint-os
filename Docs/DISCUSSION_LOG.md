@@ -1508,3 +1508,60 @@ This was intentionally framed as a documentation and architecture pass first, no
 - The delivery sequence should be deterministic eligibility -> transparent ranked suggestions -> bounded learning calibration -> limited low-risk auto-assign.
 - Continuity should remain a first-class routing signal.
 - Current runtime metrics are not yet trustworthy enough for learned auto-assignment because some operator metrics remain simulated and the runtime still uses a one-slot assignment store plus generic audit events.
+
+## Log Entry: 2026-04-24 - Routing Signal, Settings, And Metrics Follow-On Artifacts Added
+
+### Context
+After the learned-routing exploration was added, the next requested step was to make the recommended follow-on artifacts concrete instead of leaving them as a TODO list.
+
+The three chosen artifacts were:
+
+- assignment signal taxonomy,
+- `/settings/assignments` learned-routing addendum,
+- and a routing metrics readiness audit.
+
+### Evidence Read Before Writing
+- `Docs/AUTO_ASSIGNMENT_AND_LEARNED_ROUTING_EXPLORATION_2026-04-24.md`
+- `Docs/SETTINGS_ROUTE_SUBROUTE_UX_CONTRACT_2026-04-23.md`
+- `Docs/GOVERNANCE_AUDIT_EVENT_TAXONOMY_2026-04-23.md`
+- `Docs/ASSIGNMENT_ESCALATION_STATE_MACHINE_SPEC_2026-04-22.md`
+- `spine-api/server.py`
+- `spine-api/persistence.py`
+- `spine-api/contract.py`
+- `spine-api/core/auth.py`
+- `src/analytics/metrics.py`
+- `src/analytics/review.py`
+- `frontend/src/types/governance.ts`
+- `frontend/src/hooks/useGovernance.ts`
+- `frontend/src/app/api/team/workload/route.ts`
+
+### Artifacts Created
+- `Docs/ASSIGNMENT_SIGNAL_TAXONOMY_SPEC_2026-04-24.md`
+- `Docs/SETTINGS_ASSIGNMENTS_LEARNED_ROUTING_ADDENDUM_2026-04-24.md`
+- `Docs/ROUTING_METRICS_READINESS_AUDIT_2026-04-24.md`
+
+### Key Conclusions
+- Routing signals are now explicitly separated into eligibility, ranking, learning-only, and forbidden classes.
+- `/settings/assignments` now has a concrete target IA for suggestion-first routing governance rather than a vague future placeholder.
+- The current codebase is not ready for learned routing because important operator metrics are simulated, the team analytics path has a structural key mismatch, specialization is not modeled canonically in the backend contract, and workload / role contracts are not yet fully converged across backend and frontend.
+
+## Log Entry: 2026-04-25 - Recent Commit Regression Repair
+
+### Context
+After reviewing recent commits and current dirty changes, several regressions were confirmed around auth routing, the `spine-api` to `spine_api` rename, route typing, and duplicated backend dashboard endpoints.
+
+### Fixes Applied
+- Restored page-route auth semantics in `frontend/src/proxy.ts`: unauthenticated redirects now use `redirect`, and either `access_token` or `refresh_token` preserves an active browser session.
+- Kept login/signup compatible with both `redirect` and legacy `next` query parameters.
+- Reduced `frontend/src/lib/proxy-utils.ts` back to request-header forwarding only and removed the duplicate proxy implementation from that helper file.
+- Fixed stale operational commands in `dev.sh`, `Procfile`, and `render.yaml` to import `spine_api.server:app`.
+- Restored backend `AuthMiddleware` under `spine_api/core/middleware.py` and registered it in `spine_api/server.py` so main backend routes reject unauthenticated requests while public/auth routes remain available.
+- Removed duplicate `/api/system/unified-state` and `/api/dashboard/stats` route definitions from `spine_api/server.py`.
+- Fixed TypeScript test drift in `TripCard`, `OutputPanel`, and inbox filter readonly typing.
+
+### Verification
+- `cd frontend && npx tsc --noEmit`
+- `PYTHONPATH=. uv run pytest -q tests/test_spine_api_contract.py tests/test_run_lifecycle.py` -> 49 passed, 2 skipped
+- `cd frontend && npm test -- --run src/components/workspace/panels/__tests__/OutputPanel.test.tsx src/components/inbox/__tests__/TripCard.test.tsx src/lib/__tests__/inbox-helpers.test.ts` -> 71 passed
+- `git diff --check`
+- FastAPI smoke via `TestClient`: `/health` returned 200 and unauthenticated `/trips` returned 401.

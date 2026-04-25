@@ -75,7 +75,7 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
           <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Jargon Found in Customer Message</h3>
           <div className="bg-[#0a0d11] rounded-lg border border-[#1c2128] p-4">
             <ul className="space-y-2">
-              {safety.leakage_errors.map((item, i) => (
+              {safety.leakage_errors.map((item: string, i: number) => (
                 <li key={`leak-${item.slice(0, 15)}-${i}`} className="flex items-center text-sm text-rose-400">
                   <AlertCircle className="w-3.5 h-3.5 mr-2 shrink-0" />
                   {item}

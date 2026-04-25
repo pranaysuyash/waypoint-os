@@ -50,7 +50,7 @@ API_BASE = os.environ.get("TEST_SPINE_API_URL", "http://127.0.0.1:8000")
 # Auth helpers for integration tests
 # ---------------------------------------------------------------------------
 
-_TEST_USER = {"email": "test-contract@waypoint.example", "password": "***", "name": "Contract Test"}
+_TEST_USER = {"email": "test-contract@waypoint.example", "password": "TestPass123!", "name": "Contract Test"}
 _test_token: str | None = None
 
 def _ensure_test_user() -> str:
@@ -66,8 +66,10 @@ def _ensure_test_user() -> str:
         "password": _TEST_USER["password"],
     }, timeout=10)
     assert resp.status_code == 200, f"Login failed: {resp.status_code} {resp.text}"
-    data = resp.json()
-    _test_token = data["access_token"]
+    # Cookie-only transport: token is in httpOnly cookie, not JSON body
+    token = resp.cookies.get("access_token")
+    assert token, "Login did not set access_token cookie"
+    _test_token = token
     return _test_token
 
 

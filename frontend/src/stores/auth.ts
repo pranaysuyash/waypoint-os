@@ -6,16 +6,11 @@
  * - Authentication status (synced with cookies, not localStorage)
  * - Login/logout actions
  *
- * NOTE: Token storage is now cookie-based (httpOnly) for security.
- * Zustand store holds in-memory state only; persistence is via cookies.
+ * NOTE: Token storage is cookie-based (httpOnly). Zustand holds in-memory state only.
  * On page load, /api/auth/me is called to rehydrate state from the cookie.
  */
 
 import { create } from "zustand";
-
-// ============================================================================
-// TYPES
-// ============================================================================
 
 export interface AuthUser {
   id: string;
@@ -39,66 +34,40 @@ export interface AuthState {
   user: AuthUser | null;
   agency: AuthAgency | null;
   membership: AuthMembership | null;
-  token: string | null; // In-memory only, synced from cookie via /me endpoint
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
 
-  // Actions
-  login: (token: string, user: AuthUser, agency: AuthAgency, membership: AuthMembership) => void;
-  logout: () => void;
+  setAuth: (user: AuthUser, agency: AuthAgency, membership: AuthMembership) => void;
+  logout: () => Promise<void>;
   hydrate: () => Promise<void>;
   clearError: () => void;
-  setLoading: (loading: boolean) => void;
 }
 
-// ============================================================================
-// STORE
-// ============================================================================
-
-export const useAuthStore = create<AuthState>((set, get) => ({
-  // Initial state — not reading from localStorage anymore (cookies are httpOnly)
+export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   agency: null,
   membership: null,
-  token: null,
   isAuthenticated: false,
-  isLoading: false,
+  isLoading: true,          // start TRUE so AuthProvider blocks children until verified
   error: null,
 
-  login: (token, user, agency, membership) => {
-    set({
-      token,
-      user,
-      agency,
-      membership,
-      isAuthenticated: true,
-      error: null,
-    });
-  },
+  setAuth: (user, agency, membership) =>
+    set({ user, agency, membership, isAuthenticated: true, error: null }),
 
   logout: async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     } catch {
-      // Ignore network errors — cookies will be cleared by the route
+      // ignore
     }
-    set({
-      token: null,
-      user: null,
-      agency: null,
-      membership: null,
-      isAuthenticated: false,
-      error: null,
-    });
+    set({ user: null, agency: null, membership: null, isAuthenticated: false });
   },
 
   hydrate: async () => {
-    // Rehydrate auth state from the httpOnly cookie via /api/auth/me
-    // This is called on app startup to check if user has a valid session
+    set({ isLoading: true, error: null });
     try {
-      set({ isLoading: true, error: null });
-      const response = await fetch('/api/auth/me');
+      const response = await fetch("/api/auth/me", { credentials: "include" });
       if (!response.ok) {
         set({ isAuthenticated: false, isLoading: false });
         return;
@@ -115,12 +84,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } else {
         set({ isAuthenticated: false, isLoading: false });
       }
-    } catch (err) {
+    } catch {
       set({ isAuthenticated: false, isLoading: false });
     }
   },
 
   clearError: () => set({ error: null }),
-
-  setLoading: (loading) => set({ isLoading: loading }),
 }));

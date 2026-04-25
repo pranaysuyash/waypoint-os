@@ -7,7 +7,7 @@ interface SafetyTabProps {
   trip?: Trip | null;
 }
 
-export function SafetyTab({ trip }: SafetyTabProps) {
+export default function SafetyTab({ trip }: SafetyTabProps) {
   const {
     result_safety,
     result_traveler_bundle,
@@ -78,7 +78,7 @@ export function SafetyTab({ trip }: SafetyTabProps) {
           <h3 className={styles.sectionTitle}>Jargon Found in Customer Message</h3>
           <div className={styles.card}>
             <ul className={styles.list}>
-              {strippedFields.map((item, i) => (
+              {strippedFields.map((item: any, i: number) => (
                 <li key={`leak-${item.slice(0, 15)}-${i}`} className={styles.listItem}>
                   <span className={`${styles.listIcon} ${styles.iconDanger}`}>X</span>
                   {item}

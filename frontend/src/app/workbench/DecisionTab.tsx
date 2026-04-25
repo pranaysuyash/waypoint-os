@@ -84,7 +84,7 @@ interface DecisionTabProps {
   trip?: Trip | null;
 }
 
-export function DecisionTab({ trip }: DecisionTabProps) {
+export default function DecisionTab({ trip }: DecisionTabProps) {
   const { result_decision, result_fees, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
 
   const activeDecision: DecisionOutput | null = result_decision || trip?.decision || null;

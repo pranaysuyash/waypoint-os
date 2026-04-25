@@ -13,9 +13,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.database import get_db
-from core.auth import get_current_agency_id
-from services.workspace_service import get_workspace, update_workspace
+from spine_api.core.database import get_db
+from spine_api.core.auth import get_current_agency_id
+from spine_api.services.workspace_service import get_workspace, update_workspace
 
 logger = logging.getLogger("spine_api.workspace")
 

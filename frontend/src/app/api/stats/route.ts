@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { forwardAuthHeaders } from "@/lib/proxy-utils";
+import { forwardAuthHeaders } from "@/lib/proxy-core";
 
 export interface AnalyticsPipelineStage {
   label: string;

@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 export interface TeamMember {
   name: string;
   conversionRate: number;
-  avgResponseTime: number;
+  avgResponseTime: number | null;
   customerSatisfaction: number;
   workloadScore: number;
   userId?: string;
@@ -168,7 +168,7 @@ export function TeamPerformanceChart({
                 onClick={() =>
                   handleMetricClick(agent.userId, {
                     type: 'response_time',
-                    value: agent.avgResponseTime,
+                    value: agent.avgResponseTime ?? 0,
                     label: 'Response Time',
                   })
                 }
@@ -180,17 +180,17 @@ export function TeamPerformanceChart({
                   <span className='text-xs text-[#8b949e]'>Response</span>
                   <span
                     className='text-sm font-semibold'
-                    style={{ color: getResponseTimeColor(agent.avgResponseTime) }}
+                    style={{ color: agent.avgResponseTime != null ? getResponseTimeColor(agent.avgResponseTime) : '#8b949e' }}
                   >
-                    {agent.avgResponseTime}h
+                    {agent.avgResponseTime != null ? `${agent.avgResponseTime}h` : 'N/A'}
                   </span>
                 </div>
                 <div className='h-2 bg-[#0f1115] rounded-full overflow-hidden'>
                   <div
                     className='h-full rounded-full transition-all'
                     style={{
-                      width: `${Math.max(0, 100 - (agent.avgResponseTime / 8) * 100)}%`,
-                      background: getResponseTimeColor(agent.avgResponseTime),
+                      width: agent.avgResponseTime != null ? `${Math.max(0, 100 - (agent.avgResponseTime / 8) * 100)}%` : '0%',
+                      background: agent.avgResponseTime != null ? getResponseTimeColor(agent.avgResponseTime) : '#8b949e',
                     }}
                   />
                 </div>

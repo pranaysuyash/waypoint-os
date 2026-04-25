@@ -1,7 +1,7 @@
 'use client';
 
 import { useTripContext } from '@/contexts/TripContext';
-import { OutputPanel } from '@/components/workspace/panels/OutputPanel';
+import OutputPanel from '@/components/workspace/panels/OutputPanel';
 
 export default function WorkspaceOutputPage() {
   const { tripId } = useTripContext();

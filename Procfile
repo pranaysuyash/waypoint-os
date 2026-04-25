@@ -13,4 +13,4 @@
 #   SPINE_API_WORKERS=4
 #   TRAVELER_SAFE_STRICT=1
 
-web: uvicorn spine-api.server:app --host 0.0.0.0 --port 8000 --workers 4
+web: uvicorn spine_api.server:app --host 0.0.0.0 --port 8000 --workers 4

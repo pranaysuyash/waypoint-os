@@ -9,9 +9,9 @@
 
 | Item | Description | Status | Priority |
 |------|-------------|--------|----------|
-| P0-A | **Test Contract Hardening** (Stabilize `uv run pytest`) | Not Started | P0 |
-| P0-B | **Suitability Engine (Tier 1)** (Deterministic Scorer) | **IN PROGRESS** | P0 |
-| P0-C | **Suitability Engine (Tier 2)** (Tour-Context Coherence) | Planned | P0 |
+| P0-A | **Test Contract Hardening** (Stabilize `uv run pytest`) | **Done** | P0 |
+| P0-B | **Suitability Engine (Tier 1)** (Deterministic Scorer) | **Done** | P0 |
+| P0-C | **Suitability Engine (Tier 2)** (Tour-Context Coherence) | **Done** | P0 |
 | P1-D | **Suitability Engine (Tier 3)** (LLM Contextual Scorer) | Planned | P1 |
 | P1-F | **Frontend/API Contract Tests** (Boundary hardening) | Planned | P1 |
 

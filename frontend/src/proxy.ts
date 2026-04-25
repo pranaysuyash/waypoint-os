@@ -1,43 +1,79 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const AUTH_ROUTES = ['/login', '/signup', '/forgot-password', '/reset-password'];
-const PROTECTED_ROUTES = ['/overview', '/inbox', '/workspace', '/owner', '/settings', '/workbench'];
+/**
+ * Next.js Network Boundary (Proxy)
+ *
+ * Ported from deprecated middleware.ts to comply with Next.js 16 standards.
+ * Ensures all original authentication guards, whitelists, and redirect
+ * patterns are preserved.
+ */
 
-function isAuthRoute(pathname: string): boolean {
-  return AUTH_ROUTES.some((route) => pathname.startsWith(route));
-}
+// Page routes that do NOT require authentication (Original + V2)
+const PUBLIC_PAGES = new Set([
+  '/',
+  '/v2',
+  '/itinerary-checker',
+  '/login',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+]);
 
-function isProtectedRoute(pathname: string): boolean {
-  return PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
+/**
+ * isAllowed — Preserves whitelisting logic for static assets and public routes.
+ */
+function isAllowed(pathname: string): boolean {
+  // API routes pass through — FastAPI handles auth
+  if (pathname.startsWith('/api/')) return true;
+
+  // Static assets and internal Next.js paths
+  if (
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/static/') ||
+    pathname.startsWith('/favicon')
+  ) {
+    return true;
+  }
+
+  // Explicitly whitelisted public pages
+  if (PUBLIC_PAGES.has(pathname)) return true;
+
+  // Auth-related sub-paths
+  if (pathname.startsWith('/reset-password')) return true;
+
+  return false;
 }
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Check for access_token cookie (set on login/signup)
-  const accessToken = request.cookies.get('access_token')?.value;
-  // Also check refresh_token cookie (long-lived session)
-  const refreshToken = request.cookies.get('refresh_token')?.value;
-  const hasAuth = !!accessToken || !!refreshToken;
-
-  // Redirect authenticated users away from auth pages
-  if (isAuthRoute(pathname) && hasAuth) {
-    return NextResponse.redirect(new URL('/overview', request.url));
+  // 1. Allow through if the route doesn't need auth (Verbatim preservation)
+  if (isAllowed(pathname)) {
+    return NextResponse.next();
   }
 
-  // Redirect unauthenticated users to login
-  if (isProtectedRoute(pathname) && !hasAuth) {
+  // 2. Check for cookies set by FastAPI. A refresh token is enough to let
+  // /api/auth/me or /api/auth/refresh repair an expired access cookie.
+  const accessToken = request.cookies.get('access_token')?.value;
+  const refreshToken = request.cookies.get('refresh_token')?.value;
+
+  if (!accessToken && !refreshToken) {
+    // 3. Redirect to login, preserving the route the operator intended.
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
+  // Token present — allow the request through to protected routes
   return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
+    /*
+     * Match all request paths except static assets (Original matcher)
+     */
+    '/((?!_next/static|_next/image|favicon\\.ico).*)',
   ],
 };

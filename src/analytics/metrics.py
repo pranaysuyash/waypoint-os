@@ -80,42 +80,53 @@ def compute_pipeline_metrics(trips: list, days: int = 30) -> List[StageMetrics]:
     return metrics
 
 
-def compute_team_metrics(trips: list, assignments: list, days: int = 30) -> List[TeamMemberMetrics]:
+def compute_team_metrics(trips: list, members: list, days: int = 30) -> List[TeamMemberMetrics]:
     """
     Calculate performance metrics for each team member.
-    CSAT is derived from extracted feedback ratings (1-5).
-    """
-    # Group trips and ratings by assignee
-    agent_data = {} # userId -> { ratings: [], active: 0, completed: 0 }
     
-    # Initialize from assignments list
-    for user in assignments:
-        uid = user.get("user_id")
-        if not uid: continue
+    Builds from the actual team roster (not assignment records), then joins trip data
+    by assigned_to to count active/completed trips. CSAT is derived from extracted 
+    feedback ratings (1-5) when available.
+    
+    Args:
+        trips: canonical trip records from TripStore
+        members: team member roster from TeamStore
+        days: analysis window (unused until we have date-based filtering on trips)
+    
+    Returns:
+        One TeamMemberMetrics per team member; members with no assignments show 0s.
+    """
+    # Build agent slot map from the canonical roster
+    agent_data = {}
+    for member in members:
+        uid = member.get("id")
+        if not uid:
+            continue
         agent_data[uid] = {
-            "name": user.get("name"),
-            "role": user.get("role", "agent"),
+            "name": member.get("name", "Unknown"),
+            "role": member.get("role", "junior_agent"),
             "ratings": [],
             "active": 0,
-            "completed": 0
+            "completed": 0,
         }
 
+    # Aggregate trip counts and ratings by assignee
     for trip in trips:
         uid = trip.get("assigned_to")
         if not uid or uid not in agent_data:
             continue
-            
+
         status = trip.get("status", "new")
         if status in ("booked", "delivered", "completed"):
             agent_data[uid]["completed"] += 1
         else:
             agent_data[uid]["active"] += 1
-            
+
         # Extract quality signal: Feedback Rating
         # Try both packet/feedback (Wave 9) and analytics/latest_feedback
         packet = trip.get("extracted") or trip.get("packet") or {}
         feedback = packet.get("feedback") or trip.get("analytics", {}).get("latest_feedback")
-        
+
         if feedback and isinstance(feedback, dict):
             rating = feedback.get("rating")
             if rating and isinstance(rating, (int, float)):
@@ -128,20 +139,29 @@ def compute_team_metrics(trips: list, assignments: list, days: int = 30) -> List
         # Use simple mean for CSAT; default to 4.5 if no ratings yet (baseline expectation)
         csat = round(sum(ratings) / len(ratings), 1) if ratings else 4.5
         
-        # Simulated workload/response metrics for now (Wave 1-3 heritage)
+        active = stats["active"]
+        completed = stats["completed"]
+        total = active + completed
+        
+        # Real conversion rate from persisted evidence (completed / total * 100)
+        conversion_rate = round((completed / total * 100), 1) if total > 0 else 0.0
+        
+        # Workload score maps active count to a 0-100 percentage band
+        workload_score = min(100.0, active * 6.0)
+        
         team_metrics.append(TeamMemberMetrics(
             userId=uid,
             name=stats["name"],
             role=stats["role"],
-            activeTrips=stats["active"],
-            completedTrips=stats["completed"],
-            conversionRate=65.0 + random.uniform(-10, 10),
-            avgResponseTime=2.0 + random.uniform(0.5, 5.0),
+            activeTrips=active,
+            completedTrips=completed,
+            conversionRate=conversion_rate,
+            avgResponseTime=None,  # Explicitly unavailable: no real response-time data yet
             customerSatisfaction=csat,
-            currentWorkload="optimal" if stats["active"] < 15 else "over",
-            workloadScore=min(100.0, stats["active"] * 6.0)
+            currentWorkload="optimal" if active < 15 else "over",
+            workloadScore=workload_score
         ))
-        
+
     return team_metrics
 
 
@@ -266,7 +286,7 @@ def compute_revenue_metrics(trips: list, days: int = 30) -> RevenueMetrics:
 def compute_alerts(trips: list) -> List[OperationalAlert]:
     """
     Identify trips requiring manual recovery/intervention.
-    Currently focuses on Wave 10: Feedback-Driven Recovery.
+    Currently focuses on Wave 10: Feedback-Driven Actioning.
     """
     alerts = []
     
@@ -333,7 +353,7 @@ def compute_alerts(trips: list) -> List[OperationalAlert]:
                     "is_escalated": is_escalated,
                     "deadline": deadline_str
                 }
-            ) )
+            ))
             
     # Sort by timestamp descending
     return sorted(alerts, key=lambda a: a.timestamp, reverse=True)

@@ -21,7 +21,7 @@ export type {
   MonthlyRevenue,
   OperationalAlert,
   AnalyticsPayload,
-} from '@/types/generated/spine_api';
+} from '@/types/generated/spine-api';
 
 // ============================================================================
 // REVIEWS & APPROVALS (frontend-only presentation)
@@ -93,7 +93,7 @@ export type TimeRange = '7d' | '30d' | '90d' | 'mtd' | 'ytd' | 'custom';
 // TEAM MANAGEMENT (frontend-only presentation)
 // ============================================================================
 
-export type UserRole = 'owner' | 'manager' | 'agent' | 'viewer';
+export type UserRole = 'owner' | 'admin' | 'senior_agent' | 'junior_agent' | 'viewer';
 
 export interface TeamMember {
   id: string;
@@ -106,25 +106,18 @@ export interface TeamMember {
   lastActiveAt?: string;
   capacity: number;
   currentAssignments: number;
-  expertise?: string[];
+  specializations?: string[];
 }
 
 export interface WorkloadDistribution {
-  userId: string;
+  memberId: string;
   name: string;
+  role: UserRole;
   capacity: number;
-  currentLoad: number;
+  assigned: number;
+  available: number;
   loadPercentage: number;
   status: 'under' | 'optimal' | 'near_limit' | 'over_capacity';
-  trips: WorkloadTrip[];
-}
-
-export interface WorkloadTrip {
-  tripId: string;
-  destination: string;
-  stage: string;
-  urgency: 'low' | 'medium' | 'high' | 'critical';
-  value: number;
 }
 
 export interface AssignmentRequest {
@@ -170,10 +163,10 @@ export interface InboxTrip {
 }
 
 export interface InboxFilters {
-  priority?: TripPriority[];
-  stage?: string[];
-  assignedTo?: string[];
-  slaStatus?: ('on_track' | 'at_risk' | 'breached')[];
+  priority?: readonly TripPriority[];
+  stage?: readonly string[];
+  assignedTo?: readonly string[];
+  slaStatus?: readonly ('on_track' | 'at_risk' | 'breached')[];
   dateRange?: { from: string; to: string };
   minValue?: number;
   maxValue?: number;
@@ -243,7 +236,7 @@ export interface ApprovalThreshold {
   destinations?: string[];
   riskFlags?: RiskFlag[];
   requiresApproval: boolean;
-  approverRole: 'owner' | 'manager';
+  approverRole: 'owner' | 'admin' | 'senior_agent';
 }
 
 export interface NotificationTemplate {

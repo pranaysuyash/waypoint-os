@@ -17,14 +17,14 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.security import (
+from spine_api.core.security import (
     hash_password,
     verify_password,
     create_access_token,
     create_refresh_token,
     decode_token,
 )
-from models.tenant import Agency, User, Membership, WorkspaceCode
+from spine_api.models.tenant import Agency, User, Membership, WorkspaceCode
 
 logger = logging.getLogger("spine_api.auth_service")
 

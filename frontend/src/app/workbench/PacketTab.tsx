@@ -7,7 +7,7 @@ interface PacketTabProps {
   trip?: Trip | null;
 }
 
-export function PacketTab({ trip }: PacketTabProps) {
+export default function PacketTab({ trip }: PacketTabProps) {
   const { result_packet, result_validation, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
 
   const activePacket = result_packet || trip?.packet;

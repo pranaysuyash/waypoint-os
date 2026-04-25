@@ -40,7 +40,7 @@ interface IntakeTabProps {
   trip?: Trip | null;
 }
 
-export function IntakeTab({ trip }: IntakeTabProps) {
+export default function IntakeTab({ trip }: IntakeTabProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { input_raw_note, input_owner_note, setInputRawNote, setInputOwnerNote } = useWorkbenchStore();

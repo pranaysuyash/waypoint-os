@@ -27,7 +27,7 @@ trap cleanup SIGINT SIGTERM
 
 start_spine_api() {
   echo "Starting spine-api on http://127.0.0.1:8000 ..."
-  uv run uvicorn spine-api.server:app --port 8000 --reload &
+  uv run uvicorn spine_api.server:app --port 8000 --reload &
   SPINE_API_PID=$!
   echo "spine-api started (PID $SPINE_API_PID)"
 }

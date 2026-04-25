@@ -71,6 +71,7 @@ class AgencyAutonomyPolicy:
     min_draft_confidence: float = 0.5
     require_review_on_infeasible_budget: bool = True
     auto_escalate_high_risk: bool = True
+    checker_audit_threshold: float = 0.9  # Threshold for triggering secondary agent review
 
     _STOP_NEEDS_REVIEW: str = field(default="block", repr=False)
 
@@ -142,6 +143,11 @@ class AgencySettings:
     operating_days: List[str] = field(default_factory=lambda: ["mon", "tue", "wed", "thu", "fri", "sat"])
     preferred_channels: List[str] = field(default_factory=lambda: ["whatsapp", "email"])
     brand_tone: str = "professional"
+
+    # -- Frontier & Agentic --
+    enable_auto_negotiation: bool = True
+    negotiation_margin_threshold: float = 10.0  # Min % savings to trigger haggle
+    enable_checker_agent: bool = True
 
     # -- Autonomy --
     autonomy: AgencyAutonomyPolicy = field(default_factory=AgencyAutonomyPolicy)

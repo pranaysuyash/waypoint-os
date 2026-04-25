@@ -207,8 +207,8 @@ const TeamMemberRow = memo(function TeamMemberRow({ member }: { member: TeamMemb
     <tr className='border-b border-[#1c2128] last:border-0'>
       <td className='py-3'>
         <div className='flex items-center gap-3'>
-          <div className='h-8 w-8 rounded-full bg-[#58a6ff]/20 flex items-center justify-center text-[#58a6ff] text-xs font-bold'>
-            {member.name.split(' ').map(n => n[0]).join('')}
+                <div className='h-8 w-8 rounded-full bg-[#58a6ff]/20 flex items-center justify-center text-[#58a6ff] text-xs font-bold'>
+                  {member.name.split(' ').map((n: string) => n[0]).join('')}
           </div>
           <div>
             <p className='text-sm font-medium text-[#e6edf3]'>{member.name}</p>
@@ -226,7 +226,7 @@ const TeamMemberRow = memo(function TeamMemberRow({ member }: { member: TeamMemb
           <div className='w-16 h-1.5 bg-[#161b22] rounded-full overflow-hidden'>
             <div 
               className='h-full rounded-full'
-              style={{ width: `${member.workloadScore}%`, background: workloadColors[member.currentWorkload] }}
+              style={{ width: `${member.workloadScore}%`, background: workloadColors[member.currentWorkload as keyof typeof workloadColors] }}
             />
           </div>
           <span className={`text-xs ${
@@ -272,7 +272,7 @@ const BottleneckCard = memo(function BottleneckCard({ analysis }: { analysis: Bo
       </p>
       
       <div className='space-y-2'>
-        {analysis.primaryCauses.map((cause, i) => (
+        {analysis.primaryCauses.map((cause: any, i: number) => (
           <div key={i} className='flex items-center justify-between py-2 border-b border-[#30363d]/50 last:border-0'>
             <div>
               <p className='text-sm text-[#e6edf3]'>{cause.cause}</p>
@@ -513,7 +513,7 @@ export default function OwnerInsightsPage() {
 
         {/* Revenue Chart */}
         <div className='lg:col-span-2'>
-          <RevenueChart data={(revenueData?.revenueByMonth || []).map(d => ({
+          <RevenueChart data={(revenueData?.revenueByMonth || []).map((d: any) => ({
             month: d.month ?? '',
             inquiries: d.inquiries ?? 0,
             booked: d.booked ?? 0,

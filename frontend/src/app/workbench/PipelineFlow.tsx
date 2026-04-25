@@ -19,7 +19,7 @@ export function PipelineFlow({ currentStage }: PipelineFlowProps) {
   const currentIndex = stages.findIndex((s) => s.id === currentStage);
 
   return (
-    <div className="px-4 lg:px-6 py-3 lg:py-4 border-b border-[#30363d] bg-[#0a0c0e]">
+    <div className="px-4 lg:px-6 py-3 lg:py-4 border-b border-[#30363d] bg-[#0a0d11] pipeline-container">
       <div className="flex items-center max-w-5xl mx-auto">
         {stages.map((stage, index) => {
           const isActive = index === currentIndex;
@@ -36,9 +36,9 @@ export function PipelineFlow({ currentStage }: PipelineFlowProps) {
               >
                 <div
                   className={cn(
-                    "w-8 h-8 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center font-mono text-xs lg:text-sm font-semibold transition-all shrink-0",
-                    isCompleted && "bg-[#3fb950]/10 border border-[#3fb950] text-[#3fb950]",
-                    isActive && "bg-[#58a6ff] text-[#0d1117] shadow-lg shadow-[#58a6ff]/20",
+                    "w-8 h-8 lg:w-10 lg:h-10 rounded-sm flex items-center justify-center font-mono text-xs lg:text-sm font-semibold transition-all shrink-0",
+                    isCompleted && "glow-green bg-[#3fb950]/10 border border-[#3fb950] text-[#3fb950]",
+                    isActive && "bg-[#58a6ff] text-[#0d1117] glow-blue",
                     isPending && "bg-[#161b22] border border-[#30363d] text-[#8b949e]"
                   )}
                 >
@@ -50,7 +50,7 @@ export function PipelineFlow({ currentStage }: PipelineFlowProps) {
                 </div>
                 <p
                   className={cn(
-                    "mt-1.5 text-xs lg:text-sm font-medium text-center truncate w-full px-0.5",
+                    "mt-1.5 text-xs lg:text-sm font-mono font-medium text-center truncate w-full px-0.5",
                     isActive ? "text-[#e6edf3]" : "text-[#8b949e]"
                   )}
                 >
@@ -59,15 +59,15 @@ export function PipelineFlow({ currentStage }: PipelineFlowProps) {
                 </p>
 
                 {isActive && (
-                  <div className="absolute -bottom-1 w-2 h-2 rounded-full bg-[#58a6ff] animate-pulse" />
+                  <div className="absolute -bottom-1 w-2 h-2 rounded-full bg-[#58a6ff] animate-pulse-dot" />
                 )}
               </div>
 
               {index < stages.length - 1 && (
                 <div
                   className={cn(
-                    "flex-1 min-w-[16px] max-w-[60px] h-0.5 mx-1 lg:mx-2 shrink transition-colors",
-                    isCompleted ? "bg-[#3fb950]" : "bg-[#30363d]"
+                    "flex-1 min-w-[16px] max-w-[60px] h-1 mx-1 lg:mx-2 shrink transition-colors",
+                    isCompleted ? "bg-[#3fb950] shadow-[0_0_8px_rgba(63,185,80,0.3)]" : "bg-[#30363d]"
                   )}
                 />
               )}

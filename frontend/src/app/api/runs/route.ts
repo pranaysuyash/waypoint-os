@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { forwardAuthHeaders } from "@/lib/proxy-utils";
+import { forwardAuthHeaders } from "@/lib/proxy-core";
 
 export async function GET(request: NextRequest) {
   try {

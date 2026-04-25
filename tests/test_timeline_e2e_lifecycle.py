@@ -30,16 +30,10 @@ from src.intake.orchestration import run_spine_once
 from src.intake.packet_models import SourceEnvelope
 
 
-@pytest.fixture
-def client():
-    """FastAPI test client."""
-    return TestClient(app)
-
-
 class TestTimelineLifecycleFull:
     """Complete trip lifecycle: backend → timeline API → frontend UI"""
 
-    def test_trip_lifecycle_with_timeline_rendering_happy_path(self, client):
+    def test_trip_lifecycle_with_timeline_rendering_happy_path(self, session_client):
         """
         Scenario A: Happy path (trip approved).
         
@@ -97,7 +91,7 @@ class TestTimelineLifecycleFull:
         assert len(events) >= 2, f"Expected at least 2 timeline events, got {len(events)}"
 
         # Step 4: Call the timeline API
-        response = client.get(f"/api/trips/{trip_id}/timeline")
+        response = session_client.get(f"/api/trips/{trip_id}/timeline")
         assert response.status_code == 200, f"Timeline API failed: {response.text}"
 
         data = response.json()
@@ -169,7 +163,7 @@ class TestTimelineLifecycleFull:
         if decision_events:
             print(f"  Decisions: {[d.get('decision', 'N/A') for d in decision_events]}")
 
-    def test_timeline_events_in_chronological_order(self, client):
+    def test_timeline_events_in_chronological_order(self, session_client):
         """Verify timeline events are always sorted by timestamp (ascending)."""
         envelopes = [
             SourceEnvelope.from_freeform(
@@ -186,7 +180,7 @@ class TestTimelineLifecycleFull:
         result = run_spine_once(envelopes=envelopes, stage="discovery")
         trip_id = result.packet.packet_id
 
-        response = client.get(f"/api/trips/{trip_id}/timeline")
+        response = session_client.get(f"/api/trips/{trip_id}/timeline")
         assert response.status_code == 200
 
         data = response.json()
@@ -202,7 +196,7 @@ class TestTimelineLifecycleFull:
 
         print(f"✓ Test passed: Timeline events are in chronological order")
 
-    def test_timeline_schema_validates_frontend_parsing(self, client):
+    def test_timeline_schema_validates_frontend_parsing(self, session_client):
         """
         Verify that the timeline schema is parseable by frontend TimelineEvent[].
         
@@ -223,7 +217,7 @@ class TestTimelineLifecycleFull:
         result = run_spine_once(envelopes=envelopes, stage="discovery")
         trip_id = result.packet.packet_id
 
-        response = client.get(f"/api/trips/{trip_id}/timeline")
+        response = session_client.get(f"/api/trips/{trip_id}/timeline")
         assert response.status_code == 200
 
         data = response.json()
@@ -255,7 +249,7 @@ class TestTimelineLifecycleFull:
 
         print(f"✓ Test passed: Frontend can parse {len(parsed_events)} timeline events")
 
-    def test_timeline_endpoint_returns_valid_json(self, client):
+    def test_timeline_endpoint_returns_valid_json(self, session_client):
         """Verify the endpoint always returns valid, parseable JSON."""
         test_cases = [
             "trip-with-events",
@@ -264,7 +258,7 @@ class TestTimelineLifecycleFull:
         ]
 
         for trip_id in test_cases:
-            response = client.get(f"/api/trips/{trip_id}/timeline")
+            response = session_client.get(f"/api/trips/{trip_id}/timeline")
             assert response.status_code == 200, f"Failed for {trip_id}"
 
             # Should be valid JSON
@@ -275,7 +269,7 @@ class TestTimelineLifecycleFull:
 
         print(f"✓ Test passed: Endpoint returns valid JSON for all cases")
 
-    def test_timeline_stage_filter_parameter(self, client):
+    def test_timeline_stage_filter_parameter(self, session_client):
         """Verify that stage filter parameter works correctly."""
         envelopes = [
             SourceEnvelope.from_freeform(
@@ -294,12 +288,12 @@ class TestTimelineLifecycleFull:
         trip_id = result.packet.packet_id
 
         # Get all events
-        response_all = client.get(f"/api/trips/{trip_id}/timeline")
+        response_all = session_client.get(f"/api/trips/{trip_id}/timeline")
         assert response_all.status_code == 200
         all_events = response_all.json()["events"]
 
         # Filter by intake stage
-        response_intake = client.get(f"/api/trips/{trip_id}/timeline?stage=intake")
+        response_intake = session_client.get(f"/api/trips/{trip_id}/timeline?stage=intake")
         assert response_intake.status_code == 200
         intake_events = response_intake.json()["events"]
 
@@ -315,7 +309,7 @@ class TestTimelineLifecycleFull:
 
         print(f"✓ Test passed: Stage filter works correctly")
 
-    def test_timeline_response_structure_matches_pydantic_model(self, client):
+    def test_timeline_response_structure_matches_pydantic_model(self, session_client):
         """
         Verify the timeline response matches the TimelineResponse Pydantic model.
         
@@ -353,7 +347,7 @@ class TestTimelineLifecycleFull:
         result = run_spine_once(envelopes=envelopes, stage="discovery")
         trip_id = result.packet.packet_id
 
-        response = client.get(f"/api/trips/{trip_id}/timeline")
+        response = session_client.get(f"/api/trips/{trip_id}/timeline")
         assert response.status_code == 200
 
         data = response.json()
@@ -400,11 +394,11 @@ class TestTimelineLifecycleFull:
 
         print(f"✓ Test passed: Response structure matches Pydantic model")
 
-    def test_timeline_empty_trip_handling(self, client):
+    def test_timeline_empty_trip_handling(self, session_client):
         """Verify timeline endpoint handles trips with no events gracefully."""
         nonexistent_trip_id = "nonexistent-trip-" + "x" * 32
 
-        response = client.get(f"/api/trips/{nonexistent_trip_id}/timeline")
+        response = session_client.get(f"/api/trips/{nonexistent_trip_id}/timeline")
         assert response.status_code == 200, "Should return 200 even for nonexistent trip"
 
         data = response.json()
@@ -417,7 +411,7 @@ class TestTimelineLifecycleFull:
 class TestTimelineEventContent:
     """Test the actual content and meaning of timeline events."""
 
-    def test_timeline_events_have_meaningful_content(self, client):
+    def test_timeline_events_have_meaningful_content(self, session_client):
         """Verify timeline events contain meaningful information."""
         envelopes = [
             SourceEnvelope.from_freeform(
@@ -436,7 +430,7 @@ class TestTimelineEventContent:
         result = run_spine_once(envelopes=envelopes, stage="discovery")
         trip_id = result.packet.packet_id
 
-        response = client.get(f"/api/trips/{trip_id}/timeline")
+        response = session_client.get(f"/api/trips/{trip_id}/timeline")
         assert response.status_code == 200
 
         data = response.json()

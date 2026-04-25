@@ -106,6 +106,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // Public marketing + auth pages render without the app shell chrome
   if (
     pathname === '/' ||
+    pathname === '/v2' ||
     pathname.startsWith('/itinerary-checker') ||
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||

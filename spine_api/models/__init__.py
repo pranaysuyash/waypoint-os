@@ -4,9 +4,9 @@ Model registry for SQLAlchemy and Alembic.
 Import all models here so Alembic autogenerate can discover them.
 """
 
-from core.database import Base
-from models.tenant import Agency, User, Membership, WorkspaceCode
-from models.frontier import GhostWorkflow, EmotionalStateLog, IntelligencePoolRecord, LegacyAspiration
+from spine_api.core.database import Base
+from spine_api.models.tenant import Agency, User, Membership, WorkspaceCode
+from spine_api.models.frontier import GhostWorkflow, EmotionalStateLog, IntelligencePoolRecord, LegacyAspiration
 
 __all__ = [
     "Base", 

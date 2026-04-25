@@ -48,6 +48,18 @@ If instructions conflict, follow the stricter rule and cite concrete file paths.
 - Do not claim platform limitations when the gap is implementable; state what is possible, what is implemented, and the concrete path.
 - For skill discovery, prioritize project-level skills under `/Users/pranay/Projects/skills/` before defaulting to other skill stores.
 
+## Preview & Feedback (Critical)
+
+**Rule**: Before showing work to the user for feedback, **always start the servers first**:
+1. **Backend**: `cd spine_api && uv run uvicorn spine_api.server:app --port 8000`
+2. **Frontend**: `cd frontend && npm run dev` (Next.js on :3000)
+
+**Why**: User needs to see live preview immediately when giving feedback. Don't make them wait or ask them to start servers.
+
+**Verification**: After starting servers, verify:
+- `curl -s http://localhost:8000/health` returns OK
+- `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000` returns 200
+
 ## Naming Conventions (Critical — Prevent Future Symlinks)
 
 **Problem prevented**: `spine-api/` (hyphen) vs `spine_api` (underscore) required a symlink because Python imports need underscores. This is pre-launch — no backward compat needed.
@@ -64,6 +76,15 @@ If instructions conflict, follow the stricter rule and cite concrete file paths.
 - Before creating any directory: check if the language requires underscores (Python) or hyphens (JS/TS)
 - If you find a symlink fixing a naming mismatch: **delete symlink + rename directory** immediately
 - Add this check to every task: "Does the directory name match language conventions?"
+
+## Package / Dependency Preference
+
+When implementing functionality that involves parsing, validation, formatting, or other well-understood concerns:
+
+1. **Search for an existing dependency first.** If the project already depends on a library that does what you need (e.g. `set-cookie-parser` for cookie parsing), **use it.**
+2. Do not hand-roll parsers (e.g. regex-based date parsing, manual cookie attribute splitting) if a reputable, well-tested package exists in the project's dependency tree or can be added with `npm install` / `pip install`.
+3. Rationale: vendor code is battle-tested, typed, and maintained. Hand-rolled code introduces bugs, bloats the codebase, and wastes time.
+4. Exception: one-liner utilities where introducing a dependency is heavier than the code (e.g. a single `Array.prototype.map` call).
 
 ## Default Task Lifecycle (Adopted)
 

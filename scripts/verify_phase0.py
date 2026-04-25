@@ -13,8 +13,8 @@ sys.path.insert(0, "spine_api")
 async def verify_database():
     """Verify async database connection and model operations."""
     from sqlalchemy import select
-    from core.database import async_session_maker
-    from models.tenant import Agency, User, Membership, WorkspaceCode
+from spine_api.core.database import async_session_maker
+from spine_api.models.tenant import Agency, User, Membership, WorkspaceCode
 
     async with async_session_maker() as session:
         # Create an agency

@@ -1,13 +1,16 @@
 /**
- * spine-client.ts - TypeScript client for calling the Python spine via HTTP.
+ * spine-client.ts — TypeScript client for calling the Python spine via HTTP.
  *
- * Calls spine_api (FastAPI service) instead of spawning a subprocess per request.
- * The spine_api service is persistent and pre-loads all Python modules.
+ * All calls go through the Next.js BFF catch-all proxy at /api/spine/[...path],
+ * which forwards cookies (including access_token) transparently to FastAPI.
  *
- * In development: connect to localhost:8000 (spine_api running via `uv run ...`)
- * In production: connect to the deployed spine_api service URL
+ * The client does NOT manage tokens. Authentication is handled entirely by:
+ *   1. FastAPI sets access_token + refresh_token as httpOnly cookies
+ *   2. Next.js middleware checks access_token cookie for page-route guards
+ *   3. This client just calls /api/spine/* and the browser sends cookies automatically
  *
  * Set SPINE_API_URL env var to override the default (e.g., in docker-compose / k8s).
+ * In production, the BFF is the gateway — no direct connection to FastAPI.
  */
 
 import { SpineStage, OperatingMode, SpineRunResponse } from "@/types/spine";
@@ -25,20 +28,20 @@ export interface SpineRunRequest {
 
 export type { SpineRunResponse };
 
-const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
+// BFF proxy prefix — browser sends cookies automatically
+const SPINE_PREFIX = "/api/spine";
 
 export async function runSpine(
   request: SpineRunRequest,
-  extraHeaders?: Record<string, string>
 ): Promise<SpineRunResponse> {
-  const response = await fetch(`${SPINE_API_URL}/run`, {
+  const response = await fetch(`${SPINE_PREFIX}/run`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
-      ...extraHeaders,
     },
     body: JSON.stringify(request),
+    credentials: "include", // ensure cookies are sent
   });
 
   if (!response.ok) {

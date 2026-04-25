@@ -109,14 +109,22 @@
   --lg-bg-garden: radial-gradient(circle at top right, #0d1a11, #040508);
   --lg-glass-bg: rgba(255, 255, 255, 0.03);
   --lg-glass-border: rgba(255, 255, 255, 0.08);
-  --lg-glass-blur: 12px;
-  
+  --lg-glass-blur: 24px;
+
   --lg-accent-bloom: #2ecc71;
   --lg-accent-wither: #e74c3c;
   --lg-accent-mist: #34495e;
-  
+  --lg-accent-gold: #d29922;
+  --lg-accent-platinum: #e5e5e5;
+
   --lg-shadow-soft: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --lg-shadow-premium: 0 12px 48px -12px rgba(0, 0, 0, 0.5);
   --lg-radius-premium: 24px;
+
+  /* Industry Specific Gradients */
+  --grad-luxury: linear-gradient(135deg, #0d1a11 0%, #040508 100%);
+  --grad-crisis: linear-gradient(135deg, #1a0d0d 0%, #080404 100%);
+  --grad-mice: linear-gradient(135deg, #0d151a 0%, #040608 100%);
 }
 
 html {
@@ -368,7 +376,7 @@ a {
   box-shadow: 0 0 20px rgba(217, 164, 32, 0.2);
 }
 
- .glow-green {
+.glow-green {
   box-shadow: 0 0 20px rgba(63, 185, 80, 0.15);
 }
 
@@ -379,6 +387,15 @@ a {
     radial-gradient(circle at 80% 100%, rgba(57, 208, 216, 0.06), transparent 50%),
     #0a0d11;
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Pipeline container premium effects */
+.pipeline-container {
+  background:
+    radial-gradient(circle at 20% 50%, rgba(88, 166, 255, 0.06), transparent 50%),
+    radial-gradient(circle at 80% 50%, rgba(57, 208, 216, 0.04), transparent 50%),
+    #0a0c0e;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 /* ============================================================================
@@ -530,4 +547,35 @@ a {
   right: 0;
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+}
+
+.bento-item:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: var(--lg-shadow-premium);
+  transform: translateY(-2px);
+  transition: all var(--transition-base);
+}
+
+/* Glass Premium */
+.glass-premium {
+  background: var(--lg-glass-bg);
+  backdrop-filter: blur(var(--lg-glass-blur));
+  -webkit-backdrop-filter: blur(var(--lg-glass-blur));
+  border: 1px solid var(--lg-glass-border);
+  box-shadow: var(--lg-shadow-soft);
+}
+
+/* Industry Cards */
+.industry-card-luxury { background: var(--grad-luxury); border-left: 4px solid var(--lg-accent-gold); }
+.industry-card-crisis { background: var(--grad-crisis); border-left: 4px solid var(--lg-accent-wither); }
+.industry-card-mice { background: var(--grad-mice); border-left: 4px solid var(--lg-accent-blue); }
+
+/* Animation: Agent Breathing */
+@keyframes agent-breathing {
+  0%, 100% { opacity: 0.6; filter: drop-shadow(0 0 5px var(--lg-accent-bloom)); }
+  50% { opacity: 1; filter: drop-shadow(0 0 15px var(--lg-accent-bloom)); }
+}
+
+.animate-agent-breathing {
+  animation: agent-breathing 4s infinite ease-in-out;
 }

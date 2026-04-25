@@ -1332,7 +1332,7 @@ def generate_risk_flags(
     # Only run suitability checks in shortlist/proposal/booking stages
     if stage in ("shortlist", "proposal", "booking"):
         try:
-            from suitability.integration import generate_suitability_risks
+            from src.suitability.integration import generate_suitability_risks
             suitability_risks = generate_suitability_risks(packet)
             risks.extend(suitability_risks)
         except ImportError:
@@ -1341,8 +1341,6 @@ def generate_risk_flags(
         except Exception as e:
             # Don't fail risk generation if suitability has issues
             print(f"Warning: Suitability risk generation failed: {e}")
-    
-    return risks
 
     # Coordination risk (multi-party)
     sub_groups = packet.facts.get("sub_groups")

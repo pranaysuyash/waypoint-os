@@ -54,7 +54,7 @@ class TeamMemberMetrics(BaseModel):
     activeTrips: int
     completedTrips: int
     conversionRate: float
-    avgResponseTime: float
+    avgResponseTime: Optional[float] = Field(default=None, description="Not yet computed from real data")
     customerSatisfaction: float
     currentWorkload: Literal["under", "optimal", "over", "critical"]
     workloadScore: float

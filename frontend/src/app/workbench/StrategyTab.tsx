@@ -7,7 +7,7 @@ interface StrategyTabProps {
   trip?: Trip | null;
 }
 
-export function StrategyTab({ trip }: StrategyTabProps) {
+export default function StrategyTab({ trip }: StrategyTabProps) {
   const { result_strategy, result_internal_bundle, result_traveler_bundle, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
 
   const activeStrategy = result_strategy || (trip?.strategy as StrategyOutput | null);

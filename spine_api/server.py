@@ -41,9 +41,10 @@ import sys
 import time
 import uuid
 from collections import defaultdict
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -55,7 +56,8 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from core.middleware import AuthMiddleware
+from spine_api.core.auth import get_current_user
+from spine_api.core.middleware import AuthMiddleware
 
 from spine_api.contract import (
     SafetyResult,
@@ -125,8 +127,8 @@ except (ImportError, ValueError):
         watchdog = _watchdog_mod.watchdog
 
 # Wave A: run lifecycle modules
-from run_state import RunState, assert_can_transition, terminal_state_for_run_result
-from run_events import (
+from spine_api.run_state import RunState, assert_can_transition, terminal_state_for_run_result
+from spine_api.run_events import (
     emit_run_started,
     emit_run_completed,
     emit_run_failed,
@@ -135,7 +137,7 @@ from run_events import (
     emit_stage_completed,
     get_run_events,
 )
-from run_ledger import RunLedger
+from spine_api.run_ledger import RunLedger
 from src.intake.config.agency_settings import AgencySettingsStore
 from src.analytics.policy_rules import ready_gate_failures
 
@@ -191,6 +193,23 @@ if os.environ.get("TRAVELER_SAFE_STRICT", "").strip() in ("1", "true", "yes"):
     set_strict_mode(True)
 
 # =============================================================================
+# Lifespan handler
+# =============================================================================
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan context manager (replaces deprecated on_event)."""
+    # Startup
+    watchdog.start()
+    _seed_scenario()
+    logger.info("Spine API startup complete")
+    yield
+    # Shutdown
+    watchdog.stop()
+    logger.info("Spine API shutdown complete")
+
+
+# =============================================================================
 # FastAPI app
 # =============================================================================
 
@@ -198,6 +217,7 @@ app = FastAPI(
     title="Spine API",
     description="Canonical HTTP wrapper around run_spine_once",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -208,20 +228,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Enforce authentication on all routes except public paths
 app.add_middleware(AuthMiddleware)
 
 # Phase 1: Auth + Workspace routers
 app.include_router(auth_router.router)
-app.include_router(workspace_router.router)
+app.include_router(
+    workspace_router.router,
+    dependencies=[Depends(get_current_user)] if not os.environ.get("SPINE_API_DISABLE_AUTH") else [],
+)
 app.include_router(frontier_router.router)
-
-
-@app.on_event("startup")
-async def startup_event():
-    watchdog.start()
-    _seed_scenario()
-    logger.info("Spine API startup complete")
 
 
 def _seed_scenario():
@@ -292,13 +307,6 @@ def _seed_scenario():
         logger.info("SEED_SCENARIO: loaded %d trips from %s", loaded, seed_name)
     except Exception as e:
         logger.error("SEED_SCENARIO: failed to load fixture: %s", e)
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Tasks to run on server shutdown."""
-    watchdog.stop()
-    logger.info("Spine API shutdown complete")
 
 
 # =============================================================================
@@ -937,8 +945,8 @@ def get_analytics_pipeline(range: str = "30d"):
 @app.get("/analytics/team", response_model=List[TeamMemberMetrics])
 def get_analytics_team(range: str = "30d"):
     trips = TripStore.list_trips(limit=1000)
-    assignments = list(AssignmentStore._load_assignments().values())
-    return compute_team_metrics(trips, assignments)
+    members = TeamStore.list_members(active_only=False)
+    return compute_team_metrics(trips, members)
 
 
 @app.get("/analytics/bottlenecks", response_model=List[BottleneckAnalysis])
@@ -1522,44 +1530,6 @@ def get_dashboard_stats():
             status_code=500,
             detail="Failed to compute dashboard stats"
         )
-
-# =============================================================================
-# System Integrity API
-# =============================================================================
-
-from src.services.dashboard_aggregator import DashboardAggregator
-
-@app.get("/api/system/unified-state")
-def get_unified_state():
-    """
-    Canonical SSOT for dashboard metrics.
-    Returns mathematically consistent data for Inbox, Overview, and Analytics.
-    """
-    try:
-        return DashboardAggregator.get_unified_state()
-    except Exception as e:
-        logger.error(f"Failed to aggregate unified state: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="Internal integrity error"
-        )
-
-
-@app.get("/api/dashboard/stats", response_model=DashboardStatsResponse)
-def get_dashboard_stats():
-    """
-    Dashboard stat cards — computed entirely by the backend aggregator.
-    Replaces all frontend Math.floor / filter / reduce logic.
-    """
-    try:
-        return DashboardAggregator.get_dashboard_stats()
-    except Exception as e:
-        logger.error(f"Failed to compute dashboard stats: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to compute dashboard stats"
-        )
-
 
 # =============================================================================
 # Team Management API

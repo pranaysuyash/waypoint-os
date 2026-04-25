@@ -12,7 +12,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.tenant import Agency, WorkspaceCode
+from spine_api.models.tenant import Agency, WorkspaceCode
 
 logger = logging.getLogger("spine_api.workspace_service")
 

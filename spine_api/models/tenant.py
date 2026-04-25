@@ -15,12 +15,13 @@ from typing import Optional, List
 from sqlalchemy import String, ForeignKey, DateTime, Boolean, Text, JSON, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from core.database import Base
+from spine_api.core.database import Base
 
 
 class Agency(Base):
     """A travel agency tenant."""
     __tablename__ = "agencies"
+    __table_args__ = {"extend_existing": True}
 
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())

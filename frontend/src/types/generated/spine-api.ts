@@ -79,6 +79,24 @@ export interface HealthResponse {
   status: string;
   version: string;
 }
+export interface NegotiationLog {
+  id: string;
+  supplier_name: string;
+  status: "OPEN" | "NEGOTIATING" | "WON" | "LOST";
+  best_bid?: number | null;
+  original_price?: number | null;
+  savings?: number | null;
+  next_action?: string | null;
+  last_message?: string | null;
+}
+export interface SpecialtyKnowledgeHit {
+  niche: string;
+  keywords: string[];
+  checklists: string[];
+  compliance: string[];
+  safety_notes?: string | null;
+  urgency: string;
+}
 export interface FrontierOrchestrationResult {
   ghost_triggered: boolean;
   ghost_workflow_id?: string | null;
@@ -87,9 +105,12 @@ export interface FrontierOrchestrationResult {
   intelligence_hits: {
     [k: string]: unknown;
   }[];
+  specialty_knowledge: SpecialtyKnowledgeHit[];
   mitigation_applied: boolean;
   requires_manual_audit: boolean;
   audit_reason?: string | null;
+  negotiation_active: boolean;
+  negotiation_logs: NegotiationLog[];
 }
 export interface InsightsSummary {
   totalInquiries?: number;

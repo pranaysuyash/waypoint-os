@@ -164,7 +164,8 @@ export async function deactivateTeamMember(
 export async function getWorkloadDistribution(): Promise<
   WorkloadDistribution[]
 > {
-  return api.get('/api/team/workload');
+  const res = await api.get<{ items: WorkloadDistribution[] }>('/api/team/workload');
+  return res.items;
 }
 
 // ============================================================================

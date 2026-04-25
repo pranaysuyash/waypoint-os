@@ -15,7 +15,7 @@ from typing import Optional
 from sqlalchemy import String, ForeignKey, DateTime, Float, Integer, JSON, Index, Numeric, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from core.database import Base
+from spine_api.core.database import Base
 
 
 class GhostWorkflow(Base):

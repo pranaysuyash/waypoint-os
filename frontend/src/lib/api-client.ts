@@ -51,13 +51,8 @@ const DEFAULT_RETRY = 0;
 const DEFAULT_RETRY_DELAY = 1000;
 
 // ============================================================================
-// AUTH HELPERS
+// AUTH — cookie-based (httpOnly), no localStorage token needed
 // ============================================================================
-
-function getAuthToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("access_token");
-}
 
 // ============================================================================
 // CLIENT
@@ -102,21 +97,18 @@ class ApiClient {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-        // Build headers with auth token if available
+        // Build headers — auth is cookie-based (httpOnly), no Authorization header needed
         const incomingHeaders = fetchOptions.headers as Record<string, string> | undefined;
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
           ...(incomingHeaders || {}),
         };
-        const token = getAuthToken();
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
 
         const response = await fetch(url, {
           ...fetchOptions,
           signal: controller.signal,
           headers,
+          credentials: "include",   // ensures cookies travel even after subdomain splits / CDN
         });
 
         clearTimeout(timeoutId);

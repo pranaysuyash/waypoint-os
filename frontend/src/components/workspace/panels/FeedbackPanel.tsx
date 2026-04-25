@@ -8,7 +8,7 @@ interface FeedbackPanelProps {
   trip: Trip;
 }
 
-export function FeedbackPanel({ trip }: FeedbackPanelProps) {
+export default function FeedbackPanel({ trip }: FeedbackPanelProps) {
   const feedback = trip.feedback;
 
   if (!feedback) {

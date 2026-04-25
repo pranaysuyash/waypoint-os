@@ -14,10 +14,10 @@ Acceptance Criteria:
 import asyncio
 import sys
 
-from core.database import async_session_maker
-from services.auth_service import signup, login, refresh_access_token
-from services.workspace_service import get_workspace, update_workspace
-from core.security import decode_token
+from spine_api.core.database import async_session_maker
+from spine_api.services.auth_service import signup, login, refresh_access_token
+from spine_api.services.workspace_service import get_workspace, update_workspace
+from spine_api.core.security import decode_token
 
 
 async def verify():

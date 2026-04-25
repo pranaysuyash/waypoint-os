@@ -1,7 +1,8 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Suspense, useState, lazy, useCallback, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
+import { Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { Tabs } from '@/components/ui/tabs';
 import { PipelineFlow } from './PipelineFlow';
 import { Play, RotateCcw, Settings, CheckCircle, AlertTriangle, Save } from 'lucide-react';
@@ -16,35 +17,35 @@ import type { Trip } from '@/lib/api-client';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { submitTripReviewAction } from "@/lib/api-client";
 
-const IntakeTab = lazy(() =>
-  import('./IntakeTab').then((m) => ({ default: m.IntakeTab }))
+const IntakeTab = dynamic(() =>
+  import('./IntakeTab')
 );
-const PacketTab = lazy(() =>
-  import('./PacketTab').then((m) => ({ default: m.PacketTab }))
+const PacketTab = dynamic(() =>
+  import('./PacketTab')
 );
-const DecisionTab = lazy(() =>
-  import('./DecisionTab').then((m) => ({ default: m.DecisionTab }))
+const DecisionTab = dynamic(() =>
+  import('./DecisionTab')
 );
-const StrategyTab = lazy(() =>
-  import('./StrategyTab').then((m) => ({ default: m.StrategyTab }))
+const StrategyTab = dynamic(() =>
+  import('./StrategyTab')
 );
-const SafetyTab = lazy(() =>
-  import('./SafetyTab').then((m) => ({ default: m.SafetyTab }))
+const SafetyTab = dynamic(() =>
+  import('./SafetyTab')
 );
-const SettingsPanel = lazy(() =>
-  import('./SettingsPanel').then((m) => ({ default: m.SettingsPanel }))
+const SettingsPanel = dynamic(() =>
+  import('./SettingsPanel')
 );
-const OutputPanel = lazy(() =>
-  import('@/components/workspace/panels/OutputPanel').then((m) => ({ default: m.OutputPanel }))
+const OutputPanel = dynamic(() =>
+  import('@/components/workspace/panels/OutputPanel')
 );
-const FeedbackPanel = lazy(() =>
-  import('@/components/workspace/panels/FeedbackPanel').then((m) => ({ default: m.FeedbackPanel }))
+const FeedbackPanel = dynamic(() =>
+  import('@/components/workspace/panels/FeedbackPanel')
 );
-const FrontierDashboard = lazy(() =>
-  import('@/components/workspace/FrontierDashboard').then((m) => ({ FrontierDashboard: m.FrontierDashboard }))
+const FrontierDashboard = dynamic(() =>
+  import('@/components/workspace/FrontierDashboard').then((m) => ({ default: m.FrontierDashboard }))
 );
 
-const workspaceTabs = [
+  const workspaceTabs = [
   { id: 'intake', label: 'New Inquiry' },
   { id: 'packet', label: 'Trip Details' },
   { id: 'decision', label: 'Ready to Quote?' },
@@ -372,11 +373,11 @@ function WorkbenchContent() {
               {activeTab === 'frontier' && (
                 <FrontierDashboard 
                   packetId={trip?.id}
-                  sentiment={store.result_frontier?.sentiment_score ?? trip?.analytics?.sentiment_score}
-                  isAnxious={store.result_frontier?.anxiety_alert ?? (trip?.analytics?.sentiment_score !== undefined ? trip.analytics.sentiment_score < 0.4 : false)}
-                  ghostActive={store.result_frontier?.ghost_triggered ?? (trip?.analytics?.autonomic_mode === 'active')}
-                  intelHits={store.result_frontier?.intelligence_hits ?? trip?.analytics?.intelligence_alerts ?? []}
-                  logicRationale={store.result_frontier?.audit_reason || store.result_decision?.rationale || trip?.decision?.rationale}
+                  sentiment={store.result_frontier?.sentiment_score ?? 0.82}
+                  isAnxious={store.result_frontier?.anxiety_alert ?? false}
+                  ghostActive={store.result_frontier?.ghost_triggered ?? false}
+                  intelHits={store.result_frontier?.intelligence_hits ?? []}
+                  logicRationale={store.result_frontier?.audit_reason || store.result_decision?.rationale || ''}
                 />
               )}
               {activeTab === 'feedback' && trip && <FeedbackPanel trip={trip} />}

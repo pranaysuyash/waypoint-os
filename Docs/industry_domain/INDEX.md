@@ -5,27 +5,35 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 ---
 
 ## 1. Agency Ecosystem & Business Models
-*How agencies are structured, their size, and their value proposition.*
+
+_How agencies are structured, their size, and their value proposition._
+
 - [x] [GLOBAL_AGENCY_MODELS.md](agency_operations/GLOBAL_AGENCY_MODELS.md) (Host, IC, Sub-Agency)
 - [x] [AGENCY_SIZES_AND_SPECIALIZATIONS.md](agency_operations/AGENCY_SIZES_AND_SPECIALIZATIONS.md) (Boutique vs. Mid-size vs. Mega TMC)
 - [x] [CURATED_VS_FIXED_PACKAGES.md](agency_operations/CURATED_VS_FIXED_PACKAGES.md) (Bespoke/Tailor-made vs. Wholesale/Charter)
 - [x] [WHITE_LABEL_AND_B2B2C_PARTNERSHIPS.md](commercial_models/WHITE_LABEL_AND_B2B2C_PARTNERSHIPS.md)
 
 ## 2. Roles & Human Capital (Direct & Indirect)
-*Every role involved in moving a traveler from A to B.*
+
+_Every role involved in moving a traveler from A to B._
+
 - [x] [ROLES_AND_RESPONSIBILITIES.md](agency_operations/ROLES_AND_RESPONSIBILITIES.md) (Front Office)
 - [x] [MID_AND_BACK_OFFICE_ROLES.md](agency_operations/MID_AND_BACK_OFFICE_ROLES.md) (Ticketing, QC, Accounts)
 - [x] [INDIRECT_SUPPLY_CHAIN_ROLES.md](agency_operations/INDIRECT_SUPPLY_CHAIN_ROLES.md) (Consolidators, GDS Reps, DMC Ops)
 - [x] [AGENCY_TEAM_STRUCTURE_AND_FUNCTIONAL_ROLES.md](agency_operations/AGENCY_TEAM_STRUCTURE_AND_FUNCTIONAL_ROLES.md) (Matrix, Specializations, PnL Owners)
 
 ## 3. Traveler Taxonomy & Route Logic
-*Types of travelers, how they move, and the logic of the route.*
+
+_Types of travelers, how they move, and the logic of the route._
+
 - [x] [TRAVELER_SEGMENTATION_AND_BEHAVIOR.md](agency_operations/TRAVELER_SEGMENTATION_AND_BEHAVIOR.md) (Solo, VFR, Digital Nomad)
 - [x] [ROUTE_TYPES_AND_PNR_LOGIC.md](agency_operations/ROUTE_TYPES_AND_PNR_LOGIC.md) (Open-jaw, RTW, Point-to-Point)
 - [x] [CONNECTION_MECHANICS_AND_INTERLINING.md](agency_operations/CONNECTION_MECHANICS_AND_INTERLINING.md) (Interline, Self-transfer, Virtual Interlining)
 
 ## 4. The Documentation & Health Ecosystem
-*The "Paper Trail" and physical requirements for travel.*
+
+_The "Paper Trail" and physical requirements for travel._
+
 - [x] [THE_TRAVEL_DOCUMENT_Blueprints.md](regulatory_compliance/THE_TRAVEL_DOCUMENT_Blueprints.md) (PNRs, Vouchers, Manifests)
 - [x] [VISA_AND_DOCUMENTATION_FUNDAMENTALS.md](regulatory_compliance/VISA_AND_DOCUMENTATION_FUNDAMENTALS.md)
 - [x] [HEALTH_PROTOCOLS_AND_MEDICAL_LOGISTICS.md](regulatory_compliance/HEALTH_PROTOCOLS_AND_MEDICAL_LOGISTICS.md) (Vaccines, PCR, Fit-to-fly)
@@ -55,17 +63,41 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [AI_REGULATORY_COMPLIANCE_AND_TRAVEL_ALGORITHMS.md](regulatory_compliance/AI_REGULATORY_COMPLIANCE_AND_TRAVEL_ALGORITHMS.md) (AI governance, explainability, fairness)
 - [x] [INFLUENCER_BRAND_SAFETY_AND_TRAVEL_CREATOR_GOVERNANCE.md](regulatory_compliance/INFLUENCER_BRAND_SAFETY_AND_TRAVEL_CREATOR_GOVERNANCE.md) (Creator brand safety, governance, policy)
 - [x] [SPONSORED_CONTENT_DISCLOSURE_AND_AD_COMPLIANCE.md](regulatory_compliance/SPONSORED_CONTENT_DISCLOSURE_AND_AD_COMPLIANCE.md) (Sponsored content disclosure, ad compliance)
+- [x] [CREATOR_ADVERSE_EVENT_REPORTING_AND_INSURANCE.md](regulatory_compliance/CREATOR_ADVERSE_EVENT_REPORTING_AND_INSURANCE.md) (Creator adverse event reporting, insurance)
+- [x] [CREATOR_CHILD_AND_VULNERABLE_TRAVELER_PROTECTIONS.md](regulatory_compliance/CREATOR_CHILD_AND_VULNERABLE_TRAVELER_PROTECTIONS.md) (Creator child and vulnerable traveler protections)
+- [x] [CREATOR_PLATFORM_TRANSPARENCY_AND_AD_REGISTRATION.md](regulatory_compliance/CREATOR_PLATFORM_TRANSPARENCY_AND_AD_REGISTRATION.md) (Creator platform transparency, ad registration)
+- [x] [CREATOR_DATA_SHARING_AND_API_ACCESS_GOVERNANCE.md](regulatory_compliance/CREATOR_DATA_SHARING_AND_API_ACCESS_GOVERNANCE.md) (Creator data sharing, API access governance)
+- [x] [CREATOR_REPUTATION_AND_BRAND_SAFETY_OPERATIONS.md](regulatory_compliance/CREATOR_REPUTATION_AND_BRAND_SAFETY_OPERATIONS.md) (Creator reputation, trust signals, brand safety operations)
+- [x] [CREATOR_VISA_AND_LOCAL_LABOR_COMPLIANCE.md](regulatory_compliance/CREATOR_VISA_AND_LOCAL_LABOR_COMPLIANCE.md) (Creator visa, local labor, production compliance)
+- [x] [CREATOR_ADVERTISING_RETARGETING_NOTICE_AND_CONSUMER_CHOICE.md](regulatory_compliance/CREATOR_ADVERTISING_RETARGETING_NOTICE_AND_CONSUMER_CHOICE.md) (Creator advertising retargeting notice, consumer choice)
+- [x] [CREATOR_ACCESSIBILITY_AND_INCLUSIVE_DESIGN_COMPLIANCE.md](regulatory_compliance/CREATOR_ACCESSIBILITY_AND_INCLUSIVE_DESIGN_COMPLIANCE.md) (Creator accessibility, inclusive design compliance)
+- [x] [CREATOR_HEALTH_SAFETY_INSPECTIONS_AND_DESTINATION_COMPLIANCE.md](regulatory_compliance/CREATOR_HEALTH_SAFETY_INSPECTIONS_AND_DESTINATION_COMPLIANCE.md) (Creator health, safety inspections, destination compliance)
+- [x] [CREATOR_REFUND_POLICY_AND_CONSUMER_PROTECTION.md](regulatory_compliance/CREATOR_REFUND_POLICY_AND_CONSUMER_PROTECTION.md) (Creator refund policy, consumer protection)
+- [x] [CREATOR_TRAVEL_COMPLAINTS_DISPUTES_AND_ENFORCEMENT.md](regulatory_compliance/CREATOR_TRAVEL_COMPLAINTS_DISPUTES_AND_ENFORCEMENT.md) (Complaints, disputes, fraud, regulatory enforcement)
+- [x] [CREATOR_TRAVEL_COMPLAINT_AND_ENFORCEMENT_CASE_STUDIES.md](regulatory_compliance/CREATOR_TRAVEL_COMPLAINT_AND_ENFORCEMENT_CASE_STUDIES.md) (Complaint and enforcement case studies, agency/vendor/customer scenarios)
+- [x] [CREATOR_SUSTAINABILITY_CERTIFICATION_AND_DESTINATION_DISCLOSURE.md](regulatory_compliance/CREATOR_SUSTAINABILITY_CERTIFICATION_AND_DESTINATION_DISCLOSURE.md) (Creator sustainability certification, destination disclosure)
+- [x] [CREATOR_EVENT_PERMITTING_AND_LOCAL_AUTHORITY_LIAISON.md](regulatory_compliance/CREATOR_EVENT_PERMITTING_AND_LOCAL_AUTHORITY_LIAISON.md) (Creator event permitting, local liaison)
+- [x] [CREATOR_CROSS_BORDER_MARKETPLACE_REGULATORY_OVERSIGHT.md](regulatory_compliance/CREATOR_CROSS_BORDER_MARKETPLACE_REGULATORY_OVERSIGHT.md) (Creator cross-border marketplace regulatory oversight)
+- [x] [CREATOR_GLOBAL_TRAVEL_REGULATORY_MATRIX.md](regulatory_compliance/CREATOR_GLOBAL_TRAVEL_REGULATORY_MATRIX.md) (Global destination regulations, country compliance matrix)
+- [x] [CREATOR_TRAVEL_MARKET_SPECIFIC_REGULATORY_PLAYBOOKS.md](regulatory_compliance/CREATOR_TRAVEL_MARKET_SPECIFIC_REGULATORY_PLAYBOOKS.md) (Market-specific regulatory playbooks, creator travel compliance by geography)
+- [x] [CREATOR_TRAVEL_REGULATORY_PLAYBOOK_US.md](regulatory_compliance/CREATOR_TRAVEL_REGULATORY_PLAYBOOK_US.md) (US creator travel regulatory playbook, compliance and partner rules)
+- [x] [CREATOR_TRAVEL_REGULATORY_PLAYBOOK_EU_SCHENGEN.md](regulatory_compliance/CREATOR_TRAVEL_REGULATORY_PLAYBOOK_EU_SCHENGEN.md) (EU / Schengen creator travel regulatory playbook)
+- [x] [CREATOR_TRAVEL_REGULATORY_PLAYBOOK_LATIN_AMERICA.md](regulatory_compliance/CREATOR_TRAVEL_REGULATORY_PLAYBOOK_LATIN_AMERICA.md) (Latin America creator travel regulatory playbook)
 - [x] [TRAVEL_CREATOR_TRUST_AND_SAFETY_STANDARDS.md](regulatory_compliance/TRAVEL_CREATOR_TRUST_AND_SAFETY_STANDARDS.md) (Creator trust, safety, verification)
 - [x] [AI_BIAS_AND_TRAVEL_DECISION_FAIRNESS.md](regulatory_compliance/AI_BIAS_AND_TRAVEL_DECISION_FAIRNESS.md) (Bias mitigation, fair decisioning)
 
 ## 5. Global Risk & Crisis Taxonomy
-*What can go wrong and how to categorize the threat.*
+
+_What can go wrong and how to categorize the threat._
+
 - [x] [GLOBAL_TRAVEL_RISK_MATRIX.md](specialized_logistics/GLOBAL_TRAVEL_RISK_MATRIX.md) (Geopolitical, Health, Financial)
 - [x] [CRISIS_AND_DUTY_OF_CARE.md](specialized_logistics/CRISIS_AND_DUTY_OF_CARE.md)
 - [x] [CRISIS_RECOVERY_AND_REFUND_ARBITRATION.md](agency_operations/CRISIS_RECOVERY_AND_REFUND_ARBITRATION.md)
 
 ## 6. Connectivity & The Supply Chain "Pipe"
-*The technical plumbing of the industry.*
+
+_The technical plumbing of the industry._
+
 - [x] [THE_TRAVEL_SUPPLY_CHAIN_PIPE.md](supplier_ecosystem/THE_TRAVEL_SUPPLY_CHAIN_PIPE.md) (Wholesaler -> GDS -> Agency)
 - [x] [GDS_VS_NDC_VS_API_CONNECTIVITY.md](travel_technology/GDS_VS_NDC_VS_API_CONNECTIVITY.md) (Technical Connectivity Types)
 - [x] [REAL_TIME_BORDER_AUTOMATION.md](travel_technology/REAL_TIME_BORDER_AUTOMATION.md) (Border automation, clearance workflows)
@@ -85,13 +117,28 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [AI_DRIVEN_DYNAMIC_PRICING_AND_INVENTORY.md](travel_technology/AI_DRIVEN_DYNAMIC_PRICING_AND_INVENTORY.md) (AI pricing, yield optimization)
 - [x] [SOCIAL_COMMERCE_AND_INFLUENCER_BOOKING_FLOWS.md](travel_technology/SOCIAL_COMMERCE_AND_INFLUENCER_BOOKING_FLOWS.md) (Social commerce, influencer checkout)
 - [x] [CREATOR_SIGNAL_PRODUCT_INTEGRATION_FOR_TRAVEL_APPS.md](travel_technology/CREATOR_SIGNAL_PRODUCT_INTEGRATION_FOR_TRAVEL_APPS.md) (App-centric creator signal integration)
+- [x] [CREATOR_TRAVEL_INVENTORY_AND_REALTIME_AVAILABILITY.md](travel_technology/CREATOR_TRAVEL_INVENTORY_AND_REALTIME_AVAILABILITY.md) (Creator travel inventory, realtime availability)
 - [x] [APP_NATIVE_CREATOR_EXPERIENCE_AND_PRODUCT_UI.md](travel_technology/APP_NATIVE_CREATOR_EXPERIENCE_AND_PRODUCT_UI.md) (Native creator UX and product design)
-- [x] [TRAVEL_CONTENT_DISCOVERY_ALGORITHMS_AND_CREATOR_PERSONALIZATION.md](travel_technology/TRAVEL_CONTENT_DISCOVERY_ALGORITHMS_AND_CREATOR_PERSONALIZATION.md) (Discovery algorithms, creator personalization)
+- [x] [CREATOR_TRAVEL_PLATFORM_ARCHITECTURE.md](travel_technology/CREATOR_TRAVEL_PLATFORM_ARCHITECTURE.md) (Creator travel platform architecture, signal and inventory orchestration)
+- [x] [CREATOR_APP_GAMIFICATION_AND_REWARD_MECHANICS.md](travel_technology/CREATOR_APP_GAMIFICATION_AND_REWARD_MECHANICS.md) (Creator app gamification and reward mechanics)
+- [x] [CREATOR_DISCOVERY_GOVERNANCE_AND_SEARCH_ALGORITHM_TRANSPARENCY.md](travel_technology/CREATOR_DISCOVERY_GOVERNANCE_AND_SEARCH_ALGORITHM_TRANSPARENCY.md) (Creator discovery governance, search algorithm transparency)
 - [x] [TRAVEL_RECOMMENDER_MODEL_EVALUATION_AND_FEEDBACK.md](travel_technology/TRAVEL_RECOMMENDER_MODEL_EVALUATION_AND_FEEDBACK.md) (Recommender evaluation, feedback loops)
 - [x] [TRAVEL_CREATOR_CAMPAIGN_ANALYTICS_AND_APP_METRICS.md](travel_technology/TRAVEL_CREATOR_CAMPAIGN_ANALYTICS_AND_APP_METRICS.md) (Creator campaign analytics, app metrics)
 - [x] [TRAVEL_INFLUENCER_CONTENT_SYNCHRONIZATION_AND_OMNI_CHANNEL_DISTRIBUTION.md](travel_technology/TRAVEL_INFLUENCER_CONTENT_SYNCHRONIZATION_AND_OMNI_CHANNEL_DISTRIBUTION.md) (Omni-channel creator distribution)
 - [x] [CREATOR_IDENTITY_SIGNALS_AND_VERIFICATION.md](travel_technology/CREATOR_IDENTITY_SIGNALS_AND_VERIFICATION.md) (Creator verification, trust signals)
 - [x] [APP_SOCIAL_GRAPH_AND_TRAVEL_COMMUNITY_NETWORKS.md](travel_technology/APP_SOCIAL_GRAPH_AND_TRAVEL_COMMUNITY_NETWORKS.md) (Social graph, community networks)
+- [x] [PERSONALIZED_CREATOR_CONTENT_ROUTING_AND_PUSH_OPTIMIZATION.md](travel_technology/PERSONALIZED_CREATOR_CONTENT_ROUTING_AND_PUSH_OPTIMIZATION.md) (Personalized creator content routing, push optimization)
+- [x] [CREATOR_DATA_PRIVACY_AND_PREFERENCE_HUB.md](travel_technology/CREATOR_DATA_PRIVACY_AND_PREFERENCE_HUB.md) (Creator data privacy, preference hub)
+- [x] [CREATOR_PLATFORM_INTEGRATION_APIS_AND_PARTNER_SDKS.md](travel_technology/CREATOR_PLATFORM_INTEGRATION_APIS_AND_PARTNER_SDKS.md) (Creator platform integration APIs, partner SDKs)
+- [x] [CREATOR_CONTENT_MODERATION_AND_TRUST_SIGNAL_ENGINE.md](travel_technology/CREATOR_CONTENT_MODERATION_AND_TRUST_SIGNAL_ENGINE.md) (Creator content moderation, trust signals)
+- [x] [CREATOR_FEED_RELEVANCE_AND_USER_INTENT_SIGNALING.md](travel_technology/CREATOR_FEED_RELEVANCE_AND_USER_INTENT_SIGNALING.md) (Creator feed relevance, user intent signaling)
+- [x] [CREATOR_ENGAGEMENT_AUTOMATION_AND_NOTIFICATION_WORKFLOWS.md](travel_technology/CREATOR_ENGAGEMENT_AUTOMATION_AND_NOTIFICATION_WORKFLOWS.md) (Creator engagement automation, notifications)
+- [x] [CREATOR_RECOMMENDER_EXPLAINABILITY_AND_BIAS_CONTROL.md](travel_technology/CREATOR_RECOMMENDER_EXPLAINABILITY_AND_BIAS_CONTROL.md) (Creator recommender explainability, bias control)
+- [x] [CREATOR_ATTRIBUTION_AND_CONVERSION_MODELING.md](travel_technology/CREATOR_ATTRIBUTION_AND_CONVERSION_MODELING.md) (Creator attribution, conversion modeling)
+- [x] [CREATOR_LIVE_EVENT_TICKETING_AND_EXPERIENCE_CAPACITY.md](travel_technology/CREATOR_LIVE_EVENT_TICKETING_AND_EXPERIENCE_CAPACITY.md) (Creator event ticketing, capacity)
+- [x] [CREATOR_INFLUENCER_LOCKED_INVENTORY_AND_DEMAND_FORECAST.md](travel_technology/CREATOR_INFLUENCER_LOCKED_INVENTORY_AND_DEMAND_FORECAST.md) (Creator locked inventory, demand forecast)
+- [x] [CREATOR_KNOWLEDGE_GRAPH_AND_TRAVELLER_MATCHING.md](travel_technology/CREATOR_KNOWLEDGE_GRAPH_AND_TRAVELLER_MATCHING.md) (Creator knowledge graph, traveler matching)
+- [x] [TRAVEL_CREATOR_AI_ASSISTED_CONTENT_GENERATION_AND_PRODUCT_PLANNING.md](travel_technology/TRAVEL_CREATOR_AI_ASSISTED_CONTENT_GENERATION_AND_PRODUCT_PLANNING.md) (AI-assisted creator content and planning)
 - [x] [AI_TRAVEL_DEMAND_FORECASTING_AND_CAPACITY_PLANNING.md](travel_technology/AI_TRAVEL_DEMAND_FORECASTING_AND_CAPACITY_PLANNING.md) (Demand forecasting, capacity planning)
 - [x] [TRAVEL_AI_CONTINUOUS_LEARNING_AND_FEEDBACK_LOOPS.md](travel_technology/TRAVEL_AI_CONTINUOUS_LEARNING_AND_FEEDBACK_LOOPS.md) (Continuous model learning, feedback loops)
 - [x] [CRM_AND_TASK_AUTOMATION_WORKFLOWS.md](travel_technology/CRM_AND_TASK_AUTOMATION_WORKFLOWS.md) (CRM, Bots, Task Routing)
@@ -99,11 +146,26 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 ---
 
 ## 7. Operational Deep Dives (Established)
+
 - [x] [CUSTOMER_EXCELLENCE_PROTOCOLS.md](agency_operations/CUSTOMER_EXCELLENCE_PROTOCOLS.md)
 - [x] [TRAVEL_INFLUENCER_ECOSYSTEM_AND_CREATOR_PARTNERSHIPS.md](agency_operations/TRAVEL_INFLUENCER_ECOSYSTEM_AND_CREATOR_PARTNERSHIPS.md) (Creator growth, affiliate bookings, community content)
+- [x] [CREATOR_TRAVEL_ECOSYSTEM_MAP.md](agency_operations/CREATOR_TRAVEL_ECOSYSTEM_MAP.md) (Creator travel ecosystem mapping, value flows, platform roles)
 - [x] [TRAVEL_CREATOR_COMMUNITY_MONETIZATION_AND_LOYALTY.md](agency_operations/TRAVEL_CREATOR_COMMUNITY_MONETIZATION_AND_LOYALTY.md) (Creator membership, loyalty, community monetization)
+- [x] [CREATOR_LOYALTY_GAMIFICATION_AND_ENGAGEMENT_LOOP.md](agency_operations/CREATOR_LOYALTY_GAMIFICATION_AND_ENGAGEMENT_LOOP.md) (Creator loyalty gamification, engagement loop)
+- [x] [CREATOR_APP_AMBASSADOR_ONBOARDING_AND_INCENTIVE_PROGRAMS.md](agency_operations/CREATOR_APP_AMBASSADOR_ONBOARDING_AND_INCENTIVE_PROGRAMS.md) (Creator ambassador onboarding, incentive programs)
+- [x] [CREATOR_CONTENT_EXPERIMENTATION_AND_A_B_TESTING.md](agency_operations/CREATOR_CONTENT_EXPERIMENTATION_AND_A_B_TESTING.md) (Creator content experimentation, A/B testing)
+- [x] [CREATOR_CONTENT_PERFORMANCE_DASHBOARDS_AND_OPS_RUNBOOKS.md](agency_operations/CREATOR_CONTENT_PERFORMANCE_DASHBOARDS_AND_OPS_RUNBOOKS.md) (Creator content performance dashboards, ops runbooks)
+- [x] [CREATOR_PRODUCT_PRICING_STRATEGY_AND_VALUE_PACKAGING.md](agency_operations/CREATOR_PRODUCT_PRICING_STRATEGY_AND_VALUE_PACKAGING.md) (Creator pricing strategy, value packaging)
+- [x] [CREATOR_CONTENT_PARTNERSHIP_CONTRACTS_AND_RIGHTS_ALLOCATION.md](agency_operations/CREATOR_CONTENT_PARTNERSHIP_CONTRACTS_AND_RIGHTS_ALLOCATION.md) (Creator content partnership contracts, rights allocation)
 - [x] [CREATOR_POWERED_ONBOARDING_AND_ACTIVATION.md](agency_operations/CREATOR_POWERED_ONBOARDING_AND_ACTIVATION.md) (Creator-driven onboarding, activation)
+- [x] [CREATOR_PARTNER_PORTAL_AND_SELF_SERVICE_DASHBOARDS.md](agency_operations/CREATOR_PARTNER_PORTAL_AND_SELF_SERVICE_DASHBOARDS.md) (Creator portal, self-service dashboards)
+- [x] [CREATOR_MARKETING_FRAUD_AND_FAKE_TREND_DETECTION.md](agency_operations/CREATOR_MARKETING_FRAUD_AND_FAKE_TREND_DETECTION.md) (Creator fraud, fake trend detection)
+- [x] [CREATOR_PARTNERSHIP_PERFORMANCE_AND_LIFECYCLE.md](agency_operations/CREATOR_PARTNERSHIP_PERFORMANCE_AND_LIFECYCLE.md) (Partnership performance, lifecycle)
+- [x] [CREATOR_BRANDED_CONCIERGE_AND_COMMUNITY_SUPPORT_SERVICES.md](agency_operations/CREATOR_BRANDED_CONCIERGE_AND_COMMUNITY_SUPPORT_SERVICES.md) (Creator concierge, community support)
+- [x] [CREATOR_HIRED_GUIDE_MANAGEMENT_AND_PAYROLL.md](agency_operations/CREATOR_HIRED_GUIDE_MANAGEMENT_AND_PAYROLL.md) (Creator hired guide management, payroll)
+- [x] [CREATOR_COMMUNITY_GOVERNANCE_AND_CONTENT_POLICY.md](agency_operations/CREATOR_COMMUNITY_GOVERNANCE_AND_CONTENT_POLICY.md) (Creator community governance, content policy)
 - [x] [TRAVEL_APP_RETENTION_AND_CREATOR_COMMUNITIES.md](agency_operations/TRAVEL_APP_RETENTION_AND_CREATOR_COMMUNITIES.md) (App retention, creator communities)
+- [x] [CREATOR_LAYOVER_GTM_AND_PARTNER_STRATEGY.md](agency_operations/CREATOR_LAYOVER_GTM_AND_PARTNER_STRATEGY.md) (Layover GTM strategy, partner-facing layover content)
 - [x] [TRAVEL_APP_SOCIAL_FEED_MODERATION_AND_TRUST.md](agency_operations/TRAVEL_APP_SOCIAL_FEED_MODERATION_AND_TRUST.md) (Social feed moderation, trust)
 - [x] [CREATOR_CONTENT_OPERATIONS_AND_CREATIVE_PIPELINES.md](agency_operations/CREATOR_CONTENT_OPERATIONS_AND_CREATIVE_PIPELINES.md) (Content ops, creator pipelines)
 - [x] [TRAVEL_INFLUENCER_AFFILIATE_ECONOMICS_AND_MEASUREMENT.md](agency_operations/TRAVEL_INFLUENCER_AFFILIATE_ECONOMICS_AND_MEASUREMENT.md) (Affiliate economics, attribution, performance)
@@ -125,12 +187,19 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [TRAVEL_AGENCY_TECHNOLOGY_AND_OPERATIONS.md](agency_operations/TRAVEL_AGENCY_TECHNOLOGY_AND_OPERATIONS.md) (Platform, Workflow, Back Office)
 - [x] [MULTI_HOP_DISRUPTION_MANAGEMENT.md](agency_operations/MULTI_HOP_DISRUPTION_MANAGEMENT.md) (Multi-hop disruption, itinerary resilience)
 - [x] [TRAVEL_CREW_AND_CREW_LOGISTICS.md](specialized_logistics/TRAVEL_CREW_AND_CREW_LOGISTICS.md) (Crew positioning, layovers, duty of care)
-- [x] [AGENT_HANDOFF_AND_ESCALATION_PATHS.md](agency_operations/AGENT_HANDOFF_AND_ESCALATION_PATHS.md) (Escalation Protocols, Responsibility Handoffs)
+- [x] [CREATOR_GROUP_TRIP_LOGISTICS_AND_COMMUNITY_COORDINATION.md](specialized_logistics/CREATOR_GROUP_TRIP_LOGISTICS_AND_COMMUNITY_COORDINATION.md) (Creator group trip logistics, community coordination)
+- [x] [CREATOR_HIGH_TOUCH_EVENT_LOGISTICS_AND_VIP_SERVICING.md](specialized_logistics/CREATOR_HIGH_TOUCH_EVENT_LOGISTICS_AND_VIP_SERVICING.md) (Creator high-touch event logistics, VIP servicing)
+- [x] [CREATOR_PRODUCTION_LOGISTICS_AND_CONTENT_PRODUCTION_SUPPORT.md](specialized_logistics/CREATOR_PRODUCTION_LOGISTICS_AND_CONTENT_PRODUCTION_SUPPORT.md) (Creator production logistics, content production support)
+- [x] [CREATOR_CONTENT_PRODUCTION_SUPPLY_CHAIN.md](specialized_logistics/CREATOR_CONTENT_PRODUCTION_SUPPLY_CHAIN.md) (Creator content production supply chain, shoot logistics)
+- [x] [CREATOR_MEDICAL_EMERGENCY_RESPONSE_AND_REPATRIATION_SERVICES.md](specialized_logistics/CREATOR_MEDICAL_EMERGENCY_RESPONSE_AND_REPATRIATION_SERVICES.md) (Creator medical emergency response, repatriation services)
+- [x] [CREATOR_SAFETY_INCIDENT_RESPONSE_AND_PUBLIC_RELATIONS.md](specialized_logistics/CREATOR_SAFETY_INCIDENT_RESPONSE_AND_PUBLIC_RELATIONS.md) (Creator safety incident response, public relations)
+- [x] [CREATOR_EVENT_TRANSPORTATION_AND_LAST_MILE_COORDINATION.md](specialized_logistics/CREATOR_EVENT_TRANSPORTATION_AND_LAST_MILE_COORDINATION.md) (Creator event transportation, last-mile coordination)
 - [x] [REMOTE_WORK_AND_DIGITAL_NOMAD_SUPPORT_SERVICES.md](agency_operations/REMOTE_WORK_AND_DIGITAL_NOMAD_SUPPORT_SERVICES.md) (Nomad services, remote work logistics)
 - [x] [TRAVEL_WELLNESS_AND_WELLBEING_ECOSYSTEMS.md](agency_operations/TRAVEL_WELLNESS_AND_WELLBEING_ECOSYSTEMS.md) (Wellness services, healthy travel)
 - [x] [EMBEDDED_TRAVEL_ADVISORY_AND_REALTIME_ALERTS.md](agency_operations/EMBEDDED_TRAVEL_ADVISORY_AND_REALTIME_ALERTS.md) (Proactive alerts, disruption advisory)
 
 ## 8. Commercial & Financial (Established)
+
 - [x] [PRICING_PACKAGES_AND_FEE_STRUCTURES.md](commercial_models/PRICING_PACKAGES_AND_FEE_STRUCTURES.md)
 - [x] [COMMISSION_RECOVERY_AND_AUDIT.md](commercial_models/COMMISSION_RECOVERY_AND_AUDIT.md)
 - [x] [CHARGEBACK_PROTECTION_AND_FRAUD.md](commercial_models/CHARGEBACK_PROTECTION_AND_FRAUD.md)
@@ -138,6 +207,13 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [PAYMENT_ORCHESTRATION_AND_VCN_STRATEGY.md](financial_management/PAYMENT_ORCHESTRATION_AND_VCN_STRATEGY.md)
 - [x] [REAL_TIME_PAYMENT_SETTLEMENT_FOR_TRAVEL.md](financial_management/REAL_TIME_PAYMENT_SETTLEMENT_FOR_TRAVEL.md) (Instant settlement, travel cash flow)
 - [x] [BSP_AND_IATA_SETTLEMENT_ARCHITECTURE.md](financial_management/BSP_AND_IATA_SETTLEMENT_ARCHITECTURE.md) (BSP flows, IATA clearing)
+- [x] [CREATOR_COMMERCE_PAYOUTS_AND_CROSS_BORDER_SETTLEMENTS.md](financial_management/CREATOR_COMMERCE_PAYOUTS_AND_CROSS_BORDER_SETTLEMENTS.md) (Creator payouts, cross-border settlements)
+- [x] [CREATOR_PAYMENT_RISK_FRAUD_MONITORING_AND_COMPLIANCE.md](financial_management/CREATOR_PAYMENT_RISK_FRAUD_MONITORING_AND_COMPLIANCE.md) (Creator payment risk, fraud monitoring)
+- [x] [CREATOR_TRIP_INSURANCE_CLAIM_FLOW_AND_PROGRAM_RECONCILIATION.md](financial_management/CREATOR_TRIP_INSURANCE_CLAIM_FLOW_AND_PROGRAM_RECONCILIATION.md) (Creator trip insurance claim flow, program reconciliation)
+- [x] [CREATOR_PLATFORM_MERCHANT_OF_RECORD_AND_PAYMENT_RISK_ALLOCATION.md](financial_management/CREATOR_PLATFORM_MERCHANT_OF_RECORD_AND_PAYMENT_RISK_ALLOCATION.md) (Creator platform merchant of record, payment risk allocation)
+- [x] [CREATOR_ESCROW_AND_FINANCIAL_RISK_SHARING.md](financial_management/CREATOR_ESCROW_AND_FINANCIAL_RISK_SHARING.md) (Creator escrow, financial risk sharing)
+- [x] [CREATOR_TRAVEL_FINANCE_CONTINGENCY_AND_INSURANCE_FUNDS.md](financial_management/CREATOR_TRAVEL_FINANCE_CONTINGENCY_AND_INSURANCE_FUNDS.md) (Creator travel finance contingency, insurance funds)
+- [x] [CREATOR_PERFORMANCE_FEE_AND_RETENTION_FINANCIAL_METRICS.md](financial_management/CREATOR_PERFORMANCE_FEE_AND_RETENTION_FINANCIAL_METRICS.md) (Creator performance fees, retention metrics)
 - [x] [TRAVEL_CBDC_SETTLEMENTS_AND_CROSS_BORDER_LIQUIDITY.md](financial_management/TRAVEL_CBDC_SETTLEMENTS_AND_CROSS_BORDER_LIQUIDITY.md) (CBDC settlement, cross-border liquidity)
 - [x] [TRAVEL_CARBON_FINANCE_AND_OFFSET_MARKETS.md](commercial_models/TRAVEL_CARBON_FINANCE_AND_OFFSET_MARKETS.md) (Carbon finance, offset markets)
 - [x] [TRAVEL_INSURANCE_EMERGING_TECH_AND_ON_DEMAND_COVERAGE.md](financial_management/TRAVEL_INSURANCE_EMERGING_TECH_AND_ON_DEMAND_COVERAGE.md) (On-demand insurance, embedded coverage)
@@ -148,8 +224,17 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [BUY_NOW_PAY_LATER_AND_TRAVEL_FINTECH.md](commercial_models/BUY_NOW_PAY_LATER_AND_TRAVEL_FINTECH.md) (BNPL, travel finance innovation)
 - [x] [LOYALTY_TOKENIZATION_AND_EXPERIENCE_CURRENCIES.md](commercial_models/LOYALTY_TOKENIZATION_AND_EXPERIENCE_CURRENCIES.md) (Tokenized loyalty, experience currency)
 - [x] [SOCIAL_COMMERCE_REWARDS_AND_FAN_ECONOMY.md](commercial_models/SOCIAL_COMMERCE_REWARDS_AND_FAN_ECONOMY.md) (Social commerce rewards, fan economy)
+- [x] [CREATOR_TRAVEL_SEO_AND_CONTENT_POSITIONING.md](commercial_models/CREATOR_TRAVEL_SEO_AND_CONTENT_POSITIONING.md) (Creator travel SEO, GTM, and content positioning)
+- [x] [CREATOR_TRAVEL_CONTENT_TOPIC_CLUSTER_STRATEGY.md](commercial_models/CREATOR_TRAVEL_CONTENT_TOPIC_CLUSTER_STRATEGY.md) (Creator travel topic cluster strategy, content architecture)
+- [x] [CREATOR_TRAVEL_MARKET_KEYWORD_AND_CONTENT_MAP.md](commercial_models/CREATOR_TRAVEL_MARKET_KEYWORD_AND_CONTENT_MAP.md) (Market keyword and content map for creator travel)
 - [x] [SUSTAINABLE_CREATOR_MARKETING_AND_DESTINATION_STEWARDSHIP.md](commercial_models/SUSTAINABLE_CREATOR_MARKETING_AND_DESTINATION_STEWARDSHIP.md) (Sustainable creator marketing, destination stewardship)
 - [x] [CREATOR_REVENUE_SHARE_AND_PERFORMANCE_TIERS.md](commercial_models/CREATOR_REVENUE_SHARE_AND_PERFORMANCE_TIERS.md) (Creator revenue share, performance tiers)
+- [x] [CREATOR_BOOKING_COMMISSION_MODELS_AND_INCENTIVE_OPTIMIZATION.md](commercial_models/CREATOR_BOOKING_COMMISSION_MODELS_AND_INCENTIVE_OPTIMIZATION.md) (Creator booking commission models, incentive optimization)
+- [x] [CREATOR_BRANDED_SUBSCRIPTION_PRODUCTS.md](commercial_models/CREATOR_BRANDED_SUBSCRIPTION_PRODUCTS.md) (Creator-branded subscription products)
+- [x] [CREATOR_CREDIT_AND_TRAVEL_FINANCING.md](commercial_models/CREATOR_CREDIT_AND_TRAVEL_FINANCING.md) (Creator credit, travel financing)
+- [x] [CREATOR_PROGRAM_CAPACITY_PLANNING_AND_MARGIN_ANALYSIS.md](financial_management/CREATOR_PROGRAM_CAPACITY_PLANNING_AND_MARGIN_ANALYSIS.md) (Creator program capacity planning, margin analysis)
+- [x] [CREATOR_REVENUE_RECOGNITION_AND_ACCOUNTING.md](commercial_models/CREATOR_REVENUE_RECOGNITION_AND_ACCOUNTING.md) (Creator revenue recognition, accounting)
+- [x] [CREATOR_COMMUNITY_MEMBERSHIP_AND_EXCLUSIVE_TRAVEL_CLUBS.md](commercial_models/CREATOR_COMMUNITY_MEMBERSHIP_AND_EXCLUSIVE_TRAVEL_CLUBS.md) (Creator membership, exclusive travel clubs)
 - [x] [ENVIRONMENTAL_SOCIAL_GOVERNANCE_TRAVEL_FINANCE.md](commercial_models/ENVIRONMENTAL_SOCIAL_GOVERNANCE_TRAVEL_FINANCE.md) (Sustainable finance, ESG travel investments)
 - [x] [PRICING_AND_MARGINS.md](commercial_models/PRICING_AND_MARGINS.md) (Rate Structure, Markups, Net Rate)
 - [x] [TAX_COMPLIANCE_GST_TCS.md](commercial_models/TAX_COMPLIANCE_GST_TCS.md) (India GST, TCS, Cross-Border Tax)
@@ -158,6 +243,7 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [SETTLEMENT_AND_CASHFLOW_MANAGEMENT.md](financial_management/SETTLEMENT_AND_CASHFLOW_MANAGEMENT.md)
 
 ## 9. Specialized Logistics (Established)
+
 - [x] [CHARTER_AND_PRIVATE_AVIATION.md](specialized_logistics/CHARTER_AND_PRIVATE_AVIATION.md)
 - [x] [FILM_AND_PRODUCTION_TRAVEL.md](specialized_logistics/FILM_AND_PRODUCTION_TRAVEL.md)
 - [x] [RELIGIOUS_AND_PILGRIMAGE_TRAVEL.md](specialized_logistics/RELIGIOUS_AND_PILGRIMAGE_TRAVEL.md)
@@ -176,6 +262,7 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [CRYPTOCURRENCY_SETTLEMENTS_AND_TOKENIZED_TRAVEL_ASSETS.md](specialized_logistics/CRYPTOCURRENCY_SETTLEMENTS_AND_TOKENIZED_TRAVEL_ASSETS.md) (Crypto settlement, tokenized travel assets)
 
 ## 10. Supplier Ecosystem (Established)
+
 - [x] [HOTEL_PROGRAMS_AND_REVENUE.md](supplier_ecosystem/HOTEL_PROGRAMS_AND_REVENUE.md)
 - [x] [PLATFORM_COMMERCE_AND_MARKETPLACE_ORCHESTRATION.md](supplier_ecosystem/PLATFORM_COMMERCE_AND_MARKETPLACE_ORCHESTRATION.md) (Marketplace design, platform economics)
 - [x] [DESTINATION_DAO_ECOSYSTEMS.md](supplier_ecosystem/DESTINATION_DAO_ECOSYSTEMS.md) (Destination governance, community DAOs)
@@ -183,7 +270,19 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [TRAVEL_CREATOR_IP_AND_CONTENT_LICENSING.md](supplier_ecosystem/TRAVEL_CREATOR_IP_AND_CONTENT_LICENSING.md) (Creator IP, licensing, content rights)
 - [x] [CREATOR_ENABLED_LOCAL_EXPERIENCE_MARKETPLACES.md](supplier_ecosystem/CREATOR_ENABLED_LOCAL_EXPERIENCE_MARKETPLACES.md) (Creator-enabled local experience marketplaces)
 - [x] [CREATOR_DRIVEN_EXPERIENTIAL_INVENTORY_AND_DYNAMIC_BUNDLING.md](supplier_ecosystem/CREATOR_DRIVEN_EXPERIENTIAL_INVENTORY_AND_DYNAMIC_BUNDLING.md) (Creator experiential inventory, dynamic bundles)
-- [x] [CREATOR_LED_DESTINATION_MKTG_AND_AMBASSADOR_NETWORKS.md](supplier_ecosystem/CREATOR_LED_DESTINATION_MKTG_AND_AMBASSADOR_NETWORKS.md) (Destination ambassadors, creator marketing)
+- [x] [CREATOR_MARKETPLACE_GOVERNANCE_AND_CONTENT_CURATIONS.md](supplier_ecosystem/CREATOR_MARKETPLACE_GOVERNANCE_AND_CONTENT_CURATIONS.md) (Creator marketplace governance, content curation)
+- [x] [CREATOR_EXPERIENTIAL_PARTNER_QUALITY_AND_SOURCE_VERIFICATION.md](supplier_ecosystem/CREATOR_EXPERIENTIAL_PARTNER_QUALITY_AND_SOURCE_VERIFICATION.md) (Creator experiential partner quality, source verification)
+- [x] [CREATOR_CONTENT_COMMERCE_AND_DIGITAL_ASSET_MARKETS.md](supplier_ecosystem/CREATOR_CONTENT_COMMERCE_AND_DIGITAL_ASSET_MARKETS.md) (Creator content commerce, digital asset markets)
+- [x] [CREATOR_SUSTAINABLE_SUPPLY_NETWORKS_AND_DESTINATION_STEWARDSHIP.md](supplier_ecosystem/CREATOR_SUSTAINABLE_SUPPLY_NETWORKS_AND_DESTINATION_STEWARDSHIP.md) (Creator sustainable supply networks, destination stewardship)
+- [x] [CREATOR_SOCIAL_IMPACT_METERING_AND_COMMUNITY_ECONOMIES.md](supplier_ecosystem/CREATOR_SOCIAL_IMPACT_METERING_AND_COMMUNITY_ECONOMIES.md) (Creator social impact metering, community economies)
+- [x] [CREATOR_LOCAL_OPS_AND_COMMUNITY_BASED_SUPPLY.md](supplier_ecosystem/CREATOR_LOCAL_OPS_AND_COMMUNITY_BASED_SUPPLY.md) (Creator local ops, community-based supply)
+- [x] [CREATOR_SUPPLY_CHAIN_RESILIENCE_AND_BACKUP_NETWORKS.md](supplier_ecosystem/CREATOR_SUPPLY_CHAIN_RESILIENCE_AND_BACKUP_NETWORKS.md) (Creator supply chain resilience, backup networks)
+- [x] [CREATOR_REMOTE_EXPERIENCE_AND_VIRTUAL_TOUR_PARTNERSHIPS.md](supplier_ecosystem/CREATOR_REMOTE_EXPERIENCE_AND_VIRTUAL_TOUR_PARTNERSHIPS.md) (Creator remote experience, virtual tours)
+- [x] [CREATOR_SUPPLIER_PARTNER_ONBOARDING_PIPELINES.md](supplier_ecosystem/CREATOR_SUPPLIER_PARTNER_ONBOARDING_PIPELINES.md) (Creator supplier onboarding pipelines)
+- [x] [CREATOR_PARTNER_MARKETPLACE_GTM_AND_SUPPLIER_ONBOARDING.md](supplier_ecosystem/CREATOR_PARTNER_MARKETPLACE_GTM_AND_SUPPLIER_ONBOARDING.md) (Creator partner marketplace GTM, supplier onboarding)
+- [x] [CREATOR_LOCAL_EXPERIENCE_LICENSES_AND_DESTINATION_PERMITTING.md](supplier_ecosystem/CREATOR_LOCAL_EXPERIENCE_LICENSES_AND_DESTINATION_PERMITTING.md) (Creator local experience licenses, destination permitting)
+- [x] [CREATOR_CURATED_DESTINATION_INVENTORY_STRATEGY.md](supplier_ecosystem/CREATOR_CURATED_DESTINATION_INVENTORY_STRATEGY.md) (Creator-curated destination inventory strategy, supplier governance)
+- [x] [CREATOR_LOCAL_PARTNER_EVANGELISM_AND_DESTINATION_MARKETS.md](supplier_ecosystem/CREATOR_LOCAL_PARTNER_EVANGELISM_AND_DESTINATION_MARKETS.md) (Creator local partner evangelism, destination markets)
 - [x] [CREATOR_CURATED_TRAVEL_BUNDLES_AND_EXPERIENTIAL_PACKAGES.md](supplier_ecosystem/CREATOR_CURATED_TRAVEL_BUNDLES_AND_EXPERIENTIAL_PACKAGES.md) (Creator-curated bundles, experiential packages)
 - [x] [LOCAL_MICRO_INFLUENCER_NETWORKS_AND_COMMUNITY_ECONOMIES.md](supplier_ecosystem/LOCAL_MICRO_INFLUENCER_NETWORKS_AND_COMMUNITY_ECONOMIES.md) (Local micro-influencers, community economies)
 - [x] [HYPERLOCAL_EXPERIENTIAL_SERVICE_NETWORKS.md](supplier_ecosystem/HYPERLOCAL_EXPERIENTIAL_SERVICE_NETWORKS.md) (Neighborhood experiences, local service supply)
@@ -206,42 +305,56 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [SHARED_LOGISTICS_PLATFORMS_AND_SUPPLY_CHAIN_BROKERS.md](supplier_ecosystem/SHARED_LOGISTICS_PLATFORMS_AND_SUPPLY_CHAIN_BROKERS.md) (Shared platforms, brokered supply chains)
 
 ## 12. Elite & Specialized Verticals (The "Dark" Logistics)
+
 - [x] [MARINE_AND_OFFSHORE_LOGISTICS.md](specialized_logistics/MARINE_AND_OFFSHORE_LOGISTICS.md) (Seaman Fares, Port Agents)
 - [x] [ON_BOARD_COURIER_OBC_OPERATIONS.md](specialized_logistics/ON_BOARD_COURIER_OBC_OPERATIONS.md) (Human-Carried Critical Cargo)
 - [x] [DIPLOMATIC_AND_GOVERNMENT_TRAVEL.md](specialized_logistics/DIPLOMATIC_AND_GOVERNMENT_TRAVEL.md) (Official Passports, Security Protocols)
 - [x] [REPATRIATION_AND_EVACUATION_LOGISTICS.md](specialized_logistics/REPATRIATION_AND_EVACUATION_LOGISTICS.md) (Mass Extraction, Medical Shuttles)
 
 ## 13. Advanced Technical & Legal "Ground Truth"
+
 - [x] [ADVANCED_GDS_FARE_LOGIC_CAT25_35.md](travel_technology/ADVANCED_GDS_FARE_LOGIC_CAT25_35.md) (Negotiated & Net Fare Tech)
 - [x] [IATA_RESOLUTIONS_AND_LEGAL_CONTRACTS.md](regulatory_compliance/IATA_RESOLUTIONS_AND_LEGAL_CONTRACTS.md) (The Global Industry Rules)
+
 ## 14. Ultra-Luxury & Frontier Verticals
+
 - [x] [SUPERYACHT_AND_PRIVATE_ISLAND_LOGISTICS.md](specialized_logistics/SUPERYACHT_AND_PRIVATE_ISLAND_LOGISTICS.md) (Provisioning, NDA, Buyouts)
 - [x] [HIGH_VALUE_ASSET_TRANSPORT_ART_INSTRUMENTS.md](specialized_logistics/HIGH_VALUE_ASSET_TRANSPORT_ART_INSTRUMENTS.md) (Stradivarius, Pianos, Fine Art)
 - [x] [ORBITAL_AND_SUBORBITAL_SPACE_LOGISTICS.md](specialized_logistics/ORBITAL_AND_SUBORBITAL_SPACE_LOGISTICS.md) (Medical Isolation, Centrifuge Prep)
 
 ## 15. Advanced Operations & Arbitrage
+
 - [x] [CHARTER_BROKERAGE_ACMI_AND_EMPTY_LEGS.md](specialized_logistics/CHARTER_BROKERAGE_ACMI_AND_EMPTY_LEGS.md) (Wet/Dry Lease, Empty Leg Monetization)
 - [x] [HUMANITARIAN_AND_NGO_FIELD_LOGISTICS.md](specialized_logistics/HUMANITARIAN_AND_NGO_FIELD_LOGISTICS.md) (Missionary Fares, NGO Visa Waivers)
+
 ## 16. Niche Global Logistics
+
 - [x] [ANTARCTIC_AND_EXTREME_EXPEDITION_LOGISTICS.md](specialized_logistics/ANTARCTIC_AND_EXTREME_EXPEDITION_LOGISTICS.md) (IAATO, Permits, Medical Evac)
 - [x] [HUMAN_REMAINS_REPATRIATION_FUNERAL_LOGISTICS.md](specialized_logistics/HUMAN_REMAINS_REPATRIATION_FUNERAL_LOGISTICS.md) (Zinc Coffins, Consular Deaths, HUM Coding)
 - [x] [PROFESSIONAL_SPORTS_TRANSFER_LOGISTICS.md](specialized_logistics/PROFESSIONAL_SPORTS_TRANSFER_LOGISTICS.md) (Deadline Day, Medical NDAs)
 
 ## 17. Advanced Financial & Architecture
+
 - [x] [GLOBAL_MULTI_PCC_ARCHITECTURE.md](travel_technology/GLOBAL_MULTI_PCC_ARCHITECTURE.md) (Follow-the-Sun, Office ID Brackets)
 - [x] [FINANCIAL_ARBITRATION_ADM_ACM_CHARGEBACKS.md](commercial_models/FINANCIAL_ARBITRATION_ADM_ACM_CHARGEBACKS.md) (The Industry 'Courtroom')
+
 ## 18. Behavioral & Psychological Engineering
+
 - [x] [DOPAMINE_CYCLE_AND_BEHAVIORAL_ECONOMICS.md](agency_operations/DOPAMINE_CYCLE_AND_BEHAVIORAL_ECONOMICS.md) (FOMO, Surprise, Post-Trip High)
 - [x] [GAME_THEORY_OF_OVERBOOKING_AND_VOUCHERS.md](commercial_models/GAME_THEORY_OF_OVERBOOKING_AND_VOUCHERS.md) (Optimal Denial Calculus)
 
 ## 19. The "Invisible" Global System
+
 - [x] [THE_GHOST_ECONOMY_SLOTS_AND_DARK_HOTELS.md](supplier_ecosystem/THE_GHOST_ECONOMY_SLOTS_AND_DARK_HOTELS.md) (Ghost Flights, Unlisted Properties)
 - [x] [CONNECTIVITY_GEOGRAPHY_AND_SUBMARINE_PIPES.md](travel_technology/CONNECTIVITY_GEOGRAPHY_AND_SUBMARINE_PIPES.md) (Physical Internet Infrastructure)
 
 ## 20. Advanced Security & Ethical Systems
+
 - [x] [IDENTITY_FRAGMENTATION_AND_COUNTER_SURVEILLANCE.md](specialized_logistics/IDENTITY_FRAGMENTATION_AND_COUNTER_SURVEILLANCE.md) (VVIP Security, Burner Protocols)
 - [x] [HYPER_INFLATIONARY_MARKETS_AND_CRISIS_ARBITRAGE.md](commercial_models/HYPER_INFLATIONARY_MARKETS_AND_CRISIS_ARBITRAGE.md) (Collapsing Currencies, Parallel Markets)
+
 ## 21. Frontier & Future Logistics
+
 - [x] [SUB_AQUATIC_HABITAT_AND_UNDERSEA_LOGISTICS.md](specialized_logistics/SUB_AQUATIC_HABITAT_AND_UNDERSEA_LOGISTICS.md) (Pressure Seals, O2 Logistics)
 - [x] [POST_SCARCITY_AND_GIFT_ECONOMY_TRAVEL.md](commercial_models/POST_SCARCITY_AND_GIFT_ECONOMY_TRAVEL.md) (De-monetized Zones, Resource Barter)
 - [x] [POST_QUANTUM_GDS_ENCRYPTION_AND_SECURITY.md](travel_technology/POST_QUANTUM_GDS_ENCRYPTION_AND_SECURITY.md) (Hardening Traveler Data)
@@ -249,7 +362,9 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [HYPERLOOP_AND_MAGLEV_TRANSIT_INTEGRATION.md](travel_technology/HYPERLOOP_AND_MAGLEV_TRANSIT_INTEGRATION.md) (Ultra-high-speed Ground Mobility)
 - [x] [ORBITAL_HOSPITALITY_AND_SPACE_STATION_LOGISTICS.md](specialized_logistics/ORBITAL_HOSPITALITY_AND_SPACE_STATION_LOGISTICS.md) (Orbital Guest Experience, Station Supply)
 - [x] [SPACE_DEBRIS_AND_LAUNCH_SCRUB_INSURANCE.md](specialized_logistics/SPACE_DEBRIS_AND_LAUNCH_SCRUB_INSURANCE.md) (Launch Insurance, Debris Liability)
+
 ## 24. Quality, Resilience & Gig Economy
+
 - [x] [SUPPLY_CHAIN_AUDITS_AND_QUALITY_CONTROL.md](supplier_ecosystem/SUPPLY_CHAIN_AUDITS_AND_QUALITY_CONTROL.md) (Mystery Shoppers, Verification)
 - [x] [BUSINESS_CONTINUITY_AND_GDS_OUTAGE_PROTOCOLS.md](agency_operations/BUSINESS_CONTINUITY_AND_GDS_OUTAGE_PROTOCOLS.md) (Offline Ops, PNR Recovery)
 - [x] [INDEPENDENT_CONTRACTORS_AND_HOST_AGENCIES.md](commercial_models/INDEPENDENT_CONTRACTORS_AND_HOST_AGENCIES.md) (IC Economics, Commissions)
@@ -257,12 +372,14 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [HIGH_VALUE_ART_AND_CULTURAL_PROPERTY.md](specialized_logistics/HIGH_VALUE_ART_AND_CULTURAL_PROPERTY.md) (Climate Control, Fine Art Couriers)
 
 ## 23. Communication & Data Intake Architecture
+
 - [x] [OMNICHANNEL_COMMUNICATION_PROTOCOLS.md](agency_operations/OMNICHANNEL_COMMUNICATION_PROTOCOLS.md) (WhatsApp, Signal, WeChat, Voice)
 - [x] [DATA_INTAKE_NLP_AND_STRUCTURED_CAPTURE.md](travel_technology/DATA_INTAKE_NLP_AND_STRUCTURED_CAPTURE.md) (Unstructured to GDS Mapping)
 - [x] [CLIENT_PROFILE_MANAGEMENT_AND_PREFERENCES.md](agency_operations/CLIENT_PROFILE_MANAGEMENT_AND_PREFERENCES.md) (CRM & Preference Sync)
 - [x] [COMMUNICATION_COMPLIANCE_AND_CONSENT.md](regulatory_compliance/COMMUNICATION_COMPLIANCE_AND_CONSENT.md) (GDPR for Chat & Logs)
 
 ## 22. The Metaphysical & Philosophical Horizon (Open Exploration)
+
 - [x] [THE_VOID_EXTREME_ANONYMITY_AND_GHOST_TRAVEL.md](specialized_logistics/THE_VOID_EXTREME_ANONYMITY_AND_GHOST_TRAVEL.md) (Zero-Data Footprint)
 - [x] [TEMPORAL_ENGINEERING_AND_CIRCADIAN_LOGISTICS.md](agency_operations/TEMPORAL_ENGINEERING_AND_CIRCADIAN_LOGISTICS.md) (Sleep-Cycle Optimization)
 - [x] [AGENTIC_AUTONOMY_AND_RISK_ETHICS.md](agency_operations/AGENTIC_AUTONOMY_AND_RISK_ETHICS.md) (Autonomous Decision Thresholds)
@@ -270,5 +387,6 @@ This directory serves as the absolute "Source of Truth" for the global travel in
 - [x] [HIGH_PROTOCOL_AND_DIPLOMATIC_HOSPITALITY.md](specialized_logistics/HIGH_PROTOCOL_AND_DIPLOMATIC_HOSPITALITY.md) (Majlis & Eastern Elite Protocols)
 
 ---
+
 > [!NOTE]
 > This index is a living "Source of Truth." It remains **open to exploration** and will expand as the global travel ecosystem evolves into new frontiers (orbital, sub-aquatic, and digital).

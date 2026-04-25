@@ -313,6 +313,7 @@ class CanonicalPacket:
     hypotheses: Dict[str, Slot] = field(default_factory=dict)
     lifecycle: Optional[LifecycleInfo] = None
     feedback: Optional[Dict[str, Any]] = None
+    raw_note: Optional[str] = None
 
     # Suitability assessment
     suitability_flags: List[SuitabilityFlag] = field(default_factory=list)

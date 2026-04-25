@@ -48,15 +48,38 @@ class AutonomyOutcome(BaseModel):
     reasons: List[str] = Field(default_factory=list)
 
 
+class NegotiationLog(BaseModel):
+    id: str
+    supplier_name: str
+    status: Literal["OPEN", "NEGOTIATING", "WON", "LOST"]
+    best_bid: Optional[float] = None
+    original_price: Optional[float] = None
+    savings: Optional[float] = None
+    next_action: Optional[str] = None
+    last_message: Optional[str] = None
+
+
+class SpecialtyKnowledgeHit(BaseModel):
+    niche: str
+    keywords: List[str]
+    checklists: List[str]
+    compliance: List[str] = Field(default_factory=list)
+    safety_notes: Optional[str] = None
+    urgency: str = "NORMAL"
+
+
 class FrontierOrchestrationResult(BaseModel):
     ghost_triggered: bool = False
     ghost_workflow_id: Optional[str] = None
     sentiment_score: float = 0.5
     anxiety_alert: bool = False
     intelligence_hits: List[Dict[str, Any]] = Field(default_factory=list)
+    specialty_knowledge: List[SpecialtyKnowledgeHit] = Field(default_factory=list)
     mitigation_applied: bool = False
     requires_manual_audit: bool = False
     audit_reason: Optional[str] = None
+    negotiation_active: bool = False
+    negotiation_logs: List[NegotiationLog] = Field(default_factory=list)
 
 
 class RunMeta(BaseModel):
@@ -190,6 +213,7 @@ class TeamMember(BaseModel):
     active: bool = True
     created_at: str
     updated_at: Optional[str] = None
+    specializations: Optional[List[str]] = Field(default_factory=list)
 
 
 class InviteTeamMemberRequest(BaseModel):
@@ -197,6 +221,7 @@ class InviteTeamMemberRequest(BaseModel):
     name: str
     role: str
     capacity: int = 5
+    specializations: Optional[List[str]] = Field(default_factory=list)
 
 
 class PipelineStageConfig(BaseModel):

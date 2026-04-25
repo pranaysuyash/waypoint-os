@@ -11,7 +11,7 @@ interface SettingsPanelProps {
   onClose: () => void;
 }
 
-export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
+export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const {
     strict_leakage,
     setStrictLeakage,
@@ -27,6 +27,10 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     setFederatedIntelligenceOptIn,
     audit_confidence_threshold,
     setAuditConfidenceThreshold,
+    enable_auto_negotiation,
+    setEnableAutoNegotiation,
+    negotiation_margin_threshold,
+    setNegotiationMarginThreshold,
   } = useWorkbenchStore();
   const { data: scenarios, isLoading: scenariosLoading, error: scenariosError } = useScenarios();
   const { state: unifiedState, refresh: refreshUnified } = useUnifiedState();
@@ -231,6 +235,63 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 />
               </div>
             </label>
+
+            <label className='flex items-center justify-between cursor-pointer group'>
+              <div className='flex items-center gap-2'>
+                {enable_auto_negotiation ? (
+                  <ToggleRight className='w-5 h-5 text-accent-blue' />
+                ) : (
+                  <ToggleLeft className='w-5 h-5 text-[#8b949e] group-hover:text-[#e6edf3]' />
+                )}
+                <div>
+                  <p className='text-sm text-[#e6edf3]'>Auto-Negotiation</p>
+                  <p className='text-xs text-[#8b949e]'>
+                    Autonomous supplier haggling
+                  </p>
+                </div>
+              </div>
+              <input
+                type='checkbox'
+                checked={enable_auto_negotiation}
+                onChange={(e) => setEnableAutoNegotiation(e.target.checked)}
+                className='sr-only'
+              />
+              <div
+                className={`w-9 h-5 rounded-full transition-colors relative ${
+                  enable_auto_negotiation ? 'bg-accent-blue' : 'bg-[#30363d]'
+                }`}
+              >
+                <div
+                  className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                    enable_auto_negotiation ? 'left-[18px]' : 'left-0.5'
+                  }`}
+                />
+              </div>
+            </label>
+
+            <div className='pt-2 space-y-2'>
+              <div className='flex justify-between items-center'>
+                <p className='text-xs text-[#e6edf3] flex items-center gap-1'>
+                  <ShieldCheck className='w-3 h-3 text-accent-green' />
+                  Negotiation Margin
+                </p>
+                <span className='text-[10px] font-mono text-accent-green'>
+                  {(negotiation_margin_threshold * 100).toFixed(0)}%
+                </span>
+              </div>
+              <input
+                type='range'
+                min='0.05'
+                max='0.5'
+                step='0.05'
+                value={negotiation_margin_threshold}
+                onChange={(e) => setNegotiationMarginThreshold(parseFloat(e.target.value))}
+                className='w-full h-1 bg-[#30363d] rounded-lg appearance-none cursor-pointer accent-accent-green'
+              />
+              <p className='text-[10px] text-[#8b949e]'>
+                Minimum expected margin before haggling
+              </p>
+            </div>
 
             <div className='pt-2 space-y-2'>
               <div className='flex justify-between items-center'>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { forwardAuthHeaders } from "@/lib/proxy-utils";
+import { forwardAuthHeaders } from "@/lib/proxy-core";
 
 // Map spine_api status values to frontend state values
 const statusMap: Record<string, "green" | "amber" | "red" | "blue"> = {
