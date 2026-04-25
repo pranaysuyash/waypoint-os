@@ -157,7 +157,7 @@ export default function HomePage() {
           <article className={styles.narrativeFeature}>
             <div>
               <Kicker>Live agency work</Kicker>
-              <h3>Waypoint reads the request like an experienced operator.</h3>
+              <h2 className="text-2xl font-semibold">Waypoint reads the request like an experienced operator.</h2>
               <p>
                 It pulls out travelers, dates, constraints, budget tension, missing documents,
                 pacing risk, and the exact questions that should be answered before quoting.
