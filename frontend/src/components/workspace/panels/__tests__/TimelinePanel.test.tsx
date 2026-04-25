@@ -114,7 +114,10 @@ describe('TimelinePanel', () => {
     render(<TimelinePanel tripId="test-trip" />);
     
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/trips/test-trip/timeline');
+      expect(global.fetch).toHaveBeenCalledWith('/api/trips/test-trip/timeline', {
+        credentials: "include",
+        cache: "no-store",
+      });
     });
   });
 
@@ -197,6 +200,9 @@ describe('TimelinePanel', () => {
     });
 
     // Verify initial fetch was called
-    expect(global.fetch).toHaveBeenCalledWith('/api/trips/test-trip/timeline');
+    expect(global.fetch).toHaveBeenCalledWith('/api/trips/test-trip/timeline', {
+      credentials: "include",
+      cache: "no-store",
+    });
   });
 });

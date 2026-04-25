@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { forwardAuthHeaders } from "@/lib/proxy-core";
+import { bffFetchOptions, bffJson, validateOrigin, isAuthStatus } from "@/lib/bff-auth";
 
 const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 
@@ -7,44 +7,38 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ tripId: string }> }
 ) {
+  const csrf = validateOrigin(request);
+  if (csrf) return csrf;
+
   try {
     const { tripId } = await params;
     const body = await request.json();
     const { snoozeUntil } = body;
 
     if (!snoozeUntil) {
-      return NextResponse.json(
-        { error: "snoozeUntil is required" },
-        { status: 400 }
-      );
+      return bffJson({ error: "snoozeUntil is required" }, 400);
     }
 
     const response = await fetch(
       `${SPINE_API_URL}/trips/${encodeURIComponent(tripId)}/snooze`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ snooze_until: snoozeUntil }),
-      }
+      bffFetchOptions(request, "POST", "access_only", {}, { snooze_until: snoozeUntil })
     );
 
     if (!response.ok) {
+      if (isAuthStatus(response.status)) {
+        return bffJson({ error: "Not authenticated" }, response.status);
+      }
       const errorData = await response.json().catch(() => ({}));
-      return NextResponse.json(
+      return bffJson(
         { error: errorData.detail || `Spine API returned ${response.status}` },
-        { status: response.status }
+        response.status
       );
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+    return bffJson(data);
   } catch (error) {
     console.error("Error snoozing trip via spine_api:", error);
-    return NextResponse.json(
-      { error: "Failed to snooze trip" },
-      { status: 500 }
-    );
+    return bffJson({ error: "Failed to snooze trip" }, 500);
   }
 }

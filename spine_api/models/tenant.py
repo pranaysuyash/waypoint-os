@@ -22,7 +22,7 @@ class Agency(Base):
     """A travel agency tenant."""
     __tablename__ = "agencies"
     __table_args__ = {"extend_existing": True}
-
+    
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
@@ -32,6 +32,7 @@ class Agency(Base):
     phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     logo_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     plan: Mapped[str] = mapped_column(String(50), default="free")
+    is_test: Mapped[bool] = mapped_column(Boolean, default=False)  # Flag for test agencies
     settings: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

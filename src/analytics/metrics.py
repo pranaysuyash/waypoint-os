@@ -314,14 +314,14 @@ def compute_alerts(trips: list) -> List[OperationalAlert]:
                         is_escalated = True
                         # Persist the escalation back to the trip if not already set
                         if not analytics.get("is_escalated") or analytics.get("sla_status") != "breached":
-                            from persistence import TripStore
+                            from spine_api.persistence import TripStore
                             analytics["is_escalated"] = True
                             analytics["sla_status"] = "breached"
                             TripStore.update_trip(trip_id, {"analytics": analytics})
                     elif diff <= 30:
                         sla_status = "at_risk"
                         if analytics.get("sla_status") != "at_risk":
-                            from persistence import TripStore
+                            from spine_api.persistence import TripStore
                             analytics["sla_status"] = "at_risk"
                             TripStore.update_trip(trip_id, {"analytics": analytics})
                     else:

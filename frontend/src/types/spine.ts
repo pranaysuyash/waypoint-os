@@ -125,6 +125,29 @@ export interface SuitabilityFlagData {
   affected_travelers?: string[];
 }
 
+export interface SuitabilityProfile {
+  summary: {
+    status: "suitable" | "caution" | "unsuitable";
+    primaryReason: string;
+    overallScore: number;
+  };
+  dimensions: Array<{
+    type: string;
+    severity: "low" | "medium" | "high";
+    score: number;
+    reason: string;
+    evidence_id?: string;
+  }>;
+  overrides?: Array<{
+    flag: string;
+    overridden: boolean;
+    override_action?: string;
+    override_reason?: string;
+    overridden_by?: string;
+    overridden_at?: string;
+  }>;
+}
+
 export interface DecisionOutput {
   decision_state: string;
   hard_blockers: string[];
@@ -132,6 +155,7 @@ export interface DecisionOutput {
   contradictions: string[];
   risk_flags: string[];
   suitability_flags?: SuitabilityFlagData[];
+  suitability_profile?: SuitabilityProfile | null;
   follow_up_questions: FollowUpQuestion[];
   rationale: Rationale;
   confidence: ConfidenceScorecard;

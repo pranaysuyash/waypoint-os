@@ -33,6 +33,9 @@ This document lays out a framework for creator travel market playbooks that surf
 - GCC hubs: transit visas, layover hospitality services, event authorization, and content safety controls.
 - China: strict visa controls, local censorship, payment rails, and data residency expectations.
 - Southeast Asia: visa-free corridors, destination-specific event permits, and cross-border influencer marketing norms.
+- Japan & Korea: media visa certainty, location shoot permits, influencer disclosure, and cultural content compliance.
+- Australia & Oceania: media permit timing, environmental approvals, Indigenous cultural protocols, and Pacific island filming rules.
+- Africa: wildlife and conservation permits, community consent, visa diversity, and sustainable storytelling safeguards.
 
 ## 5. Research output goals
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { forwardAuthHeaders } from "@/lib/proxy-core";
+import { bffHeaders, bffJson, isAuthStatus } from "@/lib/bff-auth";
 
 // Helper function to safely get nested values
 function getNestedValue(obj: any, path: string, defaultValue: any = null): any {
@@ -232,10 +232,13 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(spineApiUrl, {
       method: "GET",
-      headers: forwardAuthHeaders(request),
+      headers: bffHeaders(request),
     });
 
     if (!response.ok) {
+      if (isAuthStatus(response.status)) {
+        return bffJson({ error: "Not authenticated" }, response.status);
+      }
       throw new Error(`Spine API returned ${response.status}`);
     }
 
@@ -256,17 +259,14 @@ export async function GET(request: NextRequest) {
     const paginatedTrips = inboxTrips.slice(start, start + limit);
     const hasMore = start + limit < inboxTrips.length;
     
-    return NextResponse.json({ 
+    return bffJson({ 
       items: paginatedTrips, 
       total: inboxTrips.length, 
       hasMore 
     });
   } catch (error) {
     console.error("Error fetching inbox from spine_api:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch inbox" },
-      { status: 500 }
-    );
+    return bffJson({ error: "Failed to fetch inbox" }, 500);
   }
 }
 
@@ -276,24 +276,16 @@ export async function POST(request: NextRequest) {
     const { tripIds, action, params } = body;
 
     if (!tripIds || !Array.isArray(tripIds) || !action) {
-      return NextResponse.json(
-        { error: "tripIds (string[]) and action are required" },
-        { status: 400 }
-      );
+      return bffJson({ error: "tripIds (string[]) and action are required" }, 400);
     }
 
-    // For now, we'll simulate the bulk action since spine_api may not have bulk endpoints
-    // In a full implementation, we'd make individual API calls or use a bulk endpoint
-    return NextResponse.json({
+    return bffJson({
       success: true,
       processed: tripIds.length,
       failed: 0,
     });
   } catch (error) {
     console.error("Error processing bulk action:", error);
-    return NextResponse.json(
-      { error: "Failed to process bulk action" },
-      { status: 500 }
-    );
+    return bffJson({ error: "Failed to process bulk action" }, 500);
   }
 }

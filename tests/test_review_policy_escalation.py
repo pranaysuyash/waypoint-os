@@ -1,12 +1,11 @@
 import json
 
 from src.analytics.review import process_review_action
-from persistence import TripStore
+from spine_api import persistence
+from spine_api.persistence import TripStore
 
 
 def test_revision_loop_auto_escalates_on_second_request(tmp_path, monkeypatch):
-    import persistence
-
     monkeypatch.setattr(persistence, "DATA_DIR", tmp_path)
     monkeypatch.setattr(persistence, "TRIPS_DIR", tmp_path / "trips")
     (tmp_path / "trips").mkdir()

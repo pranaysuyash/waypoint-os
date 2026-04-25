@@ -45,6 +45,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       const response = await fetch(`/api/trips/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: "include",
         body: JSON.stringify({ status: 'new' })
       });
       

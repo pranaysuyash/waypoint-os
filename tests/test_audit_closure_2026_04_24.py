@@ -190,4 +190,5 @@ class TestSuitabilityProfile:
         }]
         profile = _build_suitability_profile(flags)
         assert profile is not None
-        assert profile["dimensions"][0]["type"] == "other"
+        # "coherence" keyword maps to "recovery" dimension
+        assert profile["dimensions"][0]["type"] == "recovery"

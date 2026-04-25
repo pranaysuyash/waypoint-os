@@ -7,7 +7,7 @@ from pydantic import BaseModel
 # Try to import AuditStore - it may not be available in all contexts
 AuditStore = None
 try:
-    from persistence import AuditStore
+    from spine_api.persistence import AuditStore
 except ModuleNotFoundError:
     # AuditStore is only needed by TripEventLogger, not by TimelineEventMapper
     pass

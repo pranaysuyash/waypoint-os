@@ -4,6 +4,8 @@ from typing import Dict, List, Any
 import logging
 from datetime import datetime, timezone, timedelta
 
+from spine_api.persistence import AuditStore, TripStore
+
 logger = logging.getLogger(__name__)
 
 VALID_STAGES = ["new", "assigned", "in_progress", "completed", "cancelled"]
@@ -23,16 +25,6 @@ class DashboardAggregator:
 
     @staticmethod
     def get_unified_state() -> Dict[str, Any]:
-        try:
-            from spine_api.persistence import TripStore, AuditStore
-        except ImportError:
-            import sys
-            import os
-            sys.path.append(os.path.join(os.getcwd(), "spine_api"))
-            import persistence
-            TripStore = persistence.TripStore
-            AuditStore = persistence.AuditStore
-
         all_trips = TripStore.list_trips(limit=10000)
         trips = [t for t in all_trips if t.get("id")]
         canonical_total = len(trips)
@@ -103,15 +95,6 @@ class DashboardAggregator:
         ready_to_book: trips in strategy/output stages (weighted)
         needs_attention: trips with SLA risk or low-quality signals
         """
-        try:
-            from spine_api.persistence import TripStore
-        except ImportError:
-            import sys
-            import os
-            sys.path.append(os.path.join(os.getcwd(), "spine_api"))
-            import persistence
-            TripStore = persistence.TripStore
-
         all_trips = TripStore.list_trips(limit=10000)
         trips = [t for t in all_trips if t.get("id")]
 

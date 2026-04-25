@@ -119,6 +119,15 @@ class RefreshResponse(BaseModel):
 
 @router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 async def post_signup(request: SignupRequest, response: Response, db: AsyncSession = Depends(get_db)):
+    """
+    Create a new user, agency, and membership.
+    Sets httpOnly cookies for auth.
+    
+    Test users: Email ending with '@test.com' will get mock data seeded.
+    """
+    # Detect test user by email domain
+    is_test = request.email.lower().endswith("@test.com")
+    
     try:
         result = await signup_service(
             db=db,
@@ -126,12 +135,13 @@ async def post_signup(request: SignupRequest, response: Response, db: AsyncSessi
             password=request.password,
             name=request.name,
             agency_name=request.agency_name,
+            is_test=is_test,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
+    
     _set_auth_cookies(response, result["access_token"], result["refresh_token"])
-
+    
     return AuthResponse(
         ok=True,
         user=result["user"],

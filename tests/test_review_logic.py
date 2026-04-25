@@ -1,11 +1,11 @@
 import pytest
 import json
 from src.analytics.review import process_review_action
-from persistence import TripStore, AuditStore
+from spine_api import persistence
+from spine_api.persistence import TripStore, AuditStore
 
 def test_approve_action_behavior(tmp_path, monkeypatch):
     # Setup mock persistence
-    import persistence
     monkeypatch.setattr(persistence, "DATA_DIR", tmp_path)
     monkeypatch.setattr(persistence, "TRIPS_DIR", tmp_path / "trips")
     (tmp_path / "trips").mkdir()
@@ -29,7 +29,6 @@ def test_approve_action_behavior(tmp_path, monkeypatch):
     assert updated["analytics"]["review_metadata"]["owner_approved"] is True
 
 def test_request_changes_mandatory_reassignment(tmp_path, monkeypatch):
-    import persistence
     monkeypatch.setattr(persistence, "DATA_DIR", tmp_path)
     monkeypatch.setattr(persistence, "TRIPS_DIR", tmp_path / "trips")
     (tmp_path / "trips").mkdir()
@@ -52,7 +51,6 @@ def test_request_changes_mandatory_reassignment(tmp_path, monkeypatch):
     assert updated["analytics"]["requires_review"] is False
 
 def test_audit_delta_capture(tmp_path, monkeypatch):
-    import persistence
     monkeypatch.setattr(persistence, "DATA_DIR", tmp_path)
     monkeypatch.setattr(persistence, "TRIPS_DIR", tmp_path / "trips")
     monkeypatch.setattr(persistence.AuditStore, "AUDIT_FILE", tmp_path / "audit.json")

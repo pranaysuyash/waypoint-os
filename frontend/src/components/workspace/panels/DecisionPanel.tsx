@@ -3,8 +3,9 @@
 import { useCallback } from "react";
 import { useWorkbenchStore } from "@/stores/workbench";
 import { useTripContext } from "@/contexts/TripContext";
-import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate, DecisionOutput, SuitabilityFlagData } from "@/types/spine";
+import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate, DecisionOutput, SuitabilityFlagData, SuitabilityProfile } from "@/types/spine";
 import { SuitabilitySignal } from "./SuitabilitySignal";
+import { SuitabilityCard } from "./SuitabilityCard";
 
 interface DecisionPanelProps {
   trip?: any;
@@ -57,6 +58,11 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
   const contradictions = decision.contradictions || [];
   const suitabilityFlags: SuitabilityFlagData[] = decision.suitability_flags || [];
 
+  // Shadow-field pattern: prefer structured suitability_profile when available,
+  // fall back to flat suitability_flags for backward compatibility.
+  const suitabilityProfile: SuitabilityProfile | null | undefined =
+    decision.suitability_profile;
+
   const handleSuitabilityDrill = useCallback((flagType: string) => {
     // Logic remains
   }, []);
@@ -101,12 +107,21 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
         </div>
       </section>
 
-      {/* Suitability Audit Results */}
-      <SuitabilitySignal 
-        flags={suitabilityFlags} 
-        tripId={tripId}
-        onDrill={handleSuitabilityDrill}
-      />
+      {/* Suitability Audit Results — shadow-field rendering */}
+      {suitabilityProfile ? (
+        <section className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+            Suitability Audit Results
+          </h3>
+          <SuitabilityCard profile={suitabilityProfile} />
+        </section>
+      ) : suitabilityFlags.length > 0 ? (
+        <SuitabilitySignal
+          flags={suitabilityFlags}
+          tripId={tripId}
+          onDrill={handleSuitabilityDrill}
+        />
+      ) : null}
 
       <button
         type="button"

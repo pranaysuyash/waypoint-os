@@ -117,7 +117,8 @@ describe('E2E: Metric Drill-Down Flow', () => {
 
     // Verify fetch was called for trip data
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/insights/agent-trips?agentId=agent-1&metric=conversion'
+      '/api/insights/agent-trips?agentId=agent-1&metric=conversion',
+      { credentials: "include", cache: "no-store" }
     );
   });
 

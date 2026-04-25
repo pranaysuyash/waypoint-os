@@ -152,7 +152,10 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
         const url = selectedStage 
           ? `/api/trips/${tripId}/timeline?stage=${selectedStage}`
           : `/api/trips/${tripId}/timeline`;
-        const response = await fetch(url);
+        const response = await fetch(url, {
+          credentials: "include",
+          cache: "no-store",
+        });
         if (!response.ok) {
           throw new Error(`Failed to fetch timeline: ${response.statusText}`);
         }

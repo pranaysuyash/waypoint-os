@@ -115,6 +115,25 @@ async def get_current_agency_id(
     return membership.agency_id
 
 
+async def get_current_agency(
+    agency_id: str = Depends(get_current_agency_id),
+    db: AsyncSession = Depends(get_db),
+) -> "Agency":
+    """Return the current agency object for the authenticated user."""
+    from spine_api.models.tenant import Agency
+    
+    result = await db.execute(select(Agency).where(Agency.id == agency_id))
+    agency = result.scalar_one_or_none()
+    
+    if not agency:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agency not found",
+        )
+    
+    return agency
+
+
 # Permission matrix
 ROLE_PERMISSIONS = {
     "owner": ["*"],

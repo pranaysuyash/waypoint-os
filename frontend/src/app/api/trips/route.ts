@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { forwardAuthHeaders } from "@/lib/proxy-core";
+import { bffHeaders, bffJson, isAuthStatus } from "@/lib/bff-auth";
 
 // Map spine_api status values to frontend state values
 const statusMap: Record<string, "green" | "amber" | "red" | "blue"> = {
@@ -196,10 +196,13 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(spineApiUrl, {
       method: "GET",
-      headers: forwardAuthHeaders(request),
+      headers: bffHeaders(request),
     });
 
     if (!response.ok) {
+      if (isAuthStatus(response.status)) {
+        return bffJson({ error: "Not authenticated" }, response.status);
+      }
       throw new Error(`Spine API returned ${response.status}`);
     }
 
@@ -222,15 +225,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
+    return bffJson({
       items: transformedItems,
       total: transformedItems.length,
     });
   } catch (error) {
     console.error("Error fetching trips from spine_api:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch trips" },
-      { status: 500 }
-    );
+    return bffJson({ error: "Failed to fetch trips" }, 500);
   }
 }

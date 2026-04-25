@@ -40,7 +40,10 @@ export function MetricDrillDownDrawer({
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/insights/agent-trips?agentId=${agentId}&metric=${metric.type}`);
+      const response = await fetch(`/api/insights/agent-trips?agentId=${agentId}&metric=${metric.type}`, {
+        credentials: "include",
+        cache: "no-store",
+      });
       if (!response.ok) throw new Error('Failed to fetch trip data');
       const data = await response.json();
       setTrips(data.trips || []);

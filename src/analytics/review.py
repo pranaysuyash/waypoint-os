@@ -8,25 +8,12 @@ Follows Hybrid Policy B:
 - reject: sets rejected, requires_review=false
 - escalate: sets escalated
 """
-import sys
 import logging
-from pathlib import Path
-
-# Add project root to path - must be before any other imports in chain
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-_SPINE_API_DIR = _PROJECT_ROOT / "spine_api"
-
-# Add both project root and spine_api directory
-for p in [str(_PROJECT_ROOT), str(_SPINE_API_DIR)]:
-    if p not in sys.path:
-        sys.path.insert(0, p)
 
 from datetime import datetime, timezone
 from typing import Any, Optional
+from spine_api.persistence import AuditStore, TripStore
 from src.analytics.policy_rules import apply_owner_escalation_policy
-
-# Import via the path we just added
-from persistence import TripStore, AuditStore
 
 logger = logging.getLogger(__name__)
 

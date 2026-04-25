@@ -20,7 +20,6 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, string]> = [
   ["settings/operational", "api/settings/operational"],
 
   // ── Insights / Analytics ─────────────────────────────────────
-  ["pipeline", "analytics/pipeline"],
   ["stats", "api/dashboard/stats"],
   ["insights/summary", "analytics/summary"],
   ["insights/pipeline", "analytics/pipeline"],
@@ -31,7 +30,6 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, string]> = [
   ["insights/funnel", "analytics/funnel"],
   ["insights/alerts", "analytics/alerts"],
   ["insights/export", "analytics/export"],
-  ["insights/agent-trips", "analytics/agent"],
 
   // ── Team ─────────────────────────────────────────────────────
   ["team/members", "api/team/members"],
@@ -41,31 +39,26 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, string]> = [
   // ── Inbox ────────────────────────────────────────────────────
   ["inbox/bulk", "inbox/bulk"],
   ["inbox/stats", "inbox/stats"],
-  ["inbox", "trips"], // fallback for /api/inbox → trips
 
   // ── Audit ────────────────────────────────────────────────────
   ["audit", "audit"],
 
-  // ── Scenarios (backend does not serve these — they are local)
-  // Keep in map so catch-all returns null and falls through to no-op
+  // ── Scenarios are frontend-local; do not map them through this proxy.
 
   // ── System ───────────────────────────────────────────────────
   ["system/unified-state", "api/system/unified-state"],
 
   // ── Core resources ───────────────────────────────────────────
   ["spine/run", "run"],
-  ["scenarios", "scenarios"],
   ["assignments", "assignments"],
   ["items", "items"],
   ["health", "health"],
-  ["runs", "runs"],
 
   // ── Review / Override resources ──────────────────────────────
   ["reviews/bulk-action", "analytics/reviews/bulk-action"],
   ["overrides", "overrides"],
 
   // ── Dynamic patterns (last segment is an ID) ─────────────────
-  ["trips/{id}", "trips/{id}"],
   ["trips/{id}/timeline", "api/trips/{id}/timeline"],
   ["trips/{id}/assign", "trips/{id}/assign"],
   ["trips/{id}/unassign", "trips/{id}/unassign"],

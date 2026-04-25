@@ -50,42 +50,52 @@ async def signup(
     password: str,
     name: Optional[str] = None,
     agency_name: Optional[str] = None,
+    is_test: bool = False,
 ) -> dict:
     """
     Create a new user, agency, membership, and workspace code.
-
+    
+    Args:
+        db: Database session
+        email: User email
+        password: User password (min 8 chars)
+        name: Optional user display name
+        agency_name: Optional agency name (defaults to email domain)
+        is_test: If True, marks the agency as a test agency
+        
     Returns:
         dict with user, agency, membership, tokens
     """
     result = await db.execute(select(User).where(User.email == email))
     if result.scalar_one_or_none():
         raise ValueError("Email already registered")
-
+    
     if len(password) < 8:
         raise ValueError("Password must be at least 8 characters")
-
+    
     user = User(
         email=email,
         password_hash=hash_password(password),
         name=name or email.split("@")[0],
     )
     db.add(user)
-
+    
     resolved_agency_name = agency_name or _agency_name_from_email(email)
     slug = _slug_from_name(resolved_agency_name)
-
+    
     slug_result = await db.execute(select(Agency).where(Agency.slug == slug))
     if slug_result.scalar_one_or_none():
         slug = f"{slug}-{secrets.token_hex(3)}"
-
+    
     agency = Agency(
         name=resolved_agency_name,
         slug=slug,
         email=email,
+        is_test=is_test,  # Mark as test agency if applicable
     )
     db.add(agency)
     await db.flush()
-
+    
     membership = Membership(
         user_id=user.id,
         agency_id=agency.id,
@@ -93,7 +103,7 @@ async def signup(
         is_primary=True,
     )
     db.add(membership)
-
+    
     code = WorkspaceCode(
         agency_id=agency.id,
         code=f"WP-{secrets.token_urlsafe(8)}",
@@ -106,16 +116,16 @@ async def signup(
     await db.refresh(user)
     await db.refresh(agency)
     await db.refresh(membership)
-
+    
     access_token = create_access_token(
         user_id=user.id,
         agency_id=agency.id,
         role=membership.role,
     )
     refresh_token = create_refresh_token(user_id=user.id)
-
-    logger.info("Signup complete: user=%s agency=%s", user.id, agency.id)
-
+    
+    logger.info("Signup complete: user=%s agency=%s is_test=%s", user.id, agency.id, is_test)
+    
     return {
         "user": {
             "id": user.id,
@@ -127,6 +137,7 @@ async def signup(
             "name": agency.name,
             "slug": agency.slug,
             "logo_url": agency.logo_url,
+            "is_test": agency.is_test,
         },
         "membership": {
             "role": membership.role,

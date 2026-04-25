@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { TripReview, ReviewStatus } from "@/types/governance";
-import { forwardAuthHeaders } from "@/lib/proxy-core";
+import { bffHeaders, bffJson, isAuthStatus } from "@/lib/bff-auth";
 
 // ============================================================================
 // SPINE API RAW TYPES
@@ -70,10 +70,13 @@ export async function GET(request: NextRequest) {
     const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
     const response = await fetch(`${SPINE_API_URL}/analytics/reviews`, {
       method: "GET",
-      headers: forwardAuthHeaders(request),
+      headers: bffHeaders(request),
     });
 
     if (!response.ok) {
+      if (isAuthStatus(response.status)) {
+        return bffJson({ error: "Not authenticated" }, response.status);
+      }
       throw new Error(`Spine API returned ${response.status}`);
     }
 
@@ -92,15 +95,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
+    return bffJson({
       items: filteredReviews,
       total: filteredReviews.length,
     });
   } catch (error) {
     console.error("Error fetching reviews from spine_api:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch reviews" },
-      { status: 500 }
-    );
+    return bffJson({ error: "Failed to fetch reviews" }, 500);
   }
 }

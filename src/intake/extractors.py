@@ -395,26 +395,34 @@ def _extract_party(text: str) -> Dict[str, Any]:
     if adult_match:
         composition["adults"] = int(adult_match.group(1))
 
-    # Children
-    child_match = re.search(r"(\d+)\s+(?:kids?|children?|child)", text_lower)
-    if child_match:
+    # Children — match "2 children" or bare "child/kid"
+    child_match = re.search(r"(?:(\d+)\s+)?(?:kids?|children?|child)", text_lower)
+    if child_match and child_match.group(1):
         composition["children"] = int(child_match.group(1))
-        # Try to extract ages: "kids ages 8 and 12", "children aged 5, 7"
-        ages_match = re.search(
-            r"(?:kids?|children?|child|ages?)\s+(?:ages?\s+)?(\d+(?:\s+(?:and|,)\s*\d+)*)",
-            text_lower,
-        )
-        if ages_match:
-            child_ages = [int(a) for a in re.findall(r"\d+", ages_match.group(1))]
-        # "toddler" implies age < 3
-        if "toddler" in text_lower or "toddlers" in text_lower:
-            if 0 not in child_ages and not any(a < 3 for a in child_ages):
-                child_ages.append(2)  # approximate
+    # Try to extract ages: "kids ages 8 and 12", "children aged 5, 7", "child age 3"
+    ages_match = re.search(
+        r"(?:kids?|children?|child|ages?)\s+(?:ages?\s+)?(\d+(?:\s+(?:and|,)\s*\d+)*)",
+        text_lower,
+    )
+    if ages_match:
+        found_ages = [int(a) for a in re.findall(r"\d+", ages_match.group(1))]
+        child_ages.extend(found_ages)
 
-    # Elderly
-    elderly_match = re.search(r"(\d+)\s+(?:elderly|seniors?|parents?|grandparents?)", text_lower)
+    # Toddler — "toddler age 2", "a toddler", "toddlers"
+    has_toddler = bool(re.search(r"\b(?:a\s+)?toddler|toddlers?\b", text_lower))
+    if has_toddler:
+        if "toddlers" not in composition and "children" not in composition:
+            composition["children"] = 1
+        if 0 not in child_ages and not any(a < 3 for a in child_ages):
+            toddler_age_match = re.search(r"toddler\s+(?:age\s+)?(\d+)", text_lower)
+            child_ages.append(int(toddler_age_match.group(1)) if toddler_age_match else 2)
+
+    # Elderly — "1 elderly", "an elderly grandmother", "grandma age 78", "senior"
+    elderly_match = re.search(r"(?:(\d+)\s+)?(?:elderly|seniors?|grandparents?|grandma|grandpa|grandmother|grandfather)", text_lower)
     if elderly_match:
-        composition["elderly"] = int(elderly_match.group(1))
+        composition["elderly"] = int(elderly_match.group(1)) if elderly_match.group(1) else 1
+    elif re.search(r"\b(?:elderly|seniors?)\b", text_lower):
+        composition.setdefault("elderly", 1)
 
     # Total party size
     party_size = sum(composition.values())
@@ -1095,9 +1103,17 @@ class ExtractionPipeline:
         field_mappings = {
             "destination": "destination_candidates",
             "origin": "origin_city",
+            "origin_city": "origin_city",
             "travelers": "party_size",
             "budget": "budget_raw_text",
+            "budget_raw_text": "budget_raw_text",
             "dates": "date_window",
+            "date_window": "date_window",
+            "duration": "duration",
+            "party_composition": "party_composition",
+            "child_ages": "child_ages",
+            "trip_purpose": "trip_purpose",
+            "activities": "soft_preferences",
         }
 
         for src_field, canonical_field in field_mappings.items():
@@ -1126,6 +1142,20 @@ class ExtractionPipeline:
                             str(value), eid, extraction_mode=ExtractionMode.IMPORTED,
                         ))
                     continue
+                elif canonical_field == "party_size":
+                    if isinstance(value, list):
+                        value = len(value)
+                    mode = ExtractionMode.IMPORTED
+                elif canonical_field == "party_composition":
+                    if isinstance(value, dict):
+                        mode = ExtractionMode.IMPORTED
+                    else:
+                        continue
+                elif canonical_field == "child_ages":
+                    if isinstance(value, list):
+                        mode = ExtractionMode.IMPORTED
+                    else:
+                        continue
                 else:
                     mode = ExtractionMode.IMPORTED
 
@@ -1133,6 +1163,45 @@ class ExtractionPipeline:
                     value, 1.0, AuthorityLevel.IMPORTED_STRUCTURED,
                     str(value), eid, extraction_mode=mode,
                 ))
+
+        if "travelers" in data and isinstance(data["travelers"], list):
+            if "party_composition" not in data:
+                composition: Dict[str, int] = {}
+                child_ages: List[int] = []
+                for t in data["travelers"]:
+                    age = t.get("age")
+                    rel = (t.get("relationship") or "").lower()
+                    if age is not None:
+                        if age < 4:
+                            composition["toddlers"] = composition.get("toddlers", 0) + 1
+                            child_ages.append(age)
+                        elif age < 12:
+                            composition["children"] = composition.get("children", 0) + 1
+                            child_ages.append(age)
+                        elif age < 18:
+                            composition["teens"] = composition.get("teens", 0) + 1
+                        elif age >= 65:
+                            composition["elderly"] = composition.get("elderly", 0) + 1
+                        else:
+                            composition["adults"] = composition.get("adults", 0) + 1
+                    elif "elderly" in rel or "grandparent" in rel or "senior" in rel:
+                        composition["elderly"] = composition.get("elderly", 0) + 1
+                    elif "child" in rel or "kid" in rel:
+                        composition["children"] = composition.get("children", 0) + 1
+                    elif "toddler" in rel or "infant" in rel or "baby" in rel:
+                        composition["toddlers"] = composition.get("toddlers", 0) + 1
+                    else:
+                        composition["adults"] = composition.get("adults", 0) + 1
+                if composition:
+                    packet.set_fact("party_composition", self._make_slot(
+                        composition, 1.0, AuthorityLevel.IMPORTED_STRUCTURED,
+                        str(composition), eid, extraction_mode=ExtractionMode.IMPORTED,
+                    ))
+                if child_ages:
+                    packet.set_fact("child_ages", self._make_slot(
+                        child_ages, 1.0, AuthorityLevel.IMPORTED_STRUCTURED,
+                        str(child_ages), eid, extraction_mode=ExtractionMode.IMPORTED,
+                    ))
 
     def _extract_from_hybrid(self, envelope: SourceEnvelope, packet: CanonicalPacket) -> None:
         """Handle hybrid input: text + structured data."""

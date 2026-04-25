@@ -26,7 +26,10 @@ export default function SuitabilityPage() {
     // Fetch trip data including suitability flags
     const fetchTrip = async () => {
       try {
-        const response = await fetch(`/api/trips/${tripId}`);
+        const response = await fetch(`/api/trips/${tripId}`, {
+          credentials: "include",
+          cache: "no-store",
+        });
         if (!response.ok) throw new Error('Failed to fetch trip');
 
         const trip = await response.json();
@@ -60,6 +63,7 @@ export default function SuitabilityPage() {
       const response = await fetch(`/api/trips/${tripId}/suitability/acknowledge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: "include",
         body: JSON.stringify({ acknowledged_flags: flagIds }),
       });
 

@@ -210,6 +210,9 @@ For each recommendation, document:
 
 ### Code Preservation
 
+- All new, revised, or recovered code must be additive, better, and comprehensive against the current codebase. "Additive" means preserving product intent and useful capability while improving the implementation; it does not mean leaving legacy, duplicate, broken, stale, or lower-quality code in place.
+- When newer code fully covers older code's intent and behavior, consolidate to the better implementation. Remove or replace the worse legacy path only after applying the Supersession Workflow below.
+- When legacy code has unique useful behavior, do not delete it. Merge that behavior into the canonical implementation first, verify, then remove the redundant legacy shell if it is truly superseded.
 - Never delete code to silence warnings without explicit user approval.
 - For unused identifiers, prefer non-destructive refactors (for TS, underscore prefix convention where applicable).
 - Preserve code intent and structure; ask if deletion is unclear.

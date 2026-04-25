@@ -71,11 +71,15 @@ class TripStore:
     _lock = threading.Lock()
     
     @staticmethod
-    def save_trip(trip_data: dict) -> str:
+    def save_trip(trip_data: dict, agency_id: Optional[str] = None) -> str:
         """Save a trip to disk. Returns trip ID."""
         trip_id = trip_data.get("id") or f"trip_{uuid4().hex[:12]}"
         trip_data["id"] = trip_id
         trip_data["saved_at"] = datetime.now(timezone.utc).isoformat()
+        
+        # Store agency_id with trip for scoping
+        if agency_id:
+            trip_data["agency_id"] = agency_id
         
         # Convert to JSON-serializable format
         serializable_data = _make_json_serializable(trip_data)
@@ -97,14 +101,19 @@ class TripStore:
             return json.load(f)
     
     @staticmethod
-    def list_trips(status: Optional[str] = None, limit: int = 100) -> list:
-        """List all trips, optionally filtered by status."""
+    def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None) -> list:
+        """List trips, optionally filtered by status and/or agency."""
         trips = []
         
         for filepath in sorted(TRIPS_DIR.glob("trip_*.json"), reverse=True):
             try:
                 with open(filepath) as f:
                     trip = json.load(f)
+                    
+                    # Filter by agency_id if provided
+                    if agency_id and trip.get("agency_id") != agency_id:
+                        continue
+                    
                     if status is None or trip.get("status") == status:
                         trips.append(trip)
                     if len(trips) >= limit:
@@ -564,11 +573,17 @@ class ConfigStore:
 
 
 # Convenience functions
-def save_processed_trip(spine_output: dict, source: str = "unknown") -> str:
+def save_processed_trip(spine_output: dict, source: str = "unknown", agency_id: Optional[str] = None) -> str:
     """
     Convert spine output to a savable trip and persist it.
     
-    This is called by the spine_api after processing.
+    Args:
+        spine_output: The processed trip data
+        source: Source identifier (e.g., "spine_api", "seed_scenario")
+        agency_id: Optional agency ID to scope the trip
+        
+    Returns:
+        The saved trip ID
     """
     # Extract data from spine output
     packet = spine_output.get("packet", {}) or {}
@@ -606,12 +621,13 @@ def save_processed_trip(spine_output: dict, source: str = "unknown") -> str:
     serializable_trip = _make_json_serializable(trip)
     logger.debug(f"Serializable trip keys: {list(serializable_trip.keys())}")
     
-    trip_id = TripStore.save_trip(serializable_trip)
+    trip_id = TripStore.save_trip(serializable_trip, agency_id=agency_id)
     
     # Log creation
     AuditStore.log_event("trip_created", "system", {
         "trip_id": trip_id,
         "source": source,
+        "agency_id": agency_id,
     })
     
     return trip_id

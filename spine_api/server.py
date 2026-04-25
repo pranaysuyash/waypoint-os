@@ -56,7 +56,8 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from spine_api.core.auth import get_current_user
+from spine_api.core.auth import get_current_user, get_current_agency_id, get_current_agency
+from spine_api.core.logging_filter import install_sensitive_data_filter
 from spine_api.core.middleware import AuthMiddleware
 
 from spine_api.contract import (
@@ -199,9 +200,18 @@ if os.environ.get("TRAVELER_SAFE_STRICT", "").strip() in ("1", "true", "yes"):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan context manager (replaces deprecated on_event)."""
-    # Startup
+    env = os.environ.get("ENVIRONMENT", os.environ.get("NODE_ENV", "development"))
+    if os.environ.get("SPINE_API_DISABLE_AUTH") and env in ("production", "staging"):
+        raise RuntimeError(
+            "SPINE_API_DISABLE_AUTH cannot be enabled in production or staging. "
+            f"Current ENVIRONMENT={env}"
+        )
+    if os.environ.get("SPINE_API_DISABLE_AUTH"):
+        logger.warning("⚠️  AUTH DISABLED — local/test only. Do not use in production.")
+    install_sensitive_data_filter()
     watchdog.start()
-    _seed_scenario()
+    # Note: We no longer auto-seed at startup.
+    # Seeding is now done per-agency for test users in the /trips endpoint.
     logger.info("Spine API startup complete")
     yield
     # Shutdown
@@ -239,12 +249,16 @@ app.include_router(
 app.include_router(frontier_router.router)
 
 
-def _seed_scenario():
+def _seed_scenario(agency_id: Optional[str] = None):
     """
     Load a scenario fixture at startup if SEED_SCENARIO env var is set.
-
+    
+    Args:
+        agency_id: Optional agency ID to associate with seeded trips.
+            If not provided, trips will not have agency_id set.
+    
     Usage: SEED_SCENARIO=scenario_alpha uvicorn spine_api.server:app
-
+    
     This seeds the TripStore with fixture data for deterministic testing.
     If the env var is set to a filename (without .json) in data/fixtures/,
     all trips from that file are loaded into persistence.
@@ -252,30 +266,30 @@ def _seed_scenario():
     seed_name = os.environ.get("SEED_SCENARIO", "").strip()
     if not seed_name:
         return
-
+    
     fixture_path = PROJECT_ROOT / "data" / "fixtures" / f"{seed_name}.json"
     if not fixture_path.exists():
         logger.warning("SEED_SCENARIO: fixture not found: %s", fixture_path)
         return
-
+    
     try:
         with open(fixture_path) as f:
             trips = json.load(f)
-
+        
         if not isinstance(trips, list):
             logger.warning("SEED_SCENARIO: fixture must be a JSON array of trips")
             return
-
+        
         loaded = 0
         for trip_data in trips:
             trip_id = trip_data.get("id")
             if not trip_id:
                 continue
-
+            
             existing = TripStore.get_trip(trip_id)
             if existing:
                 continue
-
+            
             trip_record = {
                 "id": trip_id,
                 "run_id": f"seed_{trip_id}",
@@ -290,10 +304,11 @@ def _seed_scenario():
                 "assigned_to": trip_data.get("assignedTo"),
                 "assigned_to_name": trip_data.get("assignedToName"),
                 "meta": trip_data.get("meta", {"stage": trip_data.get("status", "new"), "seed": True}),
+                "agency_id": agency_id,  # Associate with agency if provided
             }
-
-            TripStore.save_trip(trip_record)
-
+            
+            TripStore.save_trip(trip_record, agency_id=agency_id)
+            
             if trip_data.get("assignedTo"):
                 AssignmentStore.assign_trip(
                     trip_id,
@@ -301,12 +316,92 @@ def _seed_scenario():
                     trip_data.get("assignedToName", "Unknown"),
                     "seed",
                 )
-
+            
             loaded += 1
-
-        logger.info("SEED_SCENARIO: loaded %d trips from %s", loaded, seed_name)
+        
+        logger.info("SEED_SCENARIO: loaded %d trips from %s (agency_id=%s)", loaded, seed_name, agency_id)
     except Exception as e:
         logger.error("SEED_SCENARIO: failed to load fixture: %s", e)
+
+
+def _seed_scenario_for_agency(agency_id: str, seed_name: Optional[str] = None) -> int:
+    """
+    Seed a scenario fixture for a specific agency.
+    
+    Args:
+        agency_id: The agency ID to associate trips with
+        seed_name: Optional fixture name (defaults to SEED_SCENARIO env var)
+        
+    Returns:
+        Number of trips loaded
+    """
+    if seed_name is None:
+        seed_name = os.environ.get("SEED_SCENARIO", "scenario_alpha").strip()
+    
+    if not seed_name:
+        return 0
+    
+    fixture_path = PROJECT_ROOT / "data" / "fixtures" / f"{seed_name}.json"
+    if not fixture_path.exists():
+        logger.warning("SEED_SCENARIO: fixture not found: %s", fixture_path)
+        return 0
+    
+    try:
+        with open(fixture_path) as f:
+            trips = json.load(f)
+        
+        if not isinstance(trips, list):
+            logger.warning("SEED_SCENARIO: fixture must be a JSON array of trips")
+            return 0
+        
+        loaded = 0
+        for trip_data in trips:
+            trip_id = trip_data.get("id")
+            if not trip_id:
+                continue
+            
+            existing = TripStore.get_trip(trip_id)
+            if existing:
+                # Update existing trip with agency_id
+                if existing.get("agency_id") != agency_id:
+                    existing["agency_id"] = agency_id
+                    TripStore.update_trip(trip_id, {"agency_id": agency_id})
+                continue
+            
+            trip_record = {
+                "id": trip_id,
+                "run_id": f"seed_{trip_id}",
+                "source": "seed_scenario",
+                "status": trip_data.get("status", "new"),
+                "created_at": trip_data.get("created_at", datetime.now(timezone.utc).isoformat()),
+                "updated_at": trip_data.get("updated_at"),
+                "extracted": trip_data.get("extracted"),
+                "validation": trip_data.get("validation"),
+                "decision": trip_data.get("decision"),
+                "analytics": trip_data.get("analytics"),
+                "assigned_to": trip_data.get("assignedTo"),
+                "assigned_to_name": trip_data.get("assignedToName"),
+                "meta": trip_data.get("meta", {"stage": trip_data.get("status", "new"), "seed": True}),
+                "agency_id": agency_id,
+            }
+            
+            TripStore.save_trip(trip_record, agency_id=agency_id)
+            
+            if trip_data.get("assignedTo"):
+                AssignmentStore.assign_trip(
+                    trip_id,
+                    trip_data["assignedTo"],
+                    trip_data.get("assignedToName", "Unknown"),
+                    "seed",
+                )
+            
+            loaded += 1
+        
+        logger.info("SEED_SCENARIO: loaded %d trips for agency %s", loaded, agency_id)
+        return loaded
+    except Exception as e:
+        logger.error("SEED_SCENARIO: failed to load fixture: %s", e)
+        return 0
 
 
 # =============================================================================
@@ -486,6 +581,11 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
         # Save the trip to persistence
         trip_id_saved: Optional[str] = None
         try:
+            agency_id = get_current_agency_id(credentials=Depends(security_bearer), db=Depends(get_db))
+        except Exception:
+            agency_id = None
+        
+        try:
             trip_id_saved = save_processed_trip(
                 {
                     "run_id": run_id,
@@ -496,6 +596,7 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
                     "meta": meta.model_dump(),
                 },
                 source="spine_api",
+                agency_id=agency_id,
             )
             logger.info("Trip saved: %s", trip_id_saved)
             
@@ -754,9 +855,30 @@ def get_run_event_stream(run_id: str):
 # =============================================================================
 
 @app.get("/trips")
-def list_trips(status: Optional[str] = None, limit: int = 100):
-    """List all trips, optionally filtered by status."""
-    trips = TripStore.list_trips(status=status, limit=limit)
+async def list_trips(
+    status: Optional[str] = None,
+    limit: int = 100,
+    agency: Agency = Depends(get_current_agency),
+):
+    """
+    List trips for the current user's agency, optionally filtered by status.
+    
+    Test agencies (is_test=True) will automatically get mock data seeded
+    if no trips exist yet.
+    """
+    agency_id = agency.id
+    
+    # Auto-seed for test agencies if no trips exist
+    if agency.is_test:
+        existing_trips = TripStore.list_trips(agency_id=agency_id)
+        if not existing_trips:
+            try:
+                seed_count = await _seed_scenario_for_agency(agency_id)
+                logger.info("Auto-seeded %d mock trips for test agency %s", seed_count, agency_id)
+            except Exception as e:
+                logger.warning("Failed to auto-seed for test agency: %s", e)
+    
+    trips = TripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
     return {"items": trips, "total": len(trips)}
 
 

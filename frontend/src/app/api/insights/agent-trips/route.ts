@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { forwardAuthHeaders } from "@/lib/proxy-core";
+import { bffHeaders, bffJson, isAuthStatus } from "@/lib/bff-auth";
 
 const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 
@@ -26,32 +26,30 @@ export async function GET(request: NextRequest) {
   const metric = searchParams.get('metric') || 'conversion';
 
   if (!agentId) {
-    return NextResponse.json(
-      { error: 'agentId is required' },
-      { status: 400 }
-    );
+    return bffJson({ error: 'agentId is required' }, 400);
   }
 
   try {
     const response = await fetch(
       `${SPINE_API_URL}/analytics/agent/${encodeURIComponent(agentId)}/drill-down?metric=${metric}`,
       {
-        cache: 'no-store',
+        method: "GET",
+        headers: bffHeaders(request),
       }
     );
 
     if (!response.ok) {
       if (response.status === 404) {
-        return NextResponse.json(
-          { agentId, metric, trips: [], count: 0 },
-          { status: 200 }
-        );
+        return bffJson({ agentId, metric, trips: [], count: 0 });
+      }
+      if (isAuthStatus(response.status)) {
+        return bffJson({ error: "Not authenticated" }, response.status);
       }
       throw new Error(`Analytics service responded with ${response.status}`);
     }
 
     const data = await response.json();
-    return NextResponse.json({
+    return bffJson({
       agentId,
       metric,
       trips: data.trips || [],
@@ -59,15 +57,11 @@ export async function GET(request: NextRequest) {
     } as DrillDownResponse);
   } catch (error) {
     console.error('Error proxying to analytics service:', error);
-    // Return empty trips list on error instead of 500
-    return NextResponse.json(
-      {
-        agentId,
-        metric,
-        trips: [],
-        count: 0,
-      } as DrillDownResponse,
-      { status: 200 }
-    );
+    return bffJson({
+      agentId,
+      metric,
+      trips: [],
+      count: 0,
+    } as DrillDownResponse);
   }
 }

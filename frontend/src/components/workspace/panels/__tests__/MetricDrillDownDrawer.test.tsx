@@ -92,7 +92,8 @@ describe('MetricDrillDownDrawer', () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        '/api/insights/agent-trips?agentId=agent-1&metric=conversion'
+        '/api/insights/agent-trips?agentId=agent-1&metric=conversion',
+        { credentials: "include", cache: "no-store" }
       );
     });
   });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { forwardAuthHeaders } from "@/lib/proxy-core";
+import { bffHeaders, bffJson, validateOrigin, isAuthStatus } from "@/lib/bff-auth";
 
 // Map spine_api status values to frontend state values
 const statusMap: Record<string, "green" | "amber" | "red" | "blue"> = {
@@ -156,15 +156,15 @@ export async function GET(
 
     const response = await fetch(spineApiUrl, {
       method: "GET",
-      headers: forwardAuthHeaders(request),
+      headers: bffHeaders(request),
     });
 
     if (!response.ok) {
       if (response.status === 404) {
-        return NextResponse.json(
-          { error: "Trip not found" },
-          { status: 404 }
-        );
+        return bffJson({ error: "Trip not found" }, 404);
+      }
+      if (isAuthStatus(response.status)) {
+        return bffJson({ error: "Not authenticated" }, response.status);
       }
       throw new Error(`Spine API returned ${response.status}`);
     }
@@ -172,17 +172,13 @@ export async function GET(
     const spineApiData = await response.json();
     const transformedTrip = transformTrip(spineApiData);
     
-    return NextResponse.json(transformedTrip);
+    return bffJson(transformedTrip);
   } catch (error) {
     console.error("Error fetching trip from spine_api:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch trip" },
-      { status: 500 }
-    );
+    return bffJson({ error: "Failed to fetch trip" }, 500);
   }
 }
 
-// Keep PATCH function for local updates (optional - could also proxy)
 const PATCHABLE_FIELDS = new Set([
   "customerMessage",
   "agentNotes",
@@ -201,6 +197,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const csrf = validateOrigin(request);
+    if (csrf) return csrf;
+
     const { id } = await params;
     const body = await request.json();
     
@@ -224,11 +223,14 @@ export async function PATCH(
 
     const response = await fetch(spineApiUrl, {
       method: "PATCH",
-      headers: forwardAuthHeaders(request),
+      headers: bffHeaders(request, "access_only", { "Content-Type": "application/json" }),
       body: JSON.stringify(updates),
     });
 
     if (!response.ok) {
+      if (isAuthStatus(response.status)) {
+        return bffJson({ error: "Not authenticated" }, response.status);
+      }
       const errorData = await response.json().catch(() => ({}));
       const detail = errorData.detail;
       const detailMessage =
@@ -238,25 +240,22 @@ export async function PATCH(
             ? detail.message
             : undefined;
       const detailFailures = Array.isArray(detail?.failures) ? detail.failures : undefined;
-      return NextResponse.json(
+      return bffJson(
         {
           message: detailMessage || `Spine API returned ${response.status}`,
           details: detailFailures,
           error: detail || errorData.error || null,
         },
-        { status: response.status }
+        response.status
       );
     }
 
     const spineApiData = await response.json();
     const transformedTrip = transformTrip(spineApiData);
     
-    return NextResponse.json(transformedTrip);
+    return bffJson(transformedTrip);
   } catch (error) {
     console.error("Error patching trip via proxy:", error);
-    return NextResponse.json(
-      { error: "Failed to update trip" },
-      { status: 500 }
-    );
+    return bffJson({ error: "Failed to update trip" }, 500);
   }
 }

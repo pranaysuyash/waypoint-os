@@ -1385,30 +1385,48 @@ def _build_suitability_profile(
     # The ``flag`` field uses a ``suitability_<tier>_`` prefix for those.
     suitability_prefixes = ("suitability_",)
     dimensions = []
+    processed_flags = set()
     for flag in risk_flags:
         flag_name = flag.get("flag", "")
-        if not flag_name.startswith(suitability_prefixes):
+        flag_lower = flag_name.lower()
+
+        # Skip flags already processed
+        if flag_name in processed_flags:
             continue
-        # Derive dimension "type" from the flag identifier.
-        # Examples:
-        #   suitability_exclude_scuba  -> type: "intensity"
-        #   suitability_discourage_trekking -> type: "mobility"
-        #   suitability_coherence      -> type: "other"
-        _parts = flag_name.split("_")
-        # Default mapping heuristic; explicit mapping is preferred when it grows.
-        dimension_type: str = "other"
-        if len(_parts) >= 3:
-            activity_id = "_".join(_parts[2:])
-            if activity_id in {"scuba", "skydiving", "bungy", "white_water_rafting"}:
+        processed_flags.add(flag_name)
+
+        # Map standard risk flags to suitability dimensions
+        standard_flag_dimensions = {
+            "elderly_mobility_risk": "mobility",
+            "toddler_pacing_risk": "recovery",
+            "composition_risk": "recovery",
+            "visa_timeline_risk": "documentation",
+            "visa_not_applied": "documentation",
+            "document_risk": "documentation",
+            "margin_risk": "budget",
+            "budget_risk": "budget",
+        }
+
+        if flag_name.startswith(suitability_prefixes):
+            intensity_keywords = {"scuba", "snorkeling", "skydiving", "bungy", "bungee", "white_water_rafting", "rafting", "paragliding", "zip_line"}
+            mobility_keywords = {"trekking", "hiking", "city_walk", "walking_tour", "walking", "cycling", "biking", "stairs"}
+            climate_keywords = {"sauna", "hot_spring", "desert_safari", "desert", "snow", "skiing", "cold"}
+            pacing_keywords = {"pacing", "overload", "coherence"}
+
+            dimension_type = "other"
+            if any(kw in flag_lower for kw in intensity_keywords):
                 dimension_type = "intensity"
-            elif activity_id in {
-                "trekking", "hiking", "city_walk", "walking_tour",
-            }:
+            elif any(kw in flag_lower for kw in mobility_keywords):
                 dimension_type = "mobility"
-            elif activity_id in {"sauna", "hot_spring", "desert_safari"}:
+            elif any(kw in flag_lower for kw in climate_keywords):
                 dimension_type = "climate"
-            else:
-                dimension_type = "other"
+            elif any(kw in flag_lower for kw in pacing_keywords):
+                dimension_type = "recovery"
+        elif flag_name in standard_flag_dimensions:
+            dimension_type = standard_flag_dimensions[flag_name]
+        else:
+            continue
+
         severity_map = {
             "low": "low",
             "medium": "medium",
