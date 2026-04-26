@@ -1,9 +1,38 @@
 # External Review Package: Next Priority Decision
 
 **Date**: 2026-04-24  
+**Superseded by**: `AUDIT_CLOSURE_2026-04-24.md` — see supersession note below.  
 **Purpose**: Consolidated context for ChatGPT reviewer to assess next step.  
 **Prepared by**: OpenCode (implementation agent)  
 **Requested by**: Pranay (project owner)
+
+---
+
+> **⚠️ SUPERSESSION NOTE (added 2026-04-26)**
+>
+> This document was prepared during an active decision fork on April 24, 2026. Later that same day,
+> the `AUDIT_CLOSURE_2026-04-24.md` was produced after executing the audit-closure plan. Key
+> changes since this document was written:
+>
+> - **P0-2** (fragile import): Fixed — `src/intake/decision.py:44` changed bare `from decision`
+>   to `from src.decision.hybrid_engine`. Also fixed companion bare imports in
+>   `src/decision/hybrid_engine.py` and `src/services/dashboard_aggregator.py`.
+> - **P1-3** (data leakage): Fixed — `spine_api/server.py` now uses `to_traveler_dict()`
+>   for traveler-safe bundles. Regression tests in `tests/test_audit_closure_2026_04_24.py`.
+> - **P2-5** (duplicate table): Fixed — `src/intake/decision.py` now imports
+>   `BUDGET_FEASIBILITY_TABLE` from canonical `src.decision.rules`.
+> - **P0-1** (PROJECT_ROOT NameError): Also fixed — `PROJECT_ROOT` now defined at
+>   `spine_api/server.py:49`.
+> - **Option A (Full Agency Suite)**: Deferred — the decision record
+>   `DISCUSSION_2026-04-24_Next_Priority_Reassessment.md` explicitly chose audit closure
+>   over expansion. The `AUDIT_CLOSURE_2026-04-24.md` states: "Full Agency Suite — Treat as
+>   roadmap; do not implement until core is hardened."
+> - **Tier 3 LLM Scorer**: Deferred — no empirical borderline cases observed.
+> - **Frontend Suitability Panel**: Deferred — backend hardening chosen first.
+>
+> See `AUDIT_CLOSURE_2026-04-24.md` for the full closure report with test evidence.
+>
+> **What remains unresolved**: See "Open Points (Still Valid)" at the end of this document.
 
 ---
 
@@ -173,3 +202,42 @@ If the reviewer and owner decide on Option A, I will execute it. But I would wan
 ---
 
 *Document created on 2026-04-24 as a decision support package for external review.*
+
+---
+
+## 8) Open Points (Still Valid as of 2026-04-26)
+
+The following concerns from the original document remain unresolved or only partially addressed:
+
+### Still Open
+
+1. **P0-1**: `PROJECT_ROOT` NameError in `spine_api/server.py:259` — Now defined at line 49, so no longer a runtime crash. However, the pattern of `sys.path` mutation at import time remains fragile for non-server invocation contexts. (See `AUDIT_CLOSURE_2026-04-24.md` §4 Remaining Risks)
+
+2. **P1-1**: Duplicate `_PAST_TRIP_INDICATORS` in `src/intake/extractors.py` — Listed as not addressed in audit closure. Still open as of latest commit.
+
+3. **P1-4**: Race condition in persistence stores (non-atomic read-modify-write) — Not addressed; requires concurrency audit. All stores use `json.load → modify → json.dump` without file locking.
+
+4. **P2-3**: Import fragility in `spine_api/server.py` startup — Partially mitigated by `dashboard_aggregator.py` cleanup, but server startup path still relies on `sys.path` manipulation.
+
+5. **P2-6**: `continue` in budget extraction skips generic `set_fact` — intentional but undocumented. Maintainer trap.
+
+6. **P3-1**: Telemetry `emit()` is a silent no-op stub — all telemetry-dependent features (dashboards, alerts) are silently broken.
+
+7. **Option A (Full Agency Suite)** — Deferred but not rejected. Components:
+   - Marketing Website: **Partially exists** (`frontend/src/app/v2/page.tsx` + `page.tsx` as landing pages, `itinerary-checker` as public tool)
+   - Admin CRM: **Partially exists** (workspace/workbench for agents, owner/ for analytics, but no formal customer/partner/task management)
+   - Itinerary Builder: **Does not exist** beyond pipeline (no day planner, no budget/weather APIs, no real-time events)
+   - Payment & Bookings: **Does not exist** (zero payment/pricing/vendor-marketplace code in `spine_api/`)
+   - AI Concierge Agent: **Partially exists** (N01/N02/N03 pipeline works; WhatsApp listed in settings but not integrated; no chat history or sentiment)
+
+   Decision: Audit closure was chosen over Option A. The implicit decision is "foundation first" — harden the existing core before expanding to a full SaaS platform.
+
+8. **sys.path mutation pattern** — Considered a design risk, not an active bug. Works in current entry points (server + tests). Would break in unanticipated invocation contexts.
+
+### Now Resolved (from the original doc's questions)
+
+- **Confusion A (P0-3 ambiguity)**: Resolved. "P0-3" referred to two different bugs in two different audit docs. The budget-feasibility version was implemented via `BUDGET_FEASIBILITY_TABLE`. The import-path version was resolved as part of P0-2 fix. The label collision itself is a documentation issue.
+- **Confusion B (Scope jump)**: Resolved. Audit closure chose "foundation first."
+- **Confusion C (What continue means)**: Resolved. Proceeded with audit closure.
+- **Confusion D (April 17 open questions)**: Resolved. Q1 (internal_notes force-removal) addressed by P1-3 fix. Q2 (P0-2 vs P0-3) is the label collision above.
+- **Must Answer Q1-Q4**: All implicitly answered by the audit-closure decision.

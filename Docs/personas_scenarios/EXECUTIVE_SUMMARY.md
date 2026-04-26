@@ -1,9 +1,15 @@
 # Executive Summary: Persona-Based Scenario Documentation
 
 **Date**: 2026-04-09  
-**Total Scenarios**: 30  
-**Total Documentation**: 4,236 lines  
-**Status**: Complete
+**Total Core Scenarios (mapped to pipeline)**: 20+  
+**Total Scenario Files (including exploratory/aspirational)**: 340+  
+**Total Documentation**: 4,236+ lines  
+**Status**: Core scenarios mapped and partially implemented. Additional scenarios (100 through 329+) are exploratory/aspirational — not all are mapped to the pipeline or implemented in code. See note below.
+
+> **Agent Note**: Scenario files are a mix of implemented, partially implemented, and aspirational ideas.  
+> The core 20 scenarios (P1-S1 through S2-S3) are mapped to the N01/N02 pipeline.
+> Scenarios 100+ are additional domain explorations. Some overlap. Most are not yet mapped to code.  
+> Treat these as product inputs, not implementation commitments, unless they have an explicit pipeline mapping entry.
 
 ---
 

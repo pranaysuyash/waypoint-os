@@ -1,0 +1,219 @@
+# Creator Travel Research Taxonomy Matrix
+
+This document maps the full creator travel research corpus against the key taxonomy axes that define the creator research package.
+It turns the existing document universe into an explicit, end-to-end creator research package rather than a loose set of files.
+
+## Purpose
+
+- Validate the creator document package across audiences, product flows, and governance axes.
+- Make every creator-related doc discoverable by category.
+- Surface the remaining research ideas and future checklist items for creator travel.
+
+## Core taxonomy axes
+
+1. Audience / stakeholder
+   - Creator
+   - Traveler / customer
+   - Agency / operator
+   - Supplier / partner
+   - Regulator / compliance
+   - Platform / technology
+
+2. Product and flow
+   - Strategy & business model
+   - Content, discovery, and SEO
+   - Booking commerce and attribution
+   - Finance, payout, and settlement
+   - Logistics, production, and delivery
+   - Risk, compliance, and audit
+   - Support, training, and governance
+   - Technology, platform, and marketplace
+
+3. Research mode
+   - Gap identification
+   - Coverage matrix
+   - Roadmap and prioritization
+   - Operational controls
+   - Taxonomy and discovery
+
+## Summary view
+
+| Category | What it answers | Primary docs | Notes |
+|---|---|---|---|
+| Strategy & market positioning | What is creator travel and how does it differ from traditional travel? | `CREATOR_TRAVEL_BUSINESS_MODEL_FRAMING.md`, `CREATOR_TRAVEL_ECOSYSTEM_MAP.md`, `CREATOR_TRAVEL_MULTI_AUDIENCE_TAXONOMY.md` | Core gap and taxonomy docs |
+| Agency execution | How should agencies operationalize creator travel and AI support? | `CREATOR_TRAVEL_AGENCY_SETTINGS_AND_AI_SUPPORT_CONTROLS.md`, `ROLES_AND_RESPONSIBILITIES.md`, `AI_AND_AUTOMATION_IN_THE_WORKFLOW.md`, `AUTOMATED_BOOKING_ASSISTANTS_AND_DECISION_SUPPORT.md` | Execution controls, service tiers, handoffs |
+| Commercial design | How are creator travel offers packaged, priced, and monetized? | `CREATOR_BOOKING_COMMISSION_MODELS_AND_INCENTIVE_OPTIMIZATION.md`, `CREATOR_REVENUE_SHARE_AND_PERFORMANCE_TIERS.md`, `CREATOR_TRAVEL_SEO_AND_CONTENT_POSITIONING.md` | Pricing, marketplace, demand generation |
+| Finance & settlement | How is creator money advanced, paid, and reconciled? | `CREATOR_ADVANCE_FUNDING_AND_PROMOTION_FINANCE.md`, `CREATOR_CONTENT_ROYALTY_STREAMS_AND_LICENSE_FEE_ALLOCATION.md`, `CREATOR_PLATFORM_MERCHANT_OF_RECORD_AND_PAYMENT_RISK_ALLOCATION.md` | Financial flows and risk management |
+| Regulatory & compliance | What rules apply to creators, content, and travel operations? | `CREATOR_VISA_AND_LOCAL_LABOR_COMPLIANCE.md`, `CREATOR_AUDIENCE_PRIVACY_AND_PERSONALIZATION_COMPLIANCE.md`, `CREATOR_MULTI_JURISDICTION_COMPLIANCE_AND_DESTINATION_REGULATORY_MAPPINGS.md` | Core compliance corpus |
+| Logistics & production | How is creator production and event logistics delivered? | `CREATOR_CONTENT_PRODUCTION_SUPPLY_CHAIN.md`, `CREATOR_EVENT_PERMITTING_AND_LOCAL_AUTHORITY_LIAISON.md`, `CREATOR_GROUP_TRIP_LOGISTICS_AND_COMMUNITY_COORDINATION.md` | Operational backbone |
+| Supplier ecosystem | How are suppliers, local partners, and creator marketplaces governed? | `CREATOR_BRANDED_SUPPLIER_PARTNERSHIPS_AND_COOPETITION.md`, `CREATOR_SUPPLIER_CREDENTIALING_AND_RISK.md`, `CREATOR_PARTNER_PORTAL_AND_SELF_SERVICE_DASHBOARDS.md` | Partner and supplier controls |
+| Technology & product | What platform, discovery, and AI systems power creator travel? | `CREATOR_TRAVEL_PLATFORM_ARCHITECTURE.md`, `CREATOR_CONTENT_MODERATION_AND_TRUST_SIGNAL_ENGINE.md`, `CREATOR_OFFLINE_CONTENT_SYNC_AND_HYBRID_EXPERIENCES.md` | Tech stack and trust signals |
+| Research & discovery | What is the current creator research gap and future research agenda? | `CREATOR_RESEARCH_GAP_LIST.md`, `CREATOR_TRAVEL_RESEARCH_COVERAGE_MATRIX.md`, `CREATOR_TRAVEL_RESEARCH_ROADMAP.md`, `CREATOR_TRAVEL_RESEARCH_GAP_AUDIT.md` | Discovery and audit docs |
+
+## Full creator doc taxonomy
+
+### 1. Strategy, taxonomy, and corpus governance
+
+- `CREATOR_RESEARCH_GAP_LIST.md`
+- `CREATOR_TRAVEL_BUSINESS_MODEL_FRAMING.md`
+- `CREATOR_TRAVEL_ECOSYSTEM_MAP.md`
+- `CREATOR_TRAVEL_MULTI_AUDIENCE_TAXONOMY.md`
+- `CREATOR_TRAVEL_MARKET_KEYWORD_AND_CONTENT_MAP.md`
+- `CREATOR_TRAVEL_SEO_AND_CONTENT_POSITIONING.md`
+- `CREATOR_TRAVEL_DOCUMENT_INVENTORY.md`
+- `CREATOR_TRAVEL_RESEARCH_COVERAGE_MATRIX.md`
+- `CREATOR_TRAVEL_RESEARCH_ROADMAP.md`
+- `CREATOR_TRAVEL_RESEARCH_GAP_AUDIT.md`
+
+### 2. Agency execution, AI support, and controls
+
+- `agency_operations/CREATOR_TRAVEL_AGENCY_SETTINGS_AND_AI_SUPPORT_CONTROLS.md`
+- `agency_operations/CREATOR_APP_AMBASSADOR_ONBOARDING_AND_INCENTIVE_PROGRAMS.md`
+- `agency_operations/CREATOR_BRANDED_CONCIERGE_AND_COMMUNITY_SUPPORT_SERVICES.md`
+- `agency_operations/CREATOR_COMMUNITY_GOVERNANCE_AND_CONTENT_POLICY.md`
+- `agency_operations/CREATOR_CONTENT_LOCALIZATION_AND_MULTILINGUAL_TRAVEL_PRODUCTS.md`
+- `agency_operations/CREATOR_CONTENT_OPERATIONS_AND_CREATIVE_PIPELINES.md`
+- `agency_operations/CREATOR_CONTENT_PARTNERSHIP_CONTRACTS_AND_RIGHTS_ALLOCATION.md`
+- `agency_operations/CREATOR_CONTENT_PERFORMANCE_DASHBOARDS_AND_OPS_RUNBOOKS.md`
+- `agency_operations/CREATOR_CO_MARKETING_AND_DESTINATION_PARTNER_PROGRAMS.md`
+- `agency_operations/CREATOR_HIRED_GUIDE_MANAGEMENT_AND_PAYROLL.md`
+- `agency_operations/CREATOR_LAYOVER_GTM_AND_PARTNER_STRATEGY.md`
+- `agency_operations/CREATOR_LOYALTY_GAMIFICATION_AND_ENGAGEMENT_LOOP.md`
+- `agency_operations/CREATOR_MARKETING_FRAUD_AND_FAKE_TREND_DETECTION.md`
+- `agency_operations/CREATOR_PARTNERSHIP_PERFORMANCE_AND_LIFECYCLE.md`
+- `agency_operations/CREATOR_PARTNER_PORTAL_AND_SELF_SERVICE_DASHBOARDS.md`
+- `agency_operations/CREATOR_POWERED_ONBOARDING_AND_ACTIVATION.md`
+- `agency_operations/CREATOR_PRODUCT_LAUNCH_STRATEGY_AND_FEEDBACK_CYCLE.md`
+- `agency_operations/CREATOR_PRODUCT_PRICING_STRATEGY_AND_VALUE_PACKAGING.md`
+
+### 3. Commercial models and marketing
+
+- `commercial_models/CREATOR_BOOKING_COMMISSION_MODELS_AND_INCENTIVE_OPTIMIZATION.md`
+- `commercial_models/CREATOR_BRANDED_SUBSCRIPTION_PRODUCTS.md`
+- `commercial_models/CREATOR_COMMUNITY_MEMBERSHIP_AND_EXCLUSIVE_TRAVEL_CLUBS.md`
+- `commercial_models/CREATOR_CREDIT_AND_TRAVEL_FINANCING.md`
+- `commercial_models/CREATOR_DYNAMIC_PACKAGE_AND_SURGE_REVENUE_MODELS.md`
+- `commercial_models/CREATOR_REVENUE_RECOGNITION_AND_ACCOUNTING.md`
+- `commercial_models/CREATOR_REVENUE_SHARE_AND_PERFORMANCE_TIERS.md`
+- `commercial_models/CREATOR_TRAVEL_CONTENT_TOPIC_CLUSTER_STRATEGY.md`
+- `commercial_models/CREATOR_TRAVEL_MARKET_KEYWORD_AND_CONTENT_MAP.md`
+- `commercial_models/CREATOR_TRAVEL_SEO_AND_CONTENT_POSITIONING.md`
+
+### 4. Finance, payout, and risk
+
+- `financial_management/CREATOR_ADVANCE_FUNDING_AND_PROMOTION_FINANCE.md`
+- `financial_management/CREATOR_COMMERCE_PAYOUTS_AND_CROSS_BORDER_SETTLEMENTS.md`
+- `financial_management/CREATOR_CONTENT_ROYALTY_STREAMS_AND_LICENSE_FEE_ALLOCATION.md`
+- `financial_management/CREATOR_EARNINGS_FORECASTING_AND_CASHFLOW.md`
+- `financial_management/CREATOR_ESCROW_AND_FINANCIAL_RISK_SHARING.md`
+- `financial_management/CREATOR_EXPERIENCE_COST_ALLOCATION_AND_MARGIN_ANALYTICS.md`
+- `financial_management/CREATOR_PAYMENT_RISK_FRAUD_MONITORING_AND_COMPLIANCE.md`
+- `financial_management/CREATOR_PERFORMANCE_FEE_AND_RETENTION_FINANCIAL_METRICS.md`
+- `financial_management/CREATOR_PLATFORM_MERCHANT_OF_RECORD_AND_PAYMENT_RISK_ALLOCATION.md`
+- `financial_management/CREATOR_PROGRAM_CAPACITY_PLANNING_AND_MARGIN_ANALYSIS.md`
+- `financial_management/CREATOR_PROMOTION_FINANCIAL_MODELING_AND_COUPON_STRATEGY.md`
+- `financial_management/CREATOR_TRAVEL_FINANCE_CONTINGENCY_AND_INSURANCE_FUNDS.md`
+- `financial_management/CREATOR_TRIP_INSURANCE_CLAIM_FLOW_AND_PROGRAM_RECONCILIATION.md`
+
+### 5. Regulatory and compliance
+
+- `regulatory_compliance/CREATOR_ACCESSIBILITY_AND_INCLUSIVE_DESIGN_COMPLIANCE.md`
+- `regulatory_compliance/CREATOR_ADVERSE_EVENT_REPORTING_AND_INSURANCE.md`
+- `regulatory_compliance/CREATOR_ADVERTISING_RETARGETING_NOTICE_AND_CONSUMER_CHOICE.md`
+- `regulatory_compliance/CREATOR_AUDIENCE_PRIVACY_AND_PERSONALIZATION_COMPLIANCE.md`
+- `regulatory_compliance/CREATOR_CHILD_AND_VULNERABLE_TRAVELER_PROTECTIONS.md`
+- `regulatory_compliance/CREATOR_CONTRACTS_TERMS_AND_DISCLOSURES.md`
+- `regulatory_compliance/CREATOR_CROSS_BORDER_MARKETPLACE_REGULATORY_OVERSIGHT.md`
+- `regulatory_compliance/CREATOR_DATA_RIGHTS_AND_TRAVELER_CONSENT_MANAGEMENT.md`
+- `regulatory_compliance/CREATOR_DATA_SHARING_AND_API_ACCESS_GOVERNANCE.md`
+- `regulatory_compliance/CREATOR_DESTINATION_AUTHENTICITY_AND_CULTURAL_SAFETY.md`
+- `regulatory_compliance/CREATOR_GLOBAL_TRAVEL_REGULATORY_MATRIX.md`
+- `regulatory_compliance/CREATOR_HEALTH_SAFETY_INSPECTIONS_AND_DESTINATION_COMPLIANCE.md`
+- `regulatory_compliance/CREATOR_MULTI_JURISDICTION_COMPLIANCE_AND_DESTINATION_REGULATORY_MAPPINGS.md`
+- `regulatory_compliance/CREATOR_PLATFORM_TRANSPARENCY_AND_AD_REGISTRATION.md`
+- `regulatory_compliance/CREATOR_REFUND_POLICY_AND_CONSUMER_PROTECTION.md`
+- `regulatory_compliance/CREATOR_REPUTATION_AND_BRAND_SAFETY_OPERATIONS.md`
+- `regulatory_compliance/CREATOR_SUSTAINABILITY_CERTIFICATION_AND_DESTINATION_DISCLOSURE.md`
+- `regulatory_compliance/CREATOR_TRAVEL_COMPLAINTS_DISPUTES_AND_ENFORCEMENT.md`
+- `regulatory_compliance/CREATOR_TRAVEL_COMPLAINT_AND_ENFORCEMENT_CASE_STUDIES.md`
+- `regulatory_compliance/CREATOR_TRAVEL_MARKET_SPECIFIC_REGULATORY_PLAYBOOKS.md`
+- `regulatory_compliance/CREATOR_TRAVEL_REGULATORY_PLAYBOOK_AFRICA.md`
+- `regulatory_compliance/CREATOR_TRAVEL_REGULATORY_PLAYBOOK_AUSTRALIA_OCEANIA.md`
+- `regulatory_compliance/CREATOR_TRAVEL_REGULATORY_PLAYBOOK_CHINA.md`
+- `regulatory_compliance/CREATOR_TRAVEL_REGULATORY_PLAYBOOK_EU_SCHENGEN.md`
+- `regulatory_compliance/CREATOR_TRAVEL_REGULATORY_PLAYBOOK_GCC.md`
+- `regulatory_compliance/CREATOR_TRAVEL_REGULATORY_PLAYBOOK_INDIA.md`
+- `regulatory_compliance/CREATOR_TRAVEL_REGULATORY_PLAYBOOK_JAPAN_KOREA.md`
+- `regulatory_compliance/CREATOR_TRAVEL_REGULATORY_PLAYBOOK_LATIN_AMERICA.md`
+- `regulatory_compliance/CREATOR_TRAVEL_REGULATORY_PLAYBOOK_SOUTHEAST_ASIA.md`
+- `regulatory_compliance/CREATOR_TRAVEL_REGULATORY_PLAYBOOK_US.md`
+- `regulatory_compliance/CREATOR_VISA_AND_LOCAL_LABOR_COMPLIANCE.md`
+
+### 6. Logistics, event, and experience delivery
+
+- `specialized_logistics/CREATOR_CONTENT_PRODUCTION_SUPPLY_CHAIN.md`
+- `specialized_logistics/CREATOR_EVENT_PERMITTING_AND_LOCAL_AUTHORITY_LIAISON.md`
+- `specialized_logistics/CREATOR_EVENT_TRANSPORTATION_AND_LAST_MILE_COORDINATION.md`
+- `specialized_logistics/CREATOR_FLEXIBLE_EVENT_LOGISTICS_AND_POP_UP_DESTINATION_SERVICING.md`
+- `specialized_logistics/CREATOR_GROUP_TRIP_LOGISTICS_AND_COMMUNITY_COORDINATION.md`
+- `specialized_logistics/CREATOR_HIGH_TOUCH_EVENT_LOGISTICS_AND_VIP_SERVICING.md`
+- `specialized_logistics/CREATOR_MEDICAL_EMERGENCY_RESPONSE_AND_REPATRIATION_SERVICES.md`
+- `specialized_logistics/CREATOR_PRODUCTION_LOGISTICS_AND_CONTENT_PRODUCTION_SUPPORT.md`
+- `specialized_logistics/CREATOR_SAFETY_INCIDENT_RESPONSE_AND_PUBLIC_RELATIONS.md`
+
+### 7. Supplier ecosystem and partner governance
+
+- `supplier_ecosystem/CREATOR_BRANDED_SUPPLIER_PARTNERSHIPS_AND_COOPETITION.md`
+- `supplier_ecosystem/CREATOR_CONTENT_COMMERCE_AND_DIGITAL_ASSET_MARKETS.md`
+- `supplier_ecosystem/CREATOR_CURATED_DESTINATION_INVENTORY_STRATEGY.md`
+- `supplier_ecosystem/CREATOR_CURATED_TRAVEL_BUNDLES_AND_EXPERIENTIAL_PACKAGES.md`
+- `supplier_ecosystem/CREATOR_DESTINATION_PARTNER_INVENTORY_AND_EXPERIENCE_EXCHANGE.md`
+- `supplier_ecosystem/CREATOR_DRIVEN_EXPERIENTIAL_INVENTORY_AND_DYNAMIC_BUNDLING.md`
+- `supplier_ecosystem/CREATOR_ENABLED_LOCAL_EXPERIENCE_MARKETPLACES.md`
+- `supplier_ecosystem/CREATOR_EXPERIENTIAL_PARTNER_QUALITY_AND_SOURCE_VERIFICATION.md`
+- `supplier_ecosystem/CREATOR_LED_DESTINATION_MKTG_AND_AMBASSADOR_NETWORKS.md`
+- `supplier_ecosystem/CREATOR_LOCAL_EXPERIENCE_LICENSES_AND_DESTINATION_PERMITTING.md`
+- `supplier_ecosystem/CREATOR_LOCAL_OPS_AND_COMMUNITY_BASED_SUPPLY.md`
+- `supplier_ecosystem/CREATOR_LOCAL_PARTNER_EVANGELISM_AND_DESTINATION_MARKETS.md`
+- `supplier_ecosystem/CREATOR_MARKETPLACE_GOVERNANCE_AND_CONTENT_CURATIONS.md`
+- `supplier_ecosystem/CREATOR_PARTNER_MARKETPLACE_GTM_AND_SUPPLIER_ONBOARDING.md`
+- `supplier_ecosystem/CREATOR_REMOTE_EXPERIENCE_AND_VIRTUAL_TOUR_PARTNERSHIPS.md`
+- `supplier_ecosystem/CREATOR_SOCIAL_IMPACT_METERING_AND_COMMUNITY_ECONOMIES.md`
+- `supplier_ecosystem/CREATOR_SUPPLIER_CREDENTIALING_AND_RISK.md`
+- `supplier_ecosystem/CREATOR_SUPPLIER_PARTNER_ONBOARDING_PIPELINES.md`
+- `supplier_ecosystem/CREATOR_SUPPLY_CHAIN_RESILIENCE_AND_BACKUP_NETWORKS.md`
+- `supplier_ecosystem/CREATOR_SUSTAINABLE_SUPPLY_NETWORKS_AND_DESTINATION_STEWARDSHIP.md`
+
+### 8. Travel technology and creator platform
+
+- `travel_technology/CREATOR_APP_GAMIFICATION_AND_REWARD_MECHANICS.md`
+- `travel_technology/CREATOR_ATTRIBUTION_AND_CONVERSION_MODELING.md`
+- `travel_technology/CREATOR_CONTENT_MODERATION_AND_TRUST_SIGNAL_ENGINE.md`
+- `travel_technology/CREATOR_CONVERSION_ATTRIBUTION_AND_TRAVEL_METRICS.md`
+- `travel_technology/CREATOR_DATA_PRIVACY_AND_PREFERENCE_HUB.md`
+- `travel_technology/CREATOR_DISCOVERY_GOVERNANCE_AND_SEARCH_ALGORITHM_TRANSPARENCY.md`
+- `travel_technology/CREATOR_ENGAGEMENT_AUTOMATION_AND_NOTIFICATION_WORKFLOWS.md`
+- `travel_technology/CREATOR_FEED_RELEVANCE_AND_USER_INTENT_SIGNALING.md`
+- `travel_technology/CREATOR_IDENTITY_SIGNALS_AND_VERIFICATION.md`
+- `travel_technology/CREATOR_INFLUENCER_LOCKED_INVENTORY_AND_DEMAND_FORECAST.md`
+- `travel_technology/CREATOR_KNOWLEDGE_GRAPH_AND_TRAVELLER_MATCHING.md`
+- `travel_technology/CREATOR_LIVE_EVENT_TICKETING_AND_EXPERIENCE_CAPACITY.md`
+- `travel_technology/CREATOR_OFFLINE_CONTENT_SYNC_AND_HYBRID_EXPERIENCES.md`
+- `travel_technology/CREATOR_PLATFORM_INTEGRATION_APIS_AND_PARTNER_SDKS.md`
+- `travel_technology/CREATOR_RECOMMENDER_EXPLAINABILITY_AND_BIAS_CONTROL.md`
+- `travel_technology/CREATOR_SIGNAL_PRODUCT_INTEGRATION_FOR_TRAVEL_APPS.md`
+- `travel_technology/CREATOR_TRAVEL_INVENTORY_AND_REALTIME_AVAILABILITY.md`
+- `travel_technology/CREATOR_TRAVEL_PLATFORM_ARCHITECTURE.md`
+
+## How to use this matrix
+
+1. Navigate the categories to find the creator research dimension you need.
+2. Use the doc list as a checklist for coverage reviews.
+3. Compare missing policy, supplier, or AI control topics against the current doc set.
+4. Add new research ideas as future docs in the matching category.
+
+## Immediate audit outcomes
+
+- The creator corpus now includes strategy, agency execution, commerce, finance, compliance, logistics, supplier ecosystem, and platform dimensions.
+- The remaining research focus should be on verification and use-case completeness, not on missing document files.
+- The most important next work is a documented research validation checklist that cross-references every doc to the audience/use-case axes above.

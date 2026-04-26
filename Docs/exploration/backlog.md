@@ -2036,7 +2036,11 @@ A living document of areas to explore, ideas to investigate, and potential impro
 
 ### Market & Cultural Shifts
 
-#### Remote Work Integration Layer
+#### Remote Work Integration Layer — DEFERRED
+> **Decision (2026-04-26)**: Not in current launch scope. Requires explicit product decision before any code work. See `travel_agency_process_issue_review_2026-04-26.md`.
+>
+> See `Docs/personas_scenarios/` for exploratory scenario input. Zero code implementation exists in `src/` or `spine_api/`.
+
 - [ ] Calendar sync (Google Calendar, Outlook)
 - [ ] "Work from anywhere" itinerary optimization
 - [ ] Bleisure day planning (work + leisure)

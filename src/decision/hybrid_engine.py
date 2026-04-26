@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Callable
@@ -24,6 +25,13 @@ from .cache_storage import DecisionCacheStorage, get_default_storage
 from .cache_key import generate_cache_key
 from .telemetry import get_telemetry
 from .health import get_health_checker
+
+LLM_GUARD_ENABLED = os.environ.get("LLM_GUARD_ENABLED", "1") == "1"
+
+try:
+    from src.llm.usage_guard import get_usage_guard
+except ImportError:
+    get_usage_guard = None
 
 
 try:
@@ -511,8 +519,10 @@ class HybridDecisionEngine:
             logger.warning("LLM not available")
             return None
 
+        estimated_cost = 0.0
+        llm_model = "unknown"
+
         try:
-            # Create LLM client if not exists
             if not self.llm_client:
                 self.llm_client = create_llm_client()
 
@@ -520,18 +530,62 @@ class HybridDecisionEngine:
                 logger.warning("LLM client not available")
                 return None
 
-            # Build prompt
-            prompt = self._build_llm_prompt(decision_type, packet)
+            llm_model = self.llm_client.model
 
-            # Call LLM
+            prompt = self._build_llm_prompt(decision_type, packet)
+            prompt_tokens = self.llm_client.count_tokens(prompt)
+            completion_tokens_estimate = self.llm_client.count_tokens('{"result": "x"}')
+            estimated_cost = self.llm_client.estimate_cost(prompt_tokens, completion_tokens_estimate)
+
+            if LLM_GUARD_ENABLED and get_usage_guard is not None:
+                try:
+                    guard = get_usage_guard()
+                    usage_decision = guard.check_before_call(
+                        model=llm_model,
+                        estimated_cost=estimated_cost,
+                        feature="hybrid_engine",
+                    )
+                    if not usage_decision.allowed:
+                        logger.warning(
+                            "llm_usage_guard.blocked",
+                            extra={
+                                "decision_type": decision_type,
+                                "model": llm_model,
+                                "reason": usage_decision.reason,
+                                "block_reason": usage_decision.block_reason,
+                                "current_daily_cost": usage_decision.current_daily_cost,
+                                "projected_daily_cost": usage_decision.projected_daily_cost,
+                                "daily_budget": usage_decision.daily_budget,
+                                "current_hourly_calls": usage_decision.current_hourly_calls,
+                                "hourly_limit": usage_decision.hourly_limit,
+                            },
+                        )
+                        health_checker = get_health_checker()
+                        health_checker.record_llm_failure(
+                            f"usage_guard_blocked: {usage_decision.block_reason}"
+                        )
+                        return None
+                    for warning in usage_decision.warnings:
+                        logger.warning(
+                            "llm_usage_guard.warning",
+                            extra={
+                                "decision_type": decision_type,
+                                "model": llm_model,
+                                "warning": warning,
+                            },
+                        )
+                except Exception as guard_error:
+                    logger.warning(
+                        f"LLM usage guard check failed (failing open): {guard_error}"
+                    )
+            elif not LLM_GUARD_ENABLED:
+                logger.debug("LLM usage guard disabled via LLM_GUARD_ENABLED=0")
+
             decision = self.llm_client.decide(
                 prompt=prompt,
                 schema=schema,
             )
 
-            # Estimate cost
-            prompt_tokens = self.llm_client.count_tokens(prompt)
-            # Estimate response tokens (rough approximation)
             completion_tokens = self.llm_client.count_tokens(json.dumps(decision))
             cost = self.llm_client.estimate_cost(prompt_tokens, completion_tokens)
 
@@ -539,18 +593,43 @@ class HybridDecisionEngine:
 
             logger.info(
                 f"LLM call for {decision_type}: "
-                f"model={self.llm_client.model}, cost=₹{cost:.2f}"
+                f"model={llm_model}, cost=₹{cost:.2f}"
             )
+
+            if LLM_GUARD_ENABLED and get_usage_guard is not None:
+                try:
+                    guard = get_usage_guard()
+                    guard.record_call(
+                        model=llm_model,
+                        estimated_cost=cost,
+                        feature="hybrid_engine",
+                        success=True,
+                    )
+                except Exception as guard_error:
+                    logger.warning(
+                        f"LLM usage guard record failed (ignoring): {guard_error}"
+                    )
 
             return {
                 "decision": decision,
-                "model": self.llm_client.model,
+                "model": llm_model,
                 "cost": cost,
                 "confidence": 0.8,
             }
 
         except Exception as e:
             logger.error(f"LLM call failed for {decision_type}: {e}")
+            if LLM_GUARD_ENABLED and get_usage_guard is not None:
+                try:
+                    guard = get_usage_guard()
+                    guard.record_call(
+                        model=llm_model,
+                        estimated_cost=estimated_cost,
+                        feature="hybrid_engine",
+                        success=False,
+                    )
+                except Exception:
+                    pass
             return None
 
     def _build_llm_prompt(

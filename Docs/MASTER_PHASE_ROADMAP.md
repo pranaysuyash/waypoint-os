@@ -13,6 +13,17 @@ This master roadmap consolidates the transition from fragmented mocks to a mathe
 | **Phase 1** | Foundation & Traceability | Done | Unified backend pipeline, auditable lifecycle. |
 | **Phase 2** | System Integrity & Cockpit | Active | Proactive drift detection, SSOT, Inbox intelligence. |
 | **Phase 3** | Agentic Autonomy | Pending | Self-healing agents, compliance blocks, prompt tuning. |
+| **Phase 4** | LLM Cost & Per-Agency Controls | Partial | LLM usage guard, agency-specific settings, feature gating. |
+
+---
+
+## Future / Deferred Domains
+
+| Domain | Status | Rationale | When It Ships |
+| :--- | :--- | :--- | :--- |
+| **Digital Nomad / Extended Stay** | Deferred | Not in launch scope. Cross-cuts intake, decision rules, visa logic. | Only after explicit product decision. |
+
+> **Rule**: No scenario file for these domains (e.g. `ADDITIONAL_SCENARIOS_152` and related files) may be treated as an implementation commitment. They are exploratory inputs. Verify codebase before building.
 
 ---
 
@@ -36,6 +47,32 @@ This master roadmap consolidates the transition from fragmented mocks to a mathe
 | **P3-02** | **Compliance Hard-Gates** | Backend | P1-05 |
 | **P3-03** | **Prompt Tuning Agent (Feedback Loop)** | Backend | P1-04 |
 | **P3-04** | **Scenario Replay Engine (QA Tool)** | Dev/QA | Phase 1 |
+
+---
+
+## 4. Phase 4: LLM Cost & Per-Agency Controls (Active — Dogfood Only)
+
+**Production status**: Guard is DOGFOOD-ONLY (single-process, in-memory). See `Docs/LLM_USAGE_GUARD_AND_AGENCY_CONTROLS_2026-04-26.md`.
+
+**Next required work**: P4-03 (Redis-backed guard storage) — required before production enforcement.
+
+| ID | Task | Status | Owner | Dependencies | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **P4-01** | **LLM Usage Guard (`LLMUsageGuard`)** | ✅ Done | Backend | None | Functional, single-process |
+| **P4-02** | **Per-Agency LLM Guard Config** | ✅ Done | Backend | P4-01 | `LLMGuardSettings` in SQLite |
+| **P4-03** | **Redis-Backed Guard Storage** | **Pending — P0** | Backend | P4-01 | Required for production |
+| **P4-04** | **Per-Model Rate Limits** | Pending | Backend | P4-03 | After Redis storage |
+| **P4-05** | **Alert Delivery (email/webhook)** | Pending | Backend | P4-03 | After Redis storage |
+| **P4-06** | **Guard State API Endpoint** | Pending | Backend | P4-03 | After Redis storage |
+| **P4-07** | **`AiAgentSettings` Dataclass** | Blocked | Backend | P4-03 | Platform feature, not next |
+| **P4-08** | **`SupportSettings` Dataclass** | Blocked | Backend | P4-03 | Platform feature, not next |
+| **P4-09** | **`CommSettings` Dataclass** | Blocked | Backend | P4-03 | Platform feature, not next |
+| **P4-10** | **`AgencyTier` (Starter/Pro/Enterprise)** | Blocked | Backend | P4-03 | Platform feature, not next |
+| **P4-11** | **Admin UI for Agency Settings** | Blocked | Frontend | P4-03 | Platform feature, not next |
+
+> **P4-07 through P4-11 are explicitly deferred** until Redis storage ships. They need real usage patterns, auth completion, and tenant isolation.
+
+See `Docs/LLM_USAGE_GUARD_AND_AGENCY_CONTROLS_2026-04-26.md` for full details.
 
 ---
 

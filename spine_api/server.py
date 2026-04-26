@@ -57,6 +57,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from spine_api.core.auth import get_current_user, get_current_agency_id, get_current_agency
+from spine_api.models.tenant import User
 from spine_api.core.logging_filter import install_sensitive_data_filter
 from spine_api.core.middleware import AuthMiddleware
 
@@ -246,7 +247,7 @@ app.include_router(
     workspace_router.router,
     dependencies=[Depends(get_current_user)] if not os.environ.get("SPINE_API_DISABLE_AUTH") else [],
 )
-app.include_router(frontier_router.router)
+app.include_router(frontier_router.router, dependencies=[Depends(get_current_user)] if not os.environ.get("SPINE_API_DISABLE_AUTH") else [])
 
 
 def _seed_scenario(agency_id: Optional[str] = None):
@@ -883,7 +884,10 @@ async def list_trips(
 
 
 @app.get("/trips/{trip_id}")
-def get_trip(trip_id: str):
+def get_trip(
+    trip_id: str,
+    user: User = Depends(get_current_user),
+):
     """Get a specific trip by ID."""
     trip = TripStore.get_trip(trip_id)
     if not trip:
@@ -899,7 +903,11 @@ def get_trip(trip_id: str):
 
 
 @app.patch("/trips/{trip_id}")
-def patch_trip(trip_id: str, updates: Dict[str, Any]):
+def patch_trip(
+    trip_id: str,
+    updates: Dict[str, Any],
+    user: User = Depends(get_current_user),
+):
     """Update trip fields (e.g. status)."""
     trip = TripStore.get_trip(trip_id)
     if not trip:
@@ -946,7 +954,13 @@ def patch_trip(trip_id: str, updates: Dict[str, Any]):
 
 
 @app.post("/trips/{trip_id}/assign")
-def assign_trip(trip_id: str, agent_id: str, agent_name: str, assigned_by: str = "system"):
+def assign_trip(
+    trip_id: str,
+    agent_id: str,
+    agent_name: str,
+    assigned_by: str = "system",
+    user: User = Depends(get_current_user),
+):
     """Assign a trip to an agent."""
     trip = TripStore.get_trip(trip_id)
     if not trip:
@@ -961,7 +975,11 @@ def assign_trip(trip_id: str, agent_id: str, agent_name: str, assigned_by: str =
 
 
 @app.post("/trips/{trip_id}/unassign")
-def unassign_trip(trip_id: str, unassigned_by: str = "system"):
+def unassign_trip(
+    trip_id: str,
+    unassigned_by: str = "system",
+    user: User = Depends(get_current_user),
+):
     """Remove assignment from a trip."""
     trip = TripStore.get_trip(trip_id)
     if not trip:
@@ -973,7 +991,11 @@ def unassign_trip(trip_id: str, unassigned_by: str = "system"):
 
 
 @app.post("/trips/{trip_id}/snooze")
-def snooze_trip(trip_id: str, request: SnoozeRequest):
+def snooze_trip(
+    trip_id: str,
+    request: SnoozeRequest,
+    user: User = Depends(get_current_user),
+):
     """Snooze a trip until a specified time."""
     trip = TripStore.get_trip(trip_id)
     if not trip:
@@ -992,7 +1014,11 @@ def snooze_trip(trip_id: str, request: SnoozeRequest):
 
 
 @app.post("/trips/{trip_id}/suitability/acknowledge")
-def acknowledge_suitability_flags(trip_id: str, request: SuitabilityAcknowledgeRequest):
+def acknowledge_suitability_flags(
+    trip_id: str,
+    request: SuitabilityAcknowledgeRequest,
+    user: User = Depends(get_current_user),
+):
     """Acknowledge suitability flags for a trip, allowing it to proceed."""
     trip = TripStore.get_trip(trip_id)
     if not trip:
@@ -1014,7 +1040,10 @@ def acknowledge_suitability_flags(trip_id: str, request: SuitabilityAcknowledgeR
 
 
 @app.get("/assignments")
-def list_assignments(agent_id: Optional[str] = None):
+def list_assignments(
+    agent_id: Optional[str] = None,
+    user: User = Depends(get_current_user),
+):
     """List assignments, optionally filtered by agent."""
     if agent_id:
         assignments = AssignmentStore.get_trips_for_agent(agent_id)
@@ -1026,7 +1055,10 @@ def list_assignments(agent_id: Optional[str] = None):
 
 
 @app.get("/audit")
-def get_audit_events(limit: int = 100):
+def get_audit_events(
+    limit: int = 100,
+    user: User = Depends(get_current_user),
+):
     """Get recent audit events."""
     events = AuditStore.get_events(limit=limit)
     return {"items": events, "total": len(events)}
@@ -1051,7 +1083,10 @@ from src.analytics.metrics import (
 )
 
 @app.get("/analytics/summary", response_model=InsightsSummary)
-def get_analytics_summary(range: str = "30d"):
+def get_analytics_summary(
+    range: str = "30d",
+    user: User = Depends(get_current_user),
+):
     trips = TripStore.list_trips(limit=10000)
     # Ensure consistency with DashboardAggregator by only including trips with IDs
     canonical_trips = [t for t in trips if t.get("id")]

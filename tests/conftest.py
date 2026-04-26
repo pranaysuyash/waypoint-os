@@ -69,3 +69,18 @@ def pytest_configure(config):
         "markers",
         "integration: marks tests that require a live spine_api instance (skip with -m 'not integration')",
     )
+
+
+# ---------------------------------------------------------------------------
+# DATA_PRIVACY_MODE reset fixture
+# Ensures that any test that changes DATA_PRIVACY_MODE is reset afterward.
+# ---------------------------------------------------------------------------
+@pytest.fixture(autouse=True)
+def reset_data_privacy_mode():
+    """Reset DATA_PRIVACY_MODE to dogfood before and after each test."""
+    import os
+
+    original = os.environ.get("DATA_PRIVACY_MODE", "dogfood")
+    os.environ["DATA_PRIVACY_MODE"] = "dogfood"
+    yield
+    os.environ["DATA_PRIVACY_MODE"] = original

@@ -6,10 +6,13 @@ import type { NextRequest } from 'next/server';
  *
  * Page-level navigation guard for protected frontend routes.
  *
- * This is not the authoritative auth boundary. It only checks whether auth
- * cookies are present so unauthenticated users are redirected before protected
- * pages render. JWT validation happens in FastAPI AuthMiddleware through the
- * BFF API routes.
+ * This runs as an edge middleware on every page request (via Next.js
+ * proxy.ts convention). It checks for auth cookies before rendering
+ * so unauthenticated users are redirected server-side.
+ *
+ * NOTE: JWT validation still happens at FastAPI AuthMiddleware.
+ * This is just a server-side redirect to avoid the flash-of-unauthenticated-content
+ * that happens with client-side-only guards like AuthProvider.
  */
 
 const PUBLIC_PAGES = new Set([
@@ -70,7 +73,12 @@ function isSafeRedirect(target: string): boolean {
   return true;
 }
 
-export function proxy(request: NextRequest) {
+/**
+ * The proxy handler — used by the Next.js edge runtime.
+ * Exported as both default and named so callers (including tests)
+ * can import it whichever way is convenient.
+ */
+export default function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const authed = hasAuthCookie(request);
 
@@ -95,8 +103,16 @@ export function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
+// Re-export as named export for unit tests that import { proxy } from "../proxy"
+export { proxy as proxy };
+
+/**
+ * Matcher config — controls which paths run through this proxy.
+ * - Excludes static files so they serve directly without middleware overhead
+ * - All other paths go through proxy (including protected pages)
+ */
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon\\.ico).*)',
+    '/((?!_next/static|_next/image|favicon\.ico).*)',
   ],
 };

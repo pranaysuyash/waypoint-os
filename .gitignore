@@ -69,6 +69,13 @@ data/cities.json
 data/accumulated_cities.json
 data/accumulated_cities.lock
 
+# Ignore node-generated lockfiles (we use uv)
+package-lock.json
+package.json
+
+# Ignore dogfood cookies
+dogfood_cookies.txt
+
 # Data files — runtime caches (decision engine outputs, audit logs)
 data/decision_cache/
 data/audit/

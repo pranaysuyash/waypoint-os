@@ -124,6 +124,16 @@ class AgencyAutonomyPolicy:
 
 
 @dataclass
+class LLMGuardSettings:
+    """LLM usage guard configuration for an agency."""
+    enabled: bool = True
+    max_calls_per_hour: Optional[int] = None
+    daily_budget: Optional[float] = None
+    budget_mode: Literal["warn", "block"] = "warn"
+    budget_warning_thresholds: List[float] = field(default_factory=lambda: [0.5, 0.8, 1.0])
+
+
+@dataclass
 class AgencySettings:
     """Configuration set for an agency."""
     agency_id: str
@@ -152,6 +162,9 @@ class AgencySettings:
     # -- Autonomy --
     autonomy: AgencyAutonomyPolicy = field(default_factory=AgencyAutonomyPolicy)
 
+    # -- LLM Usage Guard --
+    llm_guard: LLMGuardSettings = field(default_factory=LLMGuardSettings)
+
     @classmethod
     def from_dict(cls, data: dict) -> "AgencySettings":
         """Load from dictionary, ignoring unknown keys."""
@@ -161,6 +174,10 @@ class AgencySettings:
         raw_autonomy = data.get("autonomy")
         if isinstance(raw_autonomy, dict):
             filtered["autonomy"] = AgencyAutonomyPolicy.from_legacy_dict(raw_autonomy)
+
+        raw_llm_guard = data.get("llm_guard")
+        if isinstance(raw_llm_guard, dict):
+            filtered["llm_guard"] = LLMGuardSettings(**raw_llm_guard)
 
         return cls(**filtered)
 

@@ -1,8 +1,16 @@
 # Persona-Based Scenario Documentation
 
 **Approach**: User-centered design starting from real stakeholders  
-**Total Scenarios**: 20 real-world situations  
+**Core Mapped Scenarios**: 20 (P1, P2, P3, S1/S2) — mapped to the N01/N02 pipeline  
+**Total Scenario Exploration Files**: 340+ (including additional, frontier, and deep-dive scenarios)  
 **Coverage**: 5 personas, 5 anti-personas
+
+> **Agent Note**: The additional scenario files (ADDITIONAL_SCENARIOS_*.md, numbered 21–329+) are  
+> product explorations, customer research inputs, and future-domain ideas. They are **not** all  
+> mapped to the pipeline or implemented in code. Treat them as research artifacts unless they  
+> have an explicit entry in `SCENARIOS_TO_PIPELINE_MAPPING.md`. Do **not** assume a scenario  
+> described in any additional scenario file is already implemented. Always verify against the  
+> current codebase before building.
 
 ---
 

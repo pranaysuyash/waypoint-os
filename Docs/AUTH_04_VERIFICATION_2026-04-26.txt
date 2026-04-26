@@ -1,0 +1,38 @@
+1. Unauthenticated /workspace: HTTP 307 | Location: http://localhost:3000/login?redirect=%2Fworkspace
+   PASS: redirect to login
+2. Unauthenticated /login: HTTP 200 | Location:
+   PASS: login page accessible
+3. Login POST: rc=0
+   Response: {
+  "ok": true,
+  "user": {
+    "id": "323468de-ba3d-437b-aa10-35b281a0c6a6",
+    "email": "newuser@test.com",
+    "name": "New User"
+  },
+  "agency": {
+    "id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+    "name": "Test",
+    "slug": "test",
+    "logo_url": null
+  },
+  "membership": {
+    "role": "owner",
+    "is_primary": true
+  }
+}
+   PASS: login succeeded
+4. Authenticated /workspace: HTTP 200 | Location:
+   PASS: workspace allowed
+5. Authenticated /login: HTTP 307 | Location: http://localhost:3000/overview
+   PASS: redirect to overview
+6. Authenticated /api/me: HTTP 200 | Location:
+   PASS: me endpoint ok
+7. Logout: HTTP 200 | Location:
+   PASS: logout succeeded
+8. Post-logout /workspace: HTTP 307 | Location: http://localhost:3000/login?redirect=%2Fworkspace
+   PASS: redirect after logout
+
+==================================================
+Results: 8/8 passed
+==================================================

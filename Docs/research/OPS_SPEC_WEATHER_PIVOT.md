@@ -1,52 +1,51 @@
-# Ops Spec: Real-Time Weather-Itinerary-Pivot (OPS-REAL-016)
+# Ops Spec: Hyper-Local Event-Weather-Correlation (OPS-REAL-021)
 
 **Status**: Research/Draft
-**Area**: Itinerary Resilience & Climate Adaptation
+**Area**: Real-Time Operational Resilience & Logistics
 
 ---
 
-## 1. The Problem: "The Rainout"
-Travelers often book outdoor-dependent activities (e.g., helicopter tours, boat trips, hiking) weeks in advance. When the actual weather forecast turns bad (T-48h), the traveler is often left to manually find an alternative, navigate cancellation policies, and re-book their day while already on the trip, leading to stress and lost value.
+## 1. The Problem: "The Regional Weather Fallacy"
+Most travelers rely on city-wide weather forecasts (e.g., "Rain in New York"). However, outdoor events (concerts, stadiums, weddings) often take place in "Micro-Climates" where it may be storming at the venue but clear at the traveler's hotel. Travelers often arrive unprepared or cancel prematurely due to inaccurate, non-localized data.
 
-## 2. The Solution: 'Adaptive-Climate-Logic-Protocol' (ACLP)
+## 2. The Solution: 'Micro-Climate-Event-Safety-Protocol' (MCSP)
 
-The ACLP allows the agent to act as a "Weather-Resilient-Coordinator."
+The MCSP allows the agent to act as a "Hyper-Local-Weather-Arbitrator."
 
-### Pivot Actions:
+### Operational Actions:
 
-1.  **Forecast-Itinerary-Interrogation**:
-    *   **Action**: Continuously cross-referencing the 48-hour forecast with the traveler's scheduled activities.
-2.  **Risk-Threshold-Trigger**:
-    *   **Action**: If the probability of adverse weather (e.g., Rain > 60%, Wind > 30 knots) exceeds the "Activity-Tolerance-Level," the agent triggers a "Pivot-Search."
-3.  **Indoor-Alternative-Sourcing**:
-    *   **Action**: Identifying high-value indoor alternatives (e.g., private museum tours, thermal baths, culinary workshops) that fit the same time-slot and interest-profile.
-4.  **Cancellation-Policy-Audit**:
-    *   **Action**: Autonomously auditing the 'Force-Majeure' or 'Flexible-Cancellation' window for the primary activity to ensure a full refund is possible before re-booking the alternative.
+1.  **Block-Level Precipitation-Monitoring**:
+    *   **Action**: Monitoring "Hyper-Local" radar data (e.g., via DarkSky/Apple Weather APIs) specifically for the coordinates of the *Event-Venue* vs. the *Traveler-Origin*.
+2.  **Automated Gear-Logistics-Trigger**:
+    *   **Action**: If precipitation >20% is predicted specifically at the venue during event hours, the agent autonomously triggers an "Essential-Gear-Delivery" (e.g., "Order 2 high-quality ponchos and an umbrella for delivery to the traveler's hotel 2h before departure").
+3.  **The 'Indoor-Pivot' Recommendation**:
+    *   **Action**: If severe weather (lightning/hail) is predicted, the agent identifies the nearest "Agent-Approved" indoor watch-party location or sports bar that is broadcasting the same event.
+4.  **Transport-Mode-Adjustment**:
+    *   **Action**: Shifting the traveler's transport from "Walking/Public-Transit" to "Private-Vehicle" specifically for the leg arriving at the venue to ensure they stay dry.
 
-## 3. Data Schema: `Weather_Pivot_Event`
+## 3. Data Schema: `Micro_Climate_Pivot_Event`
 
 ```json
 {
-  "event_id": "ACLP-11221",
+  "event_id": "MCSP-11221",
   "traveler_id": "GUID_9911",
-  "primary_activity": "NAPALI_COAST_BOAT_TOUR",
-  "weather_risk": "HIGH_RAIN_WIND",
-  "forecast_source": "OPENWEATHER_API",
-  "alternative_proposed": "KAUAI_MUSEUM_PRIVATE_TOUR",
-  "cancellation_status": "REFUND_CONFIRMED",
-  "itinerary_updated": false,
-  "user_approval_required": true
+  "venue_coordinates": [40.7505, -73.9934],
+  "event_window": ["2026-05-15T19:00:00Z", "2026-05-15T22:00:00Z"],
+  "venue_precip_probability": 0.85,
+  "pivot_action_taken": "PONCHO_DELIVERY_ORDERED",
+  "gear_order_id": "AMZ-991122",
+  "status": "PIVOT_ACTIVE"
 }
 ```
 
 ## 4. Key Logic Rules
 
-- **Rule 1: The 'Tolerance-Matching' Rule**: The agent MUST NOT suggest a pivot if the weather risk is below the traveler's stated preference (e.g., some travelers don't mind light rain for a hike).
-- **Rule 2: The 'Window-Safety' Guardrail**: The agent MUST NOT re-book the alternative until the primary activity's refund is "Contractually-Secure."
-- **Rule 3: One-Tap-Confirmation**: The agent presents the pivot as a single choice: "Heavy rain forecasted for your boat tour. I've found a private museum tour at the same time. Tap to swap and process refund."
+- **Rule 1: The 'Venue-First' Priority**: The agent MUST prioritize the weather at the *Venue-Coordinates* over any other location when making "Go/No-Go" recommendations for the event.
+- **Rule 2: The 'Flash-Flood' Safety-Gate**: If a "Flash-Flood" or "Severe-Thunderstorm" warning is issued for the venue's zip code, the agent MUST suggest a "Mandatory-Pivot" to an indoor location.
+- **Rule 3: Logistics-Lead-Time-Buffer**: Gear deliveries (ponchos/umbrellas) MUST be triggered at least 4 hours before the event to account for local courier delivery windows.
 
-## 5. Success Metrics (Resilience)
+## 5. Success Metrics (Operational)
 
-- **Pivot-Conversion-Rate**: % of weather-related suggestions accepted by the user.
-- **Lost-Value-Avoidance**: Total USD saved by processing cancellations before the no-refund window closes.
-- **Itinerary-Continuity**: Reduction in "Dead-Time" caused by cancelled weather-dependent activities.
+- **Dry-Arrival-Rate**: % of travelers who arrived at an outdoor event "Dry" despite rain at the venue.
+- **Gear-Utilization-Efficiency**: % of agent-ordered gear that was actually used by the traveler.
+- **Pivot-Acceptance-Velocity**: Time from agent's "Indoor-Pivot" suggestion to traveler's confirmation.

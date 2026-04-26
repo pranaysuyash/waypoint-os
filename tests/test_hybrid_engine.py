@@ -403,3 +403,139 @@ class TestDecisionSchemas:
             assert decision_type in HybridDecisionEngine.DEFAULT_DECISIONS
             default = HybridDecisionEngine.DEFAULT_DECISIONS[decision_type]
             assert isinstance(default, dict)
+
+
+class TestLLMUsageGuardIntegration:
+    """Integration tests for LLM usage guard with hybrid engine."""
+
+    def _make_packet(self):
+        """Create a sample CanonicalPacket."""
+        from src.intake.packet_models import CanonicalPacket, Slot
+
+        return CanonicalPacket(
+            packet_id="test-packet",
+            facts={
+                "destination_candidates": Slot(
+                    value=["Paris"],
+                    authority_level="explicit_user",
+                ),
+                "party_composition": Slot(
+                    value={"elderly": 1},
+                    authority_level="explicit_user",
+                ),
+            },
+            derived_signals={
+                "domestic_or_international": Slot(
+                    value="international",
+                    authority_level="derived_signal",
+                ),
+            },
+        )
+
+    def test_guard_allows_call_proceeds_normally(self, mock_storage, monkeypatch):
+        """Allowed LLM call proceeds through hybrid engine."""
+        from src.decision.hybrid_engine import HybridDecisionEngine
+        from src.llm.usage_guard import LLMUsageGuard, reset_usage_guard
+
+        reset_usage_guard()
+        monkeypatch.setenv("LLM_GUARD_ENABLED", "1")
+        monkeypatch.setenv("LLM_MAX_CALLS_PER_HOUR", "100")
+        monkeypatch.setenv("LLM_DAILY_BUDGET", "1000")
+
+        mock_llm = MockLLMClient()
+        mock_llm.set_decision({"risk_level": "high", "reasoning": "LLM decision"})
+
+        engine = HybridDecisionEngine(
+            cache_storage=mock_storage,
+            llm_client=mock_llm,
+            enable_cache=False,
+            enable_rules=False,
+            enable_llm=True,
+        )
+
+        packet = self._make_packet()
+        result = engine.decide("elderly_mobility_risk", packet)
+
+        assert result.source == "llm"
+        assert result.llm_used is True
+        assert result.decision["risk_level"] == "high"
+
+    def test_guard_disabled_allows_llm_without_guard(self, mock_storage, monkeypatch):
+        """Guard disabled via env var allows all LLM calls."""
+        from src.decision.hybrid_engine import HybridDecisionEngine
+        from src.llm.usage_guard import reset_usage_guard
+
+        reset_usage_guard()
+        monkeypatch.setenv("LLM_GUARD_ENABLED", "0")
+        monkeypatch.setenv("LLM_MAX_CALLS_PER_HOUR", "1")
+        monkeypatch.setenv("LLM_DAILY_BUDGET", "0.01")
+
+        mock_llm = MockLLMClient()
+        mock_llm.set_decision({"risk_level": "high"})
+
+        engine = HybridDecisionEngine(
+            cache_storage=mock_storage,
+            llm_client=mock_llm,
+            enable_cache=False,
+            enable_rules=False,
+            enable_llm=True,
+        )
+
+        packet = self._make_packet()
+
+        result = engine.decide("elderly_mobility_risk", packet)
+
+        assert result.source == "llm"
+
+    def test_guard_record_failure_on_llm_exception(self, mock_storage, monkeypatch):
+        """LLM exception is recorded as failed call."""
+        from src.decision.hybrid_engine import HybridDecisionEngine
+        from src.llm.usage_guard import reset_usage_guard
+
+        reset_usage_guard()
+        monkeypatch.setenv("LLM_GUARD_ENABLED", "1")
+        monkeypatch.setenv("LLM_MAX_CALLS_PER_HOUR", "100")
+        monkeypatch.setenv("LLM_DAILY_BUDGET", "1000.0")
+
+        class FailingLLM(MockLLMClient):
+            def decide(self, prompt, schema, temperature=None):
+                raise RuntimeError("LLM provider error")
+
+        mock_llm = FailingLLM()
+
+        engine = HybridDecisionEngine(
+            cache_storage=mock_storage,
+            llm_client=mock_llm,
+            enable_cache=False,
+            enable_rules=False,
+            enable_llm=True,
+        )
+
+        packet = self._make_packet()
+        result = engine.decide("elderly_mobility_risk", packet)
+
+        assert result.source == "default"
+
+    def test_guard_killswitch_stops_enforcement(self, mock_storage, monkeypatch):
+        """LLM_GUARD_ENABLED=0 disables guard enforcement."""
+        from src.decision.hybrid_engine import HybridDecisionEngine
+        from src.llm.usage_guard import reset_usage_guard
+
+        reset_usage_guard()
+        monkeypatch.setenv("LLM_GUARD_ENABLED", "0")
+
+        mock_llm = MockLLMClient()
+        mock_llm.set_decision({"risk_level": "low"})
+
+        engine = HybridDecisionEngine(
+            cache_storage=mock_storage,
+            llm_client=mock_llm,
+            enable_cache=False,
+            enable_rules=False,
+            enable_llm=True,
+        )
+
+        packet = self._make_packet()
+        result = engine.decide("elderly_mobility_risk", packet)
+
+        assert result.source == "llm"

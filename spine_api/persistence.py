@@ -3,6 +3,12 @@ Trip persistence layer for Waypoint OS.
 
 Follows the existing JSON file patterns from /data/fixtures/
 Stores trips, assignments, and audit events in JSON files.
+
+WARNING: TripStore saves plaintext JSON. Real user PII is blocked in
+dogfood mode by the privacy guard. Before beta/launch, configure:
+  - DATA_PRIVACY_MODE=beta or production,
+  - Encryption for TripStore fields, and/or
+  - PostgreSQL migration for trip data.
 """
 
 import json
@@ -72,7 +78,17 @@ class TripStore:
     
     @staticmethod
     def save_trip(trip_data: dict, agency_id: Optional[str] = None) -> str:
-        """Save a trip to disk. Returns trip ID."""
+        """Save a trip to disk. Returns trip ID.
+
+        WARNING: TripStore persists plaintext JSON. Real user PII is blocked
+        in dogfood mode by the privacy guard. Before storing real user data,
+        enable encryption or migrate to PostgreSQL.
+        """
+        # Privacy guard: block real-user PII in dogfood mode
+        from src.security.privacy_guard import check_trip_data
+
+        check_trip_data(trip_data)
+
         trip_id = trip_data.get("id") or f"trip_{uuid4().hex[:12]}"
         trip_data["id"] = trip_id
         trip_data["saved_at"] = datetime.now(timezone.utc).isoformat()
@@ -125,7 +141,17 @@ class TripStore:
     
     @staticmethod
     def update_trip(trip_id: str, updates: dict) -> Optional[dict]:
-        """Update trip fields."""
+        """
+        Update trip fields.
+
+        WARNING: TripStore persists plaintext JSON. Real user PII is blocked
+        in dogfood mode. Before storing real user data, enable encryption
+        or migrate to PostgreSQL.
+        """
+        # Privacy guard: block updates that inject real-user PII
+        from src.security.privacy_guard import check_trip_data
+
+        check_trip_data(updates)
         filepath = TRIPS_DIR / f"{trip_id}.json"
         
         with TripStore._lock:

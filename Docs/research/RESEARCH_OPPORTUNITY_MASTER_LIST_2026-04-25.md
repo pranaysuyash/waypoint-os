@@ -1693,17 +1693,18 @@ Every topic below follows this structure:
 | AD. Travel-Specific Knowledge Domains | 37 | 0 | 26 | 11 |
 | AE. SEO, Content & Pre-Launch Ranking | 147 | 0 | 68 | 79 |
 | AF. Content Topics from Research (A–AD) | 73 | 0 | 0 | 73 |
-| **TOTAL** | **988** | **48** | **523** | **417** |
+| AG. Content Prism (3-Audience Strategy) | 165 | 0 | 0 | 165 |
+| **TOTAL** | **1,153** | **48** | **523** | **582** |
 
 ---
 
 ## Key Insights
 
-**940 research items are open or completely new** (out of 988 total).
+**1,105 research items are open or completely new** (out of 1,153 total).
 
 The existing research (48 items) is deep on **internal product architecture, industry domain theory, and scenario documentation**, but the project has massive gaps across every operational, customer-facing, and market-facing dimension.
 
-**The SEO opportunity is enormous**: Sections AE and AF alone contain **220 content-ready research angles** that can be turned into blog posts, guides, free tools, templates, and programmatic pages — all ranking for travel agent keywords BEFORE product launch. The programmatic SEO angles (AE5) alone could generate **40,000+ pages** from destination×nationality visa content.
+**The SEO + Content Prism opportunity is enormous**: Sections AE, AF, and AG contain **385 content-ready research angles** that can be turned into blog posts, guides, free tools, templates, and programmatic pages — all ranking BEFORE launch. The **Content Prism** (AG) means every single topic generates **3 pieces of content** (traveler + agent + vendor), tripling surface area. The programmatic SEO angles (AE5) alone could generate **40,000+ pages** from destination×nationality visa content. The vendor flywheel (AG3) creates a self-reinforcing loop: vendor content → shared with agencies → agencies discover us.
 
 ### Top 15 Highest-Leverage Research Gaps
 
@@ -1722,3 +1723,1144 @@ The existing research (48 items) is deep on **internal product architecture, ind
 13. **W. Notifications & Automation** — What to automate, what to alert on — core product decisions
 14. **I2. Global Legal Matrix** — Seller-of-travel laws, AI liability, consumer protection — country by country
 15. **X. Reporting & BI** — What metrics agencies need — drives dashboard and analytics features
+
+---
+
+## CROSS-REFERENCE EXPANSION: Topics Covered in Existing Docs But Missing/Under-Represented in Master List
+
+> **Source**: Cross-referencing 400+ docs across `Docs/industry_domain/`, `Docs/product_features/`, `Docs/research/`, `Docs/personas_scenarios/`, and `Docs/` root against sections A–AG above. Each item below is either (a) covered in existing docs but not in the master list, (b) a new adjacent angle inspired by existing docs, or (c) an alternate research framing for something partially covered. Status uses ✅ to mark items that have dedicated doc coverage.
+
+---
+
+## AH. CREATOR & INFLUENCER ECONOMY RESEARCH
+
+> **Source**: 40+ CREATOR_* docs across agency_operations, commercial_models, financial_management, regulatory_compliance, supplier_ecosystem, travel_technology. This entire dimension has deep documentation but was barely mentioned in the master list (only noted in D1 as "Creator/influencer economy").
+
+### AH1. Creator Business Models ✅/🟡
+- ✅ Creator booking commission models and incentive optimization (doc exists)
+- ✅ Creator revenue share and performance tiers (doc exists)
+- ✅ Creator branded subscription products (doc exists)
+- ✅ Creator community membership and exclusive travel clubs (doc exists)
+- ✅ Creator credit and travel financing (doc exists)
+- ✅ Creator dynamic package and surge revenue models (doc exists)
+- ✅ Creator revenue recognition and accounting (doc exists)
+- ❌ **Creator-as-agent regulatory status globally**: When does a creator become a "travel agent" requiring licensing? Varies by jurisdiction
+- ❌ **Creator commission vs agency commission**: How do commission splits work when creators bring bookings to agencies?
+- 🔵 **Creator micro-agency model**: Creators operating as one-person travel agencies — legal, financial, and operational research
+- 🔵 **Creator-agency hybrid entity**: When a popular creator partners with a licensed agency — partnership structures
+
+### AH2. Creator Content & Marketing ✅/🟡
+- ✅ Creator content operations and creative pipelines (doc exists)
+- ✅ Creator content experimentation and A/B testing (doc exists)
+- ✅ Creator content localization and multilingual travel products (doc exists)
+- ✅ Creator travel content topic cluster strategy (doc exists)
+- ✅ Creator travel market keyword and content map (doc exists)
+- ✅ Creator travel SEO and content positioning (doc exists)
+- ✅ Creator co-marketing and destination partner programs (doc exists)
+- ❌ **Creator content-to-booking conversion metrics globally**: What conversion rates do travel creators achieve? By platform, audience size, destination
+- ❌ **Creator content authenticity research**: How travelers detect sponsored vs genuine content — trust erosion patterns
+- 🔵 **AI-generated creator content**: Can AI help creators produce travel content at scale? Quality vs volume tradeoffs
+- 🔵 **Creator content rights and licensing in travel**: Who owns the itinerary a creator designs? IP implications globally
+
+### AH3. Creator Platform & Technology ✅/🟡
+- ✅ Creator travel platform architecture (doc exists)
+- ✅ Creator platform integration APIs and partner SDKs (doc exists)
+- ✅ Creator app gamification and reward mechanics (doc exists)
+- ✅ Creator engagement automation and notification workflows (doc exists)
+- ✅ Creator knowledge graph and traveller matching (doc exists)
+- ✅ Creator attribution and conversion modeling (doc exists)
+- ✅ Creator feed relevance and user intent signaling (doc exists)
+- ❌ **Creator-agency platform handoff**: Technical architecture for when a creator-sourced lead becomes an agency booking
+- ❌ **Creator analytics dashboard requirements**: What metrics do travel creators need? Different from agency metrics
+- 🔵 **Creator-powered recommendation engine**: Using creator taste profiles to match travelers with experiences
+
+### AH4. Creator Governance & Compliance ✅/🟡
+- ✅ Creator community governance and content policy (doc exists)
+- ✅ Creator contracts terms and disclosures (doc exists)
+- ✅ Creator advertising retargeting notice and consumer choice (doc exists)
+- ✅ Creator audience privacy and personalization compliance (doc exists)
+- ✅ Sponsored content disclosure and ad compliance (doc exists)
+- ✅ Influencer brand safety and travel creator governance (doc exists)
+- ❌ **Creator liability for travel recommendations globally**: If a creator recommends a dangerous activity or scam hotel — who's liable by jurisdiction?
+- ❌ **Creator FTC/ASA/ASCI compliance by market**: Disclosure requirements for travel content — US, UK, India, EU, Australia
+- 🔵 **Creator trust scoring**: Algorithmic trust scores for creator recommendations — can this be productized?
+
+### AH5. Creator Supply Chain & Operations ✅/🟡
+- ✅ Creator content production supply chain (doc exists)
+- ✅ Creator group trip logistics and community coordination (doc exists)
+- ✅ Creator high-touch event logistics and VIP servicing (doc exists)
+- ✅ Creator supplier partner onboarding pipelines (doc exists)
+- ✅ Creator supply chain resilience and backup networks (doc exists)
+- ✅ Creator curated destination inventory strategy (doc exists)
+- ✅ Creator driven experiential inventory and dynamic bundling (doc exists)
+- ❌ **Creator FAM trip economics**: How do familiarization trips work for creators vs traditional agents? Cost, ROI, supplier expectations
+- ❌ **Creator-supplier direct relationships**: Do creators bypass agencies to work directly with hotels/DMCs? Market dynamics
+- 🔵 **Creator marketplace for experiences**: Creators designing unique experiences that agencies can sell — platform opportunity
+
+---
+
+## AI_RESEARCH. AI DECISION GOVERNANCE & ETHICS RESEARCH
+
+> **Source**: Docs on AI bias, agentic autonomy, decision governance, moral utility, and ethics exist in agency_operations and regulatory_compliance but are absent from the master list's AI/LLM section.
+
+### AI_R1. AI Ethics in Travel ✅/🟡
+- ✅ AI decision governance and travel agent ethics (doc exists)
+- ✅ AI bias and travel decision fairness (doc exists)
+- ✅ Agentic autonomy and risk ethics (doc exists)
+- ✅ Ethics — moral utility spec (research doc exists)
+- ❌ **AI fairness in destination recommendation**: Does the AI systematically favor certain destinations, hotels, or price ranges? Bias auditing research
+- ❌ **AI transparency for travelers**: Should travelers know when AI was involved in planning their trip? Cross-cultural attitudes
+- ❌ **AI decision explanation research**: How to explain AI recommendations to agents in a way they trust — by experience level
+- ❌ **Algorithmic accountability in travel pricing**: If AI suggests a price, and it's discriminatory — legal exposure by market
+- 🔵 **AI ethics board for travel**: Should the industry have standards for AI in travel? Research on self-regulation models
+- 🔵 **"Right to human" in AI travel**: When travelers/agents have the right to insist on human decision-making — regulatory trends
+
+### AI_R2. AI Autonomy Spectrum ✅/🟡
+- ✅ Autonomy gradient architecture decision (doc exists)
+- ✅ Human-in-the-loop orchestrator spec (doc exists)
+- ✅ HITL delegation protocol spec (doc exists)
+- ❌ **Cultural expectations of AI autonomy**: Japanese users may expect more AI deference; US users may expect more AI agency — research
+- ❌ **AI autonomy by task type**: Which tasks should AI handle alone vs with human approval? By risk level and market
+- ❌ **Agent-AI trust evolution research**: How does agent trust in AI change over time? Learning curve patterns
+- 🔵 **Progressive autonomy model**: AI earns more autonomy as it proves accuracy — gamification of trust-building
+
+---
+
+## AJ. FRONTIER TECHNOLOGY & FUTURE TRAVEL RESEARCH
+
+> **Source**: 47 product feature specs in product_features/ plus frontier research specs. Many of these have deep documentation but weren't reflected as research opportunities.
+
+### AJ1. Spatial & Immersive Technology ✅/🟡
+- ✅ Spatial pre-visualization and 3D walkthrough (feature spec exists)
+- ✅ Digital twin destination ecosystems (doc exists)
+- ✅ Digital twin itinerary assurance (doc exists)
+- ❌ **VR/AR destination preview adoption**: How many agencies/travelers would use virtual previews? By market and demographic
+- ❌ **3D hotel room walkthroughs**: Technical feasibility and impact on booking conversion — research
+- ❌ **Spatial computing for trip planning**: Apple Vision Pro, Meta Quest — will agencies use spatial computing?
+- 🔵 **Holographic travel presentations**: Future of luxury proposal presentation — technology readiness
+- 🔵 **Digital twin cities for trip planning**: Navigate a destination virtually before booking — Tokyo, Paris, Dubai
+
+### AJ2. Biometric & Health Technology ✅/🟡
+- ✅ Biometric wellness and jetlag mitigation (feature spec exists)
+- ✅ Biometric travel authorization and risk scoring (doc exists)
+- ✅ Biometric data cross-border compliance (doc exists)
+- ✅ Predictive health and medical logistics (feature spec exists)
+- ❌ **Biometric boarding adoption research**: IATA One ID, CLEAR, airport biometrics — agency workflow implications
+- ❌ **Wearable integration for travel health**: Smartwatch data → jet lag advice, activity recommendations — feasibility
+- ❌ **Health passport interoperability**: EU DCC, IATA Travel Pass, CommonPass — which survived post-COVID?
+- 🔵 **Genomic-personalized travel**: BIO_SPEC exists — but what's the actual consumer appetite for DNA-based trip recommendations?
+
+### AJ3. Quantum & Cryptographic Research ✅/🟡
+- ✅ Quantum secure diplomatic pouch (feature spec exists)
+- ✅ Post-quantum identity and privacy (feature spec exists)
+- ✅ Quantum safe travel cryptography (doc exists)
+- ✅ Post-quantum GDS encryption and security (doc exists)
+- ❌ **Post-quantum migration timeline for travel**: When do GDS systems need quantum-safe crypto? Industry readiness assessment
+- 🔵 **Quantum computing for route optimization**: Can quantum algorithms solve complex multi-city routing faster?
+
+### AJ4. Space & Extreme Frontier ✅/🟡
+- ✅ Orbital and sub-orbital logistics (feature spec + multiple docs)
+- ✅ Orbital hospitality and space station logistics (doc exists)
+- ✅ Space debris and launch scrub insurance (doc exists)
+- ✅ Extreme environment risk modeling (feature spec exists)
+- ✅ Antarctic and extreme expedition logistics (doc exists)
+- ✅ Sub-aquatic habitat and undersea logistics (doc exists)
+- ❌ **Space tourism market sizing**: SpaceX, Blue Origin, Virgin Galactic, Axiom — realistic agency opportunity in 5-year horizon
+- ❌ **Extreme tourism insurance products**: What coverage exists for space, deep sea, polar expeditions?
+- 🔵 **Agency role in space tourism**: Will agencies sell space trips or will it remain direct-to-consumer?
+
+### AJ5. Autonomous & Robotic Systems ✅/🟡
+- ✅ Autonomous ground robotics and last-mile service (doc exists)
+- ✅ Autonomous passenger flow management (doc exists)
+- ✅ Drone cargo corridors and urban aerial logistics (doc exists)
+- ✅ Smart mobility and micromobility integration (doc exists)
+- ❌ **Autonomous vehicle impact on ground transfers**: When self-driving taxis arrive — how does it change airport transfer booking?
+- ❌ **Robot concierge services**: Hotels deploying robots — impact on agency service expectations
+- 🔵 **eVTOL (air taxi) integration for travel**: Joby, Lilium, Volocopter — when do agencies need to book air taxis?
+
+### AJ6. Blockchain & Decentralized Travel ✅/🟡
+- ✅ Cryptocurrency settlements and tokenized travel assets (doc exists)
+- ✅ Distributed ledger baggage custody (doc exists)
+- ✅ Loyalty tokenization and experience currencies (doc exists)
+- ✅ Destination DAO ecosystems (doc exists)
+- ✅ Decentralized travel community markets (doc exists)
+- ✅ Travel CBDC settlements and cross-border liquidity (doc exists)
+- ❌ **Blockchain in travel adoption status**: After the hype — what's actually being used in production? By use case
+- ❌ **NFT travel passes and memberships**: Did any survive? What worked, what didn't?
+- 🔵 **Tokenized travel experiences**: Fractional ownership of travel experiences — real market or hype?
+
+---
+
+## AK. ADVANCED FINANCIAL OPERATIONS RESEARCH
+
+> **Source**: 21 docs in financial_management, 34 in commercial_models, plus 20+ FIN_SPEC research docs. Much deeper coverage than the master list's F section reflects.
+
+### AK1. Settlement & Reconciliation ✅/🟡
+- ✅ BSP and IATA settlement architecture (doc exists)
+- ✅ Settlement and cashflow management (doc exists)
+- ✅ Real-time payment settlement for travel (doc exists)
+- ✅ FIN_SPEC reconciliation loop (research doc exists)
+- ✅ FIN_SPEC settlement bridge (research doc exists)
+- ❌ **Settlement timing research by market**: How long does money take to flow from traveler → agency → supplier? By market and payment method
+- ❌ **Reconciliation automation readiness**: What percentage of agency reconciliation can be automated today? By supplier type
+- ❌ **Cash flow gap analysis**: The timing mismatch between agency paying suppliers and collecting from clients — by market
+- 🔵 **Real-time settlement impact on agencies**: If payments settled instantly — how would it change agency cash flow management?
+
+### AK2. Advanced Pricing & Revenue ✅/🟡
+- ✅ Financial hedging and currency risk (doc exists)
+- ✅ Hyper-inflationary markets and crisis arbitrage (doc exists)
+- ✅ Game theory of overbooking and vouchers (doc exists)
+- ✅ Loyalty arbitrage and status management (doc exists)
+- ✅ FIN_SPEC airfare re-shop (research doc exists)
+- ✅ FIN_SPEC dynamic service fees (research doc exists)
+- ✅ FIN_SPEC loyalty arbitrage (research doc exists)
+- ❌ **Airfare re-shopping economics**: How much money can agencies save clients by monitoring fare changes post-booking? Quantified globally
+- ❌ **Dynamic service fee acceptance by market**: Will agencies accept per-transaction fees? Cultural attitudes toward usage-based pricing
+- ❌ **Overbooking game theory in practice**: How do airlines, hotels actually manage overbooking? Agency impact research
+- 🔵 **AI-powered margin optimization**: Real-time margin adjustment based on client willingness-to-pay signals
+
+### AK3. Fraud, Compliance & Risk ✅/🟡
+- ✅ Chargeback protection and fraud (doc exists)
+- ✅ FIN_SPEC chargeback defense (research doc exists)
+- ✅ FIN_SPEC fraud throttling (research doc exists)
+- ✅ FIN_SPEC transaction audit (research doc exists)
+- ✅ FIN_SPEC insurance claims (research doc exists)
+- ✅ FIN_SPEC tax compliance (research doc exists)
+- ✅ FIN_SPEC VAT automation (research doc exists)
+- ❌ **Chargeback rates in travel by market**: What's normal? How do agencies compare to OTAs? Industry benchmarks
+- ❌ **Travel fraud typology (global)**: Categorize all fraud types: identity, supplier, agent, client, payment, booking — frequency by market
+- ❌ **AML/KYC requirements for travel agencies**: Anti-money laundering compliance for agencies handling large transactions
+- 🔵 **AI fraud detection in travel**: Using AI to detect anomalous booking patterns — research on detection accuracy
+
+### AK4. Creator & Platform Finance ✅
+- ✅ Creator commerce payouts and cross-border settlements (doc exists)
+- ✅ Creator earnings forecasting and cashflow (doc exists)
+- ✅ Creator escrow and financial risk sharing (doc exists)
+- ✅ Creator experience cost allocation and margin analytics (doc exists)
+- ✅ Creator payment risk fraud monitoring and compliance (doc exists)
+- ✅ Creator platform merchant of record and payment risk allocation (doc exists)
+- ✅ Creator promotion financial modeling and coupon strategy (doc exists)
+- ✅ Creator travel finance contingency and insurance funds (doc exists)
+- ❌ **Merchant-of-record models in travel**: Who is the merchant for a creator-sold trip? Legal and financial implications globally
+- 🔵 **Creator financial sustainability**: What percentage of travel creators make a living? Income distribution research
+
+---
+
+## AL. SPECIALIZED LOGISTICS & NICHE VERTICALS (EXPANDED)
+
+> **Source**: 47 docs in specialized_logistics covering niches not adequately reflected in the master list's D3 section.
+
+### AL1. High-Protocol & Diplomatic Travel ✅
+- ✅ Diplomatic and government travel (doc exists)
+- ✅ High protocol and diplomatic hospitality (doc exists)
+- ✅ Identity fragmentation and counter-surveillance (doc exists)
+- ✅ The void — extreme anonymity and ghost travel (doc exists)
+- ❌ **Diplomatic travel market sizing**: How large is the government/diplomatic travel segment? Budget allocation by country
+- ❌ **Security clearance and vetting requirements**: What agencies need to handle classified travel — certification requirements
+- 🔵 **Privacy-first travel as a product**: Growing demand for "untraceable" travel among HNWIs — market opportunity
+
+### AL2. Humanitarian & Crisis Logistics ✅
+- ✅ Humanitarian and NGO field logistics (doc exists)
+- ✅ Climate displacement and humanitarian evacuation logistics (doc exists)
+- ✅ Repatriation and evacuation logistics (doc exists)
+- ✅ Human remains repatriation and funeral logistics (doc exists)
+- ❌ **NGO travel management market**: How do UN, Red Cross, MSF manage travel? What tools exist? Market opportunity
+- ❌ **Evacuation insurance and assistance market**: International SOS, Global Rescue, Crisis24 — market dynamics
+- 🔵 **Climate refugee travel logistics**: Growing humanitarian need — can agencies serve this emerging segment?
+
+### AL3. Film, Production & Event Logistics ✅
+- ✅ Film and production travel (doc exists)
+- ✅ Professional sports transfer logistics (doc exists)
+- ✅ Sports team and athlete logistics (agency_operations doc)
+- ✅ Luxury train operations (doc exists)
+- ✅ Charter and private aviation + charter brokerage (docs exist)
+- ❌ **Film production travel market sizing**: Bollywood, Hollywood, Nollywood, K-drama — production travel spend by market
+- ❌ **Esports team travel logistics**: Growing segment — tournament circuits, team travel management
+- ❌ **Music tour logistics**: Band/artist touring — complex multi-city, multi-country logistics with equipment
+- 🔵 **Virtual production location scouting**: Using digital twins for remote location scouting — reducing pre-production travel
+
+### AL4. Marine, Yacht & Offshore ✅
+- ✅ Superyacht and private island logistics (doc exists)
+- ✅ Marine and offshore logistics (doc exists)
+- ✅ Cruise line operations and GDS (doc exists)
+- ❌ **Superyacht charter agency market**: How do yacht charters work through agencies? Commission structures globally
+- ❌ **Private island rental logistics**: Emerging luxury segment — supplier access and booking mechanics
+- 🔵 **Floating hotel and cruise-residential concepts**: The World, Storylines — hybrid living/travel for agencies
+
+### AL5. Scientific & Research Logistics ✅
+- ✅ Scientific exploration and sensitive samples (doc exists)
+- ✅ Academic and research logistics (doc exists)
+- ✅ Biosecurity and inspection logistics (doc exists)
+- ❌ **Research expedition travel market**: Antarctic research stations, deep-sea expeditions, space analog missions — travel logistics
+- ❌ **Hazardous materials and specimen transport**: Agencies handling travel with biological/chemical samples — regulations by country
+- 🔵 **Citizen science travel**: Growing trend of paying tourists participating in research expeditions — agency opportunity
+
+### AL6. Wine, Gastronomy & Culinary Logistics ✅
+- ✅ Wine and gastronomy travel (doc exists)
+- ❌ **Wine tourism market by region**: Napa, Bordeaux, Tuscany, Mendoza, Barossa, Douro — agency opportunity sizing
+- ❌ **Michelin and food guide integration**: Can agencies book Michelin restaurants? API access and logistics
+- ❌ **Culinary trail design**: Creating multi-stop food journeys — supplier coordination research
+- 🔵 **Alcohol and customs regulations for wine tourists**: Bringing wine home — duty-free limits, shipping regulations by country
+
+---
+
+## AM. ADVANCED REGULATORY & COMPLIANCE RESEARCH
+
+> **Source**: 64 docs in regulatory_compliance including region-specific regulatory playbooks. Master list section I covered basics but missed the depth.
+
+### AM1. Region-Specific Regulatory Playbooks ✅
+- ✅ Creator travel regulatory playbook — US (doc exists)
+- ✅ Creator travel regulatory playbook — EU/Schengen (doc exists)
+- ✅ Creator travel regulatory playbook — India (doc exists)
+- ✅ Creator travel regulatory playbook — GCC (doc exists)
+- ✅ Creator travel regulatory playbook — China (doc exists)
+- ✅ Creator travel regulatory playbook — Japan/Korea (doc exists)
+- ✅ Creator travel regulatory playbook — Southeast Asia (doc exists)
+- ✅ Creator travel regulatory playbook — Latin America (doc exists)
+- ✅ Creator travel regulatory playbook — Africa (doc exists)
+- ✅ Creator travel regulatory playbook — Australia/Oceania (doc exists)
+- ❌ **Regulatory playbook gap analysis**: What's missing from each regional playbook? Cross-referencing against actual laws
+- ❌ **Regulatory change monitoring**: How to track regulatory changes across 50+ jurisdictions — tooling and process research
+- 🔵 **Regulatory API / database**: Can we build a structured, queryable regulatory database covering travel laws globally?
+
+### AM2. Data Sovereignty & Privacy Advanced ✅/🟡
+- ✅ Cross-border data sovereignty in travel (doc exists)
+- ✅ Travel data mesh and privacy sandboxes (doc exists)
+- ✅ Self-sovereign identity and travel privacy (doc exists)
+- ✅ Passwordless travel identity and credentials (doc exists)
+- ✅ Travel data integument and privacy-preserving compute (doc exists)
+- ❌ **Data localization implementation cost**: What does it actually cost to comply with data residency laws in 10+ markets?
+- ❌ **Privacy-preserving personalization**: How to personalize travel recommendations without storing PII — technical approaches
+- 🔵 **Zero-knowledge proofs for travel**: Prove you're over 18 / have a valid visa without revealing passport data — feasibility
+
+### AM3. Advertising, Disclosure & Marketing Compliance ✅
+- ✅ Advertising and marketing ethics (doc exists)
+- ✅ Communication compliance and consent (doc exists)
+- ✅ Sponsored content disclosure and ad compliance (doc exists)
+- ❌ **Travel advertising regulations by market**: What claims can agencies make? "Best price guarantee," "exclusive," "all-inclusive" — legal definitions vary
+- ❌ **Email marketing compliance globally**: GDPR consent (EU), CAN-SPAM (US), CASL (Canada), PDPA (Singapore) — for travel agencies
+- 🔵 **AI-generated marketing compliance**: If AI writes travel marketing copy — who's responsible for accuracy of claims?
+
+### AM4. Child & Vulnerable Traveler Protections ✅/🟡
+- ✅ Creator child and vulnerable traveler protections (doc exists)
+- ❌ **Unaccompanied minor travel regulations globally**: Airline policies, border requirements, agency liability — comprehensive research
+- ❌ **Safeguarding requirements for group travel**: School trips, youth tours, family-separated travel — duty of care by market
+- ❌ **Elder travel protections**: Cognitive decline, power of attorney, medical emergencies — legal framework by market
+- 🔵 **AI safeguarding in travel recommendations**: Ensuring AI doesn't recommend unsafe options for vulnerable travelers
+
+### AM5. Sustainability Certification & ESG ✅
+- ✅ Sustainability and carbon offsetting (doc exists)
+- ✅ Sustainable travel and ESG compliance (doc exists)
+- ✅ Circular travel economies and regenerative destinations (doc exists)
+- ✅ Regenerative travel and ethical insetting (doc exists)
+- ✅ Environmental social governance travel finance (doc exists)
+- ✅ Travel carbon finance and offset markets (doc exists)
+- ✅ Travel lifecycle carbon accounting and tokenization (doc exists)
+- ❌ **ESG reporting requirements for travel companies**: EU CSRD, SEC climate disclosure — when do agencies need to report?
+- ❌ **Carbon offset market integrity**: Which offset providers are legitimate? Verification research
+- 🔵 **Travel's scope 3 emissions**: How to calculate and report emissions from bookings facilitated — methodology research
+
+---
+
+## AN. EMOTIONAL, BEHAVIORAL & EXPERIENTIAL DESIGN RESEARCH
+
+> **Source**: Product feature specs on emotional/anxiety mitigation, dopamine cycles, behavioral economics, semantic taste graph, and legacy visioning — topics not well-represented in the master list.
+
+### AN1. Emotional Design in Travel ✅/🟡
+- ✅ Emotional anxiety mitigation engine (feature spec exists)
+- ✅ Dopamine cycle and behavioral economics (agency_operations doc)
+- ✅ Ethical sensitivity advisory engine (feature spec exists)
+- ✅ Legacy milestone visioning engine (feature spec exists)
+- ❌ **Pre-trip anxiety patterns by traveler type**: First-timers, elderly, solo female, families — different anxiety triggers
+- ❌ **Emotional journey mapping for travel**: From excitement → anxiety → delight → nostalgia — design opportunities at each stage
+- ❌ **Cultural sensitivity scoring for destinations**: AI-powered advisory on cultural norms — research on accuracy and usefulness
+- 🔵 **Grief travel and memorial trips**: Scattering ashes, visiting significant places after loss — sensitive but real segment
+- 🔵 **Nostalgia-driven travel**: Returning to childhood vacation spots, recreating parents' honeymoon — behavioral research
+
+### AN2. Taste, Preference & Personalization ✅/🟡
+- ✅ Semantic taste graph discovery (feature spec exists)
+- ✅ Profile hyper-personalization sync (feature spec exists)
+- ✅ Hyper-personalized dynamic content engine (feature spec exists)
+- ❌ **Preference elicitation UX research**: How to capture traveler preferences without a 50-question form — conversational approaches
+- ❌ **Implicit preference detection**: Inferring preferences from past bookings, social media, browsing — accuracy and privacy
+- ❌ **Taste graph portability**: Can traveler preference profiles move between agencies? Industry-level standardization research
+- 🔵 **Aesthetic preference matching**: "I like minimalist Scandinavian design" → matching hotels/restaurants — visual AI research
+
+### AN3. Post-Trip Psychology & Retention ✅/🟡
+- ✅ Post-trip afterglow and retention loops (feature spec exists)
+- ✅ Post-trip feedback and loyalty (agency_operations doc)
+- ✅ Post-trip analytics and reporting (agency_operations doc)
+- ❌ **Post-trip depression research**: The "vacation blues" — can agencies help with post-trip engagement?
+- ❌ **Memory curation as a service**: Auto-generating trip photo albums, highlight reels, memory books — market research
+- ❌ **Trip anniversary engagement**: Automated "one year ago" messages — effectiveness research
+- 🔵 **Experiential memory science**: How to design trips that create lasting memories — applying psychology research
+
+---
+
+## AO. AGENTIC AI INFRASTRUCTURE RESEARCH
+
+> **Source**: 15+ FLW_SPEC, EVOLUTION_SPEC, and research track docs on multi-agent systems, self-correction, memory consolidation — topics beyond the master list's C3 AI section.
+
+### AO1. Multi-Agent Orchestration ✅/🟡
+- ✅ Multi-agent spec (research doc exists)
+- ✅ AI agent team orchestrator (feature spec exists)
+- ✅ Task routing spec (research doc exists)
+- ✅ Delegation protocol spec (research doc exists)
+- ❌ **Multi-agent coordination in travel operations**: How multiple AI agents (booking, pricing, communication, quality) work together — architectural patterns
+- ❌ **Agent specialization vs generalization**: Should we build one AI or many specialized AIs? Research on optimal architecture
+- 🔵 **Inter-agency AI collaboration**: AI agents from different agencies cooperating on shared bookings — protocol research
+
+### AO2. Self-Evolving & Learning Systems ✅/🟡
+- ✅ Self-correction spec (research doc exists)
+- ✅ Feedback learning spec (research doc exists)
+- ✅ Memory consolidation spec (research doc exists)
+- ✅ Policy refinement spec (research doc exists)
+- ✅ Inference optimization spec (research doc exists)
+- ✅ Synthetic scenarios spec (research doc exists)
+- ❌ **AI learning from agent corrections**: When agents override AI recommendations — how to learn from corrections systematically
+- ❌ **Synthetic scenario generation for training**: Using AI to generate training scenarios — quality and coverage research
+- ❌ **Catastrophic forgetting prevention**: How to prevent AI from losing earlier learnings as it adapts — technical research
+- 🔵 **Agency-specific AI adaptation**: Each agency's AI becomes specialized to their niche over time — personalization research
+
+### AO3. Human-AI Collaboration Patterns ✅/🟡
+- ✅ HITL orchestrator spec (research doc exists)
+- ✅ Human augmentation spec (research doc exists)
+- ❌ **AI confidence calibration**: How to display AI confidence levels to agents — UX research on trust and adoption
+- ❌ **Agent override patterns**: When do agents override AI? Frequency, reasons, accuracy of overrides — quantified research
+- ❌ **AI handoff protocols**: When AI can't handle something — how to hand off to human gracefully
+- 🔵 **AI as training wheels**: AI guides junior agents, then gradually reduces assistance as they learn — adaptive scaffolding
+
+---
+
+## AP. OPERATIONAL CONTINUITY & RESILIENCE RESEARCH
+
+> **Source**: DR_SPEC docs, crisis specs, operational continuity research tracks, and operational logic specs on bankruptcy, temporal drift, supplier dark patterns — not well-captured in the master list.
+
+### AP1. Disaster Recovery & Business Continuity ✅/🟡
+- ✅ Graceful degradation spec (research doc exists)
+- ✅ Legacy fallback spec (research doc exists)
+- ✅ System shadowing spec (research doc exists)
+- ✅ Business continuity and GDS outage protocols (agency_operations doc)
+- ❌ **GDS outage impact research**: How often do GDS systems go down? Impact on agencies globally — historical data
+- ❌ **Agency business continuity planning**: Do agencies have BCP? What should be included? By market
+- ❌ **Offline booking procedures**: When everything goes down — how do agencies book manually? Document current practices
+- 🔵 **Resilience scoring for agencies**: Rate an agency's ability to survive disruptions — as a product feature
+
+### AP2. Supplier & Market Disruption ✅/🟡
+- ✅ Operational logic spec — bankruptcy (research doc)
+- ✅ Operational logic spec — supplier dark patterns (research doc)
+- ✅ Operational logic spec — geopolitical resilience (research doc)
+- ✅ Operational logic spec — temporal drift (research doc)
+- ✅ Supply chain integrity research track (doc exists)
+- ✅ Global resilience and supply chain risk orchestration (doc exists)
+- ❌ **Airline bankruptcy playbook**: Thomas Cook, Flybe, Jet Airways — what happened to agencies when airlines collapsed? Lessons
+- ❌ **Supplier dark patterns taxonomy**: Bait-and-switch, hidden fees, phantom availability, quality downgrade — documentation
+- ❌ **Geopolitical disruption scenarios**: Ukraine, Taiwan, Middle East conflicts — impact on travel corridors and agency operations
+- 🔵 **Early warning system for supplier failures**: Financial health monitoring of key suppliers — can we detect bankruptcies early?
+
+---
+
+## AQ. COMMUNICATION & SENTIMENT RESEARCH
+
+> **Source**: COMM_SPEC docs on mass notification, sentiment recovery, stakeholder escalation — plus omnichannel docs. Goes deeper than section C2 of the master list.
+
+### AQ1. Advanced Communication Patterns ✅/🟡
+- ✅ Mass notification spec (research doc exists)
+- ✅ Sentiment recovery spec (research doc exists)
+- ✅ Stakeholder escalation spec (research doc exists)
+- ✅ Omnichannel communication protocols (agency_operations doc)
+- ✅ Omnichannel message stitching (feature spec exists)
+- ❌ **Sentiment detection in travel communications**: Can AI detect when a client is frustrated, anxious, or delighted from messages? Accuracy by language
+- ❌ **Crisis communication templates by scenario**: Mass flight cancellation, hotel overbooking, natural disaster — pre-written templates by market
+- ❌ **Communication style matching**: Formal vs casual, verbose vs brief — should AI adapt communication style to the client?
+- 🔵 **Emotional tone analysis for agency health**: Aggregate sentiment across all client communications — agency-level health metric
+
+### AQ2. Language & Translation ✅/🟡
+- ✅ Language bridge spec (research doc exists)
+- ✅ NLP intent nuance spec (research doc exists)
+- ❌ **Real-time translation quality in travel context**: Google Translate, DeepL, GPT — accuracy for travel-specific vocabulary by language pair
+- ❌ **Code-switching handling**: "Mujhe ek flight chahiye Delhi to London, cheapest wala" — mixed-language intent extraction research
+- ❌ **Travel jargon dictionary by language**: PNR, PAX, FIT, GIT, SIT — travel jargon that doesn't translate directly
+- 🔵 **Voice-to-booking pipeline**: Agent speaks → AI transcribes → extracts intent → creates booking — end-to-end research
+
+---
+
+## AR_RESEARCH. SUPPLY CHAIN INTELLIGENCE RESEARCH
+
+> **Source**: SUPPLY_SPEC docs on clawback logic, predatory detection, vendor reliability — plus supplier ecosystem docs on ghost economy, programmatic supply pathing. Deeper than Q section.
+
+### AR_R1. Supply Chain Integrity ✅/🟡
+- ✅ Vendor reliability spec (research doc + ops doc)
+- ✅ Predatory detection spec (research doc exists)
+- ✅ Clawback logic spec (research doc exists)
+- ✅ Supply chain audits and quality control (doc exists)
+- ✅ Programmatic supply pathing and resilience (doc exists)
+- ❌ **Supplier reliability scoring methodology**: How to objectively score suppliers on reliability, quality, responsiveness — by category
+- ❌ **Predatory pricing detection in travel**: How to detect when suppliers are engaging in predatory pricing or bait-and-switch
+- ❌ **Commission clawback scenarios globally**: When can suppliers claw back commissions? Terms and triggers by market
+- 🔵 **Supplier financial health API**: Real-time financial health data on suppliers — prevent booking with soon-to-fail companies
+
+### AR_R2. Ghost Economy & Dark Inventory ✅
+- ✅ The ghost economy — slots and dark hotels (supplier_ecosystem doc)
+- ✅ Dark inventory and ghost economy access (feature spec exists)
+- ❌ **Grey market inventory research**: Last-minute distressed inventory, opaque pricing, mystery hotels — how agencies access and use
+- ❌ **Confidential rate programs by hotel chain**: Unpublished rates, agent-only rates, tour operator rates — access requirements
+- 🔵 **Dark inventory marketplace**: Connecting agencies to distressed inventory — platform opportunity research
+
+---
+
+## AS. IDENTITY, DOCUMENTATION & BORDER TECHNOLOGY
+
+> **Source**: ID_SPEC, REG_SPEC docs on identity vault, identity recovery, dual passport, visa automation, visa watchdogs — more granular than section Q5.
+
+### AS1. Advanced Identity & Documentation ✅/🟡
+- ✅ Identity vault spec (research doc exists)
+- ✅ Identity recovery spec (research doc exists)
+- ✅ Dual passport spec (research doc exists)
+- ✅ Visa automation spec (research doc exists)
+- ✅ Visa expiry watchdog spec (research doc exists)
+- ✅ Visa overstay monitor spec (research doc exists)
+- ✅ Health passport spec (research doc exists)
+- ✅ Medical prescription bridge spec (research doc exists)
+- ✅ Customs and border clearance automation (doc exists)
+- ✅ Real-time border automation (doc exists)
+- ❌ **Digital travel credential (DTC) adoption timeline**: When will digital passports replace physical ones? By country
+- ❌ **Dual-nationality travel complexity**: Travelers with 2+ passports — which to use when? Decision logic research
+- ❌ **Automated visa application filling**: Can AI auto-fill visa applications from traveler profiles? Accuracy and legal implications
+- 🔵 **Predictive visa processing time**: AI-estimated visa approval timelines based on historical data — by embassy and nationality
+
+---
+
+## AT. CONCIERGE & MICRO-SERVICES RESEARCH
+
+> **Source**: 10 CON_SPEC docs on cultural nuance, expert curation, negotiation, language bridge, medical support, social norms, wellness — plus ghost concierge feature specs.
+
+### AT1. Concierge Service Architecture ✅/🟡
+- ✅ Ghost concierge autonomic engine (feature spec exists)
+- ✅ Proactive ghost concierge micro-workflows (feature spec exists)
+- ✅ Intelligent concierge interface (feature spec exists)
+- ✅ Cultural nuance spec (research doc exists)
+- ✅ Expert curation spec (research doc exists)
+- ✅ Expert negotiation spec (research doc exists)
+- ✅ Local expert sourcing spec (research doc exists)
+- ✅ Social norm guardian spec (research doc exists)
+- ✅ Wellness sync spec (research doc exists)
+- ❌ **Concierge service market sizing**: What do travelers pay for concierge services? By trip type and market
+- ❌ **AI concierge vs human concierge preference**: When do travelers prefer AI vs human? Scenario and culture-dependent
+- ❌ **Proactive micro-service catalog**: What micro-services can agencies offer during trips? (Restaurant changes, weather pivots, birthday surprises)
+- 🔵 **Autonomous trip adjustment**: AI detects rain → rearranges outdoor activities → notifies hotel/guide — full autonomy research
+
+---
+
+## AU. OPERATIONAL LOGIC & EDGE CASE SPECIFICATIONS
+
+> **Source**: 11 OPERATIONAL_LOGIC_SPEC docs covering adversarial integrity, emotional triage, fractional sponsorship, handoff protocols, multi-party coordination, sustainability operations — many with research angles not in the master list.
+
+### AU1. Multi-Party & Complex Operations ✅/🟡
+- ✅ Multi-party coordination spec (research doc exists)
+- ✅ Handoff protocol spec (research doc exists)
+- ✅ Fractional sponsorship spec (research doc exists)
+- ❌ **Multi-party payment splitting research**: When 5 travelers split a group trip but each pays different amounts — UX and financial research
+- ❌ **Corporate sponsor + personal expense separation**: Bleisure travel — how to split corporate-funded vs personal expenses
+- ❌ **Inter-generational trip coordination**: Grandparents + parents + children — decision-making dynamics and financial arrangements
+- 🔵 **Crowdfunded group trips**: GoFundMe-style trip funding — emerging trend for milestone celebrations
+
+### AU2. Adversarial & Integrity Operations ✅/🟡
+- ✅ Adversarial integrity spec (research doc exists)
+- ✅ Adversarial trip audit engine (feature spec exists)
+- ❌ **Trip audit checklist by trip type**: What should be checked before sending a proposal? Safety, accuracy, pricing, logistics
+- ❌ **AI vs human error rates in trip planning**: How often does AI make mistakes vs experienced agents? By error type
+- 🔵 **Red-team travel planning**: Adversarial testing of itineraries — find every way a trip could go wrong
+
+---
+
+## AV. ADDITIONAL CONTENT PRISM TOPICS (FROM EXISTING DOCS)
+
+> **Source**: Topics from existing docs that should be added to the AG Content Prism framework for three-audience content generation.
+
+#### CREATOR/INFLUENCER TRAVEL
+- 🟢 **Traveler**: "How to Book Through Your Favorite Travel Creator: What to Expect"
+- 🔷 **Agent**: "How to Partner with Travel Influencers to Grow Your Agency"
+- 🟠 **Vendor (Hotel/DMC)**: "How to Work with Travel Creators: Rates, Content Rights, and ROI Measurement"
+
+#### DIPLOMATIC & HIGH-SECURITY TRAVEL
+- 🟢 **Traveler**: "Traveling to High-Risk Destinations: Safety Checklist and Insurance Guide"
+- 🔷 **Agent**: "High-Protocol Travel: How to Serve Diplomatic and Government Clients"
+- 🟠 **Vendor (Security Company)**: "How to Build Travel Agency Partnerships for Executive Protection Services"
+
+#### SPACE & FRONTIER TRAVEL
+- 🟢 **Traveler**: "Space Tourism: What It Costs, Who's Going, and How to Book"
+- 🔷 **Agent**: "The Future of Travel: How to Prepare Your Agency for Space, Submarine, and Extreme Tourism"
+- 🟠 **Vendor (Space Company)**: "How Travel Agencies Can Become Distribution Partners for Space Tourism"
+
+#### FILM & PRODUCTION TRAVEL
+- 🟢 **Traveler**: "Visit Real Film Locations: Where Your Favorite Movies Were Shot"
+- 🔷 **Agent**: "Film Production Travel: How to Win and Manage Production Company Accounts"
+- 🟠 **Vendor (Location/Hotel)**: "How to Market Your Property as a Film-Friendly Destination to Production Agencies"
+
+#### PET TRAVEL
+- 🟢 **Traveler**: "Complete Guide to Traveling with Pets: Airlines, Hotels, and Country Requirements"
+- 🔷 **Agent**: "Pet Travel Logistics: Airline Policies, Quarantine Rules, and Documentation by Country"
+- 🟠 **Vendor (Pet-Friendly Hotel)**: "How to Market Pet-Friendly Amenities to Travel Agencies for Higher Bookings"
+
+#### HUMANITARIAN & VOLUNTEER TRAVEL
+- 🟢 **Traveler**: "Ethical Volunteering Abroad: How to Choose Programs That Actually Help"
+- 🔷 **Agent**: "Humanitarian Travel Coordination: Working with NGOs, Insurance, and Duty of Care"
+- 🟠 **Vendor (NGO/Program)**: "How to Partner with Travel Agencies to Fill Volunteer Program Placements"
+
+#### CRYPTOCURRENCY & ALTERNATIVE PAYMENTS
+- 🟢 **Traveler**: "Can You Pay for Travel with Crypto? Where and How in [Year]"
+- 🔷 **Agent**: "Alternative Payments in Travel: Crypto, BNPL, and Virtual Cards — What to Accept"
+- 🟠 **Vendor (Payment Provider)**: "How to Enable Crypto and Alternative Payments for Travel Agency Partners"
+
+#### WINE & GASTRONOMY TRAVEL
+- 🟢 **Traveler**: "Best Wine Regions in the World: A Traveler's Guide to Wine Country"
+- 🔷 **Agent**: "Building Wine and Culinary Travel Packages: Suppliers, Margins, and Client Profiles"
+- 🟠 **Vendor (Winery/Restaurant)**: "How to Create Bookable Wine Experiences That Travel Agencies Can Sell"
+
+#### ESPORTS & GAMING TRAVEL
+- 🟢 **Traveler**: "Guide to Traveling for Esports Tournaments: Visa, Venue, and Team Logistics"
+- 🔷 **Agent**: "Esports Travel: An Emerging Niche for Tech-Savvy Agencies"
+- 🟠 **Vendor (Venue/Hotel)**: "How to Attract Esports Teams and Gaming Conventions to Your Property"
+
+#### GENEALOGY & HERITAGE TRAVEL
+- 🟢 **Traveler**: "Tracing Your Roots: How DNA Tests Are Driving Heritage Tourism"
+- 🔷 **Agent**: "Heritage Travel Packages: How to Create Ancestor-Tracing Itineraries"
+- 🟠 **Vendor (Archive/Museum)**: "How to Partner with Travel Agencies for Genealogy Tourism Experiences"
+
+---
+
+## AW. DESTINATION INTELLIGENCE LAYER — REAL-TIME CONTEXTUAL DATA AS A COMPETITIVE MOAT
+
+> **Core Insight**: If the travel agency has real-time data on weather, air quality, crime, pollution, flight status, disease outbreaks, political stability, natural disasters, traffic, water quality, noise levels, and crowd density for every destination it sells — it becomes the **most trusted source of travel truth in the world**. This isn't just a feature; it's a **data moat** that compounds over time. Agencies using this data make better recommendations, issue fewer refunds, have fewer crises, and build deeper client trust. This data layer also powers dozens of product features (climate routing, predictive disruption, safety alerts) and generates massive SEO/content value.
+
+> **Existing coverage**: Some of this is touched in CLIMATE_ADAPTIVE_ITINERARY_ENGINEERING (weather/AQI), PREDICT_SPEC_THE_ORACLE (flight disruption prediction), SENSOR_SPEC_AMBIENT_TELEMETRY (ambient data), OPS_SPEC_WEATHER_PIVOT (hyper-local weather), and one line in AD1 (destination safety). But no unified "Destination Intelligence" research exists.
+
+### AW1. Weather & Climate Intelligence ✅/🟡
+- ✅ Climate-adaptive itinerary engineering (feature spec exists — weather rerouting, AQI, wet-bulb monitoring)
+- ✅ Hyper-local weather pivot for events (OPS_SPEC exists — micro-climate at venue coordinates)
+- ✅ Weather data sources listed in AD6 (APIs, seasonal patterns)
+- ❌ **Weather API landscape evaluation**: Tomorrow.io, OpenWeather, Visual Crossing, Weatherbit, Copernicus, IBM Weather — cost, accuracy, coverage, granularity comparison
+- ❌ **Micro-climate data resolution**: City-level vs neighborhood-level vs venue-level — what granularity do agencies actually need?
+- ❌ **Historical weather pattern database**: 10-year weather profiles for top 500 destinations — structured data for trip planning
+- ❌ **Weather impact on trip satisfaction**: Quantified — how much does weather affect trip ratings? By trip type (beach vs city vs adventure)
+- 🔵 **Weather-aware pricing intelligence**: "Prices drop 30% when monsoon hits Bali" — correlating weather windows with fare/rate trends
+- 🔵 **Climate change trajectory by destination**: 10-year outlook — which destinations are getting hotter, wetter, more unpredictable?
+- 🔵 **Packing recommendations from weather data**: Auto-generated packing lists based on destination weather forecast + traveler profile
+
+### AW2. Air Quality & Pollution Intelligence ❌
+- 🟡 AQI routing for asthmatic travelers (mentioned in climate spec but not deeply researched)
+- ❌ **Air quality data sources evaluation**: AirVisual/IQAir, PurpleAir, OpenAQ, government monitoring — coverage gaps by region
+- ❌ **Pollution impact on travel decisions**: Do travelers check AQI before booking? How does pollution affect destination choice?
+- ❌ **Seasonal pollution patterns by destination**: Delhi in November, Beijing in winter, wildfire smoke in Western US/Canada, Saharan dust in Caribbean — structured data
+- ❌ **Indoor vs outdoor AQI at destination**: Hotel air filtration, HVAC quality — does it matter for booking decisions?
+- ❌ **Health advisory generation from AQI data**: Auto-generating health advisories for travelers with respiratory conditions
+- 🔵 **Pollution-adjusted itineraries**: "Skip outdoor activities today, AQI is 180 — here are indoor alternatives" — real-time rerouting
+- 🔵 **Pollution forecasting for trip planning**: 7-day AQI forecast integration — suggest "cleaner days" for outdoor activities
+- 🔵 **Water quality data for destinations**: Tap water safety, beach water quality (Blue Flag), swimming advisories — structured data
+
+### AW3. Crime & Safety Intelligence ❌
+- 🟡 Destination safety and risk data mentioned (AD1 — one line, no depth)
+- ❌ **Crime data sources by market**: Numbeo, OSAC (US State Dept), local police APIs, crowd-sourced safety apps — reliability and coverage
+- ❌ **Crime type mapping for travelers**: Petty theft hotspots, scam zones, pickpocket areas, no-go neighborhoods — structured by destination
+- ❌ **Safety scoring methodology**: How to create a traveler-relevant safety score (not just crime rate — tourist-specific crime matters more)
+- ❌ **Time-of-day safety variation**: "Safe during day, avoid after dark" zones — temporal safety data
+- ❌ **Safety data by traveler type**: Solo female, LGBTQ+, visible minority, elderly — different risk profiles by destination
+- ❌ **Real-time safety alerts integration**: Government travel advisories (FCDO, State Dept, DFAT, MEA) — API access and freshness
+- ❌ **Historical incident mapping**: "A tourist was robbed here 3 months ago" — crowdsourced + official data fusion
+- 🔵 **Safe route recommendation**: "Walk this way from your hotel to the restaurant — avoid that alley" — Google Maps + crime overlay
+- 🔵 **Safety briefing auto-generation**: Destination-specific safety briefings from crime data + cultural norms + current events
+- 🔵 **Real-time protest/demonstration tracking**: Social media monitoring → "Avoid central square today, demonstration expected"
+- 🔵 **Neighborhood safety ratings for accommodation**: "This hotel is in a safe neighborhood" vs "great hotel, sketchy area" — decision-relevant
+
+### AW4. Flight & Transport Real-Time Intelligence ✅/🟡
+- ✅ Predictive disruption forecasting — The Oracle spec (weather correlation, labor sentiment, tail-number reliability)
+- ✅ Flight status monitoring mentioned in feature specs (ghost concierge, dynamic itinerary pulse)
+- ❌ **Flight tracking API evaluation**: FlightAware, FlightRadar24, Cirium, OAG — cost, coverage, latency, historical data
+- ❌ **Airport operational status feeds**: Runway closures, security wait times, immigration queue length — which airports provide real-time data?
+- ❌ **Ground transport disruption feeds**: Transit strikes, road closures, taxi surge pricing, ride-hail availability — by city
+- ❌ **Airport experience data**: Terminal quality, lounge availability, Wi-Fi speed, food options, charging stations — structured per airport
+- ❌ **Historical delay patterns by route**: "LHR→JFK has 40% on-time rate in January" — predictive value for agencies
+- ❌ **Connection risk scoring**: Given layover time + airport + season → probability of missed connection — quantified research
+- 🔵 **Proactive rebooking trigger**: Flight delay detected → AI already has backup options queued before agent/traveler knows
+- 🔵 **Transport disruption cascade modeling**: "Train strike in Paris → Eurostar affected → hotel in London needs rebooking" — chain reaction detection
+
+### AW5. Disease & Health Intelligence ✅/🟡
+- ✅ Predictive health and medical logistics (feature spec — outbreak monitoring, air quality, altitude)
+- ✅ Health passport and vaccination specs (research docs)
+- ✅ AD5 covers some health knowledge
+- ❌ **Disease outbreak data sources**: WHO, CDC, ProMED, HealthMap, BlueDot — real-time feeds for travel context
+- ❌ **Destination health risk profiles**: Malaria zones, dengue hotspots, altitude sickness thresholds, water-borne disease prevalence — structured database
+- ❌ **Seasonal disease patterns**: "Dengue peaks in Southeast Asia Aug-Oct" — correlating health data with travel booking windows
+- ❌ **Hospital and medical facility mapping**: Nearest hospital quality by destination — critical for elderly/adventure/remote travel
+- ❌ **Pharmacy and medication availability**: Can you get insulin/EpiPen/specific meds at destination? By country
+- 🔵 **Health-adjusted travel advisories**: "Consider postponing Goa trip — dengue outbreak active" — automated from data feeds
+- 🔵 **Post-pandemic travel health confidence index**: Measuring traveler comfort level with health risks — by market and demographic
+
+### AW6. Political Stability & Geopolitical Intelligence ❌
+- ❌ **Political stability indices for travel**: ACLED, Global Peace Index, Fragile States Index — which correlate with traveler safety?
+- ❌ **Sanctions and travel restriction monitoring**: Real-time changes to sanctions, embargoes, travel bans — auto-alerting
+- ❌ **Election and political event calendar**: "Don't book travel to [country] during election week" — disruption prediction
+- ❌ **Embassy and consulate accessibility mapping**: Nearest embassy/consulate for each nationality at each destination
+- ❌ **Civil unrest prediction models**: Social media sentiment + economic indicators → probability of disruption
+- 🔵 **Geopolitical corridor risk scoring**: "India↔Pakistan corridor = high risk, India↔Thailand = low risk" — dynamic scoring
+- 🔵 **War/conflict zone buffer mapping**: How close to conflict zones is safe? Dynamic buffer zones for travel planning
+
+### AW7. Natural Disaster & Environmental Hazard Intelligence ❌
+- ❌ **Earthquake risk data by destination**: Seismic zone mapping for all major tourist cities — historical frequency and magnitude
+- ❌ **Tsunami risk zones**: Coastal destinations with tsunami warning systems — structured data
+- ❌ **Volcanic activity monitoring**: Active volcanoes near tourist destinations — eruption probability and impact radius
+- ❌ **Wildfire risk mapping**: Seasonal wildfire risk for US West Coast, Australia, Southern Europe, Southeast Asia
+- ❌ **Hurricane/cyclone/typhoon season data**: By ocean basin — how to plan around tropical storm seasons
+- ❌ **Flood risk by destination**: Monsoon flooding, flash flood risk, river flooding — historical patterns
+- 🔵 **Natural disaster insurance trigger integration**: "Earthquake detected near destination → auto-trigger insurance claim process"
+- 🔵 **Evacuation route pre-planning**: For high-risk destinations — pre-computed evacuation plans integrated into itinerary
+
+### AW8. Crowd Density & Event Intelligence ❌
+- ❌ **Crowd density data sources**: Google Popular Times, Placer.ai, Unacast, telecom data — availability for travel planning
+- ❌ **Peak tourist season quantification**: How crowded is "crowded"? Visitor counts by destination by month
+- ❌ **Event calendar integration**: Major events, festivals, conferences that affect availability, pricing, and crowding
+- ❌ **Queue and wait time data**: Theme parks, museums, immigration lines, popular restaurants — real-time wait estimates
+- ❌ **Overtourism detection**: When is a destination "too crowded" to enjoy? Threshold research by destination type
+- 🔵 **"Quiet hours" recommendation**: "Visit Angkor Wat at 6 AM, the Louvre on Wednesday evening" — crowd-optimized itineraries
+- 🔵 **Counter-cyclical travel promotion**: Using crowd data to promote off-peak travel — better experience + better prices
+
+### AW9. Unified Destination Intelligence Platform (The Big Vision) 🔵
+- 🔵 **Data fusion architecture**: Combining weather + crime + pollution + health + flights + events + crowd into a single "Destination Health Score"
+- 🔵 **Real-time destination dashboard**: Live dashboard showing current conditions at every booked destination — for agents
+- 🔵 **Traveler-facing destination briefing**: Auto-generated daily briefing: "Today in Bangkok: 32°C, AQI 85 (moderate), no safety alerts, your flight is on time"
+- 🔵 **Destination intelligence as a data product**: Anonymized, aggregated — sellable to tourism boards, hotels, airlines, governments
+- 🔵 **Competitive moat analysis**: If we have 2 years of destination intelligence data — how defensible is this? Network effects?
+- 🔵 **"Before You Go" intelligence package**: Pre-trip download — weather forecast, safety briefing, health alerts, cultural tips, packing list — all from real data
+- 🔵 **Dynamic trip suitability scoring**: "Is this trip still a good idea?" — reassessing trip quality as conditions change between booking and departure
+- 🔵 **Insurance underwriting data**: Can our destination intelligence data be used by insurers to price travel insurance more accurately?
+- 🔵 **Destination comparison with real data**: "Bali vs Phuket this month" — using live weather, crime, pollution, cost, crowd data to compare
+- 🔵 **Historical trip quality correlation**: Correlating destination conditions (weather, AQI, crowd) at time of travel with post-trip satisfaction ratings — building predictive quality model
+- 🔵 **API-as-product**: Selling destination intelligence via API to other travel companies, OTAs, corporate travel tools
+
+### AW10. Content Prism — Destination Intelligence
+- 🟢 **Traveler**: "Is It Safe to Travel to [Destination] Right Now? Live Safety, Weather, and Health Data"
+- 🟢 **Traveler**: "Air Quality in [City] Today: Should You Wear a Mask?" — real-time tool
+- 🟢 **Traveler**: "Crime Map for Tourists in [City]: Where to Go and Where to Avoid"
+- 🟢 **Traveler**: "Is My Flight Likely to Be Delayed? Predictive Flight Status Checker" — free tool
+- 🟢 **Traveler**: "Best Time to Visit [Destination]: Real Weather + Crowd + Price Data Combined"
+- 🔷 **Agent**: "How to Use Real-Time Destination Data to Win Client Trust and Reduce Crises"
+- 🔷 **Agent**: "Destination Intelligence Briefings: How to Send Clients Updates They Actually Value"
+- 🔷 **Agent**: "Proactive Trip Monitoring: How to Detect Problems Before Your Client Does"
+- 🔷 **Agent**: "Using Crime and Safety Data to Recommend Better Hotels and Neighborhoods"
+- 🟠 **Vendor (Hotel)**: "How to Use Air Quality and Safety Data to Market Your Property's Location Advantage"
+- 🟠 **Vendor (Tourism Board)**: "How Destination Intelligence Data Can Drive Marketing and Visitor Management"
+- 🟠 **Vendor (Insurance)**: "How Real-Time Destination Risk Data Can Improve Travel Insurance Pricing and Claims"
+
+---
+
+## AX. SEO FREE TOOLS FROM DESTINATION INTELLIGENCE (ENGINEERING AS MARKETING)
+
+> **Source**: Every data feed in AW can power a free tool that drives organic traffic, builds brand authority, and captures leads.
+
+- 🔵 **"Is It Safe?" Destination Safety Checker**: Enter destination → live crime stats, travel advisory status, health alerts, political stability — massive SEO potential
+- 🔵 **"What's the Air Like?" AQI Tracker for Travelers**: Enter city → current AQI, forecast, health recommendations — attracts health-conscious travelers
+- 🔵 **"Will My Flight Be Delayed?" Predictive Flight Status**: Enter flight number → probability of delay based on weather, airline history, airport conditions
+- 🔵 **"Best Time to Visit" Multi-Factor Tool**: Enter destination → weather + crowd + price + pollution + safety combined into one recommendation
+- 🔵 **"What Should I Pack?" Smart Packing List**: Enter destination + dates + activities → weather-aware, culture-aware packing list
+- 🔵 **"Destination Right Now" Live Dashboard**: Any destination → current weather, AQI, safety, crowd level, trending events — real-time snapshot
+- 🔵 **"Compare Destinations" Side-by-Side**: Bali vs Thailand vs Sri Lanka — live data comparison across all dimensions
+- 🔵 **"Disease Alert" Travel Health Monitor**: Enter destination → current disease outbreaks, vaccination requirements, hospital locations
+- 🔵 **"Crowd Calendar"**: Enter destination + dates → expected crowd levels, event conflicts, quiet alternatives
+- 🔵 **"Flight Reliability Score"**: Enter route → historical on-time performance, seasonal patterns, best airlines for this route
+
+---
+
+## AY. EVERYDAY PRACTICAL DESTINATION INTELLIGENCE — "WHAT GOOGLE DOESN'T TELL YOU"
+
+> **Strategic insight**: Travelers Google thousands of hyper-practical questions daily. If we have structured, accurate, destination-specific answers — we rank for ALL of them. Every single item below is both a **product data layer** (agencies give better advice), a **content piece** (blog/guide), a **free tool opportunity**, and a **Content Prism triple** (traveler + agent + vendor). This is the "long tail of destination knowledge" — individually small, collectively enormous.
+
+### AY1. Cost of Living & Daily Budget Intelligence 🔵
+- 🔵 **"How far does $100 go in [City]?"**: Purchasing power parity for travelers — meals, transport, activities, drinks — per city
+- 🔵 **Daily budget calculator by travel style**: Backpacker vs mid-range vs luxury — per destination, updated monthly from real data
+- 🔵 **Meal cost database**: Average breakfast, lunch, dinner, coffee, beer, water — by destination and venue type (street food vs cafe vs restaurant)
+- 🔵 **Transport cost database**: Taxi per km, bus/metro single ride, airport transfer, ride-hail average — per city
+- 🔵 **Tipping calculator by country**: Expected percentage, who to tip, when NOT to tip, cash vs card — structured data
+- 🔵 **Tourist trap vs local price mapping**: "Tourists pay €15, locals pay €5" — where price discrimination exists and how to avoid it
+- 🔵 **Seasonal price variation by destination**: When are hotels/flights cheapest? Data-driven "deal finder"
+- 🔵 **Currency exchange intelligence**: Best exchange methods per destination — ATM, airport, local bureau, card, Wise/Revolut
+- 🔵 **Tax refund eligibility by country**: VAT refund thresholds, process, which shops participate — structured per country
+- 🔵 **Free things to do per destination**: Free museums, parks, walking tours, festivals, viewpoints — curated and structured
+
+### AY2. Digital Infrastructure & Connectivity Intelligence 🔵
+- 🔵 **Internet speed by destination**: Average WiFi speed in hotels, cafes, coworking — by city (critical for remote workers)
+- 🔵 **SIM card / eSIM guide by country**: Best local provider, data plans, activation process, coverage map — per country
+- 🔵 **Public WiFi availability and safety**: Where to find free WiFi, security risks, VPN recommendations — per destination
+- 🔵 **5G / LTE coverage maps**: Which carriers have best coverage in tourist areas vs rural — per country
+- 🔵 **Coworking space directory**: Per city — prices, amenities, day passes, monthly rates — for digital nomads
+- 🔵 **Power outlet & voltage guide**: Plug types, voltage, adapter needs — per country with visual guide
+- 🔵 **Power reliability by destination**: Frequency of outages, generator availability in hotels — critical for some markets
+- 🔵 **Local apps essential per destination**: Grab (SEA), Gojek (Indonesia), DiDi (China), Bolt (Europe/Africa), Careem (MENA), Yandex (Russia) — what to download before you go
+- 🔵 **Charging infrastructure**: USB outlets in airports/cafes/trains, portable charger necessity rating — per destination
+- 🔵 **VPN requirements**: Countries where VPN is needed (China, UAE, Russia, Iran) or illegal — updated guide
+
+### AY3. Local Laws, Customs & "What NOT to Do" Intelligence 🔵
+- 🔵 **"Things that are illegal in [Country] that surprise tourists"**: Chewing gum (Singapore), jaywalking (Germany), photography of government buildings (many countries), importing pork (Muslim countries)
+- 🔵 **Dress code requirements by destination**: Religious sites, restaurants, government buildings, beaches — structured guide
+- 🔵 **Alcohol laws by country**: Legal drinking age, dry days/areas, public drinking laws, hotel minibar rules, Ramadan restrictions
+- 🔵 **Cannabis/drug laws by destination**: Legal, decriminalized, strictly illegal, death penalty — critical safety information
+- 🔵 **Photography restrictions by destination**: Military installations, royal palaces, airports, indigenous communities, some museums — per country
+- 🔵 **Drone regulations by country**: Registration, no-fly zones, permits required, completely banned — per country
+- 🔵 **LGBTQ+ safety by destination**: Legal status, social acceptance, safe venues, Pride events, countries to avoid — per country
+- 🔵 **Religious observance impact on travelers**: Ramadan (business hours, food availability), Sabbath (Israel), Sunday closures (Europe), local holidays
+- 🔵 **Bargaining/haggling norms**: Where it's expected (Morocco, India, Thailand markets), where it's offensive (Japan, Nordics), acceptable discounts
+- 🔵 **Common tourist scams by destination**: Taxi meter scams, friendship bracelet, fake police, gem scams, currency tricks — per city
+- 🔵 **Greeting etiquette by culture**: Handshake, bow, cheek kiss (how many?), namaste, wai — when to use what
+- 🔵 **Business card etiquette**: Japan (two hands), Middle East (right hand only), Korea (seniority matters) — for corporate travelers
+- 🔵 **Gift-giving customs**: What to bring when invited to someone's home — varies dramatically by culture
+- 🔵 **Taboo topics by culture**: Politics, religion, royal family, war history — what to avoid discussing
+
+### AY4. Food, Dietary & Culinary Intelligence 🔵
+- 🔵 **Street food safety rating by destination**: "Safe to eat street food?" — with hygiene tips per city
+- 🔵 **Tap water safety map**: Drinkable vs boil-first vs bottled-only — per country/city with source verification
+- 🔵 **Vegetarian/vegan friendliness score by destination**: How easy is it to find plant-based food? Per city
+- 🔵 **Halal food availability map**: Cities ranked by halal restaurant density and certification reliability
+- 🔵 **Kosher food availability map**: Same for kosher — particularly outside Israel and major US/European cities
+- 🔵 **Allergy-friendliness by destination**: How well do restaurants understand food allergies? Nut-free, gluten-free, dairy-free — by culture
+- 🔵 **Local specialties "must try" list**: Per destination — the dishes you can't get anywhere else
+- 🔵 **Seasonal produce calendar**: "Visit Bordeaux in September for grape harvest, Japan in November for matsutake mushrooms"
+- 🔵 **Restaurant reservation requirements**: Which cities/restaurants need advance booking? Michelin, popular spots — lead times
+- 🔵 **Food delivery app coverage**: Uber Eats, Deliveroo, Foodpanda, Zomato, Rappi — available in which cities?
+- 🔵 **Supermarket/convenience store guide**: 7-Eleven (Asia), Carrefour (Europe), Oxxo (Mexico), conbini culture (Japan) — per destination
+- 🔵 **Drinking culture guide**: "After-work drinks" norms, bar hours, club entry policies, minimum spend — per city
+
+### AY5. Transportation & Getting Around Intelligence 🔵
+- 🔵 **Walkability score by destination/neighborhood**: Can you walk everywhere? Or is a car essential?
+- 🔵 **Public transit quality rating**: Metro/bus reliability, coverage, frequency, safety, tourist-friendliness — per city
+- 🔵 **Transit pass/card guide**: Oyster (London), Suica (Tokyo), T-money (Seoul), Octopus (HK), Navigo (Paris) — how to get and use
+- 🔵 **Bike-friendliness by city**: Bike lanes, rental services, helmet laws, terrain — per destination
+- 🔵 **Driving requirements by country**: International driving permit, driving side (left/right), road quality, speed enforcement
+- 🔵 **Taxi vs ride-hail comparison**: Which is cheaper/safer/available in each city? Meter reliability
+- 🔵 **Airport-to-city transport guide**: Best/cheapest/fastest options per airport — train, bus, taxi, shuttle, transfer
+- 🔵 **Car rental requirements by country**: Minimum age, deposit, insurance, toll systems, parking difficulty
+- 🔵 **Ferry and boat transport**: Island hopping routes, river cruises, water taxis — per region
+- 🔵 **Night transport availability**: "Can you get home at 2 AM?" — night bus, metro hours, ride-hail surge — per city
+- 🔵 **EV charging availability**: For electric car renters — charger density per country/route
+- 🔵 **Train pass value analysis**: Eurail, Japan Rail Pass, Swiss Pass, BritRail — when does a pass save money?
+
+### AY6. Accessibility & Inclusion Intelligence 🔵
+- 🔵 **Wheelchair accessibility by destination**: Sidewalk quality, ramp availability, accessible transport, hotel accessibility — per city
+- 🔵 **Accessible attraction guide**: Which museums, parks, landmarks have full accessibility? Per destination
+- 🔵 **Hearing/vision impairment accommodation**: Audio guides, braille, sign language availability — at attractions per city
+- 🔵 **Accessible restroom finder**: Per city/tourist area — critical practical need
+- 🔵 **Senior-friendliness score**: Elevation changes, walking distances, bench availability, medical facility proximity — per destination
+- 🔵 **Family infrastructure mapping**: Changing rooms, stroller-friendly paths, playgrounds, kids' menus, family restrooms — per destination
+- 🔵 **Solo female safety score**: Harassment levels, safe neighborhoods, reliable transport, women-only spaces — per destination
+- 🔵 **Neurodiversity-friendly travel**: Sensory-friendly attractions, quiet spaces, crowd-avoiding routes — emerging research
+
+### AY7. Nature, Wildlife & Outdoor Intelligence 🔵
+- 🔵 **Dangerous animal awareness by destination**: Jellyfish (Australia), snakes (India), bears (US/Canada), mosquito-borne disease zones
+- 🔵 **Seasonal wildlife calendar**: Whale watching (by species/location), bird migration, turtle nesting, wildebeest migration, cherry blossoms
+- 🔵 **UV index by destination and season**: Sun exposure risk, sunscreen SPF recommendations, peak UV hours
+- 🔵 **Pollen count and allergy data**: Seasonal pollen maps for major destinations — for allergy-prone travelers
+- 🔵 **Mosquito density and prevention**: By destination and season — when to use DEET, bed nets, long sleeves
+- 🔵 **Altitude acclimatization guide**: Cusco, La Paz, Lhasa, Kilimanjaro, Everest Base Camp — acclimatization schedules
+- 🔵 **Tide tables for beach/coastal activities**: Best times for snorkeling, surfing, beach walks — per coastal destination
+- 🔵 **Sunrise/sunset/golden hour times**: For photography, activity planning, romantic experiences — per destination and date
+- 🔵 **Hiking trail difficulty ratings**: Per destination — elevation, distance, technical difficulty, rescue availability
+- 🔵 **Swimming safety**: Rip currents, jellyfish seasons, beach flags, lifeguard availability — per beach/coast
+- 🔵 **National park guide**: Entry fees, permit requirements, best seasons, crowd levels, camping availability — per park globally
+- 🔵 **Dark sky destinations**: Best places for stargazing — light pollution maps, meteor shower calendars, observatory access
+
+### AY8. Shopping, Souvenirs & Duty-Free Intelligence 🔵
+- 🔵 **Duty-free allowance by country**: Alcohol, tobacco, perfume, electronics — what you can bring in/out
+- 🔵 **Best local products to buy by destination**: Saffron (Iran), silk (Thailand), leather (Italy/Morocco), tea (Sri Lanka), spices (India)
+- 🔵 **Market and bazaar guide**: Grand Bazaar (Istanbul), Chatuchak (Bangkok), Marrakech souk, Portobello Road — tips, hours, bargaining
+- 🔵 **Luxury shopping destinations**: Tax-free shopping cities, outlet villages, fashion capitals — per segment
+- 🔵 **Counterfeit goods warning**: Where fakes are common, legal risks of buying counterfeits — per market
+- 🔵 **Customs and import restrictions**: Ivory, certain foods, plant products, animal products, medications — per country
+- 🔵 **Shipping purchases home**: How to ship large purchases (carpets, furniture, art) — logistics per destination
+
+### AY9. Accommodation Micro-Intelligence 🔵
+- 🔵 **Neighborhood guide per city**: Where to stay by vibe — central tourist, local authentic, nightlife, quiet residential, family, budget
+- 🔵 **Noise level by neighborhood/hotel**: Construction, traffic, nightlife, call to prayer times — practical booking intelligence
+- 🔵 **Hotel renovation tracking**: Hotels currently under renovation — avoid booking vs discounted rates
+- 🔵 **Check-in/check-out flexibility by chain/market**: Early check-in, late check-out availability, fees — per hotel chain and market
+- 🔵 **Hotel amenity verification**: "Does the pool actually work?" — gap between listing and reality
+- 🔵 **Apartment rental rules by city**: Short-term rental regulations, registration requirements, tourist tax — per city (Airbnb rules)
+- 🔵 **Hotel vs apartment vs hostel decision framework**: By trip type, group size, duration, destination — when each is better
+
+### AY10. Emergency & Practical Services Intelligence 🔵
+- 🔵 **Emergency numbers by country**: Police, ambulance, fire, tourist police — in a single searchable database
+- 🔵 **Embassy and consulate directory**: By nationality × destination — address, hours, emergency after-hours number
+- 🔵 **24-hour pharmacy finder**: Per city — where to get medications at 3 AM
+- 🔵 **Hospital quality ratings by city**: For medical emergencies — which hospitals have English-speaking staff, tourist-oriented care
+- 🔵 **Dental emergency guide by destination**: Finding an English-speaking dentist abroad — surprisingly common need
+- 🔵 **Lost passport replacement process**: By country — where to go, what documents needed, how long it takes
+- 🔵 **Travel insurance claim process guide**: Step-by-step for common claims (delay, medical, theft) — per insurer
+- 🔵 **Police report filing guide**: How to file a theft/crime report in foreign countries — needed for insurance claims
+- 🔵 **Roadside assistance availability**: By country — for self-drive travelers
+- 🔵 **Laundry and dry cleaning**: Availability, costs, turnaround time — per destination class (hotel laundry vs local laundromat)
+
+### AY11. Time, Seasons & Calendar Intelligence 🔵
+- 🔵 **Time zone and jet lag optimization**: Flight timing recommendations to minimize jet lag — by route
+- 🔵 **Business hours by culture**: When shops open/close, lunch break closures (Mediterranean), late dining (Spain), early closing (Nordics)
+- 🔵 **Public holiday calendar by country**: When everything shuts down — critical for trip planning
+- 🔵 **Festival and event calendar (curated)**: Not just dates — travel impact assessment (book early, avoid, or attend?)
+- 🔵 **Daylight hours by destination and season**: "Norway in December = 4 hours daylight" — affects activity planning significantly
+- 🔵 **Shoulder season identification**: The sweet spot between peak and off-peak — best value + best weather — per destination
+- 🔵 **Weekend structure by country**: Friday-Saturday (Middle East), Saturday-Sunday (West), varies — affects business travel planning
+- 🔵 **Rainy season variability**: "Rainy season doesn't mean rain all day" — hourly rain patterns by destination
+- 🔵 **Best time to visit by activity**: Skiing, diving, surfing, trekking, safari, Northern Lights — season matrices
+
+### AY12. Photography, Social Media & Content Spots Intelligence 🔵
+- 🔵 **Most Instagrammable spots by destination**: With practical info — best time, angle, crowd avoidance, permit requirements
+- 🔵 **Golden hour and blue hour times**: Per destination and date — for photographers
+- 🔵 **Photography permit requirements**: National parks, museums, historical sites, drones — per destination
+- 🔵 **"Instagram vs reality" guides**: Setting expectations — what places actually look like vs social media
+- 🔵 **Best viewpoints per city**: Rooftop bars, observation decks, hills, free vs paid — curated lists
+- 🔵 **Selfie danger zones**: Cliff edges, train tracks, wildlife proximity — safety awareness
+- 🔵 **Content creation guide by destination**: Best backgrounds, lighting, times, local photo ethics
+
+### AY13. Nightlife, Entertainment & Experiences Intelligence 🔵
+- 🔵 **Nightlife guide by destination**: Bar districts, club entry policies, dress codes, cover charges, safe areas, closing times
+- 🔵 **Live music and performance calendar**: Per city — jazz clubs, opera houses, street performers, festivals
+- 🔵 **Cinema and theater in destination**: English-language showings, local theater, film festivals — cultural experiences
+- 🔵 **Casino and gambling guide**: Legality, dress code, minimum bets, etiquette — per destination
+- 🔵 **Sporting events as experiences**: How to get tickets for Premier League, La Liga, NBA, IPL, sumo — per sport/league
+- 🔵 **Local class and workshop availability**: Cooking, pottery, dance, martial arts, surfing — bookable experiences per destination
+- 🔵 **Free walking tour availability**: Per city — operators, tipping norms, languages available
+- 🔵 **Escape rooms, VR experiences, theme parks**: By destination — with ratings and booking info
+- 🔵 **"Only here" unique experiences**: Things you literally can't do anywhere else — per destination
+
+---
+
+## AZ. PROGRAMMATIC CONTENT FROM DESTINATION DATA (MASSIVE SEO SCALE)
+
+> **Strategic insight**: Every data category above, crossed with every destination, generates potentially tens of thousands of programmatic pages. These are not thin content — each page pulls live data + curated knowledge + user-generated tips. This is the "Wise.com of travel knowledge" — they built a currency empire from exchange rate pages.
+
+### AZ1. Per-Destination Programmatic Pages
+- 🔵 **"[City] Travel Guide: Everything You Need to Know"** — 500+ cities, comprehensive, data-driven
+- 🔵 **"Is [City] Safe for Tourists? [Year] Safety Guide"** — crime data + safety tips + neighborhood guide + emergency info
+- 🔵 **"Best Time to Visit [City]: Weather, Crowds, Prices"** — multi-factor optimization per destination
+- 🔵 **"Cost of Travel in [City]: Daily Budget Guide"** — meal costs, transport, activities, accommodation ranges
+- 🔵 **"Getting Around [City]: Transport Guide"** — metro, taxi, bus, walk, bike — practical how-to
+- 🔵 **"Where to Stay in [City]: Neighborhood Guide"** — by vibe, budget, safety, proximity to attractions
+- 🔵 **"[City] for Digital Nomads: Internet, Coworking, Cost, Visa"** — scoring and practical guide
+- 🔵 **"Street Food in [City]: What to Eat and Where"** — with safety rating and must-try dishes
+- 🔵 **"[City] with Kids: Family Travel Guide"** — family-friendly attractions, restaurants, accommodation
+- 🔵 **"Solo Female Travel in [City]: Safety and Tips"** — safety data + practical advice + community-verified
+
+### AZ2. Per-Country Programmatic Pages
+- 🔵 **"[Country] Travel Rules: Laws Tourists Should Know"** — illegal activities, customs, dress codes
+- 🔵 **"[Country] SIM Card Guide: Best Data Plans for Travelers"** — providers, costs, activation, eSIM compatibility
+- 🔵 **"Tipping in [Country]: Complete Etiquette Guide"** — restaurants, hotels, taxis, tours, spas
+- 🔵 **"[Country] Emergency Numbers and Embassy Contacts"** — by traveler nationality
+- 🔵 **"Driving in [Country]: License, Rules, and Road Guide"** — IDP, side of road, toll systems, fuel costs
+- 🔵 **"[Country] Plug and Voltage Guide"** — with visual adapter guide
+- 🔵 **"[Country] Currency Guide: Exchange, ATMs, Cards, and Tips"** — practical money advice
+- 🔵 **"Is the Water Safe in [Country]?"** — tap water safety with city-level detail
+- 🔵 **"[Country] Public Holidays [Year]"** — with travel impact notes (closures, celebrations, avoid/attend)
+- 🔵 **"LGBTQ+ Travel in [Country]: Laws, Safety, and Community"** — legal status, social climate, safe venues
+
+### AZ3. Per-Route & Per-Corridor Pages
+- 🔵 **"[City A] to [City B]: How to Get There"** — flights, trains, buses, driving — time, cost, comfort comparison
+- 🔵 **"[Airport] Layover Guide: What to Do in [Hours]"** — for 200+ airports × multiple layover durations
+- 🔵 **"[Airline] Review: What to Expect in [Class]"** — seat pitch, food, service, reliability — per airline per class
+- 🔵 **"[Airport] Guide: Terminals, Transport, Lounges, Tips"** — practical airport-by-airport navigation
+- 🔵 **"[Train Route] Guide: Tickets, Tips, and Scenery"** — Eurostar, Shinkansen, Trans-Siberian, Glacier Express, etc.
+
+### AZ4. Per-Activity & Per-Interest Pages
+- 🔵 **"Best [Activity] in [Destination]"**: Best diving in Thailand, best hiking in Patagonia, best wine tasting in Tuscany — activity × destination matrix
+- 🔵 **"[Festival/Event] Travel Guide [Year]"**: Oktoberfest, Carnival, Diwali, Holi, Songkran, Tomatina, Burning Man — practical how-to-attend guides
+- 🔵 **"[Cuisine] Food Tour: [City]"**: Ramen in Tokyo, tacos in Mexico City, pasta in Rome, street food in Bangkok — per city per cuisine
+- 🔵 **"Best Beaches in [Country/Region]"**: With water quality, crowd level, facilities, safety, accessibility — structured and comparable
+
+### AZ5. Comparison & Decision Pages
+- 🔵 **"[City A] vs [City B]: Which Should You Visit?"** — head-to-head with real data: weather, cost, safety, food, culture, nightlife
+- 🔵 **"Best Destinations for [Month]"**: Monthly destination recommendations based on weather, events, prices, crowds
+- 🔵 **"Best Countries for [Traveler Type]"**: Solo female, family, budget, luxury, adventure, foodie, digital nomad — ranked with data
+- 🔵 **"[Destination] in [Month]: Is It a Good Time to Go?"** — destination × month matrix with multi-factor scoring
+- 🔵 **"Beach vs City vs Mountain: What Kind of Trip Should You Take?"** — interactive quiz → recommendation
+
+---
+
+## BA. DESTINATION SCORING & INDEX SYSTEMS (PRODUCT + CONTENT)
+
+> **Vision**: Proprietary scoring indices become both product features AND content magnets. "The Waypoint Index" becomes an authoritative reference cited by media, tourism boards, and agencies.
+
+### BA1. Composite Destination Scores 🔵
+- 🔵 **Waypoint Safety Index**: Crime + political stability + health risk + natural disaster risk + travel advisory status → 0-100 safety score per destination
+- 🔵 **Waypoint Value Index**: Cost of living + accommodation rates + exchange rate favorability + free activities → "bang for your buck" score
+- 🔵 **Waypoint Digital Nomad Index**: Internet speed + coworking availability + visa options + cost + safety + community → nomad-readiness score
+- 🔵 **Waypoint Family Score**: Kid-friendly attractions + safety + healthcare + family accommodation + stroller accessibility → family suitability
+- 🔵 **Waypoint Solo Female Index**: Safety + harassment data + reliable transport + women's communities + nightlife safety → solo female traveler score
+- 🔵 **Waypoint Adventure Index**: Outdoor activities + terrain diversity + permit accessibility + rescue infrastructure + weather windows → adventure readiness
+- 🔵 **Waypoint Wellness Index**: Spa/retreat density + air quality + green space + yoga/meditation options + healthy food availability → wellness score
+- 🔵 **Waypoint Foodie Index**: Restaurant diversity + street food safety + culinary heritage + cooking class availability + food market quality → foodie score
+- 🔵 **Waypoint Accessibility Index**: Wheelchair infrastructure + accessible transport + accessible accommodation + accessible attractions → disability-friendliness
+- 🔵 **Waypoint Sustainability Index**: Carbon footprint of travel + eco-certification density + recycling infrastructure + overtourism status → green travel score
+- 🔵 **Waypoint Photography Index**: Golden hour quality + iconic viewpoints + permit accessibility + crowd at photo spots + backdrop diversity → photography score
+- 🔵 **Waypoint Nightlife Index**: Bar/club density + safety + hours + entry policies + live music + diversity → nightlife score
+
+### BA2. Dynamic "Right Now" Scores 🔵
+- 🔵 **"Is [Destination] Good Right Now?" live score**: Combining current weather + AQI + safety alerts + flight reliability + crowd level + events → real-time recommendation
+- 🔵 **Trip quality forecast**: "Your trip to Barcelona next month scores 8.2/10" — based on predicted weather, crowd, events, pricing
+- 🔵 **Destination trend tracker**: "Bali is trending down (rainy season), Portugal trending up (shoulder season)" — weekly updates
+- 🔵 **Price trend alerts**: "Flights to Tokyo just dropped 30%" — opportunity detection for agents and travelers
+- 🔵 **Booking window optimizer**: "Book Santorini 3 months ahead for best rates, book Bangkok 2 weeks ahead" — data-driven per destination
+
+### BA3. Annual Reports & Rankings (PR + SEO + Authority) 🔵
+- 🔵 **"Safest Destinations for Tourists [Year]"** — annual ranking → press coverage → links → SEO authority
+- 🔵 **"Best Value Destinations [Year]"** — cost-of-travel rankings → widely shared → establishes brand as data authority
+- 🔵 **"Most Underrated Destinations [Year]"** — high quality + low crowd → discovery-focused → viral potential
+- 🔵 **"Digital Nomad Destination Rankings [Year]"** — internet + cost + visa → shared by remote work community
+- 🔵 **"Family Travel Destination Rankings [Year]"** — safety + kid-friendliness + value → shared by parent communities
+- 🔵 **"Riskiest Destinations [Year]"** — health + safety + political → picked up by news media → links
+- 🔵 **"Overtourism Index [Year]"** — crowd data + environmental impact → academic and media interest
+- 🔵 **"Climate-Resilient Destinations [Year]"** — which destinations are adapting best to climate change → sustainability press
+- 🔵 **Quarterly trend reports**: "Q2 2026 Travel Intelligence Report" — aggregated booking + search + pricing trends → thought leadership
+
+---
+
+## BB. MEGA FREE TOOLS — COMPREHENSIVE SEO TRAFFIC ENGINES
+
+> Each tool below is a standalone web application that generates massive organic traffic, captures emails, builds brand authority, and feeds the product waitlist. These go beyond simple calculators — they're data-rich interactive experiences.
+
+- 🔵 **"Destination DNA" Quiz**: 10 questions about preferences → AI-matched destination recommendations with data backing → email capture → agent referral
+- 🔵 **"Trip Budget Planner"**: Enter destination + dates + travelers + style → detailed daily budget with meal/transport/activity breakdown → shareable → save for later
+- 🔵 **"Destination Comparison Engine"**: Select 2-5 destinations → side-by-side comparison across 20+ dimensions (weather, cost, safety, food, nightlife, connectivity, family, accessibility)
+- 🔵 **"Travel Calendar Optimizer"**: Enter preferred month → shows which destinations are ideal for weather + price + crowds + events → interactive world map
+- 🔵 **"Is It Worth a Layover?" Calculator**: Enter connecting airport + layover duration → recommendations: stay airside, city visit, or book a hotel — with transport times and costs
+- 🔵 **"What to Pack" AI Packer**: Enter destination + dates + activities + preferences → complete packing list with weather data, dress code notes, outlet adapter reminders
+- 🔵 **"Travel Health Check"**: Enter destination + traveler health profile (age, conditions, medications) → vaccination requirements, health risks, hospital locations, pharmacy guide
+- 🔵 **"The Right Neighborhood" Finder**: Enter city + priorities (nightlife, family, budget, safety, walkability, food) → neighborhood recommendations with map
+- 🔵 **"Day Trip Planner"**: Enter base city → suggested day trips with transport options, costs, time needed, highlights — per city
+- 🔵 **"Transit Navigator"**: Enter city → complete public transport guide with pass recommendations, app downloads, route planner tips
+- 🔵 **"Solo Safety Score"**: Enter destination + traveler type (solo female, solo male, LGBTQ+, elderly, family) → personalized safety score with specific tips
+- 🔵 **"Festival Finder"**: Enter date range + interests → festivals and events worldwide during that period, with travel impact and booking advice
+- 🔵 **"Jet Lag Calculator"**: Enter origin + destination + flight times → personalized jet lag minimization plan (sleep schedule, light exposure, meal timing)
+- 🔵 **"Currency Smart" Converter**: Not just exchange rates — includes purchasing power comparison, best exchange methods, ATM fee warnings, card acceptance info
+- 🔵 **"Language Survival Kit"**: Enter destination → essential phrases with pronunciation, cultural notes, emergency phrases — downloadable card
+- 🔵 **"Accessibility Checker"**: Enter destination + needs (wheelchair, hearing, vision, cognitive) → accessibility assessment with specific venues and transport
+- 🔵 **"Digital Nomad Calculator"**: Enter destination → monthly cost (accommodation + coworking + food + transport + visa) + internet speed + safety + community → ranked recommendation
+- 🔵 **"Scam Alert Map"**: Interactive map of known tourist scams per city — with descriptions, avoidance tips, and reporting
+
+---
+
+## BC. CONTENT PRISM — EVERYDAY INTELLIGENCE TOPICS
+
+> Every practical data category above generates three-audience content.
+
+#### COST OF TRAVEL
+- 🟢 **Traveler**: "How to Travel [Destination] on $50/Day: Realistic Budget Guide"
+- 🔷 **Agent**: "How to Set Client Budget Expectations by Destination: Data-Driven Guide"
+- 🟠 **Vendor (Hotel/Activity)**: "How Pricing Transparency Drives Agency Bookings: The Budget Data Advantage"
+
+#### INTERNET & CONNECTIVITY
+- 🟢 **Traveler**: "Best SIM Cards and eSIMs for International Travel [Year]"
+- 🔷 **Agent**: "Advising Remote Workers: Connectivity Scoring for Digital Nomad Destinations"
+- 🟠 **Vendor (Hotel/Coworking)**: "How to Market Your WiFi Speed and Work-Readiness to Travel Agencies"
+
+#### LOCAL LAWS & CUSTOMS
+- 🟢 **Traveler**: "10 Things That Are Illegal in [Country] That Most Tourists Don't Know"
+- 🔷 **Agent**: "Cultural Briefing Templates: How to Prepare Clients for Cultural Differences"
+- 🟠 **Vendor (DMC/Tour Operator)**: "How to Create Cultural Sensitivity Briefings That Agencies Value"
+
+#### FOOD SAFETY & DIETARY
+- 🟢 **Traveler**: "Is Street Food Safe in [City]? An Honest Guide"
+- 🔷 **Agent**: "Dietary Requirements Across Cultures: How to Plan Meals for Every Traveler"
+- 🟠 **Vendor (Restaurant/Hotel)**: "How Dietary Labeling Drives Agency Bookings: The Inclusion Advantage"
+
+#### ACCESSIBILITY
+- 🟢 **Traveler**: "Wheelchair Travel in [City]: The Honest Guide to Getting Around"
+- 🔷 **Agent**: "Accessible Travel Planning: Supplier Checklist and Client Assessment Framework"
+- 🟠 **Vendor (Hotel/Attraction)**: "How to Get Your Accessibility Features in Front of Travel Agencies"
+
+#### NIGHTLIFE & ENTERTAINMENT
+- 🟢 **Traveler**: "Best Nightlife in [City]: Bars, Clubs, Live Music, and Late-Night Food"
+- 🔷 **Agent**: "Adding Nightlife and Entertainment to Itineraries: Upsell Opportunities"
+- 🟠 **Vendor (Bar/Club/Venue)**: "How to Partner with Travel Agencies for Tourist Nightlife Bookings"
+
+#### WILDLIFE & NATURE
+- 🟢 **Traveler**: "Wildlife Calendar: When and Where to See [Animal] in the Wild"
+- 🔷 **Agent**: "Seasonal Wildlife Experiences: How to Time Safari, Whale, and Migration Trips"
+- 🟠 **Vendor (Safari Lodge/Tour)**: "How Seasonal Wildlife Data Drives Agency Booking Patterns"
+
+#### PHOTOGRAPHY SPOTS
+- 🟢 **Traveler**: "Most Instagrammable Spots in [City]: With Best Times and Tips"
+- 🔷 **Agent**: "Adding Photography Experiences to Itineraries: Golden Hour, Viewpoints, and Permits"
+- 🟠 **Vendor (Experience/Tour)**: "How to Market 'Insta-Worthy' Experiences to Travel Agencies"
+
+#### SHOPPING & SOUVENIRS
+- 🟢 **Traveler**: "What to Buy in [Country]: Local Products Worth Bringing Home"
+- 🔷 **Agent**: "Shopping Experiences as Itinerary Add-Ons: Markets, Outlets, and Artisan Workshops"
+- 🟠 **Vendor (Market/Artisan)**: "How to Get Listed in Agency Shopping Itineraries"
+
+#### EMERGENCY SERVICES
+- 🟢 **Traveler**: "What to Do If [Emergency] Happens in [Country]: Step-by-Step"
+- 🔷 **Agent**: "Emergency Response Playbook by Destination: Pre-Built Protocols for Every Crisis"
+- 🟠 **Vendor (Assistance Company)**: "How Travel Agencies Choose Emergency Assistance Partners: What They Look For"
+
+---
+
+## BD. DATA ACQUISITION & PARTNERSHIP STRATEGY FOR DESTINATION INTELLIGENCE
+
+> For all of the above to work at scale, we need structured research on how to actually GET this data.
+
+### BD1. Data Source Research 🔵
+- 🔵 **Open data APIs**: Which data is freely available? Weather (OpenWeather), AQI (OpenAQ), crime (where?), transit (GTFS), earthquake (USGS)
+- 🔵 **Paid data APIs**: Premium weather (Tomorrow.io), flight (Cirium), safety (GeoSure, OSAC), hotel (OTA APIs) — cost-benefit analysis
+- 🔵 **Government open data portals**: Tourism statistics, crime data, health data — per country, availability and format
+- 🔵 **Crowdsourced data platforms**: Numbeo, iOverlander, Wikivoyage, Atlas Obscura, TripAdvisor — scraping vs API vs partnership
+- 🔵 **Social media as data source**: Geotagged posts, sentiment, trending locations — Instagram, Twitter, TikTok, Weibo, Xiaohongshu
+- 🔵 **Tourism board data partnerships**: Can we get official visitor data, infrastructure ratings, planned developments from tourism boards?
+- 🔵 **Traveler-contributed data**: Our own users rating destinations on specific dimensions — building proprietary data over time
+- 🔵 **Satellite and remote sensing data**: Copernicus, Sentinel, MODIS — for air quality, vegetation, flood detection, urban heat islands
+- 🔵 **IoT and sensor networks**: Air quality monitors, traffic sensors, noise monitors — which cities have accessible data?
+- 🔵 **Academic data sources**: University tourism research, climate studies, public health data — for depth and credibility
+
+### BD2. Data Processing & Quality 🔵
+- 🔵 **Data freshness requirements by type**: Weather = hourly, crime = monthly, cost = quarterly, visa = on-change — defining update cadences
+- 🔵 **Data normalization across sources**: Different scales, methodologies, currencies — standardization framework
+- 🔵 **Data accuracy verification**: How to validate crowdsourced vs official data — confidence scoring
+- 🔵 **Missing data interpolation**: What to do when data doesn't exist for a destination — proxy methods
+- 🔵 **Multilingual data handling**: Source data in 50+ languages — translation and normalization pipeline
+- 🔵 **Historical data archival**: Building time-series for trend analysis — storage and retrieval architecture
+- 🔵 **Data licensing and attribution**: Which data requires attribution? Which has usage restrictions? Legal compliance
+
+### BD3. Monetization of Destination Intelligence 🔵
+- 🔵 **Freemium model for data**: Basic destination info free, detailed analytics paid — conversion research
+- 🔵 **API licensing to third parties**: OTAs, corporate travel tools, insurance companies — pricing models
+- 🔵 **Tourism board subscription**: Selling destination analytics to tourism boards for marketing and planning
+- 🔵 **Insurance company data deals**: Real-time risk data → better insurance pricing → revenue share
+- 🔵 **Sponsored placement in guides**: Hotels, airlines, tours paying for featured placement in destination guides
+- 🔵 **White-label destination content**: Licensing our guides/data to other platforms — revenue model
+
+---
+
+## Updated Summary Statistics (Post-Full Expansion)
+
+| Category | Total Items | ✅ Done | ❌ Open | 🔵 New |
+|----------|------------|---------|--------|--------|
+| A–AG (Original) | 1,153 | 48 | 523 | 582 |
+| AH–AV (Cross-Reference Expansion) | 317 | 158 | 83 | 76 |
+| AW–AX (Destination Intelligence Layer) | 113 | 5 | 52 | 56 |
+| AY (Everyday Practical Intelligence) | 175 | 0 | 0 | 175 |
+| AZ (Programmatic Content at Scale) | 45 | 0 | 0 | 45 |
+| BA (Destination Scoring & Indices) | 26 | 0 | 0 | 26 |
+| BB (Mega Free Tools) | 18 | 0 | 0 | 18 |
+| BC (Content Prism — Everyday Topics) | 30 | 0 | 0 | 30 |
+| BD (Data Acquisition Strategy) | 20 | 0 | 0 | 20 |
+| **GRAND TOTAL** | **1,897** | **211** | **658** | **1,028** |
+
+### The Flywheel Effect
+
+Every destination data point creates **5 assets simultaneously**:
+
+1. **Product feature**: Agencies give better advice → clients trust them more → retention
+2. **SEO content piece**: Blog post or guide ranking for long-tail keywords → organic traffic
+3. **Free tool**: Interactive web tool → email capture → waitlist → product conversion
+4. **Programmatic page**: Destination × topic → thousands of indexed pages → search dominance
+5. **Content Prism triple**: Traveler + Agent + Vendor angle → 3x content surface area
+
+At 1,897 research items, with programmatic SEO potential of 40,000+ pages (visa nationality×country, destination×topic), and Content Prism tripling every topic — the total content surface area approaches **120,000+ unique publishable assets**.
+
+### Critical Insight: The Data Moat
+
+The deepest insight is that destination intelligence isn't just content — it's a **compounding data moat**. Every traveler interaction generates data: "tourists in Bali rated safety 8.5/10 in April 2026." Over time, this proprietary data becomes impossible to replicate. No competitor can build 2 years of traveler-verified destination ratings overnight. This is how we become the "Bloomberg Terminal of travel" — the single source of truth that agencies, travelers, and suppliers all depend on.
