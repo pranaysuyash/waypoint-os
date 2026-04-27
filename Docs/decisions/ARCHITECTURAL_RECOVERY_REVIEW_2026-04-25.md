@@ -78,26 +78,40 @@ Files:
 - `frontend/src/lib/route-map.ts`
 - `frontend/src/lib/__tests__/route-map.test.ts`
 
-### 3. Simple explicit backend proxies bypassed proxy-core
+### 3. Explicit BFF routes bypassed shared BFF helpers
 
-Verdict: partially fixed; larger transform routes remain documented as follow-up.
+Verdict: improved without removing route-specific transformations.
 
 Evidence:
 
 - `frontend/src/app/api/pipeline/route.ts` and `frontend/src/app/api/runs/route.ts` were simple backend passthroughs but manually used `fetch`.
 - `runs` also failed to forward auth headers.
 - `proxy-core.ts` already owns timeout, auth forwarding, response header allowlist, cookie handling, no-store cache behavior, and proxy error mapping.
+- Transform-heavy routes (`trips`, `inbox`, `reviews`, `reviews/action`, `inbox/[tripId]/snooze`, and `insights/agent-trips`) still need explicit BFF behavior because they adapt backend data into frontend presentation contracts.
 
 Decision:
 
 - Convert `pipeline` and `runs` explicit routes to `proxyRequest`.
-- Leave transform-heavy explicit routes (`trips`, `inbox`, `reviews`) in place for now because they contain frontend-shape adapters and need a separate migration to avoid regressions.
+- Move duplicated `trips` and `inbox` trip-shaping logic into `frontend/src/lib/bff-trip-adapters.ts`.
+- Use `bffFetchOptions()` for transform-heavy explicit routes so auth forwarding, no-store behavior, timeout, and JSON body handling are shared.
+- Keep route-specific transformations where they are still business/presentation adapters, rather than forcing those routes through the generic catch-all proxy.
 
 Files:
 
 - `frontend/src/app/api/pipeline/route.ts`
 - `frontend/src/app/api/runs/route.ts`
+- `frontend/src/app/api/trips/route.ts`
+- `frontend/src/app/api/trips/[id]/route.ts`
+- `frontend/src/app/api/inbox/route.ts`
+- `frontend/src/app/api/reviews/route.ts`
+- `frontend/src/app/api/reviews/action/route.ts`
+- `frontend/src/app/api/inbox/[tripId]/snooze/route.ts`
+- `frontend/src/app/api/insights/agent-trips/route.ts`
 - `frontend/src/lib/proxy-core.ts`
+- `frontend/src/lib/bff-auth.ts`
+- `frontend/src/lib/bff-trip-adapters.ts`
+- `frontend/src/lib/__tests__/bff-trip-adapters.test.ts`
+- `frontend/src/lib/__tests__/bff-auth.test.ts`
 
 ### 4. Suitability rendering had a duplicate type shape
 
@@ -220,7 +234,8 @@ Files:
 
 - `DecisionOutput.suitability_profile` is a frontend contract type layered over the current backend decision dict. It is compatible with the shadow-field rollout, but a future generated backend response contract should formalize this nested decision shape.
 - `DecisionPanel` still has broader typing weaknesses around `trip?: any`; this review did not expand scope into a full workspace panel type migration.
-- Transform-heavy explicit routes still contain manual backend fetch and shape adaptation: `trips`, `inbox`, `reviews`, `reviews/action`, `inbox/[tripId]/snooze`, and `insights/agent-trips`. They should either use `proxyRequest` with transforms or move transformations into a shared BFF adapter layer.
+- Review-specific and insight-specific presentation adapters still live inside their route files. That is acceptable for now because they are not duplicated like the old trip/inbox transforms, but they should move to typed adapter modules if they grow.
+- `reviews/action` and `inbox/[tripId]/snooze` still parse request JSON locally because they translate frontend field names to backend field names. They now use shared BFF fetch options for the outbound call.
 - `spine_api/server.py` and `spine_api/watchdog.py` still adjust `sys.path` for application startup contexts. This pass removed production analytics fallbacks, but did not rewrite startup path bootstrapping.
 - This review used targeted backend/frontend tests and TypeScript checks. A full repository test run remains useful before a release checkpoint.
 
@@ -231,6 +246,9 @@ Commands run after the review changes:
 - `PYTHONPATH=. uv run pytest -q tests/test_audit_closure_2026_04_24.py tests/test_integrity.py tests/test_review_logic.py tests/test_review_policy_escalation.py` -> `36 passed`
 - `cd frontend && npx tsc --noEmit` -> passed
 - `cd frontend && npx vitest run src/lib/__tests__/route-map.test.ts src/components/workspace/panels/__tests__/DecisionPanel.SuitabilitySignal.integration.test.tsx src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx` -> `3 files passed, 30 tests passed`
+- `cd frontend && npx vitest run src/lib/__tests__/bff-trip-adapters.test.ts src/lib/__tests__/bff-auth.test.ts src/lib/__tests__/route-map.test.ts src/lib/__tests__/inbox-helpers.test.ts src/components/workspace/panels/__tests__/DecisionPanel.SuitabilitySignal.integration.test.tsx src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx` -> `6 files passed, 91 tests passed`
+- `cd frontend && npm run build` -> passed
+- Explicit/catch-all route overlap check -> `no explicit/catch-all route overlaps`
 - `git diff --check` -> passed
 
 ## Architectural Verdict

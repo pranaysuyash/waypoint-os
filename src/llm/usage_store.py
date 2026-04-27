@@ -360,9 +360,12 @@ class LLMUsageStore:
         model: str,
         feature: str,
         usage_date: str,
+        now: Optional[datetime] = None,
     ) -> dict:
         """Return daily summary for debugging/monitoring."""
-        cutoff = (datetime.now() - timedelta(hours=1)).isoformat()
+        if now is None:
+            now = datetime.now()
+        cutoff = (now - timedelta(hours=1)).isoformat()
         conn = self._connect()
         try:
             row = conn.execute(
@@ -607,8 +610,10 @@ class InMemoryUsageStore(LLMUsageStore):
                     e["status"] = status
                     return
 
-    def get_summary(self, *, agency_id: str, model: str, feature: str, usage_date: str) -> dict:
-        cutoff = (datetime.now() - timedelta(hours=1)).isoformat()
+    def get_summary(self, *, agency_id: str, model: str, feature: str, usage_date: str, now: Optional[datetime] = None) -> dict:
+        if now is None:
+            now = datetime.now()
+        cutoff = (now - timedelta(hours=1)).isoformat()
         with self._lock:
             def _match(e: dict) -> bool:
                 ok = e["usage_date"] == usage_date and e["agency_id"] == agency_id

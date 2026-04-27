@@ -934,7 +934,7 @@ def _get_composition_modifiers(packet: CanonicalPacket) -> Tuple[float, float]:
         party_slot = packet.facts.get("party_size")
         adult_equivalents = float(party_slot.value) if party_slot and party_slot.value else 1.0
     if has_toddler:
-        adult_equivalents = max(adult_equivalents, adult_equivalents + _FAMILY_BUFFER_BUMP * adult_equivalents)
+        adult_equivalents = adult_equivalents * (1 + _FAMILY_BUFFER_BUMP)
     return adult_equivalents, has_toddler
 
 

@@ -321,6 +321,7 @@ class TestLLMUsageGuard:
             model="*",
             feature="*",
             usage_date="2026-04-26",
+            now=now,
         )
         assert state["hourly_calls"] >= 1  # failed/reserved calls counted for rate
         assert state["daily_cost"] == 0.0   # but not for budget

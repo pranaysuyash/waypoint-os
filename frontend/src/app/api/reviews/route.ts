@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import type { TripReview, ReviewStatus } from "@/types/governance";
-import { bffHeaders, bffJson, isAuthStatus } from "@/lib/bff-auth";
+import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
 
 // ============================================================================
 // SPINE API RAW TYPES
@@ -68,10 +68,10 @@ function transformReviewToFrontendFormat(review: SpineReview): TripReview {
 export async function GET(request: NextRequest) {
   try {
     const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
-    const response = await fetch(`${SPINE_API_URL}/analytics/reviews`, {
-      method: "GET",
-      headers: bffHeaders(request),
-    });
+    const response = await fetch(
+      `${SPINE_API_URL}/analytics/reviews`,
+      bffFetchOptions(request, "GET")
+    );
 
     if (!response.ok) {
       if (isAuthStatus(response.status)) {

@@ -75,7 +75,7 @@ def file_lock(filepath: Path):
 class TripStore:
     """File-based trip storage using JSON."""
     _lock = threading.Lock()
-    
+
     @staticmethod
     def save_trip(trip_data: dict, agency_id: Optional[str] = None) -> str:
         """Save a trip to disk. Returns trip ID.
@@ -101,8 +101,10 @@ class TripStore:
         serializable_data = _make_json_serializable(trip_data)
         
         filepath = TRIPS_DIR / f"{trip_id}.json"
-        with open(filepath, "w") as f:
-            json.dump(serializable_data, f, indent=2)
+        with TripStore._lock:
+            with file_lock(filepath):
+                with open(filepath, "w") as f:
+                    json.dump(serializable_data, f, indent=2)
         
         return trip_id
     
@@ -176,37 +178,42 @@ class AssignmentStore:
     """Track who is assigned to which trip."""
     
     ASSIGNMENTS_FILE = ASSIGNMENTS_DIR / "assignments.json"
+    _lock = threading.RLock()
     
     @staticmethod
     def _load_assignments() -> dict:
         """Load all assignments."""
-        if not AssignmentStore.ASSIGNMENTS_FILE.exists():
-            return {}
+        with AssignmentStore._lock:
+            if not AssignmentStore.ASSIGNMENTS_FILE.exists():
+                return {}
         
-        with open(AssignmentStore.ASSIGNMENTS_FILE) as f:
-            return json.load(f)
+            with open(AssignmentStore.ASSIGNMENTS_FILE) as f:
+                return json.load(f)
     
     @staticmethod
     def _save_assignments(data: dict):
         """Save all assignments."""
-        with open(AssignmentStore.ASSIGNMENTS_FILE, "w") as f:
-            json.dump(data, f, indent=2)
+        with AssignmentStore._lock:
+            with file_lock(AssignmentStore.ASSIGNMENTS_FILE):
+                with open(AssignmentStore.ASSIGNMENTS_FILE, "w") as f:
+                    json.dump(data, f, indent=2)
     
     @staticmethod
     def assign_trip(trip_id: str, agent_id: str, agent_name: str, assigned_by: str):
         """Assign a trip to an agent."""
-        assignments = AssignmentStore._load_assignments()
-        
-        assignments[trip_id] = {
-            "trip_id": trip_id,
-            "agent_id": agent_id,
-            "agent_name": agent_name,
-            "assigned_at": datetime.now(timezone.utc).isoformat(),
-            "assigned_by": assigned_by,
-        }
-        
-        AssignmentStore._save_assignments(assignments)
-        
+        with AssignmentStore._lock:
+            assignments = AssignmentStore._load_assignments()
+
+            assignments[trip_id] = {
+                "trip_id": trip_id,
+                "agent_id": agent_id,
+                "agent_name": agent_name,
+                "assigned_at": datetime.now(timezone.utc).isoformat(),
+                "assigned_by": assigned_by,
+            }
+
+            AssignmentStore._save_assignments(assignments)
+
         # Audit log
         AuditStore.log_event("trip_assigned", assigned_by, {
             "trip_id": trip_id,
@@ -229,12 +236,13 @@ class AssignmentStore:
     @staticmethod
     def unassign_trip(trip_id: str, unassigned_by: str):
         """Remove assignment from a trip."""
-        assignments = AssignmentStore._load_assignments()
-        
-        if trip_id in assignments:
-            agent_name = assignments[trip_id]["agent_name"]
-            del assignments[trip_id]
-            AssignmentStore._save_assignments(assignments)
+        with AssignmentStore._lock:
+            assignments = AssignmentStore._load_assignments()
+
+            if trip_id in assignments:
+                agent_name = assignments[trip_id]["agent_name"]
+                del assignments[trip_id]
+                AssignmentStore._save_assignments(assignments)
             
             AuditStore.log_event("trip_unassigned", unassigned_by, {
                 "trip_id": trip_id,
@@ -247,26 +255,29 @@ class AuditStore:
     
     AUDIT_FILE = AUDIT_DIR / "events.json"
     MAX_EVENTS = 10000  # Rotate after this many
-    _lock = threading.Lock()
+    _lock = threading.RLock()
     
     @staticmethod
     def _load_events() -> list:
         """Load all events."""
-        if not AuditStore.AUDIT_FILE.exists():
-            return []
+        with AuditStore._lock:
+            if not AuditStore.AUDIT_FILE.exists():
+                return []
         
-        with open(AuditStore.AUDIT_FILE) as f:
-            return json.load(f)
+            with open(AuditStore.AUDIT_FILE) as f:
+                return json.load(f)
     
     @staticmethod
     def _save_events(events: list):
         """Save events, rotating if too many."""
-        # Keep only last MAX_EVENTS
-        if len(events) > AuditStore.MAX_EVENTS:
-            events = events[-AuditStore.MAX_EVENTS:]
+        with AuditStore._lock:
+            # Keep only last MAX_EVENTS
+            if len(events) > AuditStore.MAX_EVENTS:
+                events = events[-AuditStore.MAX_EVENTS:]
         
-        with open(AuditStore.AUDIT_FILE, "w") as f:
-            json.dump(events, f, indent=2)
+            with file_lock(AuditStore.AUDIT_FILE):
+                with open(AuditStore.AUDIT_FILE, "w") as f:
+                    json.dump(events, f, indent=2)
     
     @staticmethod
     def log_event(event_type: str, user_id: str, details: dict):

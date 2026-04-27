@@ -699,13 +699,21 @@ Consider age diversity, mobility requirements, and special needs.""",
         if packet.facts:
             lines.append("Facts:")
             for key, value in packet.facts.items():
-                lines.append(f"  - {key}: {value}")
+                if hasattr(value, 'value'):
+                    display = value.value
+                else:
+                    display = value
+                lines.append(f"  - {key}: {display}")
 
         # Derived signals
         if packet.derived_signals:
             lines.append("\nDerived Signals:")
             for key, value in packet.derived_signals.items():
-                lines.append(f"  - {key}: {value}")
+                if hasattr(value, 'value'):
+                    display = value.value
+                else:
+                    display = value
+                lines.append(f"  - {key}: {display}")
 
         return "\n".join(lines)
 

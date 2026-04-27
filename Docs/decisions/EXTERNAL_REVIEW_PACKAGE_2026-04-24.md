@@ -213,7 +213,7 @@ The following concerns from the original document remain unresolved or only part
 
 1. **P0-1**: `PROJECT_ROOT` NameError in `spine_api/server.py:259` — Now defined at line 49, so no longer a runtime crash. However, the pattern of `sys.path` mutation at import time remains fragile for non-server invocation contexts. (See `AUDIT_CLOSURE_2026-04-24.md` §4 Remaining Risks)
 
-2. **P1-1**: Duplicate `_PAST_TRIP_INDICATORS` in `src/intake/extractors.py` — Listed as not addressed in audit closure. Still open as of latest commit.
+2. **P1-1**: Duplicate `_PAST_TRIP_INDICATORS` in `src/intake/extractors.py` — **Already fixed** in commit `8f84536` (2026-04-20). The dead duplicate was removed, missing phrases added. Single definition at `extractors.py:62-67` with all 14 phrases. E2E tests confirm past-trip filtering works.
 
 3. **P1-4**: Race condition in persistence stores (non-atomic read-modify-write) — Not addressed; requires concurrency audit. All stores use `json.load → modify → json.dump` without file locking.
 

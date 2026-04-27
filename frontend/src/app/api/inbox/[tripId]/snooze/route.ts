@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { bffFetchOptions, bffJson, validateOrigin, isAuthStatus } from "@/lib/bff-auth";
 
 const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";

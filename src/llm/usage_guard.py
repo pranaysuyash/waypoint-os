@@ -277,6 +277,7 @@ class LLMUsageGuard:
             model="*",
             feature="*",
             usage_date=usage_date,
+            now=now,
         )
         return {
             "enabled": self.enabled,

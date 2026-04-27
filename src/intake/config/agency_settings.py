@@ -284,5 +284,8 @@ class AgencySettingsStore:
                 (settings.agency_id, data)
             )
             conn.commit()
+        except Exception as exc:
+            logger.error(f"Failed to save agency settings for {settings.agency_id}: {exc}")
+            raise
         finally:
             conn.close()

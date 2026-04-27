@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bffHeaders, isAuthStatus, noStoreHeaders } from "../bff-auth";
+import { bffFetchOptions, bffHeaders, isAuthStatus, noStoreHeaders } from "../bff-auth";
 import type { NextRequest } from "next/server";
 
 function mockRequest(cookies: Record<string, string> = {}): NextRequest {
@@ -76,6 +76,18 @@ describe("isAuthStatus", () => {
 
   it("returns false for 500", () => {
     expect(isAuthStatus(500)).toBe(false);
+  });
+});
+
+describe("bffFetchOptions", () => {
+  it("sets JSON content type when serializing a body", () => {
+    const req = mockRequest({ access_token: "jwt" });
+    const options = bffFetchOptions(req, "POST", "access_only", {}, { ok: true });
+    const headers = new Headers(options.headers);
+
+    expect(headers.get("Content-Type")).toBe("application/json");
+    expect(headers.get("Cookie")).toBe("access_token=jwt");
+    expect(options.body).toBe(JSON.stringify({ ok: true }));
   });
 });
 

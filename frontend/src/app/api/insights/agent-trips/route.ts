@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { bffHeaders, bffJson, isAuthStatus } from "@/lib/bff-auth";
+import { NextRequest } from 'next/server';
+import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
 
 const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 
@@ -32,10 +32,7 @@ export async function GET(request: NextRequest) {
   try {
     const response = await fetch(
       `${SPINE_API_URL}/analytics/agent/${encodeURIComponent(agentId)}/drill-down?metric=${metric}`,
-      {
-        method: "GET",
-        headers: bffHeaders(request),
-      }
+      bffFetchOptions(request, "GET")
     );
 
     if (!response.ok) {

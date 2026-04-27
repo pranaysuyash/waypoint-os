@@ -74,6 +74,11 @@ export function bffFetchOptions(
   };
 
   if (body !== undefined && method !== "GET" && method !== "HEAD") {
+    const headers = new Headers(opts.headers);
+    if (!headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+      opts.headers = headers;
+    }
     opts.body = JSON.stringify(body);
   }
 

@@ -1141,6 +1141,8 @@ class ExtractionPipeline:
                             parsed["max"], 1.0, AuthorityLevel.IMPORTED_STRUCTURED,
                             str(value), eid, extraction_mode=ExtractionMode.IMPORTED,
                         ))
+                    # Skip generic set_fact for budget_raw_text since we've already
+                    # set budget_raw_text, budget_min, and budget_max above.
                     continue
                 elif canonical_field == "party_size":
                     if isinstance(value, list):

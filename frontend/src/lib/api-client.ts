@@ -278,6 +278,7 @@ export interface Trip {
   traveler_bundle?: PromptBundle;
   safety?: unknown;
   fees?: FeeCalculationResult;
+  rawInput?: unknown;
   // Input fields (returned by mock API)
   customerMessage?: string;
   agentNotes?: string;

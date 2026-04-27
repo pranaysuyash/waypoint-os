@@ -55,7 +55,7 @@
 ## 4) Remaining Risks
 
 - **P0-1**: `PROJECT_ROOT` NameError in `spine_api/server.py:259` — Not addressed in this closure. Will be handled separately if still present.
-- **P1-1**: Duplicate `_PAST_TRIP_INDICATORS` in `src/intake/extractors.py` — Not addressed in this closure.
+- **P1-1**: Duplicate `_PAST_TRIP_INDICATORS` in `src/intake/extractors.py` — Already fixed in commit `8f84536` (2026-04-20). The dead duplicate was removed and the missing phrases `"recently visited"`, `"we went to"` were added to the active definition. Verified: single definition at `extractors.py:62-67` with all 14 phrases, E2E tests pass.
 - **P1-2**: Dead code in `generate_risk_flags` — Already handled in previous session.
 - **P1-4**: Race condition in persistence stores — Not addressed; requires concurrency audit.
 - **P2-P5**: Various code quality items — Not part of this closure scope.

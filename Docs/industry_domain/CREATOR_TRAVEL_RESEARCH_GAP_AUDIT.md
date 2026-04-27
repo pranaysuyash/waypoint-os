@@ -97,6 +97,7 @@ The current corpus can still benefit from explicit validation on these end-to-en
 
 - creator marketing → booking conversion → supplier fulfillment
 - creator supplier onboarding → performance/risk governance → destination enablement
+- self-booked and already-booked trip audit → flight/tour/package/visa risk detection → correction/recommendation pathways
 - payment/royalty/advance finance → settlement → refund/insurance handling
 - local permit/compliance → production logistics → cultural authenticity/trust
 - offline/hybrid content delivery → moderation/trust signal control → product experience
