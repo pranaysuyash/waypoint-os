@@ -517,7 +517,10 @@ def health() -> HealthResponse:
 
 
 @app.post("/run", response_model=SpineRunResponse)
-def run_spine(request: SpineRunRequest) -> SpineRunResponse:
+def run_spine(
+    request: SpineRunRequest,
+    agency: Agency = Depends(get_current_agency),
+) -> SpineRunResponse:
     """
     Execute one spine run, returning the canonical SpineRunResponse.
 
@@ -571,21 +574,17 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
         meta.execution_ms = round(execution_ms, 2)
 
         logger.info(
-            "spine_run ok=True run_id=%s stage=%s mode=%s scenario_id=%s execution_ms=%.2f",
+            "spine_run ok=True run_id=%s stage=%s mode=%s scenario_id=%s execution_ms=%.2f agency_id=%s",
             run_id,
             request.stage,
             request.operating_mode,
             request.scenario_id,
             execution_ms,
+            agency.id,
         )
 
-        # Save the trip to persistence
+        # Save the trip to persistence scoped to the user's agency
         trip_id_saved: Optional[str] = None
-        try:
-            agency_id = get_current_agency_id(credentials=Depends(security_bearer), db=Depends(get_db))
-        except Exception:
-            agency_id = None
-        
         try:
             trip_id_saved = save_processed_trip(
                 {
@@ -597,7 +596,7 @@ def run_spine(request: SpineRunRequest) -> SpineRunResponse:
                     "meta": meta.model_dump(),
                 },
                 source="spine_api",
-                agency_id=agency_id,
+                agency_id=agency.id,
             )
             logger.info("Trip saved: %s", trip_id_saved)
             
@@ -886,11 +885,11 @@ async def list_trips(
 @app.get("/trips/{trip_id}")
 def get_trip(
     trip_id: str,
-    user: User = Depends(get_current_user),
+    agency: Agency = Depends(get_current_agency),
 ):
     """Get a specific trip by ID."""
     trip = TripStore.get_trip(trip_id)
-    if not trip:
+    if not trip or trip.get("agency_id") != agency.id:
         raise HTTPException(status_code=404, detail="Trip not found")
     
     # Include assignment info
@@ -906,11 +905,11 @@ def get_trip(
 def patch_trip(
     trip_id: str,
     updates: Dict[str, Any],
-    user: User = Depends(get_current_user),
+    agency: Agency = Depends(get_current_agency),
 ):
     """Update trip fields (e.g. status)."""
     trip = TripStore.get_trip(trip_id)
-    if not trip:
+    if not trip or trip.get("agency_id") != agency.id:
         raise HTTPException(status_code=404, detail="Trip not found")
     
     old_status = trip.get("status")
@@ -959,11 +958,11 @@ def assign_trip(
     agent_id: str,
     agent_name: str,
     assigned_by: str = "system",
-    user: User = Depends(get_current_user),
+    agency: Agency = Depends(get_current_agency),
 ):
     """Assign a trip to an agent."""
     trip = TripStore.get_trip(trip_id)
-    if not trip:
+    if not trip or trip.get("agency_id") != agency.id:
         raise HTTPException(status_code=404, detail="Trip not found")
     
     AssignmentStore.assign_trip(trip_id, agent_id, agent_name, assigned_by)
@@ -978,11 +977,11 @@ def assign_trip(
 def unassign_trip(
     trip_id: str,
     unassigned_by: str = "system",
-    user: User = Depends(get_current_user),
+    agency: Agency = Depends(get_current_agency),
 ):
     """Remove assignment from a trip."""
     trip = TripStore.get_trip(trip_id)
-    if not trip:
+    if not trip or trip.get("agency_id") != agency.id:
         raise HTTPException(status_code=404, detail="Trip not found")
     
     AssignmentStore.unassign_trip(trip_id, unassigned_by)
@@ -994,11 +993,11 @@ def unassign_trip(
 def snooze_trip(
     trip_id: str,
     request: SnoozeRequest,
-    user: User = Depends(get_current_user),
+    agency: Agency = Depends(get_current_agency),
 ):
     """Snooze a trip until a specified time."""
     trip = TripStore.get_trip(trip_id)
-    if not trip:
+    if not trip or trip.get("agency_id") != agency.id:
         raise HTTPException(status_code=404, detail="Trip not found")
     
     analytics = trip.get("analytics") or {}
@@ -1017,11 +1016,11 @@ def snooze_trip(
 def acknowledge_suitability_flags(
     trip_id: str,
     request: SuitabilityAcknowledgeRequest,
-    user: User = Depends(get_current_user),
+    agency: Agency = Depends(get_current_agency),
 ):
     """Acknowledge suitability flags for a trip, allowing it to proceed."""
     trip = TripStore.get_trip(trip_id)
-    if not trip:
+    if not trip or trip.get("agency_id") != agency.id:
         raise HTTPException(status_code=404, detail="Trip not found")
     
     analytics = trip.get("analytics") or {}
@@ -1042,26 +1041,42 @@ def acknowledge_suitability_flags(
 @app.get("/assignments")
 def list_assignments(
     agent_id: Optional[str] = None,
-    user: User = Depends(get_current_user),
+    agency: Agency = Depends(get_current_agency),
 ):
-    """List assignments, optionally filtered by agent."""
+    """List assignments for trips in the current agency."""
+    # Get all trips for this agency first
+    agency_trips = TripStore.list_trips(agency_id=agency.id, limit=10000)
+    agency_trip_ids = {t["id"] for t in agency_trips if t.get("id")}
+    
     if agent_id:
         assignments = AssignmentStore.get_trips_for_agent(agent_id)
     else:
-        # Get all assignments — AssignmentStore already imported at module level
         assignments = list(AssignmentStore._load_assignments().values())
     
-    return {"items": assignments, "total": len(assignments)}
+    # Filter to only assignments for trips in this agency
+    filtered = [a for a in assignments if a.get("trip_id") in agency_trip_ids]
+    
+    return {"items": filtered, "total": len(filtered)}
 
 
 @app.get("/audit")
 def get_audit_events(
     limit: int = 100,
-    user: User = Depends(get_current_user),
+    agency: Agency = Depends(get_current_agency),
 ):
-    """Get recent audit events."""
+    """Get recent audit events for the current agency."""
     events = AuditStore.get_events(limit=limit)
-    return {"items": events, "total": len(events)}
+    # Get agency trip IDs to filter events
+    agency_trips = TripStore.list_trips(agency_id=agency.id, limit=10000)
+    agency_trip_ids = {t["id"] for t in agency_trips if t.get("id")}
+    
+    # Filter events to only those related to this agency's trips
+    filtered = [
+        e for e in events
+        if e.get("details", {}).get("trip_id") in agency_trip_ids
+        or e.get("details", {}).get("agency_id") == agency.id
+    ]
+    return {"items": filtered, "total": len(filtered)}
 
 
 # =============================================================================
@@ -1085,44 +1100,59 @@ from src.analytics.metrics import (
 @app.get("/analytics/summary", response_model=InsightsSummary)
 def get_analytics_summary(
     range: str = "30d",
-    user: User = Depends(get_current_user),
+    agency: Agency = Depends(get_current_agency),
 ):
-    trips = TripStore.list_trips(limit=10000)
-    # Ensure consistency with DashboardAggregator by only including trips with IDs
+    trips = TripStore.list_trips(limit=10000, agency_id=agency.id)
     canonical_trips = [t for t in trips if t.get("id")]
     return aggregate_insights(canonical_trips)
 
 
 @app.get("/analytics/pipeline", response_model=List[StageMetrics])
-def get_analytics_pipeline(range: str = "30d"):
-    trips = TripStore.list_trips(limit=10000)
+def get_analytics_pipeline(
+    range: str = "30d",
+    agency: Agency = Depends(get_current_agency),
+):
+    trips = TripStore.list_trips(limit=10000, agency_id=agency.id)
     canonical_trips = [t for t in trips if t.get("id")]
     return compute_pipeline_metrics(canonical_trips)
 
 
 @app.get("/analytics/team", response_model=List[TeamMemberMetrics])
-def get_analytics_team(range: str = "30d"):
-    trips = TripStore.list_trips(limit=1000)
+def get_analytics_team(
+    range: str = "30d",
+    agency: Agency = Depends(get_current_agency),
+):
+    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
     members = TeamStore.list_members(active_only=False)
     return compute_team_metrics(trips, members)
 
 
 @app.get("/analytics/bottlenecks", response_model=List[BottleneckAnalysis])
-def get_analytics_bottlenecks(range: str = "30d"):
-    trips = TripStore.list_trips(limit=1000)
+def get_analytics_bottlenecks(
+    range: str = "30d",
+    agency: Agency = Depends(get_current_agency),
+):
+    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
     return compute_bottlenecks(trips)
 
 
 @app.get("/analytics/revenue", response_model=RevenueMetrics)
-def get_analytics_revenue(range: str = "30d"):
-    trips = TripStore.list_trips(limit=1000)
+def get_analytics_revenue(
+    range: str = "30d",
+    agency: Agency = Depends(get_current_agency),
+):
+    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
     return compute_revenue_metrics(trips)
 
 
 @app.get("/analytics/agent/{agent_id}/drill-down")
-def get_agent_drill_down(agent_id: str, metric: str = "conversion"):
+def get_agent_drill_down(
+    agent_id: str,
+    metric: str = "conversion",
+    agency: Agency = Depends(get_current_agency),
+):
     """Return trips and metrics for a specific agent."""
-    trips = TripStore.list_trips(limit=1000)
+    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
     agent_trips = [
         t for t in trips
         if t.get("assigned_to") == agent_id or t.get("agent_id") == agent_id
@@ -1137,19 +1167,19 @@ def get_agent_drill_down(agent_id: str, metric: str = "conversion"):
 
 
 @app.get("/analytics/alerts", response_model=List[OperationalAlert])
-def get_analytics_alerts():
+def get_analytics_alerts(agency: Agency = Depends(get_current_agency)):
     """List pending operational alerts (Wave 10)."""
-    trips = TripStore.list_trips(limit=1000)
+    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
     return compute_alerts(trips)
 
 
 @app.post("/analytics/alerts/{alert_id}/dismiss")
-def post_dismiss_alert(alert_id: str):
+def post_dismiss_alert(alert_id: str, agency: Agency = Depends(get_current_agency)):
     """Dismiss an operational alert by flagging the source trip."""
     # Alert ID format is alert_{trip_id}
     trip_id = alert_id.replace("alert_", "")
     trip = TripStore.get_trip(trip_id)
-    if not trip:
+    if not trip or trip.get("agency_id") != agency.id:
         raise HTTPException(status_code=404, detail=f"Target trip for alert {alert_id} not found")
     
     analytics = trip.get("analytics") or {}
@@ -1167,9 +1197,9 @@ from src.analytics.review import process_review_action, trip_to_review
 
 
 @app.get("/analytics/reviews")
-def get_pending_reviews():
+def get_pending_reviews(agency: Agency = Depends(get_current_agency)):
     """List all trips currently flagged for owner review."""
-    trips = TripStore.list_trips(limit=1000)
+    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
     # Filter for trips requiring review (per engine.py / review.py logic)
     pending = [
         trip_to_review(t) 
@@ -1525,7 +1555,11 @@ def get_trip_timeline(
 # =============================================================================
 
 @app.post("/trips/{trip_id}/override", response_model=OverrideResponse)
-def create_override(trip_id: str, request: OverrideRequest) -> OverrideResponse:
+def create_override(
+    trip_id: str,
+    request: OverrideRequest,
+    agency: Agency = Depends(get_current_agency),
+) -> OverrideResponse:
     """
     Record an operator override of a risk flag for a trip.
     
@@ -1536,9 +1570,9 @@ def create_override(trip_id: str, request: OverrideRequest) -> OverrideResponse:
     
     Returns updated state and audit event ID.
     """
-    # Validate trip exists
+    # Validate trip exists and belongs to agency
     trip = TripStore.get_trip(trip_id)
-    if not trip:
+    if not trip or trip.get("agency_id") != agency.id:
         raise HTTPException(status_code=404, detail=f"Trip not found: {trip_id}")
     
     # Validate request fields
@@ -1618,10 +1652,10 @@ def create_override(trip_id: str, request: OverrideRequest) -> OverrideResponse:
 
 
 @app.get("/trips/{trip_id}/overrides")
-def list_overrides(trip_id: str) -> dict:
+def list_overrides(trip_id: str, agency: Agency = Depends(get_current_agency)) -> dict:
     """List all overrides for a trip."""
     trip = TripStore.get_trip(trip_id)
-    if not trip:
+    if not trip or trip.get("agency_id") != agency.id:
         raise HTTPException(status_code=404, detail=f"Trip not found: {trip_id}")
     
     overrides = OverrideStore.get_overrides_for_trip(trip_id)
@@ -1659,13 +1693,12 @@ def get_override(override_id: str) -> dict:
 from src.services.dashboard_aggregator import DashboardAggregator
 
 @app.get("/api/system/unified-state")
-def get_unified_state():
+async def get_unified_state(agency: Agency = Depends(get_current_agency)):
     """
-    Canonical SSOT for dashboard metrics.
-    Returns mathematically consistent data for Inbox, Overview, and Analytics.
+    Return unified state. Scoped to the current user's agency.
     """
     try:
-        return DashboardAggregator.get_unified_state()
+        return DashboardAggregator.get_unified_state(agency_id=agency.id)
     except Exception as e:
         logger.error(f"Failed to aggregate unified state: {e}", exc_info=True)
         raise HTTPException(
@@ -1675,13 +1708,13 @@ def get_unified_state():
 
 
 @app.get("/api/dashboard/stats", response_model=DashboardStatsResponse)
-def get_dashboard_stats():
+async def get_dashboard_stats(agency: Agency = Depends(get_current_agency)):
     """
     Dashboard stat cards — computed entirely by the backend aggregator.
-    Replaces all frontend Math.floor / filter / reduce logic.
+    Scopes all metrics to the current user's agency.
     """
     try:
-        return DashboardAggregator.get_dashboard_stats()
+        return DashboardAggregator.get_dashboard_stats(agency_id=agency.id)
     except Exception as e:
         logger.error(f"Failed to compute dashboard stats: {e}", exc_info=True)
         raise HTTPException(
@@ -1737,15 +1770,22 @@ def deactivate_team_member(member_id: str):
 
 
 @app.get("/api/team/workload")
-def get_workload_distribution():
+def get_workload_distribution(agency: Agency = Depends(get_current_agency)):
     """Get workload distribution across active team members."""
     members = TeamStore.list_members(active_only=True)
     assignments = AssignmentStore._load_assignments()
     
+    # Get agency trip IDs to filter assignments
+    agency_trips = TripStore.list_trips(agency_id=agency.id, limit=10000)
+    agency_trip_ids = {t["id"] for t in agency_trips if t.get("id")}
+    
     distribution = []
     for member in members:
         member_id = member["id"]
-        assigned_trips = [a for a in assignments.values() if a.get("agent_id") == member_id]
+        assigned_trips = [
+            a for a in assignments.values()
+            if a.get("agent_id") == member_id and a.get("trip_id") in agency_trip_ids
+        ]
         distribution.append({
             "member_id": member_id,
             "name": member.get("name"),
@@ -1763,10 +1803,10 @@ def get_workload_distribution():
 # =============================================================================
 
 @app.get("/analytics/reviews/{review_id}")
-def get_review(review_id: str):
+def get_review(review_id: str, agency: Agency = Depends(get_current_agency)):
     """Get a single review by trip ID."""
     trip = TripStore.get_trip(review_id)
-    if not trip:
+    if not trip or trip.get("agency_id") != agency.id:
         raise HTTPException(status_code=404, detail="Review not found")
     
     from src.analytics.review import trip_to_review
@@ -1812,9 +1852,9 @@ def bulk_review_action(actions: List[dict]):
 # =============================================================================
 
 @app.get("/analytics/escalations")
-def get_escalation_heatmap():
+def get_escalation_heatmap(agency: Agency = Depends(get_current_agency)):
     """Return escalation heatmap data."""
-    trips = TripStore.list_trips(limit=1000)
+    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
     
     heatmap = defaultdict(lambda: {"total": 0, "escalated": 0})
     for trip in trips:
@@ -1833,9 +1873,9 @@ def get_escalation_heatmap():
 
 
 @app.get("/analytics/funnel")
-def get_conversion_funnel():
+def get_conversion_funnel(agency: Agency = Depends(get_current_agency)):
     """Return conversion funnel metrics."""
-    trips = TripStore.list_trips(limit=1000)
+    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
     
     stages = ["new", "assigned", "in_progress", "review", "completed", "cancelled"]
     funnel = {stage: 0 for stage in stages}
@@ -1859,10 +1899,16 @@ def get_conversion_funnel():
 # =============================================================================
 
 @app.post("/trips/{trip_id}/reassign")
-def reassign_trip(trip_id: str, agent_id: str, agent_name: str, reassigned_by: str = "owner"):
+def reassign_trip(
+    trip_id: str,
+    agent_id: str,
+    agent_name: str,
+    reassigned_by: str = "owner",
+    agency: Agency = Depends(get_current_agency),
+):
     """Reassign a trip to a different agent."""
     trip = TripStore.get_trip(trip_id)
-    if not trip:
+    if not trip or trip.get("agency_id") != agency.id:
         raise HTTPException(status_code=404, detail="Trip not found")
     
     # Unassign first if already assigned
@@ -1877,10 +1923,18 @@ def reassign_trip(trip_id: str, agent_id: str, agent_name: str, reassigned_by: s
 
 
 @app.post("/inbox/bulk")
-def bulk_inbox_action(request: dict):
+def bulk_inbox_action(
+    request: dict,
+    agency: Agency = Depends(get_current_agency),
+):
     """Apply bulk actions to inbox items."""
     action = request.get("action")
     trip_ids = request.get("trip_ids", [])
+    
+    # Verify all trips belong to this agency
+    agency_trips = TripStore.list_trips(agency_id=agency.id, limit=10000)
+    agency_trip_ids = {t["id"] for t in agency_trips if t.get("id")}
+    trip_ids = [tid for tid in trip_ids if tid in agency_trip_ids]
     
     if not action or not trip_ids:
         raise HTTPException(status_code=400, detail="action and trip_ids are required")

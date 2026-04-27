@@ -1,7 +1,7 @@
 # Creator Travel Research Coverage Matrix
 
 This document audits creator travel research coverage across the Industry Domain taxonomy.
-It maps the 12 categories from `CREATOR_RESEARCH_GAP_LIST.md` to existing creator travel docs, highlights current coverage, and identifies places where the doc set should be expanded.
+It maps the categories from `CREATOR_RESEARCH_GAP_LIST.md` to existing creator travel docs, highlights current coverage, and identifies places where the doc set should be expanded.
 
 ## 1. Coverage approach
 
@@ -87,9 +87,15 @@ For each gap category, this matrix identifies:
 - Status: covered.
 - Notes: the doc set now includes a dedicated audience taxonomy page for consistent creator, agent, vendor, and customer framing.
 
+### 13. Booking integrity and audit for creator travel
+- Primary: `UX_AUDIT_MODE_DEEP_DIVE.md`, `CREATOR_TRAVEL_RESEARCH_ROADMAP.md`, `CREATOR_TRAVEL_RESEARCH_EXPLORATORY_ROUTES.md`
+- Secondary: `CREATOR_TRAVEL_RESEARCH_GAP_AUDIT.md`, `CREATOR_TRAVEL_RESEARCH_COVERAGE_MATRIX.md`
+- Status: partial.
+- Notes: audit mode and booked-trip verification are emerging research areas; dedicated creator travel audit research content should be expanded to turn this into a full coverage anchor.
+
 ## 3. Summary of coverage
 
-- Coverage: all 12 creator research gap categories are now addressed.
+- Coverage: all creator research gap categories are now addressed.
 - Strong coverage: reputation/brand safety, labor/legal compliance, platform architecture, attribution/metrics, supply curation, experience orchestration, country regulatory frameworks, layover/stopover strategy, SEO/content research, creator business model framing, and multi-audience taxonomy.
 - Notes:
   - `CREATOR_TRAVEL_BUSINESS_MODEL_FRAMING.md` provides explicit creator business model positioning.

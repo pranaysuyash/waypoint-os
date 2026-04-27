@@ -11,7 +11,7 @@ It captures both the core coverage pages and the broader creator travel research
 
 ## Summary
 
-- Total creator-related docs found: 129
+- Total creator-related docs found: 130
 - Docs currently not referenced in `INDEX.md`: 0
 
 ## Root creator docs
@@ -22,6 +22,7 @@ It captures both the core coverage pages and the broader creator travel research
 - `CREATOR_TRAVEL_RESEARCH_COVERAGE_MATRIX.md`
 - `CREATOR_TRAVEL_RESEARCH_GAP_AUDIT.md`
 - `CREATOR_TRAVEL_RESEARCH_ROADMAP.md`
+- `CREATOR_BOOKED_TRIP_AUDIT_AND_VERIFICATION.md`
 - `CREATOR_TRAVEL_RESEARCH_TAXONOMY_MATRIX.md`
 - `CREATOR_TRAVEL_AGENCY_SETTINGS_AND_AI_SUPPORT_CONTROLS.md`
 - `CREATOR_TRAVEL_ECOSYSTEM_MAP.md`

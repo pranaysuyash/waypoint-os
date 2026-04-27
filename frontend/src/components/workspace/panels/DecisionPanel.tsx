@@ -4,11 +4,12 @@ import { useCallback } from "react";
 import { useWorkbenchStore } from "@/stores/workbench";
 import { useTripContext } from "@/contexts/TripContext";
 import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate, DecisionOutput, SuitabilityFlagData, SuitabilityProfile } from "@/types/spine";
+import type { Trip } from "@/lib/api-client";
 import { SuitabilitySignal } from "./SuitabilitySignal";
 import { SuitabilityCard } from "./SuitabilityCard";
 
 interface DecisionPanelProps {
-  trip?: any;
+  trip?: Trip | null;
   tripId?: string;
 }
 
@@ -42,7 +43,7 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
   const tripId = propTripId || trip?.id || context?.tripId || "";
 
   const { result_decision, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
-  const decision = (result_decision || trip?.decision) as DecisionOutput;
+  const decision: DecisionOutput | null = result_decision || trip?.decision || null;
 
   if (!decision) {
     return (

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { TimelinePanel } from '../TimelinePanel';
 
 // Mock fetch
@@ -177,7 +178,23 @@ describe('TimelinePanel', () => {
   });
 
   it('fetches timeline with stage filter when stage is selected', async () => {
+    const user = userEvent.setup();
+
     (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        trip_id: 'test-trip',
+        events: [
+          {
+            trip_id: 'test-trip',
+            timestamp: '2026-04-23T10:00:00Z',
+            stage: 'decision',
+            status: 'completed',
+            state_snapshot: { stage: 'decision', status: 'completed' },
+          },
+        ],
+      }),
+    }).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         trip_id: 'test-trip',
@@ -193,7 +210,7 @@ describe('TimelinePanel', () => {
       }),
     });
 
-    const { rerender } = render(<TimelinePanel tripId="test-trip" />);
+    render(<TimelinePanel tripId="test-trip" />);
     
     await waitFor(() => {
       expect(screen.getByText('Decision Timeline')).toBeInTheDocument();
@@ -203,6 +220,15 @@ describe('TimelinePanel', () => {
     expect(global.fetch).toHaveBeenCalledWith('/api/trips/test-trip/timeline', {
       credentials: "include",
       cache: "no-store",
+    });
+
+    await user.click(screen.getByRole("button", { name: "Decision" }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith('/api/trips/test-trip/timeline?stage=decision', {
+        credentials: "include",
+        cache: "no-store",
+      });
     });
   });
 });

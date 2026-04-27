@@ -38,13 +38,21 @@ export function useUnifiedState() {
         cache: "no-store",
       });
       if (!response.ok) {
+        // 401 = unauthenticated, don't throw noisy errors during redirect-to-login
+        if (response.status === 401) {
+          setError("Unauthorized");
+          return;
+        }
         throw new Error(`Integrity fetch failed: ${response.statusText}`);
       }
       const data = (await response.json()) as UnifiedState;
       setState(data);
       setError(null);
     } catch (err: any) {
-      console.error("Unified State Hook Error:", err);
+      // Skip console noise for 401 — AuthProvider handles redirect
+      if (err.message !== "Unauthorized") {
+        console.error("Unified State Hook Error:", err);
+      }
       setError(err.message || "Unknown integrity error");
     } finally {
       setLoading(false);

@@ -11,7 +11,7 @@ It identifies the most important remaining creator travel areas and the highest-
 
 ## Current state
 
-- The 12 creator research gap categories from `CREATOR_RESEARCH_GAP_LIST.md` are now covered by the core creator docs.
+- The creator research gap categories from `CREATOR_RESEARCH_GAP_LIST.md` are now covered by the core creator docs.
 - The ecosystem now includes both foundational creator research and broader technical, financial, and operational creator docs.
 - `CREATOR_TRAVEL_DOCUMENT_INVENTORY.md` captures 124 creator-related docs.
 

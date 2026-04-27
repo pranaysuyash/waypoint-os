@@ -2,27 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-
-interface TimelineEvent {
-  trip_id: string;
-  timestamp: string;
-  stage: string;
-  status: string;
-  state_snapshot: Record<string, any>;
-  decision?: string;
-  confidence?: number;
-  reason?: string;
-  pre_state?: Record<string, any>;
-  post_state?: Record<string, any>;
-}
-
-interface TimelineResponse {
-  trip_id: string;
-  events: TimelineEvent[];
-}
+import type { Trip } from "@/lib/api-client";
+import type { TimelineEvent, TimelineResponse } from "@/types/spine";
 
 interface TimelinePanelProps {
-  trip?: any;
+  trip?: Trip | null;
   tripId?: string;
   onStageFilter?: (stage: string | null) => void;
 }
@@ -189,7 +173,9 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
     );
   }
 
-  if (!timeline || timeline.events.length === 0) {
+  const events = timeline?.events ?? [];
+
+  if (!timeline || events.length === 0) {
     return (
       <div className="p-6 text-center">
         <p className="text-sm text-gray-500 dark:text-gray-400">No timeline events found</p>
@@ -235,17 +221,17 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
 
         {/* Timeline Events */}
         <div className="space-y-3">
-          {timeline?.events.map((event, index) => (
+          {events.map((event, index) => (
             <TimelineEventCard key={`${event.timestamp}-${index}`} event={event} index={index} />
           ))}
         </div>
       </div>
 
       {/* Summary stats */}
-      {timeline && timeline.events.length > 0 && (
+      {events.length > 0 && (
         <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
           <p className="text-xs text-gray-600 dark:text-gray-400">
-            <span className="font-semibold">{timeline.events.length} events</span> {selectedStage && `in ${selectedStage}`} captured in this timeline
+            <span className="font-semibold">{events.length} events</span> {selectedStage && `in ${selectedStage}`} captured in this timeline
           </p>
         </div>
       )}

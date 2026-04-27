@@ -5,10 +5,11 @@ import { Clock, User, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { useFieldAuditLog } from '@/hooks/useFieldAuditLog';
 import { getChangeDescription, formatFieldLabel, getChangeSummary } from '@/types/audit';
 import { useState } from 'react';
+import type { Trip } from '@/lib/api-client';
 
 interface ChangeHistoryPanelProps {
   tripId: string;
-  trip?: any;
+  trip?: Trip | null;
 }
 
 export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {

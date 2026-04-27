@@ -24,8 +24,8 @@ class DashboardAggregator:
     """
 
     @staticmethod
-    def get_unified_state() -> Dict[str, Any]:
-        all_trips = TripStore.list_trips(limit=10000)
+    def get_unified_state(agency_id: str = None) -> Dict[str, Any]:
+        all_trips = TripStore.list_trips(limit=10000, agency_id=agency_id)
         trips = [t for t in all_trips if t.get("id")]
         canonical_total = len(trips)
         stages = {stage: 0 for stage in VALID_STAGES}
@@ -86,16 +86,11 @@ class DashboardAggregator:
         }
 
     @staticmethod
-    def get_dashboard_stats() -> Dict[str, Any]:
+    def get_dashboard_stats(agency_id: str = None) -> Dict[str, Any]:
         """
-        Compute dashboard stat cards. This replaces all frontend Math/filter logic.
-
-        active: completed trips (booked/delivered)
-        pending_review: trips not yet completed
-        ready_to_book: trips in strategy/output stages (weighted)
-        needs_attention: trips with SLA risk or low-quality signals
+        Compute dashboard stat cards scoped by agency.
         """
-        all_trips = TripStore.list_trips(limit=10000)
+        all_trips = TripStore.list_trips(limit=10000, agency_id=agency_id)
         trips = [t for t in all_trips if t.get("id")]
 
         now = datetime.now(timezone.utc)

@@ -48,6 +48,7 @@ export interface ProxyOptions {
   transformResponse?: (data: unknown) => unknown;
   errorFallback?: (status: number, error: unknown) => NextResponse;
   cacheControl?: string | null;
+  timeoutMs?: number;
 }
 
 /** Join base URL and path, normalising slashes */
@@ -107,11 +108,12 @@ async function buildFetchOptions(
     }
   }
 
+  const timeoutMs = opts.timeoutMs ?? PROXY_TIMEOUT_MS;
   const fetchOptions: RequestInit = {
     method,
     headers,
     cache: "no-store",
-    signal: AbortSignal.timeout(PROXY_TIMEOUT_MS),
+    signal: AbortSignal.timeout(timeoutMs),
   };
 
   // Read body only for non-safe methods, using the *effective* method

@@ -3,6 +3,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { DecisionPanel } from "../DecisionPanel";
+import type { Trip } from "@/lib/api-client";
 import type { DecisionOutput, SuitabilityFlagData } from "@/types/spine";
 
 vi.mock("@/stores/workbench", () => ({
@@ -48,6 +49,17 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
     ...overrides,
   });
 
+  const asTrip = (trip: { id: string; decision: DecisionOutput }): Trip => ({
+    id: trip.id,
+    destination: "Test destination",
+    type: "leisure",
+    state: "blue",
+    age: "Today",
+    createdAt: "2026-04-27T00:00:00.000Z",
+    updatedAt: "2026-04-27T00:00:00.000Z",
+    decision: trip.decision,
+  });
+
   describe("Rendering without suitability flags", () => {
     it("should render DecisionPanel without SuitabilitySignal when no flags", () => {
       const mockTrip = {
@@ -55,7 +67,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
         decision: createMockDecision(),
       };
 
-      render(<DecisionPanel trip={mockTrip} tripId="trip-123" />);
+      render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
       expect(screen.getByText("Decision State")).toBeInTheDocument();
       expect(screen.queryByText("Suitability Audit Results")).not.toBeInTheDocument();
@@ -63,6 +75,46 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
   });
 
   describe("Rendering with suitability flags", () => {
+    it("should prefer structured suitability_profile over legacy suitability_flags", () => {
+      const suitabilityFlags: SuitabilityFlagData[] = [
+        {
+          flag_type: "toddler_water_unsafe",
+          severity: "critical",
+          reason: "Water activities unsafe",
+          confidence: 0.95,
+          affected_travelers: ["Child"],
+        },
+      ];
+
+      const mockTrip = {
+        id: "trip-123",
+        decision: createMockDecision({
+          suitability_flags: suitabilityFlags,
+          suitability_profile: {
+            summary: {
+              status: "caution",
+              primaryReason: "Structured suitability profile available",
+              overallScore: 72,
+            },
+            dimensions: [
+              {
+                type: "mobility",
+                severity: "medium",
+                score: 68,
+                reason: "Some walking constraints need review",
+              },
+            ],
+          },
+        }),
+      };
+
+      render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
+
+      expect(screen.getByTestId("suitability-card")).toBeInTheDocument();
+      expect(screen.getByText("Structured suitability profile available")).toBeInTheDocument();
+      expect(screen.queryByText("Water Activity Not Safe for Toddlers")).not.toBeInTheDocument();
+    });
+
     it("should render SuitabilitySignal when flags present", () => {
       const suitabilityFlags: SuitabilityFlagData[] = [
         {
@@ -81,7 +133,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
         }),
       };
 
-      render(<DecisionPanel trip={mockTrip} tripId="trip-123" />);
+      render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
       expect(screen.getByText("Suitability Audit Results")).toBeInTheDocument();
       expect(screen.getByText("Suitability Audit Results")).toBeInTheDocument();
@@ -113,7 +165,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
         }),
       };
 
-      render(<DecisionPanel trip={mockTrip} tripId="trip-123" />);
+      render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
       expect(screen.getByText("Tier 1: Hard Blockers (Must Resolve)")).toBeInTheDocument();
       expect(screen.getByText(/hard blockers/)).toBeInTheDocument();
@@ -144,7 +196,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
         }),
       };
 
-      render(<DecisionPanel trip={mockTrip} tripId="trip-123" />);
+      render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
       expect(screen.getByText("Tier 1: Hard Blockers (Must Resolve)")).toBeInTheDocument();
       expect(screen.getByText("Tier 2: Warnings (Review Recommended)")).toBeInTheDocument();
@@ -178,7 +230,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
         }),
       };
 
-      render(<DecisionPanel trip={mockTrip} tripId="trip-123" />);
+      render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
       const suitabilitySection = screen.getByText("Suitability Audit Results");
       expect(suitabilitySection).toBeInTheDocument();
@@ -210,7 +262,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
         }),
       };
 
-      render(<DecisionPanel trip={mockTrip} tripId="trip-123" />);
+      render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
       expect(screen.getByText("Suitability Audit Results")).toBeInTheDocument();
       expect(screen.getByText("Water Activity Not Safe for Toddlers")).toBeInTheDocument();
@@ -226,7 +278,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
         }),
       };
 
-      render(<DecisionPanel trip={mockTrip} tripId="trip-123" />);
+      render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
       expect(screen.getByText("Decision State")).toBeInTheDocument();
       expect(screen.queryByText("Suitability Audit Results")).not.toBeInTheDocument();
@@ -240,7 +292,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
         }),
       };
 
-      render(<DecisionPanel trip={mockTrip} tripId="trip-123" />);
+      render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
       expect(screen.getByText("Decision State")).toBeInTheDocument();
       expect(screen.queryByText("Suitability Audit Results")).not.toBeInTheDocument();
@@ -285,7 +337,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
         }),
       };
 
-      render(<DecisionPanel trip={mockTrip} tripId="trip-123" />);
+      render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
       expect(screen.getByText("4")).toBeInTheDocument();
       expect(screen.getByText(/hard blockers/)).toBeInTheDocument();
@@ -318,7 +370,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
         }),
       };
 
-      render(<DecisionPanel trip={mockTrip} tripId="trip-123" />);
+      render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
       expect(screen.getByText("Water Activity Not Safe for Toddlers")).toBeInTheDocument();
       expect(screen.getByText("Physical Intensity Unsafe for Elderly")).toBeInTheDocument();
@@ -342,7 +394,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
         }),
       };
 
-      render(<DecisionPanel trip={mockTrip} tripId="trip-123" />);
+      render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
       expect(screen.getByText(/Emma, Olivia/)).toBeInTheDocument();
     });
@@ -365,7 +417,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
         }),
       };
 
-      render(<DecisionPanel trip={mockTrip} tripId="trip-123" />);
+      render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
       expect(screen.getByText(/96%/)).toBeInTheDocument();
     });
@@ -402,7 +454,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
         } as DecisionOutput,
       };
 
-      render(<DecisionPanel trip={mockTrip} tripId="trip-123" />);
+      render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
       expect(screen.getByText("Decision State")).toBeInTheDocument();
       expect(screen.getByText("budget_feasibility")).toBeInTheDocument();

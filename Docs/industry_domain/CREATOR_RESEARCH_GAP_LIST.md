@@ -67,6 +67,12 @@ This document lists the creator/app-related gaps identified in the current trave
 - Tech-related, feature-related, scenario-related, legal, docs, comms, services, booking, agent touchpoints
 - Audience-specific pages for search, acquisition, partner enablement, and trust
 
+13. Booking integrity and audit for creator travel
+
+- Self-booked and already-booked flight, tour, package, and visa verification
+- Audit-mode analysis of self-booked itineraries for waste, risk, and compliance gaps
+- Booking correction pathways and agency-sourced alternatives for already-booked trips
+
 ## Suggested research doc candidates
 
 - CREATOR_TRAVEL_PLATFORM_ARCHITECTURE.md
@@ -80,4 +86,5 @@ This document lists the creator/app-related gaps identified in the current trave
 - CREATOR_TRAVEL_SEO_AND_CONTENT_POSITIONING.md
 - CREATOR_LAYOVER_GTM_AND_PARTNER_STRATEGY.md
 - CREATOR_TRAVEL_BUSINESS_MODEL_FRAMING.md
+- CREATOR_BOOKED_TRIP_AUDIT_AND_VERIFICATION.md
 - CREATOR_TRAVEL_MULTI_AUDIENCE_TAXONOMY.md

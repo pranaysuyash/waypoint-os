@@ -66,24 +66,41 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   hydrate: async () => {
     set({ isLoading: true, error: null });
-    try {
+
+    const tryMe = async (): Promise<boolean> => {
       const response = await fetch("/api/auth/me", { credentials: "include" });
-      if (!response.ok) {
-        set({ isAuthenticated: false, isLoading: false });
-        return;
+      if (response.ok) {
+        const data = await response.json();
+        if (data.ok && data.user) {
+          set({
+            user: data.user,
+            agency: data.agency,
+            membership: data.membership,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+          return true;
+        }
       }
-      const data = await response.json();
-      if (data.ok && data.user) {
-        set({
-          user: data.user,
-          agency: data.agency,
-          membership: data.membership,
-          isAuthenticated: true,
-          isLoading: false,
-        });
-      } else {
-        set({ isAuthenticated: false, isLoading: false });
+      return false;
+    };
+
+    try {
+      // 1. Try current access token
+      if (await tryMe()) return;
+
+      // 2. Access token expired — try refresh (refresh_token cookie is httpOnly, path=/api/auth)
+      const refreshRes = await fetch("/api/auth/refresh", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (refreshRes.ok) {
+        // 3. Retry /me with new access token
+        if (await tryMe()) return;
       }
+
+      // 4. Refresh failed or /me still fails — force re-login
+      set({ isAuthenticated: false, isLoading: false });
     } catch {
       set({ isAuthenticated: false, isLoading: false });
     }

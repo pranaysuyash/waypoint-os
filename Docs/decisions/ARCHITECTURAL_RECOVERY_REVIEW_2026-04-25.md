@@ -134,6 +134,32 @@ Files:
 - `frontend/src/components/workspace/panels/DecisionPanel.tsx`
 - `frontend/src/components/workspace/panels/SuitabilityCard.tsx`
 
+### 4b. Workspace panel contracts used local schemas and `any` trip props
+
+Verdict: fixed for the decision/timeline/change-history workspace flow.
+
+Evidence:
+
+- `DecisionPanel` accepted `trip?: any` and cast the active decision to `DecisionOutput`.
+- `TimelinePanel` duplicated `TimelineEvent` and `TimelineResponse` locally even though generated backend contract types already exist.
+- Generated `TimelineResponse.events` is optional, while the local panel schema treated it as always present.
+- `ChangeHistoryPanel` accepted `trip?: any`.
+
+Decision:
+
+- Use `Trip` from `frontend/src/lib/api-client.ts` for workspace panel trip props.
+- Use generated `TimelineEvent` and `TimelineResponse` from `@/types/spine`.
+- Guard `TimelineResponse.events` with an empty-array fallback.
+- Add logical-flow tests proving structured suitability profile precedence and timeline stage-filter fetching.
+
+Files:
+
+- `frontend/src/components/workspace/panels/DecisionPanel.tsx`
+- `frontend/src/components/workspace/panels/TimelinePanel.tsx`
+- `frontend/src/components/workspace/panels/ChangeHistoryPanel.tsx`
+- `frontend/src/components/workspace/panels/__tests__/DecisionPanel.SuitabilitySignal.integration.test.tsx`
+- `frontend/src/components/workspace/panels/__tests__/TimelinePanel.test.tsx`
+
 ### 5. Production analytics modules still used bare persistence imports
 
 Verdict: fixed for `src/analytics`; remaining path setup in server/watchdog is startup-path handling and was not changed in this pass.
@@ -247,6 +273,7 @@ Commands run after the review changes:
 - `cd frontend && npx tsc --noEmit` -> passed
 - `cd frontend && npx vitest run src/lib/__tests__/route-map.test.ts src/components/workspace/panels/__tests__/DecisionPanel.SuitabilitySignal.integration.test.tsx src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx` -> `3 files passed, 30 tests passed`
 - `cd frontend && npx vitest run src/lib/__tests__/bff-trip-adapters.test.ts src/lib/__tests__/bff-auth.test.ts src/lib/__tests__/route-map.test.ts src/lib/__tests__/inbox-helpers.test.ts src/components/workspace/panels/__tests__/DecisionPanel.SuitabilitySignal.integration.test.tsx src/components/workspace/panels/__tests__/SuitabilityPanel.test.tsx` -> `6 files passed, 91 tests passed`
+- `cd frontend && npx vitest run src/components/workspace/panels/__tests__/TimelinePanel.test.tsx src/components/workspace/panels/__tests__/DecisionPanel.SuitabilitySignal.integration.test.tsx` -> `2 files passed, 23 tests passed`
 - `cd frontend && npm run build` -> passed
 - Explicit/catch-all route overlap check -> `no explicit/catch-all route overlaps`
 - `git diff --check` -> passed

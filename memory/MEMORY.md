@@ -39,6 +39,11 @@
 - **[Detailed User Flows](../Docs/UX_DETAILED_USER_FLOWS.md)** — Screen-by-screen interaction design
 - **[Synthetic Data and Fixtures](../Docs/SYNTHETIC_DATA_AND_FIXTURES.md)** — Test data, schemas, generators
 
+## Research & Destination Intelligence (2026-04-26)
+
+- **⚠️ [Destination Intelligence Vision](../Docs/research/DESTINATION_INTELLIGENCE_VISION_2026-04-26.md)** — READ FIRST before any research, content, SEO, or product feature work. The strategic thesis: we build the world's most comprehensive real-time destination intelligence platform. Every data point (weather, crime, AQI, costs, laws, food safety, connectivity, etc.) becomes a product feature + SEO content + free tool + programmatic page + Content Prism triple. Data compounds into an unreplicable moat.
+- **[Research Opportunity Master List](../Docs/research/RESEARCH_OPPORTUNITY_MASTER_LIST_2026-04-25.md)** — 1,897 research items across 56 categories (A–BD). Covers market intelligence, customer research, product features, industry domains, technology, business models, destination intelligence, everyday practical knowledge, programmatic SEO, scoring indices, free tools, data acquisition strategy, and Content Prism (3-audience) topics. Only 211 items done; 1,686 open.
+
 ## Product Management (2026-04-14)
 
 - **[Product Gaps and Unknowns](../Docs/PM_PRODUCT_GAPS_AND_UNKNOWN.md)** — Roadmap gaps, assumptions, validation plan, moat strategy

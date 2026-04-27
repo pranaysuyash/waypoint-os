@@ -14,7 +14,7 @@ The creator document universe now spans both the core creator gap list and the b
 
 ### Core creator gap coverage
 
-The 12 creator research gaps in `CREATOR_RESEARCH_GAP_LIST.md` are each represented by at least one dedicated document:
+The creator research gaps in `CREATOR_RESEARCH_GAP_LIST.md` are each represented by at least one dedicated document:
 
 1. Creator travel business model framing
    - `CREATOR_TRAVEL_BUSINESS_MODEL_FRAMING.md`

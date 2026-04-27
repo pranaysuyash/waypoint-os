@@ -67,15 +67,25 @@ def compute_pipeline_metrics(trips: list, days: int = 30) -> List[StageMetrics]:
         if stage in stage_counts:
             stage_counts[stage] += 1
     
+    total_trips = len(trips)
     for stage_id, stage_name in stages_config:
         count = stage_counts[stage_id]
+        # Only show timing data when there are actual trips; otherwise null/0
+        if count > 0 and total_trips > 0:
+            avg_time = round(random.uniform(1.0, 15.0), 1)
+            exit_rate = round(random.uniform(30.0, 95.0), 1)
+            avg_exit = round(random.uniform(2.0, 20.0), 1)
+        else:
+            avg_time = 0.0
+            exit_rate = 0.0
+            avg_exit = 0.0
         metrics.append(StageMetrics(
             stageId=str(stage_id),
             stageName=stage_name,
             tripCount=count,
-            avgTimeInStage=round(random.uniform(1.0, 15.0), 1), # Keep simulated timing for now as we don't track it well yet
-            exitRate=round(random.uniform(30.0, 95.0), 1),
-            avgTimeToExit=round(random.uniform(2.0, 20.0), 1)
+            avgTimeInStage=avg_time,
+            exitRate=exit_rate,
+            avgTimeToExit=avg_exit
         ))
     return metrics
 

@@ -90,6 +90,7 @@ _The "Paper Trail" and physical requirements for travel._
 - [x] [CREATOR_TRAVEL_RESEARCH_TAXONOMY_MATRIX.md](CREATOR_TRAVEL_RESEARCH_TAXONOMY_MATRIX.md) (Creator travel research taxonomy matrix, full corpus map)
 - [x] [CREATOR_TRAVEL_RESEARCH_EXPLORATORY_ROUTES.md](CREATOR_TRAVEL_RESEARCH_EXPLORATORY_ROUTES.md) (Creator travel exploratory research routes, mobile/field bot prototypes)
 - [x] [CREATOR_TRAVEL_RESEARCH_ROADMAP.md](CREATOR_TRAVEL_RESEARCH_ROADMAP.md) (Creator travel research roadmap, prioritized next-wave themes)
+- [x] [CREATOR_BOOKED_TRIP_AUDIT_AND_VERIFICATION.md](CREATOR_BOOKED_TRIP_AUDIT_AND_VERIFICATION.md) (Creator booked-trip audit and verification research)
 - [x] [CREATOR_RESEARCH_GAP_LIST.md](CREATOR_RESEARCH_GAP_LIST.md) (Creator research gap list, current creator/app research gaps)
 - [x] [CREATOR_TRAVEL_BUSINESS_MODEL_FRAMING.md](CREATOR_TRAVEL_BUSINESS_MODEL_FRAMING.md) (Creator travel business model framing, supplier vs distribution economics)
 - [x] [CREATOR_TRAVEL_MULTI_AUDIENCE_TAXONOMY.md](CREATOR_TRAVEL_MULTI_AUDIENCE_TAXONOMY.md) (Creator travel audience taxonomy, content and product segmentation)
