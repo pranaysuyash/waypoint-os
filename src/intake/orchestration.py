@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from .packet_models import SourceEnvelope
 from .extractors import ExtractionPipeline
@@ -117,6 +117,8 @@ class SpineResult:
 
     # Metadata
     run_timestamp: str = ""
+    early_exit: bool = False
+    early_exit_reason: Optional[str] = None
 
 
 # =============================================================================
@@ -130,6 +132,7 @@ def run_spine_once(
     feasibility_table: Optional[Dict[str, Any]] = None,
     fixture_expectations: Optional[Dict[str, Any]] = None,
     agency_settings: Optional[AgencySettings] = None,
+    stage_callback: Optional[callable] = None,
 ) -> SpineResult:
     """
     Single spine entrypoint: envelopes → complete result bundle.
@@ -167,13 +170,16 @@ def run_spine_once(
     if operating_mode is not None:
         packet.operating_mode = operating_mode
 
-    # Emit intake event to AuditStore
-    _emit_audit_event(
-        trip_id=packet.packet_id,
-        stage="intake",
-        state="extracted",
-        reason="Extraction pipeline completed"
-    )
+    if stage_callback:
+        stage_callback("packet", packet if hasattr(packet, "model_dump") else vars(packet))
+    else:
+        # Emit intake event to AuditStore
+        _emit_audit_event(
+            trip_id=packet.packet_id,
+            stage="intake",
+            state="extracted",
+            reason="Extraction pipeline completed"
+        )
 
     # --- Phase 2: Validation ---
     validation = validate_packet(packet, stage=stage)
@@ -193,22 +199,28 @@ def run_spine_once(
             hard_blockers=["extraction_quality"],
             rationale={"gate_failure": "NB01_ESCALATE", "reasons": nb01_result.reasons}
         )
-        # Emit escalation event to AuditStore
+        if stage_callback:
+            stage_callback("validation", {"status": "ESCALATED", "gate": "NB01", "reasons": nb01_result.reasons})
+        else:
+            # Emit escalation event to AuditStore
+            _emit_audit_event(
+                trip_id=packet.packet_id,
+                stage="packet",
+                state="escalated",
+                reason="NB01 gate escalation - extraction quality issues"
+            )
+        return _create_empty_spine_result(packet, validation, decision, run_timestamp)
+
+    if stage_callback:
+        stage_callback("validation", validation if hasattr(validation, "model_dump") else vars(validation))
+    else:
+        # Emit packet stage completion to AuditStore
         _emit_audit_event(
             trip_id=packet.packet_id,
             stage="packet",
-            state="escalated",
-            reason="NB01 gate escalation - extraction quality issues"
+            state="validated",
+            reason="Validation completed successfully"
         )
-        return _create_empty_spine_result(packet, validation, decision, run_timestamp)
-
-    # Emit packet stage completion to AuditStore
-    _emit_audit_event(
-        trip_id=packet.packet_id,
-        stage="packet",
-        state="validated",
-        reason="Validation completed successfully"
-    )
 
     # --- Phase 3: Decision ---
     decision = run_gap_and_decision(packet, feasibility_table=feasibility_table, agency_settings=actual_settings)
@@ -216,14 +228,17 @@ def run_spine_once(
     # Update packet decision_state from decision result
     packet.decision_state = decision.decision_state
 
-    # Emit decision stage event to AuditStore
-    _emit_audit_event(
-        trip_id=packet.packet_id,
-        stage="decision",
-        state=decision.decision_state,
-        decision_type="gap_and_decision",
-        reason="Decision engine analysis completed"
-    )
+    if stage_callback:
+        stage_callback("decision", decision if hasattr(decision, "model_dump") else vars(decision))
+    else:
+        # Emit decision stage event to AuditStore
+        _emit_audit_event(
+            trip_id=packet.packet_id,
+            stage="decision",
+            state=decision.decision_state,
+            decision_type="gap_and_decision",
+            reason="Decision engine analysis completed"
+        )
 
     # --- Phase 3.5: Suitability Assessment (P0-01) ---
     suitability_flags = assess_activity_suitability(packet)
@@ -271,13 +286,16 @@ def run_spine_once(
     # --- Phase 4: Strategy ---
     strategy = build_session_strategy(decision, packet, agency_settings=actual_settings)
 
-    # Emit strategy stage event to AuditStore
-    _emit_audit_event(
-        trip_id=packet.packet_id,
-        stage="strategy",
-        state="built",
-        reason="Session strategy constructed"
-    )
+    if stage_callback:
+        stage_callback("strategy", strategy if hasattr(strategy, "model_dump") else vars(strategy))
+    else:
+        # Emit strategy stage event to AuditStore
+        _emit_audit_event(
+            trip_id=packet.packet_id,
+            stage="strategy",
+            state="built",
+            reason="Session strategy constructed"
+        )
 
     # --- Phase 5: Internal Bundle ---
     internal_bundle = build_internal_bundle(strategy, decision, packet)
@@ -285,6 +303,13 @@ def run_spine_once(
     # --- Phase 6: Traveler-Safe Bundle ---
     # If decision state dropped to INTERNAL_DRAFT or STOP, traveler bundle should be empty/minimal
     traveler_bundle = build_traveler_safe_bundle(strategy, decision)
+
+    # Callback for bundles
+    if stage_callback:
+        stage_callback("output", {
+            "internal_bundle": internal_bundle if hasattr(internal_bundle, "model_dump") else vars(internal_bundle),
+            "traveler_bundle": traveler_bundle if hasattr(traveler_bundle, "model_dump") else vars(traveler_bundle),
+        })
 
     # --- Phase 7: Sanitized View ---
     sanitized_view = sanitize_for_traveler(packet)
@@ -301,13 +326,16 @@ def run_spine_once(
         "sanitized_view_leaks": sanitized_leaks,
     }
 
-    # Emit safety stage event to AuditStore
-    _emit_audit_event(
-        trip_id=packet.packet_id,
-        stage="safety",
-        state="validated",
-        reason=f"Leakage check completed - {'safe' if leakage_result['is_safe'] else 'unsafe'}"
-    )
+    if stage_callback:
+        stage_callback("safety", leakage_result)
+    else:
+        # Emit safety stage event to AuditStore
+        _emit_audit_event(
+            trip_id=packet.packet_id,
+            stage="safety",
+            state="validated",
+            reason=f"Leakage check completed - {'safe' if leakage_result['is_safe'] else 'unsafe'}"
+        )
 
     # --- Phase 9.5: Fee Calculation ---
     fees = calculate_trip_fees(packet, decision)
@@ -382,7 +410,9 @@ def _create_empty_spine_result(packet, validation, decision, timestamp):
         autonomy_outcome=None,
         assertion_result=None,
         frontier_result=None,
-        run_timestamp=timestamp
+            run_timestamp=timestamp,
+        early_exit=True,
+        early_exit_reason=f"NB01_ESCALATE: {decision.rationale.get('gate_failure', 'extraction_quality') if isinstance(decision.rationale, dict) else 'extraction_quality'}",
     )
 
 

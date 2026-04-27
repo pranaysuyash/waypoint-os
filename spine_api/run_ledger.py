@@ -86,6 +86,7 @@ class RunLedger:
         trip_id: Optional[str],
         stage: str,
         operating_mode: str,
+        agency_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Initialize meta.json for a new run in QUEUED state.
@@ -101,6 +102,7 @@ class RunLedger:
             "state":          RunState.QUEUED.value,
             "stage":          stage,
             "operating_mode": operating_mode,
+            "agency_id":      agency_id,
             "started_at":     None,
             "completed_at":   None,
             "total_ms":       None,
@@ -221,6 +223,21 @@ class RunLedger:
         meta["completed_at"] = _now_iso()
         meta["block_reason"] = block_reason
 
+        with _meta_path(run_id).open("w", encoding="utf-8") as fh:
+            json.dump(meta, fh, indent=2)
+
+    @staticmethod
+    def update_meta(run_id: str, **kwargs: Any) -> None:
+        """
+        Merge kwargs into the run's meta.json. Useful for late-binding fields
+        like trip_id that are assigned after the pipeline completes.
+
+        Raises FileNotFoundError if the run does not exist.
+        """
+        meta = RunLedger.get_meta(run_id)
+        if meta is None:
+            raise FileNotFoundError(f"No ledger entry for run_id={run_id!r}")
+        meta.update(kwargs)
         with _meta_path(run_id).open("w", encoding="utf-8") as fh:
             json.dump(meta, fh, indent=2)
 

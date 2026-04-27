@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useDeferredValue } from 'react';
+import { useState, useCallback, useMemo, useDeferredValue, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ChevronDown,
@@ -26,7 +26,7 @@ import { useWorkbenchStore } from '@/stores/workbench';
 import { useSpineRun } from '@/hooks/useSpineRun';
 import { useUpdateTrip } from '@/hooks/useTrips';
 import { getTripRoute } from '@/lib/routes';
-import type { SpineStage, OperatingMode, SpineRunRequest, ValidationReport, DecisionOutput, StrategyOutput, SafetyResult, FeeCalculationResult } from '@/types/spine';
+import type { SpineStage, OperatingMode, SpineRunRequest } from '@/types/spine';
 import {
   CURRENCY_CONFIG,
   type SupportedCurrency,
@@ -60,6 +60,28 @@ const modes: { value: OperatingMode; label: string }[] = [
 
 const VALID_MODES = new Set<OperatingMode>(modes.map(m => m.value));
 
+const SPINE_PROGRESS_STAGES = [
+  { afterSeconds: 0, label: 'Reading notes', detail: 'Parsing the customer message and internal notes.' },
+  { afterSeconds: 8, label: 'Extracting trip facts', detail: 'Finding destination, dates, party, pace, budget, and constraints.' },
+  { afterSeconds: 18, label: 'Checking missing details', detail: 'Looking for blockers, ambiguity, and follow-up questions.' },
+  { afterSeconds: 32, label: 'Evaluating feasibility', detail: 'Checking suitability, risk, leakage, and budget signals.' },
+  { afterSeconds: 48, label: 'Preparing workspace output', detail: 'Building the packet, decision view, strategy, and traveler-safe bundle.' },
+  { afterSeconds: 75, label: 'Still working', detail: 'This run is taking longer than usual. Keep this page open.' },
+];
+
+function formatElapsedTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (mins === 0) return `${secs}s`;
+  return `${mins}m ${secs.toString().padStart(2, '0')}s`;
+}
+
+function getSpineProgressStage(elapsedSeconds: number) {
+  return [...SPINE_PROGRESS_STAGES]
+    .reverse()
+    .find((stage) => elapsedSeconds >= stage.afterSeconds) ?? SPINE_PROGRESS_STAGES[0];
+}
+
 interface IntakePanelProps {
   tripId: string;
   trip?: Trip | null;
@@ -85,6 +107,8 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [runSuccess, setRunSuccess] = useState(false);
+  const [runStartedAt, setRunStartedAt] = useState<number | null>(null);
+  const [runElapsedSeconds, setRunElapsedSeconds] = useState(0);
   const { execute: executeSpineRun, isLoading: isSpineRunning } = useSpineRun();
 
   const { mutate: saveTrip, isSaving } = useUpdateTrip();
@@ -104,6 +128,21 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   // Budget state with currency
   const [budgetAmount, setBudgetAmount] = useState('');
   const [budgetCurrency, setBudgetCurrency] = useState<SupportedCurrency>('INR');
+
+  useEffect(() => {
+    if (!runStartedAt) {
+      setRunElapsedSeconds(0);
+      return;
+    }
+
+    const updateElapsed = () => {
+      setRunElapsedSeconds(Math.floor((Date.now() - runStartedAt) / 1000));
+    };
+
+    updateElapsed();
+    const timer = window.setInterval(updateElapsed, 1000);
+    return () => window.clearInterval(timer);
+  }, [runStartedAt]);
 
   // Editable trip details state
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -134,6 +173,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
     setIsRunning(true);
     setRunError(null);
     setRunSuccess(false);
+    setRunStartedAt(Date.now());
 
     try {
       const request: SpineRunRequest = {
@@ -147,26 +187,30 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
         scenario_id: store.scenario_id || null,
       };
 
-      const result = await executeSpineRun(request);
+      const completedRun = await executeSpineRun(request);
 
-      if (result.packet) store.setResultPacket(result.packet);
-      if (result.validation) store.setResultValidation(result.validation as unknown as ValidationReport);
-      if (result.decision) store.setResultDecision(result.decision as unknown as DecisionOutput);
-      if (result.strategy) store.setResultStrategy(result.strategy as unknown as StrategyOutput);
-      if (result.internal_bundle) store.setResultInternalBundle(result.internal_bundle);
-      if (result.traveler_bundle) store.setResultTravelerBundle(result.traveler_bundle);
-      if (result.safety) store.setResultSafety(result.safety as unknown as SafetyResult);
-      if (result.fees) store.setResultFees(result.fees as unknown as FeeCalculationResult);
+      // After async completion, the trip is saved on the backend.
+      // Refresh data by navigating — workspace will re-fetch from API.
       store.setResultRunTs(new Date().toISOString());
-
       setRunSuccess(true);
       setTimeout(() => setRunSuccess(false), 3000);
-      router.push(getTripRoute(tripId, 'packet'));
+      if (completedRun?.trip_id) {
+        router.push(getTripRoute(completedRun.trip_id, 'packet'));
+      } else {
+        setRunError('Processing completed but no trip workspace was saved. Check the run status and retry.');
+      }
     } catch (err) {
-      setRunError(err instanceof Error ? err.message : 'Processing failed. Is the spine API running on localhost:8000?');
-      setTimeout(() => setRunError(null), 8000);
+      const message = err instanceof Error ? err.message : 'Processing failed. Is the spine API running on localhost:8000?';
+      const isTimeout = message.toLowerCase().includes('timeout') || message.includes('504');
+      setRunError(
+        isTimeout
+          ? 'Processing timed out before the AI run finished. The request is too long for a blocking web call; retry once, then switch this flow to run status polling.'
+          : message
+      );
+      setTimeout(() => setRunError(null), 15000);
     } finally {
       setIsRunning(false);
+      setRunStartedAt(null);
     }
   }, [store, executeSpineRun, router, tripId]);
 
@@ -540,6 +584,45 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
 
   return (
     <div className='space-y-6'>
+      {isRunning && (
+        <div
+          className='bg-[#0f1720] border border-[#58a6ff]/40 rounded-xl p-4 shadow-[0_0_0_1px_rgba(88,166,255,0.08)]'
+          role='status'
+          aria-live='polite'
+          aria-busy='true'
+        >
+          <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
+            <div className='flex items-start gap-3'>
+              <div
+                className='mt-1 h-4 w-4 rounded-full border-2 border-[#58a6ff]/30 border-t-[#58a6ff] animate-spin'
+                aria-hidden='true'
+              />
+              <div>
+                <p className='text-sm font-semibold text-[#e6edf3]'>
+                  {getSpineProgressStage(runElapsedSeconds).label}
+                </p>
+                <p className='mt-1 text-xs text-[#8b949e] max-w-2xl'>
+                  {getSpineProgressStage(runElapsedSeconds).detail}
+                </p>
+              </div>
+            </div>
+            <div className='text-left sm:text-right'>
+              <p className='text-xs font-medium text-[#e6edf3]'>
+                Elapsed {formatElapsedTime(runElapsedSeconds)}
+              </p>
+              <p className='mt-1 text-[11px] text-[#8b949e]'>
+                Typical runs take 30-90 seconds.
+              </p>
+            </div>
+          </div>
+          <div className='mt-4 h-1.5 overflow-hidden rounded-full bg-[#21262d]'>
+            <div
+              className='h-full rounded-full bg-[#58a6ff] transition-all duration-500'
+              style={{ width: `${Math.min(92, 12 + runElapsedSeconds)}%` }}
+            />
+          </div>
+        </div>
+      )}
       <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
         <div className='flex items-center gap-2 mb-4'>
           <Plane className='w-4 h-4 text-[#58a6ff]' />
@@ -686,7 +769,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
           {runError && (
             <div className='flex items-center gap-2 px-3 py-1.5 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg text-xs text-[#f85149]'>
               <AlertTriangle className='w-3 h-3' />
-              <span className='max-w-xs truncate'>{runError}</span>
+              <span className='max-w-[42rem]'>{runError}</span>
             </div>
           )}
           {runSuccess && (
@@ -778,7 +861,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
                   className='w-4 h-4 border-2 border-[#0d1117]/30 border-t-[#0d1117] rounded-full animate-spin'
                   aria-hidden='true'
                 />
-                Processing...
+                Processing {formatElapsedTime(runElapsedSeconds)}
               </>
             ) : (
               <>

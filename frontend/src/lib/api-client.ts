@@ -5,7 +5,7 @@
  * retry logic, and type safety.
  */
 
-import { SpineRunRequest, SpineRunResponse } from "@/types/spine";
+import { SpineRunRequest, SpineRunResponse, RunAcceptedResponse, RunStatusResponse } from "@/types/spine";
 import type { ReviewStatus } from "@/types/governance";
 import type { ValidationReport, FeeCalculationResult, DecisionOutput, StrategyOutput, PromptBundle } from "@/types/spine";
 
@@ -243,10 +243,41 @@ export const api = new ApiClient({
 // SPINE API
 // ============================================================================
 
-export async function runSpine(request: SpineRunRequest): Promise<SpineRunResponse> {
-  return api.post<SpineRunResponse>("/api/spine/run", request, {
-    timeout: 60000, // 60 seconds for spine runs (can be long)
-  });
+export async function runSpine(request: SpineRunRequest): Promise<RunStatusResponse> {
+  const accepted = await api.post<RunAcceptedResponse>("/api/spine/run", request, { retry: 0 });
+  if (!accepted.run_id) {
+    throw new ApiException("No run_id returned", 500, "NO_RUN_ID");
+  }
+
+  let result: RunStatusResponse | null = null;
+  const maxWaitMs = 180_000;
+  const pollIntervalMs = 2_000;
+  const start = Date.now();
+
+  while (Date.now() - start < maxWaitMs) {
+    await new Promise((r) => setTimeout(r, pollIntervalMs));
+    const status = await api.get<RunStatusResponse>(
+      `/api/runs/${accepted.run_id}`
+    );
+    if (["completed", "failed", "blocked"].includes(status.state)) {
+      result = status;
+      break;
+    }
+  }
+
+  if (!result) {
+    throw new ApiException("Run timed out", 504, "RUN_TIMEOUT");
+  }
+
+  if (result.state !== "completed") {
+    throw new ApiException(
+      result.error_message || `Run ${result.state}`,
+      500,
+      result.error_type || "RUN_ERROR"
+    );
+  }
+
+  return result;
 }
 
 // ============================================================================

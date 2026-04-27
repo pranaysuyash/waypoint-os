@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { resolveBackendPath } from "../route-map";
+import { resolveBackendPath, resolveBackendRoute } from "../route-map";
 
 describe("resolveBackendPath", () => {
   it("maps the spine run BFF endpoint to the backend run endpoint", () => {
     expect(resolveBackendPath(["spine", "run"])).toBe("run");
+  });
+
+  it("keeps long-running spine execution policy in the route registry", () => {
+    expect(resolveBackendRoute(["spine", "run"])).toEqual({
+      backendPath: "run",
+      timeoutMs: 60_000,
+    });
   });
 
   it("keeps frontend-local routes out of the backend registry", () => {

@@ -5,47 +5,56 @@ import dynamic from 'next/dynamic';
 import { Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { Tabs } from '@/components/ui/tabs';
 import { PipelineFlow } from './PipelineFlow';
-import { Play, RotateCcw, Settings, CheckCircle, AlertTriangle, Save } from 'lucide-react';
+import {
+  Play,
+  RotateCcw,
+  Settings,
+  CheckCircle,
+  AlertTriangle,
+  Save,
+} from 'lucide-react';
 import { InlineLoading } from '@/components/ui/loading';
 import { useTrip } from '@/hooks/useTrips';
 import { useWorkbenchStore } from '@/stores/workbench';
 import { useSpineRun } from '@/hooks/useSpineRun';
 import { useUpdateTrip } from '@/hooks/useTrips';
-import type { SpineRunRequest, SpineStage, OperatingMode, DecisionOutput, StrategyOutput, PromptBundle } from '@/types/spine';
-import type { SafetyResult, ValidationReport, FeeCalculationResult } from '@/types/spine';
+import type {
+  SpineRunRequest,
+  SpineStage,
+  OperatingMode,
+  DecisionOutput,
+  StrategyOutput,
+  PromptBundle,
+} from '@/types/spine';
+import type {
+  SafetyResult,
+  ValidationReport,
+  FeeCalculationResult,
+} from '@/types/spine';
 import type { Trip } from '@/lib/api-client';
 import { ErrorBoundary } from '@/components/error-boundary';
-import { submitTripReviewAction } from "@/lib/api-client";
+import { submitTripReviewAction } from '@/lib/api-client';
+import { RunProgressPanel } from './RunProgressPanel';
 
-const IntakeTab = dynamic(() =>
-  import('./IntakeTab')
+const IntakeTab = dynamic(() => import('./IntakeTab'));
+const PacketTab = dynamic(() => import('./PacketTab'));
+const DecisionTab = dynamic(() => import('./DecisionTab'));
+const StrategyTab = dynamic(() => import('./StrategyTab'));
+const SafetyTab = dynamic(() => import('./SafetyTab'));
+const SettingsPanel = dynamic(() => import('./SettingsPanel'));
+const OutputPanel = dynamic(
+  () => import('@/components/workspace/panels/OutputPanel'),
 );
-const PacketTab = dynamic(() =>
-  import('./PacketTab')
-);
-const DecisionTab = dynamic(() =>
-  import('./DecisionTab')
-);
-const StrategyTab = dynamic(() =>
-  import('./StrategyTab')
-);
-const SafetyTab = dynamic(() =>
-  import('./SafetyTab')
-);
-const SettingsPanel = dynamic(() =>
-  import('./SettingsPanel')
-);
-const OutputPanel = dynamic(() =>
-  import('@/components/workspace/panels/OutputPanel')
-);
-const FeedbackPanel = dynamic(() =>
-  import('@/components/workspace/panels/FeedbackPanel')
+const FeedbackPanel = dynamic(
+  () => import('@/components/workspace/panels/FeedbackPanel'),
 );
 const FrontierDashboard = dynamic(() =>
-  import('@/components/workspace/FrontierDashboard').then((m) => ({ default: m.FrontierDashboard }))
+  import('@/components/workspace/FrontierDashboard').then((m) => ({
+    default: m.FrontierDashboard,
+  })),
 );
 
-  const workspaceTabs = [
+const workspaceTabs = [
   { id: 'intake', label: 'New Inquiry' },
   { id: 'packet', label: 'Trip Details' },
   { id: 'decision', label: 'Ready to Quote?' },
@@ -69,16 +78,46 @@ function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
     hydratedRef.current = trip.id;
 
     if (!store.result_packet && trip.packet) store.setResultPacket(trip.packet);
-    if (!store.result_validation && trip.validation) store.setResultValidation(trip.validation);
-    if (!store.result_decision && trip.decision) store.setResultDecision(trip.decision);
-    if (!store.result_strategy && trip.strategy) store.setResultStrategy(trip.strategy);
-    if (!store.result_internal_bundle && trip.internal_bundle) store.setResultInternalBundle(trip.internal_bundle);
-    if (!store.result_traveler_bundle && trip.traveler_bundle) store.setResultTravelerBundle(trip.traveler_bundle);
-    if (!store.result_safety && trip.safety) store.setResultSafety(trip.safety as SafetyResult | null);
+    if (!store.result_validation && trip.validation)
+      store.setResultValidation(trip.validation);
+    if (!store.result_decision && trip.decision)
+      store.setResultDecision(trip.decision);
+    if (!store.result_strategy && trip.strategy)
+      store.setResultStrategy(trip.strategy);
+    if (!store.result_internal_bundle && trip.internal_bundle)
+      store.setResultInternalBundle(trip.internal_bundle);
+    if (!store.result_traveler_bundle && trip.traveler_bundle)
+      store.setResultTravelerBundle(trip.traveler_bundle);
+    if (!store.result_safety && trip.safety)
+      store.setResultSafety(trip.safety as SafetyResult | null);
     if (!store.result_fees && trip.fees) store.setResultFees(trip.fees);
-    if (!store.input_raw_note && trip.customerMessage) store.setInputRawNote(trip.customerMessage);
-    if (!store.input_owner_note && trip.agentNotes) store.setInputOwnerNote(trip.agentNotes);
-  }, [trip, store.input_raw_note, store.input_owner_note, store.setInputRawNote, store.setInputOwnerNote, store.setResultPacket, store.setResultValidation, store.setResultDecision, store.setResultStrategy, store.setResultInternalBundle, store.setResultTravelerBundle, store.setResultSafety, store.setResultFees, store.result_packet, store.result_validation, store.result_decision, store.result_strategy, store.result_internal_bundle, store.result_traveler_bundle, store.result_safety, store.result_fees]);
+    if (!store.input_raw_note && trip.customerMessage)
+      store.setInputRawNote(trip.customerMessage);
+    if (!store.input_owner_note && trip.agentNotes)
+      store.setInputOwnerNote(trip.agentNotes);
+  }, [
+    trip,
+    store.input_raw_note,
+    store.input_owner_note,
+    store.setInputRawNote,
+    store.setInputOwnerNote,
+    store.setResultPacket,
+    store.setResultValidation,
+    store.setResultDecision,
+    store.setResultStrategy,
+    store.setResultInternalBundle,
+    store.setResultTravelerBundle,
+    store.setResultSafety,
+    store.setResultFees,
+    store.result_packet,
+    store.result_validation,
+    store.result_decision,
+    store.result_strategy,
+    store.result_internal_bundle,
+    store.result_traveler_bundle,
+    store.result_safety,
+    store.result_fees,
+  ]);
 }
 
 function WorkbenchContent() {
@@ -93,7 +132,11 @@ function WorkbenchContent() {
   const currentMode = modeParam || 'normal_intake';
   const currentScenario = scenarioParam || '';
 
-  const { data: trip, isLoading: tripLoading, error: tripError } = useTrip(tripId);
+  const {
+    data: trip,
+    isLoading: tripLoading,
+    error: tripError,
+  } = useTrip(tripId);
   useHydrateStoreFromTrip(trip);
 
   const tabParam = searchParams.get('tab') as WorkspaceTabId | null;
@@ -105,7 +148,11 @@ function WorkbenchContent() {
   const store = useWorkbenchStore();
 
   // Invalidation logic: clear results if config changes
-  const prevConfigRef = useRef({ stage: currentStage, mode: currentMode, scenario: currentScenario });
+  const prevConfigRef = useRef({
+    stage: currentStage,
+    mode: currentMode,
+    scenario: currentScenario,
+  });
   useEffect(() => {
     if (
       prevConfigRef.current.stage !== currentStage ||
@@ -113,7 +160,11 @@ function WorkbenchContent() {
       prevConfigRef.current.scenario !== currentScenario
     ) {
       store.clearResults();
-      prevConfigRef.current = { stage: currentStage, mode: currentMode, scenario: currentScenario };
+      prevConfigRef.current = {
+        stage: currentStage,
+        mode: currentMode,
+        scenario: currentScenario,
+      };
     }
   }, [currentStage, currentMode, currentScenario, store.clearResults]);
 
@@ -123,14 +174,21 @@ function WorkbenchContent() {
       params.set('tab', tab);
       router.replace(`?${params.toString()}`, { scroll: false });
     },
-    [searchParams, router]
+    [searchParams, router],
   );
 
   const [isRunning, setIsRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [runSuccess, setRunSuccess] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const { execute: executeSpineRun, isLoading: isSpineRunning, error: spineError, reset: resetSpine } = useSpineRun();
+  const {
+    execute: executeSpineRun,
+    isLoading: isSpineRunning,
+    error: spineError,
+    reset: resetSpine,
+    runId: spineRunId,
+    state: spineRunState,
+  } = useSpineRun();
   const { mutate: saveTrip, isSaving } = useUpdateTrip();
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -145,7 +203,9 @@ function WorkbenchContent() {
       const request: SpineRunRequest = {
         raw_note: store.input_raw_note || null,
         owner_note: store.input_owner_note || null,
-        structured_json: store.input_structured_json ? JSON.parse(store.input_structured_json) : null,
+        structured_json: store.input_structured_json
+          ? JSON.parse(store.input_structured_json)
+          : null,
         itinerary_text: store.input_itinerary_text || null,
         stage: currentStage,
         operating_mode: currentMode,
@@ -155,21 +215,20 @@ function WorkbenchContent() {
 
       const result = await executeSpineRun(request);
 
-      if (result.packet) store.setResultPacket(result.packet);
-      if (result.validation) store.setResultValidation(result.validation as unknown as ValidationReport);
-      if (result.decision) store.setResultDecision(result.decision as unknown as DecisionOutput);
-      if (result.strategy) store.setResultStrategy(result.strategy as unknown as StrategyOutput);
-      if (result.internal_bundle) store.setResultInternalBundle(result.internal_bundle);
-      if (result.traveler_bundle) store.setResultTravelerBundle(result.traveler_bundle);
-      if (result.safety) store.setResultSafety(result.safety as unknown as SafetyResult);
-      if (result.fees) store.setResultFees(result.fees as unknown as FeeCalculationResult);
-      if (result.frontier_result) store.setResultFrontier(result.frontier_result);
-      store.setResultRunTs(new Date().toISOString());
+      if (result?.trip_id) {
+        // Redirect to the new trip
+        router.push(`/workspace/${result.trip_id}/intake`);
+        return;
+      }
 
       setRunSuccess(true);
       setTimeout(() => setRunSuccess(false), 3000);
     } catch (err) {
-      setRunError(err instanceof Error ? err.message : 'Processing failed. Is the spine API running on localhost:8000?');
+      setRunError(
+        err instanceof Error
+          ? err.message
+          : 'Processing failed. Is the spine API running on localhost:8000?',
+      );
       setTimeout(() => setRunError(null), 8000);
     } finally {
       setIsRunning(false);
@@ -200,7 +259,11 @@ function WorkbenchContent() {
   const handleResolve = useCallback(async () => {
     if (!tripId) return;
     try {
-      await submitTripReviewAction(tripId, 'resolve', 'Recovery completed. Feedback addressed.');
+      await submitTripReviewAction(
+        tripId,
+        'resolve',
+        'Recovery completed. Feedback addressed.',
+      );
       // Refresh trip data to clear recovery state
       router.refresh();
     } catch (err) {
@@ -208,7 +271,9 @@ function WorkbenchContent() {
     }
   }, [tripId, router]);
 
-  const isRecoveryMode = trip?.analytics?.feedback_reopen === true || trip?.analytics?.recovery_status === 'IN_RECOVERY';
+  const isRecoveryMode =
+    trip?.analytics?.feedback_reopen === true ||
+    trip?.analytics?.recovery_status === 'IN_RECOVERY';
 
   return (
     <div className='min-h-screen bg-[#080a0c]'>
@@ -216,9 +281,11 @@ function WorkbenchContent() {
         <div className='bg-[#2b1011] border-b border-[#6b2a2b] px-6 py-2 flex items-center justify-between'>
           <div className='flex items-center gap-3 text-[#ff7b72]'>
             <AlertTriangle className='h-4 w-4' />
-            <span className='text-xs font-bold uppercase tracking-wider'>Recovery Mode: Critical Feedback Detected</span>
+            <span className='text-xs font-bold uppercase tracking-wider'>
+              Recovery Mode: Critical Feedback Detected
+            </span>
           </div>
-          <button 
+          <button
             onClick={handleResolve}
             className='flex items-center gap-1.5 px-3 py-1 bg-[#ff7b72]/10 hover:bg-[#ff7b72]/20 border border-[#ff7b72]/30 rounded-md text-[#ff7b72] text-xs font-semibold transition-all'
           >
@@ -227,7 +294,7 @@ function WorkbenchContent() {
           </button>
         </div>
       )}
-      
+
       <PipelineFlow currentStage={activeTab} />
 
       <div className='px-6 py-6'>
@@ -283,11 +350,13 @@ function WorkbenchContent() {
             <button
               type='button'
               onClick={handleProcessTrip}
-              disabled={isRunning || isSpineRunning || (!store.input_raw_note && !store.input_owner_note)}
-              className='flex items-center gap-2 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg font-medium hover:bg-[#6eb5ff] disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-              aria-label={
-                isRunning ? 'Processing trip' : 'Process trip'
+              disabled={
+                isRunning ||
+                isSpineRunning ||
+                (!store.input_raw_note && !store.input_owner_note)
               }
+              className='flex items-center gap-2 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg font-medium hover:bg-[#6eb5ff] disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+              aria-label={isRunning ? 'Processing trip' : 'Process trip'}
             >
               {isRunning ? (
                 <>
@@ -304,6 +373,16 @@ function WorkbenchContent() {
                 </>
               )}
             </button>
+            {isSpineRunning && spineRunState && spineRunId && (
+              <RunProgressPanel
+                runId={spineRunId}
+                runState={spineRunState}
+                onRetry={() => {
+                  setRunError(null);
+                  resetSpine();
+                }}
+              />
+            )}
             <button
               type='button'
               onClick={handleSave}
@@ -371,23 +450,32 @@ function WorkbenchContent() {
               {activeTab === 'safety' && <SafetyTab trip={trip} />}
               {activeTab === 'output' && <OutputPanel trip={trip} />}
               {activeTab === 'frontier' && (
-                <FrontierDashboard 
+                <FrontierDashboard
                   packetId={trip?.id}
                   sentiment={store.result_frontier?.sentiment_score ?? 0.82}
                   isAnxious={store.result_frontier?.anxiety_alert ?? false}
                   ghostActive={store.result_frontier?.ghost_triggered ?? false}
                   intelHits={store.result_frontier?.intelligence_hits ?? []}
-                  logicRationale={store.result_frontier?.audit_reason || store.result_decision?.rationale || ''}
+                  logicRationale={
+                    store.result_frontier?.audit_reason ||
+                    store.result_decision?.rationale ||
+                    ''
+                  }
                 />
               )}
-              {activeTab === 'feedback' && trip && <FeedbackPanel trip={trip} />}
+              {activeTab === 'feedback' && trip && (
+                <FeedbackPanel trip={trip} />
+              )}
             </Suspense>
           </div>
         </div>
       </div>
 
       <Suspense fallback={null}>
-        <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+        <SettingsPanel
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+        />
       </Suspense>
     </div>
   );

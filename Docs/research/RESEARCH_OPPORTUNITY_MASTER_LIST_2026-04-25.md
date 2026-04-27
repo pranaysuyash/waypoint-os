@@ -214,6 +214,12 @@ Each section lists specific research tasks that could be executed as standalone 
   - Code-switching (Hindi-English, Spanglish, Franglais, Denglisch)
   - Arabic (RTL), Chinese, Japanese, Korean (CJK)
   - Regional dialects and travel-specific jargon by language
+- ❌ **Document extraction research (OCR + NER)**: Reliable extraction from PDFs, emails, screenshots, booking confirmations, vouchers, and passports across formats, languages, and layouts
+- ❌ **Travel-specific NER taxonomy**: Define entities needed for audit and itinerary analysis, including dates, destinations, hotels, flights, transfers, room types, activities, costs, passenger types, visas, suppliers, document IDs, and booking references
+- ❌ **OCR source quality research**: How to handle low-resolution photos, handwritten notes, scanned PDFs, mixed-language text, and non-Latin scripts in travel documents
+- ❌ **PII classification and redaction research**: Identify sensitive fields (passport numbers, national ID, credit card data, emails, phone numbers, addresses) and define safe processing, storage, and redaction policies for travel data
+- ❌ **PII consent and retention policy research**: What traveler/agency consent is required, how long audit uploads may be retained, and how retention varies by jurisdiction
+- ❌ **Secure document ingestion research**: Client-side OCR, encrypted upload, tokenization, and secure handling patterns for travel documents containing PII
 - ❌ **Hallucination detection**: Travel-specific patterns (fake hotels, wrong visa rules, imaginary flights)
 - ❌ **Local/on-device model feasibility**: For latency-sensitive or privacy-sensitive tasks
 - ❌ **Prompt injection security**: Travel-specific prompt injection risks
@@ -2847,7 +2853,8 @@ The existing research (48 items) is deep on **internal product architecture, ind
 | BB (Mega Free Tools) | 18 | 0 | 0 | 18 |
 | BC (Content Prism — Everyday Topics) | 30 | 0 | 0 | 30 |
 | BD (Data Acquisition Strategy) | 20 | 0 | 0 | 20 |
-| **GRAND TOTAL** | **1,897** | **211** | **658** | **1,028** |
+| BE (Multi-Tier Extraction Architecture) | 6 | 0 | 0 | 6 |
+| **GRAND TOTAL** | **1,903** | **211** | **658** | **1,034** |
 
 ### The Flywheel Effect
 
@@ -2860,6 +2867,18 @@ Every destination data point creates **5 assets simultaneously**:
 5. **Content Prism triple**: Traveler + Agent + Vendor angle → 3x content surface area
 
 At 1,897 research items, with programmatic SEO potential of 40,000+ pages (visa nationality×country, destination×topic), and Content Prism tripling every topic — the total content surface area approaches **120,000+ unique publishable assets**.
+
+### BE. MULTI-TIER EXTRACTION ARCHITECTURE (P0 — Blocks Real-World Usage) ❌
+
+> **Full spec**: `Docs/research/EXTRACTION_MULTI_TIER_ARCHITECTURE_2026-04-27.md`
+> **Live evidence**: Singapore scenario (2026-04-27) — regex extraction produced garbage, NB01 escalated, pipeline hung
+
+- ❌ **RA-EXTRACT-04: Fix regex patterns** (P0, 2-3 days) — Destination matches random capitalized words, negation broken, missing currencies/dates/origin. 50% improvement would pass NB01 on many inputs
+- ❌ **RA-EXTRACT-01: LLM provider abstraction** (P0, 3-5 days) — Connect LLM provider to existing dead `model_client` hook. `HybridDecisionEngine` has cache → rule → LLM infrastructure ready
+- ❌ **RA-EXTRACT-02: Extraction prompt engineering** (P1, 5-7 days) — Design prompts for per-field extraction from messy agent notes. PromptBundle generated but never consumed by LLM
+- ❌ **RA-EXTRACT-03: Reconciliation algorithm** (P1, 3-5 days) — Merge regex + LLM results when they conflict. Phase B contract defines `explicit > regex > semantic` priority
+- ❌ **RA-EXTRACT-05: Extraction evaluation framework** (P2, 3-5 days) — Golden dataset of 50+ annotated agent notes, per-field accuracy metrics, regression testing
+- ❌ **RA-EXTRACT-06: Suitability Tier 3 LLM scoring** (P3, 3-5 days) — Tiers 1+2 deterministic rules working, Tier 3 LLM contextual scoring designed but not built
 
 ### Critical Insight: The Data Moat
 

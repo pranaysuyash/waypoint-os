@@ -207,6 +207,7 @@ follow up: draft by nov 27
 | 2026-04-27 | Test Run 1 completed — results filled by tester |
 | 2026-04-27 | Test Run 2 completed — results filled by tester |
 | 2026-04-27 | Test Run 3 completed — results filled by tester |
+| 2026-04-27 | Timeout architecture updated — `spine/run` now carries a 60s route policy through the canonical catch-all proxy |
 
 ---
 
@@ -230,3 +231,5 @@ follow up: draft by nov 27
 **Error:** `POST /api/spine/run 504 (Gateway Timeout)`
 **Root cause:** Next.js proxy timeout = 10s, spine pipeline takes 15-60s
 **Fix plan:** `Docs/FIX_PLAN_SPINE_RUN_TIMEOUT_2026-04-27.md`
+**Architecture note:** `Docs/SPINE_RUN_ROUTE_POLICY_ARCHITECTURE_2026-04-27.md`
+**Current technical status:** Route-level timeout policy implemented; live UI scenario still needs rerun to confirm no 504 and capture extraction quality.

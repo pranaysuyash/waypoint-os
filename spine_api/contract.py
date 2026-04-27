@@ -123,6 +123,32 @@ class SpineRunResponse(BaseModel):
     meta: RunMeta = Field(default_factory=RunMeta)
 
 
+class RunAcceptedResponse(BaseModel):
+    """Returned immediately by POST /run — the run is queued, poll for status."""
+    run_id: str
+    state: str = "queued"
+
+
+class RunStatusResponse(BaseModel):
+    """Returned by GET /runs/{run_id} — full run state for polling UI."""
+    run_id: str
+    state: str
+    trip_id: Optional[str] = None
+    stage: Optional[str] = None
+    operating_mode: Optional[str] = None
+    agency_id: Optional[str] = None
+    created_at: Optional[str] = None
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    total_ms: Optional[float] = None
+    steps_completed: List[str] = Field(default_factory=list)
+    events: List[Dict[str, Any]] = Field(default_factory=list)
+    error_type: Optional[str] = None
+    error_message: Optional[str] = None
+    stage_at_failure: Optional[str] = None
+    block_reason: Optional[str] = None
+
+
 # =============================================================================
 # Override models
 # =============================================================================
@@ -364,6 +390,8 @@ __all__ = [
     "RunMeta",
     "SpineRunRequest",
     "SpineRunResponse",
+    "RunAcceptedResponse",
+    "RunStatusResponse",
     "OverrideRequest",
     "OverrideResponse",
     "HealthResponse",

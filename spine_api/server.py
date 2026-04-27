@@ -34,8 +34,10 @@ Environment variables:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import multiprocessing
 import os
 import sys
 import time
@@ -52,12 +54,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from spine_api.core.auth import get_current_user, get_current_agency_id, get_current_agency
-from spine_api.models.tenant import User
+from spine_api.models.tenant import Agency, User
 from spine_api.core.logging_filter import install_sensitive_data_filter
 from spine_api.core.middleware import AuthMiddleware
 
@@ -68,6 +70,8 @@ from spine_api.contract import (
     RunMeta,
     SpineRunRequest,
     SpineRunResponse,
+    RunAcceptedResponse,
+    RunStatusResponse,
     OverrideRequest,
     OverrideResponse,
     HealthResponse,
@@ -516,21 +520,14 @@ def health() -> HealthResponse:
     return HealthResponse(status="ok", version="1.0.0")
 
 
-@app.post("/run", response_model=SpineRunResponse)
-def run_spine(
-    request: SpineRunRequest,
-    agency: Agency = Depends(get_current_agency),
-) -> SpineRunResponse:
-    """
-    Execute one spine run, returning the canonical SpineRunResponse.
-
-    Always returns 200 with a SpineRunResponse.
-    - ok=True + populated fields: spine completed normally
-    - ok=False + null fields: strict leakage violation (traveler_bundle suppressed)
-    - HTTPException (500): internal error (non-leakage)
-    """
-    run_id = str(uuid.uuid4())[:8]
+def _execute_spine_pipeline(
+    run_id: str,
+    request_dict: dict[str, Any],
+    agency_id: str,
+) -> None:
+    """Run the spine pipeline in the background and persist status/events."""
     t0 = time.perf_counter()
+    request = SpineRunRequest(**request_dict)
 
     if request.strict_leakage:
         set_strict_mode(True)
@@ -542,25 +539,34 @@ def run_spine(
         execution_ms=0.0,
     )
 
-    # Wave A: create ledger entry and emit run_started
-    RunLedger.create(
-        run_id=run_id,
-        trip_id=None,  # trip_id assigned after save_processed_trip completes
-        stage=request.stage,
-        operating_mode=request.operating_mode,
-    )
-    RunLedger.set_state(run_id, RunState.RUNNING)
-    emit_run_started(
-        run_id=run_id,
-        trip_id=None,
-        stage=request.stage,
-        operating_mode=request.operating_mode,
-    )
-
     try:
+        RunLedger.set_state(run_id, RunState.RUNNING)
+        emit_run_started(
+            run_id=run_id,
+            trip_id=None,
+            stage=request.stage,
+            operating_mode=request.operating_mode,
+        )
+
         envelopes = build_envelopes(request.model_dump(exclude_none=True))
         fixture_expectations = load_fixture_expectations(request.scenario_id)
-        agency_settings = AgencySettingsStore.load("waypoint-hq")
+        agency_settings = AgencySettingsStore.load(agency_id)
+
+        def _stage_checkpoint(stage_name: str, data: Any) -> None:
+            """Emit mid-run checkpoint: event + step file, before trip_id exists."""
+            try:
+                val = _to_dict(data) if data is not None else None
+                if val is not None:
+                    t_step = time.perf_counter()
+                    emit_stage_entered(run_id, stage_name, trip_id=None)
+                    RunLedger.save_step(run_id, stage_name, val)
+                    emit_stage_completed(
+                        run_id, stage_name,
+                        execution_ms=(time.perf_counter() - t_step) * 1000,
+                        trip_id=None,
+                    )
+            except Exception as e:
+                logger.error("Wave A: mid-run checkpoint failed stage=%s error=%s", stage_name, e)
 
         result = run_spine_once(
             envelopes=envelopes,
@@ -568,10 +574,47 @@ def run_spine(
             operating_mode=request.operating_mode,
             fixture_expectations=fixture_expectations,
             agency_settings=agency_settings,
+            stage_callback=_stage_checkpoint,
         )
 
         execution_ms = (time.perf_counter() - t0) * 1000
         meta.execution_ms = round(execution_ms, 2)
+
+        if getattr(result, "early_exit", False):
+            logger.warning(
+                "spine_run early_exit run_id=%s reason=%s execution_ms=%.2f",
+                run_id,
+                result.early_exit_reason,
+                execution_ms,
+            )
+            RunLedger.save_step(run_id, "blocked_result", {
+                "packet": _to_dict(result.packet) if hasattr(result, "packet") else None,
+                "validation": _to_dict(result.validation) if hasattr(result, "validation") else None,
+                "decision": _to_dict(result.decision) if hasattr(result, "decision") else None,
+                "early_exit_reason": result.early_exit_reason,
+                "meta": meta.model_dump(),
+            })
+            block_reason = result.early_exit_reason or "Pipeline blocked"
+            RunLedger.block(run_id, block_reason=block_reason)
+            emit_run_blocked(run_id=run_id, block_reason=block_reason, trip_id=None)
+            return
+
+        if hasattr(result, "validation") and result.validation and not getattr(result.validation, "is_valid", True):
+            logger.warning(
+                "spine_run validation_invalid run_id=%s execution_ms=%.2f",
+                run_id,
+                execution_ms,
+            )
+            RunLedger.save_step(run_id, "blocked_result", {
+                "packet": _to_dict(result.packet) if hasattr(result, "packet") else None,
+                "validation": _to_dict(result.validation) if hasattr(result, "validation") else None,
+                "decision": _to_dict(result.decision) if hasattr(result, "decision") else None,
+                "early_exit_reason": "validation_invalid",
+                "meta": meta.model_dump(),
+            })
+            RunLedger.block(run_id, block_reason="Validation failed (defense-in-depth)")
+            emit_run_blocked(run_id=run_id, block_reason="Validation failed (defense-in-depth)", trip_id=None)
+            return
 
         logger.info(
             "spine_run ok=True run_id=%s stage=%s mode=%s scenario_id=%s execution_ms=%.2f agency_id=%s",
@@ -580,36 +623,33 @@ def run_spine(
             request.operating_mode,
             request.scenario_id,
             execution_ms,
-            agency.id,
+            agency_id,
         )
 
         # Save the trip to persistence scoped to the user's agency
-        trip_id_saved: Optional[str] = None
-        try:
-            trip_id_saved = save_processed_trip(
-                {
-                    "run_id": run_id,
-                    "packet": _to_dict(result.packet) if hasattr(result, "packet") else None,
-                    "validation": _to_dict(result.validation) if hasattr(result, "validation") else None,
-                    "decision": _to_dict(result.decision) if hasattr(result, "decision") else None,
-                    "strategy": _to_dict(result.strategy) if hasattr(result, "strategy") else None,
-                    "meta": meta.model_dump(),
-                },
-                source="spine_api",
-                agency_id=agency.id,
-            )
-            logger.info("Trip saved: %s", trip_id_saved)
-            
-            # Wave 10: Feedback-Driven Recovery Trigger
-            if trip_id_saved:
-                trip_post = TripStore.get_trip(trip_id_saved)
-                if trip_post and trip_post.get("analytics", {}).get("feedback_reopen"):
-                    from src.analytics.review import trigger_feedback_recovery
-                    trigger_feedback_recovery(trip_id_saved, reason=trip_post["analytics"].get("review_reason"))
-                    logger.info("Feedback recovery triggered for trip: %s", trip_id_saved)
-        except Exception as e:
-            logger.error("Failed to save trip: %s", e)
-            # Don't fail the request if saving fails
+        trip_id_saved = save_processed_trip(
+            {
+                "run_id": run_id,
+                "packet": _to_dict(result.packet) if hasattr(result, "packet") else None,
+                "validation": _to_dict(result.validation) if hasattr(result, "validation") else None,
+                "decision": _to_dict(result.decision) if hasattr(result, "decision") else None,
+                "strategy": _to_dict(result.strategy) if hasattr(result, "strategy") else None,
+                "meta": meta.model_dump(),
+            },
+            source="spine_api",
+            agency_id=agency_id,
+        )
+        if not trip_id_saved:
+            raise RuntimeError("save_processed_trip returned no trip_id")
+        RunLedger.update_meta(run_id, trip_id=trip_id_saved)
+        logger.info("Trip saved: %s", trip_id_saved)
+
+        # Wave 10: Feedback-Driven Recovery Trigger
+        trip_post = TripStore.get_trip(trip_id_saved)
+        if trip_post and trip_post.get("analytics", {}).get("feedback_reopen"):
+            from src.analytics.review import trigger_feedback_recovery
+            trigger_feedback_recovery(trip_id_saved, reason=trip_post["analytics"].get("review_reason"))
+            logger.info("Feedback recovery triggered for trip: %s", trip_id_saved)
 
         # Compute leakage results first — used both by checkpoint and response
         all_leaks: List[str] = (
@@ -623,94 +663,14 @@ def run_spine(
             else len(all_leaks) == 0
         )
 
-        # Wave A: checkpoint each step with per-stage events (criteria 3 + 4)
-        # safety is checkpointed from leakage_result which is available post-run.
-        # emit_stage_entered / completed are emitted around each save_step to provide
-        # a granular event stream even though run_spine_once is a single call.
-        try:
-            for step_name, step_attr in [
-                ("packet",     "packet"),
-                ("validation", "validation"),
-                ("decision",   "decision"),
-                ("strategy",   "strategy"),
-            ]:
-                if hasattr(result, step_attr):
-                    val = _to_dict(getattr(result, step_attr))
-                    if val is not None:
-                        t_step = time.perf_counter()
-                        emit_stage_entered(run_id, step_name, trip_id=trip_id_saved)
-                        RunLedger.save_step(run_id, step_name, val)
-                        emit_stage_completed(
-                            run_id, step_name,
-                            execution_ms=(time.perf_counter() - t_step) * 1000,
-                            trip_id=trip_id_saved,
-                        )
-
-            # Checkpoint safety separately from leakage_result
-            if hasattr(result, "leakage_result") and result.leakage_result:
-                safety_payload = {
-                    "strict_leakage": request.strict_leakage,
-                    "leakage_passed": is_safe,
-                    "leakage_errors": all_leaks,
-                    "raw": result.leakage_result,
-                }
-                emit_stage_entered(run_id, "safety", trip_id=trip_id_saved)
-                RunLedger.save_step(run_id, "safety", safety_payload)
-                emit_stage_completed(run_id, "safety", execution_ms=0.0, trip_id=trip_id_saved)
-
-        except Exception as e:
-            logger.error(
-                "Wave A: step checkpoint failed run_id=%s error=%s",
-                run_id, e,
-            )
-
-
-
-
-        assertions_out: Optional[List[AssertionResult]] = None
-        if result.assertion_result is not None:
-            assertions_out = [
-                AssertionResult(
-                    type=a.get("type", ""),
-                    passed=a.get("passed", False),
-                    message=a.get("message", ""),
-                    field=a.get("field"),
-                )
-                for a in result.assertion_result.get("assertions", [])
-            ]
-
         # Wave A: complete the ledger and emit terminal event
+        # (All pipeline steps were already checkpointed incrementally via
+        # stage_callback inside run_spine_once above.)
         try:
             RunLedger.complete(run_id, total_ms=execution_ms)
             emit_run_completed(run_id=run_id, trip_id=trip_id_saved, total_ms=execution_ms)
         except Exception as e:
             logger.error("Wave A: ledger complete failed for run %s: %s", run_id, e)
-
-        return SpineRunResponse(
-            ok=True,
-            run_id=run_id,
-            packet=_to_dict(result.packet) if hasattr(result, "packet") else None,
-            validation=_to_dict(result.validation) if hasattr(result, "validation") else None,
-            decision=_to_dict(result.decision) if hasattr(result, "decision") else None,
-            strategy=_to_dict(result.strategy) if hasattr(result, "strategy") else None,
-            traveler_bundle=serialize_bundle(result.traveler_bundle, traveler_safe=True)
-            if result.traveler_bundle is not None
-            else None,
-            internal_bundle=serialize_bundle(result.internal_bundle)
-            if hasattr(result, "internal_bundle") and result.internal_bundle is not None
-            else None,
-            safety=SafetyResult(
-                strict_leakage=request.strict_leakage,
-                leakage_passed=is_safe,
-                leakage_errors=all_leaks,
-            ),
-            fees=_to_dict(result.fees) if hasattr(result, "fees") else None,
-            autonomy_outcome=AutonomyOutcome(**result.autonomy_outcome.to_dict())
-            if hasattr(result, "autonomy_outcome") and result.autonomy_outcome is not None
-            else None,
-            assertions=assertions_out,
-            meta=meta,
-        )
 
     except ValueError as e:
         # Strict leakage violation — traveler_bundle suppressed, ok=False
@@ -731,23 +691,6 @@ def run_spine(
             emit_run_blocked(run_id=run_id, block_reason=error_message, trip_id=None)
         except Exception as ledger_err:
             logger.error("Wave A: block ledger failed for run %s: %s", run_id, ledger_err)
-
-        return SpineRunResponse(
-            ok=False,
-            run_id=run_id,
-            packet=None,
-            validation=None,
-            decision=None,
-            strategy=None,
-            traveler_bundle=None,
-            internal_bundle=None,
-            safety=SafetyResult(
-                strict_leakage=True,
-                leakage_passed=False,
-                leakage_errors=[error_message],
-            ),
-            meta=meta,
-        )
 
     except Exception as e:
         execution_ms = (time.perf_counter() - t0) * 1000
@@ -771,18 +714,40 @@ def run_spine(
         except Exception as ledger_err:
             logger.error("Wave A: fail ledger failed for run %s: %s", run_id, ledger_err)
 
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error": str(e),
-                "error_type": type(e).__name__,
-                "run_id": run_id,
-            },
-        )
-
     finally:
         # Reset strict mode after every request to prevent state leaking to the next
         set_strict_mode(False)
+
+
+@app.post("/run", response_model=RunAcceptedResponse)
+async def run_spine(
+    request: SpineRunRequest,
+    agency: Agency = Depends(get_current_agency),
+) -> RunAcceptedResponse:
+    """
+    Submit a spine run and return immediately.
+
+    This is the canonical Process Trip path. Poll GET /runs/{run_id} for
+    status, checkpointed steps, events, and final trip_id.
+    """
+    run_id = str(uuid.uuid4())
+    RunLedger.create(
+        run_id=run_id,
+        trip_id=None,
+        stage=request.stage,
+        operating_mode=request.operating_mode,
+        agency_id=agency.id,
+    )
+    request_dict = request.model_dump(exclude_none=True)
+    proc = multiprocessing.Process(
+        target=_execute_spine_pipeline,
+        args=(run_id, request_dict, agency.id),
+        daemon=True,
+    )
+    proc.start()
+
+    logger.info("spine_run queued run_id=%s agency_id=%s", run_id, agency.id)
+    return RunAcceptedResponse(run_id=run_id, state="queued")
 
 
 # =============================================================================
@@ -794,17 +759,22 @@ def list_runs(
     trip_id: Optional[str] = None,
     state: Optional[str] = None,
     limit: int = 50,
+    agency: Agency = Depends(get_current_agency),
 ):
     """
     List run records, newest first.
     Optionally filter by trip_id and/or state (queued|running|completed|failed|blocked).
     """
-    runs = RunLedger.list_runs(trip_id=trip_id, state=state, limit=limit)
-    return {"items": runs, "total": len(runs)}
+    runs = RunLedger.list_runs(trip_id=trip_id, state=state, limit=500)
+    agency_runs = [r for r in runs if r.get("agency_id") == agency.id][:limit]
+    return {"items": agency_runs, "total": len(agency_runs)}
 
 
-@app.get("/runs/{run_id}")
-def get_run_status(run_id: str):
+@app.get("/runs/{run_id}", response_model=RunStatusResponse)
+def get_run_status(
+    run_id: str,
+    agency: Agency = Depends(get_current_agency),
+) -> RunStatusResponse:
     """
     Full run status including metadata and latest checkpointed steps.
     Returns 404 if the run_id is not found in the ledger.
@@ -812,23 +782,32 @@ def get_run_status(run_id: str):
     meta = RunLedger.get_meta(run_id)
     if meta is None:
         raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
+    if meta.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
 
     steps = RunLedger.get_all_steps(run_id)
-    return {
+    events = get_run_events(run_id)
+    return RunStatusResponse(
         **meta,
-        "steps": {name: step.get("checkpointed_at") for name, step in steps.items()},
-        "steps_available": list(steps.keys()),
-    }
+        steps_completed=list(steps.keys()),
+        events=events,
+    )
 
 
 @app.get("/runs/{run_id}/steps/{step_name}")
-def get_run_step(run_id: str, step_name: str):
+def get_run_step(
+    run_id: str,
+    step_name: str,
+    agency: Agency = Depends(get_current_agency),
+):
     """
     Return the full checkpointed output for a single pipeline step.
     Returns 404 if the step has not been checkpointed yet.
     """
     meta = RunLedger.get_meta(run_id)
     if meta is None:
+        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
+    if meta.get("agency_id") != agency.id:
         raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
 
     step = RunLedger.get_step(run_id, step_name)
@@ -841,11 +820,26 @@ def get_run_step(run_id: str, step_name: str):
 
 
 @app.get("/runs/{run_id}/events")
-def get_run_event_stream(run_id: str):
+def get_run_event_stream(
+    run_id: str,
+    agency: Agency = Depends(get_current_agency),
+):
     """
     Return the append-only event log for a run in chronological order.
     Returns empty list if the run_id is unknown (no events written yet).
     """
+    meta = RunLedger.get_meta(run_id)
+    if meta is None:
+        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
+    if meta.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
+
+    meta = RunLedger.get_meta(run_id)
+    if meta is None:
+        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
+    if meta.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
+
     events = get_run_events(run_id)
     return {"run_id": run_id, "events": events, "total": len(events)}
 

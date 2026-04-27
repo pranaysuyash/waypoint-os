@@ -22,7 +22,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { parse as parseSetCookie } from "set-cookie-parser";
 
 const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
-const PROXY_TIMEOUT_MS = 10_000;
+const PROXY_TIMEOUT_MS = 120_000;
 const IS_DEV = process.env.NODE_ENV !== "production";
 
 /**

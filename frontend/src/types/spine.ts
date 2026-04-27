@@ -29,6 +29,51 @@ export type {
 } from '@/types/generated/spine-api';
 
 // ============================================================================
+// Run polling types (frontend-only — not yet in generated contract)
+// ============================================================================
+
+export interface RunAcceptedResponse {
+  run_id: string;
+  state: string;
+}
+
+export interface RunEvent {
+  event_id: string;
+  event_type: string;
+  run_id: string;
+  trip_id: string | null;
+  timestamp: string;
+  stage_name?: string;
+  execution_ms?: number;
+  error_type?: string;
+  error_message?: string;
+  stage_at_failure?: string;
+  stage?: string;
+  operating_mode?: string;
+  total_ms?: number;
+  block_reason?: string;
+}
+
+export interface RunStatusResponse {
+  run_id: string;
+  state: string;
+  trip_id: string | null;
+  stage: string | null;
+  operating_mode: string | null;
+  agency_id: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  total_ms: number | null;
+  created_at: string | null;
+  steps_completed: string[];
+  events: RunEvent[];
+  error_type?: string | null;
+  error_message?: string | null;
+  stage_at_failure?: string | null;
+  block_reason?: string | null;
+}
+
+// ============================================================================
 // Frontend-only types (not in backend contract — UI presentation layer)
 // ============================================================================
 

@@ -4,7 +4,7 @@
 **Date:** 2026-04-27
 **Problem:** `POST /api/spine/run` returns 504 Gateway Timeout when user clicks "Process Trip" in Workbench
 **Root Cause:** Multiple issues — see analysis below
-**Status:** Planning
+**Status:** Phase 1 implemented with route-registry policy, not a duplicate route file
 
 ---
 
@@ -59,22 +59,24 @@ GET http://localhost:3000/api/auth/me 401 (Unauthorized)
 
 ## Proposed Fix (In Order)
 
-### Phase 1: Fix Timeout (No Auth Changes Yet)
+### Phase 1: Fix Timeout (No Auth Changes Yet) — Implemented
 
 **Goal:** Make Process Trip not timeout
 
-**Step 1.1:** Create dedicated Next.js route for `/api/spine/run`
-- Path: `frontend/src/app/api/spine/run/route.ts`
-- Use `proxyRequest` with `timeoutMs: 60_000`
-- Modify `proxy-core.ts` to accept custom `timeoutMs` in `ProxyOptions`
+**Step 1.1:** Attach execution policy to the canonical route registry
+- Path: `frontend/src/lib/route-map.ts`
+- `spine/run` now resolves to backend `run` with `timeoutMs: 60_000`
+- This avoids a duplicate explicit route and keeps proxy behavior centralized
 
-**Step 1.2:** Ensure catch-all proxy doesn't intercept `/api/spine/run`
-- Check `frontend/src/app/api/[...path]/route.ts`
-- The explicit route `/api/spine/run` should take precedence over catch-all
+**Step 1.2:** Pass route policy through the catch-all proxy
+- Path: `frontend/src/app/api/[...path]/route.ts`
+- The catch-all now uses `resolveBackendRoute(...)`
+- The route-specific timeout is passed into `proxyRequest(...)`
 
-**Step 1.3:** Verify timeout increase
-- Backend `/run` endpoint should complete within 60s
-- If spine pipeline takes >60s, need to investigate backend performance
+**Step 1.3:** Verify timeout policy
+- `frontend/src/lib/__tests__/route-map.test.ts` verifies `spine/run` has `timeoutMs: 60_000`
+- Backend `/run` should complete within 60s
+- If spine pipeline takes >60s, investigate backend performance or move long-running execution asynchronous
 
 ### Phase 2: Fix Auth on /run Endpoint
 
@@ -123,8 +125,8 @@ def run_spine(
 
 | File | Change | Why |
 |------|--------|-----|
-| `frontend/src/lib/proxy-core.ts` | Add `timeoutMs` to `ProxyOptions` | Allow per-route timeout override |
-| `frontend/src/app/api/spine/run/route.ts` | New file — dedicated proxy with 60s timeout | Fix 504 on Process Trip |
+| `frontend/src/lib/route-map.ts` | Add route config object and `timeoutMs` for `spine/run` | Keep timeout policy in canonical route contract |
+| `frontend/src/app/api/[...path]/route.ts` | Pass route-specific timeout into `proxyRequest` | Fix 504 without duplicate route files |
 | `spine_api/server.py` | Add auth to `/run`, pass agency_id | Scope trips to user's agency |
 | `spine_api/persistence.py` | Verify save_processed_trip accepts agency_id | Store trip with correct agency |
 
@@ -132,7 +134,8 @@ def run_spine(
 
 ## Verification Checklist
 
-- [ ] `/api/spine/run` responds within 60s without 504
+- [x] `/api/spine/run` BFF route resolves with 60s timeout policy
+- [ ] `/api/spine/run` responds within 60s without 504 in the live UI scenario
 - [ ] Created trip has correct `agency_id`
 - [ ] Real user sees their own trip in Inbox
 - [ ] Test user does NOT see real user's trip
@@ -142,4 +145,5 @@ def run_spine(
 ---
 
 **Plan created:** 2026-04-27
-**Next:** Execute Phase 1 (timeout fix)
+**Phase 1 architecture note:** `Docs/SPINE_RUN_ROUTE_POLICY_ARCHITECTURE_2026-04-27.md`
+**Next:** Execute live UI scenario verification and then Phase 2 auth/agency scoping review

@@ -17,7 +17,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { proxyRequest } from "@/lib/proxy-core";
-import { resolveBackendPath } from "@/lib/route-map";
+import { resolveBackendRoute } from "@/lib/route-map";
 
 function handler(method: string) {
   return async (
@@ -33,8 +33,8 @@ function handler(method: string) {
       );
     }
 
-    const backendPath = resolveBackendPath(segments);
-    if (backendPath == null) {
+    const backendRoute = resolveBackendRoute(segments);
+    if (backendRoute == null) {
       // Unknown route — deny. Map it in route-map.ts before use.
       return NextResponse.json(
         { error: "Not found" },
@@ -43,8 +43,9 @@ function handler(method: string) {
     }
 
     return proxyRequest(request, {
-      backendPath,
+      backendPath: backendRoute.backendPath,
       method,
+      timeoutMs: backendRoute.timeoutMs,
     });
   };
 }

@@ -11,80 +11,97 @@
  * backend-backed routes here; frontend-local routes should stay explicit.
  */
 
-const BACKEND_ROUTE_ENTRIES: Array<[string, string]> = [
+export interface BackendRouteConfig {
+  backendPath: string;
+  timeoutMs?: number;
+}
+
+const DEFAULT_ROUTE_TIMEOUT_MS = 10_000;
+const LONG_RUNNING_COMMAND_TIMEOUT_MS = 60_000;
+
+const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   // ── Settings ───────────────────────────────────────────────
-  ["settings", "api/settings"],
-  ["settings/pipeline", "api/settings/pipeline"],
-  ["settings/approvals", "api/settings/approvals"],
-  ["settings/autonomy", "api/settings/autonomy"],
-  ["settings/operational", "api/settings/operational"],
+  ["settings", { backendPath: "api/settings" }],
+  ["settings/pipeline", { backendPath: "api/settings/pipeline" }],
+  ["settings/approvals", { backendPath: "api/settings/approvals" }],
+  ["settings/autonomy", { backendPath: "api/settings/autonomy" }],
+  ["settings/operational", { backendPath: "api/settings/operational" }],
 
   // ── Insights / Analytics ─────────────────────────────────────
-  ["stats", "api/dashboard/stats"],
-  ["insights/summary", "analytics/summary"],
-  ["insights/pipeline", "analytics/pipeline"],
-  ["insights/team", "analytics/team"],
-  ["insights/revenue", "analytics/revenue"],
-  ["insights/bottlenecks", "analytics/bottlenecks"],
-  ["insights/escalations", "analytics/escalations"],
-  ["insights/funnel", "analytics/funnel"],
-  ["insights/alerts", "analytics/alerts"],
-  ["insights/export", "analytics/export"],
+  ["stats", { backendPath: "api/dashboard/stats" }],
+  ["insights/summary", { backendPath: "analytics/summary" }],
+  ["insights/pipeline", { backendPath: "analytics/pipeline" }],
+  ["insights/team", { backendPath: "analytics/team" }],
+  ["insights/revenue", { backendPath: "analytics/revenue" }],
+  ["insights/bottlenecks", { backendPath: "analytics/bottlenecks" }],
+  ["insights/escalations", { backendPath: "analytics/escalations" }],
+  ["insights/funnel", { backendPath: "analytics/funnel" }],
+  ["insights/alerts", { backendPath: "analytics/alerts" }],
+  ["insights/export", { backendPath: "analytics/export" }],
 
   // ── Team ─────────────────────────────────────────────────────
-  ["team/members", "api/team/members"],
-  ["team/invite", "api/team/invite"],
-  ["team/workload", "api/team/workload"],
+  ["team/members", { backendPath: "api/team/members" }],
+  ["team/invite", { backendPath: "api/team/invite" }],
+  ["team/workload", { backendPath: "api/team/workload" }],
 
   // ── Inbox ────────────────────────────────────────────────────
-  ["inbox/bulk", "inbox/bulk"],
-  ["inbox/stats", "inbox/stats"],
+  ["inbox/bulk", { backendPath: "inbox/bulk" }],
+  ["inbox/stats", { backendPath: "inbox/stats" }],
 
   // ── Audit ────────────────────────────────────────────────────
-  ["audit", "audit"],
+  ["audit", { backendPath: "audit" }],
 
   // ── Scenarios are frontend-local; do not map them through this proxy.
 
   // ── System ───────────────────────────────────────────────────
-  ["system/unified-state", "api/system/unified-state"],
+  ["system/unified-state", { backendPath: "api/system/unified-state" }],
 
   // ── Core resources ───────────────────────────────────────────
-  ["spine/run", "run"],
-  ["assignments", "assignments"],
-  ["items", "items"],
-  ["health", "health"],
+  [
+    "spine/run",
+    {
+      backendPath: "run",
+      timeoutMs: LONG_RUNNING_COMMAND_TIMEOUT_MS,
+    },
+  ],
+  ["assignments", { backendPath: "assignments" }],
+  ["items", { backendPath: "items" }],
+  ["health", { backendPath: "health", timeoutMs: DEFAULT_ROUTE_TIMEOUT_MS }],
 
   // ── Review / Override resources ──────────────────────────────
-  ["reviews/bulk-action", "analytics/reviews/bulk-action"],
-  ["overrides", "overrides"],
+  ["reviews/bulk-action", { backendPath: "analytics/reviews/bulk-action" }],
+  ["overrides", { backendPath: "overrides" }],
 
   // ── Dynamic patterns (last segment is an ID) ─────────────────
-  ["trips/{id}/timeline", "api/trips/{id}/timeline"],
-  ["trips/{id}/assign", "trips/{id}/assign"],
-  ["trips/{id}/unassign", "trips/{id}/unassign"],
-  ["trips/{id}/snooze", "trips/{id}/snooze"],
-  ["trips/{id}/reassign", "trips/{id}/reassign"],
-  ["trips/{id}/review/action", "trips/{id}/review/action"],
-  ["trips/{id}/suitability/acknowledge", "trips/{id}/suitability/acknowledge"],
-  ["trips/{id}/override", "trips/{id}/override"],
-  ["trips/{id}/overrides", "trips/{id}/overrides"],
+  ["trips/{id}/timeline", { backendPath: "api/trips/{id}/timeline" }],
+  ["trips/{id}/assign", { backendPath: "trips/{id}/assign" }],
+  ["trips/{id}/unassign", { backendPath: "trips/{id}/unassign" }],
+  ["trips/{id}/snooze", { backendPath: "trips/{id}/snooze" }],
+  ["trips/{id}/reassign", { backendPath: "trips/{id}/reassign" }],
+  ["trips/{id}/review/action", { backendPath: "trips/{id}/review/action" }],
+  [
+    "trips/{id}/suitability/acknowledge",
+    { backendPath: "trips/{id}/suitability/acknowledge" },
+  ],
+  ["trips/{id}/override", { backendPath: "trips/{id}/override" }],
+  ["trips/{id}/overrides", { backendPath: "trips/{id}/overrides" }],
 
-  ["runs/{id}", "runs/{id}"],
-  ["runs/{id}/events", "runs/{id}/events"],
-  ["runs/{id}/steps/{step_name}", "runs/{id}/steps/{step_name}"],
+  ["runs/{id}", { backendPath: "runs/{id}" }],
+  ["runs/{id}/events", { backendPath: "runs/{id}/events" }],
+  ["runs/{id}/steps/{step_name}", { backendPath: "runs/{id}/steps/{step_name}" }],
 
-  ["overrides/{id}", "overrides/{id}"],
+  ["overrides/{id}", { backendPath: "overrides/{id}" }],
 
-  ["reviews/{id}", "analytics/reviews/{id}"],
+  ["reviews/{id}", { backendPath: "analytics/reviews/{id}" }],
 
-  ["insights/alerts/{id}/dismiss", "analytics/alerts/{id}/dismiss"],
+  ["insights/alerts/{id}/dismiss", { backendPath: "analytics/alerts/{id}/dismiss" }],
 
-  ["team/members/{id}", "api/team/members/{id}"],
-  ["team/members/{id}/workload", "api/team/members/{id}/workload"],
+  ["team/members/{id}", { backendPath: "api/team/members/{id}" }],
+  ["team/members/{id}/workload", { backendPath: "api/team/members/{id}/workload" }],
 
-  ["audit/trip/{id}", "audit"],
+  ["audit/trip/{id}", { backendPath: "audit" }],
 
-  ["analytics/agent/{id}/drill-down", "analytics/agent/{id}/drill-down"],
+  ["analytics/agent/{id}/drill-down", { backendPath: "analytics/agent/{id}/drill-down" }],
 ];
 
 const BACKEND_ROUTE_MAP = new Map(BACKEND_ROUTE_ENTRIES);
@@ -106,6 +123,19 @@ function isIdLike(segment: string): boolean {
  * @returns The backend path to forward to, or null for deny-by-default 404.
  */
 export function resolveBackendPath(segments: string[]): string | null {
+  return resolveBackendRoute(segments)?.backendPath ?? null;
+}
+
+/**
+ * Resolve a frontend path to the backend path and route-specific execution
+ * policy. Long-running command routes belong here so timeout behavior stays
+ * attached to the route contract instead of scattered across duplicate API
+ * route files.
+ *
+ * @param segments - URL path segments relative to /api/ (e.g., ["settings", "pipeline"])
+ * @returns The backend route config to forward to, or null for deny-by-default 404.
+ */
+export function resolveBackendRoute(segments: string[]): BackendRouteConfig | null {
   const exactKey = segments.join("/");
 
   // 1. Exact static match
@@ -121,11 +151,14 @@ export function resolveBackendPath(segments: string[]): string | null {
     const mapped = BACKEND_ROUTE_MAP.get(patternKey)!;
     // Substitute real IDs back into the mapped pattern
     const ids = segments.filter(isIdLike);
-    let result = mapped;
+    let result = mapped.backendPath;
     for (const id of ids) {
       result = result.replace("{id}", id);
     }
-    return result;
+    return {
+      ...mapped,
+      backendPath: result,
+    };
   }
 
   // 3. Fallback: unknown → deny-by-default 404 in the catch-all route.
