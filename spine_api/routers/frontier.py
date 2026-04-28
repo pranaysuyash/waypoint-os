@@ -41,6 +41,7 @@ class GhostWorkflowResponse(BaseModel):
     completed_at: Optional[datetime] = None
 
 class EmotionalLogRequest(BaseModel):
+    agency_id: str
     traveler_id: str
     trip_id: str
     sentiment_score: float = Field(..., ge=0.0, le=1.0)
@@ -99,6 +100,7 @@ async def log_emotional_state(
     """Log traveler emotional state for sentiment tracking."""
     log = EmotionalStateLog(
         id=str(uuid.uuid4()),
+        agency_id=request.agency_id,
         traveler_id=request.traveler_id,
         trip_id=request.trip_id,
         sentiment_score=request.sentiment_score,

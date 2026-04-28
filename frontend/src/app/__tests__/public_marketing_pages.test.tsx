@@ -50,74 +50,68 @@ describe('public marketing pages', () => {
     expect(screen.getByRole('heading', { name: /Owner review escalation/i })).toBeInTheDocument();
   });
 
-  it('renders the itinerary checker landing page with upload-first framing', () => {
+  it('renders the itinerary checker landing page with tool-first upload framing', () => {
     render(<ItineraryCheckerPage />);
 
+    // Hero heading
     expect(
       screen.getByRole('heading', { name: /Find what your travel plan missed/i }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText(/Upload\. Analyze\. Travel confident\./i).length).toBeGreaterThan(0);
-    expect(
-      screen.getAllByText(/Things worth discussing before you finalize\./i).length,
-    ).toBeGreaterThan(0);
-    expect(
-      screen.getAllByRole('link', { name: /Start free analysis/i })[0],
-    ).toHaveAttribute('href', '/itinerary-checker#upload');
-    expect(screen.getByRole('link', { name: /Try notebook mode/i })).toHaveAttribute(
-      'href',
-      '#notebook',
-    );
+
+    // Mode tabs present
+    expect(screen.getByRole('button', { name: /Upload file/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Paste itinerary/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Screenshot/i })).toBeInTheDocument();
+
+    // Real upload button (not a link to a separate notebook section)
+    expect(screen.getByRole('button', { name: /Choose file to upload/i })).toBeInTheDocument();
   });
 
-  it('itinerary checker hero upload card is labeled as a sample preview, not a real upload form', () => {
+  it('itinerary checker upload zone is a real interactive tool, not a sample preview', () => {
     const { container } = render(<ItineraryCheckerPage />);
 
-    // The hero upload zone must not be a real <form> — no submit or action
-    const forms = container.querySelectorAll('form');
-    const heroUploadForms = Array.from(forms).filter(
+    // No submit-action forms (upload is handled via drag-drop / button, not a form action)
+    const formsWithAction = Array.from(container.querySelectorAll('form')).filter(
       (f) => f.getAttribute('action') !== null || f.querySelector('input[type="submit"]') !== null,
     );
-    expect(heroUploadForms).toHaveLength(0);
+    expect(formsWithAction).toHaveLength(0);
 
-    // The card kicker must explicitly label it as a sample preview
-    expect(screen.getByText('Sample preview')).toBeInTheDocument();
+    // Should NOT say "sample preview" — the new design IS the real tool
+    expect(screen.queryByText('Sample preview')).not.toBeInTheDocument();
 
-    // The primary CTA in the hero upload card directs users to the notebook, not a live upload
-    expect(screen.getByRole('link', { name: /Try it in notebook mode/i })).toHaveAttribute(
-      'href',
-      '#notebook',
-    );
+    // Trust chips confirming it is free and privacy-safe
+    expect(screen.getByText(/Free to use/i)).toBeInTheDocument();
+    expect(screen.getByText(/No sign-up required/i)).toBeInTheDocument();
+    expect(screen.getByText(/Analyzed then deleted/i)).toBeInTheDocument();
   });
 
-  it('itinerary checker has a data-handling privacy statement', () => {
-    const { container } = render(<ItineraryCheckerPage />);
-
-    const privacyEl = container.querySelector('[data-testid="privacy-statement"]');
-    expect(privacyEl).toBeInTheDocument();
-    expect(privacyEl?.textContent).toMatch(/not stored/i);
-    expect(privacyEl?.textContent).toMatch(/not.*shared/i);
-    expect(privacyEl?.textContent).toMatch(/session/i);
-
-    // The privacy ProofChip must also surface this claim visibly
-    expect(screen.getByText(/Not stored · Not shared · Session only/i)).toBeInTheDocument();
-  });
-
-  it('enables the notebook checker once trip context is provided', () => {
+  it('itinerary checker surfaces data-handling privacy assurance in trust chips', () => {
     render(<ItineraryCheckerPage />);
 
-    const button = screen.getByRole('button', { name: /Start notebook check/i });
-    expect(button).toBeDisabled();
+    // Trust chips visible beneath the upload zone
+    expect(screen.getByText(/Analyzed then deleted/i)).toBeInTheDocument();
+    expect(screen.getByText(/No sign-up required/i)).toBeInTheDocument();
+    expect(screen.getByText(/Free to use/i)).toBeInTheDocument();
+  });
 
-    fireEvent.change(
-      screen.getByPlaceholderText(/Paste a rough itinerary/i),
-      {
-        target: {
-          value:
-            'Paris to Rome in May, hotel near Termini, airport transfer on arrival, Vatican day, Amalfi day trip.',
-        },
+  it('enables the paste analyze button once enough text is provided', () => {
+    render(<ItineraryCheckerPage />);
+
+    // Switch to paste mode
+    fireEvent.click(screen.getByRole('button', { name: /Paste itinerary/i }));
+
+    const textarea = screen.getByPlaceholderText(/Paste your day-by-day plan here/i);
+    expect(textarea).toBeInTheDocument();
+
+    const analyzeBtn = screen.getByRole('button', { name: /Analyze My Itinerary/i });
+    expect(analyzeBtn).toBeDisabled();
+
+    fireEvent.change(textarea, {
+      target: {
+        value: 'Paris to Rome in May, hotel near Termini, airport transfer on arrival, Vatican day.',
       },
-    );
+    });
 
-    expect(button).not.toBeDisabled();
+    expect(analyzeBtn).not.toBeDisabled();
   });
 });

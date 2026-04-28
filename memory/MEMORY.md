@@ -49,6 +49,10 @@
 - **[Product Gaps and Unknowns](../Docs/PM_PRODUCT_GAPS_AND_UNKNOWN.md)** — Roadmap gaps, assumptions, validation plan, moat strategy
 - **[PM Templates and Frameworks](../Docs/PM_TEMPLATES_AND_FRAMEWORKS.md)** — MVP scope, PRD, assumption log, experiment briefs, retrospectives
 
+## Identity & Team Architecture (2026-04-28)
+
+- **[Identity Unification (Phase 0)](../Docs/ARCHITECTURE_IDENTITY_UNIFICATION.md)** — Eliminated the dual-identity antipattern. Team members are now real `User` + `Membership` DB records (not `TeamStore` JSON blobs). `Membership` model extended with `capacity`, `specializations`, `status`, `updated_at`. All team endpoints are async, agency-scoped via `membership_service`. Migration: `alembic upgrade head`.
+
 ## Environment Setup
 
 - **Package manager**: `uv` (https://docs.astral.sh/uv/)

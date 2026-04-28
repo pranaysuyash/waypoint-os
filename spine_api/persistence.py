@@ -24,12 +24,28 @@ import threading
 from contextlib import contextmanager
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
-from spine_api.core.database import async_session_maker
+from spine_api.core.database import DATABASE_URL
 from spine_api.models.trips import Trip
 from src.security.encryption import decrypt, encrypt
 
 logger = logging.getLogger(__name__)
+
+tripstore_engine = create_async_engine(
+    DATABASE_URL,
+    echo=False,
+    future=True,
+    poolclass=NullPool,
+    pool_pre_ping=True,
+)
+tripstore_session_maker = async_sessionmaker(
+    tripstore_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False,
+)
 
 # Data directories
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -259,7 +275,29 @@ class FileTripStore:
 class SQLTripStore:
     """PostgreSQL-backed trip storage with field-level encryption for common PII keys."""
 
-    _PII_FIELDS = {"email", "phone", "phone_number", "mobile", "address", "full_name", "name"}
+    _PII_FIELDS = {
+        "address",
+        "contact_email",
+        "contact_name",
+        "contact_phone",
+        "customer_email",
+        "customer_name",
+        "customer_phone",
+        "dietary_restrictions",
+        "email",
+        "full_name",
+        "medical_notes",
+        "mobile",
+        "name",
+        "passport",
+        "passport_number",
+        "phone",
+        "phone_number",
+        "special_requests",
+        "traveler_email",
+        "traveler_name",
+        "traveler_phone",
+    }
 
     @staticmethod
     def _encrypt_pii(data: Any) -> Any:
@@ -354,7 +392,7 @@ class SQLTripStore:
         if not model_data["agency_id"]:
             raise ValueError("SQLTripStore requires agency_id")
 
-        async with async_session_maker() as session:
+        async with tripstore_session_maker() as session:
             existing = await session.get(Trip, trip_id)
             if existing:
                 for key, value in model_data.items():
@@ -367,13 +405,13 @@ class SQLTripStore:
 
     @staticmethod
     async def get_trip(trip_id: str) -> Optional[dict]:
-        async with async_session_maker() as session:
+        async with tripstore_session_maker() as session:
             trip_obj = await session.get(Trip, trip_id)
             return SQLTripStore._to_dict(trip_obj) if trip_obj else None
 
     @staticmethod
     async def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None) -> list:
-        async with async_session_maker() as session:
+        async with tripstore_session_maker() as session:
             query = select(Trip).order_by(Trip.created_at.desc()).limit(limit)
             if status:
                 query = query.where(Trip.status == status)
@@ -384,7 +422,7 @@ class SQLTripStore:
 
     @staticmethod
     async def update_trip(trip_id: str, updates: dict) -> Optional[dict]:
-        async with async_session_maker() as session:
+        async with tripstore_session_maker() as session:
             trip_obj = await session.get(Trip, trip_id)
             if not trip_obj:
                 return None
@@ -618,9 +656,20 @@ class AuditStore:
         with AuditStore._lock:
             if not AuditStore.AUDIT_FILE.exists():
                 return []
-        
-            with open(AuditStore.AUDIT_FILE) as f:
-                return json.load(f)
+            try:
+                with open(AuditStore.AUDIT_FILE) as f:
+                    events = json.load(f)
+                return events if isinstance(events, list) else []
+            except json.JSONDecodeError as exc:
+                archive = AuditStore.AUDIT_FILE.with_suffix(
+                    f".corrupt-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.json"
+                )
+                try:
+                    AuditStore.AUDIT_FILE.rename(archive)
+                    logger.error("Archived corrupt audit log %s to %s: %s", AuditStore.AUDIT_FILE, archive, exc)
+                except OSError:
+                    logger.error("Failed to archive corrupt audit log %s: %s", AuditStore.AUDIT_FILE, exc)
+                return []
     
     @staticmethod
     def _save_events(events: list):
@@ -629,8 +678,10 @@ class AuditStore:
         if len(events) > AuditStore.MAX_EVENTS:
             events = events[-AuditStore.MAX_EVENTS:]
 
-        with open(AuditStore.AUDIT_FILE, "w") as f:
-            json.dump(events, f, indent=2)
+        AuditStore.AUDIT_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with file_lock(AuditStore.AUDIT_FILE):
+            with open(AuditStore.AUDIT_FILE, "w") as f:
+                json.dump(events, f, indent=2)
 
     @staticmethod
     def log_event(event_type: str, user_id: str, details: dict):
