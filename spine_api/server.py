@@ -146,6 +146,46 @@ from spine_api.run_events import (
 from spine_api.run_ledger import RunLedger
 from src.intake.config.agency_settings import AgencySettingsStore
 from src.analytics.policy_rules import ready_gate_failures
+from src.agents.recovery_agent import RecoveryAgent
+
+
+class _TripStoreAdapter:
+    """Thin adapter so RecoveryAgent can query TripStore without importing persistence internals."""
+
+    def list_active(self) -> list:
+        """Return trips that are in processing stages (not closed/cancelled)."""
+        trips_raw = TripStore.list_trips(limit=500)
+        terminal = {"closed", "cancelled", "completed", "archived"}
+        return [
+            type("_Trip", (), {
+                "id": t.get("id", ""),
+                "stage": t.get("stage") or t.get("state"),
+                "updated_at": t.get("updatedAt") or t.get("updated_at"),
+            })()
+            for t in trips_raw
+            if (t.get("stage") or t.get("state")) not in terminal
+        ]
+
+    def set_review_status(self, trip_id: str, status: str) -> None:
+        TripStore.update_trip(trip_id, {"review_status": status})
+
+
+class _AuditStoreAdapter:
+    """Thin adapter mapping RecoveryAgent's audit.log() to AuditStore.log_event()."""
+
+    def log(self, event_type: str, trip_id: str, payload: dict) -> None:
+        AuditStore.log_event(
+            event_type=event_type,
+            user_id="recovery_agent",
+            details={"trip_id": trip_id, **payload},
+        )
+
+
+_recovery_agent = RecoveryAgent(
+    audit_store=_AuditStoreAdapter(),
+    trip_repo=_TripStoreAdapter(),
+    # spine_runner left None — re-queue not wired until async job queue is added
+)
 
 # Auth — Phase 1
 try:
@@ -215,11 +255,13 @@ async def lifespan(app: FastAPI):
         logger.warning("⚠️  AUTH DISABLED — local/test only. Do not use in production.")
     install_sensitive_data_filter()
     watchdog.start()
+    _recovery_agent.start()
     # Note: We no longer auto-seed at startup.
     # Seeding is now done per-agency for test users in the /trips endpoint.
     logger.info("Spine API startup complete")
     yield
     # Shutdown
+    _recovery_agent.stop()
     watchdog.stop()
     logger.info("Spine API shutdown complete")
 
@@ -520,12 +562,46 @@ def health() -> HealthResponse:
     return HealthResponse(status="ok", version="1.0.0")
 
 
+def _close_inherited_lock_fds() -> None:
+    """
+    Close any parent-inherited lock file descriptors to prevent
+    fcntl.flock deadlock when multiprocessing forks on macOS.
+
+    When the parent holds any fcntl.flock and forks, the child inherits
+    all open fds — including the locked ones. We close all fds above 2
+    that have .lock in their path to release the inherited lock references.
+    """
+    import os as _os
+
+    closed = 0
+    for fd in range(3, 256):
+        try:
+            path = _os.readlink(f"/dev/fd/{fd}")
+        except (OSError, FileNotFoundError):
+            continue
+        if path.endswith(".lock"):
+            try:
+                _os.close(fd)
+                closed += 1
+            except OSError:
+                pass
+    if closed:
+        import logging
+        logging.getLogger("spine_api").debug("Closed %d inherited lock fds", closed)
+
+
 def _execute_spine_pipeline(
     run_id: str,
     request_dict: dict[str, Any],
     agency_id: str,
 ) -> None:
     """Run the spine pipeline in the background and persist status/events."""
+    # Close inherited lock file descriptors to prevent fork-deadlock on macOS.
+    # When multiprocessing forks, the child inherits all parent fds including
+    # fcntl.flock-held files. Closing them here ensures the child can acquire
+    # fresh locks via the file_lock context manager.
+    _close_inherited_lock_fds()
+
     t0 = time.perf_counter()
     request = SpineRunRequest(**request_dict)
 
@@ -597,6 +673,37 @@ def _execute_spine_pipeline(
             block_reason = result.early_exit_reason or "Pipeline blocked"
             RunLedger.block(run_id, block_reason=block_reason)
             emit_run_blocked(run_id=run_id, block_reason=block_reason, trip_id=None)
+            return
+
+        if getattr(result, "partial_intake", False):
+            logger.info(
+                "spine_run partial_intake run_id=%s reason=%s execution_ms=%.2f",
+                run_id,
+                result.early_exit_reason,
+                execution_ms,
+            )
+            # Save the partial trip with incomplete status
+            # (packet is valid but missing quote-ready fields)
+            trip_id_saved = save_processed_trip(
+                {
+                    "run_id": run_id,
+                    "packet": _to_dict(result.packet) if hasattr(result, "packet") else None,
+                    "validation": _to_dict(result.validation) if hasattr(result, "validation") else None,
+                    "decision": _to_dict(result.decision) if hasattr(result, "decision") else None,
+                    "strategy": _to_dict(result.strategy) if hasattr(result, "strategy") else None,
+                    "meta": meta.model_dump(),
+                },
+                source="spine_api",
+                agency_id=agency_id,
+                trip_status="incomplete",
+            )
+            if not trip_id_saved:
+                raise RuntimeError("save_processed_trip returned no trip_id for partial intake")
+            RunLedger.update_meta(run_id, trip_id=trip_id_saved)
+            logger.info("Partial trip saved: %s", trip_id_saved)
+
+            RunLedger.complete(run_id, total_ms=execution_ms)
+            emit_run_completed(run_id=run_id, trip_id=trip_id_saved, total_ms=execution_ms)
             return
 
         if hasattr(result, "validation") and result.validation and not getattr(result.validation, "is_valid", True):
@@ -739,7 +846,11 @@ async def run_spine(
         agency_id=agency.id,
     )
     request_dict = request.model_dump(exclude_none=True)
-    proc = multiprocessing.Process(
+    # Use 'spawn' context to avoid fcntl.flock deadlock from fork() on macOS.
+    # When fork() is used, the child inherits all parent file descriptors
+    # including fcntl.flock-held locks, which blocks the child indefinitely.
+    ctx = multiprocessing.get_context("spawn")
+    proc = ctx.Process(
         target=_execute_spine_pipeline,
         args=(run_id, request_dict, agency.id),
         daemon=True,
@@ -783,6 +894,13 @@ def get_run_status(
     if meta is None:
         raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
     if meta.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
+
+    if meta.get("state") in ("queued", "running"):
+        RunLedger.timeout_stale_runs(max_age_seconds=300)
+
+    meta = RunLedger.get_meta(run_id)
+    if meta is None:
         raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
 
     steps = RunLedger.get_all_steps(run_id)
@@ -901,7 +1019,13 @@ def patch_trip(
     updates: Dict[str, Any],
     agency: Agency = Depends(get_current_agency),
 ):
-    """Update trip fields (e.g. status)."""
+    """
+    Update trip fields (e.g. status, follow_up_due_date).
+    
+    Supported fields:
+    - status: Trip status (new, in_progress, completed, etc.)
+    - follow_up_due_date: ISO-8601 datetime string for promised follow-up
+    """
     trip = TripStore.get_trip(trip_id)
     if not trip or trip.get("agency_id") != agency.id:
         raise HTTPException(status_code=404, detail="Trip not found")

@@ -198,16 +198,23 @@
   gap: 36px;
 }
 
+.visualHero {
+  position: relative;
+  perspective: 1200px; /* Add depth for 3D elements */
+}
+
 .visualHero::before {
   content: "";
   position: absolute;
   inset: 34px 0 0;
-  border-radius: 42px;
-  background:
-    linear-gradient(90deg, rgba(8, 10, 12, 0.92), rgba(8, 10, 12, 0.68) 42%, rgba(8, 10, 12, 0.18)),
-    linear-gradient(180deg, rgba(8, 10, 12, 0), rgba(8, 10, 12, 0.88) 94%);
-  border: 1px solid rgba(48, 54, 61, 0.62);
+  border-radius: var(--lg-radius-premium);
+  background: var(--lg-bg-garden);
+  border: 1px solid var(--lg-glass-border);
+  box-shadow: var(--lg-shadow-soft);
+  backdrop-filter: blur(var(--lg-glass-blur));
+  -webkit-backdrop-filter: blur(var(--lg-glass-blur));
   pointer-events: none;
+  transform: translateZ(-20px);
 }
 
 .heroCopy {
@@ -239,8 +246,8 @@
 }
 
 .heroTitle {
-  font-size: clamp(58px, 7vw, 92px);
-  line-height: 1;
+  font-size: var(--text-6xl);
+  line-height: 1.05;
   letter-spacing: -0.052em;
   color: #f5fbff;
   max-width: 9.4ch;
@@ -249,19 +256,19 @@
 
 .agencyHero .heroTitle {
   max-width: none;
-  font-size: clamp(68px, 6.4vw, 78px);
+  font-size: var(--text-5xl);
   line-height: 1;
   font-weight: 700;
-  letter-spacing: 0;
+  letter-spacing: -0.02em;
 }
 
 .heroSubtitle {
-  margin-top: 8px;
-  max-width: 14ch;
-  color: #c9d1d9;
-  font-size: 45px;
+  margin-top: 12px;
+  max-width: 20ch;
+  color: var(--text-secondary);
+  font-size: var(--text-2xl);
   font-weight: 400;
-  line-height: 1.08;
+  line-height: 1.2;
 }
 
 .heroBody {
@@ -1750,6 +1757,30 @@
   50% { opacity: 1; transform: rotate(-11deg) translateX(10px); }
 }
 
+@keyframes routePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.5s ease both;
+}
+
+.animate-stagger-container > * {
+  animation: fadeUp 0.5s ease both;
+}
+
+.animate-stagger-container > *:nth-child(1) { animation-delay: 0s; }
+.animate-stagger-container > *:nth-child(2) { animation-delay: 0.1s; }
+.animate-stagger-container > *:nth-child(3) { animation-delay: 0.2s; }
+.animate-stagger-container > *:nth-child(4) { animation-delay: 0.3s; }
+.animate-stagger-container > *:nth-child(5) { animation-delay: 0.4s; }
+
 @keyframes nodeFloat {
   0%, 100% { transform: translate3d(0, 0, 0); }
   50% { transform: translate3d(0, -10px, 0); }
@@ -1942,5 +1973,98 @@
   .openNotebook {
     right: 6%;
     width: 178px;
+  }
+}
+
+/* Antigravity Responsive Breakpoints */
+@media (max-width: 1100px) {
+  .agencyHero {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    padding: 0 20px;
+  }
+  
+  .agencyHero .heroCopy {
+    max-width: 100%;
+    padding-bottom: 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .agencyHero .heroTitle {
+    text-align: center;
+    text-wrap: balance;
+  }
+  
+  .agencyCockpit {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    position: relative;
+    right: auto;
+    top: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .section {
+    padding-top: 60px;
+    padding-bottom: 60px;
+  }
+  
+  .problemRail {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .narrativeFeature {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  
+  .trustPanel {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  
+  .trustList {
+    grid-template-columns: 1fr;
+  }
+  
+  .personaStrip {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  
+  .personaStrip article + article {
+    border-left: none;
+    border-top: 1px solid rgba(48, 54, 61, 0.78);
+    padding-top: 24px;
+  }
+  
+  .heroTitle {
+    font-size: var(--text-5xl);
+  }
+  
+  .heroSubtitle {
+    font-size: var(--text-xl);
+  }
+}
+
+@media (max-width: 480px) {
+  .heroTitle {
+    font-size: var(--text-4xl);
+  }
+  
+  .heroActions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .heroActions > * {
+    width: 100%;
+    justify-content: center;
   }
 }

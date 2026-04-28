@@ -27,18 +27,18 @@ const STATE_META: Record<
   green: {
     color: '#3fb950',
     bg: 'rgba(63,185,80,0.12)',
-    label: 'PROCEED_SAFE',
+    label: 'Ready to Book',
   },
   amber: {
     color: '#d29922',
     bg: 'rgba(210,153,34,0.12)',
-    label: 'BRANCH / DRAFT',
+    label: 'Needs Options',
   },
-  red: { color: '#f85149', bg: 'rgba(248,81,73,0.12)', label: 'STOP_REVIEW' },
+  red: { color: '#f85149', bg: 'rgba(248,81,73,0.12)', label: 'Needs Review' },
   blue: {
     color: '#58a6ff',
     bg: 'rgba(88,166,255,0.12)',
-    label: 'ASK_FOLLOWUP',
+    label: 'Need More Info',
   },
 };
 
@@ -427,7 +427,7 @@ export default function DashboardPage() {
             Operations Overview
           </h1>
           <p className='text-base text-[#a8b3c1] mt-0.5'>
-            Waypoint OS · decision intelligence
+            Waypoint OS · your travel agency workspace
           </p>
         </div>
         <Link
@@ -443,7 +443,7 @@ export default function DashboardPage() {
         <StatCard
           title='Active Trips'
           value={stats?.active ?? '—'}
-          sub={state ? `${state.canonical_total} canonical total` : 'Loading...'}
+          sub={state ? `${state.canonical_total} total` : 'Loading...'}
           icon={Briefcase}
           state='blue'
           isLoading={unifiedLoading}
@@ -470,7 +470,7 @@ export default function DashboardPage() {
         <StatCard
           title='Needs Attention'
           value={stats?.needsAttention ?? '—'}
-          sub={state ? 'integrity orphans' : 'Loading...'}
+          sub={state ? 'data issues' : 'Loading...'}
           icon={AlertTriangle}
           state='red'
           isLoading={unifiedLoading}

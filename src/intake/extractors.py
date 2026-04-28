@@ -32,6 +32,25 @@ from .packet_models import (
 from .normalizer import Normalizer
 from .geography import is_known_city, is_known_destination, get_city_country
 
+_MONTH_NAMES = frozenset({
+    "january", "february", "march", "april", "may", "june",
+    "july", "august", "september", "october", "november", "december",
+    "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec",
+})
+
+_RELATION_WORDS = frozenset({
+    "wife", "husband", "spouse", "parents", "mother", "father", "mom", "dad",
+    "kid", "child", "baby", "toddler", "son", "daughter", "grandparents",
+    "grandmother", "grandfather", "colleague", "friend", "partner", "boss",
+    "caller", "client", "agent",
+})
+
+_DESTINATION_HINT_VERBS = frozenset({
+    "visit", "travel", "trip", "holiday", "vacation", "go", "going",
+    "flying", "fly", "planning", "plan", "explore", "see", "tour",
+    "honeymoon", "getaway", "weekend",
+})
+
 
 # =============================================================================
 # SECTION 1: DESTINATION DETECTION
@@ -43,6 +62,39 @@ from .geography import is_known_city, is_known_destination, get_city_country
 _DESTINATION_RE = re.compile(
     r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b",
 )
+
+
+def _month_to_num(month_str: str) -> Optional[int]:
+    _MAP = {
+        "jan": 1, "january": 1, "feb": 2, "february": 2, "mar": 3, "march": 3,
+        "apr": 4, "april": 4, "may": 5, "jun": 6, "june": 6,
+        "jul": 7, "july": 7, "aug": 8, "august": 8, "sep": 9, "sept": 9, "september": 9,
+        "oct": 10, "october": 10, "nov": 11, "november": 11, "dec": 12, "december": 12,
+    }
+    return _MAP.get(month_str.lower()[:3].rstrip("e")) or _MAP.get(month_str.lower())
+
+
+def _infer_year_from_context(text: str) -> str:
+    year_match = re.search(r"\b(20\d{2})\b", text)
+    if year_match:
+        return year_match.group(1)
+    return str(datetime.now().year)
+
+
+def _normalize_constraint(raw: str) -> str:
+    """Normalize a raw constraint fragment into a clean canonical form."""
+    lower = raw.lower().strip()
+    _PACE_PATTERNS = [
+        (r"\b(?:it\s+)?rushed\b", "relaxed pace"),
+        (r"\b(?:it\s+)?rush\b", "relaxed pace"),
+        (r"\b(?:be\s+)?too\s+packed\b", "relaxed pace"),
+        (r"\b(?:be\s+)?too\s+busy\b", "relaxed pace"),
+        (r"\bhurried\b", "relaxed pace"),
+    ]
+    for pattern, replacement in _PACE_PATTERNS:
+        if re.search(pattern, lower):
+            return replacement
+    return raw
 
 
 def _extract_relevant_span(text: str, match_str: str, window: int = 80) -> str:
@@ -116,6 +168,31 @@ def _is_likely_origin(text: str, dest_match: str) -> bool:
     return False
 
 
+def _is_valid_destination_candidate(span: str, context: str) -> bool:
+    """Type-check a destination candidate before accepting it.
+
+    Rejects months, relation words, person-role words.
+    Accepts known destinations and contextually likely place names.
+    """
+    lower = span.lower().strip()
+
+    if lower in _MONTH_NAMES:
+        return False
+
+    if lower in _RELATION_WORDS:
+        return False
+
+    if is_known_destination(lower):
+        return True
+
+    context_lower = context.lower()
+    for verb in _DESTINATION_HINT_VERBS:
+        if verb in context_lower and span[0].isupper():
+            return is_known_city(lower) if lower not in _RELATION_WORDS else False
+
+    return False
+
+
 def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional[str]]:
     """
     Returns (candidates, status, raw_match).
@@ -140,13 +217,16 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
     if or_match:
         c1 = or_match.group(1).title()
         c2 = or_match.group(2).title()
-        combined = []
-        if not _is_past_trip_mention(text, or_match.group(0)):
-            combined = [c1, c2]
-        if combined:
-            return combined, "semi_open", or_match.group(0)
-        else:
-            return [], "open", None
+        c1_ok = _is_valid_destination_candidate(c1, text)
+        c2_ok = _is_valid_destination_candidate(c2, text)
+        if (c1_ok or c2_ok) and not _is_past_trip_mention(text, or_match.group(0)):
+            valid = []
+            if c1_ok:
+                valid.append(c1)
+            if c2_ok:
+                valid.append(c2)
+            if valid:
+                return valid, "semi_open", or_match.group(0)
 
     # Check for "maybe" pattern (semi-open) — before general regex
     # so "maybe Singapore" is captured as semi_open, not definite.
@@ -178,7 +258,7 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
     # Single/multiple destination match — filter past-trip mentions AND origin patterns
     # Validate against geography database to filter out non-city capitalized words.
     # Also filter common pronouns and stop words that should never be destinations.
-    _DESTINATION_STOP_WORDS = {"we", "i", "my", "our", "the", "this", "that", "it", "they", "he", "she", "us"}
+    _DESTINATION_STOP_WORDS = {"we", "i", "my", "our", "the", "this", "that", "it", "they", "he", "she", "us", "me", "him", "her"}
 
     matches = [m.group(0) for m in _DESTINATION_RE.finditer(text)]
     if matches:
@@ -223,6 +303,28 @@ def _extract_dates(text: str) -> Optional[Tuple[str, Optional[str], Optional[str
     if iso_match:
         raw = iso_match.group(0)
         return raw, iso_match.group(1), iso_match.group(2), "exact"
+
+    # Day range: "9th to 14th Feb", "around 9th to 14th Feb 2025"
+    _MONTH_ABBR = "(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*"
+    day_range = re.search(
+        r"\b(?:around|tentative(?:ly)?|dates?\s+around)?\s*"
+        r"(\d{1,2})(?:st|nd|rd|th)?\s*(?:to|-|–|—)\s*(\d{1,2})(?:st|nd|rd|th)?\s+"
+        r"(" + _MONTH_ABBR + r")\b"
+        r"(?:\s+(\d{4}))?",
+        text_lower,
+    )
+    if day_range:
+        start_day = day_range.group(1)
+        end_day = day_range.group(2)
+        month_str = day_range.group(3)
+        explicit_year = day_range.group(4)
+        year = explicit_year or _infer_year_from_context(text)
+        month_num = _month_to_num(month_str)
+        if month_num:
+            start_iso = f"{year}-{month_num:02d}-{int(start_day):02d}"
+            end_iso = f"{year}-{month_num:02d}-{int(end_day):02d}"
+            raw = day_range.group(0).strip()
+            return raw, start_iso, end_iso, "tentative"
 
     # "This weekend" / "this Friday"
     weekend_match = re.search(r"\bthis\s+(weekend|friday|saturday|sunday|monday|tuesday|wednesday|thursday)\b", text_lower)
@@ -387,8 +489,38 @@ def _extract_party(text: str) -> Dict[str, Any]:
     Returns {party_size, party_composition, child_ages}.
     """
     composition: Dict[str, int] = {}
-    child_ages: List[int] = []
+    child_ages: List[float] = []
     text_lower = text.lower()
+
+    # Family composition from natural language
+    _FAMILY_PATTERNS = [
+        (r"\b(?:me|myself|i)\b", "adults", 1),
+        (r"\bmy\s+(?:wife|husband|spouse)\b", "adults", 1),
+        (r"\bmy\s+(?:parents|mom\s+and\s+dad|mum\s+and\s+dad)\b", "adults", 2),
+        (r"\bmy\s+(?:mother|father|mom|mum|dad)\b", "adults", 1),
+        (r"\bmy\s+(?:grandparents?)\b", "elderly", 1),
+    ]
+    for pattern, group, count in _FAMILY_PATTERNS:
+        if re.search(pattern, text_lower):
+            composition[group] = composition.get(group, 0) + count
+
+    # Child with decimal age: "1.7 year old kid", "2.5yr old"
+    dec_age = re.search(r"(\d+\.?\d*)\s*(?:years?|yr|y)[\s-]*(?:old|aged?)\s+(?:kid|child|baby|toddler|son|daughter)", text_lower)
+    if dec_age:
+        composition["children"] = composition.get("children", 0) + 1
+        child_ages.append(float(dec_age.group(1)))
+    elif not dec_age:
+        # Singular child without number: "our kid", "a toddler"
+        singular_child = re.search(r"\b(?:my|our|a)\s+(?:kid|child|baby|toddler|son|daughter)\b", text_lower)
+        if singular_child:
+            composition["children"] = composition.get("children", 0) + 1
+            if not child_ages:
+                if "toddler" in singular_child.group(0):
+                    child_ages.append(2.0)
+                elif "baby" in singular_child.group(0):
+                    child_ages.append(0.5)
+                else:
+                    child_ages.append(5.0)
 
     # Adults
     adult_match = re.search(r"(\d+)\s+adults?", text_lower)
@@ -470,6 +602,19 @@ def _extract_trip_intent(text: str) -> Dict[str, Any]:
             results["trip_purpose"] = purpose
             break
 
+    if "trip_purpose" not in results:
+        _LEISURE_HINTS = {"universal studios", "disney", "sentosa", "nature park",
+                          "theme park", "aquarium", "zoo", "safari", "gardens",
+                          "sightseeing", "attractions", "landmarks", "tourist"}
+        _FAMILY_HINTS = {"kid", "kids", "child", "children", "toddler", "baby",
+                         "parents", "family", "wife", "husband"}
+        hints_found = sum(1 for h in _LEISURE_HINTS if h in text_lower)
+        family_found = any(h in text_lower for h in _FAMILY_HINTS)
+        if hints_found >= 1 and family_found:
+            results["trip_purpose"] = "family leisure"
+        elif hints_found >= 1:
+            results["trip_purpose"] = "leisure"
+
     # Trip style
     style_patterns = {
         "luxury resort": r"\b(5[\s-]*star|luxury\s+resort|luxury)\b",
@@ -496,16 +641,27 @@ def _extract_trip_intent(text: str) -> Dict[str, Any]:
     hard = []
     no_match = re.findall(r"(?:no|don'?t\s+(?:want|need|book)|avoid|never)\s+([^.,]+)", text_lower)
     for constraint in no_match:
-        hard.append(constraint.strip())
+        normalized = _normalize_constraint(constraint.strip())
+        if normalized:
+            hard.append(normalized)
     if hard:
         results["hard_constraints"] = hard
 
     soft = []
-    want_match = re.findall(r"(?:want|prefer|like)\s+([^.,]+)", text_lower)
+    want_match = re.findall(r"(?:want|prefer|like|interested\s+in)\s+([^.,]+)", text_lower)
     for pref in want_match:
         soft.append(pref.strip())
     if soft:
         results["soft_preferences"] = soft
+
+    _ATTRACTION_RE = re.compile(
+        r"\b((?:Universal\s+Studios|Sentosa|Gardens\s+by\s+the\s+Bay|Disney|Sea\s+World|Legoland|Marina\s+Bay|Sanctuary|National\s+Park|Nature\s+Park|Safari|Aquarium|Zoo|Waterpark|Theme\s+Park)\b)"
+        , re.IGNORECASE
+    )
+    attractions = [m.group(1).strip() for m in _ATTRACTION_RE.finditer(text)]
+    if attractions:
+        results.setdefault("soft_preferences", [])
+        results["soft_preferences"].extend(attractions)
 
     return results
 

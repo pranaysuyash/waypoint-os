@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { IBM_Plex_Sans, JetBrains_Mono } from 'next/font/google';
+import { IBM_Plex_Sans, JetBrains_Mono, Outfit, Inter } from 'next/font/google';
 import './globals.css';
 import { Shell } from '@/components/layouts/Shell';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -16,6 +16,16 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
 });
 
+const outfit = Outfit({
+  variable: '--font-outfit',
+  subsets: ['latin'],
+});
+
+const inter = Inter({
+  variable: '--font-inter',
+  subsets: ['latin'],
+});
+
 export const metadata: Metadata = {
   title: 'Waypoint OS',
   description: 'AI-powered travel agency decision support system',
@@ -29,7 +39,7 @@ export default function RootLayout({
   return (
     <html
       lang='en'
-      className={`${ibmPlexSans.variable} ${jetbrainsMono.variable}`}
+      className={`${ibmPlexSans.variable} ${jetbrainsMono.variable} ${outfit.variable} ${inter.variable}`}
     >
       <body>
         <ErrorBoundary>

@@ -31,6 +31,25 @@ describe('public marketing pages', () => {
     expect(container.querySelector('img[src="/brand/waypoint-logo-compass.svg"]')).toBeInTheDocument();
   });
 
+  it('homepage wedge section has an actionable itinerary checker CTA', () => {
+    render(<HomePage />);
+
+    const checkerLink = screen.getByRole('link', { name: /Try the free itinerary checker/i });
+    expect(checkerLink).toHaveAttribute('href', '/itinerary-checker');
+
+    expect(
+      screen.getByRole('heading', { name: /Test your plan before you book/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('homepage productMoments name concrete capabilities', () => {
+    render(<HomePage />);
+
+    expect(screen.getByRole('heading', { name: /Intake normalization/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Risk question generation/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Owner review escalation/i })).toBeInTheDocument();
+  });
+
   it('renders the itinerary checker landing page with upload-first framing', () => {
     render(<ItineraryCheckerPage />);
 
@@ -48,6 +67,39 @@ describe('public marketing pages', () => {
       'href',
       '#notebook',
     );
+  });
+
+  it('itinerary checker hero upload card is labeled as a sample preview, not a real upload form', () => {
+    const { container } = render(<ItineraryCheckerPage />);
+
+    // The hero upload zone must not be a real <form> — no submit or action
+    const forms = container.querySelectorAll('form');
+    const heroUploadForms = Array.from(forms).filter(
+      (f) => f.getAttribute('action') !== null || f.querySelector('input[type="submit"]') !== null,
+    );
+    expect(heroUploadForms).toHaveLength(0);
+
+    // The card kicker must explicitly label it as a sample preview
+    expect(screen.getByText('Sample preview')).toBeInTheDocument();
+
+    // The primary CTA in the hero upload card directs users to the notebook, not a live upload
+    expect(screen.getByRole('link', { name: /Try it in notebook mode/i })).toHaveAttribute(
+      'href',
+      '#notebook',
+    );
+  });
+
+  it('itinerary checker has a data-handling privacy statement', () => {
+    const { container } = render(<ItineraryCheckerPage />);
+
+    const privacyEl = container.querySelector('[data-testid="privacy-statement"]');
+    expect(privacyEl).toBeInTheDocument();
+    expect(privacyEl?.textContent).toMatch(/not stored/i);
+    expect(privacyEl?.textContent).toMatch(/not.*shared/i);
+    expect(privacyEl?.textContent).toMatch(/session/i);
+
+    // The privacy ProofChip must also surface this claim visibly
+    expect(screen.getByText(/Not stored · Not shared · Session only/i)).toBeInTheDocument();
   });
 
   it('enables the notebook checker once trip context is provided', () => {

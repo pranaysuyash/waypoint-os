@@ -1,8 +1,12 @@
 "use client";
 
+import { useCallback } from "react";
 import { useWorkbenchStore } from "@/stores/workbench";
-import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate, DecisionOutput, FollowUpQuestion, Rationale } from "@/types/spine";
+import { acknowledgeSuitabilityFlags } from "@/lib/api-client";
+import { SuitabilitySignal } from "@/components/workspace/panels/SuitabilitySignal";
+import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate, DecisionOutput, FollowUpQuestion, Rationale, SuitabilityFlagData } from "@/types/spine";
 import type { Trip } from "@/lib/api-client";
+import { DECISION_STATE_LABELS, titleCase, labelOrTitle } from "@/lib/label-maps";
 import styles from "./workbench.module.css";
 
 /**
@@ -85,7 +89,20 @@ interface DecisionTabProps {
 }
 
 export default function DecisionTab({ trip }: DecisionTabProps) {
-  const { result_decision, result_fees, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
+  const { result_decision, result_fees, debug_raw_json, setDebugRawJson, acknowledged_suitability_flags, acknowledgeFlag } = useWorkbenchStore();
+
+  const tripId = trip?.id;
+
+  const handleAcknowledge = useCallback(async (flagType: string) => {
+    acknowledgeFlag(flagType);
+    if (tripId) {
+      try { await acknowledgeSuitabilityFlags(tripId, [flagType]); } catch {}
+    }
+  }, [tripId, acknowledgeFlag]);
+
+  const handleDrill = useCallback(() => {
+    document.querySelector('[data-testid="timeline-panel"]')?.scrollIntoView({ behavior: "smooth" });
+  }, []);
 
   const activeDecision: DecisionOutput | null = result_decision || trip?.decision || null;
 
@@ -109,6 +126,7 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
   const softBlockers: string[] = (decision as any).soft_blockers ?? [];
   const contradictions: string[] = (decision as any).contradictions ?? [];
   const riskFlags: string[] = (decision as any).risk_flags ?? [];
+  const suitabilityFlags: SuitabilityFlagData[] = (decision as any).suitability_flags ?? [];
   const followupQuestions: FollowUpQuestion[] = (decision as any).follow_up_questions ?? [];
   const rationale: Rationale = (decision as any).rationale ?? {};
   const branchOptions: string[] = (decision as any).branch_options ?? [];
@@ -121,7 +139,7 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
         <h3 className={styles.sectionTitle}>Decision State</h3>
         <div className={styles.card}>
           <span className={`${styles.badge} ${badgeClass}`}>
-            {STATE_LABELS[decisionState] || decisionState}
+            {STATE_LABELS[decisionState] || "Review Required"}
           </span>
           <div style={{ marginTop: "12px", fontSize: "13px", color: "var(--color-text-muted)" }}>
             Overall Confidence: {Math.round((decision.confidence?.overall || 0) * 100)}%
@@ -247,6 +265,17 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
         </div>
       )}
 
+      {/* Suitability Audit Results */}
+      {suitabilityFlags.length > 0 && (
+        <SuitabilitySignal
+          flags={suitabilityFlags}
+          tripId={tripId}
+          onAcknowledge={handleAcknowledge}
+          onDrill={handleDrill}
+          acknowledgedFlags={acknowledged_suitability_flags}
+        />
+      )}
+
       {/* Follow-up Questions */}
       {followupQuestions.length > 0 && (
         <div className={styles.section}>
@@ -257,7 +286,7 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
                 <li key={`followup-${q.field_name}-${i}`} className={styles.listItem}>
                   <span className={`${styles.listIcon} ${styles.iconInfo}`}>?</span>
                   <div>
-                    <strong>[{q.priority}] {q.field_name}</strong>
+                    <strong>[{q.priority.charAt(0).toUpperCase() + q.priority.slice(1)}] {titleCase(q.field_name)}</strong>
                     <p style={{ fontSize: "13px", marginTop: "4px" }}>{q.question}</p>
                   </div>
                 </li>
@@ -274,7 +303,7 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
           <div className={styles.card}>
             <div style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "12px" }}>
               <span className={`${styles.badge} ${VERDICT_BADGE_CLASS[budgetBreakdown.verdict] || styles.stateBlue}`}>
-                {VERDICT_LABELS[budgetBreakdown.verdict] || budgetBreakdown.verdict}
+                {VERDICT_LABELS[budgetBreakdown.verdict] || titleCase(budgetBreakdown.verdict)}
               </span>
               {budgetBreakdown.budget_stated != null && (
                 <span style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>
@@ -294,7 +323,7 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
               <tbody>
                 {budgetBreakdown.buckets.map((b: CostBucketEstimate) => (
                   <tr key={b.bucket} style={{ borderBottom: "1px solid var(--color-border)" }}>
-                    <td style={{ padding: "8px", fontSize: "13px" }}>{BUCKET_DISPLAY[b.bucket] || b.bucket}</td>
+                    <td style={{ padding: "8px", fontSize: "13px" }}>{BUCKET_DISPLAY[b.bucket] || titleCase(b.bucket)}</td>
                     <td style={{ padding: "8px", fontSize: "13px" }}>{formatCurrency(b.low, budgetCurrency)}</td>
                     <td style={{ padding: "8px", fontSize: "13px" }}>{formatCurrency(b.high, budgetCurrency)}</td>
                     <td style={{ padding: "8px", fontSize: "13px" }}>
@@ -317,7 +346,7 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
                 {budgetBreakdown.risks.map((r: string) => (
                   <li key={`br-${r}`} className={styles.listItem}>
                     <span className={`${styles.listIcon} ${styles.iconWarning}`}>!</span>
-                    <span style={{ fontSize: "13px" }}>{r.replace(/_/g, " ")}</span>
+                    <span style={{ fontSize: "13px" }}>{titleCase(r)}</span>
                   </li>
                 ))}
               </ul>
@@ -337,7 +366,7 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
                 <strong>Must Confirm:</strong>
                 <ul style={{ margin: "4px 0 0 16px", fontSize: "13px", color: "var(--color-text-muted)" }}>
                   {budgetBreakdown.must_confirm.map((m: string, i: number) => (
-                    <li key={`mc-${i}`}>{m.replace(/_/g, " ")}</li>
+                    <li key={`mc-${i}`}>{titleCase(m)}</li>
                   ))}
                 </ul>
               </div>
@@ -373,7 +402,7 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
               <tbody>
                 {Object.entries(result_fees.service_breakdowns).map(([service, breakdown]) => (
                   <tr key={service} style={{ borderBottom: "1px solid var(--color-border)" }}>
-                    <td style={{ padding: "8px", fontSize: "13px", textTransform: "capitalize" }}>{service}</td>
+                    <td style={{ padding: "8px", fontSize: "13px" }}>{titleCase(service)}</td>
                     <td style={{ padding: "8px", fontSize: "13px" }}>{formatCurrency(breakdown.base_fee, "USD")}</td>
                     <td style={{ padding: "8px", fontSize: "13px" }}>{breakdown.multiplier}x</td>
                     <td style={{ padding: "8px", fontSize: "13px" }}>{formatCurrency(breakdown.adjusted_fee, "USD")}</td>

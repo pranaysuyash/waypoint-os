@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { Trip } from "@/lib/api-client";
 import type { TimelineEvent, TimelineResponse } from "@/types/spine";
+import { STAGE_LABELS, labelOrTitle } from "@/lib/label-maps";
 
 interface TimelinePanelProps {
   trip?: Trip | null;
@@ -57,7 +58,7 @@ function TimelineEventCard({
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-wrap">
               <span className={`text-xs font-semibold px-2 py-1 rounded ${colors.badge}`}>
-                {event.stage.toUpperCase()}
+                {labelOrTitle(STAGE_LABELS, event.stage)}
               </span>
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {event.status}
@@ -96,7 +97,7 @@ function TimelineEventCard({
             ) : (
               <ChevronRight className="w-3 h-3" />
             )}
-            <span>View JSON</span>
+            <span>Show Details</span>
           </button>
 
           {isExpanded && (
@@ -184,7 +185,7 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6" data-testid="timeline-panel">
       <div className="space-y-4">
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
@@ -213,7 +214,7 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
                     : "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
                 }`}
               >
-                {stage.charAt(0).toUpperCase() + stage.slice(1)}
+                {labelOrTitle(STAGE_LABELS, stage)}
               </button>
             ))}
           </div>
@@ -231,7 +232,7 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
       {events.length > 0 && (
         <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
           <p className="text-xs text-gray-600 dark:text-gray-400">
-            <span className="font-semibold">{events.length} events</span> {selectedStage && `in ${selectedStage}`} captured in this timeline
+            <span className="font-semibold">{events.length} events</span> {selectedStage ? `in ${labelOrTitle(STAGE_LABELS, selectedStage)}` : ''} captured in this timeline
           </p>
         </div>
       )}

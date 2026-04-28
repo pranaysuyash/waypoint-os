@@ -2,6 +2,7 @@
 
 import { Accessibility, AlertCircle, AlertTriangle, CheckCircle, Gauge, ThermometerSun, type LucideIcon } from "lucide-react";
 import type { SuitabilityProfile } from "@/types/spine";
+import { SUITABILITY_STATUS_LABELS } from "@/lib/label-maps";
 
 interface SuitabilityCardProps {
   profile: SuitabilityProfile;
@@ -58,7 +59,7 @@ export function SuitabilityCard({ profile, compact = false }: SuitabilityCardPro
           <StatusIcon className={`h-5 w-5 ${style.iconClassName}`} aria-hidden="true" />
           <div>
             <h3 className={`font-semibold text-sm ${style.text}`}>
-              {summary.status.toUpperCase()}
+              {SUITABILITY_STATUS_LABELS[summary.status] || summary.status}
             </h3>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
               {summary.primaryReason}
@@ -103,7 +104,7 @@ function DimensionRow({ dimension }: { dimension: SuitabilityProfile["dimensions
             {dimension.type}
           </span>
           <span className={`text-xs font-semibold uppercase ${severityColor}`}>
-            {dimension.severity}
+            {dimension.severity.charAt(0).toUpperCase() + dimension.severity.slice(1)}
           </span>
         </div>
         <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">

@@ -4,6 +4,55 @@
 **Method:** Analysis from real travel agency operations knowledge — what boutique agencies actually do daily that this system doesn't address, regardless of whether it's documented anywhere in the repo.  
 **Scope:** Indian outbound travel agency operations (primary market), applicable globally.
 
+## Repo implementation evidence
+
+The repo contains partial implementation for a few of the processes listed below. These are real code artifacts, but they do not constitute the complete industry workflow described in this gap analysis.
+
+- `src/decision/rules/visa_timeline.py` implements a visa timeline risk rule, destination lead-time table, and urgency-based risk assessment.
+- `src/intake/packet_models.py` defines `LifecycleInfo.payment_stage` and `SubGroup.payment_status`, indicating payment tracking placeholders exist.
+- `src/intake/extractors.py` extracts `visa_status` from text, which feeds visa risk and document-blocker logic.
+- `src/analytics/review.py` and `src/analytics/engine.py` implement owner review actions, feedback severity, recovery workflow, and escalation metadata.
+- `src/intake/negotiation_engine.py` includes a supplier negotiation stub for group and budget opportunities.
+- `src/intake/decision.py` contains a `visa_insurance` heuristic budget bucket and the `pending_policy_lookup` placeholder for cancellation/refund policy routing.
+
+## Actual implementation work found
+
+These are the concrete repo artifacts that are already implemented at some level.
+
+1. Visa timeline risk assessment
+   - `src/decision/rules/visa_timeline.py`
+   - `src/decision/hybrid_engine.py`
+   - `src/intake/extractors.py` for `visa_status` extraction
+
+2. Visa/insurance heuristic signals
+   - `src/intake/decision.py` `visa_insurance` budget bucket
+   - `src/intake/decision.py` `visa_status` document-blocker logic
+
+3. Payment state placeholders
+   - `src/intake/packet_models.py` `LifecycleInfo.payment_stage`
+   - `src/intake/packet_models.py` `SubGroup.payment_status`
+
+4. Feedback / review / recovery flow
+   - `src/analytics/review.py`
+   - `src/analytics/engine.py`
+
+5. Supplier negotiation stub
+   - `src/intake/negotiation_engine.py`
+
+6. Cancellation/refund policy placeholder
+   - `src/intake/decision.py` `pending_policy_lookup`
+
+## Prioritized implementation work
+
+The highest-priority work to move this gap area toward completion is:
+
+- Implement full financial state tracking: quote amount, client collections, outstanding balance, supplier cost confirmation, and overdue detection.
+- Build visa/document workflow support: requirement lookup, per-destination document checklists, application status tracking, and timed document reminders.
+- Add cancellation/refund policy computation: supplier cancellation terms, refund eligibility, credit note handling, and alternative rebooking options.
+- Expand active-trip operations: PNR/voucher tracking, flight disruption monitoring, transfer/DMC coordination, and pre-departure reminders.
+- Add insurance recommendation and mandatory coverage rules, especially for visa-sensitive destinations.
+- Formalize supplier-side models: contracted rates, room categories, allotments, meal plans, and supplier confirmation workflows.
+
 ---
 
 ## 1. FINANCIAL OPERATIONS — The Entire Money Layer Is Missing

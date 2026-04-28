@@ -43,6 +43,15 @@ vi.mock('@/lib/api-client', async () => {
   };
 });
 
+vi.mock('../CaptureCallPanel', () => ({
+  default: ({ onSave, onCancel }: any) => (
+    <div data-testid='capture-call-panel'>
+      <button onClick={() => onSave({ id: 'TRIP-456' })}>Save Trip</button>
+      <button onClick={onCancel}>Cancel</button>
+    </div>
+  ),
+}));
+
 describe('IntakePanel', () => {
   const mockStore = {
     input_raw_note: 'Test raw note',
@@ -126,6 +135,72 @@ describe('IntakePanel', () => {
     await waitFor(() => {
       expect(screen.getByText(/Ready blocked:/i)).toBeInTheDocument();
       expect(screen.getByText(/Traveler-safe output is missing/i)).toBeInTheDocument();
+    });
+  });
+
+  it('renders Capture Call button', () => {
+    render(<IntakePanel tripId="TRIP-123" />);
+
+    const captureCallButton = screen.getByRole('button', { name: /Capture Call/i });
+    expect(captureCallButton).toBeInTheDocument();
+  });
+
+  it('shows CaptureCallPanel when Capture Call button is clicked', async () => {
+    render(<IntakePanel tripId="TRIP-123" />);
+
+    expect(screen.queryByTestId('capture-call-panel')).not.toBeInTheDocument();
+
+    const captureCallButton = screen.getByRole('button', { name: /Capture Call/i });
+    fireEvent.click(captureCallButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('capture-call-panel')).toBeInTheDocument();
+    });
+  });
+
+  it('hides CaptureCallPanel by default', () => {
+    render(<IntakePanel tripId="TRIP-123" />);
+
+    expect(screen.queryByTestId('capture-call-panel')).not.toBeInTheDocument();
+  });
+
+  it('closes CaptureCallPanel on cancel', async () => {
+    render(<IntakePanel tripId="TRIP-123" />);
+
+    const captureCallButton = screen.getByRole('button', { name: /Capture Call/i });
+    fireEvent.click(captureCallButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('capture-call-panel')).toBeInTheDocument();
+    });
+
+    const cancelButton = screen.getByRole('button', { name: 'Cancel' });
+    fireEvent.click(cancelButton);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('capture-call-panel')).not.toBeInTheDocument();
+    });
+  });
+
+  it('closes CaptureCallPanel and navigates on save', async () => {
+    const { useRouter } = await import('next/navigation');
+    const mockRouter = { push: vi.fn() };
+    (useRouter as any).mockReturnValue(mockRouter);
+
+    render(<IntakePanel tripId="TRIP-123" />);
+
+    const captureCallButton = screen.getByRole('button', { name: /Capture Call/i });
+    fireEvent.click(captureCallButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('capture-call-panel')).toBeInTheDocument();
+    });
+
+    const saveButton = screen.getByRole('button', { name: 'Save Trip' });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(mockRouter.push).toHaveBeenCalledWith('/workspace/TRIP-456/packet');
     });
   });
 });

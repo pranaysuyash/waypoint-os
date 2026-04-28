@@ -2,8 +2,11 @@
 
 import React, { useState } from "react";
 import { submitTripReviewAction } from "@/lib/api-client";
+import { useWorkbenchStore } from "@/stores/workbench";
 import type { ReviewActionRequest, ReviewStatus } from "@/types/governance";
 import type { Trip } from "@/lib/api-client";
+import type { SuitabilityFlagData } from "@/types/spine";
+import { REVIEW_STATUS_LABELS } from "@/lib/label-maps";
 import styles from "@/app/workbench/workbench.module.css";
 
 interface ReviewControlsProps {
@@ -23,6 +26,15 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
   const [errorCategory, setErrorCategory] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { acknowledged_suitability_flags } = useWorkbenchStore();
+
+  const suitabilityFlags: SuitabilityFlagData[] = (trip.decision as any)?.suitability_flags ?? [];
+  const criticalFlags = suitabilityFlags.filter((f) => f.severity === "critical");
+  const unacknowledgedCritical = criticalFlags.filter((f) => !acknowledged_suitability_flags.has(f.flag_type));
+  const suitabilityBlocked =
+    (trip.decision as any)?.decision_state === "suitability_review_required" &&
+    unacknowledgedCritical.length > 0;
 
   const ERROR_CATEGORIES = [
     { id: "safety_too_strict", label: "Safety: Too Strict (False Positive)" },
@@ -81,7 +93,7 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
     return (
       <div className={styles.reviewStatusBanner}>
         <div className={styles.reviewInfo}>
-          <strong>Status: {currentStatus.toUpperCase()}</strong>
+          <strong>Status: {REVIEW_STATUS_LABELS[currentStatus] || currentStatus}</strong>
           {trip?.reviewedBy && <span> by {trip.reviewedBy}</span>}
           {trip?.reviewedAt && <span> on {new Date(trip.reviewedAt).toLocaleDateString()}</span>}
         </div>
@@ -127,15 +139,23 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
             ))}
           </select>
           <p className={styles.helpText} style={{ fontSize: '11px', marginTop: '4px', opacity: 0.7 }}>
-            This data is used to fine-tune the AI engine and reduce future overrides.
+            This feedback helps improve future trip recommendations.
           </p>
         </div>
+
+        {suitabilityBlocked && (
+          <div className={styles.errorText} style={{ marginBottom: "12px", padding: "8px 12px", borderRadius: "6px", background: "var(--color-danger-bg, #fef2f2)", border: "1px solid var(--color-danger-border, #fca5a5)", fontSize: "13px" }}>
+            <strong>Approval blocked:</strong> {unacknowledgedCritical.length} critical suitability flag{unacknowledgedCritical.length !== 1 ? "s" : ""} must be acknowledged in the Decision tab before approving.
+          </div>
+        )}
 
         <div className={styles.reviewActions}>
           <button
             className={styles.approveButton}
             onClick={() => handleAction("approve")}
-            disabled={isSubmitting}
+            disabled={isSubmitting || suitabilityBlocked}
+            title={suitabilityBlocked ? "Acknowledge all critical suitability flags before approving" : undefined}
+            data-testid="approve-button"
           >
             {isSubmitting ? "Processing..." : "Approve & Ready"}
           </button>
@@ -168,7 +188,7 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
           </button>
         </div>
         <p className={styles.helpText} style={{ fontSize: '11px', marginTop: '6px', opacity: 0.8 }}>
-          Approval sets review state. Final completion/send still follows ready and send policy gates.
+          Approval completes the review step. Sending to the customer still follows your send policy.
         </p>
       </div>
     </div>

@@ -101,21 +101,42 @@ class NB01CompletionGate:
     """
     Gate between NB01 (Extraction) and NB02 (Judgment).
     Checks structural validity and MVB completeness.
+
+    Verdicts:
+    - PROCEED: All structural checks pass AND full QUOTE_READY fields present
+    - DEGRADE: Structural checks pass (INTAKE_MINIMUM met) but QUOTE_READY fields
+      are incomplete — trip can be saved but quote generation is blocked
+    - ESCALATE: Structural checks failed or INTAKE_MINIMUM not met — cannot save
     """
     def evaluate(
         self,
         packet: CanonicalPacket,
         validation: PacketValidationReport
     ) -> GateResult:
-        reasons = []
+        reasons: List[str] = []
 
         # 1. Structural validity
         if not validation.is_valid:
             reasons.append(f"Structural validation failed ({validation.error_count} errors)")
             return GateResult(verdict=GateVerdict.ESCALATE, score=0.0, reasons=reasons)
 
-        # 2. Data density (simple heuristic)
-        density = len(packet.facts) / 10.0  # simple baseline
+        # 2. Check for QUOTE_READY_INCOMPLETE warnings — these are warnings that
+        #    indicate the trip can be saved but not quoted
+        has_incomplete_warnings = any(
+            w.code == "QUOTE_READY_INCOMPLETE" for w in validation.warnings
+        )
+        if has_incomplete_warnings:
+            completeness_score = 0.5
+            reasons.append("Intake minimum met — trip can be saved for later enrichment")
+            reasons.append("Quote-ready fields are incomplete — quote generation blocked")
+            return GateResult(
+                verdict=GateVerdict.DEGRADE,
+                score=completeness_score,
+                reasons=reasons,
+            )
+
+        # 3. Data density (simple heuristic)
+        density = len(packet.facts) / 10.0
 
         return GateResult(
             verdict=GateVerdict.PROCEED,

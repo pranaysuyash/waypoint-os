@@ -113,7 +113,7 @@ export default function ItineraryCheckerPage() {
           <div className={styles.previewGrid}>
             <article className={styles.uploadCard}>
               <div className={styles.exampleHeader}>
-                <Kicker>Upload itinerary</Kicker>
+                <Kicker>Sample preview</Kicker>
                 <UploadCloud className='h-5 w-5 text-[#58a6ff]' />
               </div>
               <h3 className='text-[26px] font-semibold tracking-[-0.04em]'>Upload. Analyze. Travel confident.</h3>
@@ -124,13 +124,13 @@ export default function ItineraryCheckerPage() {
                 <div className={styles.uploadTab}>Pasted text</div>
               </div>
               <div className={styles.uploadZone}>
-                <strong>Drop your itinerary here</strong>
-                <span>Example: flights, hotels, daily plan, transfers, inclusions, and notes from your planner.</span>
+                <strong>How the upload experience works</strong>
+                <span>Example: flights, hotels, daily plan, transfers, inclusions, and notes from your planner. Try the interactive notebook below to run a live check.</span>
                 <div className='mt-5 flex flex-wrap gap-3'>
-                  <Link href='#checks' className={styles.primaryButton}>
-                    Analyze sample plan
+                  <a href='#notebook' className={styles.primaryButton}>
+                    Try it in notebook mode
                     <ScanSearch className='h-4 w-4' />
-                  </Link>
+                  </a>
                   <Link href='/login' className={styles.ghostButton}>
                     Planner sign in
                   </Link>
@@ -242,10 +242,13 @@ export default function ItineraryCheckerPage() {
             </div>
             <h3 className='text-[24px] font-semibold tracking-[-0.04em]'>Built to be helpful before it is persuasive.</h3>
             <p className='mt-3 text-[15px] leading-7'>That means conservative public checks, clear explanation style, and a soft handoff to expert help only when the user wants it.</p>
+            <p className='mt-3 text-[14px] leading-6 text-[#9ba3b0]' data-testid='privacy-statement'>
+              Your itinerary text is used only to generate your analysis and is not stored, shared, or used to train any model. No account is required. Nothing you upload is retained after your session ends.
+            </p>
             <div className='mt-5 grid gap-3'>
               <ProofChip>Conservative, consumer-safe findings</ProofChip>
               <ProofChip>Clear explanation over jargon</ProofChip>
-              <ProofChip>Secondary CTA for deeper expert help</ProofChip>
+              <ProofChip>Not stored · Not shared · Session only</ProofChip>
             </div>
           </article>
         </div>

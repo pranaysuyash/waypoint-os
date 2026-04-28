@@ -2,6 +2,7 @@
 
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { SlotValue, Ambiguity, PacketUnknown, PacketContradiction, ValidationReport } from "@/types/spine";
+import { FIELD_LABELS, SIGNAL_LABELS, labelOrTitle } from "@/lib/label-maps";
 
 interface PacketPanelProps {
   tripId: string;
@@ -62,7 +63,7 @@ export function PacketPanel({ tripId }: PacketPanelProps) {
             <tbody className="divide-y divide-[#1c2128]">
               {Object.entries(facts).map(([field, slot]) => (
                 <tr key={`fact-${field}`} className="text-gray-300">
-                  <td className="px-4 py-2 font-mono text-xs">{field}</td>
+                  <td className="px-4 py-2 text-xs">{labelOrTitle(FIELD_LABELS, field)}</td>
                   <td className="px-4 py-2">{_formatValue(slot.value)}</td>
                   <td className="px-4 py-2 text-gray-500">{_formatConfidence(slot.confidence)}</td>
                   <td className="px-4 py-2 text-gray-500">{slot.authority_level || "—"}</td>
@@ -80,7 +81,7 @@ export function PacketPanel({ tripId }: PacketPanelProps) {
           <div className="bg-[#0a0d11] rounded-lg border border-[#1c2128] p-4 divide-y divide-[#1c2128]">
             {Object.entries(derivedSignals).map(([signal, slot]) => (
               <div key={`sig-${signal}`} className="flex justify-between py-2 text-sm text-gray-300">
-                <span className="font-medium">{signal}</span>
+                <span className="font-medium">{labelOrTitle(SIGNAL_LABELS, signal)}</span>
                 <span className="text-gray-500 text-xs">{String(slot.value)} ({_formatConfidence(slot.confidence)})</span>
               </div>
             ))}

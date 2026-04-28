@@ -1,6 +1,7 @@
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { SlotValue, Ambiguity, PacketUnknown, PacketContradiction, ValidationReport } from "@/types/spine";
 import type { Trip } from "@/lib/api-client";
+import { FIELD_LABELS, SIGNAL_LABELS, AMBIGUITY_TYPE_LABELS, labelOrTitle } from "@/lib/label-maps";
 import styles from "./workbench.module.css";
 
 interface PacketTabProps {
@@ -72,7 +73,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
             <tbody>
               {Object.entries(facts).map(([field, slot]) => (
                 <tr key={`fact-${field}`} style={{ borderBottom: "1px solid var(--color-border)" }}>
-                  <td style={{ padding: "8px", fontSize: "13px" }}>{field}</td>
+                  <td style={{ padding: "8px", fontSize: "13px" }}>{labelOrTitle(FIELD_LABELS, field)}</td>
                   <td style={{ padding: "8px", fontSize: "13px" }}>{_formatValue(slot.value)}</td>
                   <td style={{ padding: "8px", fontSize: "13px", color: "var(--color-text-muted)" }}>{_formatConfidence(slot.confidence)}</td>
                   <td style={{ padding: "8px", fontSize: "13px", color: "var(--color-text-muted)" }}>{slot.authority_level || "—"}</td>
@@ -90,7 +91,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
           <div className={styles.card}>
               {Object.entries(derivedSignals).map(([signal, slot]) => (
               <div key={`sig-${signal}`} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--color-border)" }}>
-                <span>{signal}</span>
+                <span>{labelOrTitle(SIGNAL_LABELS, signal)}</span>
                 <span style={{ color: "var(--color-text-muted)", fontSize: "12px" }}>
                   {String(slot.value)} ({_formatConfidence(slot.confidence)})
                 </span>
@@ -110,7 +111,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
                 <li key={`amb-${amb.field_name}-${idx}`} className={styles.listItem}>
                   <span className={`${styles.listIcon} ${styles.iconWarning}`}>?</span>
                   <div>
-                    <strong>{amb.field_name}</strong> ({amb.ambiguity_type})
+                    <strong>{labelOrTitle(FIELD_LABELS, amb.field_name)}</strong> ({labelOrTitle(AMBIGUITY_TYPE_LABELS, amb.ambiguity_type)})
                     <p style={{ fontSize: "12px", color: "var(--color-text-muted)", margin: "4px 0 0 0" }}>
                       Raw: {amb.raw_value}
                     </p>
@@ -132,7 +133,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
                 <li key={`unk-${unk.field_name}-${idx}`} className={styles.listItem}>
                   <span className={`${styles.listIcon} ${styles.iconInfo}`}>!</span>
                   <div>
-                    <strong>{unk.field_name}</strong> — {unk.reason}
+                    <strong>{labelOrTitle(FIELD_LABELS, unk.field_name)}</strong> — {unk.reason}
                     {unk.notes && (
                       <p style={{ fontSize: "12px", color: "var(--color-text-muted)", margin: "4px 0 0 0" }}>
                         {unk.notes}
@@ -156,7 +157,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
                 <li key={`con-${con.field_name}-${idx}`} className={styles.listItem}>
                   <span className={`${styles.listIcon} ${styles.iconDanger}`}>X</span>
                   <div>
-                    <strong>{con.field_name}</strong>
+                    <strong>{labelOrTitle(FIELD_LABELS, con.field_name)}</strong>
                     <p style={{ fontSize: "12px", color: "var(--color-text-muted)", margin: "4px 0 0 0" }}>
                       Values: {con.values.join(" vs ")}
                     </p>

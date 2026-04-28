@@ -35,6 +35,8 @@ export async function GET(
   }
 }
 
+// IMPORTANT: When adding new Trip fields, update PATCHABLE_FIELDS explicitly.
+// This allowlist prevents accidental PATCH of immutable fields (id, createdAt, etc).
 const PATCHABLE_FIELDS = new Set([
   "customerMessage",
   "agentNotes",
@@ -46,6 +48,7 @@ const PATCHABLE_FIELDS = new Set([
   "type",
   "state",
   "status",
+  "follow_up_due_date",
 ]);
 
 export async function PATCH(

@@ -84,3 +84,20 @@ def reset_data_privacy_mode():
     os.environ["DATA_PRIVACY_MODE"] = "dogfood"
     yield
     os.environ["DATA_PRIVACY_MODE"] = original
+
+
+# ---------------------------------------------------------------------------
+# Disable audit logging for call-capture E2E tests
+# Prevents file lock contention during parallel test execution
+# ---------------------------------------------------------------------------
+@pytest.fixture
+def disable_audit_logging(monkeypatch):
+    """Disable audit logging for tests to prevent file lock timeouts."""
+    from spine_api.persistence import AuditStore
+    
+    def noop_log_event(*args, **kwargs):
+        pass
+    
+    monkeypatch.setattr(AuditStore, "log_event", noop_log_event)
+    yield
+

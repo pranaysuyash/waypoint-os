@@ -135,7 +135,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           <div className='space-y-3'>
             <h3 className='text-xs font-semibold text-[#8b949e] uppercase tracking-wide flex items-center gap-2'>
               <Ghost className='w-3 h-3 text-[#bb86fc]' />
-              Frontier & Autonomic
+              Advanced AI Features
             </h3>
             
             <label className='flex items-center justify-between cursor-pointer group'>
@@ -247,7 +247,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 <div>
                   <p className='text-sm text-[#e6edf3]'>Auto-Negotiation</p>
                   <p className='text-xs text-[#8b949e]'>
-                    Autonomous supplier haggling
+                    Autonomous supplier negotiation
                   </p>
                 </div>
               </div>
@@ -290,7 +290,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 className='w-full h-1 bg-[#30363d] rounded-lg appearance-none cursor-pointer accent-accent-green'
               />
               <p className='text-[10px] text-[#8b949e]'>
-                Minimum expected margin before haggling
+                Minimum expected margin before negotiation
               </p>
             </div>
 
@@ -340,7 +340,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               )}
             </select>
             <p className='text-xs text-[#8b949e]'>
-              Pre-loaded test scenario for pipeline runs
+              Pre-loaded test scenario for processing trips
             </p>
             {scenariosError && (
               <p className='text-xs text-[#f85149] mt-1'>
@@ -353,7 +353,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             <div className='flex items-center justify-between'>
               <h3 className='text-xs font-semibold text-[#8b949e] uppercase tracking-wide flex items-center gap-2'>
                 <ShieldAlert className='w-3 h-3 text-[#e3b341]' />
-                Orphan Recovery
+                Incomplete Trips
               </h3>
               {orphans.length > 0 && (
                 <span className='px-1.5 py-0.5 rounded-full bg-[#e3b341]/20 text-[#e3b341] text-[10px] font-bold animate-pulse'>
@@ -364,7 +364,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             
             {orphans.length === 0 ? (
               <div className='p-3 rounded-lg bg-[#161b22] border border-[#30363d] text-center'>
-                <p className='text-xs text-[#8b949e] italic'>No orphan records detected. Integrity is 100%.</p>
+                <p className='text-xs text-[#8b949e] italic'>No incomplete trip records detected.</p>
               </div>
             ) : (
               <div className='space-y-2 max-h-60 overflow-y-auto pr-1'>
@@ -402,7 +402,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               </div>
             )}
             <p className='text-[10px] text-[#8b949e] leading-relaxed'>
-              Repairing resets an orphan trip to "New" status, moving it back into the canonical discovery pipeline.
+              Repairing resets an incomplete trip to "New" status so it can be processed again.
             </p>
           </div>
         </div>

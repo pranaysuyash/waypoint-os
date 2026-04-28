@@ -43,7 +43,7 @@ const NAV = [
         href: '/overview',
         label: 'Overview',
         icon: LayoutDashboard,
-        description: 'Dashboard and pipeline summary',
+        description: 'Dashboard and trip overview',
       },
     ],
   },
@@ -166,10 +166,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
                       <Link
                         href={item.href}
                         className={cn(
-                          'flex items-center justify-center md:justify-start gap-2.5 px-2.5 py-2 rounded-sm text-[13px] transition-all duration-200',
+                          'flex items-center justify-center md:justify-start gap-2.5 px-2.5 py-2 rounded-[7px] text-[13px] transition-all duration-200 border-l-2',
                           isActive
-                            ? 'bg-[#58a6ff]/10 text-[#e6edf3] shadow-[inset_0_0_12px_rgba(88,166,255,0.15)] border-l-0'
-                            : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#0f1115]',
+                            ? 'bg-[rgba(88,166,255,0.09)] text-[#e6edf3] border-l-[#58a6ff]'
+                            : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#0f1115] border-l-transparent',
                         )}
                         aria-current={isActive ? 'page' : undefined}
                         aria-label={item.label}
@@ -220,7 +220,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {!isConsistent && (
           <div className='bg-[#f85149] text-white py-1.5 px-4 text-center text-[11px] font-bold tracking-wider uppercase flex items-center justify-center gap-2 z-50'>
             <AlertTriangle className='h-3 w-3' />
-            CRITICAL: SYSTEM INTEGRITY ERROR - Dashboard sums do not match canonical total.
+            CRITICAL: Data inconsistency detected. Some trip counts may not add up correctly. Please refresh the page.
           </div>
         )}
 

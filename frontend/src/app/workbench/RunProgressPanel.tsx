@@ -11,11 +11,14 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { RunStatusResponse, RunEvent } from "@/types/spine";
+import { STAGE_LABELS, labelOrTitle } from "@/lib/label-maps";
 
 interface RunProgressPanelProps {
   runId: string | null;
   runState: RunStatusResponse | null;
+  error?: Error | null;
   onRetry: () => void;
+  onViewTrip?: () => void;
 }
 
 const steps = [
@@ -48,7 +51,7 @@ function getStepStatus(
   return "pending";
 }
 
-export function RunProgressPanel({ runId, runState, onRetry }: RunProgressPanelProps) {
+export function RunProgressPanel({ runId, runState, error, onRetry, onViewTrip }: RunProgressPanelProps) {
   const durationRef = useRef<HTMLSpanElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -136,25 +139,34 @@ export function RunProgressPanel({ runId, runState, onRetry }: RunProgressPanelP
 
       {/* Footer state */}
       <div className="px-4 py-2.5 border-t border-[#30363d] bg-[#161b22]">
-        {runState.state === "completed" && runState.trip_id && (
-          <a
-            href={`/workspace/${runState.trip_id}/intake`}
+        {runState.state === "completed" && (runState.trip_id || onViewTrip) && (
+          <button
+            type='button'
+            onClick={onViewTrip || (() => { window.location.href = `/workspace/${runState.trip_id}/intake`; })}
             className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#238636] text-white text-xs font-medium rounded-md hover:bg-[#2ea043] transition-colors"
           >
             View Trip
             <ChevronRight className="w-3 h-3" />
-          </a>
+          </button>
+        )}
+
+        {runState.state === "completed" && !runState.trip_id && !onViewTrip && (
+          <div className="flex items-center gap-1.5 text-[#3fb950] text-xs">
+            <CheckCircle className="w-3.5 h-3.5" />
+            Completed
+          </div>
         )}
 
         {runState.state === "failed" && (
           <div className="space-y-2">
             <p className="text-[#f85149] text-xs">
-              Failed at {runState.stage_at_failure || "unknown"} phase
+              Failed at {runState.stage_at_failure ? labelOrTitle(STAGE_LABELS, runState.stage_at_failure) : "unknown"} phase
             </p>
             {runState.error_message && (
               <p className="text-[10px] text-[#8b949e] line-clamp-2">{runState.error_message}</p>
             )}
             <button
+              type='button'
               onClick={onRetry}
               className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#da3633]/10 border border-[#da3633]/30 text-[#f85149] text-xs rounded-md hover:bg-[#da3633]/20 transition-colors"
             >
@@ -165,9 +177,36 @@ export function RunProgressPanel({ runId, runState, onRetry }: RunProgressPanelP
         )}
 
         {runState.state === "blocked" && (
-          <p className="text-[#d29922] text-xs text-center">
-            {runState.block_reason || "Blocked by safety check"}
-          </p>
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 text-[#d29922] text-xs font-medium">
+              <AlertTriangle className="w-3.5 h-3.5" />
+              Needs More Information
+            </div>
+            <p className="text-[#a8b3c1] text-xs leading-relaxed">
+              {runState.block_reason || "Some details are needed before we can build your itinerary."}
+            </p>
+            <button
+              type='button'
+              onClick={onRetry}
+              className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#d29922]/10 border border-[#d29922]/30 text-[#d29922] text-xs rounded-md hover:bg-[#d29922]/20 transition-colors"
+            >
+              Try Again with More Details
+            </button>
+          </div>
+        )}
+
+        {error && runState.state === "running" && (
+          <div className="space-y-2">
+            <p className="text-[#f85149] text-xs">{error.message || "Timed out"}</p>
+            <button
+              type='button'
+              onClick={onRetry}
+              className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#da3633]/10 border border-[#da3633]/30 text-[#f85149] text-xs rounded-md hover:bg-[#da3633]/20 transition-colors"
+            >
+              <AlertTriangle className="w-3 h-3" />
+              Retry
+            </button>
+          </div>
         )}
       </div>
     </div>

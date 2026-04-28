@@ -60,7 +60,7 @@ describe("SuitabilitySignal Component", () => {
         },
       ];
       render(<SuitabilitySignal flags={flags} />);
-      expect(screen.getByText("Tier 1: Hard Blockers (Must Resolve)")).toBeInTheDocument();
+      expect(screen.getByText("Tier 1: Hard Blockers (Must Acknowledge Before Approval)")).toBeInTheDocument();
       expect(screen.getByText("Water Activity Not Safe for Toddlers")).toBeInTheDocument();
     });
 
@@ -157,7 +157,7 @@ describe("SuitabilitySignal Component", () => {
       ];
       render(<SuitabilitySignal flags={flags} />);
       expect(screen.getByText("Water Activity Not Safe for Toddlers")).toBeInTheDocument();
-      expect(screen.getByText("Water-based activities pose safety risks for toddlers.")).toBeInTheDocument();
+      expect(screen.getByText("Original reason")).toBeInTheDocument();
     });
 
     it("should fallback to flag_type if label not found", () => {
@@ -171,7 +171,9 @@ describe("SuitabilitySignal Component", () => {
         },
       ];
       render(<SuitabilitySignal flags={flags} />);
-      expect(screen.getByText("unknown_flag_type")).toBeInTheDocument();
+      // deriveFlagLabel falls through to flag.reason first sentence when no static label exists;
+      // the same text appears as heading and as explanation, so use getAllByText
+      expect(screen.getAllByText("Some reason").length).toBeGreaterThanOrEqual(1);
     });
 
     it("should display explanation text for known flags", () => {
@@ -185,7 +187,9 @@ describe("SuitabilitySignal Component", () => {
         },
       ];
       render(<SuitabilitySignal flags={flags} />);
-      expect(screen.getByText("Activities with heavy stair climbing are unsafe for elderly travelers.")).toBeInTheDocument();
+      // FLAG_LABELS map provides the heading; flag.reason is shown as the explanation
+      expect(screen.getByText("Stairs Unsafe for Elderly Travelers")).toBeInTheDocument();
+      expect(screen.getByText("Raw reason")).toBeInTheDocument();
     });
   });
 
@@ -426,7 +430,7 @@ describe("SuitabilitySignal Component", () => {
       ];
       render(<SuitabilitySignal flags={flags} />);
 
-      expect(screen.getByText("Tier 1: Hard Blockers (Must Resolve)")).toBeInTheDocument();
+      expect(screen.getByText("Tier 1: Hard Blockers (Must Acknowledge Before Approval)")).toBeInTheDocument();
       expect(screen.getByText("Tier 2: Warnings (Review Recommended)")).toBeInTheDocument();
       expect(screen.getByText("3")).toBeInTheDocument();
       expect(screen.getByText(/hard blocker/)).toBeInTheDocument();

@@ -42,8 +42,14 @@ DERIVED_ONLY_FIELDS = frozenset({
     "budget_verdict",
 })
 
-# Discovery-stage MVB
-DISCOVERY_MVB = [
+# Fields that MUST be present to even save an intake trip
+INTAKE_MINIMUM = [
+    "destination_candidates",
+    "date_window",
+]
+
+# Fields required before a quote can be generated (full MVB)
+QUOTE_READY = [
     "destination_candidates",
     "origin_city",
     "date_window",
@@ -51,6 +57,9 @@ DISCOVERY_MVB = [
     "budget_raw_text",
     "trip_purpose",
 ]
+
+# Backward-compat alias: the original 6-field MVB used before intake/quote split
+DISCOVERY_MVB = QUOTE_READY
 
 # Operating modes that require numeric budget
 NUMERIC_BUDGET_MODES = frozenset({"audit", "coordinator_group"})
@@ -100,13 +109,30 @@ def validate_packet(packet: CanonicalPacket, stage: str = "discovery") -> Packet
     # ERROR-LEVEL CHECKS (structural, block is_valid)
     # ------------------------------------------------------------------
 
-    # 1. Missing discovery MVB fields
-    for field_name in DISCOVERY_MVB:
+    # 1. Missing discovery MVB fields — stage-aware (intake minimum vs quote-ready)
+    if stage == "discovery":
+        # Intake stage: INTAKE_MINIMUM fields are errors, QUOTE_READY extras are warnings
+        required = INTAKE_MINIMUM
+        quote_extra = [f for f in QUOTE_READY if f not in INTAKE_MINIMUM]
+        for field_name in quote_extra:
+            if field_name not in packet.facts:
+                warnings.append(ValidationIssue(
+                    severity="warning",
+                    code="QUOTE_READY_INCOMPLETE",
+                    message=f"Field '{field_name}' missing — needed to generate a quote, "
+                            f"but trip can still be saved",
+                    field=field_name,
+                ))
+    else:
+        # Shortlist and later: full QUOTE_READY required
+        required = QUOTE_READY
+
+    for field_name in required:
         if field_name not in packet.facts:
             errors.append(ValidationIssue(
                 severity="error",
                 code="MVB_MISSING",
-                message=f"Required discovery-stage field '{field_name}' not present",
+                message=f"Required field '{field_name}' not present",
                 field=field_name,
             ))
 

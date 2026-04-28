@@ -62,6 +62,10 @@ interface WorkbenchResultState {
   result_fees: FeeCalculationResult | null;
   result_frontier: any | null;
   result_run_ts: string | null;
+  // Suitability acknowledgment — cross-tab session state.
+  // Populated optimistically when an operator acknowledges a Tier 1 flag;
+  // cleared on pipeline reset. Consumed by ReviewControls to gate approval.
+  acknowledged_suitability_flags: ReadonlySet<string>;
   setResultPacket: (value: unknown) => void;
   setResultValidation: (value: ValidationReport | null) => void;
   setResultDecision: (value: DecisionOutput | null) => void;
@@ -72,6 +76,7 @@ interface WorkbenchResultState {
   setResultFees: (value: FeeCalculationResult | null) => void;
   setResultFrontier: (value: any | null) => void;
   setResultRunTs: (value: string | null) => void;
+  acknowledgeFlag: (flagType: string) => void;
   clearResults: () => void;
   resetAll: () => void;
 }
@@ -130,6 +135,7 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
   result_fees: null,
   result_frontier: null,
   result_run_ts: null,
+  acknowledged_suitability_flags: new Set<string>(),
   setResultPacket: (value) => set({ result_packet: value }),
   setResultValidation: (value) => set({ result_validation: value }),
   setResultDecision: (value) => set({ result_decision: value }),
@@ -140,6 +146,10 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
   setResultFees: (value) => set({ result_fees: value }),
   setResultFrontier: (value) => set({ result_frontier: value }),
   setResultRunTs: (value) => set({ result_run_ts: value }),
+  acknowledgeFlag: (flagType) =>
+    set((state) => ({
+      acknowledged_suitability_flags: new Set([...state.acknowledged_suitability_flags, flagType]),
+    })),
 
   clearResults: () => set({
     result_packet: null,
@@ -152,6 +162,7 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
     result_fees: null,
     result_frontier: null,
     result_run_ts: null,
+    acknowledged_suitability_flags: new Set<string>(),
   }),
 
   resetAll: () => set({
@@ -168,6 +179,7 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
     result_safety: null,
     result_frontier: null,
     result_run_ts: null,
+    acknowledged_suitability_flags: new Set<string>(),
   }),
 }));
 

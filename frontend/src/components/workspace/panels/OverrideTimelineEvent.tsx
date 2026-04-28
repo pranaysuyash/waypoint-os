@@ -25,6 +25,7 @@
 
 import React from 'react';
 import { AlertCircle, CheckCircle2, TrendingDown } from 'lucide-react';
+import { FLAG_LABELS, labelOrTitle } from '@/lib/label-maps';
 
 interface OverrideEventDisplay {
   timestamp: string;
@@ -45,11 +46,11 @@ export function OverrideTimelineEvent({ event }: { event: OverrideEventDisplay }
   const getActionLabel = () => {
     switch (event.action) {
       case 'suppress':
-        return `${event.flag} suppressed`;
+        return `${labelOrTitle(FLAG_LABELS, event.flag)} suppressed`;
       case 'downgrade':
-        return `${event.flag} downgraded from ${event.original_severity?.toUpperCase()} to ${event.new_severity?.toUpperCase()}`;
+        return `${labelOrTitle(FLAG_LABELS, event.flag)} downgraded from ${event.original_severity?.toUpperCase()} to ${event.new_severity?.toUpperCase()}`;
       case 'acknowledge':
-        return `${event.flag} acknowledged`;
+        return `${labelOrTitle(FLAG_LABELS, event.flag)} acknowledged`;
       default:
         return event.action;
     }

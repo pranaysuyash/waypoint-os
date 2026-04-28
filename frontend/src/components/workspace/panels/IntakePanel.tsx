@@ -19,6 +19,7 @@ import {
   Edit2,
   X,
   Globe,
+  Phone,
 } from 'lucide-react';
 import type { Trip } from '@/lib/api-client';
 import { updateTrip, ApiException } from '@/lib/api-client';
@@ -39,6 +40,7 @@ import { TRIP_TYPE_OPTIONS, DESTINATION_OPTIONS } from '@/lib/combobox';
 import { SmartCombobox } from '@/components/ui/SmartCombobox';
 import { useFieldAuditLog } from '@/hooks/useFieldAuditLog';
 import { getChangeDescription } from '@/types/audit';
+import CaptureCallPanel from './CaptureCallPanel';
 
 const stages: { value: SpineStage; label: string }[] = [
   { value: 'discovery', label: 'Discovery' },
@@ -65,7 +67,7 @@ const SPINE_PROGRESS_STAGES = [
   { afterSeconds: 8, label: 'Extracting trip facts', detail: 'Finding destination, dates, party, pace, budget, and constraints.' },
   { afterSeconds: 18, label: 'Checking missing details', detail: 'Looking for blockers, ambiguity, and follow-up questions.' },
   { afterSeconds: 32, label: 'Evaluating feasibility', detail: 'Checking suitability, risk, leakage, and budget signals.' },
-  { afterSeconds: 48, label: 'Preparing workspace output', detail: 'Building the packet, decision view, strategy, and traveler-safe bundle.' },
+  { afterSeconds: 48, label: 'Preparing workspace output', detail: 'Building trip details, quote assessment, options, and ready-for-customer message.' },
   { afterSeconds: 75, label: 'Still working', detail: 'This run is taking longer than usual. Keep this page open.' },
 ];
 
@@ -117,6 +119,9 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const [isMarkingReady, setIsMarkingReady] = useState(false);
   const [readySuccess, setReadySuccess] = useState(false);
   const [readyError, setReadyError] = useState<string | null>(null);
+
+  // CaptureCallPanel state
+  const [showCapturePanel, setShowCapturePanel] = useState(false);
 
   // Audit log for tracking field changes
   const { logChange, getLatestChangeForField } = useFieldAuditLog({
@@ -194,13 +199,14 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       store.setResultRunTs(new Date().toISOString());
       setRunSuccess(true);
       setTimeout(() => setRunSuccess(false), 3000);
-      if (completedRun?.trip_id) {
-        router.push(getTripRoute(completedRun.trip_id, 'packet'));
+      const targetTripId = completedRun?.trip_id || tripId;
+      if (targetTripId) {
+        router.push(getTripRoute(targetTripId, 'packet'));
       } else {
         setRunError('Processing completed but no trip workspace was saved. Check the run status and retry.');
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Processing failed. Is the spine API running on localhost:8000?';
+      const message = err instanceof Error ? err.message : 'Processing failed. Please try again or contact support if the issue persists.';
       const isTimeout = message.toLowerCase().includes('timeout') || message.includes('504');
       setRunError(
         isTimeout
@@ -351,6 +357,16 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       setTimeout(() => setSaveError(null), 8000);
     }
   }, [tripId, trip, saveTrip, editValues, budgetAmount, budgetCurrency, logChange]);
+
+  const handleCaptureCallSave = useCallback((newTrip: Trip) => {
+    setShowCapturePanel(false);
+    // Refresh the trip list by navigating to the new trip's workspace
+    router.push(getTripRoute(newTrip.id, 'packet'));
+  }, [router]);
+
+  const handleCaptureCallCancel = useCallback(() => {
+    setShowCapturePanel(false);
+  }, []);
 
   // Editable field component
   const EditableField = ({
@@ -806,6 +822,15 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
         <div className='flex items-center gap-3'>
           <button
             type='button'
+            onClick={() => setShowCapturePanel(true)}
+            className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg text-sm font-medium hover:bg-[#21262d] transition-colors'
+            aria-label='Capture call'
+          >
+            <Phone className='w-4 h-4' aria-hidden='true' />
+            Capture Call
+          </button>
+          <button
+            type='button'
             onClick={handleSave}
             disabled={isSaving || !tripId}
             className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg text-sm font-medium hover:bg-[#21262d] disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
@@ -872,6 +897,16 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
           </button>
         </div>
       </div>
+
+      {/* CaptureCallPanel Sidebar */}
+      {showCapturePanel && (
+        <div className='fixed right-0 top-0 h-full w-96 shadow-lg z-50'>
+          <CaptureCallPanel
+            onSave={handleCaptureCallSave}
+            onCancel={handleCaptureCallCancel}
+          />
+        </div>
+      )}
     </div>
   );
 }

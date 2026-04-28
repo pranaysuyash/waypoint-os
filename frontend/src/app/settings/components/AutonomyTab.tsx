@@ -77,7 +77,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
       <div>
         <h2 className="text-sm font-semibold text-[#e6edf3]">Autonomy & AI Policy</h2>
         <p className="text-xs text-[#8b949e] mt-1">
-          Control how much autonomy the AI has at each decision point. This is the D1 policy contract.
+          Control how much autonomy the AI has at each decision point.
         </p>
       </div>
 
@@ -164,7 +164,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
               Never auto-proceed during emergencies.
             </p>
             <div className="text-[11px] text-[#58a6ff] bg-[#58a6ff]/10 px-2 py-1 rounded inline-block">
-              Active override: PROCEED_TRAVELER_SAFE → block
+              Active override: Traveler-Safe Output will always require approval
             </div>
           </div>
 
@@ -178,7 +178,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
               Audits always require human review.
             </p>
             <div className="text-[11px] text-[#58a6ff] bg-[#58a6ff]/10 px-2 py-1 rounded inline-block">
-              Active override: PROCEED_INTERNAL_DRAFT → review
+              Active override: Internal Drafts will always require review
             </div>
           </div>
         </div>
@@ -242,20 +242,21 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
             <p className="text-sm text-[#e6edf3]">Learn from overrides</p>
             <p className="text-[11px] text-[#8b949e]">
               When enabled, agent overrides feed back into the system to improve future
-              recommendations. (Requires D5 learning loop to be active.)
+              recommendations. (Requires the learning feature to be enabled in settings.)
             </p>
           </div>
         </label>
       </div>
 
-      {/* D1 ADR reference */}
+      {/* Autonomy policy note */}
       <div className="rounded-lg border border-[#30363d] bg-[#161b22] p-4">
         <p className="text-[11px] text-[#8b949e] leading-relaxed">
-          <span className="text-[#58a6ff] font-medium">Architecture Decision D1:</span>{' '}
-          The autonomy gradient is the gate between NB02 judgment and NB03 execution.
-          It preserves the raw NB02 verdict while adding a policy-controlled layer that
-          determines whether the system acts automatically, queues for review, or blocks.
-          Safety invariant: <span className="text-[#f85149] font-medium">STOP_NEEDS_REVIEW</span> is always "block".
+          <span className="text-[#58a6ff] font-medium">How it works:</span>{' '}
+          The autonomy settings control how much the AI can act on its own at each stage.
+          Each decision type can be set to run automatically, queue for your review, or block
+          until manually handled. For safety, trips flagged as{' '}
+          <span className="text-[#f85149] font-medium">Needs Review</span> always require
+          your manual approval before proceeding.
         </p>
       </div>
     </div>

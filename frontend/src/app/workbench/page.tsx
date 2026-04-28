@@ -4,7 +4,12 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { Tabs } from '@/components/ui/tabs';
-import { PipelineFlow } from './PipelineFlow';
+import {
+  PipelineFlow,
+  PIPELINE_STAGES,
+  toPipelineStageId,
+  type PipelineStageId,
+} from './PipelineFlow';
 import {
   Play,
   RotateCcw,
@@ -54,18 +59,39 @@ const FrontierDashboard = dynamic(() =>
   })),
 );
 
-const workspaceTabs = [
-  { id: 'intake', label: 'New Inquiry' },
-  { id: 'packet', label: 'Trip Details' },
-  { id: 'decision', label: 'Ready to Quote?' },
-  { id: 'strategy', label: 'Build Options' },
-  { id: 'safety', label: 'Final Review' },
-  { id: 'output', label: 'Output Delivery' },
-  { id: 'frontier', label: 'Frontier OS' },
-  { id: 'feedback', label: 'Feedback' },
-];
+  // Derive pipeline tabs from PIPELINE_STAGES to keep labels in sync
+  const pipelineTabs = PIPELINE_STAGES.map((s) => ({
+    id: s.id,
+    label: s.fullLabel,
+  }));
+
+  const workspaceTabs = [
+    ...pipelineTabs,
+    { id: 'output', label: 'Output Delivery' },
+    { id: 'frontier', label: 'Frontier OS' },
+    { id: 'feedback', label: 'Feedback' },
+  ] as const;
 
 type WorkspaceTabId = (typeof workspaceTabs)[number]['id'];
+
+function getPipelineStageForWorkbench(
+  trip: Trip | null | undefined,
+  store: ReturnType<typeof useWorkbenchStore>,
+): PipelineStageId {
+  // Check stages in reverse order (safety → strategy → decision → packet → intake)
+  // to find the furthest progressed stage
+  for (let i = PIPELINE_STAGES.length - 1; i >= 0; i--) {
+    const stageId = PIPELINE_STAGES[i].id;
+    if (store[`result_${stageId}` as any || trip?.[stageId]) {
+      return stageId;
+    }
+  }
+  return 'intake';
+}
+
+function isPipelineTab(tabId: string): boolean {
+  return PIPELINE_STAGES.some((s) => s.id === tabId);
+}
 
 function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
   const store = useWorkbenchStore();
@@ -181,6 +207,7 @@ function WorkbenchContent() {
   const [runError, setRunError] = useState<string | null>(null);
   const [runSuccess, setRunSuccess] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [completedTripId, setCompletedTripId] = useState<string | null>(null);
   const {
     execute: executeSpineRun,
     isLoading: isSpineRunning,
@@ -216,8 +243,8 @@ function WorkbenchContent() {
       const result = await executeSpineRun(request);
 
       if (result?.trip_id) {
-        // Redirect to the new trip
-        router.push(`/workspace/${result.trip_id}/intake`);
+        setCompletedTripId(result.trip_id);
+        setRunSuccess(true);
         return;
       }
 
@@ -227,7 +254,7 @@ function WorkbenchContent() {
       setRunError(
         err instanceof Error
           ? err.message
-          : 'Processing failed. Is the spine API running on localhost:8000?',
+          : 'Processing failed. Please try again or contact support if the issue persists.',
       );
       setTimeout(() => setRunError(null), 8000);
     } finally {
@@ -254,6 +281,7 @@ function WorkbenchContent() {
   const handleReset = useCallback(() => {
     store.resetAll();
     resetSpine();
+    setCompletedTripId(null);
   }, [store, resetSpine]);
 
   const handleResolve = useCallback(async () => {
@@ -275,6 +303,8 @@ function WorkbenchContent() {
     trip?.analytics?.feedback_reopen === true ||
     trip?.analytics?.recovery_status === 'IN_RECOVERY';
 
+  const pipelineStage = getPipelineStageForWorkbench(trip, store);
+
   return (
     <div className='min-h-screen bg-[#080a0c]'>
       {isRecoveryMode && (
@@ -295,7 +325,7 @@ function WorkbenchContent() {
         </div>
       )}
 
-      <PipelineFlow currentStage={activeTab} />
+      <PipelineFlow currentStage={pipelineStage} />
 
       <div className='px-6 py-6'>
         <header className='flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-6'>
@@ -306,7 +336,7 @@ function WorkbenchContent() {
             <p className='text-base text-[#a8b3c1]'>
               {trip
                 ? `${trip.id} · ${trip.type} · ${trip.age}`
-                : 'Process travel requests through the analysis pipeline'}
+                : 'Process travel requests and generate quotes'}
             </p>
             {tripLoading && (
               <p className='text-sm text-[#8b949e] mt-1'>Loading trip...</p>
@@ -373,14 +403,27 @@ function WorkbenchContent() {
                 </>
               )}
             </button>
-            {isSpineRunning && spineRunState && spineRunId && (
+            {completedTripId && (
+              <button
+                type='button'
+                onClick={() => router.push(`/workspace/${completedTripId}/intake`)}
+                className='flex items-center gap-2 px-4 py-2 bg-[#3fb950] text-[#0d1117] rounded-lg font-medium hover:bg-[#4cc764] transition-colors'
+              >
+                <CheckCircle className='w-4 h-4' />
+                View Trip
+              </button>
+            )}
+            {spineRunId && spineRunState && (
               <RunProgressPanel
                 runId={spineRunId}
                 runState={spineRunState}
+                error={spineError}
                 onRetry={() => {
                   setRunError(null);
                   resetSpine();
+                  setCompletedTripId(null);
                 }}
+                onViewTrip={completedTripId ? () => router.push(`/workspace/${completedTripId}/intake`) : undefined}
               />
             )}
             <button

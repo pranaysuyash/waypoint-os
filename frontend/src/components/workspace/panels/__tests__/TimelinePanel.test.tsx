@@ -65,8 +65,8 @@ describe('TimelinePanel', () => {
     
     await waitFor(() => {
       expect(screen.getByText('Decision Timeline')).toBeInTheDocument();
-      expect(screen.getByText('INTAKE')).toBeInTheDocument();
-      expect(screen.getByText('DECISION')).toBeInTheDocument();
+      expect(screen.getAllByText('Intake').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('Quote Assessment').length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -168,12 +168,12 @@ describe('TimelinePanel', () => {
     render(<TimelinePanel tripId="test-trip" />);
     
     await waitFor(() => {
-      expect(screen.getByText('All')).toBeInTheDocument();
-      expect(screen.getByText('Intake')).toBeInTheDocument();
-      expect(screen.getByText('Packet')).toBeInTheDocument();
-      expect(screen.getByText('Decision')).toBeInTheDocument();
-      expect(screen.getByText('Strategy')).toBeInTheDocument();
-      expect(screen.getByText('Safety')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Intake' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Trip Details' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Quote Assessment' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Options' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Safety Review' })).toBeInTheDocument();
     });
   });
 
@@ -222,7 +222,7 @@ describe('TimelinePanel', () => {
       cache: "no-store",
     });
 
-    await user.click(screen.getByRole("button", { name: "Decision" }));
+    await user.click(screen.getByRole("button", { name: "Quote Assessment" }));
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith('/api/trips/test-trip/timeline?stage=decision', {

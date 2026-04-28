@@ -313,6 +313,7 @@ export interface Trip {
   // Input fields (returned by mock API)
   customerMessage?: string;
   agentNotes?: string;
+  followUpDueDate?: string;
   // Review metadata (Wave 8)
   review_status?: ReviewStatus;
   assignee?: string;
@@ -348,6 +349,9 @@ export interface Trip {
     ownerReviewDeadline?: string;
     escalationSeverity?: "high" | "critical";
     revisionCount?: number;
+    // Suitability acknowledgment — persisted server-side when operator acknowledges Tier 1 flags
+    acknowledged_flags?: string[];
+    suitability_acknowledged_at?: string;
   };
 }
 
@@ -404,6 +408,16 @@ export async function getPipeline(): Promise<PipelineStage[]> {
 
 export async function updateTrip(id: string, data: Partial<Trip>): Promise<Trip> {
   return api.patch<Trip>(`/api/trips/${id}`, data);
+}
+
+export interface CreateTripRequest {
+  raw_note: string;
+  owner_note?: string;
+  follow_up_due_date?: string;
+}
+
+export async function createTrip(data: CreateTripRequest): Promise<Trip> {
+  return api.post<Trip>("/api/trips", data);
 }
 
 // ============================================================================
@@ -536,6 +550,13 @@ export async function submitOverride(
 
 export async function getOverrides(tripId: string): Promise<{ ok: boolean; trip_id: string; overrides: any[]; total: number }> {
   return api.get(`/api/trips/${tripId}/overrides`);
+}
+
+export async function acknowledgeSuitabilityFlags(
+  tripId: string,
+  flagTypes: string[],
+): Promise<{ success: boolean; trip_id: string; acknowledged_flags: string[] }> {
+  return api.post(`/api/trips/${tripId}/suitability/acknowledge`, { acknowledged_flags: flagTypes });
 }
 
 export async function getOverride(overrideId: string): Promise<{ ok: boolean; override: any }> {

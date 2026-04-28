@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { WorkspaceTripLayoutShell } from "../layout";
 import type { Trip } from "@/lib/api-client";
@@ -12,6 +13,13 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/hooks/useTrips", () => ({
   useTrip: vi.fn(),
+}));
+
+vi.mock("@/components/error-boundary", () => ({
+  ErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  InlineError: ({ title, message }: { title?: string; message: string }) => (
+    <div role="alert">{title && <span>{title}</span>}{message}</div>
+  ),
 }));
 
 const baseTrip: Trip = {
@@ -65,7 +73,7 @@ describe("workspace/[tripId]/layout", () => {
       "aria-current",
       "page",
     );
-    expect(screen.getByRole("link", { name: "Decision" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Quote Assessment" })).toBeInTheDocument();
     expect(screen.getByText("Stage content")).toBeInTheDocument();
   });
 

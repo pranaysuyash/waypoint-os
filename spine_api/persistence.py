@@ -61,15 +61,38 @@ def _make_json_serializable(obj: Any) -> Any:
 
 
 @contextmanager
-def file_lock(filepath: Path):
-    """Simple cross-process file lock using fcntl."""
+def file_lock(filepath: Path, timeout_seconds: float = 30.0):
+    """Cross-process file lock using fcntl with timeout.
+
+    Uses non-blocking LOCK_EX with exponential backoff to avoid
+    deadlock when the process was forked (macOS fork inherits locks).
+    """
     lock_file = filepath.with_suffix(".lock")
-    with open(lock_file, "w") as f:
-        try:
-            fcntl.flock(f, fcntl.LOCK_EX)
-            yield
-        finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
+    import time as _time
+    deadline = _time.monotonic() + timeout_seconds
+    delay = 0.01
+    fd = None
+    try:
+        fd = open(lock_file, "w")
+        acquired = False
+        while _time.monotonic() < deadline:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                acquired = True
+                break
+            except (BlockingIOError, OSError):
+                _time.sleep(delay)
+                delay = min(delay * 2, 0.5)
+        if not acquired:
+            raise TimeoutError(f"Could not acquire lock on {lock_file} within {timeout_seconds}s")
+        yield
+    finally:
+        if fd is not None:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+            except Exception:
+                pass
+            fd.close()
 
 
 class TripStore:
@@ -610,7 +633,7 @@ class ConfigStore:
 
 
 # Convenience functions
-def save_processed_trip(spine_output: dict, source: str = "unknown", agency_id: Optional[str] = None) -> str:
+def save_processed_trip(spine_output: dict, source: str = "unknown", agency_id: Optional[str] = None, follow_up_due_date: Optional[str] = None, trip_status: str = "new") -> str:
     """
     Convert spine output to a savable trip and persist it.
     
@@ -618,6 +641,8 @@ def save_processed_trip(spine_output: dict, source: str = "unknown", agency_id: 
         spine_output: The processed trip data
         source: Source identifier (e.g., "spine_api", "seed_scenario")
         agency_id: Optional agency ID to scope the trip
+        follow_up_due_date: Optional ISO-8601 datetime string for when a follow-up is due
+        trip_status: Trip status (default "new", set "incomplete" for partial intakes)
         
     Returns:
         The saved trip ID
@@ -632,8 +657,9 @@ def save_processed_trip(spine_output: dict, source: str = "unknown", agency_id: 
         "id": f"trip_{uuid4().hex[:12]}",
         "run_id": spine_output.get("run_id"),
         "source": source,
-        "status": "new",  # Will be updated as it moves through pipeline
+        "status": trip_status,
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "follow_up_due_date": follow_up_due_date,  # Track promised follow-up times
         "extracted": packet,
         "validation": validation,
         "decision": decision,

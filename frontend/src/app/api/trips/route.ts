@@ -5,6 +5,7 @@ import {
   WORKSPACE_STATES,
 } from "@/lib/bff-trip-adapters";
 import type { Trip } from "@/lib/api-client";
+import type { SpineRunRequest } from "@/types/generated/spine-api";
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,5 +44,50 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error fetching trips from spine_api:", error);
     return bffJson({ error: "Failed to fetch trips" }, 500);
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+
+    // Validate required field
+    if (!body.raw_note) {
+      return bffJson({ error: "raw_note required" }, 400);
+    }
+
+    const spinRequest: SpineRunRequest = {
+      raw_note: body.raw_note,
+      owner_note: body.owner_note ?? "",
+      structured_json: body.structured_json ?? null,
+      itinerary_text: body.itinerary_text ?? null,
+      stage: body.stage ?? "discovery",
+      operating_mode: body.operating_mode ?? "normal_intake",
+      strict_leakage: body.strict_leakage ?? false,
+      scenario_id: body.scenario_id ?? null,
+    };
+
+    // TODO: Call spine pipeline (reuse existing logic if available)
+    // const result = await executeSpinePipeline(spinRequest);
+
+    // Temporarily return mock for testing structure
+    const trip: Trip = {
+      id: crypto.randomUUID(),
+      destination: "TBD",
+      type: "unknown",
+      state: "blue",
+      age: "0",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      followUpDueDate: body.follow_up_due_date ?? undefined,
+      status: "open",
+      customerMessage: body.raw_note,
+      agentNotes: body.owner_note,
+    };
+
+    return bffJson(trip, 201);
+  } catch (error) {
+    console.error("Error creating trip:", error);
+    return bffJson({ error: "Failed to create trip" }, 500);
   }
 }

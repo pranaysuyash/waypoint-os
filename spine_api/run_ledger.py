@@ -46,7 +46,7 @@ from spine_api.run_state import RunState, assert_can_transition
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 RUNS_DIR = DATA_DIR / "runs"
 
-KNOWN_STEPS = ("packet", "validation", "decision", "strategy", "safety", "output")
+KNOWN_STEPS = ("packet", "validation", "decision", "strategy", "safety", "output", "blocked_result")
 
 
 def _run_root(run_id: str) -> Path:
@@ -310,3 +310,50 @@ class RunLedger:
                 continue
 
         return runs
+
+    @staticmethod
+    def timeout_stale_runs(max_age_seconds: int = 300) -> list[str]:
+        """
+        Mark any run stuck in queued/running for longer than max_age_seconds as FAILED.
+
+        Returns list of run_ids that were timed out.
+        """
+        if not RUNS_DIR.exists():
+            return []
+
+        import datetime as _dt
+
+        now = _dt.datetime.now(_dt.timezone.utc)
+        timed_out: list[str] = []
+
+        for meta_path in sorted(RUNS_DIR.glob("*/meta.json"), reverse=True):
+            try:
+                with meta_path.open(encoding="utf-8") as fh:
+                    meta = json.load(fh)
+
+                state = meta.get("state", "")
+                if state not in ("queued", "running"):
+                    continue
+
+                created = meta.get("created_at") or meta.get("started_at")
+                if not created:
+                    continue
+
+                created_dt = _dt.datetime.fromisoformat(created)
+                age = (now - created_dt).total_seconds()
+
+                if age > max_age_seconds:
+                    run_id = meta["run_id"]
+                    try:
+                        RunLedger.fail(
+                            run_id,
+                            error_type="RunTimeout",
+                            error_message=f"Run timed out after {int(age)}s (max {max_age_seconds}s)",
+                        )
+                        timed_out.append(run_id)
+                    except (ValueError, FileNotFoundError):
+                        pass
+            except Exception:
+                continue
+
+        return timed_out

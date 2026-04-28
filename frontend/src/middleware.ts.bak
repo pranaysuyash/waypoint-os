@@ -1,0 +1,50 @@
+import { NextRequest, NextResponse } from "next/server";
+
+// Paths that never require authentication.
+const PUBLIC_PATHS = [
+  "/",
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/itinerary-checker",
+  "/v2",
+];
+
+// Prefixes that are always public regardless of trailing path.
+const PUBLIC_PREFIXES = [
+  "/api/auth/",      // login, signup, refresh, me (read-only identity)
+  "/_next/",
+  "/favicon",
+];
+
+function isPublic(pathname: string): boolean {
+  if (PUBLIC_PATHS.includes(pathname)) return true;
+  return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+export function middleware(request: NextRequest): NextResponse {
+  const { pathname } = request.nextUrl;
+
+  if (isPublic(pathname)) {
+    return NextResponse.next();
+  }
+
+  const token = request.cookies.get("access_token");
+
+  if (!token?.value) {
+    const loginUrl = new URL("/login", request.url);
+    // Preserve the intended destination so the login page can redirect back.
+    loginUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  // Match every route except static assets and image optimisation.
+  matcher: [
+    "/((?!_next/static|_next/image|.*\\.(?:png|svg|ico|webp|jpg|jpeg|gif|woff2?|ttf|otf|eot|css|js)).*)",
+  ],
+};

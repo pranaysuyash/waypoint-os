@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { acknowledgeSuitabilityFlags } from "@/lib/api-client";
 import { useWorkbenchStore } from "@/stores/workbench";
 import { useTripContext } from "@/contexts/TripContext";
 import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate, DecisionOutput, SuitabilityFlagData, SuitabilityProfile } from "@/types/spine";
@@ -42,7 +43,7 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
   const trip = propTrip || context?.trip || null;
   const tripId = propTripId || trip?.id || context?.tripId || "";
 
-  const { result_decision, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
+  const { result_decision, debug_raw_json, setDebugRawJson, acknowledged_suitability_flags, acknowledgeFlag } = useWorkbenchStore();
   const decision: DecisionOutput | null = result_decision || trip?.decision || null;
 
   if (!decision) {
@@ -64,16 +65,23 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
   const suitabilityProfile: SuitabilityProfile | null | undefined =
     decision.suitability_profile;
 
-  const handleSuitabilityDrill = useCallback((flagType: string) => {
-    // Logic remains
+  const handleSuitabilityDrill = useCallback((_flagType: string) => {
+    document.querySelector('[data-testid="timeline-panel"]')?.scrollIntoView({ behavior: "smooth" });
   }, []);
+
+  const handleAcknowledge = useCallback(async (flagType: string) => {
+    acknowledgeFlag(flagType);
+    if (tripId) {
+      try { await acknowledgeSuitabilityFlags(tripId, [flagType]); } catch {}
+    }
+  }, [tripId, acknowledgeFlag]);
 
   return (
     <div className="space-y-6">
       <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Decision State</h3>
         <span className="inline-block px-2 py-1 text-xs font-medium rounded-md bg-blue-900/30 text-blue-300">
-          {STATE_LABELS[decision.decision_state] || decision.decision_state}
+          {STATE_LABELS[decision.decision_state] || "Review Required"}
         </span>
         <p className="mt-3 text-sm text-gray-300">
           Overall Confidence: {Math.round((decision.confidence?.overall || 0) * 100)}%
@@ -121,6 +129,8 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
           flags={suitabilityFlags}
           tripId={tripId}
           onDrill={handleSuitabilityDrill}
+          onAcknowledge={handleAcknowledge}
+          acknowledgedFlags={acknowledged_suitability_flags}
         />
       ) : null}
 

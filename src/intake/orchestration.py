@@ -119,6 +119,7 @@ class SpineResult:
     run_timestamp: str = ""
     early_exit: bool = False
     early_exit_reason: Optional[str] = None
+    partial_intake: bool = False
 
 
 # =============================================================================
@@ -202,7 +203,6 @@ def run_spine_once(
         if stage_callback:
             stage_callback("validation", {"status": "ESCALATED", "gate": "NB01", "reasons": nb01_result.reasons})
         else:
-            # Emit escalation event to AuditStore
             _emit_audit_event(
                 trip_id=packet.packet_id,
                 stage="packet",
@@ -210,6 +210,35 @@ def run_spine_once(
                 reason="NB01 gate escalation - extraction quality issues"
             )
         return _create_empty_spine_result(packet, validation, decision, run_timestamp)
+
+    if nb01_result.verdict == GateVerdict.DEGRADE:
+        # Intake minimum is met but quote-ready fields are incomplete.
+        # Save the trip for later enrichment — don't block, don't generate a quote.
+        from .decision import DecisionResult
+        empty_decision = DecisionResult(
+            packet_id=packet.packet_id,
+            current_stage=stage,
+            operating_mode=packet.operating_mode,
+            decision_state="ASK_FOLLOWUP",
+            hard_blockers=[],
+            soft_blockers=["incomplete_intake"],
+            rationale={"gate_degrade": "NB01_DEGRADE", "reasons": nb01_result.reasons},
+            follow_up_questions=[
+                {"field_name": f, "priority": "medium", "question": f"Please provide {f.replace('_', ' ')} to generate a quote."}
+                for f in ("origin_city", "budget_raw_text", "trip_purpose", "party_size")
+                if f not in packet.facts
+            ],
+        )
+        if stage_callback:
+            stage_callback("validation", {"status": "DEGRADED", "gate": "NB01", "reasons": nb01_result.reasons})
+        else:
+            _emit_audit_event(
+                trip_id=packet.packet_id,
+                stage="packet",
+                state="degraded",
+                reason="NB01 degrade - partial intake saved"
+            )
+        return _create_partial_intake_result(packet, validation, empty_decision, run_timestamp)
 
     if stage_callback:
         stage_callback("validation", validation if hasattr(validation, "model_dump") else vars(validation))
@@ -368,6 +397,30 @@ def run_spine_once(
     )
 
 
+def _human_block_reason(reasons: list) -> str:
+    _BLOCK_COPY = {
+        "MVB_MISSING": "Some key trip details are missing",
+        "NUMERIC_BUDGET_REQUIRED": "Budget details are needed for this request type",
+        "DERIVED_IN_FACTS": "Internal data issue — needs review",
+        "FACT_BAD_AUTHORITY": "Internal data issue — needs review",
+        "LEGACY_FIELD": "Internal data issue — needs review",
+        "Structural validation": "Trip details are incomplete",
+    }
+    if not reasons:
+        return "Could not process this request — some details may be missing or unclear."
+    parts = []
+    for r in reasons:
+        matched = False
+        for code, human in _BLOCK_COPY.items():
+            if code in r:
+                parts.append(human)
+                matched = True
+                break
+        if not matched:
+            parts.append(r)
+    return " ".join(parts) + ". Please add the missing information and try again."
+
+
 def _create_empty_spine_result(packet, validation, decision, timestamp):
     """Helper for early exit on gate failure."""
     from .strategy import SessionStrategy, PromptBundle
@@ -410,9 +463,69 @@ def _create_empty_spine_result(packet, validation, decision, timestamp):
         autonomy_outcome=None,
         assertion_result=None,
         frontier_result=None,
-            run_timestamp=timestamp,
+        run_timestamp=timestamp,
         early_exit=True,
-        early_exit_reason=f"NB01_ESCALATE: {decision.rationale.get('gate_failure', 'extraction_quality') if isinstance(decision.rationale, dict) else 'extraction_quality'}",
+        early_exit_reason=_human_block_reason(nb01_result.reasons),
+    )
+
+
+def _create_partial_intake_result(packet, validation, decision, timestamp):
+    """Helper for degraded intake — save trip but block quote generation."""
+    from .strategy import SessionStrategy, PromptBundle
+    from .safety import SanitizedPacketView
+    from .validation import QUOTE_READY, INTAKE_MINIMUM
+
+    missing_quote_fields = [f for f in QUOTE_READY if f not in packet.facts]
+    existing_intake_fields = [f for f in INTAKE_MINIMUM if f in packet.facts]
+
+    incomplete_reason = (
+        f"Trip saved with {len(existing_intake_fields)}/{len(INTAKE_MINIMUM)} intake fields. "
+        f"Missing quote-ready fields: {', '.join(missing_quote_fields)}. "
+        f"Add the missing information and reprocess to generate a quote."
+    )
+
+    return SpineResult(
+        packet=packet,
+        validation=validation,
+        decision=decision,
+        strategy=SessionStrategy(
+            session_goal="Partial intake — awaiting enrichment.",
+            priority_sequence=[],
+            tonal_guardrails=[],
+            risk_flags=[],
+            suggested_opening="",
+            exit_criteria=[],
+            next_action="ASK_FOLLOWUP",
+        ),
+        internal_bundle=PromptBundle(
+            system_context="",
+            user_message="",
+            follow_up_sequence=[],
+            branch_prompts=[],
+            internal_notes=incomplete_reason,
+            constraints=[],
+        ),
+        traveler_bundle=PromptBundle(
+            system_context="",
+            user_message="",
+            follow_up_sequence=[],
+            branch_prompts=[],
+            internal_notes="",
+            constraints=[],
+        ),
+        sanitized_view=SanitizedPacketView(
+            facts={},
+            derived_signals={},
+        ),
+        leakage_result={"leaks": [], "is_safe": True},
+        fees=None,
+        autonomy_outcome=None,
+        assertion_result=None,
+        frontier_result=None,
+        run_timestamp=timestamp,
+        early_exit=False,
+        partial_intake=True,
+        early_exit_reason=incomplete_reason,
     )
 
 

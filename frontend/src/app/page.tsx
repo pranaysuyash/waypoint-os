@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import {
   ArrowRight,
+  Check,
   CheckCircle2,
   CircleAlert,
   Clock3,
@@ -17,41 +18,42 @@ import {
   SectionIntro,
 } from '@/components/marketing/marketing';
 import { AgencyHeroCockpit } from '@/components/marketing/MarketingVisuals';
+import { GsapInitializer } from '@/components/marketing/GsapInitializer';
 import styles from '@/components/marketing/marketing.module.css';
 
 const painPoints = [
   {
     icon: MessageSquareText,
-    title: 'The inbox never arrives clean',
+    title: 'FIT requests never arrive clean',
     body: 'WhatsApp notes, voice memos, screenshots, old preferences, and half-formed family constraints all land in different places.',
   },
   {
     icon: CircleAlert,
-    title: 'Risk hides until it is expensive',
-    body: 'Visa gaps, pacing problems, supplier friction, and budget mismatch usually surface after someone has already spent hours quoting.',
+    title: 'Margin leaks hide until quoting',
+    body: 'Visa gaps, pacing problems, DMC friction, and budget mismatches usually surface after advisors have already spent hours researching.',
   },
   {
     icon: Clock3,
-    title: 'Owners cannot see quality drift',
-    body: 'A growing team needs review points, not more status meetings. The system should show what needs attention before the client does.',
+    title: 'Quality control breaks at scale',
+    body: 'A growing agency needs structured review points, not more status meetings. The system should flag itinerary risks before the client sees them.',
   },
 ];
 
 const productMoments = [
   {
     label: '01',
-    title: 'Capture the messy request',
-    body: 'Turn scattered traveler context into one usable brief: who is going, what matters, what is missing, and what cannot be assumed.',
+    title: 'Intake normalization',
+    body: 'Scattered WhatsApp notes, voice memos, and messy emails are parsed into a structured FIT brief: travelers, dates, constraints, budget signals, and what is explicitly missing.',
   },
   {
     label: '02',
-    title: 'Ask before quoting',
-    body: 'Waypoint shows the few questions that actually change the trip, instead of sending agents into research with bad inputs.',
+    title: 'Risk question generation',
+    body: 'Waypoint surfaces the 3–5 questions that actually change the itinerary — visa gaps, pacing conflicts, supplier dependencies — before advisors start building.',
   },
   {
     label: '03',
-    title: 'Send safer client output',
-    body: 'Internal rationale stays inside the agency. The traveler gets a polished reply, clear choices, and no operational uncertainty.',
+    title: 'Owner review escalation',
+    body: 'High-value or high-risk trips are flagged for owner check before the proposal leaves. Internal rationale stays inside the agency; the client sees only the confident output.',
   },
 ];
 
@@ -59,14 +61,17 @@ const personaCards = [
   {
     title: 'Solo advisors',
     body: 'Move faster without turning every request into a blank-page research project.',
+    accentColor: '#58a6ff',
   },
   {
     title: 'Agency owners',
     body: 'See which trips need review, which clients are waiting, and where quality is slipping.',
+    accentColor: '#39d0d8',
   },
   {
     title: 'Junior agents',
     body: 'Get better questions, safer drafts, and clear next steps while learning agency judgment.',
+    accentColor: '#d29922',
   },
 ];
 
@@ -88,6 +93,7 @@ const proofCards = [
 export default function HomePage() {
   return (
     <PublicPage>
+      <GsapInitializer />
       <PublicHeader
         ctaHref='/signup'
         ctaLabel='Book a demo'
@@ -100,13 +106,13 @@ export default function HomePage() {
         ]}
       />
 
-      <section className={`${styles.hero} ${styles.visualHero} ${styles.agencyHero}`}>
-        <div className={styles.heroCopy}>
+      <section className={`${styles.hero} ${styles.visualHero} ${styles.agencyHero} animate-fade-up`}>
+        <div className={`${styles.heroCopy} animate-stagger-container`}>
           <div className={styles.eyebrow}>Built for boutique agencies</div>
-          <h1 className={styles.heroTitle}>Waypoint OS</h1>
-          <h2 className={styles.heroSubtitle}>The operating system for boutique travel agencies</h2>
+          <h1 className={`${styles.heroTitle} font-display`}>Waypoint OS</h1>
+          <h2 className={styles.heroSubtitle}>The operating system for boutique travel agencies.</h2>
           <p className={styles.heroBody}>
-            Run your entire agency on one intelligent workspace. From first inquiry to post-trip, Waypoint OS orchestrates your operations, your team, and your AI.
+            From messy WhatsApp notes to client-safe proposals — Waypoint structures the intake, surfaces the risks, and protects your margins.
           </p>
 
           <div className={styles.heroActions}>
@@ -118,22 +124,36 @@ export default function HomePage() {
               Explore the product
             </Link>
           </div>
+
+          {/* Trust chips */}
+          <div className='flex flex-wrap gap-x-5 gap-y-2 mt-6'>
+            {[
+              'Built for travel, not generic SaaS',
+              'End-to-end agency workspace',
+              'AI that learns your judgment',
+            ].map((t) => (
+              <div key={t} className='flex items-center gap-1.5'>
+                <Check className='h-3.5 w-3.5 text-[#3fb950] shrink-0' />
+                <span className='text-[12px] text-[#6e7681]'>{t}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         <AgencyHeroCockpit />
       </section>
 
-      <section className={`${styles.section} ${styles.problemSection}`} id='product'>
-        <div className={styles.problemLead}>
+      <section className={`${styles.section} ${styles.problemSection} animate-fade-up`} id='product'>
+        <div className={`${styles.problemLead} animate-fade-up`}>
           <Kicker>Why agencies switch</Kicker>
-          <h2>Your best clients do not start as clean forms.</h2>
+          <h2 className="font-display">Your best clients do not start as clean forms.</h2>
           <p>
             They arrive as messy conversations. Waypoint turns that mess into the brief,
             questions, owner checks, and client-ready response your team needs to win the trip.
           </p>
         </div>
 
-        <div className={styles.problemRail}>
+        <div className={`${styles.problemRail} animate-stagger-container`}>
           {painPoints.map(({ icon: Icon, title, body }) => (
             <article key={title} className={styles.problemItem}>
               <Icon className='h-5 w-5' />
@@ -146,21 +166,23 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.productStory}`} id='workflow'>
-        <SectionIntro
-          eyebrow='How it works'
-          title='One workspace from first message to safe reply.'
-          body='Waypoint does not replace your agency judgment. It gives that judgment a place to live, repeat, and scale.'
-        />
+      <section className={`${styles.section} ${styles.productStory} animate-fade-up`} id='workflow'>
+        <div className="animate-fade-up">
+          <SectionIntro
+            eyebrow='How it works'
+            title='One workspace from first message to safe reply.'
+            body='Waypoint does not replace your agency judgment. It gives that judgment a place to live, repeat, and scale.'
+          />
+        </div>
 
-        <div className={styles.productNarrative}>
+        <div className={`${styles.productNarrative} animate-stagger-container`}>
           <article className={styles.narrativeFeature}>
             <div>
               <Kicker>Live agency work</Kicker>
-              <h2 className="text-2xl font-semibold">Waypoint reads the request like an experienced operator.</h2>
+              <h2 className="text-2xl font-semibold font-display">Waypoint reads the request like an experienced luxury advisor.</h2>
               <p>
                 It pulls out travelers, dates, constraints, budget tension, missing documents,
-                pacing risk, and the exact questions that should be answered before quoting.
+                pacing risks, and the exact questions to ask before you begin building the itinerary.
               </p>
             </div>
             <div className={styles.operatorSnapshot}>
@@ -193,15 +215,15 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.personaBand}`} id='personas'>
-        <div className={styles.personaBandHeader}>
+      <section className={`${styles.section} ${styles.personaBand} animate-fade-up`} id='personas'>
+        <div className={`${styles.personaBandHeader} animate-fade-up`}>
           <Kicker>Built for the agency floor</Kicker>
-          <h2>The same system, different leverage for each role.</h2>
+          <h2 className="font-display">The same system, different leverage for each role.</h2>
         </div>
 
-        <div className={styles.personaStrip}>
+        <div className={`${styles.personaStrip} animate-stagger-container`}>
           {personaCards.map((card) => (
-            <article key={card.title}>
+            <article key={card.title} style={{ borderTop: `2px solid ${card.accentColor}` }}>
               <h3>{card.title}</h3>
               <p>{card.body}</p>
             </article>
@@ -209,17 +231,17 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.trustSection}`} id='resources'>
-        <div className={styles.trustPanel}>
+      <section className={`${styles.section} ${styles.trustSection} animate-fade-up`} id='resources'>
+        <div className={`${styles.trustPanel} animate-fade-up`}>
           <div>
             <Kicker>Trust controls</Kicker>
-            <h2>Built for margin, quality, and client safety.</h2>
+            <h2 className="font-display">Built to protect margin, quality, and client trust.</h2>
             <p>
-              The product keeps commercial logic, private judgment, and review states in the
-              agency workspace, so the client only sees the confident version.
+              The platform keeps commercial logic, DMC markups, and internal review states in the
+              agency workspace, ensuring the client only sees the final, confident proposal.
             </p>
           </div>
-          <div className={styles.trustList}>
+          <div className={`${styles.trustList} animate-stagger-container`}>
             {proofCards.map((card) => (
               <article key={card.title}>
                 <CheckCircle2 className='h-5 w-5' />
@@ -248,17 +270,19 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className={`${styles.section} ${styles.wedgeSection}`}>
-        <div>
-          <Kicker>Itinerary checker</Kicker>
-          <h2>Turn itinerary anxiety into better-qualified leads.</h2>
+      <section className={`${styles.section} ${styles.wedgeSection} animate-fade-up`}>
+        <div className="animate-fade-up">
+          <Kicker>Free public tool</Kicker>
+          <h2 className="font-display">Test your plan before you book. Free, no account needed.</h2>
           <p>
-            The itinerary checker gives travelers a useful public tool, then hands agencies
-            cleaner context than a generic contact form ever could.
+            The itinerary checker gives travelers a structured first pass across their plan — timing
+            risks, document gaps, pacing problems — then hands agencies cleaner context than any
+            generic contact form.
           </p>
           <div className={styles.wedgeActions}>
-            <Link href='/itinerary-checker' className={styles.secondaryButton}>
-              Open itinerary checker
+            <Link href='/itinerary-checker' className={styles.primaryButton}>
+              Try the free itinerary checker
+              <ArrowRight className='h-4 w-4' />
             </Link>
             <ProofChip>
               <Sparkles className='h-4 w-4' />

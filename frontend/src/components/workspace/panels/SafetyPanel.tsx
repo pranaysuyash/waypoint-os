@@ -92,13 +92,13 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
           {travelerBundle && !isStrictFail ? (
             <>
               <div>
-                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">System Context</div>
+                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Background Notes</div>
                 <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                   {travelerBundle.system_context || "—"}
                 </p>
               </div>
               <div>
-                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">User Message</div>
+                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Message Preview</div>
                 <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                   {travelerBundle.user_message || "—"}
                 </p>

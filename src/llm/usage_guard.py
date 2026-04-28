@@ -47,7 +47,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Callable, Optional
 
-from .usage_store import LLMUsageStore, GuardStorageError, InMemoryUsageStore
+from .usage_store import LLMUsageStore, GuardStorageError, InMemoryUsageStore, RedisUsageStore
 
 logger = logging.getLogger(__name__)
 
@@ -117,18 +117,32 @@ class LLMUsageGuard:
 
     @classmethod
     def from_env(cls) -> "LLMUsageGuard":
-        """Build guard from environment."""
+        """Build guard from environment.
+
+        Storage backend selection:
+          - REDIS_URL set → RedisUsageStore (multi-instance, atomic via Lua)
+          - otherwise    → InMemoryUsageStore (single-process dev/test)
+        """
         enabled = os.environ.get("LLM_GUARD_ENABLED", "1") == "1"
         max_calls = os.environ.get("LLM_MAX_CALLS_PER_HOUR")
         daily_budget = os.environ.get("LLM_DAILY_BUDGET")
         budget_mode = os.environ.get("LLM_BUDGET_MODE", "warn")
         thresholds_str = os.environ.get("LLM_BUDGET_WARNING_THRESHOLDS", "0.5,0.8,1.0")
+
+        if os.environ.get("REDIS_URL"):
+            store: LLMUsageStore = RedisUsageStore.from_env()
+            logger.info("LLMUsageGuard: using RedisUsageStore (REDIS_URL set)")
+        else:
+            store = InMemoryUsageStore()
+            logger.debug("LLMUsageGuard: using InMemoryUsageStore (no REDIS_URL)")
+
         return cls(
             enabled=enabled,
             max_calls_per_hour=int(max_calls) if max_calls is not None else None,
             daily_budget=float(daily_budget) if daily_budget is not None else None,
             budget_mode=budget_mode,
             budget_warning_thresholds=[float(t.strip()) for t in thresholds_str.split(",") if t.strip()],
+            store=store,
         )
 
     # ── public API ───────────────────────────────────────────────────────────────────

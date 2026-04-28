@@ -167,7 +167,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
 
       render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
-      expect(screen.getByText("Tier 1: Hard Blockers (Must Resolve)")).toBeInTheDocument();
+      expect(screen.getByText("Tier 1: Hard Blockers (Must Acknowledge Before Approval)")).toBeInTheDocument();
       expect(screen.getByText(/hard blockers/)).toBeInTheDocument();
     });
 
@@ -198,7 +198,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
 
       render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
-      expect(screen.getByText("Tier 1: Hard Blockers (Must Resolve)")).toBeInTheDocument();
+      expect(screen.getByText("Tier 1: Hard Blockers (Must Acknowledge Before Approval)")).toBeInTheDocument();
       expect(screen.getByText("Tier 2: Warnings (Review Recommended)")).toBeInTheDocument();
     });
   });

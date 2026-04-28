@@ -1,141 +1,139 @@
 "use client";
 
 import React, { useCallback } from "react";
-import { AlertTriangle, AlertCircle, ChevronRight } from "lucide-react";
+import { AlertTriangle, AlertCircle, ChevronRight, CheckCircle2 } from "lucide-react";
+import type { SuitabilityFlagData } from "@/types/spine";
 import styles from "@/app/workbench/workbench.module.css";
 
-export interface SuitabilityFlagData {
-  flag_type: string;
-  severity: "low" | "medium" | "high" | "critical";
-  reason: string;
-  confidence: number;
-  details?: Record<string, any>;
-  affected_travelers?: string[];
-}
+export type { SuitabilityFlagData };
 
 interface SuitabilitySignalProps {
   flags: SuitabilityFlagData[];
   tripId?: string;
   onDrill?: (flagType: string, stage?: string) => void;
+  onAcknowledge?: (flagType: string) => void;
+  acknowledgedFlags?: ReadonlySet<string>;
 }
 
 /**
- * Flag label mapping — convert flag_type to semantic, human-readable labels
+ * Stable label map for coherence flags (fixed keys the backend always emits)
+ * and legacy semantic flag types retained for forward compatibility.
+ *
+ * Activity-specific dynamic flags (suitability_exclusion_*, suitability_discouraged_*)
+ * are handled by deriveFlagLabel() using the flag's details payload instead.
  */
 const FLAG_LABELS: Record<string, string> = {
-  age_too_young: "Age Too Young",
-  age_too_old: "Age Too Old",
-  weight_exceeds_limit: "Weight Exceeds Limit",
+  // Coherence flags — keys emitted by evaluate_itinerary_coherence
+  suitability_overload_elderly: "Itinerary Intensity Overload for Elderly",
+  suitability_pacing_toddler: "Too Many Activities: Toddler Stamina Risk",
+  // Generic coherence fallback
+  suitability_coherence: "Itinerary Pacing Concern",
+  itinerary_coherence: "Itinerary Pacing Concern",
+  // Legacy semantic flag types (retained for future backend alignment)
+  age_too_young: "Age Too Young for Activity",
+  age_too_old: "Age Exceeds Activity Maximum",
+  weight_exceeds_limit: "Weight Exceeds Activity Limit",
   toddler_water_unsafe: "Water Activity Not Safe for Toddlers",
   toddler_height_unsafe: "Height Restriction Excludes Toddlers",
   toddler_late_night: "Late Night Not Suitable for Toddlers",
+  toddler_pacing: "Too Many Activities for Toddler",
   elderly_intense: "Physical Intensity Unsafe for Elderly",
   elderly_extreme: "Extreme Intensity Not Suitable for Elderly",
   elderly_walking_heavy: "Walking-Heavy Activity Unsuitable for Elderly",
   elderly_stairs_heavy: "Stairs Unsafe for Elderly Travelers",
   elderly_water_challenges: "Water Activity Challenges for Elderly",
   elderly_height_unsuitable: "Height Activity Not Suitable for Elderly",
-  budget_luxury_mismatch: "Luxury Activity Exceeds Budget Profile",
-  toddler_pacing: "Too Many Activities in One Day for Toddler",
   elderly_overload: "Too Much Physical Intensity in Itinerary",
-  itinerary_coherence: "Itinerary Pacing Concern",
+  budget_luxury_mismatch: "Luxury Activity Exceeds Budget Profile",
 };
 
 /**
- * Explanation mapping — why did this flag trigger?
+ * Derive a human-readable label from a flag.
+ *
+ * Priority:
+ *   1. Static map — for coherence flags with stable, predictable keys
+ *   2. Details payload — for activity-specific dynamic flags whose key encodes
+ *      tier and activity_id. The details object carries activity_name and
+ *      participant_label which produce a precise, readable label.
+ *   3. Flag reason — the backend always provides a human-readable reason string
+ *   4. Cleaned-up flag_type string — last resort
  */
-const FLAG_EXPLANATIONS: Record<string, string> = {
-  age_too_young: "Participant is below the minimum age requirement for this activity.",
-  age_too_old: "Participant exceeds the maximum age for safe participation.",
-  weight_exceeds_limit: "Participant weight exceeds the activity's weight limit.",
-  toddler_water_unsafe: "Water-based activities pose safety risks for toddlers.",
-  toddler_height_unsafe: "Height-based participation restrictions exclude toddlers from this activity.",
-  toddler_late_night: "Late night activities (post-21:00) are unsuitable for toddler schedules.",
-  elderly_intense: "Physical intensity of this activity may strain elderly travelers.",
-  elderly_extreme: "Extreme physical intensity is unsafe for elderly travelers.",
-  elderly_walking_heavy: "Walking-heavy activities may not suit elderly mobility profiles.",
-  elderly_stairs_heavy: "Activities with heavy stair climbing are unsafe for elderly travelers.",
-  elderly_water_challenges: "Water-based activities may present mobility challenges for elderly travelers.",
-  elderly_height_unsuitable: "Height-based activities may not be safe for elderly travelers.",
-  budget_luxury_mismatch: "This luxury-tier activity exceeds the identified budget-conscious traveler profile.",
-  toddler_pacing: "Scheduling more than 3 activities in one day is too demanding for toddlers.",
-  elderly_overload: "Two or more high-intensity activities in the itinerary create cumulative fatigue risk.",
-  itinerary_coherence: "The itinerary structure may not provide adequate pacing and recovery time.",
-};
+function deriveFlagLabel(flag: SuitabilityFlagData): string {
+  if (FLAG_LABELS[flag.flag_type]) return FLAG_LABELS[flag.flag_type];
 
-/**
- * Tier classification — which flags are hard blockers vs. warnings?
- */
+  const activityName = flag.details?.activity_name as string | undefined;
+  const participantLabel = flag.details?.participant_label as string | undefined;
+  const tier = flag.details?.tier as string | undefined;
+
+  if (activityName && participantLabel) {
+    const action = tier === "exclude" ? "Not Permitted" : "Caution Advised";
+    const who = participantLabel.charAt(0).toUpperCase() + participantLabel.slice(1);
+    return `${activityName}: ${action} for ${who}`;
+  }
+
+  if (flag.reason && flag.reason.length > 0) {
+    // Trim long reasons to a headline — keep it to the first sentence
+    const first = flag.reason.split(/[.;]/)[0].trim();
+    return first.length > 0 ? first : flag.flag_type;
+  }
+
+  return flag.flag_type
+    .replace(/^suitability_/, "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function classifyTier(severity: string): "tier1" | "tier2" {
   return severity === "critical" ? "tier1" : "tier2";
 }
 
-/**
- * Get severity-based styling classes
- */
 function getSeverityClass(severity: string): { bg: string; border: string; icon: string } {
   switch (severity) {
     case "critical":
-      return {
-        bg: "bg-red-50 dark:bg-red-950",
-        border: "border-l-4 border-red-500",
-        icon: "text-red-600 dark:text-red-400",
-      };
+      return { bg: "bg-red-50 dark:bg-red-950", border: "border-l-4 border-red-500", icon: "text-red-600 dark:text-red-400" };
     case "high":
-      return {
-        bg: "bg-yellow-50 dark:bg-yellow-950",
-        border: "border-l-4 border-yellow-500",
-        icon: "text-yellow-600 dark:text-yellow-400",
-      };
+      return { bg: "bg-yellow-50 dark:bg-yellow-950", border: "border-l-4 border-yellow-500", icon: "text-yellow-600 dark:text-yellow-400" };
     case "medium":
-      return {
-        bg: "bg-blue-50 dark:bg-blue-950",
-        border: "border-l-4 border-blue-400",
-        icon: "text-blue-600 dark:text-blue-400",
-      };
+      return { bg: "bg-blue-50 dark:bg-blue-950", border: "border-l-4 border-blue-400", icon: "text-blue-600 dark:text-blue-400" };
     default:
-      return {
-        bg: "bg-gray-50 dark:bg-gray-900",
-        border: "border-l-4 border-gray-400",
-        icon: "text-gray-500 dark:text-gray-400",
-      };
+      return { bg: "bg-gray-50 dark:bg-gray-900", border: "border-l-4 border-gray-400", icon: "text-gray-500 dark:text-gray-400" };
   }
 }
 
-/**
- * Get badge class for severity
- */
 function getBadgeClass(severity: string): string {
   switch (severity) {
-    case "critical":
-      return "bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100";
-    case "high":
-      return "bg-yellow-200 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-100";
-    case "medium":
-      return "bg-blue-200 text-blue-900 dark:bg-blue-900 dark:text-blue-100";
-    default:
-      return "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100";
+    case "critical": return "bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100";
+    case "high":     return "bg-yellow-200 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-100";
+    case "medium":   return "bg-blue-200 text-blue-900 dark:bg-blue-900 dark:text-blue-100";
+    default:         return "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100";
   }
 }
 
 interface FlagItemProps {
   flag: SuitabilityFlagData;
   onDrill?: (flagType: string) => void;
+  onAcknowledge?: (flagType: string) => void;
+  isAcknowledged?: boolean;
   drillable?: boolean;
 }
 
-function FlagItem({ flag, onDrill, drillable = true }: FlagItemProps) {
+function FlagItem({ flag, onDrill, onAcknowledge, isAcknowledged = false, drillable = true }: FlagItemProps) {
   const tier = classifyTier(flag.severity);
   const severityClass = getSeverityClass(flag.severity);
   const badgeClass = getBadgeClass(flag.severity);
-  const label = FLAG_LABELS[flag.flag_type] || flag.flag_type;
-  const explanation = FLAG_EXPLANATIONS[flag.flag_type] || flag.reason;
+  const label = deriveFlagLabel(flag);
 
   const handleDrill = useCallback(() => {
-    if (onDrill && drillable) {
-      onDrill(flag.flag_type);
-    }
+    if (onDrill && drillable) onDrill(flag.flag_type);
   }, [flag.flag_type, onDrill, drillable]);
+
+  const handleAcknowledge = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (onAcknowledge && !isAcknowledged) onAcknowledge(flag.flag_type);
+    },
+    [flag.flag_type, onAcknowledge, isAcknowledged],
+  );
 
   const travelersDisplay = flag.affected_travelers?.length
     ? flag.affected_travelers.join(", ")
@@ -144,39 +142,57 @@ function FlagItem({ flag, onDrill, drillable = true }: FlagItemProps) {
   return (
     <div
       className={`${severityClass.bg} ${severityClass.border} p-3 rounded-md transition-all ${
-        drillable ? "cursor-pointer hover:shadow-sm" : ""
-      }`}
-      onClick={handleDrill}
-      role={drillable ? "button" : undefined}
-      tabIndex={drillable ? 0 : undefined}
+        isAcknowledged ? "opacity-60" : ""
+      } ${drillable && !isAcknowledged ? "cursor-pointer hover:shadow-sm" : ""}`}
+      onClick={drillable && !isAcknowledged ? handleDrill : undefined}
+      role={drillable && !isAcknowledged ? "button" : undefined}
+      tabIndex={drillable && !isAcknowledged ? 0 : undefined}
+      data-testid={`suitability-flag-${flag.flag_type}`}
     >
       <div className="flex items-start gap-3">
-        {/* Icon */}
         <div className={`flex-shrink-0 mt-0.5 ${severityClass.icon}`}>
-          {tier === "tier1" ? <AlertTriangle size={18} /> : <AlertCircle size={18} />}
+          {isAcknowledged
+            ? <CheckCircle2 size={18} />
+            : tier === "tier1"
+            ? <AlertTriangle size={18} />
+            : <AlertCircle size={18} />}
         </div>
 
-        {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h4 className="font-semibold text-sm text-gray-900 dark:text-gray-100">{label}</h4>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{explanation}</p>
+              <h4 className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                {label}
+                {isAcknowledged && (
+                  <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
+                    (acknowledged)
+                  </span>
+                )}
+              </h4>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{flag.reason}</p>
             </div>
-            {drillable && <ChevronRight size={16} className="flex-shrink-0 text-gray-400" />}
+            {drillable && !isAcknowledged && <ChevronRight size={16} className="flex-shrink-0 text-gray-400" />}
           </div>
 
-          {/* Metadata */}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             <span className={`text-xs px-2 py-1 rounded ${badgeClass}`}>
               {flag.severity.toUpperCase()}
             </span>
             <span className="text-xs text-gray-600 dark:text-gray-400">
-              Confidence: {Math.round(flag.confidence * 100)}%
+              {Math.round(flag.confidence * 100)}% confidence
             </span>
-            <span className="text-xs text-gray-600 dark:text-gray-400">
-              {travelersDisplay}
-            </span>
+            <span className="text-xs text-gray-600 dark:text-gray-400">{travelersDisplay}</span>
+
+            {tier === "tier1" && onAcknowledge && !isAcknowledged && (
+              <button
+                type="button"
+                onClick={handleAcknowledge}
+                className="ml-auto text-xs px-2 py-1 rounded border border-red-400 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900 transition-colors"
+                data-testid={`acknowledge-flag-${flag.flag_type}`}
+              >
+                Acknowledge Risk
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -188,49 +204,47 @@ export function SuitabilitySignal({
   flags,
   tripId,
   onDrill,
+  onAcknowledge,
+  acknowledgedFlags = new Set(),
 }: SuitabilitySignalProps) {
-  // Separate Tier 1 (critical) and Tier 2 (high/medium/low)
   const tier1Flags = flags.filter((f) => classifyTier(f.severity) === "tier1");
   const tier2Flags = flags.filter((f) => classifyTier(f.severity) === "tier2");
 
+  const unacknowledgedCritical = tier1Flags.filter((f) => !acknowledgedFlags.has(f.flag_type));
+
   const handleDrill = useCallback(
     (flagType: string) => {
-      if (onDrill && tripId) {
-        onDrill(flagType);
-      }
+      if (onDrill && tripId) onDrill(flagType);
     },
-    [onDrill, tripId]
+    [onDrill, tripId],
   );
 
-  // If no flags, return null (parent should handle empty state)
-  if (flags.length === 0) {
-    return null;
-  }
+  if (flags.length === 0) return null;
 
   return (
-    <div className={styles.section}>
+    <div className={styles.section} data-testid="suitability-signal">
       <h3 className={styles.sectionTitle}>Suitability Audit Results</h3>
       <div className={styles.card}>
-        {/* Summary */}
         <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
           <p className="text-sm text-gray-700 dark:text-gray-300">
             <strong>{flags.length}</strong> suitability issue{flags.length !== 1 ? "s" : ""} detected
             {tier1Flags.length > 0 && (
               <span className="text-red-600 dark:text-red-400">
-                {" "}
-                — <strong>{tier1Flags.length}</strong> hard blocker{tier1Flags.length !== 1 ? "s" : ""}
-                require resolution before send
+                {" — "}
+                <strong>{unacknowledgedCritical.length > 0 ? unacknowledgedCritical.length : tier1Flags.length}</strong>
+                {unacknowledgedCritical.length > 0
+                  ? ` hard blocker${unacknowledgedCritical.length !== 1 ? "s" : ""} require acknowledgment before approval`
+                  : ` hard blocker${tier1Flags.length !== 1 ? "s" : ""} acknowledged`}
               </span>
             )}
           </p>
         </div>
 
-        {/* Tier 1: Hard Blockers (Critical) */}
         {tier1Flags.length > 0 && (
           <div className="mb-6">
             <h4 className="font-semibold text-red-700 dark:text-red-400 text-sm mb-3 flex items-center gap-2">
               <AlertTriangle size={16} />
-              Tier 1: Hard Blockers (Must Resolve)
+              Tier 1: Hard Blockers (Must Acknowledge Before Approval)
             </h4>
             <div className="space-y-2">
               {tier1Flags.map((flag) => (
@@ -238,6 +252,8 @@ export function SuitabilitySignal({
                   key={flag.flag_type}
                   flag={flag}
                   onDrill={handleDrill}
+                  onAcknowledge={onAcknowledge}
+                  isAcknowledged={acknowledgedFlags.has(flag.flag_type)}
                   drillable={!!tripId}
                 />
               ))}
@@ -245,7 +261,6 @@ export function SuitabilitySignal({
           </div>
         )}
 
-        {/* Tier 2: Warnings */}
         {tier2Flags.length > 0 && (
           <div>
             <h4 className="font-semibold text-yellow-700 dark:text-yellow-400 text-sm mb-3 flex items-center gap-2">

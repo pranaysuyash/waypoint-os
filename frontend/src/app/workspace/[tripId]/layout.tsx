@@ -14,11 +14,11 @@ import { TimelinePanel } from "@/components/workspace/panels/TimelinePanel";
 
 const STAGE_TABS: { id: WorkspaceStage; label: string }[] = [
   { id: "intake", label: "Intake" },
-  { id: "packet", label: "Packet" },
-  { id: "decision", label: "Decision" },
-  { id: "strategy", label: "Strategy" },
+  { id: "packet", label: "Trip Details" },
+  { id: "decision", label: "Quote Assessment" },
+  { id: "strategy", label: "Options" },
   { id: "output", label: "Output" },
-  { id: "safety", label: "Safety" },
+  { id: "safety", label: "Safety Review" },
   { id: "timeline", label: "Timeline" },
 ];
 

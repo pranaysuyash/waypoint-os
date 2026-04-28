@@ -15,7 +15,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import "@testing-library/jest-dom";
 import { IntakePanel } from "@/components/workspace/panels/IntakePanel";
 import { DecisionPanel } from "@/components/workspace/panels/DecisionPanel";
 import { SuitabilityPanel, type SuitabilityFlag } from "@/components/workspace/panels/SuitabilityPanel";
@@ -313,7 +312,7 @@ describe("P2 Owner Onboarding Journey: Junior Quote → Coaching Warnings → Ow
 
     expect(screen.getByText("Decision State")).toBeInTheDocument();
     expect(screen.getByText("Suitability Audit Results")).toBeInTheDocument();
-    expect(screen.getByText("Tier 1: Hard Blockers (Must Resolve)")).toBeInTheDocument();
+    expect(screen.getByText("Tier 1: Hard Blockers (Must Acknowledge Before Approval)")).toBeInTheDocument();
     expect(screen.getByText("Tier 2: Warnings (Review Recommended)")).toBeInTheDocument();
     expect(screen.getByText(/95%/)).toBeInTheDocument();
     expect(screen.getByText(/85%/)).toBeInTheDocument();

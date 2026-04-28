@@ -60,7 +60,7 @@ export default function OutputPanel({ trip: propTrip, tripId: propTripId }: Outp
   if (!internalBundle && !travelerBundle) {
     return (
       <div className={styles.emptyState}>
-        <p>No output data for trip {tripId}. Process a trip from the analysis pipeline first to generate response bundles.</p>
+        <p>No output data for trip {tripId}. Process a trip first to generate responses.</p>
       </div>
     );
   }
@@ -86,13 +86,13 @@ export default function OutputPanel({ trip: propTrip, tripId: propTripId }: Outp
             {internalBundle ? (
               <div className="space-y-4">
                 <div>
-                  <div className="text-xs font-semibold text-gray-500 uppercase">System Context</div>
+                  <div className="text-xs font-semibold text-gray-500 uppercase">Background Notes</div>
                   <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                     {internalBundle.system_context || "—"}
                   </p>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-gray-500 uppercase">User Message</div>
+                  <div className="text-xs font-semibold text-gray-500 uppercase">Message Preview</div>
                   <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                     {internalBundle.user_message || "—"}
                   </p>
@@ -126,13 +126,13 @@ export default function OutputPanel({ trip: propTrip, tripId: propTripId }: Outp
             {travelerBundle ? (
               <div className="space-y-4">
                 <div>
-                  <div className="text-xs font-semibold text-gray-500 uppercase">System Context</div>
+                  <div className="text-xs font-semibold text-gray-500 uppercase">Background Notes</div>
                   <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                     {travelerBundle.system_context || "—"}
                   </p>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-gray-500 uppercase">User Message</div>
+                  <div className="text-xs font-semibold text-gray-500 uppercase">Message Preview</div>
                   <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                     {travelerBundle.user_message || "—"}
                   </p>

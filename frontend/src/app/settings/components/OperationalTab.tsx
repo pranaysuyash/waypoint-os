@@ -78,7 +78,7 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
             </span>
           </div>
           <p className="text-[11px] text-[#8b949e]">
-            Used in budget feasibility scoring. Higher margins mean tighter feasibility gates.
+            Used in budget feasibility scoring. Higher margins mean stricter budget checks.
           </p>
         </div>
 
