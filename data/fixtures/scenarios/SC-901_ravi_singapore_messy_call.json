@@ -1,0 +1,26 @@
+{
+  "scenario_id": "SC-901",
+  "title": "Ravi Singapore messy call - canonical regression",
+  "description": "Real call-style intake with mixed context, partial dates, and multi-generation party; used as canonical E2E regression through frontend proxy and backend async run ledger.",
+  "inputs": {
+    "raw_note": "Hi Ravi, I got your number from my wife who is a colleague of Divya.\nWe are planning to visit Singapore sometime in Jan or Feb 2025.\nTentative dates around 9th to 14th Feb, approx 5 days.\nMe, my wife, our 1.7 year old kid, and my parents would be going.\nWe don't want it rushed. Interested in Universal Studios and nature parks.",
+    "owner_note": "Late-Nov call context; budget-conscious family, relaxed pace.",
+    "structured_json": null,
+    "itinerary_text": null,
+    "stage": "discovery",
+    "operating_mode": "copilot",
+    "strict_leakage": false,
+    "scenario_id": "SC-901"
+  },
+  "expected": {
+    "allowed_terminal_states": ["completed", "blocked", "failed"],
+    "required_packet_fields": [
+      "destination_candidates",
+      "date_window",
+      "party_size",
+      "trip_purpose"
+    ],
+    "must_not_include_soft_preferences": ["it rushed"],
+    "expected_decision_state": "ASK_FOLLOWUP"
+  }
+}

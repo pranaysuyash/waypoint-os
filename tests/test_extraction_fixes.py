@@ -30,7 +30,9 @@ from src.intake.extractors import (
     _extract_destination_candidates,
     _extract_dates,
     _extract_trip_intent,
+    ExtractionPipeline,
 )
+from src.intake.packet_models import SourceEnvelope
 
 
 # =============================================================================
@@ -440,3 +442,33 @@ class TestExtractTripIntent:
         result = _extract_trip_intent("I want to travel")
         # May or may not infer purpose — at minimum it returns a dict
         assert isinstance(result, dict)
+
+    def test_negation_does_not_leak_into_soft_preferences(self):
+        result = _extract_trip_intent(
+            "We don't want it rushed. Interested in Universal Studios and nature parks."
+        )
+        soft = result.get("soft_preferences", [])
+        assert "it rushed" not in soft, f"Negation leak found in soft preferences: {soft}"
+        assert "relaxed pace" in result.get("hard_constraints", []), result
+
+
+class TestDestinationEnvelopeMerge:
+    def test_explicit_destination_not_downgraded_by_later_undecided_envelope(self):
+        pipeline = ExtractionPipeline()
+        env1 = SourceEnvelope.from_freeform(
+            "We are planning to visit Singapore sometime in Jan or Feb 2025.",
+            "agency_notes",
+            "agent",
+        )
+        env2 = SourceEnvelope.from_freeform(
+            "Late-Nov call context; budget-conscious family, relaxed pace.",
+            "agency_notes",
+            "owner",
+        )
+
+        packet = pipeline.extract([env1, env2])
+        destination_candidates = packet.facts["destination_candidates"].value
+        destination_status = packet.facts["destination_status"].value
+
+        assert "Singapore" in destination_candidates
+        assert destination_status == "definite"

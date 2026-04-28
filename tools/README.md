@@ -119,3 +119,28 @@ Notes:
 - All 31 fixtures currently pass (100%).
 - Fixes applied: migrated packet_fixtures.py and raw_fixtures.py to v0.2 API.
 - Fixed decision.py to handle string-format party_composition values.
+
+## 4) `singapore_scenario_regression.py`
+
+Purpose:
+- Run the canonical Ravi/Singapore messy-call scenario through both live async paths:
+  - Frontend proxy: `POST /api/spine/run` -> `GET /api/runs/{run_id}`
+  - Backend direct: `POST /run` -> `GET /runs/{run_id}`
+- Capture input, intermediate checkpoints, terminal output, run-state transitions, and quality flags.
+- Emit durable JSON + Markdown evidence artifacts under `Docs/reports/`.
+
+Usage:
+```bash
+cd /Users/pranay/Projects/travel_agency_agent
+uv run python tools/singapore_scenario_regression.py \
+  --frontend-base http://localhost:3000 \
+  --backend-base http://localhost:8000
+```
+
+Outputs:
+- `Docs/reports/singapore_canonical_regression_YYYY-MM-DD.json`
+- `Docs/reports/singapore_canonical_regression_YYYY-MM-DD.md`
+
+Notes:
+- Scenario fixture source: `data/fixtures/scenarios/SC-901_ravi_singapore_messy_call.json`.
+- Ensure backend and frontend dev servers are running before execution.

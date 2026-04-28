@@ -3,7 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
-import { ChevronLeft, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { AlertTriangle, ChevronLeft, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { ErrorBoundary, InlineError } from "@/components/error-boundary";
 import { InlineLoading } from "@/components/ui/loading";
 import { useTrip } from "@/hooks/useTrips";
@@ -13,20 +13,21 @@ import { useWorkbenchStore } from "@/stores/workbench";
 import { TimelinePanel } from "@/components/workspace/panels/TimelinePanel";
 
 const STAGE_TABS: { id: WorkspaceStage; label: string }[] = [
-  { id: "intake", label: "Intake" },
-  { id: "packet", label: "Trip Details" },
-  { id: "decision", label: "Quote Assessment" },
-  { id: "strategy", label: "Options" },
-  { id: "output", label: "Output" },
-  { id: "safety", label: "Safety Review" },
-  { id: "timeline", label: "Timeline" },
+  { id: "intake",   label: "Intake"          },
+  { id: "packet",   label: "Trip Details"    },
+  { id: "decision", label: "Quote Assessment"},
+  { id: "strategy", label: "Options"         },
+  { id: "output",   label: "Output"          },
+  { id: "safety",   label: "Safety Review"   },
+  { id: "timeline", label: "Timeline"        },
 ];
 
-const STATE_META: Record<string, { label: string; className: string }> = {
-  green: { label: "Ready", className: "text-[#3fb950] bg-[#3fb950]/10" },
-  amber: { label: "In Progress", className: "text-[#d29922] bg-[#d29922]/10" },
-  red: { label: "Needs Review", className: "text-[#f85149] bg-[#f85149]/10" },
-  blue: { label: "Awaiting Info", className: "text-[#58a6ff] bg-[#58a6ff]/10" },
+// State → accent colour mapping (matches WP design tokens)
+const STATE_ACCENT: Record<string, { color: string; bg: string; border: string; label: string }> = {
+  green: { color: '#3fb950', bg: 'rgba(63,185,80,0.08)',   border: 'rgba(63,185,80,0.22)',   label: 'Ready'         },
+  amber: { color: '#d29922', bg: 'rgba(210,153,34,0.08)',  border: 'rgba(210,153,34,0.22)',  label: 'In Progress'   },
+  red:   { color: '#f85149', bg: 'rgba(248,81,73,0.08)',   border: 'rgba(248,81,73,0.25)',   label: 'Needs Review'  },
+  blue:  { color: '#58a6ff', bg: 'rgba(88,166,255,0.06)',  border: 'rgba(88,166,255,0.2)',   label: 'Awaiting Info' },
 };
 
 function parseTripId(param: string | string[] | undefined): string | null {
@@ -49,7 +50,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   const { result_run_ts } = useWorkbenchStore();
 
   const activeStage = useMemo(() => getActiveStage(pathname), [pathname]);
-  const stateMeta = STATE_META[trip?.state ?? "blue"] ?? STATE_META.blue;
+  const accent = STATE_ACCENT[trip?.state ?? "blue"] ?? STATE_ACCENT.blue;
 
   if (isLoading && !trip) {
     return (
@@ -83,55 +84,87 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
     <TripContextProvider value={{ tripId, trip, isLoading, error }}>
       <div className="min-h-screen bg-[#080a0c] text-[#e6edf3]">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-5 space-y-4">
-          <header className="rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 sm:p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-1 min-w-0">
-                <div className="flex items-center gap-2 text-xs text-[#8b949e]">
-                  <Link href="/workspace" className="hover:text-[#c9d1d9] transition-colors">
-                    Workspace
+
+          {/* ── Trip header ── */}
+          <header
+            className="rounded-xl border overflow-hidden"
+            style={{ borderColor: accent.border, background: accent.bg }}
+          >
+            {/* State accent strip */}
+            <div className="h-[3px] w-full" style={{ background: accent.color }} />
+
+            <div className="px-5 pt-4 pb-0">
+              {/* Top row: breadcrumb + timeline toggle */}
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2 text-xs text-[#484f58]">
+                  <Link href="/workspace" className="hover:text-[#8b949e] transition-colors flex items-center gap-1">
+                    <ChevronLeft className="w-3 h-3" />
+                    Workspaces
                   </Link>
                   <span>/</span>
-                  <span className="truncate">{trip.destination || trip.id}</span>
-                </div>
-                <h1 className="text-lg sm:text-xl font-semibold truncate">
-                  {trip.destination || trip.id}
-                </h1>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-[#8b949e]">
-                  <span className={`px-2 py-0.5 rounded-md font-medium ${stateMeta.className}`}>
-                    {stateMeta.label}
+                  <span className="text-[#8b949e] truncate max-w-[200px]">
+                    {trip.destination || trip.id}
                   </span>
-                  <span>{trip.type}</span>
-                  <span>•</span>
-                  <span>{trip.age}</span>
-                  <span>•</span>
-                  <span className="font-mono">{trip.id}</span>
-                  {result_run_ts && (
-                    <>
-                      <span>•</span>
-                      <span>Last processed: {new Date(result_run_ts).toLocaleString()}</span>
-                    </>
-                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsRailOpen((open) => !open)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border border-[#30363d] hover:bg-[#161b22] transition-colors text-[#8b949e] hover:text-[#e6edf3]"
+                  aria-expanded={isRailOpen}
+                  aria-controls="workspace-right-rail"
+                >
+                  {isRailOpen
+                    ? <><PanelRightClose className="w-3.5 h-3.5" aria-hidden="true" /> Hide timeline</>
+                    : <><PanelRightOpen  className="w-3.5 h-3.5" aria-hidden="true" /> Show timeline</>
+                  }
+                </button>
+              </div>
+
+              {/* Main identity row */}
+              <div className="flex items-start justify-between gap-4 mb-3">
+                <div className="min-w-0">
+                  <h1
+                    className="text-2xl font-black tracking-tight leading-none mb-2 truncate"
+                    style={{ fontFamily: "'Outfit', system-ui, sans-serif", color: '#f0f6fc' }}
+                  >
+                    {trip.destination || trip.id}
+                  </h1>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* State badge */}
+                    <span
+                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-bold"
+                      style={{ color: accent.color, background: `${accent.color}18`, border: `1px solid ${accent.border}` }}
+                    >
+                      <span
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{ background: accent.color, boxShadow: `0 0 4px ${accent.color}` }}
+                      />
+                      {accent.label}
+                    </span>
+                    {trip.type && (
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#484f58]">
+                        {trip.type}
+                      </span>
+                    )}
+                    {trip.age && (
+                      <span className="text-[11px] text-[#484f58]">{trip.age}</span>
+                    )}
+                    <span className="text-[11px] font-mono text-[#30363d]">{trip.id}</span>
+                    {result_run_ts && (
+                      <span className="text-[10px] text-[#30363d]">
+                        processed {new Date(result_run_ts).toLocaleTimeString()}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setIsRailOpen((open) => !open)}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-[#30363d] hover:bg-[#161b22] transition-colors"
-                aria-expanded={isRailOpen}
-                aria-controls="workspace-right-rail"
+              {/* Stage tabs — underline style */}
+              <nav
+                className="flex overflow-x-auto gap-0 -mb-px"
+                aria-label="Workspace stage tabs"
               >
-                {isRailOpen ? (
-                  <PanelRightClose className="w-4 h-4" aria-hidden="true" />
-                ) : (
-                  <PanelRightOpen className="w-4 h-4" aria-hidden="true" />
-                )}
-                {isRailOpen ? "Hide timeline" : "Show timeline"}
-              </button>
-            </div>
-
-            <nav className="mt-4 border-t border-[#1c2128] pt-3" aria-label="Workspace stage tabs">
-              <div className="flex overflow-x-auto gap-2 pb-1">
                 {STAGE_TABS.map((tab) => {
                   const isActive = tab.id === activeStage;
                   return (
@@ -139,20 +172,31 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                       key={tab.id}
                       href={getTripRoute(tripId, tab.id)}
                       aria-current={isActive ? "page" : undefined}
-                      className={`px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap border ${
-                        isActive
-                          ? "border-[#58a6ff] bg-[#58a6ff]/10 text-[#c9d1d9]"
-                          : "border-[#30363d] text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#161b22]"
-                      }`}
+                      className="px-4 py-2.5 text-[13px] whitespace-nowrap border-b-2 transition-all"
+                      style={{
+                        color: isActive ? '#e6edf3' : '#484f58',
+                        borderColor: isActive ? accent.color : 'transparent',
+                        fontWeight: isActive ? 600 : 400,
+                      }}
                     >
                       {tab.label}
                     </Link>
                   );
                 })}
-              </div>
-            </nav>
+              </nav>
+            </div>
           </header>
 
+          {/* ── Flags alert — shown separately if blocked ── */}
+          {trip.state === 'red' && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[rgba(248,81,73,0.35)] bg-[rgba(248,81,73,0.07)]">
+              <AlertTriangle className="w-4 h-4 text-[#f85149] shrink-0" aria-hidden="true" />
+              <span className="text-sm font-semibold text-[#f85149]">Action required</span>
+              <span className="text-sm text-[#c9d1d9]">This trip has blockers that must be resolved before it can proceed.</span>
+            </div>
+          )}
+
+          {/* ── Main content + optional rail ── */}
           <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4">
             <main className="rounded-xl border border-[#1c2128] bg-[#0f1115] min-h-[440px]">
               {children}

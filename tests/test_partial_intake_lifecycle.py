@@ -16,10 +16,15 @@ Run:
 from __future__ import annotations
 
 import os
-import time
 
 import pytest
 import requests
+
+from tests.helpers.run_polling import (
+    get_run_events,
+    get_run_status,
+    wait_for_terminal,
+)
 
 API_BASE = os.environ.get("TEST_SPINE_API_URL", "http://127.0.0.1:8000")
 
@@ -69,33 +74,18 @@ def _post_run(payload: dict, timeout: int = 30) -> dict:
 
 
 def _get_status(run_id: str) -> dict:
-    resp = requests.get(
-        f"{API_BASE}/runs/{run_id}",
-        timeout=10,
-        headers=_auth_headers(),
-    )
+    resp = get_run_status(API_BASE, run_id, _auth_headers())
     assert resp.status_code == 200, f"GET /runs/{run_id} failed: {resp.status_code}"
     return resp.json()
 
 
 def _get_events(run_id: str) -> dict:
-    resp = requests.get(
-        f"{API_BASE}/runs/{run_id}/events",
-        timeout=10,
-        headers=_auth_headers(),
-    )
+    resp = get_run_events(API_BASE, run_id, _auth_headers())
     return resp.json()
 
 
 def _wait_for_terminal(run_id: str, max_wait: int = 30) -> dict:
-    """Poll run status until terminal state or timeout."""
-    deadline = time.monotonic() + max_wait
-    while time.monotonic() < deadline:
-        status = _get_status(run_id)
-        if status["state"] in ("completed", "failed", "blocked"):
-            return status
-        time.sleep(1)
-    pytest.fail(f"Run {run_id} did not reach terminal state within {max_wait}s")
+    return wait_for_terminal(API_BASE, run_id, _auth_headers(), timeout_s=max_wait)
 
 
 pytestmark = pytest.mark.integration

@@ -9,6 +9,8 @@ This review documents the recovery from a dropped stash and unsafe Git workflow.
 
 The most important recovery was the TripStore SQL/backend work. The stash direction was valid, but the exact stash implementation was unsafe because it converted the public `TripStore` API to async and had a data-loss branch where `save_processed_trip()` could return a generated trip ID without saving. The recovered implementation keeps the stable sync API, adds explicit async methods, repairs migrations, and verifies both sync and async SQL persistence.
 
+This document is also the ledger for changes made during the recovery pass: code, migrations, docs, guardrails, and verification.
+
 ## Recovery Rules Applied
 
 - No wholesale stash apply.
@@ -33,6 +35,84 @@ The most important recovery was the TripStore SQL/backend work. The stash direct
 | Stash feedback/dashboard stubs | Rejected | Partial endpoints with placeholder bodies; not comprehensive. |
 | Assignment timestamp churn | Rejected | Runtime seed timestamp change, not semantic work. |
 | `/api/trips` mock-to-run rewrite | Deferred | Valuable direction, but route ownership must be resolved against canonical `/run` and `/api/spine/run` paths before changing. |
+
+## Changes and Improvements Implemented
+
+### Contract and Intake Metadata
+
+- Added intake metadata fields to `SpineRunRequest`: `follow_up_due_date`, `pace_preference`, `lead_source`, `activity_provenance`, and `date_year_confidence`.
+- Updated generated frontend spine types so frontend calls can send those fields without type drift.
+- Added structured envelope propagation for those metadata fields in `build_envelopes()`.
+- Added intake extractor field mappings so imported structured payloads preserve the same metadata.
+
+### Extraction and Analytics Correctness
+
+- Fixed destination extraction raw-match reporting so rejected origin/label tokens are not returned as the raw destination match.
+- Recovered empty-data analytics handling so zero trips produce zero velocity, zero response time, and zero pipeline value instead of fake nonzero metrics.
+- The broader analytics recovery in the current branch computes pipeline velocity from trip timestamps where possible.
+
+### TripStore and Persistence
+
+- Added SQL-backed `SQLTripStore` while preserving the existing synchronous `TripStore` facade.
+- Added explicit async methods: `asave_trip`, `aget_trip`, `alist_trips`, and `aupdate_trip`.
+- Added `save_processed_trip_async()` for future async call sites.
+- Made SQL mode explicit with `TRIPSTORE_BACKEND=sql`; file/JSON mode remains the default.
+- Kept the shared app database engine pooled for normal app traffic.
+- Added a TripStore-specific SQL engine using `NullPool` so sync facade calls do not reuse asyncpg connections across event loops.
+- Added SQL field-level encryption/decryption for common and travel-specific PII fields.
+- Preserved dogfood privacy guard checks on the file store path.
+
+### Alembic and Database
+
+- Fixed `alembic/env.py` so Alembic imports from the project root and uses `spine_api.models.Base`.
+- Registered `Trip` in `spine_api/models/__init__.py` for Alembic discovery.
+- Fixed `create_trips_table_v1.py` syntax and migration ordering.
+- Made the membership migration idempotent because the live database already had some columns while Alembic's version table lagged.
+- Made the follow-up migration idempotent when the column already exists.
+- Ran the live database to Alembic head: `add_follow_up_due_date`.
+
+### Audit Store Recovery
+
+- Hardened `AuditStore._load_events()` so corrupt `data/audit/events.json` no longer breaks trip persistence.
+- Corrupt audit files are archived with a `.corrupt-YYYYMMDDTHHMMSSZ.json` suffix.
+- Audit writes now use the existing `file_lock()` helper.
+
+### Documentation and Guardrails
+
+- Added this issue review at `Docs/travel_agency_process_issue_review_2026-04-28.md`.
+- Updated `Docs/P1_VERIFICATION_COMPLETE_2026-04-28.md` to remove stale `asyncio.run()` guidance and point to this recovery record.
+- Updated repo-local `AGENTS.md` with the user's work-quality preference:
+  - current compatibility is necessary but not sufficient;
+  - solutions should be elegant, first-principles, scalable, long-term, better, comprehensive, architecturally correct, vision-oriented, and open to updates.
+- Updated `/Users/pranay/Projects/AGENTS.md` with the same working-style rule at Projects level.
+
+## Files Touched by Recovery
+
+Code and migrations:
+
+- `spine_api/contract.py`
+- `spine_api/server.py`
+- `spine_api/persistence.py`
+- `spine_api/core/database.py`
+- `spine_api/models/__init__.py`
+- `src/analytics/metrics.py`
+- `src/intake/extractors.py`
+- `frontend/src/types/generated/spine-api.ts`
+- `frontend/src/types/generated/spine_api.ts`
+- `pyproject.toml`
+- `uv.lock`
+- `alembic/env.py`
+- `alembic/versions/a1b2c3d4e5f6_add_capacity_specializations_status_to_memberships.py`
+- `alembic/versions/add_follow_up_due_date_to_trips.py`
+- `alembic/versions/create_trips_table_v1.py`
+- `tests/test_call_capture_e2e.py`
+
+Documentation and instruction files:
+
+- `Docs/travel_agency_process_issue_review_2026-04-28.md`
+- `Docs/P1_VERIFICATION_COMPLETE_2026-04-28.md`
+- `AGENTS.md`
+- `/Users/pranay/Projects/AGENTS.md`
 
 ## TripStore Recovery Architecture
 
@@ -88,11 +168,21 @@ Results:
 - SQL sync probe: persisted and read back a trip with `follow_up_due_date`.
 - SQL async probe: persisted and read back a trip with `follow_up_due_date`.
 
+Additional verification during the pass:
+
+- `python -m py_compile spine_api/contract.py spine_api/server.py src/analytics/metrics.py src/intake/extractors.py spine_api/models/__init__.py`
+- `python -m py_compile spine_api/core/database.py spine_api/persistence.py spine_api/server.py tests/test_call_capture_e2e.py`
+- `uv run pytest -q tests/test_call_capture_e2e.py tests/test_privacy_guard.py tests/test_review_policy_escalation.py`
+- `TRIPSTORE_BACKEND=sql DATA_PRIVACY_MODE=beta` sync probe persisted and read back SQL trips.
+- `TRIPSTORE_BACKEND=sql DATA_PRIVACY_MODE=beta` async probe persisted and read back SQL trips.
+- `git diff --check` passed after the recovery edits.
+
 ## Current Caveats
 
-- `master` is ahead of `origin/master` by two commits created during the recovery window. This review does not claim they were user-approved commits.
-- The current worktree also contains unrelated frontend changes outside this recovery scope, including `frontend/src/app/itinerary-checker/page.tsx`.
-- `data/assignments/assignments.json` has a newline-only diff. Runtime timestamp churn was rejected and not retained.
+- At the latest read-only check, `master` was ahead of `origin/master` by four commits. This review does not claim those commits were user-approved by this assistant.
+- The current worktree contains unrelated dirty files outside this recovery scope. Examples observed during the pass included frontend/design files and `spine_api/models/frontier.py`.
+- `data/assignments/assignments.json` had only a newline-only diff after runtime timestamp churn was rejected.
+- The remaining stash `stash@{0}: pre-design-review-wip` was not dropped or applied by this assistant.
 
 ## Guardrail
 

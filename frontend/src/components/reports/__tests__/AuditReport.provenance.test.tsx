@@ -23,11 +23,12 @@ const AuditReportMock: React.FC<{ trips: any[] }> = ({ trips }) => {
     let requestedCount = 0;
 
     trips.forEach((trip) => {
-      const activities = trip.activityProvenance?.split(',') || [];
+      // Filter out empty entries so that '' or whitespace-only strings don't count
+      const activities = (trip.activityProvenance?.split(',') || []).filter((a: string) => a.trim().length > 0);
       totalActivities += activities.length;
-      
+
       // For now, assume activities from activity_provenance are suggested
-      suggestedCount += activities.filter((a: string) => a.trim()).length;
+      suggestedCount += activities.length;
     });
 
     if (totalActivities === 0) {
@@ -123,7 +124,9 @@ describe('AuditReport - Activity Provenance Section', () => {
     render(<AuditReportMock trips={trips} />);
 
     expect(screen.getByText(/Total Activities:/)).toBeInTheDocument();
-    expect(screen.getByText(/3/)).toBeInTheDocument();
+    // The stat-value for total activities shows the number as standalone text
+    const allThrees = screen.getAllByText(/3/);
+    expect(allThrees.length).toBeGreaterThan(0);
   });
 
   // Test 4: Display suggested activities count and percentage
@@ -156,8 +159,9 @@ describe('AuditReport - Activity Provenance Section', () => {
 
     render(<AuditReportMock trips={trips} />);
 
-    // 3 total activities, all suggested
-    expect(screen.getByText(/3/)).toBeInTheDocument();
+    // 3 total activities, all suggested — /3/ matches both total and "3 (100%)"
+    const threeMatches = screen.getAllByText(/3/);
+    expect(threeMatches.length).toBeGreaterThan(0);
     expect(screen.getByText(/3 \(100%\)/)).toBeInTheDocument();
   });
 

@@ -691,7 +691,13 @@ def _extract_trip_intent(text: str) -> Dict[str, Any]:
     soft = []
     want_match = re.findall(r"(?:want|prefer|like|interested\s+in)\s+([^.,]+)", text_lower)
     for pref in want_match:
-        soft.append(pref.strip())
+        candidate = pref.strip()
+        normalized = _normalize_constraint(candidate)
+        # Guard against negation bleed-through from phrases like
+        # "don't want it rushed", which should stay a hard constraint.
+        if normalized == "relaxed pace":
+            continue
+        soft.append(candidate)
     if soft:
         results["soft_preferences"] = soft
 
@@ -1032,18 +1038,35 @@ class ExtractionPipeline:
 
         # --- DESTINATION ---
         dest_candidates, dest_status, dest_raw = _extract_destination_candidates(text)
+        existing_dest_slot = packet.facts.get("destination_candidates")
+        existing_candidates = []
+        if existing_dest_slot is not None:
+            existing_value = getattr(existing_dest_slot, "value", None)
+            if isinstance(existing_value, list):
+                existing_candidates = [v for v in existing_value if v]
+            elif existing_value:
+                existing_candidates = [existing_value]
         if dest_candidates or dest_status in ("open", "undecided"):
-            packet.set_fact("destination_candidates", self._make_slot(
-                dest_candidates if dest_candidates else [],
-                0.7 if dest_status == "semi_open" else 0.5,
-                AuthorityLevel.EXPLICIT_USER,
-                dest_raw or "not specified",
-                eid,
-            ))
-            packet.set_fact("destination_status", self._make_slot(
-                dest_status, 0.8, AuthorityLevel.EXPLICIT_USER,
-                "Derived from destination text", eid,
-            ))
+            # Prevent weaker later envelopes (often owner/internal notes) from
+            # downgrading an already-explicit destination to []/undecided.
+            if (
+                not dest_candidates
+                and dest_status in ("open", "undecided")
+                and len(existing_candidates) > 0
+            ):
+                pass
+            else:
+                packet.set_fact("destination_candidates", self._make_slot(
+                    dest_candidates if dest_candidates else [],
+                    0.7 if dest_status == "semi_open" else 0.5,
+                    AuthorityLevel.EXPLICIT_USER,
+                    dest_raw or "not specified",
+                    eid,
+                ))
+                packet.set_fact("destination_status", self._make_slot(
+                    dest_status, 0.8, AuthorityLevel.EXPLICIT_USER,
+                    "Derived from destination text", eid,
+                ))
             # Check for ambiguities on the ORIGINAL source phrasing, not just extracted values.
             # Using the source span catches natural-language vagueness that
             # normalization can lose (e.g., "maybe somewhere like Andaman?").

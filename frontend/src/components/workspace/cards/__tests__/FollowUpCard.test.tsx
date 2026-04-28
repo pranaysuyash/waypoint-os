@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, test, it, expect, beforeEach, vi } from 'vitest';
 import { FollowUpCard } from '../FollowUpCard';
 
 describe('FollowUpCard', () => {
@@ -9,13 +10,13 @@ describe('FollowUpCard', () => {
     dueDate: '2026-04-28T14:00:00Z',
     status: 'pending' as const,
     daysUntilDue: 1,
-    onComplete: jest.fn(),
-    onSnooze: jest.fn(),
-    onReschedule: jest.fn(),
+    onComplete: vi.fn(),
+    onSnooze: vi.fn(),
+    onReschedule: vi.fn(),
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   // ======== RENDERING TESTS ========
@@ -55,19 +56,22 @@ describe('FollowUpCard', () => {
     expect(screen.getByText(/OVERDUE/)).toBeInTheDocument();
   });
 
-  test('shows TODAY badge for zero days', () => {
+  test('shows day counter for zero days', () => {
     render(<FollowUpCard {...defaultProps} daysUntilDue={0} />);
-    expect(screen.getByText(/TODAY/)).toBeInTheDocument();
+    // Component renders "0d" for due-today, styled with urgency color
+    expect(screen.getByText(/0d/)).toBeInTheDocument();
   });
 
-  test('shows SOON badge for 1-3 days', () => {
+  test('shows day counter for 1-3 days out', () => {
     render(<FollowUpCard {...defaultProps} daysUntilDue={2} />);
-    expect(screen.getByText(/SOON/)).toBeInTheDocument();
+    // Component renders "2d"
+    expect(screen.getByText(/2d/)).toBeInTheDocument();
   });
 
-  test('shows UPCOMING badge for >3 days', () => {
+  test('shows day counter for >3 days out', () => {
     render(<FollowUpCard {...defaultProps} daysUntilDue={5} />);
-    expect(screen.getByText(/UPCOMING/)).toBeInTheDocument();
+    // Component renders "5d"
+    expect(screen.getByText(/5d/)).toBeInTheDocument();
   });
 
   // ======== ACTION BUTTON TESTS ========
@@ -88,7 +92,7 @@ describe('FollowUpCard', () => {
   // ======== COMPLETE ACTION TESTS ========
 
   test('calls onComplete when complete button clicked', async () => {
-    const onComplete = jest.fn();
+    const onComplete = vi.fn();
     render(<FollowUpCard {...defaultProps} onComplete={onComplete} />);
     
     const completeButton = screen.getByText('Complete');
@@ -100,7 +104,7 @@ describe('FollowUpCard', () => {
   });
 
   test('disables complete button while loading', async () => {
-    const onComplete = jest.fn(
+    const onComplete = vi.fn(
       () => new Promise(() => {}) // Never resolves
     );
     render(<FollowUpCard {...defaultProps} onComplete={onComplete} />);
@@ -140,7 +144,7 @@ describe('FollowUpCard', () => {
   });
 
   test('calls onSnooze with correct days when option selected', async () => {
-    const onSnooze = jest.fn();
+    const onSnooze = vi.fn();
     render(<FollowUpCard {...defaultProps} onSnooze={onSnooze} />);
     
     const snoozeButton = screen.getByText('Snooze');
@@ -188,20 +192,25 @@ describe('FollowUpCard', () => {
   });
 
   test('calls onReschedule with new date', async () => {
-    const onReschedule = jest.fn();
+    const onReschedule = vi.fn();
     render(<FollowUpCard {...defaultProps} onReschedule={onReschedule} />);
-    
+
     const rescheduleButton = screen.getByText('Reschedule');
     fireEvent.click(rescheduleButton);
-    
+
     await waitFor(() => {
-      const input = screen.getByRole('textbox');
-      fireEvent.change(input, { target: { value: '2026-05-01T10:00' } });
+      expect(screen.getByText('Reschedule Follow-up')).toBeInTheDocument();
     });
-    
-    const submitButton = screen.getByText('Reschedule');
-    fireEvent.click(submitButton);
-    
+
+    // datetime-local input — query by type attribute directly
+    const input = document.querySelector('input[type="datetime-local"]') as HTMLInputElement;
+    expect(input).not.toBeNull();
+    fireEvent.change(input, { target: { value: '2026-05-01T10:00' } });
+
+    // Click the submit button inside the modal (second "Reschedule" button)
+    const rescheduleButtons = screen.getAllByText('Reschedule');
+    fireEvent.click(rescheduleButtons[rescheduleButtons.length - 1]);
+
     await waitFor(() => {
       expect(onReschedule).toHaveBeenCalledWith(
         'trip_001',

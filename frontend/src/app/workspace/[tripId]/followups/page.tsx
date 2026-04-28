@@ -152,7 +152,7 @@ export default function FollowupsPage() {
           {followups.length > 0 && (
             <span
               className="text-sm font-medium px-3 py-1 rounded"
-              style={{ color: COLORS.textSecondary, background: COLORS.bgDefault }}
+              style={{ color: COLORS.textSecondary, background: COLORS.bgSurface }}
             >
               {followups.length} follow-up{followups.length !== 1 ? 's' : ''}
             </span>
@@ -184,7 +184,7 @@ export default function FollowupsPage() {
                 background:
                   filterType === filter
                     ? COLORS.accentBlue
-                    : COLORS.bgDefault,
+                    : COLORS.bgSurface,
                 borderColor:
                   filterType === filter
                     ? COLORS.accentBlue

@@ -139,45 +139,84 @@ const WorkspaceCard = memo(function WorkspaceCard({ trip }: { trip: Trip }) {
   return (
     <Link
       href={trip.id ? getTripRoute(trip.id) : '/workspace'}
-      className={`group block rounded-xl border p-4 transition-all hover:border-[#30363d] ${
-        isBlocked
-          ? 'border-[#f85149]/30 bg-[#f85149]/5'
-          : 'border-[#1c2128] bg-[#0f1115]'
-      }`}
+      className='group block rounded-xl border border-[#1c2128] bg-[#0f1115] transition-all hover:border-[#30363d] hover:bg-[#111418] overflow-hidden'
+      style={isBlocked ? { borderColor: 'rgba(248,81,73,0.35)', background: 'rgba(248,81,73,0.04)' } : {}}
     >
-      <div className='flex items-start justify-between gap-3 mb-2'>
-        <div className='flex items-center gap-2 min-w-0'>
-          {isBlocked && (
-            <AlertTriangle className='h-3.5 w-3.5 text-[#f85149] shrink-0' aria-hidden='true' />
-          )}
-          <span className='text-[14px] font-semibold text-[#e6edf3] truncate'>
-            {trip.destination}
+      {/* State accent strip — top */}
+      <div className='h-[2px] w-full' style={{ background: meta.color, opacity: 0.8 }} />
+
+      <div className='p-4'>
+        {/* Row 1: destination + state badge */}
+        <div className='flex items-start justify-between gap-3 mb-1'>
+          <div className='min-w-0'>
+            <div className='flex items-center gap-1.5 mb-0.5'>
+              {isBlocked && (
+                <AlertTriangle className='h-3 w-3 text-[#f85149] shrink-0' aria-hidden='true' />
+              )}
+              <span
+                className='text-[14px] font-semibold truncate leading-tight'
+                style={{ color: '#f0f6fc', fontFamily: "'Outfit', system-ui, sans-serif" }}
+              >
+                {trip.destination}
+              </span>
+            </div>
+            {trip.type && (
+              <span className='text-[10px] font-bold uppercase tracking-widest text-[#484f58]'>
+                {trip.type}
+              </span>
+            )}
+          </div>
+          <span
+            className='shrink-0 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md whitespace-nowrap'
+            style={{ color: meta.color, background: meta.bg }}
+          >
+            {meta.label}
           </span>
-          <span className='text-xs text-[#8b949e]'>{trip.type}</span>
         </div>
-        <span
-          className='shrink-0 text-xs font-mono font-semibold px-2 py-0.5 rounded-md whitespace-nowrap'
-          style={{ color: meta.color, background: meta.bg }}
+
+        {/* Row 2: metrics strip — dashed separator */}
+        <div
+          className='flex items-center gap-4 py-2 my-2 text-xs'
+          style={{ borderTop: '1px dashed rgba(48,54,61,0.6)', borderBottom: '1px dashed rgba(48,54,61,0.6)' }}
         >
-          {meta.label}
-        </span>
-      </div>
+          <div className='flex items-center gap-1 text-[#8b949e]'>
+            <Clock className='h-3 w-3' aria-hidden='true' />
+            <span>{trip.age}</span>
+          </div>
+          {trip.party && (
+            <>
+              <div className='w-px h-3 bg-[#21262d]' />
+              <div className='flex items-center gap-1 text-[#8b949e]'>
+                <Users className='h-3 w-3' aria-hidden='true' />
+                <span>{trip.party} pax</span>
+              </div>
+            </>
+          )}
+          {trip.dateWindow && (
+            <>
+              <div className='w-px h-3 bg-[#21262d]' />
+              <div className='flex items-center gap-1 text-[#8b949e]'>
+                <Calendar className='h-3 w-3' aria-hidden='true' />
+                <span className='truncate max-w-[100px]'>{trip.dateWindow}</span>
+              </div>
+            </>
+          )}
+          {trip.budget && (
+            <>
+              <div className='w-px h-3 bg-[#21262d]' />
+              <span className='font-mono text-[#58a6ff] font-semibold'>{trip.budget}</span>
+            </>
+          )}
+        </div>
 
-      <div className='flex items-center gap-4 text-xs text-[#8b949e] mb-3'>
-        <span className='flex items-center gap-1'>
-          <Clock className='h-3 w-3' aria-hidden='true' /> {trip.age}
-        </span>
-        <span className='font-mono text-[#484f58]'>{trip.id}</span>
-      </div>
-
-      <div className='flex items-center justify-between'>
-        <span className='text-xs text-[#8b949e]'>
-          {isBlocked ? 'Action required' : 'Open workspace'}
-        </span>
-        <ChevronRight
-          className='h-4 w-4 text-[#30363d] group-hover:text-[#8b949e] transition-colors'
-          aria-hidden='true'
-        />
+        {/* Row 3: ID + open cue */}
+        <div className='flex items-center justify-between'>
+          <span className='text-[10px] font-mono text-[#30363d]'>{trip.id}</span>
+          <span className='flex items-center gap-1 text-[11px] text-[#484f58] group-hover:text-[#8b949e] transition-colors'>
+            {isBlocked ? 'Action required' : 'Open'}
+            <ChevronRight className='h-3.5 w-3.5' aria-hidden='true' />
+          </span>
+        </div>
       </div>
     </Link>
   );
@@ -194,17 +233,24 @@ function EmptyWorkspace() {
         <Briefcase className='w-6 h-6 text-[#484f58]' aria-hidden='true' />
       </div>
       <p className='text-[#e6edf3] font-medium mb-1'>No active workspaces</p>
-      <p className='text-sm text-[#8b949e] mb-4'>
-        Trips move here once they&apos;ve been engaged.
-        New leads start in Inbox.
+      <p className='text-sm text-[#8b949e] mb-6'>
+        Trips appear here once you engage a lead from the inbox.
       </p>
-      <Link
-        href='/inbox'
-        className='inline-flex items-center gap-2 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg text-sm font-medium hover:bg-[#6eb5ff] transition-colors'
-      >
-        Go to Inbox
-        <ChevronRight className='w-4 h-4' aria-hidden='true' />
-      </Link>
+      <div className='flex items-center justify-center gap-3'>
+        <Link
+          href='/inbox'
+          className='inline-flex items-center gap-2 px-5 py-2.5 bg-[#58a6ff] text-[#0d1117] rounded-lg text-sm font-semibold hover:bg-[#6eb5ff] transition-colors'
+        >
+          Browse Inbox
+          <ChevronRight className='w-4 h-4' aria-hidden='true' />
+        </Link>
+        <Link
+          href='/workbench'
+          className='inline-flex items-center gap-2 px-5 py-2.5 border border-[#30363d] text-[#e6edf3] rounded-lg text-sm font-medium hover:bg-[#161b22] transition-colors'
+        >
+          New Inquiry
+        </Link>
+      </div>
     </div>
   );
 }
@@ -366,15 +412,6 @@ export default function WorkspacesPage() {
         </>
       )}
 
-      {/* Cross-link to inbox for context */}
-      {!error && !isLoading && (
-        <div className='flex items-center gap-2 text-sm text-[#484f58]'>
-          <span>New leads waiting to be engaged →</span>
-          <Link href='/inbox' className='text-[#58a6ff] hover:text-[#79b8ff] transition-colors'>
-            Inbox
-          </Link>
-        </div>
-      )}
     </div>
   );
 }

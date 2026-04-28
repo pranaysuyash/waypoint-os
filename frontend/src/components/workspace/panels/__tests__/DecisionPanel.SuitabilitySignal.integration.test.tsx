@@ -69,7 +69,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
 
       render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
-      expect(screen.getByText("Decision State")).toBeInTheDocument();
+      expect(screen.getByText("Quote Assessment")).toBeInTheDocument();
       expect(screen.queryByText("Suitability Audit Results")).not.toBeInTheDocument();
     });
   });
@@ -280,7 +280,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
 
       render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
-      expect(screen.getByText("Decision State")).toBeInTheDocument();
+      expect(screen.getByText("Quote Assessment")).toBeInTheDocument();
       expect(screen.queryByText("Suitability Audit Results")).not.toBeInTheDocument();
     });
 
@@ -294,7 +294,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
 
       render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
-      expect(screen.getByText("Decision State")).toBeInTheDocument();
+      expect(screen.getByText("Quote Assessment")).toBeInTheDocument();
       expect(screen.queryByText("Suitability Audit Results")).not.toBeInTheDocument();
     });
 
@@ -456,7 +456,7 @@ describe("DecisionPanel with SuitabilitySignal Integration", () => {
 
       render(<DecisionPanel trip={asTrip(mockTrip)} tripId="trip-123" />);
 
-      expect(screen.getByText("Decision State")).toBeInTheDocument();
+      expect(screen.getByText("Quote Assessment")).toBeInTheDocument();
       expect(screen.getByText("budget_feasibility")).toBeInTheDocument();
     });
   });

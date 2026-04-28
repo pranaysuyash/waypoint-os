@@ -19,6 +19,10 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     setDebugRawJson,
     scenario_id,
     setScenarioId,
+    setInputRawNote,
+    setInputOwnerNote,
+    setInputStructuredJson,
+    setInputItineraryText,
     enable_ghost_concierge,
     setEnableGhostConcierge,
     enable_sentiment_analysis,
@@ -36,6 +40,9 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const { state: unifiedState, refresh: refreshUnified } = useUnifiedState();
   const [repairingId, setRepairingId] = useState<string | null>(null);
   const [repairStatus, setRepairStatus] = useState<{ id: string, success: boolean } | null>(null);
+  const [isGeneratingScenario, setIsGeneratingScenario] = useState(false);
+  const [scenarioGenStatus, setScenarioGenStatus] = useState<string | null>(null);
+  const [scenarioSourceMode, setScenarioSourceMode] = useState<'docs' | 'fixtures' | 'llm'>('docs');
 
   const orphans = unifiedState?.orphans || [];
 
@@ -61,6 +68,45 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       setRepairStatus({ id, success: false });
     } finally {
       setRepairingId(null);
+    }
+  };
+
+  const handleGenerateDevScenario = async () => {
+    setIsGeneratingScenario(true);
+    setScenarioGenStatus(null);
+    try {
+      const response = await fetch('/api/scenarios/dev/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          prompt: 'messy real-world intake scenario',
+          source_mode: scenarioSourceMode,
+        }),
+      });
+      if (!response.ok) {
+        setScenarioGenStatus('Failed to generate scenario');
+        return;
+      }
+      const payload = await response.json();
+      const input = payload?.input;
+      if (!input?.raw_note) {
+        setScenarioGenStatus('Scenario generator returned invalid payload');
+        return;
+      }
+      setScenarioId('');
+      setInputRawNote(input.raw_note ?? '');
+      setInputOwnerNote(input.owner_note ?? '');
+      setInputStructuredJson(input.structured_json ? JSON.stringify(input.structured_json, null, 2) : '');
+      setInputItineraryText(input.itinerary_text ?? '');
+      setScenarioGenStatus(
+        `Loaded ${payload?.source ?? 'generated'} scenario and saved fixture ${payload?.persisted_fixture?.file_name ?? ''}`.trim()
+      );
+    } catch (err) {
+      console.error('Scenario generation failed:', err);
+      setScenarioGenStatus('Failed to generate scenario');
+    } finally {
+      setIsGeneratingScenario(false);
     }
   };
 
@@ -342,6 +388,29 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             <p className='text-xs text-[#8b949e]'>
               Pre-loaded test scenario for processing trips
             </p>
+            <button
+              type='button'
+              onClick={handleGenerateDevScenario}
+              disabled={isGeneratingScenario}
+              className='w-full px-3 py-2 bg-[#161b22] border border-[#30363d] rounded-lg text-xs text-[#e6edf3] hover:bg-[#21262d] disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+            >
+              {isGeneratingScenario ? 'Generating Dev Scenario...' : 'Generate Random Dev Scenario'}
+            </button>
+            <select
+              value={scenarioSourceMode}
+              onChange={(e) => setScenarioSourceMode(e.target.value as 'docs' | 'fixtures' | 'llm')}
+              className='w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-xs text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] appearance-none'
+            >
+              <option value='docs'>Generate from Docs Templates</option>
+              <option value='fixtures'>Generate from Fixture Templates</option>
+              <option value='llm'>Generate via LLM (.env.local key)</option>
+            </select>
+            <p className='text-[10px] text-[#8b949e]'>
+              Dev-only: explicit source selection. LLM mode reads `OPENAI_API_KEY` from `frontend/.env.local`. All generated scenarios are saved for reuse.
+            </p>
+            {scenarioGenStatus && (
+              <p className='text-[10px] text-[#58a6ff]'>{scenarioGenStatus}</p>
+            )}
             {scenariosError && (
               <p className='text-xs text-[#f85149] mt-1'>
                 Failed to load scenarios: {scenariosError.message}

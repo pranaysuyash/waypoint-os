@@ -3,10 +3,10 @@ import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { tripId: string } }
+  { params }: { params: Promise<{ tripId: string }> }
 ) {
   try {
-    const { tripId } = params;
+    const { tripId } = await params;
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.toString();
     const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/followups/${tripId}/snooze${query ? `?${query}` : ""}`;

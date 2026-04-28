@@ -13,7 +13,7 @@ export function PacketPanel({ tripId }: PacketPanelProps) {
 
   if (!result_packet) {
     return (
-      <div className="p-4 text-sm text-gray-500 italic">
+      <div className="p-4 text-sm text-[#8b949e] italic">
         No booking request data for trip {tripId}. Process a trip from the "Intake" section first.
       </div>
     );
@@ -40,19 +40,19 @@ export function PacketPanel({ tripId }: PacketPanelProps) {
     <div className="space-y-8">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {Object.entries(summaryData).map(([label, value]) => (
-          <div key={label} className="bg-[#0a0d11] p-3 rounded-lg border border-[#1c2128]">
-            <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{label}</div>
-            <div className="text-sm font-medium text-gray-200 mt-1">{String(value)}</div>
+          <div key={label} className="bg-[#161b22] p-3 rounded-xl border border-[#21262d]">
+            <div className="text-[10px] font-bold text-[#484f58] uppercase tracking-widest mb-1">{label}</div>
+            <div className="text-sm font-semibold text-[#e6edf3] font-mono">{String(value)}</div>
           </div>
         ))}
       </div>
 
       {/* Facts Section */}
       <section>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Extracted Information</h3>
+        <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#484f58] mb-3">Extracted Information</h3>
         <div className="bg-[#0a0d11] rounded-lg border border-[#1c2128] overflow-hidden">
           <table className="w-full text-sm text-left">
-            <thead className="bg-[#161b22] text-gray-400 text-[10px] uppercase">
+            <thead className="bg-[#161b22] text-[#484f58] text-[10px] uppercase tracking-widest">
               <tr>
                 <th className="px-4 py-2">Field</th>
                 <th className="px-4 py-2">Value</th>
@@ -62,11 +62,11 @@ export function PacketPanel({ tripId }: PacketPanelProps) {
             </thead>
             <tbody className="divide-y divide-[#1c2128]">
               {Object.entries(facts).map(([field, slot]) => (
-                <tr key={`fact-${field}`} className="text-gray-300">
+                <tr key={`fact-${field}`} className="text-[#c9d1d9]">
                   <td className="px-4 py-2 text-xs">{labelOrTitle(FIELD_LABELS, field)}</td>
                   <td className="px-4 py-2">{_formatValue(slot.value)}</td>
-                  <td className="px-4 py-2 text-gray-500">{_formatConfidence(slot.confidence)}</td>
-                  <td className="px-4 py-2 text-gray-500">{slot.authority_level || "—"}</td>
+                  <td className="px-4 py-2 text-[#8b949e]">{_formatConfidence(slot.confidence)}</td>
+                  <td className="px-4 py-2 text-[#8b949e]">{slot.authority_level || "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -77,12 +77,12 @@ export function PacketPanel({ tripId }: PacketPanelProps) {
       {/* Derived Signals */}
       {Object.keys(derivedSignals).length > 0 && (
         <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Inferred Details</h3>
+          <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#484f58] mb-3">Inferred Details</h3>
           <div className="bg-[#0a0d11] rounded-lg border border-[#1c2128] p-4 divide-y divide-[#1c2128]">
             {Object.entries(derivedSignals).map(([signal, slot]) => (
-              <div key={`sig-${signal}`} className="flex justify-between py-2 text-sm text-gray-300">
+              <div key={`sig-${signal}`} className="flex justify-between py-2 text-sm text-[#c9d1d9]">
                 <span className="font-medium">{labelOrTitle(SIGNAL_LABELS, signal)}</span>
-                <span className="text-gray-500 text-xs">{String(slot.value)} ({_formatConfidence(slot.confidence)})</span>
+                <span className="text-[#8b949e] text-xs">{String(slot.value)} ({_formatConfidence(slot.confidence)})</span>
               </div>
             ))}
           </div>
@@ -93,14 +93,14 @@ export function PacketPanel({ tripId }: PacketPanelProps) {
 
       <button
         type="button"
-        className="text-xs text-blue-400 hover:text-blue-300 underline"
+        className="text-xs text-[#484f58] hover:text-[#8b949e] underline"
         onClick={() => setDebugRawJson(!debug_raw_json)}
       >
         {debug_raw_json ? "Hide" : "Show"} Technical Data
       </button>
 
       {debug_raw_json && (
-        <pre className="bg-[#0a0d11] p-4 rounded text-xs font-mono text-gray-400 overflow-x-auto">
+        <pre className="bg-[#0d1117] border border-[#21262d] p-4 rounded-xl text-[11px] font-mono text-[#8b949e] overflow-x-auto leading-relaxed">
           {JSON.stringify(bookingRequest, null, 2)}
         </pre>
       )}

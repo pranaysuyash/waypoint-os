@@ -39,10 +39,10 @@ class GhostWorkflow(Base):
     status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False)
 
     action_payload: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-    autonomic_level: Mapped[int] = mapped_column(Integer, default=0)
+    autonomic_level: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
     updated_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True,
@@ -84,7 +84,7 @@ class EmotionalStateLog(Base):
     # TODO(frontier): replace loose trip_id with ForeignKey once trips are normalized into SQL.
     trip_id: Mapped[str] = mapped_column(String(36), nullable=False)
 
-    sentiment_score: Mapped[float] = mapped_column(Float, default=0.5)
+    sentiment_score: Mapped[float] = mapped_column(Float, default=0.5, nullable=False)
     # Privacy note: anxiety_trigger may contain sensitive traveler data. Ensure
     # access controls and retention policies are in place before production use.
     anxiety_trigger: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -93,10 +93,13 @@ class EmotionalStateLog(Base):
     recovery_time_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     recorded_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
 
+    agency: Mapped["Agency"] = relationship("Agency")
+
     __table_args__ = (
+        Index("ix_emotional_state_logs_agency_id", "agency_id"),
         Index("ix_emotional_state_logs_trip_id", "trip_id"),
         Index("ix_emotional_state_logs_traveler_id", "traveler_id"),
         CheckConstraint(
@@ -118,14 +121,14 @@ class IntelligencePoolRecord(Base):
     # agency, booking, email, phone, or location-identifying data here.
     anonymized_data: Mapped[dict] = mapped_column(JSON, default=dict)
 
-    severity: Mapped[int] = mapped_column(Integer, default=1)
-    confidence: Mapped[float] = mapped_column(Float, default=1.0)
+    severity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
 
     # Privacy note: source_agency_hash is a stable pseudonymous identifier.
     # Ensure it cannot be reverse-mapped to a specific agency.
     source_agency_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     verified_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
 
     __table_args__ = (
@@ -164,7 +167,7 @@ class LegacyAspiration(Base):
     status: Mapped[str] = mapped_column(String(50), default="aspirational", nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
     updated_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True,

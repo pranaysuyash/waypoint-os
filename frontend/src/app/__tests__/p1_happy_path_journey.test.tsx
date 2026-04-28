@@ -208,7 +208,7 @@ describe("P1 Happy Path Journey", () => {
     } as any);
 
     render(<WorkspacesPage />);
-    const returnInbox = screen.getByRole("link", { name: /Go to Inbox/i });
+    const returnInbox = screen.getByRole("link", { name: /Browse Inbox/i });
     expect(returnInbox).toHaveAttribute("href", "/inbox");
   });
 });

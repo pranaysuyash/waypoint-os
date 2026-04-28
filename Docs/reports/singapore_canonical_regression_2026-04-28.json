@@ -1,0 +1,1785 @@
+{
+  "generated_at": "2026-04-28T16:47:47.957778+00:00",
+  "scenario": {
+    "scenario_id": "SC-901",
+    "title": "Ravi Singapore messy call - canonical regression",
+    "description": "Real call-style intake with mixed context, partial dates, and multi-generation party; used as canonical E2E regression through frontend proxy and backend async run ledger.",
+    "inputs": {
+      "raw_note": "Hi Ravi, I got your number from my wife who is a colleague of Divya.\nWe are planning to visit Singapore sometime in Jan or Feb 2025.\nTentative dates around 9th to 14th Feb, approx 5 days.\nMe, my wife, our 1.7 year old kid, and my parents would be going.\nWe don't want it rushed. Interested in Universal Studios and nature parks.",
+      "owner_note": "Late-Nov call context; budget-conscious family, relaxed pace.",
+      "structured_json": null,
+      "itinerary_text": null,
+      "stage": "discovery",
+      "operating_mode": "copilot",
+      "strict_leakage": false,
+      "scenario_id": "SC-901"
+    },
+    "expected": {
+      "allowed_terminal_states": [
+        "completed",
+        "blocked",
+        "failed"
+      ],
+      "required_packet_fields": [
+        "destination_candidates",
+        "date_window",
+        "party_size",
+        "trip_purpose"
+      ],
+      "must_not_include_soft_preferences": [
+        "it rushed"
+      ],
+      "expected_decision_state": "ASK_FOLLOWUP"
+    }
+  },
+  "flows": [
+    {
+      "flow_name": "frontend_proxy_async_path",
+      "base_url": "http://localhost:3000",
+      "post_path": "/api/spine/run",
+      "poll_path_template": "/api/runs/{run_id}",
+      "runtime_ms": 1133.24,
+      "poll_runtime_ms": 987.25,
+      "accepted": {
+        "run_id": "af4133bc-cfde-4f93-8f90-3a4e894c23a7",
+        "state": "queued"
+      },
+      "snapshots": [
+        {
+          "ts": "2026-04-28T16:47:49.000084+00:00",
+          "state": "completed",
+          "stage": "discovery",
+          "execution_ms": null,
+          "trip_id": "trip_db00521bd7fc",
+          "error_message": null,
+          "block_reason": null
+        }
+      ],
+      "final_status": {
+        "run_id": "af4133bc-cfde-4f93-8f90-3a4e894c23a7",
+        "state": "completed",
+        "trip_id": "trip_db00521bd7fc",
+        "stage": "discovery",
+        "operating_mode": "copilot",
+        "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "created_at": "2026-04-28T16:47:48.010848+00:00",
+        "started_at": "2026-04-28T16:47:48.012504+00:00",
+        "completed_at": "2026-04-28T16:47:48.903183+00:00",
+        "total_ms": 865.08,
+        "steps_completed": [
+          "packet",
+          "validation",
+          "decision",
+          "strategy"
+        ],
+        "events": [
+          {
+            "event_id": "evt_fa364cd6",
+            "event_type": "run_started",
+            "run_id": "af4133bc-cfde-4f93-8f90-3a4e894c23a7",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:48.012706+00:00",
+            "stage": "discovery",
+            "operating_mode": "copilot"
+          },
+          {
+            "event_id": "evt_641640d4",
+            "event_type": "pipeline_stage_entered",
+            "run_id": "af4133bc-cfde-4f93-8f90-3a4e894c23a7",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:48.013846+00:00",
+            "stage_name": "packet"
+          },
+          {
+            "event_id": "evt_c256363c",
+            "event_type": "pipeline_stage_completed",
+            "run_id": "af4133bc-cfde-4f93-8f90-3a4e894c23a7",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:48.875242+00:00",
+            "stage_name": "packet",
+            "execution_ms": 861.4
+          },
+          {
+            "event_id": "evt_b8bb1664",
+            "event_type": "pipeline_stage_entered",
+            "run_id": "af4133bc-cfde-4f93-8f90-3a4e894c23a7",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:48.875537+00:00",
+            "stage_name": "validation"
+          },
+          {
+            "event_id": "evt_2d8cf74b",
+            "event_type": "pipeline_stage_completed",
+            "run_id": "af4133bc-cfde-4f93-8f90-3a4e894c23a7",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:48.876156+00:00",
+            "stage_name": "validation",
+            "execution_ms": 0.62
+          },
+          {
+            "event_id": "evt_af1fd701",
+            "event_type": "run_completed",
+            "run_id": "af4133bc-cfde-4f93-8f90-3a4e894c23a7",
+            "trip_id": "trip_db00521bd7fc",
+            "timestamp": "2026-04-28T16:47:48.903461+00:00",
+            "total_ms": 865.08
+          }
+        ],
+        "error_type": null,
+        "error_message": null,
+        "stage_at_failure": null,
+        "block_reason": null,
+        "decision_state": "ASK_FOLLOWUP",
+        "follow_up_questions": [
+          {
+            "field_name": "origin_city",
+            "priority": "medium",
+            "question": "Please provide origin city to generate a quote."
+          },
+          {
+            "field_name": "budget_raw_text",
+            "priority": "medium",
+            "question": "Please provide budget raw text to generate a quote."
+          }
+        ],
+        "hard_blockers": [],
+        "soft_blockers": [
+          "incomplete_intake"
+        ],
+        "step_payloads": {
+          "packet": {
+            "packet_id": "pkt_f827aa3a",
+            "schema_version": "0.2",
+            "stage": "discovery",
+            "operating_mode": "copilot",
+            "decision_state": null,
+            "facts": {
+              "destination_candidates": {
+                "value": [
+                  "Singapore"
+                ],
+                "confidence": 0.5,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_8fa7cba8",
+                    "evidence_type": "text_span",
+                    "excerpt": "Singapore",
+                    "ref_id": "ref_3384a0",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:48.867932",
+                "notes": null
+              },
+              "destination_status": {
+                "value": "definite",
+                "confidence": 0.8,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_8fa7cba8",
+                    "evidence_type": "text_span",
+                    "excerpt": "Derived from destination text",
+                    "ref_id": "ref_c2acc9",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:48.867959",
+                "notes": null
+              },
+              "date_window": {
+                "value": "dates around 9th to 14th feb",
+                "confidence": 0.8,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_8fa7cba8",
+                    "evidence_type": "text_span",
+                    "excerpt": "dates around 9th to 14th feb",
+                    "ref_id": "ref_a14f14",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:48.869051",
+                "notes": null
+              },
+              "date_start": {
+                "value": "2025-02-09",
+                "confidence": 0.95,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_8fa7cba8",
+                    "evidence_type": "text_span",
+                    "excerpt": "dates around 9th to 14th feb",
+                    "ref_id": "ref_3f2696",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:48.869061",
+                "notes": null
+              },
+              "date_end": {
+                "value": "2025-02-14",
+                "confidence": 0.95,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_8fa7cba8",
+                    "evidence_type": "text_span",
+                    "excerpt": "dates around 9th to 14th feb",
+                    "ref_id": "ref_a695ca",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:48.869069",
+                "notes": null
+              },
+              "date_confidence": {
+                "value": "tentative",
+                "confidence": 0.9,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_8fa7cba8",
+                    "evidence_type": "text_span",
+                    "excerpt": "Derived from date parsing",
+                    "ref_id": "ref_0b7789",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:48.869078",
+                "notes": null
+              },
+              "party_size": {
+                "value": 5,
+                "confidence": 0.9,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_8fa7cba8",
+                    "evidence_type": "text_span",
+                    "excerpt": "5",
+                    "ref_id": "ref_14d5f5",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:48.870294",
+                "notes": null
+              },
+              "party_composition": {
+                "value": {
+                  "adults": 4,
+                  "children": 1
+                },
+                "confidence": 0.85,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_8fa7cba8",
+                    "evidence_type": "text_span",
+                    "excerpt": "{'adults': 4, 'children': 1}",
+                    "ref_id": "ref_62ff9b",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:48.870317",
+                "notes": null
+              },
+              "child_ages": {
+                "value": [
+                  1.7
+                ],
+                "confidence": 0.85,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_8fa7cba8",
+                    "evidence_type": "text_span",
+                    "excerpt": "[1.7]",
+                    "ref_id": "ref_c3b6b7",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:48.870328",
+                "notes": null
+              },
+              "trip_purpose": {
+                "value": "family leisure",
+                "confidence": 0.8,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_8fa7cba8",
+                    "evidence_type": "text_span",
+                    "excerpt": "family leisure",
+                    "ref_id": "ref_3e4ebe",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:48.872051",
+                "notes": null
+              },
+              "hard_constraints": {
+                "value": [
+                  "relaxed pace"
+                ],
+                "confidence": 0.8,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_8fa7cba8",
+                    "evidence_type": "text_span",
+                    "excerpt": "['relaxed pace']",
+                    "ref_id": "ref_93d46b",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:48.872066",
+                "notes": null
+              },
+              "soft_preferences": {
+                "value": [
+                  "universal studios and nature parks",
+                  "Universal Studios"
+                ],
+                "confidence": 0.8,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_8fa7cba8",
+                    "evidence_type": "text_span",
+                    "excerpt": "['universal studios and nature parks', 'Universal Studios']",
+                    "ref_id": "ref_da3fb3",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:48.872079",
+                "notes": null
+              },
+              "traveler_plan": {
+                "value": "nothing_booked",
+                "confidence": 0.85,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_bbbbaf4b",
+                    "evidence_type": "text_span",
+                    "excerpt": "nothing_booked",
+                    "ref_id": "ref_242e04",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:48.873623",
+                "notes": null
+              }
+            },
+            "derived_signals": {
+              "urgency": {
+                "value": "high",
+                "confidence": 0.9,
+                "authority_level": "derived_signal",
+                "extraction_mode": "derived",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "derived",
+                    "evidence_type": "text_span",
+                    "excerpt": "Computed from date_end=2025-02-14, days_until=0",
+                    "ref_id": "ref_e4a2e0",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:48.873675",
+                "notes": "0 days until travel",
+                "maturity": "verified"
+              },
+              "internal_data_present": {
+                "value": true,
+                "confidence": 1,
+                "authority_level": "derived_signal",
+                "extraction_mode": "derived",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "derived",
+                    "evidence_type": "text_span",
+                    "excerpt": "Hypotheses, contradictions, or ambiguities present",
+                    "ref_id": "ref_c55a48",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:48.873689",
+                "notes": null,
+                "maturity": "verified"
+              },
+              "sourcing_path": {
+                "value": "open_market",
+                "confidence": 0.3,
+                "authority_level": "derived_signal",
+                "extraction_mode": "derived",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "derived",
+                    "evidence_type": "text_span",
+                    "excerpt": "Stub \u2014 enrich with internal package lookup and preferred supplier data",
+                    "ref_id": "ref_52327f",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:48.873754",
+                "notes": "Stub signal \u2014 no real supplier data available yet",
+                "maturity": "stub"
+              }
+            },
+            "hypotheses": {},
+            "lifecycle": null,
+            "feedback": null,
+            "raw_note": null,
+            "suitability_flags": [],
+            "ambiguities": [
+              {
+                "field_name": "destination_candidates",
+                "ambiguity_type": "unresolved_alternatives",
+                "raw_value": " your number from my wife who is a colleague of Divya.\nWe are planning to visit Singapore sometime in Jan or Feb 2025.\nTentative dates around 9th to 14th Feb, approx 5 d",
+                "normalized_value": null,
+                "confidence": 0.8,
+                "evidence_refs": [],
+                "notes": null
+              },
+              {
+                "field_name": "destination_candidates",
+                "ambiguity_type": "date_window_only",
+                "raw_value": " your number from my wife who is a colleague of Divya.\nWe are planning to visit Singapore sometime in Jan or Feb 2025.\nTentative dates around 9th to 14th Feb, approx 5 d",
+                "normalized_value": null,
+                "confidence": 0.8,
+                "evidence_refs": [],
+                "notes": null
+              },
+              {
+                "field_name": "destination_candidates",
+                "ambiguity_type": "budget_unclear_scope",
+                "raw_value": " your number from my wife who is a colleague of Divya.\nWe are planning to visit Singapore sometime in Jan or Feb 2025.\nTentative dates around 9th to 14th Feb, approx 5 d",
+                "normalized_value": null,
+                "confidence": 0.8,
+                "evidence_refs": [],
+                "notes": null
+              }
+            ],
+            "unknowns": [
+              {
+                "field_name": "origin_city",
+                "reason": "not_present_in_source",
+                "attempted_at": null,
+                "notes": null
+              },
+              {
+                "field_name": "budget_raw_text",
+                "reason": "not_present_in_source",
+                "attempted_at": null,
+                "notes": null
+              }
+            ],
+            "contradictions": [],
+            "source_envelope_ids": [
+              "env_8fa7cba8",
+              "env_bbbbaf4b"
+            ],
+            "revision_count": 0,
+            "event_cursor": 22,
+            "events": [
+              {
+                "event_id": 1,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:48.867946",
+                "details": {
+                  "field_name": "destination_candidates",
+                  "value": [
+                    "Singapore"
+                  ]
+                }
+              },
+              {
+                "event_id": 2,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:48.867963",
+                "details": {
+                  "field_name": "destination_status",
+                  "value": "definite"
+                }
+              },
+              {
+                "event_id": 3,
+                "event_type": "ambiguity_added",
+                "timestamp": "2026-04-28T22:17:48.868697",
+                "details": {
+                  "field_name": "destination_candidates",
+                  "ambiguity_type": "unresolved_alternatives"
+                }
+              },
+              {
+                "event_id": 4,
+                "event_type": "ambiguity_added",
+                "timestamp": "2026-04-28T22:17:48.868702",
+                "details": {
+                  "field_name": "destination_candidates",
+                  "ambiguity_type": "date_window_only"
+                }
+              },
+              {
+                "event_id": 5,
+                "event_type": "ambiguity_added",
+                "timestamp": "2026-04-28T22:17:48.868705",
+                "details": {
+                  "field_name": "destination_candidates",
+                  "ambiguity_type": "budget_unclear_scope"
+                }
+              },
+              {
+                "event_id": 6,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:48.869054",
+                "details": {
+                  "field_name": "date_window",
+                  "value": "dates around 9th to 14th feb"
+                }
+              },
+              {
+                "event_id": 7,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:48.869063",
+                "details": {
+                  "field_name": "date_start",
+                  "value": "2025-02-09"
+                }
+              },
+              {
+                "event_id": 8,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:48.869071",
+                "details": {
+                  "field_name": "date_end",
+                  "value": "2025-02-14"
+                }
+              },
+              {
+                "event_id": 9,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:48.869080",
+                "details": {
+                  "field_name": "date_confidence",
+                  "value": "tentative"
+                }
+              },
+              {
+                "event_id": 10,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:48.870303",
+                "details": {
+                  "field_name": "party_size",
+                  "value": 5
+                }
+              },
+              {
+                "event_id": 11,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:48.870319",
+                "details": {
+                  "field_name": "party_composition",
+                  "value": {
+                    "adults": 4,
+                    "children": 1
+                  }
+                }
+              },
+              {
+                "event_id": 12,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:48.870329",
+                "details": {
+                  "field_name": "child_ages",
+                  "value": [
+                    1.7
+                  ]
+                }
+              },
+              {
+                "event_id": 13,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:48.872057",
+                "details": {
+                  "field_name": "trip_purpose",
+                  "value": "family leisure"
+                }
+              },
+              {
+                "event_id": 14,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:48.872069",
+                "details": {
+                  "field_name": "hard_constraints",
+                  "value": [
+                    "relaxed pace"
+                  ]
+                }
+              },
+              {
+                "event_id": 15,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:48.872082",
+                "details": {
+                  "field_name": "soft_preferences",
+                  "value": [
+                    "universal studios and nature parks",
+                    "Universal Studios"
+                  ]
+                }
+              },
+              {
+                "event_id": 16,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:48.872747",
+                "details": {
+                  "field_name": "traveler_plan",
+                  "value": "nothing_booked"
+                }
+              },
+              {
+                "event_id": 17,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:48.873629",
+                "details": {
+                  "field_name": "traveler_plan",
+                  "value": "nothing_booked"
+                }
+              },
+              {
+                "event_id": 18,
+                "event_type": "derived_signal_set",
+                "timestamp": "2026-04-28T22:17:48.873678",
+                "details": {
+                  "field_name": "urgency",
+                  "value": "high"
+                }
+              },
+              {
+                "event_id": 19,
+                "event_type": "derived_signal_set",
+                "timestamp": "2026-04-28T22:17:48.873691",
+                "details": {
+                  "field_name": "internal_data_present",
+                  "value": true
+                }
+              },
+              {
+                "event_id": 20,
+                "event_type": "derived_signal_set",
+                "timestamp": "2026-04-28T22:17:48.873760",
+                "details": {
+                  "field_name": "sourcing_path",
+                  "value": "open_market"
+                }
+              },
+              {
+                "event_id": 21,
+                "event_type": "unknown_added",
+                "timestamp": "2026-04-28T22:17:48.873768",
+                "details": {
+                  "field_name": "origin_city",
+                  "reason": "not_present_in_source"
+                }
+              },
+              {
+                "event_id": 22,
+                "event_type": "unknown_added",
+                "timestamp": "2026-04-28T22:17:48.873771",
+                "details": {
+                  "field_name": "budget_raw_text",
+                  "reason": "not_present_in_source"
+                }
+              }
+            ]
+          },
+          "validation": {
+            "status": "DEGRADED",
+            "gate": "NB01",
+            "reasons": [
+              "Intake minimum met \u2014 trip can be saved for later enrichment",
+              "Quote-ready fields are incomplete \u2014 quote generation blocked"
+            ]
+          },
+          "decision": {
+            "packet_id": "pkt_f827aa3a",
+            "current_stage": "discovery",
+            "operating_mode": "copilot",
+            "decision_state": "ASK_FOLLOWUP",
+            "hard_blockers": [],
+            "soft_blockers": [
+              "incomplete_intake"
+            ],
+            "ambiguities": [],
+            "contradictions": [],
+            "follow_up_questions": [
+              {
+                "field_name": "origin_city",
+                "priority": "medium",
+                "question": "Please provide origin city to generate a quote."
+              },
+              {
+                "field_name": "budget_raw_text",
+                "priority": "medium",
+                "question": "Please provide budget raw text to generate a quote."
+              }
+            ],
+            "branch_options": [],
+            "rationale": {
+              "gate_degrade": "NB01_DEGRADE",
+              "reasons": [
+                "Intake minimum met \u2014 trip can be saved for later enrichment",
+                "Quote-ready fields are incomplete \u2014 quote generation blocked"
+              ]
+            },
+            "confidence": {
+              "data_quality": 0,
+              "judgment_confidence": 0,
+              "commercial_confidence": 0,
+              "overall": 0
+            },
+            "risk_flags": [],
+            "suitability_profile": null,
+            "commercial_decision": "NONE",
+            "intent_scores": {},
+            "next_best_action": null,
+            "budget_breakdown": null
+          },
+          "strategy": {
+            "session_goal": "Partial intake \u2014 awaiting enrichment.",
+            "priority_sequence": [],
+            "tonal_guardrails": [],
+            "risk_flags": [],
+            "suggested_opening": "",
+            "exit_criteria": [],
+            "next_action": "ASK_FOLLOWUP",
+            "assumptions": [],
+            "suggested_tone": "professional"
+          }
+        }
+      },
+      "events": {
+        "run_id": "af4133bc-cfde-4f93-8f90-3a4e894c23a7",
+        "events": [
+          {
+            "event_id": "evt_fa364cd6",
+            "event_type": "run_started",
+            "run_id": "af4133bc-cfde-4f93-8f90-3a4e894c23a7",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:48.012706+00:00",
+            "stage": "discovery",
+            "operating_mode": "copilot"
+          },
+          {
+            "event_id": "evt_641640d4",
+            "event_type": "pipeline_stage_entered",
+            "run_id": "af4133bc-cfde-4f93-8f90-3a4e894c23a7",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:48.013846+00:00",
+            "stage_name": "packet"
+          },
+          {
+            "event_id": "evt_c256363c",
+            "event_type": "pipeline_stage_completed",
+            "run_id": "af4133bc-cfde-4f93-8f90-3a4e894c23a7",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:48.875242+00:00",
+            "stage_name": "packet",
+            "execution_ms": 861.4
+          },
+          {
+            "event_id": "evt_b8bb1664",
+            "event_type": "pipeline_stage_entered",
+            "run_id": "af4133bc-cfde-4f93-8f90-3a4e894c23a7",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:48.875537+00:00",
+            "stage_name": "validation"
+          },
+          {
+            "event_id": "evt_2d8cf74b",
+            "event_type": "pipeline_stage_completed",
+            "run_id": "af4133bc-cfde-4f93-8f90-3a4e894c23a7",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:48.876156+00:00",
+            "stage_name": "validation",
+            "execution_ms": 0.62
+          },
+          {
+            "event_id": "evt_af1fd701",
+            "event_type": "run_completed",
+            "run_id": "af4133bc-cfde-4f93-8f90-3a4e894c23a7",
+            "trip_id": "trip_db00521bd7fc",
+            "timestamp": "2026-04-28T16:47:48.903461+00:00",
+            "total_ms": 865.08
+          }
+        ],
+        "total": 6
+      },
+      "quality": {
+        "has_negation_leak_it_rushed": false,
+        "soft_preferences": [
+          "universal studios and nature parks",
+          "Universal Studios"
+        ],
+        "hard_constraints": [
+          "relaxed pace"
+        ],
+        "decision_state": "ASK_FOLLOWUP",
+        "follow_up_questions": [
+          {
+            "field_name": "origin_city",
+            "priority": "medium",
+            "question": "Please provide origin city to generate a quote."
+          },
+          {
+            "field_name": "budget_raw_text",
+            "priority": "medium",
+            "question": "Please provide budget raw text to generate a quote."
+          }
+        ],
+        "destination_status": "definite"
+      }
+    },
+    {
+      "flow_name": "backend_direct_async_path",
+      "base_url": "http://localhost:8000",
+      "post_path": "/run",
+      "poll_path_template": "/runs/{run_id}",
+      "runtime_ms": 223.09,
+      "poll_runtime_ms": 166.51,
+      "accepted": {
+        "run_id": "2c6ea7de-709e-4854-b625-a5a48164c937",
+        "state": "queued"
+      },
+      "snapshots": [
+        {
+          "ts": "2026-04-28T16:47:49.265806+00:00",
+          "state": "completed",
+          "stage": "discovery",
+          "execution_ms": null,
+          "trip_id": "trip_3899bf2ab37c",
+          "error_message": null,
+          "block_reason": null
+        }
+      ],
+      "final_status": {
+        "run_id": "2c6ea7de-709e-4854-b625-a5a48164c937",
+        "state": "completed",
+        "trip_id": "trip_3899bf2ab37c",
+        "stage": "discovery",
+        "operating_mode": "copilot",
+        "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "created_at": "2026-04-28T16:47:49.097224+00:00",
+        "started_at": "2026-04-28T16:47:49.100381+00:00",
+        "completed_at": "2026-04-28T16:47:49.119703+00:00",
+        "total_ms": 12.74,
+        "steps_completed": [
+          "packet",
+          "validation",
+          "decision",
+          "strategy"
+        ],
+        "events": [
+          {
+            "event_id": "evt_28ff3c4a",
+            "event_type": "run_started",
+            "run_id": "2c6ea7de-709e-4854-b625-a5a48164c937",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:49.101272+00:00",
+            "stage": "discovery",
+            "operating_mode": "copilot"
+          },
+          {
+            "event_id": "evt_b5637f75",
+            "event_type": "pipeline_stage_entered",
+            "run_id": "2c6ea7de-709e-4854-b625-a5a48164c937",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:49.105557+00:00",
+            "stage_name": "packet"
+          },
+          {
+            "event_id": "evt_7f9450c3",
+            "event_type": "pipeline_stage_completed",
+            "run_id": "2c6ea7de-709e-4854-b625-a5a48164c937",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:49.109327+00:00",
+            "stage_name": "packet",
+            "execution_ms": 3.77
+          },
+          {
+            "event_id": "evt_19d8f325",
+            "event_type": "pipeline_stage_entered",
+            "run_id": "2c6ea7de-709e-4854-b625-a5a48164c937",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:49.109531+00:00",
+            "stage_name": "validation"
+          },
+          {
+            "event_id": "evt_7e1a921d",
+            "event_type": "pipeline_stage_completed",
+            "run_id": "2c6ea7de-709e-4854-b625-a5a48164c937",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:49.110354+00:00",
+            "stage_name": "validation",
+            "execution_ms": 0.82
+          },
+          {
+            "event_id": "evt_05e66870",
+            "event_type": "run_completed",
+            "run_id": "2c6ea7de-709e-4854-b625-a5a48164c937",
+            "trip_id": "trip_3899bf2ab37c",
+            "timestamp": "2026-04-28T16:47:49.120164+00:00",
+            "total_ms": 12.74
+          }
+        ],
+        "error_type": null,
+        "error_message": null,
+        "stage_at_failure": null,
+        "block_reason": null,
+        "decision_state": "ASK_FOLLOWUP",
+        "follow_up_questions": [
+          {
+            "field_name": "origin_city",
+            "priority": "medium",
+            "question": "Please provide origin city to generate a quote."
+          },
+          {
+            "field_name": "budget_raw_text",
+            "priority": "medium",
+            "question": "Please provide budget raw text to generate a quote."
+          }
+        ],
+        "hard_blockers": [],
+        "soft_blockers": [
+          "incomplete_intake"
+        ],
+        "step_payloads": {
+          "packet": {
+            "packet_id": "pkt_eb22b5c2",
+            "schema_version": "0.2",
+            "stage": "discovery",
+            "operating_mode": "copilot",
+            "decision_state": null,
+            "facts": {
+              "destination_candidates": {
+                "value": [
+                  "Singapore"
+                ],
+                "confidence": 0.5,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_7c1a1648",
+                    "evidence_type": "text_span",
+                    "excerpt": "Singapore",
+                    "ref_id": "ref_43632f",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1.0,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:49.106285",
+                "notes": null
+              },
+              "destination_status": {
+                "value": "definite",
+                "confidence": 0.8,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_7c1a1648",
+                    "evidence_type": "text_span",
+                    "excerpt": "Derived from destination text",
+                    "ref_id": "ref_e4db4e",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1.0,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:49.106306",
+                "notes": null
+              },
+              "date_window": {
+                "value": "dates around 9th to 14th feb",
+                "confidence": 0.8,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_7c1a1648",
+                    "evidence_type": "text_span",
+                    "excerpt": "dates around 9th to 14th feb",
+                    "ref_id": "ref_acbde9",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1.0,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:49.106459",
+                "notes": null
+              },
+              "date_start": {
+                "value": "2025-02-09",
+                "confidence": 0.95,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_7c1a1648",
+                    "evidence_type": "text_span",
+                    "excerpt": "dates around 9th to 14th feb",
+                    "ref_id": "ref_bd6549",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1.0,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:49.106472",
+                "notes": null
+              },
+              "date_end": {
+                "value": "2025-02-14",
+                "confidence": 0.95,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_7c1a1648",
+                    "evidence_type": "text_span",
+                    "excerpt": "dates around 9th to 14th feb",
+                    "ref_id": "ref_5bd402",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1.0,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:49.106483",
+                "notes": null
+              },
+              "date_confidence": {
+                "value": "tentative",
+                "confidence": 0.9,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_7c1a1648",
+                    "evidence_type": "text_span",
+                    "excerpt": "Derived from date parsing",
+                    "ref_id": "ref_669a6d",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1.0,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:49.106494",
+                "notes": null
+              },
+              "party_size": {
+                "value": 5,
+                "confidence": 0.9,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_7c1a1648",
+                    "evidence_type": "text_span",
+                    "excerpt": "5",
+                    "ref_id": "ref_157a05",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1.0,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:49.106643",
+                "notes": null
+              },
+              "party_composition": {
+                "value": {
+                  "adults": 4,
+                  "children": 1
+                },
+                "confidence": 0.85,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_7c1a1648",
+                    "evidence_type": "text_span",
+                    "excerpt": "{'adults': 4, 'children': 1}",
+                    "ref_id": "ref_189a6c",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1.0,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:49.106655",
+                "notes": null
+              },
+              "child_ages": {
+                "value": [
+                  1.7
+                ],
+                "confidence": 0.85,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_7c1a1648",
+                    "evidence_type": "text_span",
+                    "excerpt": "[1.7]",
+                    "ref_id": "ref_5f753c",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1.0,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:49.106844",
+                "notes": null
+              },
+              "trip_purpose": {
+                "value": "family leisure",
+                "confidence": 0.8,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_7c1a1648",
+                    "evidence_type": "text_span",
+                    "excerpt": "family leisure",
+                    "ref_id": "ref_39de2a",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1.0,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:49.107052",
+                "notes": null
+              },
+              "hard_constraints": {
+                "value": [
+                  "relaxed pace"
+                ],
+                "confidence": 0.8,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_7c1a1648",
+                    "evidence_type": "text_span",
+                    "excerpt": "['relaxed pace']",
+                    "ref_id": "ref_110d12",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1.0,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:49.107066",
+                "notes": null
+              },
+              "soft_preferences": {
+                "value": [
+                  "universal studios and nature parks",
+                  "Universal Studios"
+                ],
+                "confidence": 0.8,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_7c1a1648",
+                    "evidence_type": "text_span",
+                    "excerpt": "['universal studios and nature parks', 'Universal Studios']",
+                    "ref_id": "ref_af92f2",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1.0,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:49.107079",
+                "notes": null
+              },
+              "traveler_plan": {
+                "value": "nothing_booked",
+                "confidence": 0.85,
+                "authority_level": "explicit_user",
+                "extraction_mode": "direct_extract",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "env_adcbe5c7",
+                    "evidence_type": "text_span",
+                    "excerpt": "nothing_booked",
+                    "ref_id": "ref_d41eb2",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1.0,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:49.107326",
+                "notes": null
+              }
+            },
+            "derived_signals": {
+              "urgency": {
+                "value": "high",
+                "confidence": 0.9,
+                "authority_level": "derived_signal",
+                "extraction_mode": "derived",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "derived",
+                    "evidence_type": "text_span",
+                    "excerpt": "Computed from date_end=2025-02-14, days_until=0",
+                    "ref_id": "ref_2599ab",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1.0,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:49.107372",
+                "notes": "0 days until travel",
+                "maturity": "verified"
+              },
+              "internal_data_present": {
+                "value": true,
+                "confidence": 1.0,
+                "authority_level": "derived_signal",
+                "extraction_mode": "derived",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "derived",
+                    "evidence_type": "text_span",
+                    "excerpt": "Hypotheses, contradictions, or ambiguities present",
+                    "ref_id": "ref_540a09",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1.0,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:49.107385",
+                "notes": null,
+                "maturity": "verified"
+              },
+              "sourcing_path": {
+                "value": "open_market",
+                "confidence": 0.3,
+                "authority_level": "derived_signal",
+                "extraction_mode": "derived",
+                "evidence_refs": [
+                  {
+                    "envelope_id": "derived",
+                    "evidence_type": "text_span",
+                    "excerpt": "Stub \u2014 enrich with internal package lookup and preferred supplier data",
+                    "ref_id": "ref_c03c2e",
+                    "field_path": null,
+                    "offset": null,
+                    "confidence": 1.0,
+                    "metadata": {}
+                  }
+                ],
+                "updated_at": "2026-04-28T22:17:49.107397",
+                "notes": "Stub signal \u2014 no real supplier data available yet",
+                "maturity": "stub"
+              }
+            },
+            "hypotheses": {},
+            "lifecycle": null,
+            "feedback": null,
+            "raw_note": null,
+            "suitability_flags": [],
+            "ambiguities": [
+              {
+                "field_name": "destination_candidates",
+                "ambiguity_type": "unresolved_alternatives",
+                "raw_value": " your number from my wife who is a colleague of Divya.\nWe are planning to visit Singapore sometime in Jan or Feb 2025.\nTentative dates around 9th to 14th Feb, approx 5 d",
+                "normalized_value": null,
+                "confidence": 0.8,
+                "evidence_refs": [],
+                "notes": null
+              },
+              {
+                "field_name": "destination_candidates",
+                "ambiguity_type": "date_window_only",
+                "raw_value": " your number from my wife who is a colleague of Divya.\nWe are planning to visit Singapore sometime in Jan or Feb 2025.\nTentative dates around 9th to 14th Feb, approx 5 d",
+                "normalized_value": null,
+                "confidence": 0.8,
+                "evidence_refs": [],
+                "notes": null
+              },
+              {
+                "field_name": "destination_candidates",
+                "ambiguity_type": "budget_unclear_scope",
+                "raw_value": " your number from my wife who is a colleague of Divya.\nWe are planning to visit Singapore sometime in Jan or Feb 2025.\nTentative dates around 9th to 14th Feb, approx 5 d",
+                "normalized_value": null,
+                "confidence": 0.8,
+                "evidence_refs": [],
+                "notes": null
+              }
+            ],
+            "unknowns": [
+              {
+                "field_name": "origin_city",
+                "reason": "not_present_in_source",
+                "attempted_at": null,
+                "notes": null
+              },
+              {
+                "field_name": "budget_raw_text",
+                "reason": "not_present_in_source",
+                "attempted_at": null,
+                "notes": null
+              }
+            ],
+            "contradictions": [],
+            "source_envelope_ids": [
+              "env_7c1a1648",
+              "env_adcbe5c7"
+            ],
+            "revision_count": 0,
+            "event_cursor": 22,
+            "events": [
+              {
+                "event_id": 1,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:49.106295",
+                "details": {
+                  "field_name": "destination_candidates",
+                  "value": [
+                    "Singapore"
+                  ]
+                }
+              },
+              {
+                "event_id": 2,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:49.106309",
+                "details": {
+                  "field_name": "destination_status",
+                  "value": "definite"
+                }
+              },
+              {
+                "event_id": 3,
+                "event_type": "ambiguity_added",
+                "timestamp": "2026-04-28T22:17:49.106404",
+                "details": {
+                  "field_name": "destination_candidates",
+                  "ambiguity_type": "unresolved_alternatives"
+                }
+              },
+              {
+                "event_id": 4,
+                "event_type": "ambiguity_added",
+                "timestamp": "2026-04-28T22:17:49.106407",
+                "details": {
+                  "field_name": "destination_candidates",
+                  "ambiguity_type": "date_window_only"
+                }
+              },
+              {
+                "event_id": 5,
+                "event_type": "ambiguity_added",
+                "timestamp": "2026-04-28T22:17:49.106409",
+                "details": {
+                  "field_name": "destination_candidates",
+                  "ambiguity_type": "budget_unclear_scope"
+                }
+              },
+              {
+                "event_id": 6,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:49.106462",
+                "details": {
+                  "field_name": "date_window",
+                  "value": "dates around 9th to 14th feb"
+                }
+              },
+              {
+                "event_id": 7,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:49.106474",
+                "details": {
+                  "field_name": "date_start",
+                  "value": "2025-02-09"
+                }
+              },
+              {
+                "event_id": 8,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:49.106485",
+                "details": {
+                  "field_name": "date_end",
+                  "value": "2025-02-14"
+                }
+              },
+              {
+                "event_id": 9,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:49.106496",
+                "details": {
+                  "field_name": "date_confidence",
+                  "value": "tentative"
+                }
+              },
+              {
+                "event_id": 10,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:49.106645",
+                "details": {
+                  "field_name": "party_size",
+                  "value": 5
+                }
+              },
+              {
+                "event_id": 11,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:49.106657",
+                "details": {
+                  "field_name": "party_composition",
+                  "value": {
+                    "adults": 4,
+                    "children": 1
+                  }
+                }
+              },
+              {
+                "event_id": 12,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:49.106857",
+                "details": {
+                  "field_name": "child_ages",
+                  "value": [
+                    1.7
+                  ]
+                }
+              },
+              {
+                "event_id": 13,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:49.107056",
+                "details": {
+                  "field_name": "trip_purpose",
+                  "value": "family leisure"
+                }
+              },
+              {
+                "event_id": 14,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:49.107069",
+                "details": {
+                  "field_name": "hard_constraints",
+                  "value": [
+                    "relaxed pace"
+                  ]
+                }
+              },
+              {
+                "event_id": 15,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:49.107080",
+                "details": {
+                  "field_name": "soft_preferences",
+                  "value": [
+                    "universal studios and nature parks",
+                    "Universal Studios"
+                  ]
+                }
+              },
+              {
+                "event_id": 16,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:49.107137",
+                "details": {
+                  "field_name": "traveler_plan",
+                  "value": "nothing_booked"
+                }
+              },
+              {
+                "event_id": 17,
+                "event_type": "fact_set",
+                "timestamp": "2026-04-28T22:17:49.107330",
+                "details": {
+                  "field_name": "traveler_plan",
+                  "value": "nothing_booked"
+                }
+              },
+              {
+                "event_id": 18,
+                "event_type": "derived_signal_set",
+                "timestamp": "2026-04-28T22:17:49.107374",
+                "details": {
+                  "field_name": "urgency",
+                  "value": "high"
+                }
+              },
+              {
+                "event_id": 19,
+                "event_type": "derived_signal_set",
+                "timestamp": "2026-04-28T22:17:49.107387",
+                "details": {
+                  "field_name": "internal_data_present",
+                  "value": true
+                }
+              },
+              {
+                "event_id": 20,
+                "event_type": "derived_signal_set",
+                "timestamp": "2026-04-28T22:17:49.107398",
+                "details": {
+                  "field_name": "sourcing_path",
+                  "value": "open_market"
+                }
+              },
+              {
+                "event_id": 21,
+                "event_type": "unknown_added",
+                "timestamp": "2026-04-28T22:17:49.107403",
+                "details": {
+                  "field_name": "origin_city",
+                  "reason": "not_present_in_source"
+                }
+              },
+              {
+                "event_id": 22,
+                "event_type": "unknown_added",
+                "timestamp": "2026-04-28T22:17:49.107405",
+                "details": {
+                  "field_name": "budget_raw_text",
+                  "reason": "not_present_in_source"
+                }
+              }
+            ]
+          },
+          "validation": {
+            "status": "DEGRADED",
+            "gate": "NB01",
+            "reasons": [
+              "Intake minimum met \u2014 trip can be saved for later enrichment",
+              "Quote-ready fields are incomplete \u2014 quote generation blocked"
+            ]
+          },
+          "decision": {
+            "packet_id": "pkt_eb22b5c2",
+            "current_stage": "discovery",
+            "operating_mode": "copilot",
+            "decision_state": "ASK_FOLLOWUP",
+            "hard_blockers": [],
+            "soft_blockers": [
+              "incomplete_intake"
+            ],
+            "ambiguities": [],
+            "contradictions": [],
+            "follow_up_questions": [
+              {
+                "field_name": "origin_city",
+                "priority": "medium",
+                "question": "Please provide origin city to generate a quote."
+              },
+              {
+                "field_name": "budget_raw_text",
+                "priority": "medium",
+                "question": "Please provide budget raw text to generate a quote."
+              }
+            ],
+            "branch_options": [],
+            "rationale": {
+              "gate_degrade": "NB01_DEGRADE",
+              "reasons": [
+                "Intake minimum met \u2014 trip can be saved for later enrichment",
+                "Quote-ready fields are incomplete \u2014 quote generation blocked"
+              ]
+            },
+            "confidence": {
+              "data_quality": 0.0,
+              "judgment_confidence": 0.0,
+              "commercial_confidence": 0.0,
+              "overall": 0.0
+            },
+            "risk_flags": [],
+            "suitability_profile": null,
+            "commercial_decision": "NONE",
+            "intent_scores": {},
+            "next_best_action": null,
+            "budget_breakdown": null
+          },
+          "strategy": {
+            "session_goal": "Partial intake \u2014 awaiting enrichment.",
+            "priority_sequence": [],
+            "tonal_guardrails": [],
+            "risk_flags": [],
+            "suggested_opening": "",
+            "exit_criteria": [],
+            "next_action": "ASK_FOLLOWUP",
+            "assumptions": [],
+            "suggested_tone": "professional"
+          }
+        }
+      },
+      "events": {
+        "run_id": "2c6ea7de-709e-4854-b625-a5a48164c937",
+        "events": [
+          {
+            "event_id": "evt_28ff3c4a",
+            "event_type": "run_started",
+            "run_id": "2c6ea7de-709e-4854-b625-a5a48164c937",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:49.101272+00:00",
+            "stage": "discovery",
+            "operating_mode": "copilot"
+          },
+          {
+            "event_id": "evt_b5637f75",
+            "event_type": "pipeline_stage_entered",
+            "run_id": "2c6ea7de-709e-4854-b625-a5a48164c937",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:49.105557+00:00",
+            "stage_name": "packet"
+          },
+          {
+            "event_id": "evt_7f9450c3",
+            "event_type": "pipeline_stage_completed",
+            "run_id": "2c6ea7de-709e-4854-b625-a5a48164c937",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:49.109327+00:00",
+            "stage_name": "packet",
+            "execution_ms": 3.77
+          },
+          {
+            "event_id": "evt_19d8f325",
+            "event_type": "pipeline_stage_entered",
+            "run_id": "2c6ea7de-709e-4854-b625-a5a48164c937",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:49.109531+00:00",
+            "stage_name": "validation"
+          },
+          {
+            "event_id": "evt_7e1a921d",
+            "event_type": "pipeline_stage_completed",
+            "run_id": "2c6ea7de-709e-4854-b625-a5a48164c937",
+            "trip_id": null,
+            "timestamp": "2026-04-28T16:47:49.110354+00:00",
+            "stage_name": "validation",
+            "execution_ms": 0.82
+          },
+          {
+            "event_id": "evt_05e66870",
+            "event_type": "run_completed",
+            "run_id": "2c6ea7de-709e-4854-b625-a5a48164c937",
+            "trip_id": "trip_3899bf2ab37c",
+            "timestamp": "2026-04-28T16:47:49.120164+00:00",
+            "total_ms": 12.74
+          }
+        ],
+        "total": 6
+      },
+      "quality": {
+        "has_negation_leak_it_rushed": false,
+        "soft_preferences": [
+          "universal studios and nature parks",
+          "Universal Studios"
+        ],
+        "hard_constraints": [
+          "relaxed pace"
+        ],
+        "decision_state": "ASK_FOLLOWUP",
+        "follow_up_questions": [
+          {
+            "field_name": "origin_city",
+            "priority": "medium",
+            "question": "Please provide origin city to generate a quote."
+          },
+          {
+            "field_name": "budget_raw_text",
+            "priority": "medium",
+            "question": "Please provide budget raw text to generate a quote."
+          }
+        ],
+        "destination_status": "definite"
+      }
+    }
+  ]
+}

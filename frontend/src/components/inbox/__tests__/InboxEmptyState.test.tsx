@@ -11,8 +11,9 @@ describe('InboxEmptyState', () => {
       />
     );
 
-    expect(screen.getByText('Your inbox is empty.')).toBeInTheDocument();
-    expect(screen.getByText('New trips will appear here as they come in.')).toBeInTheDocument();
+    expect(screen.getByText('No trips in your inbox')).toBeInTheDocument();
+    expect(screen.getByText('Create a new inquiry to get started.')).toBeInTheDocument();
+    expect(screen.getByText('New Inquiry')).toBeInTheDocument();
   });
 
   it('shows search-only message', () => {

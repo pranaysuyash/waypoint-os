@@ -8,7 +8,8 @@
 'use client';
 
 import { memo } from 'react';
-import { Search, Filter, Inbox } from 'lucide-react';
+import Link from 'next/link';
+import { Search, Filter, Inbox, Plus } from 'lucide-react';
 import { COLORS } from '@/lib/tokens';
 
 export interface InboxEmptyStateProps {
@@ -27,6 +28,7 @@ export const InboxEmptyState = memo(function InboxEmptyState({
   className,
 }: InboxEmptyStateProps) {
   const isFiltered = activeFilter !== 'all';
+  const isTrulyEmpty = !isFiltered && !hasSearch;
 
   return (
     <div className={`col-span-full py-16 text-center ${className || ''}`}>
@@ -38,7 +40,9 @@ export const InboxEmptyState = memo(function InboxEmptyState({
       </div>
 
       <p className="text-sm font-medium" style={{ color: COLORS.textSecondary }}>
-        {hasSearch && isFiltered
+        {isTrulyEmpty
+          ? 'No trips in your inbox'
+          : hasSearch && isFiltered
           ? 'No trips match this filter and search.'
           : hasSearch
           ? 'No trips match your search.'
@@ -48,7 +52,9 @@ export const InboxEmptyState = memo(function InboxEmptyState({
       </p>
 
       <p className="text-xs mt-1" style={{ color: COLORS.textMuted }}>
-        {hasSearch && isFiltered
+        {isTrulyEmpty
+          ? 'Create a new inquiry to get started.'
+          : hasSearch && isFiltered
           ? 'Try broadening your search or clearing the filter.'
           : hasSearch
           ? 'Try a different search term.'
@@ -58,6 +64,15 @@ export const InboxEmptyState = memo(function InboxEmptyState({
       </p>
 
       <div className="flex items-center justify-center gap-3 mt-4">
+        {isTrulyEmpty && (
+          <Link
+            href="/workbench"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#58a6ff] text-[#0d1117] rounded-lg text-sm font-semibold hover:bg-[#6eb5ff] transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            New Inquiry
+          </Link>
+        )}
         {hasSearch && onClearSearch && (
           <button
             type="button"

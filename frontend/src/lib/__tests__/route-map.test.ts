@@ -47,4 +47,9 @@ describe("resolveBackendPath", () => {
       ])
     ).toBe("runs/0c5d4e8d-0407-4211-803d-27095e9a896d/steps/decision");
   });
+
+  it("resolves run status and run events polling paths", () => {
+    expect(resolveBackendPath(["runs", "run_123"])).toBe("runs/run_123");
+    expect(resolveBackendPath(["runs", "run_123", "events"])).toBe("runs/run_123/events");
+  });
 });

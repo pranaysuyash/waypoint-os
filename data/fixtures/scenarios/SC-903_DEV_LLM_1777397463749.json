@@ -1,0 +1,26 @@
+{
+  "scenario_id": "DEV-LLM-1777397463749",
+  "title": "LLM dev scenario (2026-04-28)",
+  "description": "Generated for dev reuse (llm_generated)",
+  "inputs": {
+    "raw_note": "Caller rambles about vague trip: wants to go somewhere sunny for two weeks, maybe Europe or Caribbean, but has no firm dates or budget. They’re juggling multiple urgent deadlines, mentioned a family emergency last month, and are clearly stressed about getting everything booked before a school term. They throw out a dozen questions per minute: best airline miles, hotel with pool, refundable options, car rental pickup near airport, private transfer, travel insurance with coverage for medical and trip interruption, visa requirements, passport validity, and COVID testing rules. Keeps changing destination, mentions a cousin’s honeymoon, colleague’s bad experience with hidden fees. Keeps repeating “just get me something reasonable” and “I’ll decide after the call.” Requests emergency 24/7 support and a detailed itinerary with worst-case price. \n",
+    "owner_note": "Messy intake: stress, multi-criteria, shifting destinations, vague dates, budget anxiety. Capture key constraints: dates, approximate budget, preferred regions, flexibility, must-have items (insurance, visa), and willingness to consider bundled options. Provide a few safe, refundable variants and a concrete follow-up plan with a clear quote by email.",
+    "structured_json": null,
+    "itinerary_text": null,
+    "stage": "discovery",
+    "operating_mode": "normal_intake",
+    "strict_leakage": false,
+    "scenario_id": "DEV-LLM-1777397463749"
+  },
+  "expected": {
+    "allowed_terminal_states": [
+      "completed",
+      "blocked",
+      "failed"
+    ],
+    "notes": [
+      "Dev-generated from llm_generated",
+      "Prompt: general travel intake stress test"
+    ]
+  }
+}

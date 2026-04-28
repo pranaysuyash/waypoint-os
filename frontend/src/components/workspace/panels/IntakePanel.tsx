@@ -598,8 +598,73 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
     );
   };
 
+  // AI context cards derived from trip decision (if already processed)
+  const decision = trip?.decision ?? null;
+  const hardBlockers = decision?.hard_blockers ?? [];
+  const softBlockers = decision?.soft_blockers ?? [];
+  const decisionState = decision?.decision_state ?? null;
+
   return (
     <div className='space-y-6'>
+
+      {/* AI context cards — quick situational awareness at top */}
+      <div className='grid grid-cols-1 sm:grid-cols-3 gap-3'>
+        {/* Missing before quote */}
+        <div className='rounded-xl border border-[rgba(210,153,34,0.3)] bg-[rgba(210,153,34,0.05)] p-3'>
+          <div className='text-[10px] font-bold uppercase tracking-widest text-[#d29922] mb-1.5'>Missing before quote</div>
+          {hardBlockers.length > 0 ? (
+            <ul className='space-y-1'>
+              {hardBlockers.slice(0, 2).map((b, i) => (
+                <li key={i} className='text-xs text-[#d29922] leading-tight truncate'>• {b}</li>
+              ))}
+              {hardBlockers.length > 2 && (
+                <li className='text-[10px] text-[#d29922]/60'>+{hardBlockers.length - 2} more</li>
+              )}
+            </ul>
+          ) : decisionState ? (
+            <p className='text-xs text-[#8b949e]'>No hard blockers — clear to quote.</p>
+          ) : (
+            <p className='text-xs text-[#484f58] italic'>Process trip to check for blockers</p>
+          )}
+        </div>
+
+        {/* Suggested next move */}
+        <div className='rounded-xl border border-[rgba(57,208,216,0.25)] bg-[rgba(57,208,216,0.04)] p-3'>
+          <div className='text-[10px] font-bold uppercase tracking-widest text-[#39d0d8] mb-1.5'>Suggested next move</div>
+          {decisionState ? (
+            <p className='text-xs text-[#c9d1d9] leading-tight'>
+              {decisionState === 'PROCEED_TRAVELER_SAFE' && 'Send quote to traveler.'}
+              {decisionState === 'PROCEED_INTERNAL_DRAFT' && 'Finalize internal draft before sending.'}
+              {decisionState === 'BRANCH_OPTIONS' && 'Prepare multiple options for traveler.'}
+              {(decisionState === 'STOP_NEEDS_REVIEW' || decisionState === 'STOP_REVIEW') && 'Resolve blockers before proceeding.'}
+              {decisionState === 'ASK_FOLLOWUP' && 'Follow up with traveler for more info.'}
+              {!['PROCEED_TRAVELER_SAFE','PROCEED_INTERNAL_DRAFT','BRANCH_OPTIONS','STOP_NEEDS_REVIEW','STOP_REVIEW','ASK_FOLLOWUP'].includes(decisionState) && 'Review assessment output.'}
+            </p>
+          ) : (
+            <p className='text-xs text-[#484f58] italic'>Run AI to get next-step guidance</p>
+          )}
+        </div>
+
+        {/* Owner check required */}
+        <div className='rounded-xl border border-[rgba(88,166,255,0.2)] bg-[rgba(88,166,255,0.04)] p-3'>
+          <div className='text-[10px] font-bold uppercase tracking-widest text-[#58a6ff] mb-1.5'>Watch points</div>
+          {softBlockers.length > 0 ? (
+            <ul className='space-y-1'>
+              {softBlockers.slice(0, 2).map((b, i) => (
+                <li key={i} className='text-xs text-[#8b949e] leading-tight truncate'>• {b}</li>
+              ))}
+              {softBlockers.length > 2 && (
+                <li className='text-[10px] text-[#8b949e]/60'>+{softBlockers.length - 2} more</li>
+              )}
+            </ul>
+          ) : decisionState ? (
+            <p className='text-xs text-[#8b949e]'>No soft blockers flagged.</p>
+          ) : (
+            <p className='text-xs text-[#484f58] italic'>Process trip to surface watch points</p>
+          )}
+        </div>
+      </div>
+
       {isRunning && (
         <div
           className='bg-[#0f1720] border border-[#58a6ff]/40 rounded-xl p-4 shadow-[0_0_0_1px_rgba(88,166,255,0.08)]'
@@ -819,34 +884,35 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             </div>
           )}
         </div>
-        <div className='flex items-center gap-3'>
+        <div className='flex items-center gap-2'>
+          {/* Secondary actions — low visual weight */}
           <button
             type='button'
             onClick={() => setShowCapturePanel(true)}
-            className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg text-sm font-medium hover:bg-[#21262d] transition-colors'
+            className='flex items-center gap-1.5 px-3 py-1.5 bg-transparent text-[#6e7681] border border-[#21262d] rounded-lg text-xs font-medium hover:text-[#8b949e] hover:border-[#30363d] transition-colors'
             aria-label='Capture call'
           >
-            <Phone className='w-4 h-4' aria-hidden='true' />
+            <Phone className='w-3.5 h-3.5' aria-hidden='true' />
             Capture Call
           </button>
           <button
             type='button'
             onClick={handleSave}
             disabled={isSaving || !tripId}
-            className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg text-sm font-medium hover:bg-[#21262d] disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+            className='flex items-center gap-1.5 px-3 py-1.5 bg-transparent text-[#6e7681] border border-[#21262d] rounded-lg text-xs font-medium hover:text-[#8b949e] hover:border-[#30363d] disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
             aria-label='Save changes'
           >
             {isSaving ? (
               <>
                 <div
-                  className='w-4 h-4 border-2 border-[#8b949e]/30 border-t-[#8b949e] rounded-full animate-spin'
+                  className='w-3.5 h-3.5 border-2 border-[#6e7681]/30 border-t-[#6e7681] rounded-full animate-spin'
                   aria-hidden='true'
                 />
                 Saving...
               </>
             ) : (
               <>
-                <Save className='w-4 h-4' aria-hidden='true' />
+                <Save className='w-3.5 h-3.5' aria-hidden='true' />
                 Save
               </>
             )}
@@ -855,38 +921,46 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             type='button'
             onClick={handleMarkReady}
             disabled={isMarkingReady || !tripId}
-            className='flex items-center gap-2 px-3 py-2 bg-[#2da44e] text-[#0d1117] rounded-lg text-sm font-medium hover:bg-[#3fb950] disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+            className='flex items-center gap-1.5 px-3 py-1.5 bg-[#161b22] text-[#3fb950] border border-[rgba(63,185,80,0.25)] rounded-lg text-xs font-medium hover:bg-[rgba(63,185,80,0.08)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
             aria-label={isMarkingReady ? 'Marking ready' : 'Mark ready'}
           >
             {isMarkingReady ? (
               <>
                 <div
-                  className='w-4 h-4 border-2 border-[#0d1117]/30 border-t-[#0d1117] rounded-full animate-spin'
+                  className='w-3.5 h-3.5 border-2 border-[#3fb950]/30 border-t-[#3fb950] rounded-full animate-spin'
                   aria-hidden='true'
                 />
                 Checking...
               </>
             ) : (
               <>
-                <CheckCircle className='w-4 h-4' aria-hidden='true' />
+                <CheckCircle className='w-3.5 h-3.5' aria-hidden='true' />
                 Mark Ready
               </>
             )}
           </button>
+
+          {/* Primary CTA — dominant gradient */}
           <button
             type='button'
             onClick={handleProcessTrip}
             disabled={isRunning || isSpineRunning || (!input_raw_note && !input_owner_note)}
-            className='flex items-center gap-2 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg text-sm font-medium hover:bg-[#6eb5ff] disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+            className='flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold text-[#07090b] disabled:opacity-40 disabled:cursor-not-allowed transition-all'
+            style={{
+              background: isRunning
+                ? 'rgba(88,166,255,0.5)'
+                : 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, #39d0d8 100%)',
+              boxShadow: isRunning ? 'none' : '0 0 20px rgba(57,208,216,0.3), 0 2px 8px rgba(88,166,255,0.2)',
+            }}
             aria-label={isRunning ? 'Processing trip' : 'Process trip'}
           >
             {isRunning ? (
               <>
                 <div
-                  className='w-4 h-4 border-2 border-[#0d1117]/30 border-t-[#0d1117] rounded-full animate-spin'
+                  className='w-4 h-4 border-2 border-[#07090b]/30 border-t-[#07090b] rounded-full animate-spin'
                   aria-hidden='true'
                 />
-                Processing {formatElapsedTime(runElapsedSeconds)}
+                <span>Processing {formatElapsedTime(runElapsedSeconds)}</span>
               </>
             ) : (
               <>

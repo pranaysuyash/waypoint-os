@@ -152,6 +152,10 @@ class RunStatusResponse(BaseModel):
     error_message: Optional[str] = None
     stage_at_failure: Optional[str] = None
     block_reason: Optional[str] = None
+    decision_state: Optional[str] = None
+    follow_up_questions: List[Dict[str, Any]] = Field(default_factory=list)
+    hard_blockers: List[str] = Field(default_factory=list)
+    soft_blockers: List[str] = Field(default_factory=list)
 
 
 # =============================================================================

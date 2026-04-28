@@ -117,7 +117,8 @@ function TimelineEventCard({
 const AVAILABLE_STAGES = ["intake", "packet", "decision", "strategy", "safety"];
 
 export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilter }: TimelinePanelProps) {
-  const [tripId] = useState(propTripId || propTrip?.id);
+  // Derive tripId directly from props so the effect re-runs when the trip changes
+  const tripId = propTripId || propTrip?.id;
   const [timeline, setTimeline] = useState<TimelineResponse | null>(null);
   const [suitabilityFlags, setSuitabilityFlags] = useState<SuitabilityFlag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -196,7 +197,7 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
 
   const events = timeline?.events ?? [];
 
-  if (!timeline || events.length === 0) {
+  if (!timeline || (events.length === 0 && suitabilityFlags.length === 0)) {
     return (
       <div className="p-6 text-center">
         <p className="text-sm text-gray-500 dark:text-gray-400">No timeline events found</p>

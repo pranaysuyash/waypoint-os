@@ -227,7 +227,7 @@ describe("P2 Owner Onboarding Journey: Junior Quote → Coaching Warnings → Ow
 
     render(<DecisionPanel trip={tripWithDecision} tripId="TRIP-JR-001" />);
 
-    expect(screen.getByText("Decision State")).toBeInTheDocument();
+    expect(screen.getByText("Quote Assessment")).toBeInTheDocument();
     expect(screen.getByText("Suitability Audit Results")).toBeInTheDocument();
     expect(screen.getByText("Water Activity Not Safe for Toddlers")).toBeInTheDocument();
     expect(screen.getByText("Physical Intensity Unsafe for Elderly")).toBeInTheDocument();
@@ -310,7 +310,7 @@ describe("P2 Owner Onboarding Journey: Junior Quote → Coaching Warnings → Ow
       <DecisionPanel trip={tripWithDecision} tripId="TRIP-JR-001" />
     );
 
-    expect(screen.getByText("Decision State")).toBeInTheDocument();
+    expect(screen.getByText("Quote Assessment")).toBeInTheDocument();
     expect(screen.getByText("Suitability Audit Results")).toBeInTheDocument();
     expect(screen.getByText("Tier 1: Hard Blockers (Must Acknowledge Before Approval)")).toBeInTheDocument();
     expect(screen.getByText("Tier 2: Warnings (Review Recommended)")).toBeInTheDocument();

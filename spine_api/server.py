@@ -712,6 +712,21 @@ def _execute_spine_pipeline(
     t0 = time.perf_counter()
     current_stage: Optional[str] = None
 
+    def _checkpoint_result_steps(run_id: str, result: Any) -> None:
+        """Persist core result artifacts for observability even on partial/early exits."""
+        try:
+            existing = RunLedger.get_all_steps(run_id)
+            if "packet" not in existing and hasattr(result, "packet"):
+                RunLedger.save_step(run_id, "packet", _to_dict(result.packet))
+            if "validation" not in existing and hasattr(result, "validation"):
+                RunLedger.save_step(run_id, "validation", _to_dict(result.validation))
+            if "decision" not in existing and hasattr(result, "decision"):
+                RunLedger.save_step(run_id, "decision", _to_dict(result.decision))
+            if "strategy" not in existing and hasattr(result, "strategy"):
+                RunLedger.save_step(run_id, "strategy", _to_dict(result.strategy))
+        except Exception as e:
+            logger.error("Wave A: result step checkpointing failed for run %s: %s", run_id, e)
+
     try:
         # Close inherited lock file descriptors to prevent fork-deadlock on macOS.
         # When multiprocessing forks, the child inherits all parent fds including
@@ -803,6 +818,7 @@ def _execute_spine_pipeline(
 
         execution_ms = (time.perf_counter() - t0) * 1000
         meta.execution_ms = round(execution_ms, 2)
+        _checkpoint_result_steps(run_id, result)
 
         if getattr(result, "early_exit", False):
             logger.warning(
@@ -1072,10 +1088,31 @@ def get_run_status(
 
     steps = RunLedger.get_all_steps(run_id)
     events = get_run_events(run_id)
+
+    decision_data = None
+    if "decision" in steps:
+        decision_data = steps["decision"].get("data")
+    elif "blocked_result" in steps:
+        decision_data = (steps["blocked_result"].get("data") or {}).get("decision")
+
+    decision_state = None
+    follow_up_questions: list[dict[str, Any]] = []
+    hard_blockers: list[str] = []
+    soft_blockers: list[str] = []
+    if isinstance(decision_data, dict):
+        decision_state = decision_data.get("decision_state")
+        follow_up_questions = decision_data.get("follow_up_questions") or []
+        hard_blockers = decision_data.get("hard_blockers") or []
+        soft_blockers = decision_data.get("soft_blockers") or []
+
     return RunStatusResponse(
         **meta,
         steps_completed=list(steps.keys()),
         events=events,
+        decision_state=decision_state,
+        follow_up_questions=follow_up_questions,
+        hard_blockers=hard_blockers,
+        soft_blockers=soft_blockers,
     )
 
 

@@ -52,6 +52,8 @@ If instructions conflict, follow the stricter rule and cite concrete file paths.
 
 - Solutions must be elegant, built from first principles, scalable, long-term, better, comprehensive, and architecturally correct.
 - Maintain a vision-oriented approach while staying open to updates and avoiding rigidity.
+- Treat "works with the current code" as necessary but not sufficient. The expected bar is a first-principles solution that is long-term coherent, scalable, additive, better than the existing state, and compatible with the intended architecture.
+- When recovering or evaluating partial work, do not reject a direction merely because it requires architectural work. Separate "right long-term direction" from "unsafe partial implementation," then recover the direction through a comprehensive, verified implementation path.
 
 ## Preview & Feedback (Critical)
 

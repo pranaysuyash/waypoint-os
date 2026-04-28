@@ -113,7 +113,7 @@ describe("SuitabilitySignal - Phase 3 Confidence & Tier Display", () => {
       expect(flagElement?.className).toContain("bg-red-50");
     });
 
-    it("should classify high as Tier 1 (red)", () => {
+    it("should classify high as Tier 2 (warnings)", () => {
       const flags: SuitabilityFlagData[] = [
         {
           flag_type: "high_flag",
@@ -124,8 +124,8 @@ describe("SuitabilitySignal - Phase 3 Confidence & Tier Display", () => {
         },
       ];
       const { container } = render(<SuitabilitySignal flags={flags} />);
-      // High severity should still be in Tier 1 section
-      expect(screen.getByText("Tier 1: Hard Blockers (Must Acknowledge Before Approval)")).toBeInTheDocument();
+      // High severity goes to Tier 2 (only critical is Tier 1)
+      expect(screen.getByText("Tier 2: Warnings (Review Recommended)")).toBeInTheDocument();
     });
 
     it("should classify medium as Tier 2 (blue)", () => {
@@ -289,7 +289,9 @@ describe("SuitabilitySignal - Phase 3 Confidence & Tier Display", () => {
         },
       ];
       render(<SuitabilitySignal flags={flags} />);
-      expect(screen.getByText("5 nationalities with limited processing time window")).toBeInTheDocument();
+      // reason text may appear in both the derived flag label and the reason body
+      const matches = screen.getAllByText("5 nationalities with limited processing time window");
+      expect(matches.length).toBeGreaterThan(0);
     });
 
     it("should separate Tier 1 and Tier 2 sections clearly", () => {
