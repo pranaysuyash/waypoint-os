@@ -49,6 +49,11 @@ const PATCHABLE_FIELDS = new Set([
   "state",
   "status",
   "follow_up_due_date",
+  "party_composition",
+  "pace_preference",
+  "date_year_confidence",
+  "lead_source",
+  "activity_provenance",
 ]);
 
 export async function PATCH(

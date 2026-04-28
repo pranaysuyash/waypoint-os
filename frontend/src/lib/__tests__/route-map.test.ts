@@ -30,4 +30,21 @@ describe("resolveBackendPath", () => {
   it("denies unknown routes by returning null", () => {
     expect(resolveBackendPath(["unmapped", "resource"])).toBeNull();
   });
+
+  it("resolves trip timeline paths with non-UUID trip IDs", () => {
+    expect(resolveBackendPath(["trips", "trip_1cad495b9586", "timeline"])).toBe(
+      "api/trips/trip_1cad495b9586/timeline"
+    );
+  });
+
+  it("resolves run step paths with placeholder substitution", () => {
+    expect(
+      resolveBackendPath([
+        "runs",
+        "0c5d4e8d-0407-4211-803d-27095e9a896d",
+        "steps",
+        "decision",
+      ])
+    ).toBe("runs/0c5d4e8d-0407-4211-803d-27095e9a896d/steps/decision");
+  });
 });

@@ -4,12 +4,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { Tabs } from '@/components/ui/tabs';
-import {
-  PipelineFlow,
-  PIPELINE_STAGES,
-  toPipelineStageId,
-  type PipelineStageId,
-} from './PipelineFlow';
+import { PipelineFlow, type PipelineStageId } from './PipelineFlow';
 import {
   Play,
   RotateCcw,
@@ -37,6 +32,7 @@ import type {
   FeeCalculationResult,
 } from '@/types/spine';
 import type { Trip } from '@/lib/api-client';
+import type { WorkbenchStore } from '@/stores/workbench';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { submitTripReviewAction } from '@/lib/api-client';
 import { RunProgressPanel } from './RunProgressPanel';
@@ -59,38 +55,39 @@ const FrontierDashboard = dynamic(() =>
   })),
 );
 
-  // Derive pipeline tabs from PIPELINE_STAGES to keep labels in sync
-  const pipelineTabs = PIPELINE_STAGES.map((s) => ({
-    id: s.id,
-    label: s.fullLabel,
-  }));
-
-  const workspaceTabs = [
-    ...pipelineTabs,
-    { id: 'output', label: 'Output Delivery' },
-    { id: 'frontier', label: 'Frontier OS' },
-    { id: 'feedback', label: 'Feedback' },
-  ] as const;
+const workspaceTabs = [
+  { id: 'intake', label: 'New Inquiry' },
+  { id: 'packet', label: 'Trip Details' },
+  { id: 'decision', label: 'Ready to Quote?' },
+  { id: 'strategy', label: 'Build Options' },
+  { id: 'safety', label: 'Final Review' },
+  { id: 'output', label: 'Output Delivery' },
+  { id: 'frontier', label: 'Frontier OS' },
+  { id: 'feedback', label: 'Feedback' },
+] as const;
 
 type WorkspaceTabId = (typeof workspaceTabs)[number]['id'];
 
-function getPipelineStageForWorkbench(
-  trip: Trip | null | undefined,
-  store: ReturnType<typeof useWorkbenchStore>,
-): PipelineStageId {
-  // Check stages in reverse order (safety → strategy → decision → packet → intake)
-  // to find the furthest progressed stage
-  for (let i = PIPELINE_STAGES.length - 1; i >= 0; i--) {
-    const stageId = PIPELINE_STAGES[i].id;
-    if (store[`result_${stageId}` as any || trip?.[stageId]) {
-      return stageId;
-    }
-  }
-  return 'intake';
+/** Validate ?stage= URL param against known SpineStage values */
+function toSpineStage(value: string | null): SpineStage | null {
+  const validStages: SpineStage[] = ["discovery", "shortlist", "proposal", "booking"];
+  return validStages.includes(value as SpineStage) ? (value as SpineStage) : null;
 }
 
-function isPipelineTab(tabId: string): boolean {
-  return PIPELINE_STAGES.some((s) => s.id === tabId);
+/**
+ * Derives the pipeline stage from actual trip/store state.
+ * PipelineFlow shows processing progress (intake → packet → decision → strategy → safety),
+ * not which tab the user clicked.
+ */
+function getPipelineStageForWorkbench(
+  trip: Trip | null | undefined,
+  store: WorkbenchStore,
+): PipelineStageId {
+  if (store.result_safety || trip?.safety) return 'safety';
+  if (store.result_strategy || trip?.strategy) return 'strategy';
+  if (store.result_decision || trip?.decision) return 'decision';
+  if (store.result_packet || trip?.packet) return 'packet';
+  return 'intake';
 }
 
 function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
@@ -103,24 +100,17 @@ function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
 
     hydratedRef.current = trip.id;
 
-    if (!store.result_packet && trip.packet) store.setResultPacket(trip.packet);
-    if (!store.result_validation && trip.validation)
-      store.setResultValidation(trip.validation);
-    if (!store.result_decision && trip.decision)
-      store.setResultDecision(trip.decision);
-    if (!store.result_strategy && trip.strategy)
-      store.setResultStrategy(trip.strategy);
-    if (!store.result_internal_bundle && trip.internal_bundle)
-      store.setResultInternalBundle(trip.internal_bundle);
-    if (!store.result_traveler_bundle && trip.traveler_bundle)
-      store.setResultTravelerBundle(trip.traveler_bundle);
-    if (!store.result_safety && trip.safety)
-      store.setResultSafety(trip.safety as SafetyResult | null);
-    if (!store.result_fees && trip.fees) store.setResultFees(trip.fees);
-    if (!store.input_raw_note && trip.customerMessage)
-      store.setInputRawNote(trip.customerMessage);
-    if (!store.input_owner_note && trip.agentNotes)
-      store.setInputOwnerNote(trip.agentNotes);
+    // Always overwrite from current trip (prevent stale cross-trip data)
+    store.setResultPacket(trip.packet ?? null);
+    store.setResultValidation(trip.validation ?? null);
+    store.setResultDecision(trip.decision ?? null);
+    store.setResultStrategy(trip.strategy ?? null);
+    store.setResultInternalBundle(trip.internal_bundle ?? null);
+    store.setResultTravelerBundle(trip.traveler_bundle ?? null);
+    store.setResultSafety((trip.safety as SafetyResult) ?? null);
+    store.setResultFees(trip.fees ?? null);
+    store.setInputRawNote(trip.customerMessage ?? '');
+    store.setInputOwnerNote(trip.agentNotes ?? '');
   }, [
     trip,
     store.input_raw_note,
@@ -150,11 +140,16 @@ function WorkbenchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const tripId = searchParams.get('trip');
-  const stageParam = searchParams.get('stage') as SpineStage | null;
+  const stageParam = searchParams.get('stage');
   const modeParam = searchParams.get('mode') as OperatingMode | null;
   const scenarioParam = searchParams.get('scenario');
 
-  const currentStage = stageParam || 'discovery';
+  // The ?stage= URL param drives Spine execution (not the pipeline UI)
+  // Inline validation: only allow valid SpineStage values
+  const VALID_STAGES = new Set<SpineStage>(['discovery', 'shortlist', 'proposal', 'booking']);
+  const spineStage = (stageParam && VALID_STAGES.has(stageParam as SpineStage))
+    ? stageParam as SpineStage
+    : 'discovery';
   const currentMode = modeParam || 'normal_intake';
   const currentScenario = scenarioParam || '';
 
@@ -175,27 +170,28 @@ function WorkbenchContent() {
 
   // Invalidation logic: clear results if config changes
   const prevConfigRef = useRef({
-    stage: currentStage,
+    stage: spineStage,
     mode: currentMode,
     scenario: currentScenario,
   });
   useEffect(() => {
     if (
-      prevConfigRef.current.stage !== currentStage ||
+      prevConfigRef.current.stage !== spineStage ||
       prevConfigRef.current.mode !== currentMode ||
       prevConfigRef.current.scenario !== currentScenario
     ) {
       store.clearResults();
       prevConfigRef.current = {
-        stage: currentStage,
+        stage: spineStage,
         mode: currentMode,
         scenario: currentScenario,
       };
     }
-  }, [currentStage, currentMode, currentScenario, store.clearResults]);
+  }, [spineStage, currentMode, currentScenario, store.clearResults]);
 
   const handleTabChange = useCallback(
-    (tab: WorkspaceTabId) => {
+    (tab: string) => {
+      if (!workspaceTabs.some((t) => t.id === tab)) return;
       const params = new URLSearchParams(searchParams.toString());
       params.set('tab', tab);
       router.replace(`?${params.toString()}`, { scroll: false });
@@ -234,7 +230,7 @@ function WorkbenchContent() {
           ? JSON.parse(store.input_structured_json)
           : null,
         itinerary_text: store.input_itinerary_text || null,
-        stage: currentStage,
+        stage: spineStage,
         operating_mode: currentMode,
         strict_leakage: store.strict_leakage,
         scenario_id: currentScenario || null,
@@ -260,7 +256,7 @@ function WorkbenchContent() {
     } finally {
       setIsRunning(false);
     }
-  }, [store, executeSpineRun, currentStage, currentMode, currentScenario]);
+  }, [store, executeSpineRun, spineStage, currentMode, currentScenario]);
 
   const handleSave = useCallback(async () => {
     if (!tripId) return;

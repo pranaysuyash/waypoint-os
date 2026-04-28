@@ -25,6 +25,13 @@ const PUBLIC_PAGES = new Set([
   '/reset-password',
 ]);
 
+// Dynamic public routes that should not require authentication
+const PUBLIC_PREFIXES = [
+  '/reset-password/',
+  '/itinerary-checker/shared/',
+  '/itinerary/shared/',
+];
+
 const AUTH_PAGES = new Set(['/login', '/signup']);
 
 const PUBLIC_FILES = new Set([
@@ -61,7 +68,8 @@ function isAllowed(pathname: string): boolean {
 
   if (PUBLIC_PAGES.has(pathname)) return true;
 
-  if (pathname.startsWith('/reset-password/')) return true;
+  // Check dynamic public routes (prefix matching)
+  if (PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix))) return true;
 
   return false;
 }

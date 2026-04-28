@@ -406,4 +406,297 @@ describe("CaptureCallPanel", () => {
 
     resolveRequest!(mockTrip);
   });
+
+  // ============================================================================
+  // Phase 2: Structured Fields Tests
+  // ============================================================================
+
+  // Test 17: party_composition field renders
+  it("renders party_composition field", () => {
+    render(<CaptureCallPanel {...defaultProps} />);
+
+    expect(screen.getByLabelText("Who's traveling?")).toBeInTheDocument();
+    const partyInput = screen.getByLabelText("Who's traveling?") as HTMLTextAreaElement;
+    expect(partyInput.value).toBe("");
+  });
+
+  // Test 18: pace_preference dropdown works
+  it("renders pace_preference dropdown with options", () => {
+    render(<CaptureCallPanel {...defaultProps} />);
+
+    const paceSelect = screen.getByLabelText("Travel pace preference?") as HTMLSelectElement;
+    expect(paceSelect).toBeInTheDocument();
+
+    const options = Array.from(paceSelect.options).map((opt) => opt.value);
+    expect(options).toContain("rushed");
+    expect(options).toContain("normal");
+    expect(options).toContain("relaxed");
+  });
+
+  // Test 19: date_year_confidence dropdown works
+  it("renders date_year_confidence dropdown with options", () => {
+    render(<CaptureCallPanel {...defaultProps} />);
+
+    const confidenceSelect = screen.getByLabelText("How certain about the dates?") as HTMLSelectElement;
+    expect(confidenceSelect).toBeInTheDocument();
+
+    const options = Array.from(confidenceSelect.options).map((opt) => opt.value);
+    expect(options).toContain("certain");
+    expect(options).toContain("likely");
+    expect(options).toContain("unsure");
+  });
+
+  // Test 20: lead_source dropdown works
+  it("renders lead_source dropdown with options", () => {
+    render(<CaptureCallPanel {...defaultProps} />);
+
+    const leadSelect = screen.getByLabelText("How did they find us?") as HTMLSelectElement;
+    expect(leadSelect).toBeInTheDocument();
+
+    const options = Array.from(leadSelect.options).map((opt) => opt.value);
+    expect(options).toContain("referral");
+    expect(options).toContain("web");
+    expect(options).toContain("social");
+    expect(options).toContain("other");
+  });
+
+  // Test 21: activity_provenance field renders
+  it("renders activity_provenance field", () => {
+    render(<CaptureCallPanel {...defaultProps} />);
+
+    expect(screen.getByLabelText("What activities interest them?")).toBeInTheDocument();
+    const activityInput = screen.getByLabelText("What activities interest them?") as HTMLTextAreaElement;
+    expect(activityInput.value).toBe("");
+  });
+
+  // Test 22: Structured fields are optional on submit
+  it("submits successfully without any structured fields", async () => {
+    const user = userEvent.setup();
+    const mockCreateTrip = vi.mocked(apiClient.createTrip);
+    mockCreateTrip.mockResolvedValue(mockTrip);
+
+    render(<CaptureCallPanel {...defaultProps} />);
+
+    const rawNoteInput = screen.getByLabelText("What did the customer tell you?");
+    await user.type(rawNoteInput, "Customer wants to travel");
+
+    const saveButton = screen.getByRole("button", { name: /Save/i });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(mockCreateTrip).toHaveBeenCalledWith(
+        expect.objectContaining({
+          raw_note: "Customer wants to travel",
+        })
+      );
+
+      const call = mockCreateTrip.mock.calls[0][0];
+      // All structured fields should be undefined when empty
+      expect(call.party_composition).toBeUndefined();
+      expect(call.pace_preference).toBeUndefined();
+      expect(call.date_year_confidence).toBeUndefined();
+      expect(call.lead_source).toBeUndefined();
+      expect(call.activity_provenance).toBeUndefined();
+    });
+  });
+
+  // Test 23: All structured fields are included in API call
+  it("includes all structured fields in API call when provided", async () => {
+    const user = userEvent.setup();
+    const mockCreateTrip = vi.mocked(apiClient.createTrip);
+    mockCreateTrip.mockResolvedValue(mockTrip);
+
+    render(<CaptureCallPanel {...defaultProps} />);
+
+    // Fill in all fields
+    const rawNoteInput = screen.getByLabelText("What did the customer tell you?");
+    const partyInput = screen.getByLabelText("Who's traveling?");
+    const paceSelect = screen.getByLabelText("Travel pace preference?");
+    const confidenceSelect = screen.getByLabelText("How certain about the dates?");
+    const leadSelect = screen.getByLabelText("How did they find us?");
+    const activityInput = screen.getByLabelText("What activities interest them?");
+
+    await user.type(rawNoteInput, "Family wants vacation");
+    await user.type(partyInput, "2 adults, 1 child");
+    await user.selectOptions(paceSelect, "relaxed");
+    await user.selectOptions(confidenceSelect, "certain");
+    await user.selectOptions(leadSelect, "referral");
+    await user.type(activityInput, "hiking, museums");
+
+    const saveButton = screen.getByRole("button", { name: /Save/i });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(mockCreateTrip).toHaveBeenCalledWith(
+        expect.objectContaining({
+          raw_note: "Family wants vacation",
+          party_composition: "2 adults, 1 child",
+          pace_preference: "relaxed",
+          date_year_confidence: "certain",
+          lead_source: "referral",
+          activity_provenance: "hiking, museums",
+        })
+      );
+    });
+  });
+
+  // Test 24: Structured fields clear on cancel
+  it("clears all structured fields when Cancel is clicked", async () => {
+    const user = userEvent.setup();
+    render(<CaptureCallPanel {...defaultProps} />);
+
+    // Fill in some structured fields
+    const partyInput = screen.getByLabelText("Who's traveling?") as HTMLTextAreaElement;
+    const paceSelect = screen.getByLabelText("Travel pace preference?");
+    const rawNoteInput = screen.getByLabelText("What did the customer tell you?");
+
+    await user.type(rawNoteInput, "Test");
+    await user.type(partyInput, "2 adults");
+    await user.selectOptions(paceSelect, "normal");
+
+    // Click Cancel
+    const cancelButton = screen.getByRole("button", { name: /Cancel/i });
+    await user.click(cancelButton);
+
+    // Verify fields are cleared
+    await waitFor(() => {
+      expect(partyInput.value).toBe("");
+      expect(paceSelect).toHaveValue("");
+    });
+  });
+
+  // Test 25: Partial structured fields work
+  it("submits with partial structured fields (only party_composition and pace_preference)", async () => {
+    const user = userEvent.setup();
+    const mockCreateTrip = vi.mocked(apiClient.createTrip);
+    mockCreateTrip.mockResolvedValue(mockTrip);
+
+    render(<CaptureCallPanel {...defaultProps} />);
+
+    const rawNoteInput = screen.getByLabelText("What did the customer tell you?");
+    const partyInput = screen.getByLabelText("Who's traveling?");
+    const paceSelect = screen.getByLabelText("Travel pace preference?");
+
+    await user.type(rawNoteInput, "Customer inquiry");
+    await user.type(partyInput, "Solo traveler");
+    await user.selectOptions(paceSelect, "rushed");
+
+    const saveButton = screen.getByRole("button", { name: /Save/i });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(mockCreateTrip).toHaveBeenCalledWith(
+        expect.objectContaining({
+          raw_note: "Customer inquiry",
+          party_composition: "Solo traveler",
+          pace_preference: "rushed",
+          date_year_confidence: undefined,
+          lead_source: undefined,
+          activity_provenance: undefined,
+        })
+      );
+    });
+  });
+
+  // Test 26: Dropdown default value is empty
+  it("has empty default value for dropdown structured fields", () => {
+    render(<CaptureCallPanel {...defaultProps} />);
+
+    const paceSelect = screen.getByLabelText("Travel pace preference?") as HTMLSelectElement;
+    const confidenceSelect = screen.getByLabelText("How certain about the dates?") as HTMLSelectElement;
+    const leadSelect = screen.getByLabelText("How did they find us?") as HTMLSelectElement;
+
+    expect(paceSelect.value).toBe("");
+    expect(confidenceSelect.value).toBe("");
+    expect(leadSelect.value).toBe("");
+  });
+
+  // Test 27: Structured fields preserve values on form open/close
+  it("preserves structured field values when component updates", async () => {
+    const user = userEvent.setup();
+    const mockCreateTrip = vi.mocked(apiClient.createTrip);
+    mockCreateTrip.mockResolvedValue(mockTrip);
+
+    const { rerender } = render(<CaptureCallPanel {...defaultProps} />);
+
+    const paceSelect = screen.getByLabelText("Travel pace preference?");
+    await user.selectOptions(paceSelect, "normal");
+
+    // Rerender component (e.g., on parent state change)
+    rerender(<CaptureCallPanel {...defaultProps} />);
+
+    // Value should still be there
+    expect(paceSelect).toHaveValue("normal");
+  });
+
+  // Test 28: Textarea structured fields trimmed on submit
+  it("trims whitespace from textarea structured fields on submit", async () => {
+    const user = userEvent.setup();
+    const mockCreateTrip = vi.mocked(apiClient.createTrip);
+    mockCreateTrip.mockResolvedValue(mockTrip);
+
+    render(<CaptureCallPanel {...defaultProps} />);
+
+    const rawNoteInput = screen.getByLabelText("What did the customer tell you?");
+    const partyInput = screen.getByLabelText("Who's traveling?");
+    const activityInput = screen.getByLabelText("What activities interest them?");
+
+    await user.type(rawNoteInput, "  Customer info  ");
+    await user.type(partyInput, "  2 adults, 1 child  ");
+    await user.type(activityInput, "  hiking, museums  ");
+
+    const saveButton = screen.getByRole("button", { name: /Save/i });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(mockCreateTrip).toHaveBeenCalledWith(
+        expect.objectContaining({
+          raw_note: "Customer info",
+          party_composition: "2 adults, 1 child",
+          activity_provenance: "hiking, museums",
+        })
+      );
+    });
+  });
+
+  // Test 29: Form validation still works with structured fields
+  it("still requires raw_note even when structured fields are filled", async () => {
+    const user = userEvent.setup();
+    render(<CaptureCallPanel {...defaultProps} />);
+
+    const partyInput = screen.getByLabelText("Who's traveling?");
+    const paceSelect = screen.getByLabelText("Travel pace preference?");
+
+    await user.type(partyInput, "2 adults");
+    await user.selectOptions(paceSelect, "normal");
+
+    const saveButton = screen.getByRole("button", { name: /Save/i });
+    // Save button should still be disabled because raw_note is empty
+    expect(saveButton).toBeDisabled();
+
+    const mockCreateTrip = vi.mocked(apiClient.createTrip);
+    expect(mockCreateTrip).not.toHaveBeenCalled();
+  });
+
+  // Test 30: Multiple selections and clears work smoothly
+  it("allows changing dropdown values multiple times", async () => {
+    const user = userEvent.setup();
+    render(<CaptureCallPanel {...defaultProps} />);
+
+    const paceSelect = screen.getByLabelText("Travel pace preference?") as HTMLSelectElement;
+
+    // Change multiple times
+    await user.selectOptions(paceSelect, "rushed");
+    expect(paceSelect.value).toBe("rushed");
+
+    await user.selectOptions(paceSelect, "normal");
+    expect(paceSelect.value).toBe("normal");
+
+    await user.selectOptions(paceSelect, "relaxed");
+    expect(paceSelect.value).toBe("relaxed");
+
+    // Clear it
+    await user.selectOptions(paceSelect, "");
+    expect(paceSelect.value).toBe("");
+  });
 });

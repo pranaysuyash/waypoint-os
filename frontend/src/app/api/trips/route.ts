@@ -7,6 +7,10 @@ import {
 import type { Trip } from "@/lib/api-client";
 import type { SpineRunRequest } from "@/types/generated/spine-api";
 
+// Kill switch for call capture feature
+// Set DISABLE_CALL_CAPTURE=true to disable POST /api/trips
+const CALL_CAPTURE_DISABLED = process.env.DISABLE_CALL_CAPTURE === "true";
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -48,6 +52,13 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(req: Request) {
+  if (CALL_CAPTURE_DISABLED) {
+    return bffJson(
+      { error: "Call capture feature is temporarily disabled" },
+      503  // Service Unavailable
+    );
+  }
+
   try {
     const body = await req.json();
 
@@ -80,6 +91,11 @@ export async function POST(req: Request) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       followUpDueDate: body.follow_up_due_date ?? undefined,
+      partyComposition: body.party_composition ?? undefined,
+      pacePreference: body.pace_preference ?? undefined,
+      dateYearConfidence: body.date_year_confidence ?? undefined,
+      leadSource: body.lead_source ?? undefined,
+      activityProvenance: body.activity_provenance ?? undefined,
       status: "open",
       customerMessage: body.raw_note,
       agentNotes: body.owner_note,

@@ -105,16 +105,8 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
 ];
 
 const BACKEND_ROUTE_MAP = new Map(BACKEND_ROUTE_ENTRIES);
-
-/**
- * UUID-lookahead regex: matches v4-like UUIDs and hyphen-separated hex IDs.
- * Must be a 36-char UUID string OR a run of at least 20 hex characters.
- */
-const ID_LIKE_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-
-function isIdLike(segment: string): boolean {
-  return ID_LIKE_RE.test(segment) || /^[0-9a-fA-F]{20,}$/.test(segment);
-}
+const PLACEHOLDER_SEGMENT_RE = /^\{([a-zA-Z_][a-zA-Z0-9_]*)\}$/;
+const PLACEHOLDER_PATH_RE = /\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;
 
 /**
  * Resolve a frontend path to the backend path.
@@ -143,21 +135,41 @@ export function resolveBackendRoute(segments: string[]): BackendRouteConfig | nu
     return BACKEND_ROUTE_MAP.get(exactKey)!;
   }
 
-  // 2. Pattern match with {id} or {id}/… replacing the LAST ID-like segment
-  // Replace every ID-like segment in segments with {id}
-  const patternSegments = segments.map((seg) => (isIdLike(seg) ? "{id}" : seg));
-  const patternKey = patternSegments.join("/");
-  if (BACKEND_ROUTE_MAP.has(patternKey)) {
-    const mapped = BACKEND_ROUTE_MAP.get(patternKey)!;
-    // Substitute real IDs back into the mapped pattern
-    const ids = segments.filter(isIdLike);
-    let result = mapped.backendPath;
-    for (const id of ids) {
-      result = result.replace("{id}", id);
+  // 2. Pattern match based on explicit placeholders in route patterns.
+  // This is intentionally shape-agnostic so IDs like `trip_abc123` resolve.
+  for (const [pattern, mapped] of BACKEND_ROUTE_ENTRIES) {
+    const patternSegments = pattern.split("/");
+    if (patternSegments.length !== segments.length) continue;
+
+    const placeholderValues = new Map<string, string>();
+    let matched = true;
+
+    for (let i = 0; i < patternSegments.length; i += 1) {
+      const patternSegment = patternSegments[i];
+      const actualSegment = segments[i];
+      const placeholderMatch = patternSegment.match(PLACEHOLDER_SEGMENT_RE);
+
+      if (placeholderMatch) {
+        placeholderValues.set(placeholderMatch[1], actualSegment);
+        continue;
+      }
+
+      if (patternSegment !== actualSegment) {
+        matched = false;
+        break;
+      }
     }
+
+    if (!matched) continue;
+
+    const resolvedBackendPath = mapped.backendPath.replace(
+      PLACEHOLDER_PATH_RE,
+      (token, placeholderName) => placeholderValues.get(placeholderName) ?? token,
+    );
+
     return {
       ...mapped,
-      backendPath: result,
+      backendPath: resolvedBackendPath,
     };
   }
 

@@ -126,4 +126,16 @@ describe("proxy.ts page guard", () => {
     const res = proxy(req);
     expect(res.status).not.toBe(307);
   });
+
+  it("allows public /itinerary-checker/shared/[id] without auth", () => {
+    const req = mockRequest("/itinerary-checker/shared/abc-123");
+    const res = proxy(req);
+    expect(res.status).not.toBe(307);
+  });
+
+  it("allows public /itinerary/shared/[id] without auth", () => {
+    const req = mockRequest("/itinerary/shared/xyz-456");
+    const res = proxy(req);
+    expect(res.status).not.toBe(307);
+  });
 });

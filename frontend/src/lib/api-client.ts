@@ -314,6 +314,11 @@ export interface Trip {
   customerMessage?: string;
   agentNotes?: string;
   followUpDueDate?: string;
+  partyComposition?: string;
+  pacePreference?: string;
+  dateYearConfidence?: string;
+  leadSource?: string;
+  activityProvenance?: string;
   // Review metadata (Wave 8)
   review_status?: ReviewStatus;
   assignee?: string;
@@ -414,6 +419,11 @@ export interface CreateTripRequest {
   raw_note: string;
   owner_note?: string;
   follow_up_due_date?: string;
+  party_composition?: string;
+  pace_preference?: string;
+  date_year_confidence?: string;
+  lead_source?: string;
+  activity_provenance?: string;
 }
 
 export async function createTrip(data: CreateTripRequest): Promise<Trip> {

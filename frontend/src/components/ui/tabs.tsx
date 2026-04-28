@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useEffect, useRef, useCallback } from "react";
 
 interface TabsProps {
-  tabs: { id: string; label: string; count?: number }[];
+  tabs: readonly { readonly id: string; readonly label: string; count?: number }[];
   activeTab: string;
   onTabChange: (tabId: string) => void;
   ariaLabel?: string;

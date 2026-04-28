@@ -40,6 +40,7 @@ import logging
 import multiprocessing
 import os
 import sys
+import threading
 import time
 import uuid
 from collections import defaultdict
@@ -256,11 +257,13 @@ async def lifespan(app: FastAPI):
     install_sensitive_data_filter()
     watchdog.start()
     _recovery_agent.start()
+    _zombie_reaper_start()
     # Note: We no longer auto-seed at startup.
     # Seeding is now done per-agency for test users in the /trips endpoint.
     logger.info("Spine API startup complete")
     yield
     # Shutdown
+    _zombie_reaper_stop()
     _recovery_agent.stop()
     watchdog.stop()
     logger.info("Spine API shutdown complete")
@@ -562,6 +565,43 @@ def health() -> HealthResponse:
     return HealthResponse(status="ok", version="1.0.0")
 
 
+_zombie_thread: Optional[threading.Thread] = None
+_zombie_stop = threading.Event()
+
+def _reap_zombies() -> None:
+    """Background thread that periodically reaps zombie child processes."""
+    while not _zombie_stop.is_set():
+        try:
+            # WNOHANG = non-blocking, reap any finished children
+            while True:
+                try:
+                    pid, _status = os.waitpid(-1, os.WNOHANG)
+                    if pid == 0:
+                        break
+                except ChildProcessError:
+                    break
+        except Exception:
+            pass
+        _zombie_stop.wait(5)  # check every 5 seconds
+
+
+def _zombie_reaper_start() -> None:
+    global _zombie_thread
+    if _zombie_thread is not None:
+        return
+    _zombie_stop.clear()
+    _zombie_thread = threading.Thread(target=_reap_zombies, daemon=True, name="zombie-reaper")
+    _zombie_thread.start()
+
+
+def _zombie_reaper_stop() -> None:
+    global _zombie_thread
+    _zombie_stop.set()
+    if _zombie_thread is not None:
+        _zombie_thread.join(timeout=2)
+        _zombie_thread = None
+
+
 def _close_inherited_lock_fds() -> None:
     """
     Close any parent-inherited lock file descriptors to prevent
@@ -846,16 +886,16 @@ async def run_spine(
         agency_id=agency.id,
     )
     request_dict = request.model_dump(exclude_none=True)
-    # Use 'spawn' context to avoid fcntl.flock deadlock from fork() on macOS.
-    # When fork() is used, the child inherits all parent file descriptors
-    # including fcntl.flock-held locks, which blocks the child indefinitely.
-    ctx = multiprocessing.get_context("spawn")
-    proc = ctx.Process(
+    # Run pipeline in a daemon thread (not multiprocessing) to avoid
+    # all file-descriptor-inheritance and lock-deadlock issues across
+    # fork/spawn on macOS/Linux.
+    thread = threading.Thread(
         target=_execute_spine_pipeline,
         args=(run_id, request_dict, agency.id),
         daemon=True,
+        name=f"spine-{run_id[:8]}",
     )
-    proc.start()
+    thread.start()
 
     logger.info("spine_run queued run_id=%s agency_id=%s", run_id, agency.id)
     return RunAcceptedResponse(run_id=run_id, state="queued")

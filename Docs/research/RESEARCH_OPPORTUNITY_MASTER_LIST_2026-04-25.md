@@ -188,6 +188,7 @@ Each section lists specific research tasks that could be executed as standalone 
 - ❌ **Cruise booking systems**: How are cruise bookings actually made? (POL, CruiseWatch, direct)
 - ❌ **Visa processing APIs**: iVisa, Atlys, VisaHQ, government portals — programmatic access?
 - ❌ **Transfer/ground transport APIs**: Jayride, Welcome Pickups, GetTransfer, Blacklane
+- ❌ **Per-agency sourcing policy research**: How do agencies decide when to use preferred vs network vs open-market suppliers during booking?
 - ❌ **Travel insurance APIs**: Allianz, AXA, Cover Genius, Battleface — programmatic quoting
 - 🔵 **Supplier relationship graph by market**: Map the actual flow of a booking through intermediaries in 5 markets
 - 🔵 **"Last-mile" supplier access**: Small guesthouses, local guides, family-run restaurants — how to connect?
@@ -347,6 +348,8 @@ Each section lists specific research tasks that could be executed as standalone 
 ### E2. Security & Privacy (Global)
 - ✅ Data privacy docs
 - ✅ Auth & identity audit
+- ❌ **Identity/tenant model unification**: User + Membership should be the single auth backbone; TeamStore ghost identities should be audited and phased out.
+- ❌ **WorkspaceCode redemption flow research**: Join/invite flows, pending memberships, JWT issuance, and lifecycle states for onboarding.
 - ❌ **PII handling by jurisdiction**: Passport numbers, credit cards — requirements differ by country
 - ❌ **Data protection law matrix**: GDPR (EU), DPDP (India), CCPA (California), LGPD (Brazil), PIPA (Korea), PDPA (Singapore/Thailand), APPI (Japan), PIPL (China)
 - ❌ **SOC 2 / ISO 27001 readiness**: What's needed for enterprise customers globally?
@@ -681,9 +684,11 @@ Each section lists specific research tasks that could be executed as standalone 
 - ❌ **Supplier onboarding workflows globally**: How long does it take to establish a new hotel/DMC relationship? By market
 - ❌ **Supplier credentialing & verification**: How do agencies verify a new supplier is legitimate? (Especially in developing markets)
 - ❌ **Preferred supplier program research**: How do agencies negotiate preferred rates? Volume commitments, override commissions
+- ❌ **Agency sourcing policy control plane**: How do agencies encode preferred supplier tiers, margin floors, and sourcing priorities as configuration that affects booking decisions?
 - ❌ **Supplier communication patterns**: Email? Portal? Phone? WhatsApp? — by supplier type and region
 - ❌ **Rate loading and management**: How do agencies manage contracted rates vs dynamic rates?
 - ❌ **Supplier payment terms globally**: Net 30, net 60, prepaid, deposit — by supplier type and market
+- ❌ **Vendor cost tracking research**: How do agencies capture contracted supplier costs, cost ledgers, and margin impact for real-time pricing and sourcing decisions?
 - ❌ **Supplier dispute resolution**: What happens when a supplier doesn't deliver what was promised?
 - 🔵 **Supplier rating ecosystem**: TripAdvisor, Google, Booking.com ratings — how agencies use them vs their own experience
 - 🔵 **Supplier consolidation research**: Who are the major bedbanks, wholesalers, consolidators in each market?
@@ -1066,6 +1071,7 @@ Each section lists specific research tasks that could be executed as standalone 
 - ❌ **Change management research**: How to get an agency to switch from current tools — resistance patterns
 - ❌ **Parallel running period**: How long should old and new systems run together?
 - ❌ **Data format standardization**: Client names (first/last vs full), dates (DD/MM vs MM/DD), phone numbers (country codes)
+- ❌ **Agent onboarding state research**: How should the product derive onboarding completeness from profile, team membership, and first trip instead of separate onboarding flows?
 - 🔵 **Zero-data onboarding**: Can the product be useful from day 1 with no historical data?
 - 🔵 **WhatsApp history import**: Can we extract and structure past client conversations from WhatsApp?
 

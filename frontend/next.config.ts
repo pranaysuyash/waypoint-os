@@ -18,8 +18,8 @@ const nextConfig: NextConfig = {
 
   // Turbopack configuration (Next.js 16+)
   turbopack: {
-    // Turbopack-specific options can go here
-    // For now, use defaults which are well-optimized
+    // Fix: specify root to avoid multiple lockfile warning
+    root: __dirname,
   },
 
   // Logging

@@ -20,7 +20,6 @@ from uuid import uuid4
 from dataclasses import asdict, is_dataclass
 import logging
 import threading
-import fcntl
 from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
@@ -60,39 +59,92 @@ def _make_json_serializable(obj: Any) -> Any:
         return str(obj)
 
 
+def _is_process_dead(pid: int) -> bool:
+    """True if the process does not exist or is a zombie (defunct)."""
+    import os as _os, subprocess as _subprocess
+    try:
+        _os.kill(pid, 0)
+    except OSError:
+        return True  # process doesn't exist at all
+    # Process exists — check if it's a zombie
+    try:
+        out = _subprocess.check_output(
+            ["ps", "-o", "state=", "-p", str(pid)],
+            stderr=_subprocess.DEVNULL,
+            text=True,
+        ).strip()
+        return out.startswith("Z")  # Z = zombie/defunct
+    except _subprocess.CalledProcessError:
+        return True
+    except Exception:
+        return False  # conservative: assume alive if we can't check
+
+
 @contextmanager
 def file_lock(filepath: Path, timeout_seconds: float = 30.0):
-    """Cross-process file lock using fcntl with timeout.
+    """Cross-process file lock using atomic directory creation.
 
-    Uses non-blocking LOCK_EX with exponential backoff to avoid
-    deadlock when the process was forked (macOS fork inherits locks).
+    Uses os.mkdir which is atomic on all platforms. Includes stale-lock
+    detection: if the lock directory was created by a process that is no
+    longer alive, it is removed and retried.
+
+    Each lock directory contains a PID file so we can detect stale locks
+    from crashed processes.
     """
-    lock_file = filepath.with_suffix(".lock")
-    import time as _time
+    lock_dir = filepath.with_suffix(filepath.suffix + ".lockdir")
+    pid_file = lock_dir / "pid"
+    import time as _time, os as _os
+
     deadline = _time.monotonic() + timeout_seconds
     delay = 0.01
-    fd = None
-    try:
-        fd = open(lock_file, "w")
-        acquired = False
-        while _time.monotonic() < deadline:
+    acquired = False
+    last_owner = "none"
+
+    while _time.monotonic() < deadline:
+        try:
+            _os.mkdir(lock_dir)
+            # Write our PID
+            with open(pid_file, "w") as f:
+                f.write(str(_os.getpid()))
+            acquired = True
+            break
+        except FileExistsError:
+            # Check if the lock is stale (owner process dead or zombie)
             try:
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                acquired = True
-                break
-            except (BlockingIOError, OSError):
-                _time.sleep(delay)
-                delay = min(delay * 2, 0.5)
-        if not acquired:
-            raise TimeoutError(f"Could not acquire lock on {lock_file} within {timeout_seconds}s")
+                with open(pid_file) as f:
+                    pid_str = f.read().strip()
+                lock_pid = int(pid_str)
+                if _is_process_dead(lock_pid):
+                    try:
+                        _os.remove(pid_file)
+                        _os.rmdir(lock_dir)
+                        last_owner = f"pid={lock_pid} (DEAD, removed)"
+                        continue  # retry immediately
+                    except OSError:
+                        last_owner = f"pid={lock_pid} (dead, could not remove stale lock)"
+                else:
+                    last_owner = f"pid={lock_pid} (alive)"
+            except (FileNotFoundError, ValueError):
+                last_owner = "unknown (no pid file)"
+            _time.sleep(delay)
+            delay = min(delay * 1.5, 0.3)
+
+    if not acquired:
+        raise TimeoutError(
+            f"Could not acquire lock on {lock_dir} within {timeout_seconds}s "
+            f"(last owner: {last_owner})"
+        )
+    try:
         yield
     finally:
-        if fd is not None:
-            try:
-                fcntl.flock(fd, fcntl.LOCK_UN)
-            except Exception:
-                pass
-            fd.close()
+        try:
+            _os.remove(pid_file)
+        except OSError:
+            pass
+        try:
+            _os.rmdir(lock_dir)
+        except OSError:
+            pass
 
 
 class TripStore:
@@ -293,31 +345,28 @@ class AuditStore:
     @staticmethod
     def _save_events(events: list):
         """Save events, rotating if too many."""
-        with AuditStore._lock:
-            # Keep only last MAX_EVENTS
-            if len(events) > AuditStore.MAX_EVENTS:
-                events = events[-AuditStore.MAX_EVENTS:]
-        
-            with file_lock(AuditStore.AUDIT_FILE):
-                with open(AuditStore.AUDIT_FILE, "w") as f:
-                    json.dump(events, f, indent=2)
-    
+        # Keep only last MAX_EVENTS
+        if len(events) > AuditStore.MAX_EVENTS:
+            events = events[-AuditStore.MAX_EVENTS:]
+
+        with open(AuditStore.AUDIT_FILE, "w") as f:
+            json.dump(events, f, indent=2)
+
     @staticmethod
     def log_event(event_type: str, user_id: str, details: dict):
         """Log an audit event."""
         with AuditStore._lock:
-            with file_lock(AuditStore.AUDIT_FILE):
-                events = AuditStore._load_events()
-                
-                events.append({
-                    "id": f"evt_{uuid4().hex[:12]}",
-                    "type": event_type,
-                    "user_id": user_id,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "details": details,
-                })
-                
-                AuditStore._save_events(events)
+            events = AuditStore._load_events()
+            
+            events.append({
+                "id": f"evt_{uuid4().hex[:12]}",
+                "type": event_type,
+                "user_id": user_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "details": details,
+            })
+            
+            AuditStore._save_events(events)
     
     @staticmethod
     def get_events(limit: int = 100) -> list:
@@ -633,7 +682,18 @@ class ConfigStore:
 
 
 # Convenience functions
-def save_processed_trip(spine_output: dict, source: str = "unknown", agency_id: Optional[str] = None, follow_up_due_date: Optional[str] = None, trip_status: str = "new") -> str:
+def save_processed_trip(
+    spine_output: dict,
+    source: str = "unknown",
+    agency_id: Optional[str] = None,
+    follow_up_due_date: Optional[str] = None,
+    party_composition: Optional[str] = None,
+    pace_preference: Optional[str] = None,
+    date_year_confidence: Optional[str] = None,
+    lead_source: Optional[str] = None,
+    activity_provenance: Optional[str] = None,
+    trip_status: str = "new"
+) -> str:
     """
     Convert spine output to a savable trip and persist it.
     
@@ -642,6 +702,11 @@ def save_processed_trip(spine_output: dict, source: str = "unknown", agency_id: 
         source: Source identifier (e.g., "spine_api", "seed_scenario")
         agency_id: Optional agency ID to scope the trip
         follow_up_due_date: Optional ISO-8601 datetime string for when a follow-up is due
+        party_composition: Optional party composition (e.g., "2 adults, 1 toddler")
+        pace_preference: Optional travel pace (rushed/normal/relaxed)
+        date_year_confidence: Optional date confidence (certain/likely/unsure)
+        lead_source: Optional lead source (referral/web/social/other)
+        activity_provenance: Optional activity interests
         trip_status: Trip status (default "new", set "incomplete" for partial intakes)
         
     Returns:
@@ -660,6 +725,11 @@ def save_processed_trip(spine_output: dict, source: str = "unknown", agency_id: 
         "status": trip_status,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "follow_up_due_date": follow_up_due_date,  # Track promised follow-up times
+        "party_composition": party_composition,  # Who is traveling
+        "pace_preference": pace_preference,  # Travel pace preference
+        "date_year_confidence": date_year_confidence,  # Date certainty
+        "lead_source": lead_source,  # How customer found us
+        "activity_provenance": activity_provenance,  # Activity interests
         "extracted": packet,
         "validation": validation,
         "decision": decision,

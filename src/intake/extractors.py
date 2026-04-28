@@ -45,6 +45,12 @@ _RELATION_WORDS = frozenset({
     "caller", "client", "agent",
 })
 
+_STOP_WORDS = frozenset({
+    "we", "i", "my", "our", "the", "this", "that", "it", "they",
+    "he", "she", "us", "me", "him", "her", "and", "or", "to",
+    "with", "for", "from", "in", "on", "at", "by",
+})
+
 _DESTINATION_HINT_VERBS = frozenset({
     "visit", "travel", "trip", "holiday", "vacation", "go", "going",
     "flying", "fly", "planning", "plan", "explore", "see", "tour",
@@ -182,6 +188,10 @@ def _is_valid_destination_candidate(span: str, context: str) -> bool:
     if lower in _RELATION_WORDS:
         return False
 
+    # Common stop words that should never be destinations
+    if lower in _STOP_WORDS:
+        return False
+
     if is_known_destination(lower):
         return True
 
@@ -205,21 +215,34 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
     before the general destination regex so that hedging context is
     preserved in status and raw_match.
     """
-    text_lower = text.lower()
+    # Remove call-log metadata lines that frequently contain capitalized labels
+    # (Caller, Referral, Pace, Budget, etc.) and pollute destination extraction.
+    _DESTINATION_METADATA_LABELS_RE = re.compile(
+        r"^\s*(call\s+received|caller|referral|party|pace(?:\s+preference)?|budget|interests?|follow[\s-]*up|toddler\s+needs?|elderly\s+needs?)\s*:",
+        re.IGNORECASE,
+    )
+    destination_text = "\n".join(
+        line for line in text.splitlines()
+        if not _DESTINATION_METADATA_LABELS_RE.match(line)
+    )
+    if not destination_text.strip():
+        destination_text = text
+
+    text_lower = destination_text.lower()
     candidates: List[str] = []
     excluded_by_past_trip: List[str] = []
 
     # Check for "or" pattern (semi-open)
     or_match = re.search(
         r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)(?:\s+(?:or|and)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*).*?)\b",
-        text,
+        destination_text,
     )
     if or_match:
         c1 = or_match.group(1).title()
         c2 = or_match.group(2).title()
         c1_ok = _is_valid_destination_candidate(c1, text)
         c2_ok = _is_valid_destination_candidate(c2, text)
-        if (c1_ok or c2_ok) and not _is_past_trip_mention(text, or_match.group(0)):
+        if (c1_ok or c2_ok) and not _is_past_trip_mention(destination_text, or_match.group(0)):
             valid = []
             if c1_ok:
                 valid.append(c1)
@@ -260,7 +283,7 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
     # Also filter common pronouns and stop words that should never be destinations.
     _DESTINATION_STOP_WORDS = {"we", "i", "my", "our", "the", "this", "that", "it", "they", "he", "she", "us", "me", "him", "her"}
 
-    matches = [m.group(0) for m in _DESTINATION_RE.finditer(text)]
+    matches = [m.group(0) for m in _DESTINATION_RE.finditer(destination_text)]
     if matches:
         seen = []
         for m in matches:
@@ -269,14 +292,20 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
                 # Skip common pronouns and stop words
                 if title.lower() in _DESTINATION_STOP_WORDS:
                     continue
+                # Skip common call-note labels that are not destinations
+                if title.lower() in {"caller", "referral", "party", "pace", "budget", "interests", "follow", "toddler", "elderly", "promised", "not"}:
+                    continue
+                # Skip month-like tokens (e.g., "Nov" from "Call received: Nov 25, 2024")
+                if title.lower() in _MONTH_NAMES:
+                    continue
                 # Skip if not a known destination (city or country)
                 # geography.py is the filter, not hardcoded lists
                 if not is_known_destination(title):
                     continue
                 # Skip if this looks like an origin (preceded by "from")
-                if _is_likely_origin(text, m):
+                if _is_likely_origin(destination_text, m):
                     continue
-                if _is_past_trip_mention(text, m):
+                if _is_past_trip_mention(destination_text, m):
                     excluded_by_past_trip.append(title)
                 else:
                     seen.append(title)
@@ -558,6 +587,16 @@ def _extract_party(text: str) -> Dict[str, Any]:
 
     # Total party size
     party_size = sum(composition.values())
+
+    # Prefer explicit stated headcount when present (e.g., "6 pax", "6 people").
+    # If explicit and inferred counts conflict, explicit caller-provided count wins.
+    explicit_size_match = re.search(
+        r"\b(\d+)\s+(?:people|persons|pax|travellers|travelers)\b",
+        text_lower,
+    )
+    explicit_party_size = int(explicit_size_match.group(1)) if explicit_size_match else None
+    if explicit_party_size and explicit_party_size > 0:
+        party_size = explicit_party_size
 
     # Fallback: "family of N", "group of N", "N people"
     if party_size == 0:

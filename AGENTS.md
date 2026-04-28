@@ -48,6 +48,11 @@ If instructions conflict, follow the stricter rule and cite concrete file paths.
 - Do not claim platform limitations when the gap is implementable; state what is possible, what is implemented, and the concrete path.
 - For skill discovery, prioritize project-level skills under `/Users/pranay/Projects/skills/` before defaulting to other skill stores.
 
+## Working Style (User Preference)
+
+- Solutions must be elegant, built from first principles, scalable, long-term, better, comprehensive, and architecturally correct.
+- Maintain a vision-oriented approach while staying open to updates and avoiding rigidity.
+
 ## Preview & Feedback (Critical)
 
 **Rule**: Before showing work to the user for feedback, **always start the servers first**:

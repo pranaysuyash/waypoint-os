@@ -18,6 +18,11 @@ export default function CaptureCallPanel({
   const [rawNote, setRawNote] = useState("");
   const [ownerNote, setOwnerNote] = useState("");
   const [followUpDueDate, setFollowUpDueDate] = useState("");
+  const [partyComposition, setPartyComposition] = useState("");
+  const [pacePreference, setPacePreference] = useState("");
+  const [dateYearConfidence, setDateYearConfidence] = useState("");
+  const [leadSource, setLeadSource] = useState("");
+  const [activityProvenance, setActivityProvenance] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [apiError, setApiError] = useState<string | null>(null);
@@ -64,11 +69,21 @@ export default function CaptureCallPanel({
         raw_note: rawNote.trim(),
         owner_note: ownerNote.trim() || undefined,
         follow_up_due_date: followUpDueDate || undefined,
+        party_composition: partyComposition.trim() || undefined,
+        pace_preference: pacePreference || undefined,
+        date_year_confidence: dateYearConfidence || undefined,
+        lead_source: leadSource || undefined,
+        activity_provenance: activityProvenance.trim() || undefined,
       });
 
       setRawNote("");
       setOwnerNote("");
       setFollowUpDueDate("");
+      setPartyComposition("");
+      setPacePreference("");
+      setDateYearConfidence("");
+      setLeadSource("");
+      setActivityProvenance("");
       setErrors({});
       onSave(trip);
     } catch (err) {
@@ -83,6 +98,11 @@ export default function CaptureCallPanel({
     setRawNote("");
     setOwnerNote("");
     setFollowUpDueDate("");
+    setPartyComposition("");
+    setPacePreference("");
+    setDateYearConfidence("");
+    setLeadSource("");
+    setActivityProvenance("");
     setErrors({});
     setApiError(null);
     onCancel();
@@ -180,6 +200,121 @@ export default function CaptureCallPanel({
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             Leave blank if no promise was made
+          </p>
+        </div>
+
+        {/* Party Composition Field */}
+        <div>
+          <label
+            htmlFor="partyComposition"
+            className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+          >
+            Who's traveling?
+          </label>
+          <textarea
+            id="partyComposition"
+            value={partyComposition}
+            onChange={(e) => setPartyComposition(e.target.value)}
+            placeholder="e.g., 2 adults, 1 toddler (age 3), 1 infant"
+            rows={2}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Helps us plan family-friendly itineraries
+          </p>
+        </div>
+
+        {/* Pace Preference Field */}
+        <div>
+          <label
+            htmlFor="pacePreference"
+            className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+          >
+            Travel pace preference?
+          </label>
+          <select
+            id="pacePreference"
+            value={pacePreference}
+            onChange={(e) => setPacePreference(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+          >
+            <option value="">Select pace preference...</option>
+            <option value="rushed">Rushed</option>
+            <option value="normal">Normal</option>
+            <option value="relaxed">Relaxed</option>
+          </select>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            How much do they want to move around?
+          </p>
+        </div>
+
+        {/* Date Confidence Field */}
+        <div>
+          <label
+            htmlFor="dateYearConfidence"
+            className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+          >
+            How certain about the dates?
+          </label>
+          <select
+            id="dateYearConfidence"
+            value={dateYearConfidence}
+            onChange={(e) => setDateYearConfidence(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+          >
+            <option value="">Select confidence level...</option>
+            <option value="certain">Certain</option>
+            <option value="likely">Likely</option>
+            <option value="unsure">Unsure</option>
+          </select>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Helps with scheduling and itinerary building
+          </p>
+        </div>
+
+        {/* Lead Source Field */}
+        <div>
+          <label
+            htmlFor="leadSource"
+            className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+          >
+            How did they find us?
+          </label>
+          <select
+            id="leadSource"
+            value={leadSource}
+            onChange={(e) => setLeadSource(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+          >
+            <option value="">Select lead source...</option>
+            <option value="referral">Referral</option>
+            <option value="web">Web Search</option>
+            <option value="social">Social Media</option>
+            <option value="other">Other</option>
+          </select>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Helps us understand marketing effectiveness
+          </p>
+        </div>
+
+        {/* Activity Interests Field */}
+        <div>
+          <label
+            htmlFor="activityProvenance"
+            className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+          >
+            What activities interest them?
+          </label>
+          <textarea
+            id="activityProvenance"
+            value={activityProvenance}
+            onChange={(e) => setActivityProvenance(e.target.value)}
+            placeholder="e.g., hiking, museums, fine dining, adventure sports"
+            rows={2}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Guide interests, not limitations
           </p>
         </div>
       </form>

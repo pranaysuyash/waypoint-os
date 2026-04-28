@@ -1,0 +1,42 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.3, pytest-9.0.3, pluggy-1.6.0 -- /Users/pranay/Projects/travel_agency_agent/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/pranay/Projects/travel_agency_agent
+configfile: pyproject.toml
+plugins: anyio-4.13.0
+collecting ... collected 32 items
+
+tests/test_call_capture_e2e.py::TestCallCaptureFollowUpDueDate::test_capture_call_creates_trip_with_follow_up_due_date PASSED [  3%]
+tests/test_call_capture_e2e.py::TestCallCaptureFollowUpDueDate::test_captured_trip_retrieved_via_get PASSED [  6%]
+tests/test_call_capture_e2e.py::TestCallCaptureFollowUpDueDate::test_patch_follow_up_due_date_on_existing_trip PASSED [  9%]
+tests/test_call_capture_e2e.py::TestCallCaptureFollowUpDueDate::test_patch_follow_up_due_date_with_null_clears_field PASSED [ 12%]
+tests/test_call_capture_e2e.py::TestCallCaptureFollowUpDueDate::test_multiple_trips_can_have_different_follow_up_dates PASSED [ 15%]
+tests/test_call_capture_e2e.py::TestCallCaptureFollowUpDueDate::test_follow_up_due_date_survives_round_trip PASSED [ 18%]
+tests/test_call_capture_e2e.py::TestCallCaptureFollowUpDueDate::test_raw_note_and_follow_up_due_date_together PASSED [ 21%]
+tests/test_call_capture_e2e.py::TestCallCaptureFollowUpDueDate::test_follow_up_due_date_iso8601_format_validation PASSED [ 25%]
+tests/test_call_capture_e2e.py::TestCallCaptureFollowUpDueDate::test_trip_creation_without_follow_up_due_date PASSED [ 28%]
+tests/test_call_capture_phase2.py::TestPhase2StructuredFields::test_create_trip_with_party_composition PASSED [ 31%]
+tests/test_call_capture_phase2.py::TestPhase2StructuredFields::test_create_trip_with_pace_preference PASSED [ 34%]
+tests/test_call_capture_phase2.py::TestPhase2StructuredFields::test_create_trip_with_date_year_confidence PASSED [ 37%]
+tests/test_call_capture_phase2.py::TestPhase2StructuredFields::test_create_trip_with_lead_source PASSED [ 40%]
+tests/test_call_capture_phase2.py::TestPhase2StructuredFields::test_create_trip_with_activity_provenance PASSED [ 43%]
+tests/test_call_capture_phase2.py::TestPhase2StructuredFields::test_patch_party_composition PASSED [ 46%]
+tests/test_call_capture_phase2.py::TestPhase2StructuredFields::test_patch_pace_preference PASSED [ 50%]
+tests/test_call_capture_phase2.py::TestPhase2StructuredFields::test_patch_date_year_confidence PASSED [ 53%]
+tests/test_call_capture_phase2.py::TestPhase2StructuredFields::test_patch_lead_source PASSED [ 56%]
+tests/test_call_capture_phase2.py::TestPhase2StructuredFields::test_patch_activity_provenance PASSED [ 59%]
+tests/test_call_capture_phase2.py::TestPhase2StructuredFields::test_structured_fields_are_optional PASSED [ 62%]
+tests/test_call_capture_phase2.py::TestPhase2StructuredFields::test_patch_multiple_structured_fields_together PASSED [ 65%]
+tests/test_call_capture_phase2.py::TestPhase2StructuredFields::test_patch_structured_field_with_null_clears_value PASSED [ 68%]
+tests/test_call_capture_phase2.py::TestPhase2StructuredFields::test_patch_preserves_existing_fields_with_structured_fields PASSED [ 71%]
+tests/test_call_capture_phase2.py::TestPhase2StructuredFields::test_get_trip_includes_all_structured_fields PASSED [ 75%]
+tests/test_api_trips_post.py::TestTripFollowUpDueDate::test_get_trip_includes_follow_up_due_date_field PASSED [ 78%]
+tests/test_api_trips_post.py::TestTripFollowUpDueDate::test_patch_trip_with_follow_up_due_date PASSED [ 81%]
+tests/test_api_trips_post.py::TestTripFollowUpDueDate::test_patch_trip_with_null_follow_up_due_date PASSED [ 84%]
+tests/test_api_trips_post.py::TestTripFollowUpDueDate::test_patch_trip_preserves_existing_fields PASSED [ 87%]
+tests/test_api_trips_post.py::TestTripFollowUpDueDate::test_get_trip_by_id_returns_follow_up_due_date PASSED [ 90%]
+tests/test_api_trips_post.py::TestTripFollowUpDueDate::test_patch_trip_with_status_and_follow_up_due_date PASSED [ 93%]
+tests/test_api_trips_post.py::TestTripFollowUpDueDate::test_follow_up_due_date_accepts_iso8601_datetime PASSED [ 96%]
+tests/test_api_trips_post.py::TestTripFollowUpDueDate::test_patch_trip_follow_up_due_date_persists_across_requests PASSED [100%]
+
+============================== 32 passed in 2.68s ==============================

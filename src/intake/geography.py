@@ -223,6 +223,7 @@ def _build_union() -> Set[str]:
     Build union of all city sources (computed once, cached).
 
     This is the primary lookup - combines all three sources.
+    All values are normalized to lowercase for case-insensitive matching.
     """
     global _all_known_cities
     if _all_known_cities is not None:
@@ -232,8 +233,8 @@ def _build_union() -> Set[str]:
     worldcities = _load_worldcities()
     accumulated = _load_accumulated()
 
-    # Union of all sources
-    _all_known_cities = geonames | worldcities | accumulated
+    # Union of all sources, normalized to lowercase
+    _all_known_cities = {c.lower() for c in (geonames | worldcities | accumulated)}
     return _all_known_cities
 
 
@@ -261,7 +262,7 @@ def is_known_city(name: str) -> bool:
     """
     if not name or name.lower() in _BLACKLIST:
         return False
-    return name in _build_union()
+    return name.lower() in _build_union()
 
 
 def is_known_city_normalized(name: str) -> bool:
@@ -464,11 +465,15 @@ def is_known_destination(name: str) -> bool:
     if not name:
         return False
 
+    lower = name.lower()
+
     # Case-insensitive blacklist check (for month names etc.)
-    if name.lower() in {b.lower() for b in _BLACKLIST}:
+    if lower in {b.lower() for b in _BLACKLIST}:
         return False
 
-    return name in _build_union() or name in _COUNTRY_DESTINATIONS
+    # Normalize country destinations for case-insensitive lookup
+    _COUNTRY_LOWER = {c.lower() for c in _COUNTRY_DESTINATIONS}
+    return lower in _build_union() or lower in _COUNTRY_LOWER
 
 
 # =============================================================================

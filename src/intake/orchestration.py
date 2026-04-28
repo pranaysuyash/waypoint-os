@@ -209,7 +209,7 @@ def run_spine_once(
                 state="escalated",
                 reason="NB01 gate escalation - extraction quality issues"
             )
-        return _create_empty_spine_result(packet, validation, decision, run_timestamp)
+        return _create_empty_spine_result(packet, validation, decision, run_timestamp, nb01_result.reasons)
 
     if nb01_result.verdict == GateVerdict.DEGRADE:
         # Intake minimum is met but quote-ready fields are incomplete.
@@ -421,7 +421,7 @@ def _human_block_reason(reasons: list) -> str:
     return " ".join(parts) + ". Please add the missing information and try again."
 
 
-def _create_empty_spine_result(packet, validation, decision, timestamp):
+def _create_empty_spine_result(packet, validation, decision, timestamp, block_reasons=None):
     """Helper for early exit on gate failure."""
     from .strategy import SessionStrategy, PromptBundle
     from .safety import SanitizedPacketView
@@ -465,7 +465,7 @@ def _create_empty_spine_result(packet, validation, decision, timestamp):
         frontier_result=None,
         run_timestamp=timestamp,
         early_exit=True,
-        early_exit_reason=_human_block_reason(nb01_result.reasons),
+        early_exit_reason=_human_block_reason(block_reasons or []),
     )
 
 

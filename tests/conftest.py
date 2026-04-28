@@ -99,5 +99,10 @@ def disable_audit_logging(monkeypatch):
         pass
     
     monkeypatch.setattr(AuditStore, "log_event", noop_log_event)
+    
+    # Disable privacy guard for these tests
+    monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
+    
     yield
+
 
