@@ -202,6 +202,7 @@ function WorkbenchContent() {
   const [isRunning, setIsRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [runSuccess, setRunSuccess] = useState(false);
+  const inFlightRef = useRef(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [completedTripId, setCompletedTripId] = useState<string | null>(null);
   const {
@@ -218,6 +219,8 @@ function WorkbenchContent() {
 
   const handleProcessTrip = useCallback(async () => {
     if (!store.input_raw_note && !store.input_owner_note) return;
+    if (inFlightRef.current) return;  // Prevent double-clicks
+    inFlightRef.current = true;
     setIsRunning(true);
     setRunError(null);
     setRunSuccess(false);
@@ -254,6 +257,7 @@ function WorkbenchContent() {
       );
       setTimeout(() => setRunError(null), 8000);
     } finally {
+      inFlightRef.current = false;
       setIsRunning(false);
     }
   }, [store, executeSpineRun, spineStage, currentMode, currentScenario]);

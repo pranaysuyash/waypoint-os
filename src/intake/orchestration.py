@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .packet_models import SourceEnvelope
 from .extractors import ExtractionPipeline
@@ -162,9 +162,29 @@ def run_spine_once(
     run_timestamp = datetime.now(timezone.utc).isoformat()
     actual_settings = agency_settings or AgencySettings(agency_id="default")
 
+    def _emit_stage_event(
+        stage_name: str,
+        event: str,
+        data: Optional[Any] = None,
+        error: Optional[str] = None,
+    ) -> None:
+        if not stage_callback:
+            return
+        payload: Dict[str, Any] = {"event": event}
+        if data is not None:
+            payload["data"] = data
+        if error is not None:
+            payload["error"] = error
+        stage_callback(stage_name, payload)
+
     # --- Phase 1: Extraction ---
+    _emit_stage_event("packet", "entered")
     pipeline = ExtractionPipeline()
-    packet = pipeline.extract(envelopes)
+    try:
+        packet = pipeline.extract(envelopes)
+    except Exception as e:
+        _emit_stage_event("packet", "failed", error=str(e))
+        raise
 
     # Override stage and operating mode if specified
     packet.stage = stage
@@ -172,7 +192,7 @@ def run_spine_once(
         packet.operating_mode = operating_mode
 
     if stage_callback:
-        stage_callback("packet", packet if hasattr(packet, "model_dump") else vars(packet))
+        _emit_stage_event("packet", "completed", packet if hasattr(packet, "model_dump") else vars(packet))
     else:
         # Emit intake event to AuditStore
         _emit_audit_event(
@@ -183,7 +203,12 @@ def run_spine_once(
         )
 
     # --- Phase 2: Validation ---
-    validation = validate_packet(packet, stage=stage)
+    _emit_stage_event("validation", "entered")
+    try:
+        validation = validate_packet(packet, stage=stage)
+    except Exception as e:
+        _emit_stage_event("validation", "failed", error=str(e))
+        raise
 
     # --- Quality Gate: NB01 Completion ---
     nb01_gate = NB01CompletionGate()
@@ -201,7 +226,7 @@ def run_spine_once(
             rationale={"gate_failure": "NB01_ESCALATE", "reasons": nb01_result.reasons}
         )
         if stage_callback:
-            stage_callback("validation", {"status": "ESCALATED", "gate": "NB01", "reasons": nb01_result.reasons})
+            _emit_stage_event("validation", "completed", {"status": "ESCALATED", "gate": "NB01", "reasons": nb01_result.reasons})
         else:
             _emit_audit_event(
                 trip_id=packet.packet_id,
@@ -230,7 +255,7 @@ def run_spine_once(
             ],
         )
         if stage_callback:
-            stage_callback("validation", {"status": "DEGRADED", "gate": "NB01", "reasons": nb01_result.reasons})
+            _emit_stage_event("validation", "completed", {"status": "DEGRADED", "gate": "NB01", "reasons": nb01_result.reasons})
         else:
             _emit_audit_event(
                 trip_id=packet.packet_id,
@@ -241,7 +266,7 @@ def run_spine_once(
         return _create_partial_intake_result(packet, validation, empty_decision, run_timestamp)
 
     if stage_callback:
-        stage_callback("validation", validation if hasattr(validation, "model_dump") else vars(validation))
+        _emit_stage_event("validation", "completed", validation if hasattr(validation, "model_dump") else vars(validation))
     else:
         # Emit packet stage completion to AuditStore
         _emit_audit_event(
@@ -252,13 +277,18 @@ def run_spine_once(
         )
 
     # --- Phase 3: Decision ---
-    decision = run_gap_and_decision(packet, feasibility_table=feasibility_table, agency_settings=actual_settings)
+    _emit_stage_event("decision", "entered")
+    try:
+        decision = run_gap_and_decision(packet, feasibility_table=feasibility_table, agency_settings=actual_settings)
+    except Exception as e:
+        _emit_stage_event("decision", "failed", error=str(e))
+        raise
 
     # Update packet decision_state from decision result
     packet.decision_state = decision.decision_state
 
     if stage_callback:
-        stage_callback("decision", decision if hasattr(decision, "model_dump") else vars(decision))
+        _emit_stage_event("decision", "completed", decision if hasattr(decision, "model_dump") else vars(decision))
     else:
         # Emit decision stage event to AuditStore
         _emit_audit_event(
@@ -313,10 +343,15 @@ def run_spine_once(
     }
 
     # --- Phase 4: Strategy ---
-    strategy = build_session_strategy(decision, packet, agency_settings=actual_settings)
+    _emit_stage_event("strategy", "entered")
+    try:
+        strategy = build_session_strategy(decision, packet, agency_settings=actual_settings)
+    except Exception as e:
+        _emit_stage_event("strategy", "failed", error=str(e))
+        raise
 
     if stage_callback:
-        stage_callback("strategy", strategy if hasattr(strategy, "model_dump") else vars(strategy))
+        _emit_stage_event("strategy", "completed", strategy if hasattr(strategy, "model_dump") else vars(strategy))
     else:
         # Emit strategy stage event to AuditStore
         _emit_audit_event(
@@ -327,36 +362,46 @@ def run_spine_once(
         )
 
     # --- Phase 5: Internal Bundle ---
-    internal_bundle = build_internal_bundle(strategy, decision, packet)
+    _emit_stage_event("output", "entered")
+    try:
+        internal_bundle = build_internal_bundle(strategy, decision, packet)
 
-    # --- Phase 6: Traveler-Safe Bundle ---
-    # If decision state dropped to INTERNAL_DRAFT or STOP, traveler bundle should be empty/minimal
-    traveler_bundle = build_traveler_safe_bundle(strategy, decision)
+        # --- Phase 6: Traveler-Safe Bundle ---
+        # If decision state dropped to INTERNAL_DRAFT or STOP, traveler bundle should be empty/minimal
+        traveler_bundle = build_traveler_safe_bundle(strategy, decision)
 
-    # Callback for bundles
-    if stage_callback:
-        stage_callback("output", {
-            "internal_bundle": internal_bundle if hasattr(internal_bundle, "model_dump") else vars(internal_bundle),
-            "traveler_bundle": traveler_bundle if hasattr(traveler_bundle, "model_dump") else vars(traveler_bundle),
-        })
+        # Callback for bundles
+        if stage_callback:
+            _emit_stage_event("output", "completed", {
+                "internal_bundle": internal_bundle if hasattr(internal_bundle, "model_dump") else vars(internal_bundle),
+                "traveler_bundle": traveler_bundle if hasattr(traveler_bundle, "model_dump") else vars(traveler_bundle),
+            })
+    except Exception as e:
+        _emit_stage_event("output", "failed", error=str(e))
+        raise
 
     # --- Phase 7: Sanitized View ---
-    sanitized_view = sanitize_for_traveler(packet)
+    _emit_stage_event("safety", "entered")
+    try:
+        sanitized_view = sanitize_for_traveler(packet)
 
-    # --- Phase 8: Leakage Check ---
-    traveler_leaks = check_no_leakage(traveler_bundle)
-    sanitized_leaks = _check_sanitized_view_leakage(sanitized_view)
-    all_leaks = traveler_leaks + sanitized_leaks
+        # --- Phase 8: Leakage Check ---
+        traveler_leaks = check_no_leakage(traveler_bundle)
+        sanitized_leaks = _check_sanitized_view_leakage(sanitized_view)
+        all_leaks = traveler_leaks + sanitized_leaks
 
-    leakage_result = {
-        "leaks": all_leaks,
-        "is_safe": len(all_leaks) == 0,
-        "traveler_bundle_leaks": traveler_leaks,
-        "sanitized_view_leaks": sanitized_leaks,
-    }
+        leakage_result = {
+            "leaks": all_leaks,
+            "is_safe": len(all_leaks) == 0,
+            "traveler_bundle_leaks": traveler_leaks,
+            "sanitized_view_leaks": sanitized_leaks,
+        }
 
-    if stage_callback:
-        stage_callback("safety", leakage_result)
+        if stage_callback:
+            _emit_stage_event("safety", "completed", leakage_result)
+    except Exception as e:
+        _emit_stage_event("safety", "failed", error=str(e))
+        raise
     else:
         # Emit safety stage event to AuditStore
         _emit_audit_event(

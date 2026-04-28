@@ -48,6 +48,11 @@
   - Added explicit placeholder matching for route patterns (`{id}`, `{step_name}`) by path structure.
   - Added safe placeholder substitution for backend paths.
 
+- File: `frontend/src/app/workbench/RunProgressPanel.tsx`
+- What changed:
+  - Current-step rendering now uses real `pipeline_stage_entered` events (not inferred first-pending heuristic).
+  - Added explicit intake-only completion copy when run completes before decision stage.
+
 ### Backend extraction
 - File: `src/intake/extractors.py`
 - What changed:
@@ -56,6 +61,16 @@
   - Added month-token filter in generic destination match path.
   - Party extraction now prefers explicit headcount (`N pax/people/travelers`) when present.
 
+### Backend run progress lifecycle
+- Files:
+  - `src/intake/orchestration.py`
+  - `spine_api/server.py`
+- What changed:
+  - `run_spine_once` now emits phase lifecycle callbacks: `entered`, `completed`, `failed`.
+  - Server callback handling now consumes lifecycle payloads and emits run events at true phase boundaries.
+  - Stage timing now measures `completed - entered` per stage instead of same-tick pseudo-timing.
+  - Failure/block events now include `stage_at_failure` / `stage_at_block` context where available.
+
 ## Verification Evidence
 
 ### Tests
@@ -63,8 +78,8 @@
   - `./node_modules/.bin/vitest run src/lib/__tests__/route-map.test.ts`
   - Result: `7 passed`
 - Backend:
-  - `uv run pytest -q tests/test_extraction_fixes.py`
-  - Result: `91 passed`
+  - `uv run pytest -q tests/test_extraction_fixes.py tests/test_orchestration_stage_progress.py tests/test_run_state_unit.py`
+  - Result: `138 passed`
 
 ### Added/updated regression coverage
 - `frontend/src/lib/__tests__/route-map.test.ts`
@@ -73,12 +88,18 @@
 - `tests/test_extraction_fixes.py`
   - Validates explicit `6 pax` overrides inferred family count.
   - Validates month/call-log labels are excluded from destination candidates.
+- `tests/test_orchestration_stage_progress.py`
+  - Validates stage lifecycle ordering (`entered` before `completed`) for orchestrated run phases.
 
 ### Scenario-level spot check
 - Input: user-provided Singapore scenario text with mixed narrative + call log.
 - Extraction result after fix:
   - destination candidates: `['Singapore']`
   - party size: `6`
+
+### Live run spot check
+- Submitted authenticated runs against `/run` and polled `/runs/{id}` + `/runs/{id}/events`.
+- Verified event stream now contains true in-flight `pipeline_stage_entered` followed later by `pipeline_stage_completed` for executed stages.
 
 ## Remaining Risks / Next Work
 - Timeline 404 is fixed at route-mapping level.

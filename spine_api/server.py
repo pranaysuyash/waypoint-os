@@ -58,9 +58,11 @@ if str(PROJECT_ROOT) not in sys.path:
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from sqlalchemy import text
 
 from spine_api.core.auth import get_current_user, get_current_agency_id, get_current_agency
 from spine_api.models.tenant import Agency, User
+from spine_api.core.database import engine
 from spine_api.core.logging_filter import install_sensitive_data_filter
 from spine_api.core.middleware import AuthMiddleware
 
@@ -90,6 +92,7 @@ from spine_api.contract import (
     UpdateAutonomyPolicy,
     UnifiedStateResponse,
     DashboardStatsResponse,
+    SuitabilityFlagsResponse,
 )
 
 from src.intake.orchestration import run_spine_once
@@ -243,6 +246,52 @@ if os.environ.get("TRAVELER_SAFE_STRICT", "").strip() in ("1", "true", "yes"):
 # Lifespan handler
 # =============================================================================
 
+async def _ensure_memberships_schema_compatibility() -> None:
+    """
+    Backfill missing memberships columns for local/stale databases.
+
+    This is an additive startup migration guard to prevent auth failures when
+    the running database lags the ORM model.
+    """
+    try:
+        async with engine.begin() as conn:
+            table_exists_result = await conn.execute(text("""
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public' AND table_name = 'memberships'
+                )
+            """))
+            table_exists = bool(table_exists_result.scalar())
+            if not table_exists:
+                return
+
+            await conn.execute(text("""
+                ALTER TABLE memberships
+                ADD COLUMN IF NOT EXISTS capacity INTEGER DEFAULT 5
+            """))
+            await conn.execute(text("""
+                ALTER TABLE memberships
+                ADD COLUMN IF NOT EXISTS specializations JSONB DEFAULT '[]'::jsonb
+            """))
+            await conn.execute(text("""
+                ALTER TABLE memberships
+                ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active'
+            """))
+            await conn.execute(text("""
+                ALTER TABLE memberships
+                ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NULL
+            """))
+            await conn.execute(text("""
+                ALTER TABLE memberships
+                ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()
+            """))
+            logger.info("Schema compatibility check complete for memberships table")
+    except Exception as e:
+        logger.error("Failed memberships schema compatibility check: %s", e)
+        raise
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan context manager (replaces deprecated on_event)."""
@@ -254,6 +303,7 @@ async def lifespan(app: FastAPI):
         )
     if os.environ.get("SPINE_API_DISABLE_AUTH"):
         logger.warning("⚠️  AUTH DISABLED — local/test only. Do not use in production.")
+    await _ensure_memberships_schema_compatibility()
     install_sensitive_data_filter()
     watchdog.start()
     _recovery_agent.start()
@@ -634,28 +684,31 @@ def _execute_spine_pipeline(
     run_id: str,
     request_dict: dict[str, Any],
     agency_id: str,
+    user_id: str,
 ) -> None:
     """Run the spine pipeline in the background and persist status/events."""
-    # Close inherited lock file descriptors to prevent fork-deadlock on macOS.
-    # When multiprocessing forks, the child inherits all parent fds including
-    # fcntl.flock-held files. Closing them here ensures the child can acquire
-    # fresh locks via the file_lock context manager.
-    _close_inherited_lock_fds()
-
     t0 = time.perf_counter()
-    request = SpineRunRequest(**request_dict)
-
-    if request.strict_leakage:
-        set_strict_mode(True)
-
-    meta = RunMeta(
-        stage=request.stage,
-        operating_mode=request.operating_mode,
-        fixture_id=request.scenario_id,
-        execution_ms=0.0,
-    )
+    current_stage: Optional[str] = None
 
     try:
+        # Close inherited lock file descriptors to prevent fork-deadlock on macOS.
+        # When multiprocessing forks, the child inherits all parent fds including
+        # fcntl.flock-held files. Closing them here ensures the child can acquire
+        # fresh locks via the file_lock context manager.
+        _close_inherited_lock_fds()
+
+        request = SpineRunRequest(**request_dict)
+
+        if request.strict_leakage:
+            set_strict_mode(True)
+
+        meta = RunMeta(
+            stage=request.stage,
+            operating_mode=request.operating_mode,
+            fixture_id=request.scenario_id,
+            execution_ms=0.0,
+        )
+
         RunLedger.set_state(run_id, RunState.RUNNING)
         emit_run_started(
             run_id=run_id,
@@ -667,20 +720,53 @@ def _execute_spine_pipeline(
         envelopes = build_envelopes(request.model_dump(exclude_none=True))
         fixture_expectations = load_fixture_expectations(request.scenario_id)
         agency_settings = AgencySettingsStore.load(agency_id)
+        stage_started_at: dict[str, float] = {}
 
         def _stage_checkpoint(stage_name: str, data: Any) -> None:
-            """Emit mid-run checkpoint: event + step file, before trip_id exists."""
+            """Emit lifecycle-aware stage events and checkpoint data."""
+            nonlocal current_stage
             try:
-                val = _to_dict(data) if data is not None else None
-                if val is not None:
-                    t_step = time.perf_counter()
+                event = "completed"
+                payload_data = data
+                error_message: Optional[str] = None
+
+                if isinstance(data, dict) and isinstance(data.get("event"), str):
+                    event = data.get("event", "completed")
+                    payload_data = data.get("data")
+                    error_message = data.get("error")
+
+                if event == "entered":
+                    current_stage = stage_name
+                    stage_started_at[stage_name] = time.perf_counter()
                     emit_stage_entered(run_id, stage_name, trip_id=None)
+                    return
+
+                if event == "failed":
+                    current_stage = stage_name
+                    RunLedger.save_step(run_id, f"{stage_name}_failed", {
+                        "stage_name": stage_name,
+                        "error": error_message or "stage_failed",
+                    })
+                    return
+
+                stage_start = stage_started_at.get(stage_name)
+                if stage_start is None:
+                    current_stage = stage_name
+                    emit_stage_entered(run_id, stage_name, trip_id=None)
+                    stage_start = time.perf_counter()
+                    stage_started_at[stage_name] = stage_start
+
+                val = _to_dict(payload_data) if payload_data is not None else None
+                if val is not None:
                     RunLedger.save_step(run_id, stage_name, val)
-                    emit_stage_completed(
-                        run_id, stage_name,
-                        execution_ms=(time.perf_counter() - t_step) * 1000,
-                        trip_id=None,
-                    )
+
+                emit_stage_completed(
+                    run_id,
+                    stage_name,
+                    execution_ms=(time.perf_counter() - stage_start) * 1000,
+                    trip_id=None,
+                )
+                current_stage = stage_name
             except Exception as e:
                 logger.error("Wave A: mid-run checkpoint failed stage=%s error=%s", stage_name, e)
 
@@ -712,7 +798,12 @@ def _execute_spine_pipeline(
             })
             block_reason = result.early_exit_reason or "Pipeline blocked"
             RunLedger.block(run_id, block_reason=block_reason)
-            emit_run_blocked(run_id=run_id, block_reason=block_reason, trip_id=None)
+            emit_run_blocked(
+                run_id=run_id,
+                block_reason=block_reason,
+                stage_at_block=current_stage,
+                trip_id=None,
+            )
             return
 
         if getattr(result, "partial_intake", False):
@@ -735,6 +826,7 @@ def _execute_spine_pipeline(
                 },
                 source="spine_api",
                 agency_id=agency_id,
+                user_id=user_id,
                 trip_status="incomplete",
             )
             if not trip_id_saved:
@@ -760,7 +852,12 @@ def _execute_spine_pipeline(
                 "meta": meta.model_dump(),
             })
             RunLedger.block(run_id, block_reason="Validation failed (defense-in-depth)")
-            emit_run_blocked(run_id=run_id, block_reason="Validation failed (defense-in-depth)", trip_id=None)
+            emit_run_blocked(
+                run_id=run_id,
+                block_reason="Validation failed (defense-in-depth)",
+                stage_at_block=current_stage,
+                trip_id=None,
+            )
             return
 
         logger.info(
@@ -785,6 +882,7 @@ def _execute_spine_pipeline(
             },
             source="spine_api",
             agency_id=agency_id,
+            user_id=user_id,
         )
         if not trip_id_saved:
             raise RuntimeError("save_processed_trip returned no trip_id")
@@ -835,7 +933,12 @@ def _execute_spine_pipeline(
         # Wave A: mark as BLOCKED (distinct from FAILED)
         try:
             RunLedger.block(run_id, block_reason=error_message)
-            emit_run_blocked(run_id=run_id, block_reason=error_message, trip_id=None)
+            emit_run_blocked(
+                run_id=run_id,
+                block_reason=error_message,
+                stage_at_block=current_stage,
+                trip_id=None,
+            )
         except Exception as ledger_err:
             logger.error("Wave A: block ledger failed for run %s: %s", run_id, ledger_err)
 
@@ -856,6 +959,7 @@ def _execute_spine_pipeline(
                 run_id=run_id,
                 error_type=type(e).__name__,
                 error_message=str(e),
+                stage_at_failure=current_stage,
                 trip_id=None,
             )
         except Exception as ledger_err:
@@ -870,6 +974,7 @@ def _execute_spine_pipeline(
 async def run_spine(
     request: SpineRunRequest,
     agency: Agency = Depends(get_current_agency),
+    user: User = Depends(get_current_user),
 ) -> RunAcceptedResponse:
     """
     Submit a spine run and return immediately.
@@ -891,7 +996,7 @@ async def run_spine(
     # fork/spawn on macOS/Linux.
     thread = threading.Thread(
         target=_execute_spine_pipeline,
-        args=(run_id, request_dict, agency.id),
+        args=(run_id, request_dict, agency.id, user.id),
         daemon=True,
         name=f"spine-{run_id[:8]}",
     )
@@ -1051,6 +1156,54 @@ def get_trip(
         trip["assigned_to_name"] = assignment["agent_name"]
     
     return trip
+
+
+@app.get("/trips/{trip_id}/suitability", response_model=SuitabilityFlagsResponse)
+def get_trip_suitability(
+    trip_id: str,
+    agency: Agency = Depends(get_current_agency),
+):
+    """
+    Get all suitability flags for a trip.
+    
+    Returns suitability signals with confidence scores and tier information.
+    Tier 1 (critical/high): Hard blockers requiring operator acknowledgment
+    Tier 2 (medium/low): Warnings for operator review
+    """
+    # Verify trip exists and belongs to the agency
+    trip = TripStore.get_trip(trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    # Fetch suitability flags from the trip's decision output
+    suitability_flags = []
+    
+    try:
+        # Get the decision output if it exists
+        decision_output = trip.get("decision_output")
+        if decision_output and isinstance(decision_output, dict):
+            # Extract suitability_flags from decision_output
+            flags_from_decision = decision_output.get("suitability_flags", [])
+            if flags_from_decision:
+                for flag in flags_from_decision:
+                    if isinstance(flag, dict):
+                        # Convert flag to the expected format with id, name, confidence, tier
+                        suitability_flags.append({
+                            "id": str(uuid.uuid4()),
+                            "trip_id": trip_id,
+                            "name": flag.get("flag_type", "unknown"),
+                            "confidence": int(flag.get("confidence", 0) * 100),  # Convert 0-1 to 0-100
+                            "tier": flag.get("severity", "low"),
+                            "reason": flag.get("reason", ""),
+                            "created_at": trip.get("created_at"),
+                        })
+    except Exception as e:
+        logger.warning(f"Error extracting suitability flags for trip {trip_id}: {e}")
+    
+    return SuitabilityFlagsResponse(
+        trip_id=trip_id,
+        suitability_flags=suitability_flags,
+    )
 
 
 @app.patch("/trips/{trip_id}")
@@ -1707,6 +1860,56 @@ def get_trip_timeline(
         )
 
 
+# Activity Provenance Endpoint
+@app.get("/trips/{trip_id}/activities/provenance")
+def get_activities_provenance(
+    trip_id: str,
+    agency: Agency = Depends(get_current_agency),
+):
+    """
+    Retrieve activity provenance for a trip.
+    
+    Returns all activities with their source (suggested by AI or requested by traveler)
+    and confidence scores for suggested activities.
+    
+    Response format:
+    {
+        "trip_id": "trip_xyz",
+        "activities": [
+            {"name": "Hiking", "source": "suggested", "confidence": 95},
+            {"name": "Dining", "source": "requested", "confidence": null}
+        ]
+    }
+    """
+    trip = TripStore.get_trip(trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail=f"Trip not found: {trip_id}")
+    
+    # Extract activity provenance from trip
+    # Currently using activity_provenance field which stores comma-separated activities
+    # In Phase 6, we enhance this to track source and confidence
+    activities = []
+    
+    activity_provenance = trip.get("activity_provenance", "")
+    if activity_provenance:
+        # Parse comma-separated activities
+        activity_names = [a.strip() for a in activity_provenance.split(",")]
+        
+        # For now, assume all activities from activity_provenance are suggested by AI
+        # This can be enhanced in future phases to track actual source in database
+        for activity_name in activity_names:
+            if activity_name:
+                activities.append({
+                    "name": activity_name,
+                    "source": "suggested",
+                    "confidence": 85,  # Default confidence for suggested activities
+                })
+    
+    return {
+        "trip_id": trip_id,
+        "activities": activities,
+    }
+
 
 # =============================================================================
 # Override API endpoints
@@ -2148,6 +2351,206 @@ def set_approval_thresholds(request: List[ApprovalThresholdConfig]):
     """Update approval threshold configuration."""
     ConfigStore.set_approval_thresholds([t.model_dump() for t in request])
     return {"success": True}
+
+
+# =============================================================================
+# Follow-up Workflow & Reminders (Phase 5)
+# =============================================================================
+
+@app.get("/followups/dashboard")
+def get_followups_dashboard(
+    status: Optional[str] = None,
+    filter: Optional[str] = None,
+    agency: Agency = Depends(get_current_agency),
+):
+    """
+    Get all trips with follow-up reminders.
+    
+    Query params:
+    - status: pending|completed|snoozed
+    - filter: due_today|overdue|upcoming
+    
+    Returns: List of trips with follow-up info sorted by due date
+    """
+    from pathlib import Path
+    
+    trips_dir = Path(__file__).parent.parent / "data" / "trips"
+    followups = []
+    
+    if trips_dir.exists():
+        for trip_file in trips_dir.glob("*.json"):
+            try:
+                with open(trip_file, "r") as f:
+                    trip = json.load(f)
+                
+                # Only include trips for this agency
+                if trip.get("agency_id") != agency.id:
+                    continue
+                
+                # Only include trips with follow_up_due_date
+                due_date_str = trip.get("follow_up_due_date")
+                if not due_date_str:
+                    continue
+                
+                try:
+                    due_date = datetime.fromisoformat(due_date_str.replace('Z', '+00:00'))
+                except (ValueError, AttributeError):
+                    continue
+                
+                # Extract follow-up status
+                follow_up_status = trip.get("follow_up_status", "pending")
+                trip_status = trip.get("status", "new")
+                
+                # Filter by status if provided
+                if status and follow_up_status != status:
+                    continue
+                
+                # Apply filter if provided
+                now = datetime.now(timezone.utc)
+                if filter == "due_today":
+                    if due_date.date() != now.date():
+                        continue
+                elif filter == "overdue":
+                    if due_date > now:
+                        continue
+                elif filter == "upcoming":
+                    if due_date <= now:
+                        continue
+                
+                followups.append({
+                    "trip_id": trip.get("id"),
+                    "traveler_name": trip.get("traveler_name", "Unknown"),
+                    "agent_name": trip.get("agent_name", "Unassigned"),
+                    "due_date": due_date_str,
+                    "status": follow_up_status,
+                    "trip_status": trip_status,
+                    "days_until_due": (due_date.date() - now.date()).days,
+                })
+            except (json.JSONDecodeError, IOError):
+                continue
+    
+    # Sort by due_date ascending
+    followups.sort(key=lambda x: x["due_date"])
+    
+    return {
+        "items": followups,
+        "total": len(followups),
+    }
+
+
+@app.patch("/followups/{trip_id}/mark-complete")
+def mark_followup_complete(
+    trip_id: str,
+    agency: Agency = Depends(get_current_agency),
+):
+    """Mark a follow-up as completed."""
+    trip = TripStore.get_trip(trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    if not trip.get("follow_up_due_date"):
+        raise HTTPException(status_code=400, detail="Trip has no follow-up scheduled")
+    
+    updated = TripStore.update_trip(trip_id, {
+        "follow_up_status": "completed",
+        "follow_up_completed_at": datetime.now(timezone.utc).isoformat(),
+    })
+    
+    AuditStore.log_event("followup_completed", "operator", {
+        "trip_id": trip_id,
+        "due_date": trip.get("follow_up_due_date"),
+        "completed_at": datetime.now(timezone.utc).isoformat(),
+    })
+    
+    return updated
+
+
+@app.patch("/followups/{trip_id}/snooze")
+def snooze_followup(
+    trip_id: str,
+    days: int = 1,
+    agency: Agency = Depends(get_current_agency),
+):
+    """
+    Snooze a follow-up reminder.
+    
+    Query params:
+    - days: 1, 3, or 7 (default: 1)
+    """
+    from datetime import timedelta
+    
+    trip = TripStore.get_trip(trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    if not trip.get("follow_up_due_date"):
+        raise HTTPException(status_code=400, detail="Trip has no follow-up scheduled")
+    
+    # Validate days parameter
+    if days not in [1, 3, 7]:
+        raise HTTPException(status_code=400, detail="days must be 1, 3, or 7")
+    
+    # Parse current due_date and add days
+    try:
+        current_due = datetime.fromisoformat(
+            trip.get("follow_up_due_date", "").replace('Z', '+00:00')
+        )
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="Invalid follow_up_due_date format")
+    
+    new_due_date = (current_due + timedelta(days=days)).isoformat()
+    
+    updated = TripStore.update_trip(trip_id, {
+        "follow_up_due_date": new_due_date,
+        "follow_up_status": "snoozed",
+    })
+    
+    AuditStore.log_event("followup_snoozed", "operator", {
+        "trip_id": trip_id,
+        "original_due_date": trip.get("follow_up_due_date"),
+        "new_due_date": new_due_date,
+        "snooze_days": days,
+    })
+    
+    return updated
+
+
+@app.patch("/followups/{trip_id}/reschedule")
+def reschedule_followup(
+    trip_id: str,
+    new_date: str,
+    agency: Agency = Depends(get_current_agency),
+):
+    """
+    Reschedule a follow-up to a new date.
+    
+    Body: {"new_date": "2026-05-15T14:00:00Z"}
+    """
+    trip = TripStore.get_trip(trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    if not trip.get("follow_up_due_date"):
+        raise HTTPException(status_code=400, detail="Trip has no follow-up scheduled")
+    
+    # Validate new_date format
+    try:
+        datetime.fromisoformat(new_date.replace('Z', '+00:00'))
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="Invalid date format. Use ISO-8601")
+    
+    updated = TripStore.update_trip(trip_id, {
+        "follow_up_due_date": new_date,
+        "follow_up_status": "pending",
+    })
+    
+    AuditStore.log_event("followup_rescheduled", "operator", {
+        "trip_id": trip_id,
+        "old_due_date": trip.get("follow_up_due_date"),
+        "new_due_date": new_date,
+    })
+    
+    return updated
 
 
 # =============================================================================

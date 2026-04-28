@@ -193,6 +193,38 @@ export interface SuitabilityProfile {
   }>;
 }
 
+/**
+ * SuitabilityFlag represents a single suitability concern raised by the spine.
+ *
+ * This is returned by the GET /trips/{trip_id}/suitability endpoint and represents
+ * historical suitability signals that have been evaluated for a trip.
+ *
+ * Tier 1 (critical/high): Hard blockers requiring operator acknowledgment before approval
+ * Tier 2 (medium/low): Warnings for operator review and consideration
+ */
+export interface SuitabilityFlag {
+  id: string;                          // Unique identifier for this flag instance
+  trip_id: string;                     // Trip this flag is associated with
+  name: string;                        // Machine-readable flag name (e.g., "elderly_mobility_risk")
+  confidence: number;                  // 0-100: confidence percentage
+  tier: 'critical' | 'high' | 'medium' | 'low'; // Severity tier
+  reason?: string;                     // Human-readable explanation
+  pre_state?: Record<string, any>;     // Trip state before decision
+  post_state?: Record<string, any>;    // Trip state after decision
+  created_at?: string;                 // ISO timestamp when flag was raised
+  acknowledged_at?: string;            // ISO timestamp when acknowledged (if applicable)
+  acknowledged_by?: string;            // User ID who acknowledged (if applicable)
+}
+
+/**
+ * API response from GET /trips/{trip_id}/suitability
+ * Returns all suitability flags for a given trip with confidence and tier information.
+ */
+export interface SuitabilityFlagsResponse {
+  trip_id: string;
+  suitability_flags: SuitabilityFlag[];
+}
+
 export interface DecisionOutput {
   decision_state: string;
   hard_blockers: string[];

@@ -686,6 +686,7 @@ def save_processed_trip(
     spine_output: dict,
     source: str = "unknown",
     agency_id: Optional[str] = None,
+    user_id: Optional[str] = None,
     follow_up_due_date: Optional[str] = None,
     party_composition: Optional[str] = None,
     pace_preference: Optional[str] = None,
@@ -721,6 +722,7 @@ def save_processed_trip(
     trip = {
         "id": f"trip_{uuid4().hex[:12]}",
         "run_id": spine_output.get("run_id"),
+        "user_id": user_id,
         "source": source,
         "status": trip_status,
         "created_at": datetime.now(timezone.utc).isoformat(),

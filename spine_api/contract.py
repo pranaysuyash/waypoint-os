@@ -356,6 +356,18 @@ class SuitabilitySignal(BaseModel):
     confidence: float
 
 
+class SuitabilityFlagsResponse(BaseModel):
+    """Response from GET /trips/{trip_id}/suitability endpoint.
+    
+    Returns all suitability flags for a given trip with confidence and tier information.
+    """
+    trip_id: str
+    suitability_flags: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of suitability flags with id, name, confidence, tier, etc."
+    )
+
+
 # =============================================================================
 # Trip list response envelope
 # =============================================================================
@@ -415,6 +427,7 @@ __all__ = [
     "DashboardStatsResponse",
     "SuitabilitySignal",
     "TripListResponse",
+    "SuitabilityFlagsResponse",
     "MonthlyRevenue",
     "RevenueMetrics",
     "PipelineVelocity",

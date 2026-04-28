@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { Trip } from "@/lib/api-client";
-import type { TimelineEvent, TimelineResponse } from "@/types/spine";
+import type { TimelineEvent, TimelineResponse, SuitabilityFlag } from "@/types/spine";
 import { STAGE_LABELS, labelOrTitle } from "@/lib/label-maps";
+import { SuitabilitySignal } from "./SuitabilitySignal";
 
 interface TimelinePanelProps {
   trip?: Trip | null;
@@ -118,6 +119,7 @@ const AVAILABLE_STAGES = ["intake", "packet", "decision", "strategy", "safety"];
 export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilter }: TimelinePanelProps) {
   const [tripId] = useState(propTripId || propTrip?.id);
   const [timeline, setTimeline] = useState<TimelineResponse | null>(null);
+  const [suitabilityFlags, setSuitabilityFlags] = useState<SuitabilityFlag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedStage, setSelectedStage] = useState<string | null>(null);
@@ -130,22 +132,40 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
   useEffect(() => {
     if (!tripId) return;
 
-    const fetchTimeline = async () => {
+    const fetchTimelineAndSuitability = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const url = selectedStage 
+        
+        // Fetch timeline
+        const timelineUrl = selectedStage 
           ? `/api/trips/${tripId}/timeline?stage=${selectedStage}`
           : `/api/trips/${tripId}/timeline`;
-        const response = await fetch(url, {
+        const timelineResponse = await fetch(timelineUrl, {
           credentials: "include",
           cache: "no-store",
         });
-        if (!response.ok) {
-          throw new Error(`Failed to fetch timeline: ${response.statusText}`);
+        if (!timelineResponse.ok) {
+          throw new Error(`Failed to fetch timeline: ${timelineResponse.statusText}`);
         }
-        const data = await response.json();
-        setTimeline(data);
+        const timelineData = await timelineResponse.json();
+        setTimeline(timelineData);
+
+        // Fetch suitability flags
+        try {
+          const suitabilityUrl = `/api/trips/${tripId}/suitability`;
+          const suitabilityResponse = await fetch(suitabilityUrl, {
+            credentials: "include",
+            cache: "no-store",
+          });
+          if (suitabilityResponse.ok) {
+            const suitabilityData = await suitabilityResponse.json();
+            setSuitabilityFlags(suitabilityData.suitability_flags || []);
+          }
+          // If suitability endpoint doesn't exist yet, just skip it gracefully
+        } catch (_err) {
+          // Silently fail if suitability endpoint not available
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load timeline");
       } finally {
@@ -153,7 +173,7 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
       }
     };
 
-    fetchTimeline();
+    fetchTimelineAndSuitability();
   }, [tripId, selectedStage]);
 
   if (isLoading) {
@@ -187,6 +207,24 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
   return (
     <div className="p-6" data-testid="timeline-panel">
       <div className="space-y-4">
+        {/* Suitability Flags Section */}
+        {suitabilityFlags.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-3">
+              Suitability Assessment
+            </h3>
+            <SuitabilitySignal 
+              flags={suitabilityFlags.map((flag) => ({
+                flag_type: flag.name,
+                severity: flag.tier as "low" | "medium" | "high" | "critical",
+                reason: flag.reason || "",
+                confidence: flag.confidence / 100, // Convert 0-100 to 0-1
+              }))}
+              tripId={tripId}
+            />
+          </div>
+        )}
+
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
             Decision Timeline

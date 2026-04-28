@@ -350,6 +350,8 @@ Each section lists specific research tasks that could be executed as standalone 
 - ✅ Auth & identity audit
 - ❌ **Identity/tenant model unification**: User + Membership should be the single auth backbone; TeamStore ghost identities should be audited and phased out.
 - ❌ **WorkspaceCode redemption flow research**: Join/invite flows, pending memberships, JWT issuance, and lifecycle states for onboarding.
+- ❌ **Auth integration research**: Verify frontend auth state, backend JWT protection, membership refresh/expiry edge cases, and route-level tenant enforcement.
+- ❌ **TeamStore audit & identity drift**: Should TeamStore be removed, migrated to Membership, or strictly scoped as metadata only?
 - ❌ **PII handling by jurisdiction**: Passport numbers, credit cards — requirements differ by country
 - ❌ **Data protection law matrix**: GDPR (EU), DPDP (India), CCPA (California), LGPD (Brazil), PIPA (Korea), PDPA (Singapore/Thailand), APPI (Japan), PIPL (China)
 - ❌ **SOC 2 / ISO 27001 readiness**: What's needed for enterprise customers globally?
@@ -1071,6 +1073,8 @@ Each section lists specific research tasks that could be executed as standalone 
 - ❌ **Change management research**: How to get an agency to switch from current tools — resistance patterns
 - ❌ **Parallel running period**: How long should old and new systems run together?
 - ❌ **Data format standardization**: Client names (first/last vs full), dates (DD/MM vs MM/DD), phone numbers (country codes)
+- ❌ **Onboarding product mismatch research**: Existing single-step signup vs requested multi-step onboarding/user journey — which path should the product own?
+- ❌ **Join workspace flow research**: UX and backend semantics for WorkspaceCode redemption, pending membership state, and invitation lifecycle.
 - ❌ **Agent onboarding state research**: How should the product derive onboarding completeness from profile, team membership, and first trip instead of separate onboarding flows?
 - 🔵 **Zero-data onboarding**: Can the product be useful from day 1 with no historical data?
 - 🔵 **WhatsApp history import**: Can we extract and structure past client conversations from WhatsApp?

@@ -42,8 +42,16 @@ function getStepStatus(
   if (done) return "done";
   const failed = run.state === "failed" && run.stage_at_failure === stepId;
   if (failed) return "failed";
-  // "current" if this is the first step not yet completed and run is running
-  if (run.state === "running") {
+  if (run.state !== "running") return "pending";
+
+  const enteredStage = [...(run.events ?? [])]
+    .reverse()
+    .find((e) => e.event_type === "pipeline_stage_entered" && e.stage_name)?.stage_name;
+
+  if (enteredStage && enteredStage === stepId) return "current";
+
+  // Fallback for older runs with no entered events logged.
+  if (!enteredStage) {
     const firstPending = steps.findIndex((s) => !run.steps_completed?.includes(s.id));
     const idx = steps.findIndex((s) => s.id === stepId);
     if (idx === firstPending) return "current";
@@ -59,7 +67,7 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onViewTrip }
     if (!runState?.started_at) return;
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
-      if (durationRef.current) {
+      if (durationRef.current && runState?.started_at) {
         durationRef.current.textContent = `${elapsedSec(runState.started_at)}s`;
       }
     }, 1000);
@@ -68,7 +76,11 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onViewTrip }
     };
   }, [runState?.started_at]);
 
-  if (!runState || !runId) return null;
+  if (!runId) return null;
+  const isIntakeOnlyCompletion = runState
+    ? runState.state === "completed" &&
+      !(runState.steps_completed ?? []).includes("decision")
+    : false;
 
   return (
     <div className="rounded-xl border border-[#30363d] bg-[#0d1117] overflow-hidden">
@@ -80,14 +92,16 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onViewTrip }
         </div>
         <div className="flex items-center gap-1.5 text-xs text-[#8b949e]">
           <Clock className="w-3 h-3" />
-          <span ref={durationRef}>{elapsedSec(runState.started_at)}s</span>
+          <span ref={durationRef}>{runState?.started_at ? elapsedSec(runState.started_at) : '--'}s</span>
         </div>
       </div>
 
-      {/* Steps */}
-      <div className="p-3 space-y-1">
-        {steps.map((step, idx) => {
-          const status = getStepStatus(step.id, runState);
+       {/* Steps */}
+       <div className="p-3 space-y-1">
+         {steps.map((step, idx) => {
+           const status = !runState
+             ? (idx === 0 ? "current" : "pending")
+             : getStepStatus(step.id, runState);
           return (
             <div
               key={step.id}
@@ -129,7 +143,7 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onViewTrip }
               </div>
 
               {/* Show event timing per step from events */}
-              {status === "done" && (
+              {status === "done" && runState && (
                 <StepTiming events={runState.events} stepId={step.id} />
               )}
             </div>
@@ -139,10 +153,14 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onViewTrip }
 
       {/* Footer state */}
       <div className="px-4 py-2.5 border-t border-[#30363d] bg-[#161b22]">
-        {runState.state === "completed" && (runState.trip_id || onViewTrip) && (
+        {!runState && (
+          <p className="text-[#8b949e] text-xs">Queued...</p>
+        )}
+
+        {runState?.state === "completed" && (runState.trip_id || onViewTrip) && (
           <button
             type='button'
-            onClick={onViewTrip || (() => { window.location.href = `/workspace/${runState.trip_id}/intake`; })}
+            onClick={onViewTrip || (() => { window.location.href = `/workspace/${runState!.trip_id}/intake`; })}
             className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#238636] text-white text-xs font-medium rounded-md hover:bg-[#2ea043] transition-colors"
           >
             View Trip
@@ -150,14 +168,20 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onViewTrip }
           </button>
         )}
 
-        {runState.state === "completed" && !runState.trip_id && !onViewTrip && (
+        {isIntakeOnlyCompletion && (
+          <p className="mt-2 text-[11px] text-[#d29922]">
+            Intake saved, but quote-building stages did not run. Add missing details and reprocess.
+          </p>
+        )}
+
+        {runState?.state === "completed" && !runState?.trip_id && !onViewTrip && (
           <div className="flex items-center gap-1.5 text-[#3fb950] text-xs">
             <CheckCircle className="w-3.5 h-3.5" />
             Completed
           </div>
         )}
 
-        {runState.state === "failed" && (
+        {runState?.state === "failed" && (
           <div className="space-y-2">
             <p className="text-[#f85149] text-xs">
               Failed at {runState.stage_at_failure ? labelOrTitle(STAGE_LABELS, runState.stage_at_failure) : "unknown"} phase
@@ -176,7 +200,7 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onViewTrip }
           </div>
         )}
 
-        {runState.state === "blocked" && (
+        {runState?.state === "blocked" && (
           <div className="space-y-2">
             <div className="flex items-center gap-1.5 text-[#d29922] text-xs font-medium">
               <AlertTriangle className="w-3.5 h-3.5" />
@@ -195,7 +219,7 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onViewTrip }
           </div>
         )}
 
-        {error && runState.state === "running" && (
+        {error && runState?.state === "running" && (
           <div className="space-y-2">
             <p className="text-[#f85149] text-xs">{error.message || "Timed out"}</p>
             <button

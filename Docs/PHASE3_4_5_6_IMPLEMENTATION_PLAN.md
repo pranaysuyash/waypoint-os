@@ -1,0 +1,346 @@
+# Phase 3+4+5+6 Implementation Plan: Full Decision Management Layer
+
+**Date:** 2026-04-28  
+**Duration:** 3-4 days (parallel execution)  
+**Goal:** Implement decision transparency, operator controls, follow-up tracking, and activity clarity
+
+---
+
+## Executive Summary
+
+Phase 3-6 implements the "decision management" layer — allowing operators to see WHY decisions were made, MODIFY them when they disagree, TRACK follow-ups, and DISTINGUISH agent suggestions from traveler requests.
+
+This plan uses **OPTION C: Parallel Path (3-4 days)** as recommended in PHASE3_PLUS_ROADMAP.md:
+- **Phase 3** (Suitability): 1 day (blocks Phase 4)
+- **Phase 4** (Override): 2 days (depends on Phase 3)
+- **Phase 5** (Follow-up): 2 days (independent, parallel with 3+4)
+- **Phase 6** (Activity): 1 day (independent, parallel with 3+4+5)
+
+**Critical Path:**
+```
+Phase 3 (1 day) → Phase 4 (2 days) [total: 3 days, on critical path]
+Phase 5 (2 days) [parallel, no dependency]
+Phase 6 (1 day) [parallel, no dependency]
+Overall: 3-4 days wall-clock time
+```
+
+---
+
+## Phase 3: Suitability Signal Rendering (P0 - 1 day)
+
+### What It Does
+Explains to operators **why** the system made a decision (e.g., "Elderly Mobility Risk: CRITICAL confidence 94%"). 
+
+### Deliverables
+1. **SuitabilitySignal Component Enhancement**
+   - File: `frontend/src/components/workspace/panels/SuitabilitySignal.tsx` (extend 170 lines)
+   - Show: flag name, confidence %, tier (Tier 1: critical/high, Tier 2: medium/low)
+   - UI: Semantic colors + drill-down callback
+   - Tests: 12 component tests + 8 integration tests
+
+2. **TimelinePanel Integration**
+   - File: `frontend/src/components/workspace/panels/TimelinePanel.tsx` (add 50 lines)
+   - Show suitability signals for each timeline event
+   - Render Tier 1 red, Tier 2 yellow-gray
+   - Tests: 9 integration tests
+
+3. **Backend Suitability API**
+   - File: `spine_api/server.py` (add endpoint ~40 lines)
+   - New route: `GET /trips/{trip_id}/suitability` → returns all suitability flags
+   - Tests: 8 backend unit tests
+
+4. **Type Definitions**
+   - File: `frontend/src/types/spine.ts` (add 30 lines)
+   - `SuitabilityFlag` interface with name, confidence, tier, pre_state, post_state
+
+### Acceptance Criteria
+- [ ] Suitability flags visible on timeline with confidence scores
+- [ ] Colors match Tier 1 (red) vs Tier 2 (yellow-gray) design
+- [ ] Drill-down shows reasoning (pre_state → post_state)
+- [ ] All 20 tests passing
+- [ ] No regressions (42+ existing Unit-1 tests still passing)
+
+### Test Baseline
+- Current: 42 tests passing (Unit-1)
+- Expected: 62 tests passing (42 + 20 new)
+
+---
+
+## Phase 4: Override Controls & Decision Modification (P0 - 2 days)
+
+### What It Does
+Allows operators to **modify** system decisions when they know better (e.g., downgrade "Elderly Mobility Risk" from CRITICAL to HIGH).
+
+### Dependencies
+- ✅ Depends on Phase 3 (must see signals before overriding)
+
+### Deliverables
+
+1. **Override Modal Component**
+   - File: `frontend/src/components/workspace/panels/OverrideModal.tsx` (NEW, 250 lines)
+   - Input: flag name, new tier, reason text (optional)
+   - Buttons: [Cancel] [Override]
+   - State: Loading + error handling
+   - Tests: 16 component tests
+
+2. **Override Button Integration**
+   - File: `frontend/src/components/workspace/panels/TimelinePanel.tsx` (add 40 lines)
+   - Button next to each suitability flag
+   - OnClick: open modal
+   - Tests: 12 integration tests
+
+3. **Backend Override Endpoint**
+   - File: `spine_api/server.py` (add ~80 lines)
+   - New route: `POST /trips/{trip_id}/suitability/{flag_id}/override`
+   - Payload: `{new_tier: string, reason: string, operator_id: string}`
+   - Returns: new timeline event with override details
+   - Tests: 12 backend unit tests
+
+4. **Override Event in Timeline**
+   - File: `spine_api/persistence.py` (add ~30 lines)
+   - New event type: `override_decision`
+   - Stores: operator, original_value, new_value, reason
+   - Tests: 8 audit trail tests
+
+5. **Audit Trail**
+   - File: `frontend/src/components/workspace/panels/TimelinePanel.tsx` (add 20 lines)
+   - Display: "12:30 | Override | elderly_mobility_risk CRITICAL→HIGH"
+   - Tests: 6 timeline rendering tests
+
+### Acceptance Criteria
+- [ ] Override modal opens on button click
+- [ ] Can change tier and enter reason
+- [ ] Backend records override event in timeline
+- [ ] Audit trail shows operator + change details
+- [ ] All 54 tests passing (62 from Phase 3 + 54 new)
+- [ ] No regressions in Phases 1-2
+
+### Test Baseline
+- Current: 62 tests passing (after Phase 3)
+- Expected: 96 tests passing (62 + 54 new)
+
+---
+
+## Phase 5: Follow-up Workflow & Reminders (P1 - 2 days, independent)
+
+### What It Does
+Tracks promises to follow up (e.g., "I'll call back on Apr 29") and reminds operators + travelers.
+
+### Dependencies
+- ✅ None (can run parallel with Phase 3+4)
+- Uses: existing `follow_up_due_date` field from Phase 1
+
+### Deliverables
+
+1. **Follow-up Dashboard**
+   - File: `frontend/src/app/workspace/[tripId]/followups/page.tsx` (NEW, 400 lines)
+   - View: All trips with overdue follow-ups
+   - Filter: due today, overdue, upcoming
+   - Columns: Trip ID, Owner, Due Date, Status (pending/completed/snoozed)
+   - Tests: 18 page component tests
+
+2. **Follow-up Card Component**
+   - File: `frontend/src/components/workspace/cards/FollowUpCard.tsx` (NEW, 250 lines)
+   - Show: Trip summary + due date + owner
+   - Actions: Mark completed, snooze 1/3/7 days, reschedule
+   - Tests: 16 component tests
+
+3. **Backend Follow-up API**
+   - File: `spine_api/server.py` (add ~100 lines)
+   - Routes:
+     - `GET /followups/dashboard` → list all with filters
+     - `PATCH /followups/{trip_id}/mark-complete`
+     - `PATCH /followups/{trip_id}/snooze` (with duration)
+   - Tests: 20 backend unit tests
+
+4. **Email Notifications**
+   - File: `spine_api/notifications.py` (NEW, 150 lines)
+   - Trigger: daily check for overdue follow-ups
+   - Template: "You promised to call Ravi on Apr 28 — [Mark Complete] [Snooze]"
+   - Tests: 12 notification tests
+
+5. **Traveler SMS/Email**
+   - File: `spine_api/notifications.py` (add ~80 lines)
+   - Trigger: 24h before due date
+   - Template: "Travel Agent Pranay will call on Apr 29"
+   - Tests: 8 traveler notification tests
+
+### Acceptance Criteria
+- [ ] Dashboard shows all follow-ups with correct filters
+- [ ] Can mark complete, snooze, reschedule
+- [ ] Operators receive email reminder for overdue follow-ups
+- [ ] Travelers receive SMS 24h before due date
+- [ ] All 74 tests passing (96 from Phase 3+4 + 74 new)
+- [ ] No regressions
+
+### Test Baseline
+- Current: 96 tests passing (after Phase 3+4)
+- Expected: 170 tests passing (96 + 74 new)
+
+---
+
+## Phase 6: Activity Provenance & Clarity (P1 - 1 day, independent)
+
+### What It Does
+Distinguishes between agent suggestions ("AI recommends...") and traveler requests ("Ravi asked for...").
+
+### Dependencies
+- ✅ None (can run parallel with Phase 3+4+5)
+- Uses: existing `activity_provenance` field from Phase 2
+
+### Deliverables
+
+1. **Activity Provenance UI Component**
+   - File: `frontend/src/components/workspace/panels/ActivityProvenance.tsx` (NEW, 180 lines)
+   - Show badge: [🤖 SUGGESTED] vs [✅ REQUESTED]
+   - Color: different for each type
+   - Confidence: show confidence % for suggestions
+   - Tests: 14 component tests
+
+2. **Activity Timeline Integration**
+   - File: `frontend/src/components/workspace/panels/ActivityTimeline.tsx` (NEW, 250 lines)
+   - List: all activities with provenance badge + confidence
+   - Group by day
+   - Tests: 12 integration tests
+
+3. **Backend Provenance Endpoint**
+   - File: `spine_api/server.py` (add ~40 lines)
+   - Route: `GET /trips/{trip_id}/activities/provenance`
+   - Returns: all activities with source + confidence
+   - Tests: 10 backend unit tests
+
+4. **Audit Report Enhancement**
+   - File: `frontend/src/components/reports/AuditReport.tsx` (add 60 lines)
+   - Show: % of activities by provenance
+   - Example: "62% suggested by AI, 38% requested by traveler"
+   - Tests: 8 report tests
+
+### Acceptance Criteria
+- [ ] Activities show [🤖 SUGGESTED] or [✅ REQUESTED] badge
+- [ ] Confidence % visible for suggestions
+- [ ] Timeline grouped by day with clear distinction
+- [ ] Audit report shows breakdown %
+- [ ] All 44 tests passing (170 from Phase 3+5 + 44 new)
+- [ ] No regressions
+
+### Test Baseline
+- Current: 170 tests passing (after Phase 3+4+5)
+- Expected: 214 tests passing (170 + 44 new)
+
+---
+
+## Parallel Execution Strategy
+
+```
+Day 1:
+  ├─ Phase 3: Suitability (8 AM - 5 PM, 1 day)
+  │   └─ Unblocks Phase 4
+  └─ Phase 5 & 6 START in parallel (agents A & B)
+      └─ Phase 5: Follow-up dashboard + emails (agent A)
+      └─ Phase 6: Activity provenance UI (agent B)
+
+Day 2:
+  ├─ Phase 4: Override controls (8 AM - 5 PM, starts after Phase 3 ✅)
+  │   └─ Continues in parallel with Phase 5+6
+  └─ Phase 5 & 6 CONTINUE (agents A & B)
+
+Day 3:
+  ├─ Phase 4 COMPLETES (ends ~3 PM, 2 days of work)
+  ├─ Phase 5 COMPLETES (ends ~5 PM, 2 days of work)
+  └─ Phase 6 COMPLETES (ends ~3 PM, 1 day of work)
+
+Verification & Merge:
+  ├─ Run full test suite: 214 tests
+  ├─ Verify no regressions
+  ├─ Audit 11 dimensions
+  └─ Git commit all changes
+```
+
+---
+
+## Agents to Dispatch
+
+When user says "start", dispatch 4 parallel agents:
+
+1. **Agent Phase3** (1 day)
+   - Task: Implement Phase 3 (Suitability Signals)
+   - Inputs: PHASE3_PLUS_ROADMAP.md Phase 3 section
+   - Output: All 20 tests passing
+
+2. **Agent Phase4** (depends on Phase3, 2 days)
+   - Task: Implement Phase 4 (Override Controls)
+   - Waits for: Phase 3 ✅
+   - Output: All 54 new tests + 96 total passing
+
+3. **Agent Phase5** (parallel, 2 days)
+   - Task: Implement Phase 5 (Follow-up Workflow)
+   - No dependencies
+   - Output: All 74 new tests + email notifications working
+
+4. **Agent Phase6** (parallel, 1 day)
+   - Task: Implement Phase 6 (Activity Provenance)
+   - No dependencies
+   - Output: All 44 new tests, activity badges visible
+
+---
+
+## Success Criteria (11-Dimension Audit)
+
+After all phases complete:
+
+| Dimension | Phase 1+2 | Phase 3+4+5+6 | Verdict |
+|-----------|-----------|---------------|---------|
+| **Code** | ✅ 42 tests | ✅ 214 tests | ✅ PASS |
+| **Operational** | 🟡 Can capture | ✅ Can see decisions + override | ✅ PASS |
+| **User** | 🟡 Capture works | ✅ Transparency + control | ✅ PASS |
+| **Logical** | ✅ State sound | ✅ Override logic clear | ✅ PASS |
+| **Commercial** | 🟡 No controls | ✅ Operators can fix mistakes | ✅ PASS |
+| **Data** | ✅ No loss | ✅ Audit trail complete | ✅ PASS |
+| **Quality** | ✅ Tests pass | ✅ 214 tests, no flakes | ✅ PASS |
+| **Compliance** | ✅ Audit trail | ✅ Override logged | ✅ PASS |
+| **Readiness** | �� Can launch Phase 1 | ✅ Full feature ready | ✅ PASS |
+| **Critical Path** | ✅ Clear | ✅ Phase 3→4 sequential, 5+6 parallel | ✅ PASS |
+| **Final Verdict** | ✅ Code + Feature Ready | ✅ Launch Ready | ✅ READY |
+
+---
+
+## Timeline & Effort Estimates
+
+| Phase | Days | Critical? | Start | Parallel? |
+|-------|------|-----------|-------|-----------|
+| 1 | 1.5 | P0 | Done ✅ | - |
+| 2 | 1 | P0 | Done ✅ | - |
+| 3 | 1 | P0 | Day 1 | No (blocks 4) |
+| 4 | 2 | P0 | Day 2 | No (depends on 3) |
+| 5 | 2 | P1 | Day 1 | YES (parallel) |
+| 6 | 1 | P1 | Day 1 | YES (parallel) |
+| **Total** | **3-4** | - | - | YES (Option C) |
+
+---
+
+## Pre-Implementation Verification
+
+Before starting Phase 3, verify:
+
+- [ ] All Phase 1+2 tests still passing (42 tests)
+- [ ] Git branch clean
+- [ ] PHASE3_PLUS_ROADMAP.md has all details
+- [ ] Team agrees on parallel approach
+- [ ] No blockers from infrastructure
+
+---
+
+## Post-Implementation Handoff
+
+After all phases complete, deliver:
+
+1. **Comprehensive test report** (214 tests, all passing, 0 flakes)
+2. **Code review findings** (if any, with fixes applied)
+3. **11-dimension audit** (explicit verdicts on all 11 dimensions)
+4. **Deployment guide** (zero-downtime strategy, rollback plans)
+5. **Launch readiness checklist** (final approval for production)
+6. **Next phase roadmap** (Phase 7 optional advanced features)
+
+---
+
+**Ready to proceed? User says "start" → dispatch all 4 agents in parallel.**

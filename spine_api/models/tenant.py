@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional, List
 
-from sqlalchemy import String, ForeignKey, DateTime, Boolean, Text, JSON, Index
+from sqlalchemy import String, ForeignKey, DateTime, Boolean, Integer, Text, JSON, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from spine_api.core.database import Base
@@ -70,7 +70,7 @@ class User(Base):
 
 
 class Membership(Base):
-    """Junction table linking users to agencies with a role."""
+    """Junction table linking users to agencies with a role and operational config."""
     __tablename__ = "memberships"
 
     id: Mapped[str] = mapped_column(
@@ -84,6 +84,14 @@ class Membership(Base):
     )
     role: Mapped[str] = mapped_column(String(50), nullable=False)
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
+    capacity: Mapped[int] = mapped_column(Integer, default=5)
+    specializations: Mapped[Optional[dict]] = mapped_column(JSON, default=list)
+    status: Mapped[str] = mapped_column(
+        String(50), default="active"
+    )
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
