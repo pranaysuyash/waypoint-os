@@ -343,12 +343,44 @@ class CanonicalPacket:
         })
 
     def set_fact(self, field_name: str, slot: Slot) -> None:
-        """Set a fact. CRITICAL: only accepts slots with fact-level authority."""
+        """Set a fact. CRITICAL: only accepts slots with fact-level authority.
+
+        Merge policy: never overwrite a non-empty value with an empty one.
+        Lists (e.g. destination candidates) are appended, not replaced.
+        Scalars are kept if the existing value has higher confidence.
+        """
         if slot.authority_level not in AuthorityLevel.FACT_LEVELS:
             raise ValueError(
                 f"Cannot set_fact with authority_level='{slot.authority_level}'. "
                 f"Facts require: {sorted(AuthorityLevel.FACT_LEVELS)}"
             )
+
+        existing = self.facts.get(field_name)
+        if existing is not None:
+            # --- merge: do not clobber a real value with an empty one ---
+            new_val = slot.value
+            old_val = existing.value
+
+            if new_val is None or new_val == [] or new_val == "":
+                # New envelope provided nothing for this field: keep existing
+                return
+            if old_val is None or old_val == [] or old_val == "":
+                # Existing is empty: accept the new value
+                pass
+            elif isinstance(new_val, list) and isinstance(old_val, list):
+                # Merge lists uniquely (e.g. destination candidates, interests)
+                merged = list(dict.fromkeys(old_val + new_val))
+                slot = Slot(
+                    value=merged,
+                    confidence=max(existing.confidence, slot.confidence),
+                    authority_level="explicit_user",
+                    extraction_mode="merged",
+                    evidence_refs=existing.evidence_refs + slot.evidence_refs,
+                )
+            elif slot.confidence < existing.confidence:
+                # Lower-confidence extraction should not override higher-confidence one
+                return
+
         self.facts[field_name] = slot
         self._emit_event("fact_set", {"field_name": field_name, "value": slot.value})
 

@@ -59,10 +59,11 @@ from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from spine_api.core.auth import get_current_user, get_current_agency_id, get_current_agency
+from spine_api.core.database import engine, get_db
 from spine_api.models.tenant import Agency, User
-from spine_api.core.database import engine
 from spine_api.core.logging_filter import install_sensitive_data_filter
 from spine_api.core.middleware import AuthMiddleware
 
@@ -84,6 +85,7 @@ from spine_api.contract import (
     SuitabilityAcknowledgeRequest,
     SnoozeRequest,
     InviteTeamMemberRequest,
+    TeamMember,
     PipelineStageConfig,
     ApprovalThresholdConfig,
     ExportRequest,
@@ -94,6 +96,7 @@ from spine_api.contract import (
     DashboardStatsResponse,
     SuitabilityFlagsResponse,
 )
+from spine_api.services import membership_service
 
 from src.intake.orchestration import run_spine_once
 from src.intake.packet_models import SourceEnvelope
@@ -2087,53 +2090,87 @@ async def get_dashboard_stats(agency: Agency = Depends(get_current_agency)):
 # Team Management API
 # =============================================================================
 
-@app.get("/api/team/members")
-def list_team_members():
-    """List all team members."""
-    members = TeamStore.list_members(active_only=False)
+@app.get("/api/team/members", response_model=dict)
+async def list_team_members(
+    agency: Agency = Depends(get_current_agency),
+    db: AsyncSession = Depends(get_db),
+):
+    """List all team members for the current agency."""
+    members = await membership_service.list_members(db, agency_id=agency.id)
     return {"items": members, "total": len(members)}
 
 
 @app.get("/api/team/members/{member_id}")
-def get_team_member(member_id: str):
-    """Get a team member by ID."""
-    member = TeamStore.get_member(member_id)
+async def get_team_member(
+    member_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a single team member by membership ID."""
+    member = await membership_service.get_member(db, member_id)
     if not member:
         raise HTTPException(status_code=404, detail="Team member not found")
     return member
 
 
 @app.post("/api/team/invite")
-def invite_team_member(request: InviteTeamMemberRequest):
-    """Invite a new team member."""
-    member_id = TeamStore.create_member(request.model_dump())
-    member = TeamStore.get_member(member_id)
+async def invite_team_member(
+    request: InviteTeamMemberRequest,
+    agency: Agency = Depends(get_current_agency),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Invite a new team member (creates User + Membership)."""
+    try:
+        member = await membership_service.invite_member(
+            db=db,
+            agency_id=agency.id,
+            email=request.email,
+            name=request.name,
+            role=request.role,
+            capacity=request.capacity,
+            specializations=request.specializations,
+            invited_by=user.id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     return {"success": True, "member": member}
 
 
 @app.patch("/api/team/members/{member_id}")
-def update_team_member(member_id: str, request: InviteTeamMemberRequest):
-    """Update a team member."""
-    updates = request.model_dump(exclude_none=True)
-    member = TeamStore.update_member(member_id, updates)
+async def update_team_member(
+    member_id: str,
+    request: InviteTeamMemberRequest,
+    agency: Agency = Depends(get_current_agency),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a team member's role, capacity, or specializations."""
+    updates = request.model_dump(exclude_none=True, include={"role", "capacity", "specializations"})
+    member = await membership_service.update_member(db, member_id, agency.id, updates)
     if not member:
         raise HTTPException(status_code=404, detail="Team member not found")
     return member
 
 
 @app.delete("/api/team/members/{member_id}")
-def deactivate_team_member(member_id: str):
+async def deactivate_team_member(
+    member_id: str,
+    agency: Agency = Depends(get_current_agency),
+    db: AsyncSession = Depends(get_db),
+):
     """Deactivate a team member."""
-    success = TeamStore.deactivate_member(member_id)
+    success = await membership_service.deactivate_member(db, member_id, agency.id)
     if not success:
         raise HTTPException(status_code=404, detail="Team member not found")
     return {"success": True}
 
 
 @app.get("/api/team/workload")
-def get_workload_distribution(agency: Agency = Depends(get_current_agency)):
+async def get_workload_distribution(
+    agency: Agency = Depends(get_current_agency),
+    db: AsyncSession = Depends(get_db),
+):
     """Get workload distribution across active team members."""
-    members = TeamStore.list_members(active_only=True)
+    members = await membership_service.list_members(db, agency_id=agency.id, active_only=True)
     assignments = AssignmentStore._load_assignments()
     
     # Get agency trip IDs to filter assignments

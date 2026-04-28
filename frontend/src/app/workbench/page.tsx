@@ -70,14 +70,21 @@ type WorkspaceTabId = (typeof workspaceTabs)[number]['id'];
 
 /** Validate ?stage= URL param against known SpineStage values */
 function toSpineStage(value: string | null): SpineStage | null {
-  const validStages: SpineStage[] = ["discovery", "shortlist", "proposal", "booking"];
+  const validStages: SpineStage[] = ['discovery', 'shortlist', 'proposal', 'booking'];
   return validStages.includes(value as SpineStage) ? (value as SpineStage) : null;
+}
+
+/** Validate ?mode= URL param against known OperatingMode values */
+function toOperatingMode(value: string | null): OperatingMode | null {
+  const validModes: OperatingMode[] = ['normal_intake', 'audit', 'emergency', 'follow_up', 'cancellation', 'post_trip', 'coordinator_group', 'owner_review'];
+  return validModes.includes(value as OperatingMode) ? (value as OperatingMode) : null;
 }
 
 /**
  * Derives the pipeline stage from actual trip/store state.
  * PipelineFlow shows processing progress (intake → packet → decision → strategy → safety),
  * not which tab the user clicked.
+ * Output, Frontier OS, and Feedback are workspace sections, not core pipeline stages.
  */
 function getPipelineStageForWorkbench(
   trip: Trip | null | undefined,
@@ -113,8 +120,6 @@ function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
     store.setInputOwnerNote(trip.agentNotes ?? '');
   }, [
     trip,
-    store.input_raw_note,
-    store.input_owner_note,
     store.setInputRawNote,
     store.setInputOwnerNote,
     store.setResultPacket,
@@ -125,14 +130,6 @@ function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
     store.setResultTravelerBundle,
     store.setResultSafety,
     store.setResultFees,
-    store.result_packet,
-    store.result_validation,
-    store.result_decision,
-    store.result_strategy,
-    store.result_internal_bundle,
-    store.result_traveler_bundle,
-    store.result_safety,
-    store.result_fees,
   ]);
 }
 
@@ -141,16 +138,11 @@ function WorkbenchContent() {
   const router = useRouter();
   const tripId = searchParams.get('trip');
   const stageParam = searchParams.get('stage');
-  const modeParam = searchParams.get('mode') as OperatingMode | null;
   const scenarioParam = searchParams.get('scenario');
 
   // The ?stage= URL param drives Spine execution (not the pipeline UI)
-  // Inline validation: only allow valid SpineStage values
-  const VALID_STAGES = new Set<SpineStage>(['discovery', 'shortlist', 'proposal', 'booking']);
-  const spineStage = (stageParam && VALID_STAGES.has(stageParam as SpineStage))
-    ? stageParam as SpineStage
-    : 'discovery';
-  const currentMode = modeParam || 'normal_intake';
+  const spineStage = toSpineStage(stageParam) ?? 'discovery';
+  const currentMode = toOperatingMode(searchParams.get('mode')) ?? 'normal_intake';
   const currentScenario = scenarioParam || '';
 
   const {
@@ -180,14 +172,17 @@ function WorkbenchContent() {
       prevConfigRef.current.mode !== currentMode ||
       prevConfigRef.current.scenario !== currentScenario
     ) {
-      store.clearResults();
+      // Clear only transient run artifacts (frontier, run_ts, acknowledged flags).
+      // Trip-persisted outputs (packet, decision, strategy, safety) remain visible
+      // because they belong to the trip, not to a specific run config.
+      store.clearTransientRunResults();
       prevConfigRef.current = {
         stage: spineStage,
         mode: currentMode,
         scenario: currentScenario,
       };
     }
-  }, [spineStage, currentMode, currentScenario, store.clearResults]);
+  }, [spineStage, currentMode, currentScenario, store.clearTransientRunResults]);
 
   const handleTabChange = useCallback(
     (tab: string) => {

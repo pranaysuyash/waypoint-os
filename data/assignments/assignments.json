@@ -66,42 +66,42 @@
     "trip_id": "trip_alpha_020",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-04-28T08:40:18.876301+00:00",
+    "assigned_at": "2026-04-28T09:47:51.285731+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_021": {
     "trip_id": "trip_alpha_021",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-04-28T08:40:18.994909+00:00",
+    "assigned_at": "2026-04-28T09:47:51.491354+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_022": {
     "trip_id": "trip_alpha_022",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-04-28T08:40:19.134831+00:00",
+    "assigned_at": "2026-04-28T09:47:51.647974+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_023": {
     "trip_id": "trip_alpha_023",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-04-28T08:40:19.246244+00:00",
+    "assigned_at": "2026-04-28T09:47:51.805228+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_024": {
     "trip_id": "trip_alpha_024",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-04-28T08:40:19.359878+00:00",
+    "assigned_at": "2026-04-28T09:47:52.056855+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_025": {
     "trip_id": "trip_alpha_025",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-04-28T08:40:19.492590+00:00",
+    "assigned_at": "2026-04-28T09:47:52.205852+00:00",
     "assigned_by": "seed"
   }
 }

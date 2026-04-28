@@ -78,6 +78,7 @@ interface WorkbenchResultState {
   setResultRunTs: (value: string | null) => void;
   acknowledgeFlag: (flagType: string) => void;
   clearResults: () => void;
+  clearTransientRunResults: () => void;
   resetAll: () => void;
 }
 
@@ -160,6 +161,12 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
     result_traveler_bundle: null,
     result_safety: null,
     result_fees: null,
+    result_frontier: null,
+    result_run_ts: null,
+    acknowledged_suitability_flags: new Set<string>(),
+  }),
+
+  clearTransientRunResults: () => set({
     result_frontier: null,
     result_run_ts: null,
     acknowledged_suitability_flags: new Set<string>(),
