@@ -102,6 +102,11 @@ class SpineRunRequest(BaseModel):
     operating_mode: str = "normal_intake"
     strict_leakage: bool = False
     scenario_id: Optional[str] = None
+    follow_up_due_date: Optional[str] = None
+    pace_preference: Optional[str] = None
+    lead_source: Optional[str] = None
+    activity_provenance: Optional[str] = None
+    date_year_confidence: Optional[str] = None
 
     model_config = {"extra": "forbid"}
 
@@ -232,14 +237,15 @@ class SnoozeRequest(BaseModel):
 
 class TeamMember(BaseModel):
     id: str
+    user_id: str
     email: str
     name: str
     role: str
     capacity: int = 5
-    active: bool = True
+    status: str = "active"
+    specializations: List[str] = Field(default_factory=list)
     created_at: str
     updated_at: Optional[str] = None
-    specializations: Optional[List[str]] = Field(default_factory=list)
 
 
 class InviteTeamMemberRequest(BaseModel):

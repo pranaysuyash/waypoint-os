@@ -97,16 +97,15 @@ export type UserRole = 'owner' | 'admin' | 'senior_agent' | 'junior_agent' | 'vi
 
 export interface TeamMember {
   id: string;
+  user_id: string;
   name: string;
   email: string;
   role: UserRole;
-  avatarUrl?: string;
-  isActive: boolean;
-  joinedAt: string;
-  lastActiveAt?: string;
   capacity: number;
-  currentAssignments: number;
-  specializations?: string[];
+  status: string;
+  specializations: string[];
+  created_at: string;
+  updated_at?: string | null;
 }
 
 export interface WorkloadDistribution {

@@ -68,16 +68,34 @@ const workspaceTabs = [
 
 type WorkspaceTabId = (typeof workspaceTabs)[number]['id'];
 
-/** Validate ?stage= URL param against known SpineStage values */
+const VALID_SPINE_STAGES = [
+  'discovery',
+  'shortlist',
+  'proposal',
+  'booking',
+] as const satisfies readonly SpineStage[];
+
 function toSpineStage(value: string | null): SpineStage | null {
-  const validStages: SpineStage[] = ['discovery', 'shortlist', 'proposal', 'booking'];
-  return validStages.includes(value as SpineStage) ? (value as SpineStage) : null;
+  return VALID_SPINE_STAGES.find((stage) => stage === value) ?? null;
 }
 
-/** Validate ?mode= URL param against known OperatingMode values */
+const VALID_OPERATING_MODES = [
+  'normal_intake',
+  'audit',
+  'emergency',
+  'follow_up',
+  'cancellation',
+  'post_trip',
+  'coordinator_group',
+  'owner_review',
+] as const satisfies readonly OperatingMode[];
+
 function toOperatingMode(value: string | null): OperatingMode | null {
-  const validModes: OperatingMode[] = ['normal_intake', 'audit', 'emergency', 'follow_up', 'cancellation', 'post_trip', 'coordinator_group', 'owner_review'];
-  return validModes.includes(value as OperatingMode) ? (value as OperatingMode) : null;
+  return VALID_OPERATING_MODES.find((mode) => mode === value) ?? null;
+}
+
+function toWorkspaceTabId(value: string | null): WorkspaceTabId | null {
+  return workspaceTabs.find((tab) => tab.id === value)?.id ?? null;
 }
 
 /**
@@ -152,11 +170,7 @@ function WorkbenchContent() {
   } = useTrip(tripId);
   useHydrateStoreFromTrip(trip);
 
-  const tabParam = searchParams.get('tab') as WorkspaceTabId | null;
-  const activeTab =
-    tabParam && workspaceTabs.some((t) => t.id === tabParam)
-      ? tabParam
-      : 'intake';
+  const activeTab = toWorkspaceTabId(searchParams.get('tab')) ?? 'intake';
 
   const store = useWorkbenchStore();
 

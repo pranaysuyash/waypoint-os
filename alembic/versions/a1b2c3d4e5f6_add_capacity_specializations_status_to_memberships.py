@@ -15,22 +15,30 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "memberships",
-        sa.Column("capacity", sa.Integer(), nullable=True, server_default="5"),
-    )
-    op.add_column(
-        "memberships",
-        sa.Column("specializations", sa.JSON(), nullable=True),
-    )
-    op.add_column(
-        "memberships",
-        sa.Column("status", sa.String(50), nullable=True, server_default="active"),
-    )
-    op.add_column(
-        "memberships",
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
-    )
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_columns = {column["name"] for column in inspector.get_columns("memberships")}
+
+    if "capacity" not in existing_columns:
+        op.add_column(
+            "memberships",
+            sa.Column("capacity", sa.Integer(), nullable=True, server_default="5"),
+        )
+    if "specializations" not in existing_columns:
+        op.add_column(
+            "memberships",
+            sa.Column("specializations", sa.JSON(), nullable=True),
+        )
+    if "status" not in existing_columns:
+        op.add_column(
+            "memberships",
+            sa.Column("status", sa.String(50), nullable=True, server_default="active"),
+        )
+    if "updated_at" not in existing_columns:
+        op.add_column(
+            "memberships",
+            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
+        )
 
     op.execute(
         "UPDATE memberships SET capacity = 5, status = 'active' WHERE capacity IS NULL"

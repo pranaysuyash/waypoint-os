@@ -226,6 +226,11 @@ export interface SpineRunRequest {
   operating_mode?: string;
   strict_leakage?: boolean;
   scenario_id?: string | null;
+  follow_up_due_date?: string | null;
+  pace_preference?: string | null;
+  lead_source?: string | null;
+  activity_provenance?: string | null;
+  date_year_confidence?: string | null;
 }
 export interface SpineRunResponse {
   ok?: boolean;

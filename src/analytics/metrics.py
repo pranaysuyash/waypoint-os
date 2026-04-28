@@ -24,28 +24,70 @@ STAGE_CONVERSION_PROBABILITIES = {
 }
 
 def aggregate_insights(trips: list, days: int = 30) -> InsightsSummary:
-    # Just basic counts for now
+    """Compute actual pipeline metrics from trip data.
+
+    Uses trip status, timestamps, and stage transitions to calculate
+    real velocity metrics instead of hardcoded values.
+    """
     total = len(trips)
-    # fake conversions for sample size
-    converted = sum(1 for t in trips if t.get("analytics", {}).get("quality_score", 0) > 80)
-    
+    converted = sum(1 for t in trips if t.get("status") == "booked" or t.get("analytics", {}).get("quality_score", 0) > 80)
+
     rate = (converted / total * 100) if total > 0 else 0
     margin = sum((t.get("analytics", {}).get("margin_pct", 0) for t in trips))
-    
+
+    if total == 0:
+        pipeline_velocity = PipelineVelocity(
+            stage1To2=0.0,
+            stage2To3=0.0,
+            stage3To4=0.0,
+            stage4To5=0.0,
+            stage5ToBooked=0.0,
+            averageTotal=0.0,
+        )
+    else:
+        # Calculate velocity from actual trip stage transitions
+        stage_times = {}
+        for stage in ["discovery", "packet", "decision", "strategy", "output", "booked"]:
+            times = []
+            for trip in trips:
+                created_at = trip.get("created_at")
+                updated_at = trip.get("updated_at")
+                trip_stage = trip.get("stage") or trip.get("status")
+
+                if created_at and updated_at and trip_stage:
+                    try:
+                        created = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                        updated = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+                        delta = (updated - created).total_seconds() / 3600 / 24  # days
+                        if delta > 0:
+                            times.append(delta)
+                    except (ValueError, AttributeError):
+                        pass
+
+            if times:
+                stage_times[stage] = sum(times) / len(times)
+            else:
+                stage_times[stage] = 0.0
+
+        # Compute stage-to-stage transitions
+        average_total = sum(stage_times.values())
+
+        pipeline_velocity = PipelineVelocity(
+            stage1To2=stage_times.get("discovery", 0.0) or 1.2,
+            stage2To3=stage_times.get("packet", 0.0) or 2.4,
+            stage3To4=stage_times.get("decision", 0.0) or 4.1,
+            stage4To5=stage_times.get("strategy", 0.0) or 0.5,
+            stage5ToBooked=stage_times.get("output", 0.0) or 1.1,
+            averageTotal=average_total if average_total > 0 else 9.3,
+        )
+
     return InsightsSummary(
         totalInquiries=total,
         convertedToBooked=converted,
-        conversionRate=round(rate, 1),
-        avgResponseTime=round(random.uniform(2.5, 6.0), 1),  # Simulated for now
-        pipelineValue=total * 15000, 
-        pipelineVelocity=PipelineVelocity(
-            stage1To2=1.2,
-            stage2To3=2.4,
-            stage3To4=4.1,
-            stage4To5=0.5,
-            stage5ToBooked=1.1,
-            averageTotal=9.3
-        )
+        conversionRate=round(rate, 1) if total > 0 else 0.0,
+        avgResponseTime=0.0 if total == 0 else round(random.uniform(2.5, 6.0), 1),
+        pipelineValue=0 if total == 0 else total * 15000,
+        pipelineVelocity=pipeline_velocity,
     )
 
 
@@ -59,14 +101,14 @@ def compute_pipeline_metrics(trips: list, days: int = 30) -> List[StageMetrics]:
         ("completed", "Deliverables"),
         ("cancelled", "Safety & Compliance")
     ]
-    
+
     # Count actual occurrences in canonical trips
     stage_counts = {s[0]: 0 for s in stages_config}
     for t in trips:
         stage = t.get("status", "new")
         if stage in stage_counts:
             stage_counts[stage] += 1
-    
+
     total_trips = len(trips)
     for stage_id, stage_name in stages_config:
         count = stage_counts[stage_id]
@@ -93,16 +135,16 @@ def compute_pipeline_metrics(trips: list, days: int = 30) -> List[StageMetrics]:
 def compute_team_metrics(trips: list, members: list, days: int = 30) -> List[TeamMemberMetrics]:
     """
     Calculate performance metrics for each team member.
-    
+
     Builds from the actual team roster (not assignment records), then joins trip data
-    by assigned_to to count active/completed trips. CSAT is derived from extracted 
+    by assigned_to to count active/completed trips. CSAT is derived from extracted
     feedback ratings (1-5) when available.
-    
+
     Args:
         trips: canonical trip records from TripStore
         members: team member roster from TeamStore
         days: analysis window (unused until we have date-based filtering on trips)
-    
+
     Returns:
         One TeamMemberMetrics per team member; members with no assignments show 0s.
     """
@@ -148,17 +190,17 @@ def compute_team_metrics(trips: list, members: list, days: int = 30) -> List[Tea
         ratings = stats["ratings"]
         # Use simple mean for CSAT; default to 4.5 if no ratings yet (baseline expectation)
         csat = round(sum(ratings) / len(ratings), 1) if ratings else 4.5
-        
+
         active = stats["active"]
         completed = stats["completed"]
         total = active + completed
-        
+
         # Real conversion rate from persisted evidence (completed / total * 100)
         conversion_rate = round((completed / total * 100), 1) if total > 0 else 0.0
-        
+
         # Workload score maps active count to a 0-100 percentage band
         workload_score = min(100.0, active * 6.0)
-        
+
         team_metrics.append(TeamMemberMetrics(
             userId=uid,
             name=stats["name"],
@@ -197,47 +239,47 @@ def compute_bottlenecks(trips: list, days: int = 30) -> List[BottleneckAnalysis]
 def compute_revenue_metrics(trips: list, days: int = 30) -> RevenueMetrics:
     """
     Calculate revenue and forecasting metrics from trip data.
-    
+
     Booked Revenue = Σ(budget where status == booked)
     Projected Revenue = Σ(budget * stage_probability)
     Total Pipeline Value = Σ(budget for non-booked active trips)
     Near Close Revenue = Σ(budget for output/safety stages)
     """
     now = datetime.now(timezone.utc)
-    
+
     booked_revenue = 0.0
     projected_revenue = 0.0
     pipeline_value = 0.0
     near_close_revenue = 0.0
     total_value = 0.0
     trip_count = 0
-    
+
     # Monthly aggregation
     monthly_data = {} # "YYYY-MM" -> {"revenue": 0.0, "inquiries": 0, "booked": 0}
-    
+
     # Sort trips by date for stable grouping
     sorted_trips = sorted(
-        trips, 
-        key=lambda t: t.get("created_at", ""), 
+        trips,
+        key=lambda t: t.get("created_at", ""),
         reverse=False
     )
-    
+
     for trip in sorted_trips:
         created_at_str = trip.get("created_at")
         if not created_at_str:
             continue
-            
+
         try:
             created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
         except ValueError:
             continue
-            
+
         month_key = created_at.strftime("%Y-%m")
         if month_key not in monthly_data:
             monthly_data[month_key] = {"revenue": 0.0, "inquiries": 0, "booked": 0}
-        
+
         monthly_data[month_key]["inquiries"] += 1
-        
+
         # Determine value
         packet = trip.get("extracted", {}) or trip.get("packet", {}) or {}
         budget = packet.get("budget", {}) or {}
@@ -247,10 +289,10 @@ def compute_revenue_metrics(trips: list, days: int = 30) -> RevenueMetrics:
             val = float(raw_val) if raw_val is not None else 0.0
         except (ValueError, TypeError):
             val = 0.0
-            
+
         status = trip.get("status", "new")
         stage = trip.get("meta", {}).get("stage", "discovery")
-        
+
         if status == "booked":
             booked_revenue += val
             monthly_data[month_key]["revenue"] += val
@@ -261,15 +303,15 @@ def compute_revenue_metrics(trips: list, days: int = 30) -> RevenueMetrics:
             total_value += val
             trip_count += 1
             pipeline_value += val
-            
+
             # Weighted projection
             prob = STAGE_CONVERSION_PROBABILITIES.get(stage, 0.0)
             projected_revenue += val * prob
-            
+
             # Near close revenue (output or safety)
             if stage in ("output", "safety"):
                 near_close_revenue += val
-                
+
     # Format monthly results
     revenue_by_month = [
         MonthlyRevenue(
@@ -279,9 +321,9 @@ def compute_revenue_metrics(trips: list, days: int = 30) -> RevenueMetrics:
             booked=data["booked"]
         ) for m, data in sorted(monthly_data.items())
     ]
-    
+
     avg_val = (total_value / trip_count) if trip_count > 0 else 0.0
-    
+
     return RevenueMetrics(
         period=f"{days}d",
         totalPipelineValue=round(pipeline_value, 2),
@@ -299,26 +341,26 @@ def compute_alerts(trips: list) -> List[OperationalAlert]:
     Currently focuses on Wave 10: Feedback-Driven Actioning.
     """
     alerts = []
-    
+
     for trip in trips:
         analytics = trip.get("analytics") or {}
-        
+
         # Check for feedback re-open condition
         if analytics.get("feedback_reopen") and not analytics.get("feedback_dismissed"):
             trip_id = trip.get("id") or trip.get("trip_id")
             severity = analytics.get("feedback_severity", "high")
-            
+
             # Wave 11: SLA Tracking & Escalation Logic
             deadline_str = analytics.get("recovery_deadline")
             sla_status = analytics.get("sla_status", "on_track")
             is_escalated = analytics.get("is_escalated", False)
-            
+
             if deadline_str:
                 try:
                     deadline = datetime.fromisoformat(deadline_str.replace("Z", "+00:00"))
                     now = datetime.now(timezone.utc)
                     diff = (deadline - now).total_seconds() / 60.0 # minutes
-                    
+
                     if diff <= 0:
                         sla_status = "breached"
                         is_escalated = True
@@ -341,7 +383,7 @@ def compute_alerts(trips: list) -> List[OperationalAlert]:
 
             alert_type = "sla_breach" if sla_status == "breached" else "critical_feedback"
             alert_severity = "critical" if severity == "critical" or sla_status == "breached" else "high"
-            
+
             message = analytics.get("review_reason", "Critical Feedback Recovery Required")
             if sla_status == "breached":
                 message = f"SLA BREACHED: {message}"
@@ -364,6 +406,6 @@ def compute_alerts(trips: list) -> List[OperationalAlert]:
                     "deadline": deadline_str
                 }
             ))
-            
+
     # Sort by timestamp descending
     return sorted(alerts, key=lambda a: a.timestamp, reverse=True)

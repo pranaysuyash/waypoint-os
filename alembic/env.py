@@ -6,7 +6,6 @@ Supports autogenerate with SQLAlchemy 2.0 async models.
 
 import asyncio
 import sys
-import importlib
 from logging.config import fileConfig
 from pathlib import Path
 
@@ -18,15 +17,9 @@ from alembic import context
 
 # Hardcode project root - adjust if project structure changes
 PROJECT_ROOT = Path("/Users/pranay/Projects/travel_agency_agent")
-SPINE_API_PATH = PROJECT_ROOT / "spine_api"
-sys.path.insert(0, str(SPINE_API_PATH))
+sys.path.insert(0, str(PROJECT_ROOT))
 
-# Import Base directly from the tenant module
-tenant_path = SPINE_API_PATH / "models" / "tenant.py"
-spec = importlib.util.spec_from_file_location("tenant_module", tenant_path)
-tenant_mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(tenant_mod)
-Base = tenant_mod.Base
+from spine_api.models import Base
 
 # This is the Alembic Config object
 config = context.config

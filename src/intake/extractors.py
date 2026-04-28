@@ -286,6 +286,7 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
     matches = [m.group(0) for m in _DESTINATION_RE.finditer(destination_text)]
     if matches:
         seen = []
+        raw_matches = []
         for m in matches:
             title = m.title()
             if title not in seen:
@@ -309,10 +310,11 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
                     excluded_by_past_trip.append(title)
                 else:
                     seen.append(title)
+                    raw_matches.append(m)
         if len(seen) == 1:
-            return seen, "definite", matches[0]
+            return seen, "definite", raw_matches[0]
         elif len(seen) > 1:
-            return seen, "semi_open", ", ".join(matches)
+            return seen, "semi_open", ", ".join(raw_matches)
 
     return [], "open" if ("somewhere" in text_lower or "any" in text_lower) else "undecided", None
 
@@ -1309,6 +1311,11 @@ class ExtractionPipeline:
             "child_ages": "child_ages",
             "trip_purpose": "trip_purpose",
             "activities": "soft_preferences",
+            "follow_up_due_date": "follow_up_due_date",
+            "pace_preference": "pace_preference",
+            "lead_source": "lead_source",
+            "activity_provenance": "activity_provenance",
+            "date_year_confidence": "date_year_confidence",
         }
 
         for src_field, canonical_field in field_mappings.items():

@@ -233,11 +233,41 @@ export interface ReviewActionRequest {
   reassign_to?: string | null;
   error_category?: string | null;
 }
+/**
+ * Returned immediately by POST /run — the run is queued, poll for status.
+ */
+export interface RunAcceptedResponse {
+  run_id: string;
+  state?: string;
+}
 export interface RunMeta {
   stage?: string;
   operating_mode?: string;
   fixture_id?: string | null;
   execution_ms?: number;
+}
+/**
+ * Returned by GET /runs/{run_id} — full run state for polling UI.
+ */
+export interface RunStatusResponse {
+  run_id: string;
+  state: string;
+  trip_id?: string | null;
+  stage?: string | null;
+  operating_mode?: string | null;
+  agency_id?: string | null;
+  created_at?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  total_ms?: number | null;
+  steps_completed?: string[];
+  events?: {
+    [k: string]: unknown;
+  }[];
+  error_type?: string | null;
+  error_message?: string | null;
+  stage_at_failure?: string | null;
+  block_reason?: string | null;
 }
 export interface SafetyResult {
   strict_leakage?: boolean;
@@ -258,6 +288,11 @@ export interface SpineRunRequest {
   operating_mode?: string;
   strict_leakage?: boolean;
   scenario_id?: string | null;
+  follow_up_due_date?: string | null;
+  pace_preference?: string | null;
+  lead_source?: string | null;
+  activity_provenance?: string | null;
+  date_year_confidence?: string | null;
 }
 export interface SpineRunResponse {
   ok?: boolean;
@@ -300,6 +335,20 @@ export interface StageMetrics {
 export interface SuitabilityAcknowledgeRequest {
   acknowledged_flags: string[];
 }
+/**
+ * Response from GET /trips/{trip_id}/suitability endpoint.
+ *
+ * Returns all suitability flags for a given trip with confidence and tier information.
+ */
+export interface SuitabilityFlagsResponse {
+  trip_id: string;
+  /**
+   * List of suitability flags with id, name, confidence, tier, etc.
+   */
+  suitability_flags?: {
+    [k: string]: unknown;
+  }[];
+}
 export interface SuitabilitySignal {
   trip_id: string;
   flag_type: string;
@@ -313,14 +362,15 @@ export interface SystemicError {
 }
 export interface TeamMember {
   id: string;
+  user_id: string;
   email: string;
   name: string;
   role: string;
   capacity?: number;
-  active?: boolean;
+  status?: string;
+  specializations?: string[];
   created_at: string;
   updated_at?: string | null;
-  specializations?: string[] | null;
 }
 export interface TeamMemberMetrics {
   userId: string;

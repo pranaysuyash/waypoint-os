@@ -132,7 +132,8 @@ export async function dismissAlert(
 // ============================================================================
 
 export async function getTeamMembers(): Promise<TeamMember[]> {
-  return api.get('/api/team/members');
+  const res = await api.get<{ items: TeamMember[]; total: number }>('/api/team/members');
+  return res.items;
 }
 
 export async function getTeamMemberById(id: string): Promise<TeamMember> {
@@ -144,7 +145,7 @@ export async function inviteTeamMember(data: {
   name: string;
   role: string;
   capacity?: number;
-}): Promise<{ success: boolean; invitationSent: boolean }> {
+}): Promise<{ success: boolean; member: TeamMember }> {
   return api.post('/api/team/invite', data);
 }
 

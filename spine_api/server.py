@@ -115,6 +115,7 @@ OverrideStore = persistence.OverrideStore
 TeamStore = persistence.TeamStore
 ConfigStore = persistence.ConfigStore
 save_processed_trip = persistence.save_processed_trip
+save_processed_trip_async = persistence.save_processed_trip_async
 
 # Import TimelineEventMapper from analytics
 # Note: logger not available yet, so we suppress warnings here
@@ -532,6 +533,24 @@ def build_envelopes(data: dict[str, Any]) -> List[SourceEnvelope]:
         envelopes.append(
             SourceEnvelope.from_freeform(
                 data["itinerary_text"], "traveler_form", "traveler"
+            )
+        )
+
+    extra_fields = {
+        field: data[field]
+        for field in (
+            "follow_up_due_date",
+            "pace_preference",
+            "lead_source",
+            "activity_provenance",
+            "date_year_confidence",
+        )
+        if data.get(field)
+    }
+    if extra_fields:
+        envelopes.append(
+            SourceEnvelope.from_structured(
+                extra_fields, "structured_import", "system"
             )
         )
 
@@ -1432,12 +1451,13 @@ def get_analytics_pipeline(
 
 
 @app.get("/analytics/team", response_model=List[TeamMemberMetrics])
-def get_analytics_team(
+async def get_analytics_team(
     range: str = "30d",
     agency: Agency = Depends(get_current_agency),
+    db: AsyncSession = Depends(get_db),
 ):
     trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
-    members = TeamStore.list_members(active_only=False)
+    members = await membership_service.list_members(db, agency_id=agency.id)
     return compute_team_metrics(trips, members)
 
 

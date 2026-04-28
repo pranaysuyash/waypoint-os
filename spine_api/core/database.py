@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 from sqlalchemy.orm import DeclarativeBase
 
 # Database URL from environment or default to local Docker PostgreSQL
@@ -29,8 +30,7 @@ engine = create_async_engine(
     DATABASE_URL,
     echo=False,  # Set to True for SQL logging during development
     future=True,
-    pool_size=20,
-    max_overflow=10,
+    poolclass=NullPool,
     pool_pre_ping=True,
 )
 

@@ -13,6 +13,7 @@ dogfood mode by the privacy guard. Before beta/launch, configure:
 
 import json
 import os
+import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Any
@@ -21,6 +22,12 @@ from dataclasses import asdict, is_dataclass
 import logging
 import threading
 from contextlib import contextmanager
+
+from sqlalchemy import select
+
+from spine_api.core.database import async_session_maker
+from spine_api.models.trips import Trip
+from src.security.encryption import decrypt, encrypt
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +154,7 @@ def file_lock(filepath: Path, timeout_seconds: float = 30.0):
             pass
 
 
-class TripStore:
+class FileTripStore:
     """File-based trip storage using JSON."""
     _lock = threading.Lock()
 
@@ -176,7 +183,7 @@ class TripStore:
         serializable_data = _make_json_serializable(trip_data)
         
         filepath = TRIPS_DIR / f"{trip_id}.json"
-        with TripStore._lock:
+        with FileTripStore._lock:
             with file_lock(filepath):
                 with open(filepath, "w") as f:
                     json.dump(serializable_data, f, indent=2)
@@ -231,9 +238,9 @@ class TripStore:
         check_trip_data(updates)
         filepath = TRIPS_DIR / f"{trip_id}.json"
         
-        with TripStore._lock:
+        with FileTripStore._lock:
             with file_lock(filepath):
-                trip = TripStore.get_trip(trip_id)
+                trip = FileTripStore.get_trip(trip_id)
                 if not trip:
                     return None
                 
@@ -247,6 +254,279 @@ class TripStore:
                     json.dump(serializable_trip, f, indent=2)
                 
                 return trip
+
+
+class SQLTripStore:
+    """PostgreSQL-backed trip storage with field-level encryption for common PII keys."""
+
+    _PII_FIELDS = {"email", "phone", "phone_number", "mobile", "address", "full_name", "name"}
+
+    @staticmethod
+    def _encrypt_pii(data: Any) -> Any:
+        if isinstance(data, dict):
+            return {
+                key: encrypt(value) if key.lower() in SQLTripStore._PII_FIELDS and isinstance(value, str)
+                else SQLTripStore._encrypt_pii(value)
+                for key, value in data.items()
+            }
+        if isinstance(data, list):
+            return [SQLTripStore._encrypt_pii(item) for item in data]
+        return data
+
+    @staticmethod
+    def _decrypt_pii(data: Any) -> Any:
+        if isinstance(data, dict):
+            return {
+                key: decrypt(value) if key.lower() in SQLTripStore._PII_FIELDS and isinstance(value, str)
+                else SQLTripStore._decrypt_pii(value)
+                for key, value in data.items()
+            }
+        if isinstance(data, list):
+            return [SQLTripStore._decrypt_pii(item) for item in data]
+        return data
+
+    @staticmethod
+    def _parse_datetime(value: Any) -> Any:
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError:
+                logger.warning("Invalid datetime for Trip.follow_up_due_date: %s", value)
+                return None
+        return value
+
+    @staticmethod
+    def _to_dict(trip_obj: Trip) -> dict:
+        return {
+            "id": trip_obj.id,
+            "run_id": trip_obj.run_id,
+            "agency_id": trip_obj.agency_id,
+            "user_id": trip_obj.user_id,
+            "source": trip_obj.source,
+            "status": trip_obj.status,
+            "follow_up_due_date": trip_obj.follow_up_due_date.isoformat() if trip_obj.follow_up_due_date else None,
+            "party_composition": trip_obj.party_composition,
+            "pace_preference": trip_obj.pace_preference,
+            "date_year_confidence": trip_obj.date_year_confidence,
+            "lead_source": trip_obj.lead_source,
+            "activity_provenance": trip_obj.activity_provenance,
+            "extracted": SQLTripStore._decrypt_pii(trip_obj.extracted or {}),
+            "validation": trip_obj.validation or {},
+            "decision": trip_obj.decision or {},
+            "strategy": trip_obj.strategy,
+            "traveler_bundle": trip_obj.traveler_bundle,
+            "internal_bundle": trip_obj.internal_bundle,
+            "safety": trip_obj.safety or {},
+            "raw_input": SQLTripStore._decrypt_pii(trip_obj.raw_input or {}),
+            "analytics": trip_obj.analytics,
+            "created_at": trip_obj.created_at.isoformat() if trip_obj.created_at else None,
+            "updated_at": trip_obj.updated_at.isoformat() if trip_obj.updated_at else None,
+        }
+
+    @staticmethod
+    async def save_trip(trip_data: dict, agency_id: Optional[str] = None) -> str:
+        trip_id = trip_data.get("id") or f"trip_{uuid4().hex[:12]}"
+        model_data = {
+            "id": trip_id,
+            "run_id": trip_data.get("run_id"),
+            "agency_id": agency_id or trip_data.get("agency_id"),
+            "user_id": trip_data.get("user_id"),
+            "source": trip_data.get("source", "unknown"),
+            "status": trip_data.get("status", "new"),
+            "follow_up_due_date": SQLTripStore._parse_datetime(trip_data.get("follow_up_due_date")),
+            "party_composition": trip_data.get("party_composition"),
+            "pace_preference": trip_data.get("pace_preference"),
+            "date_year_confidence": trip_data.get("date_year_confidence"),
+            "lead_source": trip_data.get("lead_source"),
+            "activity_provenance": trip_data.get("activity_provenance"),
+            "extracted": SQLTripStore._encrypt_pii(trip_data.get("extracted") or {}),
+            "validation": trip_data.get("validation") or {},
+            "decision": trip_data.get("decision") or {},
+            "strategy": trip_data.get("strategy"),
+            "traveler_bundle": trip_data.get("traveler_bundle"),
+            "internal_bundle": trip_data.get("internal_bundle"),
+            "safety": trip_data.get("safety") or {},
+            "raw_input": SQLTripStore._encrypt_pii(trip_data.get("raw_input") or {}),
+            "analytics": trip_data.get("analytics"),
+            "created_at": SQLTripStore._parse_datetime(trip_data.get("created_at")) or datetime.now(timezone.utc),
+            "updated_at": SQLTripStore._parse_datetime(trip_data.get("updated_at")),
+        }
+        if not model_data["agency_id"]:
+            raise ValueError("SQLTripStore requires agency_id")
+
+        async with async_session_maker() as session:
+            existing = await session.get(Trip, trip_id)
+            if existing:
+                for key, value in model_data.items():
+                    setattr(existing, key, value)
+                existing.updated_at = datetime.now(timezone.utc)
+            else:
+                session.add(Trip(**model_data))
+            await session.commit()
+        return trip_id
+
+    @staticmethod
+    async def get_trip(trip_id: str) -> Optional[dict]:
+        async with async_session_maker() as session:
+            trip_obj = await session.get(Trip, trip_id)
+            return SQLTripStore._to_dict(trip_obj) if trip_obj else None
+
+    @staticmethod
+    async def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None) -> list:
+        async with async_session_maker() as session:
+            query = select(Trip).order_by(Trip.created_at.desc()).limit(limit)
+            if status:
+                query = query.where(Trip.status == status)
+            if agency_id:
+                query = query.where(Trip.agency_id == agency_id)
+            result = await session.execute(query)
+            return [SQLTripStore._to_dict(trip) for trip in result.scalars().all()]
+
+    @staticmethod
+    async def update_trip(trip_id: str, updates: dict) -> Optional[dict]:
+        async with async_session_maker() as session:
+            trip_obj = await session.get(Trip, trip_id)
+            if not trip_obj:
+                return None
+            for key, value in updates.items():
+                if key in {"extracted", "raw_input"}:
+                    value = SQLTripStore._encrypt_pii(value or {})
+                elif key == "follow_up_due_date":
+                    value = SQLTripStore._parse_datetime(value)
+                if hasattr(trip_obj, key):
+                    setattr(trip_obj, key, value)
+            trip_obj.updated_at = datetime.now(timezone.utc)
+            await session.commit()
+            return SQLTripStore._to_dict(trip_obj)
+
+
+def _run_async_blocking(coro):
+    """Run an async SQL operation from the existing synchronous TripStore API."""
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    coro.close()
+    raise RuntimeError("Use TripStore async methods from an active event loop")
+
+
+class TripStore:
+    """Stable synchronous TripStore facade over file or SQL persistence."""
+
+    @staticmethod
+    def _backend():
+        backend = os.getenv("TRIPSTORE_BACKEND", "file").lower().strip()
+        if backend == "sql":
+            return SQLTripStore
+        if backend not in {"", "file", "json"}:
+            logger.warning("Unknown TRIPSTORE_BACKEND=%s; falling back to file store", backend)
+        return FileTripStore
+
+    @staticmethod
+    def save_trip(trip_data: dict, agency_id: Optional[str] = None) -> str:
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.save_trip(trip_data, agency_id=agency_id)
+        return _run_async_blocking(SQLTripStore.save_trip(trip_data, agency_id=agency_id))
+
+    @staticmethod
+    async def asave_trip(trip_data: dict, agency_id: Optional[str] = None) -> str:
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.save_trip(trip_data, agency_id=agency_id)
+        return await SQLTripStore.save_trip(trip_data, agency_id=agency_id)
+
+    @staticmethod
+    def get_trip(trip_id: str) -> Optional[dict]:
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.get_trip(trip_id)
+        return _run_async_blocking(SQLTripStore.get_trip(trip_id))
+
+    @staticmethod
+    async def aget_trip(trip_id: str) -> Optional[dict]:
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.get_trip(trip_id)
+        return await SQLTripStore.get_trip(trip_id)
+
+    @staticmethod
+    def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None) -> list:
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
+        return _run_async_blocking(SQLTripStore.list_trips(status=status, limit=limit, agency_id=agency_id))
+
+    @staticmethod
+    async def alist_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None) -> list:
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
+        return await SQLTripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
+
+    @staticmethod
+    def update_trip(trip_id: str, updates: dict) -> Optional[dict]:
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.update_trip(trip_id, updates)
+        return _run_async_blocking(SQLTripStore.update_trip(trip_id, updates))
+
+    @staticmethod
+    async def aupdate_trip(trip_id: str, updates: dict) -> Optional[dict]:
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.update_trip(trip_id, updates)
+        return await SQLTripStore.update_trip(trip_id, updates)
+
+
+def _build_processed_trip(
+    spine_output: dict,
+    source: str,
+    user_id: Optional[str],
+    follow_up_due_date: Optional[str],
+    party_composition: Optional[str],
+    pace_preference: Optional[str],
+    date_year_confidence: Optional[str],
+    lead_source: Optional[str],
+    activity_provenance: Optional[str],
+    trip_status: str,
+) -> dict:
+    packet = spine_output.get("packet", {}) or {}
+    validation = spine_output.get("validation", {}) or {}
+    decision = spine_output.get("decision", {}) or {}
+    safety = spine_output.get("safety", {}) or {}
+
+    trip = {
+        "id": f"trip_{uuid4().hex[:12]}",
+        "run_id": spine_output.get("run_id"),
+        "user_id": user_id,
+        "source": source,
+        "status": trip_status,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "follow_up_due_date": follow_up_due_date,
+        "party_composition": party_composition,
+        "pace_preference": pace_preference,
+        "date_year_confidence": date_year_confidence,
+        "lead_source": lead_source,
+        "activity_provenance": activity_provenance,
+        "extracted": packet,
+        "validation": validation,
+        "decision": decision,
+        "strategy": spine_output.get("strategy"),
+        "traveler_bundle": spine_output.get("traveler_bundle"),
+        "internal_bundle": spine_output.get("internal_bundle"),
+        "safety": safety,
+        "raw_input": spine_output.get("meta", {}),
+    }
+
+    try:
+        analytics = process_trip_analytics(trip)
+        trip["analytics"] = analytics.model_dump()
+    except Exception as e:
+        logger.warning(f"Analytics calculation failed: {e}")
+        trip["analytics"] = None
+
+    return _make_json_serializable(trip)
 
 
 class AssignmentStore:
@@ -559,7 +839,13 @@ TEAM_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class TeamStore:
-    """File-based team member storage using JSON."""
+    """
+    File-based team member storage using JSON.
+
+    DEPRECATED — Use spine_api.services.membership_service instead.
+                Team members are now real User + Membership DB records.
+                Kept for reference; will be removed after migration.
+    """
 
     TEAM_FILE = TEAM_DIR / "members.json"
     _lock = threading.Lock()
@@ -713,47 +999,18 @@ def save_processed_trip(
     Returns:
         The saved trip ID
     """
-    # Extract data from spine output
-    packet = spine_output.get("packet", {}) or {}
-    validation = spine_output.get("validation", {}) or {}
-    decision = spine_output.get("decision", {}) or {}
-    safety = spine_output.get("safety", {}) or {}
-    
-    trip = {
-        "id": f"trip_{uuid4().hex[:12]}",
-        "run_id": spine_output.get("run_id"),
-        "user_id": user_id,
-        "source": source,
-        "status": trip_status,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "follow_up_due_date": follow_up_due_date,  # Track promised follow-up times
-        "party_composition": party_composition,  # Who is traveling
-        "pace_preference": pace_preference,  # Travel pace preference
-        "date_year_confidence": date_year_confidence,  # Date certainty
-        "lead_source": lead_source,  # How customer found us
-        "activity_provenance": activity_provenance,  # Activity interests
-        "extracted": packet,
-        "validation": validation,
-        "decision": decision,
-        "strategy": spine_output.get("strategy"),
-        "traveler_bundle": spine_output.get("traveler_bundle"),
-        "internal_bundle": spine_output.get("internal_bundle"),
-        "safety": safety,
-        "raw_input": spine_output.get("meta", {}),
-    }
-    
-    # Calculate analytics payload securely inside python ecosystem
-    try:
-        analytics = process_trip_analytics(trip)
-        trip["analytics"] = analytics.model_dump()
-    except Exception as e:
-        logger.warning(f"Analytics calculation failed: {e}")
-        trip["analytics"] = None
-    
-    logger.debug(f"Saving trip with data keys: {list(trip.keys())}")
-    
-    # Make the entire trip JSON serializable before saving
-    serializable_trip = _make_json_serializable(trip)
+    serializable_trip = _build_processed_trip(
+        spine_output=spine_output,
+        source=source,
+        user_id=user_id,
+        follow_up_due_date=follow_up_due_date,
+        party_composition=party_composition,
+        pace_preference=pace_preference,
+        date_year_confidence=date_year_confidence,
+        lead_source=lead_source,
+        activity_provenance=activity_provenance,
+        trip_status=trip_status,
+    )
     logger.debug(f"Serializable trip keys: {list(serializable_trip.keys())}")
     
     trip_id = TripStore.save_trip(serializable_trip, agency_id=agency_id)
@@ -765,4 +1022,43 @@ def save_processed_trip(
         "agency_id": agency_id,
     })
     
+    return trip_id
+
+
+async def save_processed_trip_async(
+    spine_output: dict,
+    source: str = "unknown",
+    agency_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    follow_up_due_date: Optional[str] = None,
+    party_composition: Optional[str] = None,
+    pace_preference: Optional[str] = None,
+    date_year_confidence: Optional[str] = None,
+    lead_source: Optional[str] = None,
+    activity_provenance: Optional[str] = None,
+    trip_status: str = "new"
+) -> str:
+    """Async variant for FastAPI/background tasks and SQL-backed persistence."""
+    serializable_trip = _build_processed_trip(
+        spine_output=spine_output,
+        source=source,
+        user_id=user_id,
+        follow_up_due_date=follow_up_due_date,
+        party_composition=party_composition,
+        pace_preference=pace_preference,
+        date_year_confidence=date_year_confidence,
+        lead_source=lead_source,
+        activity_provenance=activity_provenance,
+        trip_status=trip_status,
+    )
+    logger.debug(f"Serializable trip keys: {list(serializable_trip.keys())}")
+
+    trip_id = await TripStore.asave_trip(serializable_trip, agency_id=agency_id)
+
+    AuditStore.log_event("trip_created", "system", {
+        "trip_id": trip_id,
+        "source": source,
+        "agency_id": agency_id,
+    })
+
     return trip_id

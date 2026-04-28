@@ -20,19 +20,19 @@ from spine_api.models.tenant import User, Membership
 logger = logging.getLogger("spine_api.membership_service")
 
 
-def _member_to_dict(membership: Membership, user: User) -> dict:
+def _member_to_dict(m: Membership, user: User) -> dict:
     """Serialize a Membership + User pair to the response shape."""
     return {
-        "id": membership.id,
+        "id": m.id,
         "user_id": user.id,
         "email": user.email,
         "name": user.name or user.email.split("@")[0],
-        "role": membership.role,
-        "capacity": membership.capacity,
-        "status": membership.status,
-        "specializations": membership.specializations or [],
-        "created_at": membership.created_at.isoformat(),
-        "updated_at": membership.updated_at.isoformat() if membership.updated_at else None,
+        "role": m.role,
+        "capacity": m.capacity,
+        "status": m.status,
+        "specializations": m.specializations or [],
+        "created_at": m.created_at.isoformat(),
+        "updated_at": m.updated_at.isoformat() if m.updated_at else None,
     }
 
 
@@ -75,7 +75,7 @@ async def invite_member(
     if existing.scalar_one_or_none():
         raise ValueError(f"User {email} is already a member of this agency")
 
-    membership = Membership(
+    member = Membership(
         user_id=user.id,
         agency_id=agency_id,
         role=role,
@@ -84,13 +84,13 @@ async def invite_member(
         status="active",
         is_primary=False,
     )
-    db.add(membership)
+    db.add(member)
     await db.commit()
-    await db.refresh(membership)
+    await db.refresh(member)
 
     logger.info("Member invited: user=%s agency=%s role=%s", user.id, agency_id, role)
 
-    return _member_to_dict(membership, user)
+    return _member_to_dict(member, user)
 
 
 async def list_members(
@@ -129,7 +129,8 @@ async def get_member(
     row = result.one_or_none()
     if not row:
         return None
-    return _member_to_dict(row.Membership, row.User)
+    m, u = row
+    return _member_to_dict(m, u)
 
 
 async def update_member(
@@ -145,23 +146,23 @@ async def update_member(
             Membership.agency_id == agency_id,
         )
     )
-    membership = result.scalar_one_or_none()
-    if not membership:
+    membership_row = result.scalar_one_or_none()
+    if not membership_row:
         return None
 
     allowed_fields = {"role", "capacity", "specializations"}
     for key, value in updates.items():
         if key in allowed_fields:
-            setattr(membership, key, value)
+            setattr(membership_row, key, value)
 
-    membership.updated_at = datetime.now(timezone.utc)
+    membership_row.updated_at = datetime.now(timezone.utc)
     await db.commit()
 
-    user_result = await db.execute(select(User).where(User.id == membership.user_id))
+    user_result = await db.execute(select(User).where(User.id == membership_row.user_id))
     user = user_result.scalar_one()
 
     logger.info("Member updated: membership=%s", membership_id)
-    return _member_to_dict(membership, user)
+    return _member_to_dict(membership_row, user)
 
 
 async def deactivate_member(
@@ -176,12 +177,12 @@ async def deactivate_member(
             Membership.agency_id == agency_id,
         )
     )
-    membership = result.scalar_one_or_none()
-    if not membership:
+    membership_row = result.scalar_one_or_none()
+    if not membership_row:
         return False
 
-    membership.status = "inactive"
-    membership.updated_at = datetime.now(timezone.utc)
+    membership_row.status = "inactive"
+    membership_row.updated_at = datetime.now(timezone.utc)
     await db.commit()
 
     logger.info("Member deactivated: membership=%s", membership_id)

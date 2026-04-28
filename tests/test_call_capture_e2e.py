@@ -19,6 +19,7 @@ This test suite validates:
 Run: uv run python -m pytest tests/test_call_capture_e2e.py -v
 """
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 import pytest
@@ -217,7 +218,7 @@ class TestCallCaptureFollowUpDueDate:
         
         new_follow_up_time = datetime.now(timezone.utc) + timedelta(hours=96)
         new_follow_up = new_follow_up_time.isoformat()
-        
+
         patched = self._update_trip_on_disk(trip_id, {"follow_up_due_date": new_follow_up})
         assert patched is not None
         
@@ -226,6 +227,30 @@ class TestCallCaptureFollowUpDueDate:
         extracted_2 = trip_2.get("extracted", {})
         assert extracted_2.get("raw_input") == raw_note
         assert trip_2.get("follow_up_due_date") == new_follow_up
+
+    def test_save_processed_trip_from_async_context_persists(self, disable_audit_logging):
+        """Regression: async callers must not receive an unsaved generated trip ID."""
+        from spine_api.persistence import TripStore, save_processed_trip
+
+        async def save_from_async_context() -> str:
+            return save_processed_trip(
+                {
+                    "run_id": str(uuid.uuid4()),
+                    "packet": {"raw_input": {"fixture_id": "async_save_fixture"}},
+                    "validation": {"valid": True},
+                    "decision": {"decision_type": "accept"},
+                    "meta": {"fixture_id": "async_save_fixture"},
+                },
+                source="test",
+                agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+                trip_status="new",
+            )
+
+        trip_id = asyncio.run(save_from_async_context())
+
+        saved = TripStore.get_trip(trip_id)
+        assert saved is not None
+        assert saved["id"] == trip_id
 
     def test_follow_up_due_date_iso8601_format_validation(self, disable_audit_logging):
         """Test: follow_up_due_date accepts valid ISO-8601 formats."""
