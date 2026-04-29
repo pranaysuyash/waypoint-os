@@ -24,8 +24,9 @@ export interface NavSection {
  *
  * Architectural note:
  * - Routes represent product modules, not personas. No /owner/* or /agent/* prefixes.
- * - New Inquiry is an action, not a place. It will eventually move to a shell header CTA.
- * - /workbench is a dev surface, not a durable user-facing module. Not exposed in nav.
+ * - Actions like "New Inquiry" do not belong in `NAV_SECTIONS`; they should live as shell CTAs.
+ * - /workbench is not a durable user-facing module name. If the New Inquiry CTA routes there
+ *   temporarily, keep the user-facing label as "New Inquiry" until `/inquiries/new` exists.
  */
 export const NAV_SECTIONS: NavSection[] = [
   {
@@ -39,8 +40,8 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: 'PIPELINE',
     items: [
-      { href: '/trips', label: 'Trips', icon: 'Layers', description: 'Active trips in progress', enabled: true },
-      { href: '/quotes', label: 'Quotes', icon: 'FileText', description: 'Commercial proposal objects', enabled: false },
+      { href: '/trips', label: 'Trips', icon: 'Layers', description: 'Active trip planning and execution', enabled: true },
+      { href: '/quotes', label: 'Quotes', icon: 'FileText', description: 'Commercial proposals and quote versions', enabled: false },
       { href: '/bookings', label: 'Bookings', icon: 'CalendarCheck', description: 'Confirmed operational records', enabled: false },
     ],
   },
@@ -48,22 +49,22 @@ export const NAV_SECTIONS: NavSection[] = [
     label: 'OPERATIONS',
     items: [
       { href: '/documents', label: 'Documents', icon: 'FileText', description: 'Passports, visas, vouchers, insurance', enabled: false },
-      { href: '/payments', label: 'Payments', icon: 'DollarSign', description: 'Collection and milestones', enabled: false },
-      { href: '/suppliers', label: 'Suppliers', icon: 'Briefcase', description: 'Preferred supplier relationships', enabled: false },
+      { href: '/payments', label: 'Payments', icon: 'DollarSign', description: 'Collections, milestones, and payment risk', enabled: false },
+      { href: '/suppliers', label: 'Suppliers', icon: 'Briefcase', description: 'Preferred suppliers, rates, and reliability notes', enabled: false },
     ],
   },
   {
     label: 'INTELLIGENCE',
     items: [
-      { href: '/insights', label: 'Insights', icon: 'BarChart2', description: 'Monitor quality, throughput, and conversion', enabled: true },
-      { href: '/audit', label: 'Audit', icon: 'Search', description: 'Trip quality and compliance audit', enabled: false },
-      { href: '/knowledge', label: 'Knowledge Base', icon: 'BookOpen', description: 'Agency memory and playbooks', enabled: false },
+      { href: '/insights', label: 'Insights', icon: 'BarChart2', description: 'Quality, throughput, conversion, and margin intelligence', enabled: true },
+      { href: '/audit', label: 'Audit', icon: 'Search', description: 'Trip fit, waste, and compliance audit', enabled: false },
+      { href: '/knowledge', label: 'Knowledge Base', icon: 'BookOpen', description: 'Agency memory, playbooks, and learned preferences', enabled: false },
     ],
   },
   {
     label: 'ADMIN',
     items: [
-      { href: '/settings', label: 'Settings', icon: 'Settings', description: 'Agency profile, autonomy, and operations', enabled: true },
+      { href: '/settings', label: 'Settings', icon: 'Settings', description: 'Agency profile, rules, users, and preferences', enabled: true },
     ],
   },
 ];

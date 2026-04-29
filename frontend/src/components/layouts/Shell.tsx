@@ -50,6 +50,8 @@ const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
 
 
 function getPageLabel(pathname: string): string {
+  // Prevent breadcrumb from exposing internal route names
+  if (pathname === '/workbench') return 'New Inquiry';
   for (const section of NAV_SECTIONS) {
     for (const item of section.items) {
       if (pathname === item.href || pathname.startsWith(item.href + '/')) {
@@ -102,10 +104,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* New Inquiry CTA — action, not a place */}
-        <div className='hidden md:block px-4 pt-3 pb-1'>
+        {/* New Inquiry CTA — action, not a place. Icon-only on collapsed sidebar. */}
+        <div className='px-2 md:px-4 pt-3 pb-1'>
           <Link
-            href='/workbench?tab=intake'
+            href='/workbench?draft=new&tab=intake'
+            aria-label='New Inquiry'
             className='flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors border'
             style={{
               background: 'var(--bg-elevated)',
@@ -121,8 +124,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
               (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-primary)';
             }}
           >
-            <Send className='h-3.5 w-3.5' aria-hidden='true' />
-            New Inquiry
+            <Send className='h-3.5 w-3.5 shrink-0' aria-hidden='true' />
+            <span className='hidden md:inline'>New Inquiry</span>
           </Link>
         </div>
 

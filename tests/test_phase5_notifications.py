@@ -124,7 +124,7 @@ class TestOperatorEmailFormatting:
         overdue = [{"trip_id": "trip_001", "traveler_name": "Ravi", "due_date": "2026-04-26T10:00:00Z", "days_overdue": 1}]
         body = format_operator_email_body(overdue)
         assert "<html>" in body
-        assert "<table>" in body
+        assert "<table" in body
 
     def test_email_includes_action_links(self):
         """Email includes action links for complete and snooze."""

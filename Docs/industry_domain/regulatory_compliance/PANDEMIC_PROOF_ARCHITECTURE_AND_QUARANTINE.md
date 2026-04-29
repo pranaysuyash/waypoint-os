@@ -34,3 +34,7 @@
 - **Health Token Expiry**: A client's "Health Clearance" expires while they are in the air. The destination airport refuses landing. The agent must coordinate a "Mid-air Extension" via the health authority.
 - **False Positive Crisis**: A traveler's smart patch gives a "False Positive" for a virus. The agent must coordinate an "Independent Lab Audit" while the client is held in the "FBO Quarantine Suite."
 - **The "Red Zone" Closure**: A border closes while the client is inside. The agent must activate the **"Diplomatic Health Corridor"** to evacuate the client via a private medical jet.
+
+### Review Note
+
+See [Docs/reports/pandemic_proof_architecture_quarantine_audit_2026-04-29.md](../../reports/pandemic_proof_architecture_quarantine_audit_2026-04-29.md) for the current evidence-backed review of this spec against the codebase.

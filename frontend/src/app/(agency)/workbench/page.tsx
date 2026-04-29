@@ -33,9 +33,9 @@ import type {
   FeeCalculationResult,
 } from '@/types/spine';
 import type { Trip } from '@/lib/api-client';
-import type { WorkbenchStore } from '@/stores/workbench';
+import { submitTripReviewAction, createDraft, getDraft, patchDraft, discardDraft, promoteDraft } from '@/lib/api-client';
+import type { WorkbenchStore, DraftStatus, SaveState } from '@/stores/workbench';
 import { ErrorBoundary } from '@/components/error-boundary';
-import { submitTripReviewAction } from '@/lib/api-client';
 import { RunProgressPanel } from './RunProgressPanel';
 
 const IntakeTab = dynamic(() => import('./IntakeTab'));
@@ -56,6 +56,16 @@ const FrontierDashboard = dynamic(() =>
     default: m.FrontierDashboard,
   })),
 );
+
+// Safely parse structured JSON — returns null on invalid rather than throwing.
+function safeParseJson(raw: string): Record<string, unknown> | null {
+  if (!raw.trim()) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
 
 const workspaceTabs = [
   { id: 'intake', label: 'New Inquiry' },
@@ -157,6 +167,7 @@ function WorkbenchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const tripId = searchParams.get('trip');
+  const draftParam = searchParams.get('draft');
   const stageParam = searchParams.get('stage');
   const scenarioParam = searchParams.get('scenario');
 
@@ -175,6 +186,35 @@ function WorkbenchContent() {
   const activeTab = toWorkspaceTabId(searchParams.get('tab')) ?? 'intake';
 
   const store = useWorkbenchStore();
+
+  // Draft hydration — load draft from backend and populate store
+  const prevDraftRef = useRef<string | null>(null);
+  const [draftLoading, setDraftLoading] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!draftParam) return;
+    if (draftParam === 'new') {
+      if (prevDraftRef.current !== 'new') {
+        store.clearDraft();
+        prevDraftRef.current = 'new';
+      }
+      return;
+    }
+    if (draftParam === prevDraftRef.current) return;
+    prevDraftRef.current = draftParam;
+
+    setDraftLoading(true);
+    setDraftError(null);
+    getDraft(draftParam)
+      .then((draft) => {
+        store.hydrateFromDraft(draft);
+        setDraftLoading(false);
+      })
+      .catch((err) => {
+        setDraftError(err instanceof Error ? err.message : 'Failed to load draft');
+        setDraftLoading(false);
+      });
+  }, [draftParam, store]);
 
   // Invalidation logic: clear results if config changes
   const prevConfigRef = useRef({
@@ -236,6 +276,26 @@ function WorkbenchContent() {
     }
   }, [spineRunState, store.setResultValidation, store.setResultPacket]);
 
+  // Update draft status based on run state, and refetch after terminal states
+  // to pick up backend lifecycle changes (version bumps, status updates).
+  useEffect(() => {
+    if (!store.draft_id || !spineRunState?.state) return;
+    const runState = spineRunState.state;
+    if (runState === 'running' || runState === 'queued') {
+      store.setDraftStatus('processing');
+    } else if (runState === 'blocked') {
+      store.setDraftStatus('blocked');
+      // Refetch draft to get updated version from backend lifecycle
+      getDraft(store.draft_id).then((draft) => store.hydrateFromDraft(draft)).catch(() => {});
+    } else if (runState === 'failed') {
+      store.setDraftStatus('failed');
+      getDraft(store.draft_id).then((draft) => store.hydrateFromDraft(draft)).catch(() => {});
+    } else if (runState === 'completed') {
+      store.setDraftStatus('open');
+      getDraft(store.draft_id).then((draft) => store.hydrateFromDraft(draft)).catch(() => {});
+    }
+  }, [spineRunState?.state, store.draft_id, store]);
+
   // Auto-switch to the tab containing errors when a run ends in blocked/failed state.
   // This prevents the user from missing field-level validation errors that are rendered
   // in the Trip Details (packet) tab or other stage-specific tabs.
@@ -275,26 +335,84 @@ function WorkbenchContent() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Ensure a draft exists before processing — creates one if needed.
+  // Returns the draft_id to use, or null if there's no meaningful content.
+  const ensureDraftSaved = useCallback(async (): Promise<string | null> => {
+    const hasContent =
+      store.input_raw_note.trim() ||
+      store.input_owner_note.trim() ||
+      store.input_itinerary_text.trim() ||
+      (store.input_structured_json.trim() ? safeParseJson(store.input_structured_json) !== null : false);
+
+    if (!hasContent) return null;
+
+    if (store.draft_id) {
+      // Patch existing draft
+      const structured_json = safeParseJson(store.input_structured_json);
+      await patchDraft(store.draft_id, {
+        customer_message: store.input_raw_note || null,
+        agent_notes: store.input_owner_note || null,
+        structured_json,
+        itinerary_text: store.input_itinerary_text || null,
+        stage: spineStage,
+        operating_mode: currentMode,
+        scenario_id: currentScenario || null,
+        strict_leakage: store.strict_leakage,
+        expected_version: store.draft_version,
+        is_auto_save: false,
+      });
+      store.setSaveState('saved');
+      return store.draft_id;
+    }
+
+    // Create new draft (create endpoint doesn't accept structured_json/itinerary_text)
+    const result = await createDraft({
+      customer_message: store.input_raw_note || null,
+      agent_notes: store.input_owner_note || null,
+      stage: spineStage,
+      operating_mode: currentMode,
+      scenario_id: currentScenario || null,
+      strict_leakage: store.strict_leakage,
+    });
+    store.setDraftMeta({
+      draft_id: result.draft_id,
+      name: result.name,
+      status: result.status as DraftStatus,
+      version: 1,
+      created_at: result.created_at,
+    });
+    // Update URL
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('draft', result.draft_id);
+    if (!params.get('tab')) params.set('tab', 'intake');
+    router.replace(`?${params.toString()}`, { scroll: false });
+    store.setSaveState('saved');
+    return result.draft_id;
+  }, [store, searchParams, router, spineStage, currentMode, currentScenario]);
+
   const handleProcessTrip = useCallback(async () => {
     if (!store.input_raw_note && !store.input_owner_note) return;
-    if (inFlightRef.current) return;  // Prevent double-clicks
+    if (inFlightRef.current) return;
     inFlightRef.current = true;
     setIsRunning(true);
     setRunError(null);
     setRunSuccess(false);
 
     try {
+      // Ensure draft exists before running
+      const resolvedDraftId = await ensureDraftSaved();
+      const structured_json = safeParseJson(store.input_structured_json);
+
       const request: SpineRunRequest = {
         raw_note: store.input_raw_note || null,
         owner_note: store.input_owner_note || null,
-        structured_json: store.input_structured_json
-          ? JSON.parse(store.input_structured_json)
-          : null,
+        structured_json,
         itinerary_text: store.input_itinerary_text || null,
         stage: spineStage,
         operating_mode: currentMode,
         strict_leakage: store.strict_leakage,
         scenario_id: currentScenario || null,
+        draft_id: resolvedDraftId || undefined,
       };
 
       const result = await executeSpineRun(request);
@@ -318,7 +436,223 @@ function WorkbenchContent() {
       inFlightRef.current = false;
       setIsRunning(false);
     }
-  }, [store, executeSpineRun, spineStage, currentMode, currentScenario]);
+  }, [store, executeSpineRun, spineStage, currentMode, currentScenario, ensureDraftSaved]);
+
+  // ==========================================================================
+  // Draft Save
+  // ==========================================================================
+
+  const handleSaveDraft = useCallback(async () => {
+    const isAuto = false;
+    if (store.save_state === 'saving') return;
+    store.setSaveState('saving');
+
+    try {
+      const structured_json = safeParseJson(store.input_structured_json);
+      const payload = {
+        customer_message: store.input_raw_note || null,
+        agent_notes: store.input_owner_note || null,
+        structured_json,
+        itinerary_text: store.input_itinerary_text || null,
+        stage: spineStage,
+        operating_mode: currentMode,
+        scenario_id: currentScenario || null,
+        strict_leakage: store.strict_leakage,
+      };
+
+      if (store.draft_id) {
+        const updated = await patchDraft(store.draft_id, {
+          ...payload,
+          expected_version: store.draft_version,
+          is_auto_save: isAuto,
+        });
+        store.setDraftMeta({
+          draft_id: store.draft_id,
+          name: (updated.name as string) || store.draft_name,
+          status: (updated.status as DraftStatus) || 'open',
+          version: (updated.version as number) || (store.draft_version ?? 0) + 1,
+          created_at: updated.updated_at as string,
+        });
+      } else {
+        const result = await createDraft({
+          customer_message: store.input_raw_note || null,
+          agent_notes: store.input_owner_note || null,
+          stage: spineStage,
+          operating_mode: currentMode,
+          scenario_id: currentScenario || null,
+          strict_leakage: store.strict_leakage,
+        });
+        store.setDraftMeta({
+          draft_id: result.draft_id,
+          name: result.name,
+          status: result.status as DraftStatus,
+          version: 1,
+          created_at: result.created_at,
+        });
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('draft', result.draft_id);
+        if (!params.get('tab')) params.set('tab', 'intake');
+        router.replace(`?${params.toString()}`, { scroll: false });
+      }
+
+      store.setSaveState('saved');
+      if (!isAuto) {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      }
+    } catch (err) {
+      const isConflict = err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 409;
+      if (isConflict) {
+        store.setSaveState('conflict');
+      } else {
+        store.setSaveState('error');
+      }
+      if (!isAuto) {
+        setSaveError(
+          isConflict
+            ? 'Save conflict — draft was modified elsewhere. Refresh and try again.'
+            : 'Failed to save draft. Check connection and try again.',
+        );
+        setTimeout(() => setSaveError(null), 8000);
+      }
+    }
+  }, [store, searchParams, router, spineStage, currentMode, currentScenario]);
+
+  // ----- Auto-save (5s debounce, guarded) -----
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevContentRef = useRef<string>('');
+
+  // Initialize prevContentRef after draft hydration so auto-save
+  // doesn't immediately save loaded content as new.
+  useEffect(() => {
+    if (store.draft_id && store.save_state === 'clean') {
+      const contentKey = JSON.stringify({
+        raw: store.input_raw_note,
+        owner: store.input_owner_note,
+        json: store.input_structured_json,
+        itin: store.input_itinerary_text,
+        stage: store.stage,
+        mode: store.operating_mode,
+        scenario: store.scenario_id,
+        strict: store.strict_leakage,
+      });
+      prevContentRef.current = contentKey;
+    }
+  }, [store.draft_id, store.save_state, store.input_raw_note, store.input_owner_note,
+      store.input_structured_json, store.input_itinerary_text, store.stage,
+      store.operating_mode, store.scenario_id, store.strict_leakage]);
+
+  const buildContentKey = useCallback(() => JSON.stringify({
+    raw: store.input_raw_note,
+    owner: store.input_owner_note,
+    json: store.input_structured_json,
+    itin: store.input_itinerary_text,
+    stage: spineStage,
+    mode: currentMode,
+    scenario: currentScenario,
+    strict: store.strict_leakage,
+  }), [store.input_raw_note, store.input_owner_note, store.input_structured_json,
+      store.input_itinerary_text, store.strict_leakage, spineStage, currentMode, currentScenario]);
+
+  useEffect(() => {
+    const hasContent =
+      store.input_raw_note.trim() ||
+      store.input_owner_note.trim() ||
+      store.input_structured_json.trim() ||
+      store.input_itinerary_text.trim();
+
+    if (!hasContent) return;
+    if (store.draft_status === 'processing' || store.draft_status === 'promoted') return;
+    if (isSpineRunning) return;
+    if (store.save_state === 'saving') return;
+
+    const contentKey = buildContentKey();
+    if (contentKey === prevContentRef.current) return;
+
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+
+    autoSaveTimerRef.current = setTimeout(() => {
+      (async () => {
+        store.setSaveState('saving');
+        try {
+          const structured_json = safeParseJson(store.input_structured_json);
+          const payload = {
+            customer_message: store.input_raw_note || null,
+            agent_notes: store.input_owner_note || null,
+            structured_json,
+            itinerary_text: store.input_itinerary_text || null,
+            stage: spineStage,
+            operating_mode: currentMode,
+            scenario_id: currentScenario || null,
+            strict_leakage: store.strict_leakage,
+          };
+
+          if (store.draft_id) {
+            const updated = await patchDraft(store.draft_id, {
+              ...payload,
+              expected_version: store.draft_version,
+              is_auto_save: true,
+            });
+            store.setDraftMeta({
+              draft_id: store.draft_id,
+              name: (updated.name as string) || store.draft_name,
+              status: (updated.status as DraftStatus) || 'open',
+              version: (updated.version as number) || (store.draft_version ?? 0) + 1,
+              created_at: updated.updated_at as string,
+            });
+          } else {
+            const result = await createDraft({
+              customer_message: payload.customer_message,
+              agent_notes: payload.agent_notes,
+              stage: payload.stage,
+              operating_mode: payload.operating_mode,
+              scenario_id: payload.scenario_id,
+              strict_leakage: payload.strict_leakage,
+            });
+            store.setDraftMeta({
+              draft_id: result.draft_id,
+              name: result.name,
+              status: result.status as DraftStatus,
+              version: 1,
+              created_at: result.created_at,
+            });
+            const params = new URLSearchParams(searchParams.toString());
+            params.set('draft', result.draft_id);
+            if (!params.get('tab')) params.set('tab', 'intake');
+            router.replace(`?${params.toString()}`, { scroll: false });
+          }
+          // Mark as saved only after successful API call
+          store.setSaveState('saved');
+          prevContentRef.current = buildContentKey();
+        } catch (err) {
+          const isConflict = err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 409;
+          store.setSaveState(isConflict ? 'conflict' : 'error');
+          // Do NOT update prevContentRef on failure — same content is retryable
+        }
+      })();
+    }, 5000);
+
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, [
+    store.input_raw_note,
+    store.input_owner_note,
+    store.input_structured_json,
+    store.input_itinerary_text,
+    store.draft_id,
+    store.draft_status,
+    store.draft_version,
+    store.save_state,
+    isSpineRunning,
+    spineStage,
+    currentMode,
+    currentScenario,
+    store.strict_leakage,
+    searchParams,
+    router,
+    buildContentKey,
+  ]);
 
   const handleSave = useCallback(async () => {
     if (!tripId) return;
@@ -364,7 +698,7 @@ function WorkbenchContent() {
   const pipelineStage = getPipelineStageForWorkbench(trip, store);
 
   return (
-    <div className='min-h-screen bg-[#080a0c]'>
+    <div className='bg-[#080a0c]'>
       {isRecoveryMode && (
         <div className='bg-[#2b1011] border-b border-[#6b2a2b] px-6 py-2 flex items-center justify-between'>
           <div className='flex items-center gap-3 text-[#ff7b72]'>
@@ -435,19 +769,65 @@ function WorkbenchContent() {
         <header className='flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-6'>
           <div>
             <h1 className='text-ui-2xl font-semibold text-[#e6edf3] mb-1'>
-              {trip ? trip.destination : 'Trip Workspace'}
+              {trip ? trip.destination : (store.draft_name || 'New Inquiry')}
             </h1>
-            <p className='text-ui-base text-[#a8b3c1]'>
+            <p className='text-ui-base text-[#a8b3c1] flex items-center gap-3'>
               {trip
                 ? `${trip.id} · ${trip.type} · ${trip.age}`
                 : 'Process travel requests and generate quotes'}
+              {store.draft_id && !trip && (
+                <>
+                  <span className='text-[#30363d]'>·</span>
+                  <span className='font-mono text-ui-xs text-[#8b949e]'>{store.draft_id}</span>
+                </>
+              )}
             </p>
+            <div className='flex items-center gap-2 mt-1.5'>
+              {store.draft_id && (
+                <span
+                  className='inline-flex items-center px-2 py-0.5 rounded text-ui-xs font-medium'
+                  style={{
+                    background: store.draft_status === 'processing' ? 'var(--accent-amber)' : 'var(--bg-elevated)',
+                    color: store.draft_status === 'processing' ? '#000' : 'var(--text-muted)',
+                    border: '1px solid var(--border-default)',
+                  }}
+                >
+                  {store.draft_status === 'processing' ? 'Processing' :
+                   store.draft_status === 'blocked' ? 'Blocked' :
+                   store.draft_status === 'failed' ? 'Failed' :
+                   store.draft_status === 'promoted' ? 'Promoted' :
+                   'Draft'}
+                </span>
+              )}
+              {store.save_state === 'dirty' && (
+                <span className='text-ui-xs text-[#d29922] font-medium'>Unsaved changes</span>
+              )}
+              {store.save_state === 'saving' && (
+                <span className='text-ui-xs text-[#8b949e]'>Saving...</span>
+              )}
+              {store.save_state === 'saved' && store.draft_last_saved_at && (
+                <span className='text-ui-xs text-[#3fb950]'>
+                  Saved at {new Date(store.draft_last_saved_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+              {store.save_state === 'conflict' && (
+                <span className='text-ui-xs text-[#f85149] font-medium'>Save conflict — refresh to reload</span>
+              )}
+              {store.save_state === 'error' && (
+                <span className='text-ui-xs text-[#f85149] font-medium'>Save failed</span>
+              )}
+            </div>
             {tripLoading && (
               <p className='text-ui-sm text-[#8b949e] mt-1'>Loading trip...</p>
             )}
             {tripError && (
               <p className='text-ui-sm text-[#f85149] mt-1'>
                 Failed to load trip: {tripError.message}
+              </p>
+            )}
+            {draftError && (
+              <p className='text-ui-sm text-[#f85149] mt-1'>
+                Failed to load draft: {draftError}
               </p>
             )}
             {store.result_run_ts && (
@@ -524,37 +904,66 @@ function WorkbenchContent() {
               )}
             </button>
             {completedTripId && (
-              <button
-                type='button'
-                onClick={() => router.push(`/trips/${completedTripId}/intake`)}
-                className='flex items-center gap-2 px-4 py-2 bg-[#3fb950] text-[#0d1117] rounded-lg font-medium hover:bg-[#4cc764] transition-colors'
-              >
-                <CheckCircle className='w-4 h-4' />
-                View Trip
-              </button>
+              <>
+                <button
+                  type='button'
+                  onClick={() => router.push(`/trips/${completedTripId}/intake`)}
+                  className='flex items-center gap-2 px-4 py-2 bg-[#3fb950] text-[#0d1117] rounded-lg font-medium hover:bg-[#4cc764] transition-colors'
+                >
+                  <CheckCircle className='w-4 h-4' />
+                  View Trip
+                </button>
+                {store.draft_id && (
+                  <button
+                    type='button'
+                    onClick={async () => {
+                      try {
+                        await promoteDraft(store.draft_id!, completedTripId);
+                        store.setDraftStatus('promoted');
+                      } catch (err) {
+                        setRunError(
+                          err instanceof Error ? err.message : 'Promotion failed'
+                        );
+                        setTimeout(() => setRunError(null), 8000);
+                        return;
+                      }
+                      router.push(`/trips/${completedTripId}/intake`);
+                    }}
+                    className='flex items-center gap-2 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg font-medium hover:bg-[#6eb5ff] transition-colors'
+                  >
+                    <CheckCircle className='w-4 h-4' />
+                    Promote Draft
+                  </button>
+                )}
+              </>
             )}
             {spineRunId && spineRunState && (
               <RunProgressPanel
                 runId={spineRunId}
                 runState={spineRunState}
                 error={spineError}
-                validationErrors={store.result_validation || spineRunState?.validation || null}
                 onRetry={() => {
                   setRunError(null);
                   resetSpine();
                   setCompletedTripId(null);
+                }}
+                onFixDetails={() => {
+                  resetSpine();
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.set('tab', 'intake');
+                  router.replace(`/workbench?${params.toString()}`);
                 }}
                 onViewTrip={completedTripId ? () => router.push(`/trips/${completedTripId}/intake`) : undefined}
               />
             )}
             <button
               type='button'
-              onClick={handleSave}
-              disabled={isSaving || !tripId}
+              onClick={handleSaveDraft}
+              disabled={store.save_state === 'saving' || store.draft_status === 'promoted'}
               className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg font-medium hover:bg-[#21262d] disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-              aria-label='Save changes'
+              aria-label='Save draft'
             >
-              {isSaving ? (
+              {store.save_state === 'saving' ? (
                 <>
                   <div
                     className='w-4 h-4 border-2 border-[#8b949e]/30 border-t-[#8b949e] rounded-full animate-spin'
@@ -565,10 +974,34 @@ function WorkbenchContent() {
               ) : (
                 <>
                   <Save className='w-4 h-4' aria-hidden='true' />
-                  Save
+                  Save Draft
                 </>
               )}
             </button>
+            {tripId && (
+              <button
+                type='button'
+                onClick={handleSave}
+                disabled={isSaving}
+                className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg font-medium hover:bg-[#21262d] disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+                aria-label='Save trip changes'
+              >
+                {isSaving ? (
+                  <>
+                    <div
+                      className='w-4 h-4 border-2 border-[#8b949e]/30 border-t-[#8b949e] rounded-full animate-spin'
+                      aria-hidden='true'
+                    />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className='w-4 h-4' aria-hidden='true' />
+                    Save Trip Changes
+                  </>
+                )}
+              </button>
+            )}
             <button
               type='button'
               onClick={handleReset}

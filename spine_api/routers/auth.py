@@ -46,6 +46,19 @@ _REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60  # 7 days
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
+# ---------------------------------------------------------------------------
+# TODO: Rate limiting
+# ---------------------------------------------------------------------------
+# Auth endpoints are high-value targets for abuse. Add rate limiting before
+# production deployment. Recommended configuration:
+#   POST /signup           — IP-based, ~5/min
+#   POST /login            — IP+email, ~10/min
+#   POST /request-password-reset — IP+email, ~3/min
+#   POST /confirm-password-reset — IP+token_hash_prefix, ~5/min
+#   POST /refresh          — IP, ~20/min
+# Consider using slowapi or a similar FastAPI-compatible rate limiter.
+# ---------------------------------------------------------------------------
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -123,10 +136,14 @@ async def post_signup(request: SignupRequest, response: Response, db: AsyncSessi
     Create a new user, agency, and membership.
     Sets httpOnly cookies for auth.
     
-    Test users: Email ending with '@test.com' will get mock data seeded.
+    Test users: Email ending with '@test.com' will get mock data seeded,
+    but only in development. In production, @test.com signups are treated
+    as normal accounts with no test data.
     """
-    # Detect test user by email domain
-    is_test = request.email.lower().endswith("@test.com")
+    is_test = (
+        _ENVIRONMENT == "development"
+        and request.email.lower().endswith("@test.com")
+    )
     
     try:
         result = await signup_service(
@@ -251,7 +268,18 @@ async def post_request_password_reset(
     request: PasswordResetRequest, db: AsyncSession = Depends(get_db)
 ):
     result = await request_password_reset(db=db, email=request.email)
-    return result
+    response = {
+        "ok": True,
+        "message": "If the email exists, a reset link has been sent",
+    }
+    if (
+        _ENVIRONMENT == "development"
+        and os.environ.get("EXPOSE_RESET_TOKEN") == "1"
+        and isinstance(result, dict)
+        and "reset_token" in result
+    ):
+        response["reset_token"] = result["reset_token"]
+    return response
 
 
 @router.post("/confirm-password-reset")

@@ -59,6 +59,8 @@ function isAllowed(pathname: string): boolean {
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/static/') ||
     pathname.startsWith('/images/') ||
+    pathname.startsWith('/brand/') ||
+    pathname.startsWith('/landing/') ||
     pathname.startsWith('/favicon')
   ) {
     return true;

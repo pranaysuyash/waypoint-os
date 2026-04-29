@@ -18,6 +18,7 @@ import type { TimeRange, StageMetrics, TeamMemberMetrics, BottleneckAnalysis, Op
 import { RevenueChart, PipelineFunnel, TeamPerformanceChart } from '@/components/visual';
 import type { DrillDownMetric } from '@/components/visual/TeamPerformanceChart';
 import { MetricDrillDownDrawer } from '@/components/workspace/panels/MetricDrillDownDrawer';
+import { AnalyticsEmptyState } from '@/components/visual/AnalyticsEmptyState';
 
 const VALID_TIME_RANGES = new Set<TimeRange>(['7d', '30d', '90d', 'mtd', 'ytd', 'custom']);
 
@@ -508,32 +509,53 @@ export default function OwnerInsightsPage() {
 
         {/* Pipeline Funnel */}
         <div className='lg:col-span-2'>
-          <PipelineFunnel data={pipelineMetrics} />
+          {pipelineMetrics.length > 0 ? (
+            <PipelineFunnel data={pipelineMetrics} />
+          ) : (
+            <AnalyticsEmptyState
+              title='No pipeline data yet'
+              body='Pipeline metrics appear after trips move through inquiry and quote stages.'
+            />
+          )}
         </div>
 
         {/* Revenue Chart */}
         <div className='lg:col-span-2'>
-          <RevenueChart data={(revenueData?.revenueByMonth || []).map((d: any) => ({
-            month: d.month ?? '',
-            inquiries: d.inquiries ?? 0,
-            booked: d.booked ?? 0,
-            revenue: d.revenue ?? 0,
-          }))} />
+          {(revenueData?.revenueByMonth || []).length > 0 ? (
+            <RevenueChart data={(revenueData?.revenueByMonth || []).map((d: any) => ({
+              month: d.month ?? '',
+              inquiries: d.inquiries ?? 0,
+              booked: d.booked ?? 0,
+              revenue: d.revenue ?? 0,
+            }))} />
+          ) : (
+            <AnalyticsEmptyState
+              title='No revenue data yet'
+              body='Revenue tracking starts once inquiries convert to confirmed bookings.'
+            />
+          )}
         </div>
 
         {/* Team Performance Chart */}
         <div className='lg:col-span-2'>
-          <TeamPerformanceChart 
-            data={teamMetrics.map(member => ({
-              name: member.name,
-              userId: member.userId,
-              conversionRate: member.conversionRate,
-              avgResponseTime: member.avgResponseTime,
-              customerSatisfaction: member.customerSatisfaction,
-              workloadScore: member.workloadScore,
-            }))} 
-            onDrillDown={handleMetricDrillDown}
-          />
+          {teamMetrics.length > 0 ? (
+            <TeamPerformanceChart
+              data={teamMetrics.map(member => ({
+                name: member.name,
+                userId: member.userId,
+                conversionRate: member.conversionRate,
+                avgResponseTime: member.avgResponseTime,
+                customerSatisfaction: member.customerSatisfaction,
+                workloadScore: member.workloadScore,
+              }))}
+              onDrillDown={handleMetricDrillDown}
+            />
+          ) : (
+            <AnalyticsEmptyState
+              title='No team data yet'
+              body='Team performance metrics appear after agents process trips through multiple stages.'
+            />
+          )}
         </div>
 
         {/* Team Performance Table */}

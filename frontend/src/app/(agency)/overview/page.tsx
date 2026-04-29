@@ -69,6 +69,7 @@ const StatCard = memo(function StatCard({
   state,
   isLoading,
   error,
+  href,
 }: {
   title: string;
   value: string | number;
@@ -77,6 +78,7 @@ const StatCard = memo(function StatCard({
   state: StateKey;
   isLoading?: boolean;
   error?: Error | null;
+  href?: string;
 }) {
   const meta = STATE_META[state];
 
@@ -102,23 +104,8 @@ const StatCard = memo(function StatCard({
   const displayValue = isLoading && value === '—' ? '—' : value;
   const displaySub = isLoading && sub === 'Loading...' ? 'Loading...' : sub;
 
-  return (
-    <div
-      className='relative rounded-xl border p-4 flex flex-col gap-2.5 transition-colors'
-      style={{
-        background: 'var(--bg-surface)',
-        borderColor: 'var(--border-default)',
-        borderTop: `2px solid ${meta.fg}`,
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-hover)';
-        (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-elevated)';
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-default)';
-        (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-surface)';
-      }}
-    >
+  const cardContent = (
+    <>
       {/* Row: label + icon badge */}
       <div className='flex items-center justify-between'>
         <span className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>{title}</span>
@@ -138,6 +125,56 @@ const StatCard = memo(function StatCard({
       </span>
       {/* Subtext — tertiary */}
       <span className='text-[12px] font-medium' style={{ color: 'var(--text-muted)' }}>{displaySub}</span>
+      {href && (
+        <div className='flex items-center gap-1 mt-0.5 text-[11px] font-medium' style={{ color: 'var(--accent-blue)' }}>
+          View <ArrowRight className='h-3 w-3' style={{ color: 'var(--accent-blue)' }} />
+        </div>
+      )}
+    </>
+  );
+
+  const cardStyles: React.CSSProperties = {
+    background: 'var(--bg-surface)',
+    borderColor: 'var(--border-default)',
+    borderTop: `2px solid ${meta.fg}`,
+  };
+
+  const cardClassName = 'relative rounded-xl border p-4 flex flex-col gap-2.5 transition-colors cursor-pointer';
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className={cardClassName}
+        style={cardStyles}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--border-hover)';
+          (e.currentTarget as HTMLAnchorElement).style.background = 'var(--bg-elevated)';
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--border-default)';
+          (e.currentTarget as HTMLAnchorElement).style.background = 'var(--bg-surface)';
+        }}
+      >
+        {cardContent}
+      </Link>
+    );
+  }
+
+  return (
+    <div
+      className={cardClassName}
+      style={cardStyles}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-hover)';
+        (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-elevated)';
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-default)';
+        (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-surface)';
+      }}
+    >
+      {cardContent}
     </div>
   );
 });
@@ -532,10 +569,10 @@ export default function OverviewPage() {
 
       {/* Stat cards: metric-first instruments */}
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>
-        <StatCard title='Active Trips' value={stats?.active ?? '—'} sub={state ? `${state.canonical_total} total` : 'Loading...'} icon={Briefcase} state='blue' isLoading={unifiedLoading} error={unifiedError as any} />
-        <StatCard title='Pending Triage' value={stats?.pendingReview ?? '—'} sub={state ? 'new entries' : 'Loading…'} icon={Clock} state='amber' isLoading={unifiedLoading} error={unifiedError as any} />
-        <StatCard title='Ready to Book' value={stats?.readyToBook ?? '—'} sub={state ? 'approved' : 'Loading…'} icon={CheckCircle2} state='green' isLoading={unifiedLoading} error={unifiedError as any} />
-        <StatCard title='Needs Attention' value={stats?.needsAttention ?? '—'} sub={state ? 'data issues' : 'Loading…'} icon={AlertTriangle} state='red' isLoading={unifiedLoading} error={unifiedError as any} />
+        <StatCard title='Active Trips' value={stats?.active ?? '—'} sub={state ? `${state.canonical_total} total` : 'Loading...'} icon={Briefcase} state='blue' isLoading={unifiedLoading} error={unifiedError as any} href='/trips' />
+        <StatCard title='Pending Triage' value={stats?.pendingReview ?? '—'} sub={state ? 'new entries' : 'Loading…'} icon={Clock} state='amber' isLoading={unifiedLoading} error={unifiedError as any} href='/inbox' />
+        <StatCard title='Ready to Book' value={stats?.readyToBook ?? '—'} sub={state ? 'approved' : 'Loading…'} icon={CheckCircle2} state='green' isLoading={unifiedLoading} error={unifiedError as any} href='/inbox' />
+        <StatCard title='Needs Attention' value={stats?.needsAttention ?? '—'} sub={state ? 'data issues' : 'Loading…'} icon={AlertTriangle} state='red' isLoading={unifiedLoading} error={unifiedError as any} href='/reviews' />
       </div>
 
       {/* Main content: trips + right rail */}

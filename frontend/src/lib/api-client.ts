@@ -619,3 +619,79 @@ export async function getScenarios(): Promise<ScenarioListItem[]> {
 export async function getScenario(id: string): Promise<ScenarioDetail> {
   return api.get<ScenarioDetail>(`/api/scenarios/${id}`);
 }
+
+// ============================================================================
+// DRAFTS API (Phase 1)
+// ============================================================================
+
+export interface DraftSummary {
+  draft_id: string;
+  name: string;
+  status: string;
+  stage: string;
+  operating_mode: string;
+  last_run_state: string | null;
+  promoted_trip_id: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+}
+
+export interface CreateDraftRequest {
+  name?: string;
+  customer_message?: string | null;
+  agent_notes?: string | null;
+  stage?: string;
+  operating_mode?: string;
+  scenario_id?: string | null;
+  strict_leakage?: boolean;
+}
+
+export interface CreateDraftResponse {
+  draft_id: string;
+  name: string;
+  status: string;
+  created_at: string;
+}
+
+export interface UpdateDraftRequest {
+  name?: string;
+  customer_message?: string | null;
+  agent_notes?: string | null;
+  structured_json?: Record<string, unknown> | null;
+  itinerary_text?: string | null;
+  stage?: string;
+  operating_mode?: string;
+  scenario_id?: string | null;
+  strict_leakage?: boolean;
+  expected_version?: number | null;
+  is_auto_save?: boolean;
+}
+
+export async function createDraft(data: CreateDraftRequest): Promise<CreateDraftResponse> {
+  return api.post<CreateDraftResponse>('/api/drafts', data);
+}
+
+export async function getDraft(draftId: string): Promise<Record<string, unknown>> {
+  return api.get<Record<string, unknown>>(`/api/drafts/${draftId}`);
+}
+
+export async function patchDraft(draftId: string, data: UpdateDraftRequest): Promise<Record<string, unknown>> {
+  return api.put<Record<string, unknown>>(`/api/drafts/${draftId}`, data);
+}
+
+export async function listDrafts(params?: { status?: string; limit?: number }): Promise<{ items: DraftSummary[]; total: number }> {
+  const searchParams = new URLSearchParams();
+  if (params?.status) searchParams.set('status', params.status);
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  const query = searchParams.toString();
+  return api.get<{ items: DraftSummary[]; total: number }>(`/api/drafts${query ? `?${query}` : ''}`);
+}
+
+export async function discardDraft(draftId: string): Promise<{ ok: boolean; draft_id: string; status: string }> {
+  return api.delete<{ ok: boolean; draft_id: string; status: string }>(`/api/drafts/${draftId}`);
+}
+
+export async function promoteDraft(draftId: string, tripId: string): Promise<{ ok: boolean; draft_id: string; trip_id: string; status: string }> {
+  return api.post<{ ok: boolean; draft_id: string; trip_id: string; status: string }>(`/api/drafts/${draftId}/promote`, { trip_id: tripId });
+}

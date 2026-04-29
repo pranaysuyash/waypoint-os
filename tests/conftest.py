@@ -14,6 +14,15 @@ from pathlib import Path
 import pytest
 
 # ---------------------------------------------------------------------------
+# JWT_SECRET — must be set before *any* spine_api module is imported,
+# because security.py raises at import time if the var is missing.
+# ---------------------------------------------------------------------------
+import os
+
+if not os.environ.get("JWT_SECRET"):
+    os.environ["JWT_SECRET"] = "test-jwt-secret-for-pytest-only"
+
+# ---------------------------------------------------------------------------
 # Module paths (needed before app import)
 # ---------------------------------------------------------------------------
 src_dir = Path(__file__).parent.parent / "src"

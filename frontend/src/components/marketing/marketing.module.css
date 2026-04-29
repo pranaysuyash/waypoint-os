@@ -72,8 +72,8 @@
 }
 
 .brandLogo {
-  width: 40px;
-  height: 40px;
+  width: 168px;
+  height: auto;
   flex: 0 0 auto;
   filter: drop-shadow(0 14px 24px rgba(57, 208, 216, 0.18));
 }
@@ -2670,4 +2670,3 @@
   display: block;
   padding: 94px 0 0;
 }
-

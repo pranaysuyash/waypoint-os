@@ -81,6 +81,8 @@ _COUNTRY_DESTINATIONS: Set[str] = {
     "Argentina", "Peru", "Chile",
     # Middle East
     "UAE", "Dubai", "Abu Dhabi", "Qatar", "Oman", "Turkey",
+    # Indian territories/regions commonly used as destinations
+    "Andaman",
     # Africa
     "South Africa", "Egypt", "Morocco", "Kenya", "Tanzania",
     # Oceania

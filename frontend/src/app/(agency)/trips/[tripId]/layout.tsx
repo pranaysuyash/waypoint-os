@@ -10,7 +10,7 @@ import { useTrip } from "@/hooks/useTrips";
 import { getTripRoute, type WorkspaceStage } from "@/lib/routes";
 import { TripContextProvider } from "@/contexts/TripContext";
 import { useWorkbenchStore } from "@/stores/workbench";
-import { TimelinePanel } from "@/components/workspace/panels/TimelinePanel";
+import { TimelineSummary } from "@/components/workspace/panels/TimelineSummary";
 
 const STAGE_TABS: { id: WorkspaceStage; label: string }[] = [
   { id: "intake",   label: "Intake"          },
@@ -54,7 +54,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
 
   if (isLoading && !trip) {
     return (
-      <div className="min-h-screen bg-[#080a0c] p-6">
+      <div className="p-6">
         <InlineLoading message="Loading workspace..." />
       </div>
     );
@@ -62,7 +62,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
 
   if (error || !tripId || !trip) {
     return (
-      <div className="min-h-screen bg-[#080a0c] p-6">
+      <div className="p-6">
         <div className="max-w-[900px] mx-auto rounded-xl border border-[#1c2128] bg-[#0f1115] p-6 space-y-4">
           <InlineError
             title="Workspace unavailable"
@@ -82,7 +82,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
 
   return (
     <TripContextProvider value={{ tripId, trip, isLoading, error, refetchTrip, replaceTrip }}>
-      <div className="min-h-screen bg-[#080a0c] text-[#e6edf3]">
+      <div className="min-h-full bg-[#080a0c] text-[#e6edf3]">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-5 space-y-4">
 
           {/* ── Trip header ── */}
@@ -210,7 +210,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
               >
                 <div className="flex-1 overflow-y-auto">
                   <ErrorBoundary>
-                    <TimelinePanel tripId={tripId as string} />
+                    <TimelineSummary tripId={tripId as string} />
                   </ErrorBoundary>
                 </div>
               </aside>

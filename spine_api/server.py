@@ -703,6 +703,34 @@ def _close_inherited_lock_fds() -> None:
         logging.getLogger("spine_api").debug("Closed %d inherited lock fds", closed)
 
 
+def _update_draft_for_terminal_state(
+    run_id: str,
+    run_state: str,
+    trip_id: Optional[str] = None,
+    snapshot: Optional[dict] = None,
+) -> None:
+    """Update the draft linked to this run with its final state.
+
+    Looks up draft_id from RunLedger meta and calls DraftStore.update_run_state.
+    No-ops if no draft is linked.
+    """
+    try:
+        meta = RunLedger.get_meta(run_id)
+        if not meta:
+            return
+        draft_id = meta.get("draft_id")
+        if not draft_id:
+            return
+        DraftStore.update_run_state(
+            draft_id=draft_id,
+            run_id=run_id,
+            run_state=run_state,
+            run_snapshot=snapshot,
+        )
+    except Exception as exc:
+        logger.debug("Draft state update skipped for run %s: %s", run_id, exc)
+
+
 def _execute_spine_pipeline(
     run_id: str,
     request_dict: dict[str, Any],
@@ -992,6 +1020,7 @@ def _execute_spine_pipeline(
         # Wave A: mark as BLOCKED (distinct from FAILED)
         try:
             RunLedger.block(run_id, block_reason=error_message)
+            _update_draft_for_terminal_state(run_id, "blocked", snapshot={"block_reason": error_message, "stage_at_block": current_stage})
             emit_run_blocked(
                 run_id=run_id,
                 block_reason=error_message,
@@ -1014,6 +1043,7 @@ def _execute_spine_pipeline(
         # Wave A: mark as FAILED
         try:
             RunLedger.fail(run_id, error_type=type(e).__name__, error_message=str(e))
+            _update_draft_for_terminal_state(run_id, "failed", snapshot={"error_type": type(e).__name__, "error_message": str(e), "stage_at_failure": current_stage})
             emit_run_failed(
                 run_id=run_id,
                 error_type=type(e).__name__,
@@ -1228,6 +1258,11 @@ class UpdateDraftRequest(BaseModel):
     scenario_id: Optional[str] = None
     strict_leakage: Optional[bool] = None
     expected_version: Optional[int] = None
+    is_auto_save: bool = False
+
+
+class PromoteDraftRequest(BaseModel):
+    trip_id: str
 
 
 @app.post("/api/drafts")
@@ -1437,11 +1472,12 @@ def get_draft_runs(
 @app.post("/api/drafts/{draft_id}/promote")
 def promote_draft(
     draft_id: str,
-    trip_id: str,
+    request: PromoteDraftRequest,
     agency: Agency = Depends(get_current_agency),
     user: User = Depends(get_current_user),
 ):
     """Promote a draft to a trip. Marks draft as promoted and read-only."""
+    trip_id = request.trip_id
     draft = DraftStore.get(draft_id)
     if not draft or draft.agency_id != agency.id:
         raise HTTPException(status_code=404, detail="Draft not found")
@@ -1873,16 +1909,21 @@ def get_pending_reviews(agency: Agency = Depends(get_current_agency)):
 
 
 @app.post("/trips/{trip_id}/review/action")
-def post_review_action(trip_id: str, request: ReviewActionRequest):
+def post_review_action(
+    trip_id: str,
+    request: ReviewActionRequest,
+    agency: Agency = Depends(get_current_agency),
+    user: User = Depends(get_current_user),
+):
     """Apply a review action (approve/reject/request_changes/escalate) to a trip."""
     try:
         updated_trip = process_review_action(
             trip_id=trip_id,
             action=request.action,
             notes=request.notes,
-            user_id="owner",  # Hardcoded for now, should come from auth
+            user_id=user.id,
             reassign_to=request.reassign_to,
-            error_category=request.error_category
+            error_category=request.error_category,
         )
         return {"success": True, "trip": updated_trip}
     except KeyError as e:

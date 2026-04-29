@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
@@ -31,13 +32,16 @@ export function PublicHeader({
 }) {
   return (
     <header className={styles.header}>
-          <Link href='/' className={styles.brand}>
-         <img className={styles.brandLogo} src='/brand/waypoint-logo-compass.svg' alt='' />
-         <span>
-           <strong className='block text-[14px] font-semibold tracking-tight'>Waypoint OS</strong>
-           <span className='block text-[12px] text-[#9ba3b0]'>Travel agency operating system</span>
-         </span>
-       </Link>
+      <Link href='/' className={styles.brand} aria-label='Waypoint OS home'>
+        <Image
+          className={styles.brandLogo}
+          src='/brand/waypoint-logo-primary.svg'
+          alt='Waypoint OS'
+          width={240}
+          height={72}
+          priority
+        />
+      </Link>
 
       <nav className={styles.nav}>
         {navItems.map((item) =>

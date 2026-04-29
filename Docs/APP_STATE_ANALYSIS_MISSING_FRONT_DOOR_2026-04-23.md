@@ -229,3 +229,7 @@ Developer opens localhost:3000
 The product has a **world-class engine and a beautiful dashboard, but no front door.** The deviation is clear: we built from the inside out (engine → dashboard → operations) instead of from the outside in (landing page → signup → first trip → operations). 
 
 An agency owner cannot start because we never built the starting line.
+
+### Review Note
+
+See [Docs/reports/app_state_missing_front_door_review_2026-04-29.md](reports/app_state_missing_front_door_review_2026-04-29.md) for the current evidence-backed review and the immediate implementation slice.

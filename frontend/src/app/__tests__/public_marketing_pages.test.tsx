@@ -28,7 +28,7 @@ describe('public marketing pages', () => {
     expect(
       screen.getByRole('link', { name: /Explore the product/i }),
     ).toHaveAttribute('href', '#product');
-    expect(container.querySelector('img[src="/brand/waypoint-logo-compass.svg"]')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Waypoint OS/i })).toBeInTheDocument();
   });
 
   it('homepage wedge section has an actionable itinerary checker CTA', () => {

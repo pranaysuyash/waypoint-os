@@ -8,10 +8,12 @@ Handles:
 - httpOnly cookie management for token delivery
 """
 
+import hashlib
 import logging
+import os
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from sqlalchemy import select
@@ -24,7 +26,7 @@ from spine_api.core.security import (
     create_refresh_token,
     decode_token,
 )
-from spine_api.models.tenant import Agency, User, Membership, WorkspaceCode
+from spine_api.models.tenant import Agency, User, Membership, WorkspaceCode, PasswordResetToken
 
 logger = logging.getLogger("spine_api.auth_service")
 
@@ -275,17 +277,22 @@ async def refresh_access_token(
 # PASSWORD RESET
 # ============================================================================
 
-import hashlib
-
 
 async def request_password_reset(db: AsyncSession, email: str) -> dict:
     """
-    Generate a password reset token and return it.
-    In production, this would send an email with the reset link.
-    For now, returns the plain token so the frontend can simulate the reset flow.
+    Generate a password reset token.
+
+    The plain token is only returned in local development when both
+    ENVIRONMENT=development and EXPOSE_RESET_TOKEN=1 are set.
+    Otherwise the response is generic and does not reveal whether
+    the email exists.
+
+    Tokens are stored as SHA-256 hashes; the plain token is never
+    persisted.
 
     Returns:
-        dict with reset_token (to be sent via email in production)
+        dict with ok=True and a generic message. reset_token is
+        included only in development when explicitly enabled.
     """
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
@@ -303,7 +310,6 @@ async def request_password_reset(db: AsyncSession, email: str) -> dict:
     )
 
     # Generate a secure token
-    import secrets
     plain_token = secrets.token_urlsafe(32)
 
     # Hash token for storage (we never store the plain token)
@@ -319,13 +325,15 @@ async def request_password_reset(db: AsyncSession, email: str) -> dict:
 
     logger.info("Password reset requested: user=%s", user.id)
 
-    # In production: send email with /reset-password?token=plain_token
-    # For now, return the token so the frontend can use it
-    return {
+    response = {
         "ok": True,
         "message": "If the email exists, a reset link has been sent",
-        "reset_token": plain_token,  # Remove in production (use email instead)
     }
+
+    if os.getenv("ENVIRONMENT", "development").lower() == "development" and os.getenv("EXPOSE_RESET_TOKEN") == "1":
+        response["reset_token"] = plain_token
+
+    return response
 
 
 async def confirm_password_reset(db: AsyncSession, token: str, new_password: str) -> dict:

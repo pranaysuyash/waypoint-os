@@ -141,7 +141,7 @@ export default function SettingsPage() {
 
   if (isLoading && !draft) {
     return (
-      <div className="min-h-screen bg-[#080a0c] p-6 flex items-center justify-center">
+      <div className="p-6 flex items-center justify-center">
         <div className="text-[#8b949e] text-ui-sm animate-pulse">Loading settings...</div>
       </div>
     );
@@ -149,7 +149,7 @@ export default function SettingsPage() {
 
   if (error || !draft) {
     return (
-      <div className="min-h-screen bg-[#080a0c] p-6">
+      <div className="p-6">
         <div className="max-w-[900px] mx-auto rounded-xl border border-[#f85149]/30 bg-[#f85149]/10 p-6">
           <div className="flex items-center gap-2 text-[#f85149]">
             <AlertCircle className="w-5 h-5" />
@@ -168,7 +168,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080a0c] text-[#e6edf3]">
+    <div className="min-h-full bg-[#080a0c] text-[#e6edf3]">
       <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
@@ -202,7 +202,7 @@ export default function SettingsPage() {
             <button
               onClick={handleSave}
               disabled={!isDirty || saveStatus === 'saving'}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#238636] text-white text-ui-sm font-medium hover:bg-[#2ea043] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#58a6ff] text-[#0d1117] text-ui-sm font-medium hover:bg-[#79b8ff] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Save className="w-3.5 h-3.5" />
               {saveStatus === 'saving' ? 'Saving...' : 'Save Changes'}

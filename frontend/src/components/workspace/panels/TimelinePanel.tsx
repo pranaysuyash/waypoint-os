@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { Trip } from "@/lib/api-client";
 import type { TimelineEvent, TimelineResponse, SuitabilityFlag } from "@/types/spine";
-import { STAGE_LABELS, labelOrTitle } from "@/lib/label-maps";
+import { STAGE_LABELS, STATUS_LABELS, labelOrTitle } from "@/lib/label-maps";
 import { SuitabilitySignal } from "./SuitabilitySignal";
 
 interface TimelinePanelProps {
@@ -62,7 +62,7 @@ function TimelineEventCard({
                 {labelOrTitle(STAGE_LABELS, event.stage)}
               </span>
               <span className="text-ui-sm font-medium text-text-secondary">
-                {event.status}
+                {labelOrTitle(STATUS_LABELS, event.status)}
               </span>
             </div>
             <span className="text-ui-xs text-text-muted whitespace-nowrap">

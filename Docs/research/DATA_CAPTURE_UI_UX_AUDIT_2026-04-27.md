@@ -699,3 +699,17 @@ That gives agencies a gentle path into the product: they start by pasting what t
 ## No-Code Audit Status
 
 This audit intentionally makes no code changes. It records the evidence, current capture guidance, and the product/architecture direction for a later implementation pass.
+
+---
+
+## Correction Stub — 2026-04-29
+
+This audit's P0/P1 "missing field" diagnosis is partially superseded. Between 2026-04-27 and 2026-04-29 the contract, server envelope, extractor, persistence, BFF, frontend types, capture UI, and tests all shipped for the five fields the audit recommended (`follow_up_due_date`, `pace_preference`, `lead_source`, `activity_provenance`, `date_year_confidence`).
+
+The corrected diagnosis is **not** "missing fields" but "fields are extracted and stored, but several are dead-letter after packet ingestion" — the pipeline does not consume four of the five and only partially consumes the fifth. The deeper issue surfaced is **packet namespacing**: heterogeneous-semantics fields share `packet.facts` with primary trip facts, which is acceptable as an ingestion bridge but architecturally wrong long-term.
+
+For the corrected diagnosis, evidence map, architectural review verdict, target packet shape, decision rule for future capture fields, migration slices, and research/exploration items, see:
+
+[Docs/research/DATA_CAPTURE_PACKET_NAMESPACING_DISCOVERY_2026-04-29.md](DATA_CAPTURE_PACKET_NAMESPACING_DISCOVERY_2026-04-29.md)
+
+This audit remains valid as the original product/UX audit and capture model. Nothing in it is deleted or rewritten.

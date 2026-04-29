@@ -26,3 +26,7 @@ To protect travelers from local health risks through predictive intelligence and
 ### 4. Safety & Governance
 - **"Need-to-Know" PII Access**: Only the medical responder receives full health details; the travel agent only sees "Medical Event in Progress."
 - **Audit of Care**: Logging all medical touchpoints for future insurance and liability review.
+
+### Review Note
+
+See [Docs/reports/predictive_health_medical_logistics_audit_2026-04-29.md](../reports/predictive_health_medical_logistics_audit_2026-04-29.md) for the current evidence-backed review of this spec against the codebase.

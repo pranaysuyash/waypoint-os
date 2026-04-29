@@ -231,6 +231,7 @@ export interface SpineRunRequest {
   lead_source?: string | null;
   activity_provenance?: string | null;
   date_year_confidence?: string | null;
+  draft_id?: string | null;
 }
 export interface SpineRunResponse {
   ok?: boolean;

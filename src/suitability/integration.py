@@ -7,11 +7,77 @@ and generate suitability-based risk flags for intake orchestration.
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List, Optional
 
 from .models import ParticipantRef, SuitabilityContext
 from .scoring import evaluate_activity
 from .catalog import get_activity, STATIC_ACTIVITIES
+
+logger = logging.getLogger(__name__)
+
+
+# Vocabulary mapping for pace_preference.
+#
+# The capture API/UI accepts {rushed, normal, relaxed} (per
+# Docs/PHASE2_CALL_CAPTURE_IMPLEMENTATION.md and the BFF dropdown), but the
+# suitability model declares the literal set {relaxed, balanced, packed}
+# (src/suitability/models.py). Until those vocabularies are unified
+# (tracked as a research item in
+# Docs/research/DATA_CAPTURE_PACKET_NAMESPACING_DISCOVERY_2026-04-29.md),
+# this integration layer normalizes capture-side values into the suitability
+# vocabulary.
+#
+# Per the Data Loss Prevention Pattern in AGENTS.md, unknown values are
+# clamped to the natural midpoint ("balanced") and a warning is logged
+# rather than silently dropped.
+_PACE_PREFERENCE_NORMALIZATION = {
+    "rushed": "packed",
+    "normal": "balanced",
+    "relaxed": "relaxed",
+    "balanced": "balanced",
+    "packed": "packed",
+}
+_PACE_PREFERENCE_FALLBACK = "balanced"
+
+
+def _normalize_pace_preference(raw: Any) -> Optional[str]:
+    """
+    Normalize a pace_preference value into the suitability vocabulary.
+
+    Returns one of {"relaxed", "balanced", "packed"} for any recognized input,
+    "balanced" with a warning log for any unrecognized non-null input, and
+    None for null/empty input (so downstream code can distinguish "not set"
+    from "set but unrecognized").
+    """
+    if raw is None:
+        return None
+    text = str(raw).strip().lower()
+    if not text:
+        return None
+    if text in _PACE_PREFERENCE_NORMALIZATION:
+        return _PACE_PREFERENCE_NORMALIZATION[text]
+    logger.warning(
+        "suitability.integration: unrecognized pace_preference value=%r; "
+        "clamping to %r per data-loss-prevention pattern",
+        raw,
+        _PACE_PREFERENCE_FALLBACK,
+    )
+    return _PACE_PREFERENCE_FALLBACK
+
+
+def _extract_pace_preference_from_packet(packet) -> Optional[str]:
+    """
+    Pull pace_preference from packet.facts and normalize it.
+
+    Returns a value from {"relaxed", "balanced", "packed"} or None if the
+    fact is absent. Tolerates a missing facts mapping or a missing slot.
+    """
+    facts = getattr(packet, "facts", None) or {}
+    slot = facts.get("pace_preference")
+    if slot is None:
+        return None
+    return _normalize_pace_preference(getattr(slot, "value", None))
 
 
 def extract_participants_from_packet(packet) -> List[ParticipantRef]:
@@ -155,10 +221,14 @@ def generate_suitability_risks(
     # Extract budget preference
     budget_pref_slot = packet.facts.get("budget_preference")
     budget_preference = budget_pref_slot.value if budget_pref_slot else None
-    
+
+    # Extract pace preference (capture vocabulary normalized to suitability vocabulary).
+    pace_preference = _extract_pace_preference_from_packet(packet)
+
     context = SuitabilityContext(
         destination_keys=destination_keys,
         budget_preference=budget_preference,
+        pace_preference=pace_preference,
         day_activities=activities,
     )
     
@@ -248,11 +318,15 @@ def assess_activity_suitability(packet) -> List[Any]:
     # Extract budget preference
     budget_pref_slot = packet.facts.get("budget_preference")
     budget_preference = budget_pref_slot.value if budget_pref_slot else None
-    
+
+    # Extract pace preference (capture vocabulary normalized to suitability vocabulary).
+    pace_preference = _extract_pace_preference_from_packet(packet)
+
     # Create suitability context
     context = SuitabilityContext(
         destination_keys=destination_keys,
         budget_preference=budget_preference,
+        pace_preference=pace_preference,
         day_activities=[],
     )
     

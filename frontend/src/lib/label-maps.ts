@@ -80,6 +80,16 @@ export const SUITABILITY_STATUS_LABELS: Record<string, string> = {
   unsuitable: "Not Suitable",
 };
 
+export const STATUS_LABELS: Record<string, string> = {
+  in_progress: "In Progress",
+  completed: "Completed",
+  pending: "Pending",
+  unknown: "Unclassified Event",
+  failed: "Failed",
+  blocked: "Blocked",
+  skipped: "Skipped",
+};
+
 export const FLAG_LABELS: Record<string, string> = {
   age_too_young: "Age Too Young",
   age_too_old: "Age Too Old",

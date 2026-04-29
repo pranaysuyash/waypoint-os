@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CheckCircle,
   XCircle,
@@ -9,16 +9,16 @@ import {
   AlertTriangle,
   FileText,
   ChevronRight,
+  CircleSlash,
 } from "lucide-react";
-import type { RunStatusResponse, RunEvent, ValidationReport } from "@/types/spine";
-import { STAGE_LABELS, FIELD_LABELS, labelOrTitle } from "@/lib/label-maps";
+import type { RunStatusResponse } from "@/types/spine";
 
 interface RunProgressPanelProps {
   runId: string | null;
   runState: RunStatusResponse | null;
   error?: Error | null;
-  validationErrors?: ValidationReport | null;
   onRetry: () => void;
+  onFixDetails?: () => void;
   onViewTrip?: () => void;
 }
 
@@ -35,33 +35,58 @@ function elapsedSec(startedAt: string | null): number {
   return Math.round((Date.now() - new Date(startedAt).getTime()) / 1000);
 }
 
-function getStepStatus(
-  stepId: string,
+type StepStatus = "done" | "failed" | "blocked" | "current" | "pending";
+
+function getStepStatuses(
   run: RunStatusResponse
-): "done" | "failed" | "current" | "pending" {
-  const done = run.steps_completed?.includes(stepId);
-  if (done) return "done";
-  const failed = run.state === "failed" && run.stage_at_failure === stepId;
-  if (failed) return "failed";
-  if (run.state !== "running") return "pending";
+): StepStatus[] {
+  const completed = run.steps_completed ?? [];
+  const failedStep = run.state === "failed" ? run.stage_at_failure : null;
+  const blockedStep = run.state === "blocked" ? "validation" : null;
+  const isTerminal = ["completed", "failed", "blocked"].includes(run.state);
 
-  const enteredStage = [...(run.events ?? [])]
-    .reverse()
-    .find((e) => e.event_type === "pipeline_stage_entered" && e.stage_name)?.stage_name;
+  let hitFailure = false;
+  let hitBlocked = false;
 
-  if (enteredStage && enteredStage === stepId) return "current";
+  return steps.map((step) => {
+    if (hitFailure || hitBlocked) return "blocked";
 
-  if (!enteredStage) {
-    const firstPending = steps.findIndex((s) => !run.steps_completed?.includes(s.id));
-    const idx = steps.findIndex((s) => s.id === stepId);
-    if (idx === firstPending) return "current";
-  }
-  return "pending";
+    if (failedStep && step.id === failedStep) {
+      hitFailure = true;
+      return "failed";
+    }
+
+    if (blockedStep && step.id === blockedStep) {
+      hitBlocked = true;
+      return "failed";
+    }
+
+    if (completed.includes(step.id)) return "done";
+
+    if (!isTerminal) {
+      const enteredStage = [...(run.events ?? [])]
+        .reverse()
+        .find((e) => e.event_type === "pipeline_stage_entered" && e.stage_name)
+        ?.stage_name;
+
+      if (enteredStage && enteredStage === step.id) return "current";
+
+      if (!enteredStage) {
+        const firstPending = steps.findIndex((s) => !completed.includes(s.id));
+        const idx = steps.findIndex((s) => s.id === step.id);
+        if (idx === firstPending) return "current";
+      }
+      return "pending";
+    }
+
+    return "pending";
+  });
 }
 
-export function RunProgressPanel({ runId, runState, error, validationErrors, onRetry, onViewTrip }: RunProgressPanelProps) {
+export function RunProgressPanel({ runId, runState, error, onRetry, onFixDetails, onViewTrip }: RunProgressPanelProps) {
   const durationRef = useRef<HTMLSpanElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     if (!runState?.started_at) return;
@@ -77,227 +102,234 @@ export function RunProgressPanel({ runId, runState, error, validationErrors, onR
   }, [runState?.started_at]);
 
   if (!runId) return null;
-  const isIntakeOnlyCompletion = runState
-    ? runState.state === "completed" &&
-      !(runState.steps_completed ?? []).includes("decision")
-    : false;
 
-  return (
-    <div className="rounded-xl border border-[#30363d] bg-[#0d1117] overflow-hidden min-w-[280px] shadow-lg">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#30363d]">
-        <div className="flex items-center gap-2 text-[#58a6ff] text-ui-sm font-mono">
-          <FileText className="w-3.5 h-3.5" />
-          <span className="truncate max-w-[120px]">{runId.slice(0, 8)}</span>
+  const isRunning = runState?.state === "running" || runState?.state === "queued";
+  const isBlocked = runState?.state === "blocked";
+  const isFailed = runState?.state === "failed";
+  const isCompleted = runState?.state === "completed";
+  const isIntakeOnlyCompletion = isCompleted && !(runState?.steps_completed ?? []).includes("decision");
+
+  // During active processing: show the compact step tracker
+  if (isRunning) {
+    const stepStatuses = runState ? getStepStatuses(runState) : steps.map((_, i) => i === 0 ? "current" as StepStatus : "pending" as StepStatus);
+
+    return (
+      <div className="rounded-xl border border-[#30363d] bg-[#0d1117] overflow-hidden min-w-[260px] shadow-lg">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#30363d]">
+          <div className="flex items-center gap-2 text-[#58a6ff] text-ui-sm font-medium">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            Processing Trip
+          </div>
+          <div className="flex items-center gap-1.5 text-ui-xs text-[var(--text-muted)]">
+            <Clock className="w-3 h-3" />
+            <span ref={durationRef}>{runState?.started_at ? elapsedSec(runState.started_at) : '--'}s</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 text-ui-xs text-[var(--text-muted)]">
-          <Clock className="w-3 h-3" />
-          <span ref={durationRef}>{runState?.started_at ? elapsedSec(runState.started_at) : '--'}s</span>
-        </div>
-      </div>
-
-       {/* Steps */}
-       <div className="p-3 space-y-1">
-         {steps.map((step, idx) => {
-           const status = !runState
-             ? (idx === 0 ? "current" : "pending")
-             : getStepStatus(step.id, runState);
-          return (
-            <div
-              key={step.id}
-              className={`flex items-center gap-2.5 px-2.5 py-2 rounded-md transition-colors ${
-                status === "current"
-                  ? "bg-[#58a6ff]/10 border border-[#58a6ff]/30"
-                  : status === "done"
-                  ? "bg-transparent"
-                  : "bg-transparent opacity-70"
-              }`}
-            >
-              {status === "done" ? (
-                <CheckCircle className="w-4 h-4 text-[#3fb950] shrink-0" />
-              ) : status === "failed" ? (
-                <XCircle className="w-4 h-4 text-[#f85149] shrink-0" />
-              ) : status === "current" ? (
-                <Loader2 className="w-4 h-4 animate-spin text-[var(--accent-amber)] shrink-0" />
-              ) : (
-                <div className="w-4 h-4 rounded-full border border-[var(--text-tertiary)] shrink-0" />
-              )}
-
-              <div className="flex-1 min-w-0">
-                <div
+        <div className="p-3 space-y-1">
+          {steps.map((step, idx) => {
+            const status = stepStatuses[idx];
+            return (
+              <div
+                key={step.id}
+                className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-colors ${
+                  status === "current"
+                    ? "bg-[#58a6ff]/10 border border-[#58a6ff]/30"
+                    : "bg-transparent"
+                }`}
+              >
+                {status === "done" ? (
+                  <CheckCircle className="w-3.5 h-3.5 text-[#3fb950] shrink-0" />
+                ) : status === "current" ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--accent-amber)] shrink-0" />
+                ) : (
+                  <div className="w-3.5 h-3.5 rounded-full border border-[var(--text-tertiary)] shrink-0" />
+                )}
+                <span
                   className={`text-ui-xs font-medium ${
                     status === "done"
                       ? "text-[#3fb950]"
-                      : status === "failed"
-                      ? "text-[#f85149]"
                       : status === "current"
-                      ? "text-[var(--text-primary)]"
-                      : "text-[var(--text-muted)]"
+                        ? "text-[var(--text-primary)]"
+                        : "text-[var(--text-muted)]"
                   }`}
                 >
                   {step.label}
-                </div>
+                </span>
                 {status === "current" && (
-                  <div className="text-[var(--ui-text-xs)] text-[var(--text-muted)] mt-0.5">{step.desc}</div>
+                  <span className="text-[10px] text-[var(--text-muted)] ml-auto">{step.desc}</span>
+                )}
+                {status === "done" && (
+                  <StepTiming events={runState?.events} stepId={step.id} />
                 )}
               </div>
-
-              {status === "done" && runState && (
-                <StepTiming events={runState.events} stepId={step.id} />
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
+    );
+  }
 
-      {/* Footer state */}
-      <div className="px-4 py-2.5 border-t border-[#30363d] bg-[#161b22]">
-        {!runState && (
-          <p className="text-[var(--text-muted)] text-ui-xs">Queued...</p>
-        )}
-
-        {runState?.state === "completed" && (runState.trip_id || onViewTrip) && (
-          <button
-            type='button'
-            onClick={onViewTrip || (() => { window.location.href = `/trips/${runState!.trip_id}/intake`; })}
-            className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#238636] text-white text-ui-xs font-medium rounded-md hover:bg-[#2ea043] transition-colors"
-          >
-            View Trip
-            <ChevronRight className="w-3 h-3" />
-          </button>
-        )}
-
-        {isIntakeOnlyCompletion && (
-          <p className="mt-2 text-[var(--ui-text-xs)] text-[var(--accent-amber)]">
-            Intake saved, but quote-building stages did not run. Add missing details and reprocess.
+  // Blocked: compact result — details are shown in the inline banner
+  if (isBlocked) {
+    return (
+      <div className="rounded-xl border border-[var(--accent-amber)]/30 bg-[#0d1117] overflow-hidden min-w-[240px] shadow-lg">
+        <div className="px-4 py-3 space-y-2.5">
+          <div className="flex items-center gap-2 text-[var(--accent-amber)] text-ui-sm font-medium">
+            <AlertTriangle className="w-4 h-4" />
+            Trip Details Need Attention
+          </div>
+          <p className="text-ui-xs text-[var(--text-muted)] leading-relaxed">
+            {runState?.block_reason || "Required details are missing before quote options can be built."}
           </p>
-        )}
-
-        {runState?.state === "completed" && !runState?.trip_id && !onViewTrip && (
-          <div className="flex items-center gap-1.5 text-[#3fb950] text-ui-xs">
-            <CheckCircle className="w-3.5 h-3.5" />
-            Completed
-          </div>
-        )}
-
-        {runState?.state === "failed" && (
-          <div className="space-y-2">
-            <p className="text-[#f85149] text-ui-xs">
-              Failed at {runState.stage_at_failure ? labelOrTitle(STAGE_LABELS, runState.stage_at_failure) : "unknown"} phase
-            </p>
-            {runState.error_message && (
-              <p className="text-[var(--ui-text-xs)] text-[var(--text-muted)] line-clamp-2">{runState.error_message}</p>
-            )}
-            <button
-              type='button'
-              onClick={onRetry}
-              className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#da3633]/10 border border-[#da3633]/30 text-[#f85149] text-ui-xs rounded-md hover:bg-[#da3633]/20 transition-colors"
-            >
-              <AlertTriangle className="w-3 h-3" />
-              Retry
-            </button>
-          </div>
-        )}
-
-        {runState?.state === "blocked" && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-1.5 text-[var(--accent-amber)] text-ui-xs font-medium">
-              <AlertTriangle className="w-3.5 h-3.5" />
-              Needs More Information
+          <button
+            type="button"
+            onClick={onFixDetails || onRetry}
+            className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[var(--accent-amber)]/10 border border-[var(--accent-amber)]/30 text-[var(--accent-amber)] text-ui-xs font-medium rounded-md hover:bg-[var(--accent-amber)]/20 transition-colors"
+          >
+            Fix Missing Details
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowDetails(v => !v)}
+            className="block w-full text-center text-[10px] text-[var(--text-tertiary)] hover:text-[var(--text-muted)] transition-colors"
+          >
+            {showDetails ? 'Hide' : 'Show'} run details
+          </button>
+          {showDetails && (
+            <div className="text-[10px] font-mono text-[var(--text-tertiary)] pt-1 border-t border-[#30363d] space-y-1">
+              <div>Run: {runId.slice(0, 8)}</div>
+              {runState?.steps_completed && <div>Completed: {runState.steps_completed.join(', ')}</div>}
+              {runState?.total_ms != null && <div>Duration: {runState.total_ms}ms</div>}
             </div>
-            <p className="text-[#a8b3c1] text-ui-xs leading-relaxed">
-              {runState.block_reason || "Some details are needed before we can build your itinerary."}
-            </p>
-
-            {/* Validation reasons (new backend shape) */}
-            {validationErrors?.reasons && validationErrors.reasons.length > 0 && (
-              <div className="space-y-1">
-                {validationErrors.reasons.map((reason, i) => (
-                  <div
-                    key={`vr-${i}`}
-                    className="flex items-start gap-1.5 px-2 py-1.5 rounded-md bg-[#f85149]/10 border border-[#f85149]/30"
-                  >
-                    <XCircle className="w-3 h-3 text-[#f85149] shrink-0 mt-0.5" />
-                    <div className="text-[var(--ui-text-xs)] leading-relaxed text-[var(--accent-red)]">
-                      {reason}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Legacy validation errors */}
-            {validationErrors && (validationErrors.errors?.length ?? 0) > 0 && (
-              <div className="space-y-1">
-                {validationErrors.errors!.map((err, i) => (
-                  <div
-                    key={`ve-${err.code}-${err.field}-${i}`}
-                    className="flex items-start gap-1.5 px-2 py-1.5 rounded-md bg-[#f85149]/10 border border-[#f85149]/30"
-                  >
-                    <XCircle className="w-3 h-3 text-[#f85149] shrink-0 mt-0.5" />
-                    <div className="text-[var(--ui-text-xs)] leading-relaxed text-[var(--accent-red)]">
-                      {err.field && (
-                        <span className="font-medium">{labelOrTitle(FIELD_LABELS, err.field)}: </span>
-                      )}
-                      {err.message}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {validationErrors && (validationErrors.warnings?.length ?? 0) > 0 && (
-              <div className="space-y-1">
-                {validationErrors.warnings!.map((warn, i) => (
-                  <div
-                    key={`vw-${warn.code}-${i}`}
-                    className="flex items-start gap-1.5 px-2 py-1.5 rounded-md bg-[var(--accent-amber)]/10 border border-[var(--accent-amber)]/30"
-                  >
-                    <AlertTriangle className="w-3 h-3 text-[var(--accent-amber)] shrink-0 mt-0.5" />
-                    <div className="text-[var(--ui-text-xs)] leading-relaxed text-[var(--text-primary)]">
-                      {warn.field && (
-                        <span className="font-medium">{labelOrTitle(FIELD_LABELS, warn.field)}: </span>
-                      )}
-                      {warn.message}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <button
-              type='button'
-              onClick={onRetry}
-              className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[var(--accent-amber)]/10 border border-[var(--accent-amber)]/30 text-[var(--accent-amber)] text-ui-xs rounded-md hover:bg-[var(--accent-amber)]/20 transition-colors"
-            >
-              Try Again with More Details
-            </button>
-          </div>
-        )}
-
-        {error && runState?.state === "running" && (
-          <div className="space-y-2">
-            <p className="text-[#f85149] text-ui-xs">{error.message || "Timed out"}</p>
-            <button
-              type='button'
-              onClick={onRetry}
-              className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#da3633]/10 border border-[#da3633]/30 text-[#f85149] text-ui-xs rounded-md hover:bg-[#da3633]/20 transition-colors"
-            >
-              <AlertTriangle className="w-3 h-3" />
-              Retry
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // Failed: compact retry result
+  if (isFailed) {
+    const stepStatuses = runState ? getStepStatuses(runState) : steps.map(() => "pending" as StepStatus);
+    const failedLabel = runState?.stage_at_failure
+      ? steps.find(s => s.id === runState.stage_at_failure)?.label || runState.stage_at_failure
+      : "unknown";
+
+    return (
+      <div className="rounded-xl border border-[#f85149]/30 bg-[#0d1117] overflow-hidden min-w-[240px] shadow-lg">
+        <div className="px-4 py-3 space-y-2.5">
+          <div className="flex items-center gap-2 text-[#f85149] text-ui-sm font-medium">
+            <XCircle className="w-4 h-4" />
+            Processing Failed
+          </div>
+          <p className="text-ui-xs text-[var(--text-muted)] leading-relaxed">
+            Failed at {failedLabel} phase{runState?.error_message ? `: ${runState.error_message}` : ''}.
+          </p>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#da3633]/10 border border-[#da3633]/30 text-[#f85149] text-ui-xs font-medium rounded-md hover:bg-[#da3633]/20 transition-colors"
+          >
+            <AlertTriangle className="w-3 h-3" />
+            Retry Processing
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowDetails(v => !v)}
+            className="block w-full text-center text-[10px] text-[var(--text-tertiary)] hover:text-[var(--text-muted)] transition-colors"
+          >
+            {showDetails ? 'Hide' : 'Show'} run details
+          </button>
+          {showDetails && (
+            <div className="text-[10px] font-mono text-[var(--text-tertiary)] pt-1 border-t border-[#30363d] space-y-1">
+              <div>Run: {runId.slice(0, 8)}</div>
+              {runState?.error_type && <div>Error: {runState.error_type}</div>}
+              {runState?.total_ms != null && <div>Duration: {runState.total_ms}ms</div>}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Completed successfully: compact result
+  if (isCompleted) {
+    return (
+      <div className="rounded-xl border border-[#3fb950]/30 bg-[#0d1117] overflow-hidden min-w-[240px] shadow-lg">
+        <div className="px-4 py-3 space-y-2.5">
+          <div className="flex items-center gap-2 text-[#3fb950] text-ui-sm font-medium">
+            <CheckCircle className="w-4 h-4" />
+            Processing Complete
+          </div>
+          {isIntakeOnlyCompletion && (
+            <p className="text-ui-xs text-[var(--accent-amber)]">
+              Intake saved, but quote-building stages did not run. Add missing details and reprocess.
+            </p>
+          )}
+          {(runState?.trip_id || onViewTrip) && (
+            <button
+              type="button"
+              onClick={onViewTrip || (() => { window.location.href = `/trips/${runState!.trip_id}/intake`; })}
+              className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#238636] text-white text-ui-xs font-medium rounded-md hover:bg-[#2ea043] transition-colors"
+            >
+              View Trip
+              <ChevronRight className="w-3 h-3" />
+            </button>
+          )}
+          {!(runState?.trip_id || onViewTrip) && !isIntakeOnlyCompletion && (
+            <div className="flex items-center gap-1.5 text-[#3fb950] text-ui-xs">
+              <CheckCircle className="w-3.5 h-3.5" />
+              Completed
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowDetails(v => !v)}
+            className="block w-full text-center text-[10px] text-[var(--text-tertiary)] hover:text-[var(--text-muted)] transition-colors"
+          >
+            {showDetails ? 'Hide' : 'Show'} run details
+          </button>
+          {showDetails && (
+            <div className="text-[10px] font-mono text-[var(--text-tertiary)] pt-1 border-t border-[#30363d] space-y-1">
+              <div>Run: {runId.slice(0, 8)}</div>
+              {runState?.total_ms != null && <div>Duration: {runState.total_ms}ms</div>}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback for error/timed-out while running
+  if (error) {
+    return (
+      <div className="rounded-xl border border-[#f85149]/30 bg-[#0d1117] overflow-hidden min-w-[240px] shadow-lg">
+        <div className="px-4 py-3 space-y-2.5">
+          <div className="flex items-center gap-2 text-[#f85149] text-ui-sm font-medium">
+            <XCircle className="w-4 h-4" />
+            Processing Error
+          </div>
+          <p className="text-ui-xs text-[var(--text-muted)]">{error.message || "Timed out"}</p>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#da3633]/10 border border-[#da3633]/30 text-[#f85149] text-ui-xs font-medium rounded-md hover:bg-[#da3633]/20 transition-colors"
+          >
+            <AlertTriangle className="w-3 h-3" />
+            Retry Processing
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function StepTiming({
   events,
   stepId,
 }: {
-  events: RunEvent[] | undefined;
+  events: RunStatusResponse["events"];
   stepId: string;
 }) {
   const evt = events?.find(
@@ -305,7 +337,7 @@ function StepTiming({
   );
   if (!evt || typeof evt.execution_ms !== "number") return null;
   return (
-    <span className="text-[var(--ui-text-xs)] text-[var(--text-tertiary)] tabular-nums shrink-0">
+    <span className="text-[10px] text-[var(--text-tertiary)] tabular-nums shrink-0">
       {Math.round(evt.execution_ms)}ms
     </span>
   );

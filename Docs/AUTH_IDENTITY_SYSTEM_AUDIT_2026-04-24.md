@@ -381,6 +381,10 @@ This bypasses the design system and creates maintenance overhead.
 | 8 | Add rate limiting to auth endpoints | `spine_api/routers/auth.py` or middleware | 2 hours |
 | 9 | Restrict CORS in production | `spine_api/server.py` | 30 min |
 | 10 | Enforce `JWT_SECRET` env var (fail startup if default) | `spine_api/core/security.py` | 30 min |
+
+### Review Note
+
+See [Docs/reports/auth_identity_system_review_2026-04-29.md](reports/auth_identity_system_review_2026-04-29.md) for the current implementation-aware review and the immediate hardening slice.
 | 11 | Add auth provider component with loading state | `frontend/src/components/providers/AuthProvider.tsx` | 1-2 hours |
 
 ### P2 — Hardening

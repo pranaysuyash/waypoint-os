@@ -317,7 +317,7 @@ class TestSchemaValidation:
         ))
         # Missing: destination_candidates, date_window, party_size, budget_raw_text, trip_purpose
 
-        report = validate_packet(pkt)
+        report = validate_packet(pkt, stage="shortlist")
         assert not report.is_valid, "Packet missing MVB fields should be invalid"
         assert any(e.field == "destination_candidates" for e in report.errors)
         assert any(e.field == "date_window" for e in report.errors)

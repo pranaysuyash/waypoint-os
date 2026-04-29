@@ -14,7 +14,11 @@ import bcrypt
 import jwt
 
 # JWT configuration
-JWT_SECRET = os.getenv("JWT_SECRET", "waypoint-dev-secret-change-in-production")
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    raise RuntimeError(
+        "JWT_SECRET is required. Set it in the environment before starting the API."
+    )
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 REFRESH_TOKEN_EXPIRE_DAYS = 7

@@ -70,10 +70,11 @@ class TestCityRecognition:
             assert not is_known_city(term), f"{term} should NOT be recognized as a city"
 
     def test_case_sensitive_recognition(self):
-        """City names in our databases are typically title case.
+        """City lookup is case-insensitive because _build_union normalizes to lowercase.
 
-        GeoNames and world-cities.json use proper casing (Bangalore, not bangalore).
-        For case-insensitive lookup, use is_known_city_normalized().
+        is_known_city() lowercases input and compares against a pre-lowered set,
+        so both "Bangalore" and "bangalore" match. is_known_city_normalized()
+        provides the same case-insensitive behavior with explicit documentation.
         """
         from intake.geography import is_known_city, is_known_city_normalized
 
@@ -82,11 +83,11 @@ class TestCityRecognition:
         assert is_known_city("Bangalore")
         assert is_known_city("Mumbai")
 
-        # Lowercase doesn't work directly (database has proper casing)
-        assert not is_known_city("bangalore")
-        assert not is_known_city("singapore")
+        # Lowercase also works (implementation normalizes to lowercase)
+        assert is_known_city("bangalore")
+        assert is_known_city("singapore")
 
-        # Use normalized version for case-insensitive lookup
+        # Normalized version also works for any case
         assert is_known_city_normalized("bangalore")
         assert is_known_city_normalized("SINGAPORE")
         assert is_known_city_normalized("mumbai")
