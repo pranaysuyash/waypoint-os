@@ -112,8 +112,8 @@ export function OverrideModal({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[#30363d]">
           <div>
-            <h2 className="text-lg font-semibold text-[#e6edf3]">Override Risk Flag</h2>
-            <p className="text-sm text-[#8b949e] mt-1">
+            <h2 className="text-ui-lg font-semibold text-[#e6edf3]">Override Risk Flag</h2>
+            <p className="text-ui-sm text-[#8b949e] mt-1">
               {flag.flag.replace(/_/g, " ")}
             </p>
           </div>
@@ -129,10 +129,10 @@ export function OverrideModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Current Severity Badge */}
           <div className="p-4 bg-[#161b22] border border-[#30363d] rounded-lg">
-            <p className="text-xs text-[#8b949e] mb-2 uppercase tracking-wide">Current Severity</p>
+            <p className="text-ui-xs text-[#8b949e] mb-2 uppercase tracking-wide">Current Severity</p>
             <div className="flex items-center gap-2">
               <div
-                className={`px-3 py-1 rounded-full text-sm font-semibold text-white ${
+                className={`px-3 py-1 rounded-full text-ui-sm font-semibold text-white ${
                   flag.severity === "critical"
                     ? "bg-[#da3633]"
                     : flag.severity === "high"
@@ -144,13 +144,13 @@ export function OverrideModal({
               >
                 {flag.severity.toUpperCase()}
               </div>
-              <p className="text-sm text-[#8b949e]">{flag.reason}</p>
+              <p className="text-ui-sm text-[#8b949e]">{flag.reason}</p>
             </div>
           </div>
 
           {/* Action Selection */}
           <div>
-            <label className="block text-sm font-medium text-[#e6edf3] mb-3">
+            <label className="block text-ui-sm font-medium text-[#e6edf3] mb-3">
               Action
             </label>
             <div className="space-y-2">
@@ -169,8 +169,8 @@ export function OverrideModal({
                     className="mt-1"
                   />
                   <div>
-                    <p className="text-sm font-medium text-[#e6edf3]">{opt.label}</p>
-                    <p className="text-xs text-[#8b949e]">{opt.desc}</p>
+                    <p className="text-ui-sm font-medium text-[#e6edf3]">{opt.label}</p>
+                    <p className="text-ui-xs text-[#8b949e]">{opt.desc}</p>
                   </div>
                 </label>
               ))}
@@ -180,14 +180,14 @@ export function OverrideModal({
           {/* Downgrade Severity Selector */}
           {action === "downgrade" && (
             <div>
-              <label className="block text-sm font-medium text-[#e6edf3] mb-3">
+              <label className="block text-ui-sm font-medium text-[#e6edf3] mb-3">
                 Downgrade to
               </label>
               <div className="relative">
                 <select
                   value={newSeverity}
                   onChange={(e) => setNewSeverity(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#e6edf3] text-sm focus:outline-none focus:border-[#58a6ff] appearance-none cursor-pointer"
+                  className="w-full px-4 py-2.5 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#e6edf3] text-ui-sm focus:outline-none focus:border-[#58a6ff] appearance-none cursor-pointer"
                 >
                   <option value="">Select severity...</option>
                   {SEVERITY_LEVELS.slice(currentSeverityIndex + 1).map((sev) => (
@@ -198,7 +198,7 @@ export function OverrideModal({
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8b949e] pointer-events-none" />
               </div>
-              <p className="text-xs text-[#8b949e] mt-2">
+              <p className="text-ui-xs text-[#8b949e] mt-2">
                 Must be lower than current severity ({flag.severity})
               </p>
             </div>
@@ -206,7 +206,7 @@ export function OverrideModal({
 
           {/* Scope Selection */}
           <div>
-            <label className="block text-sm font-medium text-[#e6edf3] mb-3">
+            <label className="block text-ui-sm font-medium text-[#e6edf3] mb-3">
               Scope
             </label>
             <div className="space-y-2">
@@ -224,8 +224,8 @@ export function OverrideModal({
                     className="mt-1"
                   />
                   <div>
-                    <p className="text-sm font-medium text-[#e6edf3]">{opt.label}</p>
-                    <p className="text-xs text-[#8b949e]">{opt.desc}</p>
+                    <p className="text-ui-sm font-medium text-[#e6edf3]">{opt.label}</p>
+                    <p className="text-ui-xs text-[#8b949e]">{opt.desc}</p>
                   </div>
                 </label>
               ))}
@@ -234,18 +234,18 @@ export function OverrideModal({
 
           {/* Reason Input */}
           <div>
-            <label className="block text-sm font-medium text-[#e6edf3] mb-3">
+            <label className="block text-ui-sm font-medium text-[#e6edf3] mb-3">
               Reason for Override
             </label>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Explain why you're overriding this flag (minimum 10 characters)..."
-              className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#e6edf3] text-sm placeholder-[#6e7681] focus:outline-none focus:border-[#58a6ff] resize-none"
+              className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#e6edf3] text-ui-sm placeholder-[#6e7681] focus:outline-none focus:border-[#58a6ff] resize-none"
               rows={4}
             />
             <div className="flex items-center justify-between mt-2">
-              <p className={`text-xs ${reasonValid ? "text-[#3fb950]" : "text-[#8b949e]"}`}>
+              <p className={`text-ui-xs ${reasonValid ? "text-[#3fb950]" : "text-[#8b949e]"}`}>
                 {reasonLength} / 10 characters minimum
               </p>
               {reasonValid && <CheckCircle2 className="h-4 w-4 text-[#3fb950]" />}
@@ -256,7 +256,7 @@ export function OverrideModal({
           {error && (
             <div className="flex items-start gap-3 p-4 bg-[#161b22] border border-[#da3633] rounded-lg">
               <AlertCircle className="h-4 w-4 text-[#da3633] mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-[#da3633]">{error}</p>
+              <p className="text-ui-sm text-[#da3633]">{error}</p>
             </div>
           )}
 

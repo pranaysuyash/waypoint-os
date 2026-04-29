@@ -87,25 +87,25 @@ function classifyTier(severity: string): "tier1" | "tier2" {
   return severity === "critical" ? "tier1" : "tier2";
 }
 
-function getSeverityClass(severity: string): { bg: string; border: string; icon: string } {
+function getSeverityClass(severity: string): { bg: string; icon: string } {
   switch (severity) {
     case "critical":
-      return { bg: "bg-red-50 dark:bg-red-950", border: "border-l-4 border-red-500", icon: "text-red-600 dark:text-red-400" };
+      return { bg: "bg-[rgb(var(--accent-red-rgb)/0.06)]", icon: "text-accent-red" };
     case "high":
-      return { bg: "bg-yellow-50 dark:bg-yellow-950", border: "border-l-4 border-yellow-500", icon: "text-yellow-600 dark:text-yellow-400" };
+      return { bg: "bg-[rgb(var(--accent-amber-rgb)/0.06)]", icon: "text-accent-amber" };
     case "medium":
-      return { bg: "bg-blue-50 dark:bg-blue-950", border: "border-l-4 border-blue-400", icon: "text-blue-600 dark:text-blue-400" };
+      return { bg: "bg-[rgb(var(--accent-blue-rgb)/0.06)]", icon: "text-accent-blue" };
     default:
-      return { bg: "bg-gray-50 dark:bg-gray-900", border: "border-l-4 border-gray-400", icon: "text-gray-500 dark:text-gray-400" };
+      return { bg: "bg-elevated", icon: "text-text-muted" };
   }
 }
 
 function getBadgeClass(severity: string): string {
   switch (severity) {
-    case "critical": return "bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100";
-    case "high":     return "bg-yellow-200 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-100";
-    case "medium":   return "bg-blue-200 text-blue-900 dark:bg-blue-900 dark:text-blue-100";
-    default:         return "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100";
+    case "critical": return "bg-[rgb(var(--accent-red-rgb)/0.15)] text-accent-red";
+    case "high":     return "bg-[rgb(var(--accent-amber-rgb)/0.15)] text-accent-amber";
+    case "medium":   return "bg-[rgb(var(--accent-blue-rgb)/0.15)] text-accent-blue";
+    default:         return "bg-elevated text-text-muted";
   }
 }
 
@@ -141,7 +141,7 @@ function FlagItem({ flag, onDrill, onAcknowledge, isAcknowledged = false, drilla
 
   return (
     <div
-      className={`${severityClass.bg} ${severityClass.border} p-3 rounded-md transition-all ${
+      className={`${severityClass.bg} p-3 rounded-md transition-all ${
         isAcknowledged ? "opacity-60" : ""
       } ${drillable && !isAcknowledged ? "cursor-pointer hover:shadow-sm" : ""}`}
       onClick={drillable && !isAcknowledged ? handleDrill : undefined}
@@ -161,33 +161,33 @@ function FlagItem({ flag, onDrill, onAcknowledge, isAcknowledged = false, drilla
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h4 className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+              <h4 className="font-semibold text-ui-sm text-text-primary">
                 {label}
                 {isAcknowledged && (
-                  <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
+                  <span className="ml-2 text-ui-xs font-normal text-text-muted">
                     (acknowledged)
                   </span>
                 )}
               </h4>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{flag.reason}</p>
+              <p className="text-ui-xs text-text-muted mt-1">{flag.reason}</p>
             </div>
-            {drillable && !isAcknowledged && <ChevronRight size={16} className="flex-shrink-0 text-gray-400" />}
+            {drillable && !isAcknowledged && <ChevronRight size={16} className="flex-shrink-0 text-text-muted" />}
           </div>
 
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <span className={`text-xs px-2 py-1 rounded ${badgeClass}`}>
+            <span className={`text-ui-xs px-2 py-1 rounded ${badgeClass}`}>
               {flag.severity.toUpperCase()}
             </span>
-            <span className="text-xs text-gray-600 dark:text-gray-400">
+            <span className="text-ui-xs text-text-muted">
               {Math.round(flag.confidence * 100)}% confidence
             </span>
-            <span className="text-xs text-gray-600 dark:text-gray-400">{travelersDisplay}</span>
+            <span className="text-ui-xs text-text-muted">{travelersDisplay}</span>
 
             {tier === "tier1" && onAcknowledge && !isAcknowledged && (
               <button
                 type="button"
                 onClick={handleAcknowledge}
-                className="ml-auto text-xs px-2 py-1 rounded border border-red-400 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900 transition-colors"
+                className="ml-auto text-ui-xs px-2 py-1 rounded border border-[rgb(var(--accent-red-rgb)/0.4)] text-accent-red hover:bg-[rgb(var(--accent-red-rgb)/0.08)] transition-colors"
                 data-testid={`acknowledge-flag-${flag.flag_type}`}
               >
                 Acknowledge Risk
@@ -225,11 +225,11 @@ export function SuitabilitySignal({
     <div className={styles.section} data-testid="suitability-signal">
       <h3 className={styles.sectionTitle}>Suitability Audit Results</h3>
       <div className={styles.card}>
-        <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
-          <p className="text-sm text-gray-700 dark:text-gray-300">
+        <div className="mb-4 p-3 bg-surface rounded border border-border-default">
+          <p className="text-ui-sm text-text-secondary">
             <strong>{flags.length}</strong> suitability issue{flags.length !== 1 ? "s" : ""} detected
             {tier1Flags.length > 0 && (
-              <span className="text-red-600 dark:text-red-400">
+              <span className="text-accent-red">
                 {" — "}
                 <strong>{unacknowledgedCritical.length > 0 ? unacknowledgedCritical.length : tier1Flags.length}</strong>
                 {unacknowledgedCritical.length > 0
@@ -242,7 +242,7 @@ export function SuitabilitySignal({
 
         {tier1Flags.length > 0 && (
           <div className="mb-6">
-            <h4 className="font-semibold text-red-700 dark:text-red-400 text-sm mb-3 flex items-center gap-2">
+            <h4 className="font-semibold text-accent-red text-ui-sm mb-3 flex items-center gap-2">
               <AlertTriangle size={16} />
               Tier 1: Hard Blockers (Must Acknowledge Before Approval)
             </h4>
@@ -263,7 +263,7 @@ export function SuitabilitySignal({
 
         {tier2Flags.length > 0 && (
           <div>
-            <h4 className="font-semibold text-yellow-700 dark:text-yellow-400 text-sm mb-3 flex items-center gap-2">
+            <h4 className="font-semibold text-accent-amber text-ui-sm mb-3 flex items-center gap-2">
               <AlertCircle size={16} />
               Tier 2: Warnings (Review Recommended)
             </h4>

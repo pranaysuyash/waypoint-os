@@ -8,6 +8,7 @@ import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate, Decision
 import type { Trip } from "@/lib/api-client";
 import { SuitabilitySignal } from "./SuitabilitySignal";
 import { SuitabilityCard } from "./SuitabilityCard";
+import { STATE_COLORS } from "@/lib/tokens";
 
 interface DecisionPanelProps {
   trip?: Trip | null;
@@ -48,7 +49,7 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
 
   if (!decision) {
     return (
-      <div className="p-4 text-sm text-[#8b949e] italic">
+      <div className="p-4 text-ui-sm text-text-muted italic">
         No quote status data for trip {tripId || "unknown"}.
       </div>
     );
@@ -77,14 +78,15 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
   }, [tripId, acknowledgeFlag]);
 
   // Map decision state to visual treatment
-  const stateColor = {
-    PROCEED_TRAVELER_SAFE:  { color: '#3fb950', bg: 'rgba(63,185,80,0.1)',   border: 'rgba(63,185,80,0.25)'  },
-    PROCEED_INTERNAL_DRAFT: { color: '#58a6ff', bg: 'rgba(88,166,255,0.1)',  border: 'rgba(88,166,255,0.25)' },
-    BRANCH_OPTIONS:         { color: '#d29922', bg: 'rgba(210,153,34,0.1)',  border: 'rgba(210,153,34,0.25)' },
-    STOP_NEEDS_REVIEW:      { color: '#f85149', bg: 'rgba(248,81,73,0.08)',  border: 'rgba(248,81,73,0.25)'  },
-    STOP_REVIEW:            { color: '#f85149', bg: 'rgba(248,81,73,0.08)',  border: 'rgba(248,81,73,0.25)'  },
-    ASK_FOLLOWUP:           { color: '#a371f7', bg: 'rgba(163,113,247,0.1)', border: 'rgba(163,113,247,0.25)'},
-  }[decision.decision_state] ?? { color: '#8b949e', bg: 'rgba(139,148,158,0.08)', border: 'rgba(139,148,158,0.2)' };
+  const STATE_KEY: Record<string, keyof typeof STATE_COLORS> = {
+    PROCEED_TRAVELER_SAFE: "green",
+    PROCEED_INTERNAL_DRAFT: "blue",
+    BRANCH_OPTIONS: "amber",
+    STOP_NEEDS_REVIEW: "red",
+    STOP_REVIEW: "red",
+    ASK_FOLLOWUP: "purple",
+  };
+  const stateColor = STATE_COLORS[STATE_KEY[decision.decision_state] ?? "neutral"];
 
   const confidence = Math.round((decision.confidence?.overall || 0) * 100);
 
@@ -98,17 +100,17 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
       >
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: stateColor.color }}>
+            <div className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest mb-1.5" style={{ color: stateColor.color }}>
               Quote Assessment
             </div>
-            <div className="text-lg font-semibold text-[#e6edf3]" style={{ fontFamily: "'Outfit', sans-serif" }}>
+            <div className="text-ui-lg font-semibold text-text-primary" style={{ fontFamily: "'Outfit', sans-serif" }}>
               {STATE_LABELS[decision.decision_state] || "Review Required"}
             </div>
           </div>
           {confidence > 0 && (
             <div className="text-right shrink-0">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[#484f58] mb-1">Confidence</div>
-              <div className="text-2xl font-black" style={{ color: stateColor.color, fontFamily: "'Outfit', sans-serif" }}>
+              <div className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-text-placeholder mb-1">Confidence</div>
+              <div className="text-ui-2xl font-black" style={{ color: stateColor.color, fontFamily: "'Outfit', sans-serif" }}>
                 {confidence}%
               </div>
             </div>
@@ -118,13 +120,13 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
 
       {/* Hard blockers — prominent */}
       {hardBlockers.length > 0 && (
-        <div className="rounded-xl p-4 border border-[rgba(248,81,73,0.3)] bg-[rgba(248,81,73,0.06)]">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-[#f85149] mb-2">
+        <div className="rounded-xl p-4 border border-[rgb(var(--accent-red-rgb)/0.3)] bg-[rgb(var(--accent-red-rgb)/0.06)]">
+          <div className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-accent-red mb-2">
             Hard Blockers — must resolve before quoting
           </div>
           <ul className="space-y-1.5">
             {hardBlockers.map((b, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-[#f85149]">
+              <li key={i} className="flex items-start gap-2 text-ui-sm text-accent-red">
                 <span className="mt-0.5 shrink-0">✕</span>
                 <span>{b}</span>
               </li>
@@ -135,13 +137,13 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
 
       {/* Soft blockers */}
       {softBlockers.length > 0 && (
-        <div className="rounded-xl p-4 border border-[rgba(210,153,34,0.25)] bg-[rgba(210,153,34,0.06)]">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-[#d29922] mb-2">
+        <div className="rounded-xl p-4 border border-[rgb(var(--accent-amber-rgb)/0.25)] bg-[rgb(var(--accent-amber-rgb)/0.06)]">
+          <div className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-accent-amber mb-2">
             Soft Blockers — worth discussing
           </div>
           <ul className="space-y-1.5">
             {softBlockers.map((b, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-[#d29922]">
+              <li key={i} className="flex items-start gap-2 text-ui-sm text-accent-amber">
                 <span className="mt-0.5 shrink-0">△</span>
                 <span>{b}</span>
               </li>
@@ -153,9 +155,9 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
       {/* Rationale */}
       {rationale.feasibility && (
         <section className="space-y-2">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-[#484f58]">Rationale</div>
-          <div className="rounded-xl p-4 border border-[#1c2128] bg-[#0d1117]">
-            <p className="text-sm text-[#c9d1d9] leading-relaxed">{rationale.feasibility}</p>
+          <div className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-text-placeholder">Rationale</div>
+          <div className="rounded-xl p-4 border border-highlight bg-rationale">
+            <p className="text-ui-sm text-text-rationale leading-relaxed">{rationale.feasibility}</p>
           </div>
         </section>
       )}
@@ -163,7 +165,7 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
       {/* Suitability */}
       {suitabilityProfile ? (
         <section className="space-y-2">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-[#484f58]">Suitability Audit</div>
+          <div className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-text-placeholder">Suitability Audit</div>
           <SuitabilityCard profile={suitabilityProfile} />
         </section>
       ) : suitabilityFlags.length > 0 ? (
@@ -178,7 +180,7 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
 
       <button
         type="button"
-        className="text-[11px] text-[#484f58] hover:text-[#8b949e] transition-colors underline underline-offset-2"
+        className="text-[var(--ui-text-xs)] text-text-placeholder hover:text-text-muted transition-colors underline underline-offset-2"
         onClick={() => setDebugRawJson(!debug_raw_json)}
       >
         {debug_raw_json ? "Hide" : "Show"} raw JSON

@@ -136,7 +136,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
 
   if (activities.length === 0) {
     return showEmpty ? (
-      <div className={cn('p-4 text-center text-sm text-gray-500', className)}>
+      <div className={cn('p-4 text-center text-ui-sm text-gray-500', className)}>
         No activities recorded yet.
       </div>
     ) : null;
@@ -146,11 +146,11 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
     <div className={cn('w-full space-y-4', className)}>
       {/* Sort Controls */}
       <div className="flex items-center gap-2 border-b pb-4">
-        <span className="text-xs font-semibold text-gray-600 uppercase">Sort:</span>
+        <span className="text-ui-xs font-semibold text-gray-600 uppercase">Sort:</span>
         <button
           onClick={() => handleSortChange('newest')}
           className={cn(
-            'px-3 py-1 rounded text-xs font-medium transition-colors',
+            'px-3 py-1 rounded text-ui-xs font-medium transition-colors',
             currentSortOrder === 'newest'
               ? 'bg-blue-100 text-blue-700'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -161,7 +161,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
         <button
           onClick={() => handleSortChange('oldest')}
           className={cn(
-            'px-3 py-1 rounded text-xs font-medium transition-colors',
+            'px-3 py-1 rounded text-ui-xs font-medium transition-colors',
             currentSortOrder === 'oldest'
               ? 'bg-blue-100 text-blue-700'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -187,7 +187,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
               >
                 <div className="text-left">
                   <h3 className="font-semibold text-gray-900">{dateKey}</h3>
-                  <p className="text-xs text-gray-600 mt-1">
+                  <p className="text-ui-xs text-gray-600 mt-1">
                     {suggestedCount > 0 && (
                       <span>
                         🤖 {suggestedCount} suggested{suggestedCount !== 1 ? 's' : ''}
@@ -216,10 +216,10 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{activity.name}</p>
                           {activity.description && (
-                            <p className="text-sm text-gray-600 mt-1">{activity.description}</p>
+                            <p className="text-ui-sm text-gray-600 mt-1">{activity.description}</p>
                           )}
                           {activity.timestamp && (
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-ui-xs text-gray-500 mt-1">
                               {new Date(activity.timestamp).toLocaleTimeString('en-US', {
                                 hour: '2-digit',
                                 minute: '2-digit',

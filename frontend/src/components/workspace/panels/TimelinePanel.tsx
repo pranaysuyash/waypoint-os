@@ -14,11 +14,11 @@ interface TimelinePanelProps {
 }
 
 const STAGE_COLORS: Record<string, { bg: string; badge: string; dot: string }> = {
-  intake: { bg: "bg-blue-50 dark:bg-blue-950", badge: "bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100", dot: "bg-blue-500" },
-  packet: { bg: "bg-orange-50 dark:bg-orange-950", badge: "bg-orange-100 text-orange-900 dark:bg-orange-900 dark:text-orange-100", dot: "bg-orange-500" },
-  decision: { bg: "bg-green-50 dark:bg-green-950", badge: "bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-100", dot: "bg-green-500" },
-  strategy: { bg: "bg-purple-50 dark:bg-purple-950", badge: "bg-purple-100 text-purple-900 dark:bg-purple-900 dark:text-purple-100", dot: "bg-purple-500" },
-  safety: { bg: "bg-red-50 dark:bg-red-950", badge: "bg-red-100 text-red-900 dark:bg-red-900 dark:text-red-100", dot: "bg-red-500" },
+  intake: { bg: "bg-[rgb(var(--accent-blue-rgb)/0.06)]", badge: "bg-[rgb(var(--accent-blue-rgb)/0.12)] text-accent-blue", dot: "bg-accent-blue" },
+  packet: { bg: "bg-[rgb(var(--accent-amber-rgb)/0.06)]", badge: "bg-[rgb(var(--accent-amber-rgb)/0.12)] text-accent-amber", dot: "bg-accent-amber" },
+  decision: { bg: "bg-[rgb(var(--accent-green-rgb)/0.06)]", badge: "bg-[rgb(var(--accent-green-rgb)/0.12)] text-accent-green", dot: "bg-accent-green" },
+  strategy: { bg: "bg-[rgb(var(--accent-purple-rgb)/0.06)]", badge: "bg-[rgb(var(--accent-purple-rgb)/0.12)] text-accent-purple", dot: "bg-accent-purple" },
+  safety: { bg: "bg-[rgb(var(--accent-red-rgb)/0.06)]", badge: "bg-[rgb(var(--accent-red-rgb)/0.12)] text-accent-red", dot: "bg-accent-red" },
 };
 
 function formatTimestamp(iso: string): string {
@@ -45,10 +45,10 @@ function TimelineEventCard({
     <div className="relative">
       {/* Timeline line (not on last item) */}
       {index < 0 && (
-        <div className="absolute left-5 top-12 w-0.5 h-8 bg-gray-300 dark:bg-gray-600" />
+        <div className="absolute left-5 top-12 w-0.5 h-8 bg-border-default" />
       )}
 
-      <div className={`flex gap-4 ${colors.bg} p-4 rounded-lg border border-gray-200 dark:border-gray-700`}>
+      <div className={`flex gap-4 ${colors.bg} p-4 rounded-lg border border-border-default`}>
         {/* Timeline dot */}
         <div className="flex-shrink-0">
           <div className={`w-3 h-3 rounded-full ${colors.dot} mt-1`} />
@@ -58,14 +58,14 @@ function TimelineEventCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`text-xs font-semibold px-2 py-1 rounded ${colors.badge}`}>
+              <span className={`text-ui-xs font-semibold px-2 py-1 rounded ${colors.badge}`}>
                 {labelOrTitle(STAGE_LABELS, event.stage)}
               </span>
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <span className="text-ui-sm font-medium text-text-secondary">
                 {event.status}
               </span>
             </div>
-            <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+            <span className="text-ui-xs text-text-muted whitespace-nowrap">
               {formatTimestamp(event.timestamp)}
             </span>
           </div>
@@ -75,12 +75,12 @@ function TimelineEventCard({
             <div className="mt-2 flex items-start gap-2">
               <div className="flex-1">
                 {event.decision && (
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                  <p className="text-ui-xs text-text-muted">
                     <span className="font-semibold">Decision:</span> {event.decision}
                   </p>
                 )}
                 {event.reason && (
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  <p className="text-ui-xs text-text-muted mt-1">
                     <span className="font-semibold">Reason:</span> {event.reason}
                   </p>
                 )}
@@ -91,7 +91,7 @@ function TimelineEventCard({
           {/* Expandable JSON */}
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="mt-2 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+            className="mt-2 flex items-center gap-1 text-ui-xs text-text-muted hover:text-text-secondary transition-colors"
           >
             {isExpanded ? (
               <ChevronDown className="w-3 h-3" />
@@ -102,8 +102,8 @@ function TimelineEventCard({
           </button>
 
           {isExpanded && (
-            <div className="mt-2 p-2 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 overflow-x-auto">
-              <pre className="text-xs text-gray-600 dark:text-gray-400 font-mono">
+            <div className="mt-2 p-2 bg-elevated rounded border border-border-default overflow-x-auto">
+              <pre className="text-ui-xs text-text-muted font-mono">
                 {JSON.stringify(event, null, 2)}
               </pre>
             </div>
@@ -180,7 +180,7 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
   if (isLoading) {
     return (
       <div className="p-6 text-center">
-        <p className="text-sm text-gray-500 dark:text-gray-400">Loading timeline...</p>
+        <p className="text-ui-sm text-text-muted">Loading timeline...</p>
       </div>
     );
   }
@@ -188,8 +188,8 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
   if (error) {
     return (
       <div className="p-6">
-        <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-4">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="rounded-lg border border-[rgb(var(--accent-red-rgb)/0.3)] bg-[rgb(var(--accent-red-rgb)/0.06)] p-4">
+          <p className="text-ui-sm text-accent-red">{error}</p>
         </div>
       </div>
     );
@@ -200,7 +200,7 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
   if (!timeline || (events.length === 0 && suitabilityFlags.length === 0)) {
     return (
       <div className="p-6 text-center">
-        <p className="text-sm text-gray-500 dark:text-gray-400">No timeline events found</p>
+        <p className="text-ui-sm text-text-muted">No timeline events found</p>
       </div>
     );
   }
@@ -211,7 +211,7 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
         {/* Suitability Flags Section */}
         {suitabilityFlags.length > 0 && (
           <div className="mb-6">
-            <h3 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-3">
+            <h3 className="text-md font-semibold text-text-primary mb-3">
               Suitability Assessment
             </h3>
             <SuitabilitySignal 
@@ -227,7 +227,7 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
         )}
 
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+          <h2 className="text-ui-lg font-semibold text-text-primary mb-3">
             Decision Timeline
           </h2>
           
@@ -235,11 +235,11 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
           <div className="flex flex-wrap gap-2 mb-4">
             <button
               onClick={() => handleStageFilter(null)}
-              className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
-                selectedStage === null
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
-              }`}
+               className={`px-3 py-1.5 text-ui-sm rounded-md font-medium transition-colors ${
+                 selectedStage === null
+                   ? "bg-accent-blue text-text-on-accent"
+                   : "bg-elevated text-text-muted hover:bg-highlight hover:text-text-primary"
+               }`}
             >
               All
             </button>
@@ -247,10 +247,10 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
               <button
                 key={stage}
                 onClick={() => handleStageFilter(stage)}
-                className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                className={`px-3 py-1.5 text-ui-sm rounded-md font-medium transition-colors ${
                   selectedStage === stage
                     ? `${STAGE_COLORS[stage]?.badge} opacity-100`
-                    : "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                    : "bg-elevated text-text-muted hover:bg-highlight hover:text-text-primary"
                 }`}
               >
                 {labelOrTitle(STAGE_LABELS, stage)}
@@ -269,8 +269,8 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
 
       {/* Summary stats */}
       {events.length > 0 && (
-        <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-          <p className="text-xs text-gray-600 dark:text-gray-400">
+        <div className="mt-6 p-4 bg-surface rounded-lg border border-border-default">
+          <p className="text-ui-xs text-text-muted">
             <span className="font-semibold">{events.length} events</span> {selectedStage ? `in ${labelOrTitle(STAGE_LABELS, selectedStage)}` : ''} captured in this timeline
           </p>
         </div>

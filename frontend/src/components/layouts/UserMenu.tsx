@@ -61,44 +61,44 @@ export function UserMenu() {
     <div className='relative' ref={menuRef}>
       <button
         onClick={() => setOpen(!open)}
-        className='flex items-center gap-1.5 px-1.5 py-0.5 rounded-md hover:bg-[#161b22] transition-colors'
+        className='flex items-center gap-1.5 px-1.5 py-0.5 rounded-md hover:bg-[var(--bg-surface-hover)] transition-colors'
         aria-expanded={open}
         aria-haspopup='true'
         aria-label='User menu'
       >
-        <div className='h-6 w-6 rounded-md bg-gradient-to-br from-[#2563eb] to-[#39d0d8] flex items-center justify-center text-white text-xs font-semibold shrink-0'>
+        <div className='h-6 w-6 rounded-md bg-gradient-to-br from-[var(--accent-blue)] to-[var(--accent-cyan)] flex items-center justify-center text-white text-[var(--ui-text-xs)] font-semibold shrink-0'>
           {initials}
         </div>
         <ChevronDown
-          className={`h-3 w-3 text-[#8b949e] transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`h-3 w-3 text-[var(--text-secondary)] transition-transform ${open ? 'rotate-180' : ''}`}
           aria-hidden='true'
         />
       </button>
 
       {open && (
         <div
-          className='absolute right-0 top-full mt-1 w-56 bg-[#0d1117] border border-[#1c2128] rounded-lg shadow-xl py-1 z-50'
+          className='absolute right-0 top-full mt-1 w-56 bg-[var(--text-on-accent)] border border-[var(--border-default)] rounded-lg shadow-xl py-1 z-50'
           role='menu'
         >
-          <div className='px-3 py-2 border-b border-[#1c2128]'>
-            <div className='text-sm font-medium text-[#e6edf3] truncate'>
+          <div className='px-3 py-2 border-b border-[var(--border-default)]'>
+            <div className='text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)] truncate'>
               {user?.name || user?.email || 'User'}
             </div>
-            <div className='text-xs text-[#8b949e] truncate mt-0.5'>
+            <div className='text-[var(--ui-text-xs)] text-[var(--text-secondary)] truncate mt-0.5'>
               {user?.email}
             </div>
           </div>
 
           {agency && (
-            <div className='px-3 py-2 border-b border-[#1c2128]'>
+            <div className='px-3 py-2 border-b border-[var(--border-default)]'>
               <div className='flex items-center gap-1.5'>
-                <Building2 className='h-3 w-3 text-[#8b949e]' aria-hidden='true' />
-                <span className='text-xs text-[#8b949e] truncate'>
+                <Building2 className='h-3 w-3 text-[var(--text-secondary)]' aria-hidden='true' />
+                <span className='text-[var(--ui-text-xs)] text-[var(--text-secondary)] truncate'>
                   {agency.name}
                 </span>
               </div>
               {roleLabel && (
-                <div className='text-xs text-[#484f58] mt-0.5 ml-[1.125rem]'>
+                <div className='text-[var(--ui-text-xs)] text-[var(--text-placeholder)] mt-0.5 ml-[1.125rem]'>
                   {roleLabel}
                 </div>
               )}
@@ -110,7 +110,7 @@ export function UserMenu() {
               setOpen(false);
               router.push('/settings');
             }}
-            className='w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#161b22] transition-colors'
+            className='w-full flex items-center gap-2 px-3 py-1.5 text-[var(--ui-text-sm)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors'
             role='menuitem'
           >
             <Settings className='h-3.5 w-3.5' aria-hidden='true' />
@@ -119,7 +119,7 @@ export function UserMenu() {
 
           <button
             onClick={handleLogout}
-            className='w-full flex items-center gap-2 px-3 py-1.5 text-sm text-[#f85149] hover:bg-[#161b22] transition-colors'
+            className='w-full flex items-center gap-2 px-3 py-1.5 text-[var(--ui-text-sm)] text-[var(--accent-red)] hover:bg-[var(--bg-surface-hover)] transition-colors'
             role='menuitem'
           >
             <LogOut className='h-3.5 w-3.5' aria-hidden='true' />

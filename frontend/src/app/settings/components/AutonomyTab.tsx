@@ -9,9 +9,9 @@ interface AutonomyTabProps {
 }
 
 const GATE_OPTIONS: Array<{ value: 'auto' | 'review' | 'block'; label: string; color: string }> = [
-  { value: 'auto', label: 'Auto', color: 'bg-[#3fb950] text-white' },
-  { value: 'review', label: 'Review', color: 'bg-[#d29922] text-white' },
-  { value: 'block', label: 'Block', color: 'bg-[#f85149] text-white' },
+  { value: 'auto', label: 'Auto', color: 'bg-[var(--accent-green)] text-white' },
+  { value: 'review', label: 'Review', color: 'bg-[var(--accent-amber)] text-white' },
+  { value: 'block', label: 'Block', color: 'bg-[var(--accent-red)] text-white' },
 ];
 
 const DECISION_STATES: Array<{
@@ -75,21 +75,21 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-sm font-semibold text-[#e6edf3]">Autonomy & AI Policy</h2>
-        <p className="text-xs text-[#8b949e] mt-1">
+        <h2 className="text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)]">Autonomy & AI Policy</h2>
+        <p className="text-[var(--ui-text-xs)] text-[var(--text-secondary)] mt-1">
           Control how much autonomy the AI has at each decision point.
         </p>
       </div>
 
       {/* Approval Gates Table */}
-      <div className="rounded-lg border border-[#30363d] overflow-hidden">
-        <div className="bg-[#161b22] px-4 py-2.5 border-b border-[#30363d]">
-          <h3 className="text-xs font-semibold text-[#8b949e] uppercase tracking-wide flex items-center gap-1.5">
+      <div className="rounded-lg border border-[var(--border-default)] overflow-hidden">
+        <div className="bg-[var(--bg-elevated)] px-4 py-2.5 border-b border-[var(--border-default)]">
+          <h3 className="text-[var(--ui-text-xs)] font-semibold text-[var(--text-secondary)] uppercase tracking-wide flex items-center gap-1.5">
             <Shield className="w-3.5 h-3.5" />
             Approval Gates
           </h3>
         </div>
-        <div className="divide-y divide-[#30363d]">
+        <div className="divide-y divide-[var(--border-default)]">
           {DECISION_STATES.map((item) => {
             const Icon = item.icon;
             const currentValue = autonomy.approval_gates[item.key] as 'auto' | 'review' | 'block';
@@ -98,27 +98,27 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
               <div
                 key={item.key}
                 className={`flex items-center justify-between px-4 py-3 ${
-                  item.locked ? 'bg-[#f85149]/5' : ''
+                  item.locked ? 'bg-[var(--accent-red)/0.05]' : ''
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div
                     className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                       item.locked
-                        ? 'bg-[#f85149]/20 text-[#f85149]'
-                        : 'bg-[#21262d] text-[#8b949e]'
+                        ? 'bg-[var(--accent-red)/0.2] text-[var(--accent-red)]'
+                        : 'bg-[var(--bg-count-badge)] text-[var(--text-secondary)]'
                     }`}
                   >
                     {item.locked ? <Lock className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#e6edf3]">{item.label}</p>
-                    <p className="text-[11px] text-[#8b949e]">{item.description}</p>
+                    <p className="text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]">{item.label}</p>
+                    <p className="text-[var(--ui-text-sm)] text-[var(--text-secondary)]">{item.description}</p>
                   </div>
                 </div>
 
                 {item.locked ? (
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#f85149]/20 text-[#f85149] text-xs font-medium border border-[#f85149]/30">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--accent-red)/0.2] text-[var(--accent-red)] text-[var(--ui-text-xs)] font-medium border border-[var(--accent-red)/0.3]">
                     <Lock className="w-3 h-3" />
                     Always Block
                   </div>
@@ -130,10 +130,10 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
                         <button
                           key={opt.value}
                           onClick={() => setGate(item.key, opt.value)}
-                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                          className={`px-3 py-1.5 rounded-md text-[var(--ui-text-xs)] font-medium transition-all ${
                             isActive
                               ? opt.color
-                              : 'bg-[#21262d] text-[#8b949e] hover:text-[#c9d1d9]'
+                              : 'bg-[var(--bg-count-badge)] text-[var(--text-secondary)] hover:text-[var(--text-rationale)]'
                           }`}
                         >
                           {opt.label}
@@ -149,47 +149,47 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
       </div>
 
       {/* Mode Overrides */}
-      <div className="rounded-lg border border-[#30363d] p-4 space-y-3">
-        <h3 className="text-xs font-semibold text-[#8b949e] uppercase tracking-wide">
+      <div className="rounded-lg border border-[var(--border-default)] p-4 space-y-3">
+        <h3 className="text-[var(--ui-text-xs)] font-semibold text-[var(--text-secondary)] uppercase tracking-wide">
           Mode Overrides
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="rounded-lg border border-[#30363d] bg-[#161b22] p-3 space-y-2">
+          <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3 space-y-2">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-[#f85149]" />
-              <span className="text-sm font-medium text-[#e6edf3]">Emergency Mode</span>
+              <AlertTriangle className="w-4 h-4 text-[var(--accent-red)]" />
+              <span className="text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]">Emergency Mode</span>
             </div>
-            <p className="text-[11px] text-[#8b949e]">
-              Forces <span className="text-[#f85149] font-medium">block</span> on traveler-safe output.
+            <p className="text-[var(--ui-text-sm)] text-[var(--text-secondary)]">
+              Forces <span className="text-[var(--accent-red)] font-medium">block</span> on traveler-safe output.
               Never auto-proceed during emergencies.
             </p>
-            <div className="text-[11px] text-[#58a6ff] bg-[#58a6ff]/10 px-2 py-1 rounded inline-block">
+            <div className="text-[var(--ui-text-sm)] text-[var(--accent-blue)] bg-[var(--accent-blue)]/10 px-2 py-1 rounded inline-block">
               Active override: Traveler-Safe Output will always require approval
             </div>
           </div>
 
-          <div className="rounded-lg border border-[#30363d] bg-[#161b22] p-3 space-y-2">
+          <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3 space-y-2">
             <div className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-[#d29922]" />
-              <span className="text-sm font-medium text-[#e6edf3]">Audit Mode</span>
+              <BookOpen className="w-4 h-4 text-[var(--accent-amber)]" />
+              <span className="text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]">Audit Mode</span>
             </div>
-            <p className="text-[11px] text-[#8b949e]">
-              Forces <span className="text-[#d29922] font-medium">review</span> on internal drafts.
+            <p className="text-[var(--ui-text-sm)] text-[var(--text-secondary)]">
+              Forces <span className="text-[var(--accent-amber)] font-medium">review</span> on internal drafts.
               Audits always require human review.
             </p>
-            <div className="text-[11px] text-[#58a6ff] bg-[#58a6ff]/10 px-2 py-1 rounded inline-block">
+            <div className="text-[var(--ui-text-sm)] text-[var(--accent-blue)] bg-[var(--accent-blue)]/10 px-2 py-1 rounded inline-block">
               Active override: Internal Drafts will always require review
             </div>
           </div>
         </div>
-        <p className="text-[11px] text-[#8b949e]">
+        <p className="text-[var(--ui-text-sm)] text-[var(--text-secondary)]">
           These are hardcoded safety overrides. They cannot be disabled.
         </p>
       </div>
 
       {/* Flags */}
-      <div className="rounded-lg border border-[#30363d] p-4 space-y-3">
-        <h3 className="text-xs font-semibold text-[#8b949e] uppercase tracking-wide">
+      <div className="rounded-lg border border-[var(--border-default)] p-4 space-y-3">
+        <h3 className="text-[var(--ui-text-xs)] font-semibold text-[var(--text-secondary)] uppercase tracking-wide">
           Advanced Flags
         </h3>
 
@@ -202,7 +202,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
           />
           <div
             className={`w-9 h-5 rounded-full transition-colors relative shrink-0 mt-0.5 ${
-              autonomy.auto_proceed_with_warnings ? 'bg-[#58a6ff]' : 'bg-[#30363d]'
+              autonomy.auto_proceed_with_warnings ? 'bg-[var(--accent-blue)]' : 'bg-[var(--border-default)]'
             }`}
           >
             <div
@@ -212,8 +212,8 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
             />
           </div>
           <div>
-            <p className="text-sm text-[#e6edf3]">Auto-proceed with warnings</p>
-            <p className="text-[11px] text-[#8b949e]">
+            <p className="text-[var(--ui-text-sm)] text-[var(--text-primary)]">Auto-proceed with warnings</p>
+            <p className="text-[var(--ui-text-sm)] text-[var(--text-secondary)]">
               If enabled, the AI will auto-proceed even when suitability warnings exist.
               Otherwise, any warning triggers the review gate.
             </p>
@@ -229,7 +229,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
           />
           <div
             className={`w-9 h-5 rounded-full transition-colors relative shrink-0 mt-0.5 ${
-              autonomy.learn_from_overrides ? 'bg-[#58a6ff]' : 'bg-[#30363d]'
+              autonomy.learn_from_overrides ? 'bg-[var(--accent-blue)]' : 'bg-[var(--border-default)]'
             }`}
           >
             <div
@@ -239,8 +239,8 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
             />
           </div>
           <div>
-            <p className="text-sm text-[#e6edf3]">Learn from overrides</p>
-            <p className="text-[11px] text-[#8b949e]">
+            <p className="text-[var(--ui-text-sm)] text-[var(--text-primary)]">Learn from overrides</p>
+            <p className="text-[var(--ui-text-sm)] text-[var(--text-secondary)]">
               When enabled, agent overrides feed back into the system to improve future
               recommendations. (Requires the learning feature to be enabled in settings.)
             </p>
@@ -249,13 +249,13 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
       </div>
 
       {/* Autonomy policy note */}
-      <div className="rounded-lg border border-[#30363d] bg-[#161b22] p-4">
-        <p className="text-[11px] text-[#8b949e] leading-relaxed">
-          <span className="text-[#58a6ff] font-medium">How it works:</span>{' '}
+      <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] p-4">
+        <p className="text-[var(--ui-text-sm)] text-[var(--text-secondary)] leading-relaxed">
+          <span className="text-[var(--accent-blue)] font-medium">How it works:</span>{' '}
           The autonomy settings control how much the AI can act on its own at each stage.
           Each decision type can be set to run automatically, queue for your review, or block
           until manually handled. For safety, trips flagged as{' '}
-          <span className="text-[#f85149] font-medium">Needs Review</span> always require
+          <span className="text-[var(--accent-red)] font-medium">Needs Review</span> always require
           your manual approval before proceeding.
         </p>
       </div>

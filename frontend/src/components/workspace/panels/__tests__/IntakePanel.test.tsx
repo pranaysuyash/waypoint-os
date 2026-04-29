@@ -20,8 +20,15 @@ vi.mock('@/hooks/useSpineRun', () => ({
 
 vi.mock('@/hooks/useTrips', () => ({
   useUpdateTrip: vi.fn(() => ({
-    mutate: vi.fn(),
+    mutate: vi.fn().mockResolvedValue(null),
     isSaving: false,
+  })),
+}));
+
+vi.mock('@/contexts/TripContext', () => ({
+  useTripContext: vi.fn(() => ({
+    replaceTrip: vi.fn(),
+    refetchTrip: vi.fn(),
   })),
 }));
 

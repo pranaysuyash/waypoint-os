@@ -8,6 +8,8 @@ export interface TripContextValue {
   trip: Trip | null;
   isLoading: boolean;
   error: Error | null;
+  refetchTrip: () => void;
+  replaceTrip: (trip: Trip) => void;
 }
 
 const TripContext = createContext<TripContextValue | undefined>(undefined);

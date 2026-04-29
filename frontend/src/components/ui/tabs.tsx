@@ -91,7 +91,7 @@ export function Tabs({ tabs, activeTab, onTabChange, ariaLabel = "Tab navigation
       <div
         ref={containerRef}
         role="tablist"
-        className="border-b border-[#30363d]"
+        className="border-b border-border-default"
         aria-label={ariaLabel}
         id="workbench-tablist"
       >
@@ -107,22 +107,22 @@ export function Tabs({ tabs, activeTab, onTabChange, ariaLabel = "Tab navigation
               id={getTabButtonId(tab.id)}
               onClick={() => onTabChange(tab.id)}
               className={cn(
-                "relative px-4 py-3 text-sm font-medium transition-colors outline-none",
+                 "relative px-space-4 py-space-3 text-[var(--ui-text-sm)] font-medium transition-colors outline-none",
                 activeTab === tab.id
-                  ? "text-[#e6edf3]"
-                  : "text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#161b22]"
+                  ? "text-text-primary"
+                  : "text-text-muted hover:text-text-primary hover:bg-elevated"
               )}
             >
               <div className="flex items-center gap-2">
                 {tab.label}
                 {tab.count !== undefined && tab.count > 0 && (
-                  <span className="ml-1 px-1.5 py-0.5 text-xs rounded bg-[#21262d] text-[#8b949e]">
+                   <span className="ml-1 px-1.5 py-0.5 text-[var(--ui-text-xs)] rounded bg-count-badge text-text-muted">
                     {tab.count}
                   </span>
                 )}
               </div>
               {activeTab === tab.id && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#58a6ff]" />
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-blue" />
               )}
             </button>
           ))}

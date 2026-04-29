@@ -9,7 +9,6 @@
 
 import { memo } from 'react';
 import { cn } from '@/lib/utils';
-import { COLORS } from '@/lib/tokens';
 
 export interface FilterPillProps {
   label: string;
@@ -36,10 +35,10 @@ export const FilterPill = memo(function FilterPill({
         type="button"
         onClick={onClick}
         className={cn(
-          'px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all',
+          'px-3 py-1 rounded-md text-[var(--ui-text-xs)] font-bold uppercase transition-all',
           isActive
-            ? 'bg-[#58a6ff] text-[#0d1117]'
-            : 'text-[#8b949e] hover:text-[#e6edf3]',
+            ? 'bg-accent-blue text-text-on-accent'
+            : 'text-text-muted hover:text-text-primary',
           className
         )}
       >
@@ -54,10 +53,10 @@ export const FilterPill = memo(function FilterPill({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-        isActive
-          ? 'bg-[#161b22] text-[#e6edf3] border-l-2 border-[#58a6ff]'
-          : 'text-[#8b949e] hover:text-[#e6edf3]',
+        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[var(--ui-text-xs)] font-semibold transition-colors',
+          isActive
+            ? 'bg-elevated text-text-primary'
+            : 'text-text-muted hover:text-text-primary',
         className
       )}
     >
@@ -66,10 +65,10 @@ export const FilterPill = memo(function FilterPill({
       {count !== undefined && (
         <span
           className={cn(
-            'tabular-nums px-1.5 py-0.5 rounded-md text-xs',
-            isActive
-              ? 'bg-[rgba(88,166,255,0.15)] text-[#58a6ff]'
-              : 'bg-[#161b22] text-[#484f58]'
+            'tabular-nums px-1.5 py-0.5 rounded-md text-[var(--ui-text-xs)]',
+              isActive
+                ? 'bg-[rgba(var(--accent-blue-rgb),0.15)] text-accent-blue'
+                : 'bg-elevated text-text-placeholder'
           )}
         >
           {count}

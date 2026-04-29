@@ -18,10 +18,10 @@ const sizeMap = {
 };
 
 const colorMap = {
-  blue: "border-[#58a6ff] border-t-transparent",
-  green: "border-[#3fb950] border-t-transparent",
-  amber: "border-[#d29922] border-t-transparent",
-  red: "border-[#f85149] border-t-transparent",
+  blue: "border-accent-blue border-t-transparent",
+  green: "border-accent-green border-t-transparent",
+  amber: "border-accent-amber border-t-transparent",
+  red: "border-accent-red border-t-transparent",
   white: "border-white border-t-transparent",
 };
 
@@ -81,7 +81,7 @@ const Skeleton = React.forwardRef<HTMLDivElement, SkeletonProps>(
       <div
         ref={ref}
         className={cn(
-          "bg-[#161b22]",
+          "bg-elevated",
           variantStyles[variant],
           animationStyles[animation],
           className
@@ -101,7 +101,7 @@ Skeleton.displayName = "Skeleton";
 
 export function SkeletonText({ lines = 3, className }: { lines?: number; className?: string }) {
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("space-y-space-2", className)}>
       {Array.from({ length: lines }).map((_, i) => (
         <Skeleton
           key={i}
@@ -125,7 +125,7 @@ export function SkeletonAvatar({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
 
 export function SkeletonCard({ className }: { className?: string }) {
   return (
-    <div className={cn("rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 space-y-3", className)}>
+    <div className={cn("rounded-xl border border-highlight bg-surface p-space-4 space-y-space-3", className)}>
       <Skeleton variant="rectangular" height={20} width="60%" />
       <Skeleton variant="text" />
       <Skeleton variant="text" />
@@ -150,7 +150,7 @@ export function LoadingOverlay({ isLoading, message, blur = true }: LoadingOverl
   return (
     <div
       className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center bg-[#080a0c]/80",
+        "fixed inset-0 z-50 flex items-center justify-center bg-[rgb(var(--bg-canvas-rgb)/0.8)]",
         blur && "backdrop-blur-sm"
       )}
       role="status"
@@ -160,7 +160,7 @@ export function LoadingOverlay({ isLoading, message, blur = true }: LoadingOverl
       <div className="flex flex-col items-center gap-3">
         <Spinner size="lg" />
         {message && (
-          <p className="text-[13px] text-[#8b949e]">{message}</p>
+          <p className="text-[13px] text-text-muted">{message}</p>
         )}
       </div>
     </div>
@@ -178,7 +178,7 @@ export interface InlineLoadingProps {
 
 export function InlineLoading({ message = "Loading...", size = "sm" }: InlineLoadingProps) {
   return (
-    <div className="flex items-center gap-2 text-[#8b949e]">
+    <div className="flex items-center gap-2 text-text-muted">
       <Spinner size={size} />
       <span className="text-[12px]">{message}</span>
     </div>

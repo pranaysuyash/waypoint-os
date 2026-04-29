@@ -11,7 +11,6 @@ import { memo } from 'react';
 import Link from 'next/link';
 import { CheckSquare, Square, Users, Calendar, Wallet, Clock, AlertTriangle, Flag, UserPlus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { COLORS, STATE_COLORS } from '@/lib/tokens';
 import { getTripRoute } from '@/lib/routes';
 import {
   type ViewProfile,
@@ -28,10 +27,10 @@ import type { InboxTrip, TripPriority } from '@/types/governance';
 // ============================================================================
 
 const PRIORITY_COLORS: Record<TripPriority, { color: string; bg: string }> = {
-  critical: { color: COLORS.accentRed, bg: STATE_COLORS.red.bg },
-  high: { color: COLORS.accentAmber, bg: STATE_COLORS.amber.bg },
-  medium: { color: COLORS.accentBlue, bg: STATE_COLORS.blue.bg },
-  low: { color: COLORS.textSecondary, bg: STATE_COLORS.neutral.bg },
+  critical: { color: 'var(--accent-red)', bg: 'rgba(var(--accent-red-rgb), 0.1)' },
+  high: { color: 'var(--accent-amber)', bg: 'rgba(var(--accent-amber-rgb), 0.1)' },
+  medium: { color: 'var(--accent-blue)', bg: 'rgba(var(--accent-blue-rgb), 0.1)' },
+  low: { color: 'var(--text-secondary)', bg: 'rgba(var(--text-muted-rgb), 0.05)' },
 };
 
 const PRIORITY_ICONS: Record<TripPriority, React.ComponentType<{ className?: string }>> = {
@@ -46,11 +45,11 @@ const PRIORITY_ICONS: Record<TripPriority, React.ComponentType<{ className?: str
 // ============================================================================
 
 const STAGE_LABELS: Record<string, { color: string; bg: string; label: string }> = {
-  intake: { color: COLORS.accentBlue, bg: STATE_COLORS.blue.bg, label: 'Intake' },
-  details: { color: COLORS.accentAmber, bg: STATE_COLORS.amber.bg, label: 'Details' },
-  options: { color: COLORS.accentBlue, bg: STATE_COLORS.blue.bg, label: 'Options' },
-  review: { color: COLORS.accentRed, bg: STATE_COLORS.red.bg, label: 'Review' },
-  booking: { color: COLORS.accentGreen, bg: STATE_COLORS.green.bg, label: 'Booking' },
+  intake: { color: 'var(--accent-blue)', bg: 'rgba(var(--accent-blue-rgb), 0.1)', label: 'Intake' },
+  details: { color: 'var(--accent-amber)', bg: 'rgba(var(--accent-amber-rgb), 0.1)', label: 'Details' },
+  options: { color: 'var(--accent-blue)', bg: 'rgba(var(--accent-blue-rgb), 0.1)', label: 'Options' },
+  review: { color: 'var(--accent-red)', bg: 'rgba(var(--accent-red-rgb), 0.1)', label: 'Review' },
+  booking: { color: 'var(--accent-green)', bg: 'rgba(var(--accent-green-rgb), 0.1)', label: 'Booking' },
 };
 
 // ============================================================================
@@ -58,9 +57,9 @@ const STAGE_LABELS: Record<string, { color: string; bg: string; label: string }>
 // ============================================================================
 
 const SLA_STYLES = {
-  on_track: { color: COLORS.accentGreen, bg: STATE_COLORS.green.bg, label: 'On Track' },
-  at_risk: { color: COLORS.accentAmber, bg: STATE_COLORS.amber.bg, label: 'At Risk' },
-  breached: { color: COLORS.accentRed, bg: STATE_COLORS.red.bg, label: 'Overdue' },
+  on_track: { color: 'var(--accent-green)', bg: 'rgba(var(--accent-green-rgb), 0.1)', label: 'On Track' },
+  at_risk: { color: 'var(--accent-amber)', bg: 'rgba(var(--accent-amber-rgb), 0.1)', label: 'At Risk' },
+  breached: { color: 'var(--accent-red)', bg: 'rgba(var(--accent-red-rgb), 0.1)', label: 'Overdue' },
 } as const;
 
 // ============================================================================
@@ -80,13 +79,13 @@ const PriorityBadge = memo(function PriorityBadge({
 
   return (
     <span
-      className="inline-flex items-center gap-1 text-xs font-medium"
+      className="inline-flex items-center gap-1 text-[var(--ui-text-xs)] font-medium"
       style={{ color: meta.color }}
     >
       <Icon className="w-3 h-3" />
       {priority.charAt(0).toUpperCase() + priority.slice(1)}
       {showLabel && microLabel && (
-        <span className="text-[10px] opacity-70">· {microLabel}</span>
+        <span className="text-[var(--ui-text-xs)] opacity-70">· {microLabel}</span>
       )}
     </span>
   );
@@ -104,7 +103,7 @@ const StageBadge = memo(function StageBadge({
 
   return (
     <span
-      className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tight"
+      className="inline-flex items-center gap-1 text-[var(--ui-text-xs)] font-bold px-1.5 py-0.5 rounded uppercase tracking-tight"
       style={{ color: meta.color, background: meta.bg }}
     >
       {meta.label}
@@ -128,7 +127,7 @@ const ContextualSLABadge = memo(function ContextualSLABadge({
 
   return (
     <span
-      className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded"
+      className="inline-flex items-center gap-1 text-[var(--ui-text-xs)] font-medium px-1.5 py-0.5 rounded"
       style={{ color: style.color, background: style.bg }}
     >
       {contextualText}
@@ -220,38 +219,34 @@ export const TripCard = memo(function TripCard({
   return (
     <Card
       variant="bordered"
-      className="group relative overflow-hidden flex transition-all duration-200 ease-out hover:border-[#30363d]"
+      className="group relative overflow-hidden transition-all duration-200 ease-out hover:border-[var(--border-default)]"
       style={{
         borderColor:
           trip.slaStatus === 'breached'
-            ? 'rgba(248,81,73,0.4)'
-            : '#1c2128',
+            ? 'rgba(var(--accent-red-rgb), 0.4)'
+            : 'var(--bg-canvas)',
+        borderTop: `2px solid ${priorityMeta.color}`,
+        opacity: isSelected ? 1 : 0.7,
       }}
     >
-      {/* Priority Accent Bar */}
-      <div
-        className="w-1 shrink-0 self-stretch transition-opacity"
-        style={{
-          background: priorityMeta.color,
-          opacity: isSelected ? 1 : 0.7,
-        }}
-      />
-
-      <div className="p-4 flex-1 min-w-0">
+      <div className="p-4 min-w-0">
         {/* Selection Checkbox */}
         <button
           type="button"
+          role="checkbox"
+          aria-checked={isSelected}
+          aria-label={`Select ${trip.destination}`}
           onClick={(e) => {
             e.stopPropagation();
             onSelect(trip.id, !isSelected);
           }}
           className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10"
         >
-          {isSelected ? (
-            <CheckSquare className="w-4 h-4 text-[#58a6ff]" />
-          ) : (
-            <Square className="w-4 h-4 text-[#484f58]" />
-          )}
+           {isSelected ? (
+             <CheckSquare className="w-4 h-4 text-[var(--accent-blue)]" />
+           ) : (
+             <Square className="w-4 h-4 text-[var(--text-muted)]" />
+           )}
         </button>
 
         <Link href={trip.id ? getTripRoute(trip.id) : '/inbox'} className="block">
@@ -259,21 +254,21 @@ export const TripCard = memo(function TripCard({
           <div className="flex items-start justify-between gap-3 mb-1 pr-6">
             <div className="flex flex-col min-w-0">
               <span
-                className="text-[14px] font-semibold truncate leading-tight"
-                style={{ color: COLORS.textPrimary }}
+                className="text-[var(--ui-text-lg)] font-semibold truncate leading-tight"
+                style={{ color: 'var(--text-primary)' }}
                 title={trip.destination}
               >
                 {trip.destination}
               </span>
               <span
-                className="text-[10px] uppercase tracking-wider font-bold mt-0.5"
-                style={{ color: COLORS.textMuted }}
+                className="text-[var(--ui-text-xs)] uppercase tracking-wider font-bold mt-0.5"
+                style={{ color: 'var(--text-muted)' }}
               >
                 {trip.tripType}
               </span>
               <span
-                className="text-[11px] mt-0.5 truncate"
-                style={{ color: COLORS.textSecondary }}
+                className="text-[var(--ui-text-sm)] mt-0.5 truncate"
+                style={{ color: 'var(--text-secondary)' }}
               >
                 {trip.customerName}
               </span>
@@ -285,7 +280,7 @@ export const TripCard = memo(function TripCard({
 
           {/* Row 2: Metrics (Role-Dependent) */}
           <div className="flex items-center gap-3 my-3 py-2 border-y border-dashed"
-            style={{ borderColor: 'rgba(48, 54, 61, 0.5)' }}
+            style={{ borderColor: 'var(--border-default)' }}
           >
             {metrics.map((field, index) => {
               const renderer = METRIC_RENDERERS[field];
@@ -296,25 +291,25 @@ export const TripCard = memo(function TripCard({
                   {index > 0 && (
                     <div
                       className="w-px h-4"
-                      style={{ background: COLORS.borderDefault }}
+                      style={{ background: 'var(--border-default)' }}
                     />
                   )}
                   <div className="flex flex-col gap-0.5">
                     <span
-                      className="text-[10px] uppercase font-medium"
-                      style={{ color: COLORS.textMuted }}
+                      className="text-[var(--ui-text-xs)] uppercase font-medium"
+                      style={{ color: 'var(--text-muted)' }}
                     >
                       {label}
                     </span>
                     <span
-                      className="text-[11px] font-medium flex items-center gap-1"
+                      className="text-[var(--ui-text-xs)] font-medium flex items-center gap-1 tabular-nums"
                       style={{
                         color:
                           field === 'value'
-                            ? COLORS.accentBlue
+                            ? 'var(--accent-blue)'
                             : field === 'priorityScore'
-                            ? COLORS.accentAmber
-                            : COLORS.textPrimary,
+                            ? 'var(--accent-amber)'
+                            : 'var(--text-primary)',
                         fontFamily: field === 'value' ? 'var(--font-mono)' : 'inherit',
                       }}
                     >
@@ -339,21 +334,21 @@ export const TripCard = memo(function TripCard({
                 <div
                   className="flex items-center gap-1 px-1.5 py-0.5 rounded border"
                   style={{
-                    background: COLORS.bgElevated,
-                    borderColor: COLORS.borderDefault,
+                    background: 'var(--bg-elevated)',
+                    borderColor: 'var(--border-default)',
                   }}
                 >
                   <span
-                    className="text-[10px]"
-                    style={{ color: COLORS.textSecondary }}
+                    className="text-[var(--ui-text-xs)]"
+                    style={{ color: 'var(--text-secondary)' }}
                   >
                     {trip.assignedToName}
                   </span>
                 </div>
               ) : (
                 <span
-                  className="text-[10px] font-bold uppercase italic"
-                  style={{ color: COLORS.accentAmber }}
+                  className="text-[var(--ui-text-xs)] font-bold uppercase italic"
+                  style={{ color: 'var(--accent-amber)' }}
                 >
                   Unassigned
                 </span>
@@ -367,10 +362,10 @@ export const TripCard = memo(function TripCard({
               {trip.flags.map((flag) => (
                 <span
                   key={flag}
-                  className="text-[9px] px-1 py-0.5 rounded font-mono uppercase"
+                  className="text-[10px] px-1 py-0.5 rounded font-mono uppercase"
                   style={{
-                    color: COLORS.textMuted,
-                    background: 'rgba(139, 148, 158, 0.08)',
+                    color: 'var(--text-muted)',
+                    background: 'rgba(var(--text-muted-rgb), 0.08)',
                   }}
                 >
                   {flag.replace(/_/g, ' ')}
@@ -382,11 +377,11 @@ export const TripCard = memo(function TripCard({
           {/* Footer: Trip ID + Quick Actions */}
           <div
             className="mt-2 pt-2 border-t flex items-center justify-between"
-            style={{ borderColor: 'rgba(48, 54, 61, 0.3)' }}
+            style={{ borderColor: 'var(--border-default)' }}
           >
             <span
-              className="text-[9px] font-mono"
-              style={{ color: COLORS.textMuted }}
+              className="text-[10px] font-mono"
+              style={{ color: 'var(--text-muted)' }}
             >
               {trip.id}
             </span>
@@ -401,8 +396,8 @@ export const TripCard = memo(function TripCard({
                     e.preventDefault();
                     onAssign(trip.id);
                   }}
-                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors hover:bg-[rgba(210,153,34,0.15)]"
-                  style={{ color: COLORS.accentAmber }}
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[var(--ui-text-xs)] font-medium transition-colors hover:bg-[rgba(var(--accent-amber-rgb),0.15)]"
+                  style={{ color: 'var(--accent-amber)' }}
                 >
                   <UserPlus className="w-3 h-3" />
                   Assign

@@ -33,7 +33,7 @@ describe("TripContext", () => {
 
     render(
       <TripContextProvider
-        value={{ tripId: trip.id, trip, isLoading: false, error: null }}
+        value={{ tripId: trip.id, trip, isLoading: false, error: null, refetchTrip: () => {}, replaceTrip: () => {} }}
       >
         <ReadTripContext />
       </TripContextProvider>,

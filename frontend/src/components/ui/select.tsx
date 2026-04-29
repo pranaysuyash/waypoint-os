@@ -39,7 +39,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
 
     const sizeStyles = {
       sm: "h-8 px-2.5 text-[12px]",
-      md: "h-9 px-3 text-[13px]",
+      md: "h-9 px-space-3 text-[13px]",
       lg: "h-10 px-3.5 text-[14px]",
     };
 
@@ -48,7 +48,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         {label && (
           <label
             htmlFor={selectId}
-            className="text-[12px] font-medium text-[#8b949e]"
+            className="text-[12px] font-medium text-text-muted"
           >
             {label}
           </label>
@@ -64,12 +64,12 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
               error && errorId
             )}
             className={cn(
-              "flex w-full appearance-none rounded-md border bg-[#0f1115] text-[#e6edf3] transition-colors",
-              "focus:outline-none focus:ring-2 focus:ring-[#58a6ff] focus:ring-offset-2 focus:ring-offset-[#080a0c]",
+              "flex w-full appearance-none rounded-md border bg-surface text-text-primary transition-colors",
+              "focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-2 focus:ring-offset-canvas",
               "disabled:cursor-not-allowed disabled:opacity-50",
               {
-                "border-[#30363d] hover:border-[#8b949e]": !error,
-                "border-[#f85149] focus:ring-[#f85149]": error,
+                "border-border-default hover:border-border-hover": !error,
+                "border-accent-red focus:ring-accent-red": error,
               },
               sizeStyles[inputSize],
               className
@@ -98,7 +98,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
 
           {/* Custom arrow indicator */}
           <div
-            className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#8b949e]"
+            className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted"
             aria-hidden="true"
           >
             <svg
@@ -120,13 +120,13 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         </div>
 
         {description && !error && (
-          <p id={descriptionId} className="text-xs text-[#484f58]">
+          <p id={descriptionId} className="text-[var(--ui-text-xs)] text-text-placeholder">
             {description}
           </p>
         )}
 
         {error && (
-          <p id={errorId} className="text-xs text-[#f85149]" role="alert">
+          <p id={errorId} className="text-[var(--ui-text-xs)] text-accent-red" role="alert">
             {error}
           </p>
         )}

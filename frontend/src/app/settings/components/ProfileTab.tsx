@@ -25,7 +25,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="flex items-center gap-1.5 text-xs font-medium text-[#8b949e]">
+      <label className="flex items-center gap-1.5 text-ui-xs font-medium text-[#8b949e]">
         <Icon className="w-3.5 h-3.5" />
         {label}
       </label>
@@ -34,7 +34,7 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder:text-[#484f58] focus:outline-none focus:border-[#58a6ff] transition-colors"
+        className="w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3] placeholder:text-[#484f58] focus:outline-none focus:border-[#58a6ff] transition-colors"
       />
     </div>
   );
@@ -44,8 +44,8 @@ export function ProfileTab({ draft, onChange }: ProfileTabProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-sm font-semibold text-[#e6edf3]">Agency Profile</h2>
-        <p className="text-xs text-[#8b949e] mt-1">
+        <h2 className="text-ui-sm font-semibold text-[#e6edf3]">Agency Profile</h2>
+        <p className="text-ui-xs text-[#8b949e] mt-1">
           This information appears on quotes, emails, and the traveler-facing portal.
         </p>
       </div>
@@ -126,7 +126,7 @@ export function ProfileTab({ draft, onChange }: ProfileTabProps) {
       {/* Preview */}
       {draft.profile.agency_name && (
         <div className="rounded-lg border border-[#30363d] bg-[#161b22] p-4 space-y-2">
-          <p className="text-xs font-medium text-[#8b949e] uppercase tracking-wide">Preview</p>
+          <p className="text-ui-xs font-medium text-[#8b949e] uppercase tracking-wide">Preview</p>
           <div className="flex items-center gap-3">
             {draft.profile.logo_url ? (
               <img
@@ -138,14 +138,14 @@ export function ProfileTab({ draft, onChange }: ProfileTabProps) {
                 }}
               />
             ) : (
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#2563eb] to-[#39d0d8] flex items-center justify-center text-white text-xs font-bold">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#2563eb] to-[#39d0d8] flex items-center justify-center text-white text-ui-xs font-bold">
                 {draft.profile.agency_name.slice(0, 2).toUpperCase()}
               </div>
             )}
             <div>
-              <p className="text-sm font-medium text-[#e6edf3]">{draft.profile.agency_name}</p>
+              <p className="text-ui-sm font-medium text-[#e6edf3]">{draft.profile.agency_name}</p>
               {draft.profile.contact_email && (
-                <p className="text-xs text-[#8b949e]">{draft.profile.contact_email}</p>
+                <p className="text-ui-xs text-[#8b949e]">{draft.profile.contact_email}</p>
               )}
             </div>
           </div>

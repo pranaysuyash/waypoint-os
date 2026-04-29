@@ -49,7 +49,7 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
 
   if (flags.length === 0) {
     return (
-      <div className="p-4 text-sm text-gray-600">
+      <div className="p-4 text-ui-sm text-gray-600">
         No suitability concerns detected. Trip is suitable for these travelers.
       </div>
     );
@@ -128,7 +128,7 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
       {/* Toast Notification */}
       {toast && (
         <div
-          className={`p-3 rounded-lg text-sm ${
+          className={`p-3 rounded-lg text-ui-sm ${
             toast.type === 'success'
               ? 'bg-green-100 text-green-800 border border-green-300'
               : 'bg-red-100 text-red-800 border border-red-300'
@@ -139,8 +139,8 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
       )}
 
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Suitability Assessment</h3>
-        <p className="text-sm text-gray-600 mt-1">
+        <h3 className="text-ui-lg font-semibold text-gray-900">Suitability Assessment</h3>
+        <p className="text-ui-sm text-gray-600 mt-1">
           {criticalFlags.length > 0
             ? 'Operator review required before sending to customer'
             : 'Some concerns detected. Please review before proceeding.'}
@@ -162,11 +162,11 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
               <div className="flex items-start gap-3">
                 <div className="flex-1">
                   <p className="font-medium text-red-900">{flag.reason}</p>
-                  <p className="text-sm text-red-700 mt-1">
+                  <p className="text-ui-sm text-red-700 mt-1">
                     Confidence: {(flag.confidence * 100).toFixed(0)}%
                   </p>
                   {flag.details?.activity_name && (
-                    <p className="text-sm text-red-700">
+                    <p className="text-ui-sm text-red-700">
                       Activity: {flag.details.activity_name}
                     </p>
                   )}
@@ -176,7 +176,7 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
                     <button
                       onClick={() => handleOpenOverrideModal(flag)}
                       disabled={pendingOverride === getFlagKey(flag)}
-                      className="px-3 py-1 text-sm bg-red-200 hover:bg-red-300 text-red-900 rounded font-medium disabled:opacity-50 transition-colors whitespace-nowrap"
+                      className="px-3 py-1 text-ui-sm bg-red-200 hover:bg-red-300 text-red-900 rounded font-medium disabled:opacity-50 transition-colors whitespace-nowrap"
                     >
                       {pendingOverride === getFlagKey(flag) ? "Submitting..." : "Override"}
                     </button>
@@ -188,7 +188,7 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
                       onChange={() => handleAcknowledge(getFlagKey(flag))}
                       className="w-4 h-4"
                     />
-                    <span className="text-sm text-red-900">Acknowledge</span>
+                    <span className="text-ui-sm text-red-900">Acknowledge</span>
                   </label>
                 </div>
               </div>
@@ -212,11 +212,11 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
               <div className="flex items-start gap-3">
                 <div className="flex-1">
                   <p className="font-medium text-orange-900">{flag.reason}</p>
-                  <p className="text-sm text-orange-700 mt-1">
+                  <p className="text-ui-sm text-orange-700 mt-1">
                     Confidence: {(flag.confidence * 100).toFixed(0)}%
                   </p>
                   {flag.details?.activity_name && (
-                    <p className="text-sm text-orange-700">
+                    <p className="text-ui-sm text-orange-700">
                       Activity: {flag.details.activity_name}
                     </p>
                   )}
@@ -225,7 +225,7 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
                   <button
                     onClick={() => handleOpenOverrideModal(flag)}
                     disabled={pendingOverride === getFlagKey(flag)}
-                    className="px-3 py-1 text-sm bg-orange-200 hover:bg-orange-300 text-orange-900 rounded font-medium disabled:opacity-50 transition-colors whitespace-nowrap"
+                    className="px-3 py-1 text-ui-sm bg-orange-200 hover:bg-orange-300 text-orange-900 rounded font-medium disabled:opacity-50 transition-colors whitespace-nowrap"
                   >
                     {pendingOverride === getFlagKey(flag) ? "Submitting..." : "Override"}
                   </button>
@@ -248,11 +248,11 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
               <div className="flex items-start gap-3">
                 <div className="flex-1">
                   <p className="font-medium text-gray-900">{flag.reason}</p>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-ui-sm text-gray-600 mt-1">
                     Confidence: {(flag.confidence * 100).toFixed(0)}%
                   </p>
                   {flag.details?.activity_name && (
-                    <p className="text-sm text-gray-600">
+                    <p className="text-ui-sm text-gray-600">
                       Activity: {flag.details.activity_name}
                     </p>
                   )}

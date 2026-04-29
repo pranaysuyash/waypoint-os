@@ -13,10 +13,10 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
         className={cn(
           "rounded-xl",
           {
-            "bg-[#0f1115]": variant === "default" || variant === "bordered",
-            "bg-[#161b22] shadow-lg": variant === "elevated",
+            "bg-surface": variant === "default" || variant === "bordered",
+            "bg-elevated shadow-lg": variant === "elevated",
             "bg-transparent": variant === "ghost",
-            "border border-[#1c2128]": variant === "default" || variant === "elevated" || variant === "bordered",
+            "border border-default": variant === "default" || variant === "elevated" || variant === "bordered",
           },
           className
         )}
@@ -33,7 +33,7 @@ const CardHeader = React.forwardRef<HTMLDivElement, CardHeaderProps>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("flex flex-col space-y-1.5 p-6", className)}
+      className={cn("flex flex-col space-y-1.5 p-space-6", className)}
       {...props}
     />
   )
@@ -48,10 +48,10 @@ const CardTitle = React.forwardRef<HTMLParagraphElement, CardTitleProps>(
   ({ className, level = "h3", children, ...props }, ref) => {
     const Tag = level;
     const sizeClasses = {
-      h1: "text-[18px] font-semibold",
-      h2: "text-[16px] font-semibold",
-      h3: "text-[14px] font-semibold",
-      h4: "text-[14px] font-medium",
+       h1: "text-[var(--ui-text-lg)] font-semibold",
+       h2: "text-[var(--ui-text-base)] font-semibold",
+       h3: "text-[var(--ui-text-sm)] font-semibold",
+       h4: "text-[var(--ui-text-sm)] font-medium",
     };
 
     return (
@@ -73,7 +73,7 @@ const CardDescription = React.forwardRef<HTMLParagraphElement, CardDescriptionPr
   ({ className, ...props }, ref) => (
     <p
       ref={ref}
-      className={cn("text-sm text-[#8b949e]", className)}
+       className={cn("text-[var(--ui-text-sm)] text-text-muted", className)}
       {...props}
     />
   )
@@ -84,7 +84,7 @@ export interface CardContentProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const CardContent = React.forwardRef<HTMLDivElement, CardContentProps>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+    <div ref={ref} className={cn("p-space-6 pt-0", className)} {...props} />
   )
 );
 CardContent.displayName = "CardContent";
@@ -95,7 +95,7 @@ const CardFooter = React.forwardRef<HTMLDivElement, CardFooterProps>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("flex items-center p-6 pt-0", className)}
+      className={cn("flex items-center p-space-6 pt-0", className)}
       {...props}
     />
   )

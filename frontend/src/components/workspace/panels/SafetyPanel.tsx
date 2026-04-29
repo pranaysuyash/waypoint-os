@@ -21,7 +21,7 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
 
   if (!result_safety) {
     return (
-      <div className="p-4 text-sm text-gray-500 italic">
+      <div className="p-4 text-ui-sm text-gray-500 italic">
         <p>No review data for trip {tripId}. Process a trip from the "New Inquiry" section first.</p>
       </div>
     );
@@ -34,14 +34,14 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
   return (
     <div className="space-y-6">
       <section>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Content Review</h3>
+        <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Content Review</h3>
         {safety.leakage_passed ? (
-          <div className="border border-[#1c2128] rounded-lg p-4 bg-[#0a0d11]">
+          <div className="border border-[#1c2128] rounded-lg p-4 bg-sidebar">
             <div className="flex items-center text-emerald-400 font-semibold mb-1">
               <CheckCircle className="w-4 h-4 mr-2" />
               PASS — Safe for Customer
             </div>
-            <p className="text-sm text-gray-400">
+            <p className="text-ui-sm text-gray-400">
               No internal jargon or sensitive details found in the customer-facing message.
             </p>
           </div>
@@ -51,7 +51,7 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
               <XCircle className="w-4 h-4 mr-2" />
               FAIL — Internal Jargon Found
             </div>
-            <p className="text-sm text-gray-400">
+            <p className="text-ui-sm text-gray-400">
               Internal-only terms were found in the message the customer would see.
             </p>
           </div>
@@ -60,11 +60,11 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
 
       {safety.strict_leakage && !safety.leakage_passed && (
         <div className="border-2 border-rose-500/50 rounded-lg p-4 bg-rose-950/20">
-          <div className="flex items-center text-rose-500 font-bold text-sm mb-1">
+          <div className="flex items-center text-rose-500 font-bold text-ui-sm mb-1">
             <AlertTriangle className="w-4 h-4 mr-2" />
             NOT SAFE TO SEND
           </div>
-          <p className="text-sm text-gray-200">
+          <p className="text-ui-sm text-gray-200">
             Customer message contains internal jargon and cannot be sent until fixed.
           </p>
         </div>
@@ -72,11 +72,11 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
 
       {safety.leakage_errors && safety.leakage_errors.length > 0 && (
         <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Jargon Found in Customer Message</h3>
-          <div className="bg-[#0a0d11] rounded-lg border border-[#1c2128] p-4">
+          <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Jargon Found in Customer Message</h3>
+          <div className="bg-sidebar rounded-lg border border-[#1c2128] p-4">
             <ul className="space-y-2">
               {safety.leakage_errors.map((item: string, i: number) => (
-                <li key={`leak-${item.slice(0, 15)}-${i}`} className="flex items-center text-sm text-rose-400">
+                <li key={`leak-${item.slice(0, 15)}-${i}`} className="flex items-center text-ui-sm text-rose-400">
                   <AlertCircle className="w-3.5 h-3.5 mr-2 shrink-0" />
                   {item}
                 </li>
@@ -87,28 +87,28 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
       )}
 
       <section>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Customer-Facing Message</h3>
-        <div className="bg-[#0a0d11] rounded-lg border border-[#1c2128] p-4 space-y-4">
+        <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Customer-Facing Message</h3>
+        <div className="bg-sidebar rounded-lg border border-[#1c2128] p-4 space-y-4">
           {travelerBundle && !isStrictFail ? (
             <>
               <div>
-                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Background Notes</div>
-                <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
+                <div className="text-[var(--ui-text-xs)] font-bold text-gray-500 uppercase tracking-wider">Background Notes</div>
+                <p className="text-ui-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                   {travelerBundle.system_context || "—"}
                 </p>
               </div>
               <div>
-                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Message Preview</div>
-                <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
+                <div className="text-[var(--ui-text-xs)] font-bold text-gray-500 uppercase tracking-wider">Message Preview</div>
+                <p className="text-ui-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                   {travelerBundle.user_message || "—"}
                 </p>
               </div>
               {travelerBundle.follow_up_sequence && travelerBundle.follow_up_sequence.length > 0 && (
                 <div>
-                  <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Follow-up Sequence</div>
+                  <div className="text-[var(--ui-text-xs)] font-bold text-gray-500 uppercase tracking-wider">Follow-up Sequence</div>
                   <ul className="mt-1 space-y-1">
                     {travelerBundle.follow_up_sequence.map((f, i) => (
-                      <li key={`fseq-${f.field_name}-${i}`} className="text-sm text-gray-400">
+                      <li key={`fseq-${f.field_name}-${i}`} className="text-ui-sm text-gray-400">
                         <span className="font-semibold text-gray-500">[{f.priority}]</span> {f.question}
                       </li>
                     ))}
@@ -117,7 +117,7 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
               )}
             </>
           ) : (
-            <p className="text-sm text-gray-500 italic">
+            <p className="text-ui-sm text-gray-500 italic">
               {isStrictFail ? "Cannot be sent — contains internal jargon" : "No customer message available"}
             </p>
           )}
@@ -126,14 +126,14 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
 
       <button
         type="button"
-        className="text-xs text-blue-400 hover:text-blue-300 underline mt-2"
+        className="text-ui-xs text-blue-400 hover:text-blue-300 underline mt-2"
         onClick={() => setShowRaw(!effectiveShowRaw)}
       >
         {effectiveShowRaw ? "Hide" : "Show"} Technical Data
       </button>
 
       {effectiveShowRaw && (
-        <pre className="bg-[#0a0d11] p-4 rounded text-xs font-mono text-gray-400 overflow-x-auto border border-[#1c2128]">
+        <pre className="bg-sidebar p-4 rounded text-ui-xs font-mono text-gray-400 overflow-x-auto border border-[#1c2128]">
           {JSON.stringify({
             safety: result_safety,
             traveler_bundle: result_traveler_bundle,

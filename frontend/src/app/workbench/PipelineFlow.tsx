@@ -62,7 +62,7 @@ export function PipelineFlow({ currentStage }: PipelineFlowProps) {
                 >
                   <div
                     className={cn(
-                      "w-8 h-8 lg:w-10 lg:h-10 rounded-sm flex items-center justify-center font-mono text-xs lg:text-sm font-semibold transition-all shrink-0",
+                      "w-8 h-8 lg:w-10 lg:h-10 rounded-sm flex items-center justify-center font-mono text-ui-xs lg:text-ui-sm font-semibold transition-all shrink-0",
                       isCompleted && "glow-green bg-[#3fb950]/10 border border-[#3fb950] text-[#3fb950]",
                       isActive && "bg-[#58a6ff] text-[#0d1117] glow-blue",
                       isPending && "bg-[#161b22] border border-[#30363d] text-[#8b949e]"
@@ -76,7 +76,7 @@ export function PipelineFlow({ currentStage }: PipelineFlowProps) {
                   </div>
                   <p
                     className={cn(
-                      "mt-1.5 text-xs lg:text-sm font-mono font-medium text-center truncate w-full px-0.5",
+                      "mt-1.5 text-ui-xs lg:text-ui-sm font-mono font-medium text-center truncate w-full px-0.5",
                       isActive ? "text-[#e6edf3]" : "text-[#8b949e]"
                     )}
                   >

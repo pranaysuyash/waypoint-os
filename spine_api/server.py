@@ -1090,10 +1090,12 @@ def get_run_status(
     events = get_run_events(run_id)
 
     decision_data = None
+    blocked_result_data = None
     if "decision" in steps:
         decision_data = steps["decision"].get("data")
     elif "blocked_result" in steps:
-        decision_data = (steps["blocked_result"].get("data") or {}).get("decision")
+        blocked_result_data = steps["blocked_result"].get("data") or {}
+        decision_data = blocked_result_data.get("decision")
 
     decision_state = None
     follow_up_questions: list[dict[str, Any]] = []
@@ -1105,6 +1107,17 @@ def get_run_status(
         hard_blockers = decision_data.get("hard_blockers") or []
         soft_blockers = decision_data.get("soft_blockers") or []
 
+    # Extract validation and packet from blocked_result or individual steps
+    validation_data = None
+    packet_data = None
+    if blocked_result_data:
+        validation_data = blocked_result_data.get("validation")
+        packet_data = blocked_result_data.get("packet")
+    if not validation_data and "validation" in steps:
+        validation_data = steps["validation"].get("data")
+    if not packet_data and "packet" in steps:
+        packet_data = steps["packet"].get("data")
+
     return RunStatusResponse(
         **meta,
         steps_completed=list(steps.keys()),
@@ -1113,6 +1126,8 @@ def get_run_status(
         follow_up_questions=follow_up_questions,
         hard_blockers=hard_blockers,
         soft_blockers=soft_blockers,
+        validation=validation_data,
+        packet=packet_data,
     )
 
 

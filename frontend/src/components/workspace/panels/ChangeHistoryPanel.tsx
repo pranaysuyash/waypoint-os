@@ -49,27 +49,27 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
 
   if (isLoading) {
     return (
-      <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
+      <div className='bg-elevated border border-border-default rounded-xl p-4'>
         <div className='flex items-center gap-2 mb-4'>
-          <Clock className='w-4 h-4 text-[#8b949e]' />
-          <h3 className='text-sm font-semibold text-[#e6edf3]'>Change History</h3>
+          <Clock className='w-4 h-4 text-text-muted' />
+          <h3 className='text-ui-sm font-semibold text-text-primary'>Change History</h3>
         </div>
-        <p className='text-sm text-[#8b949e]'>Loading change history...</p>
+        <p className='text-ui-sm text-text-muted'>Loading change history...</p>
       </div>
     );
   }
 
   if (changes.length === 0) {
     return (
-      <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
+      <div className='bg-elevated border border-border-default rounded-xl p-4'>
         <div className='flex items-center justify-between mb-4'>
           <div className='flex items-center gap-2'>
-            <Clock className='w-4 h-4 text-[#8b949e]' />
-            <h3 className='text-sm font-semibold text-[#e6edf3]'>Change History</h3>
+            <Clock className='w-4 h-4 text-text-muted' />
+            <h3 className='text-ui-sm font-semibold text-text-primary'>Change History</h3>
           </div>
-          <span className='text-xs text-[#8b949e]'>No changes yet</span>
+          <span className='text-ui-xs text-text-muted'>No changes yet</span>
         </div>
-        <p className='text-sm text-[#8b949e]'>
+        <p className='text-ui-sm text-text-muted'>
           Field edits will be tracked here. Edit trip details to see the history.
         </p>
       </div>
@@ -77,18 +77,18 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
   }
 
   return (
-    <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
+    <div className='bg-elevated border border-border-default rounded-xl p-4'>
       <div className='flex items-center justify-between mb-4'>
         <div className='flex items-center gap-2'>
-          <Clock className='w-4 h-4 text-[#8b949e]' />
-          <h3 className='text-sm font-semibold text-[#e6edf3]'>Change History</h3>
-          <span className='text-xs bg-[#58a6ff] text-[#0d1117] px-2 py-0.5 rounded-full'>
+          <Clock className='w-4 h-4 text-text-muted' />
+          <h3 className='text-ui-sm font-semibold text-text-primary'>Change History</h3>
+          <span className='text-ui-xs bg-[#58a6ff] text-[#0d1117] px-2 py-0.5 rounded-full'>
             {changes.length}
           </span>
         </div>
         <button
           onClick={handleExport}
-          className='text-xs text-[#58a6ff] hover:text-[#79b8ff]'
+          className='text-ui-xs text-accent-blue hover:text-[#79b8ff]'
         >
           Export
         </button>
@@ -96,28 +96,28 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
 
       {/* Summary */}
       {summary.totalChanges > 0 && (
-        <div className='grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4 p-3 bg-[#0f1115] rounded-lg'>
+        <div className='grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4 p-3 bg-surface rounded-lg'>
           <div>
-            <span className='text-[10px] text-[#8b949e] uppercase tracking-wide'>Total Changes</span>
-            <p className='text-sm font-semibold text-[#e6edf3]'>{summary.totalChanges}</p>
+            <span className='text-[var(--ui-text-xs)] text-text-muted uppercase tracking-wide'>Total Changes</span>
+            <p className='text-ui-sm font-semibold text-text-primary'>{summary.totalChanges}</p>
           </div>
           <div>
-            <span className='text-[10px] text-[#8b949e] uppercase tracking-wide'>Last Edit</span>
-            <p className='text-sm font-semibold text-[#e6edf3]'>
+            <span className='text-[var(--ui-text-xs)] text-text-muted uppercase tracking-wide'>Last Edit</span>
+            <p className='text-ui-sm font-semibold text-text-primary'>
               {summary.lastChangeAt
                 ? new Date(summary.lastChangeAt).toLocaleDateString()
                 : '—'}
             </p>
           </div>
           <div>
-            <span className='text-[10px] text-[#8b949e] uppercase tracking-wide'>Edited By</span>
-            <p className='text-sm font-semibold text-[#e6edf3]'>
+            <span className='text-[var(--ui-text-xs)] text-text-muted uppercase tracking-wide'>Edited By</span>
+            <p className='text-ui-sm font-semibold text-text-primary'>
               {summary.lastChangeBy || '—'}
             </p>
           </div>
           <div>
-            <span className='text-[10px] text-[#8b949e] uppercase tracking-wide'>Version</span>
-            <p className='text-sm font-semibold text-[#e6edf3]'>
+            <span className='text-[var(--ui-text-xs)] text-text-muted uppercase tracking-wide'>Version</span>
+            <p className='text-ui-sm font-semibold text-text-primary'>
               v{changes.length}
             </p>
           </div>
@@ -135,12 +135,12 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
             return (
               <div
                 key={change.id}
-                className='bg-[#0f1115] border border-[#21262d] rounded-lg p-3'
+                className='bg-surface border border-[#21262d] rounded-lg p-3'
               >
                 <div className='flex items-start justify-between gap-2'>
                   <div className='flex-1 min-w-0'>
-                    <p className='text-sm text-[#e6edf3]'>{description}</p>
-                    <div className='flex items-center gap-3 mt-1 text-xs text-[#8b949e]'>
+                    <p className='text-ui-sm text-text-primary'>{description}</p>
+                    <div className='flex items-center gap-3 mt-1 text-ui-xs text-text-muted'>
                       <span className='flex items-center gap-1'>
                         <User className='w-3 h-3' />
                         {change.changedByName}
@@ -150,7 +150,7 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
                         {new Date(change.timestamp).toLocaleString()}
                       </span>
                       {change.reason && (
-                        <span className='flex items-center gap-1 text-[#58a6ff]'>
+                        <span className='flex items-center gap-1 text-accent-blue'>
                           <FileText className='w-3 h-3' />
                           {change.reason}
                         </span>
@@ -159,7 +159,7 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
                   </div>
                   <button
                     onClick={() => toggleExpand(change.id)}
-                    className='text-[#8b949e] hover:text-[#e6edf3] flex-shrink-0'
+                    className='text-text-muted hover:text-text-primary flex-shrink-0'
                   >
                     {isExpanded ? (
                       <ChevronUp className='w-4 h-4' />
@@ -170,23 +170,23 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
                 </div>
 
                 {isExpanded && (
-                  <div className='mt-3 pt-3 border-t border-[#21262d] grid grid-cols-2 gap-2 text-xs'>
+                  <div className='mt-3 pt-3 border-t border-[#21262d] grid grid-cols-2 gap-2 text-ui-xs'>
                     <div>
-                      <span className='text-[#8b949e]'>Field:</span>
-                      <span className='ml-2 text-[#e6edf3]'>{formatFieldLabel(change.field)}</span>
+                      <span className='text-text-muted'>Field:</span>
+                      <span className='ml-2 text-text-primary'>{formatFieldLabel(change.field)}</span>
                     </div>
                     <div>
-                      <span className='text-[#8b949e]'>Type:</span>
-                      <span className='ml-2 text-[#e6edf3]'>{change.changeType}</span>
+                      <span className='text-text-muted'>Type:</span>
+                      <span className='ml-2 text-text-primary'>{change.changeType}</span>
                     </div>
                     <div>
-                      <span className='text-[#8b949e]'>Previous:</span>
+                      <span className='text-text-muted'>Previous:</span>
                       <span className='ml-2 text-[#f85149] line-through'>
                         {change.previousValue ?? '(empty)'}
                       </span>
                     </div>
                     <div>
-                      <span className='text-[#8b949e]'>New:</span>
+                      <span className='text-text-muted'>New:</span>
                       <span className='ml-2 text-[#3fb950]'>
                         {change.newValue ?? '(empty)'}
                       </span>

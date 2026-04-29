@@ -6,21 +6,24 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+   "inline-flex items-center justify-center gap-space-2 whitespace-nowrap rounded-lg text-[var(--ui-text-sm)] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        default: "bg-accent-blue text-[#0d1117] hover:bg-[#6eb5ff]",
-        secondary: "bg-bg-elevated text-text-primary border border-border-default hover:bg-bg-highlight hover:border-border-hover",
-        ghost: "text-text-secondary hover:text-text-primary hover:bg-bg-elevated",
-        destructive: "bg-accent-red text-white hover:bg-[#ff6b63]",
-        outline: "border border-border-default bg-transparent hover:bg-bg-elevated hover:border-border-hover",
+        default: "bg-accent-blue text-text-on-accent hover:bg-accent-blue-hover",
+        secondary: "bg-elevated text-text-primary border border-border-default hover:bg-highlight hover:border-border-hover",
+        ghost: "text-text-secondary hover:text-text-primary hover:bg-elevated",
+        destructive: "bg-accent-red text-white hover:bg-accent-red/80",
+        outline: "border border-border-default bg-transparent hover:bg-elevated hover:border-border-hover",
       },
       size: {
-        default: "h-8 px-4 py-2",
-        sm: "h-7 px-3 text-xs",
-        lg: "h-10 px-6 text-base",
+        default: "h-8 px-space-4 py-space-2",
+         sm: "h-7 px-space-3 text-[var(--ui-text-xs)]",
+         lg: "h-10 px-space-6 text-[var(--ui-text-base)]",
         icon: "h-8 w-8",
+         xl: "h-11 px-space-8 text-[var(--ui-text-base)]",
+        touch: "h-11 px-space-4 text-[var(--ui-text-sm)]",
+        "icon-lg": "h-11 w-11",
       },
     },
     defaultVariants: {

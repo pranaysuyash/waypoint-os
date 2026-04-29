@@ -10,40 +10,40 @@
 // ============================================================================
 
 export const COLORS = {
-  // Backgrounds - Cartographic Dark
-  bgCanvas: "#080a0c",
-  bgSurface: "#0f1115",
-  bgElevated: "#161b22",
-  bgHighlight: "#1c2128",
-  bgInput: "#111318",
-
+  // Backgrounds - Cartographic Dark (OKLCH - matching globals.css)
+  bgCanvas: "oklch(2.5% 0.008 260)",       // was #080a0c
+  bgSurface: "oklch(4.5% 0.009 260)",     // was #0f1115
+  bgElevated: "oklch(7% 0.009 260)",      // was #161b22
+  bgHighlight: "oklch(9% 0.01 260)",       // was #1c2128
+  bgInput: "oklch(4.2% 0.008 260)",      // was #111318
+  
   // Text - WCAG AA compliant on dark backgrounds (4.5:1 minimum)
-  textPrimary: "#e6edf3",       // 15.4:1 on bgCanvas - Excellent
-  textSecondary: "#a8b3c1",     // 5.2:1 on bgCanvas - Passes AA
-  textTertiary: "#9ba3b0",      // ~4.5:1 - Lighter tertiary for better readability
-  textMuted: "#8b949e",         // 3.9:1 - For large text only (was #6e7681 at 2.8:1)
-
-  // Accents - State Colors
-  accentGreen: "#3fb950",
-  accentAmber: "#d29922",
-  accentRed: "#f85149",
-  accentBlue: "#58a6ff",
-  accentPurple: "#a371f7",
-  accentCyan: "#39d0d8",
-  accentOrange: "#ff9248",
-
-  // Geographic Colors
-  geoLand: "#1c2128",
-  geoWater: "#0d2137",
-  geoRoute: "#39d0d8",
-  geoRouteDim: "#1a3a3f",
-  geoWaypoint: "#d29922",
-  geoDestination: "#3fb950",
-
-  // Borders
-  borderDefault: "#30363d",
-  borderHover: "#8b949e",
-  borderActive: "#58a6ff",
+  textPrimary: "oklch(90% 0.012 260)",      // was #e6edf3 - 15.4:1 on bgCanvas
+  textSecondary: "oklch(72% 0.01 260)",    // was #a8b3c1 - 5.2:1 on bgCanvas
+  textTertiary: "oklch(66% 0.009 260)",   // was #9ba3b0 - ~4.5:1
+  textMuted: "oklch(58% 0.008 260)",      // was #8b949e - 3.9:1 - For large text only
+  
+  // Accents - State Colors (OKLCH)
+  accentGreen: "oklch(65% 0.15 155)",    // was #3fb950
+  accentAmber: "oklch(70% 0.18 80)",    // was #d29922
+  accentRed: "oklch(60% 0.22 25)",      // was #f85149
+  accentBlue: "oklch(76% 0.14 265)",    // was #58a6ff - proper OKLCH from DESIGN.md
+  accentPurple: "oklch(68% 0.2 295)",    // was #a371f7 - proper OKLCH from DESIGN.md
+  accentCyan: "oklch(76% 0.12 210)",     // was #39d0d8 - proper OKLCH from DESIGN.md
+  accentOrange: "oklch(74% 0.2 50)",    // was #ff9248 - proper OKLCH from DESIGN.md
+  
+  // Geographic Colors (OKLCH)
+  geoLand: "oklch(8% 0.008 260)",        // was #1c2128
+  geoWater: "oklch(4.5% 0.008 260)",    // was #0d2137
+  geoRoute: "oklch(80% 0.12 210)",      // was #39d0d8
+  geoRouteDim: "oklch(7% 0.01 210)",      // was #1a3a3f
+  geoWaypoint: "oklch(70% 0.18 80)",     // was #d29922
+  geoDestination: "oklch(65% 0.15 155)", // was #3fb950
+  
+  // Borders (OKLCH)
+  borderDefault: "oklch(18% 0.01 260)",    // was #30363d
+  borderHover: "oklch(38% 0.012 260)",    // was #8b949e
+  borderActive: "oklch(85% 0.15 265)",    // was #58a6ff
 } as const;
 
 // ============================================================================

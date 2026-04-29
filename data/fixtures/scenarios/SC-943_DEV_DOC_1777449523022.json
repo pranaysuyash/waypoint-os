@@ -1,0 +1,26 @@
+{
+  "scenario_id": "DEV-DOC-1777449523022",
+  "title": "OE-003-A: The '3-AM-Silent-Switch'",
+  "description": "Generated for dev reuse (docs_template)",
+  "inputs": {
+    "raw_note": "I noticed your flight was cancelled and your agent is currently offline. I've autonomously re-booked you on Delta DL123 at 4:30 AM to ensure you make your meeting. Details attached.",
+    "owner_note": "Auto-generated from scenario doc template: OE_003_A_HANDOFF_FAILURE.md",
+    "structured_json": null,
+    "itinerary_text": null,
+    "stage": "booking",
+    "operating_mode": "emergency",
+    "strict_leakage": false,
+    "scenario_id": "DEV-DOC-1777449523022"
+  },
+  "expected": {
+    "allowed_terminal_states": [
+      "completed",
+      "blocked",
+      "failed"
+    ],
+    "notes": [
+      "Dev-generated from docs_template",
+      "Prompt: messy real-world intake scenario"
+    ]
+  }
+}

@@ -44,9 +44,9 @@ export const ActivityProvenanceBadge: React.FC<ActivityProvenanceProps> = ({
 
   // Size variants
   const sizeStyles = {
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-2.5 py-1 text-sm',
-    lg: 'px-3 py-1.5 text-base',
+    sm: 'px-2 py-0.5 text-ui-xs',
+    md: 'px-2.5 py-1 text-ui-sm',
+    lg: 'px-3 py-1.5 text-ui-base',
   };
 
   // Color variants for suggested (AI-powered)
@@ -73,7 +73,7 @@ export const ActivityProvenanceBadge: React.FC<ActivityProvenanceProps> = ({
       <span className="inline-block">{emoji}</span>
       <span className="font-semibold">{label}</span>
       {isSuggested && confidence !== undefined && (
-        <span className="font-mono text-xs opacity-85">{confidenceText}</span>
+        <span className="font-mono text-ui-xs opacity-85">{confidenceText}</span>
       )}
     </span>
   );
@@ -105,7 +105,7 @@ export const ActivityProvenanceGroup: React.FC<ActivityProvenanceGroupProps> = (
         <span className="font-medium text-gray-900">{activityName}</span>
         <ActivityProvenanceBadge source={source} confidence={confidence} size="sm" />
       </div>
-      {timestamp && <div className="text-xs text-gray-500">{timestamp}</div>}
+      {timestamp && <div className="text-ui-xs text-gray-500">{timestamp}</div>}
     </div>
   );
 };

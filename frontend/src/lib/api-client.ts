@@ -580,17 +580,40 @@ export async function getOverride(overrideId: string): Promise<{ ok: boolean; ov
 export interface ScenarioListItem {
   id: string;
   title: string;
+  source?: "fixture" | "doc";
+  description?: string;
 }
 
 export interface ScenarioDetail {
   id: string;
-  title: string;
-  input: SpineRunRequest;
-  expected: SpineRunResponse;
+  input: {
+    raw_note: string | null;
+    owner_note: string | null;
+    structured_json: Record<string, unknown> | null;
+    itinerary_text: string | null;
+    stage: string;
+    mode: string;
+  };
+  expected: {
+    allowed_decision_states: string[];
+    required_packet_fields: string[];
+    forbidden_traveler_terms: string[];
+    leakage_expected: boolean;
+    assertions: Array<{
+      type: string;
+      message: string;
+      field?: string;
+      value?: string;
+    }>;
+  };
 }
 
 export async function getScenarios(): Promise<ScenarioListItem[]> {
-  return api.get<ScenarioListItem[]>("/api/scenarios");
+  const response = await api.get<ScenarioListItem[] | { items?: ScenarioListItem[] }>("/api/scenarios");
+  if (Array.isArray(response)) {
+    return response;
+  }
+  return response.items ?? [];
 }
 
 export async function getScenario(id: string): Promise<ScenarioDetail> {

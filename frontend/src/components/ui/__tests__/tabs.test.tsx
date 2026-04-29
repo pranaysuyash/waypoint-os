@@ -116,6 +116,6 @@ describe('Tabs Component', () => {
     render(<Tabs tabs={mockTabs} activeTab='intake' onTabChange={vi.fn()} />);
 
     const activeTab = screen.getByRole('tab', { name: 'New Inquiry' });
-    expect(activeTab).toHaveClass('text-[#e6edf3]');
+    expect(activeTab).toHaveClass('text-text-primary');
   });
 });

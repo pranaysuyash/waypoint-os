@@ -26,6 +26,7 @@ import { updateTrip, ApiException } from '@/lib/api-client';
 import { useWorkbenchStore } from '@/stores/workbench';
 import { useSpineRun } from '@/hooks/useSpineRun';
 import { useUpdateTrip } from '@/hooks/useTrips';
+import { useTripContext } from '@/contexts/TripContext';
 import { getTripRoute } from '@/lib/routes';
 import type { SpineStage, OperatingMode, SpineRunRequest } from '@/types/spine';
 import {
@@ -114,6 +115,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const { execute: executeSpineRun, isLoading: isSpineRunning } = useSpineRun();
 
   const { mutate: saveTrip, isSaving } = useUpdateTrip();
+  const { replaceTrip, refetchTrip } = useTripContext();
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isMarkingReady, setIsMarkingReady] = useState(false);
@@ -243,6 +245,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
 
     const result = await saveTrip(tripId, updateData);
     if (result) {
+      replaceTrip(result);
       setSaveSuccess(true);
       setEditingField(null);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -259,6 +262,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
     setIsMarkingReady(true);
     try {
       await updateTrip(tripId, { status: 'completed' } as Partial<Trip>);
+      refetchTrip();
       setReadySuccess(true);
       setTimeout(() => setReadySuccess(false), 4000);
     } catch (err) {
@@ -338,6 +342,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
 
     const result = await saveTrip(tripId, updateData);
     if (result) {
+      replaceTrip(result);
       // Log the change to audit trail
       if (previousValue !== newValue) {
         logChange(
@@ -391,13 +396,13 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
     // For combobox fields (trip type, destination), use SmartCombobox
     if (field === 'type' && isEditing) {
       return (
-        <div className='bg-[#0f1115] border border-[#58a6ff] rounded-lg p-2 -m-1'>
+        <div className='bg-[var(--bg-surface)] border border-[var(--accent-blue)] rounded-lg p-2 -m-1'>
           <div className='flex items-center justify-between gap-1'>
-            <span className='text-[10px] text-[#58a6ff] uppercase tracking-wide'>{label}</span>
+            <span className='text-[var(--ui-text-xs)] text-[var(--accent-blue)] uppercase tracking-wide'>{label}</span>
             <div className='flex items-center gap-1'>
               <button
                 onClick={() => saveFieldEdit(field)}
-                className='p-1 bg-[#3fb950] text-[#0d1117] rounded hover:bg-[#2ea043]'
+                className='p-1 bg-[var(--accent-green)] text-[var(--text-on-accent)] rounded hover:opacity-80'
                 title='Save'
                 aria-label='Save trip type'
               >
@@ -405,7 +410,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
               </button>
               <button
                 onClick={cancelEditing}
-                className='p-1 bg-[#f85149] text-[#0d1117] rounded hover:bg-[#da3633]'
+                className='p-1 bg-[var(--accent-red)] text-[var(--text-on-accent)] rounded hover:opacity-80'
                 title='Cancel'
                 aria-label='Cancel editing'
               >
@@ -426,13 +431,13 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
 
     if (field === 'destination' && isEditing) {
       return (
-        <div className='bg-[#0f1115] border border-[#58a6ff] rounded-lg p-2 -m-1'>
+        <div className='bg-[var(--bg-surface)] border border-[var(--accent-blue)] rounded-lg p-2 -m-1'>
           <div className='flex items-center justify-between gap-1'>
-            <span className='text-[10px] text-[#58a6ff] uppercase tracking-wide'>{label}</span>
+            <span className='text-[var(--ui-text-xs)] text-[var(--accent-blue)] uppercase tracking-wide'>{label}</span>
             <div className='flex items-center gap-1'>
               <button
                 onClick={() => saveFieldEdit(field)}
-                className='p-1 bg-[#3fb950] text-[#0d1117] rounded hover:bg-[#2ea043]'
+                className='p-1 bg-[var(--accent-green)] text-[var(--text-on-accent)] rounded hover:opacity-80'
                 title='Save'
                 aria-label='Save destination'
               >
@@ -440,7 +445,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
               </button>
               <button
                 onClick={cancelEditing}
-                className='p-1 bg-[#f85149] text-[#0d1117] rounded hover:bg-[#da3633]'
+                className='p-1 bg-[var(--accent-red)] text-[var(--text-on-accent)] rounded hover:opacity-80'
                 title='Cancel'
                 aria-label='Cancel editing'
               >
@@ -461,16 +466,16 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
 
     if (isEditing) {
       return (
-        <div className='bg-[#0f1115] border border-[#58a6ff] rounded-lg p-2 -m-1'>
+        <div className='bg-[var(--bg-surface)] border border-[var(--accent-blue)] rounded-lg p-2 -m-1'>
           <div className='flex items-center gap-1 mb-1'>
-            <span className='text-[10px] text-[#58a6ff] uppercase tracking-wide'>{label}</span>
+            <span className='text-[var(--ui-text-xs)] text-[var(--accent-blue)] uppercase tracking-wide'>{label}</span>
           </div>
           <div className='flex items-center gap-1'>
             {type === 'select' && options ? (
               <select
                 value={value}
                 onChange={(e) => setEditValues(prev => ({ ...prev, [field]: e.target.value }))}
-                className='flex-1 px-2 py-1 bg-[#161b22] border border-[#30363d] rounded text-xs text-[#e6edf3] focus:outline-none focus:border-[#58a6ff]'
+                className='flex-1 px-2 py-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded text-[var(--ui-text-xs)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]'
               >
                 {options.map(opt => (
                   <option key={opt.value} value={opt.value}>
@@ -483,13 +488,13 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
                 type={type === 'number' ? 'number' : 'text'}
                 value={value}
                 onChange={(e) => setEditValues(prev => ({ ...prev, [field]: e.target.value }))}
-                className='flex-1 px-2 py-1 bg-[#161b22] border border-[#30363d] rounded text-xs text-[#e6edf3] focus:outline-none focus:border-[#58a6ff]'
+                className='flex-1 px-2 py-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded text-[var(--ui-text-xs)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]'
                 autoFocus
               />
             )}
             <button
               onClick={() => saveFieldEdit(field)}
-              className='p-1 bg-[#3fb950] text-[#0d1117] rounded hover:bg-[#2ea043]'
+              className='p-1 bg-[var(--accent-green)] text-[var(--text-on-accent)] rounded hover:opacity-80'
               title='Save'
               aria-label={`Save ${label}`}
             >
@@ -497,7 +502,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             </button>
             <button
               onClick={cancelEditing}
-              className='p-1 bg-[#f85149] text-[#0d1117] rounded hover:bg-[#da3633]'
+              className='p-1 bg-[var(--accent-red)] text-[var(--text-on-accent)] rounded hover:opacity-80'
               title='Cancel'
               aria-label='Cancel editing'
             >
@@ -510,9 +515,9 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
 
     return (
       <div className='group relative'>
-        <span className='text-xs text-[#8b949e] uppercase tracking-wide'>{label}</span>
-        <p className='text-sm text-[#e6edf3] font-medium mt-0.5 flex items-center gap-1'>
-          {Icon && <Icon className='w-3 h-3 text-[#8b949e]' />}
+        <span className='text-[var(--ui-text-xs)] text-[var(--text-secondary)] uppercase tracking-wide'>{label}</span>
+        <p className='text-[var(--ui-text-sm)] text-[var(--text-primary)] font-medium mt-0.5 flex items-center gap-1'>
+          {Icon && <Icon className='w-3 h-3 text-[var(--text-secondary)]' />}
           {displayValue || value}
           <button
             onClick={() => startEditing(field, value)}
@@ -520,7 +525,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             title={`Edit ${label}`}
             aria-label={`Edit ${label}`}
           >
-            <Edit2 className='w-3 h-3 text-[#58a6ff]' />
+            <Edit2 className='w-3 h-3 text-[var(--accent-blue)]' />
           </button>
         </p>
       </div>
@@ -534,9 +539,9 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
 
     if (isEditing) {
       return (
-        <div className='bg-[#0f1115] border border-[#58a6ff] rounded-lg p-2 -m-1'>
+        <div className='bg-[var(--bg-surface)] border border-[var(--accent-blue)] rounded-lg p-2 -m-1'>
           <div className='flex items-center gap-1 mb-1'>
-            <span className='text-[10px] text-[#58a6ff] uppercase tracking-wide'>Budget</span>
+            <span className='text-[var(--ui-text-xs)] text-[var(--accent-blue)] uppercase tracking-wide'>Budget</span>
           </div>
           <div className='flex items-center gap-1'>
             <input
@@ -544,13 +549,13 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
               value={budgetAmount}
               onChange={(e) => setBudgetAmount(e.target.value)}
               placeholder='Amount'
-              className='flex-1 px-2 py-1 bg-[#161b22] border border-[#30363d] rounded text-xs text-[#e6edf3] focus:outline-none focus:border-[#58a6ff]'
+              className='flex-1 px-2 py-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded text-[var(--ui-text-xs)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]'
               autoFocus
             />
             <select
               value={budgetCurrency}
               onChange={(e) => setBudgetCurrency(e.target.value as SupportedCurrency)}
-              className='px-2 py-1 bg-[#161b22] border border-[#30363d] rounded text-xs text-[#e6edf3] focus:outline-none focus:border-[#58a6ff]'
+              className='px-2 py-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded text-[var(--ui-text-xs)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]'
             >
               {currencyOptions.map(opt => (
                 <option key={opt.value} value={opt.value}>
@@ -560,7 +565,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             </select>
             <button
               onClick={() => saveFieldEdit('budget')}
-              className='p-1 bg-[#3fb950] text-[#0d1117] rounded hover:bg-[#2ea043]'
+              className='p-1 bg-[var(--accent-green)] text-[var(--text-on-accent)] rounded hover:opacity-80'
               title='Save'
               aria-label='Save budget'
             >
@@ -568,7 +573,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             </button>
             <button
               onClick={cancelEditing}
-              className='p-1 bg-[#f85149] text-[#0d1117] rounded hover:bg-[#da3633]'
+              className='p-1 bg-[var(--accent-red)] text-[var(--text-on-accent)] rounded hover:opacity-80'
               title='Cancel'
               aria-label='Cancel editing'
             >
@@ -581,9 +586,9 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
 
     return (
       <div className='group relative'>
-        <span className='text-xs text-[#8b949e] uppercase tracking-wide'>Budget</span>
-        <p className='text-sm text-[#e6edf3] font-medium mt-0.5 flex items-center gap-1'>
-          <Wallet className='w-3 h-3 text-[#3fb950]' />
+        <span className='text-[var(--ui-text-xs)] text-[var(--text-secondary)] uppercase tracking-wide'>Budget</span>
+        <p className='text-[var(--ui-text-sm)] text-[var(--text-primary)] font-medium mt-0.5 flex items-center gap-1'>
+          <Wallet className='w-3 h-3 text-[var(--accent-green)]' />
           {displayBudget}
           <button
             onClick={() => setEditingField('budget')}
@@ -591,7 +596,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             title='Edit Budget'
             aria-label='Edit budget'
           >
-            <Edit2 className='w-3 h-3 text-[#58a6ff]' />
+            <Edit2 className='w-3 h-3 text-[var(--accent-blue)]' />
           </button>
         </p>
       </div>
@@ -611,28 +616,28 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       <div className='grid grid-cols-1 sm:grid-cols-3 gap-3'>
         {/* Missing before quote */}
         <div className='rounded-xl border border-[rgba(210,153,34,0.3)] bg-[rgba(210,153,34,0.05)] p-3'>
-          <div className='text-[10px] font-bold uppercase tracking-widest text-[#d29922] mb-1.5'>Missing before quote</div>
+          <div className='text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-[var(--accent-amber)] mb-1.5'>Missing before quote</div>
           {hardBlockers.length > 0 ? (
             <ul className='space-y-1'>
               {hardBlockers.slice(0, 2).map((b, i) => (
-                <li key={i} className='text-xs text-[#d29922] leading-tight truncate'>• {b}</li>
+                <li key={i} className='text-[var(--ui-text-xs)] text-[var(--accent-amber)] leading-tight truncate'>• {b}</li>
               ))}
               {hardBlockers.length > 2 && (
-                <li className='text-[10px] text-[#d29922]/60'>+{hardBlockers.length - 2} more</li>
+                <li className='text-[var(--ui-text-xs)] text-[var(--accent-amber)]/60'>+{hardBlockers.length - 2} more</li>
               )}
             </ul>
           ) : decisionState ? (
-            <p className='text-xs text-[#8b949e]'>No hard blockers — clear to quote.</p>
+            <p className='text-[var(--ui-text-xs)] text-[var(--text-secondary)]'>No hard blockers — clear to quote.</p>
           ) : (
-            <p className='text-xs text-[#484f58] italic'>Process trip to check for blockers</p>
+            <p className='text-[var(--ui-text-xs)] text-[var(--text-placeholder)] italic'>Process trip to check for blockers</p>
           )}
         </div>
 
         {/* Suggested next move */}
         <div className='rounded-xl border border-[rgba(57,208,216,0.25)] bg-[rgba(57,208,216,0.04)] p-3'>
-          <div className='text-[10px] font-bold uppercase tracking-widest text-[#39d0d8] mb-1.5'>Suggested next move</div>
+          <div className='text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-[var(--accent-cyan)] mb-1.5'>Suggested next move</div>
           {decisionState ? (
-            <p className='text-xs text-[#c9d1d9] leading-tight'>
+            <p className='text-[var(--ui-text-xs)] text-[var(--text-rationale)] leading-tight'>
               {decisionState === 'PROCEED_TRAVELER_SAFE' && 'Send quote to traveler.'}
               {decisionState === 'PROCEED_INTERNAL_DRAFT' && 'Finalize internal draft before sending.'}
               {decisionState === 'BRANCH_OPTIONS' && 'Prepare multiple options for traveler.'}
@@ -641,33 +646,33 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
               {!['PROCEED_TRAVELER_SAFE','PROCEED_INTERNAL_DRAFT','BRANCH_OPTIONS','STOP_NEEDS_REVIEW','STOP_REVIEW','ASK_FOLLOWUP'].includes(decisionState) && 'Review assessment output.'}
             </p>
           ) : (
-            <p className='text-xs text-[#484f58] italic'>Run AI to get next-step guidance</p>
+            <p className='text-[var(--ui-text-xs)] text-[var(--text-placeholder)] italic'>Run AI to get next-step guidance</p>
           )}
         </div>
 
         {/* Owner check required */}
         <div className='rounded-xl border border-[rgba(88,166,255,0.2)] bg-[rgba(88,166,255,0.04)] p-3'>
-          <div className='text-[10px] font-bold uppercase tracking-widest text-[#58a6ff] mb-1.5'>Watch points</div>
+          <div className='text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-[var(--accent-blue)] mb-1.5'>Watch points</div>
           {softBlockers.length > 0 ? (
             <ul className='space-y-1'>
               {softBlockers.slice(0, 2).map((b, i) => (
-                <li key={i} className='text-xs text-[#8b949e] leading-tight truncate'>• {b}</li>
+                <li key={i} className='text-[var(--ui-text-xs)] text-[var(--text-secondary)] leading-tight truncate'>• {b}</li>
               ))}
               {softBlockers.length > 2 && (
-                <li className='text-[10px] text-[#8b949e]/60'>+{softBlockers.length - 2} more</li>
+                <li className='text-[var(--ui-text-xs)] text-[var(--text-secondary)]/60'>+{softBlockers.length - 2} more</li>
               )}
             </ul>
           ) : decisionState ? (
-            <p className='text-xs text-[#8b949e]'>No soft blockers flagged.</p>
+            <p className='text-[var(--ui-text-xs)] text-[var(--text-secondary)]'>No soft blockers flagged.</p>
           ) : (
-            <p className='text-xs text-[#484f58] italic'>Process trip to surface watch points</p>
+            <p className='text-[var(--ui-text-xs)] text-[var(--text-placeholder)] italic'>Process trip to surface watch points</p>
           )}
         </div>
       </div>
 
       {isRunning && (
         <div
-          className='bg-[#0f1720] border border-[#58a6ff]/40 rounded-xl p-4 shadow-[0_0_0_1px_rgba(88,166,255,0.08)]'
+          className='bg-elevated border border-[var(--accent-blue)]/40 rounded-xl p-4 shadow-[0_0_0_1px_rgba(88,166,255,0.08)]'
           role='status'
           aria-live='polite'
           aria-busy='true'
@@ -675,39 +680,39 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
           <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
             <div className='flex items-start gap-3'>
               <div
-                className='mt-1 h-4 w-4 rounded-full border-2 border-[#58a6ff]/30 border-t-[#58a6ff] animate-spin'
+                className='mt-1 h-4 w-4 rounded-full border-2 border-[var(--accent-blue)]/30 border-t-[var(--accent-blue)] animate-spin'
                 aria-hidden='true'
               />
               <div>
-                <p className='text-sm font-semibold text-[#e6edf3]'>
+                <p className='text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)]'>
                   {getSpineProgressStage(runElapsedSeconds).label}
                 </p>
-                <p className='mt-1 text-xs text-[#8b949e] max-w-2xl'>
+                <p className='mt-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)] max-w-2xl'>
                   {getSpineProgressStage(runElapsedSeconds).detail}
                 </p>
               </div>
             </div>
             <div className='text-left sm:text-right'>
-              <p className='text-xs font-medium text-[#e6edf3]'>
+              <p className='text-[var(--ui-text-xs)] font-medium text-[var(--text-primary)]'>
                 Elapsed {formatElapsedTime(runElapsedSeconds)}
               </p>
-              <p className='mt-1 text-[11px] text-[#8b949e]'>
+              <p className='mt-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)]'>
                 Typical runs take 30-90 seconds.
               </p>
             </div>
           </div>
-          <div className='mt-4 h-1.5 overflow-hidden rounded-full bg-[#21262d]'>
+          <div className='mt-4 h-1.5 overflow-hidden rounded-full bg-[var(--bg-count-badge)]'>
             <div
-              className='h-full rounded-full bg-[#58a6ff] transition-all duration-500'
+              className='h-full rounded-full bg-[var(--accent-blue)] transition-all duration-500'
               style={{ width: `${Math.min(92, 12 + runElapsedSeconds)}%` }}
             />
           </div>
         </div>
       )}
-      <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
+      <div className='bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl p-4'>
         <div className='flex items-center gap-2 mb-4'>
-          <Plane className='w-4 h-4 text-[#58a6ff]' />
-          <h3 className='text-sm font-semibold text-[#e6edf3]'>
+          <Plane className='w-4 h-4 text-[var(--accent-blue)]' />
+          <h3 className='text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)]'>
             Trip Details
           </h3>
         </div>
@@ -743,22 +748,22 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             />
             <BudgetField />
             <div>
-              <span className='text-xs text-[#8b949e] uppercase tracking-wide'>Reference</span>
-              <p className='text-sm text-[#e6edf3] font-mono mt-0.5'>{tripId}</p>
+              <span className='text-[var(--ui-text-xs)] text-[var(--text-secondary)] uppercase tracking-wide'>Reference</span>
+              <p className='text-[var(--ui-text-sm)] text-[var(--text-primary)] font-mono mt-0.5'>{tripId}</p>
             </div>
           </div>
         ) : (
-          <p className='text-sm text-[#8b949e]'>
+          <p className='text-[var(--ui-text-sm)] text-[var(--text-secondary)]'>
             No trip loaded for ID: {tripId}. Select a trip from the inbox or dashboard to view its details.
           </p>
         )}
       </div>
 
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-        <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
+        <div className='bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl p-4'>
           <div className='flex items-center gap-2 mb-3'>
-            <FileText className='w-4 h-4 text-[#8b949e]' />
-            <label className='text-sm font-medium text-[#e6edf3]'>
+            <FileText className='w-4 h-4 text-[var(--text-secondary)]' />
+            <label className='text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]'>
               Customer Message
             </label>
           </div>
@@ -767,14 +772,14 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             onChange={(e) => setInputRawNote(e.target.value)}
             placeholder='Paste the incoming traveler note here...'
             rows={6}
-            className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder:text-[#8b949e] focus:outline-none focus:border-[#58a6ff] resize-none font-mono'
+            className='w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--ui-text-sm)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none font-mono'
           />
         </div>
 
-        <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
+        <div className='bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl p-4'>
           <div className='flex items-center gap-2 mb-3'>
-            <User className='w-4 h-4 text-[#58a6ff]' />
-            <label className='text-sm font-medium text-[#e6edf3]'>
+            <User className='w-4 h-4 text-[var(--accent-blue)]' />
+            <label className='text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]'>
               Agent Notes
             </label>
           </div>
@@ -783,19 +788,19 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             onChange={(e) => setInputOwnerNote(e.target.value)}
             placeholder="Add owner's comments or clarifications..."
             rows={6}
-            className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder:text-[#8b949e] focus:outline-none focus:border-[#58a6ff] resize-none'
+            className='w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--ui-text-sm)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none'
           />
         </div>
       </div>
 
-      <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
-        <h3 className='text-sm font-semibold text-[#e6edf3] mb-4 flex items-center gap-2'>
-          <Settings className='w-4 h-4 text-[#8b949e]' />
+      <div className='bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl p-4'>
+        <h3 className='text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2'>
+          <Settings className='w-4 h-4 text-[var(--text-secondary)]' />
           Configuration
         </h3>
         <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
           <div>
-            <label className='block text-sm font-medium text-[#8b949e] mb-2'>
+            <label className='block text-[var(--ui-text-sm)] font-medium text-[var(--text-secondary)] mb-2'>
               Stage
             </label>
             <div className='relative'>
@@ -805,7 +810,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
                   const v = e.target.value;
                   if (VALID_STAGES.has(v as SpineStage)) setStage(v as SpineStage);
                 }}
-                className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] appearance-none'
+                className='w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--ui-text-sm)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] appearance-none'
               >
                 {stages.map((s) => (
                   <option key={s.value} value={s.value}>
@@ -813,11 +818,11 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
                   </option>
                 ))}
               </select>
-              <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8b949e] pointer-events-none' />
+              <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)] pointer-events-none' />
             </div>
           </div>
           <div>
-            <label className='block text-sm font-medium text-[#8b949e] mb-2'>
+            <label className='block text-[var(--ui-text-sm)] font-medium text-[var(--text-secondary)] mb-2'>
               Request Type
             </label>
             <div className='relative'>
@@ -827,7 +832,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
                   const v = e.target.value;
                   if (VALID_MODES.has(v as OperatingMode)) setOperatingMode(v as OperatingMode);
                 }}
-                className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] appearance-none'
+                className='w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--ui-text-sm)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] appearance-none'
               >
                 {modes.map((m) => (
                   <option key={m.value} value={m.value}>
@@ -835,50 +840,50 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
                   </option>
                 ))}
               </select>
-              <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8b949e] pointer-events-none' />
+              <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)] pointer-events-none' />
             </div>
           </div>
         </div>
       </div>
 
-      <div className='flex items-center justify-between pt-4 border-t border-[#30363d]'>
-        <div className='flex items-center gap-4 text-sm text-[#8b949e] flex-wrap'>
+      <div className='flex items-center justify-between pt-4 border-t border-[var(--border-default)]'>
+        <div className='flex items-center gap-4 text-[var(--ui-text-sm)] text-[var(--text-secondary)] flex-wrap'>
           <div className='flex items-center gap-2'>
-            <div className='w-2 h-2 rounded-full bg-[#3fb950]'></div>
+            <div className='w-2 h-2 rounded-full bg-[var(--accent-green)]'></div>
             <span>System Ready</span>
           </div>
           {runError && (
-            <div className='flex items-center gap-2 px-3 py-1.5 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg text-xs text-[#f85149]'>
+            <div className='flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-red)]/10 border border-[var(--accent-red)]/30 rounded-lg text-[var(--ui-text-xs)] text-[var(--accent-red)]'>
               <AlertTriangle className='w-3 h-3' />
               <span className='max-w-[42rem]'>{runError}</span>
             </div>
           )}
           {runSuccess && (
-            <div className='flex items-center gap-2 px-3 py-1.5 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-lg text-xs text-[#3fb950]'>
+            <div className='flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-green)]/10 border border-[var(--accent-green)]/30 rounded-lg text-[var(--ui-text-xs)] text-[var(--accent-green)]'>
               <CheckCircle className='w-3 h-3' />
               Processed successfully
             </div>
           )}
           {saveSuccess && (
-            <div className='flex items-center gap-2 px-3 py-1.5 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-lg text-xs text-[#3fb950]'>
+            <div className='flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-green)]/10 border border-[var(--accent-green)]/30 rounded-lg text-[var(--ui-text-xs)] text-[var(--accent-green)]'>
               <CheckCircle className='w-3 h-3' />
               Saved
             </div>
           )}
           {saveError && (
-            <div className='flex items-center gap-2 px-3 py-1.5 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg text-xs text-[#f85149]'>
+            <div className='flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-red)]/10 border border-[var(--accent-red)]/30 rounded-lg text-[var(--ui-text-xs)] text-[var(--accent-red)]'>
               <AlertTriangle className='w-3 h-3' />
               <span className='max-w-xs truncate'>{saveError}</span>
             </div>
           )}
           {readySuccess && (
-            <div className='flex items-center gap-2 px-3 py-1.5 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-lg text-xs text-[#3fb950]'>
+            <div className='flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-green)]/10 border border-[var(--accent-green)]/30 rounded-lg text-[var(--ui-text-xs)] text-[var(--accent-green)]'>
               <CheckCircle className='w-3 h-3' />
               Ready state set
             </div>
           )}
           {readyError && (
-            <div className='flex items-center gap-2 px-3 py-1.5 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg text-xs text-[#f85149]'>
+            <div className='flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-red)]/10 border border-[var(--accent-red)]/30 rounded-lg text-[var(--ui-text-xs)] text-[var(--accent-red)]'>
               <AlertTriangle className='w-3 h-3' />
               <span className='max-w-[42rem] truncate'>{readyError}</span>
             </div>
@@ -889,7 +894,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
           <button
             type='button'
             onClick={() => setShowCapturePanel(true)}
-            className='flex items-center gap-1.5 px-3 py-1.5 bg-transparent text-[#6e7681] border border-[#21262d] rounded-lg text-xs font-medium hover:text-[#8b949e] hover:border-[#30363d] transition-colors'
+            className='flex items-center gap-1.5 px-3 py-1.5 bg-transparent text-text-tertiary border border-[var(--bg-count-badge)] rounded-lg text-[var(--ui-text-xs)] font-medium hover:text-[var(--text-secondary)] hover:border-[var(--border-default)] transition-colors'
             aria-label='Capture call'
           >
             <Phone className='w-3.5 h-3.5' aria-hidden='true' />
@@ -899,13 +904,13 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             type='button'
             onClick={handleSave}
             disabled={isSaving || !tripId}
-            className='flex items-center gap-1.5 px-3 py-1.5 bg-transparent text-[#6e7681] border border-[#21262d] rounded-lg text-xs font-medium hover:text-[#8b949e] hover:border-[#30363d] disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+            className='flex items-center gap-1.5 px-3 py-1.5 bg-transparent text-text-tertiary border border-[var(--bg-count-badge)] rounded-lg text-[var(--ui-text-xs)] font-medium hover:text-[var(--text-secondary)] hover:border-[var(--border-default)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
             aria-label='Save changes'
           >
             {isSaving ? (
               <>
                 <div
-                  className='w-3.5 h-3.5 border-2 border-[#6e7681]/30 border-t-[#6e7681] rounded-full animate-spin'
+                  className='w-3.5 h-3.5 border-2 border-text-tertiary/30 border-t-text-tertiary rounded-full animate-spin'
                   aria-hidden='true'
                 />
                 Saving...
@@ -921,13 +926,13 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             type='button'
             onClick={handleMarkReady}
             disabled={isMarkingReady || !tripId}
-            className='flex items-center gap-1.5 px-3 py-1.5 bg-[#161b22] text-[#3fb950] border border-[rgba(63,185,80,0.25)] rounded-lg text-xs font-medium hover:bg-[rgba(63,185,80,0.08)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+            className='flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-elevated)] text-[var(--accent-green)] border border-[rgba(63,185,80,0.25)] rounded-lg text-[var(--ui-text-xs)] font-medium hover:bg-[rgba(63,185,80,0.08)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
             aria-label={isMarkingReady ? 'Marking ready' : 'Mark ready'}
           >
             {isMarkingReady ? (
               <>
                 <div
-                  className='w-3.5 h-3.5 border-2 border-[#3fb950]/30 border-t-[#3fb950] rounded-full animate-spin'
+                  className='w-3.5 h-3.5 border-2 border-[var(--accent-green)]/30 border-t-[var(--accent-green)] rounded-full animate-spin'
                   aria-hidden='true'
                 />
                 Checking...
@@ -945,11 +950,11 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             type='button'
             onClick={handleProcessTrip}
             disabled={isRunning || isSpineRunning || (!input_raw_note && !input_owner_note)}
-            className='flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold text-[#07090b] disabled:opacity-40 disabled:cursor-not-allowed transition-all'
+            className='flex items-center gap-2 px-5 py-2 rounded-lg text-[var(--ui-text-sm)] font-bold text-text-on-accent disabled:opacity-40 disabled:cursor-not-allowed transition-all'
             style={{
               background: isRunning
                 ? 'rgba(88,166,255,0.5)'
-                : 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, #39d0d8 100%)',
+                : 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, var(--accent-cyan) 100%)',
               boxShadow: isRunning ? 'none' : '0 0 20px rgba(57,208,216,0.3), 0 2px 8px rgba(88,166,255,0.2)',
             }}
             aria-label={isRunning ? 'Processing trip' : 'Process trip'}
@@ -957,7 +962,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             {isRunning ? (
               <>
                 <div
-                  className='w-4 h-4 border-2 border-[#07090b]/30 border-t-[#07090b] rounded-full animate-spin'
+                  className='w-4 h-4 border-2 border-text-on-accent/30 border-t-text-on-accent rounded-full animate-spin'
                   aria-hidden='true'
                 />
                 <span>Processing {formatElapsedTime(runElapsedSeconds)}</span>

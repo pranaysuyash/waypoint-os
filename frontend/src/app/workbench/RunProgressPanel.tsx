@@ -10,13 +10,14 @@ import {
   FileText,
   ChevronRight,
 } from "lucide-react";
-import type { RunStatusResponse, RunEvent } from "@/types/spine";
-import { STAGE_LABELS, labelOrTitle } from "@/lib/label-maps";
+import type { RunStatusResponse, RunEvent, ValidationReport } from "@/types/spine";
+import { STAGE_LABELS, FIELD_LABELS, labelOrTitle } from "@/lib/label-maps";
 
 interface RunProgressPanelProps {
   runId: string | null;
   runState: RunStatusResponse | null;
   error?: Error | null;
+  validationErrors?: ValidationReport | null;
   onRetry: () => void;
   onViewTrip?: () => void;
 }
@@ -50,7 +51,6 @@ function getStepStatus(
 
   if (enteredStage && enteredStage === stepId) return "current";
 
-  // Fallback for older runs with no entered events logged.
   if (!enteredStage) {
     const firstPending = steps.findIndex((s) => !run.steps_completed?.includes(s.id));
     const idx = steps.findIndex((s) => s.id === stepId);
@@ -59,7 +59,7 @@ function getStepStatus(
   return "pending";
 }
 
-export function RunProgressPanel({ runId, runState, error, onRetry, onViewTrip }: RunProgressPanelProps) {
+export function RunProgressPanel({ runId, runState, error, validationErrors, onRetry, onViewTrip }: RunProgressPanelProps) {
   const durationRef = useRef<HTMLSpanElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -83,14 +83,14 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onViewTrip }
     : false;
 
   return (
-    <div className="rounded-xl border border-[#30363d] bg-[#0d1117] overflow-hidden">
+    <div className="rounded-xl border border-[#30363d] bg-[#0d1117] overflow-hidden min-w-[280px] shadow-lg">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#30363d]">
-        <div className="flex items-center gap-2 text-[#58a6ff] text-sm font-mono">
+        <div className="flex items-center gap-2 text-[#58a6ff] text-ui-sm font-mono">
           <FileText className="w-3.5 h-3.5" />
           <span className="truncate max-w-[120px]">{runId.slice(0, 8)}</span>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-[#8b949e]">
+        <div className="flex items-center gap-1.5 text-ui-xs text-[var(--text-muted)]">
           <Clock className="w-3 h-3" />
           <span ref={durationRef}>{runState?.started_at ? elapsedSec(runState.started_at) : '--'}s</span>
         </div>
@@ -118,31 +118,30 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onViewTrip }
               ) : status === "failed" ? (
                 <XCircle className="w-4 h-4 text-[#f85149] shrink-0" />
               ) : status === "current" ? (
-                <Loader2 className="w-4 h-4 animate-spin text-[#d29922] shrink-0" />
+                <Loader2 className="w-4 h-4 animate-spin text-[var(--accent-amber)] shrink-0" />
               ) : (
-                <div className="w-4 h-4 rounded-full border border-[#484f58] shrink-0" />
+                <div className="w-4 h-4 rounded-full border border-[var(--text-tertiary)] shrink-0" />
               )}
 
               <div className="flex-1 min-w-0">
                 <div
-                  className={`text-xs font-medium ${
+                  className={`text-ui-xs font-medium ${
                     status === "done"
                       ? "text-[#3fb950]"
                       : status === "failed"
                       ? "text-[#f85149]"
                       : status === "current"
-                      ? "text-[#e6edf3]"
-                      : "text-[#8b949e]"
+                      ? "text-[var(--text-primary)]"
+                      : "text-[var(--text-muted)]"
                   }`}
                 >
                   {step.label}
                 </div>
                 {status === "current" && (
-                  <div className="text-[10px] text-[#8b949e] mt-0.5">{step.desc}</div>
+                  <div className="text-[var(--ui-text-xs)] text-[var(--text-muted)] mt-0.5">{step.desc}</div>
                 )}
               </div>
 
-              {/* Show event timing per step from events */}
               {status === "done" && runState && (
                 <StepTiming events={runState.events} stepId={step.id} />
               )}
@@ -154,14 +153,14 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onViewTrip }
       {/* Footer state */}
       <div className="px-4 py-2.5 border-t border-[#30363d] bg-[#161b22]">
         {!runState && (
-          <p className="text-[#8b949e] text-xs">Queued...</p>
+          <p className="text-[var(--text-muted)] text-ui-xs">Queued...</p>
         )}
 
         {runState?.state === "completed" && (runState.trip_id || onViewTrip) && (
           <button
             type='button'
             onClick={onViewTrip || (() => { window.location.href = `/workspace/${runState!.trip_id}/intake`; })}
-            className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#238636] text-white text-xs font-medium rounded-md hover:bg-[#2ea043] transition-colors"
+            className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#238636] text-white text-ui-xs font-medium rounded-md hover:bg-[#2ea043] transition-colors"
           >
             View Trip
             <ChevronRight className="w-3 h-3" />
@@ -169,13 +168,13 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onViewTrip }
         )}
 
         {isIntakeOnlyCompletion && (
-          <p className="mt-2 text-[11px] text-[#d29922]">
+          <p className="mt-2 text-[var(--ui-text-xs)] text-[var(--accent-amber)]">
             Intake saved, but quote-building stages did not run. Add missing details and reprocess.
           </p>
         )}
 
         {runState?.state === "completed" && !runState?.trip_id && !onViewTrip && (
-          <div className="flex items-center gap-1.5 text-[#3fb950] text-xs">
+          <div className="flex items-center gap-1.5 text-[#3fb950] text-ui-xs">
             <CheckCircle className="w-3.5 h-3.5" />
             Completed
           </div>
@@ -183,16 +182,16 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onViewTrip }
 
         {runState?.state === "failed" && (
           <div className="space-y-2">
-            <p className="text-[#f85149] text-xs">
+            <p className="text-[#f85149] text-ui-xs">
               Failed at {runState.stage_at_failure ? labelOrTitle(STAGE_LABELS, runState.stage_at_failure) : "unknown"} phase
             </p>
             {runState.error_message && (
-              <p className="text-[10px] text-[#8b949e] line-clamp-2">{runState.error_message}</p>
+              <p className="text-[var(--ui-text-xs)] text-[var(--text-muted)] line-clamp-2">{runState.error_message}</p>
             )}
             <button
               type='button'
               onClick={onRetry}
-              className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#da3633]/10 border border-[#da3633]/30 text-[#f85149] text-xs rounded-md hover:bg-[#da3633]/20 transition-colors"
+              className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#da3633]/10 border border-[#da3633]/30 text-[#f85149] text-ui-xs rounded-md hover:bg-[#da3633]/20 transition-colors"
             >
               <AlertTriangle className="w-3 h-3" />
               Retry
@@ -201,18 +200,75 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onViewTrip }
         )}
 
         {runState?.state === "blocked" && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5 text-[#d29922] text-xs font-medium">
+          <div className="space-y-3">
+            <div className="flex items-center gap-1.5 text-[var(--accent-amber)] text-ui-xs font-medium">
               <AlertTriangle className="w-3.5 h-3.5" />
               Needs More Information
             </div>
-            <p className="text-[#a8b3c1] text-xs leading-relaxed">
+            <p className="text-[#a8b3c1] text-ui-xs leading-relaxed">
               {runState.block_reason || "Some details are needed before we can build your itinerary."}
             </p>
+
+            {/* Validation reasons (new backend shape) */}
+            {validationErrors?.reasons && validationErrors.reasons.length > 0 && (
+              <div className="space-y-1">
+                {validationErrors.reasons.map((reason, i) => (
+                  <div
+                    key={`vr-${i}`}
+                    className="flex items-start gap-1.5 px-2 py-1.5 rounded-md bg-[#f85149]/10 border border-[#f85149]/30"
+                  >
+                    <XCircle className="w-3 h-3 text-[#f85149] shrink-0 mt-0.5" />
+                    <div className="text-[var(--ui-text-xs)] leading-relaxed text-[var(--accent-red)]">
+                      {reason}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Legacy validation errors */}
+            {validationErrors && (validationErrors.errors?.length ?? 0) > 0 && (
+              <div className="space-y-1">
+                {validationErrors.errors!.map((err, i) => (
+                  <div
+                    key={`ve-${err.code}-${err.field}-${i}`}
+                    className="flex items-start gap-1.5 px-2 py-1.5 rounded-md bg-[#f85149]/10 border border-[#f85149]/30"
+                  >
+                    <XCircle className="w-3 h-3 text-[#f85149] shrink-0 mt-0.5" />
+                    <div className="text-[var(--ui-text-xs)] leading-relaxed text-[var(--accent-red)]">
+                      {err.field && (
+                        <span className="font-medium">{labelOrTitle(FIELD_LABELS, err.field)}: </span>
+                      )}
+                      {err.message}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {validationErrors && (validationErrors.warnings?.length ?? 0) > 0 && (
+              <div className="space-y-1">
+                {validationErrors.warnings!.map((warn, i) => (
+                  <div
+                    key={`vw-${warn.code}-${i}`}
+                    className="flex items-start gap-1.5 px-2 py-1.5 rounded-md bg-[var(--accent-amber)]/10 border border-[var(--accent-amber)]/30"
+                  >
+                    <AlertTriangle className="w-3 h-3 text-[var(--accent-amber)] shrink-0 mt-0.5" />
+                    <div className="text-[var(--ui-text-xs)] leading-relaxed text-[var(--text-primary)]">
+                      {warn.field && (
+                        <span className="font-medium">{labelOrTitle(FIELD_LABELS, warn.field)}: </span>
+                      )}
+                      {warn.message}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <button
               type='button'
               onClick={onRetry}
-              className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#d29922]/10 border border-[#d29922]/30 text-[#d29922] text-xs rounded-md hover:bg-[#d29922]/20 transition-colors"
+              className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[var(--accent-amber)]/10 border border-[var(--accent-amber)]/30 text-[var(--accent-amber)] text-ui-xs rounded-md hover:bg-[var(--accent-amber)]/20 transition-colors"
             >
               Try Again with More Details
             </button>
@@ -221,11 +277,11 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onViewTrip }
 
         {error && runState?.state === "running" && (
           <div className="space-y-2">
-            <p className="text-[#f85149] text-xs">{error.message || "Timed out"}</p>
+            <p className="text-[#f85149] text-ui-xs">{error.message || "Timed out"}</p>
             <button
               type='button'
               onClick={onRetry}
-              className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#da3633]/10 border border-[#da3633]/30 text-[#f85149] text-xs rounded-md hover:bg-[#da3633]/20 transition-colors"
+              className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#da3633]/10 border border-[#da3633]/30 text-[#f85149] text-ui-xs rounded-md hover:bg-[#da3633]/20 transition-colors"
             >
               <AlertTriangle className="w-3 h-3" />
               Retry
@@ -249,7 +305,7 @@ function StepTiming({
   );
   if (!evt || typeof evt.execution_ms !== "number") return null;
   return (
-    <span className="text-[10px] text-[#484f58] tabular-nums shrink-0">
+    <span className="text-[var(--ui-text-xs)] text-[var(--text-tertiary)] tabular-nums shrink-0">
       {Math.round(evt.execution_ms)}ms
     </span>
   );

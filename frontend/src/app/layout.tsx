@@ -1,28 +1,23 @@
 import type { Metadata } from 'next';
-import { IBM_Plex_Sans, JetBrains_Mono, Outfit, Inter } from 'next/font/google';
+import { Sora, Rubik, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Shell } from '@/components/layouts/Shell';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { AuthProvider } from '@/components/auth/AuthProvider';
+import { Providers } from '@/components/providers';
 
-const ibmPlexSans = IBM_Plex_Sans({
-  variable: '--font-display',
-  weight: ['400', '500', '600', '700'],
+const sora = Sora({
+  variable: '--font-sora',
+  subsets: ['latin'],
+});
+
+const rubik = Rubik({
+  variable: '--font-rubik',
   subsets: ['latin'],
 });
 
 const jetbrainsMono = JetBrains_Mono({
   variable: '--font-mono',
-  subsets: ['latin'],
-});
-
-const outfit = Outfit({
-  variable: '--font-outfit',
-  subsets: ['latin'],
-});
-
-const inter = Inter({
-  variable: '--font-inter',
   subsets: ['latin'],
 });
 
@@ -39,12 +34,15 @@ export default function RootLayout({
   return (
     <html
       lang='en'
-      className={`${ibmPlexSans.variable} ${jetbrainsMono.variable} ${outfit.variable} ${inter.variable}`}
+      className={`${sora.variable} ${rubik.variable} ${jetbrainsMono.variable}`}
+      suppressHydrationWarning
     >
       <body>
         <ErrorBoundary>
           <AuthProvider>
-            <Shell>{children}</Shell>
+            <Providers>
+              <Shell>{children}</Shell>
+            </Providers>
           </AuthProvider>
         </ErrorBoundary>
       </body>

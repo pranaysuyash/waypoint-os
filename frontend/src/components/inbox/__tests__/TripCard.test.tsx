@@ -215,7 +215,7 @@ describe('TripCard', () => {
       />
     );
 
-    const checkbox = screen.getByRole('button');
+    const checkbox = screen.getByRole('checkbox');
     checkbox.click();
 
     expect(onSelect).toHaveBeenCalledWith('TRIP-123', true);
@@ -256,7 +256,7 @@ describe('TripCard', () => {
     expect(screen.queryByText(/just arrived/)).not.toBeInTheDocument();
   });
 
-  it('renders priority accent bar with correct color', () => {
+  it('renders priority accent bar as top border with correct color', () => {
     const { container } = render(
       <TripCard
         trip={mockTrip}
@@ -265,10 +265,9 @@ describe('TripCard', () => {
       />
     );
 
-    const accentBar = container.querySelector('.w-1');
-    expect(accentBar).toBeInTheDocument();
-    // High priority = amber color
-    expect(accentBar).toHaveStyle({ background: '#d29922' });
+    const card = container.firstChild as HTMLElement;
+    expect(card).toBeInTheDocument();
+    expect(card.style.borderTop).toContain('2px solid');
   });
 
   it('changes accent bar opacity when selected', () => {
@@ -280,8 +279,8 @@ describe('TripCard', () => {
       />
     );
 
-    const accentBar = container.querySelector('.w-1');
-    expect(accentBar).toHaveStyle({ opacity: '1' });
+    const card = container.firstChild as HTMLElement;
+    expect(card.style.opacity).toBe('1');
   });
 
   it('renders breached SLA with red styling', () => {

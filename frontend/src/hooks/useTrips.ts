@@ -1,12 +1,4 @@
-/**
- * Custom hook for fetching and managing trip data
- * 
- * NOTE: These hooks use a delayed loading pattern to prevent flickering.
- * Loading states only appear if the fetch takes >300ms, otherwise data
- * appears instantly.
- */
-
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getTrips,
   getTrip,
@@ -18,8 +10,15 @@ import {
   type PipelineStage,
 } from "@/lib/api-client";
 
-// Delay before showing loading state (prevents flicker on fast loads)
-const LOADING_DELAY_MS = 300;
+const QK = {
+  trips: (params?: { state?: string; limit?: number; offset?: number; view?: string }) =>
+    ["trips", params] as const,
+  trip: (id: string | null) => ["trips", id] as const,
+  tripStats: () => ["trips", "stats"] as const,
+  pipeline: () => ["trips", "pipeline"] as const,
+};
+
+const DEFAULT_STALE_TIME = 30_000;
 
 export function useTrips(params?: {
   state?: string;
@@ -27,222 +26,87 @@ export function useTrips(params?: {
   offset?: number;
   view?: string;
 }) {
-  const [data, setData] = useState<Trip[]>([]);
-  const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const hasFetched = useRef(false);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { state, limit, offset, view } = params ?? {};
 
-  const paramsKey = JSON.stringify(params);
+  const query = useQuery({
+    queryKey: QK.trips(params),
+    queryFn: () => getTrips({ state, limit, offset, view }),
+    staleTime: DEFAULT_STALE_TIME,
+  });
 
-  const fetch = useCallback(async () => {
-    // Clear any existing loading timeout
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-
-    // Only show loading after delay (prevents flicker)
-    loadingTimeoutRef.current = setTimeout(() => {
-      setIsLoading(true);
-    }, LOADING_DELAY_MS);
-
-    setError(null);
-    
-    try {
-      const result = await getTrips(params);
-      setData(result.items);
-      setTotal(result.total);
-      hasFetched.current = true;
-    } catch (err) {
-      setError(err as Error);
-      setData([]);
-      console.error("Failed to fetch trips:", err);
-    } finally {
-      // Clear loading timeout and hide loading
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = null;
-      }
-      setIsLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paramsKey]);
-
-  useEffect(() => {
-    fetch();
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [fetch]);
-
-  return { data, total, isLoading, error, refetch: fetch };
+  return {
+    data: query.data?.items ?? [],
+    total: query.data?.total ?? 0,
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: query.refetch,
+  };
 }
 
 export function useTrip(id: string | null) {
-  const [data, setData] = useState<Trip | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const query = useQuery({
+    queryKey: QK.trip(id),
+    queryFn: () => getTrip(id!),
+    enabled: !!id,
+    staleTime: DEFAULT_STALE_TIME,
+  });
 
-  useEffect(() => {
-    if (!id) {
-      setData(null);
-      setError(null);
-      setIsLoading(false);
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-      return;
-    }
+  const queryClient = useQueryClient();
 
-    // Clear any existing loading timeout
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
+  const replaceTrip = (trip: Trip) => {
+    queryClient.setQueryData<Trip>(QK.trip(id), trip);
+  };
 
-    // Only show loading after delay
-    loadingTimeoutRef.current = setTimeout(() => {
-      setIsLoading(true);
-    }, LOADING_DELAY_MS);
-
-    setError(null);
-
-    getTrip(id)
-      .then((trip) => {
-        setData(trip);
-      })
-      .catch((err) => {
-        setError(err);
-        console.error("Failed to fetch trip:", err);
-      })
-      .finally(() => {
-        if (loadingTimeoutRef.current) {
-          clearTimeout(loadingTimeoutRef.current);
-          loadingTimeoutRef.current = null;
-        }
-        setIsLoading(false);
-      });
-
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [id]);
-
-  return { data, isLoading, error };
+  return {
+    data: query.data ?? null,
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: query.refetch,
+    replaceTrip,
+  };
 }
 
 export function useTripStats() {
-  const [data, setData] = useState<TripStats | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const query = useQuery({
+    queryKey: QK.tripStats(),
+    queryFn: () => getTripStats(),
+    staleTime: DEFAULT_STALE_TIME,
+  });
 
-  const fetch = useCallback(async () => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-
-    loadingTimeoutRef.current = setTimeout(() => {
-      setIsLoading(true);
-    }, LOADING_DELAY_MS);
-
-    setError(null);
-    
-    try {
-      const result = await getTripStats();
-      setData(result);
-    } catch (err) {
-      setError(err as Error);
-      console.error("Failed to fetch trip stats:", err);
-    } finally {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = null;
-      }
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetch();
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [fetch]);
-
-  return { data, isLoading, error, refetch: fetch };
+  return { data: query.data ?? null, isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch };
 }
 
 export function useUpdateTrip() {
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const queryClient = useQueryClient();
 
-  const mutate = useCallback(async (id: string, data: Partial<Trip>): Promise<Trip | null> => {
-    setIsSaving(true);
-    setError(null);
-    try {
-      const updated = await updateTrip(id, data);
-      return updated;
-    } catch (err) {
-      setError(err as Error);
-      console.error("Failed to update trip:", err);
-      return null;
-    } finally {
-      setIsSaving(false);
-    }
-  }, []);
+  const mutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Trip> }) =>
+      updateTrip(id, data),
+    onSuccess: (updated, { id }) => {
+      if (updated) {
+        queryClient.setQueryData<Trip>(QK.trip(id), updated);
+      }
+      queryClient.invalidateQueries({ queryKey: ["trips"] });
+    },
+  });
 
-  return { mutate, isSaving, error };
+  const mutate = async (id: string, data: Partial<Trip>) => {
+    return mutation.mutateAsync({ id, data });
+  };
+
+  return {
+    mutate,
+    isSaving: mutation.isPending,
+    error: mutation.error as Error | null,
+  };
 }
 
 export function usePipeline() {
-  const [data, setData] = useState<PipelineStage[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const query = useQuery({
+    queryKey: QK.pipeline(),
+    queryFn: () => getPipeline(),
+    staleTime: DEFAULT_STALE_TIME,
+  });
 
-  const fetch = useCallback(async () => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-
-    loadingTimeoutRef.current = setTimeout(() => {
-      setIsLoading(true);
-    }, LOADING_DELAY_MS);
-
-    setError(null);
-    
-    try {
-      const result = await getPipeline();
-      setData(result);
-    } catch (err) {
-      setError(err as Error);
-      setData([]); // Reset to empty on error
-      console.error("Failed to fetch pipeline:", err);
-    } finally {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = null;
-      }
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetch();
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [fetch]);
-
-  return { data, isLoading, error, refetch: fetch };
+  return { data: query.data ?? [], isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch };
 }

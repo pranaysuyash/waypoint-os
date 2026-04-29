@@ -44,6 +44,8 @@ describe("workspace/[tripId]/layout", () => {
       data: null,
       isLoading: true,
       error: null,
+      refetch: vi.fn(),
+      replaceTrip: vi.fn(),
     });
 
     render(
@@ -60,6 +62,8 @@ describe("workspace/[tripId]/layout", () => {
       data: baseTrip,
       isLoading: false,
       error: null,
+      refetch: vi.fn(),
+      replaceTrip: vi.fn(),
     });
 
     render(
@@ -82,6 +86,8 @@ describe("workspace/[tripId]/layout", () => {
       data: baseTrip,
       isLoading: false,
       error: null,
+      refetch: vi.fn(),
+      replaceTrip: vi.fn(),
     });
 
     // Mock fetch for TimelinePanel
@@ -120,6 +126,8 @@ describe("workspace/[tripId]/layout", () => {
       data: null,
       isLoading: false,
       error: new Error("Trip lookup failed"),
+      refetch: vi.fn(),
+      replaceTrip: vi.fn(),
     });
 
     render(

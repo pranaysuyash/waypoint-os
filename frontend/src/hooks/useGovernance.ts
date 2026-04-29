@@ -1,16 +1,4 @@
-/**
- * Governance Hooks
- * 
- * Custom hooks for governance features:
- * - Reviews and approvals
- * - Analytics and insights
- * - Team management
- * - Inbox operations
- * 
- * All hooks use delayed loading pattern to prevent flickering.
- */
-
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type {
   TripReview,
   ReviewFilters,
@@ -31,417 +19,156 @@ import type {
 } from "@/types/governance";
 import * as governanceApi from "@/lib/governance-api";
 
-// Delay before showing loading state (prevents flicker on fast loads)
-const LOADING_DELAY_MS = 300;
+const QK = {
+  reviews: (f?: ReviewFilters) => ["governance", "reviews", f] as const,
+  insightsSummary: (t: TimeRange) => ["governance", "insightsSummary", t] as const,
+  pipelineMetrics: (t: TimeRange) => ["governance", "pipelineMetrics", t] as const,
+  teamMetrics: (t: TimeRange) => ["governance", "teamMetrics", t] as const,
+  bottleneckAnalysis: (t: TimeRange) => ["governance", "bottleneckAnalysis", t] as const,
+  revenueMetrics: (t: TimeRange) => ["governance", "revenueMetrics", t] as const,
+  operationalAlerts: () => ["governance", "operationalAlerts"] as const,
+  teamMembers: () => ["governance", "teamMembers"] as const,
+  workloadDistribution: () => ["governance", "workloadDistribution"] as const,
+  inboxTrips: (f?: InboxFilters, p?: number, l?: number) =>
+    ["governance", "inboxTrips", f, p, l] as const,
+  inboxStats: () => ["governance", "inboxStats"] as const,
+};
 
-// ============================================================================
-// REVIEWS HOOK
-// ============================================================================
+const DEFAULT_STALE_TIME = 30_000;
 
 export function useReviews(filters?: ReviewFilters) {
-  const [data, setData] = useState<TripReview[]>([]);
-  const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const query = useQuery({
+    queryKey: QK.reviews(filters),
+    queryFn: () => governanceApi.getReviews(filters),
+    staleTime: DEFAULT_STALE_TIME,
+  });
 
-  const fetch = useCallback(async () => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
+  const submitAction = useMutation({
+    mutationFn: (request: ReviewActionRequest) =>
+      governanceApi.submitReviewAction(request),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: QK.reviews(filters) }),
+  });
 
-    loadingTimeoutRef.current = setTimeout(() => {
-      setIsLoading(true);
-    }, LOADING_DELAY_MS);
+  const bulkAction = useMutation({
+    mutationFn: (requests: ReviewActionRequest[]) =>
+      governanceApi.bulkReviewAction(requests),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: QK.reviews(filters) }),
+  });
 
-    setError(null);
-    
-    try {
-      const result = await governanceApi.getReviews(filters);
-      setData(result.items);
-      setTotal(result.total);
-    } catch (err) {
-      setError(err as Error);
-      setData([]);
-      console.error("Failed to fetch reviews:", err);
-    } finally {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = null;
-      }
-      setIsLoading(false);
-    }
-  }, [filters]);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetch();
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [fetch]);
-
-  const submitAction = useCallback(async (request: ReviewActionRequest) => {
-    return governanceApi.submitReviewAction(request);
-  }, []);
-
-  const bulkAction = useCallback(async (requests: ReviewActionRequest[]) => {
-    return governanceApi.bulkReviewAction(requests);
-  }, []);
-
-  return { data, total, isLoading, error, refetch: fetch, submitAction, bulkAction };
+  return {
+    data: query.data?.items ?? [],
+    total: query.data?.total ?? 0,
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: query.refetch,
+    submitAction: submitAction.mutateAsync,
+    bulkAction: bulkAction.mutateAsync,
+  };
 }
 
-// ============================================================================
-// INSIGHTS HOOKS
-// ============================================================================
-
 export function useInsightsSummary(timeRange: TimeRange = "30d") {
-  const [data, setData] = useState<InsightsSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const query = useQuery({
+    queryKey: QK.insightsSummary(timeRange),
+    queryFn: () => governanceApi.getInsightsSummary(timeRange),
+    staleTime: DEFAULT_STALE_TIME,
+  });
 
-  const fetch = useCallback(async () => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-
-    loadingTimeoutRef.current = setTimeout(() => {
-      setIsLoading(true);
-    }, LOADING_DELAY_MS);
-
-    setError(null);
-    
-    try {
-      const result = await governanceApi.getInsightsSummary(timeRange);
-      setData(result);
-    } catch (err) {
-      setError(err as Error);
-      console.error("Failed to fetch insights summary:", err);
-    } finally {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = null;
-      }
-      setIsLoading(false);
-    }
-  }, [timeRange]);
-
-  useEffect(() => {
-    fetch();
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [fetch]);
-
-  return { data, isLoading, error, refetch: fetch };
+  return { data: query.data ?? null, isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch };
 }
 
 export function usePipelineMetrics(timeRange: TimeRange = "30d") {
-  const [data, setData] = useState<StageMetrics[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const query = useQuery({
+    queryKey: QK.pipelineMetrics(timeRange),
+    queryFn: () => governanceApi.getPipelineMetrics(timeRange),
+    staleTime: DEFAULT_STALE_TIME,
+  });
 
-  const fetch = useCallback(async () => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-
-    loadingTimeoutRef.current = setTimeout(() => {
-      setIsLoading(true);
-    }, LOADING_DELAY_MS);
-
-    setError(null);
-    
-    try {
-      const result = await governanceApi.getPipelineMetrics(timeRange);
-      setData(result);
-    } catch (err) {
-      setError(err as Error);
-      setData([]);
-      console.error("Failed to fetch pipeline metrics:", err);
-    } finally {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = null;
-      }
-      setIsLoading(false);
-    }
-  }, [timeRange]);
-
-  useEffect(() => {
-    fetch();
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [fetch]);
-
-  return { data, isLoading, error, refetch: fetch };
+  return { data: query.data ?? [], isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch };
 }
 
 export function useTeamMetrics(timeRange: TimeRange = "30d") {
-  const [data, setData] = useState<TeamMemberMetrics[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const query = useQuery({
+    queryKey: QK.teamMetrics(timeRange),
+    queryFn: () => governanceApi.getTeamMetrics(timeRange),
+    staleTime: DEFAULT_STALE_TIME,
+  });
 
-  const fetch = useCallback(async () => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-
-    loadingTimeoutRef.current = setTimeout(() => {
-      setIsLoading(true);
-    }, LOADING_DELAY_MS);
-
-    setError(null);
-    
-    try {
-      const result = await governanceApi.getTeamMetrics(timeRange);
-      setData(result);
-    } catch (err) {
-      setError(err as Error);
-      setData([]);
-      console.error("Failed to fetch team metrics:", err);
-    } finally {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = null;
-      }
-      setIsLoading(false);
-    }
-  }, [timeRange]);
-
-  useEffect(() => {
-    fetch();
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [fetch]);
-
-  return { data, isLoading, error, refetch: fetch };
+  return { data: query.data ?? [], isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch };
 }
 
 export function useBottleneckAnalysis(timeRange: TimeRange = "30d") {
-  const [data, setData] = useState<BottleneckAnalysis[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const query = useQuery({
+    queryKey: QK.bottleneckAnalysis(timeRange),
+    queryFn: () => governanceApi.getBottleneckAnalysis(timeRange),
+    staleTime: DEFAULT_STALE_TIME,
+  });
 
-  const fetch = useCallback(async () => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-
-    loadingTimeoutRef.current = setTimeout(() => {
-      setIsLoading(true);
-    }, LOADING_DELAY_MS);
-
-    setError(null);
-    
-    try {
-      const result = await governanceApi.getBottleneckAnalysis(timeRange);
-      setData(result);
-    } catch (err) {
-      setError(err as Error);
-      setData([]);
-      console.error("Failed to fetch bottleneck analysis:", err);
-    } finally {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = null;
-      }
-      setIsLoading(false);
-    }
-  }, [timeRange]);
-
-  useEffect(() => {
-    fetch();
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [fetch]);
-
-  return { data, isLoading, error, refetch: fetch };
+  return { data: query.data ?? [], isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch };
 }
 
 export function useRevenueMetrics(timeRange: TimeRange = "30d") {
-  const [data, setData] = useState<RevenueMetrics | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const query = useQuery({
+    queryKey: QK.revenueMetrics(timeRange),
+    queryFn: () => governanceApi.getRevenueMetrics(timeRange),
+    staleTime: DEFAULT_STALE_TIME,
+  });
 
-  const fetch = useCallback(async () => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-
-    loadingTimeoutRef.current = setTimeout(() => {
-      setIsLoading(true);
-    }, LOADING_DELAY_MS);
-
-    setError(null);
-    
-    try {
-      const result = await governanceApi.getRevenueMetrics(timeRange);
-      setData(result);
-    } catch (err) {
-      setError(err as Error);
-      console.error("Failed to fetch revenue metrics:", err);
-    } finally {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = null;
-      }
-      setIsLoading(false);
-    }
-  }, [timeRange]);
-
-  useEffect(() => {
-    fetch();
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [fetch]);
-
-  return { data, isLoading, error, refetch: fetch };
+  return { data: query.data ?? null, isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch };
 }
 
 export function useOperationalAlerts() {
-  const [data, setData] = useState<OperationalAlert[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const query = useQuery({
+    queryKey: QK.operationalAlerts(),
+    queryFn: () => governanceApi.getOperationalAlerts(),
+    staleTime: DEFAULT_STALE_TIME,
+  });
 
-  const fetch = useCallback(async () => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
+  const queryClient = useQueryClient();
 
-    loadingTimeoutRef.current = setTimeout(() => {
-      setIsLoading(true);
-    }, LOADING_DELAY_MS);
+  const dismiss = async (id: string) => {
+    await governanceApi.dismissAlert(id);
+    queryClient.setQueryData<OperationalAlert[]>(QK.operationalAlerts(), (prev) =>
+      prev?.filter((a) => a.id !== id)
+    );
+  };
 
-    setError(null);
-    
-    try {
-      const result = await governanceApi.getOperationalAlerts();
-      setData(result);
-    } catch (err) {
-      setError(err as Error);
-      setData([]);
-      console.error("Failed to fetch operational alerts:", err);
-    } finally {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = null;
-      }
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetch();
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [fetch]);
-
-  const dismiss = useCallback(async (id: string) => {
-    try {
-      await governanceApi.dismissAlert(id);
-      setData(prev => prev.filter(a => a.id !== id));
-    } catch (err) {
-      console.error("Failed to dismiss alert:", err);
-    }
-  }, []);
-
-  return { data, isLoading, error, refetch: fetch, dismiss };
+  return { data: query.data ?? [], isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch, dismiss };
 }
 
-// ============================================================================
-// TEAM MANAGEMENT HOOKS
-// ============================================================================
-
 export function useTeamMembers() {
-  const [data, setData] = useState<TeamMember[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const query = useQuery({
+    queryKey: QK.teamMembers(),
+    queryFn: () => governanceApi.getTeamMembers(),
+    staleTime: DEFAULT_STALE_TIME,
+  });
 
-  const fetch = useCallback(async () => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
+  const queryClient = useQueryClient();
 
-    loadingTimeoutRef.current = setTimeout(() => {
-      setIsLoading(true);
-    }, LOADING_DELAY_MS);
+  const inviteMember = async (data: { email: string; name: string; role: string; capacity?: number }) => {
+    const result = await governanceApi.inviteTeamMember(data);
+    queryClient.invalidateQueries({ queryKey: QK.teamMembers() });
+    return result;
+  };
 
-    setError(null);
-    
-    try {
-      const result = await governanceApi.getTeamMembers();
-      setData(result);
-    } catch (err) {
-      setError(err as Error);
-      setData([]);
-      console.error("Failed to fetch team members:", err);
-    } finally {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = null;
-      }
-      setIsLoading(false);
-    }
-  }, []);
+  const updateMember = async (id: string, data: Partial<TeamMember>) => {
+    const result = await governanceApi.updateTeamMember(id, data);
+    queryClient.invalidateQueries({ queryKey: QK.teamMembers() });
+    return result;
+  };
 
-  useEffect(() => {
-    fetch();
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [fetch]);
-
-  const inviteMember = useCallback(async (data: {
-    email: string;
-    name: string;
-    role: string;
-    capacity?: number;
-  }) => {
-    return governanceApi.inviteTeamMember(data);
-  }, []);
-
-  const updateMember = useCallback(async (id: string, data: Partial<TeamMember>) => {
-    return governanceApi.updateTeamMember(id, data);
-  }, []);
-
-  const deactivateMember = useCallback(async (id: string) => {
-    return governanceApi.deactivateTeamMember(id);
-  }, []);
+  const deactivateMember = async (id: string) => {
+    const result = await governanceApi.deactivateTeamMember(id);
+    queryClient.invalidateQueries({ queryKey: QK.teamMembers() });
+    return result;
+  };
 
   return {
-    data,
-    isLoading,
-    error,
-    refetch: fetch,
+    data: query.data ?? [],
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: query.refetch,
     inviteMember,
     updateMember,
     deactivateMember,
@@ -449,123 +176,53 @@ export function useTeamMembers() {
 }
 
 export function useWorkloadDistribution() {
-  const [data, setData] = useState<WorkloadDistribution[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const query = useQuery({
+    queryKey: QK.workloadDistribution(),
+    queryFn: () => governanceApi.getWorkloadDistribution(),
+    staleTime: DEFAULT_STALE_TIME,
+  });
 
-  const fetch = useCallback(async () => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-
-    loadingTimeoutRef.current = setTimeout(() => {
-      setIsLoading(true);
-    }, LOADING_DELAY_MS);
-
-    setError(null);
-    
-    try {
-      const result = await governanceApi.getWorkloadDistribution();
-      setData(result);
-    } catch (err) {
-      setError(err as Error);
-      setData([]);
-      console.error("Failed to fetch workload distribution:", err);
-    } finally {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = null;
-      }
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetch();
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [fetch]);
-
-  return { data, isLoading, error, refetch: fetch };
+  return { data: query.data ?? [], isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch };
 }
-
-// ============================================================================
-// INBOX HOOKS
-// ============================================================================
 
 export function useInboxTrips(
   filters?: InboxFilters,
   page: number = 1,
   limit: number = 20
 ) {
-  const [data, setData] = useState<InboxTrip[]>([]);
-  const [total, setTotal] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const query = useQuery({
+    queryKey: QK.inboxTrips(filters, page, limit),
+    queryFn: () => governanceApi.getInboxTrips(filters, page, limit),
+    staleTime: DEFAULT_STALE_TIME,
+  });
 
-  const fetch = useCallback(async () => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
+  const queryClient = useQueryClient();
 
-    loadingTimeoutRef.current = setTimeout(() => {
-      setIsLoading(true);
-    }, LOADING_DELAY_MS);
+  const assignTrips = async (request: AssignmentRequest) => {
+    const result = await governanceApi.assignTrips(request);
+    queryClient.invalidateQueries({ queryKey: QK.inboxTrips() });
+    return result;
+  };
 
-    setError(null);
-    
-    try {
-      const result = await governanceApi.getInboxTrips(filters, page, limit);
-      setData(result.items);
-      setTotal(result.total);
-      setHasMore(result.hasMore);
-    } catch (err) {
-      setError(err as Error);
-      setData([]);
-      console.error("Failed to fetch inbox trips:", err);
-    } finally {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = null;
-      }
-      setIsLoading(false);
-    }
-  }, [filters, page, limit]);
+  const bulkAction = async (request: BulkActionRequest) => {
+    const result = await governanceApi.bulkInboxAction(request);
+    queryClient.invalidateQueries({ queryKey: QK.inboxTrips() });
+    return result;
+  };
 
-  useEffect(() => {
-    fetch();
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [fetch]);
-
-  const assignTrips = useCallback(async (request: AssignmentRequest) => {
-    return governanceApi.assignTrips(request);
-  }, []);
-
-  const bulkAction = useCallback(async (request: BulkActionRequest) => {
-    return governanceApi.bulkInboxAction(request);
-  }, []);
-
-  const snoozeTrip = useCallback(async (tripId: string, snoozeUntil: string) => {
-    return governanceApi.snoozeTrip(tripId, snoozeUntil);
-  }, []);
+  const snoozeTrip = async (tripId: string, snoozeUntil: string) => {
+    const result = await governanceApi.snoozeTrip(tripId, snoozeUntil);
+    queryClient.invalidateQueries({ queryKey: QK.inboxTrips() });
+    return result;
+  };
 
   return {
-    data,
-    total,
-    hasMore,
-    isLoading,
-    error,
-    refetch: fetch,
+    data: query.data?.items ?? [],
+    total: query.data?.total ?? 0,
+    hasMore: query.data?.hasMore ?? false,
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: query.refetch,
     assignTrips,
     bulkAction,
     snoozeTrip,
@@ -573,50 +230,11 @@ export function useInboxTrips(
 }
 
 export function useInboxStats() {
-  const [data, setData] = useState<{
-    total: number;
-    unassigned: number;
-    critical: number;
-    atRisk: number;
-  } | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const query = useQuery({
+    queryKey: QK.inboxStats(),
+    queryFn: () => governanceApi.getInboxStats(),
+    staleTime: DEFAULT_STALE_TIME,
+  });
 
-  const fetch = useCallback(async () => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-
-    loadingTimeoutRef.current = setTimeout(() => {
-      setIsLoading(true);
-    }, LOADING_DELAY_MS);
-
-    setError(null);
-    
-    try {
-      const result = await governanceApi.getInboxStats();
-      setData(result);
-    } catch (err) {
-      setError(err as Error);
-      console.error("Failed to fetch inbox stats:", err);
-    } finally {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = null;
-      }
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetch();
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [fetch]);
-
-  return { data, isLoading, error, refetch: fetch };
+  return { data: query.data ?? null, isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch };
 }

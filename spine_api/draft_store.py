@@ -1,0 +1,1 @@
+DraftStore implementation with file locking, atomic writes, and index management

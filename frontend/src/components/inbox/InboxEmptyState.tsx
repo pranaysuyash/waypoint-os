@@ -10,7 +10,7 @@
 import { memo } from 'react';
 import Link from 'next/link';
 import { Search, Filter, Inbox, Plus } from 'lucide-react';
-import { COLORS } from '@/lib/tokens';
+
 
 export interface InboxEmptyStateProps {
   hasSearch: boolean;
@@ -36,10 +36,10 @@ export const InboxEmptyState = memo(function InboxEmptyState({
         className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-4"
         style={{ background: 'rgba(139, 148, 158, 0.08)' }}
       >
-        <Inbox className="w-6 h-6" style={{ color: COLORS.textMuted }} />
+        <Inbox className="w-6 h-6" style={{ color: 'var(--text-muted)' }} />
       </div>
 
-      <p className="text-sm font-medium" style={{ color: COLORS.textSecondary }}>
+      <p className="text-[var(--ui-text-sm)] font-medium" style={{ color: 'var(--text-secondary)' }}>
         {isTrulyEmpty
           ? 'No trips in your inbox'
           : hasSearch && isFiltered
@@ -51,7 +51,7 @@ export const InboxEmptyState = memo(function InboxEmptyState({
           : 'Your inbox is empty.'}
       </p>
 
-      <p className="text-xs mt-1" style={{ color: COLORS.textMuted }}>
+      <p className="text-[var(--ui-text-xs)] mt-1" style={{ color: 'var(--text-muted)' }}>
         {isTrulyEmpty
           ? 'Create a new inquiry to get started.'
           : hasSearch && isFiltered
@@ -67,7 +67,7 @@ export const InboxEmptyState = memo(function InboxEmptyState({
         {isTrulyEmpty && (
           <Link
             href="/workbench"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#58a6ff] text-[#0d1117] rounded-lg text-sm font-semibold hover:bg-[#6eb5ff] transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--accent-blue)] text-[var(--text-on-accent)] rounded-lg text-[var(--ui-text-sm)] font-semibold hover:bg-[var(--accent-blue-hover)] transition-colors"
           >
             <Plus className="w-4 h-4" />
             New Inquiry
@@ -77,11 +77,11 @@ export const InboxEmptyState = memo(function InboxEmptyState({
           <button
             type="button"
             onClick={onClearSearch}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-            style={{
-              color: COLORS.accentBlue,
-              background: 'rgba(88, 166, 255, 0.1)',
-            }}
+className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[var(--ui-text-xs)] font-medium transition-colors"
+             style={{
+               color: 'var(--accent-blue)',
+                background: 'rgba(var(--accent-blue-rgb), 0.1)',
+             }}
           >
             <Search className="w-3.5 h-3.5" />
             Clear search
@@ -91,11 +91,11 @@ export const InboxEmptyState = memo(function InboxEmptyState({
           <button
             type="button"
             onClick={onClearFilter}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-            style={{
-              color: COLORS.textSecondary,
-              background: 'rgba(139, 148, 158, 0.08)',
-            }}
+className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[var(--ui-text-xs)] font-medium transition-colors"
+             style={{
+               color: 'var(--text-secondary)',
+                background: 'rgba(var(--text-muted-rgb), 0.08)',
+             }}
           >
             <Filter className="w-3.5 h-3.5" />
             Show all trips

@@ -78,29 +78,29 @@ export default function OutputPanel({ trip: propTrip, tripId: propTripId }: Outp
       )}
 
       {/* Internal vs Traveler-safe Split View */}
-      <div className="border border-[#1c2128] rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-gray-200 mb-4">Agent View vs Customer View</h3>
+      <div className="border border-highlight rounded-lg p-4">
+        <h3 className="text-ui-sm font-semibold text-gray-200 mb-4">Agent View vs Customer View</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 rounded-lg bg-[#0a0d11] border border-[#1c2128]">
-            <h4 className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-3">For You (Agent)</h4>
+          <div className="p-4 rounded-lg bg-sidebar border border-highlight">
+            <h4 className="text-ui-xs font-bold text-blue-400 uppercase tracking-wider mb-3">For You (Agent)</h4>
             {internalBundle ? (
               <div className="space-y-4">
                 <div>
-                  <div className="text-xs font-semibold text-gray-500 uppercase">Background Notes</div>
-                  <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
+                  <div className="text-ui-xs font-semibold text-gray-500 uppercase">Background Notes</div>
+                  <p className="text-ui-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                     {internalBundle.system_context || "—"}
                   </p>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-gray-500 uppercase">Message Preview</div>
-                  <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
+                  <div className="text-ui-xs font-semibold text-gray-500 uppercase">Message Preview</div>
+                  <p className="text-ui-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                     {internalBundle.user_message || "—"}
                   </p>
                 </div>
                 {internalBundle.constraints && internalBundle.constraints.length > 0 && (
                   <div>
-                    <div className="text-xs font-semibold text-gray-500 uppercase">Constraints</div>
-                    <ul className="mt-1 list-disc list-inside text-xs text-gray-400 space-y-0.5">
+                    <div className="text-ui-xs font-semibold text-gray-500 uppercase">Constraints</div>
+                    <ul className="mt-1 list-disc list-inside text-ui-xs text-gray-400 space-y-0.5">
                       {internalBundle.constraints.map((c, i) => (
                         <li key={`icon-${c.slice(0, 20)}-${i}`}>{c}</li>
                       ))}
@@ -109,38 +109,38 @@ export default function OutputPanel({ trip: propTrip, tripId: propTripId }: Outp
                 )}
                 {internalBundle.internal_notes && (
                   <div>
-                    <div className="text-xs font-semibold text-gray-500 uppercase">Internal Notes</div>
-                    <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
+                    <div className="text-ui-xs font-semibold text-gray-500 uppercase">Internal Notes</div>
+                    <p className="text-ui-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                       {internalBundle.internal_notes}
                     </p>
                   </div>
                 )}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">No agent notes</p>
+              <p className="text-gray-500 text-ui-sm">No agent notes</p>
             )}
           </div>
 
-          <div className="p-4 rounded-lg bg-[#0a0d11] border border-[#1c2128]">
-            <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3">For Customer</h4>
+          <div className="p-4 rounded-lg bg-sidebar border border-highlight">
+            <h4 className="text-ui-xs font-bold text-emerald-400 uppercase tracking-wider mb-3">For Customer</h4>
             {travelerBundle ? (
               <div className="space-y-4">
                 <div>
-                  <div className="text-xs font-semibold text-gray-500 uppercase">Background Notes</div>
-                  <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
+                  <div className="text-ui-xs font-semibold text-gray-500 uppercase">Background Notes</div>
+                  <p className="text-ui-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                     {travelerBundle.system_context || "—"}
                   </p>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-gray-500 uppercase">Message Preview</div>
-                  <p className="text-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
+                  <div className="text-ui-xs font-semibold text-gray-500 uppercase">Message Preview</div>
+                  <p className="text-ui-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
                     {travelerBundle.user_message || "—"}
                   </p>
                 </div>
                 {travelerBundle.follow_up_sequence && travelerBundle.follow_up_sequence.length > 0 && (
                   <div>
-                    <div className="text-xs font-semibold text-gray-500 uppercase">Follow-up Sequence</div>
-                    <ul className="mt-1 list-disc list-inside text-xs text-gray-400 space-y-0.5">
+                    <div className="text-ui-xs font-semibold text-gray-500 uppercase">Follow-up Sequence</div>
+                    <ul className="mt-1 list-disc list-inside text-ui-xs text-gray-400 space-y-0.5">
                       {travelerBundle.follow_up_sequence.map((f, i) => (
                         <li key={`fseq-${f.field_name}-${i}`}>{f.question}</li>
                       ))}
@@ -149,7 +149,7 @@ export default function OutputPanel({ trip: propTrip, tripId: propTripId }: Outp
                 )}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">No customer message</p>
+              <p className="text-gray-500 text-ui-sm">No customer message</p>
             )}
           </div>
         </div>
@@ -158,7 +158,7 @@ export default function OutputPanel({ trip: propTrip, tripId: propTripId }: Outp
       {/* Delivery Action - Wave 8 */}
       <div className={styles.deliveryActions}>
         {policyBlocksSend && (
-          <div className="mb-3 rounded-md border border-[#f85149]/40 bg-[#f85149]/10 px-3 py-2 text-xs text-[#ffb4b4]">
+          <div className="mb-3 rounded-md border border-[#f85149]/40 bg-[#f85149]/10 px-3 py-2 text-ui-xs text-[#ffb4b4]">
             <strong>Send blocked by policy:</strong> {sendBlockReason}
           </div>
         )}

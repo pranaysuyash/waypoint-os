@@ -9,10 +9,10 @@ export default function WorkspaceOutputPage() {
   return (
     <div className='p-6'>
       <div className='mb-6'>
-        <h2 className='text-xl flex items-center gap-2 text-[#e6edf3] font-semibold'>
+        <h2 className='text-ui-xl flex items-center gap-2 text-[#e6edf3] font-semibold'>
           Outgoing Deliverables
         </h2>
-        <p className='text-sm text-[#8b949e] mt-1'>
+        <p className='text-ui-sm text-[#8b949e] mt-1'>
           Constructed agent notes and client-facing responses based on strategy.
         </p>
       </div>

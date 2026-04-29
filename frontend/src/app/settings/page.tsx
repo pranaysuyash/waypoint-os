@@ -142,7 +142,7 @@ export default function SettingsPage() {
   if (isLoading && !draft) {
     return (
       <div className="min-h-screen bg-[#080a0c] p-6 flex items-center justify-center">
-        <div className="text-[#8b949e] text-sm animate-pulse">Loading settings...</div>
+        <div className="text-[#8b949e] text-ui-sm animate-pulse">Loading settings...</div>
       </div>
     );
   }
@@ -155,10 +155,10 @@ export default function SettingsPage() {
             <AlertCircle className="w-5 h-5" />
             <h2 className="font-semibold">Failed to load settings</h2>
           </div>
-          <p className="text-sm text-[#e6edf3] mt-2">{error?.message}</p>
+          <p className="text-ui-sm text-[#e6edf3] mt-2">{error?.message}</p>
           <button
             onClick={refetch}
-            className="mt-4 px-4 py-2 rounded-lg border border-[#30363d] text-sm text-[#e6edf3] hover:bg-[#161b22] transition-colors"
+            className="mt-4 px-4 py-2 rounded-lg border border-[#30363d] text-ui-sm text-[#e6edf3] hover:bg-[#161b22] transition-colors"
           >
             Retry
           </button>
@@ -173,20 +173,20 @@ export default function SettingsPage() {
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold">Agency Settings</h1>
-            <p className="text-sm text-[#8b949e] mt-1">
+            <h1 className="text-ui-xl font-semibold">Agency Settings</h1>
+            <p className="text-ui-sm text-[#8b949e] mt-1">
               Configure how Waypoint operates for your agency
             </p>
           </div>
           <div className="flex items-center gap-2">
             {saveStatus === 'saved' && (
-              <span className="flex items-center gap-1.5 text-xs text-[#3fb950]">
+              <span className="flex items-center gap-1.5 text-ui-xs text-[#3fb950]">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 Saved
               </span>
             )}
             {saveStatus === 'error' && (
-              <span className="flex items-center gap-1.5 text-xs text-[#f85149]">
+              <span className="flex items-center gap-1.5 text-ui-xs text-[#f85149]">
                 <AlertCircle className="w-3.5 h-3.5" />
                 Save failed
               </span>
@@ -194,7 +194,7 @@ export default function SettingsPage() {
             <button
               onClick={handleReset}
               disabled={!isDirty || saveStatus === 'saving'}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#30363d] text-sm text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#161b22] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#30363d] text-ui-sm text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#161b22] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               Reset
@@ -202,7 +202,7 @@ export default function SettingsPage() {
             <button
               onClick={handleSave}
               disabled={!isDirty || saveStatus === 'saving'}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#238636] text-white text-sm font-medium hover:bg-[#2ea043] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#238636] text-white text-ui-sm font-medium hover:bg-[#2ea043] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Save className="w-3.5 h-3.5" />
               {saveStatus === 'saving' ? 'Saving...' : 'Save Changes'}
@@ -212,7 +212,7 @@ export default function SettingsPage() {
 
         {/* Error summary */}
         {(opError || autonomyError) && (
-          <div className="rounded-lg border border-[#f85149]/30 bg-[#f85149]/10 p-3 flex items-center gap-2 text-sm text-[#f85149]">
+          <div className="rounded-lg border border-[#f85149]/30 bg-[#f85149]/10 p-3 flex items-center gap-2 text-ui-sm text-[#f85149]">
             <AlertCircle className="w-4 h-4 shrink-0" />
             {opError?.message || autonomyError?.message}
           </div>
@@ -228,7 +228,7 @@ export default function SettingsPage() {
                 <button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                  className={`flex items-center gap-2 px-4 py-2.5 text-ui-sm font-medium transition-colors border-b-2 -mb-px ${
                     isActive
                       ? 'border-[#58a6ff] text-[#58a6ff]'
                       : 'border-transparent text-[#8b949e] hover:text-[#c9d1d9]'

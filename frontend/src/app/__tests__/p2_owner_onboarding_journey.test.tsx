@@ -53,6 +53,13 @@ vi.mock("@/stores/workbench", () => ({
   }),
 }));
 
+vi.mock("@/contexts/TripContext", () => ({
+  useTripContext: () => ({
+    replaceTrip: vi.fn(),
+    refetchTrip: vi.fn(),
+  }),
+}));
+
 vi.mock("@/hooks/useSpineRun", () => ({
   useSpineRun: () => ({
     execute: vi.fn().mockResolvedValue({
@@ -123,9 +130,10 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/contexts/TripContext", () => ({
-  useTripContext: () => {
-    throw new Error("Context not available");
-  },
+  useTripContext: () => ({
+    replaceTrip: vi.fn(),
+    refetchTrip: vi.fn(),
+  }),
 }));
 
 vi.mock("@/lib/currency", () => ({

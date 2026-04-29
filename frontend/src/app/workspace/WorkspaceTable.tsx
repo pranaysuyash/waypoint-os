@@ -48,7 +48,7 @@ function SortHeader({
     <button
       type="button"
       onClick={() => onSort(field)}
-      className="flex items-center gap-1 text-left text-xs font-semibold text-[#8b949e] uppercase tracking-wider hover:text-[#e6edf3] transition-colors"
+      className="flex items-center gap-1 text-left text-ui-xs font-semibold text-[#8b949e] uppercase tracking-wider hover:text-[#e6edf3] transition-colors"
       aria-label={`Sort by ${label} ${isActive ? (direction === 'asc' ? 'ascending' : 'descending') : ''}`}
     >
       {label}
@@ -76,15 +76,15 @@ const TripRow = memo(function TripRow({ trip }: { trip: Trip }) {
           href={getTripRoute(trip.id)}
           className="flex items-center gap-2 text-[#e6edf3] hover:text-[#58a6ff] transition-colors"
         >
-          <span className="text-sm font-medium truncate max-w-[200px]">{trip.destination}</span>
+          <span className="text-ui-sm font-medium truncate max-w-[200px]">{trip.destination}</span>
         </Link>
       </td>
       <td className="py-2.5 px-3">
-        <span className="text-xs text-[#8b949e]">{trip.type}</span>
+        <span className="text-ui-xs text-[#8b949e]">{trip.type}</span>
       </td>
       <td className="py-2.5 px-3">
         <span
-          className="inline-flex items-center text-xs font-mono font-semibold px-2 py-0.5 rounded-md"
+          className="inline-flex items-center text-ui-xs font-mono font-semibold px-2 py-0.5 rounded-md"
           style={{ color: meta.color, background: meta.bg }}
         >
           {isBlocked && <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-current" />}
@@ -92,15 +92,15 @@ const TripRow = memo(function TripRow({ trip }: { trip: Trip }) {
         </span>
       </td>
       <td className="py-2.5 px-3">
-        <span className="text-xs text-[#8b949e]">{trip.age}</span>
+        <span className="text-ui-xs text-[#8b949e]">{trip.age}</span>
       </td>
       <td className="py-2.5 px-3">
-        <span className="text-xs font-mono text-[#484f58]">{trip.id}</span>
+        <span className="text-ui-xs font-mono text-[#484f58]">{trip.id}</span>
       </td>
       <td className="py-2.5 px-3 text-right">
         <Link
           href={getTripRoute(trip.id)}
-          className="inline-flex items-center text-xs text-[#484f58] hover:text-[#8b949e] transition-colors"
+          className="inline-flex items-center text-ui-xs text-[#484f58] hover:text-[#8b949e] transition-colors"
         >
           Open
           <ChevronRight className="h-3 w-3 ml-0.5" aria-hidden="true" />
@@ -135,10 +135,10 @@ export const WorkspaceTable = memo(function WorkspaceTable({
                 <SortHeader field="age" label="Age" activeField={sortField} direction={sortDirection} onSort={onSort} />
               </th>
               <th scope="col" className="py-2.5 px-3">
-                <span className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">ID</span>
+                <span className="text-ui-xs font-semibold text-[#8b949e] uppercase tracking-wider">ID</span>
               </th>
               <th scope="col" className="py-2.5 px-3 text-right">
-                <span className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider">Action</span>
+                <span className="text-ui-xs font-semibold text-[#8b949e] uppercase tracking-wider">Action</span>
               </th>
             </tr>
           </thead>

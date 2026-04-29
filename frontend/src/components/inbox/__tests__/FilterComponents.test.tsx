@@ -24,14 +24,13 @@ describe('FilterPill', () => {
   it('shows active styling when isActive', () => {
     const { container } = render(<FilterPill label="All" isActive />);
     const button = container.querySelector('button');
-    expect(button).toHaveClass('bg-[#161b22]');
-    expect(button).toHaveClass('border-[#58a6ff]');
+    expect(button).toHaveClass('bg-elevated');
   });
 
   it('shows inactive styling when not isActive', () => {
     const { container } = render(<FilterPill label="All" />);
     const button = container.querySelector('button');
-    expect(button).toHaveClass('text-[#8b949e]');
+    expect(button).toHaveClass('text-text-muted');
   });
 
   it('renders icon when provided', () => {
@@ -42,8 +41,8 @@ describe('FilterPill', () => {
   it('renders role variant correctly', () => {
     const { container } = render(<FilterPill label="Ops" variant="role" isActive />);
     const button = container.querySelector('button');
-    expect(button).toHaveClass('bg-[#58a6ff]');
-    expect(button).toHaveClass('text-[#0d1117]');
+    expect(button).toHaveClass('bg-accent-blue');
+    expect(button).toHaveClass('text-text-on-accent');
   });
 });
 
@@ -96,13 +95,13 @@ describe('InboxFilterBar', () => {
   it('shows active role styling', () => {
     render(<InboxFilterBar {...defaultProps} activeRole="ops" />);
     const opsButton = screen.getByText('Ops').closest('button');
-    expect(opsButton).toHaveClass('bg-[#58a6ff]');
+    expect(opsButton).toHaveClass('bg-accent-blue');
   });
 
   it('shows active filter styling', () => {
     render(<InboxFilterBar {...defaultProps} activeFilter="at_risk" />);
     const atRiskButton = screen.getByText('At Risk').closest('button');
-    expect(atRiskButton).toHaveClass('bg-[#161b22]');
+    expect(atRiskButton).toHaveClass('bg-elevated');
   });
 
   it('renders filter counts', () => {

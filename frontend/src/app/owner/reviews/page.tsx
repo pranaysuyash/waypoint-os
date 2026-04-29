@@ -36,7 +36,7 @@ const StatusBadge = memo(function StatusBadge({ status }: { status: ReviewStatus
 
   return (
     <span
-      className='inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium'
+      className='inline-flex items-center gap-1 px-2 py-1 rounded-md text-ui-xs font-medium'
       style={{ background: style.bg, color: style.color }}
     >
       {status === 'pending' && <Clock className='w-3 h-3' />}
@@ -62,7 +62,7 @@ const RiskFlagBadge = memo(function RiskFlagBadge({ flag }: { flag: RiskFlag }) 
 
   const c = config[flag];
   return (
-    <span className='inline-block px-1.5 py-0.5 text-xs rounded-md font-medium'
+    <span className='inline-block px-1.5 py-0.5 text-ui-xs rounded-md font-medium'
       style={{ color: c.color, background: c.bg }}
     >
       {c.label}
@@ -99,15 +99,15 @@ const ReviewCard = memo(function ReviewCard({
         <div className='flex-1 min-w-0'>
           <div className='flex items-center gap-2 mb-1'>
             {isUrgent && <AlertTriangle className='w-4 h-4 text-[#f85149] shrink-0' />}
-            <span className='text-sm text-[#8b949e] font-mono'>{review.tripReference}</span>
+            <span className='text-ui-sm text-[#8b949e] font-mono'>{review.tripReference}</span>
             <StatusBadge status={review.status} />
           </div>
           
-          <h3 className='text-base font-semibold text-[#e6edf3] mb-1'>
+          <h3 className='text-ui-base font-semibold text-[#e6edf3] mb-1'>
             {review.destination}
           </h3>
           
-          <div className='flex items-center gap-4 text-xs text-[#8b949e] mb-2'>
+          <div className='flex items-center gap-4 text-ui-xs text-[#8b949e] mb-2'>
             <span className='flex items-center gap-1'>
               <MapPin className='w-3 h-3' /> {review.tripType}
             </span>
@@ -123,20 +123,20 @@ const ReviewCard = memo(function ReviewCard({
             </span>
           </div>
           
-          <p className='text-sm text-[#8b949e] mb-2'>
+          <p className='text-ui-sm text-[#8b949e] mb-2'>
             <span className='text-[#e6edf3]'>Reason for review:</span> {review.reason}
           </p>
           
           {review.agentNotes && (
-            <blockquote className='text-sm text-[#8b949e] border-l-2 border-[#30363d] pl-3 italic'>
+            <blockquote className='text-ui-sm text-[#8b949e] border-l-2 border-[#30363d] pl-3 italic'>
               "{review.agentNotes}"
-              <span className='text-xs text-[#484f58] not-italic ml-2'>— {review.agentName}</span>
+              <span className='text-ui-xs text-[#484f58] not-italic ml-2'>— {review.agentName}</span>
             </blockquote>
           )}
           
           {review.riskFlags.length > 0 && (
             <div className='flex items-center gap-2 mt-2'>
-              <span className='text-xs text-[#8b949e]'>Risk flags:</span>
+              <span className='text-ui-xs text-[#8b949e]'>Risk flags:</span>
               {review.riskFlags.map((flag) => (
                 <RiskFlagBadge key={flag} flag={flag} />
               ))}
@@ -148,7 +148,7 @@ const ReviewCard = memo(function ReviewCard({
           {!showActions ? (
             <button
               onClick={() => setShowActions(true)}
-              className='px-3 py-1.5 bg-[#58a6ff] text-[#0d1117] rounded-lg text-sm font-medium hover:bg-[#6eb5ff] transition-colors'
+              className='px-3 py-1.5 bg-[#58a6ff] text-[#0d1117] rounded-lg text-ui-sm font-medium hover:bg-[#6eb5ff] transition-colors'
             >
               Review
             </button>
@@ -159,7 +159,7 @@ const ReviewCard = memo(function ReviewCard({
                   onApprove(review.id);
                   setShowActions(false);
                 }}
-                className='flex items-center gap-1 px-3 py-1.5 bg-[#3fb950] text-white rounded-lg text-sm font-medium hover:bg-[#4bc95b] transition-colors'
+                className='flex items-center gap-1 px-3 py-1.5 bg-[#3fb950] text-white rounded-lg text-ui-sm font-medium hover:bg-[#4bc95b] transition-colors'
               >
                 <CheckCircle className='w-3.5 h-3.5' /> Approve
               </button>
@@ -169,7 +169,7 @@ const ReviewCard = memo(function ReviewCard({
                   onRequestChanges(review.id);
                   setShowActions(false);
                 }}
-                className='flex items-center gap-1 px-3 py-1.5 bg-[#d29922] text-white rounded-lg text-sm font-medium hover:bg-[#e3a532] transition-colors'
+                className='flex items-center gap-1 px-3 py-1.5 bg-[#d29922] text-white rounded-lg text-ui-sm font-medium hover:bg-[#e3a532] transition-colors'
               >
                 <RefreshCw className='w-3.5 h-3.5' /> Request Changes
               </button>
@@ -179,14 +179,14 @@ const ReviewCard = memo(function ReviewCard({
                   onReject(review.id);
                   setShowActions(false);
                 }}
-                className='flex items-center gap-1 px-3 py-1.5 bg-[#f85149] text-white rounded-lg text-sm font-medium hover:bg-[#ff6b6b] transition-colors'
+                className='flex items-center gap-1 px-3 py-1.5 bg-[#f85149] text-white rounded-lg text-ui-sm font-medium hover:bg-[#ff6b6b] transition-colors'
               >
                 <XCircle className='w-3.5 h-3.5' /> Reject
               </button>
               
               <button
                 onClick={() => setShowActions(false)}
-                className='px-3 py-1.5 text-[#8b949e] text-sm hover:text-[#e6edf3] transition-colors'
+                className='px-3 py-1.5 text-[#8b949e] text-ui-sm hover:text-[#e6edf3] transition-colors'
               >
                 Cancel
               </button>
@@ -195,7 +195,7 @@ const ReviewCard = memo(function ReviewCard({
           
           <Link
             href={getTripRoute(review.tripId)}
-            className='flex items-center justify-center gap-1 text-xs text-[#58a6ff] hover:text-[#79b8ff] transition-colors'
+            className='flex items-center justify-center gap-1 text-ui-xs text-[#58a6ff] hover:text-[#79b8ff] transition-colors'
           >
             View Details <ChevronRight className='w-3 h-3' />
           </Link>
@@ -280,8 +280,8 @@ export default function OwnerReviewsPage() {
       {/* Header */}
       <header className='flex flex-wrap items-center justify-between gap-3 pt-1'>
         <div>
-          <h1 className='text-2xl font-semibold text-[#e6edf3]'>Reviews & Approvals</h1>
-          <p className='text-base text-[#8b949e] mt-0.5'>
+          <h1 className='text-ui-2xl font-semibold text-[#e6edf3]'>Reviews & Approvals</h1>
+          <p className='text-ui-base text-[#8b949e] mt-0.5'>
             Approve high-value trips and manage escalations
           </p>
         </div>
@@ -289,12 +289,12 @@ export default function OwnerReviewsPage() {
         <div className='flex items-center gap-3'>
           <button 
             onClick={() => refetch()}
-            className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#8b949e] rounded-lg text-sm hover:text-[#e6edf3] transition-colors'
+            className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#8b949e] rounded-lg text-ui-sm hover:text-[#e6edf3] transition-colors'
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> Refresh
           </button>
           
-          <button className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#8b949e] rounded-lg text-sm hover:text-[#e6edf3] transition-colors'>
+          <button className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#8b949e] rounded-lg text-ui-sm hover:text-[#e6edf3] transition-colors'>
             <Filter className='w-4 h-4' /> Filters
           </button>
         </div>
@@ -303,25 +303,25 @@ export default function OwnerReviewsPage() {
       {/* Stats */}
       <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 font-inter'>
-          <span className='text-sm text-[#8b949e]'>Pending Review</span>
-          <div className='text-2xl font-bold text-[#e6edf3] mt-1'>{pendingCount}</div>
+          <span className='text-ui-sm text-[#8b949e]'>Pending Review</span>
+          <div className='text-ui-2xl font-bold text-[#e6edf3] mt-1'>{pendingCount}</div>
         </div>
         
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 font-inter'>
-          <span className='text-sm text-[#8b949e] font-inter'>Total Value in Progress</span>
-          <div className='text-2xl font-bold text-[#e6edf3] mt-1'>
+          <span className='text-ui-sm text-[#8b949e] font-inter'>Total Value in Progress</span>
+          <div className='text-ui-2xl font-bold text-[#e6edf3] mt-1'>
             ${(totalValue / 1000).toFixed(1)}k
           </div>
         </div>
         
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 font-inter'>
-          <span className='text-sm text-[#8b949e]'>Approved (30d)</span>
-          <div className='text-2xl font-bold text-[#3fb950] mt-1'>{approvedCount}</div>
+          <span className='text-ui-sm text-[#8b949e]'>Approved (30d)</span>
+          <div className='text-ui-2xl font-bold text-[#3fb950] mt-1'>{approvedCount}</div>
         </div>
         
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 font-inter'>
-          <span className='text-sm text-[#8b949e]'>Escalated</span>
-          <div className='text-2xl font-bold text-[#58a6ff] mt-1'>{escalatedCount}</div>
+          <span className='text-ui-sm text-[#8b949e]'>Escalated</span>
+          <div className='text-ui-2xl font-bold text-[#58a6ff] mt-1'>{escalatedCount}</div>
         </div>
       </div>
 
@@ -336,14 +336,14 @@ export default function OwnerReviewsPage() {
           <button
             key={tab.key}
             onClick={() => setStatusFilter(tab.key as ReviewStatus | 'all')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg text-ui-sm font-medium transition-colors ${
               statusFilter === tab.key
                 ? 'bg-[#161b22] text-[#e6edf3]'
                 : 'text-[#8b949e] hover:text-[#e6edf3]'
             }`}
           >
             {tab.label}
-            <span className='ml-2 text-xs text-[#484f58]'>{tab.count}</span>
+            <span className='ml-2 text-ui-xs text-[#484f58]'>{tab.count}</span>
           </button>
         ))}
       </div>

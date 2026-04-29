@@ -28,10 +28,10 @@ describe('Spinner Component', () => {
 
   it('applies color classes correctly', () => {
     const { container: greenContainer } = render(<Spinner color='green' />);
-    expect(greenContainer.firstChild).toHaveClass('border-[#3fb950]');
+    expect(greenContainer.firstChild).toHaveClass('border-accent-green');
 
     const { container: redContainer } = render(<Spinner color='red' />);
-    expect(redContainer.firstChild).toHaveClass('border-[#f85149]');
+    expect(redContainer.firstChild).toHaveClass('border-accent-red');
   });
 
   it('has sr-only text for screen readers', () => {
@@ -70,12 +70,12 @@ describe('Skeleton Component', () => {
 describe('SkeletonText Component', () => {
   it('renders specified number of lines', () => {
     const { container } = render(<SkeletonText lines={3} />);
-    expect(container.querySelectorAll('div.bg-\\[\\#161b22\\]')).toHaveLength(3);
+    expect(container.querySelectorAll('div.bg-elevated')).toHaveLength(3);
   });
 
   it('last line is shorter than others', () => {
     const { container } = render(<SkeletonText lines={3} />);
-    const skeletons = container.querySelectorAll('[class*="bg-[#161b22]"]');
+    const skeletons = container.querySelectorAll('[class*="bg-elevated"]');
     const lastSkeleton = skeletons[skeletons.length - 1] as HTMLElement;
     expect(lastSkeleton).toHaveClass('w-3/4');
   });

@@ -74,7 +74,7 @@ describe('ActivityProvenanceBadge', () => {
     );
 
     const badge = container.querySelector('span');
-    expect(badge?.className).toMatch(/text-xs/);
+    expect(badge?.className).toMatch(/text-ui-xs/);
   });
 
   // Test 8: Support md size variant (default)
@@ -84,7 +84,7 @@ describe('ActivityProvenanceBadge', () => {
     );
 
     const badge = container.querySelector('span');
-    expect(badge?.className).toMatch(/text-sm/);
+    expect(badge?.className).toMatch(/text-ui-sm/);
   });
 
   // Test 9: Support lg size variant
@@ -94,7 +94,7 @@ describe('ActivityProvenanceBadge', () => {
     );
 
     const badge = container.querySelector('span');
-    expect(badge?.className).toMatch(/text-base/);
+    expect(badge?.className).toMatch(/text-ui-base/);
   });
 
   // Test 10: Accessibility - aria-label for suggested

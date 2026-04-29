@@ -65,12 +65,12 @@ const StatCard = memo(function StatCard({
     return (
       <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 flex flex-col gap-3'>
         <div className='flex items-center justify-between'>
-          <span className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
+          <span className='text-ui-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
             {title}
           </span>
           <AlertTriangle className='h-4 w-4 text-[#f85149]' />
         </div>
-        <span className='text-sm text-[#f85149]'>Failed to load</span>
+        <span className='text-ui-sm text-[#f85149]'>Failed to load</span>
       </div>
     );
   }
@@ -81,7 +81,7 @@ const StatCard = memo(function StatCard({
   return (
     <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 flex flex-col gap-3 hover:border-[#30363d] transition-colors'>
       <div className='flex items-center justify-between'>
-        <span className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
+        <span className='text-ui-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
           {title}
         </span>
         <div
@@ -92,12 +92,12 @@ const StatCard = memo(function StatCard({
         </div>
       </div>
       <span
-        className='text-3xl font-bold tabular-nums'
+        className='text-ui-3xl font-bold tabular-nums'
         style={{ color: meta.color }}
       >
         {displayValue}
       </span>
-      <span className='text-sm text-[#8b949e] font-mono'>{displaySub}</span>
+      <span className='text-ui-sm text-[#8b949e] font-mono'>{displaySub}</span>
     </div>
   );
 });
@@ -131,10 +131,10 @@ const PipelineBar = memo(function PipelineBar({
     return (
       <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
         <div className='flex items-center justify-between mb-3'>
-          <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
+          <h2 className='text-ui-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
             Progress
           </h2>
-          <span className='text-sm font-mono text-[#8b949e]'>Loading...</span>
+          <span className='text-ui-sm font-mono text-[#8b949e]'>Loading...</span>
         </div>
         <div className='h-2 bg-[#161b22] rounded-full overflow-hidden'>
           <div className='h-full bg-[#58a6ff]' style={{ width: '30%' }} />
@@ -146,11 +146,11 @@ const PipelineBar = memo(function PipelineBar({
   if (safeData.length === 0) {
     return (
       <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
-        <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e] mb-2'>
+        <h2 className='text-ui-sm font-semibold tracking-widest uppercase text-[#8b949e] mb-2'>
           Pipeline
         </h2>
-        <p className='text-sm text-[#8b949e]'>No active trips in pipeline</p>
-        <Link href='/workbench' className='text-sm text-[#58a6ff] hover:text-[#79b8ff] mt-2 inline-block'>
+        <p className='text-ui-sm text-[#8b949e]'>No active trips in pipeline</p>
+        <Link href='/workbench' className='text-ui-sm text-[#58a6ff] hover:text-[#79b8ff] mt-2 inline-block'>
           Process your first trip →
         </Link>
       </div>
@@ -162,12 +162,12 @@ const PipelineBar = memo(function PipelineBar({
     return (
       <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
         <div className='flex items-center justify-between mb-2'>
-          <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
+          <h2 className='text-ui-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
             Trip Progress
           </h2>
           <button 
             onClick={() => setIsExpanded(true)}
-            className='text-xs text-[#58a6ff] hover:text-[#79b8ff]'
+            className='text-ui-xs text-[#58a6ff] hover:text-[#79b8ff]'
           >
             Expand
           </button>
@@ -187,11 +187,11 @@ const PipelineBar = memo(function PipelineBar({
               ))}
             </div>
           </div>
-          <span className='text-sm font-semibold text-[#e6edf3] tabular-nums'>
+          <span className='text-ui-sm font-semibold text-[#e6edf3] tabular-nums'>
             {total}
           </span>
         </div>
-        <p className='text-xs text-[#8b949e] mt-2'>
+        <p className='text-ui-xs text-[#8b949e] mt-2'>
           {safeData.length} stages · Most in {safeData.reduce((m, s) => s.count > m.count ? s : m).label}
         </p>
       </div>
@@ -202,14 +202,14 @@ const PipelineBar = memo(function PipelineBar({
   return (
     <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
       <div className='flex items-center justify-between mb-4'>
-        <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
+        <h2 className='text-ui-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
           Trip Progress
         </h2>
         <div className='flex items-center gap-2'>
-          <span className='text-sm font-mono text-[#8b949e]'>{total} total</span>
+          <span className='text-ui-sm font-mono text-[#8b949e]'>{total} total</span>
           <button 
             onClick={() => setIsExpanded(false)}
-            className='text-xs text-[#8b949e] hover:text-[#e6edf3]'
+            className='text-ui-xs text-[#8b949e] hover:text-[#e6edf3]'
           >
             Collapse
           </button>
@@ -224,8 +224,8 @@ const PipelineBar = memo(function PipelineBar({
           return (
             <div key={stage.label} className='group'>
               <div className='flex items-center justify-between mb-1'>
-                <span className='text-sm text-[#e6edf3]'>{stage.label}</span>
-                <span className='text-sm font-mono text-[#8b949e] tabular-nums'>
+                <span className='text-ui-sm text-[#e6edf3]'>{stage.label}</span>
+                <span className='text-ui-sm font-mono text-[#8b949e] tabular-nums'>
                   {stage.count}
                 </span>
               </div>
@@ -267,21 +267,21 @@ const ActivityRow = memo(function ActivityRow({
       />
       <div className='flex-1 min-w-0'>
         <div className='flex items-center gap-2'>
-          <span className='text-base font-medium text-[#e6edf3] truncate'>
+          <span className='text-ui-base font-medium text-[#e6edf3] truncate'>
             {item.destination}
           </span>
-          <span className='text-sm text-[#8b949e]'>{item.type}</span>
+          <span className='text-ui-sm text-[#8b949e]'>{item.type}</span>
         </div>
-        <div className='text-sm font-mono text-[#8b949e]'>{item.id}</div>
+        <div className='text-ui-sm font-mono text-[#8b949e]'>{item.id}</div>
       </div>
       <div className='flex items-center gap-2 shrink-0'>
         <span
-          className='text-sm font-mono px-2 py-0.5 rounded-md'
+          className='text-ui-sm font-mono px-2 py-0.5 rounded-md'
           style={{ color: meta.color, background: meta.bg }}
         >
           {meta.label}
         </span>
-        <span className='text-sm text-[#8b949e]'>{item.age}</span>
+        <span className='text-ui-sm text-[#8b949e]'>{item.age}</span>
         <ChevronRight
           className='h-4 w-4 text-[#30363d] group-hover:text-[#8b949e] transition-colors'
           aria-hidden='true'
@@ -330,13 +330,13 @@ function RecentTrips() {
         <div className='w-12 h-12 rounded-full bg-[#161b22] flex items-center justify-center mx-auto mb-3'>
           <Briefcase className='w-6 h-6 text-[#6e7681]' />
         </div>
-        <p className='text-base text-[#e6edf3] font-medium mb-1'>No trips yet</p>
-        <p className='text-sm text-[#8b949e] mb-4'>
+        <p className='text-ui-base text-[#e6edf3] font-medium mb-1'>No trips yet</p>
+        <p className='text-ui-sm text-[#8b949e] mb-4'>
           Get started by processing your first customer inquiry
         </p>
         <Link
           href='/workbench'
-          className='inline-flex items-center gap-2 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg text-sm font-medium hover:bg-[#6eb5ff] transition-colors'
+          className='inline-flex items-center gap-2 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg text-ui-sm font-medium hover:bg-[#6eb5ff] transition-colors'
         >
           Process Your First Trip
           <ArrowRight className='w-4 h-4' />
@@ -423,16 +423,16 @@ export default function DashboardPage() {
     <main className='p-5 max-w-[1400px] mx-auto space-y-5'>
       <header className='flex items-center justify-between pt-1'>
         <div>
-          <h1 className='text-2xl font-semibold text-[#e6edf3]'>
+          <h1 className='text-ui-2xl font-semibold text-[#e6edf3]'>
             Operations Overview
           </h1>
-          <p className='text-base text-[#a8b3c1] mt-0.5'>
+          <p className='text-ui-base text-[#a8b3c1] mt-0.5'>
             Waypoint OS · your travel agency workspace
           </p>
         </div>
         <Link
           href='/workbench'
-          className='flex items-center gap-1.5 text-base text-[#58a6ff] hover:text-[#79b8ff] transition-colors'
+          className='flex items-center gap-1.5 text-ui-base text-[#58a6ff] hover:text-[#79b8ff] transition-colors'
         >
           Open Trip Workspace{' '}
           <ArrowRight className='h-4 w-4' aria-hidden='true' />
@@ -486,13 +486,13 @@ export default function DashboardPage() {
                 className='h-4 w-4 text-[#8b949e]'
                 aria-hidden='true'
               />
-              <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
+              <h2 className='text-ui-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
                 Recent Trips
               </h2>
             </div>
             <Link
               href='/inbox'
-              className='text-sm text-[#58a6ff] hover:text-[#79b8ff] flex items-center gap-1 transition-colors'
+              className='text-ui-sm text-[#58a6ff] hover:text-[#79b8ff] flex items-center gap-1 transition-colors'
             >
               See all <ArrowRight className='h-4 w-4' aria-hidden='true' />
             </Link>
@@ -507,7 +507,7 @@ export default function DashboardPage() {
             error={unifiedError as any}
           />
           <nav className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4' aria-label='Quick navigation'>
-            <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e] mb-3'>
+            <h2 className='text-ui-sm font-semibold tracking-widest uppercase text-[#8b949e] mb-3'>
               Jump To
             </h2>
             <ul className='space-y-1'>
@@ -526,11 +526,11 @@ export default function DashboardPage() {
                         />
                       </div>
                       <div className='flex-1 min-w-0'>
-                        <div className='text-base text-[#e6edf3]'>
+                        <div className='text-ui-base text-[#e6edf3]'>
                           {nav.label}
                         </div>
                         <div
-                          className='text-sm font-mono'
+                          className='text-ui-sm font-mono'
                           style={{ color: nav.dot }}
                         >
                           {nav.sub}
@@ -547,7 +547,7 @@ export default function DashboardPage() {
             </ul>
           </nav>
           <section className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
-            <h2 className='text-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
+            <h2 className='text-ui-sm font-semibold tracking-widest uppercase text-[#8b949e]'>
               Decision States
             </h2>
             <div className='mt-3 space-y-2'>
@@ -558,7 +558,7 @@ export default function DashboardPage() {
                     style={{ background: meta.color }}
                     aria-hidden='true'
                   />
-                  <span className='text-sm font-mono text-[#8b949e]'>
+                  <span className='text-ui-sm font-mono text-[#8b949e]'>
                     {meta.label}
                   </span>
                 </div>

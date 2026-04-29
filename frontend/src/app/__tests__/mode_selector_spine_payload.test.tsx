@@ -90,6 +90,13 @@ vi.mock("@/hooks/useTrips", () => ({
   }),
 }));
 
+vi.mock("@/contexts/TripContext", () => ({
+  useTripContext: () => ({
+    replaceTrip: vi.fn(),
+    refetchTrip: vi.fn(),
+  }),
+}));
+
 vi.mock("@/hooks/useFieldAuditLog", () => ({
   useFieldAuditLog: () => ({
     logChange: vi.fn(),

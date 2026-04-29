@@ -47,9 +47,9 @@
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--text-primary` | `#e6edf3` | Primary text, labels |
-| `--text-secondary` | `#8b949e` | Secondary info, metadata |
-| `--text-tertiary` | `#6e7681` | Disabled, placeholders |
-| `--text-muted` | `#484f58` | Subtle borders, inactive |
+| `--text-secondary` | `#a8b3c1` | Secondary info, metadata — lightened from #8b949e for WCAG AA compliance (5.2:1) |
+| `--text-tertiary` | `#9ba3b0` | Disabled, placeholders — lightened from #6e7681 for ~4.5:1 contrast |
+| `--text-muted` | `#8b949e` | Subtle borders, inactive — formerly #484f58 (was 2.8:1, too low) |
 | `--text-accent` | `#58a6ff` | Links, interactive |
 
 ### Accent Colors (State + Geography)
@@ -101,10 +101,11 @@
 ### Font Stack
 
 ```css
---font-display: "Inter", system-ui, sans-serif;     /* Headings, UI */
---font-mono: "JetBrains Mono", "SF Mono", monospace; /* Code, data */
---font-data: "IBM Plex Mono", monospace;             /* Numbers, metrics */
---font-map: "Inter", system-ui, sans-serif;          /* Map labels */
+--font-display: "Sora", system-ui, sans-serif;        /* Headings, UI (loaded via next/font) */
+--font-body: "Rubik", system-ui, sans-serif;          /* Body text (loaded via next/font) */
+--font-mono: "JetBrains Mono", "SF Mono", monospace;  /* Code, data */
+--font-data: "IBM Plex Mono", monospace;              /* Numbers, metrics */
+--font-map: "Sora", system-ui, sans-serif;             /* Map labels */
 ```
 
 ### Type Scale
@@ -1063,24 +1064,36 @@ Base unit: `4px`
 :root {
   /* Backgrounds */
   --bg-canvas: #080a0c;
+  --bg-canvas-rgb: 8 10 12;
   --bg-surface: #0f1115;
   --bg-elevated: #161b22;
   --bg-highlight: #1c2128;
   --bg-input: #111318;
+  --bg-count-badge: #21262d;
+  --bg-rationale: #0d1117;
 
-  /* Text */
-  --text-primary: #e6edf3;
-  --text-secondary: #8b949e;
-  --text-tertiary: #6e7681;
-  --text-muted: #484f58;
+  /* Text — WCAG AA compliant on dark backgrounds (4.5:1 minimum) */
+  --text-primary: #e6edf3;         /* 15.4:1 */
+  --text-secondary: #a8b3c1;       /* 5.2:1 — lightened from design spec for AA */
+  --text-tertiary: #9ba3b0;        /* ~4.5:1 — lightened from design spec for AA */
+  --text-muted: #8b949e;           /* 3.9:1 — for large text only */
   --text-accent: #58a6ff;
+  --text-placeholder: #484f58;
+  --text-on-accent: #0d1117;
+  --text-rationale: #c9d1d9;
 
   /* Accents */
   --accent-green: #3fb950;
+  --accent-green-rgb: 63 185 80;
   --accent-amber: #d29922;
+  --accent-amber-rgb: 210 153 34;
   --accent-red: #f85149;
+  --accent-red-rgb: 248 81 73;
   --accent-blue: #58a6ff;
+  --accent-blue-rgb: 88 166 255;
+  --accent-blue-hover: #6eb5ff;
   --accent-purple: #a371f7;
+  --accent-purple-rgb: 163 113 247;
   --accent-cyan: #39d0d8;
   --accent-orange: #ff9248;
 
@@ -1110,15 +1123,17 @@ Base unit: `4px`
   --space-12: 48px;
 
   /* Typography */
-  --font-display: "Inter", system-ui, sans-serif;
+  --font-display: "Sora", system-ui, sans-serif;
+  --font-body: "Rubik", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", monospace;
   --font-data: "IBM Plex Mono", monospace;
-  --font-map: "Inter", system-ui, sans-serif;
+  --font-map: "Sora", system-ui, sans-serif;
 
   /* Transitions */
   --transition-fast: 150ms ease;
-  --transition-base: 200ms ease;
-  --transition-slow: 300ms ease;
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 500ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 ```
 

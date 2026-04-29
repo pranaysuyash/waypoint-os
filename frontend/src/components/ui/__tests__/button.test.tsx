@@ -25,7 +25,7 @@ describe('Button Component', () => {
   it('applies secondary variant styles', () => {
     render(<Button variant='secondary'>Secondary</Button>);
     const button = screen.getByRole('button');
-    expect(button).toHaveClass('bg-bg-elevated');
+    expect(button).toHaveClass('bg-elevated');
     expect(button).toHaveClass('border');
   });
 

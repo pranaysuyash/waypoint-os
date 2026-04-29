@@ -112,10 +112,10 @@ export default function CaptureCallPanel({
     <div className="flex flex-col h-full bg-white dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800">
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <h2 className="text-ui-lg font-semibold text-gray-900 dark:text-gray-100">
           Capture Call
         </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-ui-sm text-gray-600 dark:text-gray-400 mt-1">
           Record the customer's travel intent and next steps
         </p>
       </div>
@@ -127,10 +127,10 @@ export default function CaptureCallPanel({
           <div className="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-red-900 dark:text-red-100">
+              <p className="text-ui-sm font-medium text-red-900 dark:text-red-100">
                 Error saving call
               </p>
-              <p className="text-xs text-red-800 dark:text-red-200 mt-0.5">{apiError}</p>
+              <p className="text-ui-xs text-red-800 dark:text-red-200 mt-0.5">{apiError}</p>
             </div>
           </div>
         )}
@@ -139,7 +139,7 @@ export default function CaptureCallPanel({
         <div>
           <label
             htmlFor="rawNote"
-            className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+            className="block text-ui-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
           >
             What did the customer tell you?
           </label>
@@ -161,7 +161,7 @@ export default function CaptureCallPanel({
             }`}
           />
           {errors.rawNote && (
-            <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.rawNote}</p>
+            <p className="text-ui-xs text-red-600 dark:text-red-400 mt-1">{errors.rawNote}</p>
           )}
         </div>
 
@@ -169,7 +169,7 @@ export default function CaptureCallPanel({
         <div>
           <label
             htmlFor="ownerNote"
-            className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+            className="block text-ui-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
           >
             Any notes for yourself?
           </label>
@@ -187,7 +187,7 @@ export default function CaptureCallPanel({
         <div>
           <label
             htmlFor="followUpDueDate"
-            className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+            className="block text-ui-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
           >
             Promise to follow up by:
           </label>
@@ -198,7 +198,7 @@ export default function CaptureCallPanel({
             onChange={(e) => setFollowUpDueDate(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-ui-xs text-gray-500 dark:text-gray-400 mt-1">
             Leave blank if no promise was made
           </p>
         </div>
@@ -207,7 +207,7 @@ export default function CaptureCallPanel({
         <div>
           <label
             htmlFor="partyComposition"
-            className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+            className="block text-ui-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
           >
             Who's traveling?
           </label>
@@ -219,7 +219,7 @@ export default function CaptureCallPanel({
             rows={2}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-ui-xs text-gray-500 dark:text-gray-400 mt-1">
             Helps us plan family-friendly itineraries
           </p>
         </div>
@@ -228,7 +228,7 @@ export default function CaptureCallPanel({
         <div>
           <label
             htmlFor="pacePreference"
-            className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+            className="block text-ui-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
           >
             Travel pace preference?
           </label>
@@ -243,7 +243,7 @@ export default function CaptureCallPanel({
             <option value="normal">Normal</option>
             <option value="relaxed">Relaxed</option>
           </select>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-ui-xs text-gray-500 dark:text-gray-400 mt-1">
             How much do they want to move around?
           </p>
         </div>
@@ -252,7 +252,7 @@ export default function CaptureCallPanel({
         <div>
           <label
             htmlFor="dateYearConfidence"
-            className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+            className="block text-ui-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
           >
             How certain about the dates?
           </label>
@@ -267,7 +267,7 @@ export default function CaptureCallPanel({
             <option value="likely">Likely</option>
             <option value="unsure">Unsure</option>
           </select>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-ui-xs text-gray-500 dark:text-gray-400 mt-1">
             Helps with scheduling and itinerary building
           </p>
         </div>
@@ -276,7 +276,7 @@ export default function CaptureCallPanel({
         <div>
           <label
             htmlFor="leadSource"
-            className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+            className="block text-ui-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
           >
             How did they find us?
           </label>
@@ -292,7 +292,7 @@ export default function CaptureCallPanel({
             <option value="social">Social Media</option>
             <option value="other">Other</option>
           </select>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-ui-xs text-gray-500 dark:text-gray-400 mt-1">
             Helps us understand marketing effectiveness
           </p>
         </div>
@@ -301,7 +301,7 @@ export default function CaptureCallPanel({
         <div>
           <label
             htmlFor="activityProvenance"
-            className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+            className="block text-ui-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
           >
             What activities interest them?
           </label>
@@ -313,7 +313,7 @@ export default function CaptureCallPanel({
             rows={2}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-ui-xs text-gray-500 dark:text-gray-400 mt-1">
             Guide interests, not limitations
           </p>
         </div>
@@ -324,14 +324,14 @@ export default function CaptureCallPanel({
         <button
           onClick={handleCancel}
           disabled={isLoading}
-          className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 px-4 py-2 text-ui-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
           disabled={isLoading || !rawNote.trim()}
-          className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex-1 px-4 py-2 text-ui-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
           {isLoading ? "Saving..." : "Save"}

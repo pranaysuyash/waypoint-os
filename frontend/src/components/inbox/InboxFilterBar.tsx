@@ -7,9 +7,8 @@
 'use client';
 
 import { memo } from 'react';
-import { User, Zap, UserX, LayoutGrid, Shield } from 'lucide-react';
+import { LayoutGrid, Shield } from 'lucide-react';
 import { FilterPill } from './FilterPill';
-import { COLORS } from '@/lib/tokens';
 
 export type FilterKey = 'all' | 'at_risk' | 'critical' | 'unassigned';
 export type RoleKey = 'ops' | 'mgr';
@@ -50,7 +49,7 @@ export const InboxFilterBar = memo(function InboxFilterBar({
     <div className={className}>
       {/* Role Switcher (as filter pills) */}
       <div className="flex items-center gap-1 mb-2">
-        <span className="text-[10px] uppercase text-[#484f58] font-medium mr-1">View:</span>
+        <span className="text-[var(--ui-text-xs)] uppercase text-text-placeholder font-medium mr-1">View:</span>
         <FilterPill
           label="Ops"
           isActive={activeRole === 'ops'}
@@ -70,7 +69,7 @@ export const InboxFilterBar = memo(function InboxFilterBar({
       {/* Presets */}
       {presets.length > 0 && (
         <div className="flex items-center gap-1 mb-2">
-          <span className="text-[10px] uppercase text-[#484f58] font-medium mr-1">Quick:</span>
+          <span className="text-[var(--ui-text-xs)] uppercase text-text-placeholder font-medium mr-1">Quick:</span>
           {presets.map((preset) => (
             <FilterPill
               key={preset.key}
@@ -86,7 +85,7 @@ export const InboxFilterBar = memo(function InboxFilterBar({
 
       {/* Standard Filters */}
       <div className="flex items-center gap-1" role="tablist">
-        <span className="text-[10px] uppercase text-[#484f58] font-medium mr-1">Filter:</span>
+        <span className="text-[var(--ui-text-xs)] uppercase text-text-placeholder font-medium mr-1">Filter:</span>
         {filters.map((filter) => (
           <FilterPill
             key={filter.key}

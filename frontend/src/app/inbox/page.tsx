@@ -94,12 +94,12 @@ function BulkActionsToolbar({
   return (
     <div className='flex items-center justify-between py-2 px-3 bg-[#161b22] rounded-lg border border-[#30363d]'>
       <div className='flex items-center gap-3'>
-        <span className='text-sm text-[#e6edf3]'>
+        <span className='text-ui-sm text-[#e6edf3]'>
           <strong>{selectedCount}</strong> trips selected
         </span>
         <button
           onClick={onClearSelection}
-          className='text-xs text-[#8b949e] hover:text-[#e6edf3]'
+          className='text-ui-xs text-[#8b949e] hover:text-[#e6edf3]'
         >
           Clear
         </button>
@@ -109,7 +109,7 @@ function BulkActionsToolbar({
         <div className='relative'>
           <button
             onClick={() => setShowAssignDropdown(!showAssignDropdown)}
-            className='flex items-center gap-1.5 px-3 py-1.5 bg-[#58a6ff] text-[#0d1117] rounded-lg text-sm font-medium hover:bg-[#6eb5ff] transition-colors'
+            className='flex items-center gap-1.5 px-3 py-1.5 bg-[#58a6ff] text-[#0d1117] rounded-lg text-ui-sm font-medium hover:bg-[#6eb5ff] transition-colors'
           >
             <UserPlus className='w-4 h-4' />
             Assign to...
@@ -124,9 +124,9 @@ function BulkActionsToolbar({
                     onAssign(agent.id);
                     setShowAssignDropdown(false);
                   }}
-                  className='w-full flex items-center gap-2 px-3 py-2 text-left text-sm text-[#e6edf3] hover:bg-[#161b22] first:rounded-t-lg last:rounded-b-lg'
+                  className='w-full flex items-center gap-2 px-3 py-2 text-left text-ui-sm text-[#e6edf3] hover:bg-[#161b22] first:rounded-t-lg last:rounded-b-lg'
                 >
-                  <div className='h-6 w-6 rounded-full bg-[#58a6ff]/20 flex items-center justify-center text-[#58a6ff] text-xs font-bold'>
+                  <div className='h-6 w-6 rounded-full bg-[#58a6ff]/20 flex items-center justify-center text-[#58a6ff] text-ui-xs font-bold'>
                     {agent.name.split(' ').map(n => n[0]).join('')}
                   </div>
                   <div>{agent.name}</div>
@@ -138,7 +138,7 @@ function BulkActionsToolbar({
 
         <button
           onClick={onExport}
-          className='flex items-center gap-1.5 px-3 py-1.5 bg-[#161b22] text-[#8b949e] rounded-lg text-sm hover:text-[#e6edf3] transition-colors'
+          className='flex items-center gap-1.5 px-3 py-1.5 bg-[#161b22] text-[#8b949e] rounded-lg text-ui-sm hover:text-[#e6edf3] transition-colors'
         >
           <Download className='w-4 h-4' />
           Export
@@ -341,8 +341,8 @@ export default function InboxPage() {
       <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
         <div className='flex items-center justify-between pt-1'>
           <div>
-            <h1 className='text-xl font-semibold text-[#e6edf3]'>Inbox</h1>
-            <p className='text-sm text-[#8b949e] mt-0.5'>Trip queue · sorted by urgency</p>
+            <h1 className='text-ui-xl font-semibold text-[#e6edf3]'>Inbox</h1>
+            <p className='text-ui-sm text-[#8b949e] mt-0.5'>Trip queue · sorted by urgency</p>
           </div>
         </div>
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-8 text-center'>
@@ -350,7 +350,7 @@ export default function InboxPage() {
           <button
             type='button'
             onClick={() => refetch()}
-            className='mt-4 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg text-sm font-medium hover:bg-[#6eb5ff] transition-colors'
+            className='mt-4 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg text-ui-sm font-medium hover:bg-[#6eb5ff] transition-colors'
           >
             Retry
           </button>
@@ -364,8 +364,8 @@ export default function InboxPage() {
       {/* Header */}
       <header className='flex items-center justify-between pt-1'>
         <div>
-          <h1 className='text-xl font-semibold text-[#e6edf3]'>Inbox</h1>
-          <p className='text-sm text-[#8b949e] mt-0.5'>Trip queue · sorted by urgency</p>
+          <h1 className='text-ui-xl font-semibold text-[#e6edf3]'>Inbox</h1>
+          <p className='text-ui-sm text-[#8b949e] mt-0.5'>Trip queue · sorted by urgency</p>
         </div>
         
         <div className='flex items-center gap-3 flex-wrap'>
@@ -376,14 +376,14 @@ export default function InboxPage() {
               placeholder='Search destination, customer, agent...'
               value={searchQuery}
               onChange={(e) => updateParams({ q: e.target.value || null })}
-              className='w-full pl-9 pr-3 py-2 bg-[#161b22] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]'
+              className='w-full pl-9 pr-3 py-2 bg-[#161b22] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3] placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]'
             />
           </div>
 
           <div className='relative'>
             <button
               onClick={() => setShowSortDropdown(!showSortDropdown)}
-              className='flex items-center gap-2 px-3 py-2 bg-[#161b22] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] hover:border-[#484f58] transition-colors'
+              className='flex items-center gap-2 px-3 py-2 bg-[#161b22] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3] hover:border-[#484f58] transition-colors'
             >
               <ArrowUpDown className='w-4 h-4 text-[#8b949e]' />
               <span>Sort by {SORT_OPTIONS[sortBy].label}</span>
@@ -398,7 +398,7 @@ export default function InboxPage() {
               <div className='absolute top-full right-0 mt-1 w-56 bg-[#0f1115] border border-[#30363d] rounded-lg shadow-xl z-10'>
                 <div className='p-2 border-b border-[#30363d]'>
                   <div className='flex items-center justify-between px-2 py-1'>
-                    <span className='text-xs text-[#8b949e] font-medium'>Direction</span>
+                    <span className='text-ui-xs text-[#8b949e] font-medium'>Direction</span>
                     <div className='flex items-center gap-1'>
                       <button
                         onClick={() => updateParams({ dir: 'asc' })}
@@ -434,7 +434,7 @@ export default function InboxPage() {
                           updateParams({ sort: key });
                           setShowSortDropdown(false);
                         }}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm rounded-md transition-colors ${
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-left text-ui-sm rounded-md transition-colors ${
                           sortBy === key
                             ? 'bg-[#58a6ff] text-[#0d1117]'
                             : 'text-[#e6edf3] hover:bg-[#161b22]'
@@ -450,7 +450,7 @@ export default function InboxPage() {
             )}
           </div>
 
-          <span className='text-sm text-[#8b949e]'>
+          <span className='text-ui-sm text-[#8b949e]'>
             {isLoading ? 'Loading...' : `${inboxTrips.length} trips total`}
           </span>
         </div>

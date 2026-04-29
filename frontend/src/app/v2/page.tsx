@@ -198,7 +198,7 @@ export default function HomePage() {
         <div className={styles.personaBandHeader}>
           <Kicker>Team Visibility</Kicker>
           <h2>Scale your judgment without increasing meetings.</h2>
-          <p className='mt-4 max-w-[56ch] text-[16px] leading-relaxed text-[#9ba3b0]'>
+          <p className='mt-4 max-w-[56ch] text-[16px] leading-relaxed text-[var(--text-secondary)]'>
             Waypoint OS gives owners, managers, and agents the same high-resolution view 
             of a trip, allowing for surgical feedback instead of scattered corrections.
           </p>

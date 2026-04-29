@@ -16,33 +16,33 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#080a0c] p-4">
-      <div className="max-w-md w-full rounded-xl border border-[#1c2128] bg-[#0f1115] p-6">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--bg-canvas)] p-4">
+      <div className="max-w-md w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-6">
         {/* Icon */}
         <div className="flex justify-center mb-4">
-          <div className="h-12 w-12 rounded-full bg-[#f85149]/10 flex items-center justify-center">
-            <AlertTriangle className="h-6 w-6 text-[#f85149]" />
+          <div className="h-12 w-12 rounded-full bg-[var(--accent-red)]/10 flex items-center justify-center">
+            <AlertTriangle className="h-6 w-6 text-[var(--accent-red)]" />
           </div>
         </div>
 
         {/* Title */}
-        <h1 className="text-center text-[15px] font-semibold text-[#e6edf3] mb-2">
+        <h1 className="text-center text-[15px] font-semibold text-[var(--text-primary)] mb-2">
           Something went wrong
         </h1>
 
         {/* Message */}
-        <p className="text-center text-[12px] text-[#8b949e] mb-4">
+        <p className="text-center text-[12px] text-[var(--text-secondary)] mb-4">
           An unexpected error occurred. This has been logged and our team will look into it.
         </p>
 
         {/* Error Details (Development Only) */}
         {process.env.NODE_ENV === "development" && (
           <details className="mb-4">
-            <summary className="cursor-pointer text-xs text-[#484f58] hover:text-[#8b949e] mb-2">
+            <summary className="cursor-pointer text-[var(--ui-text-xs)] text-[var(--text-placeholder)] hover:text-[var(--text-secondary)] mb-2">
               Error details
             </summary>
-            <div className="p-3 rounded-md bg-[#161b22] border border-[#30363d]">
-              <pre className="text-xs text-[#f85149] overflow-auto max-h-40">
+            <div className="p-3 rounded-md bg-[var(--bg-surface-hover)] border border-[var(--border-default)]">
+              <pre className="text-[var(--ui-text-xs)] text-[var(--accent-red)] overflow-auto max-h-40">
                 {error.message}
                 {error.stack}
               </pre>
@@ -54,17 +54,17 @@ export default function Error({
         <div className="flex flex-col sm:flex-row gap-2">
           <button
             onClick={reset}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg font-medium hover:bg-[#6eb5ff] transition-colors text-[13px]"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[var(--accent-blue)] text-[var(--text-on-accent)] rounded-lg font-medium hover:bg-[var(--accent-blue-hover)] transition-colors text-[13px]"
           >
             <RefreshCw className="w-4 h-4" />
             Try again
           </button>
           <a
-            href="/"
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg font-medium hover:bg-[#21262d] transition-colors text-[13px]"
+            href="/overview"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-lg font-medium hover:bg-[var(--bg-count-badge)] transition-colors text-[13px]"
           >
             <Home className="w-4 h-4" />
-            Go home
+            Back to overview
           </a>
         </div>
       </div>

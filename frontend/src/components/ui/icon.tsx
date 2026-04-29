@@ -42,22 +42,22 @@ export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonEl
 }
 
 const variantStyles = {
-  ghost: "hover:bg-[#161b22] active:bg-[#1c2128]",
-  subtle: "bg-[#0f1115] border border-[#30363d] hover:border-[#8b949e]",
+  ghost: "hover:bg-elevated active:bg-highlight",
+  subtle: "bg-surface border border-border-default hover:border-border-hover",
   solid: "border-transparent",
 };
 
 const colorStyles = {
-  blue: "text-[#58a6ff] hover:bg-[#58a6ff]/10",
-  green: "text-[#3fb950] hover:bg-[#3fb950]/10",
-  amber: "text-[#d29922] hover:bg-[#d29922]/10",
-  red: "text-[#f85149] hover:bg-[#f85149]/10",
-  neutral: "text-[#8b949e] hover:text-[#e6edf3]",
+  blue: "text-accent-blue hover:bg-[rgb(var(--accent-blue-rgb)/0.1)]",
+  green: "text-accent-green hover:bg-[rgb(var(--accent-green-rgb)/0.1)]",
+  amber: "text-accent-amber hover:bg-[rgb(var(--accent-amber-rgb)/0.1)]",
+  red: "text-accent-red hover:bg-[rgb(var(--accent-red-rgb)/0.1)]",
+  neutral: "text-text-muted hover:text-text-primary",
 };
 
 const sizeStyles = {
   sm: "p-1.5 rounded-md",
-  md: "p-2 rounded-lg",
+  md: "p-space-2 rounded-lg",
   lg: "p-2.5 rounded-lg",
 };
 
@@ -84,7 +84,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
         type={type}
         className={cn(
           "inline-flex items-center justify-center transition-colors",
-          "focus:outline-none focus:ring-2 focus:ring-[#58a6ff] focus:ring-offset-2 focus:ring-offset-[#080a0c]",
+          "focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-2 focus:ring-offset-canvas",
           "disabled:opacity-50 disabled:cursor-not-allowed",
           variantStyles[variant],
           colorStyles[color],
@@ -131,7 +131,7 @@ export const IconLink = React.forwardRef<HTMLAnchorElement, IconLinkProps>(
         ref={ref}
         className={cn(
           "inline-flex items-center gap-1.5 transition-colors",
-          "focus:outline-none focus:ring-2 focus:ring-[#58a6ff] focus:ring-offset-2 focus:ring-offset-[#080a0c] rounded-md",
+          "focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-2 focus:ring-offset-canvas rounded-md",
           colorStyles[color],
           className
         )}

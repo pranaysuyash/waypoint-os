@@ -29,7 +29,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 
     const sizeStyles = {
       sm: "px-2.5 py-2 text-[12px] min-h-[64px]",
-      md: "px-3 py-2 text-[13px] min-h-[80px]",
+      md: "px-space-3 py-space-2 text-[13px] min-h-[80px]",
       lg: "px-3.5 py-2.5 text-[14px] min-h-[96px]",
     };
 
@@ -38,7 +38,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         {label && (
           <label
             htmlFor={textareaId}
-            className="text-[12px] font-medium text-[#8b949e]"
+            className="text-[12px] font-medium text-text-muted"
           >
             {label}
           </label>
@@ -53,14 +53,14 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
             error && errorId
           )}
           className={cn(
-            "flex w-full rounded-md border bg-[#0f1115] text-[#e6edf3] transition-colors",
-            "placeholder:text-[#484f58]",
-            "focus:outline-none focus:ring-2 focus:ring-[#58a6ff] focus:ring-offset-2 focus:ring-offset-[#080a0c]",
+            "flex w-full rounded-md border bg-surface text-text-primary transition-colors",
+            "placeholder:text-text-placeholder",
+            "focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-2 focus:ring-offset-canvas",
             "disabled:cursor-not-allowed disabled:opacity-50",
-            "read-only:cursor-default read-only:bg-[#161b22]",
+            "read-only:cursor-default read-only:bg-elevated",
             {
-              "border-[#30363d] hover:border-[#8b949e]": !error,
-              "border-[#f85149] focus:ring-[#f85149]": error,
+              "border-border-default hover:border-border-hover": !error,
+              "border-accent-red focus:ring-accent-red": error,
             },
             sizeStyles[inputSize],
             className
@@ -70,13 +70,13 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         />
 
         {description && !error && (
-          <p id={descriptionId} className="text-xs text-[#484f58]">
+          <p id={descriptionId} className="text-[var(--ui-text-xs)] text-text-placeholder">
             {description}
           </p>
         )}
 
         {error && (
-          <p id={errorId} className="text-xs text-[#f85149]" role="alert">
+          <p id={errorId} className="text-[var(--ui-text-xs)] text-accent-red" role="alert">
             {error}
           </p>
         )}

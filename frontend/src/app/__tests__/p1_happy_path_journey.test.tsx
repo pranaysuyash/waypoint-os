@@ -24,6 +24,13 @@ vi.mock("@/stores/workbench", () => ({
   useWorkbenchStore: vi.fn(),
 }));
 
+vi.mock("@/contexts/TripContext", () => ({
+  useTripContext: () => ({
+    replaceTrip: vi.fn(),
+    refetchTrip: vi.fn(),
+  }),
+}));
+
 vi.mock("@/hooks/useSpineRun", () => ({
   useSpineRun: vi.fn(),
 }));

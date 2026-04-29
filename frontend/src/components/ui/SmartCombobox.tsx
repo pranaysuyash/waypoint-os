@@ -184,7 +184,7 @@ export function SmartCombobox({
   return (
     <div ref={containerRef} className='relative'>
       {label && (
-        <label className='block text-sm font-medium text-[#8b949e] mb-2'>
+        <label className='block text-[var(--ui-text-sm)] font-medium text-[var(--text-secondary)] mb-2'>
           {label}
         </label>
       )}
@@ -199,7 +199,7 @@ export function SmartCombobox({
           onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder={placeholder}
-          className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] placeholder:text-[#8b949e] focus:outline-none focus:border-[#58a6ff] disabled:opacity-50 disabled:cursor-not-allowed pr-20'
+          className='w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--ui-text-sm)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[#58a6ff] disabled:opacity-50 disabled:cursor-not-allowed pr-20'
         />
 
         {/* Right side controls */}
@@ -211,7 +211,7 @@ export function SmartCombobox({
                 setInputValue('');
                 onChange('');
               }}
-              className='p-1 text-[#8b949e] hover:text-[#e6edf3] transition-colors'
+              className='p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors'
               title='Clear'
             >
               <X className='w-4 h-4' />
@@ -220,7 +220,7 @@ export function SmartCombobox({
           <button
             type='button'
             onClick={() => !disabled && setIsOpen(!isOpen)}
-            className='p-1 text-[#8b949e] hover:text-[#e6edf3] transition-colors'
+            className='p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors'
           >
             <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </button>
@@ -229,7 +229,7 @@ export function SmartCombobox({
 
       {/* Duplicate warning */}
       {duplicateOption && inputValue !== duplicateOption.value && (
-        <div className='mt-1 flex items-center gap-2 text-xs text-[#d29922]'>
+        <div className='mt-1 flex items-center gap-2 text-[var(--ui-text-xs)] text-[var(--accent-amber)]'>
           <AlertCircle className='w-3 h-3 flex-shrink-0' />
           <span>
             Similar to existing option "{duplicateOption.value}". Use that instead?
@@ -237,7 +237,7 @@ export function SmartCombobox({
           <button
             type='button'
             onClick={() => handleSelect(duplicateOption)}
-            className='text-[#58a6ff] hover:underline'
+            className='text-[var(--accent-blue)] hover:underline'
           >
             Yes, use existing
           </button>
@@ -246,16 +246,16 @@ export function SmartCombobox({
 
       {/* Dropdown */}
       {isOpen && !disabled && (
-        <div className='absolute z-10 w-full mt-1 bg-[#161b22] border border-[#30363d] rounded-lg shadow-xl max-h-60 overflow-y-auto'>
+        <div className='absolute z-10 w-full mt-1 bg-[#161b22] border border-[var(--border-default)] rounded-lg shadow-xl max-h-60 overflow-y-auto'>
           {filteredOptions.length === 0 ? (
-            <div className='p-3 text-sm text-[#8b949e] text-center'>
+            <div className='p-3 text-[var(--ui-text-sm)] text-[var(--text-secondary)] text-center'>
               No matching options
               {allowCustom && inputValue && (
                 <div className='mt-2'>
                   <button
                     type='button'
                     onClick={handleCustomEntry}
-                    className='flex items-center justify-center gap-2 w-full px-3 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg text-sm font-medium hover:bg-[#6eb5ff] transition-colors'
+                    className='flex items-center justify-center gap-2 w-full px-3 py-2 bg-[var(--accent-blue)] text-[var(--text-on-accent)] rounded-lg text-[var(--ui-text-sm)] font-medium hover:bg-[var(--accent-blue-hover)] transition-colors'
                   >
                     <Plus className='w-4 h-4' />
                     Add "{toTitleCase(inputValue)}"
@@ -273,12 +273,12 @@ export function SmartCombobox({
                       key={option.value}
                       type='button'
                       onClick={() => handleSelect(option)}
-                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                      className={`w-full text-left px-3 py-2 text-[var(--ui-text-sm)] rounded-md transition-colors ${
                         highlightedIndex === idx
-                          ? 'bg-[#58a6ff] text-[#0d1117]'
+                          ? 'bg-[var(--accent-blue)] text-[var(--text-on-accent)]'
                           : option.value === value
-                          ? 'bg-[#58a6ff]/20 text-[#58a6ff]'
-                          : 'text-[#e6edf3] hover:bg-[#161b22]'
+                          ? 'bg-[var(--accent-blue)]/20 text-[var(--accent-blue)]'
+                          : 'text-[var(--text-primary)] hover:bg-[#161b22]'
                       }`}
                     >
                       {option.label}
@@ -289,8 +289,8 @@ export function SmartCombobox({
 
               {/* Custom options section */}
               {filteredOptions.some(opt => opt.isCustom) && (
-                <div className='border-t border-[#30363d]'>
-                  <div className='px-3 py-1 text-xs text-[#8b949e] uppercase tracking-wide'>
+                <div className='border-t border-[var(--border-default)]'>
+                  <div className='px-3 py-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)] uppercase tracking-wide'>
                     Custom
                   </div>
                   <div className='p-1'>
@@ -299,10 +299,10 @@ export function SmartCombobox({
                         key={option.value}
                         type='button'
                         onClick={() => handleSelect(option)}
-                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                        className={`w-full text-left px-3 py-2 text-[var(--ui-text-sm)] rounded-md transition-colors ${
                           option.value === value
-                            ? 'bg-[#58a6ff]/20 text-[#58a6ff]'
-                            : 'text-[#e6edf3] hover:bg-[#161b22]'
+                            ? 'bg-[var(--accent-blue)]/20 text-[var(--accent-blue)]'
+                            : 'text-[var(--text-primary)] hover:bg-[#161b22]'
                         }`}
                       >
                         {option.label}
@@ -314,11 +314,11 @@ export function SmartCombobox({
 
               {/* Add new custom option */}
               {allowCustom && isCustomValue && inputValue && !duplicateOption && (
-                <div className='border-t border-[#30363d] p-2'>
+                <div className='border-t border-[var(--border-default)] p-2'>
                   <button
                     type='button'
                     onClick={handleCustomEntry}
-                    className='flex items-center justify-center gap-2 w-full px-3 py-2 bg-[#21262d] text-[#58a6ff] border border-[#30363d] border-dashed rounded-lg text-sm hover:bg-[#58a6ff]/10 transition-colors'
+                    className='flex items-center justify-center gap-2 w-full px-3 py-2 bg-[var(--bg-count-badge)] text-[var(--accent-blue)] border border-[var(--border-default)] border-dashed rounded-lg text-[var(--ui-text-sm)] hover:bg-[var(--accent-blue)/0.1] transition-colors'
                   >
                     <Plus className='w-4 h-4' />
                     Add new option: "{toTitleCase(inputValue)}"

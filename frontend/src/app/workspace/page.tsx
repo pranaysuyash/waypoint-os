@@ -139,7 +139,7 @@ const WorkspaceCard = memo(function WorkspaceCard({ trip }: { trip: Trip }) {
   return (
     <Link
       href={trip.id ? getTripRoute(trip.id) : '/workspace'}
-      className='group block rounded-xl border border-[#1c2128] bg-[#0f1115] transition-all hover:border-[#30363d] hover:bg-[#111418] overflow-hidden'
+      className='group block rounded-xl border border-[#1c2128] bg-[#0f1115] transition-all hover:border-[var(--border-default)] hover:bg-[#111418] overflow-hidden'
       style={isBlocked ? { borderColor: 'rgba(248,81,73,0.35)', background: 'rgba(248,81,73,0.04)' } : {}}
     >
       {/* State accent strip — top */}
@@ -161,13 +161,13 @@ const WorkspaceCard = memo(function WorkspaceCard({ trip }: { trip: Trip }) {
               </span>
             </div>
             {trip.type && (
-              <span className='text-[10px] font-bold uppercase tracking-widest text-[#484f58]'>
+              <span className='text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-[var(--text-tertiary)]'>
                 {trip.type}
               </span>
             )}
           </div>
           <span
-            className='shrink-0 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md whitespace-nowrap'
+            className='shrink-0 text-[var(--ui-text-xs)] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md whitespace-nowrap'
             style={{ color: meta.color, background: meta.bg }}
           >
             {meta.label}
@@ -176,17 +176,17 @@ const WorkspaceCard = memo(function WorkspaceCard({ trip }: { trip: Trip }) {
 
         {/* Row 2: metrics strip — dashed separator */}
         <div
-          className='flex items-center gap-4 py-2 my-2 text-xs'
+          className='flex items-center gap-4 py-2 my-2 text-ui-xs'
           style={{ borderTop: '1px dashed rgba(48,54,61,0.6)', borderBottom: '1px dashed rgba(48,54,61,0.6)' }}
         >
-          <div className='flex items-center gap-1 text-[#8b949e]'>
+          <div className='flex items-center gap-1 text-[var(--text-muted)]'>
             <Clock className='h-3 w-3' aria-hidden='true' />
             <span>{trip.age}</span>
           </div>
           {trip.party && (
             <>
               <div className='w-px h-3 bg-[#21262d]' />
-              <div className='flex items-center gap-1 text-[#8b949e]'>
+              <div className='flex items-center gap-1 text-[var(--text-muted)]'>
                 <Users className='h-3 w-3' aria-hidden='true' />
                 <span>{trip.party} pax</span>
               </div>
@@ -195,7 +195,7 @@ const WorkspaceCard = memo(function WorkspaceCard({ trip }: { trip: Trip }) {
           {trip.dateWindow && (
             <>
               <div className='w-px h-3 bg-[#21262d]' />
-              <div className='flex items-center gap-1 text-[#8b949e]'>
+              <div className='flex items-center gap-1 text-[var(--text-muted)]'>
                 <Calendar className='h-3 w-3' aria-hidden='true' />
                 <span className='truncate max-w-[100px]'>{trip.dateWindow}</span>
               </div>
@@ -211,8 +211,8 @@ const WorkspaceCard = memo(function WorkspaceCard({ trip }: { trip: Trip }) {
 
         {/* Row 3: ID + open cue */}
         <div className='flex items-center justify-between'>
-          <span className='text-[10px] font-mono text-[#30363d]'>{trip.id}</span>
-          <span className='flex items-center gap-1 text-[11px] text-[#484f58] group-hover:text-[#8b949e] transition-colors'>
+          <span className='text-[var(--ui-text-xs)] font-mono text-[var(--border-default)]'>{trip.id}</span>
+          <span className='flex items-center gap-1 text-[var(--ui-text-xs)] text-[var(--text-tertiary)] group-hover:text-[var(--text-muted)] transition-colors'>
             {isBlocked ? 'Action required' : 'Open'}
             <ChevronRight className='h-3.5 w-3.5' aria-hidden='true' />
           </span>
@@ -230,23 +230,23 @@ function EmptyWorkspace() {
   return (
     <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-12 text-center'>
       <div className='w-12 h-12 rounded-full bg-[#161b22] flex items-center justify-center mx-auto mb-4'>
-        <Briefcase className='w-6 h-6 text-[#484f58]' aria-hidden='true' />
+        <Briefcase className='w-6 h-6 text-[var(--text-tertiary)]' aria-hidden='true' />
       </div>
       <p className='text-[#e6edf3] font-medium mb-1'>No active workspaces</p>
-      <p className='text-sm text-[#8b949e] mb-6'>
+      <p className='text-ui-sm text-[var(--text-muted)] mb-6'>
         Trips appear here once you engage a lead from the inbox.
       </p>
       <div className='flex items-center justify-center gap-3'>
         <Link
           href='/inbox'
-          className='inline-flex items-center gap-2 px-5 py-2.5 bg-[#58a6ff] text-[#0d1117] rounded-lg text-sm font-semibold hover:bg-[#6eb5ff] transition-colors'
+          className='inline-flex items-center gap-2 px-5 py-2.5 bg-[#58a6ff] text-[#0d1117] rounded-lg text-ui-sm font-semibold hover:bg-[#6eb5ff] transition-colors'
         >
           Browse Inbox
           <ChevronRight className='w-4 h-4' aria-hidden='true' />
         </Link>
         <Link
           href='/workbench'
-          className='inline-flex items-center gap-2 px-5 py-2.5 border border-[#30363d] text-[#e6edf3] rounded-lg text-sm font-medium hover:bg-[#161b22] transition-colors'
+          className='inline-flex items-center gap-2 px-5 py-2.5 border border-[var(--border-default)] text-[#e6edf3] rounded-lg text-ui-sm font-medium hover:bg-[#161b22] transition-colors'
         >
           New Inquiry
         </Link>
@@ -271,10 +271,10 @@ function ViewToggle({
       <button
         type='button'
         onClick={() => onChange('card')}
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium transition-all ${
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-ui-xs font-medium transition-all ${
           view === 'card'
             ? 'bg-[#161b22] text-[#e6edf3]'
-            : 'text-[#8b949e] hover:text-[#e6edf3]'
+            : 'text-[var(--text-muted)] hover:text-[#e6edf3]'
         }`}
         aria-pressed={view === 'card'}
         aria-label='Card view'
@@ -285,10 +285,10 @@ function ViewToggle({
       <button
         type='button'
         onClick={() => onChange('table')}
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium transition-all ${
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-ui-xs font-medium transition-all ${
           view === 'table'
             ? 'bg-[#161b22] text-[#e6edf3]'
-            : 'text-[#8b949e] hover:text-[#e6edf3]'
+            : 'text-[var(--text-muted)] hover:text-[#e6edf3]'
         }`}
         aria-pressed={view === 'table'}
         aria-label='Table view'
@@ -341,19 +341,19 @@ export default function WorkspacesPage() {
       {/* Header */}
       <header className='flex items-center justify-between pt-1 flex-wrap gap-3'>
         <div>
-          <h1 className='text-xl font-semibold text-[#e6edf3]'>Workspaces</h1>
-          <p className='text-sm text-[#8b949e] mt-0.5'>
+          <h1 className='text-ui-xl font-semibold text-[#e6edf3]'>Workspaces</h1>
+          <p className='text-ui-sm text-[var(--text-muted)] mt-0.5'>
             Active trips · engaged and in progress
           </p>
         </div>
         <div className='flex items-center gap-3'>
           {blockedCount > 0 && (
-            <span className='flex items-center gap-1.5 text-sm text-[#f85149]'>
+            <span className='flex items-center gap-1.5 text-ui-sm text-[#f85149]'>
               <AlertTriangle className='h-3.5 w-3.5' aria-hidden='true' />
               {blockedCount} blocked
             </span>
           )}
-          <span className='text-sm text-[#8b949e]'>
+          <span className='text-ui-sm text-[var(--text-muted)]'>
             {isLoading ? 'Loading…' : `${workspaceTrips.length} active`}
           </span>
           <ViewToggle view={viewMode} onChange={setViewMode} />
@@ -367,7 +367,7 @@ export default function WorkspacesPage() {
           <button
             type='button'
             onClick={() => refetch()}
-            className='mt-4 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg text-sm font-medium hover:bg-[#6eb5ff] transition-colors'
+            className='mt-4 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg text-ui-sm font-medium hover:bg-[#6eb5ff] transition-colors'
           >
             Retry
           </button>

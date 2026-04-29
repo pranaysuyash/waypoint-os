@@ -3,27 +3,27 @@
 import { memo, useState } from 'react';
 import { Calendar, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { COLORS, STATE_COLORS } from '@/lib/tokens';
+
 
 // ============================================================================
 // FOLLOW-UP STATUS STYLES
 // ============================================================================
 
 const STATUS_STYLES = {
-  pending: { color: COLORS.accentAmber, bg: STATE_COLORS.amber.bg, label: 'Pending' },
-  completed: { color: COLORS.accentGreen, bg: STATE_COLORS.green.bg, label: 'Completed' },
-  snoozed: { color: COLORS.accentBlue, bg: STATE_COLORS.blue.bg, label: 'Snoozed' },
+  pending: { color: 'var(--accent-amber)', bg: 'rgba(var(--accent-amber-rgb), 0.1)', label: 'Pending' },
+  completed: { color: 'var(--accent-green)', bg: 'rgba(var(--accent-green-rgb), 0.1)', label: 'Completed' },
+  snoozed: { color: 'var(--accent-blue)', bg: 'rgba(var(--accent-blue-rgb), 0.1)', label: 'Snoozed' },
 } as const;
 
 const URGENCY_STYLES = (daysUntilDue: number) => {
   if (daysUntilDue < 0) {
-    return { color: COLORS.accentRed, bg: STATE_COLORS.red.bg, label: 'OVERDUE' };
+    return { color: 'var(--accent-red)', bg: 'rgba(var(--accent-red-rgb), 0.1)', label: 'OVERDUE' };
   } else if (daysUntilDue === 0) {
-    return { color: COLORS.accentOrange, bg: STATE_COLORS.amber.bg, label: 'TODAY' };
+    return { color: 'var(--accent-orange)', bg: 'rgba(var(--accent-amber-rgb), 0.1)', label: 'TODAY' };
   } else if (daysUntilDue <= 3) {
-    return { color: COLORS.accentAmber, bg: STATE_COLORS.amber.bg, label: 'SOON' };
+    return { color: 'var(--accent-amber)', bg: 'rgba(var(--accent-amber-rgb), 0.1)', label: 'SOON' };
   }
-  return { color: COLORS.textSecondary, bg: STATE_COLORS.neutral.bg, label: 'UPCOMING' };
+  return { color: 'var(--text-secondary)', bg: 'rgba(var(--color-neutral-rgb), 0.1)', label: 'UPCOMING' };
 };
 
 // ============================================================================
@@ -46,7 +46,7 @@ const SnoozeModal = memo(function SnoozeModal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 max-w-sm w-full mx-4">
-        <h3 className="text-lg font-semibold mb-4" style={{ color: COLORS.textPrimary }}>
+        <h3 className="text-ui-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
           Snooze Follow-up
         </h3>
         <div className="space-y-2 mb-6">
@@ -57,8 +57,8 @@ const SnoozeModal = memo(function SnoozeModal({
               disabled={isLoading}
               className="w-full px-4 py-2 rounded border transition-colors disabled:opacity-50"
               style={{
-                color: COLORS.textPrimary,
-                borderColor: COLORS.borderDefault,
+                color: 'var(--text-primary)',
+                borderColor: 'var(--border-default)',
               }}
             >
               {days} day{days > 1 ? 's' : ''}
@@ -69,8 +69,8 @@ const SnoozeModal = memo(function SnoozeModal({
           onClick={onClose}
           className="w-full px-4 py-2 rounded border transition-colors"
           style={{
-            color: COLORS.textSecondary,
-            borderColor: COLORS.borderDefault,
+            color: 'var(--text-secondary)',
+            borderColor: 'var(--border-default)',
           }}
         >
           Cancel
@@ -105,7 +105,7 @@ const RescheduleModal = memo(function RescheduleModal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 max-w-sm w-full mx-4">
-        <h3 className="text-lg font-semibold mb-4" style={{ color: COLORS.textPrimary }}>
+        <h3 className="text-ui-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
           Reschedule Follow-up
         </h3>
         <input
@@ -114,8 +114,8 @@ const RescheduleModal = memo(function RescheduleModal({
           onChange={(e) => setDate(e.target.value)}
           className="w-full px-4 py-2 rounded border mb-6 bg-gray-800"
           style={{
-            color: COLORS.textPrimary,
-            borderColor: COLORS.borderDefault,
+            color: 'var(--text-primary)',
+            borderColor: 'var(--border-default)',
           }}
         />
         <div className="flex gap-2">
@@ -124,7 +124,7 @@ const RescheduleModal = memo(function RescheduleModal({
             disabled={isLoading || !date}
             className="flex-1 px-4 py-2 rounded transition-colors disabled:opacity-50"
             style={{
-              background: COLORS.accentBlue,
+              background: 'var(--accent-blue)',
               color: '#fff',
             }}
           >
@@ -134,8 +134,8 @@ const RescheduleModal = memo(function RescheduleModal({
             onClick={onClose}
             className="flex-1 px-4 py-2 rounded border transition-colors"
             style={{
-              color: COLORS.textSecondary,
-              borderColor: COLORS.borderDefault,
+              color: 'var(--text-secondary)',
+              borderColor: 'var(--border-default)',
             }}
           >
             Cancel
@@ -235,27 +235,27 @@ export const FollowUpCard = memo(function FollowUpCard({
               ? 'rgba(248,81,73,0.4)'
               : daysUntilDue === 0
               ? 'rgba(229,171,1,0.4)'
-              : COLORS.borderDefault,
+              : 'var(--border-default)',
         }}
       >
         {/* Header: Trip ID + Status Badge */}
         <div className="flex items-start justify-between mb-3">
           <div>
             <span
-              className="text-xs font-mono uppercase tracking-wide"
-              style={{ color: COLORS.textMuted }}
+              className="text-ui-xs font-mono uppercase tracking-wide"
+              style={{ color: 'var(--text-muted)' }}
             >
               {tripId}
             </span>
             <p
-              className="text-sm font-semibold mt-0.5 truncate"
-              style={{ color: COLORS.textPrimary }}
+              className="text-ui-sm font-semibold mt-0.5 truncate"
+              style={{ color: 'var(--text-primary)' }}
             >
               {travelerName}
             </p>
           </div>
           <span
-            className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded"
+            className="inline-flex items-center gap-1 text-ui-xs font-medium px-2 py-1 rounded"
             style={{ color: statusStyle.color, background: statusStyle.bg }}
           >
             {statusStyle.label}
@@ -264,23 +264,23 @@ export const FollowUpCard = memo(function FollowUpCard({
 
         {/* Agent Name */}
         <p
-          className="text-xs mb-3"
-          style={{ color: COLORS.textSecondary }}
+          className="text-ui-xs mb-3"
+          style={{ color: 'var(--text-secondary)' }}
         >
-          Agent: <span style={{ color: COLORS.textPrimary }}>{agentName}</span>
+          Agent: <span style={{ color: 'var(--text-primary)' }}>{agentName}</span>
         </p>
 
         {/* Due Date + Urgency */}
-        <div className="flex items-center gap-3 mb-4 pb-4 border-b" style={{ borderColor: COLORS.borderDefault }}>
+        <div className="flex items-center gap-3 mb-4 pb-4 border-b" style={{ borderColor: 'var(--border-default)' }}>
           <div className="flex items-center gap-1">
-            <Calendar className="w-3 h-3" style={{ color: COLORS.textMuted }} />
-            <span className="text-xs" style={{ color: COLORS.textSecondary }}>
+            <Calendar className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
+            <span className="text-ui-xs" style={{ color: 'var(--text-secondary)' }}>
               {formattedDate}
             </span>
           </div>
           <div className="ml-auto">
             <span
-              className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded"
+              className="inline-flex items-center gap-1 text-ui-xs font-bold px-2 py-1 rounded"
               style={{ color: urgencyStyle.color, background: urgencyStyle.bg }}
             >
               {daysUntilDue < 0 ? `${Math.abs(daysUntilDue)}d OVERDUE` : `${daysUntilDue}d`}
@@ -295,9 +295,9 @@ export const FollowUpCard = memo(function FollowUpCard({
               <button
                 onClick={handleComplete}
                 disabled={isLoading}
-                className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded text-ui-xs font-medium transition-colors disabled:opacity-50"
                 style={{
-                  background: COLORS.accentGreen,
+                  background: 'var(--accent-green)',
                   color: '#fff',
                 }}
               >
@@ -307,10 +307,10 @@ export const FollowUpCard = memo(function FollowUpCard({
               <button
                 onClick={() => setIsSnoozing(true)}
                 disabled={isLoading}
-                className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded text-xs font-medium transition-colors border disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded text-ui-xs font-medium transition-colors border disabled:opacity-50"
                 style={{
-                  color: COLORS.textSecondary,
-                  borderColor: COLORS.borderDefault,
+                  color: 'var(--text-secondary)',
+                  borderColor: 'var(--border-default)',
                 }}
               >
                 <Clock className="w-3 h-3" />
@@ -319,10 +319,10 @@ export const FollowUpCard = memo(function FollowUpCard({
               <button
                 onClick={() => setIsRescheduling(true)}
                 disabled={isLoading}
-                className="flex-1 px-3 py-2 rounded text-xs font-medium transition-colors border disabled:opacity-50"
+                className="flex-1 px-3 py-2 rounded text-ui-xs font-medium transition-colors border disabled:opacity-50"
                 style={{
-                  color: COLORS.textSecondary,
-                  borderColor: COLORS.borderDefault,
+                  color: 'var(--text-secondary)',
+                  borderColor: 'var(--border-default)',
                 }}
               >
                 Reschedule
@@ -331,8 +331,8 @@ export const FollowUpCard = memo(function FollowUpCard({
           )}
           {status === 'completed' && (
             <div className="w-full flex items-center justify-center gap-2">
-              <CheckCircle className="w-4 h-4" style={{ color: COLORS.accentGreen }} />
-              <span className="text-xs" style={{ color: COLORS.textSecondary }}>
+              <CheckCircle className="w-4 h-4" style={{ color: 'var(--accent-green)' }} />
+              <span className="text-ui-xs" style={{ color: 'var(--text-secondary)' }}>
                 Follow-up completed
               </span>
             </div>

@@ -117,7 +117,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className='flex h-screen overflow-hidden bg-[#080a0c] text-[#e6edf3]'>
+    <div className='flex h-screen overflow-hidden bg-canvas text-text-primary'>
       {/* Live regions for screen reader announcements */}
       <LiveRegion />
 
@@ -128,19 +128,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       {/* ── Sidebar ── */}
        <aside
-         className='flex flex-col w-[72px] md:w-[220px] shrink-0 border-r border-[rgba(96,111,128,0.16)] bg-[#0a0d11] shell-sidebar'
+         className='flex flex-col w-[72px] md:w-[220px] shrink-0 border-r border-[rgba(96,111,128,0.16)] bg-[var(--bg-canvas)] shell-sidebar'
          aria-label='Main navigation'
        >
         {/* Brand */}
-        <div className='flex items-center gap-2.5 px-3 md:px-4 h-14 border-b border-[#1c2128] shrink-0 justify-center md:justify-start'>
-          <div className='flex h-7 w-7 items-center justify-center rounded-sm bg-gradient-to-br from-[#2563eb] to-[#39d0d8] shrink-0 shadow-[0_8px_24px_rgba(37,99,235,0.3)] ring-1 ring-white/10'>
+        <div className='flex items-center gap-2.5 px-3 md:px-4 h-14 border-b border-highlight shrink-0 justify-center md:justify-start'>
+          <div className='flex h-7 w-7 items-center justify-center rounded-sm bg-gradient-to-br from-[var(--accent-blue)] to-[var(--accent-cyan)] shrink-0 shadow-[0_8px_24px_rgba(37,99,235,0.3)] ring-1 ring-white/10'>
             <MapPin className='h-3.5 w-3.5 text-white' aria-hidden='true' />
           </div>
           <div className='min-w-0 hidden md:block'>
-            <div className='text-xs font-semibold leading-tight tracking-tight truncate'>
+            <div className='text-[var(--ui-text-xs)] font-semibold leading-tight tracking-tight truncate'>
               {brandName}
             </div>
-            <div className='text-xs text-[#8b949e] leading-tight font-mono'>
+            <div className='text-[var(--ui-text-2xs)] text-text-muted leading-tight font-mono'>
               {versionLabel}
             </div>
           </div>
@@ -153,7 +153,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         >
           {NAV.map((section) => (
             <div key={section.label}>
-              <div className='hidden md:block px-2 pb-1.5 text-xs font-semibold tracking-widest text-[#8b949e] uppercase'>
+              <div className='hidden md:block px-2 pb-1.5 text-[var(--ui-text-xs)] font-semibold tracking-widest text-text-muted uppercase'>
                 {section.label}
               </div>
               <ul className='space-y-0.5' role='list'>
@@ -166,10 +166,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
                       <Link
                         href={item.href}
                         className={cn(
-                          'flex items-center justify-center md:justify-start gap-2.5 px-2.5 py-2 rounded-[7px] text-[13px] transition-all duration-200 border-l-2',
+                          'flex items-center justify-center md:justify-start gap-2.5 px-2.5 py-2 rounded-[7px] text-[13px] transition-all duration-200',
                           isActive
-                            ? 'bg-[rgba(88,166,255,0.09)] text-[#e6edf3] border-l-[#58a6ff]'
-                            : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#0f1115] border-l-transparent',
+                            ? 'bg-[rgb(var(--accent-blue-rgb)/0.09)] text-text-primary'
+                            : 'text-text-muted hover:text-text-primary hover:bg-surface',
                         )}
                         aria-current={isActive ? 'page' : undefined}
                         aria-label={item.label}
@@ -177,7 +177,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                         <Icon
                           className={cn(
                             'h-3.5 w-3.5 shrink-0',
-                            isActive ? 'text-[#58a6ff]' : '',
+                            isActive ? 'text-accent-blue' : '',
                           )}
                           aria-hidden='true'
                         />
@@ -192,20 +192,20 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Status footer */}
-        <div className='hidden md:block px-4 py-3 border-t border-[#1c2128] shrink-0'>
+        <div className='hidden md:block px-4 py-3 border-t border-highlight shrink-0'>
           <div className='flex items-center gap-2'>
             <span
-              className='inline-block h-1.5 w-1.5 rounded-full bg-[#3fb950] animate-pulse-dot'
+              className='inline-block h-1.5 w-1.5 rounded-full bg-accent-green animate-pulse-dot'
               aria-hidden='true'
             />
             <span
-              className='text-xs text-[#8b949e] font-mono'
+              className='text-[var(--ui-text-xs)] text-text-muted font-mono'
               aria-live='polite'
             >
               Operations live
             </span>
           </div>
-          <div className='mt-1 flex items-center gap-1.5 text-xs text-[#484f58]'>
+          <div className='mt-1 flex items-center gap-1.5 text-[var(--ui-text-xs)] text-text-placeholder'>
             <Activity className='h-3 w-3' aria-hidden='true' />
             <span className='font-mono' aria-live='polite'>
               {detailsLabel}
@@ -218,31 +218,31 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <div className='flex flex-col flex-1 min-w-0 overflow-hidden'>
         {/* Integrity Warning Banner */}
         {!isConsistent && (
-          <div className='bg-[#f85149] text-white py-1.5 px-4 text-center text-[11px] font-bold tracking-wider uppercase flex items-center justify-center gap-2 z-50'>
+          <div className='bg-accent-red text-white py-1.5 px-4 text-center text-[var(--ui-text-xs)] font-bold tracking-wider uppercase flex items-center justify-center gap-2 z-50'>
             <AlertTriangle className='h-3 w-3' />
             CRITICAL: Data inconsistency detected. Some trip counts may not add up correctly. Please refresh the page.
           </div>
         )}
 
         {/* Command bar */}
-        <header className='flex items-center justify-between h-11 px-5 border-b border-[#1c2128] bg-[#0a0d11]/80 backdrop-blur-xl shrink-0'>
+        <header className='flex items-center justify-between h-11 px-5 border-b border-highlight bg-[var(--bg-canvas)]/80 backdrop-blur-xl shrink-0'>
           <nav
-            className='flex items-center gap-2 text-sm'
+            className='flex items-center gap-2 text-[var(--ui-text-sm)]'
             aria-label='Breadcrumb navigation'
           >
             <Link
               href='/overview'
-              className='text-[#484f58] hover:text-[#8b949e] text-[12px] transition-colors'
+              className='text-text-placeholder hover:text-text-muted text-[12px] transition-colors'
             >
               {brandName}
             </Link>
             {pathname !== '/overview' && (
               <>
-                <span className='text-[#30363d]' aria-hidden='true'>
+                <span className='text-border-default' aria-hidden='true'>
                   /
                 </span>
                 <span
-                  className='text-[#e6edf3] text-[12px] capitalize font-medium'
+                  className='text-text-primary text-[12px] capitalize font-medium'
                   aria-current='page'
                 >
                   {getPageLabel(pathname)}
@@ -252,11 +252,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </nav>
           <div className='flex items-center gap-3'>
             <div
-              className='flex items-center gap-1.5 text-xs text-[#8b949e] font-mono'
+              className='flex items-center gap-1.5 text-[var(--ui-text-xs)] text-text-muted font-mono'
               role='status'
               aria-live='polite'
             >
-              <Zap className='h-3 w-3 text-[#d29922]' aria-hidden='true' />
+              <Zap className='h-3 w-3 text-accent-amber' aria-hidden='true' />
               <span>ready</span>
             </div>
             <UserMenu />

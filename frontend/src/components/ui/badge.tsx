@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium font-mono lowercase border transition-colors",
+  "inline-flex items-center rounded-md px-2 py-0.5 text-[var(--ui-text-xs)] font-medium font-mono lowercase border transition-colors",
   {
     variants: {
       variant: {
@@ -17,9 +17,9 @@ const badgeVariants = cva(
         manual: "badge-manual",
       },
       size: {
-        default: "px-2 py-0.5 text-xs",
-        sm: "px-1.5 py-0.5 text-xs",
-        lg: "px-2.5 py-1 text-xs",
+        default: "px-2 py-0.5 text-[var(--ui-text-xs)]",
+        sm: "px-1.5 py-0.5 text-[var(--ui-text-xs)]",
+        lg: "px-2.5 py-1 text-[var(--ui-text-xs)]",
       },
     },
     defaultVariants: {

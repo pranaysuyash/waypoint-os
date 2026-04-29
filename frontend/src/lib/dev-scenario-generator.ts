@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "fs";
 import { join } from "path";
+import { inferScenarioConfigFromText } from "./scenario-loader";
 
 const REPO_ROOT = join(process.cwd(), "..");
 const FIXTURES_DIR = join(REPO_ROOT, "data", "fixtures", "scenarios");
@@ -12,8 +13,8 @@ export interface DevScenarioInput {
   owner_note: string | null;
   structured_json: Record<string, unknown> | null;
   itinerary_text: string | null;
-  stage: "discovery";
-  operating_mode: "normal_intake";
+  stage: string;
+  operating_mode: string;
   strict_leakage: false;
   scenario_id: string;
 }
@@ -126,6 +127,7 @@ function docsTemplates(prompt: string): Omit<DevScenarioPayload, "persisted_fixt
       const bulletMatch = text.match(/^-\s+(?:Customer|Message|Input)\s*[:\-]\s*(.+)$/im);
       const candidate = quoteMatch?.[1] ?? bulletMatch?.[1];
       if (!candidate || candidate.trim().length < 60) continue;
+      const config = inferScenarioConfigFromText(`${titleMatch?.[1] ?? file} ${text}`);
 
       out.push({
         source: "docs_template",
@@ -136,8 +138,8 @@ function docsTemplates(prompt: string): Omit<DevScenarioPayload, "persisted_fixt
           owner_note: `Auto-generated from scenario doc template: ${file}`,
           structured_json: null,
           itinerary_text: null,
-          stage: "discovery",
-          operating_mode: "normal_intake",
+          stage: config.stage as "discovery" | "shortlist" | "proposal" | "booking",
+          operating_mode: config.mode as "normal_intake" | "audit" | "emergency" | "follow_up" | "cancellation" | "post_trip",
           strict_leakage: false,
           scenario_id: `DEV-DOC-${Date.now()}`,
         },

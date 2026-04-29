@@ -31,7 +31,7 @@
 
 .main p {
   font-size: 18px;
-  color: var(--state-neutral);
+  color: var(--text-secondary);
   text-align: center;
 }
 

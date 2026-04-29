@@ -31,13 +31,13 @@ export function PublicHeader({
 }) {
   return (
     <header className={styles.header}>
-      <Link href='/' className={styles.brand}>
-        <img className={styles.brandLogo} src='/brand/waypoint-logo-compass.svg' alt='' />
-        <span>
-          <strong className='block text-[14px] font-semibold tracking-tight'>Waypoint OS</strong>
-          <span className='block text-[12px] text-[#8b949e]'>Travel agency operating system</span>
-        </span>
-      </Link>
+          <Link href='/' className={styles.brand}>
+         <img className={styles.brandLogo} src='/brand/waypoint-logo-compass.svg' alt='' />
+         <span>
+           <strong className='block text-[14px] font-semibold tracking-tight'>Waypoint OS</strong>
+           <span className='block text-[12px] text-[#9ba3b0]'>Travel agency operating system</span>
+         </span>
+       </Link>
 
       <nav className={styles.nav}>
         {navItems.map((item) =>
@@ -148,12 +148,12 @@ export function CtaBand({
               <div className='text-center py-4'>
                 <div className='text-2xl mb-2 text-[#3fb950]'>✓</div>
                 <div className='text-[14px] font-semibold text-[#e6edf3]'>You're on the list.</div>
-                <div className='text-[12px] text-[#8b949e] mt-1'>We'll be in touch before launch.</div>
+                <div className='text-[12px] text-[#9ba3b0] mt-1'>We'll be in touch before launch.</div>
               </div>
             ) : (
               <>
                 <div className='text-[13px] font-semibold text-[#e6edf3] mb-1'>Not ready for a demo?</div>
-                <div className='text-[12px] text-[#8b949e] mb-3'>Join the waitlist — no pressure, no spam.</div>
+                 <div className='text-[12px] text-[#9ba3b0] mb-3'>Join the waitlist — no pressure, no spam.</div>
                 <div className='flex gap-2'>
                   <div
                     className='flex-1 flex items-center gap-2 px-3 py-2 rounded-[9px]'
@@ -184,7 +184,7 @@ export function CtaBand({
                 </div>
                 <div className='flex items-center gap-1.5 mt-2.5'>
                   <ShieldCheck className='h-3.5 w-3.5 text-[#484f58]' />
-                  <span className='text-[11px] text-[#484f58]'>No spam. Unsubscribe anytime.</span>
+                   <span className='text-[var(--ui-text-xs)] text-[#8b949e]'>No spam. Unsubscribe anytime.</span>
                 </div>
               </>
             )}

@@ -39,6 +39,7 @@ If instructions conflict, follow the stricter rule and cite concrete file paths.
 | Research before code | `search-first`                   | ~/Projects/skills/ |
 | UI screenshots       | `browse`                         | ~/.agents/skills/  |
 | Visual QA            | `design-review`                  | ~/.claude/skills/  |
+| Design system audit  | `rendered-design-system-audit`   | ~/.hermes/skills/ + `tools/rendered-design-system-audit/` |
 
 ## Workspace Alignment (Adopted)
 
@@ -206,6 +207,50 @@ For each recommendation, document:
 - Before moving to the next task, verify code still works.
 - After verification, run tests.
 - Record key verification outcomes in docs.
+
+### API Contract Verification (Critical — Mandatory for FE/BE Integration Work)
+
+**Rule: Never assume the shape of API responses. Test the real contract first.**
+
+When modifying code that crosses the frontend/backend boundary (e.g., a frontend component consuming a backend endpoint, or vice versa), you MUST verify the actual data shape before writing any consumer code.
+
+**Why this matters:** Frontend types, mocks, and assumptions often drift from the real backend response. Writing code against an imagined contract causes runtime crashes (e.g., `TypeError: Cannot read properties of undefined`) that TypeScript and unit tests cannot catch.
+
+**Mandatory steps for any integration task:**
+
+1. **Inspect the backend response directly**
+   ```bash
+   # Example: submit a run and inspect the actual JSON
+   curl -s -X POST http://localhost:8000/run \
+     -H "Authorization: Bearer <token>" \
+     -d '{"raw_note":"test"}' | python3 -m json.tool
+   
+   # Then poll for status and look at the real shape
+   curl -s "http://localhost:8000/runs/$RUN_ID" \
+     -H "Authorization: Bearer <token>" | python3 -m json.tool
+   ```
+   Or read the backend source (`spine_api/server.py`, `spine_api/contract.py`) to see the exact Pydantic model fields.
+
+2. **Compare backend output to frontend types**
+   - Check `frontend/src/types/spine.ts` and `frontend/src/types/generated/spine-api.ts`
+   - If they don't match the real API response, update the types FIRST.
+
+3. **Write frontend code ONLY against the verified shape**
+   - Use optional chaining (`?.`) and nullish coalescing (`??`) for every nested field access.
+   - Never access `.length`, `.map()`, or property keys without guarding against `undefined`.
+
+4. **Test end-to-end before claiming it works**
+   - Submit a real request through the frontend BFF proxy (`/api/spine/run`) or directly to the backend.
+   - Verify the UI renders correctly with the actual response data.
+   - Screenshot or describe what you see. Do not say "it works" based on build passing or unit tests alone.
+
+**Real example of failure from 2026-04-29:**
+- Backend `RunStatusResponse.validation` returns: `{status: "ESCALATED", gate: "NB01", reasons: ["..."]}`
+- Frontend assumed: `{is_valid: false, errors: [{field, message}], warnings: [...]}`
+- Result: `TypeError: Cannot read properties of undefined (reading 'length')` on `.errors.length`
+- Root cause: Agent modified frontend without ever `curl`-ing the real API response.
+
+**Penalty for skipping this:** Wasted user time, broken production UI, and forced rollback.
 
 ### Reusable Tools
 

@@ -44,9 +44,9 @@ const StatCard = memo(function StatCard({
     <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4'>
       <div className='flex items-start justify-between'>
         <div>
-          <p className='text-sm text-[#8b949e] mb-1'>{title}</p>
-          <p className='text-2xl font-bold text-[#e6edf3]'>{value}</p>
-          <p className={`text-xs mt-1 ${
+          <p className='text-ui-sm text-[#8b949e] mb-1'>{title}</p>
+          <p className='text-ui-2xl font-bold text-[#e6edf3]'>{value}</p>
+          <p className={`text-ui-xs mt-1 ${
             trend === 'up' ? 'text-[#3fb950]' : 
             trend === 'down' ? 'text-[#f85149]' : 
             'text-[#8b949e]'
@@ -78,8 +78,8 @@ const VelocityBar = memo(function VelocityBar({
   return (
     <div className='mb-3'>
       <div className='flex items-center justify-between mb-1'>
-        <span className='text-sm text-[#e6edf3]'>{label}</span>
-        <span className='text-sm font-mono text-[#8b949e]'>{Math.round(value)}h</span>
+        <span className='text-ui-sm text-[#e6edf3]'>{label}</span>
+        <span className='text-ui-sm font-mono text-[#8b949e]'>{Math.round(value)}h</span>
       </div>
       <div className='h-2 bg-[#161b22] rounded-full overflow-hidden'>
         <div 
@@ -147,14 +147,14 @@ const CriticalAlertBanner = memo(function CriticalAlertBanner({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <p className='font-semibold text-sm'>{alert.message}</p>
+                  <p className='font-semibold text-ui-sm'>{alert.message}</p>
                   {isEscalated && (
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#ff7b72] text-[#2b1011] uppercase tracking-wider">
+                    <span className="px-1.5 py-0.5 rounded text-[var(--ui-text-xs)] font-bold bg-[var(--accent-red)] text-[#2b1011] uppercase tracking-wider">
                       Escalated
                     </span>
                   )}
                 </div>
-                <div className='text-xs opacity-80 flex items-center gap-2 mt-0.5'>
+                <div className='text-ui-xs opacity-80 flex items-center gap-2 mt-0.5'>
                   <span>Trip ID: {alert.tripId}</span>
                   <span>•</span>
                   <span>{new Date(alert.timestamp).toLocaleString()}</span>
@@ -172,7 +172,7 @@ const CriticalAlertBanner = memo(function CriticalAlertBanner({
             <div className='flex items-center gap-2'>
               <a 
                 href={`/workbench?tripId=${alert.tripId}`}
-                className={`px-3 py-1.5 text-xs font-medium border rounded-md transition-colors ${
+                className={`px-3 py-1.5 text-ui-xs font-medium border rounded-md transition-colors ${
                   isBreached
                     ? 'bg-[#ff7b72] text-[#2b1011] border-[#ff7b72] hover:bg-[#ff7b72]/90'
                     : 'bg-[#161b22] text-[#e6edf3] border-[#30363d] hover:bg-[#1c2128]'
@@ -207,18 +207,18 @@ const TeamMemberRow = memo(function TeamMemberRow({ member }: { member: TeamMemb
     <tr className='border-b border-[#1c2128] last:border-0'>
       <td className='py-3'>
         <div className='flex items-center gap-3'>
-                <div className='h-8 w-8 rounded-full bg-[#58a6ff]/20 flex items-center justify-center text-[#58a6ff] text-xs font-bold'>
+                <div className='h-8 w-8 rounded-full bg-[#58a6ff]/20 flex items-center justify-center text-[#58a6ff] text-ui-xs font-bold'>
                   {member.name.split(' ').map((n: string) => n[0]).join('')}
           </div>
           <div>
-            <p className='text-sm font-medium text-[#e6edf3]'>{member.name}</p>
-            <p className='text-xs text-[#8b949e]'>{member.role}</p>
+            <p className='text-ui-sm font-medium text-[#e6edf3]'>{member.name}</p>
+            <p className='text-ui-xs text-[#8b949e]'>{member.role}</p>
           </div>
         </div>
       </td>
       
       <td className='py-3 text-center'>
-        <span className='text-sm text-[#e6edf3]'>{member.activeTrips}</span>
+        <span className='text-ui-sm text-[#e6edf3]'>{member.activeTrips}</span>
       </td>
       
       <td className='py-3 text-center hidden md:table-cell'>
@@ -229,7 +229,7 @@ const TeamMemberRow = memo(function TeamMemberRow({ member }: { member: TeamMemb
               style={{ width: `${member.workloadScore}%`, background: workloadColors[member.currentWorkload as keyof typeof workloadColors] }}
             />
           </div>
-          <span className={`text-xs ${
+          <span className={`text-ui-xs ${
             member.currentWorkload === 'over' ? 'text-[#d29922]' : 
             member.currentWorkload === 'critical' ? 'text-[#f85149]' :
             'text-[#8b949e]'
@@ -240,15 +240,15 @@ const TeamMemberRow = memo(function TeamMemberRow({ member }: { member: TeamMemb
       </td>
       
       <td className='py-3 text-center'>
-        <span className='text-sm text-[#e6edf3]'>{member.conversionRate}%</span>
+        <span className='text-ui-sm text-[#e6edf3]'>{member.conversionRate}%</span>
       </td>
       
       <td className='py-3 text-center hidden lg:table-cell'>
-        <span className='text-sm text-[#e6edf3]'>{member.avgResponseTime}h</span>
+        <span className='text-ui-sm text-[#e6edf3]'>{member.avgResponseTime}h</span>
       </td>
       
       <td className='py-3 text-center hidden lg:table-cell'>
-        <span className='text-sm text-[#e6edf3]'>{member.customerSatisfaction}/5</span>
+        <span className='text-ui-sm text-[#e6edf3]'>{member.customerSatisfaction}/5</span>
       </td>
     </tr>
   );
@@ -259,15 +259,15 @@ const BottleneckCard = memo(function BottleneckCard({ analysis }: { analysis: Bo
     <div className='rounded-xl border border-[#d29922]/30 bg-[#d29922]/5 p-4'>
       <div className='flex items-center gap-2 mb-3'>
         <AlertTriangle className='w-5 h-5 text-[#d29922]' />
-        <h3 className='text-base font-semibold text-[#e6edf3]'>
+        <h3 className='text-ui-base font-semibold text-[#e6edf3]'>
           Bottleneck: {analysis.stageName}
         </h3>
-        <span className='ml-auto px-2 py-1 bg-[#d29922]/20 text-[#d29922] text-xs rounded font-medium'>
+        <span className='ml-auto px-2 py-1 bg-[#d29922]/20 text-[#d29922] text-ui-xs rounded font-medium'>
           {analysis.severity.toUpperCase()}
         </span>
       </div>
       
-      <p className='text-sm text-[#8b949e] mb-3'>
+      <p className='text-ui-sm text-[#8b949e] mb-3'>
         Taking {analysis.avgTimeInStage} hours on average (target: 24h)
       </p>
       
@@ -275,10 +275,10 @@ const BottleneckCard = memo(function BottleneckCard({ analysis }: { analysis: Bo
         {analysis.primaryCauses.map((cause: any, i: number) => (
           <div key={i} className='flex items-center justify-between py-2 border-b border-[#30363d]/50 last:border-0'>
             <div>
-              <p className='text-sm text-[#e6edf3]'>{cause.cause}</p>
-              <p className='text-xs text-[#8b949e]'>Affecting {cause.affectedTrips} trips · {cause.percentage}% of delays</p>
+              <p className='text-ui-sm text-[#e6edf3]'>{cause.cause}</p>
+              <p className='text-ui-xs text-[#8b949e]'>Affecting {cause.affectedTrips} trips · {cause.percentage}% of delays</p>
             </div>
-            <button className='text-xs text-[#58a6ff] hover:text-[#79b8ff]'>
+            <button className='text-ui-xs text-[#58a6ff] hover:text-[#79b8ff]'>
               {cause.suggestedAction}
             </button>
           </div>
@@ -336,8 +336,8 @@ export default function OwnerInsightsPage() {
       {/* Header */}
       <header className='flex items-center justify-between pt-1'>
         <div>
-          <h1 className='text-2xl font-semibold text-[#e6edf3]'>Insights & Analytics</h1>
-          <p className='text-base text-[#8b949e] mt-0.5'>
+          <h1 className='text-ui-2xl font-semibold text-[#e6edf3]'>Insights & Analytics</h1>
+          <p className='text-ui-base text-[#8b949e] mt-0.5'>
             Monitor performance, identify bottlenecks, optimize operations
           </p>
         </div>
@@ -350,7 +350,7 @@ export default function OwnerInsightsPage() {
                 const v = e.target.value;
                 if (VALID_TIME_RANGES.has(v as TimeRange)) setTimeRange(v as TimeRange);
               }}
-              className='appearance-none bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:border-[#58a6ff]'
+              className='appearance-none bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg px-4 py-2 pr-10 text-ui-sm focus:outline-none focus:border-[#58a6ff]'
             >
               <option value='7d'>Last 7 days</option>
               <option value='30d'>Last 30 days</option>
@@ -361,7 +361,7 @@ export default function OwnerInsightsPage() {
             <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8b949e] pointer-events-none' />
           </div>
           
-          <button className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg text-sm hover:bg-[#21262d] transition-colors'>
+          <button className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg text-ui-sm hover:bg-[#21262d] transition-colors'>
             <Download className='w-4 h-4' /> Export
           </button>
         </div>
@@ -384,7 +384,7 @@ export default function OwnerInsightsPage() {
         <div className="flex flex-col items-center justify-center py-20 bg-[#f85149]/5 border border-[#f85149]/30 rounded-xl">
           <AlertTriangle className="h-10 w-10 text-[#f85149] mb-4" />
           <p className="text-[#e6edf3] font-semibold">Failed to fetch live data</p>
-          <p className="text-[#8b949e] text-sm mt-1">Please ensure the backend analytics service is running.</p>
+          <p className="text-[#8b949e] text-ui-sm mt-1">Please ensure the backend analytics service is running.</p>
         </div>
       )}
 
@@ -440,8 +440,8 @@ export default function OwnerInsightsPage() {
         {/* Pipeline Velocity */}
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5'>
           <div className='flex items-center justify-between mb-4'>
-            <h2 className='text-base font-semibold text-[#e6edf3]'>Average Time to Complete</h2>
-            <span className='text-xs text-[#8b949e]'>Avg: {(summary.pipelineVelocity?.averageTotal ?? 0)} days total</span>
+            <h2 className='text-ui-base font-semibold text-[#e6edf3]'>Average Time to Complete</h2>
+            <span className='text-ui-xs text-[#8b949e]'>Avg: {(summary.pipelineVelocity?.averageTotal ?? 0)} days total</span>
           </div>
           
           <div className='space-y-1'>
@@ -480,15 +480,15 @@ export default function OwnerInsightsPage() {
 
         {/* Stage Breakdown */}
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5'>
-          <h2 className='text-base font-semibold text-[#e6edf3] mb-4'>Stage Breakdown</h2>
+          <h2 className='text-ui-base font-semibold text-[#e6edf3] mb-4'>Stage Breakdown</h2>
           
           <div className='space-y-3'>
             {pipelineMetrics.map((stage) => (
               <div key={stage.stageId} className='flex items-center justify-between'>
                 <div className='flex-1'>
                   <div className='flex items-center justify-between mb-1'>
-                    <span className='text-sm text-[#e6edf3]'>{stage.stageName}</span>
-                    <span className='text-xs text-[#8b949e]'>{stage.tripCount} trips · {stage.exitRate}% exit</span>
+                    <span className='text-ui-sm text-[#e6edf3]'>{stage.stageName}</span>
+                    <span className='text-ui-xs text-[#8b949e]'>{stage.tripCount} trips · {stage.exitRate}% exit</span>
                   </div>
                   <div className='h-1.5 bg-[#161b22] rounded-full overflow-hidden'>
                     <div 
@@ -498,7 +498,7 @@ export default function OwnerInsightsPage() {
                   </div>
                 </div>
                 
-                <span className='ml-4 text-xs text-[#8b949e] w-16 text-right'>
+                <span className='ml-4 text-ui-xs text-[#8b949e] w-16 text-right'>
                   {stage.avgTimeInStage}h
                 </span>
               </div>
@@ -538,18 +538,18 @@ export default function OwnerInsightsPage() {
 
         {/* Team Performance Table */}
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5 lg:col-span-2'>
-          <h2 className='text-base font-semibold text-[#e6edf3] mb-4'>Team Performance</h2>
+          <h2 className='text-ui-base font-semibold text-[#e6edf3] mb-4'>Team Performance</h2>
           
           <div className='overflow-x-auto'>
             <table className='w-full'>
               <thead>
                 <tr className='border-b border-[#30363d]'>
-                  <th className='text-left py-2 text-sm font-medium text-[#8b949e]'>Agent</th>
-                  <th className='text-center py-2 text-sm font-medium text-[#8b949e]'>Active</th>
-                  <th className='text-center py-2 text-sm font-medium text-[#8b949e] hidden md:table-cell'>Workload</th>
-                  <th className='text-center py-2 text-sm font-medium text-[#8b949e]'>Conversion</th>
-                  <th className='text-center py-2 text-sm font-medium text-[#8b949e] hidden lg:table-cell'>Response</th>
-                  <th className='text-center py-2 text-sm font-medium text-[#8b949e] hidden lg:table-cell'>CSAT</th>
+                  <th className='text-left py-2 text-ui-sm font-medium text-[#8b949e]'>Agent</th>
+                  <th className='text-center py-2 text-ui-sm font-medium text-[#8b949e]'>Active</th>
+                  <th className='text-center py-2 text-ui-sm font-medium text-[#8b949e] hidden md:table-cell'>Workload</th>
+                  <th className='text-center py-2 text-ui-sm font-medium text-[#8b949e]'>Conversion</th>
+                  <th className='text-center py-2 text-ui-sm font-medium text-[#8b949e] hidden lg:table-cell'>Response</th>
+                  <th className='text-center py-2 text-ui-sm font-medium text-[#8b949e] hidden lg:table-cell'>CSAT</th>
                 </tr>
               </thead>
               <tbody>
@@ -563,7 +563,7 @@ export default function OwnerInsightsPage() {
 
         {/* Bottlenecks */}
         <div className='lg:col-span-2'>
-          <h2 className='text-base font-semibold text-[#e6edf3] mb-3'>Bottleneck Analysis</h2>
+          <h2 className='text-ui-base font-semibold text-[#e6edf3] mb-3'>Bottleneck Analysis</h2>
           
           {bottlenecks.length > 0 ? (
             <div className='space-y-3'>
@@ -574,7 +574,7 @@ export default function OwnerInsightsPage() {
           ) : (
             <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-6 text-center'>
               <CheckCircle className='w-8 h-8 text-[#3fb950] mx-auto mb-2' />
-              <p className='text-sm text-[#8b949e]'>No bottlenecks detected. Things are flowing smoothly!</p>
+              <p className='text-ui-sm text-[#8b949e]'>No bottlenecks detected. Things are flowing smoothly!</p>
             </div>
           )}
         </div>

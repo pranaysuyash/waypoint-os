@@ -12,6 +12,7 @@ import {
   CheckCircle,
   AlertTriangle,
   Save,
+  ChevronRight,
 } from 'lucide-react';
 import { InlineLoading } from '@/components/ui/loading';
 import { useTrip } from '@/hooks/useTrips';
@@ -43,6 +44,7 @@ const DecisionTab = dynamic(() => import('./DecisionTab'));
 const StrategyTab = dynamic(() => import('./StrategyTab'));
 const SafetyTab = dynamic(() => import('./SafetyTab'));
 const SettingsPanel = dynamic(() => import('./SettingsPanel'));
+const ScenarioLab = dynamic(() => import('./ScenarioLab'));
 const OutputPanel = dynamic(
   () => import('@/components/workspace/panels/OutputPanel'),
 );
@@ -222,6 +224,53 @@ function WorkbenchContent() {
     runId: spineRunId,
     state: spineRunState,
   } = useSpineRun();
+
+  // Populate store with validation/packet from run status so blocked runs
+  // still show specific field-level errors in the UI.
+  useEffect(() => {
+    if (spineRunState?.validation) {
+      store.setResultValidation(spineRunState.validation);
+    }
+    if (spineRunState?.packet) {
+      store.setResultPacket(spineRunState.packet);
+    }
+  }, [spineRunState, store.setResultValidation, store.setResultPacket]);
+
+  // Auto-switch to the tab containing errors when a run ends in blocked/failed state.
+  // This prevents the user from missing field-level validation errors that are rendered
+  // in the Trip Details (packet) tab or other stage-specific tabs.
+  const prevRunStateRef = useRef<string | null>(null);
+  useEffect(() => {
+    const currentState = spineRunState?.state ?? null;
+    const prevState = prevRunStateRef.current;
+
+    // Only act when transitioning into a terminal error state
+    if (
+      currentState !== prevState &&
+      (currentState === 'blocked' || currentState === 'failed')
+    ) {
+      if (currentState === 'blocked') {
+        // Blocked runs with validation errors show details in the packet tab
+        handleTabChange('packet');
+      } else if (currentState === 'failed') {
+        const stage = spineRunState?.stage_at_failure;
+        const stageToTab: Record<string, WorkspaceTabId> = {
+          packet: 'packet',
+          validation: 'packet',
+          decision: 'decision',
+          strategy: 'strategy',
+          safety: 'safety',
+        };
+        const targetTab = stage ? stageToTab[stage] : undefined;
+        if (targetTab) {
+          handleTabChange(targetTab);
+        }
+      }
+    }
+
+    prevRunStateRef.current = currentState;
+  }, [spineRunState, handleTabChange]);
+
   const { mutate: saveTrip, isSaving } = useUpdateTrip();
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -320,13 +369,13 @@ function WorkbenchContent() {
         <div className='bg-[#2b1011] border-b border-[#6b2a2b] px-6 py-2 flex items-center justify-between'>
           <div className='flex items-center gap-3 text-[#ff7b72]'>
             <AlertTriangle className='h-4 w-4' />
-            <span className='text-xs font-bold uppercase tracking-wider'>
+            <span className='text-ui-xs font-bold uppercase tracking-wider'>
               Recovery Mode: Critical Feedback Detected
             </span>
           </div>
           <button
             onClick={handleResolve}
-            className='flex items-center gap-1.5 px-3 py-1 bg-[#ff7b72]/10 hover:bg-[#ff7b72]/20 border border-[#ff7b72]/30 rounded-md text-[#ff7b72] text-xs font-semibold transition-all'
+            className='flex items-center gap-1.5 px-3 py-1 bg-[#ff7b72]/10 hover:bg-[#ff7b72]/20 border border-[#ff7b72]/30 rounded-md text-[#ff7b72] text-ui-xs font-semibold transition-all'
           >
             <CheckCircle className='h-3.5 w-3.5' />
             Mark Resolved
@@ -336,52 +385,114 @@ function WorkbenchContent() {
 
       <PipelineFlow currentStage={pipelineStage} />
 
+      {/* Persistent blocked-state banner */}
+      {store.result_validation && (
+        store.result_validation.is_valid === false ||
+        store.result_validation.status === "ESCALATED" ||
+        store.result_validation.status === "BLOCKED"
+      ) && !spineRunId && (
+        <div className="mx-6 mt-4 rounded-xl border border-[#f85149]/40 bg-[#2b1011] px-5 py-3">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-[#f85149] shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-ui-sm font-semibold text-[#f85149]">
+                    Trip Details Need Attention
+                    {store.result_validation.gate && <span className="text-[#8b949e] font-mono ml-2">{store.result_validation.gate}</span>}
+                  </h3>
+                  <p className="text-ui-xs text-[#ffa198] mt-0.5">
+                    {store.result_validation.reasons?.length
+                      ? store.result_validation.reasons.join("; ")
+                      : "Some details need attention."}
+                    {" "}Check the <button
+                      onClick={() => handleTabChange('packet')}
+                      className="text-[#58a6ff] underline hover:no-underline font-medium inline"
+                    >Trip Details</button> tab for specifics.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => handleTabChange('packet')}
+                    className="px-3 py-1.5 bg-[#f85149]/10 border border-[#f85149]/30 text-[#f85149] text-ui-xs font-medium rounded-md hover:bg-[#f85149]/20 transition-colors"
+                  >
+                    View Details
+                  </button>
+                  <button
+                    onClick={() => handleTabChange('intake')}
+                    className="px-3 py-1.5 bg-[#161b22] border border-[#30363d] text-[#e6edf3] text-ui-xs font-medium rounded-md hover:bg-[#21262d] transition-colors"
+                  >
+                    Fix in Intake
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className='px-6 py-6'>
         <header className='flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-6'>
           <div>
-            <h1 className='text-2xl font-semibold text-[#e6edf3] mb-1'>
+            <h1 className='text-ui-2xl font-semibold text-[#e6edf3] mb-1'>
               {trip ? trip.destination : 'Trip Workspace'}
             </h1>
-            <p className='text-base text-[#a8b3c1]'>
+            <p className='text-ui-base text-[#a8b3c1]'>
               {trip
                 ? `${trip.id} · ${trip.type} · ${trip.age}`
                 : 'Process travel requests and generate quotes'}
             </p>
             {tripLoading && (
-              <p className='text-sm text-[#8b949e] mt-1'>Loading trip...</p>
+              <p className='text-ui-sm text-[#8b949e] mt-1'>Loading trip...</p>
             )}
             {tripError && (
-              <p className='text-sm text-[#f85149] mt-1'>
+              <p className='text-ui-sm text-[#f85149] mt-1'>
                 Failed to load trip: {tripError.message}
               </p>
             )}
             {store.result_run_ts && (
-              <p className='text-xs text-[#8b949e] mt-1'>
+              <p className='text-ui-xs text-[#8b949e] mt-1'>
                 Last processed: {new Date(store.result_run_ts).toLocaleString()}
               </p>
             )}
           </div>
           <div className='flex items-center gap-3 flex-wrap'>
             {runError && (
-              <div className='flex items-center gap-2 px-3 py-2 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg text-sm text-[#f85149]'>
+              <div className='flex items-center gap-2 px-3 py-2 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg text-ui-sm text-[#f85149]'>
                 <AlertTriangle className='w-4 h-4' />
-                <span className='max-w-xs truncate'>{runError}</span>
+                {spineRunState?.validation && (
+                  spineRunState.validation.is_valid === false ||
+                  spineRunState.validation.status === "ESCALATED" ||
+                  spineRunState.validation.status === "BLOCKED"
+                ) ? (
+                  <div className='flex flex-col'>
+                    <span className='font-medium'>Validation failed</span>
+                    <span className='text-ui-xs text-[#ffa198]'>
+                      {spineRunState.validation.reasons?.length
+                        ? spineRunState.validation.reasons.join("; ")
+                        : "Trip details are incomplete."}
+                      {" "}Check the Trip Details tab.
+                    </span>
+                  </div>
+                ) : (
+                  <span className='max-w-xs truncate'>{runError}</span>
+                )}
               </div>
             )}
             {runSuccess && (
-              <div className='flex items-center gap-2 px-3 py-2 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-lg text-sm text-[#3fb950]'>
+              <div className='flex items-center gap-2 px-3 py-2 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-lg text-ui-sm text-[#3fb950]'>
                 <CheckCircle className='w-4 h-4' />
                 Processed successfully
               </div>
             )}
             {saveSuccess && (
-              <div className='flex items-center gap-2 px-3 py-2 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-lg text-sm text-[#3fb950]'>
+              <div className='flex items-center gap-2 px-3 py-2 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-lg text-ui-sm text-[#3fb950]'>
                 <CheckCircle className='w-4 h-4' />
                 Saved
               </div>
             )}
             {saveError && (
-              <div className='flex items-center gap-2 px-3 py-2 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg text-sm text-[#f85149]'>
+              <div className='flex items-center gap-2 px-3 py-2 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg text-ui-sm text-[#f85149]'>
                 <AlertTriangle className='w-4 h-4' />
                 <span className='max-w-xs truncate'>{saveError}</span>
               </div>
@@ -427,6 +538,7 @@ function WorkbenchContent() {
                 runId={spineRunId}
                 runState={spineRunState}
                 error={spineError}
+                validationErrors={store.result_validation || spineRunState?.validation || null}
                 onRetry={() => {
                   setRunError(null);
                   resetSpine();
@@ -476,6 +588,10 @@ function WorkbenchContent() {
             </button>
           </div>
         </header>
+
+        <div className='mb-4'>
+          <ScenarioLab />
+        </div>
 
         <div className='bg-[#0f1115] border border-[#30363d] rounded-t-xl overflow-hidden'>
           <Tabs

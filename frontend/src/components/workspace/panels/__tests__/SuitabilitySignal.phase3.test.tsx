@@ -110,7 +110,7 @@ describe("SuitabilitySignal - Phase 3 Confidence & Tier Display", () => {
       expect(screen.getByText("Tier 1: Hard Blockers (Must Acknowledge Before Approval)")).toBeInTheDocument();
       // The flag container should have red styling
       const flagElement = container.querySelector('[data-testid="suitability-flag-critical_flag"]');
-      expect(flagElement?.className).toContain("bg-red-50");
+      expect(flagElement?.className).toContain("accent-red-rgb");
     });
 
     it("should classify high as Tier 2 (warnings)", () => {
@@ -142,7 +142,7 @@ describe("SuitabilitySignal - Phase 3 Confidence & Tier Display", () => {
       // Check for Tier 2 section
       expect(screen.getByText("Tier 2: Warnings (Review Recommended)")).toBeInTheDocument();
       const flagElement = container.querySelector('[data-testid="suitability-flag-medium_flag"]');
-      expect(flagElement?.className).toContain("bg-blue-50");
+      expect(flagElement?.className).toContain("accent-blue-rgb");
     });
 
     it("should classify low as Tier 2 (gray)", () => {
@@ -158,7 +158,7 @@ describe("SuitabilitySignal - Phase 3 Confidence & Tier Display", () => {
       const { container } = render(<SuitabilitySignal flags={flags} />);
       expect(screen.getByText("Tier 2: Warnings (Review Recommended)")).toBeInTheDocument();
       const flagElement = container.querySelector('[data-testid="suitability-flag-low_flag"]');
-      expect(flagElement?.className).toContain("bg-gray-50");
+      expect(flagElement?.className).toContain("bg-elevated");
     });
 
     it("should apply correct badge colors by severity", () => {
@@ -213,8 +213,8 @@ describe("SuitabilitySignal - Phase 3 Confidence & Tier Display", () => {
       ];
       const { container } = render(<SuitabilitySignal flags={flags} />);
       const flagElement = container.querySelector('[data-testid="suitability-flag-critical_flag"]');
-      // Should have dark mode red background
-      expect(flagElement?.className).toContain("dark:bg-red-950");
+      // Should have red background via project token
+      expect(flagElement?.className).toContain("accent-red-rgb");
     });
 
     it("should maintain dark mode colors for Tier 2", () => {
@@ -229,8 +229,8 @@ describe("SuitabilitySignal - Phase 3 Confidence & Tier Display", () => {
       ];
       const { container } = render(<SuitabilitySignal flags={flags} />);
       const flagElement = container.querySelector('[data-testid="suitability-flag-medium_flag"]');
-      // Should have dark mode blue background
-      expect(flagElement?.className).toContain("dark:bg-blue-950");
+      // Should have blue background via project token
+      expect(flagElement?.className).toContain("accent-blue-rgb");
     });
   });
 

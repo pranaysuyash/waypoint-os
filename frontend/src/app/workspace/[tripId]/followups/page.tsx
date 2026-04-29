@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Filter, AlertCircle, Loader2 } from 'lucide-react';
 import FollowUpCard from '@/components/workspace/cards/FollowUpCard';
-import { COLORS } from '@/lib/tokens';
 
 interface FollowUp {
   trip_id: string;
@@ -146,28 +145,28 @@ export default function FollowupsPage() {
       {/* Header */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold" style={{ color: COLORS.textPrimary }}>
+          <h1 className="text-ui-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
             Follow-up Reminders
           </h1>
           {followups.length > 0 && (
             <span
-              className="text-sm font-medium px-3 py-1 rounded"
-              style={{ color: COLORS.textSecondary, background: COLORS.bgSurface }}
+              className="text-ui-sm font-medium px-3 py-1 rounded"
+              style={{ color: 'var(--text-secondary)', background: 'var(--bg-surface)' }}
             >
               {followups.length} follow-up{followups.length !== 1 ? 's' : ''}
             </span>
           )}
         </div>
-        <p style={{ color: COLORS.textSecondary }}>
+        <p style={{ color: 'var(--text-secondary)' }}>
           Manage follow-up reminders for promised calls and communications.
         </p>
       </div>
 
       {/* Filters & Sorting */}
-      <div className="flex flex-col gap-4 p-4 rounded-lg border" style={{ borderColor: COLORS.borderDefault }}>
+      <div className="flex flex-col gap-4 p-4 rounded-lg border" style={{ borderColor: 'var(--border-default)' }}>
         <div className="flex items-center gap-2 mb-2">
-          <Filter className="w-4 h-4" style={{ color: COLORS.textMuted }} />
-          <h3 className="text-sm font-semibold" style={{ color: COLORS.textPrimary }}>
+          <Filter className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+          <h3 className="text-ui-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
             Filters
           </h3>
         </div>
@@ -178,17 +177,17 @@ export default function FollowupsPage() {
             <button
               key={filter}
               onClick={() => setFilterType(filter)}
-              className="px-3 py-2 rounded text-xs font-medium transition-colors border"
+              className="px-3 py-2 rounded text-ui-xs font-medium transition-colors border"
               style={{
-                color: filterType === filter ? '#fff' : COLORS.textSecondary,
+                color: filterType === filter ? '#fff' : 'var(--text-secondary)',
                 background:
                   filterType === filter
-                    ? COLORS.accentBlue
-                    : COLORS.bgSurface,
+                    ? 'var(--accent-blue)'
+                    : 'var(--bg-surface)',
                 borderColor:
                   filterType === filter
-                    ? COLORS.accentBlue
-                    : COLORS.borderDefault,
+                    ? 'var(--accent-blue)'
+                    : 'var(--border-default)',
               }}
             >
               {filter === 'all'
@@ -204,7 +203,7 @@ export default function FollowupsPage() {
 
         {/* Status Filter */}
         <div>
-          <label className="text-xs font-medium" style={{ color: COLORS.textMuted }}>
+          <label className="text-ui-xs font-medium" style={{ color: 'var(--text-muted)' }}>
             Status:
           </label>
           <div className="flex flex-wrap gap-2 mt-1">
@@ -212,20 +211,20 @@ export default function FollowupsPage() {
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
-                className="px-3 py-1 rounded text-xs font-medium transition-colors border"
+                className="px-3 py-1 rounded text-ui-xs font-medium transition-colors border"
                 style={{
                   color:
                     statusFilter === status
                       ? '#fff'
-                      : COLORS.textSecondary,
+                      : 'var(--text-secondary)',
                   background:
                     statusFilter === status
-                      ? COLORS.accentBlue
+                      ? 'var(--accent-blue)'
                       : 'transparent',
                   borderColor:
                     statusFilter === status
-                      ? COLORS.accentBlue
-                      : COLORS.borderDefault,
+                      ? 'var(--accent-blue)'
+                      : 'var(--border-default)',
                 }}
               >
                 {status === 'all'
@@ -238,7 +237,7 @@ export default function FollowupsPage() {
 
         {/* Sort Options */}
         <div>
-          <label className="text-xs font-medium" style={{ color: COLORS.textMuted }}>
+          <label className="text-ui-xs font-medium" style={{ color: 'var(--text-muted)' }}>
             Sort by:
           </label>
           <div className="flex gap-2 mt-1">
@@ -246,20 +245,20 @@ export default function FollowupsPage() {
               <button
                 key={sort}
                 onClick={() => setSortBy(sort)}
-                className="px-3 py-1 rounded text-xs font-medium transition-colors border"
+                className="px-3 py-1 rounded text-ui-xs font-medium transition-colors border"
                 style={{
                   color:
                     sortBy === sort
                       ? '#fff'
-                      : COLORS.textSecondary,
+                      : 'var(--text-secondary)',
                   background:
                     sortBy === sort
-                      ? COLORS.accentBlue
+                      ? 'var(--accent-blue)'
                       : 'transparent',
                   borderColor:
                     sortBy === sort
-                      ? COLORS.accentBlue
-                      : COLORS.borderDefault,
+                      ? 'var(--accent-blue)'
+                      : 'var(--border-default)',
                 }}
               >
                 {sort === 'due_date'
@@ -274,8 +273,8 @@ export default function FollowupsPage() {
       {/* Loading State */}
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin" style={{ color: COLORS.textMuted }} />
-          <span className="ml-2" style={{ color: COLORS.textSecondary }}>
+          <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--text-muted)' }} />
+          <span className="ml-2" style={{ color: 'var(--text-secondary)' }}>
             Loading follow-ups...
           </span>
         </div>
@@ -286,19 +285,19 @@ export default function FollowupsPage() {
         <div
           className="p-4 rounded-lg border flex items-start gap-3"
           style={{
-            borderColor: COLORS.accentRed,
+            borderColor: 'var(--accent-red)',
             background: 'rgba(248,81,73,0.08)',
           }}
         >
           <AlertCircle
             className="w-5 h-5 shrink-0 mt-0.5"
-            style={{ color: COLORS.accentRed }}
+            style={{ color: 'var(--accent-red)' }}
           />
           <div>
-            <p className="text-sm font-medium" style={{ color: COLORS.accentRed }}>
+            <p className="text-ui-sm font-medium" style={{ color: 'var(--accent-red)' }}>
               Error loading follow-ups
             </p>
-            <p className="text-xs mt-1" style={{ color: COLORS.textSecondary }}>
+            <p className="text-ui-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
               {error}
             </p>
           </div>
@@ -310,11 +309,11 @@ export default function FollowupsPage() {
         <div
           className="p-8 rounded-lg border text-center"
           style={{
-            borderColor: COLORS.borderDefault,
-            background: COLORS.bgElevated,
+            borderColor: 'var(--border-default)',
+            background: 'var(--bg-elevated)',
           }}
         >
-          <p style={{ color: COLORS.textSecondary }}>
+          <p style={{ color: 'var(--text-secondary)' }}>
             No follow-ups scheduled.
           </p>
         </div>

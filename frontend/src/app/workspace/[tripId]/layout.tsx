@@ -45,7 +45,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   const params = useParams<{ tripId?: string | string[] }>();
   const pathname = usePathname();
   const tripId = parseTripId(params?.tripId);
-  const { data: trip, isLoading, error } = useTrip(tripId);
+  const { data: trip, isLoading, error, refetch: refetchTrip, replaceTrip } = useTrip(tripId);
   const [isRailOpen, setIsRailOpen] = useState(false);
   const { result_run_ts } = useWorkbenchStore();
 
@@ -70,7 +70,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
           />
           <Link
             href="/workspace"
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[#30363d] text-sm text-[#e6edf3] hover:bg-[#161b22] transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border-default)] text-ui-sm text-[#e6edf3] hover:bg-[#161b22] transition-colors"
           >
             <ChevronLeft className="w-4 h-4" aria-hidden="true" />
             Back to Workspaces
@@ -81,7 +81,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   }
 
   return (
-    <TripContextProvider value={{ tripId, trip, isLoading, error }}>
+    <TripContextProvider value={{ tripId, trip, isLoading, error, refetchTrip, replaceTrip }}>
       <div className="min-h-screen bg-[#080a0c] text-[#e6edf3]">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-5 space-y-4">
 
@@ -96,13 +96,13 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
             <div className="px-5 pt-4 pb-0">
               {/* Top row: breadcrumb + timeline toggle */}
               <div className="flex items-center justify-between gap-3 mb-3">
-                <div className="flex items-center gap-2 text-xs text-[#484f58]">
-                  <Link href="/workspace" className="hover:text-[#8b949e] transition-colors flex items-center gap-1">
+                <div className="flex items-center gap-2 text-ui-xs text-[var(--text-tertiary)]">
+                  <Link href="/workspace" className="hover:text-[var(--text-muted)] transition-colors flex items-center gap-1">
                     <ChevronLeft className="w-3 h-3" />
                     Workspaces
                   </Link>
                   <span>/</span>
-                  <span className="text-[#8b949e] truncate max-w-[200px]">
+                  <span className="text-[var(--text-muted)] truncate max-w-[200px]">
                     {trip.destination || trip.id}
                   </span>
                 </div>
@@ -110,7 +110,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                 <button
                   type="button"
                   onClick={() => setIsRailOpen((open) => !open)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border border-[#30363d] hover:bg-[#161b22] transition-colors text-[#8b949e] hover:text-[#e6edf3]"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-ui-xs rounded-lg border border-[var(--border-default)] hover:bg-[#161b22] transition-colors text-[var(--text-muted)] hover:text-[#e6edf3]"
                   aria-expanded={isRailOpen}
                   aria-controls="workspace-right-rail"
                 >
@@ -125,7 +125,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
               <div className="flex items-start justify-between gap-4 mb-3">
                 <div className="min-w-0">
                   <h1
-                    className="text-2xl font-black tracking-tight leading-none mb-2 truncate"
+                    className="text-ui-2xl font-black tracking-tight leading-none mb-2 truncate"
                     style={{ fontFamily: "'Outfit', system-ui, sans-serif", color: '#f0f6fc' }}
                   >
                     {trip.destination || trip.id}
@@ -133,7 +133,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                   <div className="flex flex-wrap items-center gap-2">
                     {/* State badge */}
                     <span
-                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-bold"
+                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-ui-xs font-bold"
                       style={{ color: accent.color, background: `${accent.color}18`, border: `1px solid ${accent.border}` }}
                     >
                       <span
@@ -143,16 +143,16 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                       {accent.label}
                     </span>
                     {trip.type && (
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#484f58]">
+                      <span className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-[var(--text-tertiary)]">
                         {trip.type}
                       </span>
                     )}
                     {trip.age && (
-                      <span className="text-[11px] text-[#484f58]">{trip.age}</span>
+                      <span className="text-[var(--ui-text-xs)] text-[var(--text-tertiary)]">{trip.age}</span>
                     )}
-                    <span className="text-[11px] font-mono text-[#30363d]">{trip.id}</span>
+                    <span className="text-[var(--ui-text-xs)] font-mono text-[var(--border-default)]">{trip.id}</span>
                     {result_run_ts && (
-                      <span className="text-[10px] text-[#30363d]">
+                      <span className="text-[var(--ui-text-xs)] text-[var(--border-default)]">
                         processed {new Date(result_run_ts).toLocaleTimeString()}
                       </span>
                     )}
@@ -174,7 +174,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                       aria-current={isActive ? "page" : undefined}
                       className="px-4 py-2.5 text-[13px] whitespace-nowrap border-b-2 transition-all"
                       style={{
-                        color: isActive ? '#e6edf3' : '#484f58',
+                        color: isActive ? '#e6edf3' : 'var(--text-tertiary)',
                         borderColor: isActive ? accent.color : 'transparent',
                         fontWeight: isActive ? 600 : 400,
                       }}
@@ -191,8 +191,8 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
           {trip.state === 'red' && (
             <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[rgba(248,81,73,0.35)] bg-[rgba(248,81,73,0.07)]">
               <AlertTriangle className="w-4 h-4 text-[#f85149] shrink-0" aria-hidden="true" />
-              <span className="text-sm font-semibold text-[#f85149]">Action required</span>
-              <span className="text-sm text-[#c9d1d9]">This trip has blockers that must be resolved before it can proceed.</span>
+              <span className="text-ui-sm font-semibold text-[#f85149]">Action required</span>
+              <span className="text-ui-sm text-[#c9d1d9]">This trip has blockers that must be resolved before it can proceed.</span>
             </div>
           )}
 

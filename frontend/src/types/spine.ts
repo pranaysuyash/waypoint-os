@@ -71,6 +71,8 @@ export interface RunStatusResponse {
   error_message?: string | null;
   stage_at_failure?: string | null;
   block_reason?: string | null;
+  validation?: ValidationReport | null;
+  packet?: unknown;
 }
 
 // ============================================================================
@@ -281,9 +283,12 @@ export interface PacketContradiction {
 }
 
 export interface ValidationReport {
-  is_valid: boolean;
-  errors: Array<{ severity: string; code: string; message: string; field: string }>;
-  warnings: Array<{ severity: string; code: string; message: string; field: string }>;
+  is_valid?: boolean;
+  status?: string;
+  gate?: string;
+  reasons?: string[];
+  errors?: Array<{ severity: string; code: string; message: string; field: string }>;
+  warnings?: Array<{ severity: string; code: string; message: string; field: string }>;
 }
 
 export interface FeeBreakdown {

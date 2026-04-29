@@ -46,8 +46,8 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-sm font-semibold text-[#e6edf3]">Operations</h2>
-        <p className="text-xs text-[#8b949e] mt-1">
+        <h2 className="text-ui-sm font-semibold text-[#e6edf3]">Operations</h2>
+        <p className="text-ui-xs text-[var(--text-muted)] mt-1">
           Business rules that affect budget feasibility, AI tone, and communication.
         </p>
       </div>
@@ -55,7 +55,7 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Margin */}
         <div className="space-y-1.5">
-          <label className="flex items-center gap-1.5 text-xs font-medium text-[#8b949e]">
+          <label className="flex items-center gap-1.5 text-ui-xs font-medium text-[var(--text-muted)]">
             <Percent className="w-3.5 h-3.5" />
             Target Margin (%)
           </label>
@@ -73,18 +73,18 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
               }
               className="flex-1 accent-[#58a6ff]"
             />
-            <span className="text-sm font-mono text-[#e6edf3] w-12 text-right">
+            <span className="text-ui-sm font-mono text-[#e6edf3] w-12 text-right">
               {op.target_margin_pct}%
             </span>
           </div>
-          <p className="text-[11px] text-[#8b949e]">
+          <p className="text-[var(--ui-text-xs)] text-[var(--text-muted)]">
             Used in budget feasibility scoring. Higher margins mean stricter budget checks.
           </p>
         </div>
 
         {/* Currency */}
         <div className="space-y-1.5">
-          <label className="flex items-center gap-1.5 text-xs font-medium text-[#8b949e]">
+          <label className="flex items-center gap-1.5 text-ui-xs font-medium text-[var(--text-muted)]">
             <Percent className="w-3.5 h-3.5" />
             Default Currency
           </label>
@@ -96,7 +96,7 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
                 return prev;
               })
             }
-            className="w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] appearance-none"
+            className="w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] appearance-none"
           >
             {CURRENCIES.map((c) => (
               <option key={c} value={c}>
@@ -108,7 +108,7 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
 
         {/* Operating Hours */}
         <div className="space-y-1.5">
-          <label className="flex items-center gap-1.5 text-xs font-medium text-[#8b949e]">
+          <label className="flex items-center gap-1.5 text-ui-xs font-medium text-[var(--text-muted)]">
             <Clock className="w-3.5 h-3.5" />
             Operating Hours
           </label>
@@ -122,9 +122,9 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
                   return prev;
                 })
               }
-              className="px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff]"
+              className="px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff]"
             />
-            <span className="text-[#8b949e]">to</span>
+            <span className="text-[var(--text-muted)]">to</span>
             <input
               type="time"
               value={op.operating_hours.end}
@@ -134,14 +134,14 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
                   return prev;
                 })
               }
-              className="px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff]"
+              className="px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff]"
             />
           </div>
         </div>
 
         {/* Brand Tone */}
         <div className="space-y-1.5">
-          <label className="flex items-center gap-1.5 text-xs font-medium text-[#8b949e]">
+          <label className="flex items-center gap-1.5 text-ui-xs font-medium text-[var(--text-muted)]">
             <Mic className="w-3.5 h-3.5" />
             AI Brand Tone
           </label>
@@ -153,7 +153,7 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
                 return prev;
               })
             }
-            className="w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] appearance-none"
+            className="w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3] focus:outline-none focus:border-[#58a6ff] appearance-none"
           >
             {BRAND_TONES.map((t) => (
               <option key={t} value={t}>
@@ -161,7 +161,7 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
               </option>
             ))}
           </select>
-          <p className="text-[11px] text-[#8b949e]">
+          <p className="text-[var(--ui-text-xs)] text-[var(--text-muted)]">
             How the AI sounds when generating traveler-facing messages and options.
           </p>
         </div>
@@ -169,7 +169,7 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
 
       {/* Operating Days */}
       <div className="space-y-2">
-        <label className="flex items-center gap-1.5 text-xs font-medium text-[#8b949e]">
+        <label className="flex items-center gap-1.5 text-ui-xs font-medium text-[var(--text-muted)]">
           <Calendar className="w-3.5 h-3.5" />
           Operating Days
         </label>
@@ -180,10 +180,10 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
               <button
                 key={day}
                 onClick={() => toggleDay(day)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-ui-xs font-medium transition-colors ${
                   isActive
                     ? 'bg-[#58a6ff]/20 text-[#58a6ff] border border-[#58a6ff]/40'
-                    : 'bg-[#161b22] text-[#8b949e] border border-[#30363d] hover:text-[#c9d1d9]'
+                    : 'bg-[#161b22] text-[var(--text-muted)] border border-[#30363d] hover:text-[#c9d1d9]'
                 }`}
               >
                 {DAY_LABELS[day]}
@@ -195,7 +195,7 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
 
       {/* Preferred Channels */}
       <div className="space-y-2">
-        <label className="flex items-center gap-1.5 text-xs font-medium text-[#8b949e]">
+        <label className="flex items-center gap-1.5 text-ui-xs font-medium text-[var(--text-muted)]">
           <MessageSquare className="w-3.5 h-3.5" />
           Preferred Communication Channels
         </label>
@@ -206,10 +206,10 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
               <button
                 key={channel}
                 onClick={() => toggleChannel(channel)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize ${
+                className={`px-3 py-1.5 rounded-lg text-ui-xs font-medium transition-colors capitalize ${
                   isActive
                     ? 'bg-[#58a6ff]/20 text-[#58a6ff] border border-[#58a6ff]/40'
-                    : 'bg-[#161b22] text-[#8b949e] border border-[#30363d] hover:text-[#c9d1d9]'
+                    : 'bg-[#161b22] text-[var(--text-muted)] border border-[#30363d] hover:text-[#c9d1d9]'
                 }`}
               >
                 {channel}
