@@ -150,7 +150,7 @@ export function LoadingOverlay({ isLoading, message, blur = true }: LoadingOverl
   return (
     <div
       className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center bg-[rgb(var(--bg-canvas-rgb)/0.8)]",
+        "fixed inset-0 z-50 flex items-center justify-center bg-[rgba(var(--bg-canvas-rgb)/0.8)]",
         blur && "backdrop-blur-sm"
       )}
       role="status"

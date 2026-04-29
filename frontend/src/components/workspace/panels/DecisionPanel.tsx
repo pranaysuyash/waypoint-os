@@ -120,7 +120,7 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
 
       {/* Hard blockers — prominent */}
       {hardBlockers.length > 0 && (
-        <div className="rounded-xl p-4 border border-[rgb(var(--accent-red-rgb)/0.3)] bg-[rgb(var(--accent-red-rgb)/0.06)]">
+        <div className="rounded-xl p-4 border border-[rgba(var(--accent-red-rgb)/0.3)] bg-[rgba(var(--accent-red-rgb)/0.06)]">
           <div className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-accent-red mb-2">
             Hard Blockers — must resolve before quoting
           </div>
@@ -137,7 +137,7 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
 
       {/* Soft blockers */}
       {softBlockers.length > 0 && (
-        <div className="rounded-xl p-4 border border-[rgb(var(--accent-amber-rgb)/0.25)] bg-[rgb(var(--accent-amber-rgb)/0.06)]">
+        <div className="rounded-xl p-4 border border-[rgba(var(--accent-amber-rgb)/0.25)] bg-[rgba(var(--accent-amber-rgb)/0.06)]">
           <div className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-accent-amber mb-2">
             Soft Blockers — worth discussing
           </div>

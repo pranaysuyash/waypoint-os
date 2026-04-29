@@ -7,7 +7,7 @@ import { useTripContext } from "@/contexts/TripContext";
 import type { PromptBundle } from "@/types/spine";
 import type { Trip } from "@/lib/api-client";
 import { CheckCircle, Send } from "lucide-react";
-import styles from "@/app/workbench/workbench.module.css";
+import styles from "@/components/workbench/workbench.module.css";
 
 interface OutputPanelProps {
   trip?: Trip | null;

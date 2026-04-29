@@ -2,7 +2,7 @@
 
 import { Trip } from "@/lib/api-client";
 import { Star, MessageSquare, Info, CheckCircle2 } from "lucide-react";
-import styles from "@/app/workbench/workbench.module.css";
+import styles from "@/components/workbench/workbench.module.css";
 
 interface FeedbackPanelProps {
   trip: Trip;

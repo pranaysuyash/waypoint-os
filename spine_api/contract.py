@@ -107,6 +107,7 @@ class SpineRunRequest(BaseModel):
     lead_source: Optional[str] = None
     activity_provenance: Optional[str] = None
     date_year_confidence: Optional[str] = None
+    draft_id: Optional[str] = None  # Links run to a pre-trip draft
 
     model_config = {"extra": "forbid"}
 

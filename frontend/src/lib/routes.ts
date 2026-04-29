@@ -7,16 +7,16 @@
  *
  * Migration notes
  * ---------------
- * Phase 1L (current): getTripRoute() returns the canonical workspace URL.
- *   Workspace stage pages temporarily redirect to the workbench compat layer.
+ * Phase 1L (current): getTripRoute() returns the canonical trips URL.
+ *   Trip stage pages temporarily redirect to the workbench compat layer.
  *   This preserves functionality while the URL surface is finalized.
  *
- * Phase 2+ (after workspace layout + panels land):
- *   Remove the redirects in /workspace/[tripId]/<stage>/page.tsx.
+ * Phase 2+ (after trips layout + panels land):
+ *   Remove the redirects in /trips/[tripId]/<stage>/page.tsx.
  *   getTripRoute() continues to work unchanged.
  */
 
-/** Workspace stage identifiers (matches /workspace/[tripId]/ folder names). */
+/** Trip stage identifiers (matches /trips/[tripId]/ folder names). */
 export type WorkspaceStage =
   | 'intake'
   | 'packet'
@@ -35,8 +35,8 @@ export function getTripRoute(
   stage: WorkspaceStage = 'intake',
 ): string {
   if (!tripId) {
-    console.warn('[routes] getTripRoute called with falsy tripId — falling back to /workspace');
-    return '/workspace';
+    console.warn('[routes] getTripRoute called with falsy tripId — falling back to /trips');
+    return '/trips';
   }
-  return `/workspace/${tripId}/${stage}`;
+  return `/trips/${tripId}/${stage}`;
 }

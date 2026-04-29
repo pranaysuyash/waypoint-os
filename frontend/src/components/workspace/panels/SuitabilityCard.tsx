@@ -22,21 +22,21 @@ const STATUS_STYLES: Record<
 > = {
   suitable: {
     border: "border-accent-green",
-    bg: "bg-[rgb(var(--accent-green-rgb)/0.06)]",
+    bg: "bg-[rgba(var(--accent-green-rgb)/0.06)]",
     text: "text-accent-green",
     Icon: CheckCircle,
     iconClassName: "text-accent-green",
   },
   caution: {
     border: "border-accent-amber",
-    bg: "bg-[rgb(var(--accent-amber-rgb)/0.06)]",
+    bg: "bg-[rgba(var(--accent-amber-rgb)/0.06)]",
     text: "text-accent-amber",
     Icon: AlertCircle,
     iconClassName: "text-accent-amber",
   },
   unsuitable: {
     border: "border-accent-red",
-    bg: "bg-[rgb(var(--accent-red-rgb)/0.06)]",
+    bg: "bg-[rgba(var(--accent-red-rgb)/0.06)]",
     text: "text-accent-red",
     Icon: AlertTriangle,
     iconClassName: "text-accent-red",

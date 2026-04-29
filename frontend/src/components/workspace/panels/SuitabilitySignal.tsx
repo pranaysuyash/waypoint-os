@@ -3,7 +3,7 @@
 import React, { useCallback } from "react";
 import { AlertTriangle, AlertCircle, ChevronRight, CheckCircle2 } from "lucide-react";
 import type { SuitabilityFlagData } from "@/types/spine";
-import styles from "@/app/workbench/workbench.module.css";
+import styles from "@/components/workbench/workbench.module.css";
 
 export type { SuitabilityFlagData };
 
@@ -90,11 +90,11 @@ function classifyTier(severity: string): "tier1" | "tier2" {
 function getSeverityClass(severity: string): { bg: string; icon: string } {
   switch (severity) {
     case "critical":
-      return { bg: "bg-[rgb(var(--accent-red-rgb)/0.06)]", icon: "text-accent-red" };
+      return { bg: "bg-[rgba(var(--accent-red-rgb)/0.06)]", icon: "text-accent-red" };
     case "high":
-      return { bg: "bg-[rgb(var(--accent-amber-rgb)/0.06)]", icon: "text-accent-amber" };
+      return { bg: "bg-[rgba(var(--accent-amber-rgb)/0.06)]", icon: "text-accent-amber" };
     case "medium":
-      return { bg: "bg-[rgb(var(--accent-blue-rgb)/0.06)]", icon: "text-accent-blue" };
+      return { bg: "bg-[rgba(var(--accent-blue-rgb)/0.06)]", icon: "text-accent-blue" };
     default:
       return { bg: "bg-elevated", icon: "text-text-muted" };
   }
@@ -102,9 +102,9 @@ function getSeverityClass(severity: string): { bg: string; icon: string } {
 
 function getBadgeClass(severity: string): string {
   switch (severity) {
-    case "critical": return "bg-[rgb(var(--accent-red-rgb)/0.15)] text-accent-red";
-    case "high":     return "bg-[rgb(var(--accent-amber-rgb)/0.15)] text-accent-amber";
-    case "medium":   return "bg-[rgb(var(--accent-blue-rgb)/0.15)] text-accent-blue";
+    case "critical": return "bg-[rgba(var(--accent-red-rgb)/0.15)] text-accent-red";
+    case "high":     return "bg-[rgba(var(--accent-amber-rgb)/0.15)] text-accent-amber";
+    case "medium":   return "bg-[rgba(var(--accent-blue-rgb)/0.15)] text-accent-blue";
     default:         return "bg-elevated text-text-muted";
   }
 }
@@ -187,7 +187,7 @@ function FlagItem({ flag, onDrill, onAcknowledge, isAcknowledged = false, drilla
               <button
                 type="button"
                 onClick={handleAcknowledge}
-                className="ml-auto text-ui-xs px-2 py-1 rounded border border-[rgb(var(--accent-red-rgb)/0.4)] text-accent-red hover:bg-[rgb(var(--accent-red-rgb)/0.08)] transition-colors"
+                className="ml-auto text-ui-xs px-2 py-1 rounded border border-[rgba(var(--accent-red-rgb)/0.4)] text-accent-red hover:bg-[rgba(var(--accent-red-rgb)/0.08)] transition-colors"
                 data-testid={`acknowledge-flag-${flag.flag_type}`}
               >
                 Acknowledge Risk

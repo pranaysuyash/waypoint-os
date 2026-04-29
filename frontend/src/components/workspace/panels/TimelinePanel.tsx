@@ -14,11 +14,11 @@ interface TimelinePanelProps {
 }
 
 const STAGE_COLORS: Record<string, { bg: string; badge: string; dot: string }> = {
-  intake: { bg: "bg-[rgb(var(--accent-blue-rgb)/0.06)]", badge: "bg-[rgb(var(--accent-blue-rgb)/0.12)] text-accent-blue", dot: "bg-accent-blue" },
-  packet: { bg: "bg-[rgb(var(--accent-amber-rgb)/0.06)]", badge: "bg-[rgb(var(--accent-amber-rgb)/0.12)] text-accent-amber", dot: "bg-accent-amber" },
-  decision: { bg: "bg-[rgb(var(--accent-green-rgb)/0.06)]", badge: "bg-[rgb(var(--accent-green-rgb)/0.12)] text-accent-green", dot: "bg-accent-green" },
-  strategy: { bg: "bg-[rgb(var(--accent-purple-rgb)/0.06)]", badge: "bg-[rgb(var(--accent-purple-rgb)/0.12)] text-accent-purple", dot: "bg-accent-purple" },
-  safety: { bg: "bg-[rgb(var(--accent-red-rgb)/0.06)]", badge: "bg-[rgb(var(--accent-red-rgb)/0.12)] text-accent-red", dot: "bg-accent-red" },
+  intake: { bg: "bg-[rgba(var(--accent-blue-rgb)/0.06)]", badge: "bg-[rgba(var(--accent-blue-rgb)/0.12)] text-accent-blue", dot: "bg-accent-blue" },
+  packet: { bg: "bg-[rgba(var(--accent-amber-rgb)/0.06)]", badge: "bg-[rgba(var(--accent-amber-rgb)/0.12)] text-accent-amber", dot: "bg-accent-amber" },
+  decision: { bg: "bg-[rgba(var(--accent-green-rgb)/0.06)]", badge: "bg-[rgba(var(--accent-green-rgb)/0.12)] text-accent-green", dot: "bg-accent-green" },
+  strategy: { bg: "bg-[rgba(var(--accent-purple-rgb)/0.06)]", badge: "bg-[rgba(var(--accent-purple-rgb)/0.12)] text-accent-purple", dot: "bg-accent-purple" },
+  safety: { bg: "bg-[rgba(var(--accent-red-rgb)/0.06)]", badge: "bg-[rgba(var(--accent-red-rgb)/0.12)] text-accent-red", dot: "bg-accent-red" },
 };
 
 function formatTimestamp(iso: string): string {
@@ -188,7 +188,7 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
   if (error) {
     return (
       <div className="p-6">
-        <div className="rounded-lg border border-[rgb(var(--accent-red-rgb)/0.3)] bg-[rgb(var(--accent-red-rgb)/0.06)] p-4">
+        <div className="rounded-lg border border-[rgba(var(--accent-red-rgb)/0.3)] bg-[rgba(var(--accent-red-rgb)/0.06)] p-4">
           <p className="text-ui-sm text-accent-red">{error}</p>
         </div>
       </div>

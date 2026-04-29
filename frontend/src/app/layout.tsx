@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { Sora, Rubik, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
-import { Shell } from '@/components/layouts/Shell';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { AuthProvider } from '@/components/auth/AuthProvider';
 import { Providers } from '@/components/providers';
@@ -23,7 +22,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: 'Waypoint OS',
-  description: 'AI-powered travel agency decision support system',
+  description: 'AI operating workspace for boutique travel agencies',
 };
 
 export default function RootLayout({
@@ -40,9 +39,7 @@ export default function RootLayout({
       <body>
         <ErrorBoundary>
           <AuthProvider>
-            <Providers>
-              <Shell>{children}</Shell>
-            </Providers>
+            <Providers>{children}</Providers>
           </AuthProvider>
         </ErrorBoundary>
       </body>

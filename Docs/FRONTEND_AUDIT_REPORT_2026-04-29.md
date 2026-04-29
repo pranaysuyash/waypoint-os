@@ -16,7 +16,55 @@ This report consolidates findings from three expert audits: Technical Quality (`
 | **Performance (Rendering)** | 3/4 | Good | `memo` usage is correct, but callback stability is weak |
 | **Performance (Data)** | 1/4 | Poor | Manual fetch loops lacking deduplication/caching |
 | **Responsive Design** | 2/4 | Fair | Illegal font sizes (<12px) and small touch targets |
-| **Total** | **8/20** | **Poor** | Fundamental architectural and design issues |
+| **Design Engineering** | 2/4 | Fair | Lacks tactile feedback (scale/easing) |
+| **Composition** | 2/4 | Fair | Mega-component anti-patterns in TripCard |
+| **Total** | **12/28** | **Fair** | Foundational work needed on polish & architecture |
+
+---
+
+## 🎨 Design Engineering Audit (`emil-design-eng`)
+
+### 1. Interaction & Animation Critique
+
+| Before | After | Why |
+| --- | --- | --- |
+| `transition: all 200ms` | `transition: color 150ms ease, background-color 150ms ease` | `all` is expensive and lazy; specify properties for precision. |
+| No press feedback on pills | `active:scale-[0.97] transition-transform` | Buttons must feel responsive; scale gives instant physical feedback. |
+| `text-[10px]` labels | `text-[12px]` (ui-text-xs) | 10px is illegible; professionally designed apps shouldn't drop below 12px. |
+| `animate-pulse-dot` | Custom cubic-bezier pulse | Default pulses feel "synthetic"; use a stronger ease-out-quart for a natural "breath." |
+| `opacity-0` instant reveal | `opacity-0 transition-opacity duration-150 ease-out` | Actions appearing instantly feels jarring; a fast fade-in feels prepared. |
+| Instant page entry | Staggered `translateY(8px)` reveal | Nothing in the real world appears from nothing; stagger prevents "visual pop." |
+
+## 🏗 Component Composition Audit (`vercel-composition-patterns`)
+
+### 1. Architectural Refactor Table
+
+| Before | After | Why |
+| --- | --- | --- |
+| TripCard as a 300-line function | TripCard as a Compound Component | Mega-components are hard to extend; compound allows swapping parts. |
+| `onSelect`, `onAssign` prop drilling | `TripCardProvider` context | Allows sub-components (like "Quick Assign") to access logic directly. |
+| Boolean `showLabel` props | Explicit variants or CSS-driven visibility | Boolean props proliferate; compositing a `Label` component is more flexible. |
+| `METRIC_RENDERERS` object lookup | Children composition for metrics | A lookup object is a "black box"; explicit passing is more readable. |
+
+### 🧩 Composition Strategy: The "Compound TripCard"
+
+Currently, `TripCard.tsx` is a "black box." The proposed refactor moves to a composable pattern:
+
+```tsx
+<TripCard trip={trip}>
+  <TripCard.Selection />
+  <TripCard.Header>
+    <TripCard.Title />
+    <TripCard.Stage />
+  </TripCard.Header>
+  <TripCard.Metrics profile="operations" />
+  <TripCard.Footer>
+    <TripCard.Priority />
+    <TripCard.SLA />
+    <TripCard.Assignment />
+  </TripCard.Footer>
+</TripCard>
+```
 
 ---
 

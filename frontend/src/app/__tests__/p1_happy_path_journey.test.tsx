@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import InboxPage from "@/app/inbox/page";
-import WorkspacesPage from "@/app/workspace/page";
+import TripsPage from "@/app/(agency)/trips/page";
 import { IntakePanel } from "@/components/workspace/panels/IntakePanel";
 import type { InboxTrip } from "@/types/governance";
 import type { Trip } from "@/lib/api-client";
@@ -170,7 +170,7 @@ describe("P1 Happy Path Journey", () => {
     render(<InboxPage />);
 
     const openLink = screen.getByRole("link", { name: /Singapore/i });
-    expect(openLink).toHaveAttribute("href", "/workspace/TRIP-123/intake");
+    expect(openLink).toHaveAttribute("href", "/trips/TRIP-123/intake");
 
     render(<IntakePanel tripId="TRIP-123" trip={workspaceTrip} />);
 
@@ -192,7 +192,7 @@ describe("P1 Happy Path Journey", () => {
     expect(sentPayload.stage).toBe("discovery");
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith("/workspace/TRIP-123/packet");
+      expect(pushMock).toHaveBeenCalledWith("/trips/TRIP-123/packet");
     });
 
     fireEvent.click(screen.getByRole("button", { name: /Save changes/i }));
@@ -214,7 +214,7 @@ describe("P1 Happy Path Journey", () => {
       refetch: vi.fn(),
     } as any);
 
-    render(<WorkspacesPage />);
+    render(<TripsPage />);
     const returnInbox = screen.getByRole("link", { name: /Browse Inbox/i });
     expect(returnInbox).toHaveAttribute("href", "/inbox");
   });

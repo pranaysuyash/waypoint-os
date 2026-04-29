@@ -7,7 +7,7 @@ import type { ReviewActionRequest, ReviewStatus } from "@/types/governance";
 import type { Trip } from "@/lib/api-client";
 import type { SuitabilityFlagData } from "@/types/spine";
 import { REVIEW_STATUS_LABELS } from "@/lib/label-maps";
-import styles from "@/app/workbench/workbench.module.css";
+import styles from "@/components/workbench/workbench.module.css";
 
 interface ReviewControlsProps {
   trip: Trip;

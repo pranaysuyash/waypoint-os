@@ -36,14 +36,14 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "Govern",
     items: [
       {
-        label: "Owner Reviews",
-        href: "/owner/reviews",
-        description: "Approve high-risk and exception decisions",
+        label: "Approval Queue",
+        href: "/reviews",
+        description: "Approve high-risk quotes, changes, and exceptions",
       },
       {
-        label: "Owner Insights",
-        href: "/owner/insights",
-        description: "Monitor quality, throughput, and conversion",
+        label: "Insights",
+        href: "/insights",
+        description: "Quality, throughput, conversion, and margin intelligence",
       },
     ],
   },

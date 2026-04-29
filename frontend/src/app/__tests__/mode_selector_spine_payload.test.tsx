@@ -124,7 +124,7 @@ vi.mock("@/lib/combobox", () => ({
 }));
 
 vi.mock("@/lib/routes", () => ({
-  getTripRoute: (id: string, tab: string) => `/workspace/${id}/${tab}`,
+  getTripRoute: (id: string, tab: string) => `/trips/${id}/${tab}`,
 }));
 
 describe("Mode Selector → /api/spine/run Payload Integration", () => {

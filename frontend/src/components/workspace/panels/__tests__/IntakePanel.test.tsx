@@ -39,7 +39,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/lib/routes', () => ({
-  getTripRoute: vi.fn((id, stage) => `/workspace/${id}/${stage}`),
+  getTripRoute: vi.fn((id, stage) => `/trips/${id}/${stage}`),
 }));
 
 vi.mock('@/lib/api-client', async () => {
@@ -207,7 +207,7 @@ describe('IntakePanel', () => {
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(mockRouter.push).toHaveBeenCalledWith('/workspace/TRIP-456/packet');
+      expect(mockRouter.push).toHaveBeenCalledWith('/trips/TRIP-456/packet');
     });
   });
 });

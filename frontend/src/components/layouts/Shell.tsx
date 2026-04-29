@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useRuntimeVersion } from '@/hooks/useRuntimeVersion';
 import {
-  Briefcase,
   Inbox,
   LayoutDashboard,
   BarChart2,
@@ -13,87 +12,52 @@ import {
   Activity,
   Zap,
   Layers,
-  Wrench,
   Settings,
+  AlertTriangle,
+  Users,
+  FileText,
+  CalendarCheck,
+  DollarSign,
+  Briefcase,
+  Search,
+  BookOpen,
+  Send,
+  type LucideProps,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LiveRegion } from '@/lib/accessibility';
 import { useUnifiedState } from '@/hooks/useUnifiedState';
 import { useAgencySettings } from '@/hooks/useAgencySettings';
-import { AlertTriangle } from 'lucide-react';
+import { NAV_SECTIONS } from '@/lib/nav-modules';
 import { UserMenu } from './UserMenu';
 
-const NAV = [
-  {
-    label: 'WORK',
-    items: [
-      {
-        href: '/inbox',
-        label: 'Inbox',
-        icon: Inbox,
-        description: 'Sort and prioritize new inquiries',
-      },
-      {
-        href: '/workspace',
-        label: 'Workspaces',
-        icon: Layers,
-        description: 'Active trips in progress',
-      },
-      {
-        href: '/overview',
-        label: 'Overview',
-        icon: LayoutDashboard,
-        description: 'Dashboard and trip overview',
-      },
-    ],
-  },
-  {
-    label: 'MANAGE',
-    items: [
-      {
-        href: '/owner/reviews',
-        label: 'Pending Reviews',
-        icon: ClipboardCheck,
-        description: 'Approve high-risk and exception decisions',
-      },
-      {
-        href: '/owner/insights',
-        label: 'Analytics',
-        icon: BarChart2,
-        description: 'Monitor quality, throughput, and conversion',
-      },
-      {
-        href: '/settings',
-        label: 'Settings',
-        icon: Settings,
-        description: 'Agency profile, autonomy, and operations',
-      },
-    ],
-  },
-  {
-    label: 'REVIEW',
-    items: [
-      {
-        href: '/workbench',
-        label: 'Workbench',
-        icon: Wrench,
-        description: 'Review tools — testing, checks',
-      },
-    ],
-  },
-];
+const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
+  LayoutDashboard,
+  Inbox,
+  ClipboardCheck,
+  Users,
+  Layers,
+  FileText,
+  CalendarCheck,
+  DollarSign,
+  Briefcase,
+  Search,
+  BarChart2,
+  BookOpen,
+  Send,
+  Settings,
+};
+
 
 function getPageLabel(pathname: string): string {
-  for (const section of NAV) {
+  for (const section of NAV_SECTIONS) {
     for (const item of section.items) {
       if (pathname === item.href || pathname.startsWith(item.href + '/')) {
         return item.label;
       }
     }
   }
-  return (
-    pathname.split('/').filter(Boolean).pop()?.replace(/-/g, ' ') ?? 'Overview'
-  );
+  return pathname.split('/').filter(Boolean).pop()?.replace(/-/g, ' ') ?? 'Overview';
 }
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -103,82 +67,126 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const { data: agencySettings } = useAgencySettings();
   const brandName = agencySettings?.profile?.agency_name || 'Waypoint';
 
-  // Public marketing + auth pages render without the app shell chrome
-  if (
-    pathname === '/' ||
-    pathname === '/v2' ||
-    pathname.startsWith('/itinerary-checker') ||
-    pathname.startsWith('/login') ||
-    pathname.startsWith('/signup') ||
-    pathname.startsWith('/forgot-password') ||
-    pathname.startsWith('/reset-password')
-  ) {
-    return <>{children}</>;
-  }
-
   return (
-    <div className='flex h-screen overflow-hidden bg-canvas text-text-primary'>
-      {/* Live regions for screen reader announcements */}
+    <div className='flex h-screen overflow-hidden' style={{ background: 'var(--bg-canvas)', color: 'var(--text-primary)' }}>
       <LiveRegion />
+      <a href='#main-content' className='sr-only-focusable'>Skip to main content</a>
 
-      {/* Skip navigation link */}
-      <a href='#main-content' className='skip-link'>
-        Skip to main content
-      </a>
-
-      {/* ── Sidebar ── */}
-       <aside
-         className='flex flex-col w-[72px] md:w-[220px] shrink-0 border-r border-[rgba(96,111,128,0.16)] bg-[var(--bg-canvas)] shell-sidebar'
-         aria-label='Main navigation'
-       >
+      {/* Sidebar — distinct surface, visible edge */}
+      <aside
+        className='flex flex-col w-[72px] md:w-[220px] shrink-0'
+        style={{
+          borderRight: '1px solid var(--border-default)',
+          background: 'var(--bg-surface)',
+        }}
+        aria-label='Main navigation'
+      >
         {/* Brand */}
-        <div className='flex items-center gap-2.5 px-3 md:px-4 h-14 border-b border-highlight shrink-0 justify-center md:justify-start'>
-          <div className='flex h-7 w-7 items-center justify-center rounded-sm bg-gradient-to-br from-[var(--accent-blue)] to-[var(--accent-cyan)] shrink-0 shadow-[0_8px_24px_rgba(37,99,235,0.3)] ring-1 ring-white/10'>
-            <MapPin className='h-3.5 w-3.5 text-white' aria-hidden='true' />
+        <div
+          className='flex items-center gap-2.5 px-3 md:px-4 h-14 shrink-0 justify-center md:justify-start'
+          style={{ borderBottom: '1px solid var(--border-default)' }}
+        >
+          <div
+            className='flex h-7 w-7 items-center justify-center rounded-sm shrink-0'
+            style={{ background: 'var(--accent-blue)' }}
+          >
+            <MapPin className='h-3.5 w-3.5' style={{ color: 'var(--text-on-accent)' }} aria-hidden='true' />
           </div>
-          <div className='min-w-0 hidden md:block'>
-            <div className='text-[var(--ui-text-xs)] font-semibold leading-tight tracking-tight truncate'>
+          <div className='hidden md:block overflow-hidden'>
+            <div className='text-sm font-semibold leading-tight tracking-tight truncate'>
               {brandName}
             </div>
-            <div className='text-[var(--ui-text-2xs)] text-text-muted leading-tight font-mono'>
+            <div className='text-xs font-mono' style={{ color: 'var(--text-muted)' }}>
               {versionLabel}
             </div>
           </div>
         </div>
 
+        {/* New Inquiry CTA — action, not a place */}
+        <div className='hidden md:block px-4 pt-3 pb-1'>
+          <Link
+            href='/workbench?tab=intake'
+            className='flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors border'
+            style={{
+              background: 'var(--bg-elevated)',
+              color: 'var(--text-primary)',
+              borderColor: 'var(--border-default)',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--accent-blue)';
+              (e.currentTarget as HTMLAnchorElement).style.color = 'var(--accent-blue)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--border-default)';
+              (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-primary)';
+            }}
+          >
+            <Send className='h-3.5 w-3.5' aria-hidden='true' />
+            New Inquiry
+          </Link>
+        </div>
+
         {/* Navigation */}
-        <nav
-          className='flex-1 overflow-y-auto py-3 px-2 space-y-4'
-          aria-label='Primary navigation'
-        >
-          {NAV.map((section) => (
+        <nav className='flex-1 overflow-y-auto py-3 px-2 space-y-4' aria-label='Primary navigation'>
+          {NAV_SECTIONS.map((section) => (
             <div key={section.label}>
-              <div className='hidden md:block px-2 pb-1.5 text-[var(--ui-text-xs)] font-semibold tracking-widest text-text-muted uppercase'>
+              <div className='hidden md:block px-2 pb-1.5 text-xs font-semibold uppercase tracking-wider' style={{ color: 'var(--text-muted)' }}>
                 {section.label}
               </div>
               <ul className='space-y-0.5' role='list'>
                 {section.items.map((item) => {
-                  const Icon = item.icon;
-                  const isActive =
-                    pathname === item.href || pathname.startsWith(item.href + '/');
+                  const Icon = ICON_MAP[item.icon] ?? Activity;
+                  // Active check: ignore query params for href matching
+                  const hrefPath = item.href.split('?')[0];
+                  const isActive = item.enabled && (pathname === hrefPath || pathname.startsWith(hrefPath + '/'));
+                  if (!item.enabled) {
+                    return (
+                      <li key={item.href}>
+                        <div
+                          className='flex items-center justify-center md:justify-start gap-2.5 px-2.5 py-2 rounded-md opacity-40 cursor-not-allowed select-none'
+                          title={`${item.description} — Coming soon`}
+                          aria-disabled='true'
+                          aria-label={`${item.label}, coming soon`}
+                        >
+                          <Icon className='h-3.5 w-3.5 shrink-0' aria-hidden='true' />
+                          <span className='hidden md:inline text-[13px]' style={{ color: 'var(--text-muted)' }}>
+                            {item.label}
+                          </span>
+                          <span className='hidden md:inline text-[10px] ml-auto' style={{ color: 'var(--text-placeholder)' }}>
+                            Soon
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  }
                   return (
                     <li key={item.href}>
                       <Link
                         href={item.href}
                         className={cn(
-                          'flex items-center justify-center md:justify-start gap-2.5 px-2.5 py-2 rounded-[7px] text-[13px] transition-all duration-200',
+                          'relative flex items-center justify-center md:justify-start gap-2.5 px-2.5 py-2 rounded-md text-[13px] font-medium transition-colors',
                           isActive
-                            ? 'bg-[rgb(var(--accent-blue-rgb)/0.09)] text-text-primary'
-                            : 'text-text-muted hover:text-text-primary hover:bg-surface',
+                            ? 'text-text-primary'
+                            : 'hover:text-text-primary'
                         )}
+                        style={isActive
+                          ? { background: 'var(--bg-elevated)', color: 'var(--text-primary)' }
+                          : { color: 'var(--text-muted)' }
+                        }
                         aria-current={isActive ? 'page' : undefined}
                         aria-label={item.label}
                       >
+                        {/* Active indicator: functional, not decorative */}
+                        {isActive && (
+                          <span
+                            className='absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full'
+                            style={{ background: 'var(--accent-blue)' }}
+                            aria-hidden='true'
+                          />
+                        )}
                         <Icon
-                          className={cn(
-                            'h-3.5 w-3.5 shrink-0',
-                            isActive ? 'text-accent-blue' : '',
-                          )}
+                          className='h-3.5 w-3.5 shrink-0'
+                          style={isActive ? { color: 'var(--accent-blue)' } : { color: 'var(--text-muted)' }}
                           aria-hidden='true'
                         />
                         <span className='hidden md:inline'>{item.label}</span>
@@ -192,71 +200,60 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Status footer */}
-        <div className='hidden md:block px-4 py-3 border-t border-highlight shrink-0'>
+        <div
+          className='hidden md:block px-4 py-3 shrink-0'
+          style={{ borderTop: '1px solid var(--border-default)' }}
+        >
           <div className='flex items-center gap-2'>
-            <span
-              className='inline-block h-1.5 w-1.5 rounded-full bg-accent-green animate-pulse-dot'
-              aria-hidden='true'
-            />
-            <span
-              className='text-[var(--ui-text-xs)] text-text-muted font-mono'
-              aria-live='polite'
-            >
+            <span className='inline-block h-1.5 w-1.5 rounded-full animate-pulse-dot' style={{ background: 'var(--accent-green)' }} aria-hidden='true' />
+            <span className='text-xs font-mono' style={{ color: 'var(--text-muted)' }} aria-live='polite'>
               Operations live
             </span>
           </div>
-          <div className='mt-1 flex items-center gap-1.5 text-[var(--ui-text-xs)] text-text-placeholder'>
+          <div className='mt-1 flex items-center gap-1.5 text-xs font-mono' style={{ color: 'var(--text-placeholder)' }}>
             <Activity className='h-3 w-3' aria-hidden='true' />
-            <span className='font-mono' aria-live='polite'>
-              {detailsLabel}
-            </span>
+            <span aria-live='polite'>{detailsLabel}</span>
           </div>
         </div>
       </aside>
 
-      {/* ── Main column ── */}
+      {/* Main column */}
       <div className='flex flex-col flex-1 min-w-0 overflow-hidden'>
-        {/* Integrity Warning Banner */}
+        {/* Integrity Warning */}
         {!isConsistent && (
-          <div className='bg-accent-red text-white py-1.5 px-4 text-center text-[var(--ui-text-xs)] font-bold tracking-wider uppercase flex items-center justify-center gap-2 z-50'>
-            <AlertTriangle className='h-3 w-3' />
-            CRITICAL: Data inconsistency detected. Some trip counts may not add up correctly. Please refresh the page.
+          <div
+            className='flex items-center justify-center gap-2 py-1.5 px-4 text-center text-xs font-bold tracking-wider uppercase z-50'
+            style={{ background: 'var(--accent-red)', color: '#ffffff' }}
+          >
+            <AlertTriangle className='h-3 w-3' aria-hidden='true' />
+            CRITICAL: Data inconsistency detected. Please refresh.
           </div>
         )}
 
         {/* Command bar */}
-        <header className='flex items-center justify-between h-11 px-5 border-b border-highlight bg-[var(--bg-canvas)]/80 backdrop-blur-xl shrink-0'>
-          <nav
-            className='flex items-center gap-2 text-[var(--ui-text-sm)]'
-            aria-label='Breadcrumb navigation'
-          >
-            <Link
-              href='/overview'
-              className='text-text-placeholder hover:text-text-muted text-[12px] transition-colors'
-            >
+        <header
+          className='flex items-center justify-between h-11 px-5 shrink-0'
+          style={{
+            borderBottom: '1px solid var(--border-default)',
+            background: 'var(--bg-canvas)',
+          }}
+        >
+          <nav className='flex items-center gap-2 text-sm' aria-label='Breadcrumb navigation'>
+            <Link href='/overview' className='transition-colors' style={{ color: 'var(--text-placeholder)' }}>
               {brandName}
             </Link>
             {pathname !== '/overview' && (
               <>
-                <span className='text-border-default' aria-hidden='true'>
-                  /
-                </span>
-                <span
-                  className='text-text-primary text-[12px] capitalize font-medium'
-                  aria-current='page'
-                >
+                <span style={{ color: 'var(--border-default)' }} aria-hidden='true'>/</span>
+                <span className='capitalize font-medium' style={{ color: 'var(--text-primary)' }} aria-current='page'>
                   {getPageLabel(pathname)}
                 </span>
               </>
             )}
           </nav>
           <div className='flex items-center gap-3'>
-            <div
-              className='flex items-center gap-1.5 text-[var(--ui-text-xs)] text-text-muted font-mono'
-              role='status'
-              aria-live='polite'
-            >
-              <Zap className='h-3 w-3 text-accent-amber' aria-hidden='true' />
+            <div className='flex items-center gap-1.5 text-xs font-mono' style={{ color: 'var(--text-muted)' }} role='status' aria-live='polite'>
+              <Zap className='h-3 w-3' style={{ color: 'var(--accent-amber)' }} aria-hidden='true' />
               <span>ready</span>
             </div>
             <UserMenu />
@@ -264,11 +261,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page content */}
-        <main
-          id='main-content'
-          className='flex-1 overflow-y-auto pb-0'
-          tabIndex={-1}
-        >
+        <main id='main-content' className='flex-1 overflow-y-auto pb-0' tabIndex={-1}>
           {children}
         </main>
       </div>

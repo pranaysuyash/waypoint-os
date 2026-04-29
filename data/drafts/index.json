@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "by_agency": {
+    "agency_001": [
+      "draft_3710223c3aef",
+      "draft_a6cd62ba5757",
+      "draft_6246f9039fc5",
+      "draft_14dd9126963e"
+    ]
+  },
+  "by_user": {
+    "user_001": [
+      "draft_3710223c3aef",
+      "draft_a6cd62ba5757",
+      "draft_6246f9039fc5",
+      "draft_14dd9126963e"
+    ]
+  },
+  "by_status": {
+    "promoted": [
+      "draft_3710223c3aef"
+    ],
+    "blocked": [
+      "draft_a6cd62ba5757"
+    ],
+    "open": [
+      "draft_6246f9039fc5",
+      "draft_14dd9126963e"
+    ]
+  }
+}

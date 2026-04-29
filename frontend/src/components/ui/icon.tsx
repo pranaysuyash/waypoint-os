@@ -48,10 +48,10 @@ const variantStyles = {
 };
 
 const colorStyles = {
-  blue: "text-accent-blue hover:bg-[rgb(var(--accent-blue-rgb)/0.1)]",
-  green: "text-accent-green hover:bg-[rgb(var(--accent-green-rgb)/0.1)]",
-  amber: "text-accent-amber hover:bg-[rgb(var(--accent-amber-rgb)/0.1)]",
-  red: "text-accent-red hover:bg-[rgb(var(--accent-red-rgb)/0.1)]",
+  blue: "text-accent-blue hover:bg-[rgba(var(--accent-blue-rgb)/0.1)]",
+  green: "text-accent-green hover:bg-[rgba(var(--accent-green-rgb)/0.1)]",
+  amber: "text-accent-amber hover:bg-[rgba(var(--accent-amber-rgb)/0.1)]",
+  red: "text-accent-red hover:bg-[rgba(var(--accent-red-rgb)/0.1)]",
   neutral: "text-text-muted hover:text-text-primary",
 };
 

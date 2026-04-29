@@ -155,7 +155,7 @@ vi.mock("@/lib/combobox", () => ({
 }));
 
 vi.mock("@/lib/routes", () => ({
-  getTripRoute: (tripId: string, tab: string) => `/workspace/${tripId}/${tab}`,
+  getTripRoute: (tripId: string, tab: string) => `/trips/${tripId}/${tab}`,
 }));
 
 describe("P2 Owner Onboarding Journey: Junior Quote → Coaching Warnings → Owner Decision", () => {

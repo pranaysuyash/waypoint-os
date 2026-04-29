@@ -87,6 +87,7 @@ class RunLedger:
         stage: str,
         operating_mode: str,
         agency_id: Optional[str] = None,
+        draft_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Initialize meta.json for a new run in QUEUED state.
@@ -99,6 +100,7 @@ class RunLedger:
         meta: dict[str, Any] = {
             "run_id":         run_id,
             "trip_id":        trip_id,
+            "draft_id":       draft_id,
             "state":          RunState.QUEUED.value,
             "stage":          stage,
             "operating_mode": operating_mode,

@@ -1,0 +1,49 @@
+{
+  "id": "draft_a6cd62ba5757",
+  "agency_id": "agency_001",
+  "created_by": "user_001",
+  "assigned_to": "user_001",
+  "name": "Run State Test",
+  "name_source": "user",
+  "status": "blocked",
+  "stage": "discovery",
+  "operating_mode": "normal_intake",
+  "scenario_id": null,
+  "strict_leakage": false,
+  "source_channel": null,
+  "customer_id": null,
+  "customer_name_snapshot": null,
+  "customer_phone_hash": null,
+  "customer_email_hash": null,
+  "last_run_id": "run_xyz789",
+  "last_run_state": "blocked",
+  "last_run_completed_at": "2026-04-29T10:28:06.808469+00:00",
+  "promoted_trip_id": null,
+  "promoted_at": null,
+  "merged_into_draft_id": null,
+  "discarded_at": null,
+  "discarded_by": null,
+  "version": 2,
+  "created_at": "2026-04-29T10:28:06.807653+00:00",
+  "updated_at": "2026-04-29T10:28:06.808627+00:00",
+  "customer_message": null,
+  "agent_notes": null,
+  "structured_json": null,
+  "itinerary_text": null,
+  "last_validation": null,
+  "last_packet": null,
+  "run_snapshots": [
+    {
+      "run_id": "run_xyz789",
+      "state": "blocked",
+      "snapshot": {
+        "block_reason": "Missing dates",
+        "gate": "NB01"
+      },
+      "timestamp": "2026-04-29T10:28:06.808471+00:00"
+    }
+  ],
+  "merge_history": [],
+  "linked_draft_ids": [],
+  "linked_trip_ids": []
+}
