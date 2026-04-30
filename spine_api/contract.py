@@ -337,6 +337,38 @@ class OrphanTrip(BaseModel):
     created_at: Optional[str] = None
 
 
+class IntegrityAction(BaseModel):
+    id: str
+    label: str
+    description: str
+    destructive: bool
+    requires_confirmation: bool
+
+
+class IntegrityIssue(BaseModel):
+    id: str
+    entity_id: str
+    entity_type: Literal["lead", "workspace", "trip", "review", "unknown"]
+    issue_type: Literal[
+        "orphaned_record",
+        "missing_owner",
+        "broken_reference",
+        "invalid_transition",
+        "duplicate_workspace",
+    ]
+    severity: Literal["low", "medium", "high", "critical"]
+    reason: str
+    current_status: Optional[str] = None
+    created_at: Optional[str] = None
+    detected_at: str
+    allowed_actions: List[IntegrityAction] = Field(default_factory=list)
+
+
+class IntegrityIssuesResponse(BaseModel):
+    items: List[IntegrityIssue] = Field(default_factory=list)
+    total: int
+
+
 class UnifiedStateResponse(BaseModel):
     canonical_total: int
     stages: Dict[str, int]
@@ -435,6 +467,9 @@ __all__ = [
     "UpdateAutonomyPolicy",
     "IntegrityMeta",
     "SystemicError",
+    "IntegrityAction",
+    "IntegrityIssue",
+    "IntegrityIssuesResponse",
     "OrphanTrip",
     "UnifiedStateResponse",
     "DashboardStatsResponse",

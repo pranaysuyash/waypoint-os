@@ -16,19 +16,24 @@ import json
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch, MagicMock
+from fastapi.routing import APIRoute
 
 # Ensure spine_api is importable
 _spine_api_dir = str(Path(__file__).resolve().parent.parent / "spine_api")
 if _spine_api_dir not in sys.path:
     sys.path.insert(0, _spine_api_dir)
 
-from contract import (
+from spine_api.contract import (
+    IntegrityIssue,
+    IntegrityIssuesResponse,
     UnifiedStateResponse,
     DashboardStatsResponse,
     SuitabilitySignal,
 )
+from spine_api.server import app
 
 from src.services.dashboard_aggregator import DashboardAggregator, VALID_STAGES
+from src.services.integrity_service import IntegrityService
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "data" / "fixtures"
 SCENARIO_ALPHA = FIXTURES_DIR / "scenario_alpha.json"
@@ -77,7 +82,7 @@ class TestScenarioAlphaDeterminism:
         assert len(alpha_trips) == 30, f"Expected 30 trips, got {len(alpha_trips)}"
 
     def test_alpha_stage_distribution(self, alpha_trips):
-        expected = {"new": 10, "assigned": 10, "in_progress": 5, "completed": 3, "cancelled": 2}
+        expected = {"new": 10, "assigned": 10, "in_progress": 5, "completed": 3, "cancelled": 2, "incomplete": 0}
         actual = {stage: 0 for stage in VALID_STAGES}
         for trip in alpha_trips:
             status = trip.get("status")
@@ -158,6 +163,34 @@ class TestScenarioAlphaDeterminism:
 class TestPydanticContract:
     """Verify that Pydantic models serialize correctly and match expected schemas."""
 
+    def test_integrity_issue_response_schema(self):
+        detected_at = "2026-04-30T07:00:00+00:00"
+        data = {
+            "items": [
+                {
+                    "id": "integrity_orphaned_record_trip_123",
+                    "entity_id": "trip_123",
+                    "entity_type": "unknown",
+                    "issue_type": "orphaned_record",
+                    "severity": "medium",
+                    "reason": "Record is detached from normal inbox/workspace routing.",
+                    "current_status": "mystery",
+                    "created_at": "2026-04-29T10:00:00+00:00",
+                    "detected_at": detected_at,
+                    "allowed_actions": [],
+                }
+            ],
+            "total": 1,
+        }
+
+        model = IntegrityIssuesResponse(**data)
+        assert model.total == 1
+        assert model.items[0].issue_type == "orphaned_record"
+        assert model.items[0].allowed_actions == []
+
+        serialized = model.model_dump()
+        assert serialized["items"][0]["entity_id"] == "trip_123"
+
     def test_unified_state_response_schema(self):
         data = {
             "canonical_total": 30,
@@ -228,6 +261,40 @@ class TestDashboardAggregatorStats:
         trip = {"status": "cancelled", "created_at": "2026-04-01T00:00:00+00:00"}
         assert DashboardAggregator.get_trip_sla_status(trip) == "on_track"
 
+
+class TestIntegrityClassification:
+    def test_incomplete_lead_counts_as_known_lifecycle_work_not_orphan(self):
+        trips = [
+            {
+                "id": "trip_incomplete_lead",
+                "status": "incomplete",
+                "created_at": "2026-04-29T20:02:40.764703+00:00",
+            }
+        ]
+
+        with patch("src.services.dashboard_aggregator.TripStore.list_trips", return_value=trips):
+            state = DashboardAggregator.get_unified_state(agency_id="agency_123")
+
+        assert state["canonical_total"] == 1
+        assert state["stages"]["incomplete"] == 1
+        assert state["orphans"] == []
+        assert state["integrity_meta"]["orphan_count"] == 0
+
+    def test_integrity_service_excludes_incomplete_leads_from_system_check(self):
+        trips = [
+            {
+                "id": "trip_incomplete_lead",
+                "status": "incomplete",
+                "created_at": "2026-04-29T20:02:40.764703+00:00",
+            }
+        ]
+
+        with patch("src.services.dashboard_aggregator.TripStore.list_trips", return_value=trips):
+            response = IntegrityService.list_integrity_issues(agency_id="agency_123")
+
+        assert response["items"] == []
+        assert response["total"] == 0
+
     def test_get_trip_sla_status_new_recent(self):
         recent = datetime.now(timezone.utc) - timedelta(hours=1)
         trip = {"status": "new", "created_at": recent.isoformat()}
@@ -291,6 +358,118 @@ class TestDashboardAggregatorStats:
         signals = DashboardAggregator.get_suitability_signals(trip)
         assert len(signals) == 1
         assert signals[0]["flag_type"] == "elderly_mobility"
+
+
+class TestIntegrityIssues:
+    def test_orphan_maps_to_integrity_issue(self):
+        detected_at = "2026-04-30T07:00:00+00:00"
+
+        issue = IntegrityService.map_orphan_to_issue(
+            {
+                "id": "trip_123",
+                "status": "mystery",
+                "created_at": "2026-04-29T10:00:00+00:00",
+            },
+            detected_at=detected_at,
+        )
+
+        assert isinstance(issue, IntegrityIssue)
+        assert issue.id == "integrity_orphaned_record_trip_123"
+        assert issue.entity_id == "trip_123"
+        assert issue.entity_type == "unknown"
+        assert issue.issue_type == "orphaned_record"
+        assert issue.severity == "medium"
+        assert (
+            issue.reason
+            == "Record is detached from normal inbox/workspace routing."
+        )
+        assert issue.current_status == "mystery"
+        assert issue.created_at == "2026-04-29T10:00:00+00:00"
+        assert issue.detected_at == detected_at
+        assert issue.allowed_actions == []
+
+    def test_only_orphans_become_integrity_issues(self):
+        trips = [
+            {
+                "id": "trip_routable",
+                "status": "new",
+                "created_at": "2026-04-29T09:00:00+00:00",
+            },
+            {
+                "id": "trip_orphan",
+                "status": "mystery",
+                "created_at": "2026-04-29T10:00:00+00:00",
+            },
+        ]
+
+        with patch(
+            "src.services.integrity_service.TripStore.list_trips",
+            return_value=trips,
+        ):
+            result = IntegrityService.list_integrity_issues(agency_id="agency-123")
+
+        assert result["total"] == 1
+        assert len(result["items"]) == 1
+        assert result["items"][0].entity_id == "trip_orphan"
+
+    def test_detected_at_uses_last_sync_when_available(self):
+        detected_at = "2026-04-30T07:00:00+00:00"
+        unified_state = {
+            "orphans": [
+                {
+                    "id": "trip_orphan",
+                    "status": "mystery",
+                    "created_at": "2026-04-29T10:00:00+00:00",
+                }
+            ],
+            "integrity_meta": {
+                "last_sync": detected_at,
+            },
+        }
+
+        with patch(
+            "src.services.integrity_service.DashboardAggregator.get_unified_state",
+            return_value=unified_state,
+        ):
+            result = IntegrityService.list_integrity_issues(agency_id="agency-123")
+
+        assert result["items"][0].detected_at == detected_at
+
+    def test_integrity_endpoint_returns_items_and_total(self, session_client):
+        response = session_client.get("/api/system/integrity/issues")
+
+        assert response.status_code == 200
+        body = response.json()
+        assert set(body.keys()) == {"items", "total"}
+        assert isinstance(body["items"], list)
+        assert isinstance(body["total"], int)
+
+    def test_integrity_endpoint_passes_current_agency_scope(self, session_client):
+        with patch(
+            "spine_api.server.IntegrityService.list_integrity_issues",
+            return_value={"items": [], "total": 0},
+        ) as mocked_list:
+            response = session_client.get("/api/system/integrity/issues")
+
+        assert response.status_code == 200
+        mocked_list.assert_called_once_with(
+            agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+        )
+
+    def test_no_repair_route_is_exposed(self):
+        get_route = None
+        repair_route = None
+
+        for route in app.routes:
+            if not isinstance(route, APIRoute):
+                continue
+            if route.path == "/api/system/integrity/issues" and "GET" in route.methods:
+                get_route = route
+            if route.path == "/api/system/integrity/issues/{issue_id}/repair":
+                repair_route = route
+
+        assert get_route is not None
+        assert repair_route is None
 
 
 if __name__ == "__main__":

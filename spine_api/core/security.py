@@ -13,6 +13,10 @@ from typing import Optional
 import bcrypt
 import jwt
 
+from spine_api.core.env import load_project_env
+
+load_project_env()
+
 # JWT configuration
 JWT_SECRET = os.getenv("JWT_SECRET")
 if not JWT_SECRET:

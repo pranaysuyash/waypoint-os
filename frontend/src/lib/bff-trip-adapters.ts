@@ -4,6 +4,7 @@ import type { InboxTrip, TripPriority } from "@/types/governance";
 type JsonRecord = Record<string, unknown>;
 type TripState = Trip["state"];
 type SlaStatus = InboxTrip["slaStatus"];
+type TripLifecycleStatus = NonNullable<Trip["status"]>;
 
 const STATUS_TO_STATE: Record<string, TripState> = {
   new: "blue",
@@ -45,7 +46,15 @@ const DEFAULT_BUDGET_BREAKDOWN = {
   maturity: "heuristic",
 };
 
-export const WORKSPACE_STATES = new Set<TripState>(["green", "amber", "red"]);
+export const WORKSPACE_STATUSES = new Set<TripLifecycleStatus>([
+  "assigned",
+  "in_progress",
+]);
+
+export function isWorkspaceTrip(trip: Trip): boolean {
+  const lifecycleStatus = trip.status;
+  return typeof lifecycleStatus === "string" && WORKSPACE_STATUSES.has(lifecycleStatus as TripLifecycleStatus);
+}
 
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -221,46 +230,53 @@ function extractCustomerName(trip: Trip): string {
   return `Client ${trip.id.slice(-6)}`;
 }
 
-function extractFlags(trip: Trip): string[] {
-  const flags: string[] = [];
+function deriveInboxReference(source: JsonRecord, tripId: string): string {
+  const explicitReference = asString(
+    firstPresent(source.reference, source.trip_reference, source.tripReference, ""),
+    ""
+  );
+
+  if (explicitReference && explicitReference !== tripId) {
+    return explicitReference;
+  }
+
+  const raw = tripId.replace(/^trip[-_]/i, "");
+  const normalized = raw.replace(/[^a-z0-9]/gi, "").toUpperCase();
+  return normalized.slice(0, 4) || tripId.slice(-4).toUpperCase();
+}
+
+function extractFlags(trip: Trip, source: JsonRecord): string[] {
+  const flags = new Set<string>();
   const validation = asRecord(trip.validation);
   const analytics = asRecord(trip.analytics);
   const decision = asRecord(trip.decision);
 
   const isValid = firstPresent(validation.isValid, validation.is_valid, true);
   if (isValid === false) {
-    flags.push("validation_failed");
+    flags.add("incomplete");
   }
 
   const confidence = asNumber(
     firstPresent(decision.confidenceScore, decision.confidence_score, 0),
     0
   );
-  if (confidence < 0.3) flags.push("low_confidence");
-  if (confidence > 0.8) flags.push("high_confidence");
-
-  if (analytics.requiresReview || analytics.requires_review) {
-    flags.push("requires_review");
-  }
-
-  const margin = asNumber(firstPresent(analytics.marginPct, analytics.margin_pct, 0), 0);
-  if (margin < 10) flags.push("low_margin");
-  if (margin > 30) flags.push("high_margin");
+  if (confidence < 0.5) flags.add("details_unclear");
 
   if (decision.decisionState === "ASK_FOLLOWUP" || decision.decision_state === "ASK_FOLLOWUP") {
-    flags.push("needs_clarification");
+    flags.add("needs_clarification");
   }
 
   const hardBlockers = firstPresent(decision.hardBlockers, decision.hard_blockers, []);
   if (Array.isArray(hardBlockers) && hardBlockers.length > 0) {
-    flags.push("missing_information");
+    flags.add("incomplete");
   }
 
-  const budget = asNumber(trip.budget, 0);
-  if (budget > 100000) flags.push("high_value");
-  if (budget < 1000) flags.push("low_value");
+  const assignedTo = asString(firstPresent(source.assignedTo, source.assigned_to), "");
+  if (!assignedTo) {
+    flags.add("unassigned");
+  }
 
-  return flags;
+  return Array.from(flags);
 }
 
 export function transformSpineTripToTrip(
@@ -396,28 +412,31 @@ export function transformSpineTripToInboxTrip(
   const status = asString(source.status, "new");
   const stage = STATUS_TO_INBOX_STAGE[status] || status || "options";
   const daysInCurrentStage = computeDaysInCurrentStage(source, now);
+  const slaStatus = computeSlaStatus(daysInCurrentStage);
   const validation = asRecord(source.validation);
   const decision = asRecord(source.decision);
   const analytics = asRecord(source.analytics);
+  const confidence = asNumber(decision.confidence_score, 0);
 
   let priority: TripPriority = "medium";
   let priorityScore = 50;
   if (
+    slaStatus === "at_risk" ||
     analytics.requires_review ||
     validation.is_valid === false ||
-    asNumber(decision.confidence_score, 0) < 0.5
+    confidence < 0.5
   ) {
     priority = "high";
     priorityScore = 75;
   }
-  if (asNumber(decision.confidence_score, 0) < 0.3) {
+  if (slaStatus === "breached" || analytics.escalation_severity === "critical") {
     priority = "critical";
     priorityScore = 90;
   }
 
   return {
     id: trip.id,
-    reference: trip.id,
+    reference: deriveInboxReference(source, trip.id),
     destination: trip.destination,
     tripType: trip.type,
     partySize: trip.party ?? 1,
@@ -435,9 +454,9 @@ export function transformSpineTripToInboxTrip(
       now.toISOString()
     ),
     daysInCurrentStage,
-    slaStatus: computeSlaStatus(daysInCurrentStage),
+    slaStatus,
     customerName: extractCustomerName(trip),
-    flags: extractFlags(trip),
+    flags: extractFlags(trip, source),
   };
 }
 

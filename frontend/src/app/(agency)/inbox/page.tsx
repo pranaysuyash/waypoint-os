@@ -1,67 +1,35 @@
 'use client';
 
-import { useState, useCallback, memo, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Briefcase,
   ChevronDown,
   ChevronUp,
-  Clock,
   Users,
   Calendar,
   Wallet,
   AlertTriangle,
-  CheckSquare,
-  Square,
   UserPlus,
   Search,
   Flag,
   ArrowUpDown,
   Download,
-  Zap,
-  UserX,
 } from 'lucide-react';
 import { useInboxTrips } from '@/hooks/useGovernance';
 import { InlineError } from '@/components/error-boundary';
-import {
-  tripMatchesQuery,
-  type ViewProfile,
-  getSavedViewProfile,
-  saveViewProfile,
-  roleToViewProfile,
-  viewProfileToRole,
-} from '@/lib/inbox-helpers';
+import { tripMatchesQuery } from '@/lib/inbox-helpers';
 import { TripCard } from '@/components/inbox/TripCard';
-import { InboxFilterBar, type FilterKey, type RoleKey } from '@/components/inbox/InboxFilterBar';
+import { InboxFilterBar, type FilterKey } from '@/components/inbox/InboxFilterBar';
 import { InboxEmptyState } from '@/components/inbox/InboxEmptyState';
-import type { TripPriority, InboxTrip } from '@/types/governance';
-
-type PriorityKey = TripPriority;
-type SLAStatus = 'on_track' | 'at_risk' | 'breached';
+import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
+import type { InboxTrip } from '@/types/governance';
 type SortKey = 'priority' | 'destination' | 'value' | 'party' | 'dates' | 'sla';
 type SortDirection = 'asc' | 'desc';
 
-// ============================================================================
-// STATE CONFIGURATION
-// ============================================================================
-
-const STAGE_LABELS: Record<string, { color: string; bg: string; label: string }> = {
-  intake: { color: 'var(--accent-blue)', bg: 'rgba(88,166,255,0.12)', label: 'Intake' },
-  details: { color: 'var(--accent-amber)', bg: 'rgba(210,153,34,0.12)', label: 'Details' },
-  options: { color: 'var(--accent-blue)', bg: 'rgba(88,166,255,0.12)', label: 'Options' },
-  review: { color: 'var(--accent-red)', bg: 'rgba(248,81,73,0.12)', label: 'Review' },
-  booking: { color: 'var(--accent-green)', bg: 'rgba(63,185,80,0.12)', label: 'Booking' },
-};
-
-const PRIORITY_META: Record<
-  PriorityKey,
-  { color: string; label: string; icon: React.ComponentType<{ className?: string }> }
-> = {
-  low: { color: 'var(--text-muted)', label: 'Low', icon: Flag },
-  medium: { color: 'var(--accent-blue)', label: 'Medium', icon: Flag },
-  high: { color: 'var(--accent-amber)', label: 'High', icon: Flag },
-  critical: { color: 'var(--accent-red)', label: 'Critical', icon: AlertTriangle },
-};
+function leadCountLabel(count: number): string {
+  return `${count} ${count === 1 ? 'lead' : 'leads'} total`;
+}
 
 const SORT_OPTIONS: Record<SortKey, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
   priority: { label: 'Priority', icon: Flag },
@@ -162,14 +130,6 @@ export default function InboxPage() {
   const sortDirection = (searchParams.get('dir') as SortDirection) || 'desc';
   const searchQuery = searchParams.get('q') || '';
 
-  // View profile: URL param takes precedence, then localStorage, then default
-  const urlRole = searchParams.get('role') as RoleKey | null;
-  const savedProfile = getSavedViewProfile();
-  const viewProfile: ViewProfile = urlRole
-    ? roleToViewProfile(urlRole)
-    : savedProfile || 'operations';
-  const currentRole: RoleKey = urlRole || (savedProfile ? viewProfileToRole(savedProfile) as RoleKey : 'ops');
-
   const updateParams = useCallback((updates: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, value]) => {
@@ -178,13 +138,6 @@ export default function InboxPage() {
     });
     router.push(`?${params.toString()}`);
   }, [router, searchParams]);
-
-  // Persist view profile to localStorage when role changes via URL
-  const handleRoleChange = useCallback((role: RoleKey) => {
-    const profile = roleToViewProfile(role);
-    saveViewProfile(profile);
-    updateParams({ role });
-  }, [updateParams]);
 
   const [selectedTrips, setSelectedTrips] = useState<Set<string>>(new Set());
   const [showSortDropdown, setShowSortDropdown] = useState(false);
@@ -206,44 +159,26 @@ export default function InboxPage() {
   // ============================================================================
 
   const filterConfigs = useMemo(() => [
-    { key: 'all' as FilterKey, label: 'All' },
+    { key: 'all' as FilterKey, label: 'All leads' },
     { key: 'at_risk' as FilterKey, label: 'At Risk' },
-    { key: 'critical' as FilterKey, label: 'Critical' },
+    { key: 'incomplete' as FilterKey, label: 'Needs details' },
     { key: 'unassigned' as FilterKey, label: 'Unassigned' },
-  ], []);
-
-  const presetConfigs = useMemo(() => [
-    {
-      key: 'my_urgent',
-      label: 'My Urgent',
-      icon: <Zap className="w-3 h-3" />,
-      test: (t: InboxTrip) =>
-        (t.priority === 'high' || t.priority === 'critical') &&
-        (t.slaStatus === 'at_risk' || t.slaStatus === 'breached'),
-    },
-    {
-      key: 'needs_owner',
-      label: 'Needs Owner',
-      icon: <UserX className="w-3 h-3" />,
-      test: (t: InboxTrip) => !t.assignedTo,
-    },
   ], []);
 
   const filterCounts = useMemo(() => {
     const counts: Record<string, number> = {
       all: inboxTrips.length,
       at_risk: inboxTrips.filter((t) => t.slaStatus === 'at_risk').length,
-      critical: inboxTrips.filter((t) => t.slaStatus === 'breached' || t.priority === 'critical').length,
+      incomplete: inboxTrips.filter((t) =>
+        t.flags.includes('incomplete') ||
+        t.flags.includes('needs_clarification') ||
+        t.flags.includes('details_unclear')
+      ).length,
       unassigned: inboxTrips.filter((t) => !t.assignedTo).length,
     };
 
-    // Preset counts
-    for (const preset of presetConfigs) {
-      counts[preset.key] = inboxTrips.filter(preset.test).length;
-    }
-
     return counts;
-  }, [inboxTrips, presetConfigs]);
+  }, [inboxTrips]);
 
   const filtered = useMemo(() => {
     let result = [...inboxTrips];
@@ -251,16 +186,14 @@ export default function InboxPage() {
     // Standard filters
     if (activeFilter === 'at_risk') {
       result = result.filter((t) => t.slaStatus === 'at_risk');
-    } else if (activeFilter === 'critical') {
-      result = result.filter((t) => t.slaStatus === 'breached' || t.priority === 'critical');
+    } else if (activeFilter === 'incomplete') {
+      result = result.filter((t) =>
+        t.flags.includes('incomplete') ||
+        t.flags.includes('needs_clarification') ||
+        t.flags.includes('details_unclear')
+      );
     } else if (activeFilter === 'unassigned') {
       result = result.filter((t) => !t.assignedTo);
-    }
-
-    // Preset filters
-    const activePreset = presetConfigs.find((p) => p.key === activeFilter);
-    if (activePreset) {
-      result = result.filter(activePreset.test);
     }
 
     if (searchQuery) {
@@ -294,7 +227,7 @@ export default function InboxPage() {
           return 0;
       }
     });
-  }, [inboxTrips, activeFilter, searchQuery, sortBy, sortDirection, presetConfigs]);
+  }, [inboxTrips, activeFilter, searchQuery, sortBy, sortDirection]);
 
   const handleSelect = useCallback((id: string, selected: boolean) => {
     setSelectedTrips((prev) => {
@@ -310,10 +243,6 @@ export default function InboxPage() {
 
   const handleClearSelection = useCallback(() => {
     setSelectedTrips(new Set());
-  }, []);
-
-  const handleQuickAssign = useCallback((tripId: string) => {
-    setSelectedTrips(new Set([tripId]));
   }, []);
 
   const handleAssign = useCallback((agentId: string) => {
@@ -339,10 +268,11 @@ export default function InboxPage() {
   if (error) {
     return (
       <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
+        <BackToOverviewLink />
         <div className='flex items-center justify-between pt-1'>
           <div>
-            <h1 className='text-ui-xl font-semibold text-[#e6edf3]'>Inbox</h1>
-            <p className='text-ui-sm text-[#8b949e] mt-0.5'>Trip queue · sorted by urgency</p>
+            <h1 className='text-ui-xl font-semibold text-[#e6edf3]'>Lead Inbox</h1>
+            <p className='text-ui-sm text-[#8b949e] mt-0.5'>New customer inquiries sorted by urgency.</p>
           </div>
         </div>
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-8 text-center'>
@@ -361,11 +291,12 @@ export default function InboxPage() {
 
   return (
     <div className='p-5 pb-4 max-w-[1400px] mx-auto space-y-5'>
+      <BackToOverviewLink />
       {/* Header */}
       <header className='flex items-center justify-between pt-1'>
         <div>
-          <h1 className='text-ui-xl font-semibold text-[#e6edf3]'>Inbox</h1>
-          <p className='text-ui-sm text-[#8b949e] mt-0.5'>Trip queue · sorted by urgency</p>
+          <h1 className='text-ui-xl font-semibold text-[#e6edf3]'>Lead Inbox</h1>
+          <p className='text-ui-sm text-[#8b949e] mt-0.5'>New customer inquiries sorted by urgency.</p>
         </div>
         
         <div className='flex items-center gap-3 flex-wrap'>
@@ -373,7 +304,7 @@ export default function InboxPage() {
             <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8b949e]' />
             <input
               type='text'
-              placeholder='Search destination, customer, agent...'
+              placeholder='Search by customer, destination, or lead ref...'
               value={searchQuery}
               onChange={(e) => updateParams({ q: e.target.value || null })}
               className='w-full pl-9 pr-3 py-2 bg-[#161b22] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3] placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]'
@@ -451,7 +382,7 @@ export default function InboxPage() {
           </div>
 
           <span className='text-ui-sm text-[#8b949e]'>
-            {isLoading ? 'Loading...' : `${inboxTrips.length} trips total`}
+            {isLoading ? 'Loading...' : leadCountLabel(inboxTrips.length)}
           </span>
         </div>
       </header>
@@ -471,15 +402,7 @@ export default function InboxPage() {
       <InboxFilterBar
         activeFilter={activeFilter}
         onFilterChange={(filter) => updateParams({ filter })}
-        activeRole={currentRole}
-        onRoleChange={handleRoleChange}
         filters={filterConfigs.map((f) => ({ ...f, count: filterCounts[f.key] || 0 }))}
-        presets={presetConfigs.map((p) => ({
-          key: p.key,
-          label: p.label,
-          count: filterCounts[p.key] || 0,
-          icon: p.icon,
-        }))}
       />
 
       {/* Trip Grid */}
@@ -504,8 +427,7 @@ export default function InboxPage() {
               trip={trip}
               isSelected={selectedTrips.has(trip.id)}
               onSelect={handleSelect}
-              viewProfile={viewProfile}
-              onAssign={handleQuickAssign}
+              viewProfile='operations'
             />
           ))}
           {filtered.length === 0 && !isLoading && (

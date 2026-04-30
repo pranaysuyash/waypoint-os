@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from spine_api.persistence import file_lock
 
@@ -111,8 +111,7 @@ class Draft(BaseModel):
     linked_draft_ids: list[str] = Field(default_factory=list)
     linked_trip_ids: list[str] = Field(default_factory=list)
 
-    class Config:
-        extra = "allow"  # Forward-compatible with future fields
+    model_config = ConfigDict(extra="allow")
 
 
 def _draft_path(draft_id: str) -> Path:

@@ -37,6 +37,7 @@ const QK = {
 const DEFAULT_STALE_TIME = 30_000;
 
 export function useReviews(filters?: ReviewFilters) {
+  const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: QK.reviews(filters),
     queryFn: () => governanceApi.getReviews(filters),
@@ -46,16 +47,14 @@ export function useReviews(filters?: ReviewFilters) {
   const submitAction = useMutation({
     mutationFn: (request: ReviewActionRequest) =>
       governanceApi.submitReviewAction(request),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: QK.reviews(filters) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["governance", "reviews"] }),
   });
 
   const bulkAction = useMutation({
     mutationFn: (requests: ReviewActionRequest[]) =>
       governanceApi.bulkReviewAction(requests),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: QK.reviews(filters) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["governance", "reviews"] }),
   });
-
-  const queryClient = useQueryClient();
 
   return {
     data: query.data?.items ?? [],
@@ -200,19 +199,22 @@ export function useInboxTrips(
 
   const assignTrips = async (request: AssignmentRequest) => {
     const result = await governanceApi.assignTrips(request);
-    queryClient.invalidateQueries({ queryKey: QK.inboxTrips() });
+    queryClient.invalidateQueries({ queryKey: ["governance", "inboxTrips"] });
+    queryClient.invalidateQueries({ queryKey: QK.inboxStats() });
     return result;
   };
 
   const bulkAction = async (request: BulkActionRequest) => {
     const result = await governanceApi.bulkInboxAction(request);
-    queryClient.invalidateQueries({ queryKey: QK.inboxTrips() });
+    queryClient.invalidateQueries({ queryKey: ["governance", "inboxTrips"] });
+    queryClient.invalidateQueries({ queryKey: QK.inboxStats() });
     return result;
   };
 
   const snoozeTrip = async (tripId: string, snoozeUntil: string) => {
     const result = await governanceApi.snoozeTrip(tripId, snoozeUntil);
-    queryClient.invalidateQueries({ queryKey: QK.inboxTrips() });
+    queryClient.invalidateQueries({ queryKey: ["governance", "inboxTrips"] });
+    queryClient.invalidateQueries({ queryKey: QK.inboxStats() });
     return result;
   };
 

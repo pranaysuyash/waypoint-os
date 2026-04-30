@@ -61,6 +61,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from spine_api.core.env import load_project_env
+
+load_project_env()
+
 from spine_api.core.auth import get_current_user, get_current_agency_id, get_current_agency
 from spine_api.core.database import engine, get_db
 from spine_api.models.tenant import Agency, User
@@ -92,6 +96,7 @@ from spine_api.contract import (
     ExportResponse,
     UpdateOperationalSettings,
     UpdateAutonomyPolicy,
+    IntegrityIssuesResponse,
     UnifiedStateResponse,
     DashboardStatsResponse,
     SuitabilityFlagsResponse,
@@ -101,6 +106,7 @@ from spine_api.services import membership_service
 from src.intake.orchestration import run_spine_once
 from src.intake.packet_models import SourceEnvelope
 from src.intake.safety import set_strict_mode
+from src.services.integrity_service import IntegrityService
 
 # Import persistence logic
 try:
@@ -2458,6 +2464,21 @@ async def get_unified_state(agency: Agency = Depends(get_current_agency)):
         raise HTTPException(
             status_code=500,
             detail="Internal integrity error"
+        )
+
+
+@app.get("/api/system/integrity/issues", response_model=IntegrityIssuesResponse)
+async def get_integrity_issues(agency: Agency = Depends(get_current_agency)):
+    """
+    Return typed integrity issues. Scoped to the current user's agency.
+    """
+    try:
+        return IntegrityService.list_integrity_issues(agency_id=agency.id)
+    except Exception as e:
+        logger.error(f"Failed to aggregate integrity issues: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal integrity error",
         )
 
 

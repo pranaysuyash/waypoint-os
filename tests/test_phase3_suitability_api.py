@@ -23,26 +23,36 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "spine_api"))
 sys.path.insert(0, str(PROJECT_ROOT))
 
-# Set privacy mode to test to allow saving synthetic data
-os.environ["DATA_PRIVACY_MODE"] = "test"
+# Privacy mode is managed by the autouse reset_data_privacy_mode fixture
+# in conftest.py. Set to "test" here via fixture to allow saving synthetic data.
 
 from spine_api.persistence import TripStore, TRIPS_DIR
 import shutil
 
 
 @pytest.fixture(autouse=True)
-def setup_test_db():
-    """Setup test database and cleanup."""
-    # Create fresh database
-    if TRIPS_DIR.exists():
-        shutil.rmtree(TRIPS_DIR)
+def setup_test_env():
+    """Setup privacy mode and ensure trips directory exists; cleanup after."""
+    original_mode = os.environ.get("DATA_PRIVACY_MODE", "dogfood")
+    os.environ["DATA_PRIVACY_MODE"] = "test"
     TRIPS_DIR.mkdir(parents=True, exist_ok=True)
     
     yield
     
-    # Cleanup after test
+    os.environ["DATA_PRIVACY_MODE"] = original_mode
+    # Cleanup: remove test trips but preserve the shared directory.
     if TRIPS_DIR.exists():
-        shutil.rmtree(TRIPS_DIR)
+        for item in list(TRIPS_DIR.iterdir()):
+            if item.is_file() and item.suffix == ".json":
+                try:
+                    item.unlink()
+                except OSError:
+                    pass
+            elif item.is_dir() and item.suffix == ".lockdir":
+                try:
+                    shutil.rmtree(item)
+                except OSError:
+                    pass
 
 
 def make_trip_data(trip_id: str, agency_id: str, **overrides) -> dict:

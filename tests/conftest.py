@@ -20,7 +20,7 @@ import pytest
 import os
 
 if not os.environ.get("JWT_SECRET"):
-    os.environ["JWT_SECRET"] = "test-jwt-secret-for-pytest-only"
+    os.environ["JWT_SECRET"] = "test-jwt-secret-for-pytest-only-32byt"
 
 # ---------------------------------------------------------------------------
 # Module paths (needed before app import)

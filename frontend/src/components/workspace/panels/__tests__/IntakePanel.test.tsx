@@ -3,10 +3,18 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { IntakePanel } from '../IntakePanel';
 import { useWorkbenchStore } from '@/stores/workbench';
 import { ApiException, updateTrip } from '@/lib/api-client';
+import { useAuthStore } from '@/stores/auth';
+
+const mockSaveTrip = vi.fn();
+const mockStartPlanning = vi.fn();
 
 // Mock dependencies
 vi.mock('@/stores/workbench', () => ({
   useWorkbenchStore: vi.fn(),
+}));
+
+vi.mock('@/stores/auth', () => ({
+  useAuthStore: vi.fn(),
 }));
 
 vi.mock('@/hooks/useSpineRun', () => ({
@@ -20,8 +28,12 @@ vi.mock('@/hooks/useSpineRun', () => ({
 
 vi.mock('@/hooks/useTrips', () => ({
   useUpdateTrip: vi.fn(() => ({
-    mutate: vi.fn().mockResolvedValue(null),
+    mutate: mockSaveTrip,
     isSaving: false,
+  })),
+  useStartPlanning: vi.fn(() => ({
+    mutate: mockStartPlanning,
+    isStarting: false,
   })),
 }));
 
@@ -73,7 +85,14 @@ describe('IntakePanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSaveTrip.mockResolvedValue(null);
+    mockStartPlanning.mockResolvedValue({ success: true, trip_id: 'TRIP-123', assigned_to: 'Alex Agent' });
     (useWorkbenchStore as any).mockReturnValue(mockStore);
+    (useAuthStore as any).mockImplementation((selector: any) =>
+      selector({
+        user: { id: 'agent-1', email: 'alex@agency.com', name: 'Alex Agent' },
+      })
+    );
   });
 
   it('renders correctly with trip details', () => {
@@ -115,6 +134,52 @@ describe('IntakePanel', () => {
 
     const readyButton = screen.getByRole('button', { name: /Mark ready/i });
     expect(readyButton).toBeInTheDocument();
+  });
+
+  it('shows review mode for incomplete leads before planning starts', () => {
+    render(
+      <IntakePanel
+        tripId="TRIP-123"
+        trip={{
+          id: 'TRIP-123',
+          destination: 'Singapore',
+          type: 'Family',
+          state: 'blue',
+          age: '1d',
+          createdAt: '2026-04-23T08:00:00.000Z',
+          updatedAt: '2026-04-23T08:15:00.000Z',
+          status: 'incomplete',
+        } as any}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /start planning/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /process trip/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /mark ready/i })).not.toBeInTheDocument();
+  });
+
+  it('starts planning with the current agent when review mode action is used', async () => {
+    render(
+      <IntakePanel
+        tripId="TRIP-123"
+        trip={{
+          id: 'TRIP-123',
+          destination: 'Singapore',
+          type: 'Family',
+          state: 'blue',
+          age: '1d',
+          createdAt: '2026-04-23T08:00:00.000Z',
+          updatedAt: '2026-04-23T08:15:00.000Z',
+          status: 'incomplete',
+        } as any}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /start planning/i }));
+
+    await waitFor(() => {
+      expect(mockStartPlanning).toHaveBeenCalledWith('TRIP-123', 'agent-1', 'Alex Agent');
+    });
   });
 
   it('disables process button when no notes are present', () => {

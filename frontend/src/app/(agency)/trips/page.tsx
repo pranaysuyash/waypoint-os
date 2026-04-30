@@ -12,7 +12,8 @@
  *
  * TODO (Wave 2+): Move this filter to a shared lib/trip-domain.ts once the
  * backend trip model exposes an explicit stage/phase field rather than inferring
- * from decision state. For now, decision state is the best available proxy.
+ * from lifecycle status. For now, `assigned` and `in_progress` are the
+ * canonical workspace-entry statuses.
  */
 
 import Link from 'next/link';
@@ -28,6 +29,7 @@ import {
   Table2,
 } from 'lucide-react';
 import { useTrips } from '@/hooks/useTrips';
+import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { getTripRoute } from '@/lib/routes';
 import { InlineLoading } from '@/components/ui/loading';
 import { InlineError } from '@/components/error-boundary';
@@ -37,7 +39,7 @@ import { WorkspaceTable, type SortField, type SortDirection } from './WorkspaceT
 // ============================================================================
 // DOMAIN BOUNDARY DEFINITION
 // The "workspace" filter is now applied server-side via /api/trips?view=workspace.
-// The canonical WORKSPACE_STATES set lives in the trips API route.
+// The canonical workspace filter lives in the trips API route.
 // This file does NOT duplicate that definition.
 // ============================================================================
 
@@ -338,6 +340,7 @@ export default function WorkspacesPage() {
 
   return (
     <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
+      <BackToOverviewLink />
       {/* Header */}
       <header className='flex items-center justify-between pt-1 flex-wrap gap-3'>
         <div>

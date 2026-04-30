@@ -39,6 +39,13 @@ export interface AnalyticsPayload {
   send_policy_reason?: string | null;
   revision_count?: number;
 }
+export interface ApprovalThresholdConfig {
+  threshold_id: string;
+  gate: string;
+  condition: string;
+  value: number;
+  action: string;
+}
 export interface AssertionResult {
   type: string;
   passed: boolean;
@@ -75,9 +82,36 @@ export interface DashboardStatsResponse {
   ready_to_book: number;
   needs_attention: number;
 }
-export interface HealthResponse {
-  status: string;
-  version: string;
+export interface ExportRequest {
+  time_range?: string;
+  format?: string;
+}
+export interface ExportResponse {
+  download_url: string;
+  expires_at: string;
+}
+export interface FrontierOrchestrationResult {
+  ghost_triggered?: boolean;
+  ghost_workflow_id?: string | null;
+  sentiment_score?: number;
+  anxiety_alert?: boolean;
+  intelligence_hits?: {
+    [k: string]: unknown;
+  }[];
+  specialty_knowledge?: SpecialtyKnowledgeHit[];
+  mitigation_applied?: boolean;
+  requires_manual_audit?: boolean;
+  audit_reason?: string | null;
+  negotiation_active?: boolean;
+  negotiation_logs?: NegotiationLog[];
+}
+export interface SpecialtyKnowledgeHit {
+  niche: string;
+  keywords: string[];
+  checklists: string[];
+  compliance?: string[];
+  safety_notes?: string | null;
+  urgency?: string;
 }
 export interface NegotiationLog {
   id: string;
@@ -89,28 +123,9 @@ export interface NegotiationLog {
   next_action?: string | null;
   last_message?: string | null;
 }
-export interface SpecialtyKnowledgeHit {
-  niche: string;
-  keywords: string[];
-  checklists: string[];
-  compliance: string[];
-  safety_notes?: string | null;
-  urgency: string;
-}
-export interface FrontierOrchestrationResult {
-  ghost_triggered: boolean;
-  ghost_workflow_id?: string | null;
-  sentiment_score: number;
-  anxiety_alert: boolean;
-  intelligence_hits: {
-    [k: string]: unknown;
-  }[];
-  specialty_knowledge: SpecialtyKnowledgeHit[];
-  mitigation_applied: boolean;
-  requires_manual_audit: boolean;
-  audit_reason?: string | null;
-  negotiation_active: boolean;
-  negotiation_logs: NegotiationLog[];
+export interface HealthResponse {
+  status: string;
+  version: string;
 }
 export interface InsightsSummary {
   totalInquiries?: number;
@@ -128,11 +143,41 @@ export interface PipelineVelocity {
   stage5ToBooked?: number;
   averageTotal?: number;
 }
+export interface IntegrityAction {
+  id: string;
+  label: string;
+  description: string;
+  destructive: boolean;
+  requires_confirmation: boolean;
+}
+export interface IntegrityIssue {
+  id: string;
+  entity_id: string;
+  entity_type: "lead" | "workspace" | "trip" | "review" | "unknown";
+  issue_type: "orphaned_record" | "missing_owner" | "broken_reference" | "invalid_transition" | "duplicate_workspace";
+  severity: "low" | "medium" | "high" | "critical";
+  reason: string;
+  current_status?: string | null;
+  created_at?: string | null;
+  detected_at: string;
+  allowed_actions?: IntegrityAction[];
+}
+export interface IntegrityIssuesResponse {
+  items?: IntegrityIssue[];
+  total: number;
+}
 export interface IntegrityMeta {
   sum_stages: number;
   orphan_count: number;
   consistent: boolean;
   last_sync: string;
+}
+export interface InviteTeamMemberRequest {
+  email: string;
+  name: string;
+  role: string;
+  capacity?: number;
+  specializations?: string[] | null;
 }
 export interface MonthlyRevenue {
   month: string;
@@ -183,6 +228,13 @@ export interface OverrideResponse {
   warnings?: string[];
   audit_event_id: string;
 }
+export interface PipelineStageConfig {
+  stage_id: string;
+  label: string;
+  order: number;
+  sla_hours?: number | null;
+  auto_actions?: string[];
+}
 export interface QualityScore {
   overall: number;
   breakdown: {
@@ -204,16 +256,61 @@ export interface ReviewActionRequest {
   reassign_to?: string | null;
   error_category?: string | null;
 }
+/**
+ * Returned immediately by POST /run — the run is queued, poll for status.
+ */
+export interface RunAcceptedResponse {
+  run_id: string;
+  state?: string;
+}
 export interface RunMeta {
   stage?: string;
   operating_mode?: string;
   fixture_id?: string | null;
   execution_ms?: number;
 }
+/**
+ * Returned by GET /runs/{run_id} — full run state for polling UI.
+ */
+export interface RunStatusResponse {
+  run_id: string;
+  state: string;
+  trip_id?: string | null;
+  stage?: string | null;
+  operating_mode?: string | null;
+  agency_id?: string | null;
+  created_at?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  total_ms?: number | null;
+  steps_completed?: string[];
+  events?: {
+    [k: string]: unknown;
+  }[];
+  error_type?: string | null;
+  error_message?: string | null;
+  stage_at_failure?: string | null;
+  block_reason?: string | null;
+  validation?: {
+    [k: string]: unknown;
+  } | null;
+  packet?: {
+    [k: string]: unknown;
+  } | null;
+  decision_state?: string | null;
+  follow_up_questions?: {
+    [k: string]: unknown;
+  }[];
+  hard_blockers?: string[];
+  soft_blockers?: string[];
+}
 export interface SafetyResult {
   strict_leakage?: boolean;
   leakage_passed?: boolean;
   leakage_errors?: string[];
+}
+export interface SnoozeRequest {
+  snooze_until: string;
 }
 export interface SpineRunRequest {
   raw_note?: string | null;
@@ -271,6 +368,23 @@ export interface StageMetrics {
   exitRate: number;
   avgTimeToExit: number;
 }
+export interface SuitabilityAcknowledgeRequest {
+  acknowledged_flags: string[];
+}
+/**
+ * Response from GET /trips/{trip_id}/suitability endpoint.
+ *
+ * Returns all suitability flags for a given trip with confidence and tier information.
+ */
+export interface SuitabilityFlagsResponse {
+  trip_id: string;
+  /**
+   * List of suitability flags with id, name, confidence, tier, etc.
+   */
+  suitability_flags?: {
+    [k: string]: unknown;
+  }[];
+}
 export interface SuitabilitySignal {
   trip_id: string;
   flag_type: string;
@@ -282,6 +396,18 @@ export interface SystemicError {
   category: string;
   count: number;
 }
+export interface TeamMember {
+  id: string;
+  user_id: string;
+  email: string;
+  name: string;
+  role: string;
+  capacity?: number;
+  status?: string;
+  specializations?: string[];
+  created_at: string;
+  updated_at?: string | null;
+}
 export interface TeamMemberMetrics {
   userId: string;
   name: string;
@@ -289,7 +415,10 @@ export interface TeamMemberMetrics {
   activeTrips: number;
   completedTrips: number;
   conversionRate: number;
-  avgResponseTime: number;
+  /**
+   * Not yet computed from real data
+   */
+  avgResponseTime?: number | null;
   customerSatisfaction: number;
   currentWorkload: "under" | "optimal" | "over" | "critical";
   workloadScore: number;

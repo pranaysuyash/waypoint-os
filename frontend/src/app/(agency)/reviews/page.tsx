@@ -16,6 +16,7 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 import { useReviews } from '@/hooks/useGovernance';
+import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { getTripRoute } from '@/lib/routes';
 import type { TripReview, ReviewStatus, RiskFlag } from '@/types/governance';
 
@@ -277,6 +278,7 @@ export default function OwnerReviewsPage() {
 
   return (
     <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
+      <BackToOverviewLink />
       {/* Header */}
       <header className='flex flex-wrap items-center justify-between gap-3 pt-1'>
         <div>

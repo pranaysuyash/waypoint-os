@@ -52,4 +52,10 @@ describe("resolveBackendPath", () => {
     expect(resolveBackendPath(["runs", "run_123"])).toBe("runs/run_123");
     expect(resolveBackendPath(["runs", "run_123", "events"])).toBe("runs/run_123/events");
   });
+
+  it("maps typed integrity reads through the system proxy", () => {
+    expect(resolveBackendPath(["system", "integrity", "issues"])).toBe(
+      "api/system/integrity/issues"
+    );
+  });
 });

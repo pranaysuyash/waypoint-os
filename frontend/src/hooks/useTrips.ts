@@ -4,7 +4,9 @@ import {
   getTrip,
   getTripStats,
   getPipeline,
+  startPlanningTrip,
   updateTrip,
+  type StartPlanningResponse,
   type Trip,
   type TripStats,
   type PipelineStage,
@@ -97,6 +99,42 @@ export function useUpdateTrip() {
   return {
     mutate,
     isSaving: mutation.isPending,
+    error: mutation.error as Error | null,
+  };
+}
+
+export function useStartPlanning() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: ({
+      id,
+      agentId,
+      agentName,
+    }: {
+      id: string;
+      agentId: string;
+      agentName: string;
+    }) => startPlanningTrip(id, agentId, agentName),
+    onSuccess: (_result, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["trips"] });
+      queryClient.invalidateQueries({ queryKey: ["governance", "inboxTrips"] });
+      queryClient.invalidateQueries({ queryKey: ["governance", "inboxStats"] });
+      queryClient.invalidateQueries({ queryKey: QK.trip(id) });
+    },
+  });
+
+  const mutate = async (
+    id: string,
+    agentId: string,
+    agentName: string
+  ): Promise<StartPlanningResponse> => {
+    return mutation.mutateAsync({ id, agentId, agentName });
+  };
+
+  return {
+    mutate,
+    isStarting: mutation.isPending,
     error: mutation.error as Error | null,
   };
 }

@@ -1,25 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { memo, useMemo, useCallback, useState, useEffect } from 'react';
+import { memo, useMemo, useState } from 'react';
 import {
-  Briefcase,
   ArrowRight,
-  CheckCircle2,
   AlertTriangle,
-  Clock,
-  Inbox,
   Activity,
   ChevronRight,
   Send,
-  BarChart3,
   MapPin,
 } from 'lucide-react';
-import { useTrips } from '@/hooks/useTrips';
-import { useUnifiedState } from '@/hooks/useUnifiedState';
 import { getTripRoute } from '@/lib/routes';
-import { InlineLoading } from '@/components/ui/loading';
 import { InlineError } from '@/components/error-boundary';
+import type { Trip } from '@/lib/api-client';
+import { useOverviewSummary } from './useOverviewSummary';
 
 // ── Severity grammar: color encodes state, not decoration ──────────────────
 
@@ -37,27 +31,29 @@ const STATE_META: Record<StateKey, StateMeta> = {
     fg: '#3fb950',
     bg: 'rgba(63,185,80,0.10)',
     border: 'rgba(63,185,80,0.25)',
-    label: 'Ready to Book',
+    label: 'Ready for Booking',
   },
   amber: {
     fg: '#d29922',
     bg: 'rgba(210,153,34,0.10)',
     border: 'rgba(210,153,34,0.25)',
-    label: 'Needs Options',
+    label: 'Need Trip Options',
   },
   red: {
     fg: '#f85149',
     bg: 'rgba(248,81,73,0.10)',
     border: 'rgba(248,81,73,0.25)',
-    label: 'Needs Review',
+    label: 'Needs Quote Review',
   },
   blue: {
     fg: '#58a6ff',
     bg: 'rgba(88,166,255,0.10)',
     border: 'rgba(88,166,255,0.25)',
-    label: 'Need More Info',
+    label: 'Need Customer Details',
   },
 };
+
+const INTAKE_HREF = '/workbench?draft=new&tab=intake';
 
 // ── StatCard: metric-first operational instrument ─────────────────────────
 
@@ -65,6 +61,7 @@ const StatCard = memo(function StatCard({
   title,
   value,
   sub,
+  ctaLabel,
   icon: Icon,
   state,
   isLoading,
@@ -74,6 +71,7 @@ const StatCard = memo(function StatCard({
   title: string;
   value: string | number;
   sub: string;
+  ctaLabel: string;
   icon: React.FC<{ className?: string; style?: React.CSSProperties }>;
   state: StateKey;
   isLoading?: boolean;
@@ -127,7 +125,7 @@ const StatCard = memo(function StatCard({
       <span className='text-[12px] font-medium' style={{ color: 'var(--text-muted)' }}>{displaySub}</span>
       {href && (
         <div className='flex items-center gap-1 mt-0.5 text-[11px] font-medium' style={{ color: 'var(--accent-blue)' }}>
-          View <ArrowRight className='h-3 w-3' style={{ color: 'var(--accent-blue)' }} />
+          {ctaLabel} <ArrowRight className='h-3 w-3' style={{ color: 'var(--accent-blue)' }} />
         </div>
       )}
     </>
@@ -185,10 +183,12 @@ const PipelineBar = memo(function PipelineBar({
   data,
   isLoading,
   error,
+  leadInboxTotal,
 }: {
   data: Array<{ label: string; count: number }> | null;
   isLoading: boolean;
   error: Error | null;
+  leadInboxTotal: number;
 }) {
   const safeData = data ?? [];
   const total = useMemo(() => {
@@ -209,7 +209,7 @@ const PipelineBar = memo(function PipelineBar({
     return (
       <div className='rounded-xl border p-4' style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
         <div className='flex items-center justify-between mb-3'>
-          <h2 className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>Trip Progress</h2>
+          <h2 className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>Planning Progress</h2>
           <span className='text-[12px] font-mono' style={{ color: 'var(--text-tertiary)' }}>Loading...</span>
         </div>
         <div className='h-2 rounded-full overflow-hidden' style={{ background: 'var(--bg-elevated)' }}>
@@ -220,19 +220,24 @@ const PipelineBar = memo(function PipelineBar({
   }
 
   if (safeData.length === 0 || total === 0) {
+    const hasLeadsWaiting = leadInboxTotal > 0;
     return (
       <div className='rounded-xl border p-4' style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
         <div className='flex items-center justify-between mb-1'>
-          <h2 className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>Trip Progress</h2>
+          <h2 className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>Planning Progress</h2>
           <span className='text-[13px] font-mono font-medium tabular-nums' style={{ color: 'var(--text-primary)' }}>0</span>
         </div>
-        <p className='text-[12px]' style={{ color: 'var(--text-muted)' }}>No active trips in pipeline.</p>
+        <p className='text-[12px]' style={{ color: 'var(--text-muted)' }}>
+          {hasLeadsWaiting
+            ? 'A lead is waiting in Lead Inbox and needs review before planning can begin.'
+            : 'No trips are being planned yet.'}
+        </p>
         <Link
-          href='/workbench'
+          href={hasLeadsWaiting ? '/inbox' : INTAKE_HREF}
           className='inline-flex items-center gap-1.5 mt-3 text-[12px] font-medium transition-colors'
           style={{ color: 'var(--accent-blue)' }}
         >
-          Process your first trip <ArrowRight className='h-3.5 w-3.5' />
+          {hasLeadsWaiting ? 'Review Lead' : 'Process New Inquiry'} <ArrowRight className='h-3.5 w-3.5' />
         </Link>
       </div>
     );
@@ -243,7 +248,7 @@ const PipelineBar = memo(function PipelineBar({
     return (
       <div className='rounded-xl border p-4' style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
         <div className='flex items-center justify-between mb-2'>
-          <h2 className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>Trip Progress</h2>
+          <h2 className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>Planning Progress</h2>
           <button
             onClick={() => setIsExpanded(true)}
             className='text-[11px] font-medium transition-colors'
@@ -281,7 +286,7 @@ const PipelineBar = memo(function PipelineBar({
   return (
     <div className='rounded-xl border p-4' style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
       <div className='flex items-center justify-between mb-3'>
-        <h2 className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>Trip Progress</h2>
+        <h2 className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>Planning Progress</h2>
         <div className='flex items-center gap-2'>
           <span className='text-[12px] font-mono tabular-nums' style={{ color: 'var(--text-tertiary)' }}>{total} total</span>
           <button
@@ -379,9 +384,19 @@ const ActivityRow = memo(function ActivityRow({
 
 // ── RecentTrips: empty + populated states ─────────────────────────────────
 
-function RecentTrips() {
-  const { data: trips, isLoading, error } = useTrips({ limit: 5 });
-
+function RecentTrips({
+  trips,
+  isLoading,
+  error,
+  planningTripsTotal,
+  leadInboxTotal,
+}: {
+  trips: Trip[];
+  isLoading: boolean;
+  error: Error | null;
+  planningTripsTotal: number;
+  leadInboxTotal: number;
+}) {
   const tripItems = useMemo(() => {
     if (trips.length === 0) return [];
     return trips.map((trip) => ({
@@ -392,6 +407,8 @@ function RecentTrips() {
       age: trip.age,
     }));
   }, [trips]);
+
+  const hasLeadsWaiting = planningTripsTotal === 0 && leadInboxTotal > 0;
 
   if (error) {
     return (
@@ -425,13 +442,15 @@ function RecentTrips() {
           <MapPin className='w-6 h-6' style={{ color: 'var(--text-tertiary)' }} />
         </div>
         <p className='text-[14px] font-medium mb-1' style={{ color: 'var(--text-primary)' }}>
-          Start with your first trip
+          No trips in planning yet
         </p>
         <p className='text-[12px] leading-relaxed max-w-[280px] mx-auto' style={{ color: 'var(--text-secondary)' }}>
-          Process a customer inquiry to get quotes, options, and a decision from your AI agent.
+          {hasLeadsWaiting
+            ? 'A lead is waiting in Lead Inbox. Review it to start planning, and the trip will appear here.'
+            : 'Add a customer inquiry and Waypoint will organize the details, flag missing information, and prepare the next planning step.'}
         </p>
         <Link
-          href='/workbench'
+          href={hasLeadsWaiting ? '/inbox' : INTAKE_HREF}
           className='inline-flex items-center gap-2 mt-5 px-4 py-2 rounded-lg text-[13px] font-medium transition-colors border'
           style={{
             background: 'transparent',
@@ -448,7 +467,7 @@ function RecentTrips() {
           }}
         >
           <Send className='w-4 h-4' style={{ color: 'var(--accent-blue)' }} />
-          Process Your First Trip
+          {hasLeadsWaiting ? 'Review Lead' : 'Add New Inquiry'}
           <ArrowRight className='w-3.5 h-3.5' style={{ color: 'var(--text-muted)' }} />
         </Link>
       </div>
@@ -464,64 +483,22 @@ function RecentTrips() {
   );
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function useMounted() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  return mounted;
-}
-
 // ── Page: Operations Overview ───────────────────────────────────────────
 
 export default function OverviewPage() {
-  const mounted = useMounted();
-  const { state, loading: unifiedLoading, error: unifiedError } = useUnifiedState();
-
-  const stats = useMemo(() => {
-    if (!state) return null;
-    return {
-      active: state.canonical_total - (state.stages.completed || 0) - (state.stages.cancelled || 0),
-      pendingReview: state.stages.new || 0,
-      readyToBook: state.stages.in_progress || 0,
-      needsAttention: state.orphans.length || 0,
-    };
-  }, [state]);
-
-  const pipeline = useMemo(() => {
-    if (!state) return null;
-    return Object.entries(state.stages).map(([label, count]) => ({
-      label: label.charAt(0).toUpperCase() + label.slice(1).replace('_', ' '),
-      count,
-    }));
-  }, [state]);
-
-  const navItems = useMemo(
-    () => [
-      {
-        href: '/inbox',
-        label: 'Inbox queue',
-        sub: `${stats?.pendingReview ?? '—'} pending`,
-        subColor: 'var(--accent-amber)',
-        icon: Inbox,
-      },
-      {
-        href: '/workbench',
-        label: 'Trip Workspace',
-        sub: 'Analyze trip',
-        subColor: 'var(--accent-blue)',
-        icon: Briefcase,
-      },
-      {
-        href: '/reviews',
-        label: 'Approval Queue',
-        sub: `${stats?.needsAttention ?? '—'} awaiting`,
-        subColor: 'var(--accent-red)',
-        icon: CheckCircle2,
-      },
-    ],
-    [stats?.pendingReview, stats?.needsAttention]
-  );
+  const {
+    headerSubtitle,
+    metrics,
+    navItems,
+    pipeline,
+    pipelineLoading,
+    pipelineError,
+    recentTrips,
+    recentTripsLoading,
+    recentTripsError,
+    planningTripsTotal,
+    leadInboxTotal,
+  } = useOverviewSummary();
 
   const stateEntries = useMemo(
     () => Object.entries(STATE_META) as [StateKey, StateMeta][],
@@ -538,15 +515,15 @@ export default function OverviewPage() {
             <span style={{ color: 'var(--border-default)' }} aria-hidden='true'>/</span>
             <span className='text-[12px] font-medium' style={{ color: 'var(--text-primary)' }}>Overview</span>
           </div>
-          <h1 className='text-[18px] font-semibold tracking-tight' style={{ color: 'var(--text-primary)' }}>
-            Operations Overview
-          </h1>
-          <p className='text-[13px] mt-0.5' style={{ color: 'var(--text-secondary)' }}>
-            {state ? `${state.canonical_total} trips · ${stats?.pendingReview ?? 0} pending · ${stats?.needsAttention ?? 0} need attention` : 'Loading...'}
-          </p>
-        </div>
+           <h1 className='text-[18px] font-semibold tracking-tight' style={{ color: 'var(--text-primary)' }}>
+             Operations Overview
+           </h1>
+           <p className='text-[13px] mt-0.5' style={{ color: 'var(--text-secondary)' }}>
+             {headerSubtitle}
+           </p>
+         </div>
         <Link
-          href='/workbench'
+          href={INTAKE_HREF}
           className='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium border transition-colors'
           style={{
             background: 'transparent',
@@ -562,17 +539,27 @@ export default function OverviewPage() {
             (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-primary)';
           }}
         >
-          Open Trip Workspace
+          Process New Inquiry
           <ArrowRight className='h-3.5 w-3.5' aria-hidden='true' />
         </Link>
       </header>
 
       {/* Stat cards: metric-first instruments */}
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>
-        <StatCard title='Active Trips' value={stats?.active ?? '—'} sub={state ? `${state.canonical_total} total` : 'Loading...'} icon={Briefcase} state='blue' isLoading={unifiedLoading} error={unifiedError as any} href='/trips' />
-        <StatCard title='Pending Triage' value={stats?.pendingReview ?? '—'} sub={state ? 'new entries' : 'Loading…'} icon={Clock} state='amber' isLoading={unifiedLoading} error={unifiedError as any} href='/inbox' />
-        <StatCard title='Ready to Book' value={stats?.readyToBook ?? '—'} sub={state ? 'approved' : 'Loading…'} icon={CheckCircle2} state='green' isLoading={unifiedLoading} error={unifiedError as any} href='/inbox' />
-        <StatCard title='Needs Attention' value={stats?.needsAttention ?? '—'} sub={state ? 'data issues' : 'Loading…'} icon={AlertTriangle} state='red' isLoading={unifiedLoading} error={unifiedError as any} href='/reviews' />
+        {metrics.map((metric) => (
+          <StatCard
+            key={metric.title}
+            title={metric.title}
+              value={metric.value}
+              sub={metric.sub}
+              ctaLabel={metric.ctaLabel}
+              icon={metric.icon}
+            state={metric.state}
+            isLoading={metric.isLoading}
+            error={metric.error}
+            href={metric.href}
+          />
+        ))}
       </div>
 
       {/* Main content: trips + right rail */}
@@ -589,25 +576,36 @@ export default function OverviewPage() {
             <div className='flex items-center gap-2'>
               <Activity className='h-4 w-4' style={{ color: 'var(--text-tertiary)' }} aria-hidden='true' />
               <h2 className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>
-                Recent Trips
+                Trips in Planning
               </h2>
             </div>
             <Link
-              href='/inbox'
+              href='/trips'
               className='inline-flex items-center gap-1 text-[12px] font-medium transition-colors'
               style={{ color: 'var(--accent-blue)' }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-primary)'; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--accent-blue)'; }}
             >
-              See all <ArrowRight className='h-3.5 w-3.5' aria-hidden='true' />
+               Open trips <ArrowRight className='h-3.5 w-3.5' aria-hidden='true' />
             </Link>
           </header>
-          <RecentTrips />
+          <RecentTrips
+            trips={recentTrips}
+            isLoading={recentTripsLoading}
+            error={recentTripsError}
+            planningTripsTotal={planningTripsTotal}
+            leadInboxTotal={leadInboxTotal}
+          />
         </section>
 
         {/* Right rail: compact operational modules */}
         <aside className='space-y-4'>
-          <PipelineBar data={pipeline} isLoading={unifiedLoading} error={unifiedError as any} />
+          <PipelineBar
+            data={pipeline}
+            isLoading={pipelineLoading}
+            error={pipelineError}
+            leadInboxTotal={leadInboxTotal}
+          />
 
           <nav
             className='rounded-xl border p-4'
@@ -671,7 +669,7 @@ export default function OverviewPage() {
             style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}
           >
             <h2 className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>
-              Decision States
+              Planning Status
             </h2>
             <div className='mt-3 space-y-2'>
               {stateEntries.map(([, meta]) => (

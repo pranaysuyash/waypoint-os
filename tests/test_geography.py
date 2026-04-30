@@ -119,9 +119,11 @@ class TestAccumulatedCities:
         from pathlib import Path
         acc_path = Path("data/accumulated_cities.json")
         if acc_path.exists():
-            data = set(json.load(acc_path.open()))
+            with acc_path.open() as f:
+                data = set(json.load(f))
             data.discard(fake_city)
-            json.dump(sorted(data), acc_path.open("w"))
+            with acc_path.open("w") as f:
+                json.dump(sorted(data), f)
         clear_cache()
 
     def test_low_confidence_not_added(self):

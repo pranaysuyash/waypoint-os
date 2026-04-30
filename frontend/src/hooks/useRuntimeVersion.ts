@@ -13,8 +13,8 @@ interface RuntimeVersionState {
   detailsLabel: string;
 }
 
-const FALLBACK_VERSION_LABEL = "v0.1 · decision engine";
-const FALLBACK_DETAILS_LABEL = "runtime · unknown";
+const FALLBACK_VERSION_LABEL = "Operations live";
+const FALLBACK_DETAILS_LABEL = "";
 
 function shortSha(sha: string | null): string {
   if (!sha) return "";
@@ -46,8 +46,8 @@ export function useRuntimeVersion(): RuntimeVersionState {
 
         if (isMounted) {
           setState({
-            versionLabel: `v${payload.version} · decision engine`,
-            detailsLabel: details,
+            versionLabel: "Operations live",
+            detailsLabel: "",
           });
         }
       } catch {

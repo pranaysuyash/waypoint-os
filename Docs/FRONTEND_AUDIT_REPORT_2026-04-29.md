@@ -308,14 +308,54 @@ Currently, `TripCard.tsx` is a "black box." The proposed refactor moves to a com
 
 ---
 
+## ⚡️ UI Performance & Optimization Audit (`optimize`)
+
+### 1. Optimization Checklist
+
+| Category | Status | Finding |
+| --- | --- | --- |
+| Bundle Size | ⚠️ Warning | Static imports of heavy libs (`recharts`, `lucide-react` barrels). |
+| Image Opt | ⚠️ Warning | Only 2 instances of `next/image` found; many areas use standard `<img>`. |
+| Dynamic Code | ⚠️ Warning | Only 1 instance of `next/dynamic`; charts should be lazy-loaded. |
+| Rendering | ✅ Good | `memo` usage is disciplined in list views (Inbox). |
+
+### 2. Detailed Findings
+
+- **[P1] Heavy Dependency Load**: `recharts` is imported statically in `insights/page.tsx`. This adds ~200kb to the initial bundle for the analytics view. **Fix**: Use `next/dynamic` with `{ ssr: false }` for all chart components.
+- **[P2] Barrel File Overhead**: The `@/components/visual` directory uses a barrel file (`index.ts`). This often prevents effective tree-shaking in modern bundlers.
+- **[P2] LCP Risks**: Several dashboard icons and small assets bypass `next/image` optimization, potentially affecting Largest Contentful Paint (LCP) as the app grows.
+
+---
+
+## ✅ Final Audit Conclusion
+## ⏱ Runtime Performance Benchmark (`benchmark`)
+
+### 1. Performance Prediction (Static Analysis)
+
+| Metric | Prediction | Risk |
+| --- | --- | --- |
+| **TTFB** | ~150ms | Low (FastAPI is efficient). |
+| **FCP / LCP** | >1.2s | High (Static heavy libs like Recharts/Lucide). |
+| **CLS** | ~0.05 | Low (Skeleton usage in Shell). |
+| **INP** | ~100ms | Medium (Unstable callbacks causing re-renders). |
+
+### 2. Detailed Findings
+
+- **[P1] Scaling Bottleneck (List Rendering)**: Without virtualization, a 50+ trip Inbox will trigger significant scripting time on every filter change.
+- **[P1] Bundle Size Regression Risk**: Total JS bundle for the `insights` route is estimated to be >500KB due to unoptimized Recharts and Lucide-React usage.
+- **[P2] Effect Overload**: The usage of `setTimeout` inside `useGovernance` hooks for loading delays adds unnecessary complexity to the render cycle and perceived performance.
+
+---
+
 ## ✅ Final Audit Conclusion
 
 The Waypoint OS frontend has a **strong functional foundation** but suffers from **significant technical and aesthetic debt**. 
 
 ### Top 3 Actions to Save the UI:
 1. **Un-nest the Interactivity**: Fix the `TripCard` P0 to ensure basic accessibility.
-2. **Commit to OKLCH**: Delete all hard-coded hex values and map them to the established semantic tokens.
-3. **Compound the Architecture**: Refactor the core dashboard components into compound patterns to eliminate the 5+ prop-drilling waterfalls.
+2. **Modernize Data**: Migrate `useGovernance.ts` hooks to **TanStack Query**.
+3. **Lazy-load Heavy Modules**: Use `next/dynamic` for all charts and heavy UI panels.
 
 ---
 *End of Comprehensive Frontend Audit.*
+

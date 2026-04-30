@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import InboxPage from "@/app/inbox/page";
+import InboxPage from "@/app/(agency)/inbox/page";
 import TripsPage from "@/app/(agency)/trips/page";
 import { IntakePanel } from "@/components/workspace/panels/IntakePanel";
 import type { InboxTrip } from "@/types/governance";
 import type { Trip } from "@/lib/api-client";
 import * as governanceHooks from "@/hooks/useGovernance";
 import * as tripHooks from "@/hooks/useTrips";
+import * as authStore from "@/stores/auth";
 import * as workbenchStore from "@/stores/workbench";
 import * as spineHook from "@/hooks/useSpineRun";
 import * as nextNavigation from "next/navigation";
@@ -18,6 +19,11 @@ vi.mock("@/hooks/useGovernance", () => ({
 vi.mock("@/hooks/useTrips", () => ({
   useTrips: vi.fn(),
   useUpdateTrip: vi.fn(),
+  useStartPlanning: vi.fn(),
+}));
+
+vi.mock("@/stores/auth", () => ({
+  useAuthStore: vi.fn(),
 }));
 
 vi.mock("@/stores/workbench", () => ({
@@ -120,6 +126,18 @@ describe("P1 Happy Path Journey", () => {
       error: null,
     } as any);
 
+    vi.mocked(tripHooks.useStartPlanning).mockReturnValue({
+      mutate: vi.fn(),
+      isStarting: false,
+      error: null,
+    } as any);
+
+    vi.mocked(authStore.useAuthStore).mockImplementation((selector: any) =>
+      selector({
+        user: { id: "agent-1", email: "alex@agency.com", name: "Alex Agent" },
+      })
+    );
+
     vi.mocked(workbenchStore.useWorkbenchStore).mockReturnValue({
       input_raw_note: "Customer asks for June family trip with kid activities",
       input_owner_note: "Repeat traveler. Prioritize Sentosa options.",
@@ -169,7 +187,7 @@ describe("P1 Happy Path Journey", () => {
   it("supports inbox -> workspace process -> return link flow", async () => {
     render(<InboxPage />);
 
-    const openLink = screen.getByRole("link", { name: /Singapore/i });
+    const openLink = screen.getByRole("link", { name: /review lead/i });
     expect(openLink).toHaveAttribute("href", "/trips/TRIP-123/intake");
 
     render(<IntakePanel tripId="TRIP-123" trip={workspaceTrip} />);

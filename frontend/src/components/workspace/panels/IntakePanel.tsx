@@ -23,9 +23,10 @@ import {
 } from 'lucide-react';
 import type { Trip } from '@/lib/api-client';
 import { updateTrip, ApiException } from '@/lib/api-client';
+import { useAuthStore } from '@/stores/auth';
 import { useWorkbenchStore } from '@/stores/workbench';
 import { useSpineRun } from '@/hooks/useSpineRun';
-import { useUpdateTrip } from '@/hooks/useTrips';
+import { useStartPlanning, useUpdateTrip } from '@/hooks/useTrips';
 import { useTripContext } from '@/contexts/TripContext';
 import { getTripRoute } from '@/lib/routes';
 import type { SpineStage, OperatingMode, SpineRunRequest } from '@/types/spine';
@@ -92,6 +93,7 @@ interface IntakePanelProps {
 
 export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const store = useWorkbenchStore();
+  const currentUser = useAuthStore((state) => state.user);
   const {
     input_raw_note,
     input_owner_note,
@@ -115,9 +117,12 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const { execute: executeSpineRun, isLoading: isSpineRunning } = useSpineRun();
 
   const { mutate: saveTrip, isSaving } = useUpdateTrip();
+  const { mutate: startPlanning, isStarting: isStartingPlanning } = useStartPlanning();
   const { replaceTrip, refetchTrip } = useTripContext();
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [startPlanningSuccess, setStartPlanningSuccess] = useState(false);
+  const [startPlanningError, setStartPlanningError] = useState<string | null>(null);
   const [isMarkingReady, setIsMarkingReady] = useState(false);
   const [readySuccess, setReadySuccess] = useState(false);
   const [readyError, setReadyError] = useState<string | null>(null);
@@ -174,6 +179,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   }, [trip?.budget]);
 
   const currencyOptions = getCurrencyOptions();
+  const isLeadReview = trip?.status === 'new' || trip?.status === 'incomplete';
 
   const handleProcessTrip = useCallback(async () => {
     if (!store.input_raw_note && !store.input_owner_note) return;
@@ -283,6 +289,32 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       setIsMarkingReady(false);
     }
   }, [tripId]);
+
+  const handleStartPlanning = useCallback(async () => {
+    if (!tripId) return;
+
+    const agentId = currentUser?.id;
+    const agentName = currentUser?.name || currentUser?.email || currentUser?.id;
+
+    if (!agentId || !agentName) {
+      setStartPlanningError('Your session is missing agent details. Sign in again before starting planning.');
+      return;
+    }
+
+    setStartPlanningError(null);
+    setStartPlanningSuccess(false);
+
+    try {
+      await startPlanning(tripId, agentId, agentName);
+      await refetchTrip();
+      setStartPlanningSuccess(true);
+      setTimeout(() => setStartPlanningSuccess(false), 4000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to start planning.';
+      setStartPlanningError(message);
+      setTimeout(() => setStartPlanningError(null), 8000);
+    }
+  }, [currentUser?.email, currentUser?.id, currentUser?.name, refetchTrip, startPlanning, tripId]);
 
   const startEditing = useCallback((field: string, currentValue: string) => {
     setEditValues(prev => ({ ...prev, [field]: currentValue }));
@@ -876,6 +908,18 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
               <span className='max-w-xs truncate'>{saveError}</span>
             </div>
           )}
+          {startPlanningSuccess && (
+            <div className='flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-green)]/10 border border-[var(--accent-green)]/30 rounded-lg text-[var(--ui-text-xs)] text-[var(--accent-green)]'>
+              <CheckCircle className='w-3 h-3' />
+              Planning started
+            </div>
+          )}
+          {startPlanningError && (
+            <div className='flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-red)]/10 border border-[var(--accent-red)]/30 rounded-lg text-[var(--ui-text-xs)] text-[var(--accent-red)]'>
+              <AlertTriangle className='w-3 h-3' />
+              <span className='max-w-[42rem] truncate'>{startPlanningError}</span>
+            </div>
+          )}
           {readySuccess && (
             <div className='flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-green)]/10 border border-[var(--accent-green)]/30 rounded-lg text-[var(--ui-text-xs)] text-[var(--accent-green)]'>
               <CheckCircle className='w-3 h-3' />
@@ -922,58 +966,90 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
               </>
             )}
           </button>
-          <button
-            type='button'
-            onClick={handleMarkReady}
-            disabled={isMarkingReady || !tripId}
-            className='flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-elevated)] text-[var(--accent-green)] border border-[rgba(63,185,80,0.25)] rounded-lg text-[var(--ui-text-xs)] font-medium hover:bg-[rgba(63,185,80,0.08)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
-            aria-label={isMarkingReady ? 'Marking ready' : 'Mark ready'}
-          >
-            {isMarkingReady ? (
-              <>
-                <div
-                  className='w-3.5 h-3.5 border-2 border-[var(--accent-green)]/30 border-t-[var(--accent-green)] rounded-full animate-spin'
-                  aria-hidden='true'
-                />
-                Checking...
-              </>
-            ) : (
-              <>
-                <CheckCircle className='w-3.5 h-3.5' aria-hidden='true' />
-                Mark Ready
-              </>
-            )}
-          </button>
+          {isLeadReview ? (
+            <button
+              type='button'
+              onClick={handleStartPlanning}
+              disabled={isStartingPlanning || !tripId}
+              className='flex items-center gap-2 px-5 py-2 rounded-lg text-[var(--ui-text-sm)] font-bold text-text-on-accent disabled:opacity-40 disabled:cursor-not-allowed transition-all'
+              style={{
+                background: isStartingPlanning
+                  ? 'rgba(88,166,255,0.5)'
+                  : 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, var(--accent-cyan) 100%)',
+                boxShadow: isStartingPlanning ? 'none' : '0 0 20px rgba(57,208,216,0.3), 0 2px 8px rgba(88,166,255,0.2)',
+              }}
+              aria-label={isStartingPlanning ? 'Starting planning' : 'Start planning'}
+            >
+              {isStartingPlanning ? (
+                <>
+                  <div
+                    className='w-4 h-4 border-2 border-text-on-accent/30 border-t-text-on-accent rounded-full animate-spin'
+                    aria-hidden='true'
+                  />
+                  <span>Starting planning...</span>
+                </>
+              ) : (
+                <>
+                  <Play className='w-4 h-4' aria-hidden='true' />
+                  Start Planning
+                </>
+              )}
+            </button>
+          ) : (
+            <>
+              <button
+                type='button'
+                onClick={handleMarkReady}
+                disabled={isMarkingReady || !tripId}
+                className='flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-elevated)] text-[var(--accent-green)] border border-[rgba(63,185,80,0.25)] rounded-lg text-[var(--ui-text-xs)] font-medium hover:bg-[rgba(63,185,80,0.08)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+                aria-label={isMarkingReady ? 'Marking ready' : 'Mark ready'}
+              >
+                {isMarkingReady ? (
+                  <>
+                    <div
+                      className='w-3.5 h-3.5 border-2 border-[var(--accent-green)]/30 border-t-[var(--accent-green)] rounded-full animate-spin'
+                      aria-hidden='true'
+                    />
+                    Checking...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className='w-3.5 h-3.5' aria-hidden='true' />
+                    Mark Ready
+                  </>
+                )}
+              </button>
 
-          {/* Primary CTA — dominant gradient */}
-          <button
-            type='button'
-            onClick={handleProcessTrip}
-            disabled={isRunning || isSpineRunning || (!input_raw_note && !input_owner_note)}
-            className='flex items-center gap-2 px-5 py-2 rounded-lg text-[var(--ui-text-sm)] font-bold text-text-on-accent disabled:opacity-40 disabled:cursor-not-allowed transition-all'
-            style={{
-              background: isRunning
-                ? 'rgba(88,166,255,0.5)'
-                : 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, var(--accent-cyan) 100%)',
-              boxShadow: isRunning ? 'none' : '0 0 20px rgba(57,208,216,0.3), 0 2px 8px rgba(88,166,255,0.2)',
-            }}
-            aria-label={isRunning ? 'Processing trip' : 'Process trip'}
-          >
-            {isRunning ? (
-              <>
-                <div
-                  className='w-4 h-4 border-2 border-text-on-accent/30 border-t-text-on-accent rounded-full animate-spin'
-                  aria-hidden='true'
-                />
-                <span>Processing {formatElapsedTime(runElapsedSeconds)}</span>
-              </>
-            ) : (
-              <>
-                <Play className='w-4 h-4' aria-hidden='true' />
-                Process Trip
-              </>
-            )}
-          </button>
+              <button
+                type='button'
+                onClick={handleProcessTrip}
+                disabled={isRunning || isSpineRunning || (!input_raw_note && !input_owner_note)}
+                className='flex items-center gap-2 px-5 py-2 rounded-lg text-[var(--ui-text-sm)] font-bold text-text-on-accent disabled:opacity-40 disabled:cursor-not-allowed transition-all'
+                style={{
+                  background: isRunning
+                    ? 'rgba(88,166,255,0.5)'
+                    : 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, var(--accent-cyan) 100%)',
+                  boxShadow: isRunning ? 'none' : '0 0 20px rgba(57,208,216,0.3), 0 2px 8px rgba(88,166,255,0.2)',
+                }}
+                aria-label={isRunning ? 'Processing trip' : 'Process trip'}
+              >
+                {isRunning ? (
+                  <>
+                    <div
+                      className='w-4 h-4 border-2 border-text-on-accent/30 border-t-text-on-accent rounded-full animate-spin'
+                      aria-hidden='true'
+                    />
+                    <span>Processing {formatElapsedTime(runElapsedSeconds)}</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className='w-4 h-4' aria-hidden='true' />
+                    Process Trip
+                  </>
+                )}
+              </button>
+            </>
+          )}
         </div>
       </div>
 

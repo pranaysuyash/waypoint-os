@@ -51,6 +51,9 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
 
   const activeStage = useMemo(() => getActiveStage(pathname), [pathname]);
   const accent = STATE_ACCENT[trip?.state ?? "blue"] ?? STATE_ACCENT.blue;
+  const isLeadReview = trip?.status === "new" || trip?.status === "incomplete";
+  const backHref = isLeadReview ? "/inbox" : "/trips";
+  const backLabel = isLeadReview ? "Lead Inbox" : "Workspaces";
 
   if (isLoading && !trip) {
     return (
@@ -97,9 +100,9 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
               {/* Top row: breadcrumb + timeline toggle */}
               <div className="flex items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2 text-ui-xs text-[var(--text-tertiary)]">
-                  <Link href="/trips" className="hover:text-[var(--text-muted)] transition-colors flex items-center gap-1">
+                  <Link href={backHref} className="hover:text-[var(--text-muted)] transition-colors flex items-center gap-1">
                     <ChevronLeft className="w-3 h-3" />
-                    Workspaces
+                    {backLabel}
                   </Link>
                   <span>/</span>
                   <span className="text-[var(--text-muted)] truncate max-w-[200px]">

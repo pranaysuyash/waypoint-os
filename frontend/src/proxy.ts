@@ -45,11 +45,31 @@ const PUBLIC_FILES = new Set([
 ]);
 
 const PROTECTED_LANDING = '/overview';
+const SESSION_CHECK_PATH = '/api/auth/me';
 
 function hasAuthCookie(request: NextRequest): boolean {
   const accessToken = request.cookies.get('access_token')?.value;
   const refreshToken = request.cookies.get('refresh_token')?.value;
   return Boolean(accessToken || refreshToken);
+}
+
+async function hasValidAccessSession(request: NextRequest): Promise<boolean> {
+  const accessToken = request.cookies.get('access_token')?.value;
+  if (!accessToken) return false;
+
+  try {
+    const response = await fetch(new URL(SESSION_CHECK_PATH, request.url), {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        Cookie: `access_token=${accessToken}`,
+      },
+      cache: 'no-store',
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 function isAllowed(pathname: string): boolean {
@@ -79,8 +99,14 @@ function isAllowed(pathname: string): boolean {
 function isSafeRedirect(target: string): boolean {
   if (!target.startsWith('/')) return false;
   if (target.startsWith('//')) return false;
-  if (AUTH_PAGES.has(target)) return false;
-  return true;
+
+  try {
+    const parsed = new URL(target, 'http://localhost');
+    if (AUTH_PAGES.has(parsed.pathname)) return false;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -88,11 +114,15 @@ function isSafeRedirect(target: string): boolean {
  * Exported as both default and named so callers (including tests)
  * can import it whichever way is convenient.
  */
-export default function proxy(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const authed = hasAuthCookie(request);
 
   if (authed && AUTH_PAGES.has(pathname)) {
+    const hasSession = await hasValidAccessSession(request);
+    if (!hasSession) {
+      return NextResponse.next();
+    }
     const redirectTarget = request.nextUrl.searchParams.get('redirect') || '';
     const safeRedirect = isSafeRedirect(redirectTarget)
       ? redirectTarget

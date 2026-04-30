@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
 import {
   transformSpineTripsResponseToTrips,
-  WORKSPACE_STATES,
+  isWorkspaceTrip,
 } from "@/lib/bff-trip-adapters";
 import type { Trip } from "@/lib/api-client";
 import type { SpineRunRequest } from "@/types/generated/spine-api";
@@ -36,9 +36,7 @@ export async function GET(request: NextRequest) {
 
     // Server-side view filter — canonical definitions live here
     if (view === "workspace") {
-      transformedItems = transformedItems.filter(
-        (trip: Trip) => WORKSPACE_STATES.has(trip.state)
-      );
+      transformedItems = transformedItems.filter(isWorkspaceTrip);
     }
 
     return bffJson({

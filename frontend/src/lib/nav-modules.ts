@@ -33,14 +33,14 @@ export const NAV_SECTIONS: NavSection[] = [
     label: 'COMMAND',
     items: [
       { href: '/overview', label: 'Overview', icon: 'LayoutDashboard', description: 'Command center and trip health', enabled: true },
-      { href: '/inbox', label: 'Inbox', icon: 'Inbox', description: 'Sort and prioritize new inquiries', enabled: true },
-      { href: '/reviews', label: 'Approval Queue', icon: 'ClipboardCheck', description: 'Approve high-risk quotes, changes, and exceptions', enabled: true },
+      { href: '/inbox', label: 'Lead Inbox', icon: 'Inbox', description: 'Sort and prioritize new inquiries', enabled: true },
+      { href: '/reviews', label: 'Quote Review', icon: 'ClipboardCheck', description: 'Review high-risk quotes, changes, and exceptions', enabled: true },
     ],
   },
   {
-    label: 'PIPELINE',
+    label: 'PLANNING',
     items: [
-      { href: '/trips', label: 'Trips', icon: 'Layers', description: 'Active trip planning and execution', enabled: true },
+      { href: '/trips', label: 'Trips in Planning', icon: 'Layers', description: 'Active trip planning and execution', enabled: true },
       { href: '/quotes', label: 'Quotes', icon: 'FileText', description: 'Commercial proposals and quote versions', enabled: false },
       { href: '/bookings', label: 'Bookings', icon: 'CalendarCheck', description: 'Confirmed operational records', enabled: false },
     ],

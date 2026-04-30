@@ -544,7 +544,7 @@ export default function OwnerInsightsPage() {
                 name: member.name,
                 userId: member.userId,
                 conversionRate: member.conversionRate,
-                avgResponseTime: member.avgResponseTime,
+                avgResponseTime: member.avgResponseTime ?? null,
                 customerSatisfaction: member.customerSatisfaction,
                 workloadScore: member.workloadScore,
               }))}

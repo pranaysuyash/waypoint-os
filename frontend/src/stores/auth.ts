@@ -53,7 +53,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   error: null,
 
   setAuth: (user, agency, membership) =>
-    set({ user, agency, membership, isAuthenticated: true, error: null }),
+    set({
+      user,
+      agency,
+      membership,
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+    }),
 
   logout: async () => {
     try {
@@ -61,7 +68,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch {
       // ignore
     }
-    set({ user: null, agency: null, membership: null, isAuthenticated: false });
+    set({
+      user: null,
+      agency: null,
+      membership: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+    });
   },
 
   hydrate: async () => {
@@ -100,9 +114,23 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
 
       // 4. Refresh failed or /me still fails — force re-login
-      set({ isAuthenticated: false, isLoading: false });
+      set({
+        user: null,
+        agency: null,
+        membership: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      });
     } catch {
-      set({ isAuthenticated: false, isLoading: false });
+      set({
+        user: null,
+        agency: null,
+        membership: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      });
     }
   },
 

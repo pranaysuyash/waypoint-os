@@ -213,10 +213,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
               Operations live
             </span>
           </div>
-          <div className='mt-1 flex items-center gap-1.5 text-xs font-mono' style={{ color: 'var(--text-placeholder)' }}>
-            <Activity className='h-3 w-3' aria-hidden='true' />
-            <span aria-live='polite'>{detailsLabel}</span>
-          </div>
+          {detailsLabel ? (
+            <div className='mt-1 flex items-center gap-1.5 text-xs font-mono' style={{ color: 'var(--text-placeholder)' }}>
+              <Activity className='h-3 w-3' aria-hidden='true' />
+              <span aria-live='polite'>{detailsLabel}</span>
+            </div>
+          ) : null}
         </div>
       </aside>
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useTrips, useTrip, useTripStats, usePipeline, useUpdateTrip } from '../useTrips';
+import { useTrips, useTrip, useTripStats, usePipeline, useUpdateTrip, useStartPlanning } from '../useTrips';
 import * as apiClient from '@/lib/api-client';
 import type { Trip } from '@/lib/api-client';
 import type { ReactNode } from 'react';
@@ -221,6 +221,20 @@ describe('useTrip Hook', () => {
     });
 
     expect(result.current.data?.id).toBe('b');
+  });
+});
+
+describe('useStartPlanning Hook', () => {
+  it('calls the explicit start-planning transition and invalidates trip queries', async () => {
+    vi.mocked((apiClient as any).startPlanningTrip).mockResolvedValue({ success: true, trip_id: '1' });
+
+    const { result } = renderHook(() => useStartPlanning(), { wrapper: createWrapper() });
+
+    await act(async () => {
+      await result.current.mutate('1', 'agent-1', 'Alex Agent');
+    });
+
+    expect((apiClient as any).startPlanningTrip).toHaveBeenCalledWith('1', 'agent-1', 'Alex Agent');
   });
 });
 

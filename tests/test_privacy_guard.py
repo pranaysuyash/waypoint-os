@@ -315,24 +315,16 @@ class TestGuardOnTripStore:
 
     def test_mode_beta_allows(self, monkeypatch):
         monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
-        from src.security import privacy_guard
         from src.security.privacy_guard import check_trip_data
 
-        import importlib
-
-        importlib.reload(privacy_guard)
         trip = {"raw_note": "Real user data with email test@example.com"}
         # Should NOT raise in beta
         check_trip_data(trip)
 
     def test_mode_production_allows(self, monkeypatch):
         monkeypatch.setenv("DATA_PRIVACY_MODE", "production")
-        from src.security import privacy_guard
         from src.security.privacy_guard import check_trip_data
 
-        import importlib
-
-        importlib.reload(privacy_guard)
         trip = {"raw_note": "Real user data"}
         check_trip_data(trip)
 

@@ -1,9 +1,7 @@
 'use client';
 
-import { X, Settings, ToggleLeft, ToggleRight, RotateCcw, ShieldAlert, Wrench, CheckCircle2, Ghost, Heart, Network, ShieldCheck } from 'lucide-react';
+import { X, Settings, ToggleLeft, ToggleRight, Ghost, Heart, Network, ShieldCheck } from 'lucide-react';
 import { useWorkbenchStore } from '@/stores/workbench';
-import { useUnifiedState } from '@/hooks/useUnifiedState';
-import { useState } from 'react';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -29,36 +27,6 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     negotiation_margin_threshold,
     setNegotiationMarginThreshold,
   } = useWorkbenchStore();
-  const { state: unifiedState, refresh: refreshUnified } = useUnifiedState();
-  const [repairingId, setRepairingId] = useState<string | null>(null);
-  const [repairStatus, setRepairStatus] = useState<{ id: string, success: boolean } | null>(null);
-
-  const orphans = unifiedState?.orphans || [];
-
-  const handleRepair = async (id: string) => {
-    setRepairingId(id);
-    try {
-      const response = await fetch(`/api/trips/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: "include",
-        body: JSON.stringify({ status: 'new' })
-      });
-      
-      if (response.ok) {
-        setRepairStatus({ id, success: true });
-        refreshUnified();
-        setTimeout(() => setRepairStatus(null), 3000);
-      } else {
-        setRepairStatus({ id, success: false });
-      }
-    } catch (err) {
-      console.error('Repair failed:', err);
-      setRepairStatus({ id, success: false });
-    } finally {
-      setRepairingId(null);
-    }
-  };
 
   if (!open) return null;
 
@@ -72,7 +40,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       <aside
         className='fixed right-0 top-0 bottom-0 w-80 bg-[#0f1115] border-l border-[#30363d] z-50 overflow-y-auto'
         role='dialog'
-        aria-label='Pipeline settings'
+        aria-label='Settings'
       >
         <div className='flex items-center justify-between p-4 border-b border-[#30363d]'>
           <div className='flex items-center gap-2'>
@@ -315,62 +283,6 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             </div>
           </div>
 
-          <div className='space-y-3 pt-4 border-t border-[#30363d]'>
-            <div className='flex items-center justify-between'>
-              <h3 className='text-ui-xs font-semibold text-[#8b949e] uppercase tracking-wide flex items-center gap-2'>
-                <ShieldAlert className='w-3 h-3 text-[#e3b341]' />
-                Incomplete Trips
-              </h3>
-              {orphans.length > 0 && (
-                <span className='px-1.5 py-0.5 rounded-full bg-[#e3b341]/20 text-[#e3b341] text-[var(--ui-text-xs)] font-bold animate-pulse'>
-                  {orphans.length} ISSUE{orphans.length !== 1 ? 'S' : ''}
-                </span>
-              )}
-            </div>
-            
-            {orphans.length === 0 ? (
-              <div className='p-3 rounded-lg bg-[#161b22] border border-[#30363d] text-center'>
-                <p className='text-ui-xs text-[#8b949e] italic'>No incomplete trip records detected.</p>
-              </div>
-            ) : (
-              <div className='space-y-2 max-h-60 overflow-y-auto pr-1'>
-                {orphans.map((orphan) => (
-                  <div key={orphan.id} className='p-3 rounded-lg bg-[#161b22] border border-[#30363d] space-y-2'>
-                    <div className='flex justify-between items-start'>
-                      <div>
-                        <p className='text-[var(--ui-text-xs)] font-mono text-[#8b949e] truncate w-40'>{orphan.id}</p>
-                        <p className='text-ui-xs text-[#e6edf3] font-medium'>{orphan.destination}</p>
-                      </div>
-                      <button
-                        onClick={() => handleRepair(orphan.id)}
-                        disabled={repairingId === orphan.id}
-                        className={`p-1.5 rounded transition-all ${
-                          repairStatus?.id === orphan.id && repairStatus?.success
-                            ? 'bg-green-500/20 text-green-400'
-                            : 'bg-[#21262d] text-[#58a6ff] hover:bg-[#30363d] hover:scale-105'
-                        }`}
-                        title="Repair Record"
-                      >
-                        {repairingId === orphan.id ? (
-                          <RotateCcw className='w-3 h-3 animate-spin' />
-                        ) : repairStatus?.id === orphan.id && repairStatus?.success ? (
-                          <CheckCircle2 className='w-3 h-3' />
-                        ) : (
-                          <Wrench className='w-3 h-3' />
-                        )}
-                      </button>
-                    </div>
-                      {repairStatus?.id === orphan.id && !repairStatus?.success && (
-                      <p className='text-[var(--ui-text-xs)] text-[#f85149]'>Failed to repair. Try again.</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            <p className='text-[var(--ui-text-xs)] text-[#8b949e] leading-relaxed'>
-              Repairing resets an incomplete trip to "New" status so it can be processed again.
-            </p>
-          </div>
         </div>
       </aside>
     </>

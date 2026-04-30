@@ -143,6 +143,29 @@ export interface PipelineVelocity {
   stage5ToBooked?: number;
   averageTotal?: number;
 }
+export interface IntegrityAction {
+  id: string;
+  label: string;
+  description: string;
+  destructive: boolean;
+  requires_confirmation: boolean;
+}
+export interface IntegrityIssue {
+  id: string;
+  entity_id: string;
+  entity_type: "lead" | "workspace" | "trip" | "review" | "unknown";
+  issue_type: "orphaned_record" | "missing_owner" | "broken_reference" | "invalid_transition" | "duplicate_workspace";
+  severity: "low" | "medium" | "high" | "critical";
+  reason: string;
+  current_status?: string | null;
+  created_at?: string | null;
+  detected_at: string;
+  allowed_actions?: IntegrityAction[];
+}
+export interface IntegrityIssuesResponse {
+  items?: IntegrityIssue[];
+  total: number;
+}
 export interface IntegrityMeta {
   sum_stages: number;
   orphan_count: number;
@@ -268,6 +291,18 @@ export interface RunStatusResponse {
   error_message?: string | null;
   stage_at_failure?: string | null;
   block_reason?: string | null;
+  validation?: {
+    [k: string]: unknown;
+  } | null;
+  packet?: {
+    [k: string]: unknown;
+  } | null;
+  decision_state?: string | null;
+  follow_up_questions?: {
+    [k: string]: unknown;
+  }[];
+  hard_blockers?: string[];
+  soft_blockers?: string[];
 }
 export interface SafetyResult {
   strict_leakage?: boolean;
@@ -293,6 +328,7 @@ export interface SpineRunRequest {
   lead_source?: string | null;
   activity_provenance?: string | null;
   date_year_confidence?: string | null;
+  draft_id?: string | null;
 }
 export interface SpineRunResponse {
   ok?: boolean;

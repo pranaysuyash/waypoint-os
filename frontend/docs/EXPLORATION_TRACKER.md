@@ -2888,3 +2888,412 @@ Based on product impact and dependencies:
 | 1 | `ML_DATA_01_GOVERNANCE.md` | ✅ |
 
 **Master Index:** `ML_DATA_MASTER_INDEX.md`
+
+---
+
+### ✅ GDS & NDC Integration (Complete)
+
+**Description:** GDS platforms (Amadeus, Sabre, Travelport) API suites and pricing, NDC standard and message flow, GDS vs NDC comparison with hybrid approach, API cost management, caching strategies (flight 15min, hotel 60min), rate limiting, request queuing with priority levels
+
+**Documentation:** 1 of 1 document + master index complete ✅
+
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `GDS_NDC_01_INTEGRATION.md` | ✅ |
+
+**Master Index:** `GDS_NDC_MASTER_INDEX.md`
+
+---
+
+### ✅ Revenue Architecture (Complete)
+
+**Description:** Revenue streams (booking margin, airline commission, insurance, visa, forex, corporate retainer, ancillary), revenue mix by agency size, margin optimization levers (supplier negotiation, pricing strategy, ancillary bundling, demand-based margin), margin waterfall analysis per component
+
+**Documentation:** 1 of 1 document + master index complete ✅
+
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `REVENUE_ARCH_01_STREAMS.md` | ✅ |
+
+**Master Index:** `REVENUE_ARCH_MASTER_INDEX.md`
+
+---
+
+### ✅ Agent Operations Playbook (Complete)
+
+**Description:** Agent daily schedule (morning routine, core working, afternoon ops, end-of-day), SOP library (new inquiry, proposal creation, booking confirmation, pre-departure, trip disruption), escalation matrix (financial, operational, technical), quality metrics per agent
+
+**Documentation:** 1 of 1 document + master index complete ✅
+
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `OPS_PLAYBOOK_01_DAILY.md` | ✅ |
+
+**Master Index:** `OPS_PLAYBOOK_MASTER_INDEX.md`
+
+---
+
+### ✅ Legal & Compliance Templates (Complete)
+
+**Description:** Required legal documents (business registration, customer-facing, internal), cancellation policy tiers (international, domestic, force majeure, supplier cancellation), liability framework, consumer protection compliance (Consumer Protection Act 2019), GST/TCS applicability and collection
+
+**Documentation:** 1 of 1 document + master index complete ✅
+
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `LEGAL_TEMPLATES_01_INDIA.md` | ✅ |
+
+**Master Index:** `LEGAL_TEMPLATES_MASTER_INDEX.md`
+
+---
+
+### ✅ Trip Budget Management (Complete)
+
+**Description:** Budget category allocation (prepaid, daily allowance, activity fund, shopping, emergency reserve), expense capture methods (manual, photo OCR, SMS bank capture, agent-assisted), real-time budget alerts, multi-currency tracking with forex optimization, post-trip budget analysis with future planning recommendations
+
+**Documentation:** 1 of 1 document + master index complete ✅
+
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `TRIP_BUDGET_01_TRACKER.md` | ✅ |
+
+**Master Index:** `TRIP_BUDGET_MASTER_INDEX.md`
+
+---
+
+## Part 25: Additional Gap Coverage — Completed Explorations
+
+### ✅ GDS & NDC Integration (Complete)
+
+**Description:** GDS platforms (Amadeus, Sabre, Travelport) API suites and pricing, NDC standard and message flow, GDS vs NDC comparison with hybrid approach, API cost management, caching strategies (flight 15min, hotel 60min), rate limiting, request queuing with priority levels
+
+**Documentation:** 1 of 1 document + master index complete ✅
+
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `GDS_NDC_01_INTEGRATION.md` | ✅ |
+
+**Master Index:** `GDS_NDC_MASTER_INDEX.md`
+
+---
+
+### ✅ Revenue Architecture (Complete)
+
+**Description:** Revenue streams (booking margin, airline commission, insurance, visa, forex, corporate retainer, ancillary), revenue mix by agency size, margin optimization levers (supplier negotiation, pricing strategy, ancillary bundling, demand-based margin), margin waterfall analysis per component
+
+**Documentation:** 1 of 1 document + master index complete ✅
+
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `REVENUE_ARCH_01_STREAMS.md` | ✅ |
+
+**Master Index:** `REVENUE_ARCH_MASTER_INDEX.md`
+
+---
+
+### ✅ Agent Operations Playbook (Complete)
+
+**Description:** Agent daily schedule (morning routine, core working, afternoon ops, end-of-day), SOP library (new inquiry, proposal creation, booking confirmation, pre-departure, trip disruption), escalation matrix (financial, operational, technical), quality metrics per agent
+
+**Documentation:** 1 of 1 document + master index complete ✅
+
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `OPS_PLAYBOOK_01_DAILY.md` | ✅ |
+
+**Master Index:** `OPS_PLAYBOOK_MASTER_INDEX.md`
+
+---
+
+### ✅ Legal & Compliance Templates (Complete)
+
+**Description:** Required legal documents (business registration, customer-facing, internal), cancellation policy tiers (international, domestic, force majeure, supplier cancellation), liability framework, consumer protection compliance (Consumer Protection Act 2019), GST/TCS applicability and collection
+
+**Documentation:** 1 of 1 document + master index complete ✅
+
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `LEGAL_TEMPLATES_01_INDIA.md` | ✅ |
+
+**Master Index:** `LEGAL_TEMPLATES_MASTER_INDEX.md`
+
+---
+
+### ✅ Trip Budget Management (Complete)
+
+**Description:** Budget category allocation (prepaid, daily allowance, activity fund, shopping, emergency reserve), expense capture methods (manual, photo OCR, SMS bank capture, agent-assisted), real-time budget alerts, multi-currency tracking with forex optimization, post-trip budget analysis with future planning recommendations
+
+**Documentation:** 1 of 1 document + master index complete ✅
+
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `TRIP_BUDGET_01_TRACKER.md` | ✅ |
+
+**Master Index:** `TRIP_BUDGET_MASTER_INDEX.md`
+
+---
+
+### ✅ PII Detection & Data Classification (Complete)
+
+**Description:** Multi-layer PII detection (regex, NER, context engine), data classification tiers (Tier 0-4), domain-specific vision models (MedGemma-class), field-level encryption, key management, automated retention, crypto-shredding, and DPDP Act compliance automation
+
+**Documentation:** 2 of 2 documents + master index complete ✅
+
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `PII_DETECT_01_ENGINE.md` | ✅ |
+| 2 | `PII_DETECT_02_STORAGE.md` | ✅ |
+
+**Master Index:** `PII_DETECT_MASTER_INDEX.md`
+
+---
+
+### ✅ ML Training Data & Privacy Engineering (Complete)
+
+**Description:** Training data governance and consent pipeline, anonymization techniques (k-anonymity, pseudonymization), synthetic data generation, differential privacy (DP-SGD), federated learning across agencies, and model privacy evaluation (membership/attribute inference attacks)
+
+**Documentation:** 1 of 1 document + master index complete ✅
+
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `ML_DATA_01_GOVERNANCE.md` | ✅ |
+
+**Master Index:** `ML_DATA_MASTER_INDEX.md`
+
+---
+
+### ✅ Travel Concierge & Premium Services (Complete)
+
+**Description:** Service tiers (Standard/Premium/Elite/Corporate Elite), bespoke itinerary design (discovery → curation → presentation), surprise & delight elements, real-time trip monitoring for elite customers, on-call support rotation, annual planning sessions
+
+**Documentation:** 1 of 1 document + master index complete ✅
+
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `CONCIERGE_01_PREMIUM.md` | ✅ |
+
+**Master Index:** `CONCIERGE_MASTER_INDEX.md`
+
+---
+
+### ✅ Third-Party Travel API Connectors (Complete)
+
+**Description:** Activity aggregators (Viator, Klook, GetYourGuide, Tiqets), hotel bedbanks (Hotelbeds, WebBeds, Stuba), transfer APIs, insurance APIs (Tata AIG, Chola MS), visa APIs, eSIM APIs (Airalo), unified API architecture with normalization, deduplication, and caching
+
+**Documentation:** 1 of 1 document + master index complete ✅
+
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `THIRD_PARTY_API_01_CONNECTORS.md` | ✅ |
+
+**Master Index:** `THIRD_PARTY_API_MASTER_INDEX.md`
+
+---
+
+### ✅ Customer Support AI (Complete)
+
+**Description:** Chatbot architecture with intent classification, conversation flow design with escalation triggers, self-service capabilities (itinerary access, payment management, document upload, modification requests), intelligent ticket routing with load balancing, support analytics
+
+**Documentation:** 1 of 1 document + master index complete ✅
+
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `SUPPORT_AI_01_CHATBOT.md` | ✅ |
+
+**Master Index:** `SUPPORT_AI_MASTER_INDEX.md`
+
+---
+
+### ✅ Agency Insurance & Risk Transfer (Complete)
+
+**Description:** Insurance types (professional indemnity, E&O, business interruption, cyber, general liability), Indian providers, claims process, common claims and prevention, pandemic coverage, risk prevention through system design
+
+**Documentation:** 1 of 1 document + master index complete ✅
+
+| # | Document | Status |
+|---|----------|--------|
+| 1 | `AGENCY_INSURE_01_PORTFOLIO.md` | ✅ |
+
+**Master Index:** `AGENCY_INSURE_MASTER_INDEX.md`
+
+---
+
+## Part 26 — Gap Coverage Round 4 (2026-04-30)
+
+| Series | Docs | Status |
+|--------|------|--------|
+| TRAVELER_APP_* | 01_COMPANION + MASTER_INDEX | ✅ Complete |
+| AI_ITINERARY_* | 01_GENERATION + MASTER_INDEX | ✅ Complete |
+| INTRIP_UPSELL_* | 01_ENGINE + MASTER_INDEX | ✅ Complete |
+| CRISIS_COMM_* | 01_PROTOCOL + MASTER_INDEX | ✅ Complete |
+
+### What was covered
+- **Traveler Companion App**: PWA architecture, trip dashboard, day-by-day itinerary, interactive map, budget tracker, documents wallet, agent chat, emergency card, offline capabilities, photo journal
+- **AI Itinerary Generation**: 5-stage pipeline (constraint solver, preference matching, schedule optimizer, logistics planner, human review), customer preference profiling, real-time itinerary adaptation
+- **In-Trip Upsell Engine**: Upsell categories (room, activity, dining, extension, companion, insurance), trigger system, experience guardrails, revenue analytics, agent incentive structure
+- **Crisis Communication Protocol**: Crisis types and severity classification, emergency broadcast system (WhatsApp/SMS/call), traveler safety tracking, post-crisis recovery operations
+
+---
+
+## Part 27 — Gap Coverage Round 5 (2026-04-30)
+
+| Series | Docs | Status |
+|--------|------|--------|
+| CUSTOMER_ONBOARD_* | 01_JOURNEY + MASTER_INDEX | ✅ Complete |
+| EMAIL_MKTG_* | 01_AUTOMATION + MASTER_INDEX | ✅ Complete |
+| FARE_INTEL_* | 01_PREDICTION + MASTER_INDEX | ✅ Complete |
+| ACCESSIBLE_TRAVEL_* | 01_SERVICES + MASTER_INDEX | ✅ Complete |
+| SEASONAL_PLAN_* | 01_CALENDAR + MASTER_INDEX | ✅ Complete |
+| MULTI_BRANCH_* | 01_OPERATIONS + MASTER_INDEX | ✅ Complete |
+| SOCIAL_MKTG_* | 01_CHANNELS + MASTER_INDEX | ✅ Complete |
+| SEO_DIGITAL_* | 01_PRESENCE + MASTER_INDEX | ✅ Complete |
+| BACKUP_DR_* | 01_RESILIENCE + MASTER_INDEX | ✅ Complete |
+| PILGRIMAGE_* | 01_TRAVEL + MASTER_INDEX | ✅ Complete |
+
+### What was covered
+- **Customer Onboarding Journey**: 6-stage onboarding, channel-specific flows, conversion funnel, trust-building, proposal quality, follow-up cadence
+- **Email Marketing Automation**: Drip campaigns, transactional emails, newsletters, template design, analytics, DPDP Act compliance
+- **Flight Fare Intelligence**: AI fare prediction, buy-now-vs-wait, fare alert system, booking timing optimization for Indian routes
+- **Accessible Travel Services**: Wheelchair/visual/hearing/senior/infant traveler profiles, accessibility data management, regulatory framework
+- **Seasonal Campaign Planner**: Indian travel demand calendar, campaign templates, shoulder/off-season strategy, revenue planning
+- **Multi-Branch Operations**: Branch hierarchy, data isolation, cross-branch coordination, brand consistency, branch P&L
+- **Social Media Marketing**: Channel strategy (IG/FB/YT/LinkedIn), content creation engine, social commerce, DM-to-booking
+- **SEO & Digital Presence**: Keyword targeting, landing pages, Google Business Profile, local SEO, conversion optimization
+- **Backup & Disaster Recovery**: RTO/RPO targets, backup strategy, DR procedures, business continuity plan, failover testing
+- **Pilgrimage Travel**: Hajj/Umrah, Char Dham, Tirupati, temple circuits, Sikh/Buddhist pilgrimage, group operations
+
+---
+
+## Part 28 — Modeling, CRO, Widgets & Optimization (2026-04-30)
+
+| Series | Docs | Status |
+|--------|------|--------|
+| CRO_* | 01_OPTIMIZATION + MASTER_INDEX | ✅ Complete |
+| FIN_MODEL_* | 01_SIMULATION + MASTER_INDEX | ✅ Complete |
+| WIDGET_ENGINE_* | 01_EMBEDDABLES + MASTER_INDEX | ✅ Complete |
+
+### What was covered
+- **CRO & Conversion Optimization**: CRO vs SRO framework, full funnel metrics (awareness → repeat), landing page optimization (above-the-fold, forms, pricing presentation), A/B testing strategy, SRO levers (response speed, proposal quality, follow-up persistence, objection handling), retention optimization
+- **Financial Modeling & Simulation**: Revenue/cost/profit model, scenario simulation engine (growth, pricing, margin, new destination, seasonal), dynamic pricing simulator with demand-based rules, ROI calculators (marketing, agent, destination, break-even)
+- **Embeddable Widgets & Tools**: Booking search widget, trip cost estimator, destination comparison tool, trip planner widget, countdown widget, embed methods (JS/iframe/WhatsApp), widget analytics, white-label customization
+
+---
+
+## Part 29 — Operational & Customer Experience Gaps (2026-04-30)
+
+| Series | Docs | Status |
+|--------|------|--------|
+| TRAVEL_PREP_* | 01_CHECKLISTS + MASTER_INDEX | ✅ Complete |
+| TRIP_HANDOFF_* | 01_TRANSFER + MASTER_INDEX | ✅ Complete |
+| COMM_PREFS_* | 01_CENTER + MASTER_INDEX | ✅ Complete |
+| TRIP_SHARE_* | 01_SOCIAL + MASTER_INDEX | ✅ Complete |
+| PAYMENT_AUTO_* | 01_REMINDERS + MASTER_INDEX | ✅ Complete |
+| SUPPLIER_REVIEW_* | 01_RATINGS + MASTER_INDEX | ✅ Complete |
+
+### What was covered
+- **Pre-Trip Preparation**: Readiness scoring system, 5-stage checklists (booking → departure), destination-specific packing guides, customer-facing forex calculator and insurance selector
+- **Trip Handoff**: Handoff triggers (agent leave, capacity, specialist routing, customer request), context transfer package (profile, trip, conversations, relationship, pending items), customer communication templates, satisfaction guardrails
+- **Communication Preferences**: Channel preferences (WhatsApp/email/SMS/phone/app), frequency controls, quiet hours, content preferences, notification engine (transactional/reminder/marketing/engagement), DPDP Act and TRAI DND compliance
+- **Trip Sharing & Social**: Shareable countdown cards, trip journals, live moments, review cards, referral link embedding, branding controls, share triggers and prompts, viral coefficient tracking
+- **Payment Automation**: Payment lifecycle (advance → milestones → full), reminder templates (friendly → urgent → overdue), EMI integration, group payment splitting, overdue escalation, collection analytics
+- **Supplier Ratings**: Multi-dimension ratings (hotel, activity, transport, restaurant), supplier scorecard with A-F grading, rating-driven itinerary generation, quality alerts, rating collection strategy
+
+---
+
+## Part 30 — Final Gap Round (2026-04-30)
+
+| Series | Docs | Status |
+|--------|------|--------|
+| DESTINATION_DISCOVERY_* | 01_QUIZ + MASTER_INDEX | ✅ Complete |
+| TRAVEL_COMMUNITY_* | 01_FORUM + MASTER_INDEX | ✅ Complete |
+| AIRPORT_EXP_* | 01_SERVICES + MASTER_INDEX | ✅ Complete |
+| TRAVEL_NEWS_* | 01_INTELLIGENCE + MASTER_INDEX | ✅ Complete |
+| COMPLAINT_RES_* | 01_MANAGEMENT + MASTER_INDEX | ✅ Complete |
+| ON_DEMAND_* | 01_SUPPORT + MASTER_INDEX | ✅ Complete |
+
+### What was covered
+- **Destination Discovery**: Travel personality quiz (6 types: Beach Bum, Culture Vulture, Adventure Seeker, Food Explorer, Family Planner, Luxury Lover), destination matchmaker with multi-factor scoring, vibe check quiz, cosine similarity matching algorithm, quiz-driven lead generation, social sharing of results
+- **Travel Community**: Community features (trip stories, destination Q&A, travel tips library, trip buddy matching), moderation workflow (AI filters + human review + community flags), badges and reputation system, community-to-sales funnel, SEO content generation
+- **Airport Experience Services**: Meet-and-greet (departure and arrival), lounge access (Indian and international airports with pricing), FASTtrack security, airport transfers (shared/private/luxury), transit assistance, booking integration with real-time flight tracking
+- **Travel News & Intelligence**: Intelligence sources (government advisories, aviation, destination, regulatory), severity-based alerts (high/medium/info), trip-affected detection, news-driven communication triggers, companion app destination news feed
+- **Complaint Management**: Complaint lifecycle (6 capture channels, AI auto-classification, severity-based SLAs), service recovery paradox protocols, escalation matrix (agent → manager → owner), dispute resolution process, complaint analytics with pattern detection, quality loop
+- **On-Demand Travel Support**: Support channels (live chat, WhatsApp instant, emergency hotline, AI instant assist), agent scheduling (business hours, after-hours on-call, peak season), routing rules (priority, expertise, continuity), support metrics (response time, resolution time, FCR, CSAT, agent utilization)
+
+---
+
+## Part 31 — Niche Travel Segments (2026-04-30)
+
+| Series | Docs | Status |
+|--------|------|--------|
+| HONEYMOON_* | 01_ROMANCE + MASTER_INDEX | ✅ Complete |
+| STUDENT_YOUTH_* | 01_TRAVEL + MASTER_INDEX | ✅ Complete |
+| SOLO_WOMEN_* | 01_TRAVEL + MASTER_INDEX | ✅ Complete |
+| PET_TRAVEL_* | 01_SERVICES + MASTER_INDEX | ✅ Complete |
+| SENIOR_TRAVEL_* | 01_SERVICES + MASTER_INDEX | ✅ Complete |
+
+### What was covered
+- **Honeymoon & Romance Travel**: Honeymoon packages (beach, European, adventure, exotic), anniversary milestone trips, babymoon safety protocols, vow renewal ceremonies, couple personalization engine, surprise coordination, photography vendors, romantic add-ons, romance specialist agent training
+- **Student & Youth Travel**: School educational tours (NASA, ISRO, heritage), graduation trip group booking with split payments, youth individual packages (backpacker, experience, first international, workation), minor compliance and parental consent, safety protocols for school groups, EMI payment options
+- **Solo & Women Travel**: Solo traveler packages (introduction/explorer/adventurer tiers), women-only group tours, destination safety rating system (women-specific factors), accommodation verification, SOS system with 60-second agent callback, daily check-in monitoring, first-timer "Solo Ready" program, solo traveler community network
+- **Pet-Friendly Travel**: Pet-friendly destinations and accommodation, domestic and international pet transport logistics, pet documentation compliance (microchip, vaccination, import permits), pet profile system with expiry alerts, destination pet services marketplace, pet travel insurance
+- **Senior Citizen Travel**: Senior leisure with pace-adjusted scheduling, NRI parent visit door-to-door companion service, senior group tours with medical support, family member live tracking dashboard, medical accommodations (medication, dietary, physical), senior-specific insurance, WhatsApp-first booking experience
+
+---
+
+## Part 32 — Engagement & Revenue Gaps (2026-04-30)
+
+| Series | Docs | Status |
+|--------|------|--------|
+| DEALS_PROMO_* | 01_ENGINE + MASTER_INDEX | ✅ Complete |
+| LOCAL_NAV_* | 01_TRANSPORT + MASTER_INDEX | ✅ Complete |
+| TRAVEL_WISHLIST_* | 01_DREAMING + MASTER_INDEX | ✅ Complete |
+
+### What was covered
+- **Deals, Flash Sales & Promotions**: Flash sale engine (6-72h with countdown timers), last-minute departure deals (7-21 day window), early bird advance discounts (60-120 days), seasonal promotions aligned with Indian travel calendar, deal personalization engine with customer segment matching, WhatsApp-first deal distribution, margin protection rules, deal analytics with conversion funnel tracking
+- **Local Transport & Destination Navigation**: Destination-specific transport profiles (Bangkok BTS/boat/tuk-tuk, Singapore MRT/bus, Dubai Metro/Nol, Bali scooter/GoJek, London Tube/Oyster), route planner from GPS to itinerary points, fair price indicator to prevent tourist overcharging, transit card balance tracker, offline downloadable metro maps and phrase guides, safety alerts for destination-specific transport risks
+- **Travel Wishlist & Bucket List**: Destination saves with priority levels (dreaming → planning → ready), trip idea saves, bucket list tracking with gamification (badges, progress), price drop alert engine, conversion triggers (seasonal nudges, inspiration content, deal matches, milestone triggers, social proof), collaborative group wishlists with voting, shareable bucket list social cards, wishlist demand forecasting for inventory planning
+
+---
+
+## Part 33 — Operational & Financial Infrastructure Gaps (2026-04-30)
+
+| Series | Docs | Status |
+|--------|------|--------|
+| CUSTOMER_CREDIT_* | 01_WALLET + MASTER_INDEX | ✅ Complete |
+| DOC_EXPIRY_* | 01_TRACKING + MASTER_INDEX | ✅ Complete |
+| PROPOSAL_* | 01_GENERATION + MASTER_INDEX | ✅ Complete |
+| ACCOUNTING_* | 01_INTEGRATION + MASTER_INDEX | ✅ Complete |
+
+### What was covered
+- **Customer Credit & Wallet**: Multi-source credit tracking (refund-as-credit with bonus, promotional, loyalty, gift card, voucher), credit rules engine (combination, partial usage, restrictions), FIFO-by-expiry consumption, expiry management with tiered notifications, credit analytics with liability tracking, anti-fraud rules
+- **Travel Document Expiry Tracking**: Passport/visa/DL/vaccination monitoring, Schengen 90/180 day calculator, booking-document integration gates (pre-search, at-booking, pre-trip), renewal assistance workflows, family document management, OCR for document scanning
+- **Quote & Proposal Generation**: Proposal lifecycle (create → present → iterate → accept/reject), proposal templates (standard, honeymoon, corporate, quick quote), conversion elements (visual quality, transparency, personalization), version tracking with change highlighting, proposal analytics with conversion funnel, WhatsApp-first delivery
+- **Accounting Integration**: Tally ERP and Zoho Books sync, travel-specific chart of accounts, transaction sync rules (invoices, payments, credit notes, commissions, TCS), daily reconciliation, monthly close automation, GST computation engine, multi-currency handling
+
+---
+
+## Part 34 — Platform & Safety Infrastructure Gaps (2026-04-30)
+
+| Series | Docs | Status |
+|--------|------|--------|
+| SUPPLIER_PORTAL_* | 01_INTERFACE + MASTER_INDEX | ✅ Complete |
+| AGENT_MOBILE_* | 01_EXPERIENCE + MASTER_INDEX | ✅ Complete |
+| RISK_ASSESS_* | 01_SCORING + MASTER_INDEX | ✅ Complete |
+
+### What was covered
+- **Supplier Portal**: Supplier-facing self-service portal with booking management, inventory and rate management, profile and photo uploads, review responses, payment statements, analytics dashboard, communication channels (portal/WhatsApp/email/webhook API), notification rules for booking events
+- **Agent Mobile Experience**: Mobile-first agent workflow matching Indian agent reality (WhatsApp-integrated actions, notification-driven home screen, offline capabilities, voice-first features, camera tools for document scanning, field agent duties at airports and on group tours, optimization for ₹10K Android phones)
+- **Travel Risk Assessment**: 5-dimension risk scoring (safety/security, health/medical, natural disaster, transport infrastructure, regulatory/legal), 5 risk levels with booking gates (green through black), dynamic reassessment during active trips, auto-generated customer safety briefings, data sources from government advisories and WHO
+
+---
+
+## Part 35 — Trust & Decision Tools (2026-04-30)
+
+| Series | Docs | Status |
+|--------|------|--------|
+| SERVICE_GUARD_* | 01_GUARANTEE + MASTER_INDEX | ✅ Complete |
+| TRIP_COMPARE_* | 01_ENGINE + MASTER_INDEX | ✅ Complete |
+
+### What was covered
+- **Service Guarantee & Trust Framework**: Tiered service guarantees (standard, premium, group) with specific promises (room as booked, issues resolved in 2 hours, no hidden charges), trust badges (IATA, TAAI, Ministry of Tourism), transparency features (pricing breakdown, supplier names, real-time status), social proof integration, guarantee claim process with financial reserve model (2-3% of revenue), guarantee analytics
+- **Trip Comparison Engine**: Side-by-side itinerary comparison across 5 dimensions (pricing, accommodation, experience, logistics, reviews), decision support aids (recommendation tags, highlight differences, value score, match score), comparison builder for agents, mobile-first comparison UX, co-decision sharing with group voting, parental review link, comparison analytics for proposal optimization

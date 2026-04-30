@@ -8,6 +8,7 @@
 import { SpineRunRequest, SpineRunResponse, RunAcceptedResponse, RunStatusResponse } from "@/types/spine";
 import type { ReviewStatus } from "@/types/governance";
 import type { ValidationReport, FeeCalculationResult, DecisionOutput, StrategyOutput, PromptBundle } from "@/types/spine";
+import type { IntegrityIssuesResponse } from "@/types/spine";
 
 // ============================================================================
 // TYPES
@@ -372,6 +373,12 @@ export interface PipelineStage {
   count: number;
 }
 
+export interface StartPlanningResponse {
+  success: boolean;
+  trip_id: string;
+  assigned_to: string;
+}
+
 /**
  * Analytics pipeline stage — returned by /analytics/pipeline.
  * Contains runtime metrics, not configuration.
@@ -413,6 +420,22 @@ export async function getPipeline(): Promise<PipelineStage[]> {
 
 export async function updateTrip(id: string, data: Partial<Trip>): Promise<Trip> {
   return api.patch<Trip>(`/api/trips/${id}`, data);
+}
+
+export async function startPlanningTrip(
+  id: string,
+  agentId: string,
+  agentName: string
+): Promise<StartPlanningResponse> {
+  const params = new URLSearchParams({
+    agent_id: agentId,
+    agent_name: agentName,
+  });
+  return api.post<StartPlanningResponse>(`/api/trips/${id}/assign?${params.toString()}`, {});
+}
+
+export async function getIntegrityIssues(): Promise<IntegrityIssuesResponse> {
+  return api.get<IntegrityIssuesResponse>("/api/system/integrity/issues");
 }
 
 export interface CreateTripRequest {

@@ -272,7 +272,7 @@ describe('inbox-helpers', () => {
         'assignedToName',
         'slaStatus',
         'daysInCurrentStage',
-        'priorityScore',
+        'priority',
       ]);
     });
 

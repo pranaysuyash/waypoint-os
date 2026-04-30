@@ -1,6 +1,6 @@
 'use client';
 
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import { Tabs } from '@/components/ui/tabs';
@@ -36,6 +36,7 @@ import type { Trip } from '@/lib/api-client';
 import { submitTripReviewAction, createDraft, getDraft, patchDraft, discardDraft, promoteDraft } from '@/lib/api-client';
 import type { WorkbenchStore, DraftStatus, SaveState } from '@/stores/workbench';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { RunProgressPanel } from './RunProgressPanel';
 
 const IntakeTab = dynamic(() => import('./IntakeTab'));
@@ -44,6 +45,7 @@ const DecisionTab = dynamic(() => import('./DecisionTab'));
 const StrategyTab = dynamic(() => import('./StrategyTab'));
 const SafetyTab = dynamic(() => import('./SafetyTab'));
 const SettingsPanel = dynamic(() => import('./SettingsPanel'));
+const IntegrityMonitorPanel = dynamic(() => import('./IntegrityMonitorPanel'));
 const ScenarioLab = dynamic(() => import('./ScenarioLab'));
 const OutputPanel = dynamic(
   () => import('@/components/workspace/panels/OutputPanel'),
@@ -166,6 +168,7 @@ function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
 function WorkbenchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const tripId = searchParams.get('trip');
   const draftParam = searchParams.get('draft');
   const stageParam = searchParams.get('stage');
@@ -254,8 +257,24 @@ function WorkbenchContent() {
   const [runError, setRunError] = useState<string | null>(null);
   const [runSuccess, setRunSuccess] = useState(false);
   const inFlightRef = useRef(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [completedTripId, setCompletedTripId] = useState<string | null>(null);
+  const activePanel = searchParams.get('panel');
+  const settingsOpen = activePanel === 'settings';
+  const integrityOpen = activePanel === 'integrity';
+  const setPanelOpen = useCallback(
+    (panel: 'settings' | 'integrity', open: boolean) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (open) {
+        params.set('panel', panel);
+      } else if (params.get('panel') === panel) {
+        params.delete('panel');
+      }
+
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
   const {
     execute: executeSpineRun,
     isLoading: isSpineRunning,
@@ -766,6 +785,7 @@ function WorkbenchContent() {
       )}
 
       <div className='px-6 py-6'>
+        {integrityOpen && <BackToOverviewLink className='mb-4' />}
         <header className='flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-6'>
           <div>
             <h1 className='text-ui-2xl font-semibold text-[#e6edf3] mb-1'>
@@ -1013,7 +1033,7 @@ function WorkbenchContent() {
             </button>
             <button
               type='button'
-              onClick={() => setSettingsOpen(true)}
+              onClick={() => setPanelOpen('settings', true)}
               className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg font-medium hover:bg-[#21262d] transition-colors'
               aria-label='Open settings'
             >
@@ -1075,7 +1095,11 @@ function WorkbenchContent() {
       <Suspense fallback={null}>
         <SettingsPanel
           open={settingsOpen}
-          onClose={() => setSettingsOpen(false)}
+          onClose={() => setPanelOpen('settings', false)}
+        />
+        <IntegrityMonitorPanel
+          open={integrityOpen}
+          onClose={() => setPanelOpen('integrity', false)}
         />
       </Suspense>
     </div>

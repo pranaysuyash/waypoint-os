@@ -8,7 +8,7 @@ from spine_api.persistence import AuditStore, TripStore
 
 logger = logging.getLogger(__name__)
 
-VALID_STAGES = ["new", "assigned", "in_progress", "completed", "cancelled"]
+VALID_STAGES = ["new", "assigned", "in_progress", "completed", "cancelled", "incomplete"]
 
 SLA_THRESHOLDS = {
     "new": timedelta(hours=4),

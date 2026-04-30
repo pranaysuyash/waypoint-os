@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  isWorkspaceTrip,
   transformSpineTripToInboxTrip,
   transformSpineTripToTrip,
   transformSpineTripsResponseToTrips,
-  WORKSPACE_STATES,
 } from "../bff-trip-adapters";
 
 const now = new Date("2026-04-27T12:00:00.000Z");
@@ -94,7 +94,21 @@ describe("BFF trip adapters", () => {
     const trips = transformSpineTripsResponseToTrips({ items: [spineTrip] }, now);
 
     expect(trips).toHaveLength(1);
-    expect(WORKSPACE_STATES.has(trips[0].state)).toBe(true);
+    expect(isWorkspaceTrip(trips[0])).toBe(true);
+  });
+
+  it("excludes completed and cancelled lifecycle records from the workspace queue", () => {
+    const completedTrip = transformSpineTripToTrip(
+      { ...spineTrip, status: "completed" },
+      now
+    );
+    const cancelledTrip = transformSpineTripToTrip(
+      { ...spineTrip, status: "cancelled" },
+      now
+    );
+
+    expect(isWorkspaceTrip(completedTrip)).toBe(false);
+    expect(isWorkspaceTrip(cancelledTrip)).toBe(false);
   });
 
   it("maps a backend trip to the inbox presentation shape", () => {
@@ -102,14 +116,14 @@ describe("BFF trip adapters", () => {
 
     expect(inboxTrip).toMatchObject({
       id: "trip-123456",
-      reference: "trip-123456",
+      reference: "1234",
       destination: "Kyoto",
       tripType: "culture",
       partySize: 4,
       dateWindow: "May 1-8",
       value: 125000,
-      priority: "critical",
-      priorityScore: 90,
+      priority: "high",
+      priorityScore: 75,
       stage: "options",
       stageNumber: 2,
       assignedTo: "agent-1",
@@ -123,14 +137,26 @@ describe("BFF trip adapters", () => {
 
     expect(inboxTrip.flags).toEqual(
       expect.arrayContaining([
-        "validation_failed",
-        "low_confidence",
-        "requires_review",
-        "high_margin",
+        "incomplete",
+        "details_unclear",
         "needs_clarification",
-        "missing_information",
-        "high_value",
       ])
     );
+  });
+
+  it("reserves critical priority for true urgency, not ordinary incomplete leads", () => {
+    const urgentTrip = transformSpineTripToInboxTrip(
+      {
+        ...spineTrip,
+        analytics: {
+          ...spineTrip.analytics,
+          escalation_severity: "critical",
+        },
+      },
+      now
+    );
+
+    expect(urgentTrip.priority).toBe("critical");
+    expect(urgentTrip.priorityScore).toBe(90);
   });
 });

@@ -21,7 +21,7 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "Operate",
     items: [
       {
-        label: "Inbox",
+        label: "Lead Inbox",
         href: "/inbox",
         description: "Triage and prioritize incoming demand",
       },

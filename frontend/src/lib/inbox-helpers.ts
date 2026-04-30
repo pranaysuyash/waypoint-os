@@ -345,12 +345,11 @@ export type MetricField =
   | 'assignedToName'
   | 'slaStatus'
   | 'priority'
-  | 'priorityScore'
   | 'stage';
 
 export const METRIC_ROW_CONFIG: Record<ViewProfile, MetricField[]> = {
   operations: ['partySize', 'dateWindow', 'value', 'daysInCurrentStage'],
-  teamLead: ['assignedToName', 'slaStatus', 'daysInCurrentStage', 'priorityScore'],
+  teamLead: ['assignedToName', 'slaStatus', 'daysInCurrentStage', 'priority'],
   finance: ['value', 'stage', 'dateWindow', 'priority'],
   fulfillment: ['dateWindow', 'assignedToName', 'stage', 'partySize'],
 };
