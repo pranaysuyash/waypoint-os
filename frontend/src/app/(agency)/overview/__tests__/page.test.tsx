@@ -105,10 +105,22 @@ const baseSummary = {
       updatedAt: '2026-04-30T00:00:00Z',
       party: 5,
       dateWindow: 'dates around 9th to 14th feb',
+      origin: 'TBD',
       budget: '$0',
       status: 'assigned',
       rawInput: {
         fixture_id: 'SC-901',
+      },
+      decision: {
+        decision_state: 'ASK_FOLLOWUP',
+        hard_blockers: [],
+        soft_blockers: ['incomplete_intake'],
+      },
+      validation: {
+        warnings: [
+          { field: 'budget_raw_text' },
+          { field: 'origin_city' },
+        ],
       },
     },
   ],
@@ -225,7 +237,7 @@ describe('OverviewPage', () => {
     expect(within(planningCard as HTMLElement).getByText('Need Customer Details')).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).getByText('Budget missing')).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).getByText('Assigned')).toBeInTheDocument();
-    expect(within(planningCard as HTMLElement).getByText('Next: confirm budget and trip details before building options.')).toBeInTheDocument();
+    expect(within(planningCard as HTMLElement).getByText('Next: confirm budget and origin before building options.')).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).getByText('Updated today')).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).getByText('Inquiry Ref: 4B9E')).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).queryByText('Need Trip Options')).not.toBeInTheDocument();

@@ -20,9 +20,6 @@ import Link from 'next/link';
 import { memo, useMemo, useState, useCallback, useEffect } from 'react';
 import {
   Briefcase,
-  Clock,
-  Users,
-  Calendar,
   ChevronRight,
   AlertTriangle,
   LayoutGrid,
@@ -30,10 +27,13 @@ import {
 } from 'lucide-react';
 import { useTrips } from '@/hooks/useTrips';
 import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
-import { getTripRoute } from '@/lib/routes';
-import { InlineLoading } from '@/components/ui/loading';
 import { InlineError } from '@/components/error-boundary';
 import type { Trip } from '@/lib/api-client';
+import {
+  getPlanningListSummary,
+  PLANNING_LIST_STATE_META,
+} from '@/lib/planning-list-display';
+import { hasPlanningBriefBlocker } from '@/lib/planning-status';
 import { WorkspaceTable, type SortField, type SortDirection } from './WorkspaceTable';
 
 // ============================================================================
@@ -42,17 +42,6 @@ import { WorkspaceTable, type SortField, type SortDirection } from './WorkspaceT
 // The canonical workspace filter lives in the trips API route.
 // This file does NOT duplicate that definition.
 // ============================================================================
-
-// ============================================================================
-// STATE METADATA
-// ============================================================================
-
-const STATE_META: Record<string, { color: string; bg: string; label: string }> = {
-  green:  { color: '#3fb950', bg: 'rgba(63,185,80,0.12)',   label: 'Ready' },
-  amber:  { color: '#d29922', bg: 'rgba(210,153,34,0.12)',  label: 'In Progress' },
-  red:    { color: '#f85149', bg: 'rgba(248,81,73,0.12)',   label: 'Needs Review' },
-  blue:   { color: '#58a6ff', bg: 'rgba(88,166,255,0.12)',  label: 'Awaiting Info' },
-};
 
 // ============================================================================
 // VIEW PERSISTENCE
@@ -135,92 +124,136 @@ function sortTrips(
 // ============================================================================
 
 const WorkspaceCard = memo(function WorkspaceCard({ trip }: { trip: Trip }) {
-  const meta = STATE_META[trip.state] ?? STATE_META.blue;
-  const isBlocked = trip.state === 'red';
+  const summary = getPlanningListSummary(trip);
+  const meta = PLANNING_LIST_STATE_META[summary.statusTone] ?? PLANNING_LIST_STATE_META.blue;
+  const emphasisBadges = summary.missingBadges.length > 0 ? summary.missingBadges : [summary.budgetLabel];
 
   return (
     <Link
-      href={trip.id ? getTripRoute(trip.id) : '/trips'}
-      className='group block rounded-xl border border-[#1c2128] bg-[#0f1115] transition-all hover:border-[var(--border-default)] hover:bg-[#111418] overflow-hidden'
-      style={isBlocked ? { borderColor: 'rgba(248,81,73,0.35)', background: 'rgba(248,81,73,0.04)' } : {}}
+      href={summary.action.href}
+      className='group block rounded-2xl border p-5 transition-all'
+      style={{
+        background: 'linear-gradient(180deg, rgba(17,20,27,0.98) 0%, rgba(12,16,22,0.98) 100%)',
+        borderColor: meta.border,
+        boxShadow: '0 18px 44px rgba(0,0,0,0.20)',
+      }}
     >
-      {/* State accent strip — top */}
-      <div className='h-[2px] w-full' style={{ background: meta.color, opacity: 0.8 }} />
-
-      <div className='p-4'>
-        {/* Row 1: destination + state badge */}
-        <div className='flex items-start justify-between gap-3 mb-1'>
+      <div className='space-y-4'>
+        <div className='flex items-start justify-between gap-3'>
           <div className='min-w-0'>
-            <div className='flex items-center gap-1.5 mb-0.5'>
-              {isBlocked && (
-                <AlertTriangle className='h-3 w-3 text-[#f85149] shrink-0' aria-hidden='true' />
-              )}
-              <span
-                className='text-[14px] font-semibold truncate leading-tight'
-                style={{ color: '#f0f6fc', fontFamily: "'Outfit', system-ui, sans-serif" }}
-              >
-                {trip.destination}
-              </span>
-            </div>
-            {trip.type && (
-              <span className='text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-[var(--text-tertiary)]'>
-                {trip.type}
-              </span>
-            )}
+            <h2 className='text-[18px] font-semibold tracking-tight' style={{ color: 'var(--text-primary)' }}>
+              {summary.title}
+            </h2>
+            <p className='mt-1 text-[13px]' style={{ color: 'var(--text-secondary)' }}>
+              {summary.subtitle}
+            </p>
           </div>
           <span
-            className='shrink-0 text-[var(--ui-text-xs)] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md whitespace-nowrap'
-            style={{ color: meta.color, background: meta.bg }}
+            className='shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium'
+            style={{ color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)' }}
           >
-            {meta.label}
+            {summary.recencyLabel}
           </span>
         </div>
 
-        {/* Row 2: metrics strip — dashed separator */}
-        <div
-          className='flex items-center gap-4 py-2 my-2 text-ui-xs'
-          style={{ borderTop: '1px dashed rgba(48,54,61,0.6)', borderBottom: '1px dashed rgba(48,54,61,0.6)' }}
-        >
-          <div className='flex items-center gap-1 text-[var(--text-muted)]'>
-            <Clock className='h-3 w-3' aria-hidden='true' />
-            <span>{trip.age}</span>
-          </div>
-          {trip.party && (
-            <>
-              <div className='w-px h-3 bg-[#21262d]' />
-              <div className='flex items-center gap-1 text-[var(--text-muted)]'>
-                <Users className='h-3 w-3' aria-hidden='true' />
-                <span>{trip.party} pax</span>
-              </div>
-            </>
-          )}
-          {trip.dateWindow && (
-            <>
-              <div className='w-px h-3 bg-[#21262d]' />
-              <div className='flex items-center gap-1 text-[var(--text-muted)]'>
-                <Calendar className='h-3 w-3' aria-hidden='true' />
-                <span className='truncate max-w-[100px]'>{trip.dateWindow}</span>
-              </div>
-            </>
-          )}
-          {trip.budget && (
-            <>
-              <div className='w-px h-3 bg-[#21262d]' />
-              <span className='font-mono text-[#58a6ff] font-semibold'>{trip.budget}</span>
-            </>
-          )}
+        <div className='flex flex-wrap gap-2'>
+          <span
+            className='rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide'
+            style={{
+              color: meta.fg,
+              background: meta.bg,
+              border: `1px solid ${meta.border}`,
+            }}
+          >
+            {summary.statusLabel}
+          </span>
+          {emphasisBadges.slice(0, 2).map((badge) => (
+            <span
+              key={badge}
+              className='rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide'
+              style={{
+                color: '#d29922',
+                background: 'rgba(210,153,34,0.12)',
+                border: '1px solid rgba(210,153,34,0.25)',
+              }}
+            >
+              {badge}
+            </span>
+          ))}
+          <span
+            className='rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide'
+            style={{
+              color: '#c9d1d9',
+              background: 'rgba(201,209,217,0.08)',
+              border: '1px solid rgba(201,209,217,0.16)',
+            }}
+          >
+            {summary.assignmentLabel}
+          </span>
         </div>
 
-        {/* Row 3: ID + open cue */}
-        <div className='flex items-center justify-between'>
-          <span className='text-[var(--ui-text-xs)] font-mono text-[var(--border-default)]'>{trip.id}</span>
-          <span className='flex items-center gap-1 text-[var(--ui-text-xs)] text-[var(--text-tertiary)] group-hover:text-[var(--text-muted)] transition-colors'>
-            {isBlocked ? 'Action required' : 'Open'}
-            <ChevronRight className='h-3.5 w-3.5' aria-hidden='true' />
+        <div className='rounded-xl border px-3.5 py-3' style={{ borderColor: 'rgba(48,54,61,0.85)', background: 'rgba(255,255,255,0.02)' }}>
+          <p className='text-[13px]' style={{ color: 'var(--text-primary)' }}>
+            {summary.nextAction}
+          </p>
+        </div>
+
+        <div className='flex items-center justify-between gap-3'>
+          <span className='text-[12px]' style={{ color: 'var(--text-muted)' }}>
+            Inquiry Ref: {summary.inquiryReference}
+          </span>
+          <span className='inline-flex items-center gap-1.5 text-[13px] font-medium' style={{ color: 'var(--accent-blue)' }}>
+            {summary.action.label}
+            <ChevronRight className='h-4 w-4 transition-transform group-hover:translate-x-0.5' aria-hidden='true' />
           </span>
         </div>
       </div>
     </Link>
+  );
+});
+
+const SingleTripNextStepPanel = memo(function SingleTripNextStepPanel({ trip }: { trip: Trip }) {
+  const summary = getPlanningListSummary(trip);
+
+  return (
+    <aside
+      className='rounded-2xl border p-5 space-y-4'
+      style={{
+        background: 'rgba(15,17,21,0.92)',
+        borderColor: 'rgba(48,54,61,0.9)',
+      }}
+    >
+      <div>
+        <p className='text-[11px] font-semibold uppercase tracking-[0.16em]' style={{ color: 'var(--text-tertiary)' }}>
+          Next step
+        </p>
+        <h2 className='mt-2 text-[18px] font-semibold' style={{ color: 'var(--text-primary)' }}>
+          {summary.missingFields.length > 0 ? 'Confirm missing customer details.' : 'Continue planning this trip.'}
+        </h2>
+      </div>
+
+      {summary.missingFields.length > 0 && (
+        <div className='rounded-xl border px-4 py-3' style={{ borderColor: 'rgba(48,54,61,0.85)', background: 'rgba(255,255,255,0.02)' }}>
+          <p className='text-[11px] font-semibold uppercase tracking-[0.14em]' style={{ color: 'var(--text-tertiary)' }}>
+            Missing
+          </p>
+          <ul className='mt-3 space-y-2 text-[14px]' style={{ color: 'var(--text-primary)' }}>
+            {summary.missingFields.map((field) => (
+              <li key={field}>{field}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <Link
+        href={summary.action.href}
+        className='inline-flex items-center gap-1.5 text-[14px] font-medium'
+        style={{ color: 'var(--accent-blue)' }}
+      >
+        {summary.action.label}
+        <ChevronRight className='h-4 w-4' aria-hidden='true' />
+      </Link>
+    </aside>
   );
 });
 
@@ -234,16 +267,16 @@ function EmptyWorkspace() {
       <div className='w-12 h-12 rounded-full bg-[#161b22] flex items-center justify-center mx-auto mb-4'>
         <Briefcase className='w-6 h-6 text-[var(--text-tertiary)]' aria-hidden='true' />
       </div>
-      <p className='text-[#e6edf3] font-medium mb-1'>No active workspaces</p>
+      <p className='text-[#e6edf3] font-medium mb-1'>No trips in planning</p>
       <p className='text-ui-sm text-[var(--text-muted)] mb-6'>
-        Trips appear here once you engage a lead from the inbox.
+        Trips appear here once someone starts planning from Lead Inbox.
       </p>
       <div className='flex items-center justify-center gap-3'>
         <Link
           href='/inbox'
           className='inline-flex items-center gap-2 px-5 py-2.5 bg-[#58a6ff] text-[#0d1117] rounded-lg text-ui-sm font-semibold hover:bg-[#6eb5ff] transition-colors'
         >
-          Browse Inbox
+          Review Lead Inbox
           <ChevronRight className='w-4 h-4' aria-hidden='true' />
         </Link>
         <Link
@@ -317,8 +350,8 @@ export default function WorkspacesPage() {
     saveView(viewMode);
   }, [viewMode]);
 
-  const blockedCount = useMemo(
-    () => workspaceTrips.filter((t) => t.state === 'red').length,
+  const needsDetailsCount = useMemo(
+    () => workspaceTrips.filter((trip) => hasPlanningBriefBlocker(trip)).length,
     [workspaceTrips],
   );
 
@@ -344,20 +377,20 @@ export default function WorkspacesPage() {
       {/* Header */}
       <header className='flex items-center justify-between pt-1 flex-wrap gap-3'>
         <div>
-          <h1 className='text-ui-xl font-semibold text-[#e6edf3]'>Workspaces</h1>
+          <h1 className='text-ui-xl font-semibold text-[#e6edf3]'>Trips in Planning</h1>
           <p className='text-ui-sm text-[var(--text-muted)] mt-0.5'>
-            Active trips · engaged and in progress
+            Trips your team is actively working on
           </p>
         </div>
         <div className='flex items-center gap-3'>
-          {blockedCount > 0 && (
-            <span className='flex items-center gap-1.5 text-ui-sm text-[#f85149]'>
+          {needsDetailsCount > 0 && (
+            <span className='flex items-center gap-1.5 text-ui-sm text-[#d29922]'>
               <AlertTriangle className='h-3.5 w-3.5' aria-hidden='true' />
-              {blockedCount} blocked
+              {needsDetailsCount} needs details
             </span>
           )}
           <span className='text-ui-sm text-[var(--text-muted)]'>
-            {isLoading ? 'Loading…' : `${workspaceTrips.length} active`}
+            {isLoading ? 'Loading…' : `${workspaceTrips.length} in planning`}
           </span>
           <ViewToggle view={viewMode} onChange={setViewMode} />
         </div>
@@ -399,11 +432,18 @@ export default function WorkspacesPage() {
       {!error && workspaceTrips.length > 0 && (
         <>
           {viewMode === 'card' ? (
-            <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'>
-              {sortedTrips.map((trip) => (
-                <WorkspaceCard key={trip.id} trip={trip} />
-              ))}
-            </div>
+            sortedTrips.length === 1 ? (
+              <div className='grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4 items-start'>
+                <WorkspaceCard trip={sortedTrips[0]!} />
+                <SingleTripNextStepPanel trip={sortedTrips[0]!} />
+              </div>
+            ) : (
+              <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'>
+                {sortedTrips.map((trip) => (
+                  <WorkspaceCard key={trip.id} trip={trip} />
+                ))}
+              </div>
+            )
           ) : (
             <WorkspaceTable
               trips={sortedTrips}

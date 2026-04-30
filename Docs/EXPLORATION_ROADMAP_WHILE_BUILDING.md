@@ -452,6 +452,74 @@
 
 ---
 
+## 13. Frontier OS Discoveries — Agentic Intelligence Areas
+
+**Added:** 2026-04-30 (from Frontier OS audit + salvage plan)
+
+A parallel Frontier OS system was discovered embedded in the workbench with 69+ docs, real backend models, and a prototype UI. The audit identified useful exploration areas that should be tracked.
+
+### Near-Term: Research Now, Build Potential in 1-3 Months
+
+| # | Area | Key Question | Source |
+|---|------|-------------|--------|
+| F1 | **Adversarial Trip Audit** | Can we stress-test every itinerary for failure points? Mobility issues, weather, tight connections, traveler demographics? | `EXPLORATION_FRONTIERS_2026-04-18` |
+| F2 | **Commercial Guardrail (Cost-to-Serve)** | Real-time profitability per trip. Alert before agents waste hours on loss-making work. | `EXPLORATION_FRONTIERS_2026-04-18` |
+| F3 | **Next-Action Nudging** | Detect idle trips and suggest smart next steps to operators. | `EXPLORATION_FRONTIER` |
+| F4 | **Anonymized Supplier Blacklist** | Cross-agency bad-supplier sharing without competitive data leakage. | `product_features/INDEX.md` |
+| F5 | **Visual Intent Extraction** | Vision models extract trip preferences from Instagram/Pinterest shared by clients. VLMs make this increasingly feasible. | `product_features/INDEX.md` |
+| F6 | **Semantic Taste Graph** | Encode agency aesthetic preferences as searchable criteria (simplified: structured preference tags, not full vectors). | `EXPLORATION_FRONTIERS_2026-04-18` |
+
+### Mid-Term: Research + Prototype, Build Potential in 3-6 Months
+
+| # | Area | Key Question | Source |
+|---|------|-------------|--------|
+| F7 | **Autonomic Flight Delay Recovery** | Auto-rebook ground transport on flight delays (within autonomy bounds). Requires supplier API integration but the concept is well-scoped. | Scenario 315, Ghost Concierge docs |
+| F8 | **Sentiment-Based Escalation Routing** | Replace keyword heuristic with real sentiment model. Route hostile/detressed travelers to human agents. | Scenario 316 |
+| F9 | **Post-Trip Retention Engine** | Generate "redemption itineraries" from trip history after bad experiences. Convert detractors into re-bookings. | Scenario 322 |
+| F10 | **Climate Adaptive Itinerary** | Proactively reroute trips based on weather forecasts. | `product_features/INDEX.md` |
+| F11 | **Hyper-Local Last Mile** | Auto-handle SIM cards, rail-to-road transfers, local coordination for arriving travelers. | `product_features/INDEX.md` |
+| F12 | **Autonomous Supplier Negotiation** | AI negotiates no-show waivers, upgrades, group discounts directly with supplier APIs using relationship-weighted approach. | Scenario 321 |
+
+### Far-Future: Monitor Only, No Build Timeline
+
+| # | Area | Key Question | Source |
+|---|------|-------------|--------|
+| F13 | **Legacy Milestone Visioning** | Different product category. Requires traveler profile system first. | `models/frontier.py` LegacyAspiration |
+| F14 | **Federated Cross-Agency Intelligence** | Privacy-safe threat sharing. Requires industry network effects + governance model. | Scenario 317 |
+| F15 | **Multi-Agent Slot Trading** | Game theory: agents trading/bidding for limited seats post-cancellation. Academic research problem. | `RESEARCH_ROADMAP_FRONTIER_EXPANSION_V2` |
+| F16 | **Ambient Sensory Agency** | IoT/wearables feeding physical telemetry into decisions. Privacy concerns. | `RESEARCH_ROADMAP_FRONTIER_EXPANSION_V2` |
+| F17 | **Sovereign Agentic Wallets** | Smart contract escrow, micro-bounty payouts, cross-border liquidity. Crypto/infra unknowns. | `RESEARCH_ROADMAP_FRONTIER_EXPANSION_V2` |
+| F18 | **Predictive Disruption "Oracle"** | Forecast failures from alternative data (crew sentiment, supply-chain telemetry). | `RESEARCH_ROADMAP_FRONTIER_EXPANSION_V2` |
+| F19 | **Recursive Identity Architecture** | Situational traveler identities — agent tone/risk pivots per active role. | `RESEARCH_ROADMAP_FRONTIER_EXPANSION_V2` |
+
+### Rejected: NOT Worth Tracking
+
+| Idea | Reason |
+|------|--------|
+| BCI-speed / neural pre-emption | Pure science fiction. No travel application. |
+| Cybernetic hardware integrity | Not a real market. |
+| Inter-species companion agency | Not a real market. |
+| Macro-engineering disruption (space elevators) | Planetary-scale infrastructure fiction. |
+| Dream-state trip briefing | Not grounded in technology. |
+| Post-quantum encryption | No travel agency threat model. NIST PQC not finalized. |
+
+### What We Already Salvaged (From Audit)
+
+- **Specialty knowledge checklists**: 5 niche checklists (academic, repatriation, diving, medical tourism, MICE) are real and immediately useful. Being integrated into Strategy/Safety tabs.
+- **Trust Anchor UI pattern**: Audit explanation display. Being copied into DecisionTab / OutputPanel.
+- **Bento-grid layout**: Reusable CSS pattern for information-dense dashboards.
+
+### Key Reference Docs
+
+- `Docs/FRONTIER_OS_AUDIT_2026-04-30.md` — Original audit
+- `Docs/FRONTIER_OS_SALVAGE_AND_REMOVAL_PLAN_2026-04-30.md` — Full salvage/removal plan with file classifications
+- `Docs/product_features/INDEX.md` — 44 named features across 11 categories
+- `Docs/research/RESEARCH_ROADMAP_FRONTIER_EXPANSION_V2.md` — Research tracks V2
+- `spine_api/models/frontier.py` — GhostWorkflow, EmotionalStateLog, IntelligencePoolRecord, LegacyAspiration models
+- `src/intake/specialty_knowledge.py` — 5 real specialty niches (production-grade)
+
+---
+
 ## Summary
 
 **You don't need to answer everything before starting.**

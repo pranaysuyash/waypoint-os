@@ -11,8 +11,8 @@ describe('InboxEmptyState', () => {
       />
     );
 
-    expect(screen.getByText('No trips in your inbox')).toBeInTheDocument();
-    expect(screen.getByText('Create a new inquiry to get started.')).toBeInTheDocument();
+    expect(screen.getByText('No new leads')).toBeInTheDocument();
+    expect(screen.getByText('New customer inquiries will appear here before planning starts. Leads you start planning move to Trips in Planning.')).toBeInTheDocument();
     expect(screen.getByText('New Inquiry')).toBeInTheDocument();
   });
 
@@ -24,7 +24,7 @@ describe('InboxEmptyState', () => {
       />
     );
 
-    expect(screen.getByText('No trips match your search.')).toBeInTheDocument();
+    expect(screen.getByText('No leads match your search.')).toBeInTheDocument();
   });
 
   it('shows filter-only message', () => {
@@ -35,7 +35,7 @@ describe('InboxEmptyState', () => {
       />
     );
 
-    expect(screen.getByText('No trips match this filter.')).toBeInTheDocument();
+    expect(screen.getByText('No leads match this filter.')).toBeInTheDocument();
   });
 
   it('shows combined filter+search message', () => {
@@ -46,7 +46,7 @@ describe('InboxEmptyState', () => {
       />
     );
 
-    expect(screen.getByText('No trips match this filter and search.')).toBeInTheDocument();
+    expect(screen.getByText('No leads match this filter and search.')).toBeInTheDocument();
   });
 
   it('shows clear search button when has search', () => {

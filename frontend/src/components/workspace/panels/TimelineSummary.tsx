@@ -71,7 +71,8 @@ export function TimelineSummary({ tripId, timeline: providedTimeline, loading: p
   if (events.length === 0) {
     return (
       <div className="p-4 text-center">
-        <p className="text-ui-xs text-text-muted">No events yet</p>
+        <p className="text-ui-xs font-medium text-text-secondary">No activity yet</p>
+        <p className="text-ui-xs text-text-muted mt-2">Activity will appear here when customer details are updated, follow-ups are drafted, options are built, or quotes are approved.</p>
       </div>
     );
   }

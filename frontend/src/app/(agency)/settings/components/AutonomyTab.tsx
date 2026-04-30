@@ -9,8 +9,8 @@ interface AutonomyTabProps {
 }
 
 const GATE_OPTIONS: Array<{ value: 'auto' | 'review' | 'block'; label: string; color: string }> = [
-  { value: 'auto', label: 'Auto', color: 'bg-[var(--accent-green)] text-white' },
-  { value: 'review', label: 'Review', color: 'bg-[var(--accent-amber)] text-white' },
+  { value: 'auto', label: 'Auto-Prepare', color: 'bg-[var(--accent-green)] text-white' },
+  { value: 'review', label: 'Review first', color: 'bg-[var(--accent-amber)] text-white' },
   { value: 'block', label: 'Block', color: 'bg-[var(--accent-red)] text-white' },
 ];
 
@@ -23,32 +23,32 @@ const DECISION_STATES: Array<{
 }> = [
   {
     key: 'ASK_FOLLOWUP',
-    label: 'Ask Follow-up',
-    description: 'AI needs more information from the traveler',
+    label: 'Customer Follow-up',
+    description: 'Waypoint prepares a request for missing traveler details.',
     icon: MessageCircle,
   },
   {
     key: 'PROCEED_INTERNAL_DRAFT',
-    label: 'Internal Draft',
-    description: 'Generate a draft for internal review only',
+    label: 'Internal Drafts',
+    description: 'Prepare drafts for your team to review.',
     icon: FileText,
   },
   {
     key: 'PROCEED_TRAVELER_SAFE',
-    label: 'Traveler-Safe Output',
-    description: 'Generate output safe to send to the traveler',
+    label: 'Customer-Ready Messages',
+    description: 'Prepare messages that may be sent to the traveler.',
     icon: Zap,
   },
   {
     key: 'BRANCH_OPTIONS',
-    label: 'Branch Options',
-    description: 'Present multiple options for the traveler to choose',
+    label: 'Trip Options',
+    description: 'Prepare multiple trip options for comparison.',
     icon: GitBranch,
   },
   {
     key: 'STOP_NEEDS_REVIEW',
-    label: 'Needs Review',
-    description: 'Critical issue detected — requires human attention',
+    label: 'Critical Issues',
+    description: 'Serious risk, missing approval, or policy issue found.',
     icon: Ban,
     locked: true,
   },
@@ -75,18 +75,18 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)]">Autonomy & AI Policy</h2>
+        <h2 className="text-[var(--ui-text-xl)] font-semibold text-[var(--text-primary)]">Approval Rules</h2>
         <p className="text-[var(--ui-text-xs)] text-[var(--text-secondary)] mt-1">
-          Control how much autonomy the AI has at each decision point.
+          Choose when Waypoint can prepare work automatically and when your team must review it first.
         </p>
       </div>
 
-      {/* Approval Gates Table */}
+      {/* Workflow Approvals Table */}
       <div className="rounded-lg border border-[var(--border-default)] overflow-hidden">
         <div className="bg-[var(--bg-elevated)] px-4 py-2.5 border-b border-[var(--border-default)]">
           <h3 className="text-[var(--ui-text-xs)] font-semibold text-[var(--text-secondary)] uppercase tracking-wide flex items-center gap-1.5">
             <Shield className="w-3.5 h-3.5" />
-            Approval Gates
+            Workflow Approvals
           </h3>
         </div>
         <div className="divide-y divide-[var(--border-default)]">
@@ -120,7 +120,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
                 {item.locked ? (
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--accent-red)/0.2] text-[var(--accent-red)] text-[var(--ui-text-xs)] font-medium border border-[var(--accent-red)/0.3]">
                     <Lock className="w-3 h-3" />
-                    Always Block
+                    Always requires review
                   </div>
                 ) : (
                   <div className="flex items-center gap-1 shrink-0">
@@ -133,7 +133,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
                           className={`px-3 py-1.5 rounded-md text-[var(--ui-text-xs)] font-medium transition-all ${
                             isActive
                               ? opt.color
-                              : 'bg-[var(--bg-count-badge)] text-[var(--text-secondary)] hover:text-[var(--text-rationale)]'
+                              : 'bg-[var(--bg-count-badge)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                           }`}
                         >
                           {opt.label}
@@ -151,39 +151,37 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
       {/* Mode Overrides */}
       <div className="rounded-lg border border-[var(--border-default)] p-4 space-y-3">
         <h3 className="text-[var(--ui-text-xs)] font-semibold text-[var(--text-secondary)] uppercase tracking-wide">
-          Mode Overrides
+          Safety Overrides
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3 space-y-2">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-[var(--accent-red)]" />
-              <span className="text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]">Emergency Mode</span>
+              <span className="text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]">Emergency Handling</span>
             </div>
             <p className="text-[var(--ui-text-sm)] text-[var(--text-secondary)]">
-              Forces <span className="text-[var(--accent-red)] font-medium">block</span> on traveler-safe output.
-              Never auto-proceed during emergencies.
+              Customer-ready messages always require approval during emergencies.
             </p>
             <div className="text-[var(--ui-text-sm)] text-[var(--accent-blue)] bg-[var(--accent-blue)]/10 px-2 py-1 rounded inline-block">
-              Active override: Traveler-Safe Output will always require approval
+              Active: Customer messages require approval during emergencies
             </div>
           </div>
 
           <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3 space-y-2">
             <div className="flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-[var(--accent-amber)]" />
-              <span className="text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]">Audit Mode</span>
+              <span className="text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]">Audit Handling</span>
             </div>
             <p className="text-[var(--ui-text-sm)] text-[var(--text-secondary)]">
-              Forces <span className="text-[var(--accent-amber)] font-medium">review</span> on internal drafts.
-              Audits always require human review.
+              Internal drafts always require team review during audits.
             </p>
             <div className="text-[var(--ui-text-sm)] text-[var(--accent-blue)] bg-[var(--accent-blue)]/10 px-2 py-1 rounded inline-block">
-              Active override: Internal Drafts will always require review
+              Active: Internal drafts require review during audits
             </div>
           </div>
         </div>
         <p className="text-[var(--ui-text-sm)] text-[var(--text-secondary)]">
-          These are hardcoded safety overrides. They cannot be disabled.
+          These safety rules are always enforced.
         </p>
       </div>
 
@@ -212,10 +210,9 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
             />
           </div>
           <div>
-            <p className="text-[var(--ui-text-sm)] text-[var(--text-primary)]">Auto-proceed with warnings</p>
+            <p className="text-[var(--ui-text-sm)] text-[var(--text-primary)]">Allow low-risk warnings</p>
             <p className="text-[var(--ui-text-sm)] text-[var(--text-secondary)]">
-              If enabled, the AI will auto-proceed even when suitability warnings exist.
-              Otherwise, any warning triggers the review gate.
+              Waypoint may continue only when warnings are informational, not blocking.
             </p>
           </div>
         </label>
@@ -239,24 +236,20 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
             />
           </div>
           <div>
-            <p className="text-[var(--ui-text-sm)] text-[var(--text-primary)]">Learn from overrides</p>
+            <p className="text-[var(--ui-text-sm)] text-[var(--text-primary)]">Learn from team corrections</p>
             <p className="text-[var(--ui-text-sm)] text-[var(--text-secondary)]">
-              When enabled, agent overrides feed back into the system to improve future
-              recommendations. (Requires the learning feature to be enabled in settings.)
+              Use approved team corrections to improve future recommendations.
+              Only reviewed corrections are used. Customer-facing messages are not sent automatically because of this setting.
             </p>
           </div>
         </label>
       </div>
 
-      {/* Autonomy policy note */}
+      {/* Approval rules note */}
       <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] p-4">
         <p className="text-[var(--ui-text-sm)] text-[var(--text-secondary)] leading-relaxed">
           <span className="text-[var(--accent-blue)] font-medium">How it works:</span>{' '}
-          The autonomy settings control how much the AI can act on its own at each stage.
-          Each decision type can be set to run automatically, queue for your review, or block
-          until manually handled. For safety, trips flagged as{' '}
-          <span className="text-[var(--accent-red)] font-medium">Needs Review</span> always require
-          your manual approval before proceeding.
+          Approval rules decide when Waypoint can prepare work automatically and when your team must review it first. Customer-ready messages, emergencies, audits, and critical issues should stay under human approval.
         </p>
       </div>
     </div>

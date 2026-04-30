@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
-import { AlertTriangle, ChevronLeft, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { AlertTriangle, ChevronLeft, Lock, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { ErrorBoundary, InlineError } from "@/components/error-boundary";
 import { InlineLoading } from "@/components/ui/loading";
 import { useTrip } from "@/hooks/useTrips";
@@ -12,16 +12,18 @@ import {
   canAccessPlanningStage,
   getPlanningHeaderTitle,
   getPlanningIdentityLine,
+  getPlanningLockedTabHint,
   getPlanningQueueLine,
   getPlanningStageGateReason,
   getPlanningStatusLabel,
   getPlanningStatusTone,
+  getPlanningUnlockHint,
 } from "@/lib/planning-status";
 import { getTripRoute, type WorkspaceStage } from "@/lib/routes";
 import { TripContextProvider } from "@/contexts/TripContext";
 import { useWorkbenchStore } from "@/stores/workbench";
 import { TimelineSummary } from "@/components/workspace/panels/TimelineSummary";
-import { getTimelineTriggerLabel, hasImportantTimelineEvent } from "@/lib/timeline-rail";
+import { hasImportantTimelineEvent } from "@/lib/timeline-rail";
 import type { TimelineResponse } from "@/types/spine";
 
 const STAGE_TABS: { id: WorkspaceStage; label: string }[] = [
@@ -92,9 +94,9 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   const planningTitle = getPlanningHeaderTitle(trip);
   const planningIdentity = getPlanningIdentityLine(trip);
   const planningQueueLine = getPlanningQueueLine(trip);
+  const planningUnlockHint = getPlanningUnlockHint(trip);
   const visibleTabs = isLeadReview ? LEAD_REVIEW_TABS : STAGE_TABS;
   const timelineEvents = timeline?.events ?? [];
-  const timelineTriggerLabel = getTimelineTriggerLabel(timelineEvents.length);
 
   useEffect(() => {
     setHasRailPreference(false);
@@ -193,7 +195,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                   </Link>
                   <span>/</span>
                   <span className="text-[var(--text-muted)] truncate max-w-[200px]">
-                    {isLeadReview ? (trip.destination || "Lead review") : (trip.destination || trip.id)}
+                    {isLeadReview ? (trip.destination || "Lead review") : getPlanningHeaderTitle(trip)}
                   </span>
                 </div>
 
@@ -208,8 +210,8 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                   aria-controls="workspace-right-rail"
                 >
                   {isRailOpen
-                    ? <><PanelRightClose className="w-3.5 h-3.5" aria-hidden="true" /> Hide timeline</>
-                    : <><PanelRightOpen  className="w-3.5 h-3.5" aria-hidden="true" /> {timelineTriggerLabel}</>
+                    ? <><PanelRightClose className="w-3.5 h-3.5" aria-hidden="true" /> Hide activity</>
+                    : <><PanelRightOpen  className="w-3.5 h-3.5" aria-hidden="true" /> Show activity</>
                   }
                 </button>
               </div>
@@ -261,6 +263,14 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
               </div>
 
               {/* Stage tabs — underline style */}
+              {planningUnlockHint && (
+                <div className="mb-2 flex items-center gap-2 rounded-lg border border-[rgba(210,153,34,0.22)] bg-[rgba(210,153,34,0.06)] px-3 py-2">
+                  <Lock className="h-3.5 w-3.5 shrink-0 text-[var(--accent-amber)]" aria-hidden="true" />
+                  <span className="text-[12px] font-medium text-[var(--text-secondary)]">
+                    {planningUnlockHint}
+                  </span>
+                </div>
+              )}
               <nav
                 className="flex overflow-x-auto gap-0 -mb-px"
                 aria-label="Workspace stage tabs"
@@ -269,9 +279,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                   const isActive = tab.id === activeStage;
                   const isAccessible = isLeadReview || canAccessPlanningStage(trip, tab.id);
                   const gateReason = isLeadReview ? null : getPlanningStageGateReason(trip, tab.id);
-                  const lockedLabel = gateReason
-                    ? gateReason.replace(/^Confirm /, "Locked until ").replace(/ first\.$/, " are confirmed.")
-                    : null;
+                  const lockedLabel = isLeadReview ? null : getPlanningLockedTabHint(trip, tab.id);
 
                   if (!isAccessible) {
                     return (
@@ -279,17 +287,22 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                         key={tab.id}
                         aria-current={isActive ? "page" : undefined}
                         aria-disabled="true"
+                        title={gateReason ?? undefined}
                         className="px-4 py-2.5 whitespace-nowrap border-b-2"
                         style={{
-                          color: isActive ? "#e6edf3" : "var(--text-tertiary)",
-                          borderColor: isActive ? accent.color : "transparent",
+                          color: "var(--text-secondary)",
+                          borderColor: isActive ? accent.color : `${accent.color}55`,
                         }}
                       >
-                        <div className="text-[13px]" style={{ fontWeight: isActive ? 600 : 400 }}>
-                          {tab.label}
+                        <div
+                          className="flex items-center gap-1.5 text-[13px]"
+                          style={{ fontWeight: isActive ? 600 : 500 }}
+                        >
+                          <Lock className="h-3.5 w-3.5 shrink-0 text-[var(--accent-amber)]" aria-hidden="true" />
+                          <span>{tab.label}</span>
                         </div>
                         {lockedLabel && (
-                          <div className="mt-0.5 text-[11px] leading-tight text-[var(--text-placeholder)]">
+                          <div className="mt-0.5 text-[11px] leading-tight text-[var(--text-secondary)]">
                             {lockedLabel}
                           </div>
                         )}

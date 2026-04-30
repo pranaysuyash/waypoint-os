@@ -140,7 +140,10 @@ function TripDetailsFallback({ tripId, trip }: { tripId: string; trip: Trip | nu
   const knownDetails = [
     { label: "Title", value: formatLeadTitle(trip.destination, trip.type) },
     { label: "Customer", value: formatCustomerDisplay(trip.rawInput) },
-    { label: "Destination", value: trip.destination || "Destination missing" },
+    {
+      label: "Destination",
+      value: requiredFields.includes("Destination") ? "Destination missing" : trip.destination || "Destination missing",
+    },
     { label: "Trip type", value: trip.type || "Trip type missing" },
     { label: "Party size", value: formatPartySizeDisplay(trip.party) },
     { label: "Dates", value: formatDateWindowDisplay(trip.dateWindow) },
@@ -160,7 +163,7 @@ function TripDetailsFallback({ tripId, trip }: { tripId: string; trip: Trip | nu
       <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-5">
         <h2 className="text-ui-xl font-semibold text-text-primary">Trip Details</h2>
         <p className="mt-1 text-ui-sm text-text-muted">
-          Review known customer details here, then send the planner back to intake for anything still missing.
+          Review known customer details here. Add anything missing before building options.
         </p>
       </div>
 
@@ -191,18 +194,42 @@ function TripDetailsFallback({ tripId, trip }: { tripId: string; trip: Trip | nu
               <div className="mt-5 flex flex-wrap gap-2">
                 {requiredFields.includes("Budget range") && (
                   <Link
-                    href={intakeHref}
+                    href={`${intakeHref}?field=budget`}
                     className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
                   >
                     Add budget
                   </Link>
                 )}
+                {requiredFields.includes("Destination") && (
+                  <Link
+                    href={`${intakeHref}?field=destination`}
+                    className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
+                  >
+                    Add destination
+                  </Link>
+                )}
                 {requiredFields.includes("Origin city") && (
                   <Link
-                    href={intakeHref}
+                    href={`${intakeHref}?field=origin`}
                     className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
                   >
                     Add origin
+                  </Link>
+                )}
+                {requiredFields.includes("Travel window") && (
+                  <Link
+                    href={`${intakeHref}?field=dateWindow`}
+                    className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
+                  >
+                    Add dates
+                  </Link>
+                )}
+                {requiredFields.includes("Traveler count") && (
+                  <Link
+                    href={`${intakeHref}?field=party`}
+                    className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
+                  >
+                    Add travelers
                   </Link>
                 )}
                 <Link

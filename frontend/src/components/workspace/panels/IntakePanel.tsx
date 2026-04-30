@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useDeferredValue, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ChevronDown,
   ChevronRight,
@@ -93,7 +93,7 @@ function getSpineProgressStage(elapsedSeconds: number) {
     .find((stage) => elapsedSeconds >= stage.afterSeconds) ?? SPINE_PROGRESS_STAGES[0];
 }
 
-type PlanningDetailId = 'budget' | 'origin' | 'priorities' | 'flexibility';
+type PlanningDetailId = 'budget' | 'dates' | 'destination' | 'origin' | 'priorities' | 'flexibility';
 
 interface PlanningDetailRow {
   id: PlanningDetailId;
@@ -104,7 +104,7 @@ interface PlanningDetailRow {
   value: string | null;
 }
 
-const NOTE_DETAIL_PREFIX: Record<Extract<PlanningDetailId, 'priorities' | 'flexibility'>, string> = {
+const NOTE_DETAIL_PREFIX: Record<string, string> = {
   priorities: 'Trip priorities',
   flexibility: 'Date flexibility',
 };
@@ -112,7 +112,7 @@ const NOTE_DETAIL_PREFIX: Record<Extract<PlanningDetailId, 'priorities' | 'flexi
 function normalizePlanningDisplayValue(value?: string | null): string | null {
   const normalized = value?.trim();
   if (!normalized) return null;
-  if (['tbd', 'to confirm', 'budget missing', '—'].includes(normalized.toLowerCase())) return null;
+  if (['tbd', 'to confirm', 'budget missing', 'unknown', '—'].includes(normalized.toLowerCase())) return null;
   return normalized;
 }
 
@@ -157,6 +157,8 @@ function buildFollowUpDraftFromRows(rows: PlanningDetailRow[]): string {
 
   const prompts: Record<PlanningDetailId, string> = {
     budget: 'your approximate budget range',
+    dates: 'your preferred travel dates',
+    destination: 'your destination city or country',
     origin: 'your departure city',
     priorities: 'any must-have activities, hotel preferences, or trip priorities',
     flexibility: 'how flexible your dates are',
@@ -189,6 +191,23 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const deferredOwnerNote = useDeferredValue(input_owner_note);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fieldParam = searchParams?.get('field');
+
+  // Auto-open editor when deep-linked from Trip Details
+  useEffect(() => {
+    if (fieldParam == null) return;
+    const planningEditFields: PlanningDetailId[] = ['budget', 'origin', 'destination', 'priorities', 'flexibility'];
+    const inlineEditFields = ['type', 'dateWindow', 'party'];
+    if (planningEditFields.includes(fieldParam as PlanningDetailId)) {
+      openPlanningEditor(fieldParam as PlanningDetailId);
+      router.replace(`/trips/${tripId}/intake`, { scroll: false });
+    } else if (inlineEditFields.includes(fieldParam)) {
+      setEditingField(fieldParam);
+      router.replace(`/trips/${tripId}/intake`, { scroll: false });
+    }
+  }, [fieldParam, router, tripId]);
+
   const [isRunning, setIsRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [runSuccess, setRunSuccess] = useState(false);
@@ -223,7 +242,24 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const [budgetCurrency, setBudgetCurrency] = useState<SupportedCurrency>('INR');
   const [followUpDraft, setFollowUpDraft] = useState('');
   const [activePlanningEditor, setActivePlanningEditor] = useState<PlanningDetailId | null>(null);
-  const [planningEditorValue, setPlanningEditorValue] = useState('');
+  const [planningEditorDrafts, setPlanningEditorDrafts] = useState<Record<PlanningDetailId, string>>({
+    budget: '',
+    dates: '',
+    destination: '',
+    origin: '',
+    priorities: '',
+    flexibility: '',
+  });
+
+  // Refs to the underlying textarea elements so typing remains stable (uncontrolled DOM)
+  const planningEditorRefs = useRef<Record<PlanningDetailId, HTMLTextAreaElement | null>>({
+    budget: null,
+    dates: null,
+    destination: null,
+    origin: null,
+    priorities: null,
+    flexibility: null,
+  } as any);
 
   useEffect(() => {
     if (!runStartedAt) {
@@ -275,6 +311,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const planningDetails = useMemo<PlanningDetailRow[]>(() => {
     const budgetValue = normalizePlanningDisplayValue(formatBudgetDisplay(trip?.budget));
     const originValue = normalizePlanningDisplayValue(trip?.origin);
+    const destinationValue = normalizePlanningDisplayValue(trip?.destination);
     const rows: PlanningDetailRow[] = [];
 
     if (!budgetValue) {
@@ -288,12 +325,34 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       });
     }
 
+    if (!destinationValue && getPlanningMissingDetails(trip).some((detail) => detail.label === 'Destination')) {
+      rows.push({
+        id: 'destination',
+        label: 'Destination',
+        requirement: 'Required',
+        addLabel: 'Add destination',
+        askLabel: 'Ask traveler',
+        value: null,
+      });
+    }
+
     if (!originValue && getPlanningMissingDetails(trip).some((detail) => detail.label === 'Origin city')) {
       rows.push({
         id: 'origin',
         label: 'Origin city',
         requirement: 'Required',
         addLabel: 'Add origin',
+        askLabel: 'Ask traveler',
+        value: null,
+      });
+    }
+
+    if (getPlanningMissingDetails(trip).some((detail) => detail.label === 'Travel window')) {
+      rows.push({
+        id: 'dates',
+        label: 'Travel window',
+        requirement: 'Required',
+        addLabel: 'Add dates',
         askLabel: 'Ask traveler',
         value: null,
       });
@@ -586,6 +645,33 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
     setShowCapturePanel(false);
   }, []);
 
+  const getPlanningEditorInitialValue = useCallback((detailId: PlanningDetailId): string => {
+    if (detailId === 'origin') {
+      return normalizePlanningDisplayValue(trip?.origin) ?? '';
+    }
+
+    if (detailId === 'destination') {
+      return normalizePlanningDisplayValue(trip?.destination) ?? '';
+    }
+
+    if (detailId === 'priorities') {
+      return tripPriorities ?? '';
+    }
+
+    if (detailId === 'flexibility') {
+      return dateFlexibility ?? '';
+    }
+
+    return '';
+  }, [dateFlexibility, trip?.origin, trip?.destination, tripPriorities]);
+
+  const setPlanningEditorDraft = useCallback((detailId: PlanningDetailId, value: string) => {
+    setPlanningEditorDrafts((prev) => ({
+      ...prev,
+      [detailId]: value,
+    }));
+  }, []);
+
   const openPlanningEditor = useCallback((detailId: PlanningDetailId) => {
     setActivePlanningEditor(detailId);
     setEditingField(null);
@@ -601,23 +687,15 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       return;
     }
 
-    if (detailId === 'origin') {
-      setPlanningEditorValue(normalizePlanningDisplayValue(trip?.origin) ?? '');
-      return;
-    }
-
-    if (detailId === 'priorities') {
-      setPlanningEditorValue(tripPriorities ?? '');
-      return;
-    }
-
-    setPlanningEditorValue(dateFlexibility ?? '');
-  }, [dateFlexibility, trip?.budget, trip?.origin, tripPriorities]);
+    setPlanningEditorDraft(detailId, getPlanningEditorInitialValue(detailId));
+  }, [getPlanningEditorInitialValue, setPlanningEditorDraft, trip?.budget]);
 
   const closePlanningEditor = useCallback(() => {
+    if (activePlanningEditor && activePlanningEditor !== 'budget') {
+      setPlanningEditorDraft(activePlanningEditor, getPlanningEditorInitialValue(activePlanningEditor));
+    }
     setActivePlanningEditor(null);
-    setPlanningEditorValue('');
-  }, []);
+  }, [activePlanningEditor, getPlanningEditorInitialValue, setPlanningEditorDraft]);
 
   const handleAskTravelerForDetail = useCallback(() => {
     setOperatingMode('follow_up');
@@ -633,6 +711,8 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
 
     let updateData: Partial<Trip> = {};
     let updatedOwnerNote = trip?.agentNotes ?? '';
+    const domValue = planningEditorRefs.current[detailId]?.value;
+    const draftValue = domValue !== undefined && domValue !== null ? domValue : (planningEditorDrafts[detailId] ?? '');
 
     if (detailId === 'budget') {
       updateData = {
@@ -640,13 +720,19 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       };
     } else if (detailId === 'origin') {
       updateData = {
-        origin: planningEditorValue.trim() || undefined,
+        origin: draftValue.trim() || undefined,
       };
+    } else if (detailId === 'destination') {
+      updateData = {
+        destination: draftValue.trim() || undefined,
+      };
+    } else if (detailId === 'dates') {
+      return;
     } else {
       updatedOwnerNote = upsertTaggedNoteValue(
         updatedOwnerNote,
         NOTE_DETAIL_PREFIX[detailId],
-        planningEditorValue
+        draftValue
       );
       updateData = { agentNotes: updatedOwnerNote };
     }
@@ -669,7 +755,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
     budgetAmount,
     budgetCurrency,
     closePlanningEditor,
-    planningEditorValue,
+    planningEditorDrafts,
     replaceTrip,
     saveTrip,
     setInputOwnerNote,
@@ -907,7 +993,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
     );
   };
 
-  const PlanningDetailEditor = ({ detailId }: { detailId: PlanningDetailId }) => {
+  const renderPlanningDetailEditor = (detailId: PlanningDetailId | null) => {
     if (activePlanningEditor !== detailId) return null;
 
     if (detailId === 'budget') {
@@ -949,16 +1035,17 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
     return (
       <div className='mt-3 rounded-lg border border-[var(--accent-blue)]/35 bg-[var(--bg-surface)] p-3'>
         <textarea
-          value={planningEditorValue}
-          onChange={(e) => setPlanningEditorValue(e.target.value)}
+          ref={(el) => { if (detailId) planningEditorRefs.current[detailId] = el; }}
+          defaultValue={(detailId && planningEditorDrafts[detailId]) ?? ''}
           rows={3}
           className='w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2 text-[var(--ui-text-sm)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none'
-          placeholder={detailId === 'origin' ? 'Add the departure city' : detailId === 'priorities' ? 'Add must-haves or trip priorities' : 'Add how flexible the dates are'}
+          placeholder={detailId === 'origin' ? 'Add the departure city' : detailId === 'destination' ? 'Add the destination city or country' : detailId === 'priorities' ? 'Add must-haves or trip priorities' : 'Add how flexible the dates are'}
+          dir={detailId === 'origin' || detailId === 'destination' ? 'ltr' : undefined}
           autoFocus
         />
         <div className='mt-3 flex flex-wrap gap-2'>
-          <Button type='button' size='sm' onClick={() => void savePlanningEditor(detailId)}>
-            Save {detailId === 'origin' ? 'origin' : detailId === 'priorities' ? 'priorities' : 'flexibility'}
+          <Button type='button' size='sm' onClick={() => detailId && void savePlanningEditor(detailId)}>
+            Save {detailId === 'origin' ? 'origin' : detailId === 'destination' ? 'destination' : detailId === 'priorities' ? 'priorities' : 'flexibility'}
           </Button>
           <Button type='button' variant='ghost' size='sm' onClick={closePlanningEditor}>
             Cancel
@@ -1011,7 +1098,13 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
                   </p>
                 </div>
                 <div className='flex flex-wrap gap-2'>
-                  <Button type='button' variant='secondary' size='sm' onClick={() => openPlanningEditor(detail.id)}>
+                  <Button type='button' variant='secondary' size='sm' onClick={() => {
+                    if (detail.id === 'dates') {
+                      setEditingField('dateWindow');
+                    } else {
+                      openPlanningEditor(detail.id);
+                    }
+                  }}>
                     {detail.addLabel}
                   </Button>
                   <Button type='button' variant='outline' size='sm' onClick={handleAskTravelerForDetail}>
@@ -1019,11 +1112,11 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
                   </Button>
                 </div>
               </div>
-              <PlanningDetailEditor detailId={detail.id} />
-            </div>
-          ))}
+                {renderPlanningDetailEditor(detail.id)}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
     );
   };
 
@@ -1059,6 +1152,15 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
           ) : (
             <p className='mt-1 text-[13px] italic leading-5 text-[var(--text-placeholder)]'>Process trip to check for blockers</p>
           )}
+          {!isLeadReview && hasPlanningBriefBlocker(trip) && !hardBlockers.length && requiredPlanningDetails.length > 0 && (
+            <button
+              type='button'
+              onClick={() => openPlanningEditor(requiredPlanningDetails[0]!.id)}
+              className='mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-[var(--accent-blue)] hover:text-[var(--accent-blue-hover)] transition-colors'
+            >
+              Add {requiredPlanningDetails[0]!.label.toLowerCase()}
+            </button>
+          )}
         </div>
 
         <div className='min-w-0 rounded-lg bg-[rgba(57,208,216,0.04)] px-3 py-2'>
@@ -1073,6 +1175,21 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             </p>
           ) : (
             <p className='mt-1 text-[13px] italic leading-5 text-[var(--text-placeholder)]'>Run AI to get next-step guidance</p>
+          )}
+          {!isLeadReview && hasPlanningBriefBlocker(trip) && (
+            <button
+              type='button'
+              onClick={() => {
+                if (requiredPlanningDetails.length > 0) {
+                  openPlanningEditor(requiredPlanningDetails[0]!.id);
+                } else {
+                  handleAskTravelerForDetail();
+                }
+              }}
+              className='mt-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[var(--border-default)] text-[12px] font-medium text-[var(--text-primary)] hover:bg-elevated transition-colors'
+            >
+              Draft follow-up
+            </button>
           )}
         </div>
 
@@ -1268,7 +1385,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             </div>
             {(activePlanningEditor === 'priorities' || activePlanningEditor === 'flexibility') && (
               <div className='rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3'>
-                <PlanningDetailEditor detailId={activePlanningEditor} />
+                {renderPlanningDetailEditor(activePlanningEditor)}
               </div>
             )}
           </div>

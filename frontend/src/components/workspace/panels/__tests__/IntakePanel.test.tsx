@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { IntakePanel } from '../IntakePanel';
 import { useWorkbenchStore } from '@/stores/workbench';
 import { ApiException, updateTrip } from '@/lib/api-client';
@@ -48,7 +49,9 @@ vi.mock('@/contexts/TripContext', () => ({
 vi.mock('next/navigation', () => ({
   useRouter: vi.fn(() => ({
     push: vi.fn(),
+    replace: vi.fn(),
   })),
+  useSearchParams: vi.fn(() => new URLSearchParams()),
 }));
 
 vi.mock('@/lib/routes', () => ({
@@ -240,9 +243,9 @@ describe('IntakePanel', () => {
     );
 
     expect(screen.getByText('Before building options')).toBeInTheDocument();
-    expect(screen.getByText('Confirm budget and any must-have trip details.')).toBeInTheDocument();
+    expect(screen.getByText('Confirm budget range before building options.')).toBeInTheDocument();
     expect(screen.getByText('Next')).toBeInTheDocument();
-    expect(screen.getByText('Ask the traveler for budget range and trip priorities.')).toBeInTheDocument();
+    expect(screen.getByText('Ask the traveler for budget range.')).toBeInTheDocument();
     expect(screen.getByText('Watch')).toBeInTheDocument();
     expect(screen.getByText('Incomplete intake.')).toBeInTheDocument();
     expect(screen.getByText('Inquiry Ref')).toBeInTheDocument();
@@ -251,7 +254,7 @@ describe('IntakePanel', () => {
     expect(screen.queryByRole('button', { name: /Mark ready/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Process trip/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Continue planning/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Draft follow-up/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Draft follow-up/i }).length).toBeGreaterThanOrEqual(1);
   });
 
   it('prioritizes missing-customer-details workflow above generic notes when planning is blocked', () => {
@@ -310,10 +313,10 @@ describe('IntakePanel', () => {
     expect(screen.getByText('Trip priorities / must-haves')).toBeInTheDocument();
     expect(screen.getByText('Origin city')).toBeInTheDocument();
     expect(screen.getAllByText('Date flexibility').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: /Add budget/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Add origin/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Add priorities/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Add flexibility/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Add budget/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole('button', { name: /Add origin/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole('button', { name: /Add priorities/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole('button', { name: /Add flexibility/i }).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Suggested Follow-up')).toBeInTheDocument();
     expect(screen.getByDisplayValue(/could you confirm your approximate budget range/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Copy message/i })).toBeInTheDocument();
@@ -365,10 +368,97 @@ describe('IntakePanel', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Add budget/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: /Add budget/i })[0]);
 
     expect(screen.getByPlaceholderText(/Approximate budget/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Save budget/i })).toBeInTheDocument();
+  });
+
+  it('keeps origin typing stable and saves the typed value as the origin field', async () => {
+    const user = userEvent.setup();
+    mockSaveTrip.mockResolvedValue({
+      id: 'trip_4b9e0d894872',
+      destination: 'Singapore',
+      type: 'Family Leisure',
+      budget: '$0',
+      party: 5,
+      dateWindow: 'dates around 9th to 14th feb',
+      origin: 'bangalore',
+      state: 'amber',
+      age: 'Today',
+      createdAt: '2026-04-23T08:00:00.000Z',
+      updatedAt: '2026-04-23T08:15:00.000Z',
+      status: 'assigned',
+      decision: {
+        decision_state: 'ASK_FOLLOWUP',
+        hard_blockers: [],
+        soft_blockers: ['incomplete_intake'],
+      },
+      validation: {
+        warnings: [
+          {
+            severity: 'warning',
+            code: 'QUOTE_READY_INCOMPLETE',
+            message: 'Field budget_raw_text missing',
+            field: 'budget_raw_text',
+          },
+        ],
+      },
+    });
+
+    render(
+      <IntakePanel
+        tripId="trip_4b9e0d894872"
+        trip={{
+          id: 'trip_4b9e0d894872',
+          destination: 'Singapore',
+          type: 'Family Leisure',
+          budget: '$0',
+          party: 5,
+          dateWindow: 'dates around 9th to 14th feb',
+          origin: 'TBD',
+          state: 'amber',
+          age: 'Today',
+          createdAt: '2026-04-23T08:00:00.000Z',
+          updatedAt: '2026-04-23T08:15:00.000Z',
+          status: 'assigned',
+          decision: {
+            decision_state: 'ASK_FOLLOWUP',
+            hard_blockers: [],
+            soft_blockers: ['incomplete_intake'],
+          },
+          validation: {
+            warnings: [
+              {
+                severity: 'warning',
+                code: 'QUOTE_READY_INCOMPLETE',
+                message: 'Field budget_raw_text missing',
+                field: 'budget_raw_text',
+              },
+              {
+                severity: 'warning',
+                code: 'QUOTE_READY_INCOMPLETE',
+                message: 'Field origin_city missing',
+                field: 'origin_city',
+              },
+            ],
+          },
+        } as any}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /Add origin/i }));
+    const originInput = screen.getByPlaceholderText(/Add the departure city/i);
+
+    await user.type(originInput, 'bangalore');
+
+    expect(originInput).toHaveValue('bangalore');
+
+    await user.click(screen.getByRole('button', { name: /Save origin/i }));
+
+    await waitFor(() => {
+      expect(mockSaveTrip).toHaveBeenCalledWith('trip_4b9e0d894872', { origin: 'bangalore' });
+    });
   });
 
   it('disables process button when no notes are present', () => {

@@ -282,9 +282,9 @@ export default function OwnerReviewsPage() {
       {/* Header */}
       <header className='flex flex-wrap items-center justify-between gap-3 pt-1'>
         <div>
-          <h1 className='text-ui-2xl font-semibold text-[#e6edf3]'>Reviews & Approvals</h1>
+          <h1 className='text-ui-2xl font-semibold text-[#e6edf3]'>Quote Review</h1>
           <p className='text-ui-base text-[#8b949e] mt-0.5'>
-            Approve high-value trips and manage escalations
+            Quotes waiting for approval before sending to travelers.
           </p>
         </div>
         
@@ -305,7 +305,7 @@ export default function OwnerReviewsPage() {
       {/* Stats */}
       <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 font-inter'>
-          <span className='text-ui-sm text-[#8b949e]'>Pending Review</span>
+          <span className='text-ui-sm text-[#8b949e]'>Pending Quotes</span>
           <div className='text-ui-2xl font-bold text-[#e6edf3] mt-1'>{pendingCount}</div>
         </div>
         
@@ -317,7 +317,7 @@ export default function OwnerReviewsPage() {
         </div>
         
         <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 font-inter'>
-          <span className='text-ui-sm text-[#8b949e]'>Approved (30d)</span>
+          <span className='text-ui-sm text-[#8b949e]'>Approved Quotes</span>
           <div className='text-ui-2xl font-bold text-[#3fb950] mt-1'>{approvedCount}</div>
         </div>
         
@@ -359,7 +359,8 @@ export default function OwnerReviewsPage() {
           </div>
         ) : sortedReviews.length === 0 ? (
           <div className='text-center py-12 text-[#8b949e]'>
-            <p>No reviews match this filter.</p>
+            <p>No quotes to review</p>
+            <p className='text-ui-xs mt-2'>Trips will appear here after options are prepared and ready for approval.</p>
           </div>
         ) : (
           sortedReviews.map((review) => (

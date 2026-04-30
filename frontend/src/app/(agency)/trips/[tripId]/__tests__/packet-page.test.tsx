@@ -66,11 +66,11 @@ describe("packet page", () => {
     expect(screen.getByText("Origin city")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Add budget" })).toHaveAttribute(
       "href",
-      "/trips/trip_4b9e0d894872/intake",
+      "/trips/trip_4b9e0d894872/intake?field=budget",
     );
     expect(screen.getByRole("link", { name: "Add origin" })).toHaveAttribute(
       "href",
-      "/trips/trip_4b9e0d894872/intake",
+      "/trips/trip_4b9e0d894872/intake?field=origin",
     );
     expect(screen.getByRole("link", { name: "Go to missing details" })).toHaveAttribute(
       "href",

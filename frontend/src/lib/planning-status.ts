@@ -64,12 +64,24 @@ function formatPlanningFieldList(fields: string[]): string {
   return `${normalized.slice(0, -1).join(", ")}, and ${normalized.at(-1)}`;
 }
 
+function formatPlanningFieldListTitleCase(fields: string[]): string {
+  const normalized = fields
+    .map((field) => field.trim())
+    .filter(Boolean)
+    .map((field) => field.charAt(0).toLowerCase() + field.slice(1));
+
+  if (normalized.length === 0) return "required trip details";
+  if (normalized.length === 1) return normalized[0]!;
+  if (normalized.length === 2) return `${normalized[0]} and ${normalized[1]}`;
+  return `${normalized.slice(0, -1).join(", ")}, and ${normalized.at(-1)}`;
+}
+
 export function getRequiredPlanningFields(trip?: Trip | null): string[] {
   if (!trip) return [];
 
   const requiredFields: string[] = [];
 
-  if (formatBudgetDisplay(trip.budget) === "Budget missing" || hasValidationWarning(trip, "budget_raw_text")) {
+  if (formatBudgetDisplay(trip.budget) === "Budget missing") {
     requiredFields.push("Budget range");
   }
 
@@ -81,7 +93,7 @@ export function getRequiredPlanningFields(trip?: Trip | null): string[] {
     requiredFields.push("Destination");
   }
 
-  if (!trip.dateWindow?.trim()) {
+  if (isMissingDisplayValue(trip.dateWindow)) {
     requiredFields.push("Travel window");
   }
 
@@ -136,6 +148,33 @@ export function getPlanningStageGateReason(trip?: Trip | null, stage?: string): 
   return `Confirm ${formatPlanningFieldList(requiredFields)} first.`;
 }
 
+export function getPlanningLockedTabHint(trip?: Trip | null, stage?: string): string | null {
+  if (!trip || !stage || canAccessPlanningStage(trip, stage)) return null;
+
+  const requiredFields = getRequiredPlanningFields(trip);
+  const normalized = requiredFields.map((field) => field.toLowerCase());
+
+  if (normalized.length === 1 && normalized[0] === "budget range") {
+    return "Budget needed";
+  }
+
+  if (normalized.length === 1 && normalized[0] === "origin city") {
+    return "Origin needed";
+  }
+
+  if (normalized.length === 2 && normalized.includes("budget range") && normalized.includes("origin city")) {
+    return "Budget + origin needed";
+  }
+
+  return "Complete customer details";
+}
+
+export function getPlanningUnlockHint(trip?: Trip | null): string | null {
+  if (!trip || !hasPlanningBriefBlocker(trip)) return null;
+  const requiredFields = getRequiredPlanningFields(trip);
+  return `Complete ${formatPlanningFieldListTitleCase(requiredFields)} to unlock quote, options, output, and safety review.`;
+}
+
 export function getPlanningStatusTone(trip?: Trip | null): Trip["state"] {
   if (!trip) return "blue";
   if (hasPlanningBriefBlocker(trip)) return "blue";
@@ -152,8 +191,9 @@ export function getPlanningStatusLabel(trip?: Trip | null): string {
 
 export function getPlanningHeaderTitle(trip?: Trip | null): string {
   if (!trip) return "Trip planning";
+  const cleanDestination = isMissingDisplayValue(trip.destination) ? null : trip.destination;
   const simplifiedType = trip.type?.replace(/\bleisure\b/gi, "").replace(/\s+/g, " ").trim();
-  return formatLeadTitle(trip.destination, simplifiedType || trip.type);
+  return formatLeadTitle(cleanDestination, simplifiedType || trip.type);
 }
 
 export function getPlanningIdentityLine(trip?: Trip | null): string {
@@ -189,13 +229,21 @@ export function getPlanningBlockerTitle(isLeadReview: boolean, trip?: Trip | nul
 
 export function getPlanningBlockerBody(isLeadReview: boolean, trip?: Trip | null): string {
   if (isLeadReview) return "Budget and trip details need confirmation.";
-  if (hasPlanningBriefBlocker(trip)) return "Confirm budget and any must-have trip details.";
+  if (hasPlanningBriefBlocker(trip)) {
+    const requiredFields = getRequiredPlanningFields(trip);
+    if (requiredFields.length === 0) return "Confirm any must-have trip details.";
+    return `Confirm ${formatPlanningFieldList(requiredFields)} before building options.`;
+  }
   return "No blocking issues found yet. Some customer details may still need confirmation before quoting.";
 }
 
 export function getPlanningSuggestedNextMove(isLeadReview: boolean, trip?: Trip | null): string {
   if (isLeadReview) return "Review the lead and confirm missing details with the traveler.";
-  if (hasPlanningBriefBlocker(trip)) return "Ask the traveler for budget range and trip priorities.";
+
+  const requiredFields = getRequiredPlanningFields(trip);
+  if (requiredFields.length > 0) {
+    return `Ask the traveler for ${formatPlanningFieldList(requiredFields).toLowerCase()}.`;
+  }
 
   const decisionState = trip?.decision?.decision_state;
 
@@ -226,17 +274,40 @@ export function getPlanningMissingDetails(trip?: Trip | null): PlanningMissingDe
 }
 
 export function getPlanningFollowUpDraft(trip?: Trip | null): string {
-  const missingDetails = getPlanningMissingDetails(trip).map((detail) => detail.label.toLowerCase());
-  const needsOriginCity = missingDetails.includes("origin city");
-  const needsDateFlexibility = missingDetails.includes("date flexibility");
+  const missingDetails = getPlanningMissingDetails(trip);
+  const requiredFields = missingDetails.filter((d) => d.requirement === "Required").map((d) => d.label.toLowerCase());
+  const recommendedFields = missingDetails.filter((d) => d.requirement === "Recommended").map((d) => d.label.toLowerCase());
 
-  const extraRequests = [
-    needsOriginCity ? "your departure city" : null,
-    needsDateFlexibility ? "how flexible your dates are" : null,
-    "any must-have activities, hotel preferences, or trip priorities",
-  ].filter(Boolean);
+  const extraRequests: (string | null)[] = [];
 
-  return `Hi, to start planning properly, could you confirm your approximate budget range${needsOriginCity ? ", your departure city," : ""}${needsDateFlexibility ? ", how flexible your dates are," : ""} and ${extraRequests.at(-1)}?`;
+  if (requiredFields.includes("budget range")) {
+    extraRequests.push("your approximate budget range");
+  }
+  if (requiredFields.includes("origin city")) {
+    extraRequests.push("your departure city");
+  }
+  if (requiredFields.includes("destination")) {
+    extraRequests.push("your destination");
+  }
+  if (requiredFields.includes("travel window")) {
+    extraRequests.push("your travel dates");
+  }
+  if (requiredFields.includes("traveler count")) {
+    extraRequests.push("your party size");
+  }
+  if (recommendedFields.includes("trip priorities / must-haves")) {
+    extraRequests.push("any must-have activities, hotel preferences, or trip priorities");
+  }
+  if (recommendedFields.includes("date flexibility")) {
+    extraRequests.push("how flexible your dates are");
+  }
+
+  const allRequests = extraRequests.filter(Boolean);
+  if (allRequests.length === 0) {
+    return `Hi, I have what I need to start planning. I will move ahead with building options and share the next update shortly.`;
+  }
+
+  return `Hi, to start planning properly, could you confirm ${allRequests.join(", ")}?`;
 }
 
 export function getPlanningPrimaryActionLabel(trip?: Trip | null): string {
@@ -252,7 +323,22 @@ export function getPlanningNextAction(trip?: Trip | null): string {
     return "Next: resolve review blockers and unblock the trip plan.";
   }
   if (getPlanningBriefStatus(trip) === "missing_required_details") {
-    return "Next: confirm budget and trip details before building options.";
+    const requiredFields = getRequiredPlanningFields(trip);
+    const normalized = requiredFields.map((field) => field.toLowerCase());
+
+    if (normalized.length === 1 && normalized[0] === "budget range") {
+      return "Next: confirm budget before building options.";
+    }
+
+    if (normalized.length === 1 && normalized[0] === "origin city") {
+      return "Next: confirm origin before building options.";
+    }
+
+    if (normalized.length === 2 && normalized.includes("budget range") && normalized.includes("origin city")) {
+      return "Next: confirm budget and origin before building options.";
+    }
+
+    return `Next: confirm ${formatPlanningFieldList(requiredFields)} before building options.`;
   }
   if (getPlanningBriefStatus(trip) === "missing_recommended_details") {
     return "Next: refine the brief or continue to options.";

@@ -3,6 +3,9 @@ import type { Trip } from "@/lib/api-client";
 import {
   canAccessPlanningStage,
   getPlanningBriefStatus,
+  getPlanningFollowUpDraft,
+  getPlanningLockedTabHint,
+  getPlanningNextAction,
   getPlanningPrimaryActionLabel,
   getPlanningStageGateReason,
   getRecommendedPlanningFields,
@@ -112,5 +115,29 @@ describe("planning-status", () => {
     expect(getPlanningBriefStatus(trip)).toBe("missing_recommended_details");
     expect(canAccessPlanningStage(trip, "strategy")).toBe(true);
     expect(getPlanningPrimaryActionLabel(trip)).toBe("Continue to options");
+  });
+
+  it("updates follow-up copy and locked-tab hint as individual blockers are resolved", () => {
+    const trip = makeTrip({
+      origin: "Bangalore",
+      validation: {
+        is_valid: true,
+        errors: [],
+        warnings: [
+          {
+            severity: "warning",
+            code: "QUOTE_READY_INCOMPLETE",
+            message: "Field 'budget_raw_text' missing",
+            field: "budget_raw_text",
+          },
+        ],
+      } as any,
+    });
+
+    expect(getRequiredPlanningFields(trip)).toEqual(["Budget range"]);
+    expect(getPlanningLockedTabHint(trip, "strategy")).toBe("Budget needed");
+    expect(getPlanningNextAction(trip)).toBe("Next: confirm budget before building options.");
+    expect(getPlanningFollowUpDraft(trip)).toContain("your approximate budget range");
+    expect(getPlanningFollowUpDraft(trip)).not.toContain("your departure city");
   });
 });

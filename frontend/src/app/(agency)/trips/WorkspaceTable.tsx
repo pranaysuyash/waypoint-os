@@ -10,8 +10,11 @@
 import Link from 'next/link';
 import { memo } from 'react';
 import { ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { getTripRoute } from '@/lib/routes';
 import type { Trip } from '@/lib/api-client';
+import {
+  getPlanningListSummary,
+  PLANNING_LIST_STATE_META,
+} from '@/lib/planning-list-display';
 
 export type SortField = 'state' | 'destination' | 'age' | 'type';
 export type SortDirection = 'asc' | 'desc';
@@ -22,13 +25,6 @@ interface WorkspaceTableProps {
   sortDirection: SortDirection;
   onSort: (field: SortField) => void;
 }
-
-const STATE_META: Record<string, { color: string; bg: string; label: string }> = {
-  green:  { color: '#3fb950', bg: 'rgba(63,185,80,0.12)',   label: 'Ready' },
-  amber:  { color: '#d29922', bg: 'rgba(210,153,34,0.12)',  label: 'In Progress' },
-  red:    { color: '#f85149', bg: 'rgba(248,81,73,0.12)',   label: 'Needs Review' },
-  blue:   { color: '#58a6ff', bg: 'rgba(88,166,255,0.12)',  label: 'Awaiting Info' },
-};
 
 function SortHeader({
   field,
@@ -66,43 +62,57 @@ function SortHeader({
 }
 
 const TripRow = memo(function TripRow({ trip }: { trip: Trip }) {
-  const meta = STATE_META[trip.state] ?? STATE_META.blue;
-  const isBlocked = trip.state === 'red';
+  const summary = getPlanningListSummary(trip);
+  const meta = PLANNING_LIST_STATE_META[summary.statusTone] ?? PLANNING_LIST_STATE_META.blue;
+  const missingSummary = summary.missingFields.length > 0 ? summary.missingFields.join(', ') : 'None';
 
   return (
     <tr className="border-b border-[#1c2128] hover:bg-[#0f1115] transition-colors">
       <td className="py-2.5 px-3">
         <Link
-          href={getTripRoute(trip.id)}
-          className="flex items-center gap-2 text-[#e6edf3] hover:text-[#58a6ff] transition-colors"
+          href={summary.action.href}
+          className="block text-[#e6edf3] hover:text-[#58a6ff] transition-colors"
         >
-          <span className="text-ui-sm font-medium truncate max-w-[200px]">{trip.destination}</span>
+          <span className="block text-ui-sm font-medium truncate max-w-[260px]">{summary.title}</span>
+          <span className="mt-1 block text-[11px] text-[#8b949e] truncate max-w-[320px]">{summary.subtitle}</span>
+          <span className="mt-1 block text-[10px] text-[#6e7681]">Inquiry Ref: {summary.inquiryReference}</span>
         </Link>
       </td>
       <td className="py-2.5 px-3">
-        <span className="text-ui-xs text-[#8b949e]">{trip.type}</span>
+        <div className="flex flex-wrap gap-1.5">
+          <span
+            className="inline-flex items-center text-ui-xs font-semibold px-2 py-0.5 rounded-md uppercase tracking-wide"
+            style={{ color: meta.fg, background: meta.bg, border: `1px solid ${meta.border}` }}
+          >
+            {summary.statusLabel}
+          </span>
+          <span
+            className="inline-flex items-center text-ui-xs font-semibold px-2 py-0.5 rounded-md uppercase tracking-wide"
+            style={{
+              color: '#c9d1d9',
+              background: 'rgba(201,209,217,0.08)',
+              border: '1px solid rgba(201,209,217,0.16)',
+            }}
+          >
+            {summary.assignmentLabel}
+          </span>
+        </div>
       </td>
       <td className="py-2.5 px-3">
-        <span
-          className="inline-flex items-center text-ui-xs font-mono font-semibold px-2 py-0.5 rounded-md"
-          style={{ color: meta.color, background: meta.bg }}
-        >
-          {isBlocked && <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-current" />}
-          {meta.label}
-        </span>
+        <span className="text-ui-xs text-[#8b949e]">{missingSummary}</span>
       </td>
       <td className="py-2.5 px-3">
-        <span className="text-ui-xs text-[#8b949e]">{trip.age}</span>
-      </td>
-      <td className="py-2.5 px-3">
-        <span className="text-ui-xs font-mono text-[#484f58]">{trip.id}</span>
+        <div className="space-y-1">
+          <span className="block text-ui-xs text-[#8b949e]">{summary.recencyLabel}</span>
+          <span className="block text-[11px] text-[#c9d1d9]">{summary.nextAction}</span>
+        </div>
       </td>
       <td className="py-2.5 px-3 text-right">
         <Link
-          href={getTripRoute(trip.id)}
-          className="inline-flex items-center text-ui-xs text-[#484f58] hover:text-[#8b949e] transition-colors"
+          href={summary.action.href}
+          className="inline-flex items-center text-ui-xs text-[#58a6ff] hover:text-[#79b8ff] transition-colors"
         >
-          Open
+          {summary.action.label}
           <ChevronRight className="h-3 w-3 ml-0.5" aria-hidden="true" />
         </Link>
       </td>
@@ -123,19 +133,16 @@ export const WorkspaceTable = memo(function WorkspaceTable({
           <thead>
             <tr className="border-b border-[#1c2128] bg-[#0a0d11]">
               <th scope="col" className="py-2.5 px-3" aria-sort={sortField === 'destination' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
-                <SortHeader field="destination" label="Destination" activeField={sortField} direction={sortDirection} onSort={onSort} />
-              </th>
-              <th scope="col" className="py-2.5 px-3" aria-sort={sortField === 'type' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
-                <SortHeader field="type" label="Type" activeField={sortField} direction={sortDirection} onSort={onSort} />
+                <SortHeader field="destination" label="Trip" activeField={sortField} direction={sortDirection} onSort={onSort} />
               </th>
               <th scope="col" className="py-2.5 px-3" aria-sort={sortField === 'state' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
-                <SortHeader field="state" label="State" activeField={sortField} direction={sortDirection} onSort={onSort} />
-              </th>
-              <th scope="col" className="py-2.5 px-3" aria-sort={sortField === 'age' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
-                <SortHeader field="age" label="Age" activeField={sortField} direction={sortDirection} onSort={onSort} />
+                <SortHeader field="state" label="Status" activeField={sortField} direction={sortDirection} onSort={onSort} />
               </th>
               <th scope="col" className="py-2.5 px-3">
-                <span className="text-ui-xs font-semibold text-[#8b949e] uppercase tracking-wider">ID</span>
+                <span className="text-ui-xs font-semibold text-[#8b949e] uppercase tracking-wider">Missing</span>
+              </th>
+              <th scope="col" className="py-2.5 px-3" aria-sort={sortField === 'age' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                <SortHeader field="age" label="Updated" activeField={sortField} direction={sortDirection} onSort={onSort} />
               </th>
               <th scope="col" className="py-2.5 px-3 text-right">
                 <span className="text-ui-xs font-semibold text-[#8b949e] uppercase tracking-wider">Action</span>

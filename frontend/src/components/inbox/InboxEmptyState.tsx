@@ -41,26 +41,26 @@ export const InboxEmptyState = memo(function InboxEmptyState({
 
       <p className="text-[var(--ui-text-sm)] font-medium" style={{ color: 'var(--text-secondary)' }}>
         {isTrulyEmpty
-          ? 'No trips in your inbox'
+          ? 'No new leads'
           : hasSearch && isFiltered
-          ? 'No trips match this filter and search.'
+          ? 'No leads match this filter and search.'
           : hasSearch
-          ? 'No trips match your search.'
+          ? 'No leads match your search.'
           : isFiltered
-          ? 'No trips match this filter.'
+          ? 'No leads match this filter.'
           : 'Your inbox is empty.'}
       </p>
 
       <p className="text-[var(--ui-text-xs)] mt-1" style={{ color: 'var(--text-muted)' }}>
         {isTrulyEmpty
-          ? 'Create a new inquiry to get started.'
+          ? 'New customer inquiries will appear here before planning starts. Leads you start planning move to Trips in Planning.'
           : hasSearch && isFiltered
           ? 'Try broadening your search or clearing the filter.'
           : hasSearch
           ? 'Try a different search term.'
           : isFiltered
           ? 'Try a different filter or check back later.'
-          : 'New trips will appear here as they come in.'}
+          : 'New inquiries will appear here as they come in.'}
       </p>
 
       <div className="flex items-center justify-center gap-3 mt-4">

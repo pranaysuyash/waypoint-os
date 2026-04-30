@@ -43,15 +43,24 @@ function formatSimpleDateRange(value: string): string | null {
 export function formatLeadTitle(destination?: string | null, tripType?: string | null): string {
   const cleanDestination = destination?.trim();
   const cleanType = tripType?.trim();
+  const destinationKnown = cleanDestination && !['tbd', 'to confirm', 'unknown', 'not set', 'n/a', '—', '-'].includes(cleanDestination.toLowerCase());
 
-  if (cleanDestination && cleanType) {
+  if (destinationKnown && cleanType) {
     const normalizedType = cleanType.toLowerCase().endsWith('trip')
       ? cleanType.toLowerCase()
       : `${cleanType.toLowerCase()} trip`;
     return `${cleanDestination} ${normalizedType}`;
   }
 
-  return cleanDestination || cleanType || 'Lead review';
+  if (destinationKnown) {
+    return cleanDestination;
+  }
+
+  if (cleanType) {
+    return cleanType;
+  }
+
+  return 'Trip details incomplete';
 }
 
 export function formatInquiryReference(value?: string | null): string {
@@ -64,7 +73,9 @@ export function formatInquiryReference(value?: string | null): string {
 export function formatBudgetDisplay(value?: string | null): string {
   if (!value) return 'Budget missing';
   const trimmed = value.trim();
-  return trimmed === '$0' || trimmed === '0' ? 'Budget missing' : trimmed;
+  if (trimmed === '$0' || trimmed === '0' || trimmed === '₹0' || trimmed === '€0' || trimmed === '£0') return 'Budget missing';
+  if (/^\D*0(\.0+)?\D*$/.test(trimmed)) return 'Budget missing';
+  return trimmed;
 }
 
 export function formatPartySizeDisplay(value?: number | null, fallback = 'Party to confirm'): string {

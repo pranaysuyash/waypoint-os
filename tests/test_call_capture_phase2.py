@@ -19,6 +19,46 @@ import pytest
 class TestPhase2StructuredFields:
     """Tests for 5 new structured fields in Phase 2 call-capture."""
 
+    AGENCY_ID = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+
+    def _seed_patchable_trip(self) -> str:
+        from spine_api.persistence import TripStore
+
+        trip_id = "trip_patch_canonical_sync"
+        TripStore.save_trip(
+            {
+                "id": trip_id,
+                "run_id": "run_patch_sync",
+                "source": "pytest",
+                "status": "assigned",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "extracted": {
+                    "facts": {
+                        "origin_city": {"value": "TBD"},
+                        "budget_raw_text": {"value": ""},
+                        "budget": {"value": 0},
+                    }
+                },
+                "validation": {
+                    "is_valid": True,
+                    "errors": [],
+                    "warnings": [
+                        {"field": "origin_city", "message": "Field origin_city missing"},
+                        {"field": "budget_raw_text", "message": "Field budget_raw_text missing"},
+                    ],
+                },
+                "decision": {
+                    "decision_state": "ASK_FOLLOWUP",
+                    "hard_blockers": [],
+                    "soft_blockers": ["incomplete_intake"],
+                },
+                "raw_input": {"fixture_id": "SC-901"},
+            },
+            agency_id=self.AGENCY_ID,
+        )
+        return trip_id
+
     def test_create_trip_with_party_composition(self, session_client):
         """POST /run can save a trip with party_composition field."""
         # This test assumes we can POST to /run or create a trip via the API
@@ -297,6 +337,42 @@ class TestPhase2StructuredFields:
         # Verify other fields are preserved (not overwritten)
         assert updated_trip.get("id") == old_trip.get("id")
         assert updated_trip.get("createdAt") == old_trip.get("createdAt")
+
+    def test_patch_origin_syncs_extracted_fact_and_clears_origin_warning(self, session_client):
+        """PATCH /trips/{trip_id} keeps origin facts and validation warnings in sync."""
+        trip_id = self._seed_patchable_trip()
+
+        patch_response = session_client.patch(
+            f"/trips/{trip_id}",
+            json={"origin": "Bangalore"}
+        )
+
+        assert patch_response.status_code == 200
+        updated_trip = patch_response.json()
+        assert updated_trip["extracted"]["facts"]["origin_city"]["value"] == "Bangalore"
+        assert all(
+            warning.get("field") != "origin_city"
+            for warning in updated_trip.get("validation", {}).get("warnings", [])
+        )
+
+    def test_patch_budget_syncs_budget_facts_and_clears_budget_warning(self, session_client):
+        """PATCH /trips/{trip_id} keeps budget facts and validation warnings in sync."""
+        trip_id = self._seed_patchable_trip()
+
+        patch_response = session_client.patch(
+            f"/trips/{trip_id}",
+            json={"budget": "₹50,000"}
+        )
+
+        assert patch_response.status_code == 200
+        updated_trip = patch_response.json()
+        facts = updated_trip["extracted"]["facts"]
+        assert facts["budget_raw_text"]["value"] == "₹50,000"
+        assert facts["budget"]["value"] == 50000.0
+        assert all(
+            warning.get("field") != "budget_raw_text"
+            for warning in updated_trip.get("validation", {}).get("warnings", [])
+        )
 
     def test_get_trip_includes_all_structured_fields(self, session_client):
         """GET /trips/{trip_id} returns all structured fields in response."""

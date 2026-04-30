@@ -39,6 +39,7 @@ import json
 import logging
 import multiprocessing
 import os
+import re
 import sys
 import threading
 import time
@@ -1636,6 +1637,79 @@ def patch_trip(
                 },
             )
     
+    def _clone_json(value: Any, fallback: Any) -> Any:
+        if isinstance(value, (dict, list)):
+            return json.loads(json.dumps(value))
+        return fallback
+
+    def _trimmed_string(value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        return normalized or None
+
+    def _parse_budget_amount(raw_budget: Optional[str]) -> Optional[float]:
+        if not raw_budget:
+            return None
+        normalized = raw_budget.replace(",", "")
+        match = re.search(r"(\d+(?:\.\d+)?)", normalized)
+        if not match:
+            return None
+        try:
+            return float(match.group(1))
+        except ValueError:
+            return None
+
+    def _sync_manual_trip_fields(current_trip: Dict[str, Any], incoming_updates: Dict[str, Any]) -> Dict[str, Any]:
+        synced_updates = dict(incoming_updates)
+        extracted = _clone_json(current_trip.get("extracted"), {}) or {}
+        facts = extracted.setdefault("facts", {})
+        validation = _clone_json(current_trip.get("validation"), {}) or {}
+        warnings = validation.get("warnings")
+        warning_list = warnings if isinstance(warnings, list) else []
+
+        fields_to_clear: set[str] = set()
+
+        if "origin" in incoming_updates:
+            origin_value = _trimmed_string(incoming_updates.get("origin"))
+            if origin_value:
+                facts["origin_city"] = {
+                    "value": origin_value,
+                    "confidence": 1.0,
+                    "authority_level": "explicit_user",
+                }
+                fields_to_clear.add("origin_city")
+
+        if "budget" in incoming_updates:
+            budget_text = _trimmed_string(incoming_updates.get("budget"))
+            if budget_text:
+                facts["budget_raw_text"] = {
+                    "value": budget_text,
+                    "confidence": 1.0,
+                    "authority_level": "explicit_user",
+                }
+                parsed_budget = _parse_budget_amount(budget_text)
+                if parsed_budget is not None:
+                    facts["budget"] = {
+                        "value": parsed_budget,
+                        "confidence": 1.0,
+                        "authority_level": "explicit_user",
+                    }
+                fields_to_clear.add("budget_raw_text")
+
+        if fields_to_clear:
+            validation["warnings"] = [
+                warning
+                for warning in warning_list
+                if str((warning or {}).get("field") or "") not in fields_to_clear
+            ]
+            synced_updates["extracted"] = extracted
+            synced_updates["validation"] = validation
+
+        return synced_updates
+
+    updates = _sync_manual_trip_fields(trip, updates)
+
     # Perform update
     updated_trip = TripStore.update_trip(trip_id, updates)
     

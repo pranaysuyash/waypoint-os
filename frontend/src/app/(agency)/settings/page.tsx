@@ -20,7 +20,7 @@ import { AutonomyTab } from './components/AutonomyTab';
 const TABS = [
   { id: 'profile', label: 'Profile', icon: Building2 },
   { id: 'operations', label: 'Operations', icon: SlidersHorizontal },
-  { id: 'autonomy', label: 'Autonomy & AI', icon: ShieldCheck },
+  { id: 'autonomy', label: 'Approval Rules', icon: ShieldCheck },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];

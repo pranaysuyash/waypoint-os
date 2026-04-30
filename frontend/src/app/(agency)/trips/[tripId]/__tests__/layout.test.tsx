@@ -245,9 +245,12 @@ describe("trips/[tripId]/layout", () => {
     expect(screen.queryByRole("link", { name: "Options" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Output" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Safety Review" })).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Complete budget range and origin city to unlock quote, options, output, and safety review."),
+    ).toBeInTheDocument();
     expect(screen.getByText("Quote Assessment")).toBeInTheDocument();
     expect(screen.getByText("Options")).toBeInTheDocument();
-    expect(screen.getAllByText("Locked until budget range and origin city are confirmed.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Budget + origin needed").length).toBeGreaterThan(0);
   });
 
   it("shows a compact collapsed timeline trigger for low-signal history and toggles open on demand", async () => {

@@ -155,6 +155,7 @@ function destinationValue(spineTrip: unknown): unknown {
   return firstPresent(
     getNestedValue(spineTrip, "extracted.facts.destination_candidates.value.0", undefined),
     extractedValue(spineTrip, "destination", undefined),
+    getNestedValue(spineTrip, "destination", undefined),
     "Unknown"
   );
 }
@@ -197,6 +198,7 @@ function dateWindowValue(spineTrip: unknown): unknown {
   return firstPresent(
     getNestedValue(spineTrip, "extracted.facts.date_window.value", undefined),
     extractedValue(spineTrip, "date_window", undefined),
+    getNestedValue(spineTrip, "dateWindow", undefined),
     "TBD"
   );
 }
@@ -318,7 +320,11 @@ export function transformSpineTripToTrip(
     party: asNumber(partySizeValue(trip), 1),
     dateWindow: asString(dateWindowValue(trip), "TBD"),
     origin: asString(originCityValue(trip), "TBD"),
-    budget: `$${budget.toLocaleString()}`,
+    budget: (() => {
+      const rawText = getNestedValue(spineTrip, "extracted.facts.budget_raw_text.value", undefined);
+      const budgetVal = getNestedValue(spineTrip, "extracted.facts.budget.value", undefined);
+      return asString(rawText ?? budgetVal ?? budgetValue(spineTrip), "Budget missing");
+    })(),
     status,
     review_status: (analytics.review_status as Trip["review_status"]) ?? undefined,
     reviewedBy: asString(getNestedValue(analytics, "review_metadata.reviewed_by", ""), "") || undefined,
