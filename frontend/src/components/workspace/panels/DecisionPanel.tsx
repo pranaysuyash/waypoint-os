@@ -9,6 +9,7 @@ import type { Trip } from "@/lib/api-client";
 import { SuitabilitySignal } from "./SuitabilitySignal";
 import { SuitabilityCard } from "./SuitabilityCard";
 import { STATE_COLORS } from "@/lib/tokens";
+import Link from "next/link";
 
 interface DecisionPanelProps {
   trip?: Trip | null;
@@ -49,8 +50,17 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
 
   if (!decision) {
     return (
-      <div className="p-4 text-ui-sm text-text-muted italic">
-        No quote status data for trip {tripId || "unknown"}.
+      <div className="p-6 text-center">
+        <h2 className="text-ui-xl font-semibold text-text-primary">Build options first</h2>
+        <p className="text-ui-sm text-text-muted mt-2">Quote assessment will appear after trip options are generated.</p>
+        <div className="mt-6 flex flex-wrap gap-3 justify-center">
+          <Link
+            href={`/trips/${tripId}/strategy`}
+            className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
+          >
+            Go to Options
+          </Link>
+        </div>
       </div>
     );
   }

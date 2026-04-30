@@ -200,7 +200,8 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
   if (!timeline || (events.length === 0 && suitabilityFlags.length === 0)) {
     return (
       <div className="p-6 text-center">
-        <p className="text-ui-sm text-text-muted">No timeline events found</p>
+        <p className="text-ui-sm font-medium text-text-primary">No activity yet</p>
+        <p className="text-ui-xs text-text-muted mt-2">Activity will appear when customer details are updated, follow-ups are drafted, options are built, or quotes are approved.</p>
       </div>
     );
   }

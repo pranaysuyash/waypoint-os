@@ -37,7 +37,7 @@ describe('OutputPanel', () => {
     });
 
     render(<OutputPanel tripId="TRIP-123" />);
-    expect(screen.getByText(/No output data for trip TRIP-123/i)).toBeInTheDocument();
+    expect(screen.getByText(/No traveler-ready output yet/i)).toBeInTheDocument();
   });
 
   it('renders agent and customer bundles side-by-side', () => {

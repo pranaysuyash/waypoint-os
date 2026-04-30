@@ -7,6 +7,7 @@ import { useTripContext } from "@/contexts/TripContext";
 import type { PromptBundle } from "@/types/spine";
 import type { Trip } from "@/lib/api-client";
 import { CheckCircle, Send } from "lucide-react";
+import Link from "next/link";
 import styles from "@/components/workbench/workbench.module.css";
 
 interface OutputPanelProps {
@@ -59,8 +60,17 @@ export default function OutputPanel({ trip: propTrip, tripId: propTripId }: Outp
 
   if (!internalBundle && !travelerBundle) {
     return (
-      <div className={styles.emptyState}>
-        <p>No output data for trip {tripId}. Process a trip first to generate responses.</p>
+      <div className="p-6 text-center">
+        <h2 className="text-ui-xl font-semibold text-text-primary">No traveler-ready output yet</h2>
+        <p className="text-ui-sm text-text-muted mt-2">Build trip options and complete quote review before preparing customer-facing output.</p>
+        <div className="mt-6 flex flex-wrap gap-3 justify-center">
+          <Link
+            href={`/trips/${tripId}/strategy`}
+            className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
+          >
+            Go to Options
+          </Link>
+        </div>
       </div>
     );
   }

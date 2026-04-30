@@ -543,3 +543,86 @@ But having thought through these 12 areas means:
 4. **Technical infrastructure** — You need to decide eventually
 
 Want me to deep dive into any of these?
+
+---
+
+## 13. Options Engine / Supplier Research Layer
+
+**Date**: 2026-04-30
+**Status**: Exploration needed before implementing Build Options on /strategy page.
+
+### Problem
+The `/trips/:id/strategy` page shows "Build options" but no real options-generation engine exists yet. The previous CTA linked back to `/intake`, creating an Options → Intake loop. A disabled/honest state is now in place, but the product needs a real Build Options path.
+
+### Internal Code Audit
+Search the codebase for any existing options/strategy/quote generation capability. Check:
+- `/run` endpoint: can it accept `trip_id` to generate options from existing trip context?
+- Any `stage=shortlist`, `stage=proposal`, or `stage=branch_options` behavior?
+- Any strategy/options data model that persists to the trip record?
+- Any draft-system support for trip-linked options drafts?
+
+### External API Landscape
+
+| Source | What It Provides | Live Availability/Pricing | Booking |
+|--------|-----------------|--------------------------|---------|
+| Amadeus Self-Service | Flights, hotels, experiences, cars/transfers, itinerary mgmt | Yes | Via partners |
+| Duffel | Flight offer requests, offers, orders, ancillaries | Yes | Yes (order API) |
+| Viator Partner API | Tours/experiences product, availability, pricing, holds, booking | Yes | Yes |
+| Google Places API | Place search, details, ratings, POI discovery | N/A (static) | No |
+| Google Routes API | Routing, distance/time matrix, waypoints | Yes | No |
+| Expedia/Rapid | Hotels, packages | Yes | Yes |
+| Hotelbeds | Hotels, transfers, activities | Yes | Yes |
+| Travelport/Sabre | GDS: flights, hotels, cars | Yes | Yes |
+| GetYourGuide | Experiences, tours | Yes | Yes |
+| OpenTripMap | POI, attractions (open data) | N/A | No |
+
+### Product Architecture Options
+
+**A. Internal draft-first (near-term)**
+- No live supplier APIs initially
+- Generate structured option drafts using existing trip details
+- Human edits before quote
+- Best for near-term velocity
+
+**B. Hybrid research-assisted (mid-term)**
+- Use Places/Routes/Viator/Amadeus selectively for enrichment
+- Still human-reviewed
+- Best balance of depth and speed
+
+**C. Live availability/booking engine (long-term)**
+- Query flights/hotels/activities live
+- Price and hold/book inventory
+- Requires supplier contracts, error handling, caching, payment, cancellation
+
+### Prioritized Items
+
+**Near-term:**
+- Trip-linked options draft data model
+- Human-editable itinerary cards
+- Recommendation rationale / why-this-option
+- Manual supplier quote capture
+- Places/Routes enrichment (POI, distances)
+
+**Mid-term:**
+- Viator activity enrichment
+- Hotel search enrichment
+- Flight offer research via Duffel/Amadeus
+- Option comparison matrix
+- Quote package readiness checks
+- Cached supplier snapshots
+
+**Long-term:**
+- Live hotel/flight/activity availability
+- Booking holds
+- Supplier negotiation
+- Payment/cancellation workflows
+- Cross-supplier disruption monitoring
+
+**Rejected / not now:**
+- Fully autonomous booking without human review
+- Fake live pricing without supplier confirmation
+- Showing "available" without real availability source
+- Scraping consumer travel sites without terms review
+
+### Recommended Next Step
+Use a trip-linked "Create options draft" approach. Add external APIs only as enrichment after the draft model is stable. Do not show active Build Options CTA until real generation is wired.

@@ -55,6 +55,8 @@ interface WorkbenchConfigState {
   scenario_id: string;
   strict_leakage: boolean;
   debug_raw_json: boolean;
+  // PARKED (Frontier Phase 0): Reserved for future intelligence integration.
+  // Do not expose in production UI without a real data path.
   enable_ghost_concierge: boolean;
   enable_sentiment_analysis: boolean;
   federated_intelligence_opt_in: boolean;
@@ -83,6 +85,8 @@ interface WorkbenchResultState {
   result_traveler_bundle: unknown;
   result_safety: SafetyResult | null;
   result_fees: FeeCalculationResult | null;
+  // PARKED (Frontier Phase 0): Reserved for future intelligence integration.
+  // Do not expose in production UI without a real data path.
   result_frontier: any | null;
   result_run_ts: string | null;
   // Suitability acknowledgment — cross-tab session state.

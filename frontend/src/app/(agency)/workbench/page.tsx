@@ -53,11 +53,6 @@ const OutputPanel = dynamic(
 const FeedbackPanel = dynamic(
   () => import('@/components/workspace/panels/FeedbackPanel'),
 );
-const FrontierDashboard = dynamic(() =>
-  import('@/components/workspace/FrontierDashboard').then((m) => ({
-    default: m.FrontierDashboard,
-  })),
-);
 
 // Safely parse structured JSON — returns null on invalid rather than throwing.
 function safeParseJson(raw: string): Record<string, unknown> | null {
@@ -76,7 +71,6 @@ const workspaceTabs = [
   { id: 'strategy', label: 'Build Options' },
   { id: 'safety', label: 'Final Review' },
   { id: 'output', label: 'Output Delivery' },
-  { id: 'frontier', label: 'Frontier OS' },
   { id: 'feedback', label: 'Feedback' },
 ] as const;
 
@@ -116,7 +110,8 @@ function toWorkspaceTabId(value: string | null): WorkspaceTabId | null {
  * Derives the pipeline stage from actual trip/store state.
  * PipelineFlow shows processing progress (intake → packet → decision → strategy → safety),
  * not which tab the user clicked.
- * Output, Frontier OS, and Feedback are workspace sections, not core pipeline stages.
+ * Output and Feedback are workspace sections, not core pipeline stages.
+ * Frontier OS has been removed from the workbench UI (parked for future intelligence integration).
  */
 function getPipelineStageForWorkbench(
   trip: Trip | null | undefined,
@@ -231,7 +226,7 @@ function WorkbenchContent() {
       prevConfigRef.current.mode !== currentMode ||
       prevConfigRef.current.scenario !== currentScenario
     ) {
-      // Clear only transient run artifacts (frontier, run_ts, acknowledged flags).
+      // Clear only transient run artifacts (run_ts, acknowledged flags, parked frontier).
       // Trip-persisted outputs (packet, decision, strategy, safety) remain visible
       // because they belong to the trip, not to a specific run config.
       store.clearTransientRunResults();
@@ -1070,20 +1065,6 @@ function WorkbenchContent() {
               {activeTab === 'strategy' && <StrategyTab trip={trip} />}
               {activeTab === 'safety' && <SafetyTab trip={trip} />}
               {activeTab === 'output' && <OutputPanel trip={trip} />}
-              {activeTab === 'frontier' && (
-                <FrontierDashboard
-                  packetId={trip?.id}
-                  sentiment={store.result_frontier?.sentiment_score ?? 0.82}
-                  isAnxious={store.result_frontier?.anxiety_alert ?? false}
-                  ghostActive={store.result_frontier?.ghost_triggered ?? false}
-                  intelHits={store.result_frontier?.intelligence_hits ?? []}
-                  logicRationale={
-                    store.result_frontier?.audit_reason ||
-                    store.result_decision?.rationale ||
-                    ''
-                  }
-                />
-              )}
               {activeTab === 'feedback' && trip && (
                 <FeedbackPanel trip={trip} />
               )}

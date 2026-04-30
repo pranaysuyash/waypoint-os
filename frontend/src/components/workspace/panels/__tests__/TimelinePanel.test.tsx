@@ -31,7 +31,7 @@ describe('TimelinePanel', () => {
     render(<TimelinePanel tripId="test-trip" />);
     
     await waitFor(() => {
-      expect(screen.getByText(/No timeline events found/i)).toBeInTheDocument();
+      expect(screen.getByText(/No activity yet/i)).toBeInTheDocument();
     });
   });
 

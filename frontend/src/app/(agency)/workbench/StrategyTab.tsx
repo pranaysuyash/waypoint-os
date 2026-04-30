@@ -17,7 +17,7 @@ export default function StrategyTab({ trip }: StrategyTabProps) {
   if (!activeStrategy) {
     return (
       <div className={styles.emptyState}>
-        <p>No options data. Process a trip from the "New Inquiry" section first.</p>
+        <p>Ready to build trip options. Run AI to generate.</p>
       </div>
     );
   }

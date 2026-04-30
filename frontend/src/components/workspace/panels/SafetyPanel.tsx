@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { SafetyResult, PromptBundle } from "@/types/spine";
 import { AlertCircle, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import Link from "next/link";
 
 interface SafetyPanelProps {
   tripId: string;
@@ -21,8 +22,17 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
 
   if (!result_safety) {
     return (
-      <div className="p-4 text-ui-sm text-gray-500 italic">
-        <p>No review data for trip {tripId}. Process a trip from the "New Inquiry" section first.</p>
+      <div className="p-6 text-center">
+        <h2 className="text-ui-xl font-semibold text-text-primary">Safety review not ready yet</h2>
+        <p className="text-ui-sm text-text-muted mt-2">Safety checks will run after trip options are built.</p>
+        <div className="mt-6 flex flex-wrap gap-3 justify-center">
+          <Link
+            href={`/trips/${tripId}/strategy`}
+            className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
+          >
+            Go to Options
+          </Link>
+        </div>
       </div>
     );
   }

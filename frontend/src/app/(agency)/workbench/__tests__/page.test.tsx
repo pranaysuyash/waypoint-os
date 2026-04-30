@@ -66,6 +66,7 @@ vi.mock('@/stores/workbench', () => ({
     result_strategy: null,
     result_decision: null,
     result_packet: null,
+    // PARKED (Frontier Phase 0): result_frontier kept in store but removed from UI
     result_frontier: null,
     input_raw_note: '',
     input_owner_note: '',
@@ -129,5 +130,23 @@ describe('WorkbenchPage', () => {
     render(<WorkbenchPage />);
 
     expect(screen.queryByRole('link', { name: /back to overview/i })).not.toBeInTheDocument();
+  });
+
+  it('does not render Frontier OS tab (removed in Phase 0)', () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('tab=frontier') as never);
+
+    render(<WorkbenchPage />);
+
+    // Frontier OS text should never appear in the workbench
+    expect(screen.queryByText('Frontier OS')).not.toBeInTheDocument();
+  });
+
+  it('falls back safely when an invalid tab is requested', () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('tab=frontier') as never);
+
+    render(<WorkbenchPage />);
+
+    // The page should still render without crashing
+    expect(screen.getByText(/process trip/i)).toBeInTheDocument();
   });
 });
