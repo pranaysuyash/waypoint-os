@@ -51,33 +51,45 @@ describe('InboxFilterBar', () => {
     activeFilter: 'all' as FilterKey,
     onFilterChange: vi.fn(),
     filters: [
-      { key: 'all' as FilterKey, label: 'All leads', count: 10 },
-      { key: 'at_risk' as FilterKey, label: 'At Risk', count: 3 },
+      { key: 'all' as FilterKey, label: 'All leads', count: 10, tone: 'neutral' as const },
+      { key: 'incomplete' as FilterKey, label: 'Needs details', count: 3, tone: 'attention' as const },
+      { key: 'unassigned' as FilterKey, label: 'Unassigned', count: 2, tone: 'ownership' as const },
+      { key: 'at_risk' as FilterKey, label: 'At Risk', count: 0, tone: 'risk' as const, muted: true },
     ],
   };
 
   it('renders filters', () => {
     render(<InboxFilterBar {...defaultProps} />);
     expect(screen.getByText('All leads')).toBeInTheDocument();
+    expect(screen.getByText('Needs details')).toBeInTheDocument();
+    expect(screen.getByText('Unassigned')).toBeInTheDocument();
     expect(screen.getByText('At Risk')).toBeInTheDocument();
   });
 
   it('calls onFilterChange when filter clicked', () => {
     const onFilterChange = vi.fn();
     render(<InboxFilterBar {...defaultProps} onFilterChange={onFilterChange} />);
-    fireEvent.click(screen.getByText('At Risk'));
-    expect(onFilterChange).toHaveBeenCalledWith('at_risk');
+    fireEvent.click(screen.getByText('Needs details'));
+    expect(onFilterChange).toHaveBeenCalledWith('incomplete');
   });
 
   it('shows active filter styling', () => {
-    render(<InboxFilterBar {...defaultProps} activeFilter="at_risk" />);
-    const atRiskButton = screen.getByText('At Risk').closest('button');
-    expect(atRiskButton).toHaveClass('bg-elevated');
+    render(<InboxFilterBar {...defaultProps} activeFilter="all" />);
+    const allButton = screen.getByText('All leads').closest('button');
+    expect(allButton).toHaveClass('bg-elevated');
   });
 
   it('renders filter counts', () => {
     render(<InboxFilterBar {...defaultProps} />);
     expect(screen.getByText('10')).toBeInTheDocument(); // All count
-    expect(screen.getByText('3')).toBeInTheDocument(); // At Risk count
+    expect(screen.getByText('3')).toBeInTheDocument(); // Needs details count
+    expect(screen.getByText('2')).toBeInTheDocument(); // Unassigned count
+    expect(screen.getByText('0')).toBeInTheDocument(); // At Risk count
+  });
+
+  it('mutes the at-risk chip when there is no risk', () => {
+    render(<InboxFilterBar {...defaultProps} />);
+    const atRiskButton = screen.getByText('At Risk').closest('button');
+    expect(atRiskButton).toHaveClass('text-text-muted');
   });
 });

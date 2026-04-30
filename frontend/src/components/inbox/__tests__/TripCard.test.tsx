@@ -60,69 +60,60 @@ describe('TripCard', () => {
   it('renders the lead summary', () => {
     render(<TripCard trip={mockTrip} isSelected={false} onSelect={vi.fn()} />);
 
-    expect(screen.getByText('Bali')).toBeInTheDocument();
-    expect(screen.getByText('Sharma Family')).toBeInTheDocument();
-    expect(screen.getByText('At Risk')).toBeInTheDocument();
+    expect(screen.getByText('Bali leisure trip')).toBeInTheDocument();
+    expect(screen.getByText('Sharma Family · 4 pax · Jun 2026')).toBeInTheDocument();
   });
 
-  it('renders operational metrics for the default view', () => {
+  it('shows the primary work-order signals', () => {
     render(<TripCard trip={mockTrip} isSelected={false} onSelect={vi.fn()} />);
 
-    expect(screen.getByText('Pax')).toBeInTheDocument();
-    expect(screen.getByText('4')).toBeInTheDocument();
-    expect(screen.getByText('Dates')).toBeInTheDocument();
-    expect(screen.getByText('June 2026')).toBeInTheDocument();
-    expect(screen.getByText('Budget')).toBeInTheDocument();
-    expect(screen.getByText('$15.0k')).toBeInTheDocument();
+    expect(screen.getByText('Needs details')).toBeInTheDocument();
+    expect(screen.getByText('Assigned to Alex Agent')).toBeInTheDocument();
+    expect(screen.getByText('SLA due soon')).toBeInTheDocument();
+    expect(screen.getByText('Budget $15.0k')).toBeInTheDocument();
+    expect(screen.getByText('Next: review customer details before planning.')).toBeInTheDocument();
   });
 
-  it('renders team lead metrics when specified', () => {
+  it('keeps the same hierarchy across view profiles', () => {
     render(<TripCard trip={mockTrip} isSelected={false} onSelect={vi.fn()} viewProfile='teamLead' />);
 
-    expect(screen.getByText('Owner')).toBeInTheDocument();
-    expect(screen.getByText('Alex Agent')).toBeInTheDocument();
-    expect(screen.getByText('SLA')).toBeInTheDocument();
-    expect(screen.getByText('At risk')).toBeInTheDocument();
-    expect(screen.getByText('Priority')).toBeInTheDocument();
-    expect(screen.getByText('High')).toBeInTheDocument();
+    expect(screen.getByText('Needs details')).toBeInTheDocument();
+    expect(screen.getByText('Assigned to Alex Agent')).toBeInTheDocument();
+    expect(screen.getByText('SLA due soon')).toBeInTheDocument();
   });
 
-  it('renders finance metrics when specified', () => {
-    render(<TripCard trip={mockTrip} isSelected={false} onSelect={vi.fn()} viewProfile='finance' />);
-
-    expect(screen.getAllByText('Budget').length).toBeGreaterThan(0);
-    expect(screen.getByText('Priority')).toBeInTheDocument();
-    expect(screen.getByText('High')).toBeInTheDocument();
-  });
-
-  it('renders fulfillment metrics when specified', () => {
-    render(<TripCard trip={mockTrip} isSelected={false} onSelect={vi.fn()} viewProfile='fulfillment' />);
-
-    expect(screen.getByText('Dates')).toBeInTheDocument();
-    expect(screen.getByText('Owner')).toBeInTheDocument();
-    expect(screen.getByText('Pax')).toBeInTheDocument();
-  });
-
-  it('renders flags', () => {
+  it('collapses duplicate missing-info tags into one visible pill', () => {
     render(
       <TripCard
-        trip={{ ...mockTrip, flags: ['incomplete', 'needs_clarification', 'details_unclear', 'unassigned'] }}
+        trip={{
+          ...mockTrip,
+          assignedTo: undefined,
+          assignedToName: undefined,
+          flags: ['incomplete', 'needs_clarification', 'details_unclear', 'unassigned'],
+        }}
         isSelected={false}
         onSelect={vi.fn()}
       />
     );
 
-    expect(screen.getByText('incomplete')).toBeInTheDocument();
-    expect(screen.getByText('needs clarification')).toBeInTheDocument();
-    expect(screen.getByText('details unclear')).toBeInTheDocument();
-    expect(screen.getByText('unassigned')).toBeInTheDocument();
+    expect(screen.getByText('Needs details')).toBeInTheDocument();
+    expect(screen.getByText('Unassigned')).toBeInTheDocument();
+    expect(screen.queryByText('details unclear')).not.toBeInTheDocument();
+    expect(screen.queryByText('needs clarification')).not.toBeInTheDocument();
   });
 
   it('shows a friendly reference instead of the raw internal id', () => {
     render(<TripCard trip={mockTrip} isSelected={false} onSelect={vi.fn()} />);
 
-    expect(screen.getByText('Ref: REF-123')).toBeInTheDocument();
+    expect(screen.getByText('Inquiry Ref: REF-123')).toBeInTheDocument();
     expect(screen.queryByText('TRIP-123')).not.toBeInTheDocument();
+  });
+
+  it('shows budget missing instead of fake zero budget precision', () => {
+    render(<TripCard trip={{ ...mockTrip, value: 0, flags: ['incomplete', 'needs_clarification', 'unassigned'] }} isSelected={false} onSelect={vi.fn()} />);
+
+    expect(screen.getByText('Budget missing')).toBeInTheDocument();
+    expect(screen.getByText('Next: confirm budget and trip details.')).toBeInTheDocument();
   });
 
   it('renders an explicit Review Lead action for inspection', () => {

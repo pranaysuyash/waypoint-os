@@ -13,6 +13,19 @@ import {
 import { getTripRoute } from '@/lib/routes';
 import { InlineError } from '@/components/error-boundary';
 import type { Trip } from '@/lib/api-client';
+import {
+  formatBudgetDisplay,
+  formatInquiryReference,
+} from '@/lib/lead-display';
+import {
+  getPlanningHeaderTitle,
+  getPlanningIdentityLine,
+  getPlanningNextAction,
+  getPlanningRecencyLabel,
+  getPlanningStatusLabel,
+  getPlanningSummaryText,
+  getPlanningStatusTone,
+} from '@/lib/planning-status';
 import { useOverviewSummary } from './useOverviewSummary';
 
 // ── Severity grammar: color encodes state, not decoration ──────────────────
@@ -54,6 +67,31 @@ const STATE_META: Record<StateKey, StateMeta> = {
 };
 
 const INTAKE_HREF = '/workbench?draft=new&tab=intake';
+
+function formatPlanningStageLabel(label: string): string {
+  const normalized = label.trim().toLowerCase().replace(/\s+/g, '_');
+
+  switch (normalized) {
+    case 'assigned':
+      return 'Waiting for options';
+    case 'in_progress':
+      return 'Planning in progress';
+    case 'ready_to_quote':
+      return 'Ready for quote review';
+    case 'ready_to_book':
+      return 'Ready for booking';
+    case 'blocked':
+      return 'Needs attention';
+    default:
+      return label;
+  }
+}
+
+function getAssignmentLabel(trip: Trip): string {
+  if (trip.status === 'in_progress') return 'In progress';
+  if (trip.status === 'assigned') return 'Assigned';
+  return 'Assigned';
+}
 
 // ── StatCard: metric-first operational instrument ─────────────────────────
 
@@ -245,6 +283,10 @@ const PipelineBar = memo(function PipelineBar({
 
   // Collapsed: summary bar
   if (!isExpanded) {
+    const topStage = safeData.reduce((maxStage, stage) =>
+      stage.count > maxStage.count ? stage : maxStage
+    );
+
     return (
       <div className='rounded-xl border p-4' style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
         <div className='flex items-center justify-between mb-2'>
@@ -275,8 +317,7 @@ const PipelineBar = memo(function PipelineBar({
           <span className='text-[13px] font-semibold tabular-nums' style={{ color: 'var(--text-primary)' }}>{total}</span>
         </div>
         <p className='text-[11px] mt-1.5' style={{ color: 'var(--text-muted)' }}>
-          {safeData.length} stages · Most in{' '}
-          {safeData.reduce((m, s) => (s.count > m.count ? s : m)).label}
+          {getPlanningSummaryText(topStage.label, total)}
         </p>
       </div>
     );
@@ -306,7 +347,9 @@ const PipelineBar = memo(function PipelineBar({
           return (
             <div key={stage.label} className='group'>
               <div className='flex items-center justify-between mb-1'>
-                <span className='text-[12px] font-medium' style={{ color: 'var(--text-primary)' }}>{stage.label}</span>
+                <span className='text-[12px] font-medium' style={{ color: 'var(--text-primary)' }}>
+                  {formatPlanningStageLabel(stage.label)}
+                </span>
                 <span className='text-[12px] font-mono tabular-nums' style={{ color: 'var(--text-tertiary)' }}>{stage.count}</span>
               </div>
               <div className='h-1.5 rounded-full overflow-hidden' style={{ background: 'var(--bg-elevated)' }}>
@@ -323,60 +366,100 @@ const PipelineBar = memo(function PipelineBar({
   );
 });
 
-// ── ActivityRow: trip as operational decision object ───────────────────────
+// ── PlanningTripCard: trip as a real planning work item ────────────────────
 
-const ActivityRow = memo(function ActivityRow({
-  item,
-}: {
-  item: {
-    id: string;
-    destination: string;
-    type: string;
-    state: StateKey;
-    age: string;
-  };
-}) {
-  const meta = STATE_META[item.state] ?? STATE_META.blue;
+const PlanningTripCard = memo(function PlanningTripCard({ trip }: { trip: Trip }) {
+  const meta = STATE_META[getPlanningStatusTone(trip)] ?? STATE_META.blue;
+  const budgetLabel = formatBudgetDisplay(trip.budget);
+  const title = getPlanningHeaderTitle(trip);
+  const subtitle = getPlanningIdentityLine(trip);
+
   return (
     <Link
-      href={item.id ? getTripRoute(item.id) : '/inbox'}
-      className='flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group'
+      href={trip.id ? getTripRoute(trip.id) : '/trips'}
+      className='group block rounded-2xl border p-5 transition-all'
       style={{
-        borderLeft: '2px solid transparent',
+        background: 'linear-gradient(180deg, rgba(17,20,27,0.98) 0%, rgba(12,16,22,0.98) 100%)',
+        borderColor: 'rgba(48,54,61,0.9)',
+        boxShadow: '0 18px 44px rgba(0,0,0,0.22)',
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLAnchorElement).style.background = 'var(--bg-elevated)';
-        (e.currentTarget as HTMLAnchorElement).style.borderLeftColor = meta.fg;
+        (e.currentTarget as HTMLAnchorElement).style.borderColor = meta.border;
+        (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(-1px)';
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
-        (e.currentTarget as HTMLAnchorElement).style.borderLeftColor = 'transparent';
+        (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(48,54,61,0.9)';
+        (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(0)';
       }}
     >
-      <div className='flex-1 min-w-0'>
-        <div className='flex items-center gap-2'>
-          <span className='text-[13px] font-medium truncate' style={{ color: 'var(--text-primary)' }}>{item.destination}</span>
-          <span className='text-[11px] shrink-0' style={{ color: 'var(--text-tertiary)' }}>{item.type}</span>
+      <div className='space-y-4'>
+        <div className='space-y-2'>
+          <div className='flex items-start justify-between gap-3'>
+            <div className='min-w-0'>
+              <h3 className='text-[18px] font-semibold tracking-tight' style={{ color: 'var(--text-primary)' }}>
+                {title}
+              </h3>
+              <p className='text-[13px]' style={{ color: 'var(--text-secondary)' }}>
+                {subtitle}
+              </p>
+            </div>
+            <span className='text-[11px] font-medium rounded-full px-2.5 py-1 shrink-0' style={{ color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)' }}>
+              {getPlanningRecencyLabel(trip.age)}
+            </span>
+          </div>
+
+          <div className='flex flex-wrap gap-2'>
+            <span
+              className='text-[11px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide'
+              style={{
+                color: meta.fg,
+                background: meta.bg,
+                border: `1px solid ${meta.border}`,
+              }}
+            >
+              {getPlanningStatusLabel(trip)}
+            </span>
+            <span
+              className='text-[11px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide'
+              style={{
+                color: budgetLabel === 'Budget missing' ? '#d29922' : '#58a6ff',
+                background: budgetLabel === 'Budget missing' ? 'rgba(210,153,34,0.12)' : 'rgba(88,166,255,0.12)',
+                border: budgetLabel === 'Budget missing' ? '1px solid rgba(210,153,34,0.25)' : '1px solid rgba(88,166,255,0.25)',
+              }}
+            >
+              {budgetLabel}
+            </span>
+            <span
+              className='text-[11px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide'
+              style={{
+                color: '#c9d1d9',
+                background: 'rgba(201,209,217,0.08)',
+                border: '1px solid rgba(201,209,217,0.16)',
+              }}
+            >
+              {getAssignmentLabel(trip)}
+            </span>
+          </div>
         </div>
-        <div className='text-[11px] font-mono' style={{ color: 'var(--text-muted)' }}>{item.id}</div>
-      </div>
-      <div className='flex items-center gap-2 shrink-0'>
-        <span
-          className='text-[11px] font-semibold px-1.5 py-0.5 rounded-sm uppercase tracking-wide'
-          style={{
-            color: meta.fg,
-            background: meta.bg,
-            border: `1px solid ${meta.border}`,
-          }}
-        >
-          {meta.label}
-        </span>
-        <span className='text-[11px]' style={{ color: 'var(--text-muted)' }}>{item.age}</span>
-        <ChevronRight
-          className='h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity'
-          style={{ color: 'var(--text-muted)' }}
-          aria-hidden='true'
-        />
+
+        <div className='rounded-xl border px-3.5 py-3' style={{ borderColor: 'rgba(48,54,61,0.85)', background: 'rgba(255,255,255,0.02)' }}>
+          <p className='text-[11px] font-semibold uppercase tracking-[0.16em]' style={{ color: 'var(--text-tertiary)' }}>
+            Next step
+          </p>
+          <p className='mt-1.5 text-[13px]' style={{ color: 'var(--text-primary)' }}>
+            {getPlanningNextAction(trip)}
+          </p>
+        </div>
+
+        <div className='flex items-center justify-between gap-3'>
+          <span className='text-[12px]' style={{ color: 'var(--text-muted)' }}>
+            Inquiry Ref: {formatInquiryReference(trip.id)}
+          </span>
+          <span className='inline-flex items-center gap-1.5 text-[13px] font-medium' style={{ color: 'var(--accent-blue)' }}>
+            Continue planning
+            <ChevronRight className='h-4 w-4 transition-transform group-hover:translate-x-0.5' aria-hidden='true' />
+          </span>
+        </div>
       </div>
     </Link>
   );
@@ -397,17 +480,6 @@ function RecentTrips({
   planningTripsTotal: number;
   leadInboxTotal: number;
 }) {
-  const tripItems = useMemo(() => {
-    if (trips.length === 0) return [];
-    return trips.map((trip) => ({
-      id: trip.id,
-      destination: trip.destination,
-      type: trip.type,
-      state: trip.state,
-      age: trip.age,
-    }));
-  }, [trips]);
-
   const hasLeadsWaiting = planningTripsTotal === 0 && leadInboxTotal > 0;
 
   if (error) {
@@ -428,7 +500,7 @@ function RecentTrips({
     );
   }
 
-  if (tripItems.length === 0) {
+  if (trips.length === 0) {
     return (
       <div className='p-8 text-center'>
         {/* Empty state: intentional, not accidental */}
@@ -475,10 +547,12 @@ function RecentTrips({
   }
 
   return (
-    <div className='p-1.5 space-y-0.5'>
-      {tripItems.map((item) => (
-        <ActivityRow key={item.id} item={item} />
-      ))}
+    <div className='p-4'>
+      <div className='grid grid-cols-1 gap-4'>
+        {trips.map((trip) => (
+          <PlanningTripCard key={trip.id} trip={trip} />
+        ))}
+      </div>
     </div>
   );
 }

@@ -4,101 +4,63 @@ import { memo } from 'react';
 import Link from 'next/link';
 import { CheckSquare, Square, ChevronRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { formatDateWindowDisplay, formatLeadTitle } from '@/lib/lead-display';
 import { getTripRoute } from '@/lib/routes';
-import {
-  type ViewProfile,
-  getMetricsForProfile,
-} from '@/lib/inbox-helpers';
-import type { InboxTrip, TripPriority } from '@/types/governance';
+import type { ViewProfile } from '@/lib/inbox-helpers';
+import type { InboxTrip } from '@/types/governance';
 
-function getDominantState(trip: InboxTrip): {
-  label: string;
-  fg: string;
-  bg: string;
-  border: string;
-} {
-  // Breached SLA overrides everything
-  if (trip.slaStatus === 'breached') {
-    return {
-      label: 'Overdue',
-      fg: '#f85149',
-      bg: 'rgba(248,81,73,0.10)',
-      border: 'rgba(248,81,73,0.25)',
-    };
-  }
-  // At-risk SLA is next
-  if (trip.slaStatus === 'at_risk') {
-    return {
-      label: 'At Risk',
-      fg: '#d29922',
-      bg: 'rgba(210,153,34,0.10)',
-      border: 'rgba(210,153,34,0.25)',
-    };
-  }
-  // Otherwise, use priority + stage
-  const stageLabels: Record<string, string> = {
-    intake: 'Intake',
-    details: 'Details Needed',
-    options: 'Needs Options',
-    review: 'Needs Review',
-    booking: 'Ready to Book',
-  };
-  const colors: Record<TripPriority, { fg: string; bg: string; border: string }> = {
-    critical: { fg: '#f85149', bg: 'rgba(248,81,73,0.10)', border: 'rgba(248,81,73,0.25)' },
-    high:     { fg: '#d29922', bg: 'rgba(210,153,34,0.10)', border: 'rgba(210,153,34,0.25)' },
-    medium:   { fg: '#58a6ff', bg: 'rgba(88,166,255,0.10)', border: 'rgba(88,166,255,0.25)' },
-    low:      { fg: '#8b949e', bg: 'rgba(110,118,129,0.06)', border: 'rgba(110,118,129,0.15)' },
-  };
-  const meta = colors[trip.priority];
-  return {
-    label: stageLabels[trip.stage] || trip.stage,
-    ...meta,
-  };
+type PillTone = 'attention' | 'healthy' | 'risk' | 'ownership';
+
+function formatBudgetSummary(trip: InboxTrip): string {
+  if (!trip.value || trip.value <= 0) return 'Budget missing';
+  return `Budget ${trip.value >= 1000 ? `$${(trip.value / 1000).toFixed(1)}k` : `$${trip.value}`}`;
 }
 
-// ── Metric renderers ───────────────────────────────────────────────────────
+function deriveNextAction(trip: InboxTrip): string {
+  const hasBudget = trip.value > 0;
+  const needsClarification = trip.flags.includes('needs_clarification') || trip.flags.includes('details_unclear');
+  if (!hasBudget && needsClarification) return 'Next: confirm budget and trip details.';
+  if (!hasBudget) return 'Next: confirm budget before planning.';
+  if (needsClarification) return 'Next: review customer details before planning.';
+  return 'Next: review the lead before starting planning.';
+}
 
-const METRIC_RENDERERS: Record<
-  string,
-  (trip: InboxTrip) => { label: string; value: React.ReactNode }> = {
-  partySize: (t) => ({ label: 'Pax', value: t.partySize }),
-  dateWindow: (t) => ({ label: 'Dates', value: t.dateWindow }),
-  value: (t) => ({ label: 'Budget', value: `$${(t.value / 1000).toFixed(1)}k` }),
-  daysInCurrentStage: (t) => ({ label: 'Age', value: `${t.daysInCurrentStage}d` }),
-  assignedToName: (t) => ({ label: 'Owner', value: t.assignedToName || 'Unassigned' }),
-  slaStatus: (t) => ({
-    label: 'SLA',
-    value: t.slaStatus === 'on_track' ? 'On track' : t.slaStatus === 'at_risk' ? 'At risk' : 'Overdue',
-  }),
-  priority: (t) => ({
-    label: 'Priority',
-    value: t.priority === 'high' ? 'High' : t.priority === 'medium' ? 'Medium' : t.priority === 'critical' ? 'Urgent' : 'Low',
-  }),
-  stage: (t) => ({ label: 'Status', value: getDominantState(t).label }),
+function getPrimaryPills(trip: InboxTrip): Array<{ label: string; tone: PillTone }> {
+  const pills: Array<{ label: string; tone: PillTone }> = [];
+  const needsDetails =
+    trip.flags.includes('incomplete') ||
+    trip.flags.includes('needs_clarification') ||
+    trip.flags.includes('details_unclear');
+
+  if (needsDetails) {
+    pills.push({ label: 'Needs details', tone: 'attention' });
+  } else {
+    pills.push({ label: 'Ready to plan', tone: 'healthy' });
+  }
+
+  if (trip.assignedToName) {
+    pills.push({ label: `Assigned to ${trip.assignedToName}`, tone: 'healthy' });
+  } else {
+    pills.push({ label: 'Unassigned', tone: 'ownership' });
+  }
+
+  if (trip.slaStatus === 'breached') {
+    pills.push({ label: 'SLA late', tone: 'risk' });
+  } else if (trip.slaStatus === 'at_risk') {
+    pills.push({ label: 'SLA due soon', tone: 'risk' });
+  } else {
+    pills.push({ label: 'SLA on track', tone: 'healthy' });
+  }
+
+  return pills.slice(0, 3);
+}
+
+const PILL_STYLES: Record<PillTone, { text: string; bg: string; border: string }> = {
+  attention: { text: '#f2cc60', bg: 'rgba(210,153,34,0.12)', border: 'rgba(210,153,34,0.28)' },
+  healthy: { text: '#3fb950', bg: 'rgba(63,185,80,0.12)', border: 'rgba(63,185,80,0.28)' },
+  risk: { text: '#ff8b85', bg: 'rgba(248,81,73,0.12)', border: 'rgba(248,81,73,0.28)' },
+  ownership: { text: '#a5d6ff', bg: 'rgba(88,166,255,0.12)', border: 'rgba(88,166,255,0.28)' },
 };
-
-// ── Components ────────────────────────────────────────────────────────────
-
-const StateBadge = memo(function StateBadge({ trip }: { trip: InboxTrip }) {
-  const state = getDominantState(trip);
-  return (
-    <span
-      className='inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-md uppercase tracking-wide shrink-0'
-      style={{
-        color: state.fg,
-        background: state.bg,
-        border: `1px solid ${state.border}`,
-      }}
-    >
-      <span
-        className='inline-block h-1.5 w-1.5 rounded-full'
-        style={{ background: state.fg }}
-        aria-hidden='true'
-      />
-      {state.label}
-    </span>
-  );
-});
 
 // ── Main component ───────────────────────────────────────────────────────
 
@@ -113,11 +75,15 @@ export const TripCard = memo(function TripCard({
   trip,
   isSelected,
   onSelect,
-  viewProfile = 'operations',
+  viewProfile: _viewProfile = 'operations',
 }: TripCardProps) {
-  const metrics = getMetricsForProfile(viewProfile);
   const reviewHref = trip.id ? getTripRoute(trip.id) : '/inbox';
-  const displayReference = trip.reference?.trim() ? `Ref: ${trip.reference}` : null;
+  const displayReference = trip.reference?.trim() ? `Inquiry Ref: ${trip.reference}` : null;
+  const primaryPills = getPrimaryPills(trip);
+  const title = formatLeadTitle(trip.destination, trip.tripType);
+  const subtitle = `${trip.customerName} · ${trip.partySize} pax · ${formatDateWindowDisplay(trip.dateWindow, 'Dates to confirm')}`;
+  const budgetSummary = formatBudgetSummary(trip);
+  const nextAction = deriveNextAction(trip);
 
   return (
     <Card
@@ -153,66 +119,55 @@ export const TripCard = memo(function TripCard({
           )}
         </button>
 
-        {/* ── Row 1: Destination + ONE dominant state badge ── */}
-        <div className='flex items-start justify-between gap-3 mb-0.5 pr-6'>
+        {/* ── Row 1: Lead identity ── */}
+        <div className='flex items-start gap-3 mb-1 pr-6'>
           <div className='flex flex-col min-w-0'>
             <span
-              className='text-[14px] font-semibold truncate leading-tight'
+              className='text-[15px] font-semibold truncate leading-tight'
               style={{ color: 'var(--text-primary)' }}
-              title={trip.destination}
+              title={title}
             >
-              {trip.destination}
+              {title}
+            </span>
+            <span className='text-[11px] mt-1 truncate' style={{ color: 'var(--text-secondary)' }}>
+              {subtitle}
             </span>
           </div>
-          <StateBadge trip={trip} />
         </div>
 
-        {/* ── Row 2: Type · Customer (secondary, quiet) ── */}
-        <div className='flex items-center gap-1 text-[11px] mt-0.5 mb-2'>
-          <span className='uppercase tracking-wider font-bold' style={{ color: 'var(--text-muted)' }}>
-            {trip.tripType}
-          </span>
-          <span style={{ color: 'var(--text-placeholder)' }}>·</span>
-          <span style={{ color: 'var(--text-secondary)' }}>{trip.customerName}</span>
-        </div>
-
-        {/* ── Row 3: Metadata row (small, gray, no badges) ── */}
-        <div className='flex flex-wrap items-center gap-x-3 gap-y-1'>
-          {metrics.map((field) => {
-            const renderer = METRIC_RENDERERS[field];
-            if (!renderer) return null;
-            const { label, value } = renderer(trip);
+        {/* ── Row 2: Action status pills ── */}
+        <div className='flex items-center gap-1.5 mt-2 flex-wrap'>
+          {primaryPills.map((pill) => {
+            const style = PILL_STYLES[pill.tone];
             return (
-              <span key={field} className='inline-flex items-center gap-1 text-[11px]' style={{ color: 'var(--text-muted)' }}>
-                <span className='font-medium'>{label}</span>
-                <span className='tabular-nums' style={{ color: 'var(--text-secondary)' }}>{value}</span>
+              <span
+                key={pill.label}
+                className='inline-flex items-center rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-wide'
+                style={{
+                  color: style.text,
+                  background: style.bg,
+                  border: `1px solid ${style.border}`,
+                }}
+              >
+                {pill.label}
               </span>
             );
           })}
         </div>
 
-        {/* ── Row 4: Tags (secondary, smallest) ── */}
-        {trip.flags && trip.flags.length > 0 && (
-          <div className='flex items-center gap-1.5 mt-2 flex-wrap'>
-            {trip.flags.map((flag) => (
-              <span
-                key={flag}
-                className='text-[10px] px-1.5 py-0.5 rounded-sm font-mono uppercase tracking-wide'
-                style={{
-                  color: 'var(--text-placeholder)',
-                  background: 'rgba(110,118,129,0.06)',
-                  border: '1px solid rgba(110,118,129,0.10)',
-                }}
-              >
-                {flag.replace(/_/g, ' ')}
-              </span>
-            ))}
+        {/* ── Row 3: Key fields + next action ── */}
+        <div className='mt-3 space-y-2'>
+          <div className='text-[11px] font-medium' style={{ color: 'var(--text-secondary)' }}>
+            {budgetSummary}
           </div>
-        )}
+          <div className='text-[11px]' style={{ color: 'var(--text-muted)' }}>
+            {nextAction}
+          </div>
+        </div>
 
         {/* ── Footer: Reference + action ── */}
-        <div className='mt-2.5 pt-2 flex items-center justify-between' style={{ borderTop: '1px solid var(--border-default)' }}>
-          <span className='text-[10px] font-mono tabular-nums' style={{ color: 'var(--text-placeholder)' }}>
+        <div className='mt-3 pt-3 flex items-center justify-between' style={{ borderTop: '1px solid var(--border-default)' }}>
+          <span className='text-[10px] tabular-nums' style={{ color: 'var(--text-placeholder)' }}>
             {displayReference}
           </span>
           <div className='flex items-center gap-2'>

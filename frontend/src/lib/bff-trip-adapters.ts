@@ -49,11 +49,27 @@ const DEFAULT_BUDGET_BREAKDOWN = {
 export const WORKSPACE_STATUSES = new Set<TripLifecycleStatus>([
   "assigned",
   "in_progress",
+  "ready_to_quote",
+  "ready_to_book",
+  "blocked",
+]);
+
+export const INBOX_STATUSES = new Set<TripLifecycleStatus>([
+  "new",
+  "incomplete",
+  "needs_followup",
+  "awaiting_customer_details",
+  "snoozed",
 ]);
 
 export function isWorkspaceTrip(trip: Trip): boolean {
   const lifecycleStatus = trip.status;
   return typeof lifecycleStatus === "string" && WORKSPACE_STATUSES.has(lifecycleStatus as TripLifecycleStatus);
+}
+
+export function isInboxTrip(trip: Trip): boolean {
+  const lifecycleStatus = trip.status;
+  return typeof lifecycleStatus === "string" && INBOX_STATUSES.has(lifecycleStatus as TripLifecycleStatus);
 }
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -466,6 +482,8 @@ export function transformSpineTripsResponseToInboxTrips(
 ): InboxTrip[] {
   const items = getNestedValue(spineApiData, "items", []);
   return Array.isArray(items)
-    ? items.map((item) => transformSpineTripToInboxTrip(item, now))
+    ? items
+        .filter((item) => isInboxTrip(transformSpineTripToTrip(item, now)))
+        .map((item) => transformSpineTripToInboxTrip(item, now))
     : [];
 }

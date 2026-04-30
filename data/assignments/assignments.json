@@ -103,5 +103,12 @@
     "agent_name": "Agent Smith",
     "assigned_at": "2026-04-30T07:39:31.711379+00:00",
     "assigned_by": "seed"
+  },
+  "trip_4b9e0d894872": {
+    "trip_id": "trip_4b9e0d894872",
+    "agent_id": "323468de-ba3d-437b-aa10-35b281a0c6a6",
+    "agent_name": "New User",
+    "assigned_at": "2026-04-30T12:23:15.820290+00:00",
+    "assigned_by": "system"
   }
 }

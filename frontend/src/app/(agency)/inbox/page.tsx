@@ -159,10 +159,10 @@ export default function InboxPage() {
   // ============================================================================
 
   const filterConfigs = useMemo(() => [
-    { key: 'all' as FilterKey, label: 'All leads' },
-    { key: 'at_risk' as FilterKey, label: 'At Risk' },
-    { key: 'incomplete' as FilterKey, label: 'Needs details' },
-    { key: 'unassigned' as FilterKey, label: 'Unassigned' },
+    { key: 'all' as FilterKey, label: 'All leads', tone: 'neutral' as const },
+    { key: 'incomplete' as FilterKey, label: 'Needs details', tone: 'attention' as const },
+    { key: 'unassigned' as FilterKey, label: 'Unassigned', tone: 'ownership' as const },
+    { key: 'at_risk' as FilterKey, label: 'At Risk', tone: 'risk' as const },
   ], []);
 
   const filterCounts = useMemo(() => {
@@ -402,7 +402,11 @@ export default function InboxPage() {
       <InboxFilterBar
         activeFilter={activeFilter}
         onFilterChange={(filter) => updateParams({ filter })}
-        filters={filterConfigs.map((f) => ({ ...f, count: filterCounts[f.key] || 0 }))}
+        filters={filterConfigs.map((f) => ({
+          ...f,
+          count: filterCounts[f.key] || 0,
+          muted: f.key === 'at_risk' && (filterCounts[f.key] || 0) === 0,
+        }))}
       />
 
       {/* Trip Grid */}

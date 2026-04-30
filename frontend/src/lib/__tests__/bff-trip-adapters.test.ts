@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  isInboxTrip,
   isWorkspaceTrip,
   transformSpineTripToInboxTrip,
+  transformSpineTripsResponseToInboxTrips,
   transformSpineTripToTrip,
   transformSpineTripsResponseToTrips,
 } from "../bff-trip-adapters";
@@ -111,6 +113,37 @@ describe("BFF trip adapters", () => {
     expect(isWorkspaceTrip(cancelledTrip)).toBe(false);
   });
 
+  it("keeps only lead lifecycle records in the inbox queue", () => {
+    const incompleteTrip = transformSpineTripToTrip(
+      { ...spineTrip, status: "incomplete", assigned_to: null, assigned_to_name: null },
+      now
+    );
+    const newTrip = transformSpineTripToTrip(
+      { ...spineTrip, status: "new", assigned_to: null, assigned_to_name: null },
+      now
+    );
+    const assignedTrip = transformSpineTripToTrip(spineTrip, now);
+    const inProgressTrip = transformSpineTripToTrip(
+      { ...spineTrip, status: "in_progress" },
+      now
+    );
+    const completedTrip = transformSpineTripToTrip(
+      { ...spineTrip, status: "completed" },
+      now
+    );
+    const cancelledTrip = transformSpineTripToTrip(
+      { ...spineTrip, status: "cancelled" },
+      now
+    );
+
+    expect(isInboxTrip(newTrip)).toBe(true);
+    expect(isInboxTrip(incompleteTrip)).toBe(true);
+    expect(isInboxTrip(assignedTrip)).toBe(false);
+    expect(isInboxTrip(inProgressTrip)).toBe(false);
+    expect(isInboxTrip(completedTrip)).toBe(false);
+    expect(isInboxTrip(cancelledTrip)).toBe(false);
+  });
+
   it("maps a backend trip to the inbox presentation shape", () => {
     const inboxTrip = transformSpineTripToInboxTrip(spineTrip, now);
 
@@ -158,5 +191,24 @@ describe("BFF trip adapters", () => {
 
     expect(urgentTrip.priority).toBe("critical");
     expect(urgentTrip.priorityScore).toBe(90);
+  });
+
+  it("filters planning trips out of inbox responses after start planning", () => {
+    const inboxTrips = transformSpineTripsResponseToInboxTrips(
+      {
+        items: [
+          { ...spineTrip, id: "trip-new", status: "incomplete", assigned_to: null, assigned_to_name: null },
+          { ...spineTrip, id: "trip-planning", status: "assigned" },
+          { ...spineTrip, id: "trip-done", status: "completed" },
+        ],
+      },
+      now
+    );
+
+    expect(inboxTrips).toHaveLength(1);
+    expect(inboxTrips[0]).toMatchObject({
+      id: "trip-new",
+      reference: "NEW",
+    });
   });
 });

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTrip } from '@/hooks/useTrips';
 import { useRuntimeVersion } from '@/hooks/useRuntimeVersion';
 import {
   Inbox,
@@ -49,9 +50,15 @@ const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
 };
 
 
-function getPageLabel(pathname: string): string {
+function parseTripIdFromPathname(pathname: string): string | null {
+  const match = pathname.match(/^\/trips\/([^/]+)/);
+  return match?.[1] ?? null;
+}
+
+function getPageLabel(pathname: string, isLeadReviewRoute: boolean): string {
   // Prevent breadcrumb from exposing internal route names
   if (pathname === '/workbench') return 'New Inquiry';
+  if (isLeadReviewRoute) return 'Lead Inbox';
   for (const section of NAV_SECTIONS) {
     for (const item of section.items) {
       if (pathname === item.href || pathname.startsWith(item.href + '/')) {
@@ -64,10 +71,17 @@ function getPageLabel(pathname: string): string {
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const shellTripId = parseTripIdFromPathname(pathname);
+  const { data: shellTrip, isLoading: isShellTripLoading } = useTrip(shellTripId);
   const { versionLabel, detailsLabel } = useRuntimeVersion();
   const { isConsistent } = useUnifiedState();
   const { data: agencySettings } = useAgencySettings();
   const brandName = agencySettings?.profile?.agency_name || 'Waypoint';
+  const isTripIntakeRoute = /^\/trips\/[^/]+\/intake$/.test(pathname);
+  const isLeadReviewRoute =
+    (pathname.startsWith('/trips/') &&
+      (shellTrip?.status === 'new' || shellTrip?.status === 'incomplete')) ||
+    (isTripIntakeRoute && isShellTripLoading);
 
   return (
     <div className='flex h-screen overflow-hidden' style={{ background: 'var(--bg-canvas)', color: 'var(--text-primary)' }}>
@@ -141,7 +155,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   const Icon = ICON_MAP[item.icon] ?? Activity;
                   // Active check: ignore query params for href matching
                   const hrefPath = item.href.split('?')[0];
-                  const isActive = item.enabled && (pathname === hrefPath || pathname.startsWith(hrefPath + '/'));
+                  const defaultIsActive = pathname === hrefPath || pathname.startsWith(hrefPath + '/');
+                  const isActive = item.enabled && (
+                    isLeadReviewRoute
+                      ? hrefPath === '/inbox'
+                      : defaultIsActive
+                  );
                   if (!item.enabled) {
                     return (
                       <li key={item.href}>
@@ -251,7 +270,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <>
                 <span style={{ color: 'var(--border-default)' }} aria-hidden='true'>/</span>
                 <span className='capitalize font-medium' style={{ color: 'var(--text-primary)' }} aria-current='page'>
-                  {getPageLabel(pathname)}
+                  {getPageLabel(pathname, isLeadReviewRoute)}
                 </span>
               </>
             )}

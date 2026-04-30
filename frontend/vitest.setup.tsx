@@ -40,5 +40,5 @@ vi.mock('next/navigation', () => ({
 
 // Mock Next.js Image component
 vi.mock('next/image', () => ({
-  default: ({ alt, ...props }: any) => <img alt={alt} {...props} />,
+  default: ({ alt, priority: _priority, ...props }: any) => <img alt={alt} {...props} />,
 }));

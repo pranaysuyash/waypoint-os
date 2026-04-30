@@ -120,6 +120,7 @@ export function useStartPlanning() {
       queryClient.invalidateQueries({ queryKey: ["trips"] });
       queryClient.invalidateQueries({ queryKey: ["governance", "inboxTrips"] });
       queryClient.invalidateQueries({ queryKey: ["governance", "inboxStats"] });
+      queryClient.invalidateQueries({ queryKey: ["system", "unified-state"] });
       queryClient.invalidateQueries({ queryKey: QK.trip(id) });
     },
   });

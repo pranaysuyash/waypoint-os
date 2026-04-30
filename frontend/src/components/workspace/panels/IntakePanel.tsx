@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useCallback, useMemo, useDeferredValue, useEffect } from 'react';
+import { useState, useCallback, useMemo, useDeferredValue, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ChevronDown,
+  ChevronRight,
   FileText,
   User,
   MapPin,
@@ -18,7 +19,6 @@ import {
   AlertTriangle,
   Edit2,
   X,
-  Globe,
   Phone,
 } from 'lucide-react';
 import type { Trip } from '@/lib/api-client';
@@ -34,14 +34,21 @@ import {
   CURRENCY_CONFIG,
   type SupportedCurrency,
   formatMoney,
-  formatMoneyCompact,
   parseBudgetString,
   getCurrencyOptions,
 } from '@/lib/currency';
 import { TRIP_TYPE_OPTIONS, DESTINATION_OPTIONS } from '@/lib/combobox';
+import { formatBudgetDisplay, formatDateWindowDisplay, formatInquiryReference } from '@/lib/lead-display';
+import {
+  getPlanningBlockerBody,
+  getPlanningBlockerTitle,
+  getPlanningMissingDetails,
+  getPlanningSuggestedNextMove,
+  hasPlanningBriefBlocker,
+} from '@/lib/planning-status';
 import { SmartCombobox } from '@/components/ui/SmartCombobox';
+import { Button } from '@/components/ui/button';
 import { useFieldAuditLog } from '@/hooks/useFieldAuditLog';
-import { getChangeDescription } from '@/types/audit';
 import CaptureCallPanel from './CaptureCallPanel';
 
 const stages: { value: SpineStage; label: string }[] = [
@@ -86,6 +93,79 @@ function getSpineProgressStage(elapsedSeconds: number) {
     .find((stage) => elapsedSeconds >= stage.afterSeconds) ?? SPINE_PROGRESS_STAGES[0];
 }
 
+type PlanningDetailId = 'budget' | 'origin' | 'priorities' | 'flexibility';
+
+interface PlanningDetailRow {
+  id: PlanningDetailId;
+  label: string;
+  requirement: 'Required' | 'Recommended';
+  addLabel: string;
+  askLabel: string;
+  value: string | null;
+}
+
+const NOTE_DETAIL_PREFIX: Record<Extract<PlanningDetailId, 'priorities' | 'flexibility'>, string> = {
+  priorities: 'Trip priorities',
+  flexibility: 'Date flexibility',
+};
+
+function normalizePlanningDisplayValue(value?: string | null): string | null {
+  const normalized = value?.trim();
+  if (!normalized) return null;
+  if (['tbd', 'to confirm', 'budget missing', '—'].includes(normalized.toLowerCase())) return null;
+  return normalized;
+}
+
+function readTaggedNoteValue(note: string | undefined, prefix: string): string | null {
+  if (!note) return null;
+
+  const line = note
+    .split('\n')
+    .map((entry) => entry.trim())
+    .find((entry) => entry.toLowerCase().startsWith(`${prefix.toLowerCase()}:`));
+
+  if (!line) return null;
+  const value = line.slice(prefix.length + 1).trim();
+  return value || null;
+}
+
+function upsertTaggedNoteValue(note: string | undefined, prefix: string, nextValue: string): string {
+  const cleaned = nextValue.trim();
+  const lines = (note ?? '')
+    .split('\n')
+    .map((entry) => entry.trimEnd())
+    .filter((entry) => entry.trim().length > 0 && !entry.toLowerCase().startsWith(`${prefix.toLowerCase()}:`));
+
+  if (!cleaned) {
+    return lines.join('\n');
+  }
+
+  lines.push(`${prefix}: ${cleaned}`);
+  return lines.join('\n');
+}
+
+function joinHumanList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`;
+}
+
+function buildFollowUpDraftFromRows(rows: PlanningDetailRow[]): string {
+  if (rows.length === 0) {
+    return 'Hi, I have what I need to start planning. I will move ahead with building options and share the next update shortly.';
+  }
+
+  const prompts: Record<PlanningDetailId, string> = {
+    budget: 'your approximate budget range',
+    origin: 'your departure city',
+    priorities: 'any must-have activities, hotel preferences, or trip priorities',
+    flexibility: 'how flexible your dates are',
+  };
+
+  const askFor = rows.map((row) => prompts[row.id]);
+  return `Hi, to start planning properly, could you confirm ${joinHumanList(askFor)}?`;
+}
+
 interface IntakePanelProps {
   tripId: string;
   trip?: Trip | null;
@@ -126,12 +206,13 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const [isMarkingReady, setIsMarkingReady] = useState(false);
   const [readySuccess, setReadySuccess] = useState(false);
   const [readyError, setReadyError] = useState<string | null>(null);
+  const followUpTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // CaptureCallPanel state
   const [showCapturePanel, setShowCapturePanel] = useState(false);
 
   // Audit log for tracking field changes
-  const { logChange, getLatestChangeForField } = useFieldAuditLog({
+  const { logChange } = useFieldAuditLog({
     tripId,
     userId: 'agent', // In production, get from auth context
     userName: 'Agent', // In production, get from auth context
@@ -140,6 +221,9 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   // Budget state with currency
   const [budgetAmount, setBudgetAmount] = useState('');
   const [budgetCurrency, setBudgetCurrency] = useState<SupportedCurrency>('INR');
+  const [followUpDraft, setFollowUpDraft] = useState('');
+  const [activePlanningEditor, setActivePlanningEditor] = useState<PlanningDetailId | null>(null);
+  const [planningEditorValue, setPlanningEditorValue] = useState('');
 
   useEffect(() => {
     if (!runStartedAt) {
@@ -163,12 +247,13 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
     type: trip?.type || '',
     party: trip?.party?.toString() || '',
     dateWindow: trip?.dateWindow || '',
+    origin: trip?.origin || '',
     budget: trip?.budget || '',
     budgetCurrency: budgetCurrency,
   });
 
   // Parse existing budget to get currency and amount
-  useMemo(() => {
+  useEffect(() => {
     if (trip?.budget) {
       const parsed = parseBudgetString(trip.budget);
       if (parsed) {
@@ -180,6 +265,85 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
 
   const currencyOptions = getCurrencyOptions();
   const isLeadReview = trip?.status === 'new' || trip?.status === 'incomplete';
+  const planningBriefBlocked = !isLeadReview && hasPlanningBriefBlocker(trip);
+  const tripPriorities = normalizePlanningDisplayValue(
+    readTaggedNoteValue(trip?.agentNotes, NOTE_DETAIL_PREFIX.priorities) ?? trip?.activityProvenance
+  );
+  const dateFlexibility = normalizePlanningDisplayValue(
+    readTaggedNoteValue(trip?.agentNotes, NOTE_DETAIL_PREFIX.flexibility)
+  );
+  const planningDetails = useMemo<PlanningDetailRow[]>(() => {
+    const budgetValue = normalizePlanningDisplayValue(formatBudgetDisplay(trip?.budget));
+    const originValue = normalizePlanningDisplayValue(trip?.origin);
+    const rows: PlanningDetailRow[] = [];
+
+    if (!budgetValue) {
+      rows.push({
+        id: 'budget',
+        label: 'Budget range',
+        requirement: 'Required',
+        addLabel: 'Add budget',
+        askLabel: 'Ask traveler',
+        value: null,
+      });
+    }
+
+    if (!originValue && getPlanningMissingDetails(trip).some((detail) => detail.label === 'Origin city')) {
+      rows.push({
+        id: 'origin',
+        label: 'Origin city',
+        requirement: 'Required',
+        addLabel: 'Add origin',
+        askLabel: 'Ask traveler',
+        value: null,
+      });
+    }
+
+    if (!tripPriorities) {
+      rows.push({
+        id: 'priorities',
+        label: 'Trip priorities / must-haves',
+        requirement: 'Recommended',
+        addLabel: 'Add priorities',
+        askLabel: 'Ask traveler',
+        value: null,
+      });
+    }
+
+    if ((!trip?.dateWindow || trip.dateWindow.toLowerCase().includes('around') || trip.dateWindow.toLowerCase().includes('flex')) && !dateFlexibility) {
+      rows.push({
+        id: 'flexibility',
+        label: 'Date flexibility',
+        requirement: 'Recommended',
+        addLabel: 'Add flexibility',
+        askLabel: 'Ask traveler',
+        value: null,
+      });
+    }
+
+    return rows;
+  }, [dateFlexibility, trip, tripPriorities]);
+  const requiredPlanningDetails = planningDetails.filter((detail) => detail.requirement === 'Required');
+  const recommendedPlanningDetails = planningDetails.filter((detail) => detail.requirement === 'Recommended');
+  const planningPanelVisible = Boolean(trip) && !isLeadReview && planningDetails.length > 0;
+  const processButtonLabel = !trip
+    ? 'Process Trip'
+    : isLeadReview
+    ? 'Process Trip'
+    : requiredPlanningDetails.length > 0
+      ? 'Draft follow-up'
+      : trip?.status === 'in_progress'
+        ? 'Build trip options'
+        : 'Continue to options';
+  const [notesExpanded, setNotesExpanded] = useState(!planningPanelVisible);
+
+  useEffect(() => {
+    setNotesExpanded(!planningPanelVisible);
+  }, [planningPanelVisible, tripId]);
+
+  useEffect(() => {
+    setFollowUpDraft(buildFollowUpDraftFromRows(planningDetails));
+  }, [planningDetails]);
 
   const handleProcessTrip = useCallback(async () => {
     if (!store.input_raw_note && !store.input_owner_note) return;
@@ -227,6 +391,17 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       setRunStartedAt(null);
     }
   }, [store, executeSpineRun, router, tripId]);
+
+  const handlePrepareFollowUp = useCallback(() => {
+    setOperatingMode('follow_up');
+    if (!input_raw_note.trim()) {
+      setInputRawNote(followUpDraft);
+    }
+    setNotesExpanded(true);
+    window.requestAnimationFrame(() => {
+      followUpTextareaRef.current?.focus();
+    });
+  }, [followUpDraft, input_raw_note, setInputRawNote, setOperatingMode]);
 
   const handleSave = useCallback(async () => {
     if (!tripId) return;
@@ -330,6 +505,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
         type: trip.type || '',
         party: trip.party?.toString() || '',
         dateWindow: trip.dateWindow || '',
+        origin: trip.origin || '',
         budget: trip.budget || '',
         budgetCurrency: budgetCurrency,
       });
@@ -364,6 +540,11 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
         previousValue = trip?.dateWindow || null;
         newValue = editValues.dateWindow;
         updateData.dateWindow = editValues.dateWindow;
+        break;
+      case 'origin':
+        previousValue = trip?.origin || null;
+        newValue = editValues.origin.trim();
+        updateData.origin = newValue || undefined;
         break;
       case 'budget':
         previousValue = trip?.budget || null;
@@ -404,6 +585,97 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const handleCaptureCallCancel = useCallback(() => {
     setShowCapturePanel(false);
   }, []);
+
+  const openPlanningEditor = useCallback((detailId: PlanningDetailId) => {
+    setActivePlanningEditor(detailId);
+    setEditingField(null);
+
+    if (detailId === 'budget') {
+      if (trip?.budget) {
+        const parsed = parseBudgetString(trip.budget);
+        if (parsed) {
+          setBudgetAmount(parsed.amount.toString());
+          setBudgetCurrency(parsed.currency);
+        }
+      }
+      return;
+    }
+
+    if (detailId === 'origin') {
+      setPlanningEditorValue(normalizePlanningDisplayValue(trip?.origin) ?? '');
+      return;
+    }
+
+    if (detailId === 'priorities') {
+      setPlanningEditorValue(tripPriorities ?? '');
+      return;
+    }
+
+    setPlanningEditorValue(dateFlexibility ?? '');
+  }, [dateFlexibility, trip?.budget, trip?.origin, tripPriorities]);
+
+  const closePlanningEditor = useCallback(() => {
+    setActivePlanningEditor(null);
+    setPlanningEditorValue('');
+  }, []);
+
+  const handleAskTravelerForDetail = useCallback(() => {
+    setOperatingMode('follow_up');
+    setNotesExpanded(true);
+    window.requestAnimationFrame(() => {
+      followUpTextareaRef.current?.focus();
+    });
+  }, [setOperatingMode]);
+
+  const savePlanningEditor = useCallback(async (detailId: PlanningDetailId) => {
+    if (!tripId) return;
+    setSaveError(null);
+
+    let updateData: Partial<Trip> = {};
+    let updatedOwnerNote = trip?.agentNotes ?? '';
+
+    if (detailId === 'budget') {
+      updateData = {
+        budget: budgetAmount ? `${formatMoney(parseFloat(budgetAmount), budgetCurrency)}` : undefined,
+      };
+    } else if (detailId === 'origin') {
+      updateData = {
+        origin: planningEditorValue.trim() || undefined,
+      };
+    } else {
+      updatedOwnerNote = upsertTaggedNoteValue(
+        updatedOwnerNote,
+        NOTE_DETAIL_PREFIX[detailId],
+        planningEditorValue
+      );
+      updateData = { agentNotes: updatedOwnerNote };
+    }
+
+    const result = await saveTrip(tripId, updateData);
+    if (result) {
+      replaceTrip(result);
+      if (Object.prototype.hasOwnProperty.call(updateData, 'agentNotes')) {
+        setInputOwnerNote(updatedOwnerNote);
+      }
+      setSaveSuccess(true);
+      closePlanningEditor();
+      setTimeout(() => setSaveSuccess(false), 3000);
+      return;
+    }
+
+    setSaveError('Failed to save. Check connection and try again.');
+    setTimeout(() => setSaveError(null), 8000);
+  }, [
+    budgetAmount,
+    budgetCurrency,
+    closePlanningEditor,
+    planningEditorValue,
+    replaceTrip,
+    saveTrip,
+    setInputOwnerNote,
+    trip?.agentNotes,
+    tripId,
+  ]);
 
   // Editable field component
   const EditableField = ({
@@ -567,7 +839,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   // Budget edit component with currency selector
   const BudgetField = () => {
     const isEditing = editingField === 'budget';
-    const displayBudget = trip?.budget || '—';
+    const displayBudget = formatBudgetDisplay(trip?.budget);
 
     if (isEditing) {
       return (
@@ -635,69 +907,193 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
     );
   };
 
+  const PlanningDetailEditor = ({ detailId }: { detailId: PlanningDetailId }) => {
+    if (activePlanningEditor !== detailId) return null;
+
+    if (detailId === 'budget') {
+      return (
+        <div className='mt-3 rounded-lg border border-[var(--accent-blue)]/35 bg-[var(--bg-surface)] p-3'>
+          <div className='flex flex-col gap-3 sm:flex-row'>
+            <input
+              type='number'
+              value={budgetAmount}
+              onChange={(e) => setBudgetAmount(e.target.value)}
+              placeholder='Approximate budget'
+              className='flex-1 rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2 text-[var(--ui-text-sm)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]'
+              autoFocus
+            />
+            <select
+              value={budgetCurrency}
+              onChange={(e) => setBudgetCurrency(e.target.value as SupportedCurrency)}
+              className='rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2 text-[var(--ui-text-sm)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]'
+            >
+              {currencyOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.flag} {opt.value}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className='mt-3 flex flex-wrap gap-2'>
+            <Button type='button' size='sm' onClick={() => void savePlanningEditor(detailId)}>
+              Save budget
+            </Button>
+            <Button type='button' variant='ghost' size='sm' onClick={closePlanningEditor}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className='mt-3 rounded-lg border border-[var(--accent-blue)]/35 bg-[var(--bg-surface)] p-3'>
+        <textarea
+          value={planningEditorValue}
+          onChange={(e) => setPlanningEditorValue(e.target.value)}
+          rows={3}
+          className='w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2 text-[var(--ui-text-sm)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none'
+          placeholder={detailId === 'origin' ? 'Add the departure city' : detailId === 'priorities' ? 'Add must-haves or trip priorities' : 'Add how flexible the dates are'}
+          autoFocus
+        />
+        <div className='mt-3 flex flex-wrap gap-2'>
+          <Button type='button' size='sm' onClick={() => void savePlanningEditor(detailId)}>
+            Save {detailId === 'origin' ? 'origin' : detailId === 'priorities' ? 'priorities' : 'flexibility'}
+          </Button>
+          <Button type='button' variant='ghost' size='sm' onClick={closePlanningEditor}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  const PlanningDetailSection = ({
+    title,
+    tone,
+    rows,
+  }: {
+    title: string;
+    tone: 'required' | 'recommended';
+    rows: PlanningDetailRow[];
+  }) => {
+    if (rows.length === 0) return null;
+
+    const toneClasses = tone === 'required'
+      ? 'border-[rgba(248,81,73,0.18)] bg-[rgba(248,81,73,0.04)]'
+      : 'border-[rgba(88,166,255,0.16)] bg-[rgba(88,166,255,0.04)]';
+
+    return (
+      <div className={`rounded-xl border p-3 ${toneClasses}`}>
+        <div className='mb-3 flex items-center justify-between gap-3'>
+          <h4 className='text-[11px] font-semibold text-[var(--text-secondary)]'>
+            {title}
+          </h4>
+          <span className='text-[var(--ui-text-xs)] text-[var(--text-secondary)]'>
+            {rows.length} {rows.length === 1 ? 'field' : 'fields'}
+          </span>
+        </div>
+        <div className='space-y-3'>
+          {rows.map((detail) => (
+            <div key={detail.id} className='rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3'>
+              <div className='flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between'>
+                <div>
+                  <div className='flex flex-wrap items-center gap-2'>
+                    <span className='text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]'>{detail.label}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${detail.requirement === 'Required' ? 'bg-[rgba(248,81,73,0.12)] text-[var(--accent-red)]' : 'bg-[rgba(88,166,255,0.12)] text-[var(--accent-blue)]'}`}>
+                      {detail.requirement}
+                    </span>
+                  </div>
+                  <p className='mt-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)]'>
+                    {detail.requirement === 'Required'
+                      ? 'Needed before the planner can build confident options.'
+                      : 'Useful for improving option quality without blocking the next step.'}
+                  </p>
+                </div>
+                <div className='flex flex-wrap gap-2'>
+                  <Button type='button' variant='secondary' size='sm' onClick={() => openPlanningEditor(detail.id)}>
+                    {detail.addLabel}
+                  </Button>
+                  <Button type='button' variant='outline' size='sm' onClick={handleAskTravelerForDetail}>
+                    {detail.askLabel}
+                  </Button>
+                </div>
+              </div>
+              <PlanningDetailEditor detailId={detail.id} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   // AI context cards derived from trip decision (if already processed)
   const decision = trip?.decision ?? null;
   const hardBlockers = decision?.hard_blockers ?? [];
   const softBlockers = decision?.soft_blockers ?? [];
   const decisionState = decision?.decision_state ?? null;
+  const leadNeedsConfirmation = isLeadReview;
+  const watchPointLabels = softBlockers.map((blocker) => blocker.replace(/_/g, ' '));
 
   return (
     <div className='space-y-6'>
 
-      {/* AI context cards — quick situational awareness at top */}
-      <div className='grid grid-cols-1 sm:grid-cols-3 gap-3'>
-        {/* Missing before quote */}
-        <div className='rounded-xl border border-[rgba(210,153,34,0.3)] bg-[rgba(210,153,34,0.05)] p-3'>
-          <div className='text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-[var(--accent-amber)] mb-1.5'>Missing before quote</div>
+      {/* Compact guidance strip */}
+      <div className='grid grid-cols-1 gap-2 rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3 md:grid-cols-3'>
+        <div className='min-w-0 rounded-lg bg-[rgba(210,153,34,0.05)] px-3 py-2'>
+          <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-amber)]'>
+            {getPlanningBlockerTitle(isLeadReview, trip)}
+          </p>
           {hardBlockers.length > 0 ? (
-            <ul className='space-y-1'>
-              {hardBlockers.slice(0, 2).map((b, i) => (
-                <li key={i} className='text-[var(--ui-text-xs)] text-[var(--accent-amber)] leading-tight truncate'>• {b}</li>
-              ))}
-              {hardBlockers.length > 2 && (
-                <li className='text-[var(--ui-text-xs)] text-[var(--accent-amber)]/60'>+{hardBlockers.length - 2} more</li>
-              )}
-            </ul>
+            <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>
+              {hardBlockers[0]}
+            </p>
+          ) : leadNeedsConfirmation ? (
+            <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>
+              {getPlanningBlockerBody(true, trip)}
+            </p>
           ) : decisionState ? (
-            <p className='text-[var(--ui-text-xs)] text-[var(--text-secondary)]'>No hard blockers — clear to quote.</p>
-          ) : (
-            <p className='text-[var(--ui-text-xs)] text-[var(--text-placeholder)] italic'>Process trip to check for blockers</p>
-          )}
-        </div>
-
-        {/* Suggested next move */}
-        <div className='rounded-xl border border-[rgba(57,208,216,0.25)] bg-[rgba(57,208,216,0.04)] p-3'>
-          <div className='text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-[var(--accent-cyan)] mb-1.5'>Suggested next move</div>
-          {decisionState ? (
-            <p className='text-[var(--ui-text-xs)] text-[var(--text-rationale)] leading-tight'>
-              {decisionState === 'PROCEED_TRAVELER_SAFE' && 'Send quote to traveler.'}
-              {decisionState === 'PROCEED_INTERNAL_DRAFT' && 'Finalize internal draft before sending.'}
-              {decisionState === 'BRANCH_OPTIONS' && 'Prepare multiple options for traveler.'}
-              {(decisionState === 'STOP_NEEDS_REVIEW' || decisionState === 'STOP_REVIEW') && 'Resolve blockers before proceeding.'}
-              {decisionState === 'ASK_FOLLOWUP' && 'Follow up with traveler for more info.'}
-              {!['PROCEED_TRAVELER_SAFE','PROCEED_INTERNAL_DRAFT','BRANCH_OPTIONS','STOP_NEEDS_REVIEW','STOP_REVIEW','ASK_FOLLOWUP'].includes(decisionState) && 'Review assessment output.'}
+            <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>
+              {getPlanningBlockerBody(false, trip)}
             </p>
           ) : (
-            <p className='text-[var(--ui-text-xs)] text-[var(--text-placeholder)] italic'>Run AI to get next-step guidance</p>
+            <p className='mt-1 text-[13px] italic leading-5 text-[var(--text-placeholder)]'>Process trip to check for blockers</p>
           )}
         </div>
 
-        {/* Owner check required */}
-        <div className='rounded-xl border border-[rgba(88,166,255,0.2)] bg-[rgba(88,166,255,0.04)] p-3'>
-          <div className='text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-[var(--accent-blue)] mb-1.5'>Watch points</div>
-          {softBlockers.length > 0 ? (
-            <ul className='space-y-1'>
-              {softBlockers.slice(0, 2).map((b, i) => (
-                <li key={i} className='text-[var(--ui-text-xs)] text-[var(--text-secondary)] leading-tight truncate'>• {b}</li>
-              ))}
-              {softBlockers.length > 2 && (
-                <li className='text-[var(--ui-text-xs)] text-[var(--text-secondary)]/60'>+{softBlockers.length - 2} more</li>
-              )}
-            </ul>
+        <div className='min-w-0 rounded-lg bg-[rgba(57,208,216,0.04)] px-3 py-2'>
+          <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-cyan)]'>Next</p>
+          {isLeadReview ? (
+            <p className='mt-1 text-[13px] leading-5 text-[var(--text-rationale)]'>
+              {getPlanningSuggestedNextMove(true, trip)}
+            </p>
           ) : decisionState ? (
-            <p className='text-[var(--ui-text-xs)] text-[var(--text-secondary)]'>No soft blockers flagged.</p>
+            <p className='mt-1 text-[13px] leading-5 text-[var(--text-rationale)]'>
+              {getPlanningSuggestedNextMove(false, trip)}
+            </p>
           ) : (
-            <p className='text-[var(--ui-text-xs)] text-[var(--text-placeholder)] italic'>Process trip to surface watch points</p>
+            <p className='mt-1 text-[13px] italic leading-5 text-[var(--text-placeholder)]'>Run AI to get next-step guidance</p>
+          )}
+        </div>
+
+        <div className='min-w-0 rounded-lg bg-[rgba(88,166,255,0.04)] px-3 py-2'>
+          <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-blue)]'>Watch</p>
+          {watchPointLabels.length > 0 ? (
+            planningBriefBlocked ? (
+              <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>
+                {`${watchPointLabels[0].charAt(0).toUpperCase()}${watchPointLabels[0].slice(1)}.`}
+              </p>
+            ) : (
+              <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>
+                {watchPointLabels.slice(0, 2).join(' · ')}
+              </p>
+            )
+          ) : isLeadReview ? (
+            <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>Incomplete intake.</p>
+          ) : decisionState ? (
+            <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>No soft blockers flagged.</p>
+          ) : (
+            <p className='mt-1 text-[13px] italic leading-5 text-[var(--text-placeholder)]'>Process trip to surface watch points</p>
           )}
         </div>
       </div>
@@ -741,6 +1137,52 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
           </div>
         </div>
       )}
+      {planningPanelVisible && (
+        <div className='grid grid-cols-1 gap-4 xl:grid-cols-12'>
+          <div className='bg-[var(--bg-elevated)] border border-[rgba(210,153,34,0.25)] rounded-xl p-4 xl:col-span-7'>
+            <div className='mb-4'>
+              <h3 className='text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)]'>Missing Customer Details</h3>
+              <p className='mt-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)]'>
+                Each missing field can be fixed here or pushed into a traveler follow-up.
+              </p>
+            </div>
+            <div className='space-y-3'>
+              <PlanningDetailSection title='Required missing fields' tone='required' rows={requiredPlanningDetails} />
+              <PlanningDetailSection title='Recommended details' tone='recommended' rows={recommendedPlanningDetails} />
+            </div>
+          </div>
+
+          <div className='bg-[var(--bg-elevated)] border border-[rgba(57,208,216,0.25)] rounded-xl p-4 xl:col-span-5'>
+            <div className='flex items-center justify-between gap-3 mb-3'>
+              <div>
+                <h3 className='text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)]'>Suggested Follow-up</h3>
+                <p className='mt-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)]'>
+                  This draft only asks for the fields still unresolved.
+                </p>
+              </div>
+              <Button
+                type='button'
+                onClick={() => {
+                  setInputRawNote(followUpDraft);
+                  setOperatingMode('follow_up');
+                  void navigator.clipboard?.writeText(followUpDraft);
+                }}
+                variant='secondary'
+                size='sm'
+              >
+                Copy message
+              </Button>
+            </div>
+            <textarea
+              ref={followUpTextareaRef}
+              value={followUpDraft}
+              onChange={(e) => setFollowUpDraft(e.target.value)}
+              rows={5}
+              className='w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--ui-text-sm)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none'
+            />
+          </div>
+        </div>
+      )}
       <div className='bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl p-4'>
         <div className='flex items-center gap-2 mb-4'>
           <Plane className='w-4 h-4 text-[var(--accent-blue)]' />
@@ -749,40 +1191,86 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
           </h3>
         </div>
         {trip ? (
-          <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3'>
-            <EditableField
-              label='Destination'
-              value={editValues.destination}
-              displayValue={trip.destination}
-              field='destination'
-              icon={MapPin}
-            />
-            <EditableField
-              label='Type'
-              value={editValues.type}
-              displayValue={trip.type}
-              field='type'
-            />
-            <EditableField
-              label='Party Size'
-              value={editValues.party}
-              displayValue={trip.party ? `${trip.party} pax` : '—'}
-              field='party'
-              icon={Users}
-              type='number'
-            />
-            <EditableField
-              label='Dates'
-              value={editValues.dateWindow}
-              displayValue={trip.dateWindow || '—'}
-              field='dateWindow'
-              icon={Calendar}
-            />
-            <BudgetField />
-            <div>
-              <span className='text-[var(--ui-text-xs)] text-[var(--text-secondary)] uppercase tracking-wide'>Reference</span>
-              <p className='text-[var(--ui-text-sm)] text-[var(--text-primary)] font-mono mt-0.5'>{tripId}</p>
+          <div className='space-y-4'>
+            <div className='grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-3'>
+              <EditableField
+                label='Origin'
+                value={editValues.origin}
+                displayValue={normalizePlanningDisplayValue(trip.origin) ?? '—'}
+                field='origin'
+                icon={MapPin}
+              />
+              <EditableField
+                label='Destination'
+                value={editValues.destination}
+                displayValue={trip.destination}
+                field='destination'
+                icon={MapPin}
+              />
+              <EditableField
+                label='Type'
+                value={editValues.type}
+                displayValue={trip.type}
+                field='type'
+              />
+              <EditableField
+                label='Party Size'
+                value={editValues.party}
+                displayValue={trip.party ? `${trip.party} pax` : '—'}
+                field='party'
+                icon={Users}
+                type='number'
+              />
+              <EditableField
+                label='Dates'
+                value={editValues.dateWindow}
+                displayValue={formatDateWindowDisplay(trip.dateWindow)}
+                field='dateWindow'
+                icon={Calendar}
+              />
+              <BudgetField />
+              <div>
+                <span className='text-[var(--ui-text-xs)] text-[var(--text-secondary)] uppercase tracking-wide'>
+                  Inquiry Ref
+                </span>
+                <p className='text-[var(--ui-text-sm)] text-[var(--text-primary)] font-mono mt-0.5'>
+                  {formatInquiryReference(tripId)}
+                </p>
+              </div>
             </div>
+            <div className='grid grid-cols-1 lg:grid-cols-2 gap-3'>
+              <div className='rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3'>
+                <div className='flex items-center justify-between gap-3'>
+                  <div>
+                    <p className='text-[var(--ui-text-xs)] uppercase tracking-[0.18em] text-[var(--text-secondary)]'>Must-haves</p>
+                    <p className='mt-1 text-[var(--ui-text-sm)] text-[var(--text-primary)]'>
+                      {tripPriorities ?? 'Not captured yet'}
+                    </p>
+                  </div>
+                  <Button type='button' variant='ghost' size='sm' onClick={() => openPlanningEditor('priorities')}>
+                    {tripPriorities ? 'Edit' : 'Add'}
+                  </Button>
+                </div>
+              </div>
+              <div className='rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3'>
+                <div className='flex items-center justify-between gap-3'>
+                  <div>
+                    <p className='text-[var(--ui-text-xs)] uppercase tracking-[0.18em] text-[var(--text-secondary)]'>Date flexibility</p>
+                    <p className='mt-1 text-[var(--ui-text-sm)] text-[var(--text-primary)]'>
+                      {dateFlexibility ?? 'Not captured yet'}
+                    </p>
+                  </div>
+                  <Button type='button' variant='ghost' size='sm' onClick={() => openPlanningEditor('flexibility')}>
+                    {dateFlexibility ? 'Edit' : 'Add'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+            {(activePlanningEditor === 'priorities' || activePlanningEditor === 'flexibility') && (
+              <div className='rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3'>
+                <PlanningDetailEditor detailId={activePlanningEditor} />
+              </div>
+            )}
           </div>
         ) : (
           <p className='text-[var(--ui-text-sm)] text-[var(--text-secondary)]'>
@@ -791,46 +1279,63 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
         )}
       </div>
 
-      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-        <div className='bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl p-4'>
-          <div className='flex items-center gap-2 mb-3'>
-            <FileText className='w-4 h-4 text-[var(--text-secondary)]' />
-            <label className='text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]'>
-              Customer Message
-            </label>
+      <div className='rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-4'>
+        <div className='flex items-center justify-between gap-3'>
+          <div>
+            <h3 className='text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)]'>Notes</h3>
+            <p className='mt-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)]'>
+              Keep raw traveler context and internal clarifications here.
+            </p>
           </div>
-          <textarea
-            value={deferredRawNote}
-            onChange={(e) => setInputRawNote(e.target.value)}
-            placeholder='Paste the incoming traveler note here...'
-            rows={6}
-            className='w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--ui-text-sm)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none font-mono'
-          />
+          {planningPanelVisible && (
+            <Button type='button' variant='ghost' size='sm' onClick={() => setNotesExpanded((current) => !current)}>
+              {notesExpanded ? 'Hide notes' : 'Open notes'}
+            </Button>
+          )}
         </div>
+        {notesExpanded && (
+          <div className='mt-4 grid grid-cols-1 lg:grid-cols-2 gap-6'>
+            <div className='bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl p-4'>
+              <div className='flex items-center gap-2 mb-3'>
+                <FileText className='w-4 h-4 text-[var(--text-secondary)]' />
+                <label className='text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]'>
+                  Customer Message
+                </label>
+              </div>
+              <textarea
+                value={deferredRawNote}
+                onChange={(e) => setInputRawNote(e.target.value)}
+                placeholder='Paste the incoming traveler note here...'
+                rows={6}
+                className='w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--ui-text-sm)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none font-mono'
+              />
+            </div>
 
-        <div className='bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl p-4'>
-          <div className='flex items-center gap-2 mb-3'>
-            <User className='w-4 h-4 text-[var(--accent-blue)]' />
-            <label className='text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]'>
-              Agent Notes
-            </label>
+            <div className='bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl p-4'>
+              <div className='flex items-center gap-2 mb-3'>
+                <User className='w-4 h-4 text-[var(--accent-blue)]' />
+                <label className='text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]'>
+                  Agent Notes
+                </label>
+              </div>
+              <textarea
+                value={deferredOwnerNote}
+                onChange={(e) => setInputOwnerNote(e.target.value)}
+                placeholder="Add owner's comments or clarifications..."
+                rows={6}
+                className='w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--ui-text-sm)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none'
+              />
+            </div>
           </div>
-          <textarea
-            value={deferredOwnerNote}
-            onChange={(e) => setInputOwnerNote(e.target.value)}
-            placeholder="Add owner's comments or clarifications..."
-            rows={6}
-            className='w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--ui-text-sm)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none'
-          />
-        </div>
+        )}
       </div>
 
-      <div className='bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl p-4'>
-        <h3 className='text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2'>
+      <details className='bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl p-4'>
+        <summary className='flex cursor-pointer list-none items-center gap-2 text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)]'>
           <Settings className='w-4 h-4 text-[var(--text-secondary)]' />
-          Configuration
-        </h3>
-        <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+          Advanced configuration
+        </summary>
+        <div className='mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4'>
           <div>
             <label className='block text-[var(--ui-text-sm)] font-medium text-[var(--text-secondary)] mb-2'>
               Stage
@@ -876,9 +1381,9 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             </div>
           </div>
         </div>
-      </div>
+      </details>
 
-      <div className='flex items-center justify-between pt-4 border-t border-[var(--border-default)]'>
+      <div className='flex flex-col gap-4 pt-4 border-t border-[var(--border-default)]'>
         <div className='flex items-center gap-4 text-[var(--ui-text-sm)] text-[var(--text-secondary)] flex-wrap'>
           <div className='flex items-center gap-2'>
             <div className='w-2 h-2 rounded-full bg-[var(--accent-green)]'></div>
@@ -933,123 +1438,139 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             </div>
           )}
         </div>
-        <div className='flex items-center gap-2'>
-          {/* Secondary actions — low visual weight */}
-          <button
-            type='button'
-            onClick={() => setShowCapturePanel(true)}
-            className='flex items-center gap-1.5 px-3 py-1.5 bg-transparent text-text-tertiary border border-[var(--bg-count-badge)] rounded-lg text-[var(--ui-text-xs)] font-medium hover:text-[var(--text-secondary)] hover:border-[var(--border-default)] transition-colors'
-            aria-label='Capture call'
-          >
-            <Phone className='w-3.5 h-3.5' aria-hidden='true' />
-            Capture Call
-          </button>
-          <button
-            type='button'
-            onClick={handleSave}
-            disabled={isSaving || !tripId}
-            className='flex items-center gap-1.5 px-3 py-1.5 bg-transparent text-text-tertiary border border-[var(--bg-count-badge)] rounded-lg text-[var(--ui-text-xs)] font-medium hover:text-[var(--text-secondary)] hover:border-[var(--border-default)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
-            aria-label='Save changes'
-          >
-            {isSaving ? (
-              <>
-                <div
-                  className='w-3.5 h-3.5 border-2 border-text-tertiary/30 border-t-text-tertiary rounded-full animate-spin'
-                  aria-hidden='true'
-                />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className='w-3.5 h-3.5' aria-hidden='true' />
-                Save
-              </>
-            )}
-          </button>
-          {isLeadReview ? (
-            <button
+        <div className='flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between'>
+          <div className='flex items-center'>
+            <Button
               type='button'
-              onClick={handleStartPlanning}
-              disabled={isStartingPlanning || !tripId}
-              className='flex items-center gap-2 px-5 py-2 rounded-lg text-[var(--ui-text-sm)] font-bold text-text-on-accent disabled:opacity-40 disabled:cursor-not-allowed transition-all'
-              style={{
-                background: isStartingPlanning
-                  ? 'rgba(88,166,255,0.5)'
-                  : 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, var(--accent-cyan) 100%)',
-                boxShadow: isStartingPlanning ? 'none' : '0 0 20px rgba(57,208,216,0.3), 0 2px 8px rgba(88,166,255,0.2)',
-              }}
-              aria-label={isStartingPlanning ? 'Starting planning' : 'Start planning'}
+              onClick={() => setShowCapturePanel(true)}
+              variant='outline'
+              size='sm'
+              className='text-text-tertiary'
+              aria-label='Capture call notes'
             >
-              {isStartingPlanning ? (
-                <>
-                  <div
-                    className='w-4 h-4 border-2 border-text-on-accent/30 border-t-text-on-accent rounded-full animate-spin'
-                    aria-hidden='true'
-                  />
-                  <span>Starting planning...</span>
-                </>
+              <Phone className='w-3.5 h-3.5' aria-hidden='true' />
+              Capture call notes
+            </Button>
+          </div>
+          <div className='flex flex-col gap-2 lg:items-end'>
+            {isLeadReview && (
+              <p className='text-[11px] text-[var(--text-secondary)] max-w-[22rem] lg:text-right'>
+                Start planning will assign this lead and move it to Trips in Planning.
+              </p>
+            )}
+            {!isLeadReview && requiredPlanningDetails.length === 0 && recommendedPlanningDetails.length > 0 && (
+              <p className='text-[11px] text-[var(--text-secondary)] max-w-[24rem] lg:text-right'>
+                Required fields are complete. You can continue now, or tighten the recommended details first for better options.
+              </p>
+            )}
+            <div className='flex items-center gap-2'>
+              <Button
+                type='button'
+                onClick={handleSave}
+                disabled={isSaving || !tripId}
+                variant='outline'
+                size='sm'
+                className='text-text-tertiary'
+                aria-label='Save changes'
+              >
+                {isSaving ? (
+                  <>
+                    <div
+                      className='w-3.5 h-3.5 border-2 border-text-tertiary/30 border-t-text-tertiary rounded-full animate-spin'
+                      aria-hidden='true'
+                    />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className='w-3.5 h-3.5' aria-hidden='true' />
+                    Save changes
+                  </>
+                )}
+              </Button>
+              {isLeadReview ? (
+                <Button
+                  type='button'
+                  onClick={handleStartPlanning}
+                  disabled={isStartingPlanning || !tripId}
+                  variant='default'
+                  size='touch'
+                  className='font-semibold'
+                  aria-label={isStartingPlanning ? 'Starting planning' : 'Start planning'}
+                >
+                  {isStartingPlanning ? (
+                    <>
+                      <div
+                        className='w-4 h-4 border-2 border-text-on-accent/30 border-t-text-on-accent rounded-full animate-spin'
+                        aria-hidden='true'
+                      />
+                      <span>Starting planning...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className='w-4 h-4' aria-hidden='true' />
+                      Start Planning
+                      <ChevronRight className='w-4 h-4' aria-hidden='true' />
+                    </>
+                  )}
+                </Button>
               ) : (
-                <>
-                  <Play className='w-4 h-4' aria-hidden='true' />
-                  Start Planning
-                </>
-              )}
-            </button>
-          ) : (
-            <>
-              <button
-                type='button'
-                onClick={handleMarkReady}
-                disabled={isMarkingReady || !tripId}
-                className='flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-elevated)] text-[var(--accent-green)] border border-[rgba(63,185,80,0.25)] rounded-lg text-[var(--ui-text-xs)] font-medium hover:bg-[rgba(63,185,80,0.08)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
-                aria-label={isMarkingReady ? 'Marking ready' : 'Mark ready'}
-              >
-                {isMarkingReady ? (
                   <>
-                    <div
-                      className='w-3.5 h-3.5 border-2 border-[var(--accent-green)]/30 border-t-[var(--accent-green)] rounded-full animate-spin'
-                      aria-hidden='true'
-                    />
-                    Checking...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className='w-3.5 h-3.5' aria-hidden='true' />
-                    Mark Ready
-                  </>
-                )}
-              </button>
+                    {!planningPanelVisible && (
+                      <Button
+                        type='button'
+                        onClick={handleMarkReady}
+                        disabled={isMarkingReady || !tripId}
+                        variant='secondary'
+                        size='sm'
+                        className='border-[rgba(63,185,80,0.25)] text-[var(--accent-green)] hover:bg-[rgba(63,185,80,0.08)]'
+                        aria-label={isMarkingReady ? 'Marking ready' : 'Mark ready'}
+                      >
+                        {isMarkingReady ? (
+                          <>
+                            <div
+                              className='w-3.5 h-3.5 border-2 border-[var(--accent-green)]/30 border-t-[var(--accent-green)] rounded-full animate-spin'
+                              aria-hidden='true'
+                            />
+                            Checking...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className='w-3.5 h-3.5' aria-hidden='true' />
+                            Mark Ready
+                          </>
+                        )}
+                      </Button>
+                    )}
 
-              <button
-                type='button'
-                onClick={handleProcessTrip}
-                disabled={isRunning || isSpineRunning || (!input_raw_note && !input_owner_note)}
-                className='flex items-center gap-2 px-5 py-2 rounded-lg text-[var(--ui-text-sm)] font-bold text-text-on-accent disabled:opacity-40 disabled:cursor-not-allowed transition-all'
-                style={{
-                  background: isRunning
-                    ? 'rgba(88,166,255,0.5)'
-                    : 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, var(--accent-cyan) 100%)',
-                  boxShadow: isRunning ? 'none' : '0 0 20px rgba(57,208,216,0.3), 0 2px 8px rgba(88,166,255,0.2)',
-                }}
-                aria-label={isRunning ? 'Processing trip' : 'Process trip'}
-              >
-                {isRunning ? (
-                  <>
-                    <div
-                      className='w-4 h-4 border-2 border-text-on-accent/30 border-t-text-on-accent rounded-full animate-spin'
-                      aria-hidden='true'
-                    />
-                    <span>Processing {formatElapsedTime(runElapsedSeconds)}</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className='w-4 h-4' aria-hidden='true' />
-                    Process Trip
+                    <Button
+                      type='button'
+                      onClick={planningPanelVisible && requiredPlanningDetails.length > 0 ? handlePrepareFollowUp : handleProcessTrip}
+                      disabled={planningPanelVisible && requiredPlanningDetails.length > 0 ? !tripId : isRunning || isSpineRunning || (!input_raw_note && !input_owner_note)}
+                      variant='default'
+                      size='touch'
+                      className='font-semibold'
+                      aria-label={(!planningPanelVisible || requiredPlanningDetails.length === 0) && isRunning ? 'Processing trip' : processButtonLabel}
+                    >
+                      {(!planningPanelVisible || requiredPlanningDetails.length === 0) && isRunning ? (
+                        <>
+                          <div
+                            className='w-4 h-4 border-2 border-text-on-accent/30 border-t-text-on-accent rounded-full animate-spin'
+                            aria-hidden='true'
+                          />
+                          <span>Processing {formatElapsedTime(runElapsedSeconds)}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className='w-4 h-4' aria-hidden='true' />
+                          {processButtonLabel}
+                        </>
+                      )}
+                    </Button>
                   </>
                 )}
-              </button>
-            </>
-          )}
+            </div>
+          </div>
         </div>
       </div>
 

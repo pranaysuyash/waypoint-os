@@ -90,20 +90,26 @@ const baseSummary = {
     },
   ],
   pipeline: [
-    { label: 'New', count: 5 },
-    { label: 'Assigned', count: 2 },
+    { label: 'Assigned', count: 1 },
   ],
   pipelineLoading: false,
   pipelineError: null,
   recentTrips: [
     {
-      id: 'trip_1',
-      destination: 'Bali',
-      type: 'leisure',
+      id: 'trip_4b9e0d894872',
+      destination: 'Singapore',
+      type: 'family',
       state: 'amber',
-      age: '1d',
+      age: 'Today',
       createdAt: '2026-04-30T00:00:00Z',
       updatedAt: '2026-04-30T00:00:00Z',
+      party: 5,
+      dateWindow: 'dates around 9th to 14th feb',
+      budget: '$0',
+      status: 'assigned',
+      rawInput: {
+        fixture_id: 'SC-901',
+      },
     },
   ],
   recentTripsLoading: false,
@@ -203,7 +209,28 @@ describe('OverviewPage', () => {
   it('keeps the trip list visible when planning already has trips', () => {
     render(<OverviewPage />);
 
-    expect(screen.getByRole('link', { name: /bali/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /continue planning/i })).toBeInTheDocument();
     expect(screen.queryByText('No trips in planning yet')).not.toBeInTheDocument();
+  });
+
+  it('renders planning work as a rich trip card instead of a sparse activity row', () => {
+    render(<OverviewPage />);
+
+    const planningCardHeading = screen.getByText('Singapore family trip');
+    const planningCard = planningCardHeading.closest('a');
+
+    expect(planningCardHeading).toBeInTheDocument();
+    expect(planningCard).not.toBeNull();
+    expect(within(planningCard as HTMLElement).getByText('Customer SC-901 · 5 pax · Around Feb 9–14')).toBeInTheDocument();
+    expect(within(planningCard as HTMLElement).getByText('Need Customer Details')).toBeInTheDocument();
+    expect(within(planningCard as HTMLElement).getByText('Budget missing')).toBeInTheDocument();
+    expect(within(planningCard as HTMLElement).getByText('Assigned')).toBeInTheDocument();
+    expect(within(planningCard as HTMLElement).getByText('Next: confirm budget and trip details before building options.')).toBeInTheDocument();
+    expect(within(planningCard as HTMLElement).getByText('Updated today')).toBeInTheDocument();
+    expect(within(planningCard as HTMLElement).getByText('Inquiry Ref: 4B9E')).toBeInTheDocument();
+    expect(within(planningCard as HTMLElement).queryByText('Need Trip Options')).not.toBeInTheDocument();
+    expect(screen.queryByText('trip_4b9e0d894872')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Most in Assigned/i)).not.toBeInTheDocument();
+    expect(screen.getByText('1 trip in planning · planning started')).toBeInTheDocument();
   });
 });

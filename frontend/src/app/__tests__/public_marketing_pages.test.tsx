@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import HomePage from '@/app/page';
-import ItineraryCheckerPage from '@/app/itinerary-checker/page';
+import ItineraryCheckerPage from '@/app/(traveler)/itinerary-checker/page';
 
 describe('public marketing pages', () => {
   it('renders the B2B landing page copy and CTA surfaces', () => {

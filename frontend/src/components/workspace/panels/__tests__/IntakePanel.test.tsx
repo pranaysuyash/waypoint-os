@@ -4,6 +4,7 @@ import { IntakePanel } from '../IntakePanel';
 import { useWorkbenchStore } from '@/stores/workbench';
 import { ApiException, updateTrip } from '@/lib/api-client';
 import { useAuthStore } from '@/stores/auth';
+import { formatInquiryReference } from '@/lib/lead-display';
 
 const mockSaveTrip = vi.fn();
 const mockStartPlanning = vi.fn();
@@ -110,14 +111,15 @@ describe('IntakePanel', () => {
     render(<IntakePanel tripId="TRIP-123" trip={mockTrip} />);
 
     // Check if trip details are rendered
-    expect(screen.getByText('Test Destination')).toBeInTheDocument();
-    expect(screen.getByText('TRIP-123')).toBeInTheDocument();
+    expect(screen.getAllByText('Test Destination').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(formatInquiryReference('TRIP-123')).length).toBeGreaterThan(0);
     
     // Check if configuration elements are rendered
-    expect(screen.getByText('Configuration')).toBeInTheDocument();
+    expect(screen.getByText('Advanced configuration')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Discovery')).toBeInTheDocument();
     
     // Check if test inputs are passed to textareas
+    fireEvent.click(screen.getByRole('button', { name: /Open notes/i }));
     expect(screen.getByDisplayValue('Test raw note')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Test owner note')).toBeInTheDocument();
   });
@@ -139,11 +141,14 @@ describe('IntakePanel', () => {
   it('shows review mode for incomplete leads before planning starts', () => {
     render(
       <IntakePanel
-        tripId="TRIP-123"
+        tripId="trip_4b9e0d894872"
         trip={{
-          id: 'TRIP-123',
+          id: 'trip_4b9e0d894872',
           destination: 'Singapore',
           type: 'Family',
+          budget: '$0',
+          party: 5,
+          dateWindow: 'dates around 9th to 14th feb',
           state: 'blue',
           age: '1d',
           createdAt: '2026-04-23T08:00:00.000Z',
@@ -156,6 +161,15 @@ describe('IntakePanel', () => {
     expect(screen.getByRole('button', { name: /start planning/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /process trip/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /mark ready/i })).not.toBeInTheDocument();
+    expect(screen.getByText('Budget missing')).toBeInTheDocument();
+    expect(screen.getByText('Around Feb 9–14')).toBeInTheDocument();
+    expect(screen.getByText('Inquiry Ref')).toBeInTheDocument();
+    expect(screen.getByText(/4B9E/i)).toBeInTheDocument();
+    expect(screen.getByText('Missing before planning')).toBeInTheDocument();
+    expect(screen.getByText('Budget and trip details need confirmation.')).toBeInTheDocument();
+    expect(screen.getByText('Review the lead and confirm missing details with the traveler.')).toBeInTheDocument();
+    expect(screen.getByText('Incomplete intake.')).toBeInTheDocument();
+    expect(screen.queryByText('trip_4b9e0d894872')).not.toBeInTheDocument();
   });
 
   it('starts planning with the current agent when review mode action is used', async () => {
@@ -180,6 +194,181 @@ describe('IntakePanel', () => {
     await waitFor(() => {
       expect(mockStartPlanning).toHaveBeenCalledWith('TRIP-123', 'agent-1', 'Alex Agent');
     });
+  });
+
+  it('shows blocker-aware planning mode after start planning when the brief is still incomplete', () => {
+    render(
+      <IntakePanel
+        tripId="trip_4b9e0d894872"
+        trip={{
+          id: 'trip_4b9e0d894872',
+          destination: 'Singapore',
+          type: 'Family Leisure',
+          budget: '$0',
+          party: 5,
+          dateWindow: 'dates around 9th to 14th feb',
+          state: 'amber',
+          age: 'Today',
+          createdAt: '2026-04-23T08:00:00.000Z',
+          updatedAt: '2026-04-23T08:15:00.000Z',
+          status: 'assigned',
+          decision: {
+            decision_state: 'ASK_FOLLOWUP',
+            hard_blockers: [],
+            soft_blockers: ['incomplete_intake'],
+            contradictions: [],
+            risk_flags: [],
+            follow_up_questions: [],
+            rationale: {},
+            confidence: {},
+            branch_options: [],
+            commercial_decision: 'NONE',
+            budget_breakdown: null,
+          },
+          validation: {
+            warnings: [
+              {
+                severity: 'warning',
+                code: 'QUOTE_READY_INCOMPLETE',
+                message: 'Field budget_raw_text missing',
+                field: 'budget_raw_text',
+              },
+            ],
+          },
+        } as any}
+      />
+    );
+
+    expect(screen.getByText('Before building options')).toBeInTheDocument();
+    expect(screen.getByText('Confirm budget and any must-have trip details.')).toBeInTheDocument();
+    expect(screen.getByText('Next')).toBeInTheDocument();
+    expect(screen.getByText('Ask the traveler for budget range and trip priorities.')).toBeInTheDocument();
+    expect(screen.getByText('Watch')).toBeInTheDocument();
+    expect(screen.getByText('Incomplete intake.')).toBeInTheDocument();
+    expect(screen.getByText('Inquiry Ref')).toBeInTheDocument();
+    expect(screen.getAllByText(/4B9E/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText('trip_4b9e0d894872')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Mark ready/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Process trip/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Continue planning/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Draft follow-up/i })).toBeInTheDocument();
+  });
+
+  it('prioritizes missing-customer-details workflow above generic notes when planning is blocked', () => {
+    render(
+      <IntakePanel
+        tripId="trip_4b9e0d894872"
+        trip={{
+          id: 'trip_4b9e0d894872',
+          destination: 'Singapore',
+          type: 'Family Leisure',
+          budget: '$0',
+          party: 5,
+          dateWindow: 'dates around 9th to 14th feb',
+          state: 'amber',
+          age: 'Today',
+          createdAt: '2026-04-23T08:00:00.000Z',
+          updatedAt: '2026-04-23T08:15:00.000Z',
+          status: 'assigned',
+          decision: {
+            decision_state: 'ASK_FOLLOWUP',
+            hard_blockers: [],
+            soft_blockers: ['incomplete_intake'],
+            contradictions: [],
+            risk_flags: [],
+            follow_up_questions: [],
+            rationale: {},
+            confidence: {},
+            branch_options: [],
+            commercial_decision: 'NONE',
+            budget_breakdown: null,
+          },
+          validation: {
+            warnings: [
+              {
+                severity: 'warning',
+                code: 'QUOTE_READY_INCOMPLETE',
+                message: 'Field budget_raw_text missing',
+                field: 'budget_raw_text',
+              },
+              {
+                severity: 'warning',
+                code: 'QUOTE_READY_INCOMPLETE',
+                message: 'Field origin_city missing',
+                field: 'origin_city',
+              },
+            ],
+          },
+        } as any}
+      />
+    );
+
+    expect(screen.getByText('Missing Customer Details')).toBeInTheDocument();
+    expect(screen.getByText('Required missing fields')).toBeInTheDocument();
+    expect(screen.getByText('Recommended details')).toBeInTheDocument();
+    expect(screen.getByText('Budget range')).toBeInTheDocument();
+    expect(screen.getByText('Trip priorities / must-haves')).toBeInTheDocument();
+    expect(screen.getByText('Origin city')).toBeInTheDocument();
+    expect(screen.getAllByText('Date flexibility').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /Add budget/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Add origin/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Add priorities/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Add flexibility/i })).toBeInTheDocument();
+    expect(screen.getByText('Suggested Follow-up')).toBeInTheDocument();
+    expect(screen.getByDisplayValue(/could you confirm your approximate budget range/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Copy message/i })).toBeInTheDocument();
+    expect(screen.queryByText('Known Trip Details')).not.toBeInTheDocument();
+    expect(screen.getByText('Notes')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Open notes/i })).toBeInTheDocument();
+  });
+
+  it('opens an inline editor for a missing planning detail', () => {
+    render(
+      <IntakePanel
+        tripId="trip_4b9e0d894872"
+        trip={{
+          id: 'trip_4b9e0d894872',
+          destination: 'Singapore',
+          type: 'Family Leisure',
+          budget: '$0',
+          party: 5,
+          dateWindow: 'dates around 9th to 14th feb',
+          state: 'amber',
+          age: 'Today',
+          createdAt: '2026-04-23T08:00:00.000Z',
+          updatedAt: '2026-04-23T08:15:00.000Z',
+          status: 'assigned',
+          decision: {
+            decision_state: 'ASK_FOLLOWUP',
+            hard_blockers: [],
+            soft_blockers: ['incomplete_intake'],
+            contradictions: [],
+            risk_flags: [],
+            follow_up_questions: [],
+            rationale: {},
+            confidence: {},
+            branch_options: [],
+            commercial_decision: 'NONE',
+            budget_breakdown: null,
+          },
+          validation: {
+            warnings: [
+              {
+                severity: 'warning',
+                code: 'QUOTE_READY_INCOMPLETE',
+                message: 'Field budget_raw_text missing',
+                field: 'budget_raw_text',
+              },
+            ],
+          },
+        } as any}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Add budget/i }));
+
+    expect(screen.getByPlaceholderText(/Approximate budget/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Save budget/i })).toBeInTheDocument();
   });
 
   it('disables process button when no notes are present', () => {
@@ -213,7 +402,7 @@ describe('IntakePanel', () => {
   it('renders Capture Call button', () => {
     render(<IntakePanel tripId="TRIP-123" />);
 
-    const captureCallButton = screen.getByRole('button', { name: /Capture Call/i });
+    const captureCallButton = screen.getByRole('button', { name: /Capture call notes/i });
     expect(captureCallButton).toBeInTheDocument();
   });
 
@@ -222,7 +411,7 @@ describe('IntakePanel', () => {
 
     expect(screen.queryByTestId('capture-call-panel')).not.toBeInTheDocument();
 
-    const captureCallButton = screen.getByRole('button', { name: /Capture Call/i });
+    const captureCallButton = screen.getByRole('button', { name: /Capture call notes/i });
     fireEvent.click(captureCallButton);
 
     await waitFor(() => {
@@ -239,7 +428,7 @@ describe('IntakePanel', () => {
   it('closes CaptureCallPanel on cancel', async () => {
     render(<IntakePanel tripId="TRIP-123" />);
 
-    const captureCallButton = screen.getByRole('button', { name: /Capture Call/i });
+    const captureCallButton = screen.getByRole('button', { name: /Capture call notes/i });
     fireEvent.click(captureCallButton);
 
     await waitFor(() => {
@@ -261,7 +450,7 @@ describe('IntakePanel', () => {
 
     render(<IntakePanel tripId="TRIP-123" />);
 
-    const captureCallButton = screen.getByRole('button', { name: /Capture Call/i });
+    const captureCallButton = screen.getByRole('button', { name: /Capture call notes/i });
     fireEvent.click(captureCallButton);
 
     await waitFor(() => {

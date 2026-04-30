@@ -4,11 +4,11 @@ import { useTripContext } from '@/contexts/TripContext';
 import { PacketPanel } from '@/components/workspace/panels/PacketPanel';
 
 export default function PacketPage() {
-  const { tripId } = useTripContext();
+  const { tripId, trip } = useTripContext();
   
   return (
     <div className='p-6'>
-      <PacketPanel tripId={tripId || ''} />
+      <PacketPanel tripId={tripId || ''} trip={trip} />
     </div>
   );
 }

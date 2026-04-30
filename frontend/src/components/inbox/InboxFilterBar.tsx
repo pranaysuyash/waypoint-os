@@ -15,6 +15,8 @@ export interface FilterConfig {
   key: FilterKey;
   label: string;
   count: number;
+  tone?: 'neutral' | 'attention' | 'ownership' | 'risk';
+  muted?: boolean;
 }
 
 export interface InboxFilterBarProps {
@@ -40,6 +42,8 @@ export const InboxFilterBar = memo(function InboxFilterBar({
             count={filter.count}
             isActive={activeFilter === filter.key}
             onClick={() => onFilterChange(filter.key)}
+            tone={filter.tone}
+            muted={filter.muted}
           />
         ))}
       </div>

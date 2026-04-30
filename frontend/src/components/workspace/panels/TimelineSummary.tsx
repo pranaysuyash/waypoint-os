@@ -3,41 +3,54 @@
 import { useEffect, useState } from "react";
 import type { TimelineResponse } from "@/types/spine";
 import { STAGE_LABELS, STATUS_LABELS, labelOrTitle } from "@/lib/label-maps";
+import {
+  getTimelineEventTitle,
+  getTimelineStageLabel,
+} from "@/lib/timeline-rail";
 
 interface TimelineSummaryProps {
   tripId: string;
+  timeline?: TimelineResponse | null;
+  loading?: boolean;
+  error?: string | null;
 }
 
 const AVAILABLE_STAGES = ["intake", "packet", "decision", "strategy", "safety"];
 
-export function TimelineSummary({ tripId }: TimelineSummaryProps) {
-  const [timeline, setTimeline] = useState<TimelineResponse | null>(null);
+export function TimelineSummary({ tripId, timeline: providedTimeline, loading: providedLoading, error: providedError }: TimelineSummaryProps) {
+  const [fetchedTimeline, setFetchedTimeline] = useState<TimelineResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const shouldFetch = providedTimeline === undefined && providedLoading === undefined && providedError === undefined;
 
   useEffect(() => {
+    if (!shouldFetch) return;
     if (!tripId) return;
     const fetchTimeline = async () => {
       try {
         setIsLoading(true);
-        setError(null);
+        setFetchError(null);
         const response = await fetch(`/api/trips/${tripId}/timeline`, {
           credentials: "include",
           cache: "no-store",
         });
         if (!response.ok) throw new Error(`Failed to fetch timeline: ${response.statusText}`);
         const data = await response.json();
-        setTimeline(data);
+        setFetchedTimeline(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load timeline");
+        setFetchError(err instanceof Error ? err.message : "Failed to load timeline");
       } finally {
         setIsLoading(false);
       }
     };
     fetchTimeline();
-  }, [tripId]);
+  }, [tripId, shouldFetch]);
 
-  if (isLoading) {
+  const resolvedTimeline = shouldFetch ? fetchedTimeline : (providedTimeline ?? null);
+  const resolvedLoading = shouldFetch ? isLoading : Boolean(providedLoading);
+  const resolvedError = shouldFetch ? fetchError : (providedError ?? null);
+
+  if (resolvedLoading) {
     return (
       <div className="p-4 text-center">
         <p className="text-ui-xs text-text-muted">Loading...</p>
@@ -45,15 +58,15 @@ export function TimelineSummary({ tripId }: TimelineSummaryProps) {
     );
   }
 
-  if (error) {
+  if (resolvedError) {
     return (
       <div className="p-4">
-        <p className="text-ui-xs text-accent-red">{error}</p>
+        <p className="text-ui-xs text-accent-red">{resolvedError}</p>
       </div>
     );
   }
 
-  const events = timeline?.events ?? [];
+  const events = resolvedTimeline?.events ?? [];
 
   if (events.length === 0) {
     return (
@@ -90,13 +103,13 @@ export function TimelineSummary({ tripId }: TimelineSummaryProps) {
               })}
             </dd>
           </div>
-          <div className="flex justify-between items-center">
-            <dt className="text-ui-xs text-text-muted">Current stage</dt>
-            <dd className="text-ui-xs font-medium text-text-primary">
-              {labelOrTitle(STAGE_LABELS, lastEvent.stage)}
-            </dd>
-          </div>
-        </dl>
+            <div className="flex justify-between items-center">
+              <dt className="text-ui-xs text-text-muted">Current stage</dt>
+              <dd className="text-ui-xs font-medium text-text-primary">
+                {getTimelineStageLabel(lastEvent.stage)}
+              </dd>
+            </div>
+          </dl>
       </div>
 
       <div>
@@ -112,6 +125,20 @@ export function TimelineSummary({ tripId }: TimelineSummaryProps) {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      <div>
+        <h4 className="text-ui-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Recent Events</h4>
+        <div className="space-y-2">
+          {events.slice(-5).reverse().map((event, index) => (
+            <div key={`${event.timestamp}-${index}`} className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2">
+              <p className="text-ui-xs font-medium text-text-primary">{getTimelineEventTitle(event)}</p>
+              <p className="mt-1 text-[11px] text-text-secondary">
+                {getTimelineStageLabel(event.stage)} · {labelOrTitle(STATUS_LABELS, event.status)}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
 

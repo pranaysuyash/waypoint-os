@@ -1,26 +1,36 @@
 "use client";
 
+import Link from "next/link";
 import { useWorkbenchStore } from "@/stores/workbench";
+import type { Trip } from "@/lib/api-client";
 import type { SlotValue, Ambiguity, PacketUnknown, PacketContradiction, ValidationReport } from "@/types/spine";
 import { FIELD_LABELS, SIGNAL_LABELS, labelOrTitle } from "@/lib/label-maps";
+import {
+  formatBudgetDisplay,
+  formatCustomerDisplay,
+  formatDateWindowDisplay,
+  formatInquiryReference,
+  formatLeadTitle,
+  formatPartySizeDisplay,
+} from "@/lib/lead-display";
+import { getRequiredPlanningFields } from "@/lib/planning-status";
 
 interface PacketPanelProps {
   tripId: string;
+  trip?: Trip | null;
 }
 
-export function PacketPanel({ tripId }: PacketPanelProps) {
+export function PacketPanel({ tripId, trip }: PacketPanelProps) {
   const { result_packet, result_validation, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
+  const activePacket = result_packet || trip?.packet;
+  const activeValidation = result_validation || (trip?.validation as ValidationReport | null);
 
-  if (!result_packet) {
-    return (
-      <div className="p-4 text-ui-sm text-text-muted italic">
-        No booking request data for trip {tripId}. Process a trip from the "Intake" section first.
-      </div>
-    );
+  if (!activePacket) {
+    return <TripDetailsFallback tripId={tripId} trip={trip ?? null} />;
   }
 
-  const bookingRequest = result_packet as Record<string, unknown>;
-  const validation = result_validation as ValidationReport | null;
+  const bookingRequest = activePacket as Record<string, unknown>;
+  const validation = activeValidation;
 
   const facts = (bookingRequest.facts || {}) as Record<string, SlotValue>;
   const derivedSignals = (bookingRequest.derived_signals || {}) as Record<string, SlotValue>;
@@ -104,6 +114,123 @@ export function PacketPanel({ tripId }: PacketPanelProps) {
           {JSON.stringify(bookingRequest, null, 2)}
         </pre>
       )}
+    </div>
+  );
+}
+
+function TripDetailsFallback({ tripId, trip }: { tripId: string; trip: Trip | null }) {
+  const requiredFields = getRequiredPlanningFields(trip);
+  const intakeHref = `/trips/${tripId}/intake`;
+
+  if (!trip) {
+    return (
+      <div className="space-y-4 rounded-xl border border-[rgba(210,153,34,0.25)] bg-[rgba(210,153,34,0.05)] p-6">
+        <h2 className="text-ui-xl font-semibold text-text-primary">Trip details need customer input</h2>
+        <p className="text-ui-sm text-text-muted">Confirm budget range and origin city before building options.</p>
+        <Link
+          href={intakeHref}
+          className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
+        >
+          Go to missing details
+        </Link>
+      </div>
+    );
+  }
+
+  const knownDetails = [
+    { label: "Title", value: formatLeadTitle(trip.destination, trip.type) },
+    { label: "Customer", value: formatCustomerDisplay(trip.rawInput) },
+    { label: "Destination", value: trip.destination || "Destination missing" },
+    { label: "Trip type", value: trip.type || "Trip type missing" },
+    { label: "Party size", value: formatPartySizeDisplay(trip.party) },
+    { label: "Dates", value: formatDateWindowDisplay(trip.dateWindow) },
+    {
+      label: "Budget",
+      value: formatBudgetDisplay(trip.budget),
+    },
+    {
+      label: "Origin",
+      value: requiredFields.includes("Origin city") ? "Origin missing" : trip.origin || "Origin missing",
+    },
+    { label: "Inquiry Ref", value: formatInquiryReference(trip.id) },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-5">
+        <h2 className="text-ui-xl font-semibold text-text-primary">Trip Details</h2>
+        <p className="mt-1 text-ui-sm text-text-muted">
+          Review known customer details here, then send the planner back to intake for anything still missing.
+        </p>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-12">
+        <section className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-5 xl:col-span-7">
+          <h3 className="text-ui-sm font-semibold text-text-primary">Known details</h3>
+          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+            {knownDetails.map((detail) => (
+              <div key={detail.label} className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3">
+                <dt className="text-[11px] uppercase tracking-[0.16em] text-text-placeholder">{detail.label}</dt>
+                <dd className="mt-1 text-ui-sm font-medium text-text-primary">{detail.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
+        <aside className="rounded-xl border border-[rgba(210,153,34,0.25)] bg-[rgba(210,153,34,0.05)] p-5 xl:col-span-5">
+          <h3 className="text-ui-sm font-semibold text-text-primary">Missing required details</h3>
+          {requiredFields.length > 0 ? (
+            <>
+              <ul className="mt-4 space-y-3">
+                {requiredFields.map((field) => (
+                  <li key={field} className="rounded-xl border border-[rgba(248,81,73,0.18)] bg-[rgba(248,81,73,0.04)] px-3 py-2 text-ui-sm text-text-primary">
+                    {field}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {requiredFields.includes("Budget range") && (
+                  <Link
+                    href={intakeHref}
+                    className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
+                  >
+                    Add budget
+                  </Link>
+                )}
+                {requiredFields.includes("Origin city") && (
+                  <Link
+                    href={intakeHref}
+                    className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
+                  >
+                    Add origin
+                  </Link>
+                )}
+                <Link
+                  href={intakeHref}
+                  className="inline-flex items-center rounded-lg border border-[rgba(210,153,34,0.35)] bg-[rgba(210,153,34,0.12)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-[rgba(210,153,34,0.18)]"
+                >
+                  Go to missing details
+                </Link>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="mt-3 text-ui-sm text-text-muted">
+                Trip details need customer input
+              </p>
+              <p className="mt-2 text-ui-sm text-text-muted">
+                Confirm budget range and origin city before building options.
+              </p>
+              <Link
+                href={intakeHref}
+                className="mt-5 inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
+              >
+                Go to missing details
+              </Link>
+            </>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }

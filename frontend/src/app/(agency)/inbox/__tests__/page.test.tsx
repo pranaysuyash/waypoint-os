@@ -40,9 +40,9 @@ describe('InboxPage', () => {
     submittedAt: '2026-04-23T08:00:00.000Z',
     lastUpdated: '2026-04-23T08:15:00.000Z',
     daysInCurrentStage: 1,
-    slaStatus: 'at_risk',
+    slaStatus: 'on_track',
     customerName: 'Sharma Family',
-    flags: [],
+    flags: ['incomplete', 'needs_clarification', 'unassigned'],
   };
 
   mockUseInboxTrips.mockReturnValue({
@@ -82,8 +82,11 @@ describe('InboxPage', () => {
     expect(screen.getByText('New customer inquiries sorted by urgency.')).toBeInTheDocument();
     expect(screen.getByText('1 lead total')).toBeInTheDocument();
     expect(screen.getByText('All leads')).toBeInTheDocument();
-    expect(screen.getByText('Needs details')).toBeInTheDocument();
-    expect(screen.getByText('Unassigned')).toBeInTheDocument();
+    expect(screen.getAllByText('Needs details').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Unassigned').length).toBeGreaterThan(0);
+    expect(screen.getByText('Singapore family trip')).toBeInTheDocument();
+    expect(screen.getByText('Budget $220.0k')).toBeInTheDocument();
+    expect(screen.getByText('Next: review customer details before planning.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /review lead/i })).toHaveAttribute(
       'href',
       '/trips/TRIP-123/intake'

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 export interface UnifiedState {
   canonical_total: number;
@@ -24,50 +24,38 @@ export interface UnifiedState {
  * Always passes credentials: "include" so auth cookies travel securely.
  * cache: "no-store" prevents stale dashboard data.
  */
-export function useUnifiedState() {
-  const [state, setState] = useState<UnifiedState | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const QK = {
+  unifiedState: () => ["system", "unified-state"] as const,
+};
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/system/unified-state", {
-        // Explicit cookie-auth for cross-subdomain safety.
-        credentials: "include",
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        // 401 = unauthenticated, don't throw noisy errors during redirect-to-login
-        if (response.status === 401) {
-          setError("Unauthorized");
-          return;
-        }
-        throw new Error(`Integrity fetch failed: ${response.statusText}`);
-      }
-      const data = (await response.json()) as UnifiedState;
-      setState(data);
-      setError(null);
-    } catch (err: any) {
-      // Skip console noise for 401 — AuthProvider handles redirect
-      if (err.message !== "Unauthorized") {
-        console.error("Unified State Hook Error:", err);
-      }
-      setError(err.message || "Unknown integrity error");
-    } finally {
-      setLoading(false);
+async function getUnifiedState(): Promise<UnifiedState> {
+  const response = await fetch("/api/system/unified-state", {
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error("Unauthorized");
     }
-  }, []);
+    throw new Error(`Integrity fetch failed: ${response.statusText}`);
+  }
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  return (await response.json()) as UnifiedState;
+}
+
+export function useUnifiedState() {
+  const query = useQuery({
+    queryKey: QK.unifiedState(),
+    queryFn: getUnifiedState,
+    staleTime: 30_000,
+  });
 
   return {
-    state,
-    loading,
-    error,
-    refresh,
-    isConsistent: state?.integrity_meta.consistent ?? true,
+    state: query.data ?? null,
+    loading: query.isLoading,
+    error: (query.error as Error | null)?.message ?? null,
+    refresh: query.refetch,
+    isConsistent: query.data?.integrity_meta.consistent ?? true,
   };
 }

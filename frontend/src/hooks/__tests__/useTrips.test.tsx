@@ -19,6 +19,20 @@ function createWrapper() {
   };
 }
 
+function createHarness() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+    },
+  });
+
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+
+  return { Wrapper, queryClient };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -228,13 +242,27 @@ describe('useStartPlanning Hook', () => {
   it('calls the explicit start-planning transition and invalidates trip queries', async () => {
     vi.mocked((apiClient as any).startPlanningTrip).mockResolvedValue({ success: true, trip_id: '1' });
 
-    const { result } = renderHook(() => useStartPlanning(), { wrapper: createWrapper() });
+    const { Wrapper, queryClient } = createHarness();
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
+    const { result } = renderHook(() => useStartPlanning(), { wrapper: Wrapper });
 
     await act(async () => {
       await result.current.mutate('1', 'agent-1', 'Alex Agent');
     });
 
     expect((apiClient as any).startPlanningTrip).toHaveBeenCalledWith('1', 'agent-1', 'Alex Agent');
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['trips'],
+    });
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['governance', 'inboxTrips'],
+    });
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['governance', 'inboxStats'],
+    });
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['system', 'unified-state'],
+    });
   });
 });
 
