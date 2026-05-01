@@ -83,7 +83,7 @@ export function formatPartySizeDisplay(value?: number | null, fallback = 'Party 
   return `${value} pax`;
 }
 
-export function formatCustomerDisplay(rawInput?: unknown, fallback = 'Customer to confirm'): string {
+export function formatCustomerDisplay(rawInput?: unknown, fallback = ''): string {
   const fixtureId =
     typeof rawInput === 'object' &&
     rawInput !== null &&
@@ -92,7 +92,34 @@ export function formatCustomerDisplay(rawInput?: unknown, fallback = 'Customer t
       ? rawInput.fixture_id.trim()
       : '';
   if (!fixtureId) return fallback;
-  return `Customer ${fixtureId}`;
+  return '';
+}
+
+export function hasCustomerName(rawInput?: unknown, agentNotes?: string, contactName?: string): boolean {
+  if (contactName?.trim()) return true;
+  if (agentNotes) {
+    const tagPrefix = 'Contact name';
+    const line = agentNotes.split('\n')
+      .map(e => e.trim())
+      .find(e => e.toLowerCase().startsWith(`${tagPrefix.toLowerCase()}:`));
+    if (line) {
+      const value = line.slice(tagPrefix.length + 1).trim();
+      if (value) return true;
+    }
+  }
+  return false;
+}
+
+export function readCustomerName(agentNotes?: string, contactName?: string): string | null {
+  if (contactName?.trim()) return contactName.trim();
+  if (!agentNotes) return null;
+  const tagPrefix = 'Contact name';
+  const line = agentNotes.split('\n')
+    .map(e => e.trim())
+    .find(e => e.toLowerCase().startsWith(`${tagPrefix.toLowerCase()}:`));
+  if (!line) return null;
+  const value = line.slice(tagPrefix.length + 1).trim();
+  return value || null;
 }
 
 export function formatDateWindowDisplay(value?: string | null, fallback = 'Dates to confirm'): string {

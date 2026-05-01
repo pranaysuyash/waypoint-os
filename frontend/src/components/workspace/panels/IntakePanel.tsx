@@ -95,7 +95,7 @@ function getSpineProgressStage(elapsedSeconds: number) {
     .find((stage) => elapsedSeconds >= stage.afterSeconds) ?? SPINE_PROGRESS_STAGES[0];
 }
 
-type PlanningDetailId = 'budget' | 'dates' | 'destination' | 'origin' | 'priorities' | 'flexibility';
+type PlanningDetailId = 'budget' | 'customerName' | 'dates' | 'destination' | 'origin' | 'priorities' | 'flexibility';
 
 interface PlanningDetailRow {
   id: PlanningDetailId;
@@ -109,6 +109,7 @@ interface PlanningDetailRow {
 const NOTE_DETAIL_PREFIX: Record<string, string> = {
   priorities: 'Trip priorities',
   flexibility: 'Date flexibility',
+  customerName: 'Contact name',
 };
 
 function normalizePlanningDisplayValue(value?: string | null): string | null {
@@ -159,6 +160,7 @@ function buildFollowUpDraftFromRows(rows: PlanningDetailRow[]): string {
 
   const prompts: Record<PlanningDetailId, string> = {
     budget: 'your approximate budget range',
+    customerName: 'the primary contact name',
     dates: 'your preferred travel dates',
     destination: 'your destination city or country',
     origin: 'your departure city',
@@ -199,7 +201,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   // Auto-open editor when deep-linked from Trip Details
   useEffect(() => {
     if (fieldParam == null) return;
-    const planningEditFields: PlanningDetailId[] = ['budget', 'origin', 'destination', 'priorities', 'flexibility'];
+    const planningEditFields: PlanningDetailId[] = ['budget', 'customerName', 'origin', 'destination', 'priorities', 'flexibility'];
     const inlineEditFields = ['type', 'dateWindow', 'party'];
     if (planningEditFields.includes(fieldParam as PlanningDetailId)) {
       openPlanningEditor(fieldParam as PlanningDetailId);
@@ -246,6 +248,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const [activePlanningEditor, setActivePlanningEditor] = useState<PlanningDetailId | null>(null);
   const [planningEditorDrafts, setPlanningEditorDrafts] = useState<Record<PlanningDetailId, string>>({
     budget: '',
+    customerName: '',
     dates: '',
     destination: '',
     origin: '',
@@ -256,6 +259,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   // Refs to the underlying textarea elements so typing remains stable (uncontrolled DOM)
   const planningEditorRefs = useRef<Record<PlanningDetailId, HTMLTextAreaElement | null>>({
     budget: null,
+    customerName: null,
     dates: null,
     destination: null,
     origin: null,
@@ -730,6 +734,11 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       };
     } else if (detailId === 'dates') {
       return;
+    } else if (detailId === 'customerName') {
+      updateData = {
+        contactName: draftValue.trim() || undefined,
+        agentNotes: upsertTaggedNoteValue(updatedOwnerNote, NOTE_DETAIL_PREFIX.customerName, draftValue),
+      };
     } else {
       updatedOwnerNote = upsertTaggedNoteValue(
         updatedOwnerNote,

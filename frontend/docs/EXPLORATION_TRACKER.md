@@ -3297,3 +3297,40 @@ Based on product impact and dependencies:
 ### What was covered
 - **Service Guarantee & Trust Framework**: Tiered service guarantees (standard, premium, group) with specific promises (room as booked, issues resolved in 2 hours, no hidden charges), trust badges (IATA, TAAI, Ministry of Tourism), transparency features (pricing breakdown, supplier names, real-time status), social proof integration, guarantee claim process with financial reserve model (2-3% of revenue), guarantee analytics
 - **Trip Comparison Engine**: Side-by-side itinerary comparison across 5 dimensions (pricing, accommodation, experience, logistics, reviews), decision support aids (recommendation tags, highlight differences, value score, match score), comparison builder for agents, mobile-first comparison UX, co-decision sharing with group voting, parental review link, comparison analytics for proposal optimization
+
+---
+
+## Part 36 — Maslow's Hierarchy Gap Fill (2026-04-30)
+
+### Framework Applied
+Maslow's Hierarchy of Needs mapped to both traveler and agent pyramids:
+
+**Traveler Pyramid:**
+- Level 1 (Survival): Health intel ✅, Risk ✅ → GAP: Emergency hospital/pharmacy locator, lost passport replacement, emergency forex
+- Level 2 (Safety): Insurance ✅, Risk Assess ✅, Doc Expiry ✅, Fraud ✅, Privacy ✅, Crisis ✅ → COMPLETE
+- Level 3 (Belonging): Group ✅, Trip Share ✅, Community ✅, Connectivity ✅ → COMPLETE
+- Level 4 (Esteem): Loyalty ✅, Reviews ✅, Gamification ✅, Wishlist ✅ → COMPLETE
+- Level 5 (Self-Actualization): Pilgrimage ✅, Destination Discovery ✅ → GAP: Skill-building, voluntourism, transformation, agent mastery
+
+**Agent Pyramid:**
+- Level 1 (Tools): Booking Engine ✅, Workbench ✅, Mobile ✅ → COMPLETE
+- Level 2 (Security): Workforce ✅, Compensation ✅ → COMPLETE
+- Level 3 (Belonging): Training ✅, Collaboration ✅ → COMPLETE
+- Level 4 (Esteem): Performance ✅, Gamification ✅ → COMPLETE
+- Level 5 (Self-Actualization): → GAP: Mastery progression, creative autonomy, purpose
+
+| Series | Docs | Status |
+|--------|------|--------|
+| TRAVEL_SUPPORT_* | 01_SURVIVAL + MASTER_INDEX | ✅ Complete |
+| TRANSFORM_* | 01_EXPERIENCES + MASTER_INDEX | ✅ Complete |
+| AGENT_MASTERY_* | 01_GROWTH + MASTER_INDEX | ✅ Complete |
+
+### What was covered
+- **Traveler Emergency Support (Level 1)**: Emergency hospital/pharmacy locators with language capability, lost passport replacement workflow (embassy coordination, document gathering), emergency forex access, hotel safety verification, basic needs SOS with 30-second response target
+- **Transformational Travel (Level 5)**: Skill-building categories (culinary, adventure sports, language, art, wellness, craftsmanship), certification programs as rebooking engine (PADI model), voluntourism programs, cultural immersion depth levels, instructor/vendor marketplace, transformation tracking and storytelling
+- **Agent Mastery (Level 5)**: Agent progression levels (Associate → Agent → Senior → Specialist → Master), specialist tracks (destination, segment, skill), creative autonomy tiers, portfolio system, customer transformation visibility, mentorship-to-mastery pipeline
+
+### Pipeline Design Decision Captured
+> "Full traveler roster, legal names, passports, third-party relationships, payer, emergency contacts, and document ownership should be designed as part of later booking/output stages, not jammed into current Intake."
+
+Added to Docs/TRAVEL_AGENCY_TODO.md under "Architecture TODOs — Pipeline Stage Data Scope Review"

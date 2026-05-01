@@ -54,6 +54,7 @@ const PATCHABLE_FIELDS = new Set([
   "date_year_confidence",
   "lead_source",
   "activity_provenance",
+  "contactName",
 ]);
 
 export async function PATCH(

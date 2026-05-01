@@ -10,6 +10,32 @@
 - [x] Verified end-to-end workflow: frontend → spine_api → storage → frontend
 - [x] Confirmed real data displays correctly in frontend components
 
+## Architecture TODOs
+
+### Pipeline Stage Data Scope Review
+- [ ] Review each pipeline stage one-by-one to define what data belongs where
+- [ ] Intake stage: lightweight trip intent ONLY (who's roughly going, where, when, budget) — no full roster
+- [ ] Booking stage: full traveler roster, legal names, passport numbers, DOB, relationships, third-party relationships
+- [ ] Payment stage: payer details, payment allocation, EMI structure
+- [ ] Pre-trip/Output stage: emergency contacts, medical info, document ownership (who holds which visa/passport/ticket)
+- [ ] Design principle: "Park full people management until later stages. Don't jam it into Intake."
+- [ ] See SESSION_CONTEXT.md §8 for full context on this decision
+
+### Frontier OS Data Pipeline
+- [ ] Backend: populate `frontier_result` field in API response (field exists in contract but never written)
+- [ ] Frontend: call `setResultFrontier()` in useSpineRun (setter exists in store but never called)
+- [ ] Backend: replace mock sentiment (keyword heuristic) with real LLM analysis
+- [ ] Backend: replace mock federated_intelligence (in-memory mock) with real data sources
+
+### Frontend Gap: Backend Endpoints Without UI
+- [ ] Analytics dashboard: 12 backend endpoints with zero frontend consumer
+- [ ] Settings UI: all settings endpoints unused
+- [ ] Team management: all team endpoints unused
+- [ ] Assignment management: assign/reassign endpoints unused
+- [ ] Follow-up dashboard: management endpoints unused
+
+---
+
 ## Pending Improvements (Optional Refinements)
 - [ ] Implement proper PATCH proxy in `/api/trips/[id]/route.ts` (currently uses local updates)
 - [ ] Refine inbox API enrichment logic (e.g., `daysInCurrentStage` calculation)

@@ -203,7 +203,9 @@ export function getPlanningIdentityLine(trip?: Trip | null): string {
     formatCustomerDisplay(trip.rawInput),
     formatPartySizeDisplay(trip.party),
     formatDateWindowDisplay(trip.dateWindow),
-  ].join(" · ");
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 export function getPlanningQueueLine(trip?: Trip | null): string {

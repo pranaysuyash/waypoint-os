@@ -223,13 +223,13 @@ describe('OverviewPage', () => {
     render(<OverviewPage />);
 
     const planningCardHeading = screen.getByText('Singapore family trip');
-    const planningCard = planningCardHeading.closest('a');
+    const planningCard = planningCardHeading.closest('[class*="rounded-2xl"]');
 
     expect(planningCardHeading).toBeInTheDocument();
     expect(planningCard).not.toBeNull();
-    expect(within(planningCard as HTMLElement).getByText('Customer SC-901 · 5 pax · Around Feb 9–14')).toBeInTheDocument();
+    expect(within(planningCard as HTMLElement).getByText(/5 pax.*Around Feb 9–14/i)).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).getByText('Need Customer Details')).toBeInTheDocument();
-    expect(within(planningCard as HTMLElement).getByText('Budget missing')).toBeInTheDocument();
+    expect(within(planningCard as HTMLElement).getByText(/Add budget/i)).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).getByText('In planning')).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).getByText('Waiting on customer')).toBeInTheDocument();
     expect(screen.getByText(/Ref 4B9E/i)).toBeInTheDocument();

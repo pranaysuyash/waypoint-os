@@ -12,6 +12,8 @@ import {
   formatInquiryReference,
   formatLeadTitle,
   formatPartySizeDisplay,
+  hasCustomerName,
+  readCustomerName,
 } from "@/lib/lead-display";
 import { getRequiredPlanningFields } from "@/lib/planning-status";
 
@@ -137,25 +139,13 @@ function TripDetailsFallback({ tripId, trip }: { tripId: string; trip: Trip | nu
     );
   }
 
-  const knownDetails = [
-    { label: "Title", value: formatLeadTitle(trip.destination, trip.type) },
-    { label: "Customer", value: formatCustomerDisplay(trip.rawInput) },
-    {
-      label: "Destination",
-      value: requiredFields.includes("Destination") ? "Destination missing" : trip.destination || "Destination missing",
-    },
-    { label: "Trip type", value: trip.type || "Trip type missing" },
-    { label: "Party size", value: formatPartySizeDisplay(trip.party) },
-    { label: "Dates", value: formatDateWindowDisplay(trip.dateWindow) },
-    {
-      label: "Budget",
-      value: formatBudgetDisplay(trip.budget),
-    },
-    {
-      label: "Origin",
-      value: requiredFields.includes("Origin city") ? "Origin missing" : trip.origin || "Origin missing",
-    },
-    { label: "Inquiry Ref", value: formatInquiryReference(trip.id) },
+  const knownDetails: Array<{ label: string; value: string; source: string; field: string }> = [
+    { label: "Destination", value: requiredFields.includes("Destination") ? "Destination missing" : trip.destination || "Destination missing", source: trip.destination && !["Unknown","TBD",""].includes(trip.destination) ? "Manual" : "System", field: "destination" },
+    { label: "Trip type", value: trip.type || "Trip type missing", source: trip.type ? "System" : "System", field: "type" },
+    { label: "Party size", value: formatPartySizeDisplay(trip.party), source: trip.party && trip.party > 0 ? "Manual" : "System", field: "party" },
+    { label: "Dates", value: formatDateWindowDisplay(trip.dateWindow), source: trip.dateWindow && !["TBD",""].includes(trip.dateWindow) ? "Manual" : "System", field: "dateWindow" },
+    { label: "Budget", value: formatBudgetDisplay(trip.budget), source: trip.budget && formatBudgetDisplay(trip.budget) !== "Budget missing" ? "Manual" : "System", field: "budget" },
+    { label: "Origin", value: requiredFields.includes("Origin city") ? "Origin missing" : trip.origin || "Origin missing", source: trip.origin && !["TBD","","patna"].includes(trip.origin) ? "Manual" : trip.origin === "patna" ? "Manual" : "System", field: "origin" },
   ];
 
   return (
@@ -171,97 +161,93 @@ function TripDetailsFallback({ tripId, trip }: { tripId: string; trip: Trip | nu
         <section className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-5 xl:col-span-7">
           <h3 className="text-ui-sm font-semibold text-text-primary">Known details</h3>
           <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-            {knownDetails.map((detail) => (
-              <div key={detail.label} className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3">
-                <dt className="text-[11px] uppercase tracking-[0.16em] text-text-placeholder">{detail.label}</dt>
-                <dd className="mt-1 text-ui-sm font-medium text-text-primary">{detail.value}</dd>
-              </div>
-            ))}
+            {knownDetails.map((detail) => {
+              const isMissing = detail.value.includes("missing");
+              const sourceColor = detail.source === "Manual" ? "#58a6ff" : "#8b949e";
+              return (
+                <div key={detail.label} className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <dt className="text-[11px] uppercase tracking-[0.16em] text-text-placeholder">{detail.label}</dt>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ color: sourceColor, background: `${sourceColor}15`, border: `1px solid ${sourceColor}30` }}>
+                      {detail.source}
+                    </span>
+                  </div>
+                  <dd className="mt-1 text-ui-sm font-medium" style={{ color: isMissing ? '#d29922' : 'var(--text-primary)' }}>
+                    {detail.value}
+                  </dd>
+                  <div className="mt-2 flex items-center gap-2">
+                    <Link
+                      href={`${intakeHref}?field=${detail.field}`}
+                      className="text-[11px] font-medium hover:underline transition-colors"
+                      style={{ color: 'var(--accent-blue)' }}
+                    >
+                      {isMissing ? `Add ${detail.label.toLowerCase()}` : 'Edit'}
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+            <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3">
+              <dt className="text-[11px] uppercase tracking-[0.16em] text-text-placeholder">Inquiry Ref</dt>
+              <dd className="mt-1 text-ui-sm font-medium text-text-primary">{formatInquiryReference(trip.id)}</dd>
+            </div>
           </dl>
         </section>
 
-        <aside className="rounded-xl border border-[rgba(210,153,34,0.25)] bg-[rgba(210,153,34,0.05)] p-5 xl:col-span-5">
-          <h3 className="text-ui-sm font-semibold text-text-primary">Missing required details</h3>
-          {requiredFields.length > 0 ? (
-            <>
-              <ul className="mt-4 space-y-3">
-                {requiredFields.map((field) => (
-                  <li key={field} className="rounded-xl border border-[rgba(248,81,73,0.18)] bg-[rgba(248,81,73,0.04)] px-3 py-2 text-ui-sm text-text-primary">
-                    {field}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {requiredFields.includes("Budget range") && (
-                  <Link
-                    href={`${intakeHref}?field=budget`}
-                    className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
-                  >
-                    Add budget
-                  </Link>
-                )}
-                {requiredFields.includes("Destination") && (
-                  <Link
-                    href={`${intakeHref}?field=destination`}
-                    className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
-                  >
-                    Add destination
-                  </Link>
-                )}
-                {requiredFields.includes("Origin city") && (
-                  <Link
-                    href={`${intakeHref}?field=origin`}
-                    className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
-                  >
-                    Add origin
-                  </Link>
-                )}
-                {requiredFields.includes("Travel window") && (
-                  <Link
-                    href={`${intakeHref}?field=dateWindow`}
-                    className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
-                  >
-                    Add dates
-                  </Link>
-                )}
-                {requiredFields.includes("Traveler count") && (
-                  <Link
-                    href={`${intakeHref}?field=party`}
-                    className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
-                  >
-                    Add travelers
-                  </Link>
-                )}
-                <Link
-                  href={intakeHref}
-                  className="inline-flex items-center rounded-lg border border-[rgba(210,153,34,0.35)] bg-[rgba(210,153,34,0.12)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-[rgba(210,153,34,0.18)]"
-                >
-                  Go to missing details
-                </Link>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="mt-3 text-ui-sm font-medium text-text-primary">
-                Required details complete
-              </p>
-              {trip?.decision?.soft_blockers?.some(s => s === 'incomplete_intake') ? (
-                <p className="mt-2 text-ui-sm text-text-muted">
-                  AI extraction may still be processing. Refresh or check recommended fields.
-                </p>
-              ) : (
-                <p className="mt-2 text-ui-sm text-text-muted">
-                  All required trip details are confirmed. Trip is ready for options.
-                </p>
-              )}
-              <Link
-                href={intakeHref}
-                className="mt-5 inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
-              >
-                Review captured details
-              </Link>
-            </>
-          )}
+        <aside className="rounded-xl border p-5 xl:col-span-5 space-y-4">
+          {/* Trip details */}
+          <div className="rounded-xl border border-[rgba(63,185,80,0.2)] bg-[rgba(63,185,80,0.04)] p-4">
+            <h3 className="text-ui-sm font-semibold text-text-primary" style={{ color: '#3fb950' }}>Trip details</h3>
+            {requiredFields.length > 0 ? (
+              <>
+                <p className="mt-2 text-ui-sm text-text-muted">{requiredFields.length} required field{requiredFields.length > 1 ? 's' : ''} missing</p>
+                <ul className="mt-3 space-y-2">
+                  {requiredFields.map((field) => (
+                    <li key={field} className="rounded-lg border border-[rgba(248,81,73,0.18)] bg-[rgba(248,81,73,0.04)] px-3 py-2 text-ui-sm text-text-primary flex items-center justify-between">
+                      <span>{field}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {requiredFields.includes("Budget range") && (
+                    <Link href={`${intakeHref}?field=budget`} className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated">Add budget</Link>
+                  )}
+                  {requiredFields.includes("Origin city") && (
+                    <Link href={`${intakeHref}?field=origin`} className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated">Add origin</Link>
+                  )}
+                  {requiredFields.includes("Travel window") && (
+                    <Link href={`${intakeHref}?field=dateWindow`} className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated">Add dates</Link>
+                  )}
+                  {requiredFields.includes("Traveler count") && (
+                    <Link href={`${intakeHref}?field=party`} className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated">Add travelers</Link>
+                  )}
+                  <Link href={intakeHref} className="inline-flex items-center rounded-lg border border-[rgba(210,153,34,0.35)] bg-[rgba(210,153,34,0.12)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-[rgba(210,153,34,0.18)]">Go to missing details</Link>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="mt-2 text-ui-sm text-text-primary">All required fields complete</p>
+                <p className="mt-1 text-ui-xs text-text-muted">Trip details are ready for options.</p>
+                <Link href={intakeHref} className="mt-4 inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated">Review captured details</Link>
+              </>
+            )}
+          </div>
+
+          {/* Contact details */}
+          <div className="rounded-xl border p-4" style={{ borderColor: 'rgba(139,148,158,0.2)', background: 'rgba(139,148,158,0.03)' }}>
+            <h3 className="text-ui-sm font-semibold text-text-muted">Contact details</h3>
+            {hasCustomerName(trip.rawInput, trip.agentNotes, trip.contactName) ? (
+              <>
+                <p className="mt-2 text-ui-sm text-text-primary">{trip.contactName || readCustomerName(trip.agentNotes)}</p>
+                <Link href={`${intakeHref}?field=customerName`} className="mt-2 inline-flex items-center text-[12px] font-medium hover:underline transition-colors" style={{ color: 'var(--accent-blue)' }}>Edit contact name</Link>
+              </>
+            ) : (
+              <>
+                <p className="mt-2 text-ui-sm text-text-muted">Contact name missing</p>
+                <Link href={`${intakeHref}?field=customerName`} className="mt-3 inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated">Add contact name</Link>
+              </>
+            )}
+          </div>
         </aside>
       </div>
     </div>

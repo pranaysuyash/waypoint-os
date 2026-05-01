@@ -312,6 +312,7 @@ export function transformSpineTripToTrip(
   return {
     id: asString(firstPresent(trip.id, trip.trip_id), ""),
     destination: asString(destinationValue(trip), "Unknown"),
+    contactName: asString(getNestedValue(trip, "contactName", "") as string, ""),
     type: asString(tripTypeValue(trip), "leisure"),
     state: STATUS_TO_STATE[status] || (status as TripState) || "blue",
     age: calculateAge(createdAt, now),

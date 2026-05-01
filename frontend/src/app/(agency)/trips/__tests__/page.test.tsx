@@ -77,14 +77,14 @@ describe('WorkspacesPage', () => {
     expect(screen.getByText('Trips your team is actively working on')).toBeInTheDocument();
     expect(screen.queryByText('Workspaces')).not.toBeInTheDocument();
 
-    const tripCard = screen.getByText('Singapore family trip').closest('a');
+    const tripCardHeading = screen.getByText('Singapore family trip');
+    const tripCard = tripCardHeading.closest('[class*="rounded-2xl"]');
     expect(tripCard).not.toBeNull();
 
-    expect(within(tripCard as HTMLElement).getByText('Singapore family trip')).toBeInTheDocument();
-    expect(within(tripCard as HTMLElement).getByText(/Customer SC-901.*5 pax.*Around Feb 9–14/i)).toBeInTheDocument();
+    expect(within(tripCard as HTMLElement).getByText(/5 pax.*Around Feb 9–14/i)).toBeInTheDocument();
     expect(within(tripCard as HTMLElement).getByText('Need Customer Details')).toBeInTheDocument();
-    expect(within(tripCard as HTMLElement).getByText('Budget missing')).toBeInTheDocument();
-    expect(within(tripCard as HTMLElement).getByText('Origin missing')).toBeInTheDocument();
+    expect(within(tripCard as HTMLElement).getByText(/Add budget/i)).toBeInTheDocument();
+    expect(within(tripCard as HTMLElement).getByText(/Add origin/i)).toBeInTheDocument();
     expect(within(tripCard as HTMLElement).getByText('In planning')).toBeInTheDocument();
     expect(within(tripCard as HTMLElement).getByText('Next: confirm budget and origin before building options.')).toBeInTheDocument();
     expect(screen.getByText(/4B9E/i)).toBeInTheDocument();

@@ -320,6 +320,8 @@ export interface Trip {
   dateYearConfidence?: string;
   leadSource?: string;
   activityProvenance?: string;
+  // Contact / customer profile
+  contactName?: string;
   // Review metadata (Wave 8)
   review_status?: ReviewStatus;
   assignee?: string;
