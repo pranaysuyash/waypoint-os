@@ -49,9 +49,9 @@ Scope: Consolidated, explicit lifecycle execution for the recent lifecycle/churn
 - Project-level context refresh executed:
   - `/Users/pranay/Projects/agent-start --project travel_agency_agent --skip-index`
 - Artifacts refreshed:
-  - `.agent/AGENT_KICKOFF_PROMPT.txt`
-  - `.agent/SESSION_CONTEXT.md`
-  - `.agent/STEP1_ENV.sh`
+  - `Docs/context/agent-start/AGENT_KICKOFF_PROMPT.txt`
+  - `Docs/context/agent-start/SESSION_CONTEXT.md`
+  - `Docs/context/agent-start/STEP1_ENV.sh`
 - Runtime note from `agent-start`:
   - project collection bootstrap index attempted but failed/timed out in this run; shared-only context generation still completed.
 

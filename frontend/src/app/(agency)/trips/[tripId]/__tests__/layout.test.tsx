@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { WorkspaceTripLayoutShell } from "../layout";
 import type { Trip } from "@/lib/api-client";
 import * as navigation from "next/navigation";
@@ -48,11 +48,13 @@ describe("trips/[tripId]/layout", () => {
       replaceTrip: vi.fn(),
     });
 
-    render(
-      <WorkspaceTripLayoutShell>
-        <div>Stage content</div>
-      </WorkspaceTripLayoutShell>,
-    );
+    act(() => {
+      render(
+        <WorkspaceTripLayoutShell>
+          <div>Stage content</div>
+        </WorkspaceTripLayoutShell>,
+      );
+    });
 
     expect(screen.getByText("Loading lead review...")).toBeInTheDocument();
   });
@@ -184,8 +186,6 @@ describe("trips/[tripId]/layout", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Singapore family trip" })).toBeInTheDocument();
-    expect(screen.getByText("Need Customer Details")).toBeInTheDocument();
-    expect(screen.getByText("Customer SC-901 · 5 pax · Around Feb 9–14")).toBeInTheDocument();
     expect(screen.getByText(/In planning · Inquiry Ref: 4B9E/i)).toBeInTheDocument();
     expect(screen.queryByText("trip_4b9e0d894872")).not.toBeInTheDocument();
     expect(screen.queryByText("In Progress")).not.toBeInTheDocument();

@@ -2,12 +2,13 @@
 
 **Date:** 2026-04-23
 **Scope:** Current app state vs. planned onboarding, auth, and workspace flows
+**Correction note (2026-05-01):** This document was written before the current auth front door landed. `frontend/src/app/(auth)/login/page.tsx`, `frontend/src/app/(auth)/signup/page.tsx`, `frontend/src/proxy.ts`, `spine_api/routers/auth.py`, and `spine_api/core/middleware.py` now exist in the live code. Keep this as a historical snapshot of the pre-auth gap, not the current state.
 
 ---
 
 ## Executive Summary
 
-The app is a **sophisticated engine wrapped in a UI that assumes you're already inside.** There is no front door. An agency owner who discovered this product today would have no way to sign up, create a workspace, invite agents, or create their first trip. We built the cockpit before building the airport.
+The app was originally analyzed as a **sophisticated engine wrapped in a UI that assumes you're already inside.** That specific claim is now stale: the current codebase does have a front door with signup/login pages, cookie-based auth, Next.js request-boundary gating, and backend JWT middleware. The remaining gap is not "auth does not exist"; it is that the onboarding and workspace experience is still not fully end-to-end relative to the longer-term product plan.
 
 ---
 
@@ -70,18 +71,13 @@ interface WorkspaceCode {
 | AuditStore | ✅ Built | Event logging |
 | OverrideStore | ✅ Built | Risk flag overrides |
 | RunLedger | ✅ Built | Run lifecycle tracking |
-| **UserStore** | ❌ **Missing** | No users table/model |
-| **WorkspaceStore** | ❌ **Missing** | No workspace isolation |
-| **Auth middleware** | ❌ **Missing** | No JWT, no sessions, no passwords |
+| **UserStore** | ⚠️ Partial | There is a `User` model and auth service; no dedicated `UserStore` abstraction |
+| **WorkspaceStore** | ⚠️ Partial | Workspace creation exists, but broader tenant isolation still needs hardening |
+| **Auth middleware** | ✅ Built | JWT auth middleware is present on protected backend routes |
 | **Team API** | ❌ **Missing** | `GET /api/team/members` → 404 |
 | **Inbox API** | ⚠️ Partial | `GET /api/inbox` route exists but backend has no `/inbox` endpoint |
 
-**Critical finding:** The backend has **zero auth**. Every API endpoint is completely open. The only "user identification" is hardcoded strings:
-- `user_id="owner"` in review actions
-- `user_id="agent"` in IntakePanel
-- `user_id="operator"` in audit logs
-
-There is no `POST /signup`, no `POST /login`, no `GET /me`, no auth middleware on any route.
+**Critical finding:** The backend now has real auth plumbing (`POST /signup`, `POST /login`, `GET /me`, refresh, logout, and JWT middleware). The remaining critique is about completeness and integration, not the absence of auth itself.
 
 ### Frontend (`frontend/src/app/`)
 
@@ -94,8 +90,8 @@ There is no `POST /signup`, no `POST /login`, no `GET /me`, no auth middleware o
 | `/workbench` | AI analysis tool | ❌ None |
 | `/owner/insights` | Analytics | ❌ None |
 | `/owner/reviews` | Approvals | ❌ None |
-| `/login` | **Does not exist** | N/A |
-| `/signup` | **Does not exist** | N/A |
+| `/login` | Sign-in page | Public |
+| `/signup` | Workspace signup page | Public |
 | `/onboarding` | **Does not exist** | N/A |
 | `/settings/team` | **Does not exist** | N/A |
 
@@ -112,11 +108,11 @@ This is a hardcoded div. Not a user. Not clickable. No dropdown.
 
 ## Where We Deviated
 
-### Deviation 1: Auth Was Never Started
-The onboarding design brief was written on 2026-04-22. It has no corresponding implementation. No auth library was chosen (the brief suggested "Phase 1: Custom email/password, Phase 2: Clerk"). No auth context exists in React. No protected routes. No redirect-to-login logic.
+### Deviation 1: The Auth Layer Was Built After This Analysis
+The onboarding design brief was written on 2026-04-22 and this document reflected the pre-auth state. The current code now includes auth pages, auth store hydration, protected-route redirects, cookie-based session transport, and backend JWT middleware. What still needs work is the end-to-end onboarding and tenant/product completeness.
 
-### Deviation 2: Multi-Tenancy Was Never Started
-The entire backend assumes a single global namespace. `AgencySettingsStore.load("waypoint-hq")` is hardcoded in `server.py:432`. All trips live in one flat `data/trips/` directory. All assignments in one `data/assignments/assignments.json`. There is no `workspace_id` filtering on any query.
+### Deviation 2: Multi-Tenancy Was Partially Started, Then Needed Hardening
+The backend now has agencies, memberships, and workspace bootstrap in the auth flow, but some data paths and older assumptions still need tenant-scoping hardening. The original "single global namespace" statement should be treated as historical context, not current truth.
 
 ### Deviation 3: Team Management Is a Frontend Mirage
 The frontend has a full `governance-api.ts` with team endpoints (`/api/team/members`, `/api/team/invite`). The backend has none of these routes. If you tried to invite a team member, the request would 404.
@@ -214,10 +210,9 @@ Developer opens localhost:3000
 
 | File | Issue |
 |------|-------|
-| `spine_api/server.py` | No auth middleware, no user routes, hardcoded `waypoint-hq` |
-| `spine_api/persistence.py` | No UserStore, no WorkspaceStore, no tenant scoping |
-| `frontend/src/app/page.tsx` | Assumes user is already authenticated |
-| `frontend/src/components/layouts/Shell.tsx` | Hardcoded "OP" avatar, no user menu |
+| `spine_api/persistence.py` | Tenant scoping and storage consolidation still need hardening |
+| `frontend/src/app/page.tsx` | Public marketing page still routes users into the product funnel |
+| `frontend/src/components/layouts/Shell.tsx` | Hardcoded "OP" avatar still needs to be replaced with user-derived state |
 | `frontend/src/lib/api-client.ts` | No auth header injection |
 | `frontend/src/app/layout.tsx` | No auth provider wrapper |
 | `frontend/src/lib/governance-api.ts` | Calls `/api/team/*` routes that don't exist in backend |
@@ -226,9 +221,7 @@ Developer opens localhost:3000
 
 ## Conclusion
 
-The product has a **world-class engine and a beautiful dashboard, but no front door.** The deviation is clear: we built from the inside out (engine → dashboard → operations) instead of from the outside in (landing page → signup → first trip → operations). 
-
-An agency owner cannot start because we never built the starting line.
+The product has a **world-class engine and a usable front door, but the onboarding path still needs hardening.** The current state is closer to "engine + auth + shell" than to a fully complete agency onboarding flow. The remaining deviation is that the experience still needs to be finished from the outside in (landing page → signup → first trip → operations), but the starting line now exists.
 
 ### Review Note
 

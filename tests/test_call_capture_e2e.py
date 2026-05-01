@@ -20,7 +20,9 @@ Run: uv run python -m pytest tests/test_call_capture_e2e.py -v
 """
 
 import asyncio
+import base64
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Optional, Dict, Any
 import pytest
 import uuid
@@ -251,6 +253,145 @@ class TestCallCaptureFollowUpDueDate:
         saved = TripStore.get_trip(trip_id)
         assert saved is not None
         assert saved["id"] == trip_id
+
+    def test_save_processed_trip_persists_public_checker_artifacts(self, disable_audit_logging, tmp_path, monkeypatch):
+        """Consent should persist the raw upload bytes plus a manifest."""
+        import spine_api.persistence as persistence
+
+        monkeypatch.setattr(persistence, "DATA_DIR", tmp_path, raising=False)
+        monkeypatch.setattr(persistence, "TRIPS_DIR", tmp_path / "trips", raising=False)
+        monkeypatch.setattr(persistence, "ASSIGNMENTS_DIR", tmp_path / "assignments", raising=False)
+        monkeypatch.setattr(persistence, "AUDIT_DIR", tmp_path / "audit", raising=False)
+        monkeypatch.setattr(persistence, "PUBLIC_CHECKER_DIR", tmp_path / "public_checker", raising=False)
+        monkeypatch.setattr(persistence, "PUBLIC_CHECKER_UPLOADS_DIR", tmp_path / "public_checker" / "uploads", raising=False)
+        monkeypatch.setattr(persistence, "PUBLIC_CHECKER_MANIFESTS_DIR", tmp_path / "public_checker" / "manifests", raising=False)
+
+        for directory in (
+            persistence.TRIPS_DIR,
+            persistence.ASSIGNMENTS_DIR,
+            persistence.AUDIT_DIR,
+            persistence.PUBLIC_CHECKER_UPLOADS_DIR,
+            persistence.PUBLIC_CHECKER_MANIFESTS_DIR,
+        ):
+            directory.mkdir(parents=True, exist_ok=True)
+
+        file_bytes = b"Day 1: Singapore\nDay 2: Sentosa\n"
+        encoded = base64.b64encode(file_bytes).decode("ascii")
+
+        trip_id = persistence.save_processed_trip(
+            {
+                "run_id": str(uuid.uuid4()),
+                "packet": {
+                    "raw_input": {
+                        "fixture_id": "public_checker_artifact_fixture",
+                        "source": "public_checker",
+                    },
+                    "destination": "Singapore",
+                },
+                "validation": {"valid": True},
+                "decision": {"decision_type": "accept"},
+                "meta": {
+                    "stage": "discovery",
+                    "submission": {
+                        "retention_consent": True,
+                        "source_payload": {
+                            "kind": "file_upload",
+                            "uploaded_file": {
+                                "file_name": "itinerary.txt",
+                                "mime_type": "text/plain",
+                                "file_size": len(file_bytes),
+                                "extraction_method": "direct_text",
+                                "extracted_text": "Day 1: Singapore\nDay 2: Sentosa",
+                                "content_base64": encoded,
+                            },
+                        },
+                    },
+                },
+            },
+            source="test_fixture",
+            agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            trip_status="new",
+        )
+
+        saved = persistence.TripStore.get_trip(trip_id)
+        assert saved is not None
+        artifacts = saved.get("public_checker_artifacts")
+        assert artifacts is not None
+        assert artifacts["retention_consent"] is True
+
+        manifest = persistence.PublicCheckerArtifactStore.get_trip_artifacts(trip_id)
+        assert manifest is not None
+        archive_path = Path(manifest["uploaded_file"]["archive_path"])
+        assert archive_path.exists()
+        assert archive_path.read_bytes() == file_bytes
+        assert manifest["uploaded_file"]["extracted_text_chars"] > 0
+
+    def test_public_checker_export_and_delete_routes_work(self, disable_audit_logging, tmp_path, monkeypatch, session_client):
+        """The public checker should export and purge consented artifacts through the API."""
+        import persistence
+
+        monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
+        monkeypatch.setattr(persistence, "DATA_DIR", tmp_path, raising=False)
+        monkeypatch.setattr(persistence, "TRIPS_DIR", tmp_path / "trips", raising=False)
+        monkeypatch.setattr(persistence, "ASSIGNMENTS_DIR", tmp_path / "assignments", raising=False)
+        monkeypatch.setattr(persistence, "AUDIT_DIR", tmp_path / "audit", raising=False)
+        monkeypatch.setattr(persistence, "PUBLIC_CHECKER_DIR", tmp_path / "public_checker", raising=False)
+        monkeypatch.setattr(persistence, "PUBLIC_CHECKER_UPLOADS_DIR", tmp_path / "public_checker" / "uploads", raising=False)
+        monkeypatch.setattr(persistence, "PUBLIC_CHECKER_MANIFESTS_DIR", tmp_path / "public_checker" / "manifests", raising=False)
+
+        for directory in (
+            persistence.TRIPS_DIR,
+            persistence.ASSIGNMENTS_DIR,
+            persistence.AUDIT_DIR,
+            persistence.PUBLIC_CHECKER_UPLOADS_DIR,
+            persistence.PUBLIC_CHECKER_MANIFESTS_DIR,
+        ):
+            directory.mkdir(parents=True, exist_ok=True)
+
+        trip_id = persistence.save_processed_trip(
+            {
+                "run_id": str(uuid.uuid4()),
+                "packet": {"raw_input": {"fixture_id": "public_checker_route_fixture"}},
+                "validation": {"valid": True},
+                "decision": {"decision_type": "accept"},
+                "meta": {
+                    "stage": "discovery",
+                    "submission": {
+                        "retention_consent": True,
+                        "source_payload": {
+                            "kind": "file_upload",
+                            "uploaded_file": {
+                                "file_name": "route.txt",
+                                "mime_type": "text/plain",
+                                "file_size": 4,
+                                "extraction_method": "direct_text",
+                                "extracted_text": "Plan",
+                                "content_base64": base64.b64encode(b"Plan").decode("ascii"),
+                            },
+                        },
+                    },
+                },
+            },
+            source="test_fixture",
+            agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            trip_status="new",
+        )
+
+        export_resp = session_client.get(f"/api/public-checker/{trip_id}/export")
+        assert export_resp.status_code == 200
+        export_json = export_resp.json()
+        assert export_json["trip_id"] == trip_id
+        assert export_json["artifact_manifest"]["uploaded_file"]["file_name"] == "route.txt"
+
+        delete_resp = session_client.delete(f"/api/public-checker/{trip_id}")
+        assert delete_resp.status_code == 200
+        delete_json = delete_resp.json()
+        assert delete_json["ok"] is True
+        assert delete_json["deleted_trip"] is True
+        assert delete_json["deleted_artifacts"] is True
+
+        missing_resp = session_client.get(f"/api/public-checker/{trip_id}")
+        assert missing_resp.status_code == 404
 
     def test_follow_up_due_date_iso8601_format_validation(self, disable_audit_logging):
         """Test: follow_up_due_date accepts valid ISO-8601 formats."""

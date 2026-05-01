@@ -2,6 +2,7 @@
 
 - Date: 2026-04-29
 - Reviewed doc: [Docs/APP_STATE_ANALYSIS_MISSING_FRONT_DOOR_2026-04-23.md](../APP_STATE_ANALYSIS_MISSING_FRONT_DOOR_2026-04-23.md)
+- Correction note: this review was superseded by the live auth front door already present in the codebase on 2026-05-01.
 
 ## Scope
 
@@ -10,23 +11,23 @@ It is intentionally limited to the front-door/auth/workspace slice.
 
 ## Findings
 
-- The doc matches the repo state: the product has a working engine and workbench, but no signup/login front door.
-- `spine_api/server.py` has no auth endpoints or middleware for user sessions.
-- `spine_api/persistence.py` has no user/workspace store and no tenant scoping.
-- `frontend/src/app/page.tsx` and the shell assume the user is already inside the app.
-- The roadmap in `Docs/ONBOARDING_AUTH_WORKSPACE_MULTI_TENANT_ROADMAP_2026-04-23.md` is the correct implementation follow-on.
+- The doc no longer matches the current repo state. The product now has signup/login pages, auth proxying, and backend auth endpoints/middleware.
+- The remaining work is around onboarding completeness, workspace/tenant hardening, and replacing older placeholder UI state.
+- `spine_api/persistence.py` still has tenant-scoping and persistence consolidation work to finish.
+- `frontend/src/components/layouts/Shell.tsx` still contains placeholder identity UI that should be replaced with real user state.
+- The roadmap in `Docs/ONBOARDING_AUTH_WORKSPACE_MULTI_TENANT_ROADMAP_2026-04-23.md` remains useful for the remaining implementation slices, but its opening assumption about missing auth is stale.
 
 ## Immediate next implementation slice
 
-Implement the P0 front door first:
+The P0 front door is already present. The next implementation slice is:
 
-1. signup page
-2. login page
-3. auth context/session state
-4. protected routes
-5. backend user/auth model and JWT middleware
+1. workspace/tenant scoping audits across remaining data paths
+2. onboarding and first-trip flow completion
+3. replace placeholder identity UI in the shell
+4. reduce auth/persistence drift with verification tests
+5. keep the roadmap synchronized with the live code
 
-After that, move to workspace isolation and team invitation.
+After that, continue with team invitation and broader tenant management.
 
 ## References
 

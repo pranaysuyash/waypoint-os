@@ -19,13 +19,13 @@ import {
   Zap,
 } from 'lucide-react';
 import {
-  CtaBand,
   Kicker,
   PublicFooter,
   PublicHeader,
   PublicPage,
   SectionIntro,
 } from '@/components/marketing/marketing';
+import { CtaBand } from '@/components/marketing/marketing-client';
 import { AgencyHeroCockpit } from '@/components/marketing/MarketingVisuals';
 import { GsapInitializer } from '@/components/marketing/GsapInitializer';
 import styles from '@/components/marketing/marketing.module.css';
@@ -415,11 +415,11 @@ export default function HomePage() {
       <section className={`${styles.section} ${styles.wedgeSection} animate-fade-up`}>
         <div className='animate-fade-up'>
           <Kicker>Free public tool</Kicker>
-          <h2 className='font-display'>Test your plan before you book.<br />Free, no account needed.</h2>
+          <h2 className='font-display'>Bring your plan. Get it scored.<br />Free, no account needed.</h2>
           <p>
-            The itinerary checker gives travelers a structured first pass across their plan — timing
-            risks, document gaps, pacing problems — then hands agencies cleaner context than any
-            generic contact form.
+            Think of it like an ATS for resumes, but for travel plans. The checker scores the itinerary
+            you already have, flags weak spots, and gives travelers cleaner context than any generic
+            contact form.
           </p>
           <div className={styles.wedgeActions}>
             <Link href='/itinerary-checker' className={styles.primaryButton}>

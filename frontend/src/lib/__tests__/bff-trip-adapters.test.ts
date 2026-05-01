@@ -78,7 +78,7 @@ describe("BFF trip adapters", () => {
       party: 4,
       dateWindow: "May 1-8",
       origin: "Delhi",
-      budget: "$125,000",
+      budget: "125000",
       status: "assigned",
       review_status: "pending",
       reviewedBy: "owner",
@@ -90,6 +90,9 @@ describe("BFF trip adapters", () => {
     expect(trip.analytics?.requiresReview).toBe(true);
     expect(trip.decision?.decision_state).toBe("ASK_FOLLOWUP");
     expect(trip.rawInput).toEqual({ fixture_id: "FIX-001" });
+
+    // packet is hydrated directly from extracted without reshaping
+    expect(trip.packet).toEqual(spineTrip.extracted);
   });
 
   it("maps backend response envelopes and preserves workspace state semantics", () => {

@@ -304,6 +304,37 @@ export interface RunStatusResponse {
   hard_blockers?: string[];
   soft_blockers?: string[];
 }
+export interface PublicCheckerArtifactUpload {
+  file_name: string;
+  mime_type: string;
+  file_size: number;
+  extraction_method: string;
+  archive_path?: string | null;
+  extracted_text_chars?: number | null;
+}
+export interface PublicCheckerArtifactManifest {
+  trip_id: string;
+  saved_at: string;
+  retention_consent?: boolean;
+  artifact_type?: string;
+  uploaded_file?: PublicCheckerArtifactUpload | null;
+  trip_snapshot?: {
+    [k: string]: unknown;
+  } | null;
+}
+export interface PublicCheckerExportResponse {
+  trip_id: string;
+  trip: {
+    [k: string]: unknown;
+  };
+  artifact_manifest?: PublicCheckerArtifactManifest | null;
+}
+export interface PublicCheckerDeleteResponse {
+  ok?: boolean;
+  trip_id: string;
+  deleted_trip?: boolean;
+  deleted_artifacts?: boolean;
+}
 export interface SafetyResult {
   strict_leakage?: boolean;
   leakage_passed?: boolean;
@@ -319,6 +350,7 @@ export interface SpineRunRequest {
     [k: string]: unknown;
   } | null;
   itinerary_text?: string | null;
+  retention_consent?: boolean;
   stage?: string;
   operating_mode?: string;
   strict_leakage?: boolean;

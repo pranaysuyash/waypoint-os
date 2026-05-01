@@ -3334,3 +3334,219 @@ Maslow's Hierarchy of Needs mapped to both traveler and agent pyramids:
 > "Full traveler roster, legal names, passports, third-party relationships, payer, emergency contacts, and document ownership should be designed as part of later booking/output stages, not jammed into current Intake."
 
 Added to Docs/TRAVEL_AGENCY_TODO.md under "Architecture TODOs — Pipeline Stage Data Scope Review"
+
+---
+
+## Part 37 — JTBD + Kano Model Gap Fill (2026-04-30)
+
+### Frameworks Applied
+
+**Jobs To Be Done (JTBD)** — 10 traveler jobs analyzed:
+- 6 jobs fully covered by existing series
+- 4 jobs had gaps → 3 new series created
+
+**Kano Model** — 20 features analyzed (10 must-have, 10 delight):
+- 7 must-haves covered (i18n, WhatsApp, GST, TCS, Aadhaar, IATA, cancellation)
+- 3 must-haves partially covered (EMI, UPI, instant confirmation)
+- 4 delight features covered (AI itinerary, live tracking, surprises, voice booking)
+- 6 delight features are gaps (AR preview, photo claims, recap video, carbon calculator, luggage tracking, WhatsApp visa bot)
+
+| Series | Docs | Status |
+|--------|------|--------|
+| FAMILY_DECIDE_* | 01_WORKFLOW + MASTER_INDEX | ✅ Complete |
+| POST_BOOK_PROTECT_* | 01_ADVOCACY + MASTER_INDEX | ✅ Complete |
+| TRAVEL_OPS_* | 01_SERVICES + MASTER_INDEX | ✅ Complete |
+
+---
+
+## Part 38 — Service Blueprint + Day 1-365 Gap Fill (2026-04-30)
+
+### Frameworks Applied
+
+**Service Blueprint** — 3 layers analyzed:
+- Customer Actions (12 steps): ALL COVERED
+- Frontstage Agent Actions (11 steps): ALL COVERED
+- Backstage Operations (12 steps): 7 covered, 5 flagged as gaps
+  - False positives: commission (COMMISSION_*), pricing (PRICING_ENGINE_*), accounting (ACCOUNTING_*), inventory (BOOKING_ENGINE_03_*), supplier reconciliation (SUPPLIER_SETTLE_*)
+  - REAL gaps: customer-facing booking status, pre-departure briefing
+
+**Day 1-365 Maturity Model:**
+- Day 1 (6 capabilities): 5 covered, 1 gap (supplier booking execution workflow)
+- Day 30 (5 capabilities): 4 covered, 1 gap (automated follow-up sequences)
+- Day 100 (5 capabilities): 3 covered, 2 gaps (payment milestone tracking → covered by PAYMENT_AUTO_*, supplier reconciliation → covered by SUPPLIER_SETTLE_*)
+- Day 365 (5 capabilities): 4 covered, 1 gap (commission management → covered by COMMISSION_*)
+
+| Series | Docs | Status |
+|--------|------|--------|
+| BOOKING_TRACKER_* | 01_PROGRESS + MASTER_INDEX | ✅ Complete |
+| DEPARTURE_BRIEF_* | 01_WALKTHROUGH + MASTER_INDEX | ✅ Complete |
+
+---
+
+## Part 39 — Competitive Intelligence Gap Fill (2026-04-30)
+
+### Framework Applied
+Competitive analysis of Indian OTAs and travel agencies (MakeMyTrip, Thomas Cook, SOTC, Yatra, TravelTriangle, PickYourTrail, Kesari, ixigo, EaseMyTrip):
+- 15 competitor features analyzed
+- 12 already covered under existing series
+- 3 genuinely new gaps identified and created
+
+| Series | Docs | Status |
+|--------|------|--------|
+| TRAVEL_FINANCE_* | 01_BNPL + MASTER_INDEX | ✅ Complete |
+| PRICE_LOCK_* | 01_HOLD + MASTER_INDEX | ✅ Complete |
+
+### What was covered
+- **Travel Finance & BNPL**: Bajaj Finserv/HDFC/LazyPay partnerships, no-cost EMI mechanics (3/6/9/12 month), instant credit decisioning (30-second OTP), travel loan lifecycle, financing-as-conversion in proposals, margin impact analysis (3-5% MDR as acquisition cost vs 18% conversion lift)
+- **Price Lock & Fare Hold**: Lock tiers (free 24h, paid 48-72h, guaranteed), supplier coordination for rate holds, lock fee pricing (₹2,000), price drop protection (auto-reprice if fare drops before ticketing), lock-to-booking conversion tracking (85% conversion rate)
+
+### Competitive gaps noted but already covered
+- Rail/IRCTC → RAIL_* (4 docs)
+- EMI payment → PAYMENT_AUTO_* (with EMI section)
+- Group departures → GROUP_*, PACKAGE_TOURS_*
+- Senior products → SENIOR_TRAVEL_*
+- WhatsApp flows → WHATSAPP_BIZ_*
+- Forex cards → FOREX_*, FOREX_MGMT_*
+- Corporate travel → CORPORATE_*
+- Loyalty rewards → LOYALTY_*, VOUCHER_*
+- Visa processing → VISA_*, TRAVEL_OPS_*
+- Last-minute deals → DEALS_PROMO_*
+
+---
+
+## Part 40 — AIDA + PESTLE Gap Fill (2026-04-30)
+
+### Frameworks Applied
+
+**AIDA Funnel** — 4 stages analyzed:
+- Attention: 4/4 core channels covered (social, SEO, referral, content). INFLUENCER_* and EXPO_MKTG_* exist. Narrow gaps (podcast, radio, OOH) are features within existing series.
+- Interest: 2/2 core covered. Lead magnets, webinars, calculators are features within CONTENT_MKTG_*, EMAIL_MKTG_*, TRIP_BUDGET_*.
+- Desire: Core covered. Virtual showroom, testimonials are features within STOREFRONT_*, REVIEWS_*.
+- Action: Core covered. Celebration moments are UX features, not series.
+- Post-Action: Core covered. Anniversary reminders are features within POST_TRIP_*, LOYALTY_*.
+
+**PESTLE** — 6 factors analyzed:
+- Political: Core covered (privacy, GST, RBI, travel advisories)
+- Economic: Core covered (forex, pricing, TRAVEL_FINANCE for EMI)
+- Social: **GAP** — regional Indian travel preferences not documented
+- Technological: Core covered (AI, mobile, voice). Speculative gaps (blockchain, IoT) not product-level
+- Legal: Core covered (legal templates, insurance, compliance)
+- Environmental: Core covered (SUSTAINABILITY_* with 4 docs including carbon)
+
+| Series | Docs | Status |
+|--------|------|--------|
+| TRAVEL_CULTURE_* | 01_PREFERENCES + MASTER_INDEX | ✅ Complete |
+
+### What was covered
+- **Travel Culture & Regional Preferences**: Regional Indian travel profiles (Gujarati, Punjabi, Bengali, South Indian, Marathi, NRI), festival-driven demand calendar (Diwali, Holi, Eid, Christmas, Durga Puja, summer holidays), dietary requirement mapping (vegetarian/Jain/halal/sattvic), religious sensitivity at destinations, community-specific itinerary templates, cultural dos/don'ts per destination per community
+
+---
+
+## Part 41 — Edge Cases + Platform Operator Gap Fill (2026-04-30)
+
+### Frameworks Applied
+
+**Edge Case Scenarios** — 15 negative/unusual scenarios analyzed:
+- 4 covered (natural disaster, medical emergency, death abroad, arrest)
+- 6 partially covered (lost passport, trip cut short, political unrest, pandemic, duplicate booking, supplier bankruptcy)
+- 5 genuine gaps (flight delay during trip, trip extension, currency crash, divorce mid-planning, advisory change mid-trip)
+- All edge cases are scenarios within existing series (CRISIS_COMM, TRIP_CTRL, TRIP_BUILDER_MODIFICATIONS), not new series
+
+**Business Lifecycle** — 5 phases analyzed:
+- All covered (startup through M&A/closure)
+
+**Relationship Lifecycle** — 5 relationships analyzed:
+- 3 covered (supplier onboarding, agent departure, customer churn)
+- 2 gaps (supplier breakup, partnership dissolution) — too narrow for series
+
+**Platform Operator** — 10 SaaS concerns analyzed:
+- 1 covered (tenant provisioning via WHITELABEL_*)
+- 9 gaps, of which 3 are product-level (business model, network effects, data portability)
+- 6 are infrastructure (API versioning, status page, feature rollout) — not product research
+
+| Series | Docs | Status |
+|--------|------|--------|
+| PLATFORM_BIZ_* | 01_MODEL + MASTER_INDEX | ✅ Complete |
+| NETWORK_EFFECTS_* | 01_INTELLIGENCE + MASTER_INDEX | ✅ Complete |
+
+### What was covered
+- **Platform Business Model & Monetization**: Pricing tiers (solo/team/enterprise freemium), billing models (per-booking 0.5-1%, subscription ₹2-10K/month, hybrid), usage metering, free trial design with natural upgrade triggers, premium features (AI copilot, analytics, white-label, API access), revenue share with marketplace, agency ROI justification
+- **Cross-Agency Network Effects**: Shared supplier intelligence (anonymized aggregation across agencies), demand pattern intelligence (seasonal trends, destination popularity curves), group buying/negotiation power (pooled booking volume for better rates), fraud pattern sharing, rate benchmarking, privacy-preserving data sharing, network flywheel mechanics (more data → better decisions → more agencies → more data)
+
+---
+
+## Part 42 — Revenue Leakage + Regulatory Deep Dive (2026-05-01)
+
+### Frameworks Applied
+
+**Revenue Leakage Audit** — 15 revenue leak points analyzed:
+- 14/15 covered by existing series
+- 1 gap: Discount authorization controls (mentioned in MARKETPLACE_03_DEALS and OPS_PLAYBOOK but no dedicated treatment)
+- Assessment: Feature within PRICING_* or AGENCY_SETTINGS_* series, not a new series
+
+**Regulatory Deep Dive** — 14 Indian regulatory requirements analyzed:
+- 8/14 covered (GST/TCS, IATA, privacy, insurance, consumer protection, labor, food safety, environmental)
+- 6 gaps identified:
+
+| Gap | Current Coverage | Assessment |
+|-----|-----------------|------------|
+| FEMA (Foreign Exchange Management Act) | Zero mentions in REGULATORY_* and COMPLIANCE_AUTO_* | **NEW DOC** in REGULATORY series (REGULATORY_05_FEMA.md) |
+| TRAI DND (Do Not Disturb) | Passing references only | Feature within COMM_PREFS_* / EMAIL_MKTG_* — not series-worthy |
+| WhatsApp Business Policy compliance | WHATSAPP_BIZ_* has 4 docs, none on policy compliance | **NEW DOC** in WHATSAPP_BIZ series (WHATSAPP_BIZ_05_POLICY.md) |
+| ECR/ECNR Passport Categories | Passing references, no dedicated treatment | **NEW DOC** in VISA or IDENTITY series (VISA_04_ECR_ECNR.md) |
+| Visa on Arrival / TVOC | 1 line in VISA_01_REQUIREMENTS.md | **NEW DOC** in VISA series (VISA_05_VOA.md) |
+| Ministry of Tourism recognition | Likely in REGULATORY_01_LICENSING.md | Verify — may already be covered |
+
+### Action Items
+- Add REGULATORY_05_FEMA.md: FEMA compliance for forex remittances, overseas package payments, LRS limits, repatriation rules
+- Add WHATSAPP_BIZ_05_POLICY.md: 24-hour window, template approval process, commerce policy restrictions, opt-in requirements
+- Add VISA_04_ECR_ECNR.md: ECR/ECNR passport categories, emigration clearance countries, impact on visa processing
+- Add VISA_05_VOA.md: Visa on Arrival countries for Indian passport holders, TVOC program, on-arrival process, e-VOA
+- Verify Ministry of Tourism coverage in REGULATORY_01_LICENSING.md
+- Add discount authorization topic to PRICING_* series
+
+### Series Status
+No new series created — all gaps are additional docs within existing series.
+Hit rate: 0 new series from 29 items analyzed (0% new series, 6 doc-level gaps in existing series).
+
+
+---
+
+## Part 43 — Technology Stack + Product Operations Audit (2026-05-01)
+
+### Frameworks Applied
+
+**Technology Stack Audit** — 18 items analyzed:
+- 18/18 covered by existing series
+- Dedicated series: OFFLINE_*, SEARCH_ARCHITECTURE_*, API_GATEWAY_*, BACKUP_DR_*, FEATURE_FLAGS_*
+- Topics within existing: monitoring (DEVOPS_03), CI/CD (DEVOPS_02), caching (PERFORMANCE_SCALABILITY_03, SUPPLIER_INTEGRATION_03), rate limiting (API_GATEWAY_02), queues (DEVOPS_01, WORKFLOW_AUTOMATION), logging (DEVOPS_03)
+
+**Product Operations Audit** — 15 items analyzed:
+- 15/15 covered by existing series
+- Dedicated series: FEATURE_FLAGS_*, CRO_*, SURVEYS_FEEDBACK_*, CLV_RETENTION_*, API_DOCUMENTATION_*, PLUGIN_*, DATA_IMPORT_EXPORT_*
+- Topics within existing: health scoring (OPS_CENTER_01, CLV_RETENTION_03), PLG (PLATFORM_BIZ_*, MARKETPLACE_*), SDK (PLUGIN_02), webhooks (INTEGRATION_02)
+
+### Result
+**0 new series from 33 items analyzed (0% hit rate).**
+
+---
+
+## Saturation Assessment
+
+After 14 frameworks across Parts 36-43, the hit rate progression:
+- Part 36 (Maslow): 3 new series
+- Part 37 (JTBD + Kano): 3 new series
+- Part 38 (Service Blueprint): 2 new series
+- Part 39 (Competitive Intel): 2 new series
+- Part 40 (AIDA + PESTLE): 1 new series
+- Part 41 (Edge Cases + Platform Operator): 2 new series
+- Part 42 (Revenue Leakage + Regulatory): 0 new series, 6 doc-level gaps
+- Part 43 (Tech Stack + Product Ops): 0 new series
+
+**Total: 215 series, 698+ topic documents. Series-level map is saturated.**
+
+Remaining work is doc-level (adding REGULATORY_05_FEMA.md, WHATSAPP_BIZ_05_POLICY.md, VISA_04_ECR_ECNR.md, VISA_05_VOA.md to existing series) and filling research content into existing topic stubs.
+
+### Projects-Level Pipeline
+Cross-project exploration system created at `/Users/pranay/Projects/exploration_maps/` by another agent. Uses same pattern: README + EXPLORATION_MAP_INDEX.md + per-project maps. Only travel_agency_agent is partially mapped.
+

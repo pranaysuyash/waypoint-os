@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 interface TabsProps {
   tabs: readonly { readonly id: string; readonly label: string; count?: number }[];
@@ -21,6 +22,18 @@ export function getTabPanelId(tabId: string): string {
 }
 
 export function Tabs({ tabs, activeTab, onTabChange, ariaLabel = 'Tab navigation' }: TabsProps) {
+  const getTabLabel = (tabId: string) => tabs.find(t => t.id === tabId)?.label || tabId;
+
+  const [announcement, setAnnouncement] = useState(() => `${getTabLabel(activeTab)} tab selected`);
+  const prevTabRef = useRef(activeTab);
+
+  useEffect(() => {
+    if (prevTabRef.current !== activeTab) {
+      setAnnouncement(`${getTabLabel(activeTab)} tab selected`);
+      prevTabRef.current = activeTab;
+    }
+  }, [activeTab, tabs, getTabLabel]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const tabElements = Array.from(
       e.currentTarget.querySelectorAll('[role="tab"]')
@@ -52,6 +65,8 @@ export function Tabs({ tabs, activeTab, onTabChange, ariaLabel = 'Tab navigation
     onTabChange(tabs[nextIndex].id);
   };
 
+  const activeTabLabel = tabs.find(t => t.id === activeTab)?.label || activeTab;
+
   return (
     <div
       role='tablist'
@@ -74,12 +89,9 @@ export function Tabs({ tabs, activeTab, onTabChange, ariaLabel = 'Tab navigation
               onClick={() => onTabChange(tab.id)}
               className={cn(
                 'relative px-4 py-2.5 text-sm font-medium transition-colors outline-none shrink-0',
+                isActive && 'text-text-primary bg-[var(--bg-elevated)]',
+                !isActive && 'text-text-muted',
               )}
-              style={
-                isActive
-                  ? { color: 'var(--text-primary)', background: 'var(--bg-elevated)' }
-                  : { color: 'var(--text-muted)' }
-              }
               onMouseEnter={(e) => {
                 if (!isActive) e.currentTarget.style.color = 'var(--text-primary)';
               }}
@@ -110,6 +122,9 @@ export function Tabs({ tabs, activeTab, onTabChange, ariaLabel = 'Tab navigation
             </button>
           );
         })}
+      </div>
+      <div role="status" aria-live="polite" className="sr-only">
+        {announcement}
       </div>
     </div>
   );

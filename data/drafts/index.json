@@ -2,30 +2,56 @@
   "version": 1,
   "by_agency": {
     "agency_001": [
+      "draft_0e15374edc10",
+      "draft_084fed52c9db",
       "draft_3710223c3aef",
-      "draft_a6cd62ba5757",
+      "draft_d2dfa679da15",
+      "draft_11f5d17788b5",
       "draft_6246f9039fc5",
-      "draft_14dd9126963e"
+      "draft_14dd9126963e",
+      "draft_a6cd62ba5757",
+      "draft_45c256cb9ccc",
+      "draft_e58015784f99"
+    ],
+    "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b": [
+      "draft_48b158952ede"
     ]
   },
   "by_user": {
     "user_001": [
+      "draft_0e15374edc10",
+      "draft_084fed52c9db",
       "draft_3710223c3aef",
-      "draft_a6cd62ba5757",
+      "draft_d2dfa679da15",
+      "draft_11f5d17788b5",
       "draft_6246f9039fc5",
-      "draft_14dd9126963e"
+      "draft_14dd9126963e",
+      "draft_a6cd62ba5757",
+      "draft_45c256cb9ccc",
+      "draft_e58015784f99"
+    ],
+    "323468de-ba3d-437b-aa10-35b281a0c6a6": [
+      "draft_48b158952ede"
     ]
   },
   "by_status": {
+    "open": [
+      "draft_0e15374edc10",
+      "draft_084fed52c9db",
+      "draft_d2dfa679da15",
+      "draft_11f5d17788b5",
+      "draft_6246f9039fc5",
+      "draft_14dd9126963e",
+      "draft_45c256cb9ccc",
+      "draft_e58015784f99"
+    ],
     "promoted": [
       "draft_3710223c3aef"
     ],
     "blocked": [
-      "draft_a6cd62ba5757"
+      "draft_a6cd62ba5757",
+      "draft_48b158952ede"
     ],
-    "open": [
-      "draft_6246f9039fc5",
-      "draft_14dd9126963e"
-    ]
+    "processing": []
   }
 }

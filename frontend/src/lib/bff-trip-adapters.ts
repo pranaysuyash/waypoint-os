@@ -326,6 +326,7 @@ export function transformSpineTripToTrip(
       const budgetVal = getNestedValue(spineTrip, "extracted.facts.budget.value", undefined);
       return asString(rawText ?? budgetVal ?? budgetValue(spineTrip), "Budget missing");
     })(),
+    packet: trip.extracted ?? undefined,
     status,
     review_status: (analytics.review_status as Trip["review_status"]) ?? undefined,
     reviewedBy: asString(getNestedValue(analytics, "review_metadata.reviewed_by", ""), "") || undefined,

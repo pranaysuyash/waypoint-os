@@ -19,7 +19,7 @@ describe('PipelineFlow Component', () => {
     render(<PipelineFlow currentStage="decision" />);
 
     // "intake" and "packet" should be completed (index < currentIndex)
-    const intakeStage = screen.getByLabelText(/New Inquiry: Capture customer request/i);
+    const intakeStage = screen.getByLabelText(/New Inquiry: completed/i);
     expect(intakeStage).toBeInTheDocument();
 
     // Completed stages should have CheckCircle2 icon (svg with aria-hidden="true")
@@ -31,7 +31,7 @@ describe('PipelineFlow Component', () => {
     render(<PipelineFlow currentStage="decision" />);
 
     // "strategy" and "safety" should be pending (index > currentIndex)
-    const pendingStage = screen.getByLabelText(/Build Options: Create travel options/i);
+    const pendingStage = screen.getByLabelText(/Build Options: pending/i);
     expect(pendingStage).not.toHaveAttribute('aria-current');
   });
 
@@ -54,21 +54,21 @@ describe('PipelineFlow Component', () => {
   it('includes status in aria-label (completed)', () => {
     render(<PipelineFlow currentStage="packet" />);
     // intake should be completed
-    const intakeStage = screen.getByLabelText(/New Inquiry.*Status: completed/i);
+    const intakeStage = screen.getByLabelText(/New Inquiry: completed/i);
     expect(intakeStage).toBeInTheDocument();
   });
 
   it('includes status in aria-label (current)', () => {
     render(<PipelineFlow currentStage="packet" />);
     // packet should be current
-    const packetStage = screen.getByLabelText(/Trip Details.*Status: current/i);
+    const packetStage = screen.getByLabelText(/Trip Details: current/i);
     expect(packetStage).toHaveAttribute('aria-current', 'step');
   });
 
   it('includes status in aria-label (pending)', () => {
     render(<PipelineFlow currentStage="packet" />);
     // decision should be pending
-    const decisionStage = screen.getByLabelText(/Ready to Quote\?.*Status: pending/i);
+    const decisionStage = screen.getByLabelText(/Ready to Quote\?: pending/i);
     expect(decisionStage).toBeInTheDocument();
   });
 
@@ -87,9 +87,9 @@ describe('PipelineFlow Component', () => {
     expect(container.firstChild).toBeNull();
 
     // Should log error in non-production
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('PipelineFlow: Unknown pipeline stage'),
-    );
+    expect(consoleSpy.mock.calls.length).toBeGreaterThan(0);
+    const firstCall = consoleSpy.mock.calls[0];
+    expect(String(firstCall?.[0] || '')).toContain('PipelineFlow: Unknown');
 
     consoleSpy.mockRestore();
   });

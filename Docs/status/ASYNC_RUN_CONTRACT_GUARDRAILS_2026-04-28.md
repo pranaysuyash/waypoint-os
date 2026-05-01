@@ -39,7 +39,7 @@ Implemented the remaining top implementation tasks from the random-doc audit aft
 Backend:
 
 ```bash
-source .agent/STEP1_ENV.sh
+source Docs/context/agent-start/STEP1_ENV.sh
 uv run pytest -q tests/test_run_contract_drift_guard.py tests/test_spine_api_contract.py tests/test_run_lifecycle.py tests/test_partial_intake_lifecycle.py tests/test_run_state_unit.py
 ```
 

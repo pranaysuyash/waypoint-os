@@ -9,9 +9,9 @@
 
 ## 1. Executive Summary
 
-The product has a world-class decision engine and a sophisticated operator workbench, but it lacks a front door. No agency owner can sign up, no workspace can be created, and no team member can be invited. The system is currently hardcoded to a single agency (`waypoint-hq`) with no user model, no session management, and no tenant isolation.
+This roadmap was written before the current auth front door landed. The live code now includes signup/login pages, cookie-based auth, request-boundary redirects, and backend JWT middleware. Keep this document as the source of truth for the remaining onboarding, workspace governance, and multi-tenant hardening work, not as a statement that auth is absent.
 
-This roadmap defines the complete, production-grade implementation of the missing identity and onboarding layer. Every phase is designed to fit the final architecture without throwaway contracts. There is no "temporary" or "interim" solution — each deliverable is a permanent part of the platform.
+This roadmap defines the complete, production-grade implementation of the remaining identity, onboarding, workspace, and multi-tenant hardening work. Every phase is designed to fit the final architecture without throwaway contracts. There is no "temporary" or "interim" solution — each deliverable is a permanent part of the platform.
 
 **Locked Decisions:**
 - **Auth**: Custom JWT (HS256) with bcrypt password hashing. Clerk deferred until revenue stage.

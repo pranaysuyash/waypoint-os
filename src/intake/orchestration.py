@@ -14,6 +14,10 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from opentelemetry import trace
+
+_otel_tracer = trace.get_tracer("orchestration.pipeline")
+
 from .packet_models import SourceEnvelope
 from .extractors import ExtractionPipeline
 from .validation import validate_packet, PacketValidationReport
@@ -181,7 +185,10 @@ def run_spine_once(
     _emit_stage_event("packet", "entered")
     pipeline = ExtractionPipeline()
     try:
-        packet = pipeline.extract(envelopes)
+        with _otel_tracer.start_as_current_span("extraction") as span:
+            packet = pipeline.extract(envelopes)
+            span.set_attribute("envelope_count", len(envelopes))
+            span.set_attribute("trip_id", packet.packet_id)
     except Exception as e:
         _emit_stage_event("packet", "failed", error=str(e))
         raise
@@ -205,14 +212,17 @@ def run_spine_once(
     # --- Phase 2: Validation ---
     _emit_stage_event("validation", "entered")
     try:
-        validation = validate_packet(packet, stage=stage)
+        with _otel_tracer.start_as_current_span("validation"):
+            validation = validate_packet(packet, stage=stage)
     except Exception as e:
         _emit_stage_event("validation", "failed", error=str(e))
         raise
 
     # --- Quality Gate: NB01 Completion ---
-    nb01_gate = NB01CompletionGate()
-    nb01_result = nb01_gate.evaluate(packet, validation)
+    with _otel_tracer.start_as_current_span("nb01_gate") as span:
+        nb01_gate = NB01CompletionGate()
+        nb01_result = nb01_gate.evaluate(packet, validation)
+        span.set_attribute("verdict", nb01_result.verdict.value)
 
     if nb01_result.verdict == GateVerdict.ESCALATE:
         # If extraction is structurally broken, we must stop
@@ -279,7 +289,10 @@ def run_spine_once(
     # --- Phase 3: Decision ---
     _emit_stage_event("decision", "entered")
     try:
-        decision = run_gap_and_decision(packet, feasibility_table=feasibility_table, agency_settings=actual_settings)
+        with _otel_tracer.start_as_current_span("decision") as span:
+            decision = run_gap_and_decision(packet, feasibility_table=feasibility_table, agency_settings=actual_settings)
+            span.set_attribute("decision_state", decision.decision_state)
+            span.set_attribute("hard_blocker_count", len(decision.hard_blockers))
     except Exception as e:
         _emit_stage_event("decision", "failed", error=str(e))
         raise
@@ -300,7 +313,10 @@ def run_spine_once(
         )
 
     # --- Phase 3.5: Suitability Assessment (P0-01) ---
-    suitability_flags = assess_activity_suitability(packet)
+    with _otel_tracer.start_as_current_span("suitability") as span:
+        suitability_flags = assess_activity_suitability(packet)
+        span.set_attribute("flag_count", len(suitability_flags))
+        span.set_attribute("critical_count", len([f for f in suitability_flags if f.severity == "critical"]))
     packet.suitability_flags = suitability_flags
     
     # Check for CRITICAL flags
@@ -313,10 +329,12 @@ def run_spine_once(
         decision.hard_blockers.append("suitability_critical_flags_present")
 
     # --- Quality Gate: NB02 Judgment (D1 Autonomy Gate) ---
-    # This gate enforces the agency autonomy policy WITHOUT mutating decision_state.
-    # The raw NB02 verdict is preserved in autonomy_outcome.raw_verdict.
-    nb02_gate = NB02JudgmentGate()
-    autonomy_outcome = nb02_gate.evaluate(decision, actual_settings)
+    with _otel_tracer.start_as_current_span("nb02_gate") as span:
+        nb02_gate = NB02JudgmentGate()
+        autonomy_outcome = nb02_gate.evaluate(decision, actual_settings)
+        span.set_attribute("raw_verdict", autonomy_outcome.raw_verdict)
+        span.set_attribute("effective_action", autonomy_outcome.effective_action)
+        span.set_attribute("approval_required", str(autonomy_outcome.approval_required))
 
     # Record gate metadata on the decision rationale (additive, not destructive)
     decision.rationale["autonomy"] = {
@@ -331,7 +349,10 @@ def run_spine_once(
     }
 
     # --- Phase 3.2: Frontier Orchestration (Ghost Concierge & Sentiment) ---
-    frontier_result = run_frontier_orchestration(packet, decision, agency_settings=actual_settings)
+    with _otel_tracer.start_as_current_span("frontier") as span:
+        frontier_result = run_frontier_orchestration(packet, decision, agency_settings=actual_settings)
+        span.set_attribute("ghost_triggered", str(frontier_result.ghost_triggered))
+        span.set_attribute("sentiment_score", frontier_result.sentiment_score)
     
     # Record frontier metadata in decision rationale
     decision.rationale["frontier"] = {
@@ -345,7 +366,9 @@ def run_spine_once(
     # --- Phase 4: Strategy ---
     _emit_stage_event("strategy", "entered")
     try:
-        strategy = build_session_strategy(decision, packet, agency_settings=actual_settings)
+        with _otel_tracer.start_as_current_span("strategy") as span:
+            strategy = build_session_strategy(decision, packet, agency_settings=actual_settings)
+            span.set_attribute("session_goal", strategy.session_goal[:80] if strategy.session_goal else "")
     except Exception as e:
         _emit_stage_event("strategy", "failed", error=str(e))
         raise
@@ -364,11 +387,12 @@ def run_spine_once(
     # --- Phase 5: Internal Bundle ---
     _emit_stage_event("output", "entered")
     try:
-        internal_bundle = build_internal_bundle(strategy, decision, packet)
+        with _otel_tracer.start_as_current_span("output_bundles"):
+            internal_bundle = build_internal_bundle(strategy, decision, packet)
 
-        # --- Phase 6: Traveler-Safe Bundle ---
-        # If decision state dropped to INTERNAL_DRAFT or STOP, traveler bundle should be empty/minimal
-        traveler_bundle = build_traveler_safe_bundle(strategy, decision)
+            # --- Phase 6: Traveler-Safe Bundle ---
+            # If decision state dropped to INTERNAL_DRAFT or STOP, traveler bundle should be empty/minimal
+            traveler_bundle = build_traveler_safe_bundle(strategy, decision)
 
         # Callback for bundles
         if stage_callback:
@@ -383,19 +407,22 @@ def run_spine_once(
     # --- Phase 7: Sanitized View ---
     _emit_stage_event("safety", "entered")
     try:
-        sanitized_view = sanitize_for_traveler(packet)
+        with _otel_tracer.start_as_current_span("safety") as span:
+            sanitized_view = sanitize_for_traveler(packet)
 
-        # --- Phase 8: Leakage Check ---
-        traveler_leaks = check_no_leakage(traveler_bundle)
-        sanitized_leaks = _check_sanitized_view_leakage(sanitized_view)
-        all_leaks = traveler_leaks + sanitized_leaks
+            # --- Phase 8: Leakage Check ---
+            traveler_leaks = check_no_leakage(traveler_bundle)
+            sanitized_leaks = _check_sanitized_view_leakage(sanitized_view)
+            all_leaks = traveler_leaks + sanitized_leaks
 
-        leakage_result = {
-            "leaks": all_leaks,
-            "is_safe": len(all_leaks) == 0,
-            "traveler_bundle_leaks": traveler_leaks,
-            "sanitized_view_leaks": sanitized_leaks,
-        }
+            leakage_result = {
+                "leaks": all_leaks,
+                "is_safe": len(all_leaks) == 0,
+                "traveler_bundle_leaks": traveler_leaks,
+                "sanitized_view_leaks": sanitized_leaks,
+            }
+            span.set_attribute("is_safe", str(leakage_result["is_safe"]))
+            span.set_attribute("leak_count", len(all_leaks))
 
         if stage_callback:
             _emit_stage_event("safety", "completed", leakage_result)
@@ -412,7 +439,8 @@ def run_spine_once(
         )
 
     # --- Phase 9.5: Fee Calculation ---
-    fees = calculate_trip_fees(packet, decision)
+    with _otel_tracer.start_as_current_span("fee_calculation"):
+        fees = calculate_trip_fees(packet, decision)
 
     # --- Phase 10: Fixture Compare (optional) ---
     assertion_result = None

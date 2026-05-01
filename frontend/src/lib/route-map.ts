@@ -57,6 +57,13 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["system/unified-state", { backendPath: "api/system/unified-state" }],
   ["system/integrity/issues", { backendPath: "api/system/integrity/issues" }],
 
+  // ── Drafts ──────────────────────────────────────────────────
+  ["drafts", { backendPath: "api/drafts" }],
+  ["drafts/{id}", { backendPath: "api/drafts/{id}" }],
+  ["drafts/{id}/events", { backendPath: "api/drafts/{id}/events" }],
+  ["drafts/{id}/restore", { backendPath: "api/drafts/{id}/restore" }],
+  ["drafts/{id}/promote", { backendPath: "api/drafts/{id}/promote" }],
+
   // ── Core resources ───────────────────────────────────────────
   [
     "spine/run",

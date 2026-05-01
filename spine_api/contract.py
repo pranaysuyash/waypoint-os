@@ -98,6 +98,7 @@ class SpineRunRequest(BaseModel):
     owner_note: Optional[str] = None
     structured_json: Optional[Dict[str, Any]] = None
     itinerary_text: Optional[str] = None
+    retention_consent: bool = False
     stage: str = "discovery"
     operating_mode: str = "normal_intake"
     strict_leakage: bool = False
@@ -159,6 +160,37 @@ class RunStatusResponse(BaseModel):
     follow_up_questions: List[Dict[str, Any]] = Field(default_factory=list)
     hard_blockers: List[str] = Field(default_factory=list)
     soft_blockers: List[str] = Field(default_factory=list)
+
+
+class PublicCheckerArtifactUpload(BaseModel):
+    file_name: str
+    mime_type: str
+    file_size: int
+    extraction_method: str
+    archive_path: Optional[str] = None
+    extracted_text_chars: Optional[int] = None
+
+
+class PublicCheckerArtifactManifest(BaseModel):
+    trip_id: str
+    saved_at: str
+    retention_consent: bool = True
+    artifact_type: str = "public_checker_upload"
+    uploaded_file: Optional[PublicCheckerArtifactUpload] = None
+    trip_snapshot: Optional[Dict[str, Any]] = None
+
+
+class PublicCheckerExportResponse(BaseModel):
+    trip_id: str
+    trip: Dict[str, Any]
+    artifact_manifest: Optional[PublicCheckerArtifactManifest] = None
+
+
+class PublicCheckerDeleteResponse(BaseModel):
+    ok: bool = True
+    trip_id: str
+    deleted_trip: bool = False
+    deleted_artifacts: bool = False
 
 
 # =============================================================================

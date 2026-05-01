@@ -27,6 +27,7 @@ from src.intake.extractors import (
     _infer_year_from_context,
     _normalize_constraint,
     _extract_party,
+    _extract_budget,
     _extract_destination_candidates,
     _extract_dates,
     _extract_trip_intent,
@@ -472,3 +473,495 @@ class TestDestinationEnvelopeMerge:
 
         assert "Singapore" in destination_candidates
         assert destination_status == "definite"
+
+
+# =============================================================================
+# Hinglish/Odia Extraction Fixes — Regression + New Tests
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Budget: bare INR values (3L, 3L tk, 3L tak, 300k)
+# ---------------------------------------------------------------------------
+
+class TestBudgetHinglish:
+    """Bare INR budget expressions without explicit 'budget' keyword."""
+
+    # --- Regression: existing English patterns still work ---
+    def test_english_budget_with_keyword(self):
+        result = _extract_budget("Budget 3L")
+        assert result is not None
+        assert result["min"] == 300000
+        assert result["max"] == 300000
+
+    def test_english_budget_around(self):
+        result = _extract_budget("around 3L")
+        assert result is not None
+        assert result["min"] == 300000
+
+    # --- New: bare values ---
+    def test_bare_3l(self):
+        result = _extract_budget("3L")
+        assert result is not None, "bare '3L' should match"
+        assert result["min"] == 300000
+        assert result["max"] == 300000
+
+    def test_bare_3l_lower(self):
+        result = _extract_budget("3l")
+        assert result is not None, "bare '3l' should match"
+        assert result["min"] == 300000
+
+    def test_bare_3l_tk(self):
+        result = _extract_budget("3L tk")
+        assert result is not None, "bare '3L tk' should match"
+        assert result["min"] is not None
+
+    def test_bare_3l_tak(self):
+        result = _extract_budget("3L tak")
+        assert result is not None, "bare '3L tak' should match"
+        assert result["min"] is not None
+
+    def test_bare_300k(self):
+        result = _extract_budget("300k")
+        assert result is not None, "bare '300k' should match"
+        assert result["min"] == 300000
+
+    def test_bare_1_5l(self):
+        result = _extract_budget("1.5L")
+        assert result is not None
+        assert result["max"] == 150000
+
+    def test_budget_3l_lowercase(self):
+        result = _extract_budget("budget 3l")
+        assert result is not None
+        assert result["min"] == 300000
+
+
+# ---------------------------------------------------------------------------
+# Origin: Hinglish/Odia postpositions (se, ru, side)
+# ---------------------------------------------------------------------------
+
+class TestOriginHinglish:
+    """Origin detection with Hinglish/Odia postpositions."""
+
+    # --- Regression: English "from" still works ---
+    def test_english_from_destination_excludes_origin(self):
+        """'from Bangalore' should not appear in destination candidates."""
+        candidates, status, raw = _extract_destination_candidates(
+            "Trip from Bangalore to Singapore"
+        )
+        lowered = [c.lower() for c in candidates]
+        assert "bangalore" not in lowered, "Bangalore should not be a destination here"
+        assert "singapore" in lowered, "Singapore should be the destination"
+
+    def test_english_from_origin_extracted(self):
+        """Origin extraction via pipeline should set origin_city for 'from Bangalore'."""
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform(
+            "Trip from Bangalore to Singapore for 4 people, budget 3L",
+            "test",
+        )
+        packet = pipeline.extract([env])
+        origin = packet.facts.get("origin_city")
+        assert origin is not None, "origin_city should be set"
+        assert origin.value == "Bangalore", f"Expected Bangalore, got {origin.value}"
+
+    # --- New: Hinglish "se" ---
+    def test_bangalore_se_excludes_from_destination(self):
+        """'Bangalore se' should exclude Bangalore from destination candidates."""
+        candidates, status, raw = _extract_destination_candidates(
+            "Bangalore se Andaman jana hai"
+        )
+        lowered = [c.lower() for c in candidates]
+        assert "bangalore" not in lowered, \
+            f"Bangalore should not be a destination with 'se', got {candidates}"
+        assert "andaman" in lowered, "Andaman should be the destination"
+
+    def test_bangalore_se_sets_origin(self):
+        """'Bangalore se' should populate origin_city via pipeline."""
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform(
+            "Bangalore se Andaman jana hai, 4 log, budget 3L",
+            "test",
+        )
+        packet = pipeline.extract([env])
+        origin = packet.facts.get("origin_city")
+        assert origin is not None, "origin_city should be set for 'Bangalore se'"
+        assert origin.value == "Bangalore"
+
+    # --- New: Odia "ru" ---
+    def test_bangalore_ru_excludes_from_destination(self):
+        candidates, status, raw = _extract_destination_candidates(
+            "Bangalore ru Sri Lanka jiba"
+        )
+        lowered = [c.lower() for c in candidates]
+        assert "bangalore" not in lowered, f"Bangalore should not be destination with 'ru', got {candidates}"
+
+    # --- New: Indian English "side" ---
+    def test_bangalore_side_excludes_from_destination(self):
+        candidates, status, raw = _extract_destination_candidates(
+            "Bangalore side jaana hai"
+        )
+        lowered = [c.lower() for c in candidates]
+        assert "bangalore" not in lowered, f"Bangalore should not be destination with 'side', got {candidates}"
+
+
+# ---------------------------------------------------------------------------
+# Party: Hinglish child terms (bachhe, bache, baccha)
+# ---------------------------------------------------------------------------
+
+class TestPartyHinglish:
+    """Party composition with Hinglish child terms."""
+
+    # --- Regression: existing English patterns ---
+    def test_english_two_adults_two_children(self):
+        result = _extract_party("2 adults 2 children")
+        assert result["party_size"] == 4
+        assert result["party_composition"].get("adults") == 2
+        assert result["party_composition"].get("children") == 2
+
+    def test_english_family_with_kids(self):
+        result = _extract_party("me, my wife, and 2 kids")
+        assert result["party_size"] == 4
+        assert "children" in result["party_composition"]
+
+    # --- New: bachhe (plural, Hindi) ---
+    def test_two_adults_two_bachhe(self):
+        result = _extract_party("2 adults 2 bachhe")
+        assert result["party_composition"].get("children") == 2, \
+            f"Expected children=2, got {result['party_composition']}"
+        assert result["party_size"] == 4
+
+    def test_bachhe_singular(self):
+        result = _extract_party("bachha")
+        assert "children" in result["party_composition"], \
+            f"'bachha' should be recognized as a child, got {result['party_composition']}"
+
+    def test_family_of_four_two_bachhe(self):
+        result = _extract_party("family of 4, 2 bachhe")
+        assert result["party_composition"].get("children") == 2, \
+            f"Expected children=2, got {result['party_composition']}"
+
+    def test_four_adults_two_bachhe(self):
+        result = _extract_party("4 adults, 2 bachhe")
+        assert result["party_composition"].get("adults") == 4
+        assert result["party_composition"].get("children") == 2, \
+            f"Expected children=2, got {result['party_composition']}"
+
+    def test_bache_variant(self):
+        result = _extract_party("2 adults 1 bache")
+        assert result["party_composition"].get("children") == 1
+
+
+# ---------------------------------------------------------------------------
+# Dates: Hinglish "ya" separator
+# ---------------------------------------------------------------------------
+
+class TestDateHinglish:
+    """Date extraction with Hinglish conjunctions."""
+
+    # --- Regression: existing English patterns ---
+    def test_english_month_window_or(self):
+        result = _extract_dates("March or April 2026")
+        assert result is not None
+        assert result[3] == "window"
+
+    def test_english_month_window_to(self):
+        result = _extract_dates("March to April 2026")
+        assert result is not None
+        assert result[3] == "window"
+
+    # --- New: "ya" ---
+    def test_march_ya_april(self):
+        result = _extract_dates("March ya April 2026")
+        assert result is not None, "'March ya April 2026' should match as month window"
+        assert result[3] in ("window",), f"Expected window confidence, got {result}"
+
+
+# ---------------------------------------------------------------------------
+# Lowercase known destinations
+# ---------------------------------------------------------------------------
+
+class TestLowercaseDestination:
+    """Destination detection with lowercase city names."""
+
+    # --- Regression: capitalized still works ---
+    def test_capitalized_singapore(self):
+        candidates, status, raw = _extract_destination_candidates("Singapore jana hai")
+        assert "Singapore" in candidates
+
+    # --- New: lowercase ---
+    def test_lowercase_singapore(self):
+        candidates, status, raw = _extract_destination_candidates("singapore jana hai")
+        assert any(c.lower() == "singapore" for c in candidates), \
+            f"Lowercase 'singapore' should be recognized, got {candidates}"
+
+    def test_lowercase_andaman(self):
+        candidates, status, raw = _extract_destination_candidates("andaman jana hai")
+        assert any(c.lower() == "andaman" for c in candidates), \
+            f"Lowercase 'andaman' should be recognized, got {candidates}"
+
+    # Non-destination lowercase words should still be rejected
+    def test_lowercase_months_rejected(self):
+        candidates, status, raw = _extract_destination_candidates("march me jana hai")
+        lowered = [c.lower() for c in candidates]
+        assert "march" not in lowered
+
+
+# ---------------------------------------------------------------------------
+# Full pipeline: Hinglish input end-to-end
+# ---------------------------------------------------------------------------
+
+class TestPipelineHinglishRegression:
+    """Full pipeline on Hinglish WhatsApp-style input."""
+
+    def test_hinglish_baseline(self):
+        """Andaman Sri Lanka, Bangalore se, 2 adults 2 bachhe, 3L, March ya April."""
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform(
+            "Andaman Sri Lanka Bangalore se 2 adults 2 bachhe 3L March ya April",
+            "test",
+        )
+        packet = pipeline.extract([env])
+
+        dest = packet.facts.get("destination_candidates")
+        origin = packet.facts.get("origin_city")
+        party = packet.facts.get("party_size")
+        comp = packet.facts.get("party_composition")
+        budget = packet.facts.get("budget_raw_text")
+        dates = packet.facts.get("date_window")
+
+        # Destination should include Sri Lanka (as multi-word) and Andaman (NOT Bangalore)
+        assert dest is not None, "destination_candidates should be set"
+        dest_vals = dest.value if isinstance(dest.value, list) else [dest.value]
+        dest_str = " ".join(str(v) for v in dest_vals)
+        assert "Andaman" in dest_str, \
+            f"Andaman should be a destination candidate, got {dest_vals}"
+        assert "Sri Lanka" in dest_str, \
+            f"Sri Lanka should be a multi-word destination candidate, got {dest_vals}"
+        lowered = [v.lower() for v in dest_vals]
+        assert "bangalore" not in lowered, \
+            f"Bangalore should NOT be a destination candidate, got {dest_vals}"
+
+        # Origin should be Bangalore
+        assert origin is not None, "origin_city should be set"
+        assert origin.value == "Bangalore", f"Expected Bangalore origin, got {origin.value}"
+
+        # Party should include children
+        assert party is not None, "party_size should be set"
+        assert comp is not None, "party_composition should be set"
+        comp_val = comp.value if isinstance(comp.value, dict) else {}
+        assert comp_val.get("children") == 2 or comp_val.get("children") == 2, \
+            f"Expected 2 children in composition, got {comp_val}"
+
+        # Budget should be set
+        assert budget is not None, "budget_raw_text should be set"
+
+        # Dates should be set
+        assert dates is not None, "date_window should be set"
+
+
+# ---------------------------------------------------------------------------
+# Context-gated lowercase destination (structural fix for "Got" false positive)
+# ---------------------------------------------------------------------------
+
+class TestContextGatedLowercaseDestination:
+    """Verify lowercase destination only matches in travel-intent context."""
+
+    # --- False positives: must be rejected ---
+
+    def test_got_your_number_rejected(self):
+        """'got' in 'I got your number' must not become a destination."""
+        candidates, status, raw = _extract_destination_candidates(
+            "Hi Ravi, I got your number from my wife who is a colleague"
+        )
+        lowered = [c.lower() for c in candidates]
+        assert "got" not in lowered, \
+            f"'Got' should not be a destination in 'I got your number', got {candidates}"
+
+    def test_got_family_leisure_rejected(self):
+        """'got' as first word must notExtract destination from 'got family leisure trip'."""
+        candidates, status, raw = _extract_destination_candidates(
+            "got family leisure trip"
+        )
+        lowered = [c.lower() for c in candidates]
+        assert "got" not in lowered, \
+            f"'Got' should not be a destination, got {candidates}"
+
+    def test_need_family_leisure_rejected(self):
+        """'need' must not become a destination."""
+        candidates, status, raw = _extract_destination_candidates(
+            "we need family leisure trip"
+        )
+        lowered = [c.lower() for c in candidates]
+        assert "need" not in lowered, \
+            f"'Need' should not be a destination, got {candidates}"
+
+    def test_old_customer_rejected(self):
+        """'old' must not become a destination."""
+        candidates, status, raw = _extract_destination_candidates(
+            "old customer wants options"
+        )
+        lowered = [c.lower() for c in candidates]
+        assert "old" not in lowered, \
+            f"'Old' should not be a destination, got {candidates}"
+
+    def test_kids_parks_rejected(self):
+        """'kids' and 'parks' must not become destinations."""
+        candidates, status, raw = _extract_destination_candidates(
+            "kids want parks"
+        )
+        lowered = [c.lower() for c in candidates]
+        assert "kids" not in lowered, \
+            f"'Kids' should not be a destination, got {candidates}"
+        assert "parks" not in lowered, \
+            f"'Parks' should not be a destination, got {candidates}"
+
+    def test_top_hotels_rejected(self):
+        """'top' must not become a destination."""
+        candidates, status, raw = _extract_destination_candidates(
+            "top hotels needed"
+        )
+        lowered = [c.lower() for c in candidates]
+        assert "top" not in lowered, \
+            f"'Top' should not be a destination, got {candidates}"
+
+    def test_set_budget_rejected(self):
+        """'set' must not become a destination."""
+        candidates, status, raw = _extract_destination_candidates(
+            "set budget later"
+        )
+        lowered = [c.lower() for c in candidates]
+        assert "set" not in lowered, \
+            f"'Set' should not be a destination, got {candidates}"
+
+    def test_log_inquiry_rejected(self):
+        """'log' must not become a destination."""
+        candidates, status, raw = _extract_destination_candidates(
+            "log this inquiry"
+        )
+        lowered = [c.lower() for c in candidates]
+        assert "log" not in lowered, \
+            f"'Log' should not be a destination, got {candidates}"
+
+    # --- True positives: lowercase destinations in travel context ---
+
+    def test_singapore_jana_hai(self):
+        """'singapore jana hai' → Singapore."""
+        candidates, status, raw = _extract_destination_candidates(
+            "singapore jana hai"
+        )
+        titles = [c.title() for c in candidates]
+        assert "Singapore" in titles, \
+            f"'Singapore' should be recognized in 'singapore jana hai', got {candidates}"
+
+    def test_andaman_jana_hai(self):
+        """'andaman jana hai' → Andaman."""
+        candidates, status, raw = _extract_destination_candidates(
+            "andaman jana hai"
+        )
+        titles = [c.title() for c in candidates]
+        assert "Andaman" in titles, \
+            f"'Andaman' should be recognized in 'andaman jana hai', got {candidates}"
+
+    def test_bangalore_se_singapore(self):
+        """'bangalore se singapore jana hai' → Singapore (not Bangalore)."""
+        candidates, status, raw = _extract_destination_candidates(
+            "bangalore se singapore jana hai"
+        )
+        titles = [c.title() for c in candidates]
+        assert "Singapore" in titles, \
+            f"'Singapore' should be recognized, got {candidates}"
+        assert "Bangalore" not in titles, \
+            f"'Bangalore' should be origin, not destination, got {candidates}"
+
+    def test_bangalore_se_andaman(self):
+        """'bangalore se andaman jana hai' → Andaman."""
+        candidates, status, raw = _extract_destination_candidates(
+            "bangalore se andaman jana hai"
+        )
+        titles = [c.title() for c in candidates]
+        assert "Andaman" in titles, \
+            f"'Andaman' should be recognized, got {candidates}"
+
+    def test_bangalore_ru_sri_lanka(self):
+        """'bangalore ru sri lanka jiba' → Sri Lanka."""
+        candidates, status, raw = _extract_destination_candidates(
+            "bangalore ru sri lanka jiba"
+        )
+        titles = [c.title() for c in candidates]
+        assert "Sri Lanka" in titles, \
+            f"'Sri Lanka' should be recognized, got {candidates}"
+
+    def test_want_to_go_singapore(self):
+        """'want to go singapore' → Singapore."""
+        candidates, status, raw = _extract_destination_candidates(
+            "want to go singapore"
+        )
+        titles = [c.title() for c in candidates]
+        assert "Singapore" in titles, \
+            f"'Singapore' should be recognized in 'want to go singapore', got {candidates}"
+
+    def test_travel_to_bali(self):
+        """'travel to bali' → Bali."""
+        candidates, status, raw = _extract_destination_candidates(
+            "travel to bali"
+        )
+        titles = [c.title() for c in candidates]
+        assert "Bali" in titles, \
+            f"'Bali' should be recognized in 'travel to bali', got {candidates}"
+
+    def test_trip_to_thailand(self):
+        """'trip to thailand' → Thailand."""
+        candidates, status, raw = _extract_destination_candidates(
+            "trip to thailand"
+        )
+        titles = [c.title() for c in candidates]
+        assert "Thailand" in titles, \
+            f"'Thailand' should be recognized in 'trip to thailand', got {candidates}"
+
+    def test_holiday_in_dubai(self):
+        """'holiday in dubai' → Dubai."""
+        candidates, status, raw = _extract_destination_candidates(
+            "holiday in dubai"
+        )
+        titles = [c.title() for c in candidates]
+        assert "Dubai" in titles, \
+            f"'Dubai' should be recognized in 'holiday in dubai', got {candidates}"
+
+    # --- Multi-word lowercase destinations ---
+
+    def test_bangalore_se_sri_lanka_jana_hai(self):
+        """'bangalore se sri lanka jana hai' → Sri Lanka."""
+        candidates, status, raw = _extract_destination_candidates(
+            "bangalore se sri lanka jana hai"
+        )
+        titles = [c.title() for c in candidates]
+        assert "Sri Lanka" in titles, \
+            f"'Sri Lanka' should be recognized as multi-word destination, got {candidates}"
+
+    def test_bangalore_se_new_york_jana_hai(self):
+        """'bangalore se new york jana hai' → New York."""
+        candidates, status, raw = _extract_destination_candidates(
+            "bangalore se new york jana hai"
+        )
+        titles = [c.title() for c in candidates]
+        assert "New York" in titles, \
+            f"'New York' should be recognized as multi-word destination, got {candidates}"
+
+    def test_bangalore_se_abu_dhabi_jana_hai(self):
+        """'bangalore se abu dhabi jana hai' → Abu Dhabi."""
+        candidates, status, raw = _extract_destination_candidates(
+            "bangalore se abu dhabi jana hai"
+        )
+        titles = [c.title() for c in candidates]
+        assert "Abu Dhabi" in titles, \
+            f"'Abu Dhabi' should be recognized as multi-word destination, got {candidates}"
+
+    def test_bangalore_se_hong_kong_jana_hai(self):
+        """'bangalore se hong kong jana hai' → Hong Kong."""
+        candidates, status, raw = _extract_destination_candidates(
+            "bangalore se hong kong jana hai"
+        )
+        titles = [c.title() for c in candidates]
+        assert "Hong Kong" in titles, \
+            f"'Hong Kong' should be recognized as multi-word destination, got {candidates}"

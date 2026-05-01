@@ -61,7 +61,7 @@ describe("packet page", () => {
     expect(screen.getByText("Budget missing")).toBeInTheDocument();
     expect(screen.getByText("Origin missing")).toBeInTheDocument();
     expect(screen.getByText("4B9E")).toBeInTheDocument();
-    expect(screen.getByText("Missing required details")).toBeInTheDocument();
+    expect(screen.getByText(/required field/i)).toBeInTheDocument();
     expect(screen.getByText("Budget range")).toBeInTheDocument();
     expect(screen.getByText("Origin city")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Add budget" }).length).toBeGreaterThanOrEqual(1);

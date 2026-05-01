@@ -45,9 +45,9 @@ Based on AGENTS.md and workspace standards, here’s how to configure Hermes for
 
 ### 1. **Project-Specific Configuration** (Already Partially Done)  
 Your `.agent/` directory shows proper project alignment:
-- `.agent/AGENT_KICKOFF_PROMPT.txt` — Project-specific instructions  
-- `.agent/SESSION_CONTEXT.md` — Loaded project context  
-- `.agent/STEP1_ENV.sh` — Environment setup  
+- `Docs/context/agent-start/AGENT_KICKOFF_PROMPT.txt` — Project-specific instructions  
+- `Docs/context/agent-start/SESSION_CONTEXT.md` — Loaded project context  
+- `Docs/context/agent-start/STEP1_ENV.sh` — Environment setup  
 
 **Verify**: These should be auto-loaded when you `cd` into `/Users/pranay/Projects/travel_agency_agent/`
 

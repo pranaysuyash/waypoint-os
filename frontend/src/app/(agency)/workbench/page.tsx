@@ -183,11 +183,12 @@ function WorkbenchContent() {
   const prevDraftRef = useRef<string | null>(null);
   const [draftLoading, setDraftLoading] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
+  const { clearDraft, hydrateFromDraft, setDraftStatus } = store;
   useEffect(() => {
     if (!draftParam) return;
     if (draftParam === 'new') {
       if (prevDraftRef.current !== 'new') {
-        store.clearDraft();
+        clearDraft();
         prevDraftRef.current = 'new';
       }
       return;
@@ -199,14 +200,14 @@ function WorkbenchContent() {
     setDraftError(null);
     getDraft(draftParam)
       .then((draft) => {
-        store.hydrateFromDraft(draft);
+        hydrateFromDraft(draft);
         setDraftLoading(false);
       })
       .catch((err) => {
         setDraftError(err instanceof Error ? err.message : 'Failed to load draft');
         setDraftLoading(false);
       });
-  }, [draftParam, store]);
+  }, [draftParam, clearDraft, hydrateFromDraft]);
 
   // Invalidation logic: clear results if config changes
   const prevConfigRef = useRef({
@@ -290,19 +291,19 @@ function WorkbenchContent() {
     if (!store.draft_id || !spineRunState?.state) return;
     const runState = spineRunState.state;
     if (runState === 'running' || runState === 'queued') {
-      store.setDraftStatus('processing');
+      setDraftStatus('processing');
     } else if (runState === 'blocked') {
-      store.setDraftStatus('blocked');
+      setDraftStatus('blocked');
       // Refetch draft to get updated version from backend lifecycle
-      getDraft(store.draft_id).then((draft) => store.hydrateFromDraft(draft)).catch(() => {});
+      getDraft(store.draft_id).then((draft) => hydrateFromDraft(draft)).catch(() => {});
     } else if (runState === 'failed') {
-      store.setDraftStatus('failed');
-      getDraft(store.draft_id).then((draft) => store.hydrateFromDraft(draft)).catch(() => {});
+      setDraftStatus('failed');
+      getDraft(store.draft_id).then((draft) => hydrateFromDraft(draft)).catch(() => {});
     } else if (runState === 'completed') {
-      store.setDraftStatus('open');
-      getDraft(store.draft_id).then((draft) => store.hydrateFromDraft(draft)).catch(() => {});
+      setDraftStatus('open');
+      getDraft(store.draft_id).then((draft) => hydrateFromDraft(draft)).catch(() => {});
     }
-  }, [spineRunState?.state, store.draft_id, store]);
+  }, [spineRunState?.state, store.draft_id, setDraftStatus, hydrateFromDraft]);
 
   // Auto-switch to the tab containing errors when a run ends in blocked/failed state.
   // This prevents the user from missing field-level validation errors that are rendered

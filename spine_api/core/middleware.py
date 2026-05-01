@@ -31,7 +31,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
     """
 
     PUBLIC_PATHS: set[str] = {"/health", "/docs", "/openapi.json", "/redoc"}
-    PUBLIC_PREFIXES: tuple[str, ...] = ("/api/auth",)
+    PUBLIC_PREFIXES: tuple[str, ...] = ("/api/auth", "/api/public-checker")
 
     async def dispatch(
         self,

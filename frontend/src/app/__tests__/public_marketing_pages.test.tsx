@@ -1,7 +1,37 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import HomePage from '@/app/page';
 import ItineraryCheckerPage from '@/app/(traveler)/itinerary-checker/page';
+
+vi.mock('@/hooks/useSpineRun', () => {
+  const execute = vi.fn().mockResolvedValue({
+    run_id: 'run_test',
+    state: 'completed',
+    trip_id: null,
+    stage: 'discovery',
+    operating_mode: 'normal_intake',
+    agency_id: null,
+    created_at: null,
+    started_at: null,
+    completed_at: null,
+    total_ms: null,
+    steps_completed: [],
+    events: [],
+    validation: null,
+    packet: null,
+    decision_state: 'PROCEED_TRAVELER_SAFE',
+    follow_up_questions: [],
+    hard_blockers: [],
+    soft_blockers: [],
+  });
+
+  return {
+    useSpineRun: () => ({
+      execute,
+      isLoading: false,
+    }),
+  };
+});
 
 describe('public marketing pages', () => {
   it('renders the B2B landing page copy and CTA surfaces', () => {
@@ -38,7 +68,7 @@ describe('public marketing pages', () => {
     expect(checkerLink).toHaveAttribute('href', '/itinerary-checker');
 
     expect(
-      screen.getByRole('heading', { name: /Test your plan before you book/i }),
+      screen.getByRole('heading', { name: /Bring your plan\. Get it scored/i }),
     ).toBeInTheDocument();
   });
 
@@ -55,7 +85,7 @@ describe('public marketing pages', () => {
 
     // Hero heading
     expect(
-      screen.getByRole('heading', { name: /Find what your travel plan missed/i }),
+      screen.getByRole('heading', { name: /Bring your plan\. Get it checked/i }),
     ).toBeInTheDocument();
 
     // Mode tabs present
@@ -64,7 +94,7 @@ describe('public marketing pages', () => {
     expect(screen.getByRole('button', { name: /Screenshot/i })).toBeInTheDocument();
 
     // Real upload button (not a link to a separate notebook section)
-    expect(screen.getByRole('button', { name: /Choose file to upload/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Score my itinerary/i })).toBeInTheDocument();
   });
 
   it('itinerary checker upload zone is a real interactive tool, not a sample preview', () => {
@@ -82,14 +112,14 @@ describe('public marketing pages', () => {
     // Trust chips confirming it is free and privacy-safe
     expect(screen.getByText(/Free to use/i)).toBeInTheDocument();
     expect(screen.getByText(/No sign-up required/i)).toBeInTheDocument();
-    expect(screen.getByText(/Analyzed then deleted/i)).toBeInTheDocument();
+    expect(screen.getByText(/Consent-based storage/i)).toBeInTheDocument();
   });
 
   it('itinerary checker surfaces data-handling privacy assurance in trust chips', () => {
     render(<ItineraryCheckerPage />);
 
     // Trust chips visible beneath the upload zone
-    expect(screen.getByText(/Analyzed then deleted/i)).toBeInTheDocument();
+    expect(screen.getByText(/Consent-based storage/i)).toBeInTheDocument();
     expect(screen.getByText(/No sign-up required/i)).toBeInTheDocument();
     expect(screen.getByText(/Free to use/i)).toBeInTheDocument();
   });
@@ -103,7 +133,7 @@ describe('public marketing pages', () => {
     const textarea = screen.getByPlaceholderText(/Paste your day-by-day plan here/i);
     expect(textarea).toBeInTheDocument();
 
-    const analyzeBtn = screen.getByRole('button', { name: /Analyze My Itinerary/i });
+    const analyzeBtn = screen.getByRole('button', { name: /Score My Itinerary/i });
     expect(analyzeBtn).toBeDisabled();
 
     fireEvent.change(textarea, {
@@ -113,5 +143,23 @@ describe('public marketing pages', () => {
     });
 
     expect(analyzeBtn).not.toBeDisabled();
+  });
+
+  it('accepts a text upload and runs the scoring flow', async () => {
+    const { container } = render(<ItineraryCheckerPage />);
+
+    const fileInput = container.querySelector('input[type="file"]');
+    expect(fileInput).toBeTruthy();
+
+    const file = new File(['Hong Kong in August for 2 elders and 1 child.'], 'trip.txt', {
+      type: 'text/plain',
+    });
+
+    fireEvent.change(fileInput as HTMLInputElement, {
+      target: { files: [file] },
+    });
+
+    expect(await screen.findByText(/Live review/i)).toBeInTheDocument();
+    expect(screen.getByText(/PROCEED_TRAVELER_SAFE/i)).toBeInTheDocument();
   });
 });

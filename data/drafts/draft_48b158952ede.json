@@ -1,0 +1,49 @@
+{
+  "id": "draft_48b158952ede",
+  "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+  "created_by": "323468de-ba3d-437b-aa10-35b281a0c6a6",
+  "assigned_to": "323468de-ba3d-437b-aa10-35b281a0c6a6",
+  "name": "singapore trip in may end for 5 people 1 kid 3 years 2 el...",
+  "name_source": "user",
+  "status": "blocked",
+  "stage": "discovery",
+  "operating_mode": "normal_intake",
+  "scenario_id": null,
+  "strict_leakage": false,
+  "source_channel": null,
+  "customer_id": null,
+  "customer_name_snapshot": null,
+  "customer_phone_hash": null,
+  "customer_email_hash": null,
+  "last_run_id": "3ec9376e-b178-4e3e-9005-177d92f1caff",
+  "last_run_state": "blocked",
+  "last_run_completed_at": "2026-05-01T13:15:54.673977+00:00",
+  "promoted_trip_id": null,
+  "promoted_at": null,
+  "merged_into_draft_id": null,
+  "discarded_at": null,
+  "discarded_by": null,
+  "version": 4,
+  "created_at": "2026-05-01T12:52:02.766625+00:00",
+  "updated_at": "2026-05-01T13:15:54.674584+00:00",
+  "customer_message": "singapore trip in may end for 5 people 1 kid 3 years 2 elders",
+  "agent_notes": null,
+  "structured_json": null,
+  "itinerary_text": null,
+  "last_validation": null,
+  "last_packet": null,
+  "run_snapshots": [
+    {
+      "run_id": "3ec9376e-b178-4e3e-9005-177d92f1caff",
+      "state": "blocked",
+      "snapshot": {
+        "block_reason": "Trip details are incomplete. Please add the missing information and try again.",
+        "stage_at_block": "validation"
+      },
+      "timestamp": "2026-05-01T13:15:54.673984+00:00"
+    }
+  ],
+  "merge_history": [],
+  "linked_draft_ids": [],
+  "linked_trip_ids": []
+}

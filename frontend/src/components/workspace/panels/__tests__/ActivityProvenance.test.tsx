@@ -67,35 +67,35 @@ describe('ActivityProvenanceBadge', () => {
     expect(badge?.className).toMatch(/bg-green-50|text-green-700/);
   });
 
-  // Test 7: Support different sizes
-  it('should support sm size variant', () => {
-    const { container } = render(
-      <ActivityProvenanceBadge source="suggested" confidence={90} size="sm" />
-    );
-
-    const badge = container.querySelector('span');
-    expect(badge?.className).toMatch(/text-ui-xs/);
-  });
-
-  // Test 8: Support md size variant (default)
-  it('should support md size variant (default)', () => {
-    const { container } = render(
-      <ActivityProvenanceBadge source="suggested" confidence={90} size="md" />
-    );
-
-    const badge = container.querySelector('span');
-    expect(badge?.className).toMatch(/text-ui-sm/);
-  });
-
-  // Test 9: Support lg size variant
-  it('should support lg size variant', () => {
-    const { container } = render(
-      <ActivityProvenanceBadge source="suggested" confidence={90} size="lg" />
-    );
-
-    const badge = container.querySelector('span');
-    expect(badge?.className).toMatch(/text-ui-base/);
-  });
+    // Test 7: Support different sizes
+    it('should support sm size variant', () => {
+      const { container } = render(
+        <ActivityProvenanceBadge source="suggested" confidence={90} size="sm" />
+      );
+    
+      const badge = container.querySelector('[role="status"]');
+      expect(badge?.className).toMatch(/px-2 py-0\.5/);
+    });
+    
+    // Test 8: Support md size variant (default)
+    it('should support md size variant (default)', () => {
+      const { container } = render(
+        <ActivityProvenanceBadge source="suggested" confidence={90} size="md" />
+      );
+    
+      const badge = container.querySelector('[role="status"]');
+      expect(badge?.className).toMatch(/px-2\.5 py-1 /);
+    });
+    
+    // Test 9: Support lg size variant
+    it('should support lg size variant', () => {
+      const { container } = render(
+        <ActivityProvenanceBadge source="suggested" confidence={90} size="lg" />
+      );
+    
+      const badge = container.querySelector('[role="status"]');
+      expect(badge?.className).toMatch(/px-3 py-1\.5/);
+    });
 
   // Test 10: Accessibility - aria-label for suggested
   it('should provide accessible aria-label for suggested', () => {

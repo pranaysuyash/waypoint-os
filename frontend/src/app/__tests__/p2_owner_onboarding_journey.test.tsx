@@ -105,6 +105,11 @@ vi.mock("@/hooks/useTrips", () => ({
     isSaving: false,
     error: null,
   }),
+  useStartPlanning: () => ({
+    mutate: vi.fn().mockResolvedValue({}),
+    isStarting: false,
+    error: null,
+  }),
 }));
 
 vi.mock("@/hooks/useFieldAuditLog", () => ({
@@ -168,6 +173,7 @@ describe("P2 Owner Onboarding Journey: Junior Quote → Coaching Warnings → Ow
     dateWindow: "June 2026",
     party: 4,
     budget: "₹250000",
+    status: "incomplete",
     customerMessage:
       "Family of 4 from Bangalore, 2 adults + toddler (3yo) + elderly (70yo). Want Singapore or Bali. Budget 2.5L INR. June 2026.",
     agentNotes: "Repeat customer, prioritise Sentosa for kids.",

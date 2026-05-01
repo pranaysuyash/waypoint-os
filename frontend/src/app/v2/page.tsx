@@ -1,5 +1,3 @@
-'use client';
-
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -10,7 +8,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 import {
-  CtaBand,
   Kicker,
   ProofChip,
   PublicFooter,
@@ -18,7 +15,8 @@ import {
   PublicPage,
   SectionIntro,
 } from '@/components/marketing/marketing';
-import { DataTransformationHero } from '@/components/marketing/MarketingVisuals';
+import { CtaBand } from '@/components/marketing/marketing-client';
+import { DynamicDataTransformationHero } from '@/components/marketing/dynamic-visuals';
 import styles from '@/components/marketing/marketing-v2.module.css';
 
 const painPoints = [
@@ -121,7 +119,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <DataTransformationHero />
+        <DynamicDataTransformationHero />
       </section>
 
       <section className={`${styles.section} ${styles.problemSection}`} id='product'>

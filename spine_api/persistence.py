@@ -11,6 +11,7 @@ dogfood mode by the privacy guard. Before beta/launch, configure:
   - PostgreSQL migration for trip data.
 """
 
+import base64
 import json
 import os
 import asyncio
@@ -22,8 +23,9 @@ from dataclasses import asdict, is_dataclass
 import logging
 import threading
 from contextlib import contextmanager
+import re
 
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -52,11 +54,16 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 TRIPS_DIR = DATA_DIR / "trips"
 ASSIGNMENTS_DIR = DATA_DIR / "assignments"
 AUDIT_DIR = DATA_DIR / "audit"
+PUBLIC_CHECKER_DIR = DATA_DIR / "public_checker"
+PUBLIC_CHECKER_UPLOADS_DIR = PUBLIC_CHECKER_DIR / "uploads"
+PUBLIC_CHECKER_MANIFESTS_DIR = PUBLIC_CHECKER_DIR / "manifests"
 
 # Ensure directories exist
 TRIPS_DIR.mkdir(parents=True, exist_ok=True)
 ASSIGNMENTS_DIR.mkdir(parents=True, exist_ok=True)
 AUDIT_DIR.mkdir(parents=True, exist_ok=True)
+PUBLIC_CHECKER_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+PUBLIC_CHECKER_MANIFESTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _make_json_serializable(obj: Any) -> Any:
@@ -80,6 +87,12 @@ def _make_json_serializable(obj: Any) -> Any:
     else:
         # Fallback: convert to string
         return str(obj)
+
+
+def _safe_filename(name: str) -> str:
+    """Return a filesystem-safe filename while preserving the base name."""
+    base = Path(name).name or "upload.bin"
+    return re.sub(r"[^A-Za-z0-9._-]+", "_", base)
 
 
 def _is_process_dead(pid: int) -> bool:
@@ -238,6 +251,22 @@ class FileTripStore:
                 continue
         
         return trips
+
+    @staticmethod
+    def count_trips(status: Optional[str] = None, agency_id: Optional[str] = None) -> int:
+        """Count trips matching filter (without limit)."""
+        count = 0
+        for filepath in sorted(TRIPS_DIR.glob("trip_*.json"), reverse=True):
+            try:
+                with open(filepath) as f:
+                    trip = json.load(f)
+                if agency_id and trip.get("agency_id") != agency_id:
+                    continue
+                if status is None or trip.get("status") == status:
+                    count += 1
+            except Exception:
+                continue
+        return count
     
     @staticmethod
     def update_trip(trip_id: str, updates: dict) -> Optional[dict]:
@@ -270,6 +299,19 @@ class FileTripStore:
                     json.dump(serializable_trip, f, indent=2)
                 
                 return trip
+
+    @staticmethod
+    def delete_trip(trip_id: str) -> bool:
+        filepath = TRIPS_DIR / f"{trip_id}.json"
+        if not filepath.exists():
+            return False
+
+        with FileTripStore._lock:
+            with file_lock(filepath):
+                if filepath.exists():
+                    filepath.unlink()
+                    return True
+        return False
 
 
 class SQLTripStore:
@@ -421,6 +463,19 @@ class SQLTripStore:
             return [SQLTripStore._to_dict(trip) for trip in result.scalars().all()]
 
     @staticmethod
+    async def count_trips(status: Optional[str] = None, agency_id: Optional[str] = None) -> int:
+        """Count trips matching filter (without limit)."""
+        async with tripstore_session_maker() as session:
+            from sqlalchemy import func
+            query = select(func.count()).select_from(Trip)
+            if status:
+                query = query.where(Trip.status == status)
+            if agency_id:
+                query = query.where(Trip.agency_id == agency_id)
+            result = await session.execute(query)
+            return result.scalar_one()
+
+    @staticmethod
     async def update_trip(trip_id: str, updates: dict) -> Optional[dict]:
         async with tripstore_session_maker() as session:
             trip_obj = await session.get(Trip, trip_id)
@@ -436,6 +491,16 @@ class SQLTripStore:
             trip_obj.updated_at = datetime.now(timezone.utc)
             await session.commit()
             return SQLTripStore._to_dict(trip_obj)
+
+    @staticmethod
+    async def delete_trip(trip_id: str) -> bool:
+        async with tripstore_session_maker() as session:
+            trip_obj = await session.get(Trip, trip_id)
+            if not trip_obj:
+                return False
+            await session.delete(trip_obj)
+            await session.commit()
+            return True
 
 
 def _run_async_blocking(coro):
@@ -503,6 +568,16 @@ class TripStore:
         return await SQLTripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
 
     @staticmethod
+    def count_trips(status: Optional[str] = None, agency_id: Optional[str] = None) -> int:
+        """Count trips matching filter (without limit)."""
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.count_trips(status=status, agency_id=agency_id)
+        return _run_async_blocking(
+            SQLTripStore.count_trips(status=status, agency_id=agency_id)
+        )
+
+    @staticmethod
     def update_trip(trip_id: str, updates: dict) -> Optional[dict]:
         backend = TripStore._backend()
         if backend is FileTripStore:
@@ -515,6 +590,20 @@ class TripStore:
         if backend is FileTripStore:
             return FileTripStore.update_trip(trip_id, updates)
         return await SQLTripStore.update_trip(trip_id, updates)
+
+    @staticmethod
+    def delete_trip(trip_id: str) -> bool:
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.delete_trip(trip_id)
+        return _run_async_blocking(SQLTripStore.delete_trip(trip_id))
+
+    @staticmethod
+    async def adelete_trip(trip_id: str) -> bool:
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.delete_trip(trip_id)
+        return await SQLTripStore.delete_trip(trip_id)
 
 
 def _build_processed_trip(
@@ -713,6 +802,114 @@ class AuditStore:
             e for e in events
             if e.get("details", {}).get("trip_id") == trip_id
         ]
+
+
+class PublicCheckerArtifactStore:
+    """Persist consented public checker uploads and manifests."""
+
+    @staticmethod
+    def _trip_dir(trip_id: str) -> Path:
+        return PUBLIC_CHECKER_UPLOADS_DIR / trip_id
+
+    @staticmethod
+    def _manifest_path(trip_id: str) -> Path:
+        return PUBLIC_CHECKER_MANIFESTS_DIR / f"{trip_id}.json"
+
+    @staticmethod
+    def save_trip_artifacts(trip_id: str, submission: Optional[dict], trip_record: Optional[dict] = None) -> Optional[dict]:
+        if not submission or not submission.get("retention_consent"):
+            return None
+
+        source_payload = submission.get("source_payload") or {}
+        uploaded_file = source_payload.get("uploaded_file") or {}
+        content_base64 = uploaded_file.get("content_base64")
+        if not content_base64:
+            return None
+
+        file_name = _safe_filename(str(uploaded_file.get("file_name") or "upload.bin"))
+        mime_type = str(uploaded_file.get("mime_type") or "application/octet-stream")
+        extracted_text = str(uploaded_file.get("extracted_text") or "")
+        extraction_method = str(uploaded_file.get("extraction_method") or "unknown")
+
+        try:
+            raw_bytes = base64.b64decode(content_base64)
+        except Exception as exc:
+            logger.warning("Failed to decode consented upload for trip %s: %s", trip_id, exc)
+            return None
+
+        trip_dir = PublicCheckerArtifactStore._trip_dir(trip_id)
+        trip_dir.mkdir(parents=True, exist_ok=True)
+
+        archive_path = trip_dir / file_name
+        with open(archive_path, "wb") as handle:
+            handle.write(raw_bytes)
+
+        manifest = {
+            "trip_id": trip_id,
+            "saved_at": datetime.now(timezone.utc).isoformat(),
+            "retention_consent": True,
+            "artifact_type": "public_checker_upload",
+            "uploaded_file": {
+                "file_name": file_name,
+                "mime_type": mime_type,
+                "file_size": len(raw_bytes),
+                "extraction_method": extraction_method,
+                "archive_path": str(archive_path),
+                "extracted_text_chars": len(extracted_text),
+            },
+        }
+
+        if trip_record is not None:
+            manifest["trip_snapshot"] = {
+                "status": trip_record.get("status"),
+                "source": trip_record.get("source"),
+                "agency_id": trip_record.get("agency_id"),
+            }
+
+        manifest_path = PublicCheckerArtifactStore._manifest_path(trip_id)
+        with file_lock(manifest_path):
+            with open(manifest_path, "w") as handle:
+                json.dump(manifest, handle, indent=2)
+
+        return manifest
+
+    @staticmethod
+    def get_trip_artifacts(trip_id: str) -> Optional[dict]:
+        manifest_path = PublicCheckerArtifactStore._manifest_path(trip_id)
+        if not manifest_path.exists():
+            return None
+        with open(manifest_path) as handle:
+            return json.load(handle)
+
+    @staticmethod
+    def delete_trip_artifacts(trip_id: str) -> bool:
+        manifest_path = PublicCheckerArtifactStore._manifest_path(trip_id)
+        trip_dir = PublicCheckerArtifactStore._trip_dir(trip_id)
+        removed = False
+
+        if manifest_path.exists():
+            manifest_path.unlink()
+            removed = True
+
+        if trip_dir.exists():
+            for child in trip_dir.iterdir():
+                if child.is_file():
+                    child.unlink()
+            trip_dir.rmdir()
+            removed = True
+
+        return removed
+
+    @staticmethod
+    def export_trip_package(trip_id: str) -> Optional[dict]:
+        trip = TripStore.get_trip(trip_id)
+        if not trip:
+            return None
+        return {
+            "trip_id": trip_id,
+            "trip": trip,
+            "artifact_manifest": PublicCheckerArtifactStore.get_trip_artifacts(trip_id),
+        }
 
 
 from src.analytics.engine import process_trip_analytics
@@ -1065,6 +1262,18 @@ def save_processed_trip(
     logger.debug(f"Serializable trip keys: {list(serializable_trip.keys())}")
     
     trip_id = TripStore.save_trip(serializable_trip, agency_id=agency_id)
+
+    submission = (spine_output.get("meta", {}) or {}).get("submission")
+    artifact_manifest = PublicCheckerArtifactStore.save_trip_artifacts(
+        trip_id=trip_id,
+        submission=submission,
+        trip_record=serializable_trip,
+    )
+    if artifact_manifest:
+        try:
+            TripStore.update_trip(trip_id, {"public_checker_artifacts": artifact_manifest})
+        except Exception as exc:
+            logger.warning("Failed to attach public checker artifact manifest to %s: %s", trip_id, exc)
     
     # Log creation
     AuditStore.log_event("trip_created", "system", {

@@ -49,6 +49,20 @@ _STOP_WORDS = frozenset({
     "we", "i", "my", "our", "the", "this", "that", "it", "they",
     "he", "she", "us", "me", "him", "her", "and", "or", "to",
     "with", "for", "from", "in", "on", "at", "by",
+    # Hinglish/common false positives (often match obscure GeoNames entries)
+    "se", "ru", "side", "jana", "jaana", "hai", "ho", "ka", "ki", "ke",
+    "ko", "ye", "wo", "jo", "tha", "thee", "hain", "log", "aur", "nahi",
+    # English words that match obscure cities in GeoNames
+    "are", "is", "was", "be", "been", "being", "have", "has", "had",
+    "do", "does", "did", "will", "would", "can", "could", "shall", "should",
+    "may", "might", "must", "need", "dare", "ought", "used",
+    "about", "above", "across", "after", "against", "along", "among",
+    "around", "before", "behind", "below", "beneath", "beside", "between",
+    "beyond", "but", "by", "concerning", "considering", "despite",
+    "down", "during", "except", "following", "inside", "into",
+    "like", "near", "onto", "outside", "over", "past", "plus",
+    "since", "through", "throughout", "toward", "towards", "under",
+    "underneath", "until", "upon", "via", "within", "without",
 })
 
 _DESTINATION_HINT_VERBS = frozenset({
@@ -67,6 +81,32 @@ _DESTINATION_HINT_VERBS = frozenset({
 # Matches capitalized place names (single or multi-word)
 _DESTINATION_RE = re.compile(
     r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b",
+)
+
+# Travel-context patterns for lowercase destination extraction.
+# Only match destinations that appear in travel-intent context, not globally.
+# This prevents false positives like "got" in "I got your number".
+
+# Pattern 1: English travel verbs followed by destination.
+# "go to singapore", "want to go singapore", "travel to singapore", etc.
+_TRAVEL_VERB_DEST_RE = re.compile(
+    r"(?:want to go|go to|travel to|visit|flying to|trip to|holiday in|vacation in"
+    r"|planning to go to|planning to visit|head to|going to)\s+"
+    r"([a-z]+(?:\s+[a-z]+)*)",
+)
+
+# Pattern 2: Destination before Hinglish/Odia travel verbs.
+# "singapore jana hai", "bali jaiba"
+_HINGLISH_DEST_RE = re.compile(
+    r"([a-z]+(?:\s+[a-z]+)*)\s+"
+    r"(?:jana hai|jaana hai|jao|jana|janahi|jiba|jib)",
+)
+
+# Pattern 3: After origin marker ("se"/"ru") before travel verb.
+# "bangalore se singapore jana hai", "bangalore ru sri lanka jiba"
+_ORIGIN_DEST_RE = re.compile(
+    r"(?:se |ru )\s*([a-z]+(?:\s+[a-z]+)*)\s+"
+    r"(?:jana hai|jana|jiba|jib|go|travel|visit)",
 )
 
 
@@ -160,15 +200,23 @@ def _is_likely_origin(text: str, dest_match: str) -> bool:
 
     Looks for patterns like "from Bangalore" where Bangalore would be
     extracted as destination but is actually the origin.
+
+    Also handles Hinglish/Odia postpositions: "Bangalore se", "Bangalore ru",
+    "Bangalore side" where the postposition comes AFTER the city name.
     """
     lowered = text.lower()
     match_idx = lowered.find(dest_match.lower())
     if match_idx < 0:
         return False
 
-    # Check if preceded by "from" within 10 chars
+    # English preposition before: "from Bangalore"
     context_before = lowered[max(0, match_idx - 10):match_idx]
     if re.search(r'\b(from|starting|departing)\s+$', context_before):
+        return True
+
+    # Hinglish/Odia postposition after: "Bangalore se", "Bangalore ru", "Bangalore side"
+    context_after = lowered[match_idx + len(dest_match):match_idx + len(dest_match) + 15]
+    if re.search(r'^\s+(se|ru|side)\b', context_after):
         return True
 
     return False
@@ -283,38 +331,78 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
     # Also filter common pronouns and stop words that should never be destinations.
     _DESTINATION_STOP_WORDS = {"we", "i", "my", "our", "the", "this", "that", "it", "they", "he", "she", "us", "me", "him", "her"}
 
+    raw_matches: List[str] = []
     matches = [m.group(0) for m in _DESTINATION_RE.finditer(destination_text)]
     if matches:
-        seen = []
-        raw_matches = []
+        seen = set()
         for m in matches:
-            title = m.title()
-            if title not in seen:
-                # Skip common pronouns and stop words
-                if title.lower() in _DESTINATION_STOP_WORDS:
+            words = m.split()
+            # Multi-word over-capture: try right-to-left truncation.
+            # "Andaman Sri Lanka Bangalore" → fail → "Andaman Sri Lanka" → fail → "Andaman" → pass
+            # If that hits, remaining words get their own chance.
+            start = 0
+            while start < len(words):
+                best = None
+                for end in range(len(words), start, -1):
+                    candidate = " ".join(words[start:end])
+                    title = candidate.title()
+                    if (is_known_destination(title)
+                        and title.lower() not in _MONTH_NAMES
+                        and title.lower() not in _DESTINATION_STOP_WORDS):
+                        best = (candidate, title, end)
+                        break
+                if best is None:
+                    start += 1
                     continue
-                # Skip common call-note labels that are not destinations
-                if title.lower() in {"caller", "referral", "party", "pace", "budget", "interests", "follow", "toddler", "elderly", "promised", "not"}:
+                candidate, title, end = best
+                if title in seen:
+                    start = end
                     continue
-                # Skip month-like tokens (e.g., "Nov" from "Call received: Nov 25, 2024")
-                if title.lower() in _MONTH_NAMES:
+                if title.lower() in {"caller", "referral", "party", "pace", "budget", "interests", "follow-up", "follow_up", "toddler", "elderly", "promised", "not"}:
+                    start = end
                     continue
-                # Skip if not a known destination (city or country)
-                # geography.py is the filter, not hardcoded lists
-                if not is_known_destination(title):
+                if _is_likely_origin(destination_text, candidate):
+                    start = end
                     continue
-                # Skip if this looks like an origin (preceded by "from")
-                if _is_likely_origin(destination_text, m):
-                    continue
-                if _is_past_trip_mention(destination_text, m):
+                if _is_past_trip_mention(destination_text, candidate):
                     excluded_by_past_trip.append(title)
                 else:
-                    seen.append(title)
-                    raw_matches.append(m)
-        if len(seen) == 1:
-            return seen, "definite", raw_matches[0]
-        elif len(seen) > 1:
-            return seen, "semi_open", ", ".join(raw_matches)
+                    seen.add(title)
+                    candidates.append(title)
+                    raw_matches.append(candidate)
+                start = end
+        if len(candidates) == 1:
+            return candidates, "definite", raw_matches[0]
+        elif len(candidates) > 1:
+            return candidates, "semi_open", ", ".join(raw_matches)
+
+    # Fallback: context-gated lowercase destination extraction.
+    # Only matches destinations appearing after travel verbs or before Hinglish/Odia
+    # travel terms. Prevents false positives like "got" in "I got your number".
+    if not candidates:
+        seen_lower: Set[str] = set()
+        for pattern in (_TRAVEL_VERB_DEST_RE, _HINGLISH_DEST_RE, _ORIGIN_DEST_RE):
+            for match in pattern.finditer(text):
+                dest = match.group(1)
+                if not dest:
+                    continue
+                dest = dest.strip()
+                dest_lower = dest.lower()
+                if dest_lower in seen_lower:
+                    continue
+                title = dest.title()
+                if dest_lower in _STOP_WORDS or dest_lower in _MONTH_NAMES:
+                    seen_lower.add(dest_lower)
+                    continue
+                if (is_known_destination(title)
+                    and not _is_likely_origin(destination_text, dest)
+                    and not _is_past_trip_mention(destination_text, dest)):
+                    candidates.append(title)
+                    raw_matches.append(dest)
+                    seen_lower.add(dest_lower)
+        if len(candidates) >= 1:
+            status = "definite" if len(candidates) == 1 else "semi_open"
+            return candidates, status, ", ".join(raw_matches)
 
     return [], "open" if ("somewhere" in text_lower or "any" in text_lower) else "undecided", None
 
@@ -363,12 +451,12 @@ def _extract_dates(text: str) -> Optional[Tuple[str, Optional[str], Optional[str
         raw = weekend_match.group(0)
         return raw, None, None, "flexible"
 
-    # Month window: "June-July 2026", "March or April 2026"
+    # Month window: "June-July 2026", "March or April 2026", "March ya April 2026"
     month_window = re.search(
         r"((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)"
-        r"\s*(?:or|(?:-|–|—|\bto\b))\s*"
+        r"\s*(?:or|ya|(?:-|–|—|\bto\b))\s*"
         r"((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)"
-        r"\s+(\d{4})",
+        r"(?:\s+(\d{4}))?",
         text_lower,
         re.IGNORECASE,
     )
@@ -429,6 +517,8 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
         r"\b(?:around|about|approx(?:imately)?)\s+(\d+(?:\.\d+)?\s*(?:l|k|lac|lakh|lakhs|thousand))\b",
         # Plain number only accepted with explicit budget keyword.
         r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*(\d{4,})\b",
+        # Bare number with L/K suffix (no keyword needed).
+        r"\b((?:\d+(?:\.\d+)?)\s*(?:l|k|lac|lakh|lakhs|thousand))\b",
     ]
     for pat in patterns:
         m = re.search(pat, text_lower)
@@ -541,8 +631,8 @@ def _extract_party(text: str) -> Dict[str, Any]:
         composition["children"] = composition.get("children", 0) + 1
         child_ages.append(float(dec_age.group(1)))
     elif not dec_age:
-        # Singular child without number: "our kid", "a toddler"
-        singular_child = re.search(r"\b(?:my|our|a)\s+(?:kid|child|baby|toddler|son|daughter)\b", text_lower)
+        # Singular child without number: "our kid", "a toddler", or bare "bachha"
+        singular_child = re.search(r"\b(?:(?:my|our|a)\s+)?(?:kid|child|baby|toddler|son|daughter|bachha)\b", text_lower)
         if singular_child:
             composition["children"] = composition.get("children", 0) + 1
             if not child_ages:
@@ -558,13 +648,13 @@ def _extract_party(text: str) -> Dict[str, Any]:
     if adult_match:
         composition["adults"] = int(adult_match.group(1))
 
-    # Children — match "2 children" or bare "child/kid"
-    child_match = re.search(r"(?:(\d+)\s+)?(?:kids?|children?|child)", text_lower)
+    # Children — match "2 children" or bare "child/kid" or Hinglish "bachhe"/"bache"/"baccha"
+    child_match = re.search(r"(?:(\d+)\s+)?(?:kids?|children?|child|bachhe|bache|baccha)", text_lower)
     if child_match and child_match.group(1):
         composition["children"] = int(child_match.group(1))
     # Try to extract ages: "kids ages 8 and 12", "children aged 5, 7", "child age 3"
     ages_match = re.search(
-        r"(?:kids?|children?|child|ages?)\s+(?:ages?\s+)?(\d+(?:\s+(?:and|,)\s*\d+)*)",
+        r"(?:kids?|children?|child|ages?|bachhe|bache|baccha)\s+(?:ages?\s+)?(\d+(?:\s+(?:and|,)\s*\d+)*)",
         text_lower,
     )
     if ages_match:
@@ -648,7 +738,8 @@ def _extract_trip_intent(text: str) -> Dict[str, Any]:
                           "theme park", "aquarium", "zoo", "safari", "gardens",
                           "sightseeing", "attractions", "landmarks", "tourist"}
         _FAMILY_HINTS = {"kid", "kids", "child", "children", "toddler", "baby",
-                         "parents", "family", "wife", "husband"}
+                         "parents", "family", "wife", "husband",
+                         "bachhe", "bache", "baccha"}
         hints_found = sum(1 for h in _LEISURE_HINTS if h in text_lower)
         family_found = any(h in text_lower for h in _FAMILY_HINTS)
         if hints_found >= 1 and family_found:
@@ -1224,6 +1315,25 @@ class ExtractionPipeline:
                     packet.set_fact("origin_city", self._make_slot(
                         city, 0.9, AuthorityLevel.EXPLICIT_USER,
                         origin_match.group(0), eid, extraction_mode=mode,
+                    ))
+
+        # Hinglish/Odia origin: "Bangalore se", "Bangalore ru", "Bangalore side"
+        # Only try if origin not already set.
+        # Single-word city only (multi-word like "New York se" is unlikely in Hinglish).
+        if not packet.facts.get("origin_city"):
+            postposition_match = re.search(
+                r"\b([A-Za-z]+)\s+(se|ru|side)\b",
+                text,
+                re.IGNORECASE,
+            )
+            if postposition_match:
+                city_raw = postposition_match.group(1).strip()
+                city, was_normalized = Normalizer.normalize_city(city_raw)
+                mode = ExtractionMode.NORMALIZED if was_normalized else ExtractionMode.DIRECT_EXTRACT
+                if is_known_city(city) or len(city_raw.split()) > 1:
+                    packet.set_fact("origin_city", self._make_slot(
+                        city, 0.8, AuthorityLevel.EXPLICIT_USER,
+                        postposition_match.group(0), eid, extraction_mode=mode,
                     ))
 
         # --- MOBILITY / MEDICAL CONSTRAINTS ---

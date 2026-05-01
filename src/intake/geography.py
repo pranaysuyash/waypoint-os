@@ -87,6 +87,8 @@ _COUNTRY_DESTINATIONS: Set[str] = {
     "South Africa", "Egypt", "Morocco", "Kenya", "Tanzania",
     # Oceania
     "Australia", "New Zealand", "Fiji", "Maldives",
+    # Long multi-word
+    "United Arab Emirates",
 }
 
 

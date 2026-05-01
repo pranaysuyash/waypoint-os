@@ -88,6 +88,11 @@ vi.mock("@/hooks/useTrips", () => ({
     isSaving: false,
     error: null,
   }),
+  useStartPlanning: () => ({
+    mutate: vi.fn().mockResolvedValue({}),
+    isStarting: false,
+    error: null,
+  }),
 }));
 
 vi.mock("@/contexts/TripContext", () => ({
@@ -128,11 +133,14 @@ vi.mock("@/lib/routes", () => ({
 }));
 
 describe("Mode Selector → /api/spine/run Payload Integration", () => {
+  // Use status: "assigned" so isLeadReview=false, which renders "Continue to options"
+  // button that calls handleProcessTrip -> execute (verified by these tests).
   const mockTrip: Trip = {
     id: "TRIP-MODE-001",
     destination: "Singapore",
     type: "Leisure",
     state: "green",
+    status: "assigned",
     age: "0d",
     dateWindow: "June 2026",
     party: 2,
@@ -166,7 +174,7 @@ describe("Mode Selector → /api/spine/run Payload Integration", () => {
   it("sends normal_intake operating_mode in spine payload by default", async () => {
     render(<IntakePanel tripId="TRIP-MODE-001" trip={mockTrip} />);
 
-    const processButton = screen.getByRole("button", { name: /Process Trip/i });
+    const processButton = screen.getByRole("button", { name: /Continue to options/i });
     fireEvent.click(processButton);
 
     await waitFor(() => {
@@ -186,7 +194,7 @@ describe("Mode Selector → /api/spine/run Payload Integration", () => {
 
       render(<IntakePanel tripId="TRIP-MODE-001" trip={mockTrip} />);
 
-      const processButton = screen.getByRole("button", { name: /Process Trip/i });
+      const processButton = screen.getByRole("button", { name: /Continue to options/i });
       fireEvent.click(processButton);
 
       await waitFor(() => {
@@ -212,7 +220,7 @@ describe("Mode Selector → /api/spine/run Payload Integration", () => {
 
     render(<IntakePanel tripId="TRIP-MODE-001" trip={mockTrip} />);
 
-    const processButton = screen.getByRole("button", { name: /Process Trip/i });
+    const processButton = screen.getByRole("button", { name: /Continue to options/i });
     fireEvent.click(processButton);
 
     await waitFor(() => {
@@ -228,7 +236,7 @@ describe("Mode Selector → /api/spine/run Payload Integration", () => {
 
     render(<IntakePanel tripId="TRIP-MODE-001" trip={mockTrip} />);
 
-    const processButton = screen.getByRole("button", { name: /Process Trip/i });
+    const processButton = screen.getByRole("button", { name: /Continue to options/i });
     fireEvent.click(processButton);
 
     await waitFor(() => {

@@ -76,6 +76,10 @@ export interface RunStatusResponse {
   block_reason?: string | null;
   validation?: ValidationReport | null;
   packet?: unknown;
+  decision_state?: string | null;
+  follow_up_questions?: Array<Record<string, unknown>> | null;
+  hard_blockers?: string[] | null;
+  soft_blockers?: string[] | null;
 }
 
 // ============================================================================

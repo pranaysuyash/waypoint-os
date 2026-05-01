@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Tabs, getTabPanelId, getTabButtonId } from '../tabs';
 
 describe('Tabs Component', () => {
@@ -85,12 +85,14 @@ describe('Tabs Component', () => {
     expect(liveRegion).toBeInTheDocument();
   });
 
-  it('announces tab changes via live region', () => {
+  it('announces tab changes via live region', async () => {
     const handleChange = vi.fn();
     render(<Tabs tabs={mockTabs} activeTab='intake' onTabChange={handleChange} />);
 
     const liveRegion = document.querySelector('[role="status"][aria-live="polite"]');
-    expect(liveRegion?.textContent).toBe('New Inquiry tab selected');
+    await waitFor(() => {
+      expect(liveRegion?.textContent).toBe('New Inquiry tab selected');
+    });
   });
 
   it('renders tab with id from getTabButtonId', () => {

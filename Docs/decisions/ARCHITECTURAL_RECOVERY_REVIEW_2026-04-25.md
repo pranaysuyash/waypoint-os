@@ -11,7 +11,7 @@ Rules applied:
 - Preserve documentation history.
 - Recover only changes that are additive, better, comprehensive, and compatible with current architecture.
 - Reject duplicate API route shapes, stale imports, catch-all passthrough regressions, and lower-quality legacy paths.
-- Use repo-local `AGENTS.md`, `.agent/AGENT_KICKOFF_PROMPT.txt`, `.agent/SESSION_CONTEXT.md`, and relevant skills: systematic debugging, search-first, and verification-before-completion.
+- Use repo-local `AGENTS.md`, `Docs/context/agent-start/AGENT_KICKOFF_PROMPT.txt`, `Docs/context/agent-start/SESSION_CONTEXT.md`, and relevant skills: systematic debugging, search-first, and verification-before-completion.
 
 ## Findings
 

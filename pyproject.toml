@@ -25,6 +25,9 @@ dependencies = [
     "cryptography>=42.0.0",
     # --- LLM Usage Guard (P4-03) ---
     "redis>=5.0.0",
+    "opentelemetry-distro>=0.62b1",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.41.1",
+    "opentelemetry-instrumentation-fastapi>=0.62b1",
 ]
 
 [dependency-groups]

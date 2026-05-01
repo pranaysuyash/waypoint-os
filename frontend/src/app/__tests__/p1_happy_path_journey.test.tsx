@@ -18,6 +18,7 @@ vi.mock("@/hooks/useGovernance", () => ({
 
 vi.mock("@/hooks/useTrips", () => ({
   useTrips: vi.fn(),
+  useTrip: vi.fn().mockReturnValue({ data: null, isLoading: false, error: null, refetch: vi.fn(), replaceTrip: vi.fn() }),
   useUpdateTrip: vi.fn(),
   useStartPlanning: vi.fn(),
 }));
@@ -79,6 +80,7 @@ describe("P1 Happy Path Journey", () => {
     destination: "Singapore",
     type: "Family",
     state: "amber",
+    status: "assigned",
     age: "1d",
     dateWindow: "June 2026",
     party: 4,
@@ -197,7 +199,7 @@ describe("P1 Happy Path Journey", () => {
     });
     expect(setOperatingModeMock).toHaveBeenCalledWith("emergency");
 
-    fireEvent.click(screen.getByRole("button", { name: /Process trip/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Continue to options/i }));
 
     await waitFor(() => {
       expect(executeMock).toHaveBeenCalledTimes(1);
@@ -233,7 +235,7 @@ describe("P1 Happy Path Journey", () => {
     } as any);
 
     render(<TripsPage />);
-    const returnInbox = screen.getByRole("link", { name: /Browse Inbox/i });
+    const returnInbox = screen.getByRole("link", { name: /Review Lead Inbox/i });
     expect(returnInbox).toHaveAttribute("href", "/inbox");
   });
 });

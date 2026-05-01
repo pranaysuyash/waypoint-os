@@ -4,7 +4,7 @@
 
 1. Repo-local `AGENTS.md` (this file)
 2. Workspace-level `/Users/pranay/Projects/AGENTS.md`
-3. `.agent/AGENT_KICKOFF_PROMPT.txt` and `.agent/SESSION_CONTEXT.md`
+3. `Docs/context/agent-start/AGENT_KICKOFF_PROMPT.txt` and `Docs/context/agent-start/SESSION_CONTEXT.md`
 
 If instructions conflict, follow the stricter rule and cite concrete file paths.
 
@@ -43,7 +43,7 @@ If instructions conflict, follow the stricter rule and cite concrete file paths.
 
 ## Workspace Alignment (Adopted)
 
-- Ensure `.agent/AGENT_KICKOFF_PROMPT.txt` and `.agent/SESSION_CONTEXT.md` are loaded before substantive implementation.
+- Ensure `Docs/context/agent-start/AGENT_KICKOFF_PROMPT.txt` and `Docs/context/agent-start/SESSION_CONTEXT.md` are loaded before substantive implementation.
 - Prefer repository docs and existing scripts over ad-hoc process invention.
 - Keep changes small, explicit, and path-cited in summaries.
 - Do not claim platform limitations when the gap is implementable; state what is possible, what is implemented, and the concrete path.
@@ -201,6 +201,7 @@ For each recommendation, document:
 - When updating docs, preserve prior context using archival files where needed.
 - Maintain clear phase separation and rationale for documentation changes.
 - Always check actual environment date before updating documentation.
+- Keep project-related artifacts inside the project tree. Do not place project notes, reports, worklogs, or handoff content in `/tmp`, `.agent/`, `.codex/`, or other out-of-repo folders when an in-repo location exists.
 
 ### Verification Discipline
 
@@ -275,7 +276,7 @@ When modifying code that crosses the frontend/backend boundary (e.g., a frontend
 
 Before removing **any** code (function, type, component, export), apply this workflow. No exceptions.
 
-0. **Re-read instruction files** — Before starting any removal analysis, re-read `AGENTS.md` (Code Preservation section), `.agent/AGENT_KICKOFF_PROMPT.txt`, and `.agent/SESSION_CONTEXT.md` to check for project-specific constraints or guardrails that may apply to this removal. If sources conflict, surface the conflict and ask before proceeding.
+0. **Re-read instruction files** — Before starting any removal analysis, re-read `AGENTS.md` (Code Preservation section), `Docs/context/agent-start/AGENT_KICKOFF_PROMPT.txt`, and `Docs/context/agent-start/SESSION_CONTEXT.md` to check for project-specific constraints or guardrails that may apply to this removal. If sources conflict, surface the conflict and ask before proceeding.
 1. **Identify the candidate for removal** and its supposed superset/replacement.
 2. **Field-by-field comparison**: Compare all features, exports, props, type fields, and behavioral contracts. If the candidate has ANY feature the replacement lacks, the replacement is NOT a superset — stop and merge the missing features first.
 3. **Call-site audit**: Grep for all references to the candidate. If any call site relies on a feature the replacement doesn't provide, the candidate is NOT redundant — stop.

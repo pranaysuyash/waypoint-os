@@ -1,0 +1,18 @@
+# Local OpenTelemetry Stack: Jaeger + OTel Collector
+# 
+# Start:   docker compose -f docker/docker-compose.otel.yml up -d
+# Stop:    docker compose -f docker/docker-compose.otel.yml down
+# UI:      http://localhost:16686
+# Health:  docker compose -f docker/docker-compose.otel.yml ps
+
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4317:4317"     # OTLP gRPC receiver
+      - "4318:4318"     # OTLP HTTP receiver
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - LOG_LEVEL=info

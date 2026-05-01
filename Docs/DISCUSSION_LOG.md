@@ -350,9 +350,9 @@ User requested explicit demonstration that the Projects-level workflow structure
 - Refreshed project-level context pack via:
   - `/Users/pranay/Projects/agent-start --project travel_agency_agent --skip-index`
 - Confirmed refreshed files:
-  - `.agent/AGENT_KICKOFF_PROMPT.txt`
-  - `.agent/SESSION_CONTEXT.md`
-  - `.agent/STEP1_ENV.sh`
+  - `Docs/context/agent-start/AGENT_KICKOFF_PROMPT.txt`
+  - `Docs/context/agent-start/SESSION_CONTEXT.md`
+  - `Docs/context/agent-start/STEP1_ENV.sh`
 
 ### Test Status
 - Re-ran `pytest -q`; same pre-existing notebook import-path errors remain (`ModuleNotFoundError: intake` in two notebook tests).

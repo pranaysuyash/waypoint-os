@@ -1,3 +1,5 @@
+import { AuthProvider } from '@/components/auth/AuthProvider';
+import { Providers } from '@/components/providers';
 import { Shell } from '@/components/layouts/Shell';
 
 export default function AgencyLayout({
@@ -5,5 +7,11 @@ export default function AgencyLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <Shell>{children}</Shell>;
+  return (
+    <Providers>
+      <AuthProvider>
+        <Shell>{children}</Shell>
+      </AuthProvider>
+    </Providers>
+  );
 }

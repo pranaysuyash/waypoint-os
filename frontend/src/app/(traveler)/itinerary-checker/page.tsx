@@ -1,7 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useRef, DragEvent } from 'react';
+import { useEffect, useState, useRef, type RefObject, DragEvent } from 'react';
+import gsap from 'gsap';
+import { useSpineRun } from '@/hooks/useSpineRun';
+import type { RunStatusResponse } from '@/types/spine';
 import {
   Activity, ArrowRight, Check, Clock, DollarSign,
   FileCheck, Globe, Mail, MapPin, Shield, Star, Upload,
@@ -48,7 +51,7 @@ function WedgeHeader() {
         }}>
           <MapPin size={14} />
         </div>
-        <div>
+        <div className='itinerary-reveal'>
           <div style={{ fontSize: 13, fontWeight: 700, color: T.t1, letterSpacing: '-0.01em', fontFamily: T.fBody }}>Waypoint</div>
           <div style={{ fontSize: 10, color: T.t3, lineHeight: 1, fontFamily: T.fBody }}>Itinerary Checker</div>
         </div>
@@ -69,11 +72,87 @@ function WedgeHeader() {
   );
 }
 
+async function extractTextFromFile(file: File): Promise<string> {
+  const lowerName = file.name.toLowerCase();
+  const type = file.type.toLowerCase();
+
+  if (type.startsWith('text/') || lowerName.endsWith('.txt') || lowerName.endsWith('.md')) {
+    return await file.text();
+  }
+
+  if (type === 'application/pdf' || lowerName.endsWith('.pdf')) {
+    const pdfjs = await import('pdfjs-dist/build/pdf.mjs');
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+      'pdfjs-dist/build/pdf.worker.min.mjs',
+      import.meta.url,
+    ).toString();
+
+    const data = await file.arrayBuffer();
+    const doc = await pdfjs.getDocument({ data }).promise;
+    const pageTexts: string[] = [];
+
+    for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber += 1) {
+      const page = await doc.getPage(pageNumber);
+      const content = await page.getTextContent();
+      const text = (content.items as Array<{ str?: string }>)
+        .map((item) => item.str ?? '')
+        .filter(Boolean)
+        .join(' ');
+      if (text.trim()) {
+        pageTexts.push(text.trim());
+      }
+    }
+
+    return pageTexts.join('\n\n').trim();
+  }
+
+  if (type.startsWith('image/') || /\.(png|jpe?g|webp|avif|gif)$/i.test(file.name)) {
+    const { recognize } = await import('tesseract.js');
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error ?? new Error('Could not load image.'));
+      reader.readAsDataURL(file);
+    });
+
+    const result = await recognize(dataUrl, 'eng');
+    return result.data.text.trim();
+  }
+
+  throw new Error('Supported file types are .txt, .md, .pdf, and common image formats.');
+}
+
+async function fileToBase64(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 0x8000;
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.slice(i, i + chunkSize));
+  }
+
+  return btoa(binary);
+}
+
 // ── Upload card (reused in hero) ──────────────────────────────────────────────
-function UploadCard({ onResults }: { onResults: () => void }) {
+function UploadCard({
+  onAnalyze,
+  onAnalyzeFile,
+  onFallbackResults,
+  isBusy,
+}: {
+  onAnalyze: (plan: string, sourcePayload?: Record<string, unknown>) => void;
+  onAnalyzeFile: (file: File, retentionConsent: boolean) => Promise<void>;
+  onFallbackResults: () => void;
+  isBusy: boolean;
+}) {
   const [activeTab, setActiveTab] = useState<'file' | 'paste' | 'screenshot'>('file');
   const [dragging, setDragging] = useState(false);
   const [text, setText] = useState('');
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [retentionConsent, setRetentionConsent] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const tabs: { key: 'file' | 'paste' | 'screenshot'; label: string }[] = [
@@ -84,10 +163,55 @@ function UploadCard({ onResults }: { onResults: () => void }) {
 
   const handleDragOver = (e: DragEvent) => { e.preventDefault(); setDragging(true); };
   const handleDragLeave = () => setDragging(false);
-  const handleDrop = (e: DragEvent) => { e.preventDefault(); setDragging(false); onResults(); };
+  const handleFile = async (file: File) => {
+    setFileError(null);
+    setIsProcessingFile(true);
+    try {
+      await onAnalyzeFile(file, retentionConsent);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not read that file.';
+      setFileError(message);
+    } finally {
+      setIsProcessingFile(false);
+    }
+  };
+
+  const handleDrop = (e: DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) {
+      onFallbackResults();
+      return;
+    }
+    void handleFile(file);
+  };
 
   return (
-    <div style={{ width: '100%' }}>
+    <div style={{ width: '100%', position: 'relative' }}>
+      <div aria-hidden style={{
+        position: 'absolute', inset: '-16px -16px 0', pointerEvents: 'none',
+        borderRadius: 24, overflow: 'hidden',
+      }}>
+        <div className='itinerary-glow' style={{
+          position: 'absolute', inset: '14% 10% auto', height: 180,
+          background: 'radial-gradient(circle, rgba(57,208,216,0.16) 0%, rgba(57,208,216,0.03) 38%, transparent 72%)',
+          filter: 'blur(8px)',
+        }} />
+        <div className='itinerary-ring' style={{
+          position: 'absolute', right: -40, top: -36, width: 180, height: 180,
+          borderRadius: '50%',
+          background: 'conic-gradient(from 0deg, rgba(122,185,255,0.14), rgba(57,208,216,0.04), rgba(163,113,247,0.14), rgba(57,208,216,0.04), rgba(122,185,255,0.14))',
+          filter: 'blur(1px)',
+          opacity: 0.8,
+        }} />
+        <div className='itinerary-scanline' style={{
+          position: 'absolute', left: 18, right: 18, top: 18, height: 2,
+          borderRadius: 999,
+          background: 'linear-gradient(90deg, transparent, rgba(57,208,216,0.92), rgba(122,185,255,0.18), transparent)',
+          boxShadow: '0 0 18px rgba(57,208,216,0.6)',
+        }} />
+      </div>
       {/* Mode tabs */}
       <div style={{
         display: 'flex', gap: 4, marginBottom: 12,
@@ -127,19 +251,19 @@ function UploadCard({ onResults }: { onResults: () => void }) {
             <span style={{ fontSize: 11, color: T.t4 }}>
               {text.length > 0 ? `${text.length} characters` : 'Messy inputs work fine'}
             </span>
-            <button onClick={onResults} disabled={text.length < 10} style={{
+            <button onClick={() => onAnalyze(text, { kind: 'paste', source: 'typed', retention_consent: retentionConsent })} disabled={text.length < 10 || isBusy || isProcessingFile} style={{
               display: 'inline-flex', alignItems: 'center', gap: 7,
               height: 34, padding: '0 14px', borderRadius: 999,
               fontSize: 12, fontWeight: 600, fontFamily: T.fBody,
-              background: text.length >= 10
+              background: text.length >= 10 && !isBusy
                 ? 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, #39d0d8 100%)'
                 : T.elevated,
-              color: text.length >= 10 ? '#071018' : T.t3,
-              border: 'none', cursor: text.length >= 10 ? 'pointer' : 'not-allowed',
-              boxShadow: text.length >= 10 ? '0 8px 24px rgba(57,208,216,0.3)' : 'none',
+              color: text.length >= 10 && !isBusy ? '#071018' : T.t3,
+              border: 'none', cursor: text.length >= 10 && !isBusy ? 'pointer' : 'not-allowed',
+              boxShadow: text.length >= 10 && !isBusy ? '0 8px 24px rgba(57,208,216,0.3)' : 'none',
               transition: 'all 160ms',
             }}>
-              Analyze My Itinerary <ArrowRight size={13} />
+              {isBusy ? 'Scoring…' : 'Score My Itinerary'} <ArrowRight size={13} />
             </button>
           </div>
         </div>
@@ -171,35 +295,74 @@ function UploadCard({ onResults }: { onResults: () => void }) {
           <div style={{ fontSize: 12, color: T.t3, marginBottom: 20 }}>
             {activeTab === 'screenshot' ? 'JPG, PNG, or WEBP up to 25 MB' : 'PDF, JPG, PNG, or .txt up to 25 MB'}
           </div>
+          <div style={{
+            padding: '0 16px 14px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 10,
+          }}>
+            <input
+              type='checkbox'
+              checked={retentionConsent}
+              onChange={(e) => setRetentionConsent(e.target.checked)}
+              style={{ marginTop: 3, accentColor: T.cyan }}
+            />
+            <div style={{ fontSize: 11.5, color: T.t2, lineHeight: 1.45 }}>
+              Store my upload, extracted text, and score for product improvement and future training.
+              I can turn this off for a one-time analysis.
+            </div>
+          </div>
           <button
-            onClick={e => { e.stopPropagation(); onResults(); }}
+            onClick={e => { e.stopPropagation(); onFallbackResults(); }}
+            disabled={isBusy || isProcessingFile}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 7,
               height: 42, padding: '0 20px', borderRadius: 999,
               fontSize: 13, fontWeight: 600, fontFamily: T.fBody,
-              background: 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, #39d0d8 100%)',
-              color: '#071018', border: 'none', cursor: 'pointer',
-              boxShadow: '0 8px 24px rgba(57,208,216,0.3), inset 0 1px 0 rgba(255,255,255,0.38)',
+              background: isBusy || isProcessingFile
+                ? T.elevated
+                : 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, #39d0d8 100%)',
+              color: isBusy || isProcessingFile ? T.t3 : '#071018',
+              border: 'none', cursor: isBusy || isProcessingFile ? 'not-allowed' : 'pointer',
+              boxShadow: isBusy || isProcessingFile ? 'none' : '0 8px 24px rgba(57,208,216,0.3), inset 0 1px 0 rgba(255,255,255,0.38)',
             }}
           >
-            Choose file to upload
+            {isProcessingFile ? 'Reading file…' : 'Score my itinerary'}
           </button>
           <input
             ref={fileRef}
             type='file'
             accept='.pdf,.jpg,.jpeg,.png,.txt,.webp'
             style={{ display: 'none' }}
-            onChange={onResults}
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) {
+                return;
+              }
+              const input = e.currentTarget;
+              await handleFile(file);
+              input.value = '';
+            }}
           />
         </div>
       )}
+
+      {fileError ? (
+        <div style={{
+          marginTop: 10, padding: '10px 12px', borderRadius: 10,
+          border: '1px solid rgba(248,81,73,0.22)', background: 'rgba(248,81,73,0.08)',
+          color: '#ffb4ae', fontSize: 12, lineHeight: 1.45,
+        }}>
+          {fileError}
+        </div>
+      ) : null}
 
       {/* Trust chips */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         gap: 18, marginTop: 14, flexWrap: 'wrap',
       }}>
-        {['Free to use', 'No sign-up required', 'Analyzed then deleted'].map(label => (
+        {['Free to use', 'No sign-up required', 'Consent-based storage'].map(label => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <Check size={12} color={T.green} strokeWidth={2.5} />
             <span style={{ fontSize: 11, color: T.t4 }}>{label}</span>
@@ -293,9 +456,21 @@ const TESTIMONIALS = [
 ];
 
 // ── Upload view (landing + tool) ──────────────────────────────────────────────
-function UploadView({ onResults }: { onResults: () => void }) {
+function UploadView({
+  rootRef,
+  onAnalyze,
+  onAnalyzeFile,
+  onFallbackResults,
+  isBusy,
+}: {
+  rootRef: RefObject<HTMLDivElement | null>;
+  onAnalyze: (plan: string, sourcePayload?: Record<string, unknown>) => void;
+  onAnalyzeFile: (file: File, retentionConsent: boolean) => Promise<void>;
+  onFallbackResults: () => void;
+  isBusy: boolean;
+}) {
   return (
-    <div style={{
+    <div ref={rootRef} style={{
       background: T.canvas, fontFamily: T.fBody, color: T.t1,
     }}>
       <WedgeHeader />
@@ -303,7 +478,14 @@ function UploadView({ onResults }: { onResults: () => void }) {
       {/* Background radial glow */}
       <div style={{
         position: 'fixed', inset: 0, pointerEvents: 'none',
-        background: 'radial-gradient(circle at 50% 25%, rgba(88,166,255,0.08) 0%, transparent 55%)',
+        backgroundImage: `
+          radial-gradient(circle at 50% 25%, rgba(88,166,255,0.10) 0%, transparent 54%),
+          radial-gradient(circle at 20% 15%, rgba(57,208,216,0.05) 0%, transparent 22%),
+          linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)
+        `,
+        backgroundSize: 'auto, auto, 52px 52px, 52px 52px',
+        backgroundPosition: 'center top, center top, center center, center center',
         zIndex: 0,
       }} />
 
@@ -312,7 +494,7 @@ function UploadView({ onResults }: { onResults: () => void }) {
         position: 'relative', zIndex: 1,
         maxWidth: 1140, margin: '0 auto',
         padding: '72px 40px 80px',
-        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64,
+        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 64,
         alignItems: 'center',
       }}>
         {/* Left: headline + context */}
@@ -326,7 +508,7 @@ function UploadView({ onResults }: { onResults: () => void }) {
             border: '1px solid rgba(57,208,216,0.22)', background: 'rgba(7,22,26,0.8)',
           }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#39d0d8', boxShadow: '0 0 5px #39d0d8', flexShrink: 0 }} />
-            Free itinerary stress-test
+            Free itinerary ATS
           </span>
 
           <h1 style={{
@@ -334,15 +516,16 @@ function UploadView({ onResults }: { onResults: () => void }) {
             lineHeight: 1.04, letterSpacing: '-0.04em',
             color: '#f5fbff', fontFamily: T.fDisplay, marginBottom: 20,
           }}>
-            Find what your travel plan missed.
+            Bring your plan. Get it checked.
           </h1>
 
           <p style={{ fontSize: 16, lineHeight: 1.72, color: T.t2, maxWidth: '40ch', marginBottom: 32 }}>
-            Upload your itinerary and get a structured risk report — timing gaps, visa issues, pacing problems, hidden costs — in under 60 seconds.
+            Upload an itinerary or paste a plan. Like an ATS for resumes, we score the one you already have,
+            flag weak points, and suggest upgrades you can use yourself or share with your agent.
           </p>
 
           {/* Stats row */}
-          <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', marginBottom: 36 }}>
+          <div className='itinerary-stagger' style={{ display: 'flex', gap: 32, flexWrap: 'wrap', marginBottom: 36 }}>
             {[
               { stat: '20,000+', label: 'itineraries analyzed' },
               { stat: '98%',     label: 'recommend to friends' },
@@ -370,8 +553,64 @@ function UploadView({ onResults }: { onResults: () => void }) {
         </div>
 
         {/* Right: upload card */}
-        <div>
-          <UploadCard onResults={onResults} />
+        <div className='itinerary-reveal' style={{ position: 'relative' }}>
+          <div aria-hidden className='itinerary-orb' style={{
+            position: 'absolute', inset: '-18px -20px auto auto', width: 220, height: 220,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(122,185,255,0.12) 0%, rgba(57,208,216,0.08) 28%, rgba(163,113,247,0.06) 44%, transparent 70%)',
+            filter: 'blur(6px)',
+            pointerEvents: 'none',
+          }} />
+          <div aria-hidden className='itinerary-orb' style={{
+            position: 'absolute', left: -18, bottom: 120, width: 120, height: 120,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(63,185,80,0.12) 0%, rgba(63,185,80,0.05) 34%, transparent 72%)',
+            filter: 'blur(4px)',
+            pointerEvents: 'none',
+          }} />
+
+          {[
+            { text: 'Visa timing', top: '12%', left: '-2%' },
+            { text: 'Pacing risk', top: '20%', right: '-4%' },
+            { text: 'Fee watch', bottom: '24%', left: '3%' },
+            { text: 'Advisor-ready', bottom: '12%', right: '5%' },
+          ].map((chip) => (
+            <div
+              key={chip.text}
+              aria-hidden
+              className='itinerary-orb itinerary-chip'
+              style={{
+                position: 'absolute',
+                top: chip.top,
+                left: chip.left,
+                right: chip.right,
+                bottom: chip.bottom,
+                width: 'fit-content',
+                padding: '7px 11px',
+                borderRadius: 999,
+                border: '1px solid rgba(168,179,193,0.14)',
+                background: 'rgba(10,13,17,0.78)',
+                color: T.t1,
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: '-0.01em',
+                boxShadow: '0 10px 28px rgba(0,0,0,0.25)',
+                backdropFilter: 'blur(10px)',
+                transform: 'translateZ(0)',
+                zIndex: 0,
+                opacity: 0.95,
+              }}
+            >
+              {chip.text}
+            </div>
+          ))}
+
+          <UploadCard
+            onAnalyze={onAnalyze}
+            onAnalyzeFile={onAnalyzeFile}
+            onFallbackResults={onFallbackResults}
+            isBusy={isBusy}
+          />
 
           {/* Score preview teaser */}
           <div style={{
@@ -442,8 +681,8 @@ function UploadView({ onResults }: { onResults: () => void }) {
             </p>
           </div>
 
-          <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16,
+          <div className='itinerary-stagger' style={{
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 16,
           }}>
             {CHECKS.map(c => {
               const Icon = c.icon;
@@ -476,7 +715,7 @@ function UploadView({ onResults }: { onResults: () => void }) {
       }}>
         <div style={{ maxWidth: 1140, margin: '0 auto' }}>
           <div style={{
-            display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: 64, alignItems: 'start',
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 64, alignItems: 'start',
           }}>
             {/* Left: copy */}
             <div style={{ paddingTop: 8 }}>
@@ -484,17 +723,17 @@ function UploadView({ onResults }: { onResults: () => void }) {
                 fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
                 color: T.amber, marginBottom: 16,
               }}>
-                Example report
+                Example upgrade report
               </div>
               <h2 style={{
                 fontSize: 'clamp(26px, 3vw, 38px)', fontWeight: 800,
                 letterSpacing: '-0.03em', color: T.t1, fontFamily: T.fDisplay,
                 marginBottom: 18, lineHeight: 1.1,
               }}>
-                Real issues, not generic warnings
+                Real upgrades, not generic warnings
               </h2>
               <p style={{ fontSize: 15, color: T.t2, lineHeight: 1.7, marginBottom: 28, maxWidth: '38ch' }}>
-                Every finding is specific to your itinerary — the actual route, the exact layover duration, the specific hotels booked.
+                Every finding is specific to the plan you already have — the actual route, the exact dates, the specific travelers, and the most useful upgrade points for you or your agent.
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {[
@@ -683,7 +922,7 @@ function UploadView({ onResults }: { onResults: () => void }) {
             <p style={{ fontSize: 14, color: T.t3 }}>Real feedback from real itineraries</p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+          <div className='itinerary-stagger' style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
             {TESTIMONIALS.map(t => (
               <div key={t.name} style={{
                 padding: '24px 24px', borderRadius: 16,
@@ -777,6 +1016,45 @@ function UploadView({ onResults }: { onResults: () => void }) {
 }
 
 // ── Results data ──────────────────────────────────────────────────────────────
+function scoreFromAnalysis(analysis: RunStatusResponse | null): number {
+  if (!analysis) return 62;
+
+  const validation = analysis.validation as Record<string, unknown> | null | undefined;
+  const packet = analysis.packet as Record<string, unknown> | null | undefined;
+  const decisionState = analysis.decision_state ?? null;
+  const hardBlockers = analysis.hard_blockers?.length ?? 0;
+  const softBlockers = analysis.soft_blockers?.length ?? 0;
+
+  const candidateScore = [
+    validation?.overall_score,
+    validation?.quality_score,
+    packet?.quality_score,
+    packet?.score,
+  ].find((value): value is number => typeof value === 'number' && Number.isFinite(value));
+
+  if (typeof candidateScore === 'number') {
+    return Math.max(0, Math.min(100, Math.round(candidateScore)));
+  }
+
+  if (decisionState === 'PROCEED_TRAVELER_SAFE') return 82;
+  if (decisionState === 'PROCEED_INTERNAL_DRAFT') return 74;
+  if (decisionState === 'ASK_FOLLOWUP') return 64;
+  if (decisionState === 'STOP_NEEDS_REVIEW') return 42;
+
+  return Math.max(35, 80 - (hardBlockers * 12) - (softBlockers * 6));
+}
+
+function summaryFromAnalysis(analysis: RunStatusResponse | null): string {
+  if (!analysis) return 'Example report — your score depends on what your plan contains';
+
+  const decisionState = analysis.decision_state ?? 'unknown';
+  const hardBlockers = analysis.hard_blockers?.length ?? 0;
+  const softBlockers = analysis.soft_blockers?.length ?? 0;
+  const followUps = analysis.follow_up_questions?.length ?? 0;
+
+  return `Live analysis: ${decisionState} · ${hardBlockers} hard blockers · ${softBlockers} soft blockers · ${followUps} follow-up questions`;
+}
+
 const ISSUES = [
   {
     sev: 'Critical', color: T.red,
@@ -810,16 +1088,71 @@ const rSevBadgeBdr = { Critical: 'rgba(248,81,73,0.22)', Warning: 'rgba(210,153,
 const rSevBadgeTxt = { Critical: T.red, Warning: T.amber, Info: T.blue } as const;
 
 // ── Results view ──────────────────────────────────────────────────────────────
-function ResultsView({ onReset }: { onReset: () => void }) {
+function ResultsView({
+  rootRef,
+  onReset,
+  analysis,
+}: {
+  rootRef: RefObject<HTMLDivElement | null>;
+  onReset: () => void;
+  analysis?: RunStatusResponse | null;
+}) {
   const [email, setEmail] = useState('');
   const [sent,  setSent]  = useState(false);
+  const [manageMessage, setManageMessage] = useState<string | null>(null);
+  const [manageBusy, setManageBusy] = useState<'export' | 'delete' | null>(null);
 
-  const SCORE = 71;
+  const SCORE = scoreFromAnalysis(analysis ?? null);
+  const summaryCopy = summaryFromAnalysis(analysis ?? null);
   const circumference = 2 * Math.PI * 36;
+  const tripId = analysis?.trip_id ?? null;
+  const liveChecks = ((analysis?.packet as Record<string, any> | null | undefined)?.public_checker_live_checks as Record<string, any> | undefined) ?? undefined;
+
+  const handleExport = async () => {
+    if (!tripId) return;
+    setManageBusy('export');
+    setManageMessage(null);
+    try {
+      const response = await fetch(`/api/public-checker/${tripId}/export`);
+      if (!response.ok) throw new Error('Export failed');
+      const payload = await response.json();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `waypoint-checker-${tripId}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setManageMessage('Export downloaded.');
+    } catch {
+      setManageMessage('Could not export this report.');
+    } finally {
+      setManageBusy(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!tripId) return;
+    const confirmed = window.confirm('Delete this saved itinerary report and its stored upload data?');
+    if (!confirmed) return;
+    setManageBusy('delete');
+    setManageMessage(null);
+    try {
+      const response = await fetch(`/api/public-checker/${tripId}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Delete failed');
+      setManageMessage('Deleted.');
+      onReset();
+    } catch {
+      setManageMessage('Could not delete this report.');
+    } finally {
+      setManageBusy(null);
+    }
+  };
 
   return (
-    <div style={{
-      background: T.canvas, minHeight: '100vh', display: 'flex', flexDirection: 'column',
+    <div ref={rootRef} style={{
+      background: 'radial-gradient(circle at 15% 10%, rgba(122,185,255,0.07) 0%, transparent 28%), radial-gradient(circle at 85% 0%, rgba(163,113,247,0.06) 0%, transparent 24%), radial-gradient(circle at 50% 100%, rgba(57,208,216,0.05) 0%, transparent 26%), #07090b',
+      minHeight: '100vh', display: 'flex', flexDirection: 'column',
       fontFamily: T.fBody, color: T.t1,
     }}>
       <WedgeHeader />
@@ -834,7 +1167,7 @@ function ResultsView({ onReset }: { onReset: () => void }) {
         </button>
 
         {/* Results header grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 20, marginBottom: 24 }}>
+        <div className='itinerary-reveal' style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginBottom: 24 }}>
           {/* Score card */}
           <div style={{ padding: '24px 26px', borderRadius: 20, background: T.surface, border: `1px solid ${T.b0}` }}>
             <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t3, marginBottom: 14 }}>
@@ -854,8 +1187,10 @@ function ResultsView({ onReset }: { onReset: () => void }) {
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: T.t1, marginBottom: 5 }}>Needs attention</div>
-                <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.55 }}>Good trip concept. A few issues should be discussed before you confirm or pay.</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: T.t1, marginBottom: 5 }}>
+                  {analysis ? 'Live review' : 'Needs attention'}
+                </div>
+                <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.55 }}>{summaryCopy}</div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
@@ -874,7 +1209,7 @@ function ResultsView({ onReset }: { onReset: () => void }) {
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t3, marginBottom: 12 }}>
                 Trip Summary (Extracted)
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className='itinerary-stagger' style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
                 {[
                   { l: 'Dates',         v: 'May 19 – Jun 3, 2025' },
                   { l: 'Duration',      v: '16 days'              },
@@ -890,6 +1225,27 @@ function ResultsView({ onReset }: { onReset: () => void }) {
                 ))}
               </div>
             </div>
+
+            {liveChecks ? (
+              <div style={{ padding: '16px 18px', borderRadius: 14, background: 'rgba(57,208,216,0.04)', border: '1px solid rgba(57,208,216,0.16)' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: T.t1, marginBottom: 3 }}>Live destination check</div>
+                <div style={{ fontSize: 11, color: T.t2, marginBottom: 10 }}>
+                  {String(liveChecks.destination ?? 'Destination')} · {String(liveChecks.climate?.precipitation_mm_avg ?? 'n/a')} mm avg rain · {String(liveChecks.climate?.wind_kmh_avg ?? 'n/a')} km/h wind
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {(Array.isArray(liveChecks.soft_blockers) ? liveChecks.soft_blockers : []).slice(0, 2).map((item: string) => (
+                    <div key={item} style={{ fontSize: 11.5, color: T.t1, lineHeight: 1.5 }}>
+                      • {item}
+                    </div>
+                  ))}
+                  {(Array.isArray(liveChecks.hard_blockers) ? liveChecks.hard_blockers : []).slice(0, 1).map((item: string) => (
+                    <div key={item} style={{ fontSize: 11.5, color: T.red, lineHeight: 1.5 }}>
+                      • {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             {/* Email gate */}
             <div style={{ padding: '16px 18px', borderRadius: 14, background: 'rgba(57,208,216,0.05)', border: '1px solid rgba(57,208,216,0.18)' }}>
@@ -936,17 +1292,59 @@ function ResultsView({ onReset }: { onReset: () => void }) {
                       Send →
                     </button>
                   </div>
-                  <div style={{ fontSize: 10, color: T.t4, marginTop: 7 }}>Analyzed then deleted. Not shared. No spam.</div>
+                  <div style={{ fontSize: 10, color: T.t4, marginTop: 7 }}>Stored only with consent. Not shared. Delete anytime.</div>
+                  {manageMessage ? (
+                    <div style={{ fontSize: 10, color: T.t3, marginTop: 7 }}>{manageMessage}</div>
+                  ) : null}
                 </>
               )}
+            </div>
+
+            <div style={{ padding: '16px 18px', borderRadius: 14, background: 'rgba(57,208,216,0.04)', border: '1px solid rgba(57,208,216,0.16)' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.t1, marginBottom: 3 }}>Manage your saved data</div>
+              <div style={{ fontSize: 11, color: T.t2, marginBottom: 10 }}>
+                Your report is stored only if you opted in. Export or delete the saved record with this report ID.
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  onClick={handleExport}
+                  disabled={!tripId || manageBusy !== null}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    height: 34, padding: '0 14px', borderRadius: 999,
+                    fontSize: 12, fontWeight: 600, fontFamily: T.fBody,
+                    background: tripId && manageBusy === null ? 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, #39d0d8 100%)' : T.elevated,
+                    color: tripId && manageBusy === null ? '#071018' : T.t3,
+                    border: 'none', cursor: tripId && manageBusy === null ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  {manageBusy === 'export' ? 'Exporting…' : 'Export JSON'}
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={!tripId || manageBusy !== null}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    height: 34, padding: '0 14px', borderRadius: 999,
+                    fontSize: 12, fontWeight: 600, fontFamily: T.fBody,
+                    background: 'transparent', color: T.red,
+                    border: `1px solid rgba(248,81,73,0.24)`, cursor: tripId && manageBusy === null ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  {manageBusy === 'delete' ? 'Deleting…' : 'Delete saved data'}
+                </button>
+              </div>
+              <div style={{ fontSize: 10, color: T.t4, marginTop: 8 }}>
+                Report ID: {tripId ?? 'pending'}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Findings */}
-        <div style={{ marginBottom: 24 }}>
+        <div className='itinerary-stagger' style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t2, marginBottom: 12 }}>Findings</div>
-          <div style={{ display: 'grid', gap: 10 }}>
+          <div className='itinerary-stagger' style={{ display: 'grid', gap: 10 }}>
             {ISSUES.map(issue => {
               const c = rSevColor(issue.sev) as keyof typeof rSevBadgeTxt;
               return (
@@ -983,7 +1381,7 @@ function ResultsView({ onReset }: { onReset: () => void }) {
         </div>
 
         {/* Soft agency conversion */}
-        <div style={{
+        <div className='itinerary-reveal' style={{
           padding: '20px 24px', borderRadius: 16,
           background: 'rgba(13,17,23,0.9)', border: `1px solid ${T.b0}`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24,
@@ -1027,10 +1425,152 @@ function ResultsView({ onReset }: { onReset: () => void }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function ItineraryCheckerPage() {
   const [view, setView] = useState<'upload' | 'results'>('upload');
+  const [analysis, setAnalysis] = useState<RunStatusResponse | null>(null);
+  const { execute: executeSpineRun, isLoading: isAnalyzing } = useSpineRun();
+  const motionRootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const root = motionRootRef.current;
+    if (!root || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return;
+    }
+
+    const ctx = gsap.context(() => {
+      if (view === 'upload') {
+        gsap.to('.itinerary-glow', {
+          scale: 1.08,
+          opacity: 0.9,
+          duration: 4.8,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+        });
+
+        gsap.to('.itinerary-orb', {
+          y: -14,
+          x: 8,
+          duration: 5.2,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+          stagger: 0.12,
+        });
+
+        gsap.to('.itinerary-ring', {
+          rotate: 360,
+          duration: 28,
+          repeat: -1,
+          ease: 'none',
+        });
+
+        gsap.to('.itinerary-scanline', {
+          yPercent: 220,
+          duration: 3.2,
+          repeat: -1,
+          ease: 'none',
+        });
+      }
+
+      gsap.fromTo('.itinerary-reveal', {
+        y: 20,
+        opacity: 0,
+      }, {
+        y: 0,
+        opacity: 1,
+        duration: 0.8,
+        ease: 'power3.out',
+      });
+
+      gsap.fromTo('.itinerary-stagger > *', {
+        y: 14,
+        opacity: 0,
+      }, {
+        y: 0,
+        opacity: 1,
+        duration: 0.7,
+        ease: 'power2.out',
+        stagger: 0.12,
+      });
+    }, root);
+
+    return () => ctx.revert();
+  }, [view]);
+
+  const handleAnalyze = async (plan: string, sourcePayload?: Record<string, unknown>) => {
+    const trimmed = plan.trim();
+    if (trimmed.length < 10) {
+      return;
+    }
+
+    const retentionConsent = Boolean(sourcePayload?.retention_consent);
+    const storedPayload = retentionConsent ? sourcePayload : undefined;
+
+    try {
+      const result = await executeSpineRun({
+        raw_note: trimmed,
+        owner_note: '',
+        itinerary_text: trimmed,
+        structured_json: storedPayload ? { source_payload: storedPayload } : null,
+        retention_consent: retentionConsent,
+        stage: 'discovery',
+        operating_mode: 'normal_intake',
+        strict_leakage: true,
+        scenario_id: null,
+      });
+      setAnalysis(result);
+      setView('results');
+    } catch {
+      setAnalysis(null);
+      setView('results');
+    }
+  };
+
+  const handleAnalyzeFile = async (file: File, retentionConsent: boolean) => {
+    const extracted = await extractTextFromFile(file);
+    const trimmed = extracted.trim();
+    if (trimmed.length < 10) {
+      throw new Error('Could not extract enough readable text from that file.');
+    }
+    const extractionMethod = file.type.startsWith('image/')
+      ? 'ocr'
+      : file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+        ? 'pdf_text'
+        : 'direct_text';
+    const uploadedFile: Record<string, unknown> = {
+      file_name: file.name,
+      mime_type: file.type || 'application/octet-stream',
+      file_size: file.size,
+      extraction_method: extractionMethod,
+      extracted_text: trimmed,
+    };
+
+    if (retentionConsent) {
+      uploadedFile.content_base64 = await fileToBase64(file);
+    }
+
+    await handleAnalyze(trimmed, {
+      kind: 'file_upload',
+      uploaded_file: uploadedFile,
+      retention_consent: retentionConsent,
+    });
+  };
+
+  const handleFallbackResults = () => {
+    setAnalysis(null);
+    setView('results');
+  };
 
   if (view === 'results') {
-    return <ResultsView onReset={() => setView('upload')} />;
+    return <ResultsView rootRef={motionRootRef} onReset={() => { setAnalysis(null); setView('upload'); }} analysis={analysis} />;
   }
 
-  return <UploadView onResults={() => setView('results')} />;
+  return (
+    <UploadView
+      rootRef={motionRootRef}
+      onAnalyze={handleAnalyze}
+      onAnalyzeFile={handleAnalyzeFile}
+      onFallbackResults={handleFallbackResults}
+      isBusy={isAnalyzing}
+    />
+  );
 }

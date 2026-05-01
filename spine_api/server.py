@@ -62,6 +62,29 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# --- OpenTelemetry instrumentation ---
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.resources import Resource
+
+otel_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
+otel_service_name = os.environ.get("OTEL_SERVICE_NAME", "spine_api")
+if otel_endpoint:
+    try:
+        resource = Resource.create({"service.name": otel_service_name})
+        provider = TracerProvider(resource=resource)
+        provider.add_span_processor(
+            BatchSpanProcessor(OTLPSpanExporter(endpoint=otel_endpoint))
+        )
+        trace.set_tracer_provider(provider)
+    except Exception as e:
+        import logging
+        logging.getLogger("spine_api.otel").warning(f"OTel init failed (non-fatal): {e}")
+# --- End OTel ---
+
 from spine_api.core.env import load_project_env
 
 load_project_env()
@@ -95,6 +118,8 @@ from spine_api.contract import (
     ApprovalThresholdConfig,
     ExportRequest,
     ExportResponse,
+    PublicCheckerExportResponse,
+    PublicCheckerDeleteResponse,
     UpdateOperationalSettings,
     UpdateAutonomyPolicy,
     IntegrityIssuesResponse,
@@ -107,7 +132,11 @@ from spine_api.services import membership_service
 from src.intake.orchestration import run_spine_once
 from src.intake.packet_models import SourceEnvelope
 from src.intake.safety import set_strict_mode
+from src.public_checker.live_checks import build_live_checker_signals
 from src.services.integrity_service import IntegrityService
+
+# OTel tracer for pipeline spans
+_otel_tracer = trace.get_tracer("spine_api.pipeline")
 
 # Import persistence logic
 try:
@@ -351,6 +380,9 @@ app.add_middleware(
 )
 
 app.add_middleware(AuthMiddleware)
+
+# Instrument FastAPI with OpenTelemetry
+FastAPIInstrumentor.instrument_app(app)
 
 # Phase 1: Auth + Workspace routers
 app.include_router(auth_router.router)
@@ -771,6 +803,11 @@ def _execute_spine_pipeline(
         _close_inherited_lock_fds()
 
         request = SpineRunRequest(**request_dict)
+        consented_submission = request_dict if request.retention_consent else {
+            key: value
+            for key, value in request_dict.items()
+            if key not in {"raw_note", "owner_note", "itinerary_text", "structured_json"}
+        }
 
         if request.strict_leakage:
             set_strict_mode(True)
@@ -859,6 +896,12 @@ def _execute_spine_pipeline(
             except Exception as e:
                 logger.error("Wave A: mid-run checkpoint failed stage=%s error=%s", stage_name, e)
 
+        with _otel_tracer.start_as_current_span("spine_pipeline") as pipeline_span:
+            pipeline_span.set_attribute("stage", request.stage)
+            pipeline_span.set_attribute("run_id", run_id)
+            pipeline_span.set_attribute("agency_id", agency_id)
+            pipeline_span.set_attribute("user_id", user_id)
+
         result = run_spine_once(
             envelopes=envelopes,
             stage=request.stage,
@@ -870,6 +913,64 @@ def _execute_spine_pipeline(
 
         execution_ms = (time.perf_counter() - t0) * 1000
         meta.execution_ms = round(execution_ms, 2)
+        pipeline_span.set_attribute("execution_ms", round(execution_ms, 2))
+        if hasattr(result, "packet"):
+            pipeline_span.set_attribute("trip_id", result.packet.packet_id if hasattr(result.packet, "packet_id") else "")
+
+        raw_text_sources = [
+            request.raw_note,
+            request.owner_note,
+            request.itinerary_text,
+        ]
+        if isinstance(request.structured_json, dict):
+            source_payload = request.structured_json.get("source_payload")
+            if isinstance(source_payload, dict):
+                uploaded_file = source_payload.get("uploaded_file")
+                if isinstance(uploaded_file, dict):
+                    raw_text_sources.append(str(uploaded_file.get("extracted_text") or ""))
+        raw_text = "\n".join(str(item) for item in raw_text_sources if item)
+
+        packet_payload = _to_dict(result.packet) if hasattr(result, "packet") else {}
+        live_checker = build_live_checker_signals(packet_payload or {}, raw_text)
+        if live_checker:
+            validation_payload = _to_dict(result.validation) if hasattr(result, "validation") else {}
+            decision_payload = _to_dict(result.decision) if hasattr(result, "decision") else {}
+
+            validation_base = validation_payload.get("overall_score")
+            if not isinstance(validation_base, (int, float)):
+                validation_base = validation_payload.get("quality_score")
+            if not isinstance(validation_base, (int, float)):
+                validation_base = packet_payload.get("quality_score")
+            if not isinstance(validation_base, (int, float)):
+                validation_base = packet_payload.get("score")
+            if not isinstance(validation_base, (int, float)):
+                decision_state = str(decision_payload.get("decision_state") or "").upper()
+                decision_base = {
+                    "PROCEED_TRAVELER_SAFE": 82,
+                    "PROCEED_INTERNAL_DRAFT": 74,
+                    "ASK_FOLLOWUP": 64,
+                    "STOP_NEEDS_REVIEW": 42,
+                }.get(decision_state)
+                validation_base = decision_base if decision_base is not None else 70
+
+            adjusted_score = max(0, min(100, round(float(validation_base) - float(live_checker.get("score_penalty", 0)))))
+            validation_payload["overall_score"] = adjusted_score
+            validation_payload["public_checker_live_checks"] = live_checker
+            decision_payload["public_checker_live_checks"] = live_checker
+            decision_payload["hard_blockers"] = list(dict.fromkeys([
+                *([str(item) for item in decision_payload.get("hard_blockers") or []]),
+                *([str(item) for item in live_checker.get("hard_blockers") or []]),
+            ]))
+            decision_payload["soft_blockers"] = list(dict.fromkeys([
+                *([str(item) for item in decision_payload.get("soft_blockers") or []]),
+                *([str(item) for item in live_checker.get("soft_blockers") or []]),
+            ]))
+            packet_payload["public_checker_live_checks"] = live_checker
+            packet_payload["score"] = adjusted_score
+            result.validation = validation_payload
+            result.decision = decision_payload
+            result.packet = packet_payload
+
         _checkpoint_result_steps(run_id, result)
 
         if getattr(result, "early_exit", False):
@@ -913,7 +1014,11 @@ def _execute_spine_pipeline(
                     "validation": _to_dict(result.validation) if hasattr(result, "validation") else None,
                     "decision": _to_dict(result.decision) if hasattr(result, "decision") else None,
                     "strategy": _to_dict(result.strategy) if hasattr(result, "strategy") else None,
-                    "meta": meta.model_dump(),
+                    "meta": {
+                        **meta.model_dump(),
+                        "submission": consented_submission,
+                        "retention_consent": request.retention_consent,
+                    },
                 },
                 source="spine_api",
                 agency_id=agency_id,
@@ -971,7 +1076,11 @@ def _execute_spine_pipeline(
                 "validation": _to_dict(result.validation) if hasattr(result, "validation") else None,
                 "decision": _to_dict(result.decision) if hasattr(result, "decision") else None,
                 "strategy": _to_dict(result.strategy) if hasattr(result, "strategy") else None,
-                "meta": meta.model_dump(),
+                "meta": {
+                    **meta.model_dump(),
+                    "submission": consented_submission,
+                    "retention_consent": request.retention_consent,
+                },
             },
             source="spine_api",
             agency_id=agency_id,
@@ -1238,6 +1347,36 @@ def get_run_event_stream(
 
     events = get_run_events(run_id)
     return {"run_id": run_id, "events": events, "total": len(events)}
+
+
+@app.get("/api/public-checker/{trip_id}", response_model=PublicCheckerExportResponse)
+def get_public_checker_package(trip_id: str):
+    package = persistence.PublicCheckerArtifactStore.export_trip_package(trip_id)
+    if not package:
+        raise HTTPException(status_code=404, detail="Public checker record not found")
+    return package
+
+
+@app.get("/api/public-checker/{trip_id}/export", response_model=PublicCheckerExportResponse)
+def export_public_checker_package(trip_id: str):
+    package = persistence.PublicCheckerArtifactStore.export_trip_package(trip_id)
+    if not package:
+        raise HTTPException(status_code=404, detail="Public checker record not found")
+    return package
+
+
+@app.delete("/api/public-checker/{trip_id}", response_model=PublicCheckerDeleteResponse)
+def delete_public_checker_package(trip_id: str):
+    deleted_artifacts = persistence.PublicCheckerArtifactStore.delete_trip_artifacts(trip_id)
+    deleted_trip = TripStore.delete_trip(trip_id)
+    if not deleted_artifacts and not deleted_trip:
+        raise HTTPException(status_code=404, detail="Public checker record not found")
+    return {
+        "ok": True,
+        "trip_id": trip_id,
+        "deleted_trip": deleted_trip,
+        "deleted_artifacts": deleted_artifacts,
+    }
 
 
 # =============================================================================
@@ -1530,7 +1669,8 @@ async def list_trips(
                 logger.warning("Failed to auto-seed for test agency: %s", e)
     
     trips = TripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
-    return {"items": trips, "total": len(trips)}
+    total = TripStore.count_trips(status=status, agency_id=agency_id)
+    return {"items": trips, "total": total}
 
 
 @app.get("/trips/{trip_id}")
