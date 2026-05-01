@@ -3,34 +3,70 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import HomePage from '@/app/page';
 import ItineraryCheckerPage from '@/app/(traveler)/itinerary-checker/page';
 
-vi.mock('@/hooks/useSpineRun', () => {
-  const execute = vi.fn().mockResolvedValue({
-    run_id: 'run_test',
-    state: 'completed',
-    trip_id: null,
-    stage: 'discovery',
-    operating_mode: 'normal_intake',
-    agency_id: null,
-    created_at: null,
-    started_at: null,
-    completed_at: null,
-    total_ms: null,
-    steps_completed: [],
-    events: [],
-    validation: null,
-    packet: null,
-    decision_state: 'PROCEED_TRAVELER_SAFE',
-    follow_up_questions: [],
-    hard_blockers: [],
-    soft_blockers: [],
-  });
-
-  return {
-    useSpineRun: () => ({
-      execute,
-      isLoading: false,
+vi.mock('@/lib/api-client', () => {
+  const api = {
+    post: vi.fn().mockResolvedValue({
+      run_id: 'run_test',
+      state: 'completed',
+      trip_id: 'trip_public_test',
+      stage: 'discovery',
+      operating_mode: 'normal_intake',
+      agency_id: 'waypoint-hq',
+      created_at: '2026-05-01T00:00:00.000Z',
+      started_at: '2026-05-01T00:00:00.000Z',
+      completed_at: '2026-05-01T00:00:02.000Z',
+      total_ms: 2000,
+      steps_completed: ['intake'],
+      events: [],
+      validation: {
+        overall_score: 81,
+        public_checker_live_checks: {
+          destination: 'Hong Kong',
+          climate: {
+            precipitation_mm_avg: 120,
+            wind_kmh_avg: 14,
+          },
+          current_conditions: {
+            current: {
+              temperature_c: 31.2,
+              apparent_temperature_c: 36.4,
+              wind_kmh: 18,
+            },
+          },
+          signals: ['seasonal humidity', 'current heat'],
+          hard_blockers: [],
+          soft_blockers: ['Current weather is warm and humid.'],
+          source: 'open-meteo',
+        },
+      },
+      decision_state: 'PROCEED_TRAVELER_SAFE',
+      follow_up_questions: [],
+      hard_blockers: [],
+      soft_blockers: [],
+      packet: {
+        public_checker_live_checks: {
+          destination: 'Hong Kong',
+          climate: {
+            precipitation_mm_avg: 120,
+            wind_kmh_avg: 14,
+          },
+          current_conditions: {
+            current: {
+              temperature_c: 31.2,
+              apparent_temperature_c: 36.4,
+              wind_kmh: 18,
+            },
+          },
+          signals: ['seasonal humidity', 'current heat'],
+          hard_blockers: [],
+          soft_blockers: ['Current weather is warm and humid.'],
+          source: 'open-meteo',
+        },
+      },
     }),
   };
+
+  return { api };
 });
 
 describe('public marketing pages', () => {
@@ -56,8 +92,10 @@ describe('public marketing pages', () => {
         .every((link) => link.getAttribute('href') === '/signup'),
     ).toBe(true);
     expect(
-      screen.getByRole('link', { name: /Explore the product/i }),
-    ).toHaveAttribute('href', '#product');
+      screen.getAllByRole('link', { name: /See the public checker/i }).every((link) =>
+        link.getAttribute('href') === '/itinerary-checker',
+      ),
+    ).toBe(true);
     expect(screen.getByRole('img', { name: /Waypoint OS/i })).toBeInTheDocument();
   });
 
@@ -68,8 +106,22 @@ describe('public marketing pages', () => {
     expect(checkerLink).toHaveAttribute('href', '/itinerary-checker');
 
     expect(
-      screen.getByRole('heading', { name: /Bring your plan\. Get it scored/i }),
+      screen.getByRole('heading', { name: /Bring your itinerary or travel plan\. Get it scored/i }),
     ).toBeInTheDocument();
+  });
+
+  it('homepage hero frames the public checker as part of the agency story', () => {
+    render(<HomePage />);
+
+    expect(
+      screen.getByText(/The public itinerary checker gives travelers a cleaner brief/i),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getAllByRole('link', { name: /See the public checker/i }).every((link) =>
+        link.getAttribute('href') === '/itinerary-checker',
+      ),
+    ).toBe(true);
   });
 
   it('homepage productMoments name concrete capabilities', () => {
@@ -85,7 +137,7 @@ describe('public marketing pages', () => {
 
     // Hero heading
     expect(
-      screen.getByRole('heading', { name: /Bring your plan\. Get it checked/i }),
+      screen.getByRole('heading', { name: /Turn your itinerary or travel plan into a clearer trip map/i }),
     ).toBeInTheDocument();
 
     // Mode tabs present
@@ -94,7 +146,7 @@ describe('public marketing pages', () => {
     expect(screen.getByRole('button', { name: /Screenshot/i })).toBeInTheDocument();
 
     // Real upload button (not a link to a separate notebook section)
-    expect(screen.getByRole('button', { name: /Score my itinerary/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Choose file to score/i })).toBeInTheDocument();
   });
 
   it('itinerary checker upload zone is a real interactive tool, not a sample preview', () => {
@@ -161,5 +213,6 @@ describe('public marketing pages', () => {
 
     expect(await screen.findByText(/Live review/i)).toBeInTheDocument();
     expect(screen.getByText(/PROCEED_TRAVELER_SAFE/i)).toBeInTheDocument();
+    expect(screen.getByText(/Current weather:/i)).toBeInTheDocument();
   });
 });

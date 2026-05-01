@@ -231,7 +231,14 @@ class FileTripStore:
     
     @staticmethod
     def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None) -> list:
-        """List trips, optionally filtered by status and/or agency."""
+        """List trips, optionally filtered by status and/or agency.
+        
+        status accepts a single status (e.g. 'new') or a comma-separated list
+        (e.g. 'new,incomplete,needs_followup') for inbox-style multi-status filters.
+        """
+        allowed_statuses = (
+            set(status.split(",")) if status else None
+        )
         trips = []
         
         for filepath in sorted(TRIPS_DIR.glob("trip_*.json"), reverse=True):
@@ -239,14 +246,14 @@ class FileTripStore:
                 with open(filepath) as f:
                     trip = json.load(f)
                     
-                    # Filter by agency_id if provided
-                    if agency_id and trip.get("agency_id") != agency_id:
-                        continue
-                    
-                    if status is None or trip.get("status") == status:
-                        trips.append(trip)
-                    if len(trips) >= limit:
-                        break
+                # Filter by agency_id if provided
+                if agency_id and trip.get("agency_id") != agency_id:
+                    continue
+                
+                if allowed_statuses is None or trip.get("status") in allowed_statuses:
+                    trips.append(trip)
+                if len(trips) >= limit:
+                    break
             except Exception:
                 continue
         
@@ -254,19 +261,7 @@ class FileTripStore:
 
     @staticmethod
     def count_trips(status: Optional[str] = None, agency_id: Optional[str] = None) -> int:
-        """Count trips matching filter (without limit)."""
-        count = 0
-        for filepath in sorted(TRIPS_DIR.glob("trip_*.json"), reverse=True):
-            try:
-                with open(filepath) as f:
-                    trip = json.load(f)
-                if agency_id and trip.get("agency_id") != agency_id:
-                    continue
-                if status is None or trip.get("status") == status:
-                    count += 1
-            except Exception:
-                continue
-        return count
+        return len(FileTripStore.list_trips(status=status, limit=10000, agency_id=agency_id))
     
     @staticmethod
     def update_trip(trip_id: str, updates: dict) -> Optional[dict]:
@@ -452,13 +447,22 @@ class SQLTripStore:
             return SQLTripStore._to_dict(trip_obj) if trip_obj else None
 
     @staticmethod
-    async def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None) -> list:
+    async def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
+        """List trips, optionally filtered by status and/or agency.
+        
+        status accepts single status or comma-separated statuses (e.g., 'new,incomplete').
+        """
         async with tripstore_session_maker() as session:
-            query = select(Trip).order_by(Trip.created_at.desc()).limit(limit)
+            query = select(Trip).order_by(Trip.created_at.desc())
             if status:
-                query = query.where(Trip.status == status)
+                statuses = [s.strip() for s in status.split(",") if s.strip()]
+                if len(statuses) == 1:
+                    query = query.where(Trip.status == statuses[0])
+                else:
+                    query = query.where(Trip.status.in_(statuses))
             if agency_id:
                 query = query.where(Trip.agency_id == agency_id)
+            query = query.offset(offset).limit(limit)
             result = await session.execute(query)
             return [SQLTripStore._to_dict(trip) for trip in result.scalars().all()]
 
@@ -469,7 +473,11 @@ class SQLTripStore:
             from sqlalchemy import func
             query = select(func.count()).select_from(Trip)
             if status:
-                query = query.where(Trip.status == status)
+                statuses = [s.strip() for s in status.split(",") if s.strip()]
+                if len(statuses) == 1:
+                    query = query.where(Trip.status == statuses[0])
+                else:
+                    query = query.where(Trip.status.in_(statuses))
             if agency_id:
                 query = query.where(Trip.agency_id == agency_id)
             result = await session.execute(query)
@@ -554,18 +562,20 @@ class TripStore:
         return await SQLTripStore.get_trip(trip_id)
 
     @staticmethod
-    def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None) -> list:
+    def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
         backend = TripStore._backend()
         if backend is FileTripStore:
+            # File store doesn't support offset natively;
+            # callers that need DB-level pagination should use SQL backend.
             return FileTripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
-        return _run_async_blocking(SQLTripStore.list_trips(status=status, limit=limit, agency_id=agency_id))
+        return _run_async_blocking(SQLTripStore.list_trips(status=status, limit=limit, agency_id=agency_id, offset=offset))
 
     @staticmethod
-    async def alist_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None) -> list:
+    async def alist_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
         backend = TripStore._backend()
         if backend is FileTripStore:
             return FileTripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
-        return await SQLTripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
+        return await SQLTripStore.list_trips(status=status, limit=limit, agency_id=agency_id, offset=offset)
 
     @staticmethod
     def count_trips(status: Optional[str] = None, agency_id: Optional[str] = None) -> int:

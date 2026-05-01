@@ -20,6 +20,7 @@
 | 02 | [Margins](./PRICING_02_MARGIN.md) | Margin calculation and optimization | ✅ Complete |
 | 03 | [Comparison](./PRICING_03_COMPARISON.md) | Price comparison and rate parity | ✅ Complete |
 | 04 | [Forecasting](./PRICING_04_FORECASTING.md) | Revenue forecasting and optimization | ✅ Complete |
+| 05 | [Discount Authorization](./PRICING_05_DISCOUNT_AUTH.md) | Discount approval workflows, margin floors, authorization matrix, audit trail | ✅ Complete |
 
 ---
 

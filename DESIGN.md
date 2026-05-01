@@ -72,6 +72,12 @@ This design system is for the public itinerary checker wedge. The page should fe
 - Keep motion functional: it should imply review, scoring, and detection.
 - Respect reduced motion by ensuring the page remains strong when animations are muted.
 
+## Itinerary V2
+
+- The public checker should feel like a travel scene: postcard layers, route ribbons, paper-plane motion, stamps, and destination chips.
+- Use scenic gradients and warm travel accents so the tool reads as fun and exploratory, not like a generic SaaS console.
+- Keep the checkout / score action obvious, but let the visual language feel lighter and more human than the agency workspace.
+
 ## Relationship To Other Design Files
 
 - `frontend/DESIGN.md` remains the broader Waypoint OS design system.

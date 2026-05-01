@@ -72,6 +72,15 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
       timeoutMs: LONG_RUNNING_COMMAND_TIMEOUT_MS,
     },
   ],
+  [
+    "public-checker/run",
+    {
+      backendPath: "api/public-checker/run",
+      timeoutMs: LONG_RUNNING_COMMAND_TIMEOUT_MS,
+    },
+  ],
+  ["public-checker/{id}", { backendPath: "api/public-checker/{id}" }],
+  ["public-checker/{id}/export", { backendPath: "api/public-checker/{id}/export" }],
   ["assignments", { backendPath: "assignments" }],
   ["items", { backendPath: "items" }],
   ["health", { backendPath: "health", timeoutMs: DEFAULT_ROUTE_TIMEOUT_MS }],

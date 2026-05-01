@@ -110,5 +110,12 @@
     "agent_name": "New User",
     "assigned_at": "2026-04-30T12:23:15.820290+00:00",
     "assigned_by": "system"
+  },
+  "trip_ffd013835018": {
+    "trip_id": "trip_ffd013835018",
+    "agent_id": "323468de-ba3d-437b-aa10-35b281a0c6a6",
+    "agent_name": "New User",
+    "assigned_at": "2026-05-01T16:29:45.132084+00:00",
+    "assigned_by": "system"
   }
 }

@@ -19,6 +19,8 @@
 | 1 | [Requirements Engine](#visa-01) | Rules by nationality, destination | ✅ Complete |
 | 2 | [Service Providers](#visa-02) | Visa facilitation, attestation | ✅ Complete |
 | 3 | [Compliance & Monitoring](#visa-03) | Tracking, alerts, expiry | ✅ Complete |
+| 4 | [ECR/ECNR Passport Categories](VISA_04_ECR_ECNR.md) | ECR/ECNR classification, emigration clearance countries, employment restrictions | ✅ Complete |
+| 5 | [Visa on Arrival & e-VOA](VISA_05_VOA.md) | VOA countries for Indians, e-VOA process, arrival workflows, concierge service | ✅ Complete |
 
 ---
 

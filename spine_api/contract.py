@@ -446,12 +446,34 @@ class SuitabilityFlagsResponse(BaseModel):
 
 
 # =============================================================================
-# Trip list response envelope
+# Trip list + inbox response envelopes
 # =============================================================================
 
 class TripListResponse(BaseModel):
     items: List[Dict[str, Any]]
     total: int
+
+
+class FilterCounts(BaseModel):
+    all: int
+    at_risk: int
+    incomplete: int
+    unassigned: int
+
+
+class InboxResponse(BaseModel):
+    """Canonical inbox payload — DB-level filtered, BFF-thin."""
+    items: List[Dict[str, Any]]
+    total: int
+    hasMore: bool = False
+    filterCounts: FilterCounts
+
+
+class InboxStatsResponse(BaseModel):
+    total: int
+    unassigned: int
+    critical: int
+    atRisk: int
 
 
 # =============================================================================

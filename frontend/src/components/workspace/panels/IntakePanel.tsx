@@ -390,7 +390,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   }, [dateFlexibility, trip, tripPriorities]);
   const requiredPlanningDetails = planningDetails.filter((detail) => detail.requirement === 'Required');
   const recommendedPlanningDetails = planningDetails.filter((detail) => detail.requirement === 'Recommended');
-  const planningPanelVisible = Boolean(trip) && !isLeadReview && planningDetails.length > 0;
+  const planningPanelVisible = Boolean(trip) && planningDetails.length > 0;
   const processButtonLabel = !trip
     ? 'Process Trip'
     : isLeadReview
@@ -1163,29 +1163,29 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
           ) : (
             <p className='mt-1 text-[13px] italic leading-5 text-[var(--text-placeholder)]'>Process trip to check for blockers</p>
           )}
-          {!isLeadReview && hasPlanningBriefBlocker(trip) && !hardBlockers.length && requiredPlanningDetails.length > 0 && (
-            <button
-              type='button'
-              onClick={() => openPlanningEditor(requiredPlanningDetails[0]!.id)}
-              className='mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-[var(--accent-blue)] hover:text-[var(--accent-blue-hover)] transition-colors'
-            >
-              Add {requiredPlanningDetails[0]!.label.toLowerCase()}
-            </button>
-          )}
+          {hasPlanningBriefBlocker(trip) && !hardBlockers.length && requiredPlanningDetails.length > 0 && (
+             <button
+               type='button'
+               onClick={() => openPlanningEditor(requiredPlanningDetails[0]!.id)}
+               className='mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-[var(--accent-blue)] hover:text-[var(--accent-blue-hover)] transition-colors'
+             >
+               Add {requiredPlanningDetails[0]!.label.toLowerCase()}
+             </button>
+           )}
           {!isLeadReview && !hasPlanningBriefBlocker(trip) && !hardBlockers.length && (
-            <button
-              type='button'
-              onClick={() => router.push(`/trips/${tripId}/strategy`)}
-              className='mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-default)] text-[12px] font-medium text-[var(--text-primary)] hover:bg-elevated transition-colors'
-            >
-              Open options
-            </button>
-          )}
+             <button
+               type='button'
+               onClick={() => router.push(`/trips/${tripId}/strategy`)}
+               className='mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-default)] text-[12px] font-medium text-[var(--text-primary)] hover:bg-elevated transition-colors'
+             >
+               Open options
+             </button>
+           )}
         </div>
 
         <div className='min-w-0 rounded-lg bg-[rgba(57,208,216,0.04)] px-3 py-2'>
           <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-cyan)]'>
-            {!isLeadReview && !hasPlanningBriefBlocker(trip) && !hasPlanningBriefBlocker(trip) ? "Next" : "Next"}
+            {!isLeadReview && !hasPlanningBriefBlocker(trip) ? "Next Steps" : "Suggested Next Move"}
           </p>
           {isLeadReview ? (
             <p className='mt-1 text-[13px] leading-5 text-[var(--text-rationale)]'>

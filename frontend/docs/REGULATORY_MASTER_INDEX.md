@@ -8,6 +8,7 @@
 | 02 | [IATA Accreditation & BSP](REGULATORY_02_IATA.md) | IATA accreditation, BSP settlement, GDS integration, ticketing compliance |
 | 03 | [GST/TCS Compliance & Filing](REGULATORY_03_COMPLIANCE.md) | GST rates, TCS on overseas tours, invoicing, automated filing |
 | 04 | [Certificate Management & Renewals](REGULATORY_04_CERTIFICATES.md) | Certificate lifecycle, document vault, compliance dashboard, audit readiness |
+| 05 | [FEMA Compliance & Forex Remittances](REGULATORY_05_FEMA.md) | LRS limits, overseas remittances, TCS on LRS, RBI reporting, forex card compliance |
 
 ---
 

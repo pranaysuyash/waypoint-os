@@ -4,6 +4,8 @@ import { useState, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Briefcase,
+  ChevronLeft,
+  ChevronRight,
   ChevronDown,
   ChevronUp,
   Users,
@@ -129,6 +131,8 @@ export default function InboxPage() {
   const sortBy = (searchParams.get('sort') as SortKey) || 'priority';
   const sortDirection = (searchParams.get('dir') as SortDirection) || 'desc';
   const searchQuery = searchParams.get('q') || '';
+  const page = Math.max(1, Number.parseInt(searchParams.get('page') || '1', 10) || 1);
+  const limit = Math.max(1, Number.parseInt(searchParams.get('limit') || '20', 10) || 20);
 
   const updateParams = useCallback((updates: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -142,7 +146,7 @@ export default function InboxPage() {
   const [selectedTrips, setSelectedTrips] = useState<Set<string>>(new Set());
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   
-  const { data: inboxTrips, isLoading, error, refetch, assignTrips } = useInboxTrips();
+  const { data: inboxTrips, total: inboxTotal, hasMore, isLoading, error, refetch, assignTrips } = useInboxTrips(undefined, page, limit);
 
   const agents = useMemo(() => {
     const seen = new Map<string, string>();
@@ -167,18 +171,18 @@ export default function InboxPage() {
 
   const filterCounts = useMemo(() => {
     const counts: Record<string, number> = {
-      all: inboxTrips.length,
+      all: inboxTotal,
       at_risk: inboxTrips.filter((t) => t.slaStatus === 'at_risk').length,
       incomplete: inboxTrips.filter((t) =>
-        t.flags.includes('incomplete') ||
-        t.flags.includes('needs_clarification') ||
-        t.flags.includes('details_unclear')
+        (t.flags || []).includes('incomplete') ||
+        (t.flags || []).includes('needs_clarification') ||
+        (t.flags || []).includes('details_unclear')
       ).length,
       unassigned: inboxTrips.filter((t) => !t.assignedTo).length,
     };
 
     return counts;
-  }, [inboxTrips]);
+  }, [inboxTrips, inboxTotal]);
 
   const filtered = useMemo(() => {
     let result = [...inboxTrips];
@@ -188,9 +192,9 @@ export default function InboxPage() {
       result = result.filter((t) => t.slaStatus === 'at_risk');
     } else if (activeFilter === 'incomplete') {
       result = result.filter((t) =>
-        t.flags.includes('incomplete') ||
-        t.flags.includes('needs_clarification') ||
-        t.flags.includes('details_unclear')
+        (t.flags || []).includes('incomplete') ||
+        (t.flags || []).includes('needs_clarification') ||
+        (t.flags || []).includes('details_unclear')
       );
     } else if (activeFilter === 'unassigned') {
       result = result.filter((t) => !t.assignedTo);
@@ -306,7 +310,7 @@ export default function InboxPage() {
               type='text'
               placeholder='Search by customer, destination, or lead ref...'
               value={searchQuery}
-              onChange={(e) => updateParams({ q: e.target.value || null })}
+              onChange={(e) => updateParams({ q: e.target.value || null, page: '1' })}
               className='w-full pl-9 pr-3 py-2 bg-[#161b22] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3] placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]'
             />
           </div>
@@ -332,7 +336,7 @@ export default function InboxPage() {
                     <span className='text-ui-xs text-[#8b949e] font-medium'>Direction</span>
                     <div className='flex items-center gap-1'>
                       <button
-                        onClick={() => updateParams({ dir: 'asc' })}
+                        onClick={() => updateParams({ dir: 'asc', page: '1' })}
                         className={`p-1 rounded transition-colors ${
                           sortDirection === 'asc'
                             ? 'bg-[#58a6ff] text-[#0d1117]'
@@ -342,7 +346,7 @@ export default function InboxPage() {
                         <ChevronUp className='w-4 h-4' />
                       </button>
                       <button
-                        onClick={() => updateParams({ dir: 'desc' })}
+                        onClick={() => updateParams({ dir: 'desc', page: '1' })}
                         className={`p-1 rounded transition-colors ${
                           sortDirection === 'desc'
                             ? 'bg-[#58a6ff] text-[#0d1117]'
@@ -362,7 +366,7 @@ export default function InboxPage() {
                       <button
                         key={key}
                         onClick={() => {
-                          updateParams({ sort: key });
+                          updateParams({ sort: key, page: '1' });
                           setShowSortDropdown(false);
                         }}
                         className={`w-full flex items-center gap-2 px-3 py-2 text-left text-ui-sm rounded-md transition-colors ${
@@ -382,7 +386,9 @@ export default function InboxPage() {
           </div>
 
           <span className='text-ui-sm text-[#8b949e]'>
-            {isLoading ? 'Loading...' : leadCountLabel(inboxTrips.length)}
+          <span className="text-ui-sm text-[#8b949e]">
+          {isLoading ? 'Loading...' : leadCountLabel(inboxTotal)}
+        </span>
           </span>
         </div>
       </header>
@@ -401,7 +407,10 @@ export default function InboxPage() {
       {/* Filters */}
       <InboxFilterBar
         activeFilter={activeFilter}
-        onFilterChange={(filter) => updateParams({ filter })}
+        onFilterChange={(filter) => updateParams({
+          filter: filter === 'all' || filter === activeFilter ? null : filter,
+          page: '1',
+        })}
         filters={filterConfigs.map((f) => ({
           ...f,
           count: filterCounts[f.key] || 0,
@@ -438,12 +447,38 @@ export default function InboxPage() {
             <InboxEmptyState
               hasSearch={!!searchQuery}
               activeFilter={activeFilter}
-              onClearSearch={() => updateParams({ q: null })}
-              onClearFilter={() => updateParams({ filter: null })}
+              onClearSearch={() => updateParams({ q: null, page: '1' })}
+              onClearFilter={() => updateParams({ filter: null, page: '1' })}
             />
           )}
         </div>
       )}
+
+      <div className='flex items-center justify-between pt-1'>
+        <p className='text-ui-xs text-[#8b949e]'>
+          Page {page} · {inboxTotal} total leads
+        </p>
+        <div className='flex items-center gap-2'>
+          <button
+            type='button'
+            onClick={() => updateParams({ page: String(Math.max(1, page - 1)) })}
+            disabled={page <= 1}
+            className='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#30363d] text-ui-xs text-[#e6edf3] disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#484f58] transition-colors'
+          >
+            <ChevronLeft className='w-3.5 h-3.5' />
+            Prev
+          </button>
+          <button
+            type='button'
+            onClick={() => updateParams({ page: String(page + 1) })}
+            disabled={!hasMore}
+            className='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#30363d] text-ui-xs text-[#e6edf3] disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#484f58] transition-colors'
+          >
+            Next
+            <ChevronRight className='w-3.5 h-3.5' />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

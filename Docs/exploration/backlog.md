@@ -87,6 +87,18 @@ A living document of areas to explore, ideas to investigate, and potential impro
 - [ ] Seasonal demand forecasting
 - [ ] Destination popularity trends
 
+## Public Checker Live Enrichment
+
+- [ ] Destination weather snapshot and forecast summary
+- [ ] Pollution / AQI lookup for destination timing suggestions
+- [ ] Local safety and crime indicators by destination and neighborhood
+- [ ] Current hotel price sampling by area and stay window
+- [ ] Flight fare trend lookup for route + date combinations
+- [ ] Visa / entry requirement checks for destination and transit points
+- [ ] Local events / festival / crowd calendar overlays
+- [ ] Returning-user recognition from consented identifiers or device continuity
+- [ ] Consent-aware long-term memory for model improvement and personalization
+
 ## API & Server
 
 - [ ] spine_api performance optimization

@@ -7,7 +7,6 @@ import { AlertTriangle, ChevronLeft, Lock, PanelRightClose, PanelRightOpen } fro
 import { ErrorBoundary, InlineError } from "@/components/error-boundary";
 import { InlineLoading } from "@/components/ui/loading";
 import { useTrip } from "@/hooks/useTrips";
-import { formatBudgetDisplay, formatDateWindowDisplay, formatInquiryReference, formatLeadTitle } from "@/lib/lead-display";
 import {
   canAccessPlanningStage,
   getPlanningHeaderTitle,
@@ -19,6 +18,7 @@ import {
   getPlanningStatusTone,
   getPlanningUnlockHint,
 } from "@/lib/planning-status";
+import { getPlanningStageProgressItems } from "@/lib/planning-list-display";
 import { getTripRoute, type WorkspaceStage } from "@/lib/routes";
 import { TripContextProvider } from "@/contexts/TripContext";
 import { useWorkbenchStore } from "@/stores/workbench";
@@ -34,12 +34,6 @@ const STAGE_TABS: { id: WorkspaceStage; label: string }[] = [
   { id: "output",   label: "Output"          },
   { id: "safety",   label: "Safety Review"   },
   { id: "timeline", label: "Timeline"        },
-];
-
-const LEAD_REVIEW_TABS: { id: WorkspaceStage; label: string }[] = [
-  { id: "intake", label: "Intake" },
-  { id: "packet", label: "Trip Details" },
-  { id: "timeline", label: "Timeline" },
 ];
 
 // State → accent colour mapping (matches WP design tokens)
@@ -72,30 +66,18 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [timelineError, setTimelineError] = useState<string | null>(null);
   const { result_run_ts } = useWorkbenchStore();
-  const isIntakeRoute = pathname.endsWith("/intake");
 
   const activeStage = useMemo(() => getActiveStage(pathname), [pathname]);
-  const isLeadReview = trip?.status === "new" || trip?.status === "incomplete";
-  const optimisticLeadReview = isIntakeRoute && (!trip || isLoading);
   const planningTone = getPlanningStatusTone(trip);
-  const accent = isLeadReview
-    ? (trip?.status === "incomplete" ? STATE_ACCENT.amber : STATE_ACCENT.blue)
-    : (STATE_ACCENT[planningTone ?? "blue"] ?? STATE_ACCENT.blue);
-  const backHref = isLeadReview ? "/inbox" : "/trips";
-  const backLabel = isLeadReview ? "Lead Inbox" : "Trips in Planning";
-  const leadTitle = formatLeadTitle(trip?.destination, trip?.type);
-  const leadStatusLabel = trip?.status === "incomplete" ? "Needs details" : "New lead";
-  const leadMeta = [
-    trip?.party ? `${trip.party} pax` : null,
-    trip?.dateWindow ? formatDateWindowDisplay(trip.dateWindow) : null,
-    formatBudgetDisplay(trip?.budget),
-    trip?.id ? `Inquiry Ref ${formatInquiryReference(trip.id)}` : null,
-  ].filter(Boolean);
+  const accent = STATE_ACCENT[planningTone ?? "blue"] ?? STATE_ACCENT.blue;
+  const backHref = "/trips";
+  const backLabel = "Trips in Planning";
   const planningTitle = getPlanningHeaderTitle(trip);
   const planningIdentity = getPlanningIdentityLine(trip);
   const planningQueueLine = getPlanningQueueLine(trip);
   const planningUnlockHint = getPlanningUnlockHint(trip);
-  const visibleTabs = isLeadReview ? LEAD_REVIEW_TABS : STAGE_TABS;
+  const visibleTabs = STAGE_TABS;
+  const stageProgressItems = useMemo(() => getPlanningStageProgressItems(trip), [trip]);
   const timelineEvents = timeline?.events ?? [];
 
   useEffect(() => {
@@ -148,18 +130,16 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   if (isLoading && !trip) {
     return (
       <div className="p-6">
-        <InlineLoading message={optimisticLeadReview ? "Loading lead review..." : "Loading workspace..."} />
+        <InlineLoading message="Loading workspace..." />
       </div>
     );
   }
 
   if (error || !tripId || !trip) {
-    const fallbackTitle = optimisticLeadReview ? "Lead unavailable" : "Workspace unavailable";
-    const fallbackMessage = optimisticLeadReview
-      ? "Lead not found. Please return to Lead Inbox and try again."
-      : "Trip not found. Please return to Trips in Planning and try again.";
-    const fallbackHref = optimisticLeadReview ? "/inbox" : "/trips";
-    const fallbackLabel = optimisticLeadReview ? "Back to Lead Inbox" : "Back to Trips in Planning";
+    const fallbackTitle = "Workspace unavailable";
+    const fallbackMessage = "Trip not found. Please return to Trips in Planning and try again.";
+    const fallbackHref = "/trips";
+    const fallbackLabel = "Back to Trips in Planning";
     return (
       <div className="p-6">
         <div className="max-w-[900px] mx-auto rounded-xl border border-[#1c2128] bg-[#0f1115] p-6 space-y-4">
@@ -202,7 +182,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                   </Link>
                   <span>/</span>
                   <span className="text-[var(--text-muted)] truncate max-w-[200px]">
-                    {isLeadReview ? (trip.destination || "Lead review") : getPlanningHeaderTitle(trip)}
+                    {getPlanningHeaderTitle(trip)}
                   </span>
                 </div>
 
@@ -230,7 +210,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                     className="text-ui-2xl font-black tracking-tight leading-none mb-2 truncate"
                     style={{ fontFamily: "'Outfit', system-ui, sans-serif", color: '#f0f6fc' }}
                   >
-                    {isLeadReview ? leadTitle : planningTitle}
+                    {planningTitle}
                   </h1>
                   <div className="flex flex-wrap items-center gap-2">
                     {/* State badge */}
@@ -242,30 +222,22 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                         className="w-1.5 h-1.5 rounded-full"
                         style={{ background: accent.color, boxShadow: `0 0 4px ${accent.color}` }}
                       />
-                      {isLeadReview ? leadStatusLabel : getPlanningStatusLabel(trip)}
+                      {getPlanningStatusLabel(trip)}
                     </span>
-                    {isLeadReview ? (
+                    {planningIdentity && (
                       <span className="text-[var(--ui-text-xs)] text-[var(--text-tertiary)]">
-                        {leadMeta.join(" · ")}
+                        {planningIdentity}
                       </span>
-                    ) : (
-                      <>
-                        {planningIdentity && (
-                          <span className="text-[var(--ui-text-xs)] text-[var(--text-tertiary)]">
-                            {planningIdentity}
-                          </span>
-                        )}
-                        <span className="text-[var(--ui-text-xs)] text-[var(--border-default)]">
-                          {planningQueueLine}
-                        </span>
-                        {result_run_ts && (
-                          <span className="text-[var(--ui-text-xs)] text-[var(--border-default)]">
-                            processed {new Date(result_run_ts).toLocaleTimeString()}
-                          </span>
-                        )}
-                       </>
-                     )}
-                   </div>
+                    )}
+                    <span className="text-[var(--ui-text-xs)] text-[var(--border-default)]">
+                      {planningQueueLine}
+                    </span>
+                    {result_run_ts && (
+                      <span className="text-[var(--ui-text-xs)] text-[var(--border-default)]">
+                        processed {new Date(result_run_ts).toLocaleTimeString()}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -278,15 +250,30 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                   </span>
                 </div>
               )}
+              <div className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 px-1">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
+                  Stage
+                </span>
+                {stageProgressItems.map((item, index) => (
+                  <span key={`${item.label}-${index}`} className="flex items-center">
+                    <span className="text-[12px] font-medium" style={{ color: item.color }}>
+                      {item.label}
+                    </span>
+                    {index < stageProgressItems.length - 1 && (
+                      <span className="mx-1 text-[11px] text-[var(--text-muted)]">→</span>
+                    )}
+                  </span>
+                ))}
+              </div>
               <nav
                 className="flex overflow-x-auto gap-0 -mb-px"
                 aria-label="Workspace stage tabs"
               >
                 {visibleTabs.map((tab) => {
                   const isActive = tab.id === activeStage;
-                  const isAccessible = isLeadReview || canAccessPlanningStage(trip, tab.id);
-                  const gateReason = isLeadReview ? null : getPlanningStageGateReason(trip, tab.id);
-                  const lockedLabel = isLeadReview ? null : getPlanningLockedTabHint(trip, tab.id);
+                  const isAccessible = canAccessPlanningStage(trip, tab.id);
+                  const gateReason = getPlanningStageGateReason(trip, tab.id);
+                  const lockedLabel = getPlanningLockedTabHint(trip, tab.id);
 
                   if (!isAccessible) {
                     return (
@@ -322,10 +309,11 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                       key={tab.id}
                       href={getTripRoute(tripId, tab.id)}
                       aria-current={isActive ? "page" : undefined}
-                      className="px-4 py-2.5 text-[13px] whitespace-nowrap border-b-2 transition-all"
+                      className="px-4 py-2.5 text-[13px] whitespace-nowrap border-b-2 transition-all rounded-t-md"
                       style={{
                         color: isActive ? '#e6edf3' : 'var(--text-tertiary)',
                         borderColor: isActive ? accent.color : 'transparent',
+                        background: isActive ? `${accent.color}1a` : 'transparent',
                         fontWeight: isActive ? 600 : 400,
                       }}
                     >

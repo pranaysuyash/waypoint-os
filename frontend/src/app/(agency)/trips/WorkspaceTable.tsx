@@ -16,7 +16,7 @@ import {
   PLANNING_LIST_STATE_META,
 } from '@/lib/planning-list-display';
 
-export type SortField = 'state' | 'destination' | 'age' | 'type';
+export type SortField = 'stage' | 'destination' | 'age' | 'type';
 export type SortDirection = 'asc' | 'desc';
 
 interface WorkspaceTableProps {
@@ -135,8 +135,8 @@ export const WorkspaceTable = memo(function WorkspaceTable({
               <th scope="col" className="py-2.5 px-3" aria-sort={sortField === 'destination' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
                 <SortHeader field="destination" label="Trip" activeField={sortField} direction={sortDirection} onSort={onSort} />
               </th>
-              <th scope="col" className="py-2.5 px-3" aria-sort={sortField === 'state' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
-                <SortHeader field="state" label="Status" activeField={sortField} direction={sortDirection} onSort={onSort} />
+              <th scope="col" className="py-2.5 px-3" aria-sort={sortField === 'stage' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                <SortHeader field="stage" label="Stage" activeField={sortField} direction={sortDirection} onSort={onSort} />
               </th>
               <th scope="col" className="py-2.5 px-3">
                 <span className="text-ui-xs font-semibold text-[#8b949e] uppercase tracking-wider">Missing</span>

@@ -56,7 +56,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy import text
@@ -126,6 +126,8 @@ from spine_api.contract import (
     UnifiedStateResponse,
     DashboardStatsResponse,
     SuitabilityFlagsResponse,
+    InboxResponse,
+    InboxStatsResponse,
 )
 from spine_api.services import membership_service
 
@@ -152,6 +154,8 @@ TeamStore = persistence.TeamStore
 ConfigStore = persistence.ConfigStore
 save_processed_trip = persistence.save_processed_trip
 save_processed_trip_async = persistence.save_processed_trip_async
+
+PUBLIC_CHECKER_AGENCY_ID = "waypoint-hq"
 
 # Import TimelineEventMapper from analytics
 # Note: logger not available yet, so we suppress warnings here
@@ -1175,6 +1179,193 @@ def _execute_spine_pipeline(
         set_strict_mode(False)
 
 
+def _run_public_checker_submission(request_dict: dict[str, Any]) -> RunStatusResponse:
+    """Run the public checker synchronously and return a result payload."""
+    t0 = time.perf_counter()
+    request = SpineRunRequest(**request_dict)
+    consented_submission = request_dict if request.retention_consent else {
+        key: value
+        for key, value in request_dict.items()
+        if key not in {"raw_note", "owner_note", "itinerary_text", "structured_json"}
+    }
+    run_id = str(uuid.uuid4())
+    steps_completed: list[str] = []
+
+    if request.strict_leakage:
+        set_strict_mode(True)
+
+    try:
+        envelopes = build_envelopes(request.model_dump(exclude_none=True))
+        fixture_expectations = load_fixture_expectations(request.scenario_id)
+        agency_settings = AgencySettingsStore.load(PUBLIC_CHECKER_AGENCY_ID)
+        stage_started_at: dict[str, float] = {}
+        current_stage: Optional[str] = None
+
+        def _stage_checkpoint(stage_name: str, data: Any) -> None:
+            nonlocal current_stage
+            event = "completed"
+            payload_data = data
+
+            if isinstance(data, dict) and isinstance(data.get("event"), str):
+                event = data.get("event", "completed")
+                payload_data = data.get("data")
+
+            if event == "entered":
+                current_stage = stage_name
+                stage_started_at[stage_name] = time.perf_counter()
+                return
+
+            if event == "completed":
+                if stage_name not in steps_completed:
+                    steps_completed.append(stage_name)
+            current_stage = stage_name
+            _ = payload_data
+
+        result = run_spine_once(
+            envelopes=envelopes,
+            stage=request.stage,
+            operating_mode=request.operating_mode,
+            fixture_expectations=fixture_expectations,
+            agency_settings=agency_settings,
+            stage_callback=_stage_checkpoint,
+        )
+
+        execution_ms = (time.perf_counter() - t0) * 1000
+
+        raw_text_sources = [
+            request.raw_note,
+            request.owner_note,
+            request.itinerary_text,
+        ]
+        if isinstance(request.structured_json, dict):
+            source_payload = request.structured_json.get("source_payload")
+            if isinstance(source_payload, dict):
+                uploaded_file = source_payload.get("uploaded_file")
+                if isinstance(uploaded_file, dict):
+                    raw_text_sources.append(str(uploaded_file.get("extracted_text") or ""))
+        raw_text = "\n".join(str(item) for item in raw_text_sources if item)
+
+        packet_payload = _to_dict(result.packet) if hasattr(result, "packet") else {}
+        live_checker = build_live_checker_signals(packet_payload or {}, raw_text)
+        validation_payload = _to_dict(result.validation) if hasattr(result, "validation") else {}
+        decision_payload = _to_dict(result.decision) if hasattr(result, "decision") else {}
+
+        if live_checker:
+            validation_base = validation_payload.get("overall_score")
+            if not isinstance(validation_base, (int, float)):
+                validation_base = validation_payload.get("quality_score")
+            if not isinstance(validation_base, (int, float)):
+                validation_base = packet_payload.get("quality_score")
+            if not isinstance(validation_base, (int, float)):
+                validation_base = packet_payload.get("score")
+            if not isinstance(validation_base, (int, float)):
+                decision_state = str(decision_payload.get("decision_state") or "").upper()
+                validation_base = {
+                    "PROCEED_TRAVELER_SAFE": 82,
+                    "PROCEED_INTERNAL_DRAFT": 74,
+                    "ASK_FOLLOWUP": 64,
+                    "STOP_NEEDS_REVIEW": 42,
+                }.get(decision_state, 70)
+
+            adjusted_score = max(0, min(100, round(float(validation_base) - float(live_checker.get("score_penalty", 0)))))
+            validation_payload["overall_score"] = adjusted_score
+            validation_payload["public_checker_live_checks"] = live_checker
+            decision_payload["public_checker_live_checks"] = live_checker
+            decision_payload["hard_blockers"] = list(dict.fromkeys([
+                *([str(item) for item in decision_payload.get("hard_blockers") or []]),
+                *([str(item) for item in live_checker.get("hard_blockers") or []]),
+            ]))
+            decision_payload["soft_blockers"] = list(dict.fromkeys([
+                *([str(item) for item in decision_payload.get("soft_blockers") or []]),
+                *([str(item) for item in live_checker.get("soft_blockers") or []]),
+            ]))
+            packet_payload["public_checker_live_checks"] = live_checker
+            packet_payload["score"] = adjusted_score
+
+        result_state = "completed"
+        error_type: Optional[str] = None
+        error_message: Optional[str] = None
+        block_reason: Optional[str] = None
+
+        if getattr(result, "early_exit", False):
+            result_state = "blocked"
+            block_reason = result.early_exit_reason or "Pipeline blocked"
+
+        if hasattr(result, "validation") and result.validation and not getattr(result.validation, "is_valid", True):
+            result_state = "blocked"
+            block_reason = "Validation failed (defense-in-depth)"
+
+        if getattr(result, "partial_intake", False):
+            trip_status = "incomplete"
+        elif result_state == "blocked":
+            trip_status = "blocked"
+        else:
+            trip_status = "new"
+
+        trip_id_saved = save_processed_trip(
+            {
+                "run_id": run_id,
+                "packet": packet_payload if packet_payload else None,
+                "validation": validation_payload if validation_payload else None,
+                "decision": decision_payload if decision_payload else None,
+                "strategy": _to_dict(result.strategy) if hasattr(result, "strategy") else None,
+                "meta": {
+                    "stage": request.stage,
+                    "operating_mode": request.operating_mode,
+                    "fixture_id": request.scenario_id,
+                    "execution_ms": round(execution_ms, 2),
+                    "submission": consented_submission,
+                    "retention_consent": request.retention_consent,
+                },
+            },
+            source="public_checker",
+            agency_id=PUBLIC_CHECKER_AGENCY_ID,
+            user_id=None,
+            trip_status=trip_status,
+        )
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        return RunStatusResponse(
+            run_id=run_id,
+            state=result_state,
+            trip_id=trip_id_saved,
+            stage=request.stage,
+            operating_mode=request.operating_mode,
+            agency_id=PUBLIC_CHECKER_AGENCY_ID,
+            created_at=now_iso,
+            started_at=now_iso,
+            completed_at=now_iso,
+            total_ms=round(execution_ms, 2),
+            steps_completed=steps_completed,
+            events=[],
+            error_type=error_type,
+            error_message=error_message,
+            stage_at_failure=None,
+            block_reason=block_reason,
+            validation=validation_payload if validation_payload else None,
+            packet=packet_payload if packet_payload else None,
+            decision_state=str(decision_payload.get("decision_state") or None),
+            follow_up_questions=list(result.follow_up_questions) if hasattr(result, "follow_up_questions") else [],
+            hard_blockers=list(decision_payload.get("hard_blockers") or []),
+            soft_blockers=list(decision_payload.get("soft_blockers") or []),
+        )
+    except Exception as exc:
+        execution_ms = (time.perf_counter() - t0) * 1000
+        logger.error("Public checker submission failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+    finally:
+        set_strict_mode(False)
+
+
+@app.post("/api/public-checker/run", response_model=RunStatusResponse)
+def run_public_checker(
+    request: SpineRunRequest,
+) -> RunStatusResponse:
+    """Submit a public itinerary checker run without agency auth."""
+    return _run_public_checker_submission(request.model_dump(exclude_none=True))
+
+
 @app.post("/run", response_model=RunAcceptedResponse)
 async def run_spine(
     request: SpineRunRequest,
@@ -1671,6 +1862,83 @@ async def list_trips(
     trips = TripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
     total = TripStore.count_trips(status=status, agency_id=agency_id)
     return {"items": trips, "total": total}
+
+
+# Canonical inbox statuses — shared source of truth for frontend + backend
+_INBOX_STATUSES = "new,incomplete,needs_followup,awaiting_customer_details,snoozed"
+
+@app.get("/inbox", response_model=InboxResponse)
+def get_inbox(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=200),
+    agency: Agency = Depends(get_current_agency),
+):
+    """
+    Canonical inbox endpoint — DB-level filtered by canonical inbox statuses.
+
+    Returns a stable {items, total, hasMore, filterCounts} envelope.
+    filterCounts are computed server-side from the FULL unfiltered dataset
+    so filter-tab counts are accurate regardless of page size.
+    """
+    agency_id = agency.id
+    offset = (page - 1) * limit
+
+    # 1. Paginated items for display
+    items = TripStore.list_trips(
+        status=_INBOX_STATUSES, limit=limit, agency_id=agency_id, offset=offset
+    )
+
+    # 2. Full unfiltered inbox trips for accurate filterCounts
+    all_inbox = TripStore.list_trips(status=_INBOX_STATUSES, limit=10000, agency_id=agency_id)
+
+    filter_counts = {
+        "all": len(all_inbox),
+        "at_risk": sum(1 for t in all_inbox if t.get("sla_status") == "at_risk"),
+        "incomplete": sum(
+            1
+            for t in all_inbox
+            if t.get("status") in {"incomplete", "needs_clarification", "details_unclear"}
+            or (
+                isinstance(t.get("flags"), list)
+                and any(
+                    f in t["flags"] for f in {"incomplete", "needs_clarification", "details_unclear"}
+                )
+            )
+        ),
+        "unassigned": sum(1 for t in all_inbox if not t.get("assigned_to")),
+    }
+
+    total = len(all_inbox)
+    has_more = (offset + len(items)) < total
+
+    return {
+        "items": items,
+        "total": total,
+        "hasMore": has_more,
+        "filterCounts": filter_counts,
+    }
+
+
+@app.get("/inbox/stats", response_model=InboxStatsResponse)
+def get_inbox_stats(
+    agency: Agency = Depends(get_current_agency),
+):
+    """Return aggregate inbox statistics for Overview cards."""
+    agency_id = agency.id
+    trips = TripStore.list_trips(status=_INBOX_STATUSES, limit=10000, agency_id=agency_id)
+
+    total = len(trips)
+    unassigned = sum(1 for t in trips if not t.get("assigned_to"))
+    critical = sum(
+        1 for t in trips
+        if t.get("analytics", {}).get("escalation_severity") in ("high", "critical")
+    )
+    at_risk = sum(
+        1 for t in trips
+        if t.get("analytics", {}).get("sla_status") == "at_risk"
+    )
+
+    return {"total": total, "unassigned": unassigned, "critical": critical, "atRisk": at_risk}
 
 
 @app.get("/trips/{trip_id}")

@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { useEffect, useState, useRef, type RefObject, DragEvent } from 'react';
 import gsap from 'gsap';
-import { useSpineRun } from '@/hooks/useSpineRun';
+import { api } from '@/lib/api-client';
 import type { RunStatusResponse } from '@/types/spine';
 import {
   Activity, ArrowRight, Check, Clock, DollarSign,
-  FileCheck, Globe, Mail, MapPin, Shield, Star, Upload,
+  Camera, Compass, FileCheck, Globe, Mail, MapPin, PlaneTakeoff, Route,
+  Shield, Sparkles, Star, SunMedium, Ticket, Upload,
 } from 'lucide-react';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -33,6 +34,34 @@ const T = {
   fMono:    "'JetBrains Mono', monospace",
 };
 
+const TRAVEL_MOMENTS = [
+  {
+    icon: PlaneTakeoff,
+    title: 'Map the route',
+    body: 'Turn a messy draft into a readable trip path with the important stops highlighted.',
+  },
+  {
+    icon: Compass,
+    title: 'Catch friction',
+    body: 'Spot timing slips, overpacked days, and travel friction before it becomes a bad day.',
+  },
+  {
+    icon: Ticket,
+    title: 'Share the brief',
+    body: 'Bring the cleaner brief to your agent or use the upgrade notes yourself.',
+  },
+];
+
+const TRAVEL_TAGS = [
+  'Singapore',
+  'late May',
+  'Family of 5',
+  '2 elders',
+  '1 toddler',
+  'Universal Studios',
+  'Sentosa cable car',
+];
+
 // ── Header ────────────────────────────────────────────────────────────────────
 function WedgeHeader() {
   return (
@@ -53,7 +82,7 @@ function WedgeHeader() {
         </div>
         <div className='itinerary-reveal'>
           <div style={{ fontSize: 13, fontWeight: 700, color: T.t1, letterSpacing: '-0.01em', fontFamily: T.fBody }}>Waypoint</div>
-          <div style={{ fontSize: 10, color: T.t3, lineHeight: 1, fontFamily: T.fBody }}>Itinerary Checker</div>
+          <div style={{ fontSize: 10, color: T.t3, lineHeight: 1, fontFamily: T.fBody }}>Travel plan checker</div>
         </div>
       </Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -139,12 +168,10 @@ async function fileToBase64(file: File): Promise<string> {
 function UploadCard({
   onAnalyze,
   onAnalyzeFile,
-  onFallbackResults,
   isBusy,
 }: {
   onAnalyze: (plan: string, sourcePayload?: Record<string, unknown>) => void;
   onAnalyzeFile: (file: File, retentionConsent: boolean) => Promise<void>;
-  onFallbackResults: () => void;
   isBusy: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<'file' | 'paste' | 'screenshot'>('file');
@@ -181,7 +208,7 @@ function UploadCard({
     setDragging(false);
     const file = e.dataTransfer.files?.[0];
     if (!file) {
-      onFallbackResults();
+      setFileError('Drop a PDF, image, or text file here, or click to choose one.');
       return;
     }
     void handleFile(file);
@@ -312,38 +339,48 @@ function UploadCard({
               I can turn this off for a one-time analysis.
             </div>
           </div>
-          <button
-            onClick={e => { e.stopPropagation(); onFallbackResults(); }}
-            disabled={isBusy || isProcessingFile}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 7,
-              height: 42, padding: '0 20px', borderRadius: 999,
-              fontSize: 13, fontWeight: 600, fontFamily: T.fBody,
-              background: isBusy || isProcessingFile
-                ? T.elevated
-                : 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, #39d0d8 100%)',
-              color: isBusy || isProcessingFile ? T.t3 : '#071018',
-              border: 'none', cursor: isBusy || isProcessingFile ? 'not-allowed' : 'pointer',
-              boxShadow: isBusy || isProcessingFile ? 'none' : '0 8px 24px rgba(57,208,216,0.3), inset 0 1px 0 rgba(255,255,255,0.38)',
-            }}
-          >
-            {isProcessingFile ? 'Reading file…' : 'Score my itinerary'}
-          </button>
-          <input
-            ref={fileRef}
-            type='file'
-            accept='.pdf,.jpg,.jpeg,.png,.txt,.webp'
-            style={{ display: 'none' }}
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) {
-                return;
-              }
-              const input = e.currentTarget;
-              await handleFile(file);
-              input.value = '';
-            }}
-          />
+          <div style={{ position: 'relative', display: 'inline-flex' }}>
+            <button
+              type='button'
+              disabled={isBusy || isProcessingFile}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+                height: 42, padding: '0 20px', borderRadius: 999,
+                fontSize: 13, fontWeight: 600, fontFamily: T.fBody,
+                background: isBusy || isProcessingFile
+                  ? T.elevated
+                  : 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, #39d0d8 100%)',
+                color: isBusy || isProcessingFile ? T.t3 : '#071018',
+                border: 'none', cursor: isBusy || isProcessingFile ? 'not-allowed' : 'pointer',
+                boxShadow: isBusy || isProcessingFile ? 'none' : '0 8px 24px rgba(57,208,216,0.3), inset 0 1px 0 rgba(255,255,255,0.38)',
+              }}
+            >
+              {isProcessingFile ? 'Reading file…' : 'Choose file to score'}
+            </button>
+            <input
+              ref={fileRef}
+              type='file'
+              accept='.pdf,.jpg,.jpeg,.png,.txt,.webp'
+              aria-label='Upload itinerary file'
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                opacity: 0.01,
+                cursor: 'pointer',
+              }}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) {
+                  return;
+                }
+                const input = e.currentTarget;
+                await handleFile(file);
+                input.value = '';
+              }}
+            />
+          </div>
         </div>
       )}
 
@@ -368,6 +405,145 @@ function UploadCard({
             <span style={{ fontSize: 11, color: T.t4 }}>{label}</span>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function TravelPreviewCard() {
+  return (
+    <div style={{
+      position: 'relative',
+      borderRadius: 28,
+      padding: 18,
+      background: 'linear-gradient(180deg, rgba(10,18,26,0.98), rgba(7,9,11,0.98))',
+      border: '1px solid rgba(88,166,255,0.22)',
+      boxShadow: '0 28px 80px rgba(0,0,0,0.42)',
+      overflow: 'hidden',
+    }}>
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0,
+        background:
+          'radial-gradient(circle at 18% 18%, rgba(255,193,122,0.22) 0%, transparent 26%), radial-gradient(circle at 86% 8%, rgba(57,208,216,0.18) 0%, transparent 24%), linear-gradient(135deg, rgba(122,185,255,0.04) 0%, transparent 40%)',
+        pointerEvents: 'none',
+      }} />
+      <div aria-hidden className='itinerary-plane' style={{
+        position: 'absolute', right: 20, top: 18, color: '#d8eef0',
+        transform: 'rotate(12deg)', filter: 'drop-shadow(0 8px 20px rgba(57,208,216,0.35))',
+      }}>
+        <PlaneTakeoff size={32} strokeWidth={1.6} />
+      </div>
+      <div style={{ position: 'relative' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14,
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.cyan }}>
+            Travel plan ATS
+          </div>
+          <div className='itinerary-stamp' style={{
+            padding: '5px 9px', borderRadius: 999,
+            background: 'rgba(255,193,122,0.12)',
+            border: '1px solid rgba(255,193,122,0.24)',
+            color: '#ffd6a6',
+            fontSize: 10,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+          }}>
+            Singapore • late May
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 18 }}>
+          <div style={{ maxWidth: 260 }}>
+            <div style={{ fontSize: 12, color: T.t3, marginBottom: 4 }}>Sample scan</div>
+            <h3 style={{ fontSize: 22, lineHeight: 1.08, fontWeight: 900, color: T.t1, fontFamily: T.fDisplay, margin: 0 }}>
+              Family trip to Singapore
+            </h3>
+          </div>
+          <div style={{
+            minWidth: 86, textAlign: 'right',
+            padding: '8px 10px', borderRadius: 14,
+            background: 'rgba(57,208,216,0.08)', border: '1px solid rgba(57,208,216,0.18)',
+          }}>
+            <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.t3 }}>Score preview</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: T.t1, fontFamily: T.fDisplay, lineHeight: 1 }}>62</div>
+          </div>
+        </div>
+
+        <div style={{
+          padding: 14, borderRadius: 18,
+          background: 'rgba(7,9,11,0.7)',
+          border: '1px solid rgba(168,179,193,0.12)',
+          marginBottom: 16,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: T.t1 }}>Route ribbon</div>
+            <div style={{ fontSize: 11, color: T.t3 }}>Upload, paste, or screenshot</div>
+          </div>
+          <svg viewBox='0 0 420 120' width='100%' height='120' aria-hidden style={{ display: 'block' }}>
+            <defs>
+              <linearGradient id='itineraryRoute' x1='0%' y1='0%' x2='100%' y2='0%'>
+                <stop offset='0%' stopColor='rgba(122,185,255,0.35)' />
+                <stop offset='50%' stopColor='rgba(57,208,216,0.92)' />
+                <stop offset='100%' stopColor='rgba(163,113,247,0.42)' />
+              </linearGradient>
+            </defs>
+            <path
+              d='M28 82 C104 18, 174 18, 238 62 S342 112, 392 34'
+              fill='none'
+              stroke='url(#itineraryRoute)'
+              strokeWidth='3.5'
+              strokeLinecap='round'
+              strokeDasharray='9 10'
+            />
+            <circle cx='28' cy='82' r='6' fill={T.blue} />
+            <circle cx='392' cy='34' r='6' fill={T.amber} />
+            <g className='itinerary-plane' transform='translate(224 52) rotate(-18)'>
+              <circle cx='0' cy='0' r='19' fill='rgba(7,9,11,0.9)' stroke='rgba(57,208,216,0.18)' />
+              <PlaneTakeoff size={22} strokeWidth={1.8} color={T.cyan} />
+            </g>
+            <g className='itinerary-route-pip'>
+              <circle cx='138' cy='40' r='4.5' fill={T.green} />
+              <circle cx='286' cy='70' r='4.5' fill={T.purple} />
+            </g>
+          </svg>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+          gap: 10,
+        }}>
+          {[
+            { icon: SunMedium, label: 'Weather', value: 'humid + warm', color: T.amber },
+            { icon: Camera, label: 'Stops', value: 'Universal + Sentosa', color: T.blue },
+            { icon: Sparkles, label: 'Flow', value: 'fun, not frantic', color: T.green },
+            { icon: Route, label: 'Use case', value: 'travelers + agents', color: T.cyan },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.label} style={{
+                padding: '12px 12px',
+                borderRadius: 14,
+                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid rgba(168,179,193,0.12)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <div style={{
+                    width: 24, height: 24, borderRadius: 8,
+                    background: `${item.color}18`, border: `1px solid ${item.color}2e`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: item.color,
+                  }}>
+                    <Icon size={13} strokeWidth={1.9} />
+                  </div>
+                  <div style={{ fontSize: 11, color: T.t3 }}>{item.label}</div>
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: T.t1, lineHeight: 1.35 }}>{item.value}</div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -460,13 +636,11 @@ function UploadView({
   rootRef,
   onAnalyze,
   onAnalyzeFile,
-  onFallbackResults,
   isBusy,
 }: {
   rootRef: RefObject<HTMLDivElement | null>;
   onAnalyze: (plan: string, sourcePayload?: Record<string, unknown>) => void;
   onAnalyzeFile: (file: File, retentionConsent: boolean) => Promise<void>;
-  onFallbackResults: () => void;
   isBusy: boolean;
 }) {
   return (
@@ -479,8 +653,9 @@ function UploadView({
       <div style={{
         position: 'fixed', inset: 0, pointerEvents: 'none',
         backgroundImage: `
-          radial-gradient(circle at 50% 25%, rgba(88,166,255,0.10) 0%, transparent 54%),
-          radial-gradient(circle at 20% 15%, rgba(57,208,216,0.05) 0%, transparent 22%),
+          radial-gradient(circle at 50% 20%, rgba(255,193,122,0.18) 0%, transparent 36%),
+          radial-gradient(circle at 16% 14%, rgba(57,208,216,0.10) 0%, transparent 24%),
+          radial-gradient(circle at 88% 16%, rgba(163,113,247,0.12) 0%, transparent 22%),
           linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
           linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)
         `,
@@ -503,12 +678,12 @@ function UploadView({
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 7,
             padding: '5px 12px', borderRadius: 999, marginBottom: 24,
-            color: '#d8eef0', fontSize: 10.5, letterSpacing: '0.13em',
+            color: '#ffd6a6', fontSize: 10.5, letterSpacing: '0.13em',
             textTransform: 'uppercase', fontFamily: T.fBody, fontWeight: 600,
-            border: '1px solid rgba(57,208,216,0.22)', background: 'rgba(7,22,26,0.8)',
+            border: '1px solid rgba(255,193,122,0.24)', background: 'rgba(25,18,10,0.74)',
           }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#39d0d8', boxShadow: '0 0 5px #39d0d8', flexShrink: 0 }} />
-            Free itinerary ATS
+            Free travel plan check
           </span>
 
           <h1 style={{
@@ -516,39 +691,44 @@ function UploadView({
             lineHeight: 1.04, letterSpacing: '-0.04em',
             color: '#f5fbff', fontFamily: T.fDisplay, marginBottom: 20,
           }}>
-            Bring your plan. Get it checked.
+            Turn your itinerary or travel plan into a clearer trip map.
           </h1>
 
-          <p style={{ fontSize: 16, lineHeight: 1.72, color: T.t2, maxWidth: '40ch', marginBottom: 32 }}>
-            Upload an itinerary or paste a plan. Like an ATS for resumes, we score the one you already have,
-            flag weak points, and suggest upgrades you can use yourself or share with your agent.
+          <p style={{ fontSize: 16, lineHeight: 1.72, color: T.t2, maxWidth: '43ch', marginBottom: 30 }}>
+            Upload an itinerary, paste your own travel plan, or drop a screenshot. The checker spots weak points,
+            travel friction, and upgrade ideas before you book or bring it to your agent.
           </p>
 
-          {/* Stats row */}
-          <div className='itinerary-stagger' style={{ display: 'flex', gap: 32, flexWrap: 'wrap', marginBottom: 36 }}>
-            {[
-              { stat: '20,000+', label: 'itineraries analyzed' },
-              { stat: '98%',     label: 'recommend to friends' },
-              { stat: '4.8/5',   label: 'traveler rating' },
-            ].map(s => (
-              <div key={s.stat}>
-                <div style={{ fontSize: 24, fontWeight: 800, color: T.t1, fontFamily: T.fDisplay, lineHeight: 1 }}>{s.stat}</div>
-                <div style={{ fontSize: 11, color: T.t3, marginTop: 3 }}>{s.label}</div>
+          <div className='itinerary-stagger' style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 28 }}>
+            {TRAVEL_TAGS.slice(0, 6).map((tag) => (
+              <div key={tag} style={{
+                padding: '8px 12px',
+                borderRadius: 999,
+                border: '1px solid rgba(168,179,193,0.14)',
+                background: 'rgba(255,255,255,0.03)',
+                color: T.t1,
+                fontSize: 12,
+              }}>
+                {tag}
               </div>
             ))}
           </div>
 
-          {/* Avatar stack */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ display: 'flex' }}>
-              {[T.blue, T.cyan, T.green, T.amber, T.purple].map((c, i) => (
-                <div key={i} style={{
-                  width: 26, height: 26, borderRadius: '50%', background: c,
-                  marginLeft: i ? -8 : 0, border: `2px solid ${T.canvas}`,
-                }} />
-              ))}
-            </div>
-            <span style={{ fontSize: 12, color: T.t3 }}>Travelers checking in every day</span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12, maxWidth: 560 }}>
+            {[
+              { stat: '60 sec', label: 'to spot weak points' },
+              { stat: 'PDF + paste', label: 'works from messy inputs' },
+              { stat: 'Shareable', label: 'send the brief onward' },
+            ].map(s => (
+              <div key={s.stat} style={{
+                padding: '14px 16px', borderRadius: 16,
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(168,179,193,0.12)',
+              }}>
+                <div style={{ fontSize: 22, fontWeight: 900, color: T.t1, fontFamily: T.fDisplay, lineHeight: 1 }}>{s.stat}</div>
+                <div style={{ fontSize: 11, color: T.t3, marginTop: 4, lineHeight: 1.45 }}>{s.label}</div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -569,93 +749,54 @@ function UploadView({
             pointerEvents: 'none',
           }} />
 
-          {[
-            { text: 'Visa timing', top: '12%', left: '-2%' },
-            { text: 'Pacing risk', top: '20%', right: '-4%' },
-            { text: 'Fee watch', bottom: '24%', left: '3%' },
-            { text: 'Advisor-ready', bottom: '12%', right: '5%' },
-          ].map((chip) => (
-            <div
-              key={chip.text}
-              aria-hidden
-              className='itinerary-orb itinerary-chip'
-              style={{
-                position: 'absolute',
-                top: chip.top,
-                left: chip.left,
-                right: chip.right,
-                bottom: chip.bottom,
-                width: 'fit-content',
-                padding: '7px 11px',
-                borderRadius: 999,
-                border: '1px solid rgba(168,179,193,0.14)',
-                background: 'rgba(10,13,17,0.78)',
-                color: T.t1,
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: '-0.01em',
-                boxShadow: '0 10px 28px rgba(0,0,0,0.25)',
-                backdropFilter: 'blur(10px)',
-                transform: 'translateZ(0)',
-                zIndex: 0,
-                opacity: 0.95,
-              }}
-            >
-              {chip.text}
-            </div>
-          ))}
+          <TravelPreviewCard />
+
+          <div style={{ height: 16 }} />
 
           <UploadCard
             onAnalyze={onAnalyze}
             onAnalyzeFile={onAnalyzeFile}
-            onFallbackResults={onFallbackResults}
             isBusy={isBusy}
           />
-
-          {/* Score preview teaser */}
-          <div style={{
-            marginTop: 16, padding: '14px 16px', borderRadius: 12,
-            background: 'rgba(210,153,34,0.06)', border: '1px solid rgba(210,153,34,0.2)',
-            display: 'flex', alignItems: 'center', gap: 14,
-          }}>
-            <div style={{ position: 'relative', width: 52, height: 52, flexShrink: 0 }}>
-              <svg width='52' height='52' viewBox='0 0 52 52' style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx='26' cy='26' r='20' fill='none' stroke={T.b0} strokeWidth='5' />
-                <circle cx='26' cy='26' r='20' fill='none' stroke={T.amber} strokeWidth='5'
-                  strokeDasharray={`${2 * Math.PI * 20 * 0.62} ${2 * Math.PI * 20}`}
-                  strokeLinecap='round' />
-              </svg>
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: 15, fontWeight: 900, color: T.t1, fontFamily: T.fDisplay }}>62</span>
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: T.amber, marginBottom: 2 }}>Needs Attention</div>
-              <div style={{ fontSize: 11, color: T.t2, lineHeight: 1.5 }}>Example report — your score depends on what your plan contains</div>
-            </div>
-          </div>
         </div>
       </section>
 
-      {/* ── TRUST LOGOS ── */}
+      {/* ── TRAVEL MOMENTS ── */}
       <section style={{
         position: 'relative', zIndex: 1,
         borderTop: `1px solid ${T.b0}`, borderBottom: `1px solid ${T.b0}`,
-        padding: '20px 40px',
+        padding: '28px 40px',
+        background: 'linear-gradient(180deg, rgba(8,12,16,0.92), rgba(9,13,19,0.98))',
       }}>
         <div style={{
           maxWidth: 1140, margin: '0 auto',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 52, flexWrap: 'wrap',
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14,
         }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: T.t4, letterSpacing: '0.12em', textTransform: 'uppercase', flexShrink: 0 }}>
-            Trusted by travelers from
-          </span>
-          {['Virtuoso', 'ASTA', 'Signature', 'Ensemble', 'Travellers Choice'].map(name => (
-            <span key={name} style={{
-              fontSize: 13, fontWeight: 700, color: T.t3, letterSpacing: '-0.01em',
-              fontFamily: T.fDisplay, opacity: 0.7,
-            }}>{name}</span>
-          ))}
+          {TRAVEL_MOMENTS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.title} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 12,
+                padding: '16px 16px', borderRadius: 18,
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(168,179,193,0.12)',
+              }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 12,
+                  background: 'linear-gradient(135deg, rgba(122,185,255,0.18), rgba(57,208,216,0.12))',
+                  border: '1px solid rgba(57,208,216,0.18)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: T.cyan, flexShrink: 0,
+                }}>
+                  <Icon size={18} strokeWidth={1.8} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: T.t1, marginBottom: 4 }}>{item.title}</div>
+                  <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.55 }}>{item.body}</div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -668,16 +809,16 @@ function UploadView({
               fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
               color: T.cyan, marginBottom: 14,
             }}>
-              <FileCheck size={13} /> Six categories
+              <FileCheck size={13} /> Six trip checks
             </div>
             <h2 style={{
               fontSize: 'clamp(28px, 3.5vw, 40px)', fontWeight: 800,
               letterSpacing: '-0.03em', color: T.t1, fontFamily: T.fDisplay, marginBottom: 14,
             }}>
-              What we check
+              What this checker catches
             </h2>
             <p style={{ fontSize: 15, color: T.t2, maxWidth: '46ch', margin: '0 auto', lineHeight: 1.65 }}>
-              Every report covers six dimensions that travel agents and experienced travelers know to watch for.
+              Every report covers the parts travelers actually feel: timing, costs, pacing, safety, and trip friction.
             </p>
           </div>
 
@@ -737,9 +878,9 @@ function UploadView({
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {[
-                  { label: '1 Critical', desc: 'Must-fix before travel', color: T.red },
-                  { label: '2 Warnings', desc: 'Should review with advisor', color: T.amber },
-                  { label: '1 Info',     desc: 'Worth knowing before you go', color: T.blue },
+                  { label: 'Route gap', desc: 'Where the trip feels brittle', color: T.red },
+                  { label: 'Cost leak', desc: 'Fees and friction worth fixing', color: T.amber },
+                  { label: 'Trip upgrade', desc: 'Small changes that improve the plan', color: T.blue },
                 ].map(row => (
                   <div key={row.label} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{
@@ -971,11 +1112,11 @@ function UploadView({
             letterSpacing: '-0.04em', color: T.t1, fontFamily: T.fDisplay,
             marginBottom: 18, lineHeight: 1.05,
           }}>
-            Ready to stress-test your itinerary?
+            Ready to make the trip feel clear?
           </h2>
 
           <p style={{ fontSize: 15, color: T.t2, lineHeight: 1.7, marginBottom: 36, maxWidth: '40ch', margin: '0 auto 36px' }}>
-            60 seconds is all it takes. Upload now and know exactly what to fix before you book.
+            60 seconds is all it takes. Upload now and see the route, the friction, and the upgrade points before you book.
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
@@ -1055,33 +1196,6 @@ function summaryFromAnalysis(analysis: RunStatusResponse | null): string {
   return `Live analysis: ${decisionState} · ${hardBlockers} hard blockers · ${softBlockers} soft blockers · ${followUps} follow-up questions`;
 }
 
-const ISSUES = [
-  {
-    sev: 'Critical', color: T.red,
-    bg: 'rgba(248,81,73,0.06)', border: 'rgba(248,81,73,0.2)',
-    label: 'LAX layover may be too tight',
-    body: '47-minute connection with international customs. Standard minimum is 90 min. High rebooking risk.',
-  },
-  {
-    sev: 'Warning', color: T.amber,
-    bg: 'rgba(210,153,34,0.06)', border: 'rgba(210,153,34,0.2)',
-    label: 'Day 4 is heavily over-packed',
-    body: '3 distant sites + a dinner reservation. Real-world slack is under 30 minutes if anything runs long.',
-  },
-  {
-    sev: 'Heads up', color: T.blue,
-    bg: 'rgba(88,166,255,0.05)', border: 'rgba(88,166,255,0.15)',
-    label: 'No travel insurance detected',
-    body: 'Nothing in the itinerary mentions coverage. Worth confirming before the final payment.',
-  },
-  {
-    sev: 'Heads up', color: T.blue,
-    bg: 'rgba(88,166,255,0.05)', border: 'rgba(88,166,255,0.15)',
-    label: 'Schengen visa status not confirmed',
-    body: 'Trip includes Paris + Rome. Confirm passport validity (6 months beyond return date required).',
-  },
-];
-
 const rSevColor = (sev: string) => sev === 'Critical' ? 'Critical' : sev === 'Warning' ? 'Warning' : 'Info';
 const rSevBadgeBg  = { Critical: 'rgba(248,81,73,0.1)', Warning: 'rgba(210,153,34,0.12)', Info: 'rgba(88,166,255,0.1)' } as const;
 const rSevBadgeBdr = { Critical: 'rgba(248,81,73,0.22)', Warning: 'rgba(210,153,34,0.25)', Info: 'rgba(88,166,255,0.22)' } as const;
@@ -1092,10 +1206,12 @@ function ResultsView({
   rootRef,
   onReset,
   analysis,
+  errorMessage,
 }: {
   rootRef: RefObject<HTMLDivElement | null>;
   onReset: () => void;
   analysis?: RunStatusResponse | null;
+  errorMessage?: string | null;
 }) {
   const [email, setEmail] = useState('');
   const [sent,  setSent]  = useState(false);
@@ -1107,6 +1223,23 @@ function ResultsView({
   const circumference = 2 * Math.PI * 36;
   const tripId = analysis?.trip_id ?? null;
   const liveChecks = ((analysis?.packet as Record<string, any> | null | undefined)?.public_checker_live_checks as Record<string, any> | undefined) ?? undefined;
+  const tripSummary = [
+    liveChecks?.destination ? { l: 'Destination', v: String(liveChecks.destination) } : null,
+    liveChecks?.travel_window?.start_date && liveChecks?.travel_window?.end_date
+      ? { l: 'Travel window', v: `${String(liveChecks.travel_window.start_date)} → ${String(liveChecks.travel_window.end_date)}` }
+      : null,
+    liveChecks?.climate?.precipitation_mm_avg != null
+      ? { l: 'Avg rain', v: `${String(liveChecks.climate.precipitation_mm_avg)} mm` }
+      : null,
+    liveChecks?.current_conditions?.current?.temperature_c != null
+      ? { l: 'Current temp', v: `${String(liveChecks.current_conditions.current.temperature_c)}°C` }
+      : null,
+    liveChecks?.source ? { l: 'Live source', v: String(liveChecks.source) } : null,
+  ].filter((item): item is { l: string; v: string } => Boolean(item));
+  const blockerItems = [
+    ...(Array.isArray(analysis?.hard_blockers) ? analysis?.hard_blockers : []),
+    ...(Array.isArray(analysis?.soft_blockers) ? analysis?.soft_blockers : []),
+  ];
 
   const handleExport = async () => {
     if (!tripId) return;
@@ -1169,10 +1302,10 @@ function ResultsView({
         {/* Results header grid */}
         <div className='itinerary-reveal' style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginBottom: 24 }}>
           {/* Score card */}
-          <div style={{ padding: '24px 26px', borderRadius: 20, background: T.surface, border: `1px solid ${T.b0}` }}>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t3, marginBottom: 14 }}>
-              Itinerary Health Score
-            </div>
+            <div style={{ padding: '24px 26px', borderRadius: 20, background: T.surface, border: `1px solid ${T.b0}` }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t3, marginBottom: 14 }}>
+                Itinerary Health Score
+              </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
               <div style={{ position: 'relative', width: 88, height: 88, flexShrink: 0 }}>
                 <svg width='88' height='88' viewBox='0 0 88 88' style={{ transform: 'rotate(-90deg)' }}>
@@ -1188,13 +1321,22 @@ function ResultsView({
               </div>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 600, color: T.t1, marginBottom: 5 }}>
-                  {analysis ? 'Live review' : 'Needs attention'}
+                  {analysis ? 'Live review' : errorMessage ? 'Live review unavailable' : 'Waiting for live review'}
                 </div>
                 <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.55 }}>{summaryCopy}</div>
+                {errorMessage ? (
+                  <div style={{ fontSize: 11, color: T.red, lineHeight: 1.55, marginTop: 8 }}>
+                    {errorMessage}
+                  </div>
+                ) : null}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-              {[{ l: 'Critical', v: 1, c: T.red }, { l: 'Warnings', v: 2, c: T.amber }, { l: 'Heads up', v: 2, c: T.blue }].map(m => (
+              {[
+                { l: 'Critical', v: Math.max(0, Array.isArray(analysis?.hard_blockers) ? analysis!.hard_blockers.length : 0), c: T.red },
+                { l: 'Warnings', v: Math.max(0, Array.isArray(analysis?.soft_blockers) ? analysis!.soft_blockers.length : 0), c: T.amber },
+                { l: 'Heads up', v: blockerItems.length > 0 ? blockerItems.length : 0, c: T.blue },
+              ].map(m => (
                 <div key={m.l} style={{ flex: 1, padding: '8px 10px', background: T.elevated, borderRadius: 8, textAlign: 'center' }}>
                   <div style={{ fontSize: 20, fontWeight: 800, color: m.c, fontFamily: T.fDisplay }}>{m.v}</div>
                   <div style={{ fontSize: 10, color: T.t3, marginTop: 1 }}>{m.l}</div>
@@ -1210,14 +1352,7 @@ function ResultsView({
                 Trip Summary (Extracted)
               </div>
               <div className='itinerary-stagger' style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-                {[
-                  { l: 'Dates',         v: 'May 19 – Jun 3, 2025' },
-                  { l: 'Duration',      v: '16 days'              },
-                  { l: 'Destinations',  v: 'LAX → LHR → PAR → FCO' },
-                  { l: 'Travelers',     v: '2 adults'             },
-                  { l: 'Hotels',        v: '4 properties'         },
-                  { l: 'Flights',       v: '5 segments'           },
-                ].map(f => (
+                {(tripSummary.length > 0 ? tripSummary : [{ l: 'Status', v: errorMessage ? 'No live analysis returned' : 'Waiting for parsed itinerary details' }]).map(f => (
                   <div key={f.l}>
                     <div style={{ fontSize: 9.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: T.t4 }}>{f.l}</div>
                     <div style={{ fontSize: 12.5, color: T.t1, marginTop: 2, fontFamily: T.fMono }}>{f.v}</div>
@@ -1232,7 +1367,27 @@ function ResultsView({
                 <div style={{ fontSize: 11, color: T.t2, marginBottom: 10 }}>
                   {String(liveChecks.destination ?? 'Destination')} · {String(liveChecks.climate?.precipitation_mm_avg ?? 'n/a')} mm avg rain · {String(liveChecks.climate?.wind_kmh_avg ?? 'n/a')} km/h wind
                 </div>
+                <div style={{ fontSize: 11, color: T.t3, marginBottom: 10 }}>
+                  {liveChecks.current_conditions ? (
+                    <>
+                      Current weather: {String(liveChecks.current_conditions.current?.temperature_c ?? 'n/a')}°C now
+                      {liveChecks.current_conditions.current?.apparent_temperature_c != null
+                        ? `, feels like ${String(liveChecks.current_conditions.current.apparent_temperature_c)}°C`
+                        : ''}
+                      {liveChecks.current_conditions.current?.wind_kmh != null
+                        ? `, wind ${String(liveChecks.current_conditions.current.wind_kmh)} km/h`
+                        : ''}
+                    </>
+                  ) : (
+                    'Current weather signal unavailable'
+                  )}
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {Array.isArray(liveChecks.signals) && liveChecks.signals.length > 0 ? (
+                    <div style={{ fontSize: 11.5, color: T.cyan, lineHeight: 1.5 }}>
+                      Source signals: {liveChecks.signals.slice(0, 3).join(' · ')}
+                    </div>
+                  ) : null}
                   {(Array.isArray(liveChecks.soft_blockers) ? liveChecks.soft_blockers : []).slice(0, 2).map((item: string) => (
                     <div key={item} style={{ fontSize: 11.5, color: T.t1, lineHeight: 1.5 }}>
                       • {item}
@@ -1344,40 +1499,44 @@ function ResultsView({
         {/* Findings */}
         <div className='itinerary-stagger' style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t2, marginBottom: 12 }}>Findings</div>
-          <div className='itinerary-stagger' style={{ display: 'grid', gap: 10 }}>
-            {ISSUES.map(issue => {
-              const c = rSevColor(issue.sev) as keyof typeof rSevBadgeTxt;
-              return (
-                <div key={issue.label} style={{
-                  padding: '14px 16px', borderRadius: 12,
-                  background: issue.bg, border: `1px solid ${issue.border}`,
-                  display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 14, alignItems: 'flex-start',
-                }}>
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                    padding: '2px 7px', borderRadius: 5, marginTop: 1,
-                    fontSize: 10, fontWeight: 700, fontFamily: T.fMono,
-                    textTransform: 'uppercase', letterSpacing: '0.04em',
-                    color: rSevBadgeTxt[c], background: rSevBadgeBg[c], border: `1px solid ${rSevBadgeBdr[c]}`,
-                    flexShrink: 0,
+          {blockerItems.length > 0 ? (
+            <div className='itinerary-stagger' style={{ display: 'grid', gap: 10 }}>
+              {blockerItems.map((item, index) => {
+                const severity = index < (analysis?.hard_blockers?.length ?? 0) ? 'Critical' : 'Warning';
+                const c = rSevColor(severity) as keyof typeof rSevBadgeTxt;
+                return (
+                  <div key={`${severity}-${index}-${item}`} style={{
+                    padding: '14px 16px', borderRadius: 12,
+                    background: severity === 'Critical' ? 'rgba(248,81,73,0.06)' : 'rgba(210,153,34,0.06)',
+                    border: severity === 'Critical' ? '1px solid rgba(248,81,73,0.2)' : '1px solid rgba(210,153,34,0.2)',
+                    display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 14, alignItems: 'flex-start',
                   }}>
-                    {issue.sev}
-                  </span>
-                  <div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: T.t1, marginBottom: 3 }}>{issue.label}</div>
-                    <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.55 }}>{issue.body}</div>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      padding: '2px 7px', borderRadius: 5, marginTop: 1,
+                      fontSize: 10, fontWeight: 700, fontFamily: T.fMono,
+                      textTransform: 'uppercase', letterSpacing: '0.04em',
+                      color: rSevBadgeTxt[c], background: rSevBadgeBg[c], border: `1px solid ${rSevBadgeBdr[c]}`,
+                      flexShrink: 0,
+                    }}>
+                      {severity}
+                    </span>
+                    <div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: T.t1, lineHeight: 1.55 }}>{item}</div>
+                    </div>
                   </div>
-                  <button style={{
-                    fontSize: 11, color: issue.color, fontWeight: 600,
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    fontFamily: T.fBody, flexShrink: 0, paddingTop: 2,
-                  }}>
-                    Fix it →
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{
+              padding: '14px 16px', borderRadius: 12,
+              background: 'rgba(88,166,255,0.05)', border: '1px solid rgba(88,166,255,0.15)',
+              fontSize: 12, color: T.t2, lineHeight: 1.55,
+            }}>
+              No blockers returned yet. Upload a real itinerary to surface timing, climate, and plan-quality issues.
+            </div>
+          )}
         </div>
 
         {/* Soft agency conversion */}
@@ -1426,7 +1585,8 @@ function ResultsView({
 export default function ItineraryCheckerPage() {
   const [view, setView] = useState<'upload' | 'results'>('upload');
   const [analysis, setAnalysis] = useState<RunStatusResponse | null>(null);
-  const { execute: executeSpineRun, isLoading: isAnalyzing } = useSpineRun();
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const motionRootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1469,6 +1629,35 @@ export default function ItineraryCheckerPage() {
           repeat: -1,
           ease: 'none',
         });
+
+        gsap.to('.itinerary-plane', {
+          x: 18,
+          y: -12,
+          rotate: 10,
+          duration: 4.4,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+        });
+
+        gsap.to('.itinerary-stamp', {
+          rotate: 4,
+          scale: 1.02,
+          duration: 2.8,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+        });
+
+        gsap.to('.itinerary-route-pip circle', {
+          scale: 1.18,
+          transformOrigin: '50% 50%',
+          duration: 1.6,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+          stagger: 0.18,
+        });
       }
 
       gsap.fromTo('.itinerary-reveal', {
@@ -1505,8 +1694,9 @@ export default function ItineraryCheckerPage() {
     const retentionConsent = Boolean(sourcePayload?.retention_consent);
     const storedPayload = retentionConsent ? sourcePayload : undefined;
 
+    setIsAnalyzing(true);
     try {
-      const result = await executeSpineRun({
+      const result = await api.post<RunStatusResponse>('/api/public-checker/run', {
         raw_note: trimmed,
         owner_note: '',
         itinerary_text: trimmed,
@@ -1517,11 +1707,15 @@ export default function ItineraryCheckerPage() {
         strict_leakage: true,
         scenario_id: null,
       });
+      setAnalysisError(null);
       setAnalysis(result);
       setView('results');
-    } catch {
+    } catch (error) {
       setAnalysis(null);
+      setAnalysisError(error instanceof Error ? error.message : 'The live run did not return a result. Check the backend and try again.');
       setView('results');
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -1555,13 +1749,8 @@ export default function ItineraryCheckerPage() {
     });
   };
 
-  const handleFallbackResults = () => {
-    setAnalysis(null);
-    setView('results');
-  };
-
   if (view === 'results') {
-    return <ResultsView rootRef={motionRootRef} onReset={() => { setAnalysis(null); setView('upload'); }} analysis={analysis} />;
+    return <ResultsView rootRef={motionRootRef} onReset={() => { setAnalysis(null); setAnalysisError(null); setView('upload'); }} analysis={analysis} errorMessage={analysisError} />;
   }
 
   return (
@@ -1569,7 +1758,6 @@ export default function ItineraryCheckerPage() {
       rootRef={motionRootRef}
       onAnalyze={handleAnalyze}
       onAnalyzeFile={handleAnalyzeFile}
-      onFallbackResults={handleFallbackResults}
       isBusy={isAnalyzing}
     />
   );

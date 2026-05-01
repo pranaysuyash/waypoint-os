@@ -22,6 +22,7 @@ This series covers the WhatsApp Business Platform as the primary channel for Ind
 | 2 | [WHATSAPP_BIZ_02_FLOWS.md](WHATSAPP_BIZ_02_FLOWS.md) | AI-assisted sales conversations, auto-response service, WhatsApp payments, rich media delivery |
 | 3 | [WHATSAPP_BIZ_03_MARKETING.md](WHATSAPP_BIZ_03_MARKETING.md) | Marketing campaigns, engagement sequences, broadcast management, WhatsApp analytics |
 | 4 | [WHATSAPP_BIZ_04_AGENT_TOOLKIT.md](WHATSAPP_BIZ_04_AGENT_TOOLKIT.md) | Unified inbox, quick replies, agent handoff, conversation management, agent performance |
+| 5 | [WHATSAPP_BIZ_05_POLICY.md](WHATSAPP_BIZ_05_POLICY.md) | Policy compliance, 24h window rules, template categories, Commerce Policy, opt-in requirements, rate limits, quality scores |
 
 ---
 

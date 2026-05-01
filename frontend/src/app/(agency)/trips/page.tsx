@@ -30,8 +30,8 @@ import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { InlineError } from '@/components/error-boundary';
 import type { Trip } from '@/lib/api-client';
 import { PlanningTripCard } from '@/components/workspace/PlanningTripCard';
-import { getPlanningListSummary } from '@/lib/planning-list-display';
-import { hasPlanningBriefBlocker } from '@/lib/planning-status';
+import { getPlanningListSummary, getPlanningStageLabel } from '@/lib/planning-list-display';
+import { getPlanningBriefStatus, hasPlanningBriefBlocker } from '@/lib/planning-status';
 import { WorkspaceTable, type SortField, type SortDirection } from './WorkspaceTable';
 
 // ============================================================================
@@ -75,20 +75,38 @@ function sortTrips(
   direction: SortDirection,
 ): Trip[] {
   const sorted = [...trips];
+  const stageRank = (trip: Trip): number => {
+    const stage = getPlanningStageLabel(trip);
+    const brief = getPlanningBriefStatus(trip);
+    const baseRank: Record<string, number> = {
+      Intake: 1,
+      Details: 2,
+      Options: 3,
+      'Quote Review': 4,
+      Output: 5,
+    };
+
+    const rank = baseRank[stage] ?? 99;
+    // Keep required-detail blockers grouped at the front of their stage.
+    if (brief === 'missing_required_details') return rank - 0.25;
+    if (brief === 'missing_recommended_details') return rank + 0.1;
+    return rank;
+  };
 
   sorted.sort((a, b) => {
-    // Always promote blocked (red) trips to top when sorting by state
-    if (field === 'state') {
-      const aBlocked = a.state === 'red' ? 1 : 0;
-      const bBlocked = b.state === 'red' ? 1 : 0;
-      if (aBlocked !== bBlocked) {
-        return bBlocked - aBlocked; // blocked (1) always before non-blocked (0)
+    if (field === 'stage') {
+      const aRank = stageRank(a);
+      const bRank = stageRank(b);
+      if (aRank !== bRank) {
+        return direction === 'asc' ? aRank - bRank : bRank - aRank;
       }
-      // Within same blocked status, sort by state name
-      if (a.state !== b.state) {
-        return direction === 'asc'
-          ? a.state.localeCompare(b.state)
-          : b.state.localeCompare(a.state);
+
+      // Tie-breaker: more urgent visual tone first (red -> amber -> blue -> green)
+      const urgency: Record<string, number> = { red: 0, amber: 1, blue: 2, green: 3 };
+      const aUrgency = urgency[a.state] ?? 9;
+      const bUrgency = urgency[b.state] ?? 9;
+      if (aUrgency !== bUrgency) {
+        return aUrgency - bUrgency;
       }
     }
 
@@ -251,7 +269,7 @@ function ViewToggle({
 export default function WorkspacesPage() {
   const { data: workspaceTrips, isLoading, error, refetch } = useTrips({ view: 'workspace' });
   const [viewMode, setViewMode] = useState<'card' | 'table'>(getSavedView);
-  const [sortField, setSortField] = useState<SortField>('state');
+  const [sortField, setSortField] = useState<SortField>('stage');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   // Persist view preference

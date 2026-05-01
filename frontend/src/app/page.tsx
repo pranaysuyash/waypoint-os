@@ -134,23 +134,25 @@ export default function HomePage() {
           <h1 className={`${styles.heroTitle} font-display`}>Waypoint OS</h1>
           <h2 className={styles.heroSubtitle}>The operating system for boutique travel agencies.</h2>
           <p className={styles.heroBody}>
-            From messy WhatsApp notes to client-safe proposals — Waypoint structures the intake,
-            surfaces the risks, and protects your margins.
+            From messy WhatsApp notes to client-safe proposals, Waypoint structures the intake,
+            surfaces the risks, and protects your margins. The public itinerary checker gives
+            travelers a cleaner brief before they ask you to build. Upload a PDF itinerary or
+            paste a travel plan to score weak points first.
           </p>
           <div className={styles.heroActions}>
             <Link href='/signup' className={styles.primaryButton}>
               Book a demo
               <ArrowRight className='h-4 w-4' />
             </Link>
-            <Link href='#product' className={styles.secondaryButton}>
-              Explore the product
+            <Link href='/itinerary-checker' className={styles.secondaryButton}>
+              See the public checker
             </Link>
           </div>
           <div className='flex flex-wrap gap-x-5 gap-y-2 mt-6'>
             {[
               'Built for travel, not generic SaaS',
               'End-to-end agency workspace',
-              'AI copilots your team',
+              'Public checker for traveler-led plan audits',
             ].map((t) => (
               <div key={t} className='flex items-center gap-1.5'>
                 <Check className='h-3.5 w-3.5 text-[#3fb950] shrink-0' />
@@ -415,11 +417,12 @@ export default function HomePage() {
       <section className={`${styles.section} ${styles.wedgeSection} animate-fade-up`}>
         <div className='animate-fade-up'>
           <Kicker>Free public tool</Kicker>
-          <h2 className='font-display'>Bring your plan. Get it scored.<br />Free, no account needed.</h2>
+          <h2 className='font-display'>Bring your itinerary or travel plan. Get it scored.<br />Free, no account needed.</h2>
           <p>
-            Think of it like an ATS for resumes, but for travel plans. The checker scores the itinerary
+            Think of it like an ATS for resumes, but for itineraries and travel plans. The checker scores the itinerary
             you already have, flags weak spots, and gives travelers cleaner context than any generic
-            contact form.
+            contact form. Upload a PDF itinerary or paste a travel plan to see the gaps before you ask
+            for a proposal. It is a public plan-audit layer, not a replacement for agency work.
           </p>
           <div className={styles.wedgeActions}>
             <Link href='/itinerary-checker' className={styles.primaryButton}>
@@ -442,7 +445,7 @@ export default function HomePage() {
           primaryHref='/signup'
           primaryLabel='Book a demo'
           secondaryHref='/itinerary-checker'
-          secondaryLabel='See pricing'
+          secondaryLabel='See the public checker'
         />
       </div>
 

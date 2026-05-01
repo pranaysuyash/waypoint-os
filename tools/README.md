@@ -144,3 +144,26 @@ Outputs:
 Notes:
 - Scenario fixture source: `data/fixtures/scenarios/SC-901_ravi_singapore_messy_call.json`.
 - Ensure backend and frontend dev servers are running before execution.
+
+## 5) `generate_dummy_singapore_itinerary_pdf.py`
+
+Purpose:
+- Generate a realistic sample Singapore family itinerary PDF for checker upload testing.
+- Produce a stable, visually polished PDF under `output/pdf/`.
+
+Use cases:
+- Create a dummy upload file for itinerary checker QA.
+- Test OCR, PDF text extraction, and live destination checks with a family-heavy travel plan.
+
+Usage:
+```bash
+cd /Users/pranay/Projects/travel_agency_agent
+uv run python tools/generate_dummy_singapore_itinerary_pdf.py
+```
+
+Output:
+- `output/pdf/pranay_family_singapore_may_dummy_itinerary.pdf`
+
+Notes:
+- The file is a sample only and does not represent a real booking.
+- Uses `reportlab` and the existing project venv / uv environment.

@@ -3550,3 +3550,37 @@ Remaining work is doc-level (adding REGULATORY_05_FEMA.md, WHATSAPP_BIZ_05_POLIC
 ### Projects-Level Pipeline
 Cross-project exploration system created at `/Users/pranay/Projects/exploration_maps/` by another agent. Uses same pattern: README + EXPLORATION_MAP_INDEX.md + per-project maps. Only travel_agency_agent is partially mapped.
 
+
+---
+
+## Part 44 — Doc-Level Gap Closure (2026-05-01)
+
+### Action Taken
+All 6 doc-level gaps identified in Parts 42-43 have been closed. New documents added to existing series:
+
+| Doc | Series | Lines | Focus |
+|-----|--------|-------|-------|
+| REGULATORY_05_FEMA.md | Regulatory | ~150 | FEMA compliance, LRS limits (USD 250K/FY), TCS on LRS, remittance documentation, RBI reporting, forex card rules, repatriation tracking |
+| WHATSAPP_BIZ_05_POLICY.md | WhatsApp Business | ~200 | 24h messaging window rules, template categories (authentication/marketing/utility), Commerce Policy restrictions, opt-in requirements, rate limit tiers, quality score factors |
+| VISA_04_ECR_ECNR.md | Visa & Documentation | ~140 | ECR/ECNR passport classification, 18 emigration clearance countries, tourist vs employment visa impact, platform handling, emigration clearance process |
+| VISA_05_VOA.md | Visa & Documentation | ~180 | VOA countries for Indian passport holders (Asia, Africa, Americas, Oceania), e-VOA process workflow, concierge service model, VOA process by booking phase |
+| PRICING_05_DISCOUNT_AUTH.md | Pricing Engine | ~160 | Discount authorization matrix (agent→director hierarchy), margin floor protection by service type, discount types & stacking rules, audit trail |
+
+### Master Index Updates
+- REGULATORY_MASTER_INDEX.md: Added doc 05
+- VISA_MASTER_INDEX.md: Added docs 04-05
+- WHATSAPP_BIZ_MASTER_INDEX.md: Added doc 05
+- PRICING_ENGINE_MASTER_INDEX.md: Added doc 05
+
+### Final Documentation Map Status
+- **215 series** (unchanged — these are doc-level additions to existing series)
+- **703 topic documents** (698 + 5 new)
+- **Series-level saturation:** Confirmed at 0% new series from last 3 frameworks
+- **Doc-level gaps:** All identified gaps now closed
+
+### Remaining Work
+- Fill research content into topic stubs (most of the 703 docs are research prompts)
+- Pipeline Stage Data Scope Review (in TRAVEL_AGENCY_TODO.md)
+- FrontierDashboard data pipeline fix (another agent)
+- Production deployment strategy
+

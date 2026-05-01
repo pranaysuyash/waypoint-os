@@ -1,13 +1,12 @@
 import { NextRequest } from "next/server";
 import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
-import { transformSpineTripsResponseToInboxTrips } from "@/lib/bff-trip-adapters";
+import { transformSpineTripToInboxTrip } from "@/lib/bff-trip-adapters";
 
 export async function GET(request: NextRequest) {
   try {
-    // Forward request to spine_api with all query parameters
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.toString();
-    const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/trips${query ? `?${query}` : ""}`;
+    const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/inbox${query ? `?${query}` : ""}`;
 
     const response = await fetch(spineApiUrl, bffFetchOptions(request, "GET"));
 
@@ -18,24 +17,16 @@ export async function GET(request: NextRequest) {
       throw new Error(`Spine API returned ${response.status}`);
     }
 
-    const spineApiData = await response.json();
-    
-    const inboxTrips = transformSpineTripsResponseToInboxTrips(spineApiData);
-    
-    // Apply pagination
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "20", 10);
-    const start = (page - 1) * limit;
-    const paginatedTrips = inboxTrips.slice(start, start + limit);
-    const hasMore = start + limit < inboxTrips.length;
-    
-    return bffJson({ 
-      items: paginatedTrips, 
-      total: inboxTrips.length, 
-      hasMore 
+    const data = await response.json();
+    const items = (data.items || []).map((t: unknown) =>
+      transformSpineTripToInboxTrip(t)
+    );
+    return bffJson({
+      ...data,
+      items,
     });
   } catch (error) {
-    console.error("Error fetching inbox from spine_api:", error);
+    console.error("Error proxying inbox:", error);
     return bffJson({ error: "Failed to fetch inbox" }, 500);
   }
 }

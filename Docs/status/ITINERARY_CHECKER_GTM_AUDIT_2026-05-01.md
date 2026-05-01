@@ -78,8 +78,8 @@ The objective is only complete when all of the following are true:
 
 ## What Is Still Missing
 
-1. The public checker currently uses one live climate source; broader enrichment sources can be added later if desired.
-2. More granular retention windows and background cleanup can still be added as a later hardening pass.
+1. The public checker already uses live climate and current-weather signals; broader enrichment sources can be added later if desired.
+2. Returning-user recognition, richer live enrichment, and consent-aware long-term memory can be expanded later as product and policy decisions, not as a hard retention-window requirement.
 
 ## Design References Reviewed
 
@@ -117,5 +117,5 @@ Reason:
 ## Next Concrete Build Step
 
 1. Add richer live-data sources if the wedge needs broader destination intelligence.
-2. Add retention windows / background cleanup for long-term operational hygiene.
+2. Add richer inline evidence for current weather, destination conditions, and other consented enrichment signals.
 3. Keep the public checker design system updated as the wedge evolves.
