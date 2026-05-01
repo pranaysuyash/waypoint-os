@@ -242,12 +242,12 @@ describe('IntakePanel', () => {
       />
     );
 
-    expect(screen.getByText('Before building options')).toBeInTheDocument();
+    expect(screen.getByText('Missing customer details')).toBeInTheDocument();
     expect(screen.getByText('Confirm budget range before building options.')).toBeInTheDocument();
     expect(screen.getByText('Next')).toBeInTheDocument();
     expect(screen.getByText('Ask the traveler for budget range.')).toBeInTheDocument();
     expect(screen.getByText('Watch')).toBeInTheDocument();
-    expect(screen.getByText('Incomplete intake.')).toBeInTheDocument();
+    expect(screen.getByText('Blocked by missing details.')).toBeInTheDocument();
     expect(screen.getByText('Inquiry Ref')).toBeInTheDocument();
     expect(screen.getAllByText(/4B9E/i).length).toBeGreaterThan(0);
     expect(screen.queryByText('trip_4b9e0d894872')).not.toBeInTheDocument();

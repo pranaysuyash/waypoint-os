@@ -175,7 +175,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                             {item.label}
                           </span>
                           <span className='hidden md:inline text-[10px] ml-auto' style={{ color: 'var(--text-placeholder)' }}>
-                            Soon
+                            Planned
                           </span>
                         </div>
                       </li>
@@ -278,7 +278,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <div className='flex items-center gap-3'>
             <div className='flex items-center gap-1.5 text-xs font-mono' style={{ color: 'var(--text-muted)' }} role='status' aria-live='polite'>
               <Zap className='h-3 w-3' style={{ color: 'var(--accent-amber)' }} aria-hidden='true' />
-              <span>ready</span>
+              <span>System ready</span>
             </div>
             <UserMenu />
           </div>

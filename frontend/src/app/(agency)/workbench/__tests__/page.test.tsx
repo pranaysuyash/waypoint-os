@@ -147,6 +147,6 @@ describe('WorkbenchPage', () => {
     render(<WorkbenchPage />);
 
     // The page should still render without crashing
-    expect(screen.getByText(/process trip/i)).toBeInTheDocument();
+    expect(screen.getByText(/process inquiry/i)).toBeInTheDocument();
   });
 });

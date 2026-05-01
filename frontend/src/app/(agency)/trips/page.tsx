@@ -156,6 +156,13 @@ const WorkspaceCard = memo(function WorkspaceCard({ trip }: { trip: Trip }) {
           </span>
         </div>
 
+        <div className='flex items-center gap-1.5'>
+          <span className='text-[11px]' style={{ color: 'var(--text-muted)' }}>Stage:</span>
+          <span className='text-[11px] font-semibold' style={{ color: 'var(--accent-blue)' }}>{summary.stage}</span>
+          <span className='text-[11px]' style={{ color: 'var(--text-muted)' }}>·</span>
+          <span className='text-[11px]' style={{ color: 'var(--text-muted)' }}>{summary.progress.join(' · ')}</span>
+        </div>
+
         <div className='flex flex-wrap gap-2'>
           <span
             className='rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide'

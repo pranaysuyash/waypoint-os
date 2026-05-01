@@ -66,12 +66,6 @@ function safeParseJson(raw: string): Record<string, unknown> | null {
 
 const workspaceTabs = [
   { id: 'intake', label: 'New Inquiry' },
-  { id: 'packet', label: 'Trip Details' },
-  { id: 'decision', label: 'Ready to Quote?' },
-  { id: 'strategy', label: 'Build Options' },
-  { id: 'safety', label: 'Final Review' },
-  { id: 'output', label: 'Output Delivery' },
-  { id: 'feedback', label: 'Feedback' },
 ] as const;
 
 type WorkspaceTabId = (typeof workspaceTabs)[number]['id'];
@@ -323,23 +317,7 @@ function WorkbenchContent() {
       currentState !== prevState &&
       (currentState === 'blocked' || currentState === 'failed')
     ) {
-      if (currentState === 'blocked') {
-        // Blocked runs with validation errors show details in the packet tab
-        handleTabChange('packet');
-      } else if (currentState === 'failed') {
-        const stage = spineRunState?.stage_at_failure;
-        const stageToTab: Record<string, WorkspaceTabId> = {
-          packet: 'packet',
-          validation: 'packet',
-          decision: 'decision',
-          strategy: 'strategy',
-          safety: 'safety',
-        };
-        const targetTab = stage ? stageToTab[stage] : undefined;
-        if (targetTab) {
-          handleTabChange(targetTab);
-        }
-      }
+      handleTabChange('intake');
     }
 
     prevRunStateRef.current = currentState;
@@ -731,7 +709,11 @@ function WorkbenchContent() {
         </div>
       )}
 
-      <PipelineFlow currentStage={pipelineStage} />
+      <div className="mx-6 mt-2">
+        <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+          After processing: incomplete leads appear in Lead Inbox · planning continues in Trips in Planning · quotes needing approval appear in Quote Review
+        </p>
+      </div>
 
       {/* Persistent blocked-state banner */}
       {store.result_validation && (
@@ -789,7 +771,7 @@ function WorkbenchContent() {
             <p className='text-ui-base text-[#a8b3c1] flex items-center gap-3'>
               {trip
                 ? `${trip.id} · ${trip.type} · ${trip.age}`
-                : 'Process travel requests and generate quotes'}
+                : 'Capture a customer request and send it into the workflow.'}
               {store.draft_id && !trip && (
                 <>
                   <span className='text-[#30363d]'>·</span>
@@ -901,7 +883,7 @@ function WorkbenchContent() {
                 (!store.input_raw_note && !store.input_owner_note)
               }
               className='flex items-center gap-2 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg font-medium hover:bg-[#6eb5ff] disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-              aria-label={isRunning ? 'Processing trip' : 'Process trip'}
+              aria-label={isRunning ? 'Processing inquiry' : 'Process inquiry'}
             >
               {isRunning ? (
                 <>
@@ -914,7 +896,7 @@ function WorkbenchContent() {
               ) : (
                 <>
                   <Play className='w-4 h-4' aria-hidden='true' />
-                  Process Trip
+                  Process Inquiry
                 </>
               )}
             </button>
@@ -1037,9 +1019,16 @@ function WorkbenchContent() {
           </div>
         </header>
 
-        <div className='mb-4'>
-          <ScenarioLab />
-        </div>
+        {process.env.NEXT_PUBLIC_ENABLE_SCENARIO_LAB === '1' && (
+        <details className='mb-4'>
+          <summary className='cursor-pointer list-none text-ui-xs font-medium text-text-muted hover:text-text-primary transition-colors px-6'>
+            Dev: Scenario Lab
+          </summary>
+          <div className='mt-2'>
+            <ScenarioLab />
+          </div>
+        </details>
+        )}
 
         <div className='bg-[#0f1115] border border-[#30363d] rounded-t-xl overflow-hidden'>
           <Tabs
@@ -1058,16 +1047,8 @@ function WorkbenchContent() {
           tabIndex={0}
         >
           <div className='p-6'>
-            <Suspense fallback={<InlineLoading message='Loading tab...' />}>
-              {activeTab === 'intake' && <IntakeTab trip={trip} />}
-              {activeTab === 'packet' && <PacketTab trip={trip} />}
-              {activeTab === 'decision' && <DecisionTab trip={trip} />}
-              {activeTab === 'strategy' && <StrategyTab trip={trip} />}
-              {activeTab === 'safety' && <SafetyTab trip={trip} />}
-              {activeTab === 'output' && <OutputPanel trip={trip} />}
-              {activeTab === 'feedback' && trip && (
-                <FeedbackPanel trip={trip} />
-              )}
+            <Suspense fallback={<InlineLoading message='Loading...' />}>
+              <IntakeTab trip={trip} />
             </Suspense>
           </div>
         </div>

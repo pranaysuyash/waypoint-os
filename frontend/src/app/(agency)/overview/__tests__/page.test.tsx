@@ -194,13 +194,7 @@ describe('OverviewPage', () => {
 
     expect(screen.getByText('No trips in planning yet')).toBeInTheDocument();
     expect(screen.getAllByText(/A lead is waiting in Lead Inbox/i).length).toBeGreaterThan(0);
-    const planningProgressHeading = screen.getByRole('heading', { name: /planning progress/i });
-    const planningProgressCard = planningProgressHeading.closest('div.rounded-xl');
-
-    expect(planningProgressCard).not.toBeNull();
-    expect(
-      within(planningProgressCard as HTMLElement).getByRole('link', { name: /^review lead$/i })
-    ).toHaveAttribute('href', ROUTES.inbox);
+    expect(screen.getByRole('link', { name: /review leads/i })).toHaveAttribute('href', ROUTES.inbox);
   });
 
   it('shows a true empty-account state when there are no leads or trips', () => {
@@ -221,7 +215,7 @@ describe('OverviewPage', () => {
   it('keeps the trip list visible when planning already has trips', () => {
     render(<OverviewPage />);
 
-    expect(screen.getByRole('link', { name: /continue planning/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /open missing details/i })).toBeInTheDocument();
     expect(screen.queryByText('No trips in planning yet')).not.toBeInTheDocument();
   });
 
@@ -236,13 +230,13 @@ describe('OverviewPage', () => {
     expect(within(planningCard as HTMLElement).getByText('Customer SC-901 · 5 pax · Around Feb 9–14')).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).getByText('Need Customer Details')).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).getByText('Budget missing')).toBeInTheDocument();
-    expect(within(planningCard as HTMLElement).getByText('Assigned')).toBeInTheDocument();
+    expect(within(planningCard as HTMLElement).getByText('In planning')).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).getByText('Next: confirm budget and origin before building options.')).toBeInTheDocument();
-    expect(within(planningCard as HTMLElement).getByText('Updated today')).toBeInTheDocument();
+    expect(within(planningCard as HTMLElement).getByText('Waiting on customer')).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).getByText('Inquiry Ref: 4B9E')).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).queryByText('Need Trip Options')).not.toBeInTheDocument();
     expect(screen.queryByText('trip_4b9e0d894872')).not.toBeInTheDocument();
     expect(screen.queryByText(/Most in Assigned/i)).not.toBeInTheDocument();
-    expect(screen.getByText('1 trip in planning · planning started')).toBeInTheDocument();
+    expect(screen.getByText('Planning Status · 2 planning')).toBeInTheDocument();
   });
 });

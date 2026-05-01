@@ -11,6 +11,7 @@ import {
   MapPin,
 } from 'lucide-react';
 import { getTripRoute } from '@/lib/routes';
+import { getPlanningListAction, getTripFreshnessLabel } from '@/lib/planning-list-display';
 import { InlineError } from '@/components/error-boundary';
 import type { Trip } from '@/lib/api-client';
 import {
@@ -88,9 +89,9 @@ function formatPlanningStageLabel(label: string): string {
 }
 
 function getAssignmentLabel(trip: Trip): string {
+  if (trip.status === 'completed') return 'Completed';
   if (trip.status === 'in_progress') return 'In progress';
-  if (trip.status === 'assigned') return 'Assigned';
-  return 'Assigned';
+  return 'In planning';
 }
 
 // ── StatCard: metric-first operational instrument ─────────────────────────
@@ -373,10 +374,20 @@ const PlanningTripCard = memo(function PlanningTripCard({ trip }: { trip: Trip }
   const budgetLabel = formatBudgetDisplay(trip.budget);
   const title = getPlanningHeaderTitle(trip);
   const subtitle = getPlanningIdentityLine(trip);
+  const action = getPlanningListAction(trip);
+  const freshness = getTripFreshnessLabel(trip);
+  const freshnessColors: Record<string, { fg: string; bg: string; border: string }> = {
+    neutral: { fg: '#8b949e', bg: 'rgba(139,148,158,0.10)', border: 'rgba(139,148,158,0.20)' },
+    blue: { fg: '#58a6ff', bg: 'rgba(88,166,255,0.10)', border: 'rgba(88,166,255,0.20)' },
+    amber: { fg: '#d29922', bg: 'rgba(210,153,34,0.12)', border: 'rgba(210,153,34,0.25)' },
+    red: { fg: '#f85149', bg: 'rgba(248,81,73,0.10)', border: 'rgba(248,81,73,0.25)' },
+    green: { fg: '#3fb950', bg: 'rgba(63,185,80,0.10)', border: 'rgba(63,185,80,0.25)' },
+  };
+  const fc = freshnessColors[freshness.tone] ?? freshnessColors.neutral;
 
   return (
     <Link
-      href={trip.id ? getTripRoute(trip.id) : '/trips'}
+      href={action.href}
       className='group block rounded-2xl border p-5 transition-all'
       style={{
         background: 'linear-gradient(180deg, rgba(17,20,27,0.98) 0%, rgba(12,16,22,0.98) 100%)',
@@ -403,8 +414,12 @@ const PlanningTripCard = memo(function PlanningTripCard({ trip }: { trip: Trip }
                 {subtitle}
               </p>
             </div>
-            <span className='text-[11px] font-medium rounded-full px-2.5 py-1 shrink-0' style={{ color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)' }}>
-              {getPlanningRecencyLabel(trip.age)}
+            <span
+              className='text-[11px] font-medium rounded-full px-2.5 py-1 shrink-0'
+              style={{ color: fc.fg, background: fc.bg, border: `1px solid ${fc.border}` }}
+              title={freshness.detail}
+            >
+              {freshness.label}
             </span>
           </div>
 
@@ -456,7 +471,7 @@ const PlanningTripCard = memo(function PlanningTripCard({ trip }: { trip: Trip }
             Inquiry Ref: {formatInquiryReference(trip.id)}
           </span>
           <span className='inline-flex items-center gap-1.5 text-[13px] font-medium' style={{ color: 'var(--accent-blue)' }}>
-            Continue planning
+            {action.label}
             <ChevronRight className='h-4 w-4 transition-transform group-hover:translate-x-0.5' aria-hidden='true' />
           </span>
         </div>
@@ -672,7 +687,7 @@ export default function OverviewPage() {
           />
         </section>
 
-        {/* Right rail: compact operational modules */}
+        {/* Right rail: pipeline + navigation + status */}
         <aside className='space-y-4'>
           <PipelineBar
             data={pipeline}
@@ -743,19 +758,23 @@ export default function OverviewPage() {
             style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}
           >
             <h2 className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>
-              Planning Status
+              Planning Status · {planningTripsTotal} planning
             </h2>
             <div className='mt-3 space-y-2'>
-              {stateEntries.map(([, meta]) => (
-                <div key={meta.label} className='flex items-center gap-2.5'>
-                  <span
-                    className='h-2 w-2 rounded-full shrink-0'
-                    style={{ background: meta.fg, boxShadow: `0 0 6px ${meta.fg}40` }}
-                    aria-hidden='true'
-                  />
-                  <span className='text-[12px] font-medium' style={{ color: 'var(--text-secondary)' }}>{meta.label}</span>
-                </div>
-              ))}
+              {stateEntries.map(([key, meta]) => {
+                const count = recentTrips?.filter((t) => getPlanningStatusTone(t) === key).length ?? 0;
+                return (
+                  <div key={meta.label} className='flex items-center gap-2.5'>
+                    <span
+                      className='h-2 w-2 rounded-full shrink-0'
+                      style={{ background: meta.fg, boxShadow: `0 0 6px ${meta.fg}40` }}
+                      aria-hidden='true'
+                    />
+                    <span className='text-[12px] font-medium' style={{ color: 'var(--text-secondary)' }}>{meta.label}</span>
+                    <span className='text-[11px]' style={{ color: 'var(--text-muted)' }}>· {count}</span>
+                  </div>
+                );
+              })}
             </div>
           </section>
         </aside>

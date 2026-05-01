@@ -62,6 +62,49 @@ export function getPlanningAssignmentLabel(trip?: Trip | null): string {
   return 'Assigned';
 }
 
+export function getPlanningStageLabel(trip?: Trip | null): string {
+  const briefStatus = getPlanningBriefStatus(trip);
+  if (briefStatus === "missing_required_details") return "Intake";
+  if (trip?.status === "ready_to_quote" || trip?.status === "ready_to_book") return "Quote Review";
+  if (trip?.status === "in_progress") return "Options";
+  return "Details";
+}
+
+export function getPlanningStageProgress(trip?: Trip | null): string[] {
+  const allStages = ["Intake", "Details", "Options", "Quote Review", "Output"];
+  const current = getPlanningStageLabel(trip);
+  const currentIdx = allStages.indexOf(current);
+  return allStages.map((stage, i) =>
+    i < currentIdx ? `${stage} ✓` : stage === current ? `${stage} →` : stage
+  );
+}
+
+export function getTripFreshnessLabel(trip?: Trip | null): { label: string; tone: string; detail: string } {
+  const age = trip?.age?.trim().toLowerCase() || "";
+  const isToday = age === "today";
+  const isYesterday = age === "yesterday";
+  const daysIdle = isToday ? 0 : isYesterday ? 1 : 2;
+
+  const hasRequiredBlockers = getPlanningBriefStatus(trip) === "missing_required_details";
+  const isOptionsReady = getPlanningBriefStatus(trip) === "missing_recommended_details" || getPlanningBriefStatus(trip) === "complete";
+  const isQuoteReview = trip?.status === "ready_to_quote" || trip?.status === "ready_to_book";
+
+  if (isQuoteReview) return { label: "Waiting on review", tone: "blue", detail: isToday ? "Updated today" : `${daysIdle} day${daysIdle > 1 ? 's' : ''} idle` };
+  if (hasRequiredBlockers) {
+    if (daysIdle >= 3) return { label: "Delayed", tone: "red", detail: `${daysIdle} days idle` };
+    if (daysIdle >= 2) return { label: "Needs action", tone: "amber", detail: `${daysIdle} days idle` };
+    return { label: "Waiting on customer", tone: "blue", detail: isToday ? "Updated today" : `${daysIdle} day idle` };
+  }
+  if (isOptionsReady) {
+    if (daysIdle >= 3) return { label: "Delayed", tone: "red", detail: `${daysIdle} days idle` };
+    if (daysIdle >= 2) return { label: "Needs action", tone: "amber", detail: `${daysIdle} days idle` };
+    return { label: "Options pending", tone: "blue", detail: isToday ? "Updated today" : `${daysIdle} day idle` };
+  }
+
+  if (isToday) return { label: "In progress", tone: "neutral", detail: "Updated today" };
+  return { label: "In progress", tone: "neutral", detail: `Updated ${trip?.age || "recently"}` };
+}
+
 export function getPlanningListAction(trip?: Trip | null): { label: string; href: string } {
   const href = getTripRoute(trip?.id, 'intake');
 
@@ -69,12 +112,18 @@ export function getPlanningListAction(trip?: Trip | null): { label: string; href
     return { label: 'Open missing details', href };
   }
 
-  return { label: 'Continue planning', href };
+  if (trip?.status === 'ready_to_quote' || trip?.status === 'ready_to_book') {
+    return { label: 'Review quote', href: getTripRoute(trip?.id, 'decision') };
+  }
+
+  return { label: 'Open options', href: getTripRoute(trip?.id, 'strategy') };
 }
 
 export function getPlanningListSummary(trip: Trip) {
   const requiredFields = getRequiredPlanningFields(trip);
   const missingBadges = requiredFields.map(formatMissingDetailBadge);
+  const stage = getPlanningStageLabel(trip);
+  const progress = getPlanningStageProgress(trip);
 
   return {
     title: getPlanningHeaderTitle(trip),
@@ -89,5 +138,7 @@ export function getPlanningListSummary(trip: Trip) {
     missingFields: requiredFields,
     missingBadges,
     action: getPlanningListAction(trip),
+    stage,
+    progress,
   };
 }

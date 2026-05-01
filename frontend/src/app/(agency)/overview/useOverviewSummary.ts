@@ -97,7 +97,7 @@ export function useOverviewSummary() {
         sub: inbox.isLoading
           ? 'Loading...'
           : `${pluralize(inbox.total, 'new lead', 'new leads')} to review`,
-        ctaLabel: 'Review leads',
+        ctaLabel: inbox.total > 0 ? 'Review leads' : 'Open inbox',
         href: '/inbox',
         state: 'amber',
         icon: Inbox,
@@ -110,7 +110,7 @@ export function useOverviewSummary() {
         sub: pendingReviews.isLoading
           ? 'Loading...'
           : `${pluralize(pendingApprovalCount, 'quote', 'quotes')} to review`,
-        ctaLabel: 'Review quotes',
+        ctaLabel: pendingApprovalCount > 0 ? 'Review quotes' : 'Open quote review',
         href: '/reviews',
         state: 'green',
         icon: CheckCircle2,

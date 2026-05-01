@@ -12,8 +12,6 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const {
     strict_leakage,
     setStrictLeakage,
-    debug_raw_json,
-    setDebugRawJson,
   } = useWorkbenchStore();
 
   if (!open) return null;

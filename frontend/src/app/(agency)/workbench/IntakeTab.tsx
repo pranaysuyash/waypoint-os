@@ -65,7 +65,7 @@ export default function IntakeTab({ trip }: IntakeTabProps) {
         <div className='flex items-center gap-2 mb-4'>
           <Plane className='w-4 h-4 text-[#58a6ff]' />
           <h3 className='text-ui-sm font-semibold text-[#e6edf3]'>
-            Trip Details
+            Captured Details
           </h3>
         </div>
         {trip ? (
@@ -105,7 +105,7 @@ export default function IntakeTab({ trip }: IntakeTabProps) {
           </div>
         ) : (
           <p className='text-ui-sm text-[#8b949e]'>
-            No trip loaded. Select a trip from the inbox or dashboard to view its details.
+            Captured details will appear here after processing the inquiry.
           </p>
         )}
       </div>
@@ -144,12 +144,12 @@ export default function IntakeTab({ trip }: IntakeTabProps) {
         </div>
       </div>
 
-      <div className='bg-[#161b22] border border-[#30363d] rounded-xl p-4'>
-        <h3 className='text-ui-sm font-semibold text-[#e6edf3] mb-4 flex items-center gap-2'>
+      <details className='bg-[#161b22] border border-[#30363d] rounded-xl'>
+        <summary className='flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-ui-sm font-medium text-[#e6edf3] hover:text-[#58a6ff] transition-colors'>
           <Settings className='w-4 h-4 text-[#8b949e]' />
-          Configuration
-        </h3>
-        <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+          Advanced Configuration
+        </summary>
+        <div className='px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-4'>
           <div>
             <label className='block text-ui-sm font-medium text-[#8b949e] mb-2'>
               Stage
@@ -195,7 +195,7 @@ export default function IntakeTab({ trip }: IntakeTabProps) {
             </div>
           </div>
         </div>
-      </div>
+      </details>
 
       <div className='flex items-center justify-between pt-4 border-t border-[#30363d]'>
         <div className='flex items-center gap-4 text-ui-sm text-[#8b949e]'>

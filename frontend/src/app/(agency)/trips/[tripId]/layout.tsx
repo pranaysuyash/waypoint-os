@@ -29,8 +29,8 @@ import type { TimelineResponse } from "@/types/spine";
 const STAGE_TABS: { id: WorkspaceStage; label: string }[] = [
   { id: "intake",   label: "Intake"          },
   { id: "packet",   label: "Trip Details"    },
-  { id: "decision", label: "Quote Assessment"},
   { id: "strategy", label: "Options"         },
+  { id: "decision", label: "Quote Assessment"},
   { id: "output",   label: "Output"          },
   { id: "safety",   label: "Safety Review"   },
   { id: "timeline", label: "Timeline"        },

@@ -223,8 +223,8 @@ export function getPlanningRecencyLabel(age?: string | null): string {
 
 export function getPlanningBlockerTitle(isLeadReview: boolean, trip?: Trip | null): string {
   if (isLeadReview) return "Missing before planning";
-  if (hasPlanningBriefBlocker(trip)) return "Before building options";
-  return "Missing before quote";
+  if (hasPlanningBriefBlocker(trip)) return "Missing customer details";
+  return "Ready to build options";
 }
 
 export function getPlanningBlockerBody(isLeadReview: boolean, trip?: Trip | null): string {
@@ -234,7 +234,7 @@ export function getPlanningBlockerBody(isLeadReview: boolean, trip?: Trip | null
     if (requiredFields.length === 0) return "Confirm any must-have trip details.";
     return `Confirm ${formatPlanningFieldList(requiredFields)} before building options.`;
   }
-  return "No blocking issues found yet. Some customer details may still need confirmation before quoting.";
+  return "Required trip details are complete.";
 }
 
 export function getPlanningSuggestedNextMove(isLeadReview: boolean, trip?: Trip | null): string {
@@ -243,6 +243,11 @@ export function getPlanningSuggestedNextMove(isLeadReview: boolean, trip?: Trip 
   const requiredFields = getRequiredPlanningFields(trip);
   if (requiredFields.length > 0) {
     return `Ask the traveler for ${formatPlanningFieldList(requiredFields).toLowerCase()}.`;
+  }
+
+  const recommendedFields = getRecommendedPlanningFields(trip);
+  if (recommendedFields.length > 0) {
+    return "Add recommended details or continue to options.";
   }
 
   const decisionState = trip?.decision?.decision_state;
@@ -341,9 +346,9 @@ export function getPlanningNextAction(trip?: Trip | null): string {
     return `Next: confirm ${formatPlanningFieldList(requiredFields)} before building options.`;
   }
   if (getPlanningBriefStatus(trip) === "missing_recommended_details") {
-    return "Next: refine the brief or continue to options.";
+    return "Next: review recommended details before building options.";
   }
-  return "Next: build package options.";
+  return "Next: trip details are complete. Options builder is pending.";
 }
 
 export function getPlanningSummaryText(label: string, total: number): string {

@@ -130,7 +130,6 @@ describe("trips/[tripId]/layout", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Singapore family leisure trip" })).toBeInTheDocument();
-    expect(screen.getByText("Needs details")).toBeInTheDocument();
     expect(screen.getByText(/5 pax · Around Feb 9–14 · Budget missing · Inquiry Ref 4B9E/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Lead Inbox" })).toHaveAttribute("href", "/inbox");
     expect(screen.queryByText("trip_4b9e0d894872")).not.toBeInTheDocument();
@@ -285,10 +284,10 @@ describe("trips/[tripId]/layout", () => {
       </WorkspaceTripLayoutShell>,
     );
 
-    expect(await screen.findByRole("button", { name: "Timeline · 1 event" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Show activity" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Trip timeline")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Timeline · 1 event" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show activity" }));
 
     expect(screen.getByLabelText("Trip timeline")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Timeline Summary" })).toBeInTheDocument();

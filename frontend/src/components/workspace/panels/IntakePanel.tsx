@@ -42,8 +42,10 @@ import { formatBudgetDisplay, formatDateWindowDisplay, formatInquiryReference } 
 import {
   getPlanningBlockerBody,
   getPlanningBlockerTitle,
+  getPlanningBriefStatus,
   getPlanningMissingDetails,
   getPlanningSuggestedNextMove,
+  getRecommendedPlanningFields,
   hasPlanningBriefBlocker,
 } from '@/lib/planning-status';
 import { SmartCombobox } from '@/components/ui/SmartCombobox';
@@ -1145,7 +1147,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
             <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>
               {getPlanningBlockerBody(true, trip)}
             </p>
-          ) : decisionState ? (
+          ) : decisionState || trip ? (
             <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>
               {getPlanningBlockerBody(false, trip)}
             </p>
@@ -1161,15 +1163,26 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
               Add {requiredPlanningDetails[0]!.label.toLowerCase()}
             </button>
           )}
+          {!isLeadReview && !hasPlanningBriefBlocker(trip) && !hardBlockers.length && (
+            <button
+              type='button'
+              onClick={() => router.push(`/trips/${tripId}/strategy`)}
+              className='mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-default)] text-[12px] font-medium text-[var(--text-primary)] hover:bg-elevated transition-colors'
+            >
+              Open options
+            </button>
+          )}
         </div>
 
         <div className='min-w-0 rounded-lg bg-[rgba(57,208,216,0.04)] px-3 py-2'>
-          <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-cyan)]'>Next</p>
+          <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-cyan)]'>
+            {!isLeadReview && !hasPlanningBriefBlocker(trip) && !hasPlanningBriefBlocker(trip) ? "Next" : "Next"}
+          </p>
           {isLeadReview ? (
             <p className='mt-1 text-[13px] leading-5 text-[var(--text-rationale)]'>
               {getPlanningSuggestedNextMove(true, trip)}
             </p>
-          ) : decisionState ? (
+          ) : decisionState || trip ? (
             <p className='mt-1 text-[13px] leading-5 text-[var(--text-rationale)]'>
               {getPlanningSuggestedNextMove(false, trip)}
             </p>
@@ -1191,26 +1204,36 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
               Draft follow-up
             </button>
           )}
+          {!isLeadReview && !hasPlanningBriefBlocker(trip) && (
+            <button
+              type='button'
+              onClick={() => {
+                const firstRecommended = recommendedPlanningDetails[0];
+                if (firstRecommended) {
+                  openPlanningEditor(firstRecommended.id);
+                }
+              }}
+              className='mt-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[var(--border-default)] text-[12px] font-medium text-[var(--text-primary)] hover:bg-elevated transition-colors'
+            >
+              {recommendedPlanningDetails.length > 0 ? `Add ${recommendedPlanningDetails[0]!.label.toLowerCase()}` : 'Continue to options'}
+            </button>
+          )}
         </div>
 
         <div className='min-w-0 rounded-lg bg-[rgba(88,166,255,0.04)] px-3 py-2'>
           <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-blue)]'>Watch</p>
-          {watchPointLabels.length > 0 ? (
-            planningBriefBlocked ? (
-              <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>
-                {`${watchPointLabels[0].charAt(0).toUpperCase()}${watchPointLabels[0].slice(1)}.`}
-              </p>
-            ) : (
-              <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>
-                {watchPointLabels.slice(0, 2).join(' · ')}
-              </p>
-            )
-          ) : isLeadReview ? (
+          {isLeadReview ? (
             <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>Incomplete intake.</p>
-          ) : decisionState ? (
-            <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>No soft blockers flagged.</p>
+          ) : hasPlanningBriefBlocker(trip) ? (
+            <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>Blocked by missing details.</p>
+          ) : getPlanningBriefStatus(trip) === "missing_recommended_details" ? (
+            <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>Recommended details missing: {getRecommendedPlanningFields(trip).join(", ")}.</p>
+          ) : watchPointLabels.length > 0 ? (
+            <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>
+              {watchPointLabels.slice(0, 2).join(' · ')}
+            </p>
           ) : (
-            <p className='mt-1 text-[13px] italic leading-5 text-[var(--text-placeholder)]'>Process trip to surface watch points</p>
+            <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>No open issues.</p>
           )}
         </div>
       </div>
