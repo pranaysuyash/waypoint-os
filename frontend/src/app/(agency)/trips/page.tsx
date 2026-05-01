@@ -29,10 +29,8 @@ import { useTrips } from '@/hooks/useTrips';
 import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { InlineError } from '@/components/error-boundary';
 import type { Trip } from '@/lib/api-client';
-import {
-  getPlanningListSummary,
-  PLANNING_LIST_STATE_META,
-} from '@/lib/planning-list-display';
+import { PlanningTripCard } from '@/components/workspace/PlanningTripCard';
+import { getPlanningListSummary } from '@/lib/planning-list-display';
 import { hasPlanningBriefBlocker } from '@/lib/planning-status';
 import { WorkspaceTable, type SortField, type SortDirection } from './WorkspaceTable';
 
@@ -122,102 +120,6 @@ function sortTrips(
 // ============================================================================
 // WORKSPACE TRIP CARD
 // ============================================================================
-
-const WorkspaceCard = memo(function WorkspaceCard({ trip }: { trip: Trip }) {
-  const summary = getPlanningListSummary(trip);
-  const meta = PLANNING_LIST_STATE_META[summary.statusTone] ?? PLANNING_LIST_STATE_META.blue;
-  const emphasisBadges = summary.missingBadges.length > 0 ? summary.missingBadges : [summary.budgetLabel];
-
-  return (
-    <Link
-      href={summary.action.href}
-      className='group block rounded-2xl border p-5 transition-all'
-      style={{
-        background: 'linear-gradient(180deg, rgba(17,20,27,0.98) 0%, rgba(12,16,22,0.98) 100%)',
-        borderColor: meta.border,
-        boxShadow: '0 18px 44px rgba(0,0,0,0.20)',
-      }}
-    >
-      <div className='space-y-4'>
-        <div className='flex items-start justify-between gap-3'>
-          <div className='min-w-0'>
-            <h2 className='text-[18px] font-semibold tracking-tight' style={{ color: 'var(--text-primary)' }}>
-              {summary.title}
-            </h2>
-            <p className='mt-1 text-[13px]' style={{ color: 'var(--text-secondary)' }}>
-              {summary.subtitle}
-            </p>
-          </div>
-          <span
-            className='shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium'
-            style={{ color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)' }}
-          >
-            {summary.recencyLabel}
-          </span>
-        </div>
-
-        <div className='flex items-center gap-1.5'>
-          <span className='text-[11px]' style={{ color: 'var(--text-muted)' }}>Stage:</span>
-          <span className='text-[11px] font-semibold' style={{ color: 'var(--accent-blue)' }}>{summary.stage}</span>
-          <span className='text-[11px]' style={{ color: 'var(--text-muted)' }}>·</span>
-          <span className='text-[11px]' style={{ color: 'var(--text-muted)' }}>{summary.progress.join(' · ')}</span>
-        </div>
-
-        <div className='flex flex-wrap gap-2'>
-          <span
-            className='rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide'
-            style={{
-              color: meta.fg,
-              background: meta.bg,
-              border: `1px solid ${meta.border}`,
-            }}
-          >
-            {summary.statusLabel}
-          </span>
-          {emphasisBadges.slice(0, 2).map((badge) => (
-            <span
-              key={badge}
-              className='rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide'
-              style={{
-                color: '#d29922',
-                background: 'rgba(210,153,34,0.12)',
-                border: '1px solid rgba(210,153,34,0.25)',
-              }}
-            >
-              {badge}
-            </span>
-          ))}
-          <span
-            className='rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide'
-            style={{
-              color: '#c9d1d9',
-              background: 'rgba(201,209,217,0.08)',
-              border: '1px solid rgba(201,209,217,0.16)',
-            }}
-          >
-            {summary.assignmentLabel}
-          </span>
-        </div>
-
-        <div className='rounded-xl border px-3.5 py-3' style={{ borderColor: 'rgba(48,54,61,0.85)', background: 'rgba(255,255,255,0.02)' }}>
-          <p className='text-[13px]' style={{ color: 'var(--text-primary)' }}>
-            {summary.nextAction}
-          </p>
-        </div>
-
-        <div className='flex items-center justify-between gap-3'>
-          <span className='text-[12px]' style={{ color: 'var(--text-muted)' }}>
-            Inquiry Ref: {summary.inquiryReference}
-          </span>
-          <span className='inline-flex items-center gap-1.5 text-[13px] font-medium' style={{ color: 'var(--accent-blue)' }}>
-            {summary.action.label}
-            <ChevronRight className='h-4 w-4 transition-transform group-hover:translate-x-0.5' aria-hidden='true' />
-          </span>
-        </div>
-      </div>
-    </Link>
-  );
-});
 
 const SingleTripNextStepPanel = memo(function SingleTripNextStepPanel({ trip }: { trip: Trip }) {
   const summary = getPlanningListSummary(trip);
@@ -441,13 +343,13 @@ export default function WorkspacesPage() {
           {viewMode === 'card' ? (
             sortedTrips.length === 1 ? (
               <div className='grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4 items-start'>
-                <WorkspaceCard trip={sortedTrips[0]!} />
+                <PlanningTripCard trip={sortedTrips[0]!} />
                 <SingleTripNextStepPanel trip={sortedTrips[0]!} />
               </div>
             ) : (
               <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'>
                 {sortedTrips.map((trip) => (
-                  <WorkspaceCard key={trip.id} trip={trip} />
+                  <PlanningTripCard key={trip.id} trip={trip} />
                 ))}
               </div>
             )

@@ -242,17 +242,23 @@ function TripDetailsFallback({ tripId, trip }: { tripId: string; trip: Trip | nu
             </>
           ) : (
             <>
-              <p className="mt-3 text-ui-sm text-text-muted">
-                Trip details need customer input
+              <p className="mt-3 text-ui-sm font-medium text-text-primary">
+                Required details complete
               </p>
-              <p className="mt-2 text-ui-sm text-text-muted">
-                Confirm budget range and origin city before building options.
-              </p>
+              {trip?.decision?.soft_blockers?.some(s => s === 'incomplete_intake') ? (
+                <p className="mt-2 text-ui-sm text-text-muted">
+                  AI extraction may still be processing. Refresh or check recommended fields.
+                </p>
+              ) : (
+                <p className="mt-2 text-ui-sm text-text-muted">
+                  All required trip details are confirmed. Trip is ready for options.
+                </p>
+              )}
               <Link
                 href={intakeHref}
                 className="mt-5 inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
               >
-                Go to missing details
+                Review captured details
               </Link>
             </>
           )}

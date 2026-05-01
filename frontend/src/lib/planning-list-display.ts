@@ -59,7 +59,8 @@ function formatMissingDetailBadge(field: string): string {
 
 export function getPlanningAssignmentLabel(trip?: Trip | null): string {
   if (trip?.status === 'in_progress') return 'In progress';
-  return 'Assigned';
+  if (trip?.status === 'completed') return 'Completed';
+  return 'In planning';
 }
 
 export function getPlanningStageLabel(trip?: Trip | null): string {
@@ -67,6 +68,7 @@ export function getPlanningStageLabel(trip?: Trip | null): string {
   if (briefStatus === "missing_required_details") return "Intake";
   if (trip?.status === "ready_to_quote" || trip?.status === "ready_to_book") return "Quote Review";
   if (trip?.status === "in_progress") return "Options";
+  if (briefStatus === "missing_recommended_details" || briefStatus === "complete") return "Options";
   return "Details";
 }
 
@@ -77,6 +79,23 @@ export function getPlanningStageProgress(trip?: Trip | null): string[] {
   return allStages.map((stage, i) =>
     i < currentIdx ? `${stage} ✓` : stage === current ? `${stage} →` : stage
   );
+}
+
+export function getPlanningStageProgressItems(trip?: Trip | null): Array<{ label: string; color: string }> {
+  const allStages = ["Intake", "Details", "Options", "Quote Review", "Output"];
+  const current = getPlanningStageLabel(trip);
+  const currentIdx = allStages.indexOf(current);
+  const briefStatus = getPlanningBriefStatus(trip);
+
+  return allStages.map((stage, i) => {
+    if (i < currentIdx) return { label: `${stage} ✓`, color: '#3fb950' };
+    if (stage === current) {
+      if (briefStatus === "missing_required_details") return { label: `${stage} →`, color: '#f85149' };
+      if (briefStatus === "missing_recommended_details") return { label: `${stage} →`, color: '#d29922' };
+      return { label: `${stage} →`, color: '#58a6ff' };
+    }
+    return { label: stage, color: '#484f58' };
+  });
 }
 
 export function getTripFreshnessLabel(trip?: Trip | null): { label: string; tone: string; detail: string } {

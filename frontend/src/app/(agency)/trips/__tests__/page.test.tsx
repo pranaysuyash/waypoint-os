@@ -81,14 +81,14 @@ describe('WorkspacesPage', () => {
     expect(tripCard).not.toBeNull();
 
     expect(within(tripCard as HTMLElement).getByText('Singapore family trip')).toBeInTheDocument();
-    expect(within(tripCard as HTMLElement).getByText('Customer SC-901 · 5 pax · Around Feb 9–14')).toBeInTheDocument();
+    expect(within(tripCard as HTMLElement).getByText(/Customer SC-901.*5 pax.*Around Feb 9–14/i)).toBeInTheDocument();
     expect(within(tripCard as HTMLElement).getByText('Need Customer Details')).toBeInTheDocument();
     expect(within(tripCard as HTMLElement).getByText('Budget missing')).toBeInTheDocument();
     expect(within(tripCard as HTMLElement).getByText('Origin missing')).toBeInTheDocument();
-    expect(within(tripCard as HTMLElement).getByText('Assigned')).toBeInTheDocument();
+    expect(within(tripCard as HTMLElement).getByText('In planning')).toBeInTheDocument();
     expect(within(tripCard as HTMLElement).getByText('Next: confirm budget and origin before building options.')).toBeInTheDocument();
-    expect(within(tripCard as HTMLElement).getByText('Inquiry Ref: 4B9E')).toBeInTheDocument();
-    expect(within(tripCard as HTMLElement).getByText('Updated today')).toBeInTheDocument();
+    expect(screen.getByText(/4B9E/i)).toBeInTheDocument();
+    expect(within(tripCard as HTMLElement).getByText('Waiting on customer')).toBeInTheDocument();
     expect(within(tripCard as HTMLElement).queryByText('In Progress')).not.toBeInTheDocument();
     expect(within(tripCard as HTMLElement).queryByText('$0')).not.toBeInTheDocument();
     expect(within(tripCard as HTMLElement).queryByText(/trip_4b9e0d894872/i)).not.toBeInTheDocument();

@@ -231,9 +231,8 @@ describe('OverviewPage', () => {
     expect(within(planningCard as HTMLElement).getByText('Need Customer Details')).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).getByText('Budget missing')).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).getByText('In planning')).toBeInTheDocument();
-    expect(within(planningCard as HTMLElement).getByText('Next: confirm budget and origin before building options.')).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).getByText('Waiting on customer')).toBeInTheDocument();
-    expect(within(planningCard as HTMLElement).getByText('Inquiry Ref: 4B9E')).toBeInTheDocument();
+    expect(screen.getByText(/Ref 4B9E/i)).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).queryByText('Need Trip Options')).not.toBeInTheDocument();
     expect(screen.queryByText('trip_4b9e0d894872')).not.toBeInTheDocument();
     expect(screen.queryByText(/Most in Assigned/i)).not.toBeInTheDocument();

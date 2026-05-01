@@ -11,8 +11,8 @@ import {
   MapPin,
 } from 'lucide-react';
 import { getTripRoute } from '@/lib/routes';
-import { getPlanningListAction, getTripFreshnessLabel } from '@/lib/planning-list-display';
 import { InlineError } from '@/components/error-boundary';
+import { PlanningTripCard } from '@/components/workspace/PlanningTripCard';
 import type { Trip } from '@/lib/api-client';
 import {
   formatBudgetDisplay,
@@ -367,118 +367,7 @@ const PipelineBar = memo(function PipelineBar({
   );
 });
 
-// ── PlanningTripCard: trip as a real planning work item ────────────────────
-
-const PlanningTripCard = memo(function PlanningTripCard({ trip }: { trip: Trip }) {
-  const meta = STATE_META[getPlanningStatusTone(trip)] ?? STATE_META.blue;
-  const budgetLabel = formatBudgetDisplay(trip.budget);
-  const title = getPlanningHeaderTitle(trip);
-  const subtitle = getPlanningIdentityLine(trip);
-  const action = getPlanningListAction(trip);
-  const freshness = getTripFreshnessLabel(trip);
-  const freshnessColors: Record<string, { fg: string; bg: string; border: string }> = {
-    neutral: { fg: '#8b949e', bg: 'rgba(139,148,158,0.10)', border: 'rgba(139,148,158,0.20)' },
-    blue: { fg: '#58a6ff', bg: 'rgba(88,166,255,0.10)', border: 'rgba(88,166,255,0.20)' },
-    amber: { fg: '#d29922', bg: 'rgba(210,153,34,0.12)', border: 'rgba(210,153,34,0.25)' },
-    red: { fg: '#f85149', bg: 'rgba(248,81,73,0.10)', border: 'rgba(248,81,73,0.25)' },
-    green: { fg: '#3fb950', bg: 'rgba(63,185,80,0.10)', border: 'rgba(63,185,80,0.25)' },
-  };
-  const fc = freshnessColors[freshness.tone] ?? freshnessColors.neutral;
-
-  return (
-    <Link
-      href={action.href}
-      className='group block rounded-2xl border p-5 transition-all'
-      style={{
-        background: 'linear-gradient(180deg, rgba(17,20,27,0.98) 0%, rgba(12,16,22,0.98) 100%)',
-        borderColor: 'rgba(48,54,61,0.9)',
-        boxShadow: '0 18px 44px rgba(0,0,0,0.22)',
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLAnchorElement).style.borderColor = meta.border;
-        (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(-1px)';
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(48,54,61,0.9)';
-        (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(0)';
-      }}
-    >
-      <div className='space-y-4'>
-        <div className='space-y-2'>
-          <div className='flex items-start justify-between gap-3'>
-            <div className='min-w-0'>
-              <h3 className='text-[18px] font-semibold tracking-tight' style={{ color: 'var(--text-primary)' }}>
-                {title}
-              </h3>
-              <p className='text-[13px]' style={{ color: 'var(--text-secondary)' }}>
-                {subtitle}
-              </p>
-            </div>
-            <span
-              className='text-[11px] font-medium rounded-full px-2.5 py-1 shrink-0'
-              style={{ color: fc.fg, background: fc.bg, border: `1px solid ${fc.border}` }}
-              title={freshness.detail}
-            >
-              {freshness.label}
-            </span>
-          </div>
-
-          <div className='flex flex-wrap gap-2'>
-            <span
-              className='text-[11px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide'
-              style={{
-                color: meta.fg,
-                background: meta.bg,
-                border: `1px solid ${meta.border}`,
-              }}
-            >
-              {getPlanningStatusLabel(trip)}
-            </span>
-            <span
-              className='text-[11px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide'
-              style={{
-                color: budgetLabel === 'Budget missing' ? '#d29922' : '#58a6ff',
-                background: budgetLabel === 'Budget missing' ? 'rgba(210,153,34,0.12)' : 'rgba(88,166,255,0.12)',
-                border: budgetLabel === 'Budget missing' ? '1px solid rgba(210,153,34,0.25)' : '1px solid rgba(88,166,255,0.25)',
-              }}
-            >
-              {budgetLabel}
-            </span>
-            <span
-              className='text-[11px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide'
-              style={{
-                color: '#c9d1d9',
-                background: 'rgba(201,209,217,0.08)',
-                border: '1px solid rgba(201,209,217,0.16)',
-              }}
-            >
-              {getAssignmentLabel(trip)}
-            </span>
-          </div>
-        </div>
-
-        <div className='rounded-xl border px-3.5 py-3' style={{ borderColor: 'rgba(48,54,61,0.85)', background: 'rgba(255,255,255,0.02)' }}>
-          <p className='text-[11px] font-semibold uppercase tracking-[0.16em]' style={{ color: 'var(--text-tertiary)' }}>
-            Next step
-          </p>
-          <p className='mt-1.5 text-[13px]' style={{ color: 'var(--text-primary)' }}>
-            {getPlanningNextAction(trip)}
-          </p>
-        </div>
-
-        <div className='flex items-center justify-between gap-3'>
-          <span className='text-[12px]' style={{ color: 'var(--text-muted)' }}>
-            Inquiry Ref: {formatInquiryReference(trip.id)}
-          </span>
-          <span className='inline-flex items-center gap-1.5 text-[13px] font-medium' style={{ color: 'var(--accent-blue)' }}>
-            {action.label}
-            <ChevronRight className='h-4 w-4 transition-transform group-hover:translate-x-0.5' aria-hidden='true' />
-          </span>
-        </div>
-      </div>
-    </Link>
-  );
-});
+// ── PlanningTripCard: shared from @/components/workspace/PlanningTripCard ──
 
 // ── RecentTrips: empty + populated states ─────────────────────────────────
 

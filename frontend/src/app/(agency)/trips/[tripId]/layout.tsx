@@ -103,6 +103,13 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
     setIsRailOpen(false);
   }, [tripId]);
 
+  // Auto-close side rail when on Timeline tab (avoids duplicate activity views)
+  useEffect(() => {
+    if (activeStage === 'timeline') {
+      setIsRailOpen(false);
+    }
+  }, [activeStage]);
+
   useEffect(() => {
     if (!tripId) return;
 
