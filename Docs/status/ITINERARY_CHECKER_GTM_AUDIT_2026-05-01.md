@@ -57,15 +57,15 @@ The objective is only complete when all of the following are true:
 ### Public surface
 
 - `frontend/src/app/(traveler)/itinerary-checker/page.tsx` is now a live, interactive surface with traveler-led language.
-- The hero uses a richer visual language: layered glow, scan ring, orbiting chips, and GSAP motion.
+- The hero uses a richer travel-scene visual language: layered glow, scan ring, route ribbon, destination tags, and GSAP motion.
 - The checker copy stays aligned with the agency boundary.
 - Upload handling now supports text, PDF text extraction, and image OCR before scoring.
+- The public checker has a dedicated submit route at `POST /api/public-checker/run` so it no longer depends on the agency `/run` route.
 
 ### Backend and transport
 
-- `frontend/src/hooks/useSpineRun.ts` submits to `/api/spine/run` and polls `/api/runs/{run_id}`.
-- `frontend/src/lib/api-client.ts` contains the same accepted-only spine polling contract.
-- `spine_api/server.py` persists accepted/processed spine runs through `save_processed_trip(...)`.
+- `frontend/src/lib/api-client.ts` now posts public checker submissions to the dedicated public route.
+- `spine_api/server.py` persists accepted/processed public checker runs through the public checker artifact store and run response.
 - `spine_api/persistence.py` contains `TripStore` and `save_processed_trip(...)` for durable trip persistence.
 - Submission provenance from the public checker is now attached to the persisted run metadata, consented uploads are archived under the public checker artifact store so the file name, MIME type, extraction method, and raw bytes survive storage, and the backend attaches a live climate risk signal from Open-Meteo to the run payload when destination/date context is available.
 - `spine_api/server.py` exposes public export/delete routes for consented checker records, and `spine_api/core/middleware.py` marks `/api/public-checker/*` as public.
@@ -75,11 +75,13 @@ The objective is only complete when all of the following are true:
 
 - `frontend/src/app/__tests__/public_marketing_pages.test.tsx` passes and covers the current public copy and paste-button behavior.
 - `frontend` type-check passes with `npx tsc --noEmit`.
+- The dedicated public checker route accepts the regenerated Singapore family dummy PDF, but the B2B intake spine still degrades that sample to `incomplete_intake`, which is the key signal that the public wedge should not keep sharing the full agency orchestration path.
 
 ## What Is Still Missing
 
-1. The public checker already uses live climate and current-weather signals; broader enrichment sources can be added later if desired.
-2. Returning-user recognition, richer live enrichment, and consent-aware long-term memory can be expanded later as product and policy decisions, not as a hard retention-window requirement.
+1. The public checker needs its own lighter intake pipeline rather than the full agency spine.
+2. Richer public enrichment sources can be added later if desired.
+3. Returning-user recognition and consent-aware long-term memory can be expanded later as product decisions, not as a hard retention-window requirement.
 
 ## Design References Reviewed
 
@@ -105,17 +107,29 @@ Design takeaway:
 ## Current Product Judgment
 
 - Code-ready: yes
-- Feature-ready: yes
+- Feature-ready: partial
 - Launch-ready: partial
 
 Reason:
 
 - the public surface exists and is coherent
-- the live text path, file upload extraction, live Spine contract, consented storage, public export/delete controls, and live climate enrichment are wired
-- the remaining work is expansion and hardening, not a missing core deliverable
+- the live text path, file upload extraction, live public route, consented storage, public export/delete controls, and live climate enrichment are wired
+- but the current public upload sample still hits the B2B intake degrade path, which confirms the public wedge should move to a lighter architecture rather than reusing the full agency spine
+
+## Conclusion
+
+The public checker should be implemented as:
+
+- OCR / text extraction
+- NER or slot filling for destination, dates, origin, party size, budget, and purpose
+- LLM synthesis for score narratives and upgrade suggestions
+- live tool calls for weather, AQI, hotel prices, and similar current signals
+
+It should not continue to rely on the full B2B intake spine as the public scoring engine, because that engine is optimized for quote-ready agency work and degrades realistic public PDFs into follow-up states.
 
 ## Next Concrete Build Step
 
-1. Add richer live-data sources if the wedge needs broader destination intelligence.
-2. Add richer inline evidence for current weather, destination conditions, and other consented enrichment signals.
-3. Keep the public checker design system updated as the wedge evolves.
+1. Replace the public checker runtime with the lighter public pipeline.
+2. Keep the agency `/run` path untouched for internal B2B workflows.
+3. Add richer live-data sources and inline evidence only after the public pipeline is separated.
+4. Keep the travel-scene design system updated as the wedge evolves.

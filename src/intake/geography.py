@@ -64,6 +64,15 @@ _BLACKLIST: Set[str] = {
     "They", "He", "She", "Us", "You",
 }
 
+_BLACKLIST_LOWER: Optional[Set[str]] = None
+
+def _get_blacklist_lower() -> Set[str]:
+    """Return blacklist normalized to lowercase (cached)."""
+    global _BLACKLIST_LOWER
+    if _BLACKLIST_LOWER is None:
+        _BLACKLIST_LOWER = {b.lower() for b in _BLACKLIST}
+    return _BLACKLIST_LOWER
+
 # Country names commonly used as destination synonyms
 # When travelers say "Japan", they mean "Japan (main destinations like Tokyo)"
 # This is a minimal set for common patterns, not exhaustive country coverage
@@ -264,7 +273,7 @@ def is_known_city(name: str) -> bool:
         >>> is_known_city("NonExistentCity123")
         False
     """
-    if not name or name.lower() in _BLACKLIST:
+    if not name or name.lower() in _get_blacklist_lower():
         return False
     return name.lower() in _build_union()
 
@@ -279,13 +288,12 @@ def is_known_city_normalized(name: str) -> bool:
         return False
 
     name_lower = name.lower()
-    if name_lower in _BLACKLIST:
+    if name_lower in _get_blacklist_lower():
         return False
 
-    # Check against normalized lookup
+    # Check against normalized lookup (already lowercase)
     all_cities = _build_union()
-    # Case-insensitive check
-    return any(city.lower() == name_lower for city in all_cities)
+    return name_lower in all_cities
 
 
 def record_seen_city(city: str, confidence: float = 0.5) -> bool:
@@ -315,7 +323,7 @@ def record_seen_city(city: str, confidence: float = 0.5) -> bool:
     if confidence <= 0.7:
         return False
 
-    if not city or city.lower() in _BLACKLIST:
+    if not city or city.lower() in _get_blacklist_lower():
         return False
 
     if city in _build_union():
@@ -472,7 +480,7 @@ def is_known_destination(name: str) -> bool:
     lower = name.lower()
 
     # Case-insensitive blacklist check (for month names etc.)
-    if lower in {b.lower() for b in _BLACKLIST}:
+    if lower in _get_blacklist_lower():
         return False
 
     # Normalize country destinations for case-insensitive lookup

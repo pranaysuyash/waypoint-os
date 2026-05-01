@@ -117,6 +117,9 @@ def build_pdf() -> Path:
     story.append(Spacer(1, 7 * mm))
 
     summary_data = [
+        ["Origin city", "Mumbai, India"],
+        ["Trip purpose", "Family holiday / school break"],
+        ["Budget", "Mid-range family comfort with activity upgrades"],
         ["Travel party", "5 travelers: Pranay family, 2 adults, 2 elders, 1 child age 3"],
         ["Trip window", "Late May 2026, 6 days / 5 nights"],
         ["Primary focus", "Universal Studios, parks, Sentosa cable car, easy family pacing"],
@@ -147,6 +150,7 @@ def build_pdf() -> Path:
 
     story.append(Paragraph("Family Notes", styles["Section"]))
     family_notes = [
+        "Plan assumes a straightforward arrival into Singapore with airport transfer to hotel on day 1.",
         "Two elders need shorter walking loops, more rest breaks, and shade wherever possible.",
         "The 3-year-old should have one major activity per day and an easy return-to-hotel plan.",
         "Afternoons are intentionally soft so the family can reset, swim, or skip activities if needed.",

@@ -164,6 +164,33 @@ async function fileToBase64(file: File): Promise<string> {
   return btoa(binary);
 }
 
+function inferTravelContext(text: string): Record<string, unknown> {
+  const matches = {
+    origin: text.match(/origin city\s*[:\-]\s*([^\n\r|]+)/i)?.[1]?.trim(),
+    purpose: text.match(/trip purpose\s*[:\-]\s*([^\n\r|]+)/i)?.[1]?.trim(),
+    budget: text.match(/budget\s*[:\-]\s*([^\n\r|]+)/i)?.[1]?.trim(),
+    dateWindow: text.match(/trip window\s*[:\-]\s*([^\n\r|]+)/i)?.[1]?.trim()
+      ?? text.match(/late may\s+\d{4}/i)?.[0]?.trim(),
+    partySize: text.match(/(\d+)\s+(?:travelers?|travellers?|people|guests)/i)?.[1],
+  };
+
+  const destinationCandidates = new Set<string>();
+  if (/singapore/i.test(text)) destinationCandidates.add('Singapore');
+  if (/sentosa/i.test(text)) destinationCandidates.add('Sentosa');
+  if (/universal studios/i.test(text)) destinationCandidates.add('Universal Studios Singapore');
+  if (/gardens by the bay/i.test(text)) destinationCandidates.add('Gardens by the Bay');
+  if (/marina bay/i.test(text)) destinationCandidates.add('Marina Bay');
+
+  return {
+    ...(matches.origin ? { origin_city: matches.origin } : {}),
+    ...(matches.purpose ? { trip_purpose: matches.purpose } : {}),
+    ...(matches.budget ? { budget_raw_text: matches.budget } : {}),
+    ...(matches.dateWindow ? { date_window: matches.dateWindow } : {}),
+    ...(matches.partySize ? { party_size: Number(matches.partySize) } : {}),
+    ...(destinationCandidates.size > 0 ? { destination_candidates: [...destinationCandidates] } : {}),
+  };
+}
+
 // ── Upload card (reused in hero) ──────────────────────────────────────────────
 function UploadCard({
   onAnalyze,
@@ -1692,7 +1719,10 @@ export default function ItineraryCheckerPage() {
     }
 
     const retentionConsent = Boolean(sourcePayload?.retention_consent);
-    const storedPayload = retentionConsent ? sourcePayload : undefined;
+    const inferredContext = inferTravelContext(trimmed);
+    const storedPayload = retentionConsent
+      ? { ...(sourcePayload ?? {}), trip_context: inferredContext }
+      : undefined;
 
     setIsAnalyzing(true);
     try {
@@ -1700,7 +1730,7 @@ export default function ItineraryCheckerPage() {
         raw_note: trimmed,
         owner_note: '',
         itinerary_text: trimmed,
-        structured_json: storedPayload ? { source_payload: storedPayload } : null,
+        structured_json: storedPayload ? { source_payload: storedPayload, ...inferredContext } : null,
         retention_consent: retentionConsent,
         stage: 'discovery',
         operating_mode: 'normal_intake',
@@ -1742,10 +1772,12 @@ export default function ItineraryCheckerPage() {
       uploadedFile.content_base64 = await fileToBase64(file);
     }
 
+    const inferredContext = inferTravelContext(trimmed);
     await handleAnalyze(trimmed, {
       kind: 'file_upload',
       uploaded_file: uploadedFile,
       retention_consent: retentionConsent,
+      trip_context: inferredContext,
     });
   };
 
