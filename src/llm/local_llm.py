@@ -24,8 +24,11 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 try:
-    import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
+    import warnings
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="builtin type.*has no __module__", category=DeprecationWarning)
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
@@ -324,7 +327,7 @@ Respond ONLY with the JSON object, no additional text.
 def create_local_llm_client(
     model: Optional[str] = None,
     temperature: float = 0.3,
-    max_tokens: int = 1024,
+    max_tokens: Optional[int] = None,
     device: Optional[str] = None,
 ) -> LocalLLMClient:
     """
@@ -335,12 +338,12 @@ def create_local_llm_client(
     Environment variables:
         LOCAL_LLM_MODEL: Model name (default: microsoft/phi-3-mini-4k-instruct)
         LOCAL_LLM_DEVICE: Device (auto, cpu, cuda)
-        LOCAL_LLM_MAX_TOKENS: Maximum tokens (default: 512)
+        LOCAL_LLM_MAX_TOKENS: Maximum tokens (default: 1024)
 
     Args:
         model: Override model from environment
         temperature: Sampling temperature
-        max_tokens: Maximum tokens in response
+        max_tokens: Maximum tokens in response (None = read from env or 1024)
         device: Override device from environment
 
     Returns:
@@ -350,7 +353,8 @@ def create_local_llm_client(
         LLMUnavailableError: If client cannot be created
     """
     model = model or os.environ.get("LOCAL_LLM_MODEL", DEFAULT_MODEL)
-    max_tokens = max_tokens or int(os.environ.get("LOCAL_LLM_MAX_TOKENS", str(1024)))
+    if max_tokens is None:
+        max_tokens = int(os.environ.get("LOCAL_LLM_MAX_TOKENS", "1024"))
 
     try:
         return LocalLLMClient(

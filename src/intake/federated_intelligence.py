@@ -13,7 +13,7 @@ import logging
 
 logger = logging.getLogger("federated_intel")
 
-@dataclass
+@dataclass(slots=True)
 class IntelligenceIncident:
     """Anonymized incident report for the federated pool."""
     incident_type: str  # e.g., 'visa_delay', 'weather_disruption', 'payment_gateway_down'

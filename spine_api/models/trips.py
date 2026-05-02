@@ -48,7 +48,9 @@ class Trip(Base):
     traveler_bundle: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     internal_bundle: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     safety: Mapped[dict] = mapped_column(JSON, default=dict)
-    
+    frontier_result: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    fees: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
     # Metadata
     raw_input: Mapped[dict] = mapped_column(JSON, default=dict)
     analytics: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)

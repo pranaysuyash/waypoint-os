@@ -2,11 +2,13 @@
 llm.gemini_client — Google Gemini API client implementation.
 
 Primary LLM provider for the hybrid decision engine.
-Uses Gemini Flash for fast, cost-effective decisions (₹0.10-₹0.50 per call).
+Uses Gemini Flash for fast, cost-effective decisions.
 
 Models supported:
-- gemini-1.5-flash: Fast, cost-effective (recommended for decisions)
-- gemini-1.5-pro: Better reasoning, more expensive
+- gemini-2.0-flash: Fast, cost-effective (recommended for decisions)
+- gemini-2.5-pro: Better reasoning, more expensive
+
+Uses the google-genai SDK (successor to deprecated google-generativeai).
 """
 
 from __future__ import annotations
@@ -16,8 +18,8 @@ import os
 from typing import Any, Dict, Optional
 
 try:
-    import google.generativeai as genai
-    from google.generativeai.types import GenerationConfig
+    from google import genai
+    from google.genai import types as genai_types
     GENAI_AVAILABLE = True
 except ImportError:
     GENAI_AVAILABLE = False
@@ -25,16 +27,29 @@ except ImportError:
 from .base import BaseLLMClient, LLMError, LLMUnavailableError, LLMResponseError
 
 
-# Gemini pricing in INR (approximate, as of 2024)
+# Gemini pricing in INR (approximate)
 # 1 USD ≈ 83 INR
 PRICING = {
+    "gemini-2.0-flash": {
+        "input_per_million": 0.10 * 83,
+        "output_per_million": 0.40 * 83,
+    },
+    "gemini-2.0-flash-lite": {
+        "input_per_million": 0.075 * 83,
+        "output_per_million": 0.30 * 83,
+    },
+    "gemini-2.5-pro": {
+        "input_per_million": 1.25 * 83,
+        "output_per_million": 10.00 * 83,
+    },
+    # Legacy model aliases (kept for backward compat)
     "gemini-1.5-flash": {
-        "input_per_million": 0.075 * 83,  # ~₹6.2 per million tokens
-        "output_per_million": 0.30 * 83,  # ~₹24.9 per million tokens
+        "input_per_million": 0.075 * 83,
+        "output_per_million": 0.30 * 83,
     },
     "gemini-1.5-pro": {
-        "input_per_million": 1.25 * 83,   # ~₹103.8 per million
-        "output_per_million": 5.00 * 83,  # ~₹415 per million
+        "input_per_million": 1.25 * 83,
+        "output_per_million": 5.00 * 83,
     },
 }
 
@@ -47,15 +62,14 @@ class GeminiClient(BaseLLMClient):
         GEMINI_API_KEY=your_api_key_here
 
     Example:
-        client = GeminiClient(model="gemini-1.5-flash")
+        client = GeminiClient(model="gemini-2.0-flash")
         result = client.decide(
             prompt="Is this trip suitable for elderly travelers?",
             schema={"type": "object", "properties": {...}}
         )
     """
 
-    # Default model
-    DEFAULT_MODEL = "gemini-1.5-flash"
+    DEFAULT_MODEL = "gemini-2.0-flash"
 
     def __init__(
         self,
@@ -64,46 +78,32 @@ class GeminiClient(BaseLLMClient):
         max_tokens: int = 1024,
         api_key: Optional[str] = None,
     ):
-        """
-        Initialize the Gemini client.
-
-        Args:
-            model: Model name (default: gemini-1.5-flash)
-            temperature: Sampling temperature (0-1)
-            max_tokens: Maximum tokens in response
-            api_key: Gemini API key (defaults to GEMINI_API_KEY env var)
-        """
         if not GENAI_AVAILABLE:
             raise LLMUnavailableError(
-                "google-generativeai package not installed. "
-                "Install with: uv add --group llm google-generativeai"
+                "google-genai package not installed. "
+                "Install with: uv add --group llm google-genai"
             )
 
         model = model or self.DEFAULT_MODEL
         super().__init__(model, temperature, max_tokens)
 
-        # Get API key from parameter or environment
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
         if not self.api_key:
             raise LLMUnavailableError(
                 "GEMINI_API_KEY not set. Set environment variable or pass api_key parameter."
             )
 
-        # Configure the API
         try:
-            genai.configure(api_key=self.api_key)
-            self._client = genai.GenerativeModel(model)
+            self._client = genai.Client(api_key=self.api_key)
         except Exception as e:
             raise LLMUnavailableError(f"Failed to initialize Gemini client: {e}")
 
     def is_available(self) -> bool:
-        """Check if the Gemini client is available."""
         if not GENAI_AVAILABLE:
             return False
         if not self.api_key:
             return False
         try:
-            # Quick availability check
             return hasattr(self, "_client") and self._client is not None
         except Exception:
             return False
@@ -132,29 +132,33 @@ class GeminiClient(BaseLLMClient):
         if not self.is_available():
             raise LLMUnavailableError("Gemini client not available")
 
-        # Build the prompt with JSON schema instruction
         full_prompt = self._build_prompt(prompt, schema)
 
-        # Configure generation
-        config = GenerationConfig(
+        config = genai_types.GenerateContentConfig(
             temperature=temperature if temperature is not None else self.temperature,
             max_output_tokens=self.max_tokens,
-            response_mime_type="application/json",  # Request JSON response
+            response_mime_type="application/json",
         )
 
         try:
-            # Call the API
-            response = self._client.generate_content(
-                full_prompt,
-                generation_config=config,
+            response = self._client.models.generate_content(
+                model=self.model,
+                contents=full_prompt,
+                config=config,
             )
 
-            # Parse response
-            response_text = response.text
+            response_text = response.text if hasattr(response, 'text') else None
+            if not response_text:
+                # Try extracting from candidates
+                if response.candidates:
+                    for part in response.candidates[0].content.parts:
+                        if part.text:
+                            response_text = part.text
+                            break
+
             if not response_text:
                 raise LLMResponseError("Empty response from Gemini")
 
-            # Parse JSON
             try:
                 decision = json.loads(response_text)
             except json.JSONDecodeError as e:
@@ -162,19 +166,13 @@ class GeminiClient(BaseLLMClient):
 
             return decision
 
-        except genai.types.BlockedPromptException as e:
-            raise LLMResponseError(f"Prompt blocked by Gemini safety filters: {e}")
-        except genai.types.StopCandidateException as e:
-            raise LLMResponseError(f"Generation stopped: {e}")
+        except (LLMUnavailableError, LLMResponseError):
+            raise
         except Exception as e:
-            if isinstance(e, (LLMUnavailableError, LLMResponseError)):
-                raise
             raise LLMUnavailableError(f"Gemini API call failed: {e}")
 
     def _build_prompt(self, prompt: str, schema: Dict[str, Any]) -> str:
-        """Build the full prompt with JSON schema instruction."""
         schema_str = json.dumps(schema, indent=2)
-
         return f"""{prompt}
 
 You must respond with valid JSON matching this schema:
@@ -183,34 +181,19 @@ You must respond with valid JSON matching this schema:
 Respond ONLY with the JSON object, no additional text."""
 
     def estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
-        """
-        Estimate the cost of an LLM call in INR.
-
-        Args:
-            prompt_tokens: Number of tokens in the prompt
-            completion_tokens: Number of tokens in the response
-
-        Returns:
-            Estimated cost in INR
-        """
-        pricing = PRICING.get(self.model, PRICING["gemini-1.5-flash"])
-
+        pricing = PRICING.get(self.model, PRICING["gemini-2.0-flash"])
         input_cost = (prompt_tokens / 1_000_000) * pricing["input_per_million"]
         output_cost = (completion_tokens / 1_000_000) * pricing["output_per_million"]
-
         return input_cost + output_cost
 
     def count_tokens(self, text: str) -> int:
-        """
-        Count tokens using Gemini's tokenizer.
-
-        More accurate than the default character-based estimate.
-        """
         try:
-            # Use genai's token counting if available
-            return genai.count_tokens(self._client, text).total_tokens
+            response = self._client.models.count_tokens(
+                model=self.model,
+                contents=text,
+            )
+            return response.total_tokens
         except Exception:
-            # Fallback to character-based estimate
             return super().count_tokens(text)
 
 
@@ -222,22 +205,9 @@ def create_gemini_client(
     """
     Factory function to create a Gemini client.
 
-    Reads configuration from environment variables by default.
-
     Environment variables:
         GEMINI_API_KEY: API key (required)
-        GEMINI_MODEL: Model name (optional, defaults to gemini-1.5-flash)
-
-    Args:
-        model: Override model from environment
-        temperature: Sampling temperature
-        max_tokens: Maximum tokens in response
-
-    Returns:
-        Configured GeminiClient instance
-
-    Raises:
-        LLMUnavailableError: If client cannot be created
+        GEMINI_MODEL: Model name (optional, defaults to gemini-2.0-flash)
     """
     model = model or os.environ.get("GEMINI_MODEL", GeminiClient.DEFAULT_MODEL)
 

@@ -16,7 +16,7 @@ from .decision import DecisionResult
 
 logger = logging.getLogger("orchestration.negotiation")
 
-@dataclass
+@dataclass(slots=True)
 class NegotiationOpportunity:
     supplier_name: str
     original_price: float

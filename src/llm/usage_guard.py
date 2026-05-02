@@ -52,7 +52,7 @@ from .usage_store import LLMUsageStore, GuardStorageError, InMemoryUsageStore, R
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(slots=True)
 class LLMUsageDecision:
     """
     Structured result from usage guard check.

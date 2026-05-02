@@ -43,7 +43,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(slots=True)
 class DecisionResult:
     """
     Result from the hybrid decision engine.
@@ -75,7 +75,7 @@ class DecisionResult:
         }
 
 
-@dataclass
+@dataclass(slots=True)
 class EngineMetrics:
     """
     Metrics tracking for the hybrid engine.

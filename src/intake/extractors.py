@@ -15,7 +15,16 @@ from __future__ import annotations
 import re
 import uuid
 from datetime import datetime
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple
+
+# Month name → number mapping (module-level, created once)
+_MONTH_MAP = {
+    "jan": 1, "january": 1, "feb": 2, "february": 2, "mar": 3, "march": 3,
+    "apr": 4, "april": 4, "may": 5, "jun": 6, "june": 6,
+    "jul": 7, "july": 7, "aug": 8, "august": 8, "sep": 9, "sept": 9, "september": 9,
+    "oct": 10, "october": 10, "nov": 11, "november": 11, "dec": 12, "december": 12,
+}
 
 from .packet_models import (
     Ambiguity,
@@ -93,6 +102,158 @@ _TRAVEL_VERB_DEST_RE = re.compile(
     r"(?:want to go|go to|travel to|visit|flying to|trip to|holiday in|vacation in"
     r"|planning to go to|planning to visit|head to|going to)\s+"
     r"([a-z]+(?:\s+[a-z]+)*)",
+    re.IGNORECASE,
+)
+
+# Pattern 2: "somewhere" + destination (open intent)
+_SOMEWHERE_DEST_RE = re.compile(
+    r"somewhere\s+(?:with|for|that)\s+(\w+)",
+    re.IGNORECASE,
+)
+
+# Pattern 3: "or" pattern (semi-open destination)
+_OR_DESTINATION_RE = re.compile(
+    r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)(?:\s+(?:or|and)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*).*?)\b",
+)
+
+# Destination metadata labels to exclude (caller, referral, etc.)
+_DESTINATION_METADATA_LABELS_RE = re.compile(
+    r"^\s*(call\s+received|caller|referral|party|pace(?:\s+reference)?|budget|interests?|follow[\s-]*up|toddler\s+needs?|elderly\s+needs?)\s*:",
+    re.IGNORECASE,
+)
+
+# Common inline patterns - pre-compiled for performance
+_YEAR_RE = re.compile(r"\b(20\d{2})\b")
+_FROM_STARTING_DEPARTING_RE = re.compile(r'\b(from|starting|departing)\s+$', re.IGNORECASE)
+_SE_RU_SIDE_RE = re.compile(r'^\s+(se|ru|side)\b', re.IGNORECASE)
+_MAYBE_RE = re.compile(r"\bmaybe\s+(\w+)", re.IGNORECASE)
+_THIS_WEEKEND_RE = re.compile(
+    r"\bthis\s+(weekend|friday|saturday|sunday|monday|tuesday|wednesday|thursday)\b",
+    re.IGNORECASE,
+)
+_MONTH_WINDOW_RE = re.compile(
+    r"((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)"
+    r"\s*(?:or|ya|(?:-|–|—|\bto\b))\s*"
+    r"((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)"
+    r"(?:\s+(\d{4}))?",
+    re.IGNORECASE,
+)
+_SINGLE_MONTH_RE = re.compile(
+    r"(?:in|during|for)\s+"
+    r"(?:January|February|March|April|May|June|July|August|September|October|November|December)\w*"
+    r"\s+(\d{4})",
+    re.IGNORECASE,
+)
+_FUZZY_MONTH_RE = re.compile(
+    r"(?:around|sometime\s+in|during)\s+((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)",
+    re.IGNORECASE,
+)
+_FLEXIBLE_BUDGET_RE = re.compile(r"\bflexible\s+budget\b|\bbudget\s+is\s+flexible\b", re.IGNORECASE)
+_TOTAL_GROUP_RE = re.compile(r"\b(?:total|for\s+(?:the\s+)?(?:whole\s+)?(?:trip|family|group))\b", re.IGNORECASE)
+
+# Month abbreviations for day range patterns
+_MONTH_ABBR = r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*"
+
+# Day range patterns (module level)
+_DAY_RANGE_TEXT_RE = re.compile(
+    r"\b(?:around|tentative(?:ly)?|dates?\s+around)?\s*"
+    r"(\d{1,2})(?:st|nd|rd|th)?\s*(?:to|-|–|—|\bto\b)\s*(\d{1,2})(?:st|nd|rd|th)?\s+"
+    r"(" + _MONTH_ABBR + r")\b"
+    r"(?:\s+(\d{4}))?",
+)
+
+# Date range pattern
+_DAY_RANGE_RE = re.compile(
+    r"(\d{4}-\d{2}-\d{2})\s+(?:to|–|-)\s+(\d{4}-\d{2}-\d{2})"
+)
+
+# Past trip indicators
+_PAST_TRIP_INDICATORS_RE = re.compile(
+    r"\b(?:last\s+(?:time|year|month|summer|winter)|recently\s+visited|we\s+went\s+to|"
+    r"came\s+back\s+from|returned\s+from|their\s+last|earlier\s+trip|past\s+trip)\b",
+    re.IGNORECASE,
+)
+
+# Hedging words (maybe, perhaps, etc.)
+_HEDGING_RE = re.compile(
+    r"\b(?:maybe|perhaps|considering|looking\s+at|thinking\s+about)\s+(\w+)",
+    re.IGNORECASE,
+)
+
+# People count patterns
+_ADULTS_RE = re.compile(r"(\d+)\s+adults?", re.IGNORECASE)
+_CHILDREN_RE = re.compile(r"(?:(\d+)\s+)?(?:kids?|children?|child|bachhe|baccha)", re.IGNORECASE)
+_TODDLER_RE = re.compile(r"\b(?:a\s+)?(?:toddler|toddlers?)\b", re.IGNORECASE)
+_TODDLER_AGE_RE = re.compile(r"toddler\s+(?:age\s+)?(\d+)", re.IGNORECASE)
+_ELDERLY_RE = re.compile(r"(?:(\d+)\s+)?(?:elderly|seniors?|grandparents?|grandma|grandpa|grandmother|grandfather)", re.IGNORECASE)
+_ELDERLY_AGE_RE = re.compile(r"\b(?:elderly|seniors?)\b", re.IGNORECASE)
+_PEOPLE_RE = re.compile(r"(\d+)\s+(?:people|persons?|pax|travelers?)", re.IGNORECASE)
+
+# Age patterns
+_AGE_RE = re.compile(r"(\d+\.?\d*)\s*(?:years?|yr|y)[\s-]*(?:old|aged?)\s+(\w+)", re.IGNORECASE)
+_AGES_RE = re.compile(r"(\d+)\s*(?:years?|yr|y)[\s-]*(?:old|aged?)", re.IGNORECASE)
+_MULTI_AGE_RE = re.compile(r"(\d+)\s*(?:,|and)\s*(\d+)\s*(?:,|and)?\s*(\d+)?\s*(?:years?|yr|y)", re.IGNORECASE)
+
+# Family/group patterns
+_FAMILY_RE = re.compile(r"(?:family|they|customer)\s+(?:always\s+)?(?:prefers?|likes?)\s+([^.,]+)", re.IGNORECASE)
+_GROUP_SIZE_RE = re.compile(r"(?:family|group)\s+\w+\s*(?:of\s+)?(\d+)", re.IGNORECASE)
+
+# Food preference patterns
+_FOOD_PREFERENCE_RE = re.compile(
+    r"((?:vegetarian|vegan|jain|halal|kosher|non(?:-\s*)?veg|food\s+preference)[^.]*?)",
+    re.IGNORECASE,
+)
+_NO_FOOD_RE = re.compile(r"(?:no|don'?t\s+(?:want|need|book)|avoid|never)\s+([^.,]+)", re.IGNORECASE)
+_WANT_FOOD_RE = re.compile(r"(?:want|prefer|like|interested\s+in)\s+([^.,]+)", re.IGNORECASE)
+
+# Passport patterns
+_PASSPORT_EXPIRED_RE = re.compile(r"(\d)\s*(?:/|out\s+of)\s*5", re.IGNORECASE)
+_PASSPORT_VALID_RE = re.compile(r"valid\s+(?:until|till|through)\s+([A-Za-z]+\s+\d{4})", re.IGNORECASE)
+_EXISTING_ITINERARY_RE = re.compile(r"(?:have|existing|current)\s+(?:an\s+)?itinerary[^.]*\.", re.IGNORECASE)
+
+# Hotel/star rating
+_HOTEL_STAR_RE = re.compile(r"((?:5|4|3)[\s-]*star\s+(?:resort|hotel)?(?:[^.]*?))", re.IGNORECASE)
+_STAR_RATING_RE = re.compile(r"(\d)\s*star", re.IGNORECASE)
+
+# Mobility/accessibility
+_MOBILITY_RE = re.compile(
+    r"(?:can'?t\s+walk|wheelchair|mobility|slow\s+pace|limited\s+mobility|"
+    r"disabled|handicapped|accessible)\s*(?:\s*\d+)?\s*(?:people|persons?|pax)?",
+    re.IGNORECASE,
+)
+
+# Medical conditions
+_MEDICAL_RE = re.compile(
+    r"(?:hypertension|diabetes|heart\s+condition|medical\s+condition|"
+    r"pregnant|asthma|allergy|medication)[^.]*?(?:doctor|medical)?",
+    re.IGNORECASE,
+)
+
+# Customer/client patterns
+_CUSTOMER_ID_RE = re.compile(r"(?:customer|client)\s+(?:id|name|ref)[:\s]+(\w+)", re.IGNORECASE)
+
+# Revision/past trip
+_REVISION_RE = re.compile(r"\brevision\s*(?:#|number\s*)(\d+)", re.IGNORECASE)
+_PAST_TRIP_RE = re.compile(r"(?:past|previous)\s+trip[^.,:]*", re.IGNORECASE)
+
+# Pace patterns (compile once at module level)
+_PACE_PATTERNS = [
+    (re.compile(r"\b(?:it\s+)?rushed\b", re.IGNORECASE), "relaxed pace"),
+    (re.compile(r"\b(?:it\s+)?rush\b", re.IGNORECASE), "relaxed pace"),
+    (re.compile(r"\b(?:be\s+)?too\s+packed\b", re.IGNORECASE), "relaxed pace"),
+    (re.compile(r"\b(?:be\s+)?too\s+busy\b", re.IGNORECASE), "relaxed pace"),
+    (re.compile(r"\bhurried\b", re.IGNORECASE), "relaxed pace"),
+]
+# Travel-context patterns for lowercase destination extraction.
+# Only match destinations that appear in travel-intent context, not globally.
+# This prevents false positives like "got" in "I got your number".
+
+# Pattern 1: English travel verbs followed by destination.
+# "go to singapore", "want to go singapore", "travel to singapore", etc.
+_TRAVEL_VERB_DEST_RE = re.compile(
+    r"(?:want to go|go to|travel to|visit|flying to|trip to|holiday in|vacation in"
+    r"|planning to go to|planning to visit|head to|going to)\s+"
+    r"([a-z]+(?:\s+[a-z]+)*)",
 )
 
 # Pattern 2: Destination before Hinglish/Odia travel verbs.
@@ -110,18 +271,13 @@ _ORIGIN_DEST_RE = re.compile(
 )
 
 
+@lru_cache(maxsize=32)
 def _month_to_num(month_str: str) -> Optional[int]:
-    _MAP = {
-        "jan": 1, "january": 1, "feb": 2, "february": 2, "mar": 3, "march": 3,
-        "apr": 4, "april": 4, "may": 5, "jun": 6, "june": 6,
-        "jul": 7, "july": 7, "aug": 8, "august": 8, "sep": 9, "sept": 9, "september": 9,
-        "oct": 10, "october": 10, "nov": 11, "november": 11, "dec": 12, "december": 12,
-    }
-    return _MAP.get(month_str.lower()[:3].rstrip("e")) or _MAP.get(month_str.lower())
+    return _MONTH_MAP.get(month_str.lower()[:3].rstrip("e")) or _MONTH_MAP.get(month_str.lower())
 
 
 def _infer_year_from_context(text: str) -> str:
-    year_match = re.search(r"\b(20\d{2})\b", text)
+    year_match = _YEAR_RE.search(text)
     if year_match:
         return year_match.group(1)
     return str(datetime.now().year)
@@ -211,12 +367,12 @@ def _is_likely_origin(text: str, dest_match: str) -> bool:
 
     # English preposition before: "from Bangalore"
     context_before = lowered[max(0, match_idx - 10):match_idx]
-    if re.search(r'\b(from|starting|departing)\s+$', context_before):
+    if _FROM_STARTING_DEPARTING_RE.search(context_before):
         return True
 
     # Hinglish/Odia postposition after: "Bangalore se", "Bangalore ru", "Bangalore side"
     context_after = lowered[match_idx + len(dest_match):match_idx + len(dest_match) + 15]
-    if re.search(r'^\s+(se|ru|side)\b', context_after):
+    if _SE_RU_SIDE_RE.search(context_after):
         return True
 
     return False
@@ -265,9 +421,9 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
     """
     # Remove call-log metadata lines that frequently contain capitalized labels
     # (Caller, Referral, Pace, Budget, etc.) and pollute destination extraction.
-    _DESTINATION_METADATA_LABELS_RE = re.compile(
-        r"^\s*(call\s+received|caller|referral|party|pace(?:\s+preference)?|budget|interests?|follow[\s-]*up|toddler\s+needs?|elderly\s+needs?)\s*:",
-        re.IGNORECASE,
+    destination_text = "\n".join(
+        line for line in text.splitlines()
+        if not _DESTINATION_METADATA_LABELS_RE.match(line)
     )
     destination_text = "\n".join(
         line for line in text.splitlines()
@@ -281,10 +437,7 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
     excluded_by_past_trip: List[str] = []
 
     # Check for "or" pattern (semi-open)
-    or_match = re.search(
-        r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)(?:\s+(?:or|and)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*).*?)\b",
-        destination_text,
-    )
+    or_match = _OR_DESTINATION_RE.search(destination_text)
     if or_match:
         c1 = or_match.group(1).title()
         c2 = or_match.group(2).title()
@@ -300,25 +453,21 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
                 return valid, "semi_open", or_match.group(0)
 
     # Check for "maybe" pattern (semi-open) — before general regex
-    # so "maybe Singapore" is captured as semi_open, not definite.
-    maybe_match = re.search(r"\bmaybe\s+(\w+)", text_lower)
+    maybe_match = _MAYBE_RE.search(text_lower)
     if maybe_match:
         dest = maybe_match.group(1).title()
         if is_known_destination(dest):
             return [dest], "semi_open", maybe_match.group(0)
 
     # Check for "thinking about" / "perhaps" / hedging patterns (semi-open)
-    hedging_match = re.search(
-        r"\b(?:thinking\s+about|perhaps|considering|looking\s+at)\s+(\w+)",
-        text_lower,
-    )
+    hedging_match = _HEDGING_RE.search(text_lower)
     if hedging_match:
         dest = hedging_match.group(1).title()
         if is_known_destination(dest):
             return [dest], "semi_open", hedging_match.group(0)
 
     # Check for "somewhere with/for" (open)
-    open_match = re.search(r"somewhere\s+(?:with|for|that)\s+(\w+)", text_lower)
+    open_match = _SOMEWHERE_DEST_RE.search(text_lower)
     if open_match:
         return [], "open", open_match.group(0)
 
@@ -418,20 +567,13 @@ def _extract_dates(text: str) -> Optional[Tuple[str, Optional[str], Optional[str
     text_lower = text.lower()
 
     # Exact ISO range
-    iso_match = re.search(r"(\d{4}-\d{2}-\d{2})\s+(?:to|–|-)\s+(\d{4}-\d{2}-\d{2})", text)
+    iso_match = _DAY_RANGE_RE.search(text)
     if iso_match:
         raw = iso_match.group(0)
         return raw, iso_match.group(1), iso_match.group(2), "exact"
 
     # Day range: "9th to 14th Feb", "around 9th to 14th Feb 2025"
-    _MONTH_ABBR = "(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*"
-    day_range = re.search(
-        r"\b(?:around|tentative(?:ly)?|dates?\s+around)?\s*"
-        r"(\d{1,2})(?:st|nd|rd|th)?\s*(?:to|-|–|—)\s*(\d{1,2})(?:st|nd|rd|th)?\s+"
-        r"(" + _MONTH_ABBR + r")\b"
-        r"(?:\s+(\d{4}))?",
-        text_lower,
-    )
+    day_range = _DAY_RANGE_TEXT_RE.search(text_lower)
     if day_range:
         start_day = day_range.group(1)
         end_day = day_range.group(2)
@@ -446,43 +588,25 @@ def _extract_dates(text: str) -> Optional[Tuple[str, Optional[str], Optional[str
             return raw, start_iso, end_iso, "tentative"
 
     # "This weekend" / "this Friday"
-    weekend_match = re.search(r"\bthis\s+(weekend|friday|saturday|sunday|monday|tuesday|wednesday|thursday)\b", text_lower)
+    weekend_match = _THIS_WEEKEND_RE.search(text_lower)
     if weekend_match:
         raw = weekend_match.group(0)
         return raw, None, None, "flexible"
 
     # Month window: "June-July 2026", "March or April 2026", "March ya April 2026"
-    month_window = re.search(
-        r"((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)"
-        r"\s*(?:or|ya|(?:-|–|—|\bto\b))\s*"
-        r"((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)"
-        r"(?:\s+(\d{4}))?",
-        text_lower,
-        re.IGNORECASE,
-    )
+    month_window = _MONTH_WINDOW_RE.search(text_lower)
     if month_window:
         raw = month_window.group(0)
         return raw, None, None, "window"
 
     # Single month: "March 2026"
-    single_month = re.search(
-        r"((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)"
-        r"\s+(\d{4})",
-        text_lower,
-        re.IGNORECASE,
-    )
+    single_month = _SINGLE_MONTH_RE.search(text_lower)
     if single_month:
         raw = single_month.group(0)
         return raw, None, None, "flexible"
 
     # "around March 2026", "sometime in May 2026"
-    fuzzy = re.search(
-        r"(?:around|sometime\s+in|during)\s+"
-        r"((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)"
-        r"\s+(\d{4})",
-        text_lower,
-        re.IGNORECASE,
-    )
+    fuzzy = _FUZZY_MONTH_RE.search(text_lower)
     if fuzzy:
         raw = fuzzy.group(0)
         return raw, None, None, "flexible"
@@ -531,7 +655,7 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
             return parsed
 
     # "flexible" budget
-    if re.search(r"\bflexible\s+budget\b|\bbudget\s+is\s+flexible\b", text_lower):
+    if _FLEXIBLE_BUDGET_RE.search(text_lower):
         return {"raw_text": "flexible", "min": None, "max": None, "currency": "INR"}
 
     return None
@@ -552,7 +676,7 @@ def _extract_budget_scope(text: str) -> str:
         return "per_person"
     if "per night" in text_lower:
         return "per_night"
-    if re.search(r"\b(?:total|for\s+(?:the\s+)?(?:whole\s+)?(?:trip|family|group))\b", text_lower):
+    if _TOTAL_GROUP_RE.search(text_lower):
         return "total"
     return "unknown"
 
@@ -644,7 +768,7 @@ def _extract_party(text: str) -> Dict[str, Any]:
                     child_ages.append(5.0)
 
     # Adults
-    adult_match = re.search(r"(\d+)\s+adults?", text_lower)
+    adult_match = _ADULTS_RE.search(text_lower)
     if adult_match:
         composition["adults"] = int(adult_match.group(1))
 
@@ -662,19 +786,19 @@ def _extract_party(text: str) -> Dict[str, Any]:
         child_ages.extend(found_ages)
 
     # Toddler — "toddler age 2", "a toddler", "toddlers"
-    has_toddler = bool(re.search(r"\b(?:a\s+)?toddler|toddlers?\b", text_lower))
+    has_toddler = bool(_TODDLER_RE.search(text_lower))
     if has_toddler:
         if "toddlers" not in composition and "children" not in composition:
             composition["children"] = 1
         if 0 not in child_ages and not any(a < 3 for a in child_ages):
-            toddler_age_match = re.search(r"toddler\s+(?:age\s+)?(\d+)", text_lower)
+            toddler_age_match = _TODDLER_AGE_RE.search(text_lower)
             child_ages.append(int(toddler_age_match.group(1)) if toddler_age_match else 2)
 
     # Elderly — "1 elderly", "an elderly grandmother", "grandma age 78", "senior"
-    elderly_match = re.search(r"(?:(\d+)\s+)?(?:elderly|seniors?|grandparents?|grandma|grandpa|grandmother|grandfather)", text_lower)
+    elderly_match = _ELDERLY_RE.search(text_lower)
     if elderly_match:
         composition["elderly"] = int(elderly_match.group(1)) if elderly_match.group(1) else 1
-    elif re.search(r"\b(?:elderly|seniors?)\b", text_lower):
+    elif _ELDERLY_RE.search(text_lower):
         composition.setdefault("elderly", 1)
 
     # Total party size
@@ -682,10 +806,7 @@ def _extract_party(text: str) -> Dict[str, Any]:
 
     # Prefer explicit stated headcount when present (e.g., "6 pax", "6 people").
     # If explicit and inferred counts conflict, explicit caller-provided count wins.
-    explicit_size_match = re.search(
-        r"\b(\d+)\s+(?:people|persons|pax|travellers|travelers)\b",
-        text_lower,
-    )
+    explicit_size_match = _PEOPLE_RE.search(text_lower)
     explicit_party_size = int(explicit_size_match.group(1)) if explicit_size_match else None
     if explicit_party_size and explicit_party_size > 0:
         party_size = explicit_party_size

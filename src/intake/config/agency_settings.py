@@ -45,7 +45,7 @@ _DEFAULT_MODE_OVERRIDES: Dict[str, Dict[str, str]] = {
 }
 
 
-@dataclass
+@dataclass(slots=True)
 class AgencyAutonomyPolicy:
     """
     Per-agency autonomy configuration.
@@ -123,7 +123,7 @@ class AgencyAutonomyPolicy:
         return policy
 
 
-@dataclass
+@dataclass(slots=True)
 class LLMGuardSettings:
     """LLM usage guard configuration for an agency."""
     enabled: bool = True
@@ -133,7 +133,7 @@ class LLMGuardSettings:
     budget_warning_thresholds: List[float] = field(default_factory=lambda: [0.5, 0.8, 1.0])
 
 
-@dataclass
+@dataclass(slots=True)
 class AgencySettings:
     """Configuration set for an agency."""
     agency_id: str

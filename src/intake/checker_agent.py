@@ -12,7 +12,7 @@ from .decision import DecisionResult
 
 logger = logging.getLogger("orchestration.checker")
 
-@dataclass
+@dataclass(slots=True)
 class CheckerAuditResult:
     """Result of a secondary agent audit."""
     is_valid: bool

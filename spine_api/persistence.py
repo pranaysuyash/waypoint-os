@@ -389,9 +389,11 @@ class SQLTripStore:
             "validation": trip_obj.validation or {},
             "decision": trip_obj.decision or {},
             "strategy": trip_obj.strategy,
-            "traveler_bundle": trip_obj.traveler_bundle,
-            "internal_bundle": trip_obj.internal_bundle,
-            "safety": trip_obj.safety or {},
+            "traveler_bundle": SQLTripStore._decrypt_pii(trip_obj.traveler_bundle) if trip_obj.traveler_bundle else None,
+            "internal_bundle": SQLTripStore._decrypt_pii(trip_obj.internal_bundle) if trip_obj.internal_bundle else None,
+            "safety": SQLTripStore._decrypt_pii(trip_obj.safety) if trip_obj.safety else {},
+            "frontier_result": SQLTripStore._decrypt_pii(trip_obj.frontier_result) if trip_obj.frontier_result else None,
+            "fees": SQLTripStore._decrypt_pii(trip_obj.fees) if trip_obj.fees else None,
             "raw_input": SQLTripStore._decrypt_pii(trip_obj.raw_input or {}),
             "analytics": trip_obj.analytics,
             "created_at": trip_obj.created_at.isoformat() if trip_obj.created_at else None,
@@ -418,9 +420,11 @@ class SQLTripStore:
             "validation": trip_data.get("validation") or {},
             "decision": trip_data.get("decision") or {},
             "strategy": trip_data.get("strategy"),
-            "traveler_bundle": trip_data.get("traveler_bundle"),
-            "internal_bundle": trip_data.get("internal_bundle"),
-            "safety": trip_data.get("safety") or {},
+            "traveler_bundle": SQLTripStore._encrypt_pii(trip_data.get("traveler_bundle")) if trip_data.get("traveler_bundle") else None,
+            "internal_bundle": SQLTripStore._encrypt_pii(trip_data.get("internal_bundle")) if trip_data.get("internal_bundle") else None,
+            "safety": SQLTripStore._encrypt_pii(trip_data.get("safety")) if trip_data.get("safety") else {},
+            "frontier_result": SQLTripStore._encrypt_pii(trip_data.get("frontier_result")) if trip_data.get("frontier_result") else None,
+            "fees": SQLTripStore._encrypt_pii(trip_data.get("fees")) if trip_data.get("fees") else None,
             "raw_input": SQLTripStore._encrypt_pii(trip_data.get("raw_input") or {}),
             "analytics": trip_data.get("analytics"),
             "created_at": SQLTripStore._parse_datetime(trip_data.get("created_at")) or datetime.now(timezone.utc),
@@ -632,6 +636,8 @@ def _build_processed_trip(
     validation = spine_output.get("validation", {}) or {}
     decision = spine_output.get("decision", {}) or {}
     safety = spine_output.get("safety", {}) or {}
+    frontier_result = spine_output.get("frontier_result")
+    fees = spine_output.get("fees")
 
     trip = {
         "id": f"trip_{uuid4().hex[:12]}",
@@ -653,6 +659,8 @@ def _build_processed_trip(
         "traveler_bundle": spine_output.get("traveler_bundle"),
         "internal_bundle": spine_output.get("internal_bundle"),
         "safety": safety,
+        "frontier_result": frontier_result,
+        "fees": fees,
         "raw_input": spine_output.get("meta", {}),
     }
 

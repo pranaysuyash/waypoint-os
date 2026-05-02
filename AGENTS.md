@@ -114,6 +114,99 @@ Before writing custom code for any well-understood functionality, **always searc
 - Markdown parsing
 - Anything else where npm registry or PyPI has a well-maintained solution
 
+## Performance Optimization Patterns (Critical)
+
+Before writing new code, check if these patterns apply to your task:
+
+### 1. O(n) → O(1) Lookups
+
+**Problem**: Using `any()` generators or list scans on sets/dicts.
+**Fix**: Use `in` operator for set/dict membership (O(1)).
+```python
+# BAD: O(n) scan on a set
+any(x.lower() == target for x in my_set)
+
+# GOOD: O(1) hash lookup
+target in my_set  # if elements already normalized
+```
+
+**Real example**: `is_known_city_normalized()` in `src/intake/geography.py` was doing O(n) scan on a 590k-city set. Fixed: `name_lower in all_cities` (O(1)).
+
+### 2. functools.lru_cache for Repeated Calls
+
+**Problem**: Functions called many times with same args recompute every time.
+**Fix**: Use `@lru_cache(maxsize=N)` for deterministic functions.
+
+```python
+from functools import lru_cache
+
+@lru_cache(maxsize=32)  # Power-of-2, covers all inputs
+def _month_to_num(month_str: str) -> Optional[int]:
+    return _MONTH_MAP.get(month_str.lower()[:3].rstrip("e")) or _MONTH_MAP.get(month_str.lower())
+```
+
+**When to use**:
+| Scenario | Approach |
+|----------|----------|
+| Module-level constant, built once | Global variable (like `_MONTH_MAP`) |
+| Function result depends on args, called repeatedly | `@lru_cache` |
+| Function result is constant, called multiple times | `@lru_cache(maxsize=1)` |
+| Lazy init with complex logic | Global `None` + init check |
+
+**Real example**: `_month_to_num()` in `extractors.py`, `_get_forbidden_terms()` in `orchestration.py`.
+
+### 3. __slots__ for Memory Efficiency (Python 3.10+)
+
+**Problem**: Dataclasses create `__dict__` per instance (~56 bytes overhead).
+**Fix**: Use `@dataclass(slots=True)` for high-frequency dataclasses.
+
+```python
+@dataclass(slots=True)
+class Slot:
+    value: Any = None
+    confidence: float = 0.0
+```
+
+**Impact**: For 10,000 instances: ~560KB saved (no `__dict__` overhead).
+**Cookie**: After adding `slots=True`, code using `vars(obj)` or `obj.__dict__` breaks. Fix:
+- Use `dataclasses.asdict(obj)` for serialization
+- Update helpers like `_to_dict()` to check `is_dataclass(obj)` before `hasattr(obj, "__dict__")`
+
+**Applied to**: All 39+ dataclasses across `packet_models.py`, `gates.py`, `validation.py`, `strategy.py`, `decision.py`, `suitability/models.py`, etc.
+
+**Reference**: `Docs/performance_optimization_geography_lru_cache_slots_2026-05-01.md`
+
+### 4. Verify Data Normalization
+
+**Problem**: Looking up `name.lower()` in a mixed-case set never matches.
+**Fix**: Verify both sides of the lookup use the same normalization.
+
+```python
+# BROKEN: _BLACKLIST has "January", lookup is lowercase
+if name.lower() in _BLACKLIST:  # Never matches!
+
+# FIXED: Cache a lowercase version
+_BLACKLIST_LOWER = {b.lower() for b in _BLACKLIST}
+if name.lower() in _BLACKLIST_LOWER:  # Works
+```
+
+### 5. Don't Recreate Constant Data Structures
+
+```python
+# BAD: Creates new set on every call
+if x in {item.lower() for item in my_list}:
+    ...
+
+# GOOD: Pre-build or cache
+_LOWER_SET = {item.lower() for item in my_list}  # Module level
+# or
+@lru_cache(maxsize=1)
+def _get_lower_set():
+    return {item.lower() for item in my_list}
+```
+
+---
+
 ## Default Task Lifecycle (Adopted)
 
 1. Analyze request and constraints.

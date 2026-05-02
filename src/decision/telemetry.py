@@ -16,7 +16,7 @@ import threading
 from .cache_schema import CacheStats
 
 
-@dataclass
+@dataclass(slots=True)
 class DecisionMetrics:
     """Metrics for a single decision."""
     decision_type: str
@@ -29,7 +29,7 @@ class DecisionMetrics:
     cost_inr: float = 0.0
 
 
-@dataclass
+@dataclass(slots=True)
 class TelemetrySnapshot:
     """Snapshot of telemetry data for export."""
     snapshot_time: datetime

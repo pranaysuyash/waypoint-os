@@ -1,22 +1,44 @@
 import React from 'react';
+import { useWorkbenchStore } from '@/stores/workbench';
+
+interface FrontierResult {
+  ghost_triggered?: boolean;
+  ghost_workflow_id?: string;
+  sentiment_score?: number;
+  anxiety_alert?: boolean;
+  intelligence_hits?: Array<{ message?: string; type?: string; source?: string; severity?: string }>;
+  specialty_knowledge?: Array<{ topic?: string; detail?: string }>;
+  mitigation_applied?: boolean;
+  requires_manual_audit?: boolean;
+  audit_reason?: string;
+  negotiation_active?: boolean;
+  negotiation_logs?: Array<{ step?: string; outcome?: string }>;
+}
 
 interface FrontierDashboardProps {
+  /** Fallback packet ID — used when no store data available */
   packetId?: string;
-  sentiment?: number;
-  isAnxious?: boolean;
-  ghostActive?: boolean;
-  intelHits?: any[];
-  logicRationale?: any;
 }
 
 export const FrontierDashboard: React.FC<FrontierDashboardProps> = ({
-  packetId = "PK-9912",
-  sentiment = 0.82,
-  isAnxious = false,
-  ghostActive = true,
-  intelHits = [],
-  logicRationale = "Autonomic trigger based on 'visa_delay' federated risk and high-value traveler status."
+  packetId,
 }) => {
+  const resultFrontier = useWorkbenchStore((s) => s.result_frontier) as FrontierResult | null;
+  const resultPacket = useWorkbenchStore((s) => s.result_packet) as { packet_id?: string } | null;
+
+  // Derive from store, with null-safe defaults
+  const frontier = resultFrontier ?? {};
+  const ghostActive = frontier.ghost_triggered ?? false;
+  const sentiment = frontier.sentiment_score ?? 0.5;
+  const isAnxious = frontier.anxiety_alert ?? false;
+  const intelHits = frontier.intelligence_hits ?? [];
+  const requiresAudit = frontier.requires_manual_audit ?? false;
+  const mitigationApplied = frontier.mitigation_applied ?? false;
+  const negotiationActive = frontier.negotiation_active ?? false;
+  const activePacketId = packetId ?? resultPacket?.packet_id ?? '—';
+
+  const hasRealData = resultFrontier !== null && resultFrontier !== undefined;
+
   return (
     <div className="bento-grid animate-fade-in">
       {/* 1. Ghost Concierge Status */}
@@ -27,8 +49,17 @@ export const FrontierDashboard: React.FC<FrontierDashboardProps> = ({
         </div>
         <div className="flex items-center gap-2 mt-4 text-ui-xs text-secondary">
           <div className={`w-2 h-2 rounded-full ${ghostActive ? 'bg-accent-green animate-pulse' : 'bg-muted'}`} />
-          <span>Workflow: GHOST-SEQ-004-X</span>
+          <span>
+            {ghostActive && frontier.ghost_workflow_id
+              ? `Workflow: ${frontier.ghost_workflow_id}`
+              : ghostActive
+                ? 'Ghost workflow active'
+                : 'No ghost workflow triggered'}
+          </span>
         </div>
+        {frontier.ghost_workflow_id && (
+          <p className="text-ui-xs text-muted mt-1 font-mono">Packet: {activePacketId}</p>
+        )}
       </div>
 
       {/* 2. Sentiment Meter */}
@@ -43,11 +74,14 @@ export const FrontierDashboard: React.FC<FrontierDashboardProps> = ({
           </div>
         </div>
         <div className="w-full bg-bg-canvas h-1 rounded-full mt-4 overflow-hidden">
-          <div 
-            className={`h-full transition-all duration-1000 ${isAnxious ? 'bg-accent-red' : 'bg-accent-green'}`} 
-            style={{ width: `${sentiment * 100}%` }}
+          <div
+            className={`h-full transition-all duration-1000 ${isAnxious ? 'bg-accent-red' : 'bg-accent-green'}`}
+            style={{ width: `${Math.max(0, Math.min(100, sentiment * 100))}%` }}
           />
         </div>
+        {!hasRealData && (
+          <p className="text-ui-xs text-muted mt-2 italic">No frontier data — run a pipeline to populate</p>
+        )}
       </div>
 
       {/* 3. Intelligence Feed */}
@@ -56,23 +90,55 @@ export const FrontierDashboard: React.FC<FrontierDashboardProps> = ({
         <div className="space-y-3">
           {intelHits.length > 0 ? intelHits.map((hit, i) => (
             <div key={i} className="flex gap-3 items-start p-2 bg-lg-glass-bg rounded-lg border border-lg-glass-border">
-              <div className="p-1 bg-accent-amber/20 rounded">
-                <svg className="w-4 h-4 text-accent-amber" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className={`p-1 rounded ${
+                hit.severity === 'critical' ? 'bg-accent-red/20' :
+                hit.severity === 'high' ? 'bg-accent-amber/20' :
+                'bg-accent-blue/20'
+              }`}>
+                <svg className={`w-4 h-4 ${
+                  hit.severity === 'critical' ? 'text-accent-red' :
+                  hit.severity === 'high' ? 'text-accent-amber' :
+                  'text-accent-blue'
+                }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
               <div>
-                <p className="text-ui-sm font-medium">{hit.message || hit.type}</p>
-                <p className="text-ui-xs text-muted">Source: Federated Node #412</p>
+                <p className="text-ui-sm font-medium">{hit.message || hit.type || 'Intelligence alert'}</p>
+                <p className="text-ui-xs text-muted">{hit.source ? `Source: ${hit.source}` : 'Source: Federated Intelligence'}</p>
               </div>
             </div>
           )) : (
-            <p className="text-ui-sm text-secondary italic">No active risks detected in this sector.</p>
+            <p className="text-ui-sm text-secondary italic">
+              {hasRealData ? 'No active risks detected in this sector.' : 'Run a pipeline to see federated intelligence.'}
+            </p>
           )}
         </div>
       </div>
 
-      {/* 4. Trust Anchor (Decision Logic) */}
+      {/* 4. Status Flags */}
+      <div className="bento-item">
+        <h3 className="text-ui-xs font-mono text-tertiary mb-2 uppercase tracking-widest">Status Flags</h3>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-ui-sm">
+            <span>Mitigation Applied</span>
+            <span className={mitigationApplied ? 'text-accent-green font-bold' : 'text-muted'}>{mitigationApplied ? 'YES' : 'NO'}</span>
+          </div>
+          <div className="flex items-center justify-between text-ui-sm">
+            <span>Manual Audit Required</span>
+            <span className={requiresAudit ? 'text-accent-red font-bold' : 'text-muted'}>{requiresAudit ? 'YES' : 'NO'}</span>
+          </div>
+          <div className="flex items-center justify-between text-ui-sm">
+            <span>Negotiation Active</span>
+            <span className={negotiationActive ? 'text-accent-amber font-bold' : 'text-muted'}>{negotiationActive ? 'YES' : 'NO'}</span>
+          </div>
+        </div>
+        {requiresAudit && frontier.audit_reason && (
+          <p className="text-ui-xs text-accent-red mt-2">Reason: {frontier.audit_reason}</p>
+        )}
+      </div>
+
+      {/* 5. Trust Anchor (Decision Logic) */}
       <div className="trust-anchor col-span-1 md:col-span-3">
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-ui-sm font-bold flex items-center gap-2">
@@ -81,19 +147,17 @@ export const FrontierDashboard: React.FC<FrontierDashboardProps> = ({
             </svg>
             Trust Anchor
           </h3>
-          <span className="text-ui-xs font-mono bg-accent-blue/10 text-accent-blue px-2 py-0.5 rounded">AUTHENTICATED LOGIC</span>
+          <span className={`text-ui-xs font-mono px-2 py-0.5 rounded ${
+            hasRealData ? 'bg-accent-blue/10 text-accent-blue' : 'bg-muted/20 text-muted'
+          }`}>
+            {hasRealData ? 'LIVE DATA' : 'NO DATA'}
+          </span>
         </div>
         <p className="text-ui-sm text-secondary">
-          Waypoint OS has analyzed 412 variables including traveler loyalty, real-time FX, and federated risk pools to arrive at this strategy.
+          {hasRealData
+            ? `Waypoint OS frontier analysis for packet ${activePacketId}. Sentiment: ${(sentiment * 100).toFixed(0)}%. ${ghostActive ? 'Ghost concierge triggered.' : ''} ${intelHits.length} intelligence hit(s).`
+            : 'Run a pipeline to see frontier analysis, sentiment scoring, and federated intelligence.'}
         </p>
-        <div className="trust-anchor-logic">
-          <p className="font-bold mb-1">RATIONALE_DUMP:</p>
-          <p>
-            {typeof logicRationale === 'string' 
-              ? logicRationale 
-              : (logicRationale?.frontier || logicRationale?.feasibility || JSON.stringify(logicRationale) || 'No specific rationale provided.')}
-          </p>
-        </div>
       </div>
     </div>
   );

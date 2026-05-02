@@ -23,7 +23,7 @@ class CircuitState(Enum):
     HALF_OPEN = "half_open"  # Testing if LLM recovered
 
 
-@dataclass
+@dataclass(slots=True)
 class HealthStatus:
     """Health status of the hybrid decision engine."""
     healthy: bool

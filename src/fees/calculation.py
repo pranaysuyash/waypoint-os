@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 
-@dataclass
+@dataclass(slots=True)
 class FeeBreakdown:
     """Detailed fee calculation breakdown."""
 

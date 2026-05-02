@@ -55,7 +55,7 @@ RECOVERY_INTERVAL_SECONDS = int(os.environ.get("RECOVERY_INTERVAL_S", "300"))  #
 
 # ── Data model ────────────────────────────────────────────────────────────────
 
-@dataclass
+@dataclass(slots=True)
 class StuckTrip:
     trip_id: str
     stage: str
@@ -65,7 +65,7 @@ class StuckTrip:
     last_action_at: Optional[datetime] = None
 
 
-@dataclass
+@dataclass(slots=True)
 class RecoveryResult:
     trip_id: str
     action: str

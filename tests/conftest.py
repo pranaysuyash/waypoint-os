@@ -9,9 +9,18 @@ tests/conftest — Pytest configuration and shared fixtures.
 """
 
 import sys
+import warnings
 from pathlib import Path
 
 import pytest
+
+# Suppress SWIG-generated C extension warnings from sentencepiece/grpcio
+# (upstream bug — their SWIG bindings don't set __module__ on C types)
+warnings.filterwarnings(
+    "ignore",
+    message="builtin type.*has no __module__",
+    category=DeprecationWarning,
+)
 
 # ---------------------------------------------------------------------------
 # JWT_SECRET — must be set before *any* spine_api module is imported,

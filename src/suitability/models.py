@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Literal, Optional
 
 
-@dataclass
+@dataclass(slots=True)
 class ParticipantRef:
     """Reference to a traveler unit."""
 
@@ -19,7 +19,7 @@ class ParticipantRef:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass
+@dataclass(slots=True)
 class ActivityDefinition:
     """Normalized activity contract used by all scorers."""
 
@@ -40,7 +40,7 @@ class ActivityDefinition:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass
+@dataclass(slots=True)
 class StructuredRisk:
     """Typed risk output used by tour-context suitability checks."""
 
@@ -65,7 +65,7 @@ class StructuredRisk:
     rule_id: Optional[str] = None
 
 
-@dataclass
+@dataclass(slots=True)
 class SuitabilityContext:
     """Scoring context including day/trip sequence awareness."""
 
@@ -89,7 +89,7 @@ class SuitabilityContext:
     budget_preference: Optional[Literal["low", "mid", "high", "premium"]] = None
 
 
-@dataclass
+@dataclass(slots=True)
 class ActivitySuitability:
     """Assessment output for one activity and one participant."""
 

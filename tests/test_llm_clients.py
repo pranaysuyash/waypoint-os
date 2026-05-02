@@ -83,59 +83,51 @@ class TestGeminiClient:
         """Test that creating client without API key raises error."""
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
 
-        # Check if package is available
         try:
-            import google.generativeai
+            from google import genai
             package_available = True
         except ImportError:
             package_available = False
 
         if package_available:
-            # Package installed - should get API key error
             with pytest.raises(LLMUnavailableError, match="GEMINI_API_KEY not set"):
                 GeminiClient()
         else:
-            # Package not installed - should get package error
-            with pytest.raises(LLMUnavailableError, match="google-generativeai"):
+            with pytest.raises(LLMUnavailableError, match="google-genai"):
                 GeminiClient()
 
     def test_create_with_api_key(self, monkeypatch):
         """Test creating client with API key."""
         monkeypatch.setenv("GEMINI_API_KEY", "test_key")
 
-        # Will fail if google-generativeai not installed
         try:
             client = GeminiClient()
-            assert client.model == "gemini-1.5-flash"
+            assert client.model == "gemini-2.0-flash"
         except LLMUnavailableError as e:
-            # Expected if package not installed
-            assert "google-generativeai" in str(e)
+            assert "google-genai" in str(e)
 
     def test_estimate_cost(self):
         """Test cost estimation for Gemini."""
         try:
             client = GeminiClient(api_key="test")
         except LLMUnavailableError:
-            pytest.skip("google-generativeai not installed")
+            pytest.skip("google-genai not installed")
 
         cost = client.estimate_cost(1000, 500)
 
-        # gemini-1.5-flash: ~₹6.2 per million input, ~₹24.9 per million output
-        # Expected: (1000/1M * 6.2) + (500/1M * 24.9) ≈ ₹0.0187
         assert cost > 0
-        assert cost < 1  # Should be very small for 1500 tokens
+        assert cost < 1
 
     def test_estimate_cost_pro_model(self):
         """Test cost estimation for Gemini Pro."""
         try:
-            client = GeminiClient(model="gemini-1.5-pro", api_key="test")
+            client = GeminiClient(model="gemini-2.5-pro", api_key="test")
         except LLMUnavailableError:
-            pytest.skip("google-generativeai not installed")
+            pytest.skip("google-genai not installed")
 
         cost = client.estimate_cost(1000, 500)
 
-        # gemini-1.5-pro is more expensive than flash
-        flash_client = GeminiClient(model="gemini-1.5-flash", api_key="test")
+        flash_client = GeminiClient(model="gemini-2.0-flash", api_key="test")
         flash_cost = flash_client.estimate_cost(1000, 500)
 
         assert cost > flash_cost
@@ -254,7 +246,7 @@ class TestFactoryFunctions:
             client = create_gemini_client()
             assert client.model == "gemini-1.5-pro"
         except LLMUnavailableError:
-            pytest.skip("google-generativeai not installed")
+            pytest.skip("google-genai not installed")
 
     def test_create_openai_client_from_env(self, monkeypatch):
         """Test creating OpenAI client from environment."""

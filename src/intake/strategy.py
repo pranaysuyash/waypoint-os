@@ -34,7 +34,7 @@ class PriorityLevel(Enum):
     LOW = "low"
 
 
-@dataclass
+@dataclass(slots=True)
 class QuestionWithIntent:
     """
     A question with full intent metadata.
@@ -68,7 +68,7 @@ class QuestionWithIntent:
         }
 
 
-@dataclass
+@dataclass(slots=True)
 class PromptBlock:
     """A unit of prompt content with explicit audience tagging."""
     content: str
@@ -83,7 +83,7 @@ class PromptBlock:
         }
 
 
-@dataclass
+@dataclass(slots=True)
 class SessionStrategy:
     """
     The conversation planner's output.
@@ -115,7 +115,7 @@ class SessionStrategy:
         }
 
 
-@dataclass
+@dataclass(slots=True)
 class PromptBundle:
     """
     The actual content to be sent.

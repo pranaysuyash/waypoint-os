@@ -175,7 +175,7 @@ COST_BUCKET_NAMES = (
 )
 
 
-@dataclass
+@dataclass(slots=True)
 class CostBucketEstimate:
     bucket: str
     low: int
@@ -184,7 +184,7 @@ class CostBucketEstimate:
     notes: Optional[str] = None
 
 
-@dataclass
+@dataclass(slots=True)
 class BudgetBreakdownResult:
     verdict: Literal["realistic", "borderline", "not_realistic"]
     buckets: List[CostBucketEstimate] = field(default_factory=list)
@@ -200,7 +200,7 @@ class BudgetBreakdownResult:
     maturity: str = "heuristic"
 
 
-@dataclass
+@dataclass(slots=True)
 class AmbiguityRef:
     """A reference to a packet ambiguity, with severity classification."""
     field_name: str
@@ -209,7 +209,7 @@ class AmbiguityRef:
     severity: str  # "blocking" | "advisory"
 
 
-@dataclass
+@dataclass(slots=True)
 class ConfidenceScorecard:
     """Structured confidence across three orthogonal axes."""
     data_quality: float = 0.0          # Evidence density and extraction confidence
@@ -223,7 +223,7 @@ class ConfidenceScorecard:
         return self.overall
 
 
-@dataclass
+@dataclass(slots=True)
 class DecisionResult:
     """The complete output of the NB02 gap and decision pipeline."""
     packet_id: str

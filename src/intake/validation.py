@@ -65,7 +65,7 @@ DISCOVERY_MVB = QUOTE_READY
 NUMERIC_BUDGET_MODES = frozenset({"audit", "coordinator_group"})
 
 
-@dataclass
+@dataclass(slots=True)
 class ValidationIssue:
     """A single validation finding with severity."""
     severity: str  # "error" | "warning"
@@ -74,7 +74,7 @@ class ValidationIssue:
     field: str = ""
 
 
-@dataclass
+@dataclass(slots=True)
 class PacketValidationReport:
     """Result of validating a CanonicalPacket against v0.2 schema."""
     is_valid: bool

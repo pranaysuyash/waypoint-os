@@ -137,6 +137,7 @@ function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
     store.setResultTravelerBundle(trip.traveler_bundle ?? null);
     store.setResultSafety((trip.safety as SafetyResult) ?? null);
     store.setResultFees(trip.fees ?? null);
+    store.setResultFrontier(trip.frontier_result ?? null);
     store.setInputRawNote(trip.customerMessage ?? '');
     store.setInputOwnerNote(trip.agentNotes ?? '');
   }, [
@@ -151,6 +152,7 @@ function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
     store.setResultTravelerBundle,
     store.setResultSafety,
     store.setResultFees,
+    store.setResultFrontier,
   ]);
 }
 

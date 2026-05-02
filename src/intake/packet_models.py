@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Literal, Optional, Union
 # SECTION 0: SUITABILITY MODELS
 # =============================================================================
 
-@dataclass
+@dataclass(slots=True)
 class SuitabilityFlag:
     """Activity suitability assessment flag for a packet."""
     flag_type: str
@@ -79,7 +79,7 @@ def higher_authority(auth1: str, auth2: str) -> str:
 # SECTION 2: EVIDENCE & SLOT MODELS
 # =============================================================================
 
-@dataclass
+@dataclass(slots=True)
 class EvidenceRef:
     """Provenance reference — links a value to its source."""
     envelope_id: str
@@ -103,7 +103,7 @@ class ExtractionMode:
     MANUAL_ENTRY = "manual_entry"
 
 
-@dataclass
+@dataclass(slots=True)
 class Slot:
     """A field container with full provenance and authority tracking."""
     value: Any = None
@@ -132,7 +132,7 @@ class Slot:
         return d
 
 
-@dataclass
+@dataclass(slots=True)
 class UnknownField:
     """Explicit representation of unknown/missing fields."""
     field_name: str
@@ -145,7 +145,7 @@ class UnknownField:
 # SECTION 3: AMBIGUITY, OWNER CONSTRAINT, SUBGROUP
 # =============================================================================
 
-@dataclass
+@dataclass(slots=True)
 class ContradictionValue:
     """A single value in a contradiction with its source attribution."""
     value: Any
@@ -154,7 +154,7 @@ class ContradictionValue:
     timestamp: Optional[str] = None  # ISO-8601 when this value was captured
 
 
-@dataclass
+@dataclass(slots=True)
 class Ambiguity:
     """First-class ambiguity marker — not hidden under unknowns."""
     field_name: str
@@ -174,7 +174,7 @@ class Ambiguity:
     notes: Optional[str] = None
 
 
-@dataclass
+@dataclass(slots=True)
 class OwnerConstraint:
     """An owner constraint with explicit visibility semantics."""
     text: str
@@ -182,7 +182,7 @@ class OwnerConstraint:
     evidence_refs: List[EvidenceRef] = field(default_factory=list)
 
 
-@dataclass
+@dataclass(slots=True)
 class SubGroup:
     """A sub-group within a multi-party trip. Structural, not a loose dict."""
     group_id: str
@@ -201,7 +201,7 @@ class SubGroup:
 # SECTION 4: LIFECYCLE & RETENTION MODELS
 # =============================================================================
 
-@dataclass
+@dataclass(slots=True)
 class LifecycleInfo:
     """Lead/customer lifecycle signals for retention and commercial decisions."""
     lead_id: Optional[str] = None
@@ -251,7 +251,7 @@ class LifecycleInfo:
 # SECTION 5: SOURCE ENVELOPE
 # =============================================================================
 
-@dataclass
+@dataclass(slots=True)
 class SourceEnvelope:
     """The canonical input wrapper — preserves all source information."""
     envelope_id: str
@@ -290,7 +290,7 @@ class SourceEnvelope:
 # SECTION 6: CANONICAL PACKET (v0.2)
 # =============================================================================
 
-@dataclass
+@dataclass(slots=True)
 class CanonicalPacket:
     """
     Agency-OS Packet v0.2 — the single source of truth for all intake data.

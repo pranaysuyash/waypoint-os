@@ -26,7 +26,7 @@ ANXIETY_ALERT_THRESHOLD = 0.3
 DEFAULT_CHECKER_AUDIT_THRESHOLD = 0.9
 
 
-@dataclass
+@dataclass(slots=True)
 class FrontierOrchestrationResult:
     """Result of the frontier orchestration pass."""
     ghost_triggered: bool = False

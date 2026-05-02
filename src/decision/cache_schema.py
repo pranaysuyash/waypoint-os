@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 
-@dataclass
+@dataclass(slots=True)
 class CachedDecision:
     """
     A compiled decision that can be reused without LLM.
@@ -135,7 +135,7 @@ class CachedDecision:
         return True
 
 
-@dataclass
+@dataclass(slots=True)
 class CacheStats:
     """Statistics about cache performance."""
 

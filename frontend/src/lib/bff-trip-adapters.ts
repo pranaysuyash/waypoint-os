@@ -1,4 +1,5 @@
 import type { Trip } from "@/lib/api-client";
+import type { FeeCalculationResult } from "@/types/spine";
 import type { InboxTrip, TripPriority } from "@/types/governance";
 
 type JsonRecord = Record<string, unknown>;
@@ -404,6 +405,8 @@ export function transformSpineTripToTrip(
       budget_breakdown: decision.budget_breakdown ?? DEFAULT_BUDGET_BREAKDOWN,
     } as unknown) as Trip["decision"],
     safety: trip.safety || {},
+    fees: (trip.fees as FeeCalculationResult | undefined) ?? undefined,
+    frontier_result: trip.frontier_result ?? undefined,
     rawInput: trip.raw_input || {
       stage: "discovery",
       operating_mode: "normal_intake",

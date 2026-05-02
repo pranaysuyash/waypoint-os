@@ -46,6 +46,7 @@ import time
 import uuid
 from collections import defaultdict
 from contextlib import asynccontextmanager
+from dataclasses import is_dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -604,6 +605,8 @@ def build_envelopes(data: dict[str, Any]) -> List[SourceEnvelope]:
 def _to_dict(obj: Any) -> Any:
     if hasattr(obj, "to_dict"):
         return obj.to_dict()
+    if is_dataclass(obj):
+        return asdict(obj)
     if hasattr(obj, "__dict__"):
         return {k: _to_dict(v) for k, v in obj.__dict__.items() if not k.startswith("_")}
     if isinstance(obj, (list, tuple)):
@@ -1018,6 +1021,11 @@ def _execute_spine_pipeline(
                     "validation": _to_dict(result.validation) if hasattr(result, "validation") else None,
                     "decision": _to_dict(result.decision) if hasattr(result, "decision") else None,
                     "strategy": _to_dict(result.strategy) if hasattr(result, "strategy") else None,
+                    "traveler_bundle": _to_dict(result.traveler_bundle) if hasattr(result, "traveler_bundle") and result.traveler_bundle else None,
+                    "internal_bundle": _to_dict(result.internal_bundle) if hasattr(result, "internal_bundle") and result.internal_bundle else None,
+                    "safety": _to_dict(result.safety) if hasattr(result, "safety") else None,
+                    "fees": _to_dict(result.fees) if hasattr(result, "fees") and result.fees else None,
+                    "frontier_result": _to_dict(result.frontier_result) if hasattr(result, "frontier_result") and result.frontier_result else None,
                     "meta": {
                         **meta.model_dump(),
                         "submission": consented_submission,
@@ -1080,6 +1088,11 @@ def _execute_spine_pipeline(
                 "validation": _to_dict(result.validation) if hasattr(result, "validation") else None,
                 "decision": _to_dict(result.decision) if hasattr(result, "decision") else None,
                 "strategy": _to_dict(result.strategy) if hasattr(result, "strategy") else None,
+                "traveler_bundle": _to_dict(result.traveler_bundle) if hasattr(result, "traveler_bundle") and result.traveler_bundle else None,
+                "internal_bundle": _to_dict(result.internal_bundle) if hasattr(result, "internal_bundle") and result.internal_bundle else None,
+                "safety": _to_dict(result.safety) if hasattr(result, "safety") else None,
+                "fees": _to_dict(result.fees) if hasattr(result, "fees") and result.fees else None,
+                "frontier_result": _to_dict(result.frontier_result) if hasattr(result, "frontier_result") and result.frontier_result else None,
                 "meta": {
                     **meta.model_dump(),
                     "submission": consented_submission,

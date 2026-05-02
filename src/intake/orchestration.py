@@ -10,9 +10,26 @@ Contract: Docs/pre_build_corrections_2026-04-15.md (Correction 1)
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import re
+from dataclasses import dataclass, field, is_dataclass, asdict
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from functools import lru_cache
+from typing import Any, Dict, List, Optional, Tuple
+
+
+def _obj_to_dict(obj: Any) -> Any:
+    """Convert an object to a dict for serialization.
+
+    Handles Pydantic models (model_dump), dataclasses (asdict),
+    and fallback to vars() for objects with __dict__.
+    """
+    if hasattr(obj, "model_dump"):
+        return obj  # Pydantic v2: pass through for JSON serialization
+    if is_dataclass(obj):
+        return asdict(obj)
+    if hasattr(obj, "__dict__"):
+        return vars(obj)
+    return obj  # Give up, pass through
 
 from opentelemetry import trace
 
@@ -87,7 +104,7 @@ def _emit_audit_event(
 # SECTION 1: SPINE RESULT
 # =============================================================================
 
-@dataclass
+@dataclass(slots=True)
 class SpineResult:
     """
     Complete output of one spine run.
@@ -199,7 +216,7 @@ def run_spine_once(
         packet.operating_mode = operating_mode
 
     if stage_callback:
-        _emit_stage_event("packet", "completed", packet if hasattr(packet, "model_dump") else vars(packet))
+        _emit_stage_event("packet", "completed", _obj_to_dict(packet))
     else:
         # Emit intake event to AuditStore
         _emit_audit_event(
@@ -276,7 +293,7 @@ def run_spine_once(
         return _create_partial_intake_result(packet, validation, empty_decision, run_timestamp)
 
     if stage_callback:
-        _emit_stage_event("validation", "completed", validation if hasattr(validation, "model_dump") else vars(validation))
+        _emit_stage_event("validation", "completed", _obj_to_dict(validation))
     else:
         # Emit packet stage completion to AuditStore
         _emit_audit_event(
@@ -301,7 +318,7 @@ def run_spine_once(
     packet.decision_state = decision.decision_state
 
     if stage_callback:
-        _emit_stage_event("decision", "completed", decision if hasattr(decision, "model_dump") else vars(decision))
+        _emit_stage_event("decision", "completed", _obj_to_dict(decision))
     else:
         # Emit decision stage event to AuditStore
         _emit_audit_event(
@@ -374,7 +391,7 @@ def run_spine_once(
         raise
 
     if stage_callback:
-        _emit_stage_event("strategy", "completed", strategy if hasattr(strategy, "model_dump") else vars(strategy))
+        _emit_stage_event("strategy", "completed", _obj_to_dict(strategy))
     else:
         # Emit strategy stage event to AuditStore
         _emit_audit_event(
@@ -397,8 +414,8 @@ def run_spine_once(
         # Callback for bundles
         if stage_callback:
             _emit_stage_event("output", "completed", {
-                "internal_bundle": internal_bundle if hasattr(internal_bundle, "model_dump") else vars(internal_bundle),
-                "traveler_bundle": traveler_bundle if hasattr(traveler_bundle, "model_dump") else vars(traveler_bundle),
+                "internal_bundle": _obj_to_dict(internal_bundle),
+                "traveler_bundle": _obj_to_dict(traveler_bundle),
             })
     except Exception as e:
         _emit_stage_event("output", "failed", error=str(e))
@@ -614,14 +631,14 @@ def _check_sanitized_view_leakage(sanitized_view: SanitizedPacketView) -> List[s
     We scan all text values in the sanitized view for forbidden concepts.
     """
     leaks = []
-    forbidden_terms = _get_forbidden_terms()
+    forbidden_patterns = _get_forbidden_patterns()
 
     # Scan facts
     for field_name, slot in sanitized_view.facts.items():
         value = slot.value if hasattr(slot, "value") else slot
         text = _extract_text_from_value(value)
         if text:
-            term_found = _scan_for_forbidden_terms(text, forbidden_terms)
+            term_found = _scan_for_forbidden_terms(text, forbidden_patterns)
             if term_found:
                 leaks.append(
                     f"Leakage in sanitized view facts: '{term_found}' in {field_name}"
@@ -632,7 +649,7 @@ def _check_sanitized_view_leakage(sanitized_view: SanitizedPacketView) -> List[s
         value = slot.value if hasattr(slot, "value") else slot
         text = _extract_text_from_value(value)
         if text:
-            term_found = _scan_for_forbidden_terms(text, forbidden_terms)
+            term_found = _scan_for_forbidden_terms(text, forbidden_patterns)
             if term_found:
                 leaks.append(
                     f"Leakage in sanitized view derived signals: '{term_found}' in {field_name}"
@@ -641,10 +658,14 @@ def _check_sanitized_view_leakage(sanitized_view: SanitizedPacketView) -> List[s
     return leaks
 
 
-def _get_forbidden_terms() -> set:
-    """Get the set of forbidden traveler concepts (from safety module)."""
+@lru_cache(maxsize=1)
+def _get_forbidden_patterns() -> List[Tuple[re.Pattern, str]]:
+    """Get pre-compiled regex patterns for forbidden traveler concepts."""
     from .safety import FORBIDDEN_TRAVELER_CONCEPTS
-    return FORBIDDEN_TRAVELER_CONCEPTS
+    return [
+        (re.compile(r"\b" + re.escape(term) + r"\b", re.IGNORECASE), term)
+        for term in FORBIDDEN_TRAVELER_CONCEPTS
+    ]
 
 
 def _extract_text_from_value(value: Any) -> str:
@@ -658,15 +679,13 @@ def _extract_text_from_value(value: Any) -> str:
     return str(value)
 
 
-def _scan_for_forbidden_terms(text: str, forbidden_terms: set) -> Optional[str]:
+def _scan_for_forbidden_terms(text: str, forbidden_patterns: List[Tuple[re.Pattern, str]]) -> Optional[str]:
     """
-    Scan text for forbidden terms. Returns the first forbidden term found, or None.
+    Scan text for forbidden terms using pre-compiled patterns.
+    Returns the first forbidden term found, or None.
     """
-    import re
-    text_lower = text.lower()
-    for term in forbidden_terms:
-        pattern = r'\b' + re.escape(term) + r'\b'
-        if re.search(pattern, text_lower):
+    for pattern, term in forbidden_patterns:
+        if pattern.search(text):
             return term
     return None
 

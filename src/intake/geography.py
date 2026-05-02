@@ -100,6 +100,9 @@ _COUNTRY_DESTINATIONS: Set[str] = {
     "United Arab Emirates",
 }
 
+# Pre-built lowercase lookup for O(1) membership tests
+_COUNTRY_LOWER: Set[str] = {c.lower() for c in _COUNTRY_DESTINATIONS}
+
 
 # =============================================================================
 # MODULE STATE (lazy-loaded, cached)
@@ -483,8 +486,6 @@ def is_known_destination(name: str) -> bool:
     if lower in _get_blacklist_lower():
         return False
 
-    # Normalize country destinations for case-insensitive lookup
-    _COUNTRY_LOWER = {c.lower() for c in _COUNTRY_DESTINATIONS}
     return lower in _build_union() or lower in _COUNTRY_LOWER
 
 

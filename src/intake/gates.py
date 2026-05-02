@@ -30,7 +30,7 @@ class GateVerdict(Enum):
     DEGRADE = "degrade"   # Issues detected, but can proceed in a limited/safe mode
 
 
-@dataclass
+@dataclass(slots=True)
 class GateResult:
     """The result of a single quality gate evaluation."""
     verdict: GateVerdict
@@ -43,7 +43,7 @@ class GateResult:
 # D1 Autonomy Outcome — first-class separation of policy from judgment
 # =============================================================================
 
-@dataclass
+@dataclass(slots=True)
 class AutonomyOutcome:
     """
     The result of applying the agency autonomy policy to an NB02 verdict.
