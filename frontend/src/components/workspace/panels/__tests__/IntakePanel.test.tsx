@@ -244,7 +244,7 @@ describe('IntakePanel', () => {
 
     expect(screen.getByText('Missing customer details')).toBeInTheDocument();
     expect(screen.getByText('Confirm budget range before building options.')).toBeInTheDocument();
-    expect(screen.getByText('Next')).toBeInTheDocument();
+    expect(screen.getByText('Suggested Next Move')).toBeInTheDocument();
     expect(screen.getByText('Ask the traveler for budget range.')).toBeInTheDocument();
     expect(screen.getByText('Watch')).toBeInTheDocument();
     expect(screen.getByText('Blocked by missing details.')).toBeInTheDocument();

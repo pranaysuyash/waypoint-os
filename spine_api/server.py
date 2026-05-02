@@ -95,6 +95,8 @@ from spine_api.core.database import engine, get_db
 from spine_api.models.tenant import Agency, User
 from spine_api.core.logging_filter import install_sensitive_data_filter
 from spine_api.core.middleware import AuthMiddleware
+from spine_api.core.rate_limiter import limiter, RateLimitExceededHandler, SlowAPIMiddleware
+from slowapi.errors import RateLimitExceeded
 
 from spine_api.contract import (
     SafetyResult,
@@ -242,6 +244,7 @@ try:
     from routers import auth as auth_router
     from routers import workspace as workspace_router
     from routers import frontier as frontier_router
+    from routers import audit as audit_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -259,6 +262,11 @@ except (ImportError, ValueError):
     _fr_mod = importlib.util.module_from_spec(_fr_spec)
     _fr_spec.loader.exec_module(_fr_mod)
     frontier_router = _fr_mod
+
+    _audit_spec = importlib.util.spec_from_file_location("routers.audit", _base / "routers" / "audit.py")
+    _audit_mod = importlib.util.module_from_spec(_audit_spec)
+    _audit_spec.loader.exec_module(_audit_mod)
+    audit_router = _audit_mod
 
 logger = logging.getLogger("spine_api")
 
@@ -351,6 +359,7 @@ async def lifespan(app: FastAPI):
         logger.warning("⚠️  AUTH DISABLED — local/test only. Do not use in production.")
     await _ensure_memberships_schema_compatibility()
     install_sensitive_data_filter()
+    app.state.limiter = limiter
     watchdog.start()
     _recovery_agent.start()
     _zombie_reaper_start()
@@ -386,6 +395,9 @@ app.add_middleware(
 
 app.add_middleware(AuthMiddleware)
 
+app.add_middleware(SlowAPIMiddleware)
+app.add_exception_handler(RateLimitExceeded, RateLimitExceededHandler.handler)
+
 # Instrument FastAPI with OpenTelemetry
 FastAPIInstrumentor.instrument_app(app)
 
@@ -396,6 +408,7 @@ app.include_router(
     dependencies=[Depends(get_current_user)] if not os.environ.get("SPINE_API_DISABLE_AUTH") else [],
 )
 app.include_router(frontier_router.router, dependencies=[Depends(get_current_user)] if not os.environ.get("SPINE_API_DISABLE_AUTH") else [])
+app.include_router(audit_router.router, dependencies=[Depends(get_current_user)] if not os.environ.get("SPINE_API_DISABLE_AUTH") else [])
 
 
 def _seed_scenario(agency_id: Optional[str] = None):
@@ -1316,6 +1329,11 @@ def _run_public_checker_submission(request_dict: dict[str, Any]) -> RunStatusRes
             trip_status = "new"
 
         trip_id_saved = save_processed_trip(
+            # Reduced persistence contract: public checker only persists the 5
+            # non-private compartments. Internal/frontier/fees data is intentionally
+            # excluded — public checker is customer-facing and should not persist
+            # agent-only private compartments (internal_bundle, safety, fees,
+            # frontier_result, traveler_bundle). See TRIP_STATE_CONTRACT.md.
             {
                 "run_id": run_id,
                 "packet": packet_payload if packet_payload else None,

@@ -9,10 +9,14 @@ import { InlineLoading } from "@/components/ui/loading";
 import { useTrip } from "@/hooks/useTrips";
 import {
   canAccessPlanningStage,
+  getPlanningBlockerBody,
+  getPlanningBlockerTitle,
   getPlanningHeaderTitle,
   getPlanningIdentityLine,
   getPlanningLockedTabHint,
+  getPlanningNextAction,
   getPlanningQueueLine,
+  getPlanningSuggestedNextMove,
   getPlanningStageGateReason,
   getPlanningStatusLabel,
   getPlanningStatusTone,
@@ -68,6 +72,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   const { result_run_ts } = useWorkbenchStore();
 
   const activeStage = useMemo(() => getActiveStage(pathname), [pathname]);
+  const isLeadReview = trip?.status === "new" || trip?.status === "incomplete";
   const planningTone = getPlanningStatusTone(trip);
   const accent = STATE_ACCENT[planningTone ?? "blue"] ?? STATE_ACCENT.blue;
   const backHref = "/trips";
@@ -346,6 +351,21 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                 className="rounded-xl border border-[#1c2128] bg-[#0f1115] h-[calc(100vh-140px)] overflow-hidden flex flex-col"
                 aria-label="Trip timeline"
               >
+                <div className="border-b border-[#1c2128] p-3 space-y-2">
+                  <div className="rounded-lg border border-[rgba(88,166,255,0.25)] bg-[rgba(88,166,255,0.08)] p-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#58a6ff]">Next Suggestions</p>
+                    <p className="mt-1 text-[12px] text-[#c9d1d9]">{getPlanningSuggestedNextMove(isLeadReview, trip)}</p>
+                  </div>
+                  <div className="rounded-lg border border-[rgba(48,54,61,0.9)] bg-[rgba(255,255,255,0.02)] p-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
+                      {getPlanningBlockerTitle(isLeadReview, trip)}
+                    </p>
+                    <p className="mt-1 text-[12px] text-[var(--text-secondary)]">
+                      {getPlanningBlockerBody(isLeadReview, trip)}
+                    </p>
+                    <p className="mt-1.5 text-[11px] text-[var(--text-muted)]">{getPlanningNextAction(trip)}</p>
+                  </div>
+                </div>
                 <div className="flex-1 overflow-y-auto">
                   <ErrorBoundary>
                     <TimelineSummary

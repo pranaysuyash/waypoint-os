@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Briefcase,
@@ -145,8 +145,16 @@ export default function InboxPage() {
 
   const [selectedTrips, setSelectedTrips] = useState<Set<string>>(new Set());
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const FETCH_LIMIT = 500;
   
-  const { data: inboxTrips, total: inboxTotal, hasMore, isLoading, error, refetch, assignTrips } = useInboxTrips(undefined, page, limit);
+  const {
+    data: inboxTrips,
+    total: inboxTotal,
+    isLoading,
+    error,
+    refetch,
+    assignTrips,
+  } = useInboxTrips(undefined, 1, FETCH_LIMIT);
 
   const agents = useMemo(() => {
     const seen = new Map<string, string>();
@@ -184,7 +192,7 @@ export default function InboxPage() {
     return counts;
   }, [inboxTrips, inboxTotal]);
 
-  const filtered = useMemo(() => {
+  const filteredAll = useMemo(() => {
     let result = [...inboxTrips];
 
     // Standard filters
@@ -232,6 +240,21 @@ export default function InboxPage() {
       }
     });
   }, [inboxTrips, activeFilter, searchQuery, sortBy, sortDirection]);
+  const totalFiltered = filteredAll.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / limit));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * limit;
+  const pagedTrips = useMemo(
+    () => filteredAll.slice(pageStart, pageStart + limit),
+    [filteredAll, pageStart, limit],
+  );
+  const hasNextPage = currentPage < totalPages;
+
+  useEffect(() => {
+    if (page !== currentPage) {
+      updateParams({ page: String(currentPage) });
+    }
+  }, [page, currentPage, updateParams]);
 
   const handleSelect = useCallback((id: string, selected: boolean) => {
     setSelectedTrips((prev) => {
@@ -390,6 +413,20 @@ export default function InboxPage() {
           {isLoading ? 'Loading...' : leadCountLabel(inboxTotal)}
         </span>
           </span>
+          <div className='flex items-center gap-2'>
+            <label htmlFor='inbox-limit' className='text-ui-xs text-[#8b949e]'>Rows</label>
+            <select
+              id='inbox-limit'
+              value={String(limit)}
+              onChange={(e) => updateParams({ limit: e.target.value, page: '1' })}
+              className='bg-[#161b22] border border-[#30363d] rounded-md px-2 py-1 text-ui-xs text-[#e6edf3] focus:outline-none focus:border-[#58a6ff]'
+            >
+              <option value='10'>10</option>
+              <option value='20'>20</option>
+              <option value='30'>30</option>
+              <option value='50'>50</option>
+            </select>
+          </div>
         </div>
       </header>
 
@@ -417,6 +454,17 @@ export default function InboxPage() {
           muted: f.key === 'at_risk' && (filterCounts[f.key] || 0) === 0,
         }))}
       />
+      {(activeFilter !== 'all' || !!searchQuery || sortBy !== 'priority' || sortDirection !== 'desc') && (
+        <div className='flex items-center justify-end'>
+          <button
+            type='button'
+            onClick={() => updateParams({ filter: null, q: null, sort: null, dir: null, page: '1' })}
+            className='text-ui-xs text-[#8b949e] hover:text-[#e6edf3] underline underline-offset-2'
+          >
+            Clear filters and sort
+          </button>
+        </div>
+      )}
 
       {/* Trip Grid */}
       {isLoading && inboxTrips.length === 0 ? (
@@ -434,7 +482,7 @@ export default function InboxPage() {
         </div>
       ) : (
         <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'>
-          {filtered.map((trip) => (
+          {pagedTrips.map((trip) => (
             <TripCard
               key={trip.id}
               trip={trip}
@@ -443,7 +491,7 @@ export default function InboxPage() {
               viewProfile='operations'
             />
           ))}
-          {filtered.length === 0 && !isLoading && (
+          {pagedTrips.length === 0 && !isLoading && (
             <InboxEmptyState
               hasSearch={!!searchQuery}
               activeFilter={activeFilter}
@@ -456,13 +504,13 @@ export default function InboxPage() {
 
       <div className='flex items-center justify-between pt-1'>
         <p className='text-ui-xs text-[#8b949e]'>
-          Page {page} · {inboxTotal} total leads
+          Page {currentPage} of {totalPages} · {totalFiltered} shown · {inboxTotal} total leads
         </p>
         <div className='flex items-center gap-2'>
           <button
             type='button'
-            onClick={() => updateParams({ page: String(Math.max(1, page - 1)) })}
-            disabled={page <= 1}
+            onClick={() => updateParams({ page: String(Math.max(1, currentPage - 1)) })}
+            disabled={currentPage <= 1}
             className='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#30363d] text-ui-xs text-[#e6edf3] disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#484f58] transition-colors'
           >
             <ChevronLeft className='w-3.5 h-3.5' />
@@ -470,8 +518,8 @@ export default function InboxPage() {
           </button>
           <button
             type='button'
-            onClick={() => updateParams({ page: String(page + 1) })}
-            disabled={!hasMore}
+            onClick={() => updateParams({ page: String(currentPage + 1) })}
+            disabled={!hasNextPage}
             className='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#30363d] text-ui-xs text-[#e6edf3] disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#484f58] transition-colors'
           >
             Next

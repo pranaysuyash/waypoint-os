@@ -1,8 +1,13 @@
 import json
+import logging
 import os
 import sqlite3
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Literal, Optional
+
+logger = logging.getLogger(__name__)
+
+from ..constants import DECISION_STATES_FROZENSET
 
 # =============================================================================
 # DATA ROOT — where the SQLite DB lives
@@ -19,15 +24,6 @@ def _db_path() -> str:
 # =============================================================================
 # D1 Autonomy Gradient — AgencyAutonomyPolicy v2 (ADR-aligned)
 # =============================================================================
-
-# Canonical decision states that the policy can gate
-_DECISION_STATES = frozenset([
-    "ASK_FOLLOWUP",
-    "PROCEED_INTERNAL_DRAFT",
-    "PROCEED_TRAVELER_SAFE",
-    "BRANCH_OPTIONS",
-    "STOP_NEEDS_REVIEW",
-])
 
 # Default per-decision-state gate decisions
 _DEFAULT_APPROVAL_GATES: Dict[str, Literal["auto", "review", "block"]] = {
@@ -79,13 +75,13 @@ class AgencyAutonomyPolicy:
         if self.approval_gates.get("STOP_NEEDS_REVIEW") != "block":
             self.approval_gates["STOP_NEEDS_REVIEW"] = "block"
 
-        for state in _DECISION_STATES:
+        for state in DECISION_STATES_FROZENSET:
             if state not in self.approval_gates:
                 self.approval_gates[state] = _DEFAULT_APPROVAL_GATES.get(state, "review")
 
         self.approval_gates = {
             k: v for k, v in self.approval_gates.items()
-            if k in _DECISION_STATES
+            if k in DECISION_STATES_FROZENSET
         }
 
     def effective_gate(self, decision_state: str, operating_mode: str) -> str:
@@ -103,7 +99,7 @@ class AgencyAutonomyPolicy:
         raw_gates = data.get("approval_gates")
         if isinstance(raw_gates, dict):
             for k, v in raw_gates.items():
-                if k in _DECISION_STATES and v in ("auto", "review", "block"):
+                if k in DECISION_STATES_FROZENSET and v in ("auto", "review", "block"):
                     policy.approval_gates[k] = v
 
         raw_overrides = data.get("mode_overrides")

@@ -1,0 +1,2166 @@
+{
+  "doc_path": "/Users/pranay/Projects/exploration_maps/travel_agency_agent/EXPLORATION_MAP.md",
+  "project_path": "/Users/pranay/Projects/travel_agency_agent",
+  "total_features": 83,
+  "indexed_files": 134,
+  "index_categories": 2,
+  "summary": {
+    "go": 14,
+    "fix": 42,
+    "maybe": 11,
+    "nogo": 16,
+    "status_drift": 42
+  },
+  "features": [
+    {
+      "section": "A. Market & Competitive Intelligence",
+      "area": "A1. Competitive Landscape",
+      "stated_status": "PARTIAL",
+      "key_gap": "Deep teardowns of 15+ travel SaaS; regional competitor maps; AI travel app competitors",
+      "priority": "P0",
+      "line_number": 89,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "DRIFT",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "a1._competitive_landscape",
+        "competitive_landscape",
+        "a1._competitive",
+        "competitive",
+        "landscape"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "GO",
+        "rationale": "P0 not started, needed now",
+        "action": "Design and build for current app needs"
+      }
+    },
+    {
+      "section": "A. Market & Competitive Intelligence",
+      "area": "A2. Market Sizing (TAM/SAM/SOM)",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "No global market sizing done; can't raise or prioritize without this",
+      "priority": "P0",
+      "line_number": 90,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "MATCH",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "market_sizing_tam",
+        "a2._market_sizing",
+        "sizing_tam_sam",
+        "market_sizing",
+        "tam_sam_som"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "GO",
+        "rationale": "P0 not started, needed now",
+        "action": "Design and build for current app needs"
+      }
+    },
+    {
+      "section": "A. Market & Competitive Intelligence",
+      "area": "A3. Industry Trends & Macro Forces",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "Post-COVID, bleisure, generational shifts, climate, AI regulation, GDS disruption",
+      "priority": "P1",
+      "line_number": 91,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "MATCH",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "industry_trends_macro",
+        "trends_macro_forces",
+        "a3._industry_trends",
+        "industry_trends",
+        "trends_macro"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "MAYBE",
+        "rationale": "P1 not started",
+        "action": "Evaluate against current roadmap"
+      }
+    },
+    {
+      "section": "A. Market & Competitive Intelligence",
+      "area": "A1 New: Win/Loss Analysis",
+      "stated_status": "NEW_ANGLE",
+      "key_gap": "No framework for learning from prospect decisions",
+      "priority": "P1",
+      "line_number": 92,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "win_loss_analysis",
+        "loss_analysis",
+        "analysis",
+        "win_loss"
+      ],
+      "evidence": [
+        "SERVICE: src/analytics/logger.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "A. Market & Competitive Intelligence",
+      "area": "A1 New: Wedge Product",
+      "stated_status": "NEW_ANGLE",
+      "key_gap": "What single feature compels adoption? Unknown",
+      "priority": "P0",
+      "line_number": 93,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "wedge_product",
+        "product",
+        "wedge"
+      ],
+      "evidence": [
+        "SERVICE: src/decision/telemetry.py",
+        "SERVICE: src/public_checker/live_checks.py"
+      ],
+      "go_nogo": {
+        "verdict": "GO",
+        "rationale": "Partial implementation, high priority",
+        "action": "Complete implementation"
+      }
+    },
+    {
+      "section": "A. Market & Competitive Intelligence",
+      "area": "A3 New: \"Death of the GDS\" Thesis",
+      "stated_status": "NEW_ANGLE",
+      "key_gap": "Critical strategy question, unexplored",
+      "priority": "P1",
+      "line_number": 94,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "\"death_gds\"_thesis",
+        "\"death_gds\"",
+        "gds\"_thesis",
+        "thesis",
+        "\"death"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/safety.py",
+        "SERVICE: src/intake/specialty_knowledge.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "B. Customer & User Research",
+      "area": "B1. Customer Discovery",
+      "stated_status": "PARTIAL",
+      "key_gap": "330+ scenarios documented; 0 real interviews done",
+      "priority": "P0",
+      "line_number": 100,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "b1._customer_discovery",
+        "customer_discovery",
+        "b1._customer",
+        "discovery",
+        "customer"
+      ],
+      "evidence": [
+        "SERVICE: src/analytics/metrics.py",
+        "SERVICE: src/analytics/engine.py"
+      ],
+      "go_nogo": {
+        "verdict": "GO",
+        "rationale": "Partial implementation, high priority",
+        "action": "Complete implementation"
+      }
+    },
+    {
+      "section": "B. Customer & User Research",
+      "area": "B1. Real Customer Interviews -- India",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "20-30 agencies across metro/T2/T3 needed",
+      "priority": "P0",
+      "line_number": 101,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "MATCH",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "customer_interviews_india",
+        "real_customer_interviews",
+        "customer_interviews",
+        "b1._real_customer",
+        "interviews_india"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "GO",
+        "rationale": "P0 not started, needed now",
+        "action": "Design and build for current app needs"
+      }
+    },
+    {
+      "section": "B. Customer & User Research",
+      "area": "B1. Real Customer Interviews -- Global",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "10-15 agencies across US/UK/UAE/Singapore/AU",
+      "priority": "P0",
+      "line_number": 102,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "MATCH",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "customer_interviews_global",
+        "real_customer_interviews",
+        "customer_interviews",
+        "b1._real_customer",
+        "interviews_global"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "GO",
+        "rationale": "P0 not started, needed now",
+        "action": "Design and build for current app needs"
+      }
+    },
+    {
+      "section": "B. Customer & User Research",
+      "area": "B1. Day-in-the-Life Shadowing",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "Observe 3-5 agents for full day across markets",
+      "priority": "P1",
+      "line_number": 103,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "MATCH",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "day_life_shadowing",
+        "life_shadowing",
+        "b1._day_life",
+        "shadowing",
+        "day_life"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "MAYBE",
+        "rationale": "P1 not started",
+        "action": "Evaluate against current roadmap"
+      }
+    },
+    {
+      "section": "B. Customer & User Research",
+      "area": "B1. Willingness-to-Pay",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "Varies 10x across markets; completely unresearched",
+      "priority": "P0",
+      "line_number": 104,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "MATCH",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "b1._willingness_pay",
+        "willingness_pay",
+        "b1._willingness",
+        "willingness"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "GO",
+        "rationale": "P0 not started, needed now",
+        "action": "Design and build for current app needs"
+      }
+    },
+    {
+      "section": "B. Customer & User Research",
+      "area": "B1 New: Non-Consumption Research",
+      "stated_status": "NEW_ANGLE",
+      "key_gap": "Agencies that have NEVER used tech -- why?",
+      "priority": "P1",
+      "line_number": 105,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "non_consumption_research",
+        "consumption_research",
+        "non_consumption",
+        "consumption",
+        "research"
+      ],
+      "evidence": [
+        "SERVICE: src/analytics/logger.py",
+        "SERVICE: src/intake/specialty_knowledge.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "B. Customer & User Research",
+      "area": "B2. Customer Segmentation",
+      "stated_status": "PARTIAL",
+      "key_gap": "Personas defined; no global ICP; no adoption readiness scoring",
+      "priority": "P1",
+      "line_number": 106,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "b2._customer_segmentation",
+        "customer_segmentation",
+        "b2._customer",
+        "segmentation",
+        "customer"
+      ],
+      "evidence": [
+        "SERVICE: src/analytics/engine.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "B. Customer & User Research",
+      "area": "B3. Customer Acquisition Channels",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "Zero research on how agency owners discover tools",
+      "priority": "P1",
+      "line_number": 107,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "MATCH",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "customer_acquisition_channels",
+        "b3._customer_acquisition",
+        "customer_acquisition",
+        "acquisition_channels",
+        "b3._customer"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "MAYBE",
+        "rationale": "P1 not started",
+        "action": "Evaluate against current roadmap"
+      }
+    },
+    {
+      "section": "B. Customer & User Research",
+      "area": "B4. Traveler Behavior (Global)",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "Channel preference, lead time, price sensitivity by culture",
+      "priority": "P2",
+      "line_number": 108,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "MATCH",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "traveler_behavior_global",
+        "b4._traveler_behavior",
+        "traveler_behavior",
+        "behavior_global",
+        "b4._traveler"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "NO-GO",
+        "rationale": "Low priority, not needed now",
+        "action": "Defer; document as future opportunity"
+      }
+    },
+    {
+      "section": "C. Product & Feature Research",
+      "area": "C1. Core Product Validation",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "47 feature specs but no validation of which 5 matter most",
+      "priority": "P0",
+      "line_number": 114,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "core_product_validation",
+        "product_validation",
+        "c1._core_product",
+        "core_product",
+        "validation"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/validation.py"
+      ],
+      "go_nogo": {
+        "verdict": "GO",
+        "rationale": "Partial implementation, high priority",
+        "action": "Complete implementation"
+      }
+    },
+    {
+      "section": "C. Product & Feature Research",
+      "area": "C2. Communication Channels",
+      "stated_status": "PARTIAL",
+      "key_gap": "WhatsApp strategy documented; no LINE/WeChat/Kakao research",
+      "priority": "P1",
+      "line_number": 115,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "c2._communication_channels",
+        "communication_channels",
+        "c2._communication",
+        "communication",
+        "channels"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/config/agency_settings.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "C. Product & Feature Research",
+      "area": "C2. Booking & Supplier Integration",
+      "stated_status": "PARTIAL",
+      "key_gap": "GDS/NDC/API documented; no feasibility or cost modeling",
+      "priority": "P1",
+      "line_number": 116,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "booking_supplier_integration",
+        "c2._booking_supplier",
+        "supplier_integration",
+        "booking_supplier",
+        "integration"
+      ],
+      "evidence": [
+        "SERVICE: src/decision/__init__.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "C. Product & Feature Research",
+      "area": "C2. Payments & Finance",
+      "stated_status": "PARTIAL",
+      "key_gap": "VCN/multi-currency documented; no market-specific payment methods",
+      "priority": "P1",
+      "line_number": 117,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "DRIFT",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "c2._payments_finance",
+        "payments_finance",
+        "c2._payments",
+        "payments",
+        "finance"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "MAYBE",
+        "rationale": "P1 not started",
+        "action": "Evaluate against current roadmap"
+      }
+    },
+    {
+      "section": "C. Product & Feature Research",
+      "area": "C3. AI/LLM-Specific Research",
+      "stated_status": "PARTIAL",
+      "key_gap": "Cache architecture + hybrid decision documented; no cost benchmarking, multilingual NLP, hallucination detection",
+      "priority": "P0",
+      "line_number": 118,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "llm_specific_research",
+        "specific_research",
+        "c3._llm_specific",
+        "llm_specific",
+        "specific"
+      ],
+      "evidence": [
+        "SERVICE: src/analytics/review.py"
+      ],
+      "go_nogo": {
+        "verdict": "GO",
+        "rationale": "Partial implementation, high priority",
+        "action": "Complete implementation"
+      }
+    },
+    {
+      "section": "C. Product & Feature Research",
+      "area": "C3 New: RAG Over Agency Data",
+      "stated_status": "NEW_ANGLE",
+      "key_gap": "Building retrieval-augmented generation over agency docs",
+      "priority": "P1",
+      "line_number": 119,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "rag_agency_data",
+        "agency_data",
+        "rag_agency",
+        "agency"
+      ],
+      "evidence": [
+        "SERVICE: src/decision/rules/budget_feasibility.py",
+        "SERVICE: src/services/dashboard_aggregator.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "C. Product & Feature Research",
+      "area": "C3 New: Agentic Workflow Research",
+      "stated_status": "NEW_ANGLE",
+      "key_gap": "When should AI act autonomously vs ask permission? Culture-dependent",
+      "priority": "P1",
+      "line_number": 120,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 3,
+      "confidence": 0.45,
+      "search_terms": [
+        "agentic_workflow_research",
+        "workflow_research",
+        "agentic_workflow",
+        "research",
+        "workflow"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/frontier_orchestrator.py",
+        "SERVICE: src/intake/specialty_knowledge.py",
+        "SERVICE: src/analytics/review.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "C. Product & Feature Research",
+      "area": "C4. Localization & i18n",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "Zero research on RTL, CJK, cultural UX norms",
+      "priority": "P2",
+      "line_number": 121,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "MATCH",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "c4._localization_i18n",
+        "localization_i18n",
+        "c4._localization",
+        "localization"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "NO-GO",
+        "rationale": "Low priority, not needed now",
+        "action": "Defer; document as future opportunity"
+      }
+    },
+    {
+      "section": "D. Industry Domain Deep Dives",
+      "area": "D1. Already Deep-Dived",
+      "stated_status": "DONE",
+      "key_gap": "280+ domain docs exist (operations, commercial, financial, regulatory, logistics, supplier, tech)",
+      "priority": "Unknown",
+      "line_number": 127,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "DRIFT",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "already_deep_dived",
+        "d1._already_deep",
+        "already_deep",
+        "d1._already",
+        "deep_dived"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "NO-GO",
+        "rationale": "Low priority, not needed now",
+        "action": "Defer; document as future opportunity"
+      }
+    },
+    {
+      "section": "D. Industry Domain Deep Dives",
+      "area": "D2. Regional Gaps",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "India FTA/IATO, EU Package Travel Directive, US host agency model, APAC, MEA all unresearched",
+      "priority": "P1",
+      "line_number": 128,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "MATCH",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "d2._regional_gaps",
+        "regional_gaps",
+        "d2._regional",
+        "regional"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "MAYBE",
+        "rationale": "P1 not started",
+        "action": "Evaluate against current roadmap"
+      }
+    },
+    {
+      "section": "D. Industry Domain Deep Dives",
+      "area": "D3. Vertical Research",
+      "stated_status": "PARTIAL",
+      "key_gap": "Education/Energy/Healthcare/Media done; MICE, religious, wedding, sports, luxury, adventure all \u274c",
+      "priority": "P2",
+      "line_number": 129,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "d3._vertical_research",
+        "vertical_research",
+        "d3._vertical",
+        "vertical",
+        "research"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/specialty_knowledge.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "D. Industry Domain Deep Dives",
+      "area": "D3 New: Medical Tourism",
+      "stated_status": "NEW_ANGLE",
+      "key_gap": "Turkey/Thailand/India/Mexico -- major agency opportunity",
+      "priority": "P2",
+      "line_number": 130,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 3,
+      "confidence": 0.45,
+      "search_terms": [
+        "medical_tourism",
+        "medical",
+        "tourism"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/specialty_knowledge.py",
+        "SERVICE: src/decision/rules/elderly_mobility.py",
+        "SERVICE: src/intake/specialty_knowledge.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "D. Industry Domain Deep Dives",
+      "area": "D3 New: Digital Nomad Vertical",
+      "stated_status": "NEW_ANGLE",
+      "key_gap": "Recurring revenue opportunity",
+      "priority": "P2",
+      "line_number": 131,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "DRIFT",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "digital_nomad_vertical",
+        "nomad_vertical",
+        "digital_nomad",
+        "vertical",
+        "digital"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "NO-GO",
+        "rationale": "Low priority, not needed now",
+        "action": "Defer; document as future opportunity"
+      }
+    },
+    {
+      "section": "D. Industry Domain Deep Dives",
+      "area": "D4. Industry Structure",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "Business model comparison, failure modes, adoption curves, disintermediation all \u274c",
+      "priority": "P1",
+      "line_number": 132,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "d4._industry_structure",
+        "industry_structure",
+        "d4._industry",
+        "structure",
+        "industry"
+      ],
+      "evidence": [
+        "SERVICE: src/analytics/review.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "E. Technology & Architecture",
+      "area": "E1. Infrastructure",
+      "stated_status": "PARTIAL",
+      "key_gap": "Spine API, data architecture, multi-agent infra done; deployment costs, latency, scaling, offline all \u274c",
+      "priority": "P1",
+      "line_number": 138,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "e1._infrastructure",
+        "infrastructure"
+      ],
+      "evidence": [
+        "SERVICE: src/decision/rules/elderly_mobility.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "E. Technology & Architecture",
+      "area": "E2. Security & Privacy",
+      "stated_status": "PARTIAL",
+      "key_gap": "Data privacy + auth docs exist; identity model unification, PII by jurisdiction, PCI DSS, SOC 2 all \u274c",
+      "priority": "P0",
+      "line_number": 139,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "e2._security_privacy",
+        "security_privacy",
+        "e2._security",
+        "security",
+        "privacy"
+      ],
+      "evidence": [
+        "SERVICE: src/security/privacy_guard.py",
+        "SERVICE: src/security/privacy_guard.py"
+      ],
+      "go_nogo": {
+        "verdict": "GO",
+        "rationale": "Partial implementation, high priority",
+        "action": "Complete implementation"
+      }
+    },
+    {
+      "section": "E. Technology & Architecture",
+      "area": "E3. Integration Architecture",
+      "stated_status": "PARTIAL",
+      "key_gap": "GDS/NDC/CRM docs; messaging APIs, accounting software, calendar integrations all \u274c",
+      "priority": "P2",
+      "line_number": 140,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "e3._integration_architecture",
+        "integration_architecture",
+        "e3._integration",
+        "architecture",
+        "integration"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/decision.py",
+        "SERVICE: src/decision/__init__.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "F. Business Model & Growth",
+      "area": "F1. Pricing & Monetization",
+      "stated_status": "PARTIAL",
+      "key_gap": "Draft pricing exists; no validation by market, no PPP research, no value metric research",
+      "priority": "P0",
+      "line_number": 146,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "f1._pricing_monetization",
+        "pricing_monetization",
+        "monetization",
+        "f1._pricing",
+        "pricing"
+      ],
+      "evidence": [
+        "SERVICE: src/llm/gemini_client.py"
+      ],
+      "go_nogo": {
+        "verdict": "GO",
+        "rationale": "Partial implementation, high priority",
+        "action": "Complete implementation"
+      }
+    },
+    {
+      "section": "F. Business Model & Growth",
+      "area": "F2. Go-to-Market",
+      "stated_status": "PARTIAL",
+      "key_gap": "GTM strategy + launch draft; no market entry sequencing, no onboarding by market, no activation metric",
+      "priority": "P0",
+      "line_number": 147,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "f2._market",
+        "market"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/strategy.py"
+      ],
+      "go_nogo": {
+        "verdict": "GO",
+        "rationale": "Partial implementation, high priority",
+        "action": "Complete implementation"
+      }
+    },
+    {
+      "section": "F. Business Model & Growth",
+      "area": "F3. Financial Modeling",
+      "stated_status": "PARTIAL",
+      "key_gap": "Basic model exists; no unit economics, cash flow, scenario analysis, or FX risk modeling",
+      "priority": "P1",
+      "line_number": 148,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "f3._financial_modeling",
+        "financial_modeling",
+        "f3._financial",
+        "financial",
+        "modeling"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/safety.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "F. Business Model & Growth",
+      "area": "F4. Growth & Expansion",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "Network effects, data moat, platform strategy, international playbook all \u274c",
+      "priority": "P2",
+      "line_number": 149,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "f4._growth_expansion",
+        "growth_expansion",
+        "f4._growth",
+        "expansion",
+        "growth"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/safety.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "F. Business Model & Growth",
+      "area": "F4 New: API-as-Product",
+      "stated_status": "NEW_ANGLE",
+      "key_gap": "Selling travel AI capabilities to other travel tech companies",
+      "priority": "P2",
+      "line_number": 150,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "api_product",
+        "product"
+      ],
+      "evidence": [
+        "SERVICE: src/decision/telemetry.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "F. Business Model & Growth",
+      "area": "F4 New: White-Label Deep Dive",
+      "stated_status": "NEW_ANGLE",
+      "key_gap": "Revenue and margin analysis",
+      "priority": "P2",
+      "line_number": 151,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "DRIFT",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "white_label_deep",
+        "label_deep_dive",
+        "white_label",
+        "label_deep",
+        "deep_dive"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "NO-GO",
+        "rationale": "Low priority, not needed now",
+        "action": "Defer; document as future opportunity"
+      }
+    },
+    {
+      "section": "G. UX & Design",
+      "area": "G1. UX Research",
+      "stated_status": "PARTIAL",
+      "key_gap": "JTBD, journeys, anti-patterns, design system done; zero usability testing with real agents",
+      "priority": "P1",
+      "line_number": 157,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "g1._research",
+        "research"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/specialty_knowledge.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "G. UX & Design",
+      "area": "G1 New: Glanceable Dashboard",
+      "stated_status": "NEW_ANGLE",
+      "key_gap": "What does an agency owner need at 7 AM?",
+      "priority": "P2",
+      "line_number": 158,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "glanceable_dashboard",
+        "glanceable",
+        "dashboard"
+      ],
+      "evidence": [
+        "SERVICE: src/analytics/review.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "H. Operations & Organization",
+      "area": "H1. Team & Organization",
+      "stated_status": "PARTIAL",
+      "key_gap": "Hiring doc exists; no advisor network, no remote-first team research",
+      "priority": "P2",
+      "line_number": 164,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "DRIFT",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "h1._team_organization",
+        "team_organization",
+        "organization",
+        "h1._team"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "NO-GO",
+        "rationale": "Low priority, not needed now",
+        "action": "Defer; document as future opportunity"
+      }
+    },
+    {
+      "section": "H. Operations & Organization",
+      "area": "H2. Customer Operations",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "Global support model, SLA design, incident response, onboarding operations all \u274c",
+      "priority": "P2",
+      "line_number": 165,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "h2._customer_operations",
+        "customer_operations",
+        "h2._customer",
+        "operations",
+        "customer"
+      ],
+      "evidence": [
+        "SERVICE: src/analytics/engine.py",
+        "SERVICE: src/analytics/engine.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "I. Legal & Regulatory",
+      "area": "I1. Already Covered",
+      "stated_status": "DONE",
+      "key_gap": "IATA, EU PTD, India GST/TCS, consumer rights, data privacy",
+      "priority": "Unknown",
+      "line_number": 171,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "i1._already_covered",
+        "already_covered",
+        "i1._already",
+        "already",
+        "covered"
+      ],
+      "evidence": [
+        "SERVICE: src/analytics/engine.py",
+        "SERVICE: src/decision/health.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "I. Legal & Regulatory",
+      "area": "I2. Global Legal Gaps",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "AI liability, ToS by jurisdiction, seller-of-travel laws, intermediary liability all \u274c",
+      "priority": "P1",
+      "line_number": 172,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "MATCH",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "global_legal_gaps",
+        "i2._global_legal",
+        "global_legal",
+        "i2._global",
+        "legal_gaps"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "MAYBE",
+        "rationale": "P1 not started",
+        "action": "Evaluate against current roadmap"
+      }
+    },
+    {
+      "section": "I. Legal & Regulatory",
+      "area": "I2 New: AI Disclosure Requirements",
+      "stated_status": "NEW_ANGLE",
+      "key_gap": "When must travelers be told AI was involved?",
+      "priority": "P2",
+      "line_number": 173,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "disclosure_requirements",
+        "requirements",
+        "disclosure"
+      ],
+      "evidence": [
+        "SERVICE: src/decision/rules/additional_rules.py",
+        "SERVICE: src/intake/specialty_knowledge.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "J-Q. Experimental, Data, Geographic, Partnerships, Sustainability, Workforce, Psychology, Vendors",
+      "area": "J. Experimental & Frontier",
+      "stated_status": "PARTIAL",
+      "key_gap": "6 moonshot angles operational; 23 new frontiers all \ud83d\udd35",
+      "priority": "P3",
+      "line_number": 179,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "experimental_frontier",
+        "experimental",
+        "frontier"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/frontier_orchestrator.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "J-Q. Experimental, Data, Geographic, Partnerships, Sustainability, Workforce, Psychology, Vendors",
+      "area": "K. Data & Analytics",
+      "stated_status": "PARTIAL",
+      "key_gap": "Data strategy done; data moat, quality, benchmarking all \u274c",
+      "priority": "P2",
+      "line_number": 180,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "data_analytics",
+        "analytics"
+      ],
+      "evidence": [
+        "SERVICE: src/analytics/engine.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "J-Q. Experimental, Data, Geographic, Partnerships, Sustainability, Workforce, Psychology, Vendors",
+      "area": "L. Geographic & Cultural",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "Zero market-specific research across all 6 regions + cross-cultural",
+      "priority": "P1",
+      "line_number": 181,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "geographic_cultural",
+        "geographic",
+        "cultural"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/extractors.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "J-Q. Experimental, Data, Geographic, Partnerships, Sustainability, Workforce, Psychology, Vendors",
+      "area": "M. Partnerships & Ecosystem",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "No GDS, payment, messaging, cloud, or industry partnership research",
+      "priority": "P2",
+      "line_number": 182,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "MATCH",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "partnerships_ecosystem",
+        "partnerships",
+        "ecosystem"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "NO-GO",
+        "rationale": "Low priority, not needed now",
+        "action": "Defer; document as future opportunity"
+      }
+    },
+    {
+      "section": "J-Q. Experimental, Data, Geographic, Partnerships, Sustainability, Workforce, Psychology, Vendors",
+      "area": "N-Q. Sustainability, Workforce, Psychology, Vendors",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "Mostly \ud83d\udd35 (new angles); vendors Q section is largest gap at 50 items",
+      "priority": "P1",
+      "line_number": 183,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "MATCH",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "sustainability_workforce_psychology",
+        "workforce_psychology_vendors",
+        "sustainability_workforce",
+        "workforce_psychology",
+        "psychology_vendors"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "MAYBE",
+        "rationale": "P1 not started",
+        "action": "Evaluate against current roadmap"
+      }
+    },
+    {
+      "section": "R-U. Booking Lifecycle, Workflow, Documents, Sales/CRM",
+      "area": "R. Booking Lifecycle",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "The core thing agencies DO -- zero research on actual workflow",
+      "priority": "P0",
+      "line_number": 189,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "booking_lifecycle",
+        "lifecycle",
+        "booking"
+      ],
+      "evidence": [
+        "SERVICE: src/analytics/logger.py",
+        "SERVICE: src/decision/rules/visa_timeline.py"
+      ],
+      "go_nogo": {
+        "verdict": "GO",
+        "rationale": "Partial implementation, high priority",
+        "action": "Complete implementation"
+      }
+    },
+    {
+      "section": "R-U. Booking Lifecycle, Workflow, Documents, Sales/CRM",
+      "area": "S. Agent Workflow",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "How agents actually work day-to-day -- must understand before automating",
+      "priority": "P0",
+      "line_number": 190,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "agent_workflow",
+        "workflow",
+        "agent"
+      ],
+      "evidence": [
+        "SERVICE: src/analytics/review.py",
+        "SERVICE: src/analytics/engine.py"
+      ],
+      "go_nogo": {
+        "verdict": "GO",
+        "rationale": "Partial implementation, high priority",
+        "action": "Complete implementation"
+      }
+    },
+    {
+      "section": "R-U. Booking Lifecycle, Workflow, Documents, Sales/CRM",
+      "area": "T. Documents & Content",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "Proposals, invoices, vouchers -- daily artifacts, completely unresearched",
+      "priority": "P1",
+      "line_number": 191,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "documents_content",
+        "documents",
+        "content"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/strategy.py",
+        "SERVICE: src/intake/safety.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "R-U. Booking Lifecycle, Workflow, Documents, Sales/CRM",
+      "area": "U. Sales & CRM",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "How agencies sell, manage relationships, track revenue",
+      "priority": "P1",
+      "line_number": 192,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "MATCH",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "sales_crm",
+        "sales"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "MAYBE",
+        "rationale": "P1 not started",
+        "action": "Evaluate against current roadmap"
+      }
+    },
+    {
+      "section": "V-BA. Services, Notifications, Reporting, Branding, Scenarios, Inventory, Migration, Quality",
+      "area": "V. Services & Service Design",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "Service catalog, bundling, quality metrics",
+      "priority": "P2",
+      "line_number": 198,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "services_service_design",
+        "services_service",
+        "service_design",
+        "services",
+        "service"
+      ],
+      "evidence": [
+        "SERVICE: src/services/integrity_service.py",
+        "SERVICE: src/services/integrity_service.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "V-BA. Services, Notifications, Reporting, Branding, Scenarios, Inventory, Migration, Quality",
+      "area": "W. Notifications & Automation",
+      "stated_status": "NEW_ANGLE",
+      "key_gap": "All 13 items are new angles",
+      "priority": "P2",
+      "line_number": 199,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.25,
+      "search_terms": [
+        "notifications_automation",
+        "notifications",
+        "automation"
+      ],
+      "evidence": [
+        "TEST: tests/test_phase5_notifications.py",
+        "SERVICE: src/intake/specialty_knowledge.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "V-BA. Services, Notifications, Reporting, Branding, Scenarios, Inventory, Migration, Quality",
+      "area": "X. Reporting & BI",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "What metrics agencies need",
+      "priority": "P2",
+      "line_number": 200,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "reporting"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/validation.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "V-BA. Services, Notifications, Reporting, Branding, Scenarios, Inventory, Migration, Quality",
+      "area": "Y. Branding & Marketing",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "Agency branding, marketing channels",
+      "priority": "P2",
+      "line_number": 201,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "branding_marketing",
+        "marketing",
+        "branding"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/strategy.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "V-BA. Services, Notifications, Reporting, Branding, Scenarios, Inventory, Migration, Quality",
+      "area": "Z. Scenarios & Edge Cases",
+      "stated_status": "PARTIAL",
+      "key_gap": "330+ scenarios; zero validation with real agencies",
+      "priority": "P1",
+      "line_number": 202,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 3,
+      "confidence": 0.4,
+      "search_terms": [
+        "scenarios_edge_cases",
+        "scenarios_edge",
+        "edge_cases",
+        "scenarios",
+        "cases"
+      ],
+      "evidence": [
+        "TEST: tests/test_extraction_fixes.py",
+        "SERVICE: src/decision/rules/not_applicable.py",
+        "SERVICE: src/decision/rules/__init__.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "V-BA. Services, Notifications, Reporting, Branding, Scenarios, Inventory, Migration, Quality",
+      "area": "AA. Inventory & Availability",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "Real-time availability, allotments, dynamic pricing",
+      "priority": "P2",
+      "line_number": 203,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "aa._inventory_availability",
+        "inventory_availability",
+        "aa._inventory",
+        "availability",
+        "inventory"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/specialty_knowledge.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "V-BA. Services, Notifications, Reporting, Branding, Scenarios, Inventory, Migration, Quality",
+      "area": "AB. Migration & Onboarding",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "Legacy data migration, change management, parallel running",
+      "priority": "P1",
+      "line_number": 204,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "ab._migration_onboarding",
+        "migration_onboarding",
+        "ab._migration",
+        "onboarding",
+        "migration"
+      ],
+      "evidence": [
+        "SERVICE: src/analytics/engine.py",
+        "SERVICE: src/intake/validation.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "V-BA. Services, Notifications, Reporting, Branding, Scenarios, Inventory, Migration, Quality",
+      "area": "AC. Quality Assurance",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "Itinerary quality, pricing accuracy, destination freshness",
+      "priority": "P2",
+      "line_number": 205,
+      "actual_status": "PARTIAL",
+      "status_alignment": "DRIFT",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "ac._quality_assurance",
+        "quality_assurance",
+        "ac._quality",
+        "assurance",
+        "quality"
+      ],
+      "evidence": [
+        "SERVICE: src/analytics/engine.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "V-BA. Services, Notifications, Reporting, Branding, Scenarios, Inventory, Migration, Quality",
+      "area": "AD. Travel Knowledge Domains",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "Structured destination/transport/accommodation/health/weather/currency knowledge",
+      "priority": "P2",
+      "line_number": 206,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "MATCH",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "travel_knowledge_domains",
+        "ad._travel_knowledge",
+        "knowledge_domains",
+        "travel_knowledge",
+        "ad._travel"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "NO-GO",
+        "rationale": "Low priority, not needed now",
+        "action": "Defer; document as future opportunity"
+      }
+    },
+    {
+      "section": "AE-AG. SEO & Content Strategy",
+      "area": "AE. SEO & Pre-Launch Ranking",
+      "stated_status": "NOT_STARTED",
+      "key_gap": "147 items; keyword clusters, content pillars, templates, programmatic SEO, link building",
+      "priority": "P1",
+      "line_number": 212,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "MATCH",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "pre_launch_ranking",
+        "launch_ranking",
+        "seo_pre_launch",
+        "ae._seo_pre",
+        "pre_launch"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "MAYBE",
+        "rationale": "P1 not started",
+        "action": "Evaluate against current roadmap"
+      }
+    },
+    {
+      "section": "AE-AG. SEO & Content Strategy",
+      "area": "AF. Content Topics from Research",
+      "stated_status": "NEW_ANGLE",
+      "key_gap": "73 publishable content pieces derived from research areas",
+      "priority": "P2",
+      "line_number": 213,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "DRIFT",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "content_topics_research",
+        "af._content_topics",
+        "topics_research",
+        "content_topics",
+        "af._content"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "NO-GO",
+        "rationale": "Low priority, not needed now",
+        "action": "Defer; document as future opportunity"
+      }
+    },
+    {
+      "section": "AE-AG. SEO & Content Strategy",
+      "area": "AG. Content Prism (3-Audience)",
+      "stated_status": "NEW_ANGLE",
+      "key_gap": "165 items; every topic \u2192 traveler + agent + vendor content",
+      "priority": "P2",
+      "line_number": 214,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "DRIFT",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "content_prism_audience",
+        "ag._content_prism",
+        "prism_audience",
+        "content_prism",
+        "ag._content"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "NO-GO",
+        "rationale": "Low priority, not needed now",
+        "action": "Defer; document as future opportunity"
+      }
+    },
+    {
+      "section": "AH-BA+. Cross-Reference Expansions",
+      "area": "AH. Creator & Influencer Economy",
+      "stated_status": "PARTIAL",
+      "key_gap": "Deep docs exist; regulatory status, creator-as-agent, platform handoff all \u274c",
+      "priority": "P2",
+      "line_number": 220,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "DRIFT",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "creator_influencer_economy",
+        "ah._creator_influencer",
+        "influencer_economy",
+        "creator_influencer",
+        "ah._creator"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "NO-GO",
+        "rationale": "Low priority, not needed now",
+        "action": "Defer; document as future opportunity"
+      }
+    },
+    {
+      "section": "AH-BA+. Cross-Reference Expansions",
+      "area": "AI_R. AI Ethics in Travel",
+      "stated_status": "PARTIAL",
+      "key_gap": "Fairness, transparency, accountability specs exist; bias auditing, cultural attitudes \u274c",
+      "priority": "P2",
+      "line_number": 221,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "ai_r._ethics_travel",
+        "ethics_travel",
+        "ai_r._ethics",
+        "travel",
+        "ethics"
+      ],
+      "evidence": [
+        "SERVICE: src/analytics/policy_rules.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "AH-BA+. Cross-Reference Expansions",
+      "area": "AJ. Frontier Technology",
+      "stated_status": "PARTIAL",
+      "key_gap": "Feature specs exist; VR/AR adoption, biometrics, space tourism market sizing \u274c",
+      "priority": "P3",
+      "line_number": 222,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "aj._frontier_technology",
+        "frontier_technology",
+        "aj._frontier",
+        "technology",
+        "frontier"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/frontier_orchestrator.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "AH-BA+. Cross-Reference Expansions",
+      "area": "AK. Advanced Financial Ops",
+      "stated_status": "PARTIAL",
+      "key_gap": "Settlement specs exist; timing, reconciliation automation, cash flow gaps \u274c",
+      "priority": "P1",
+      "line_number": 223,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "DRIFT",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "advanced_financial_ops",
+        "ak._advanced_financial",
+        "advanced_financial",
+        "financial_ops",
+        "ak._advanced"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "MAYBE",
+        "rationale": "P1 not started",
+        "action": "Evaluate against current roadmap"
+      }
+    },
+    {
+      "section": "AH-BA+. Cross-Reference Expansions",
+      "area": "AL. Specialized Logistics",
+      "stated_status": "PARTIAL",
+      "key_gap": "Diplomatic/humanitarian/film docs; market sizing all \u274c",
+      "priority": "P3",
+      "line_number": 224,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "al._specialized_logistics",
+        "specialized_logistics",
+        "al._specialized",
+        "specialized",
+        "logistics"
+      ],
+      "evidence": [
+        "SERVICE: src/decision/hybrid_engine.py",
+        "SERVICE: src/decision/rules/composition_risk.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "AH-BA+. Cross-Reference Expansions",
+      "area": "AM. Advanced Regulatory",
+      "stated_status": "PARTIAL",
+      "key_gap": "10 regional playbooks exist; gap analysis, change monitoring \u274c",
+      "priority": "P2",
+      "line_number": 225,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "am._advanced_regulatory",
+        "advanced_regulatory",
+        "am._advanced",
+        "regulatory",
+        "advanced"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/frontier_orchestrator.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "AH-BA+. Cross-Reference Expansions",
+      "area": "AN. Emotional/Behavioral Design",
+      "stated_status": "PARTIAL",
+      "key_gap": "Feature specs on anxiety/dopamine; pre-trip anxiety, emotional journey mapping \u274c",
+      "priority": "P2",
+      "line_number": 226,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "DRIFT",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "emotional_behavioral_design",
+        "an._emotional_behavioral",
+        "emotional_behavioral",
+        "behavioral_design",
+        "an._emotional"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "NO-GO",
+        "rationale": "Low priority, not needed now",
+        "action": "Defer; document as future opportunity"
+      }
+    },
+    {
+      "section": "AH-BA+. Cross-Reference Expansions",
+      "area": "AO. Agentic AI Infrastructure",
+      "stated_status": "PARTIAL",
+      "key_gap": "Multi-agent/specs exist; coordination patterns, learning, human-AI collaboration \u274c",
+      "priority": "P1",
+      "line_number": 227,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "ao._agentic_infrastructure",
+        "agentic_infrastructure",
+        "infrastructure",
+        "ao._agentic",
+        "agentic"
+      ],
+      "evidence": [
+        "SERVICE: src/decision/rules/elderly_mobility.py",
+        "SERVICE: src/intake/negotiation_engine.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "AH-BA+. Cross-Reference Expansions",
+      "area": "AP. Operational Continuity",
+      "stated_status": "PARTIAL",
+      "key_gap": "DR specs exist; GDS outage impact, business continuity all \u274c",
+      "priority": "P2",
+      "line_number": 228,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "ap._operational_continuity",
+        "operational_continuity",
+        "ap._operational",
+        "operational",
+        "continuity"
+      ],
+      "evidence": [
+        "SERVICE: src/analytics/models.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "AH-BA+. Cross-Reference Expansions",
+      "area": "AQ. Communication & Sentiment",
+      "stated_status": "PARTIAL",
+      "key_gap": "Comms specs exist; sentiment detection, crisis templates, translation quality \u274c",
+      "priority": "P2",
+      "line_number": 229,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "aq._communication_sentiment",
+        "communication_sentiment",
+        "aq._communication",
+        "communication",
+        "sentiment"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/frontier_orchestrator.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "AH-BA+. Cross-Reference Expansions",
+      "area": "AR. Supply Chain Intelligence",
+      "stated_status": "PARTIAL",
+      "key_gap": "Vendor reliability/predatory specs exist; scoring methodology, dark inventory \u274c",
+      "priority": "P2",
+      "line_number": 230,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 1,
+      "confidence": 0.15,
+      "search_terms": [
+        "supply_chain_intelligence",
+        "chain_intelligence",
+        "ar._supply_chain",
+        "intelligence",
+        "supply_chain"
+      ],
+      "evidence": [
+        "SERVICE: src/intake/federated_intelligence.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "AH-BA+. Cross-Reference Expansions",
+      "area": "AS. Identity & Border Tech",
+      "stated_status": "PARTIAL",
+      "key_gap": "8 identity/visa specs exist; DTC adoption, dual-nationality complexity \u274c",
+      "priority": "P2",
+      "line_number": 231,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "DRIFT",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "identity_border_tech",
+        "as._identity_border",
+        "identity_border",
+        "as._identity",
+        "border_tech"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "NO-GO",
+        "rationale": "Low priority, not needed now",
+        "action": "Defer; document as future opportunity"
+      }
+    },
+    {
+      "section": "AH-BA+. Cross-Reference Expansions",
+      "area": "AT. Concierge & Micro-Services",
+      "stated_status": "PARTIAL",
+      "key_gap": "Ghost concierge + 8 CON_SPECs; market sizing, AI vs human preference \u274c",
+      "priority": "P2",
+      "line_number": 232,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "DRIFT",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "concierge_micro_services",
+        "at._concierge_micro",
+        "concierge_micro",
+        "micro_services",
+        "at._concierge"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "NO-GO",
+        "rationale": "Low priority, not needed now",
+        "action": "Defer; document as future opportunity"
+      }
+    },
+    {
+      "section": "AH-BA+. Cross-Reference Expansions",
+      "area": "AU. Operational Logic",
+      "stated_status": "PARTIAL",
+      "key_gap": "Multi-party/adversarial specs; payment splitting, error rates \u274c",
+      "priority": "P2",
+      "line_number": 233,
+      "actual_status": "PARTIAL",
+      "status_alignment": "MATCH",
+      "evidence_count": 2,
+      "confidence": 0.3,
+      "search_terms": [
+        "au._operational_logic",
+        "operational_logic",
+        "au._operational",
+        "operational",
+        "logic"
+      ],
+      "evidence": [
+        "SERVICE: src/analytics/models.py",
+        "SERVICE: src/analytics/review.py"
+      ],
+      "go_nogo": {
+        "verdict": "FIX",
+        "rationale": "Partial with low confidence",
+        "action": "Gap analysis; assess completeness"
+      }
+    },
+    {
+      "section": "AH-BA+. Cross-Reference Expansions",
+      "area": "AW. Destination Intelligence Layer",
+      "stated_status": "PARTIAL",
+      "key_gap": "Climate-adaptive spec + Oracle prediction; weather APIs, AQI, crime, disease, political stability, crowd density all \u274c",
+      "priority": "P1",
+      "line_number": 234,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "DRIFT",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "destination_intelligence_layer",
+        "aw._destination_intelligence",
+        "destination_intelligence",
+        "intelligence_layer",
+        "aw._destination"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "MAYBE",
+        "rationale": "P1 not started",
+        "action": "Evaluate against current roadmap"
+      }
+    },
+    {
+      "section": "AH-BA+. Cross-Reference Expansions",
+      "area": "AX-AY. SEO Free Tools + Everyday Intel",
+      "stated_status": "NEW_ANGLE",
+      "key_gap": "140+ items -- cost of living, digital infra, local laws, food, transport, accessibility, emergencies",
+      "priority": "P2",
+      "line_number": 235,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "DRIFT",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "tools_everyday_intel",
+        "free_tools_everyday",
+        "everyday_intel",
+        "tools_everyday",
+        "seo_free_tools"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "NO-GO",
+        "rationale": "Low priority, not needed now",
+        "action": "Defer; document as future opportunity"
+      }
+    },
+    {
+      "section": "AH-BA+. Cross-Reference Expansions",
+      "area": "AZ-BA. Programmatic Content + Scoring",
+      "stated_status": "NEW_ANGLE",
+      "key_gap": "30+ programmatic page templates; destination scoring systems",
+      "priority": "P3",
+      "line_number": 236,
+      "actual_status": "NOT_STARTED",
+      "status_alignment": "DRIFT",
+      "evidence_count": 0,
+      "confidence": 0.0,
+      "search_terms": [
+        "programmatic_content_scoring",
+        "ba._programmatic_content",
+        "programmatic_content",
+        "ba._programmatic",
+        "content_scoring"
+      ],
+      "evidence": [],
+      "go_nogo": {
+        "verdict": "NO-GO",
+        "rationale": "Low priority, not needed now",
+        "action": "Defer; document as future opportunity"
+      }
+    }
+  ]
+}

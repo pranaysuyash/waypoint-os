@@ -32,7 +32,10 @@ class Agency(Base):
     phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     logo_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     plan: Mapped[str] = mapped_column(String(50), default="free")
-    is_test: Mapped[bool] = mapped_column(Boolean, default=False)  # Flag for test agencies
+    is_test: Mapped[bool] = mapped_column(Boolean, default=False)
+    jurisdiction: Mapped[str] = mapped_column(
+        String(10), default="other"
+    )
     settings: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

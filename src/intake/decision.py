@@ -18,6 +18,7 @@ from .packet_models import (
     Slot,
     AuthorityLevel,
 )
+from .constants import DecisionState, DECISION_STATES, assert_valid_decision_state
 from src.intake.config.agency_settings import AgencySettings
 from src.intake.telemetry import emit_ambiguity_synthesis
 
@@ -143,14 +144,6 @@ def _generate_risk_flags_with_hybrid_engine(
 # SECTION 1: DECISION RESULT
 # =============================================================================
 
-DECISION_STATES = (
-    "ASK_FOLLOWUP",
-    "PROCEED_INTERNAL_DRAFT",
-    "PROCEED_TRAVELER_SAFE",
-    "BRANCH_OPTIONS",
-    "STOP_NEEDS_REVIEW",
-)
-
 COMMERCIAL_DECISIONS = (
     "NONE",
     "SEND_FOLLOWUP",
@@ -229,7 +222,7 @@ class DecisionResult:
     packet_id: str
     current_stage: str                          # discovery | shortlist | proposal | booking
     operating_mode: str                         # normal_intake | audit | emergency | ...
-    decision_state: str                         # One of DECISION_STATES
+    decision_state: DecisionState               # One of DECISION_STATES
     hard_blockers: List[str] = field(default_factory=list)
     soft_blockers: List[str] = field(default_factory=list)
     ambiguities: List[AmbiguityRef] = field(default_factory=list)
@@ -244,6 +237,12 @@ class DecisionResult:
     intent_scores: Dict[str, float] = field(default_factory=dict)
     next_best_action: Optional[str] = None
     budget_breakdown: Optional[BudgetBreakdownResult] = None
+
+    def __post_init__(self) -> None:
+        self.decision_state = assert_valid_decision_state(self.decision_state)
+
+    def set_decision_state(self, value: str) -> None:
+        self.decision_state = assert_valid_decision_state(value)
 
 
 # =============================================================================

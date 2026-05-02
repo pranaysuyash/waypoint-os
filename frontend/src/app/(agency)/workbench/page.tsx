@@ -66,6 +66,7 @@ function safeParseJson(raw: string): Record<string, unknown> | null {
 
 const workspaceTabs = [
   { id: 'intake', label: 'New Inquiry' },
+  { id: 'safety', label: 'Safety Review' },
 ] as const;
 
 type WorkspaceTabId = (typeof workspaceTabs)[number]['id'];
@@ -1051,7 +1052,11 @@ function WorkbenchContent() {
         >
           <div className='p-6'>
             <Suspense fallback={<InlineLoading message='Loading...' />}>
-              <IntakeTab trip={trip} />
+              {activeTab === 'safety' ? (
+                <SafetyTab trip={trip} />
+              ) : (
+                <IntakeTab trip={trip} />
+              )}
             </Suspense>
           </div>
         </div>

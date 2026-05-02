@@ -310,7 +310,28 @@ class FileTripStore:
 
 
 class SQLTripStore:
-    """PostgreSQL-backed trip storage with field-level encryption for common PII keys."""
+    """PostgreSQL-backed trip storage with dual encryption model.
+
+    Private compartments (internal_bundle, safety, fees, frontier_result,
+    traveler_bundle) are blob-encrypted — the entire JSON object is encrypted
+    as a single Fernet token. PII-key fields (extracted, raw_input) use
+    recursive key-level encryption for individual sensitive values.
+    """
+
+    # Fields whose entire JSON blob is encrypted as one Fernet token.
+    _PRIVATE_BLOB_FIELDS = frozenset({
+        "traveler_bundle",
+        "internal_bundle",
+        "safety",
+        "fees",
+        "frontier_result",
+    })
+
+    # Fields where only specific PII sub-keys are encrypted recursively.
+    _PII_KEY_FIELDS = frozenset({
+        "extracted",
+        "raw_input",
+    })
 
     _PII_FIELDS = {
         "address",
@@ -361,6 +382,49 @@ class SQLTripStore:
         return data
 
     @staticmethod
+    def _encrypt_blob(data: Any) -> Any:
+        """Encrypt an entire JSON object as a single Fernet token."""
+        if data is None:
+            return None
+        serialized = json.dumps(data, default=str)
+        token = encrypt(serialized)
+        return {"__encrypted_blob": True, "v": 1, "ciphertext": token}
+
+    @staticmethod
+    def _decrypt_blob(data: Any) -> Any:
+        """Decrypt a blob-encrypted JSON object back to its original form."""
+        if data is None:
+            return None
+        if isinstance(data, dict) and data.get("__encrypted_blob"):
+            token = data.get("ciphertext", "")
+            serialized = decrypt(token)
+            return json.loads(serialized)
+        # Not a blob wrapper — return as-is (handles pre-migration plaintext)
+        return data
+
+    @staticmethod
+    def _encrypt_field_for_storage(field: str, value: Any) -> Any:
+        """Unified encryption entry point for both save_trip and update_trip."""
+        if field in SQLTripStore._PRIVATE_BLOB_FIELDS:
+            if value is None:
+                return None
+            if field == "safety" and not value:
+                return {}
+            return SQLTripStore._encrypt_blob(value)
+        if field in SQLTripStore._PII_KEY_FIELDS:
+            return SQLTripStore._encrypt_pii(value or {})
+        return value
+
+    @staticmethod
+    def _decrypt_field_from_storage(field: str, value: Any) -> Any:
+        """Unified decryption entry point for _to_dict."""
+        if field in SQLTripStore._PRIVATE_BLOB_FIELDS:
+            return SQLTripStore._decrypt_blob(value)
+        if field in SQLTripStore._PII_KEY_FIELDS:
+            return SQLTripStore._decrypt_pii(value or {}) if value else value
+        return value
+
+    @staticmethod
     def _parse_datetime(value: Any) -> Any:
         if isinstance(value, str):
             try:
@@ -385,16 +449,16 @@ class SQLTripStore:
             "date_year_confidence": trip_obj.date_year_confidence,
             "lead_source": trip_obj.lead_source,
             "activity_provenance": trip_obj.activity_provenance,
-            "extracted": SQLTripStore._decrypt_pii(trip_obj.extracted or {}),
+            "extracted": SQLTripStore._decrypt_field_from_storage("extracted", trip_obj.extracted or {}),
             "validation": trip_obj.validation or {},
             "decision": trip_obj.decision or {},
             "strategy": trip_obj.strategy,
-            "traveler_bundle": SQLTripStore._decrypt_pii(trip_obj.traveler_bundle) if trip_obj.traveler_bundle else None,
-            "internal_bundle": SQLTripStore._decrypt_pii(trip_obj.internal_bundle) if trip_obj.internal_bundle else None,
-            "safety": SQLTripStore._decrypt_pii(trip_obj.safety) if trip_obj.safety else {},
-            "frontier_result": SQLTripStore._decrypt_pii(trip_obj.frontier_result) if trip_obj.frontier_result else None,
-            "fees": SQLTripStore._decrypt_pii(trip_obj.fees) if trip_obj.fees else None,
-            "raw_input": SQLTripStore._decrypt_pii(trip_obj.raw_input or {}),
+            "traveler_bundle": SQLTripStore._decrypt_field_from_storage("traveler_bundle", trip_obj.traveler_bundle),
+            "internal_bundle": SQLTripStore._decrypt_field_from_storage("internal_bundle", trip_obj.internal_bundle),
+            "safety": SQLTripStore._decrypt_field_from_storage("safety", trip_obj.safety) if trip_obj.safety else {},
+            "frontier_result": SQLTripStore._decrypt_field_from_storage("frontier_result", trip_obj.frontier_result),
+            "fees": SQLTripStore._decrypt_field_from_storage("fees", trip_obj.fees),
+            "raw_input": SQLTripStore._decrypt_field_from_storage("raw_input", trip_obj.raw_input or {}),
             "analytics": trip_obj.analytics,
             "created_at": trip_obj.created_at.isoformat() if trip_obj.created_at else None,
             "updated_at": trip_obj.updated_at.isoformat() if trip_obj.updated_at else None,
@@ -416,16 +480,16 @@ class SQLTripStore:
             "date_year_confidence": trip_data.get("date_year_confidence"),
             "lead_source": trip_data.get("lead_source"),
             "activity_provenance": trip_data.get("activity_provenance"),
-            "extracted": SQLTripStore._encrypt_pii(trip_data.get("extracted") or {}),
+            "extracted": SQLTripStore._encrypt_field_for_storage("extracted", trip_data.get("extracted") or {}),
             "validation": trip_data.get("validation") or {},
             "decision": trip_data.get("decision") or {},
             "strategy": trip_data.get("strategy"),
-            "traveler_bundle": SQLTripStore._encrypt_pii(trip_data.get("traveler_bundle")) if trip_data.get("traveler_bundle") else None,
-            "internal_bundle": SQLTripStore._encrypt_pii(trip_data.get("internal_bundle")) if trip_data.get("internal_bundle") else None,
-            "safety": SQLTripStore._encrypt_pii(trip_data.get("safety")) if trip_data.get("safety") else {},
-            "frontier_result": SQLTripStore._encrypt_pii(trip_data.get("frontier_result")) if trip_data.get("frontier_result") else None,
-            "fees": SQLTripStore._encrypt_pii(trip_data.get("fees")) if trip_data.get("fees") else None,
-            "raw_input": SQLTripStore._encrypt_pii(trip_data.get("raw_input") or {}),
+            "traveler_bundle": SQLTripStore._encrypt_field_for_storage("traveler_bundle", trip_data.get("traveler_bundle")),
+            "internal_bundle": SQLTripStore._encrypt_field_for_storage("internal_bundle", trip_data.get("internal_bundle")),
+            "safety": SQLTripStore._encrypt_field_for_storage("safety", trip_data.get("safety")),
+            "frontier_result": SQLTripStore._encrypt_field_for_storage("frontier_result", trip_data.get("frontier_result")),
+            "fees": SQLTripStore._encrypt_field_for_storage("fees", trip_data.get("fees")),
+            "raw_input": SQLTripStore._encrypt_field_for_storage("raw_input", trip_data.get("raw_input") or {}),
             "analytics": trip_data.get("analytics"),
             "created_at": SQLTripStore._parse_datetime(trip_data.get("created_at")) or datetime.now(timezone.utc),
             "updated_at": SQLTripStore._parse_datetime(trip_data.get("updated_at")),
@@ -489,13 +553,14 @@ class SQLTripStore:
 
     @staticmethod
     async def update_trip(trip_id: str, updates: dict) -> Optional[dict]:
+        _encrypted_fields = SQLTripStore._PRIVATE_BLOB_FIELDS | SQLTripStore._PII_KEY_FIELDS
         async with tripstore_session_maker() as session:
             trip_obj = await session.get(Trip, trip_id)
             if not trip_obj:
                 return None
             for key, value in updates.items():
-                if key in {"extracted", "raw_input"}:
-                    value = SQLTripStore._encrypt_pii(value or {})
+                if key in _encrypted_fields:
+                    value = SQLTripStore._encrypt_field_for_storage(key, value)
                 elif key == "follow_up_due_date":
                     value = SQLTripStore._parse_datetime(value)
                 if hasattr(trip_obj, key):

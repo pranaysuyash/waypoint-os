@@ -1,6 +1,6 @@
 # Trip State Contract — Implementation Plan
 
-**Status:** Pre-implementation (finalized)
+**Status:** Phase 1 implemented, Phase 2–4 planned
 **Created:** 2026-05-02
 **Scope:** Persistence repair, encryption, stage/readiness model, ops panel
 
@@ -47,9 +47,27 @@ refresh parity tests  →  behavioral authority
 Both `save_processed_trip` calls in `server.py` (lines 1017-1034 and 1079-1095) pass dicts with only: `packet`, `validation`, `decision`, `strategy`, `meta`. Five compartments are computed but never persisted.
 
 ### Existing infrastructure
-- **Encryption**: Fernet (AES-128-CBC) in `src/security/encryption.py`. Extensible via `_PII_FIELDS` set in `pine_api/persistence.py:315-337`.
+- **Encryption**: Fernet (AES-128-CBC) in `src/security/encryption.py`. Dual model: blob encryption for private compartments, recursive PII-key encryption for shared fields.
 - **Audit**: `RunLedger` = per-run execution trace (file-based). `AuditStore` = trip lifecycle events (file-based). RunLedger for runs, AuditStore for business events.
 - **Stage model**: `CanonicalPacket.stage` has `discovery`/`shortlist`/`proposal`/`booking`. Validation has `INTAKE_MINIMUM` (2 fields) and `QUOTE_READY` (6 fields).
+
+### Encryption model
+
+Two tiers, enforced by `_encrypt_field_for_storage` / `_decrypt_field_from_storage`:
+
+| Tier | Fields | Method | Stored shape |
+|:---|:---|:---|:---|
+| Private blob | `traveler_bundle`, `internal_bundle`, `safety`, `fees`, `frontier_result` | Entire JSON → single Fernet token | `{"__encrypted_blob": true, "v": 1, "ciphertext": "..."}` |
+| PII-key redaction | `extracted`, `raw_input` | Recursive: encrypt string values whose key is in `_PII_FIELDS` | Same JSON structure, PII values replaced with tokens |
+| None | `validation`, `decision`, `strategy`, all scalar fields | Plaintext | As-is |
+
+### Persistence paths
+
+| Path | Compartments persisted | Reason |
+|:---|:---|:---|
+| Authenticated `/run` (normal + partial) | All 9 | Full agent pipeline |
+| Public checker `/api/public-checker/run` | 5 only (`packet`, `validation`, `decision`, `strategy`, `meta`) | Customer-facing, no agent-only private compartments |
+| `update_trip()` | Same encryption as `save_trip()` via unified helper | Prevents bypass |
 
 ### Flat JSON vs. split tables
 
@@ -66,84 +84,36 @@ Exit criteria for splitting into `trip_state`, `trip_private_state`, `booking_da
 
 ## Implementation Phases
 
-### Phase 1: Persistence Repair + Encryption (one merge)
+### Phase 1: Persistence Repair + Encryption (one merge) — IMPLEMENTED
 
-All 5 missing compartments fixed together. Encryption included in same merge — never persist sensitive compartments plaintext.
+All 5 missing compartments fixed together. Dual encryption model: blob encryption for private compartments, PII-key encryption for shared fields.
 
-**1.1 Add columns to Trip model**
-File: `spine_api/models/trips.py`
-```python
-# After safety column (line 50):
-frontier_result: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-fees: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-# traveler_bundle, internal_bundle already have columns (lines 48-49)
-# safety already has column (line 50)
-# NOTE: Do NOT add booking_data column yet — no write path exists
-```
+**Status:** Code complete. All 5 blockers from ChatGPT review resolved:
+1. Private compartment blob encryption (not just key-level PII)
+2. `update_trip()` uses same unified encryption helper as `save_trip()`
+3. Public checker reduced persistence contract documented
+4. BFF adapter maps all compartments including `strategy`, `traveler_bundle`, `internal_bundle`
+5. `resetAll()` clears `result_fees`
+6. Sentinel encryption tests verify no plaintext in encrypted storage
 
-**1.2 Encrypt new PII-bearing columns**
-File: `spine_api/persistence.py`
-- Extend `_PII_FIELDS` set (line 315) with PII sub-keys from frontier_result, fees, safety, internal_bundle, traveler_bundle
-- Apply `_encrypt_pii` / `_decrypt_pii` in `_to_dict()` and `save_trip()` for these columns
+**What was done:**
+- `spine_api/models/trips.py`: Added `frontier_result`, `fees` columns
+- `spine_api/persistence.py`: Dual encryption model (`_PRIVATE_BLOB_FIELDS` + `_PII_KEY_FIELDS`), unified `_encrypt_field_for_storage` / `_decrypt_field_from_storage`, `_to_dict` / `save_trip` / `update_trip` all use same helpers
+- `spine_api/server.py`: Both authenticated save dicts include all 5 missing compartments; public checker documented as reduced contract
+- `alembic/versions/add_frontier_result_and_fees_to_trips.py`: Migration
+- `frontend/src/lib/api-client.ts`: Added `frontier_result` to Trip type
+- `frontend/src/lib/bff-trip-adapters.ts`: Maps `strategy`, `traveler_bundle`, `internal_bundle`, `fees`, `frontier_result`
+- `frontend/src/stores/workbench.ts`: `resetAll()` clears `result_fees`
+- `frontend/src/components/workspace/FrontierDashboard.tsx`: Rewritten to read from store (still parked — not mounted)
+- `tests/test_state_contract_parity.py`: 32 tests covering blob encryption, PII-key encryption, sentinel tests, FileTripStore parity, update_trip parity, SQL raw-row sentinel (full save_trip path)
 
-**1.3 Update _to_dict()** — add `frontier_result`, `fees` to serialization
-File: `spine_api/persistence.py:374-399`
+**Specialty Knowledge Salvage (Phase 1.5):**
+- `src/intake/orchestration.py`: Added `specialty_knowledge` to `decision.rationale["frontier"]` dict
+- `frontend/src/app/(agency)/workbench/SafetyTab.tsx`: Added "Special Handling Checklist" section (niche, urgency badge, checklists, compliance, safety notes)
+- `frontend/src/app/(agency)/workbench/page.tsx`: Added Safety Review tab (SafetyTab now mounted)
+- `tests/test_specialty_knowledge_salvage.py`: 14 tests (detection, serialization, rationale shape)
 
-**1.4 Update save_trip()** — add `frontier_result`, `fees` to model_data
-File: `spine_api/persistence.py:404-428`
-
-**1.5 Update _build_processed_trip()** — extract from spine_output
-File: `spine_api/persistence.py:619-666`
-```python
-frontier_result = spine_output.get("frontier_result")
-fees = spine_output.get("fees")
-# Add to trip dict:
-"frontier_result": frontier_result,
-"fees": fees,
-```
-
-**1.6 Fix server.py save dicts** — add all 5 missing fields to both save calls
-File: `spine_api/server.py:1017-1034` (partial) and `1079-1095` (normal)
-```python
-"traveler_bundle": _to_dict(result.traveler_bundle) if hasattr(result, "traveler_bundle") and result.traveler_bundle else None,
-"internal_bundle": _to_dict(result.internal_bundle) if hasattr(result, "internal_bundle") and result.internal_bundle else None,
-"safety": _to_dict(result.safety) if hasattr(result, "safety") else None,
-"fees": _to_dict(result.fees) if hasattr(result, "fees") and result.fees else None,
-"frontier_result": _to_dict(result.frontier_result) if hasattr(result, "frontier_result") and result.frontier_result else None,
-```
-
-**1.7 Alembic migration**
-File: `alembic/versions/add_frontier_result_and_fees_to_trips.py` (new)
-Add `frontier_result` and `fees` as nullable JSON columns. Follow existing pattern with existence check.
-
-**1.8 Frontend hydration**
-File: `frontend/src/app/(agency)/workbench/page.tsx:131-154`
-```typescript
-// After line 139:
-store.setResultFrontier((trip as Record<string, unknown>).frontier_result ?? null);
-store.setResultFees((trip as Record<string, unknown>).fees ?? null);
-```
-Add `store.setResultFrontier` and `store.setResultFees` to useEffect dependency array.
-
-**1.9 Update FrontierDashboard**
-File: `frontend/src/components/workspace/FrontierDashboard.tsx`
-- Import `useWorkbenchStore`
-- Read `result_frontier` from store
-- Derive display values from store with prop fallbacks
-- Remove hardcoded defaults (`packetId="PK-9912"`, `sentiment=0.82`)
-
-**1.10 Frontend private data discipline**
-- `internal_bundle`: hydrate to store (agent-only view) — do not send to any customer-facing component
-- `frontier_result`: hydrate to store — agent-only dashboard
-- `fees`: hydrate to store — agent-only, redact payer/payment details in any non-agent view
-- `booking_data` (future): do NOT hydrate globally. Fetch lazily only when OpsPanel opens.
-
-**1.11 Refresh parity regression test**
-- Run pipeline with test note
-- Save trip to DB
-- Load trip from DB
-- Assert all 9 compartments survive round-trip
-- Assert encrypted fields are not plaintext in DB
+**Not yet done (separate PRs):**
 
 ### Phase 2: Stage/Readiness Model
 

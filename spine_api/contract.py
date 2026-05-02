@@ -19,6 +19,8 @@ from __future__ import annotations
 from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
 
+from src.intake.constants import DecisionState
+
 
 # =============================================================================
 # Shared sub-models
@@ -38,7 +40,7 @@ class AssertionResult(BaseModel):
 
 
 class AutonomyOutcome(BaseModel):
-    raw_verdict: str
+    raw_verdict: DecisionState
     effective_action: str
     approval_required: bool
     rule_source: str
@@ -156,7 +158,7 @@ class RunStatusResponse(BaseModel):
     block_reason: Optional[str] = None
     validation: Optional[Dict[str, Any]] = None
     packet: Optional[Dict[str, Any]] = None
-    decision_state: Optional[str] = None
+    decision_state: Optional[DecisionState] = None
     follow_up_questions: List[Dict[str, Any]] = Field(default_factory=list)
     hard_blockers: List[str] = Field(default_factory=list)
     soft_blockers: List[str] = Field(default_factory=list)

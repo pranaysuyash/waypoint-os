@@ -296,6 +296,20 @@ export interface ValidationReport {
   reasons?: string[];
   errors?: Array<{ severity: string; code: string; message: string; field: string }>;
   warnings?: Array<{ severity: string; code: string; message: string; field: string }>;
+  readiness?: ReadinessAssessment;
+}
+
+export interface ReadinessAssessment {
+  highest_ready_tier: string | null;
+  suggested_next_stage: string;
+  should_auto_advance_stage: boolean;
+  missing_for_next: string[];
+  tiers?: Record<string, {
+    tier: string;
+    ready: boolean;
+    met: string[];
+    unmet: string[];
+  }>;
 }
 
 export interface FeeBreakdown {

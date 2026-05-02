@@ -290,7 +290,7 @@ def assess_activity_suitability(packet) -> List[Any]:
     
     The calling code in orchestration.py will:
     - Attach flags to packet.suitability_flags
-    - Check for CRITICAL flags and set decision_state to "suitability_review_required"
+    - Check for CRITICAL flags and set decision_state to STOP_NEEDS_REVIEW
     
     Args:
         packet: CanonicalPacket with traveler information

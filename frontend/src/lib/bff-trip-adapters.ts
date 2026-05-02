@@ -1,5 +1,5 @@
 import type { Trip } from "@/lib/api-client";
-import type { FeeCalculationResult } from "@/types/spine";
+import type { FeeCalculationResult, StrategyOutput, PromptBundle } from "@/types/spine";
 import type { InboxTrip, TripPriority } from "@/types/governance";
 
 type JsonRecord = Record<string, unknown>;
@@ -365,6 +365,7 @@ export function transformSpineTripToTrip(
         ? validation.ambiguity_report
         : [],
       evidence_coverage: asRecord(validation.evidence_coverage),
+      readiness: asRecord(validation.readiness) || undefined,
     } as unknown) as Trip["validation"],
     decision: ({
       packet_id: asString(decision.packet_id, ""),
@@ -404,6 +405,9 @@ export function transformSpineTripToTrip(
       next_best_action: decision.next_best_action ?? null,
       budget_breakdown: decision.budget_breakdown ?? DEFAULT_BUDGET_BREAKDOWN,
     } as unknown) as Trip["decision"],
+    strategy: (trip.strategy as StrategyOutput | undefined) ?? undefined,
+    traveler_bundle: (trip.traveler_bundle as PromptBundle | undefined) ?? undefined,
+    internal_bundle: (trip.internal_bundle as PromptBundle | undefined) ?? undefined,
     safety: trip.safety || {},
     fees: (trip.fees as FeeCalculationResult | undefined) ?? undefined,
     frontier_result: trip.frontier_result ?? undefined,

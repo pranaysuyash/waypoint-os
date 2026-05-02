@@ -57,6 +57,7 @@ from .gates import NB01CompletionGate, NB02JudgmentGate, GateVerdict, AutonomyOu
 from src.fees.calculation import calculate_trip_fees
 from src.suitability.integration import assess_activity_suitability
 from .frontier_orchestrator import run_frontier_orchestration, FrontierOrchestrationResult
+from .readiness import compute_readiness
 import json
 
 
@@ -339,11 +340,22 @@ def run_spine_once(
     # Check for CRITICAL flags
     critical_flags = [f for f in suitability_flags if f.severity == "critical"]
     if critical_flags:
-        # Override decision_state to require operator review
-        packet.decision_state = "suitability_review_required"
-        decision.decision_state = "suitability_review_required"
-        # Add hard blockers to decision for tracking
+        packet.decision_state = "STOP_NEEDS_REVIEW"
+        decision.set_decision_state("STOP_NEEDS_REVIEW")
         decision.hard_blockers.append("suitability_critical_flags_present")
+        decision.risk_flags.append({
+            "flag": "suitability_critical_flags_present",
+            "severity": "critical",
+            "message": "Critical activity suitability flags require operator review before traveler-facing output.",
+            "source": "suitability",
+            "details": {
+                "critical_flag_count": len(critical_flags),
+                "flag_types": [f.flag_type for f in critical_flags],
+            },
+        })
+        decision.rationale.setdefault("suitability", {})
+        decision.rationale["suitability"]["critical_flags_present"] = True
+        decision.rationale["suitability"]["critical_flag_count"] = len(critical_flags)
 
     # --- Quality Gate: NB02 Judgment (D1 Autonomy Gate) ---
     with _otel_tracer.start_as_current_span("nb02_gate") as span:
@@ -378,6 +390,10 @@ def run_spine_once(
         "sentiment_score": frontier_result.sentiment_score,
         "anxiety_alert": frontier_result.anxiety_alert,
         "intelligence_hits": frontier_result.intelligence_hits,
+        "specialty_knowledge": [
+            h.model_dump() if hasattr(h, "model_dump") else h
+            for h in (frontier_result.specialty_knowledge or [])
+        ],
     }
 
     # --- Phase 4: Strategy ---
@@ -458,6 +474,11 @@ def run_spine_once(
     # --- Phase 9.5: Fee Calculation ---
     with _otel_tracer.start_as_current_span("fee_calculation"):
         fees = calculate_trip_fees(packet, decision)
+
+    # --- Phase 9.6: Readiness Computation ---
+    with _otel_tracer.start_as_current_span("readiness"):
+        readiness_result = compute_readiness(packet)
+        validation.readiness = readiness_result.to_dict()
 
     # --- Phase 10: Fixture Compare (optional) ---
     assertion_result = None

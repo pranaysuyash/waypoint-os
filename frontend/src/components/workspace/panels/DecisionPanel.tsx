@@ -128,6 +128,38 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
         </div>
       </div>
 
+      {/* Readiness banner */}
+      {(() => {
+        const readiness = (trip?.validation as Record<string, unknown> | undefined)?.readiness as {
+          highest_ready_tier: string | null;
+          suggested_next_stage: string;
+          should_auto_advance_stage: boolean;
+          missing_for_next: string[];
+        } | undefined;
+        if (!readiness) return null;
+        const tierLabel: Record<string, string> = {
+          intake_minimum: "Intake",
+          quote_ready: "Quote Ready",
+          proposal_ready: "Proposal Ready",
+          booking_ready: "Booking Ready",
+        };
+        const label = tierLabel[readiness.highest_ready_tier ?? ""] ?? "Not Ready";
+        const missing = readiness.missing_for_next ?? [];
+        return (
+          <div className="rounded-xl p-3 border border-[rgba(var(--accent-blue-rgb)/0.2)] bg-[rgba(var(--accent-blue-rgb)/0.04)]">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-accent-blue">Readiness</span>
+              <span className="inline-flex items-center rounded-full bg-accent-blue/10 px-2 py-0.5 text-[var(--ui-text-xs)] font-semibold text-accent-blue">{label}</span>
+              {missing.length > 0 && (
+                <span className="text-ui-sm text-text-muted">
+                  {missing.length} field{missing.length !== 1 ? "s" : ""} needed for {tierLabel[readiness.suggested_next_stage] ?? readiness.suggested_next_stage}
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Hard blockers — prominent */}
       {hardBlockers.length > 0 && (
         <div className="rounded-xl p-4 border border-[rgba(var(--accent-red-rgb)/0.3)] bg-[rgba(var(--accent-red-rgb)/0.06)]">

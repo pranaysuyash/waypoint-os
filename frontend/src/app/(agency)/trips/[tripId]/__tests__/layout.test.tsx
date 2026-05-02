@@ -56,7 +56,7 @@ describe("trips/[tripId]/layout", () => {
       );
     });
 
-    expect(screen.getByText("Loading lead review...")).toBeInTheDocument();
+    expect(screen.getByText("Loading workspace...")).toBeInTheDocument();
   });
 
   it("renders trip header and stage tabs", () => {
@@ -131,9 +131,9 @@ describe("trips/[tripId]/layout", () => {
       </WorkspaceTripLayoutShell>,
     );
 
-    expect(screen.getByRole("heading", { name: "Singapore family leisure trip" })).toBeInTheDocument();
-    expect(screen.getByText(/5 pax · Around Feb 9–14 · Budget missing · Inquiry Ref 4B9E/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Lead Inbox" })).toHaveAttribute("href", "/inbox");
+    expect(screen.getByRole("heading", { name: "Singapore family trip" })).toBeInTheDocument();
+    expect(screen.getByText(/5 pax · Around Feb 9–14/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Trips in Planning" })).toHaveAttribute("href", "/trips");
     expect(screen.queryByText("trip_4b9e0d894872")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Quote Assessment" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Options" })).not.toBeInTheDocument();
@@ -248,7 +248,7 @@ describe("trips/[tripId]/layout", () => {
       screen.getByText("Complete budget range and origin city to unlock quote, options, output, and safety review."),
     ).toBeInTheDocument();
     expect(screen.getByText("Quote Assessment")).toBeInTheDocument();
-    expect(screen.getByText("Options")).toBeInTheDocument();
+    expect(screen.getAllByText("Options").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Budget + origin needed").length).toBeGreaterThan(0);
   });
 
@@ -343,8 +343,8 @@ describe("trips/[tripId]/layout", () => {
       </WorkspaceTripLayoutShell>,
     );
 
-    expect(screen.getByText("Lead unavailable")).toBeInTheDocument();
+    expect(screen.getByText("Workspace unavailable")).toBeInTheDocument();
     expect(screen.getByText("Trip lookup failed")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back to Lead Inbox" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to Trips in Planning" })).toBeInTheDocument();
   });
 });

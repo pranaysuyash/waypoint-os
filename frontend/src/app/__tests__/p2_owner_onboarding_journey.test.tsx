@@ -225,12 +225,20 @@ describe("P2 Owner Onboarding Journey: Junior Quote → Coaching Warnings → Ow
     budget_breakdown: null,
   };
 
-  it("Step 1: IntakePanel renders with junior agent's trip data", () => {
+  it("Step 1: IntakePanel renders with junior agent's trip data", async () => {
     render(<IntakePanel tripId="TRIP-JR-001" trip={juniorTrip} />);
+
+    // Notes section is collapsed when planning panel is visible — expand it
+    const openNotesBtn = screen.queryByRole("button", { name: /open notes/i });
+    if (openNotesBtn) {
+      fireEvent.click(openNotesBtn);
+    }
 
     expect(screen.getByText("Singapore")).toBeInTheDocument();
     expect(screen.getByText("Family")).toBeInTheDocument();
-    expect(screen.getByDisplayValue(/Family of 4 from Bangalore/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByDisplayValue(/Family of 4 from Bangalore/)).toBeInTheDocument();
+    });
   });
 
   it("Step 2: DecisionPanel renders coaching warnings after spine run", () => {

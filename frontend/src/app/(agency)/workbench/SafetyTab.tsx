@@ -1,17 +1,33 @@
 import { useWorkbenchStore } from "@/stores/workbench";
-import type { SafetyResult, PromptBundle } from "@/types/spine";
+import type { SafetyResult, PromptBundle, DecisionOutput } from "@/types/spine";
 import type { Trip } from "@/lib/api-client";
 import styles from "@/components/workbench/workbench.module.css";
+
+interface SpecialtyHit {
+  niche: string;
+  keywords?: string[];
+  checklists?: string[];
+  compliance?: string[];
+  safety_notes?: string | null;
+  urgency?: string;
+}
 
 interface SafetyTabProps {
   trip?: Trip | null;
 }
+
+const URGENCY_STYLES: Record<string, string> = {
+  CRITICAL: styles.stateRed,
+  HIGH: styles.stateAmber,
+  NORMAL: styles.stateBlue,
+};
 
 export default function SafetyTab({ trip }: SafetyTabProps) {
   const {
     result_safety,
     result_traveler_bundle,
     result_internal_bundle,
+    result_decision,
     debug_raw_json,
     setDebugRawJson,
   } = useWorkbenchStore();
@@ -19,6 +35,15 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
   const activeSafety = result_safety || (trip?.safety as SafetyResult | null);
   const activeTravelerBundle = (result_traveler_bundle as PromptBundle | null) ?? (trip?.traveler_bundle as PromptBundle | null);
   const activeInternalBundle = (result_internal_bundle as PromptBundle | null) ?? (trip?.internal_bundle as PromptBundle | null);
+  const activeDecision = result_decision ?? (trip?.decision as DecisionOutput | null) ?? null;
+
+  const specialtyHits: SpecialtyHit[] = (() => {
+    const rationale = activeDecision?.rationale as unknown as Record<string, unknown> | null;
+    const frontier = rationale?.frontier as Record<string, unknown> | null;
+    if (!frontier) return [];
+    const sk = frontier.specialty_knowledge;
+    return Array.isArray(sk) ? sk : [];
+  })();
 
   if (!activeSafety) {
     return (
@@ -86,6 +111,48 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
               ))}
             </ul>
           </div>
+        </div>
+      )}
+
+      {specialtyHits.length > 0 && (
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Special Handling Checklist</h3>
+          {specialtyHits.map((hit, i) => (
+            <div key={`sk-${hit.niche}-${i}`} className={styles.card} style={{ marginBottom: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                <strong style={{ fontSize: "14px" }}>{hit.niche}</strong>
+                <span className={`${styles.badge} ${URGENCY_STYLES[hit.urgency ?? "NORMAL"] ?? styles.stateBlue}`}>
+                  {hit.urgency ?? "NORMAL"}
+                </span>
+              </div>
+              {hit.checklists && hit.checklists.length > 0 && (
+                <div style={{ marginBottom: "8px" }}>
+                  <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Checklist</strong>
+                  <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
+                    {hit.checklists.map((item, j) => (
+                      <li key={`cl-${j}`} style={{ marginBottom: "2px" }}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {hit.compliance && hit.compliance.length > 0 && (
+                <div style={{ marginBottom: "8px" }}>
+                  <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Compliance</strong>
+                  <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
+                    {hit.compliance.map((item, j) => (
+                      <li key={`comp-${j}`} style={{ marginBottom: "2px" }}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {hit.safety_notes && (
+                <div>
+                  <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Safety Notes</strong>
+                  <p style={{ fontSize: "13px", margin: "4px 0 0 0", whiteSpace: "pre-wrap" }}>{hit.safety_notes}</p>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 

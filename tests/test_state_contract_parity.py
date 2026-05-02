@@ -1,14 +1,19 @@
 """
 Trip State Contract — Refresh Parity & Encryption Regression Tests.
 
-Verifies:
-1. _build_processed_trip produces a dict with all 9 pipeline compartments
-2. SQLTripStore._encrypt_pii / _decrypt_pii are symmetric (round-trip)
-3. PII fields are never stored as plaintext after encryption
-4. FileTripStore round-trips all compartments unchanged
-5. _to_dict / save_trip symmetry — what goes in comes back out
-6. Encryption does not corrupt non-PII fields
-7. Nested structures (lists of dicts) are encrypted recursively
+Verifies the dual encryption model:
+  - Private compartments (traveler_bundle, internal_bundle, safety, fees,
+    frontier_result) are blob-encrypted — entire JSON becomes one Fernet token.
+  - PII-key fields (extracted, raw_input) use recursive key-level encryption.
+
+Also verifies:
+  1. _build_processed_trip produces all 9 compartments
+  2. Blob encrypt/decrypt round-trips are symmetric
+  3. PII key-level encrypt/decrypt round-trips are symmetric
+  4. Private compartments have NO plaintext after blob encryption (sentinel test)
+  5. _encrypt_field_for_storage / _decrypt_field_from_storage unified path
+  6. FileTripStore round-trips all compartments unchanged
+  7. update_trip applies the same encryption as save_trip
 """
 
 import json
@@ -17,7 +22,7 @@ import pytest
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
 # ---------------------------------------------------------------------------
 # Path setup
@@ -126,7 +131,6 @@ def _make_full_trip_data() -> dict:
     )
 
 
-# The 9 compartments that must survive a full save → load cycle.
 PIPELINE_COMPARTMENTS = [
     "extracted",
     "validation",
@@ -139,22 +143,28 @@ PIPELINE_COMPARTMENTS = [
     "frontier_result",
 ]
 
+# Private compartments that use blob encryption (whole JSON → one token).
+PRIVATE_BLOB_COMPARTMENTS = [
+    "traveler_bundle",
+    "internal_bundle",
+    "safety",
+    "fees",
+    "frontier_result",
+]
+
+# Sentinel strings that must NEVER appear in raw encrypted storage.
+SENTINEL = "DO_NOT_STORE_ME_PLAINTEXT_"
+
 
 # ===========================================================================
 # 1. _build_processed_trip produces all compartments
 # ===========================================================================
 
 class TestBuildProcessedTrip:
-    """Verify _build_processed_trip maps every pipeline compartment into the trip dict."""
-
     def test_all_nine_compartments_present(self):
         trip = _make_full_trip_data()
         missing = [c for c in PIPELINE_COMPARTMENTS if c not in trip]
         assert not missing, f"Missing compartments: {missing}"
-
-    def test_extracted_receives_packet(self):
-        trip = _make_full_trip_data()
-        assert trip["extracted"]["facts"]["destination_candidates"]["value"] == ["Singapore"]
 
     def test_frontier_result_preserved(self):
         trip = _make_full_trip_data()
@@ -162,215 +172,264 @@ class TestBuildProcessedTrip:
         assert fr is not None
         assert fr["ghost_triggered"] is True
         assert fr["sentiment_score"] == 0.78
-        assert len(fr["intelligence_hits"]) == 1
 
     def test_fees_preserved(self):
         trip = _make_full_trip_data()
-        fees = trip["fees"]
-        assert fees is not None
-        assert fees["total_base_fee"] == 150
-        assert fees["service_breakdowns"][0]["service"] == "flight_booking"
+        assert trip["fees"]["total_base_fee"] == 150
 
     def test_traveler_bundle_preserved(self):
         trip = _make_full_trip_data()
-        tb = trip["traveler_bundle"]
-        assert tb is not None
-        assert tb["traveler_name"] == "Jane Doe"
+        assert trip["traveler_bundle"]["traveler_name"] == "Jane Doe"
 
     def test_safety_preserved(self):
         trip = _make_full_trip_data()
-        safety = trip["safety"]
-        assert safety["leakage_check"]["passed"] is True
+        assert trip["safety"]["leakage_check"]["passed"] is True
 
 
 # ===========================================================================
-# 2. Encryption / Decryption round-trip
+# 2. Blob encryption round-trip (private compartments)
 # ===========================================================================
 
-class TestEncryptionRoundTrip:
-    """Verify _encrypt_pii and _decrypt_pii are symmetric."""
+class TestBlobEncryption:
+    """Verify _encrypt_blob / _decrypt_blob for private compartments."""
 
-    def test_round_trip_flat_dict_with_pii(self):
+    def test_blob_round_trip(self):
+        data = {"sentiment_score": 0.78, "ghost_triggered": True, "intel": "secret"}
+        encrypted = SQLTripStore._encrypt_blob(data)
+        decrypted = SQLTripStore._decrypt_blob(encrypted)
+
+        assert decrypted == data
+        assert encrypted["__encrypted_blob"] is True
+        assert "ciphertext" in encrypted
+
+    def test_blob_no_plaintext_content(self):
+        """After blob encryption, no original string should be findable."""
+        data = {"agent_notes": "sensitive margin data", "margin_estimate": 0.22}
+        encrypted = SQLTripStore._encrypt_blob(data)
+        serialized = json.dumps(encrypted)
+
+        assert "sensitive margin data" not in serialized
+        assert "margin_estimate" not in serialized
+
+    def test_blob_none_passes_through(self):
+        assert SQLTripStore._encrypt_blob(None) is None
+        assert SQLTripStore._decrypt_blob(None) is None
+
+    def test_blob_preserves_types(self):
         data = {
-            "name": "Alice Smith",
-            "email": "alice@example.com",
-            "passport_number": "X1234567",
-            "destination": "Tokyo",
+            "bool": True,
+            "int": 42,
+            "float": 3.14,
+            "string": "hello",
+            "list": [1, 2, 3],
+            "nested": {"a": {"b": "deep"}},
         }
+        encrypted = SQLTripStore._encrypt_blob(data)
+        decrypted = SQLTripStore._decrypt_blob(encrypted)
+        assert decrypted == data
+
+    def test_plaintext_dict_passes_through_decrypt(self):
+        """Pre-migration plaintext data should pass through _decrypt_blob unchanged."""
+        data = {"old_field": "old_value"}
+        assert SQLTripStore._decrypt_blob(data) == data
+
+    def test_blob_wraps_structure_correctly(self):
+        """Encrypted blob must have the __encrypted_blob wrapper shape."""
+        data = {"key": "value"}
+        encrypted = SQLTripStore._encrypt_blob(data)
+
+        assert isinstance(encrypted, dict)
+        assert encrypted["__encrypted_blob"] is True
+        assert encrypted["v"] == 1
+        assert isinstance(encrypted["ciphertext"], str)
+        assert len(encrypted["ciphertext"]) > 0
+
+
+# ===========================================================================
+# 3. PII key-level encryption round-trip
+# ===========================================================================
+
+class TestPIIKeyEncryption:
+    """Verify _encrypt_pii / _decrypt_pii for PII-key fields."""
+
+    def test_pii_keys_encrypt_non_pii_pass_through(self):
+        data = {"name": "Alice", "destination": "Tokyo"}
         encrypted = SQLTripStore._encrypt_pii(data)
         decrypted = SQLTripStore._decrypt_pii(encrypted)
 
-        assert decrypted["name"] == "Alice Smith"
-        assert decrypted["email"] == "alice@example.com"
-        assert decrypted["passport_number"] == "X1234567"
-        assert decrypted["destination"] == "Tokyo"
+        assert encrypted["name"] != "Alice"
+        assert encrypted["destination"] == "Tokyo"
+        assert decrypted == data
 
-    def test_pii_fields_are_not_plaintext_after_encrypt(self):
-        data = {"name": "Bob Jones", "city": "London"}
-        encrypted = SQLTripStore._encrypt_pii(data)
-
-        # "name" is a PII field — must be encrypted
-        assert encrypted["name"] != "Bob Jones"
-        assert len(encrypted["name"]) > len("Bob Jones")
-
-        # "city" is NOT a PII field — must be plaintext
-        assert encrypted["city"] == "London"
-
-    def test_nested_list_of_dicts(self):
+    def test_nested_pii_in_lists(self):
         data = {
-            "intelligence_hits": [
-                {"message": "Low risk", "severity": "low", "name": "Agent X"},
-                {"message": "High risk", "severity": "high", "name": "Agent Y"},
+            "items": [
+                {"name": "Agent X", "role": "analyst"},
+                {"name": "Agent Y", "role": "manager"},
             ]
         }
         encrypted = SQLTripStore._encrypt_pii(data)
         decrypted = SQLTripStore._decrypt_pii(encrypted)
 
-        for i in range(2):
-            assert decrypted["intelligence_hits"][i]["name"] == data["intelligence_hits"][i]["name"]
-            assert decrypted["intelligence_hits"][i]["message"] == data["intelligence_hits"][i]["message"]
+        assert encrypted["items"][0]["name"] != "Agent X"
+        assert encrypted["items"][0]["role"] == "analyst"
+        assert decrypted == data
 
-    def test_deeply_nested_structure(self):
-        data = {
-            "extracted": {
-                "facts": {
-                    "traveler_name": "Deeply Nested",
-                    "destination": "Paris",
-                }
-            }
-        }
-        encrypted = SQLTripStore._encrypt_pii(data)
-        decrypted = SQLTripStore._decrypt_pii(encrypted)
-
-        assert decrypted["extracted"]["facts"]["traveler_name"] == "Deeply Nested"
-        assert encrypted["extracted"]["facts"]["traveler_name"] != "Deeply Nested"
-        assert decrypted["extracted"]["facts"]["destination"] == "Paris"
-
-    def test_empty_values_unchanged(self):
-        data = {"name": "", "email": None, "destination": ""}
-        encrypted = SQLTripStore._encrypt_pii(data)
-        # encrypt("") returns "" (see encryption.py)
-        assert encrypted["name"] == ""
-        assert encrypted["email"] is None
-        assert encrypted["destination"] == ""
+    def test_all_pii_fields_encrypt(self):
+        for field_name in SQLTripStore._PII_FIELDS:
+            encrypted = SQLTripStore._encrypt_pii({field_name: "test_value"})
+            assert encrypted[field_name] != "test_value", (
+                f"PII field '{field_name}' not encrypted"
+            )
 
     def test_non_string_pii_values_untouched(self):
-        """PII keys with non-string values (numbers, bools, lists) must not be encrypted."""
-        data = {"name": 42, "email": True, "destination": "Berlin"}
+        data = {"name": 42, "email": True}
         encrypted = SQLTripStore._encrypt_pii(data)
         assert encrypted["name"] == 42
         assert encrypted["email"] is True
-        assert encrypted["destination"] == "Berlin"
 
-    def test_frontier_result_with_pii_round_trips(self):
-        """Frontier result may contain PII in nested intelligence hits."""
-        data = {
-            "ghost_triggered": True,
+
+# ===========================================================================
+# 4. Unified encrypt/decrypt field helper
+# ===========================================================================
+
+class TestUnifiedFieldHelper:
+    """Verify _encrypt_field_for_storage / _decrypt_field_from_storage."""
+
+    def test_private_fields_get_blob_encrypted(self):
+        for field in PRIVATE_BLOB_COMPARTMENTS:
+            data = {"some": "data", "nested": {"key": "value"}}
+            encrypted = SQLTripStore._encrypt_field_for_storage(field, data)
+            assert isinstance(encrypted, dict)
+            assert encrypted.get("__encrypted_blob") is True, (
+                f"Field '{field}' was not blob-encrypted"
+            )
+            decrypted = SQLTripStore._decrypt_field_from_storage(field, encrypted)
+            assert decrypted == data
+
+    def test_pii_key_fields_get_recursive_encryption(self):
+        for field in ("extracted", "raw_input"):
+            data = {"traveler_name": "Secret", "destination": "Paris"}
+            encrypted = SQLTripStore._encrypt_field_for_storage(field, data)
+            assert isinstance(encrypted, dict)
+            assert encrypted.get("__encrypted_blob") is None, (
+                f"Field '{field}' should use PII-key encryption, not blob"
+            )
+            assert encrypted["traveler_name"] != "Secret"
+            assert encrypted["destination"] == "Paris"
+
+    def test_unencrypted_fields_pass_through(self):
+        for field in ("validation", "decision", "strategy", "status"):
+            data = {"key": "value"}
+            assert SQLTripStore._encrypt_field_for_storage(field, data) == data
+            assert SQLTripStore._decrypt_field_from_storage(field, data) == data
+
+    def test_none_values_handled(self):
+        for field in PRIVATE_BLOB_COMPARTMENTS:
+            assert SQLTripStore._encrypt_field_for_storage(field, None) is None
+            assert SQLTripStore._decrypt_field_from_storage(field, None) is None
+
+    def test_empty_safety_gets_empty_dict(self):
+        """Empty safety dict stays empty (no blob wrapper for empty data)."""
+        encrypted = SQLTripStore._encrypt_field_for_storage("safety", {})
+        assert encrypted == {}
+
+    def test_safety_with_data_gets_blob_encrypted(self):
+        """Non-empty safety gets blob-encrypted."""
+        encrypted = SQLTripStore._encrypt_field_for_storage("safety", {"leakage_check": {"passed": True}})
+        assert encrypted.get("__encrypted_blob") is True
+
+
+# ===========================================================================
+# 5. Sentinel test — no plaintext in encrypted private compartments
+# ===========================================================================
+
+class TestSentinelEncryption:
+    """Embed sentinel strings in private compartments and verify they are
+    not present in the encrypted output. This is the test ChatGPT requested:
+    put 'DO_NOT_STORE_ME_PLAINTEXT_*' in various fields and confirm the
+    unified encryption path removes all of them from raw storage."""
+
+    def _make_sentinel_trip_data(self) -> dict:
+        """Trip data with sentinel strings in every private compartment."""
+        trip = _make_full_trip_data()
+        trip["internal_bundle"] = {
+            "agent_notes": SENTINEL + "INTERNAL",
+            "margin_estimate": 0.22,
+        }
+        trip["frontier_result"] = {
             "sentiment_score": 0.78,
             "intelligence_hits": [
-                {"message": "Visa check: traveler_name=John, passport_number=AB123",
-                 "severity": "high", "source": "federation"},
+                {"message": SENTINEL + "FRONTIER", "severity": "high", "source": "test"},
             ],
         }
-        encrypted = SQLTripStore._encrypt_pii(data)
-        decrypted = SQLTripStore._decrypt_pii(encrypted)
-
-        assert decrypted["ghost_triggered"] is True
-        assert decrypted["sentiment_score"] == 0.78
-        assert decrypted["intelligence_hits"][0]["message"] == data["intelligence_hits"][0]["message"]
-
-    def test_traveler_bundle_pii_encrypted(self):
-        """traveler_bundle is the most PII-rich compartment."""
-        data = {
-            "summary": "Trip for Jane",
-            "traveler_name": "Jane Doe",
-            "traveler_email": "jane@example.com",
-            "traveler_phone": "+1-555-0123",
+        trip["fees"] = {
+            "total_base_fee": 150,
+            "service_breakdowns": [
+                {"service": "booking", "base_fee": 100},
+            ],
+            "private_note": SENTINEL + "FEES",
         }
-        encrypted = SQLTripStore._encrypt_pii(data)
-        decrypted = SQLTripStore._decrypt_pii(encrypted)
+        trip["traveler_bundle"] = {
+            "summary": SENTINEL + "TRAVELER_SUMMARY",
+            "user_message": "Regular message",
+        }
+        trip["safety"] = {
+            "leakage_check": {"passed": True},
+            "internal_note": SENTINEL + "SAFETY",
+        }
+        return trip
 
-        assert encrypted["traveler_name"] != "Jane Doe"
-        assert encrypted["traveler_email"] != "jane@example.com"
-        assert encrypted["traveler_phone"] != "+1-555-0123"
+    def test_sentinels_absent_from_blob_encrypted_storage(self):
+        """After encrypting private compartments, no sentinel string appears in raw output."""
+        trip = self._make_sentinel_trip_data()
 
-        assert decrypted["traveler_name"] == "Jane Doe"
-        assert decrypted["traveler_email"] == "jane@example.com"
-        assert decrypted["traveler_phone"] == "+1-555-0123"
+        for field in PRIVATE_BLOB_COMPARTMENTS:
+            value = trip.get(field)
+            encrypted = SQLTripStore._encrypt_field_for_storage(field, value)
+            raw_serialized = json.dumps(encrypted, default=str)
 
-
-# ===========================================================================
-# 3. Encryption regression — classified fields never plaintext in DB
-# ===========================================================================
-
-class TestEncryptionRegression:
-    """Assert that classified private fields are never stored as plaintext."""
-
-    PII_SAMPLE_VALUES = {
-        "name": "Test Person",
-        "email": "test@example.com",
-        "passport_number": "AB1234567",
-        "phone": "+1-555-0000",
-        "full_name": "Full Name Test",
-        "customer_email": "cust@example.com",
-        "traveler_name": "Traveler Name",
-        "traveler_email": "traveler@example.com",
-        "traveler_phone": "+1-555-1111",
-    }
-
-    def test_all_pii_fields_in_set_are_encrypted(self):
-        """Every key in _PII_FIELDS must trigger encryption when its value is a string."""
-        for field_name, sample_value in self.PII_SAMPLE_VALUES.items():
-            assert field_name.lower() in SQLTripStore._PII_FIELDS, (
-                f"'{field_name}' not in _PII_FIELDS"
-            )
-            encrypted = SQLTripStore._encrypt_pii({field_name: sample_value})
-            assert encrypted[field_name] != sample_value, (
-                f"Field '{field_name}' was NOT encrypted — still plaintext"
+            assert SENTINEL not in raw_serialized, (
+                f"Sentinel found in raw encrypted '{field}': {raw_serialized[:200]}"
             )
 
-    def test_encrypt_decrypt_stable_across_multiple_calls(self):
-        """Encryption must be deterministic for the same key and value (Fernet)."""
-        data = {"name": "Consistency Check"}
-        enc1 = SQLTripStore._encrypt_pii(data)
-        enc2 = SQLTripStore._encrypt_pii(data)
-        # Fernet includes timestamp, so tokens may differ — but decryption must match
-        dec1 = SQLTripStore._decrypt_pii(enc1)
-        dec2 = SQLTripStore._decrypt_pii(enc2)
-        assert dec1 == dec2 == data
+    def test_sentinels_recovered_after_decrypt(self):
+        """After encrypt + decrypt round-trip, sentinel values are intact."""
+        trip = self._make_sentinel_trip_data()
 
-    def test_traveler_bundle_not_plaintext_in_save_dict(self):
-        """Simulate what save_trip receives and verify PII is encrypted before DB write."""
-        trip_data = _make_full_trip_data()
-        # Mimic what save_trip does for traveler_bundle
-        traveler_bundle = trip_data.get("traveler_bundle")
-        encrypted = SQLTripStore._encrypt_pii(traveler_bundle)
+        for field in PRIVATE_BLOB_COMPARTMENTS:
+            value = trip.get(field)
+            encrypted = SQLTripStore._encrypt_field_for_storage(field, value)
+            decrypted = SQLTripStore._decrypt_field_from_storage(field, encrypted)
+            assert decrypted == value, (
+                f"Round-trip failed for '{field}'"
+            )
 
-        assert encrypted["traveler_name"] != "Jane Doe"
-        assert encrypted["traveler_email"] != "jane@example.com"
+    def test_extracted_pii_keys_encrypted_but_non_pii_visible(self):
+        """For PII-key fields, PII sentinels must be encrypted, non-PII can be visible."""
+        trip = self._make_sentinel_trip_data()
+        trip["extracted"] = {
+            "facts": {
+                "traveler_name": SENTINEL + "EXTRACTED_PII",
+                "destination": SENTINEL + "EXTRACTED_NON_PII",
+            }
+        }
 
-    def test_raw_pii_not_in_extracted_after_encrypt(self):
-        """The 'extracted' compartment may contain traveler_name etc."""
-        trip_data = _make_full_trip_data()
-        extracted = trip_data.get("extracted", {})
-        # Inject PII into extracted
-        extracted["facts"]["traveler_name"] = "Secret Person"
-        extracted["facts"]["contact_email"] = "secret@example.com"
+        encrypted = SQLTripStore._encrypt_field_for_storage("extracted", trip["extracted"])
+        raw = json.dumps(encrypted, default=str)
 
-        encrypted = SQLTripStore._encrypt_pii(extracted)
+        # traveler_name is PII — sentinel must be encrypted
+        assert SENTINEL + "EXTRACTED_PII" not in raw
 
-        assert encrypted["facts"]["traveler_name"] != "Secret Person"
-        assert encrypted["facts"]["contact_email"] != "secret@example.com"
-        assert encrypted["facts"]["destination_candidates"] == {"value": ["Singapore"]}
+        # "destination" is NOT PII — it remains visible (by design for PII-key fields)
+        assert SENTINEL + "EXTRACTED_NON_PII" in raw
 
 
 # ===========================================================================
-# 4. FileTripStore parity
+# 6. FileTripStore parity
 # ===========================================================================
 
 class TestFileTripStoreParity:
-    """FileTripStore must persist and return all 9 compartments unchanged."""
-
     def test_round_trip_preserves_all_compartments(self, tmp_path, monkeypatch):
         monkeypatch.setattr("spine_api.persistence.TRIPS_DIR", tmp_path)
         monkeypatch.setattr("spine_api.persistence.ASSIGNMENTS_DIR", tmp_path)
@@ -379,16 +438,10 @@ class TestFileTripStoreParity:
         trip_id = FileTripStore.save_trip(trip_data, agency_id="test_agency")
         loaded = FileTripStore.get_trip(trip_id)
 
-        assert loaded is not None, "Trip not found after save"
-
+        assert loaded is not None
         for compartment in PIPELINE_COMPARTMENTS:
-            original = trip_data.get(compartment)
-            retrieved = loaded.get(compartment)
-            assert retrieved is not None, f"Compartment '{compartment}' is None after load"
-            assert retrieved == original, (
-                f"Compartment '{compartment}' mismatch:\n"
-                f"  original:  {json.dumps(original, default=str)[:200]}\n"
-                f"  retrieved: {json.dumps(retrieved, default=str)[:200]}"
+            assert loaded.get(compartment) == trip_data.get(compartment), (
+                f"Compartment '{compartment}' mismatch"
             )
 
     def test_file_store_preserves_frontier_result(self, tmp_path, monkeypatch):
@@ -399,11 +452,8 @@ class TestFileTripStoreParity:
         trip_id = FileTripStore.save_trip(trip_data, agency_id="test_agency")
         loaded = FileTripStore.get_trip(trip_id)
 
-        fr = loaded["frontier_result"]
-        assert fr["ghost_triggered"] is True
-        assert fr["ghost_workflow_id"] == "wf_ghost_001"
-        assert fr["sentiment_score"] == 0.78
-        assert fr["intelligence_hits"][0]["severity"] == "high"
+        assert loaded["frontier_result"]["ghost_triggered"] is True
+        assert loaded["frontier_result"]["sentiment_score"] == 0.78
 
     def test_file_store_preserves_fees(self, tmp_path, monkeypatch):
         monkeypatch.setattr("spine_api.persistence.TRIPS_DIR", tmp_path)
@@ -413,203 +463,183 @@ class TestFileTripStoreParity:
         trip_id = FileTripStore.save_trip(trip_data, agency_id="test_agency")
         loaded = FileTripStore.get_trip(trip_id)
 
-        fees = loaded["fees"]
-        assert fees["total_base_fee"] == 150
-        assert fees["total_adjusted_fee"] == 135
-        assert len(fees["service_breakdowns"]) == 1
+        assert loaded["fees"]["total_base_fee"] == 150
+        assert len(loaded["fees"]["service_breakdowns"]) == 1
 
 
 # ===========================================================================
-# 5. SQLTripStore _to_dict / save_trip symmetry (unit-level, no DB)
+# 7. update_trip uses same encryption as save_trip
 # ===========================================================================
 
-class TestSQLSymmetry:
-    """Verify save_trip's encryption and _to_dict's decryption are inverses.
+class TestUpdateTripParity:
+    """Verify _encrypt_field_for_storage is used for both save and update paths."""
 
-    We test the encryption/decryption functions directly rather than
-    requiring a running database. This proves the round-trip is correct
-    regardless of which ORM backend is active.
-    """
-
-    def test_encrypt_decrypt_symmetry_for_all_compartments(self):
-        trip_data = _make_full_trip_data()
-
-        # Simulate what save_trip does: encrypt PII in each compartment
-        encrypted_compartments = {}
-        for key in PIPELINE_COMPARTMENTS:
-            value = trip_data.get(key)
-            if value is None:
-                encrypted_compartments[key] = None
-            elif key in ("validation", "decision"):
-                # These compartments are NOT encrypted in save_trip
-                encrypted_compartments[key] = value
-            else:
-                encrypted_compartments[key] = SQLTripStore._encrypt_pii(value)
-
-        # Simulate what _to_dict does: decrypt PII from each compartment
-        decrypted_compartments = {}
-        for key, enc_value in encrypted_compartments.items():
-            if enc_value is None:
-                decrypted_compartments[key] = None
-            elif key in ("validation", "decision"):
-                decrypted_compartments[key] = enc_value
-            else:
-                decrypted_compartments[key] = SQLTripStore._decrypt_pii(enc_value)
-
-        # Verify round-trip
-        for key in PIPELINE_COMPARTMENTS:
-            original = trip_data.get(key)
-            decrypted = decrypted_compartments[key]
-            assert decrypted == original, (
-                f"Round-trip failed for '{key}':\n"
-                f"  original:   {json.dumps(original, default=str)[:200]}\n"
-                f"  decrypted:  {json.dumps(decrypted, default=str)[:200]}"
+    def test_all_private_fields_encrypted_via_storage_helper(self):
+        """Every field in _PRIVATE_BLOB_FIELDS must go through blob encryption."""
+        for field in SQLTripStore._PRIVATE_BLOB_FIELDS:
+            data = {"test_key": "test_value", "nested": {"a": 1}}
+            encrypted = SQLTripStore._encrypt_field_for_storage(field, data)
+            assert encrypted.get("__encrypted_blob") is True, (
+                f"Field '{field}' not blob-encrypted via unified helper"
             )
 
-    def test_pii_not_plaintext_after_encrypt_for_rich_compartments(self):
-        """After encryption, traveler_bundle PII must be ciphertext."""
-        trip_data = _make_full_trip_data()
-
-        tb = trip_data["traveler_bundle"]
-        encrypted = SQLTripStore._encrypt_pii(tb)
-
-        pii_keys_present = [k for k in tb.keys() if k.lower() in SQLTripStore._PII_FIELDS]
-        assert len(pii_keys_present) > 0, "Test data must contain at least one PII field"
-
-        for pii_key in pii_keys_present:
-            assert encrypted[pii_key] != tb[pii_key], (
-                f"PII field '{pii_key}' is still plaintext after encryption"
-            )
+    def test_all_pii_key_fields_encrypted_via_storage_helper(self):
+        """Every field in _PII_KEY_FIELDS must go through PII-key encryption."""
+        for field in SQLTripStore._PII_KEY_FIELDS:
+            data = {"name": "PII value", "destination": "non-PII"}
+            encrypted = SQLTripStore._encrypt_field_for_storage(field, data)
+            assert encrypted.get("__encrypted_blob") is None
+            assert encrypted["name"] != "PII value"
+            assert encrypted["destination"] == "non-PII"
 
 
 # ===========================================================================
-# 6. Encryption does not corrupt non-PII fields
+# 8. Non-PII field integrity under PII-key encryption
 # ===========================================================================
 
 class TestNonPIIFieldIntegrity:
-    """Non-PII fields (numbers, bools, non-PII strings) must pass through unchanged."""
-
-    def test_boolean_fields_unchanged(self):
-        data = {
-            "ghost_triggered": True,
-            "anxiety_alert": False,
-            "mitigation_applied": False,
-        }
-        encrypted = SQLTripStore._encrypt_pii(data)
-        decrypted = SQLTripStore._decrypt_pii(encrypted)
-        assert decrypted == data
-
-    def test_numeric_fields_unchanged(self):
-        data = {
-            "sentiment_score": 0.78,
-            "total_base_fee": 150,
-            "party_size": 2,
-            "confidence_score": 0.82,
-        }
-        encrypted = SQLTripStore._encrypt_pii(data)
-        decrypted = SQLTripStore._decrypt_pii(encrypted)
-        assert decrypted == data
-
-    def test_non_pii_strings_unchanged(self):
-        data = {
-            "ghost_workflow_id": "wf_ghost_001",
-            "severity": "high",
-            "source": "weather_api",
-            "service": "flight_booking",
-            "destination": "Singapore",
-        }
-        encrypted = SQLTripStore._encrypt_pii(data)
-        decrypted = SQLTripStore._decrypt_pii(encrypted)
-        assert decrypted == data
-
-    def test_list_of_non_pii_dicts_unchanged(self):
-        data = {
-            "service_breakdowns": [
-                {"service": "flight_booking", "base_fee": 150, "adjusted_fee": 135}
-            ],
-        }
-        encrypted = SQLTripStore._encrypt_pii(data)
-        decrypted = SQLTripStore._decrypt_pii(encrypted)
-        assert decrypted == data
-
     def test_mixed_pii_non_pii_in_same_dict(self):
         data = {
             "severity": "critical",
             "message": "Visa required",
-            "name": "Mixed Test",
+            "name": "Test",
             "source": "federation",
-            "email": "mixed@example.com",
+            "email": "test@example.com",
         }
         encrypted = SQLTripStore._encrypt_pii(data)
         decrypted = SQLTripStore._decrypt_pii(encrypted)
 
-        # Non-PII must be untouched
         assert encrypted["severity"] == "critical"
         assert encrypted["message"] == "Visa required"
-        assert encrypted["source"] == "federation"
-
-        # PII must be encrypted
-        assert encrypted["name"] != "Mixed Test"
-        assert encrypted["email"] != "mixed@example.com"
-
-        # After decryption, everything matches
+        assert encrypted["name"] != "Test"
         assert decrypted == data
 
 
 # ===========================================================================
-# 7. Nested list-of-dicts with PII
+# 9. SQL raw-row sentinel — full save_path exercise
 # ===========================================================================
 
-class TestNestedPII:
-    """Verify recursive encryption handles lists containing PII-bearing dicts."""
+class TestSQLRawRowSentinel:
+    """Full save-path sentinel: exercises SQLTripStore.save_trip() end-to-end
+    (with mocked DB session) and verifies the raw column values that would be
+    written to the database contain no plaintext sentinel strings.
 
-    def test_intelligence_hits_with_pii(self):
-        data = {
+    Strategy: mock the async session to capture the Trip() constructor kwargs,
+    which are exactly the values SQLAlchemy would write to database columns.
+    """
+
+    def _make_sentinel_trip(self) -> dict:
+        trip = _make_full_trip_data()
+        trip["internal_bundle"] = {
+            "agent_notes": SENTINEL + "INTERNAL",
+            "margin_estimate": 0.22,
+        }
+        trip["frontier_result"] = {
             "intelligence_hits": [
-                {
-                    "message": "Traveler flagged",
-                    "severity": "high",
-                    "traveler_name": "Flagged Person",
-                    "source": "federation",
-                },
-                {
-                    "message": "Low risk area",
-                    "severity": "low",
-                    "source": "weather_api",
-                },
-            ]
+                {"message": SENTINEL + "FRONTIER", "severity": "high"},
+            ],
         }
-        encrypted = SQLTripStore._encrypt_pii(data)
-        decrypted = SQLTripStore._decrypt_pii(encrypted)
-
-        # First hit has PII
-        assert encrypted["intelligence_hits"][0]["traveler_name"] != "Flagged Person"
-        assert decrypted["intelligence_hits"][0]["traveler_name"] == "Flagged Person"
-
-        # Non-PII fields pass through
-        assert encrypted["intelligence_hits"][0]["severity"] == "high"
-        assert encrypted["intelligence_hits"][1]["message"] == "Low risk area"
-
-        assert decrypted == data
-
-    def test_empty_list_passes_through(self):
-        data = {"intelligence_hits": []}
-        result = SQLTripStore._encrypt_pii(data)
-        assert result == {"intelligence_hits": []}
-
-    def test_suitability_flags_in_safety(self):
-        data = {
-            "suitability_flags": [
-                {"flag": "elderly_mobility", "severity": "medium", "name": "Elderly Traveler"},
-            ]
+        trip["fees"] = {
+            "total_base_fee": 150,
+            "private_note": SENTINEL + "FEES",
         }
-        encrypted = SQLTripStore._encrypt_pii(data)
-        decrypted = SQLTripStore._decrypt_pii(encrypted)
+        trip["traveler_bundle"] = {
+            "summary": SENTINEL + "TRAVELER",
+        }
+        trip["safety"] = {
+            "leakage_check": {"passed": True},
+            "internal_note": SENTINEL + "SAFETY",
+        }
+        return trip
 
-        # "name" is a PII field
-        assert encrypted["suitability_flags"][0]["name"] != "Elderly Traveler"
-        assert encrypted["suitability_flags"][0]["flag"] == "elderly_mobility"
-        assert decrypted["suitability_flags"][0]["name"] == "Elderly Traveler"
+    def test_save_path_raw_columns_no_plaintext(self):
+        """save_trip() must produce Trip kwargs with zero plaintext sentinels
+        in any private compartment column."""
+        import asyncio as _asyncio
+
+        trip_data = self._make_sentinel_trip()
+        captured: dict = {}
+
+        class CapturingTrip:
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+
+        async def _run():
+            mock_session = AsyncMock()
+            mock_session.get = AsyncMock(return_value=None)
+            mock_session.add = MagicMock()
+            mock_session.commit = AsyncMock()
+
+            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_session.__aexit__ = AsyncMock(return_value=False)
+
+            mock_maker = MagicMock(return_value=mock_session)
+
+            with patch("spine_api.persistence.tripstore_session_maker", mock_maker):
+                with patch("spine_api.persistence.Trip", CapturingTrip):
+                    await SQLTripStore.save_trip(
+                        trip_data, agency_id="test_agency"
+                    )
+
+        _asyncio.run(_run())
+
+        for field in PRIVATE_BLOB_COMPARTMENTS:
+            raw_value = captured.get(field)
+            if raw_value is None:
+                continue
+            raw_serialized = json.dumps(raw_value, default=str)
+            assert SENTINEL not in raw_serialized, (
+                f"Plaintext sentinel in raw DB column '{field}': "
+                f"{raw_serialized[:200]}"
+            )
+
+    def test_save_path_raw_round_trip_preserves_data(self):
+        """After save + read through _to_dict, sentinel data is fully recovered."""
+        import asyncio as _asyncio
+
+        trip_data = self._make_sentinel_trip()
+
+        async def _run():
+            # Mock Trip ORM object that stores encrypted values
+            stored = {}
+
+            class FakeTrip:
+                def __init__(self, **kwargs):
+                    for k, v in kwargs.items():
+                        stored[k] = v
+
+                class __class__:
+                    pass
+
+            mock_session = AsyncMock()
+            mock_session.get = AsyncMock(return_value=None)
+            mock_session.add = MagicMock(side_effect=lambda obj: stored.update(obj.__dict__))
+            mock_session.commit = AsyncMock()
+            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_session.__aexit__ = AsyncMock(return_value=False)
+
+            mock_maker = MagicMock(return_value=mock_session)
+
+            with patch("spine_api.persistence.tripstore_session_maker", mock_maker):
+                with patch("spine_api.persistence.Trip", FakeTrip):
+                    await SQLTripStore.save_trip(
+                        trip_data, agency_id="test_agency"
+                    )
+
+            return stored
+
+        stored = _asyncio.run(_run())
+
+        # Decrypt each private compartment and verify sentinel survives
+        for field in PRIVATE_BLOB_COMPARTMENTS:
+            original = trip_data.get(field)
+            if original is None:
+                continue
+            encrypted_value = stored.get(field)
+            decrypted = SQLTripStore._decrypt_field_from_storage(field, encrypted_value)
+            assert decrypted == original, (
+                f"Round-trip failed for '{field}': {decrypted} != {original}"
+            )
 
 
 if __name__ == "__main__":

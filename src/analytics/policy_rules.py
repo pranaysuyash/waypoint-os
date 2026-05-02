@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 
-CRITICAL_DECISION_STATES = {"STOP_NEEDS_REVIEW", "suitability_review_required"}
+CRITICAL_DECISION_STATES = {"STOP_NEEDS_REVIEW"}
 
 
 def _extract_overall_confidence(decision: Dict[str, Any]) -> Optional[float]:
@@ -71,7 +71,7 @@ def ready_gate_failures(
 
     decision = trip.get("decision") or {}
     decision_state = str(decision.get("decision_state") or "").strip()
-    if decision_state in {"ASK_FOLLOWUP", "STOP_NEEDS_REVIEW", "suitability_review_required"}:
+    if decision_state in {"ASK_FOLLOWUP", "STOP_NEEDS_REVIEW"}:
         failures.append(f"Decision state '{decision_state}' is not ready.")
 
     traveler_bundle = trip.get("traveler_bundle")
@@ -102,7 +102,7 @@ def apply_owner_escalation_policy(
     """
     P2 escalation policy:
     - Critical suitability unresolved -> owner review + 2h SLA
-    - STOP_NEEDS_REVIEW/suitability_review_required -> owner review + 2h SLA
+    - STOP_NEEDS_REVIEW -> owner review + 2h SLA
     - margin < 8% -> owner review + 6h SLA
     - revision_count >= 2 -> owner review + 6h SLA
     """

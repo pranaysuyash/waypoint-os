@@ -168,7 +168,7 @@ class TestSuitabilityOrchestration:
     """Test suitability integration in orchestration."""
     
     def test_critical_flags_set_decision_state(self, packet_elderly_with_intense_activity):
-        """Test that critical flags set decision_state to suitability_review_required."""
+        """Test that critical flags set decision_state to STOP_NEEDS_REVIEW."""
         from src.intake.orchestration import run_spine_once
         from src.intake.packet_models import SourceEnvelope
         
@@ -191,10 +191,15 @@ class TestSuitabilityOrchestration:
         # Check if suitability_flags are populated
         assert hasattr(result.packet, "suitability_flags")
         
-        # If there are critical flags, decision_state should be updated
+        # If there are critical flags, decision_state should be STOP_NEEDS_REVIEW
         critical_flags = [f for f in result.packet.suitability_flags if f.severity == "critical"]
         if critical_flags:
-            assert result.packet.decision_state == "suitability_review_required"
+            assert result.packet.decision_state == "STOP_NEEDS_REVIEW"
+            assert "suitability_critical_flags_present" in result.decision.hard_blockers
+            assert any(
+                r.get("flag") == "suitability_critical_flags_present"
+                for r in result.decision.risk_flags
+            )
 
 
 if __name__ == "__main__":

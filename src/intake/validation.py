@@ -82,6 +82,7 @@ class PacketValidationReport:
     warnings: List[ValidationIssue] = field(default_factory=list)
     ambiguity_report: List[Dict[str, Any]] = field(default_factory=list)
     evidence_coverage: Dict[str, int] = field(default_factory=dict)
+    readiness: Dict[str, Any] = field(default_factory=dict)
 
     @property
     def error_count(self) -> int:

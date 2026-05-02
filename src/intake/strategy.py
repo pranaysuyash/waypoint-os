@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple, Literal
 from enum import Enum
 
+from .constants import DecisionState
 from .packet_models import CanonicalPacket, Slot, AuthorityLevel
 from .decision import DecisionResult
 from .safety import sanitize_for_traveler, check_no_leakage, enforce_no_leakage, SanitizedPacketView
@@ -97,7 +98,7 @@ class SessionStrategy:
     risk_flags: List[str]  # Things to watch for
     suggested_opening: str  # First message
     exit_criteria: List[str]  # What must be true to end the session
-    next_action: str  # Mirrors decision_state
+    next_action: DecisionState  # Mirrors decision_state
     assumptions: List[str] = field(default_factory=list)  # For internal draft only
     suggested_tone: str = "professional"  # cautious | measured | confident | direct
 
@@ -273,7 +274,7 @@ def sort_questions_by_priority(questions: List[dict]) -> List[dict]:
 # SECTION 4: OPERATING-MODE-SPECIFIC STRATEGY BUILDERS
 # =============================================================================
 
-def get_mode_specific_goal(decision_state: str, operating_mode: str) -> str:
+def get_mode_specific_goal(decision_state: DecisionState, operating_mode: str) -> str:
     """Get session goal based on decision_state AND operating_mode."""
 
     # ASK_FOLLOWUP goals by mode
@@ -326,7 +327,7 @@ def get_mode_specific_goal(decision_state: str, operating_mode: str) -> str:
 
 
 def get_mode_specific_opening(
-    decision_state: str,
+    decision_state: DecisionState,
     operating_mode: str,
 ) -> str:
     """Get suggested opening message based on mode and decision state."""

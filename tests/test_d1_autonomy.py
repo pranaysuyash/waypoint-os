@@ -398,3 +398,117 @@ class TestD5D2Hooks:
         assert "mode_override_applied" in d
         assert "warning_override_applied" in d
         assert "reasons" in d
+
+
+# ---------------------------------------------------------------------------
+# Task 5: Invalid state regression guards
+# ---------------------------------------------------------------------------
+
+class TestDecisionStateInvariant:
+    def test_decision_result_rejects_invalid_decision_state(self):
+        import pytest as _pytest
+        from src.intake.decision import DecisionResult
+
+        with _pytest.raises(ValueError, match="Invalid decision_state"):
+            DecisionResult(
+                packet_id="pkt_test",
+                current_stage="discovery",
+                operating_mode="normal_intake",
+                decision_state="suitability_review_required",
+            )
+
+    def test_constants_assert_valid_decision_state_rejects_unknown(self):
+        import pytest as _pytest
+        from src.intake.constants import assert_valid_decision_state
+
+        with _pytest.raises(ValueError, match="Invalid decision_state"):
+            assert_valid_decision_state("suitability_review_required")
+
+    def test_constants_assert_valid_decision_state_accepts_canonical(self):
+        from src.intake.constants import assert_valid_decision_state
+
+        for state in ("ASK_FOLLOWUP", "PROCEED_INTERNAL_DRAFT",
+                       "PROCEED_TRAVELER_SAFE", "BRANCH_OPTIONS",
+                       "STOP_NEEDS_REVIEW"):
+            assert assert_valid_decision_state(state) == state
+
+    def test_decision_result_set_decision_state_rejects_invalid(self):
+        import pytest as _pytest
+        from src.intake.decision import DecisionResult
+
+        result = DecisionResult(
+            packet_id="pkt_test",
+            current_stage="discovery",
+            operating_mode="normal_intake",
+            decision_state="PROCEED_INTERNAL_DRAFT",
+        )
+        assert result.decision_state == "PROCEED_INTERNAL_DRAFT"
+
+        with _pytest.raises(ValueError, match="Invalid decision_state"):
+            result.set_decision_state("suitability_review_required")
+
+    def test_decision_result_set_decision_state_accepts_canonical(self):
+        from src.intake.decision import DecisionResult
+
+        result = DecisionResult(
+            packet_id="pkt_test",
+            current_stage="discovery",
+            operating_mode="normal_intake",
+            decision_state="ASK_FOLLOWUP",
+        )
+        result.set_decision_state("STOP_NEEDS_REVIEW")
+        assert result.decision_state == "STOP_NEEDS_REVIEW"
+
+    def test_run_status_response_rejects_invalid_decision_state(self):
+        import pytest as _pytest
+        from spine_api.contract import RunStatusResponse
+        from pydantic import ValidationError as _PydanticValidationError
+
+        with _pytest.raises(_PydanticValidationError):
+            RunStatusResponse(
+                run_id="r_test",
+                state="completed",
+                decision_state="suitability_review_required",
+            )
+
+    def test_run_status_response_accepts_canonical_decision_state(self):
+        from spine_api.contract import RunStatusResponse
+
+        for state in ("ASK_FOLLOWUP", "PROCEED_INTERNAL_DRAFT",
+                       "PROCEED_TRAVELER_SAFE", "BRANCH_OPTIONS",
+                       "STOP_NEEDS_REVIEW"):
+            resp = RunStatusResponse(
+                run_id="r_test",
+                state="completed",
+                decision_state=state,
+            )
+            assert resp.decision_state == state
+
+    def test_autonomy_outcome_rejects_invalid_raw_verdict(self):
+        import pytest as _pytest
+        from spine_api.contract import AutonomyOutcome
+        from pydantic import ValidationError as _PydanticValidationError
+
+        with _pytest.raises(_PydanticValidationError):
+            AutonomyOutcome(
+                raw_verdict="suitability_review_required",
+                effective_action="review",
+                approval_required=True,
+                rule_source="test",
+                safety_invariant_applied=False,
+            )
+
+    def test_autonomy_outcome_accepts_canonical_raw_verdict(self):
+        from spine_api.contract import AutonomyOutcome
+
+        for state in ("ASK_FOLLOWUP", "PROCEED_INTERNAL_DRAFT",
+                       "PROCEED_TRAVELER_SAFE", "BRANCH_OPTIONS",
+                       "STOP_NEEDS_REVIEW"):
+            outcome = AutonomyOutcome(
+                raw_verdict=state,
+                effective_action="review",
+                approval_required=True,
+                rule_source="test",
+                safety_invariant_applied=False,
+            )
+            assert outcome.raw_verdict == state

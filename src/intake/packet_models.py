@@ -12,6 +12,8 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 
+from .constants import DecisionState
+
 
 # =============================================================================
 # SECTION 0: SUITABILITY MODELS
@@ -305,7 +307,7 @@ class CanonicalPacket:
         "normal_intake", "audit", "emergency", "follow_up",
         "cancellation", "post_trip", "coordinator_group", "owner_review",
     ] = "normal_intake"
-    decision_state: Optional[str] = None
+    decision_state: Optional[DecisionState] = None
 
     # Core data layers — STRICTLY SEPARATED
     facts: Dict[str, Slot] = field(default_factory=dict)

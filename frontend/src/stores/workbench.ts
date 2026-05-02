@@ -259,6 +259,7 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
     result_internal_bundle: null,
     result_traveler_bundle: null,
     result_safety: null,
+    result_fees: null,
     result_frontier: null,
     result_run_ts: null,
     acknowledged_suitability_flags: new Set<string>(),

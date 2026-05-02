@@ -9,6 +9,14 @@ No tokens are returned in the JSON response body.
 This eliminates XSS-based token theft vectors and enables
 the Next.js middleware to authenticate page-route requests
 without client-side JavaScript.
+
+Rate limits (environment-aware, slowapi):
+- POST /signup: 5/min per IP
+- POST /login: 10/min per IP
+- POST /refresh: 30/min per IP
+- POST /request-password-reset: 3/min per IP
+- POST /confirm-password-reset: 5/min per IP
+Global default: 60/min (prod) / 1000/min (dev/test)
 """
 
 import logging
@@ -21,6 +29,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from spine_api.core.database import get_db
 from spine_api.core.auth import get_current_user, get_current_membership
+from spine_api.core.rate_limiter import limiter
+from spine_api.core.audit import audit_logger, AuditContext, AuditAction
 from spine_api.models.tenant import User, Membership, PasswordResetToken
 from spine_api.services.auth_service import (
     signup as signup_service,
@@ -45,19 +55,6 @@ _ACCESS_TTL_SECONDS = 15 * 60  # 15 minutes
 _REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60  # 7 days
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
-
-# ---------------------------------------------------------------------------
-# TODO: Rate limiting
-# ---------------------------------------------------------------------------
-# Auth endpoints are high-value targets for abuse. Add rate limiting before
-# production deployment. Recommended configuration:
-#   POST /signup           — IP-based, ~5/min
-#   POST /login            — IP+email, ~10/min
-#   POST /request-password-reset — IP+email, ~3/min
-#   POST /confirm-password-reset — IP+token_hash_prefix, ~5/min
-#   POST /refresh          — IP, ~20/min
-# Consider using slowapi or a similar FastAPI-compatible rate limiter.
-# ---------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------
@@ -126,39 +123,54 @@ class RefreshResponse(BaseModel):
     ok: bool = True
 
 
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 # ---------------------------------------------------------------------------
 # Auth endpoints
 # ---------------------------------------------------------------------------
 
 @router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-async def post_signup(request: SignupRequest, response: Response, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def post_signup(
+    request: Request,
+    response: Response,
+    signup_req: SignupRequest,
+    db: AsyncSession = Depends(get_db),
+):
     """
     Create a new user, agency, and membership.
     Sets httpOnly cookies for auth.
-    
+
     Test users: Email ending with '@test.com' will get mock data seeded,
     but only in development. In production, @test.com signups are treated
     as normal accounts with no test data.
     """
     is_test = (
         _ENVIRONMENT == "development"
-        and request.email.lower().endswith("@test.com")
+        and signup_req.email.lower().endswith("@test.com")
     )
-    
+
     try:
         result = await signup_service(
             db=db,
-            email=request.email,
-            password=request.password,
-            name=request.name,
-            agency_name=request.agency_name,
+            email=signup_req.email,
+            password=signup_req.password,
+            name=signup_req.name,
+            agency_name=signup_req.agency_name,
             is_test=is_test,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
+
     _set_auth_cookies(response, result["access_token"], result["refresh_token"])
-    
+
     return AuthResponse(
         ok=True,
         user=result["user"],
@@ -168,9 +180,15 @@ async def post_signup(request: SignupRequest, response: Response, db: AsyncSessi
 
 
 @router.post("/login", response_model=AuthResponse)
-async def post_login(request: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def post_login(
+    request: Request,
+    response: Response,
+    login_req: LoginRequest,
+    db: AsyncSession = Depends(get_db),
+):
     try:
-        result = await login_service(db=db, email=request.email, password=request.password)
+        result = await login_service(db=db, email=login_req.email, password=login_req.password)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 
@@ -226,6 +244,7 @@ async def get_me(
 
 
 @router.post("/refresh", response_model=RefreshResponse)
+@limiter.limit("30/minute")
 async def post_refresh(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     """
     Refresh the access token using the refresh_token cookie.
@@ -254,20 +273,14 @@ async def post_refresh(request: Request, response: Response, db: AsyncSession = 
 # PASSWORD RESET
 # ---------------------------------------------------------------------------
 
-class PasswordResetRequest(BaseModel):
-    email: EmailStr
-
-
-class PasswordResetConfirm(BaseModel):
-    token: str
-    new_password: str = Field(min_length=8, max_length=128)
-
-
 @router.post("/request-password-reset")
+@limiter.limit("3/minute")
 async def post_request_password_reset(
-    request: PasswordResetRequest, db: AsyncSession = Depends(get_db)
+    request: Request,
+    reset_req: PasswordResetRequest,
+    db: AsyncSession = Depends(get_db),
 ):
-    result = await request_password_reset(db=db, email=request.email)
+    result = await request_password_reset(db=db, email=reset_req.email)
     response = {
         "ok": True,
         "message": "If the email exists, a reset link has been sent",
@@ -283,12 +296,15 @@ async def post_request_password_reset(
 
 
 @router.post("/confirm-password-reset")
+@limiter.limit("5/minute")
 async def post_confirm_password_reset(
-    request: PasswordResetConfirm, db: AsyncSession = Depends(get_db)
+    request: Request,
+    confirm_req: PasswordResetConfirm,
+    db: AsyncSession = Depends(get_db),
 ):
     try:
         result = await confirm_password_reset(
-            db=db, token=request.token, new_password=request.new_password
+            db=db, token=confirm_req.token, new_password=confirm_req.new_password
         )
         return result
     except ValueError as e:

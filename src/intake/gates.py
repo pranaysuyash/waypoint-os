@@ -15,12 +15,13 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Protocol, TYPE_CHECKING
 
+from .constants import DecisionState
+
 if TYPE_CHECKING:
     from .packet_models import CanonicalPacket
     from .validation import PacketValidationReport
     from .decision import DecisionResult
     from .config.agency_settings import AgencySettings
-
 
 class GateVerdict(Enum):
     """Possible outcomes of a quality gate check."""
@@ -57,7 +58,7 @@ class AutonomyOutcome:
       2. Policy layer      → autonomy_outcome.effective_action
       3. Human action layer → future override / approval events
     """
-    raw_verdict: str                    # What NB02 originally decided
+    raw_verdict: DecisionState             # What NB02 originally decided
     effective_action: str               # "auto" | "review" | "block"
     approval_required: bool             # True for "review" or "block"
     rule_source: str                    # Which rule produced this outcome
