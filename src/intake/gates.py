@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Protocol, TYPE_CHECKING
 
-from .constants import DecisionState
+from .constants import DecisionState, PipelineStage, GateIdentifier
 
 if TYPE_CHECKING:
     from .packet_models import CanonicalPacket
@@ -109,6 +109,12 @@ class NB01CompletionGate:
       are incomplete — trip can be saved but quote generation is blocked
     - ESCALATE: Structural checks failed or INTAKE_MINIMUM not met — cannot save
     """
+
+    # Semantic contract identifiers (canonical — used in API payloads)
+    stage = PipelineStage.INTAKE_EXTRACTION
+    gate_key = GateIdentifier.INTAKE_COMPLETION
+    # Legacy code — kept for debug/traceability, do not emit to UI
+    legacy_code = "NB01"
     def evaluate(
         self,
         packet: CanonicalPacket,
@@ -156,6 +162,12 @@ class NB02JudgmentGate:
     - Computes effective_action WITHOUT mutating decision.decision_state
     - Returns an AutonomyOutcome for downstream delivery/approval logic
     """
+
+    # Semantic contract identifiers (canonical — used in API payloads)
+    stage = PipelineStage.DECISION_JUDGMENT
+    gate_key = GateIdentifier.DECISION_READINESS
+    # Legacy code — kept for debug/traceability, do not emit to UI
+    legacy_code = "NB02"
     def evaluate(
         self,
         decision: DecisionResult,

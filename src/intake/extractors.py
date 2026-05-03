@@ -1189,6 +1189,27 @@ def _extract_passport_visa(text: str) -> Dict[str, Any]:
     return results
 
 
+VISA_PASSPORT_CONCERN_TERMS = (
+    "visa", "passport", "passports", "expiry", "expired", "expire",
+    "renew", "renewal", "validity", "document", "documents", "immigration",
+)
+
+
+def _extract_passport_visa_gated(text: str, stage: str) -> Dict[str, Any]:
+    """Stage-gated passport/visa extraction.
+
+    proposal/booking: full per-traveler extraction via _extract_passport_visa().
+    discovery/shortlist: lightweight boolean signal only, omitted when no concern
+    terms are found.
+    """
+    if stage in ("proposal", "booking"):
+        return _extract_passport_visa(text)
+    text_lower = text.lower()
+    if any(term in text_lower for term in VISA_PASSPORT_CONCERN_TERMS):
+        return {"visa_concerns_present": True}
+    return {}
+
+
 # =============================================================================
 # SECTION 10: EXISTING ITINERARY / TRAVELER PLAN
 # =============================================================================
@@ -1261,7 +1282,7 @@ class ExtractionPipeline:
             elif envelope.content_type == "structured_json":
                 self._extract_from_structured(envelope, packet)
             elif envelope.content_type == "hybrid":
-                self._extract_from_hybrid(envelope, packet)
+                self._extract_from_hybrid(envelope, packet, stage=stage)
 
         # Set operating mode (top-level, NOT in facts)
         packet.operating_mode = _classify_operating_mode(all_texts)
@@ -1576,13 +1597,20 @@ class ExtractionPipeline:
                 coord_match.group(0), eid,
             ))
 
-        # --- PASSPORT / VISA ---
-        pv = _extract_passport_visa(text)
-        for field_name, value in pv.items():
-            packet.set_fact(field_name, self._make_slot(
-                value, 0.9, AuthorityLevel.EXPLICIT_USER,
-                value, eid,
-            ))
+        # --- PASSPORT / VISA (stage-gated) ---
+        pv = _extract_passport_visa_gated(text, stage)
+        if stage in ("proposal", "booking"):
+            for field_name, value in pv.items():
+                packet.set_fact(field_name, self._make_slot(
+                    value, 0.9, AuthorityLevel.EXPLICIT_USER,
+                    value, eid,
+                ))
+        elif pv:
+            for field_name, value in pv.items():
+                packet.set_derived_signal(field_name, Slot(
+                    value=value, confidence=0.7,
+                    authority_level="derived_signal",
+                ))
 
         # --- TRAVELER PLAN ---
         plan = _extract_traveler_plan(text)
@@ -1723,7 +1751,7 @@ class ExtractionPipeline:
                         str(child_ages), eid, extraction_mode=ExtractionMode.IMPORTED,
                     ))
 
-    def _extract_from_hybrid(self, envelope: SourceEnvelope, packet: CanonicalPacket) -> None:
+    def _extract_from_hybrid(self, envelope: SourceEnvelope, packet: CanonicalPacket, stage: str = "discovery") -> None:
         """Handle hybrid input: text + structured data."""
         text = envelope.content.get("text", "")
         structured = envelope.content.get("structured", {})
@@ -1737,7 +1765,7 @@ class ExtractionPipeline:
             content=text,
             content_type="freeform_text",
         )
-        self._extract_from_freeform(text_envelope, packet)
+        self._extract_from_freeform(text_envelope, packet, stage=stage)
 
         # Then overlay structured (higher authority for overlapping fields)
         struct_envelope = SourceEnvelope(

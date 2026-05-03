@@ -1,25 +1,62 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { POST } from "../route";
+import type { NextRequest } from "next/server";
+
+vi.mock("@/lib/bff-auth", async (importOriginal) => {
+  const actual: Record<string, unknown> = await importOriginal() as Record<string, unknown>;
+  return {
+    ...actual,
+    bffFetchOptions: vi.fn((_request: unknown, method: string, _scope?: unknown, extraHeaders?: Record<string, string>, body?: unknown) => {
+      const opts: RequestInit = {
+        method,
+        headers: { ...extraHeaders, "Content-Type": "application/json" },
+        cache: "no-store" as RequestCache,
+      };
+      if (body !== undefined) {
+        opts.body = JSON.stringify(body);
+      }
+      return opts;
+    }),
+  };
+});
+
+function asNextRequest(request: Request): NextRequest {
+  return request as unknown as NextRequest;
+}
 
 describe("/api/trips POST endpoint - Kill Switch Tests", () => {
   const originalEnv = process.env.DISABLE_CALL_CAPTURE;
 
   afterEach(() => {
-    // Restore original environment
     if (originalEnv === undefined) {
       delete process.env.DISABLE_CALL_CAPTURE;
     } else {
       process.env.DISABLE_CALL_CAPTURE = originalEnv;
     }
+    vi.restoreAllMocks();
   });
 
   describe("Call Capture Enabled (Normal Operation)", () => {
     beforeEach(() => {
-      // Ensure kill switch is not active (default state)
       delete process.env.DISABLE_CALL_CAPTURE;
+      vi.spyOn(global, "fetch").mockImplementation((_url, _opts) => {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              run_id: "run_test_001",
+              state: "queued",
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          )
+        );
+      });
     });
 
-    it("test_call_capture_enabled_returns_201_with_trip_data", async () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("test_call_capture_enabled_returns_202_with_run_id", async () => {
       const request = new Request("http://localhost:3000/api/trips", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -29,19 +66,13 @@ describe("/api/trips POST endpoint - Kill Switch Tests", () => {
         }),
       });
 
-      const response = await POST(request);
+      const response = await POST(asNextRequest(request));
       const data = await response.json();
 
-      expect(response.status).toBe(201);
-      expect(data).toHaveProperty("id");
-      expect(data).toHaveProperty("destination");
+      expect(response.status).toBe(202);
+      expect(data).toHaveProperty("run_id");
       expect(data).toHaveProperty("state");
-      expect(data).toHaveProperty("customerMessage");
-      expect(data).toHaveProperty("agentNotes");
-      expect(data.customerMessage).toBe(
-        "Customer wants to explore European destinations"
-      );
-      expect(data.agentNotes).toBe("Follow up about wine tours");
+      expect(data.state).toBe("queued");
       expect(data).not.toHaveProperty("error");
     });
 
@@ -60,13 +91,12 @@ describe("/api/trips POST endpoint - Kill Switch Tests", () => {
         }),
       });
 
-      const response = await POST(request);
-      expect(response.status).toBe(201);
+      const response = await POST(asNextRequest(request));
+      expect(response.status).toBe(202);
 
-      const trip = await response.json();
-      expect(trip.customerMessage).toBe("Trip inquiry");
-      expect(trip.agentNotes).toBe("Premium customer");
-      expect(trip.followUpDueDate).toBe("2026-05-15");
+      const data = await response.json();
+      expect(data).toHaveProperty("run_id");
+      expect(data.state).toBe("queued");
     });
 
     it("test_call_capture_enabled_validates_required_raw_note", async () => {
@@ -78,7 +108,7 @@ describe("/api/trips POST endpoint - Kill Switch Tests", () => {
         }),
       });
 
-      const response = await POST(request);
+      const response = await POST(asNextRequest(request));
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -94,67 +124,57 @@ describe("/api/trips POST endpoint - Kill Switch Tests", () => {
         }),
       });
 
-      const response = await POST(request);
-      expect(response.status).toBe(201);
+      const response = await POST(asNextRequest(request));
+      expect(response.status).toBe(202);
 
-      const trip = await response.json();
-      expect(trip.customerMessage).toBe("Simple note");
-      // agentNotes defaults to undefined when owner_note is not provided
-      expect(trip.agentNotes).toBeUndefined();
+      const data = await response.json();
+      expect(data).toHaveProperty("run_id");
+      expect(data.state).toBe("queued");
     });
   });
 
-  describe("Call Capture Kill Switch Feature", () => {
-    // Note: Testing the kill switch requires module reloading which is complex in Vitest.
-    // This section documents the expected behavior when DISABLE_CALL_CAPTURE=true is set.
-    // Integration tests should verify this by starting the server with the env var set.
-
-    it("documents_kill_switch_requirements", () => {
-      // When DISABLE_CALL_CAPTURE=true is set and the module is loaded:
-      // 1. POST /api/trips should return 503 Service Unavailable
-      // 2. Response body should be: { error: "Call capture feature is temporarily disabled" }
-      // 3. No trip should be created
-      // 4. All other fields in the request are ignored
-
-      // To test this in practice:
-      // 1. Set environment variable: export DISABLE_CALL_CAPTURE=true
-      // 2. Start the dev server: npm run dev
-      // 3. Make a POST request: curl -X POST http://localhost:3000/api/trips -H "Content-Type: application/json" -d '{"raw_note":"test"}'
-      // 4. Verify response: { "error": "Call capture feature is temporarily disabled" } with status 503
-
-      expect(true).toBe(true);
+  describe("Call Capture Disabled (Kill Switch Active)", () => {
+    beforeEach(() => {
+      process.env.DISABLE_CALL_CAPTURE = "true";
     });
 
-    it("kill_switch_is_case_sensitive", () => {
-      // Only the exact string "true" (lowercase) disables the feature
-      // These values should NOT disable: "True", "TRUE", "1", "yes", false (boolean), null
-      // This is verified by the code: process.env.DISABLE_CALL_CAPTURE === "true"
+    it("test_kill_switch_active_returns_503", async () => {
+      const request = new Request("http://localhost:3000/api/trips", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          raw_note: "Trip inquiry that should be rejected",
+        }),
+      });
 
-      const testCases = [
-        { value: "true", shouldDisable: true },
-        { value: "false", shouldDisable: false },
-        { value: "True", shouldDisable: false },
-        { value: "TRUE", shouldDisable: false },
-        { value: "1", shouldDisable: false },
-        { value: "yes", shouldDisable: false },
-        { value: "", shouldDisable: false },
-        { value: undefined, shouldDisable: false },
-      ];
+      const response = await POST(asNextRequest(request));
+      const data = await response.json();
 
-      testCases.forEach((testCase) => {
-        const isDisabled = testCase.value === "true";
-        expect(isDisabled).toBe(testCase.shouldDisable);
+      expect(response.status).toBe(503);
+      expect(data).toEqual({
+        error: "Call capture feature is temporarily disabled",
       });
     });
 
-    it("kill_switch_defaults_to_enabled_when_not_set", () => {
-      // When DISABLE_CALL_CAPTURE is not set in environment, the feature is enabled
-      // This is the default behavior (feature is on by default)
-
+    it("test_kill_switch_requires_truthy_exactly", () => {
+      // Only exact "true" string should trigger
       const envValue = process.env.DISABLE_CALL_CAPTURE;
       const isDisabled = envValue === "true";
 
-      expect(isDisabled).toBe(false); // Feature should be enabled by default
+      expect(isDisabled).toBe(true);
+    });
+  });
+
+  describe("Kill Switch Default State", () => {
+    beforeEach(() => {
+      delete process.env.DISABLE_CALL_CAPTURE;
+    });
+
+    it("test_kill_switch_is_disabled_by_default", () => {
+      const envValue = process.env.DISABLE_CALL_CAPTURE;
+      const isDisabled = envValue === "true";
+
+      expect(isDisabled).toBe(false);
     });
   });
 
@@ -170,7 +190,7 @@ describe("/api/trips POST endpoint - Kill Switch Tests", () => {
         body: "invalid json {",
       });
 
-      const response = await POST(request);
+      const response = await POST(asNextRequest(request));
       expect(response.status).toBe(500);
 
       const data = await response.json();
@@ -178,7 +198,6 @@ describe("/api/trips POST endpoint - Kill Switch Tests", () => {
     });
 
     it("test_returns_400_when_raw_note_is_empty_string", async () => {
-      // Empty string is falsy, so it should fail validation just like undefined
       const request = new Request("http://localhost:3000/api/trips", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -188,7 +207,7 @@ describe("/api/trips POST endpoint - Kill Switch Tests", () => {
         }),
       });
 
-      const response = await POST(request);
+      const response = await POST(asNextRequest(request));
       expect(response.status).toBe(400);
 
       const data = await response.json();

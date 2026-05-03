@@ -55,6 +55,7 @@ from .safety import (
 )
 from .config.agency_settings import AgencySettings
 from .gates import NB01CompletionGate, NB02JudgmentGate, GateVerdict, AutonomyOutcome
+from .constants import PipelineStage, GateIdentifier
 from src.fees.calculation import calculate_trip_fees
 from src.suitability.integration import assess_activity_suitability
 from .frontier_orchestrator import run_frontier_orchestration, FrontierOrchestrationResult
@@ -235,7 +236,7 @@ def run_spine_once(
     pipeline = ExtractionPipeline()
     try:
         with _otel_tracer.start_as_current_span("extraction") as span:
-            packet = pipeline.extract(envelopes)
+            packet = pipeline.extract(envelopes, stage=stage)
             span.set_attribute("envelope_count", len(envelopes))
             span.set_attribute("trip_id", packet.packet_id)
     except Exception as e:
@@ -283,16 +284,22 @@ def run_spine_once(
             operating_mode=packet.operating_mode,
             decision_state="STOP_NEEDS_REVIEW",
             hard_blockers=["extraction_quality"],
-            rationale={"gate_failure": "NB01_ESCALATE", "reasons": nb01_result.reasons}
+            rationale={"gate_failure": GateIdentifier.INTAKE_COMPLETION.value, "reasons": nb01_result.reasons}
         )
         if stage_callback:
-            _emit_stage_event("validation", "completed", {"status": "ESCALATED", "gate": "NB01", "reasons": nb01_result.reasons})
+            _emit_stage_event("validation", "completed", {
+                "status": "ESCALATED",
+                "stage": PipelineStage.INTAKE_EXTRACTION.value,
+                "gate": GateIdentifier.INTAKE_COMPLETION.value,
+                "legacy_gate": "NB01",
+                "reasons": nb01_result.reasons,
+            })
         else:
             _emit_audit_event(
                 trip_id=packet.packet_id,
                 stage="packet",
                 state="escalated",
-                reason="NB01 gate escalation - extraction quality issues",
+                reason="Intake completion gate escalation — extraction quality issues",
                 pre_state=_snapshot_packet_state(packet),
                 post_state={"stage": "packet", "state": "escalated"},
             )
@@ -309,7 +316,7 @@ def run_spine_once(
             decision_state="ASK_FOLLOWUP",
             hard_blockers=[],
             soft_blockers=["incomplete_intake"],
-            rationale={"gate_degrade": "NB01_DEGRADE", "reasons": nb01_result.reasons},
+            rationale={"gate_degrade": GateIdentifier.INTAKE_COMPLETION.value, "reasons": nb01_result.reasons},
             follow_up_questions=[
                 {"field_name": f, "priority": "medium", "question": f"Please provide {f.replace('_', ' ')} to generate a quote."}
                 for f in ("origin_city", "budget_raw_text", "trip_purpose", "party_size")
@@ -317,13 +324,19 @@ def run_spine_once(
             ],
         )
         if stage_callback:
-            _emit_stage_event("validation", "completed", {"status": "DEGRADED", "gate": "NB01", "reasons": nb01_result.reasons})
+            _emit_stage_event("validation", "completed", {
+                "status": "DEGRADED",
+                "stage": PipelineStage.INTAKE_EXTRACTION.value,
+                "gate": GateIdentifier.INTAKE_COMPLETION.value,
+                "legacy_gate": "NB01",
+                "reasons": nb01_result.reasons,
+            })
         else:
             _emit_audit_event(
                 trip_id=packet.packet_id,
                 stage="packet",
                 state="degraded",
-                reason="NB01 degrade - partial intake saved",
+                reason="Intake completion gate degrade — partial intake saved",
                 pre_state=_snapshot_packet_state(packet),
                 post_state={"stage": "packet", "state": "degraded"},
             )

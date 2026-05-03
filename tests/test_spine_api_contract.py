@@ -3,6 +3,8 @@ test_spine_api_contract.py — Smoke tests for async /run contract.
 
 POST /run now returns RunAcceptedResponse and run artifacts are verified by polling
 GET /runs/{run_id} and reading checkpointed steps.
+
+Run with: pytest -m integration tests/test_spine_api_contract.py
 """
 
 from __future__ import annotations
@@ -19,6 +21,8 @@ from tests.helpers.run_polling import (
     get_run_step,
     wait_for_terminal,
 )
+
+pytestmark = pytest.mark.integration
 
 API_BASE = os.environ.get("TEST_SPINE_API_URL", "http://127.0.0.1:8000")
 

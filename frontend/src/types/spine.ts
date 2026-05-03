@@ -292,11 +292,56 @@ export interface PacketContradiction {
 export interface ValidationReport {
   is_valid?: boolean;
   status?: string;
+  /** @deprecated Use gate (semantic) or lookup validationLabelFor() instead. Legacy "NB01" kept for old draft compat. */
   gate?: string;
+  /** Semantic pipeline stage identifier (e.g. "intake_extraction"). Canonical for FE lookup. */
+  stage?: string;
+  /** Legacy NB code (e.g. "NB01") — temporary compat, will be removed. */
+  legacy_gate?: string;
   reasons?: string[];
   errors?: Array<{ severity: string; code: string; message: string; field: string }>;
   warnings?: Array<{ severity: string; code: string; message: string; field: string }>;
   readiness?: ReadinessAssessment;
+}
+
+/**
+ * Map a semantic gate key (or legacy NB code) to a user-facing label.
+ * Accepts both new semantic keys and old NB codes for backward compat.
+ */
+export function validationLabelFor(gateKey: string | undefined, context?: string): string {
+  if (!gateKey) return '';
+  // New semantic keys
+  const LABELS: Record<string, string> = {
+    intake_completion: 'Trip Details',
+    decision_readiness: 'Ready to Quote',
+    strategy_safety: 'Safety Check',
+    proposal_quality: 'Proposal Quality',
+    demo_regression: 'Demo QA',
+    shadow_quality: 'Production QA',
+    intake_extraction: 'Trip Details',
+    decision_judgment: 'Ready to Quote',
+    session_strategy: 'Strategy',
+    traveler_proposal: 'Build Proposal',
+    golden_path_evaluation: 'Final Review',
+    shadow_replay: 'Production QA',
+  };
+  // Legacy NB codes (backward compat for old drafts)
+  const LEGACY_LABELS: Record<string, string> = {
+    NB01: 'Trip Details',
+    NB02: 'Ready to Quote',
+    NB03: 'Strategy',
+    NB04: 'Build Proposal',
+    NB05: 'Final Review',
+    NB06: 'Production QA',
+  };
+  const label = LABELS[gateKey] ?? LEGACY_LABELS[gateKey] ?? gateKey;
+  // Some contexts need a qualifier
+  if (context === 'alert_title') {
+    if (gateKey === 'intake_completion' || gateKey === 'NB01') return 'Trip Details Need Attention';
+    if (gateKey === 'decision_readiness' || gateKey === 'NB02') return 'Quote Readiness Check';
+    return `${label} — Needs Attention`;
+  }
+  return label;
 }
 
 export interface ReadinessAssessment {
@@ -304,6 +349,7 @@ export interface ReadinessAssessment {
   suggested_next_stage: string;
   should_auto_advance_stage: boolean;
   missing_for_next: string[];
+  signals?: Record<string, unknown>;
   tiers?: Record<string, {
     tier: string;
     ready: boolean;

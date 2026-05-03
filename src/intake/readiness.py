@@ -96,9 +96,10 @@ class ReadinessResult:
     suggested_next_stage: str
     should_auto_advance_stage: bool  # Always False
     missing_for_next: List[str]  # Fields blocking the next tier
+    signals: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        result = {
             "highest_ready_tier": self.highest_ready_tier,
             "suggested_next_stage": self.suggested_next_stage,
             "should_auto_advance_stage": self.should_auto_advance_stage,
@@ -113,6 +114,9 @@ class ReadinessResult:
                 for name, detail in self.tiers.items()
             },
         }
+        if self.signals:
+            result["signals"] = self.signals
+        return result
 
 
 def _has_usable_fact(facts: Dict[str, Any], field_name: str) -> bool:
@@ -311,10 +315,18 @@ def compute_readiness(
     else:
         missing_for_next = tiers["intake_minimum"].unmet
 
+    # Auxiliary signals from facts + derived_signals
+    signals: Dict[str, Any] = {}
+    all_slots = {**packet.facts, **packet.derived_signals}
+    if _has_usable_fact(all_slots, "visa_concerns_present"):
+        slot = all_slots["visa_concerns_present"]
+        signals["visa_concerns_present"] = bool(getattr(slot, "value", slot))
+
     return ReadinessResult(
         tiers=tiers,
         highest_ready_tier=highest,
         suggested_next_stage=suggested_stage,
         should_auto_advance_stage=False,
         missing_for_next=missing_for_next,
+        signals=signals,
     )

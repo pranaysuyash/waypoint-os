@@ -1,5 +1,6 @@
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { SlotValue, Ambiguity, PacketUnknown, PacketContradiction, ValidationReport } from "@/types/spine";
+import { validationLabelFor } from "@/types/spine";
 import type { Trip } from "@/lib/api-client";
 import { FIELD_LABELS, SIGNAL_LABELS, AMBIGUITY_TYPE_LABELS, labelOrTitle } from "@/lib/label-maps";
 import { AlertTriangle, CheckCircle, XCircle, Info, ChevronDown, ChevronUp } from "lucide-react";
@@ -68,8 +69,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-ui-sm font-semibold text-[#f85149] mb-1">
-                Trip Details Incomplete
-                {validation?.gate && <span className="text-[#8b949e] font-mono ml-2">{validation.gate}</span>}
+                {validationLabelFor(validation.gate || validation.stage, 'alert_title')}
               </h3>
               {validation?.reasons && validation.reasons.length > 0 && (
                 <p className="text-ui-xs text-[#ffa198] mb-3">

@@ -26,10 +26,11 @@ import type {
   DecisionOutput,
   StrategyOutput,
   PromptBundle,
+  ValidationReport,
 } from '@/types/spine';
+import { validationLabelFor } from '@/types/spine';
 import type {
   SafetyResult,
-  ValidationReport,
   FeeCalculationResult,
 } from '@/types/spine';
 import type { Trip } from '@/lib/api-client';
@@ -44,6 +45,7 @@ const PacketTab = dynamic(() => import('./PacketTab'));
 const DecisionTab = dynamic(() => import('./DecisionTab'));
 const StrategyTab = dynamic(() => import('./StrategyTab'));
 const SafetyTab = dynamic(() => import('./SafetyTab'));
+const OpsPanel = dynamic(() => import('./OpsPanel'));
 const SettingsPanel = dynamic(() => import('./SettingsPanel'));
 const IntegrityMonitorPanel = dynamic(() => import('./IntegrityMonitorPanel'));
 const ScenarioLab = dynamic(() => import('./ScenarioLab'));
@@ -67,6 +69,7 @@ function safeParseJson(raw: string): Record<string, unknown> | null {
 const workspaceTabs = [
   { id: 'intake', label: 'New Inquiry' },
   { id: 'safety', label: 'Safety Review' },
+  { id: 'ops', label: 'Ops' },
 ] as const;
 
 type WorkspaceTabId = (typeof workspaceTabs)[number]['id'];
@@ -180,6 +183,17 @@ function WorkbenchContent() {
 
   const activeTab = toWorkspaceTabId(searchParams.get('tab')) ?? 'intake';
 
+  // Ops tab visible only at proposal/booking stage
+  const showOps = trip?.stage === 'proposal' || trip?.stage === 'booking';
+  const visibleTabs = showOps
+    ? workspaceTabs
+    : workspaceTabs.filter((t) => t.id !== 'ops');
+
+  // Normalize: if URL requests a tab that isn't currently visible, fall back to intake
+  const effectiveTab = visibleTabs.some((t) => t.id === activeTab)
+    ? activeTab
+    : 'intake';
+
   const store = useWorkbenchStore();
 
   // Draft hydration — load draft from backend and populate store
@@ -238,13 +252,25 @@ function WorkbenchContent() {
 
   const handleTabChange = useCallback(
     (tab: string) => {
-      if (!workspaceTabs.some((t) => t.id === tab)) return;
+      if (!visibleTabs.some((t) => t.id === tab)) return;
       const params = new URLSearchParams(searchParams.toString());
       params.set('tab', tab);
       router.replace(`?${params.toString()}`, { scroll: false });
     },
-    [searchParams, router],
+    [searchParams, router, visibleTabs],
   );
+
+  // Auto-switch away from ops tab if stage changes out of proposal/booking
+  const prevStageRef = useRef<string | null>(null);
+  useEffect(() => {
+    const currentStage = trip?.stage ?? null;
+    if (prevStageRef.current !== null && prevStageRef.current !== currentStage) {
+      if (activeTab === 'ops' && currentStage !== 'proposal' && currentStage !== 'booking') {
+        handleTabChange('intake');
+      }
+    }
+    prevStageRef.current = currentStage;
+  }, [trip?.stage, activeTab, handleTabChange]);
 
   const [isRunning, setIsRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
@@ -732,8 +758,7 @@ function WorkbenchContent() {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h3 className="text-ui-sm font-semibold text-[#f85149]">
-                    Trip Details Need Attention
-                    {store.result_validation.gate && <span className="text-[#8b949e] font-mono ml-2">{store.result_validation.gate}</span>}
+                    {validationLabelFor(store.result_validation.gate || store.result_validation.stage, 'alert_title')}
                   </h3>
                   <p className="text-ui-xs text-[#ffa198] mt-0.5">
                     {store.result_validation.reasons?.length
@@ -1036,8 +1061,8 @@ function WorkbenchContent() {
 
         <div className='bg-[#0f1115] border border-[#30363d] rounded-t-xl overflow-hidden'>
           <Tabs
-            tabs={workspaceTabs}
-            activeTab={activeTab}
+            tabs={visibleTabs}
+            activeTab={effectiveTab}
             onTabChange={handleTabChange}
             ariaLabel='Trip workspace sections'
           />
@@ -1046,13 +1071,15 @@ function WorkbenchContent() {
         <div
           className='bg-[#0f1115] border-x border-b border-[#30363d] rounded-b-xl'
           role='tabpanel'
-          id={`tabpanel-${activeTab}`}
-          aria-labelledby={`tab-${activeTab}`}
+          id={`tabpanel-${effectiveTab}`}
+          aria-labelledby={`tab-${effectiveTab}`}
           tabIndex={0}
         >
           <div className='p-6'>
             <Suspense fallback={<InlineLoading message='Loading...' />}>
-              {activeTab === 'safety' ? (
+              {effectiveTab === 'ops' && showOps ? (
+                <OpsPanel trip={trip} />
+              ) : effectiveTab === 'safety' ? (
                 <SafetyTab trip={trip} />
               ) : (
                 <IntakeTab trip={trip} />

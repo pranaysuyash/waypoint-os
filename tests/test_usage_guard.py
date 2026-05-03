@@ -653,6 +653,9 @@ class TestGuardConcurrency:
             def get_summary(self, **kwargs):
                 return {"hourly_calls": 0, "daily_cost": 0.0}
             def reset(self):
+                # Intentionally no-op — this test-local fixture always raises
+                # on check_and_reserve, so there is no mutable state to reset.
+                # If this class is extracted for reuse, implement real state reset.
                 pass
 
         guard = LLMUsageGuard(store=BrokenStore())

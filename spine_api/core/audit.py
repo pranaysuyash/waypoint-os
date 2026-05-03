@@ -33,12 +33,13 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import Depends, Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spine_api.core.database import get_db
-from spine_api.core.auth import get_current_membership
+from spine_api.core.security import decode_token_safe
 from spine_api.models.audit import AuditAction, AuditLog
-from spine_api.models.tenant import Membership
+from spine_api.models.tenant import Membership, User
 
 logger = logging.getLogger("spine_api.audit")
 
@@ -115,18 +116,42 @@ class AuditContext:
 def audit_logger():
     """FastAPI dependency that provides an AuditContext for route handlers.
 
-    Returns a dependency function that resolves auth context from JWT
-    and Request metadata, then yields an AuditContext for .log() calls.
-
-    If auth is disabled, returns a system-level context with agency_id="system".
+    Resolves auth context from JWT token if present. Falls back to system-level
+    context for unauthenticated requests (public routes like signup/login).
     """
     async def _get_audit_context(
         request: Request,
-        membership: Membership = Depends(get_current_membership),
         db: AsyncSession = Depends(get_db),
     ) -> AuditContext:
-        agency_id = membership.agency_id if membership else "system"
-        user_id = membership.user_id if membership else None
+        agency_id = "system"
+        user_id = None
+        # Try to extract user from token, but don't fail if unauthenticated
+        token: str | None = None
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.lower().startswith("bearer "):
+            token = auth_header[7:]
+        else:
+            token = request.cookies.get("access_token")
+        if token:
+            payload = decode_token_safe(token)
+            if payload and payload.get("sub"):
+                result = await db.execute(select(User).where(User.id == payload["sub"]))
+                user_obj = result.scalar_one_or_none()
+                if user_obj and user_obj.is_active:
+                    user_id = user_obj.id
+                    m_result = await db.execute(
+                        select(Membership)
+                        .where(Membership.user_id == user_id)
+                        .where(Membership.is_primary == True)
+                    )
+                    membership_obj = m_result.scalar_one_or_none()
+                    if not membership_obj:
+                        m_result = await db.execute(
+                            select(Membership).where(Membership.user_id == user_id)
+                        )
+                        membership_obj = m_result.scalar_one_or_none()
+                    if membership_obj:
+                        agency_id = membership_obj.agency_id
 
         ip_address = _extract_client_ip(request)
         user_agent = request.headers.get("user-agent")

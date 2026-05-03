@@ -1235,7 +1235,14 @@ class OverrideStore:
         try:
             with open(OVERRIDES_INDEX_FILE) as f:
                 return json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
+        except FileNotFoundError:
+            return {}
+        except json.JSONDecodeError:
+            logger.error(
+                "Override index file %s is corrupt — re-initializing. "
+                "All existing override index entries will be rebuilt on next save.",
+                OVERRIDES_INDEX_FILE,
+            )
             return {}
     
     @staticmethod

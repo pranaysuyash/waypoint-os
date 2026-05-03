@@ -8,7 +8,7 @@ import type { SpineRunRequest } from "@/types/generated/spine-api";
 
 // Kill switch for call capture feature
 // Set DISABLE_CALL_CAPTURE=true to disable POST /api/trips
-const CALL_CAPTURE_DISABLED = process.env.DISABLE_CALL_CAPTURE === "true";
+// Read at call time (not module level) so env changes are picked up at runtime
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,7 +49,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (CALL_CAPTURE_DISABLED) {
+  // Read at call time so tests can set process.env.DISABLE_CALL_CAPTURE after import
+  if (process.env.DISABLE_CALL_CAPTURE === "true") {
     return bffJson(
       { error: "Call capture feature is temporarily disabled" },
       503  // Service Unavailable

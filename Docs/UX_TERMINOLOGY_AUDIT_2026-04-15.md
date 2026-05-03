@@ -207,6 +207,7 @@ Before submitting for user review:
 - DESIGN.md - Visual design system
 - ARCHITECTURE.md - Component structure
 - Docs/PROJECT_NAMING_EXPLORATION.md - Product naming (Waypoint OS)
+- **Docs/PIPELINE_NAMING_REFACTOR_2026-05-03.md** — Implemented three-layer naming model (NB codes → semantic identifiers)
 
 ---
 

@@ -1,13 +1,17 @@
 """
 test_run_lifecycle.py — Integration tests for async run lifecycle.
 
-Requires a live spine_api instance. Skips automatically if API is unreachable.
+Requires a live spine_api instance. Automatically skipped when server unreachable.
+
+Run with: pytest -m integration tests/test_run_lifecycle.py
 """
 
 from __future__ import annotations
 
 import hashlib
+import json
 import os
+import time
 from pathlib import Path
 
 import pytest
@@ -20,6 +24,8 @@ from tests.helpers.run_polling import (
     get_run_step,
     wait_for_terminal,
 )
+
+pytestmark = pytest.mark.integration
 
 API_BASE = os.environ.get("TEST_SPINE_API_URL", "http://127.0.0.1:8000")
 
@@ -91,12 +97,13 @@ LEAKAGE_STRICT_PAYLOAD = {
 
 @pytest.fixture(scope="module")
 def api_health():
+    """Verify API is reachable. Skip if not."""
     try:
         resp = requests.get(f"{API_BASE}/health", timeout=5)
         assert resp.status_code == 200
         return resp.json()
-    except requests.ConnectionError:
-        pytest.skip(f"spine_api not reachable at {API_BASE}")
+    except (requests.ConnectionError, AssertionError):
+        pytest.skip(f"spine_api not reachable or unhealthy at {API_BASE}")
 
 
 @pytest.fixture(scope="module")

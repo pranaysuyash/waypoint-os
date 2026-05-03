@@ -12,8 +12,38 @@ Run: uv run python -m pytest tests/test_call_capture_phase2.py -v
 """
 
 import json
+import os
 from datetime import datetime, timezone
 import pytest
+
+from spine_api.persistence import TripStore, TRIPS_DIR
+
+
+# Trip IDs created by this test file — cleaned up after each test to
+# prevent state leakage that causes flaky failures (e.g. shared hardcoded
+# IDs colliding when run as part of the full test suite).
+_TEST_TRIP_IDS = frozenset({
+    "trip_patch_canonical_sync",
+    "trip_patch_priorities_flex",
+    "trip_patch_clear_warnings",
+})
+
+
+@pytest.fixture(autouse=True)
+def _cleanup_phase2_trips():
+    """Remove test trips created by this module after each test."""
+    original_mode = os.environ.get("DATA_PRIVACY_MODE", "dogfood")
+    os.environ["DATA_PRIVACY_MODE"] = "test"
+    yield
+    os.environ["DATA_PRIVACY_MODE"] = original_mode
+    TRIPS_DIR.mkdir(parents=True, exist_ok=True)
+    for trip_id in _TEST_TRIP_IDS:
+        trip_file = TRIPS_DIR / f"{trip_id}.json"
+        if trip_file.exists():
+            try:
+                trip_file.unlink()
+            except OSError:
+                pass
 
 
 class TestPhase2StructuredFields:
