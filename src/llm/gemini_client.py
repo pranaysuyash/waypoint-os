@@ -108,6 +108,19 @@ class GeminiClient(BaseLLMClient):
         except Exception:
             return False
 
+    def ping(self) -> bool:
+        """Lightweight connectivity check — counts tokens via the API."""
+        if not self.is_available():
+            return False
+        try:
+            self._client.models.count_tokens(
+                model=self.model,
+                contents="ping",
+            )
+            return True
+        except Exception:
+            return False
+
     def decide(
         self,
         prompt: str,

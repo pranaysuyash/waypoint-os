@@ -54,6 +54,10 @@ const PATCHABLE_FIELDS = new Set([
   "date_year_confidence",
   "lead_source",
   "activity_provenance",
+  "trip_priorities",
+  "date_flexibility",
+  "tripPriorities",
+  "dateFlexibility",
   "contactName",
 ]);
 

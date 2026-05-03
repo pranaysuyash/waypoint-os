@@ -322,6 +322,8 @@ export interface Trip {
   dateYearConfidence?: string;
   leadSource?: string;
   activityProvenance?: string;
+  tripPriorities?: string;
+  dateFlexibility?: string;
   // Contact / customer profile
   contactName?: string;
   // Review metadata (Wave 8)

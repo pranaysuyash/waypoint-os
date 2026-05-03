@@ -725,7 +725,16 @@ def load_fixture_expectations(scenario_id: Optional[str]) -> Optional[dict[str, 
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", version="1.0.0")
+    try:
+        from src.decision.health import health_check_dict
+        return HealthResponse(
+            status="ok",
+            version="1.0.0",
+            components=health_check_dict().get("components"),
+            issues=health_check_dict().get("issues"),
+        )
+    except Exception:
+        return HealthResponse(status="ok", version="1.0.0")
 
 
 _zombie_thread: Optional[threading.Thread] = None
@@ -2174,6 +2183,26 @@ def patch_trip(
                         "authority_level": "explicit_user",
                     }
                 fields_to_clear.add("budget_raw_text")
+
+        if "trip_priorities" in incoming_updates:
+            priorities_value = _trimmed_string(incoming_updates.get("trip_priorities"))
+            if priorities_value:
+                facts["trip_priorities"] = {
+                    "value": priorities_value,
+                    "confidence": 1.0,
+                    "authority_level": "explicit_user",
+                }
+                fields_to_clear.add("trip_priorities")
+
+        if "date_flexibility" in incoming_updates:
+            flexibility_value = _trimmed_string(incoming_updates.get("date_flexibility"))
+            if flexibility_value:
+                facts["date_flexibility"] = {
+                    "value": flexibility_value,
+                    "confidence": 1.0,
+                    "authority_level": "explicit_user",
+                }
+                fields_to_clear.add("date_flexibility")
 
         if fields_to_clear:
             validation["warnings"] = [

@@ -104,6 +104,9 @@ _FREEFORM_FIELD_NAMES = {
     "special_requests",
     "medical_notes",
     "dietary_restrictions",
+    "agent_notes",
+    "agentNotes",
+    "owner_note",
 }
 
 
@@ -172,7 +175,7 @@ def _is_known_fixture(trip_data: Dict[str, Any]) -> bool:
 
     # Check if source field indicates fixture
     source = trip_data.get("source", "")
-    if any(p in source.lower() for p in ("fixture", "seed", "test", "demo", "synthetic")):
+    if any(p in source.lower() for p in _SYNTHETIC_PATTERNS):
         return True
 
     # Check if the raw_input contains a fixture_id key (even if value is None)

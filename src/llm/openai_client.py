@@ -111,6 +111,16 @@ class OpenAIClient(BaseLLMClient):
         except Exception:
             return False
 
+    def ping(self) -> bool:
+        """Lightweight connectivity check — list models via the API."""
+        if not self.is_available():
+            return False
+        try:
+            self._client.models.list(limit=1)
+            return True
+        except Exception:
+            return False
+
     def decide(
         self,
         prompt: str,

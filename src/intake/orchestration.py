@@ -66,32 +66,59 @@ import json
 # SECTION 0: AUDIT EVENT LOGGING (via AuditStore)
 # =============================================================================
 
+def _snapshot_packet_state(packet: Any) -> Dict[str, Any]:
+    """Capture the key state fields of a CanonicalPacket for audit delta tracking."""
+    return {
+        "stage": getattr(packet, "stage", None),
+        "operating_mode": getattr(packet, "operating_mode", None),
+        "decision_state": getattr(packet, "decision_state", None),
+        "facts_count": len(getattr(packet, "facts", {})),
+        "derived_signals_count": len(getattr(packet, "derived_signals", {})),
+        "hypotheses_count": len(getattr(packet, "hypotheses", {})),
+        "suitability_flag_count": len(getattr(packet, "suitability_flags", [])),
+        "contradictions_count": len(getattr(packet, "contradictions", [])),
+        "ambiguities_count": len(getattr(packet, "ambiguities", [])),
+        "unknowns_count": len(getattr(packet, "unknowns", [])),
+    }
+
+
 def _emit_audit_event(
     trip_id: str,
     stage: str,
     state: str,
     decision_type: Optional[str] = None,
     reason: Optional[str] = None,
+    pre_state: Optional[Dict[str, Any]] = None,
+    post_state: Optional[Dict[str, Any]] = None,
 ) -> None:
     """
     Emit an audit event via TripEventLogger (unified timeline source of truth).
+
+    Args:
+        trip_id: The trip identifier
+        stage: Pipeline stage (intake, packet, decision, strategy, safety)
+        state: Current state value
+        decision_type: Optional decision type label
+        reason: Optional reason for the state
+        pre_state: Snapshot of packet state BEFORE this stage transition
+        post_state: Snapshot of packet state AFTER this stage transition
     """
     try:
         from src.analytics.logger import TripEventLogger
-        
+
         description = f"Stage: {stage} | State: {state}"
         if reason:
             description += f" | Reason: {reason}"
         if decision_type:
             description += f" | Decision Type: {decision_type}"
-            
+
         TripEventLogger.log_stage_transition(
             trip_id=trip_id,
             stage=stage,
             actor="system",
             description=description,
-            pre_state={"state": "previous"}, # Placeholder for actual packet delta
-            post_state={"state": state},
+            pre_state=pre_state or {},
+            post_state=post_state or {},
             state=state,
             decision_type=decision_type,
             reason=reason,
@@ -228,7 +255,8 @@ def run_spine_once(
             trip_id=packet.packet_id,
             stage="intake",
             state="extracted",
-            reason="Extraction pipeline completed"
+            reason="Extraction pipeline completed",
+            post_state=_snapshot_packet_state(packet),
         )
 
     # --- Phase 2: Validation ---
@@ -264,7 +292,9 @@ def run_spine_once(
                 trip_id=packet.packet_id,
                 stage="packet",
                 state="escalated",
-                reason="NB01 gate escalation - extraction quality issues"
+                reason="NB01 gate escalation - extraction quality issues",
+                pre_state=_snapshot_packet_state(packet),
+                post_state={"stage": "packet", "state": "escalated"},
             )
         return _create_empty_spine_result(packet, validation, decision, run_timestamp, nb01_result.reasons)
 
@@ -293,7 +323,9 @@ def run_spine_once(
                 trip_id=packet.packet_id,
                 stage="packet",
                 state="degraded",
-                reason="NB01 degrade - partial intake saved"
+                reason="NB01 degrade - partial intake saved",
+                pre_state=_snapshot_packet_state(packet),
+                post_state={"stage": "packet", "state": "degraded"},
             )
         return _create_partial_intake_result(packet, validation, empty_decision, run_timestamp)
 
@@ -305,7 +337,8 @@ def run_spine_once(
             trip_id=packet.packet_id,
             stage="packet",
             state="validated",
-            reason="Validation completed successfully"
+            reason="Validation completed successfully",
+            pre_state=_snapshot_packet_state(packet),
         )
 
     # --- Phase 3: Decision ---
@@ -320,6 +353,7 @@ def run_spine_once(
         raise
 
     # Update packet decision_state from decision result
+    _decision_pre_state = _snapshot_packet_state(packet)
     packet.decision_state = decision.decision_state
 
     if stage_callback:
@@ -331,7 +365,9 @@ def run_spine_once(
             stage="decision",
             state=decision.decision_state,
             decision_type="gap_and_decision",
-            reason="Decision engine analysis completed"
+            reason="Decision engine analysis completed",
+            pre_state=_decision_pre_state,
+            post_state=_snapshot_packet_state(packet),
         )
 
     # --- Phase 3.5: Suitability Assessment (P0-01) ---
@@ -417,7 +453,9 @@ def run_spine_once(
             trip_id=packet.packet_id,
             stage="strategy",
             state="built",
-            reason="Session strategy constructed"
+            reason="Session strategy constructed",
+            pre_state=_snapshot_packet_state(packet),
+            post_state={"stage": "strategy", "state": "built"},
         )
 
     # --- Phase 4.5: Fee Calculation ---
@@ -481,7 +519,9 @@ def run_spine_once(
             trip_id=packet.packet_id,
             stage="safety",
             state="validated",
-            reason=f"Leakage check completed - {'safe' if leakage_result['is_safe'] else 'unsafe'}"
+            reason=f"Leakage check completed - {'safe' if leakage_result['is_safe'] else 'unsafe'}",
+            pre_state=_snapshot_packet_state(packet),
+            post_state={"stage": "safety", "state": "validated"},
         )
 
     # --- Phase 9.6: Readiness Computation ---

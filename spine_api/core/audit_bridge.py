@@ -21,6 +21,7 @@ Migration path:
 
 import asyncio
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -29,11 +30,10 @@ from spine_api.persistence import AuditStore
 
 logger = logging.getLogger("spine_api.audit_bridge")
 
-_IS_DEV = _IS_TEST = False
-import os as _os
-_env = _os.environ.get("ENVIRONMENT", "development")
-_IS_DEV = _env == "development"
-_IS_TEST = _env == "test"
+
+def _is_dev_or_test() -> bool:
+    env = os.environ.get("ENVIRONMENT", "development").lower()
+    return env in ("development", "test")
 
 
 def audit(
@@ -87,7 +87,7 @@ def _schedule_sql_write(
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
-        if _IS_DEV or _IS_TEST:
+        if _is_dev_or_test():
             logger.debug("No event loop — skipping SQL audit write for action=%s", action)
             return
         loop = None

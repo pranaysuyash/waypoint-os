@@ -266,15 +266,15 @@ class TestOrchestrationRawVerdictPreservation:
             packet_id="pkt_valid",
             stage="discovery",
             operating_mode="normal_intake",
-            facts={
-                "destination_candidates": Slot(value="Goa", confidence=1.0, authority_level=AuthorityLevel.EXPLICIT_USER),
-                "origin_city": Slot(value="Bangalore", confidence=1.0, authority_level=AuthorityLevel.EXPLICIT_USER),
-                "date_window": Slot(value="May 2026", confidence=0.9, authority_level=AuthorityLevel.EXPLICIT_USER),
-                "party_size": Slot(value=2, confidence=1.0, authority_level=AuthorityLevel.EXPLICIT_USER),
-                "budget_min": Slot(value=40000, confidence=0.9, authority_level=AuthorityLevel.EXPLICIT_USER),
-                "trip_purpose": Slot(value="family leisure", confidence=0.9, authority_level=AuthorityLevel.EXPLICIT_USER),
-            }
         )
+        valid_packet.facts.update({
+            "destination_candidates": Slot(value="Goa", confidence=1.0, authority_level=AuthorityLevel.EXPLICIT_USER),
+            "origin_city": Slot(value="Bangalore", confidence=1.0, authority_level=AuthorityLevel.EXPLICIT_USER),
+            "date_window": Slot(value="May 2026", confidence=0.9, authority_level=AuthorityLevel.EXPLICIT_USER),
+            "party_size": Slot(value=2, confidence=1.0, authority_level=AuthorityLevel.EXPLICIT_USER),
+            "budget_min": Slot(value=40000, confidence=0.9, authority_level=AuthorityLevel.EXPLICIT_USER),
+            "trip_purpose": Slot(value="family leisure", confidence=0.9, authority_level=AuthorityLevel.EXPLICIT_USER),
+        })
         valid_validation = PacketValidationReport(
             is_valid=True, errors=[], warnings=[],
         )
@@ -308,15 +308,15 @@ class TestOrchestrationRawVerdictPreservation:
             packet_id="pkt_valid",
             stage="discovery",
             operating_mode="emergency",
-            facts={
-                "destination_candidates": Slot(value="Goa", confidence=1.0, authority_level=AuthorityLevel.EXPLICIT_USER),
-                "origin_city": Slot(value="Bangalore", confidence=1.0, authority_level=AuthorityLevel.EXPLICIT_USER),
-                "date_window": Slot(value="May 2026", confidence=0.9, authority_level=AuthorityLevel.EXPLICIT_USER),
-                "party_size": Slot(value=2, confidence=1.0, authority_level=AuthorityLevel.EXPLICIT_USER),
-                "budget_min": Slot(value=40000, confidence=0.9, authority_level=AuthorityLevel.EXPLICIT_USER),
-                "trip_purpose": Slot(value="family leisure", confidence=0.9, authority_level=AuthorityLevel.EXPLICIT_USER),
-            }
         )
+        valid_packet.facts.update({
+            "destination_candidates": Slot(value="Goa", confidence=1.0, authority_level=AuthorityLevel.EXPLICIT_USER),
+            "origin_city": Slot(value="Bangalore", confidence=1.0, authority_level=AuthorityLevel.EXPLICIT_USER),
+            "date_window": Slot(value="May 2026", confidence=0.9, authority_level=AuthorityLevel.EXPLICIT_USER),
+            "party_size": Slot(value=2, confidence=1.0, authority_level=AuthorityLevel.EXPLICIT_USER),
+            "budget_min": Slot(value=40000, confidence=0.9, authority_level=AuthorityLevel.EXPLICIT_USER),
+            "trip_purpose": Slot(value="family leisure", confidence=0.9, authority_level=AuthorityLevel.EXPLICIT_USER),
+        })
         valid_validation = PacketValidationReport(is_valid=True, errors=[], warnings=[])
 
         with patch("src.intake.orchestration.ExtractionPipeline") as MockPipe:

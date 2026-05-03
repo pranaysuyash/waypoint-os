@@ -31,6 +31,7 @@ from src.intake.extractors import (
     _extract_destination_candidates,
     _extract_dates,
     _extract_trip_intent,
+    _extract_date_flexibility,
     ExtractionPipeline,
 )
 from src.intake.packet_models import SourceEnvelope
@@ -965,3 +966,142 @@ class TestContextGatedLowercaseDestination:
         titles = [c.title() for c in candidates]
         assert "Hong Kong" in titles, \
             f"'Hong Kong' should be recognized as multi-word destination, got {candidates}"
+
+
+# =============================================================================
+# _extract_trip_intent — trip_priorities
+# =============================================================================
+
+class TestTripPrioritiesExtraction:
+    def test_kid_friendly_detected(self):
+        result = _extract_trip_intent("looking for kid-friendly activities and family-friendly hotel")
+        priorities = result.get("trip_priorities", [])
+        assert "kid-friendly" in priorities
+
+    def test_luxury_experience_detected(self):
+        result = _extract_trip_intent("want luxury resort with premium experience")
+        priorities = result.get("trip_priorities", [])
+        assert "luxury experience" in priorities
+
+    def test_must_have_extracted(self):
+        result = _extract_trip_intent("must-have beach access, must visit Golden Temple")
+        priorities = result.get("trip_priorities", [])
+        assert "beach access" in priorities
+
+    def test_direct_flights_detected(self):
+        result = _extract_trip_intent("prefer direct flight, no layover please")
+        priorities = result.get("trip_priorities", [])
+        assert "direct flights" in priorities
+
+    def test_vegetarian_food_detected(self):
+        result = _extract_trip_intent("need pure veg food, vegetarian meals only")
+        priorities = result.get("trip_priorities", [])
+        assert "vegetarian food" in priorities
+
+    def test_adventure_activities_detected(self):
+        result = _extract_trip_intent("want trekking and rafting, adventure activities")
+        priorities = result.get("trip_priorities", [])
+        assert "adventure activities" in priorities
+
+    def test_relaxed_pace_detected(self):
+        result = _extract_trip_intent("want relaxed pace, not rushed, leisurely trip")
+        priorities = result.get("trip_priorities", [])
+        assert "relaxed pace" in priorities
+
+    def test_honeymoon_special_detected(self):
+        result = _extract_trip_intent("honeymoon special package with romantic dinner")
+        priorities = result.get("trip_priorities", [])
+        assert "honeymoon special" in priorities
+
+    def test_cultural_experience_detected(self):
+        result = _extract_trip_intent("want cultural experience, temple visit, heritage tour")
+        priorities = result.get("trip_priorities", [])
+        assert "cultural experience" in priorities
+
+    def test_multiple_priorities_accumulate(self):
+        result = _extract_trip_intent("kid-friendly resort with direct flight and vegetarian food")
+        priorities = result.get("trip_priorities", [])
+        assert "kid-friendly" in priorities
+        assert "direct flights" in priorities
+        assert "vegetarian food" in priorities
+
+    def test_no_priorities_returns_none(self):
+        result = _extract_trip_intent("going to Mumbai for a meeting")
+        priorities = result.get("trip_priorities")
+        assert priorities is None or priorities == []
+
+    def test_quick_trip_detected(self):
+        result = _extract_trip_intent("quick trip, weekend getaway, tight schedule")
+        priorities = result.get("trip_priorities", [])
+        assert "quick trip" in priorities
+
+    def test_budget_conscious_detected(self):
+        result = _extract_trip_intent("budget-conscious, cheapest option, budget travel")
+        priorities = result.get("trip_priorities", [])
+        assert "budget conscious" in priorities
+
+    def test_accessibility_needs_detected(self):
+        result = _extract_trip_intent("need wheelchair-friendly hotel, senior-friendly")
+        priorities = result.get("trip_priorities", [])
+        assert "accessibility needs" in priorities
+
+
+# =============================================================================
+# _extract_date_flexibility
+# =============================================================================
+
+class TestDateFlexibilityExtraction:
+    def test_firm_dates_detected(self):
+        assert _extract_date_flexibility("dates are firm, must travel on exact dates") == "firm"
+        assert _extract_date_flexibility("fixed dates, no flexibility") == "firm"
+
+    def test_flexible_dates_detected(self):
+        assert _extract_date_flexibility("dates are flexible, anytime in December") == "flexible"
+        assert _extract_date_flexibility("can shift +/- 2 days") == "flexible"
+        assert _extract_date_flexibility("give or take a few days") == "flexible"
+
+    def test_moderate_flexibility_detected(self):
+        assert _extract_date_flexibility("moderate flexibility on dates") == "moderate"
+
+    def test_no_flexibility_signal_returns_none(self):
+        assert _extract_date_flexibility("going to Mumbai next month") is None
+        assert _extract_date_flexibility("book flights for December 15") is None
+
+
+# =============================================================================
+# Pipeline integration — trip_priorities and date_flexibility in facts
+# =============================================================================
+
+class TestPrioritiesFlexibilityInPipeline:
+    def test_priorities_in_facts_after_extraction(self):
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform(
+            "family of 4, budget 2L, looking for kid-friendly activities with direct flight, must-have beach resort. dates are flexible, anytime in December."
+        )
+        packet = pipeline.extract([env])
+        facts = packet.facts
+        priorities_slot = facts.get("trip_priorities")
+        assert priorities_slot is not None, f"trip_priorities not in facts; keys={list(facts.keys())}"
+        priorities_value = priorities_slot.value
+        assert "kid-friendly" in priorities_value
+        assert "direct flights" in priorities_value
+
+    def test_date_flexibility_in_facts_after_extraction(self):
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform(
+            "budget 3L, dates are firm, cannot change, must travel on December 20"
+        )
+        packet = pipeline.extract([env])
+        facts = packet.facts
+        flex_slot = facts.get("date_flexibility")
+        assert flex_slot is not None, f"date_flexibility not in facts; keys={list(facts.keys())}"
+        assert flex_slot.value == "firm"
+
+    def test_flexibility_none_when_not_mentioned(self):
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform(
+            "budget 50k, trip to Goa next month, 2 adults"
+        )
+        packet = pipeline.extract([env])
+        facts = packet.facts
+        assert "date_flexibility" not in facts

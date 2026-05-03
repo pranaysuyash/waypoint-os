@@ -124,3 +124,46 @@ def disable_audit_logging(monkeypatch):
     yield
 
 
+# ---------------------------------------------------------------------------
+# Reset global singletons and lru caches between tests
+# Prevents state leakage from hybrid engine, telemetry, health check, etc.
+# ---------------------------------------------------------------------------
+@pytest.fixture(autouse=True)
+def reset_global_singletons():
+    """Reset global state between tests for isolation."""
+    # Reset hybrid decision engine
+    try:
+        from src.intake.decision import _reset_hybrid_engine
+        _reset_hybrid_engine()
+    except Exception:
+        pass
+
+    # Reset decision telemetry
+    try:
+        from src.decision.telemetry import reset_telemetry
+        reset_telemetry()
+    except Exception:
+        pass
+
+    # Reset health check singleton
+    try:
+        from src.decision.health import reset_health
+        reset_health()
+    except Exception:
+        pass
+
+    # Clear LLM guard cache
+    try:
+        from src.decision.hybrid_engine import _is_llm_guard_enabled
+        _is_llm_guard_enabled.cache_clear()
+    except Exception:
+        pass
+
+    # Clear Fernet cache (encryption key may vary between test modes)
+    try:
+        from src.security.encryption import _clear_fernet_cache
+        _clear_fernet_cache()
+    except Exception:
+        pass
+
+    yield

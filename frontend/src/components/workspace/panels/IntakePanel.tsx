@@ -309,10 +309,10 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const isLeadReview = trip?.status === 'new' || trip?.status === 'incomplete';
   const planningBriefBlocked = !isLeadReview && hasPlanningBriefBlocker(trip);
   const tripPriorities = normalizePlanningDisplayValue(
-    readTaggedNoteValue(trip?.agentNotes, NOTE_DETAIL_PREFIX.priorities) ?? trip?.activityProvenance
+    trip?.tripPriorities ?? readTaggedNoteValue(trip?.agentNotes, NOTE_DETAIL_PREFIX.priorities) ?? trip?.activityProvenance
   );
   const dateFlexibility = normalizePlanningDisplayValue(
-    readTaggedNoteValue(trip?.agentNotes, NOTE_DETAIL_PREFIX.flexibility)
+    trip?.dateFlexibility ?? readTaggedNoteValue(trip?.agentNotes, NOTE_DETAIL_PREFIX.flexibility)
   );
   const planningDetails = useMemo<PlanningDetailRow[]>(() => {
     const budgetValue = normalizePlanningDisplayValue(formatBudgetDisplay(trip?.budget));
@@ -478,6 +478,9 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       agentNotes: store.input_owner_note,
     };
 
+    if (tripPriorities) updateData.tripPriorities = tripPriorities;
+    if (dateFlexibility) updateData.dateFlexibility = dateFlexibility;
+
     // Include trip detail edits
     if (editingField) {
       if (editValues.destination) updateData.destination = editValues.destination;
@@ -499,7 +502,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       setSaveError('Failed to save. Check connection and try again.');
       setTimeout(() => setSaveError(null), 8000);
     }
-  }, [tripId, saveTrip, store.input_raw_note, store.input_owner_note, editingField, editValues, budgetAmount, budgetCurrency]);
+  }, [tripId, saveTrip, store.input_raw_note, store.input_owner_note, editingField, editValues, budgetAmount, budgetCurrency, tripPriorities, dateFlexibility]);
 
   const handleMarkReady = useCallback(async () => {
     if (!tripId) return;
@@ -739,13 +742,16 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
         contactName: draftValue.trim() || undefined,
         agentNotes: upsertTaggedNoteValue(updatedOwnerNote, NOTE_DETAIL_PREFIX.customerName, draftValue),
       };
-    } else {
-      updatedOwnerNote = upsertTaggedNoteValue(
-        updatedOwnerNote,
-        NOTE_DETAIL_PREFIX[detailId],
-        draftValue
-      );
-      updateData = { agentNotes: updatedOwnerNote };
+    } else if (detailId === 'priorities') {
+      updateData = {
+        tripPriorities: draftValue.trim() || undefined,
+        agentNotes: upsertTaggedNoteValue(updatedOwnerNote, NOTE_DETAIL_PREFIX.priorities, draftValue),
+      };
+    } else if (detailId === 'flexibility') {
+      updateData = {
+        dateFlexibility: draftValue.trim() || undefined,
+        agentNotes: upsertTaggedNoteValue(updatedOwnerNote, NOTE_DETAIL_PREFIX.flexibility, draftValue),
+      };
     }
 
     const result = await saveTrip(tripId, updateData);

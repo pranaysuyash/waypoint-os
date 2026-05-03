@@ -397,3 +397,110 @@ class TestPhase2StructuredFields:
         assert "date_year_confidence" in trip or trip.get("date_year_confidence") is None
         assert "lead_source" in trip or trip.get("lead_source") is None
         assert "activity_provenance" in trip or trip.get("activity_provenance") is None
+
+
+# =============================================================================
+# PATCH sync — trip_priorities and date_flexibility
+# =============================================================================
+
+class TestPrioritiesFlexibilityPatchSync:
+    AGENCY_ID = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+
+    def _seed_trip(self) -> str:
+        from spine_api.persistence import TripStore
+        trip_id = "trip_patch_priorities_flex"
+        TripStore.save_trip(
+            {
+                "id": trip_id,
+                "source": "pytest",
+                "status": "assigned",
+                "extracted": {"facts": {}},
+                "validation": {"is_valid": True, "errors": [], "warnings": []},
+                "decision": {"decision_state": "ASK_FOLLOWUP", "hard_blockers": [], "soft_blockers": []},
+                "raw_input": {"fixture_id": "SC-901"},
+            },
+            agency_id=self.AGENCY_ID,
+        )
+        return trip_id
+
+    def test_patch_syncs_trip_priorities_to_facts(self, session_client):
+        """PATCH with trip_priorities writes to extracted.facts.trip_priorities."""
+        trip_id = self._seed_trip()
+        response = session_client.patch(
+            f"/trips/{trip_id}",
+            json={"trip_priorities": "Kid-friendly activities, beach access"},
+        )
+        assert response.status_code == 200, response.text
+        trip = response.json()
+        priorities_fact = trip.get("extracted", {}).get("facts", {}).get("trip_priorities")
+        assert priorities_fact is not None, f"trip_priorities not in facts: {trip.get('extracted', {}).get('facts', {})}"
+        assert priorities_fact["value"] == "Kid-friendly activities, beach access"
+        assert priorities_fact["confidence"] == 1.0
+        assert priorities_fact["authority_level"] == "explicit_user"
+
+    def test_patch_syncs_date_flexibility_to_facts(self, session_client):
+        """PATCH with date_flexibility writes to extracted.facts.date_flexibility."""
+        trip_id = self._seed_trip()
+        response = session_client.patch(
+            f"/trips/{trip_id}",
+            json={"date_flexibility": "flexible"},
+        )
+        assert response.status_code == 200, response.text
+        trip = response.json()
+        flex_fact = trip.get("extracted", {}).get("facts", {}).get("date_flexibility")
+        assert flex_fact is not None
+        assert flex_fact["value"] == "flexible"
+        assert flex_fact["confidence"] == 1.0
+
+    def test_patch_syncs_both_fields_together(self, session_client):
+        """PATCH with both fields writes both to facts."""
+        trip_id = self._seed_trip()
+        response = session_client.patch(
+            f"/trips/{trip_id}",
+            json={
+                "trip_priorities": "Luxury resort, cultural tour",
+                "date_flexibility": "firm",
+            },
+        )
+        assert response.status_code == 200, response.text
+        trip = response.json()
+        facts = trip.get("extracted", {}).get("facts", {})
+        assert facts.get("trip_priorities", {}).get("value") == "Luxury resort, cultural tour"
+        assert facts.get("date_flexibility", {}).get("value") == "firm"
+
+    def test_patch_clears_validation_warnings(self, session_client):
+        """PATCH clears stale validation warnings for synced fields."""
+        from spine_api.persistence import TripStore
+        trip_id = "trip_patch_clear_warnings"
+        TripStore.save_trip(
+            {
+                "id": trip_id,
+                "source": "pytest",
+                "status": "assigned",
+                "extracted": {"facts": {}},
+                "validation": {
+                    "is_valid": True,
+                    "errors": [],
+                    "warnings": [
+                        {"field": "trip_priorities", "message": "trip_priorities missing"},
+                        {"field": "date_flexibility", "message": "date_flexibility missing"},
+                    ],
+                },
+                "decision": {"decision_state": "ASK_FOLLOWUP", "hard_blockers": [], "soft_blockers": []},
+                "raw_input": {"fixture_id": "SC-901"},
+            },
+            agency_id=self.AGENCY_ID,
+        )
+        response = session_client.patch(
+            f"/trips/{trip_id}",
+            json={
+                "trip_priorities": "Beach and adventure",
+                "date_flexibility": "moderate",
+            },
+        )
+        assert response.status_code == 200, response.text
+        trip = response.json()
+        warnings = trip.get("validation", {}).get("warnings", [])
+        warning_fields = [w.get("field") for w in warnings]
+        assert "trip_priorities" not in warning_fields
+        assert "date_flexibility" not in warning_fields

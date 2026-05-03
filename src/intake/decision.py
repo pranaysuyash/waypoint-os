@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
+from functools import lru_cache
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from .packet_models import (
@@ -26,18 +27,29 @@ from src.intake.telemetry import emit_ambiguity_synthesis
 # HYBRID DECISION ENGINE INTEGRATION
 # =============================================================================
 
-# Feature flag to enable hybrid decision engine
+# Feature flag to enable hybrid decision engine.
 # Set via environment variable: USE_HYBRID_DECISION_ENGINE=1
-_HYBRID_ENGINE_ENABLED = os.environ.get("USE_HYBRID_DECISION_ENGINE", "1") == "1"
+# Read at call time so tests can monkeypatch without importlib.reload.
+@lru_cache(maxsize=1)
+def _is_hybrid_engine_enabled() -> bool:
+    return os.environ.get("USE_HYBRID_DECISION_ENGINE", "1") == "1"
+
 
 # Lazy-load hybrid engine only when enabled
 _hybrid_engine_instance = None
 
 
+def _reset_hybrid_engine() -> None:
+    """Reset hybrid engine singleton and feature-flag cache for test isolation."""
+    global _hybrid_engine_instance
+    _hybrid_engine_instance = None
+    _is_hybrid_engine_enabled.cache_clear()
+
+
 def _get_hybrid_engine():
     """Get or create the hybrid decision engine instance."""
     global _hybrid_engine_instance
-    if not _HYBRID_ENGINE_ENABLED:
+    if not _is_hybrid_engine_enabled():
         return None
 
     if _hybrid_engine_instance is None:
@@ -1159,7 +1171,7 @@ def generate_risk_flags(
     risks = []
 
     # --- HYBRID ENGINE: Handle supported decision types ---
-    if _HYBRID_ENGINE_ENABLED:
+    if _is_hybrid_engine_enabled():
         hybrid_risks = _generate_risk_flags_with_hybrid_engine(packet, stage, cached_feasibility)
         risks.extend(hybrid_risks)
 

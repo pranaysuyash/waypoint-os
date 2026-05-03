@@ -3,11 +3,14 @@ tests/test_plan_candidate.py — Pass 2A: PlanCandidate bridge artifact tests.
 
 Coverage:
 - Normal candidate construction from valid packet
-- Traveler-safe dict hardening: no next_action, no raw strategy_goal, no internal modes
-- Fact allowlist: only traveler-safe fields appear in safe constraints
-- Risk categories: only allowed categories marked traveler_safe
+- Traveler-safe dict hardening: excludes all internal/system fields
+- Fact allowlist: only TRAVELER_SAFE_FACT_FIELDS marked safe (deny-by-default)
+- Risk categories: decision risk_flags default traveler_safe=False
 - Critical suitability flags never traveler-safe
 - Internal terms blocked from traveler-safe dict
+- traveler_status uses safe mapped values only
+- traveler_summary is deterministic from decision_state
+- Orchestration integration: plan_candidate on SpineResult
 """
 
 import sys
@@ -40,11 +43,16 @@ from intake.plan_candidate import (
     PlanCandidate,
     TravelerSnapshot,
     TRAVELER_SAFE_FACT_FIELDS,
+    _TRAVELER_STATUS_MAP,
+    _TRAVELER_SUMMARY_MAP,
+    _INTERNAL_ONLY_RISK_TERMS,
+    _INTERNAL_ONLY_RISK_CATEGORIES,
 )
 from intake.constants import DECISION_STATES
 
 
-_INTERNAL_ONLY_TERMS = {
+# These terms must NEVER appear in the traveler-safe dict output.
+INTERNAL_ONLY_TERMS = {
     "margin", "hypothesis", "contradiction", "blocker",
     "owner_constraint", "internal_only", "agency_note",
     "confidence", "decision_state", "next_action",
@@ -52,8 +60,19 @@ _INTERNAL_ONLY_TERMS = {
     "escalate", "senior review",
 }
 
-_INTERNAL_OPERATING_MODES = {"audit", "emergency", "cancellation",
-                               "coordinator_group", "owner_review"}
+# These fields must NEVER be keys in the traveler-safe dict.
+INTERNAL_ONLY_FIELDS = {
+    "decision_state", "next_action", "operating_mode", "strategy_goal",
+    "readiness", "commercial", "fees", "budget_breakdown",
+    "intent_scores", "assumptions", "missing_inputs",
+}
+
+# These are the ONLY allowed top-level keys in traveler-safe dict.
+TRAVELER_SAFE_ALLOWED_KEYS = {
+    "plan_id", "stage", "traveler_snapshot", "constraints",
+    "risks", "traveler_status", "traveler_summary",
+    "suitability_flags", "schema_version",
+}
 
 
 def make_minimal_packet(mode="normal_intake") -> CanonicalPacket:
@@ -189,11 +208,50 @@ class TestFactAllowlist:
         candidate = build_plan_candidate(packet, decision, strategy)
         ow_constraints = [c for c in candidate.constraints
                           if c.field == "owner_constraints"]
-        if ow_constraints:
-            assert not ow_constraints[0].traveler_safe
+        assert len(ow_constraints) > 0, "owner_constraints fact should produce a constraint"
+        assert not ow_constraints[0].traveler_safe
+
+    def test_passport_status_not_traveler_safe(self):
+        packet = make_full_packet()
+        packet.facts["passport_status"] = Slot(
+            value="valid", confidence=1.0,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        decision = DecisionResult(packet_id=packet.packet_id, current_stage="discovery",
+                                  operating_mode="normal_intake", decision_state="PROCEED_INTERNAL_DRAFT")
+        strategy = build_session_strategy(decision, packet)
+        candidate = build_plan_candidate(packet, decision, strategy)
+        pp_constraints = [c for c in candidate.constraints if c.field == "passport_status"]
+        assert len(pp_constraints) > 0
+        assert not pp_constraints[0].traveler_safe
+
+    def test_unknown_facts_default_to_not_safe(self):
+        """Any fact not in the allowlist must default to traveler_safe=False."""
+        packet = make_full_packet()
+        packet.facts["custom_internal_field"] = Slot(
+            value="some_value", confidence=0.9,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        decision = DecisionResult(packet_id=packet.packet_id, current_stage="discovery",
+                                  operating_mode="normal_intake", decision_state="PROCEED_INTERNAL_DRAFT")
+        strategy = build_session_strategy(decision, packet)
+        candidate = build_plan_candidate(packet, decision, strategy)
+        cc = [c for c in candidate.constraints if c.field == "custom_internal_field"]
+        assert len(cc) > 0
+        assert not cc[0].traveler_safe
 
 
 class TestTravelerSafeDict:
+    """Comprehensive tests for to_traveler_safe_dict() exclusion rules."""
+
+    def test_excludes_decision_state(self):
+        packet = make_full_packet()
+        decision = run_gap_and_decision(packet)
+        strategy = build_session_strategy(decision, packet)
+        candidate = build_plan_candidate(packet, decision, strategy)
+        safe = candidate.to_traveler_safe_dict()
+        assert "decision_state" not in safe
+
     def test_excludes_next_action(self):
         packet = make_full_packet()
         decision = run_gap_and_decision(packet)
@@ -201,49 +259,90 @@ class TestTravelerSafeDict:
         candidate = build_plan_candidate(packet, decision, strategy)
         safe = candidate.to_traveler_safe_dict()
         assert "next_action" not in safe
-        assert "decision_state" not in safe
 
-    def test_excludes_raw_strategy_goal(self):
+    def test_excludes_operating_mode(self):
+        packet = make_full_packet()
+        decision = run_gap_and_decision(packet)
+        strategy = build_session_strategy(decision, packet)
+        candidate = build_plan_candidate(packet, decision, strategy)
+        safe = candidate.to_traveler_safe_dict()
+        assert "operating_mode" not in safe
+
+    def test_excludes_strategy_goal(self):
         packet = make_full_packet()
         decision = run_gap_and_decision(packet)
         strategy = build_session_strategy(decision, packet)
         candidate = build_plan_candidate(packet, decision, strategy)
         safe = candidate.to_traveler_safe_dict()
         assert "strategy_goal" not in safe
-        assert "traveler_goal" in safe
 
-    def test_traveler_goal_is_human_readable(self):
+    def test_excludes_readiness(self):
+        """Raw readiness (blocked/internal_draft/traveler_safe) must not appear."""
         packet = make_full_packet()
         decision = run_gap_and_decision(packet)
         strategy = build_session_strategy(decision, packet)
         candidate = build_plan_candidate(packet, decision, strategy)
         safe = candidate.to_traveler_safe_dict()
-        assert safe["traveler_goal"] is not None
-        assert len(safe["traveler_goal"]) > 0
-        assert any(t in safe["traveler_goal"].lower()
-                   for t in _INTERNAL_ONLY_TERMS) is False
+        assert "readiness" not in safe
 
-    def test_operating_mode_omitted_for_internal_modes(self):
-        for mode in _INTERNAL_OPERATING_MODES:
-            packet = make_minimal_packet(mode=mode)
-            decision = DecisionResult(packet_id=packet.packet_id, current_stage="discovery",
-                                      operating_mode=mode, decision_state="PROCEED_INTERNAL_DRAFT")
-            strategy = build_session_strategy(decision, packet)
-            candidate = build_plan_candidate(packet, decision, strategy)
-            safe = candidate.to_traveler_safe_dict()
-            assert "operating_mode" not in safe, f"{mode} leaked into traveler-safe dict"
+    def test_excludes_commercial(self):
+        packet = make_full_packet()
+        decision = run_gap_and_decision(packet)
+        strategy = build_session_strategy(decision, packet)
+        candidate = build_plan_candidate(packet, decision, strategy, fees={"total": 50000})
+        safe = candidate.to_traveler_safe_dict()
+        assert "commercial" not in safe
 
-    def test_operating_mode_present_for_traveler_safe_modes(self):
-        for mode in ("normal_intake", "follow_up", "post_trip"):
-            packet = make_minimal_packet(mode=mode)
-            decision = DecisionResult(packet_id=packet.packet_id, current_stage="discovery",
-                                      operating_mode=mode, decision_state="PROCEED_INTERNAL_DRAFT")
-            strategy = build_session_strategy(decision, packet)
-            candidate = build_plan_candidate(packet, decision, strategy)
-            safe = candidate.to_traveler_safe_dict()
-            assert safe["operating_mode"] == mode
+    def test_excludes_fees_key(self):
+        packet = make_full_packet()
+        decision = run_gap_and_decision(packet)
+        strategy = build_session_strategy(decision, packet)
+        candidate = build_plan_candidate(packet, decision, strategy, fees={"total": 50000})
+        safe = candidate.to_traveler_safe_dict()
+        safe_str = json.dumps(safe)
+        assert '"fees"' not in safe_str
 
-    def test_excludes_internal_terms_from_safe_dict(self):
+    def test_excludes_budget_breakdown(self):
+        packet = make_full_packet()
+        decision = run_gap_and_decision(packet)
+        strategy = build_session_strategy(decision, packet)
+        candidate = build_plan_candidate(packet, decision, strategy)
+        safe = candidate.to_traveler_safe_dict()
+        assert "budget_breakdown" not in safe
+
+    def test_excludes_intent_scores(self):
+        packet = make_full_packet()
+        decision = run_gap_and_decision(packet)
+        strategy = build_session_strategy(decision, packet)
+        candidate = build_plan_candidate(packet, decision, strategy)
+        safe = candidate.to_traveler_safe_dict()
+        assert "intent_scores" not in safe
+
+    def test_excludes_assumptions(self):
+        packet = make_full_packet()
+        decision = run_gap_and_decision(packet)
+        strategy = build_session_strategy(decision, packet)
+        candidate = build_plan_candidate(packet, decision, strategy)
+        safe = candidate.to_traveler_safe_dict()
+        assert "assumptions" not in safe
+
+    def test_excludes_missing_inputs(self):
+        packet = make_full_packet()
+        decision = run_gap_and_decision(packet)
+        strategy = build_session_strategy(decision, packet)
+        candidate = build_plan_candidate(packet, decision, strategy)
+        safe = candidate.to_traveler_safe_dict()
+        assert "missing_inputs" not in safe
+
+    def test_excludes_confidence(self):
+        packet = make_full_packet()
+        decision = run_gap_and_decision(packet)
+        strategy = build_session_strategy(decision, packet)
+        candidate = build_plan_candidate(packet, decision, strategy)
+        safe = candidate.to_traveler_safe_dict()
+        assert "confidence" not in safe
+
+    def test_no_internal_terms_in_output(self):
         packet = make_full_packet()
         packet.suitability_flags = [
             SuitabilityFlag(flag_type="elderly_intensity", severity="critical",
@@ -259,29 +358,58 @@ class TestTravelerSafeDict:
         candidate = build_plan_candidate(packet, decision, strategy)
         safe = candidate.to_traveler_safe_dict()
         safe_str = json.dumps(safe).lower()
-        for term in _INTERNAL_ONLY_TERMS:
+        for term in INTERNAL_ONLY_TERMS:
             assert term not in safe_str, f"'{term}' leaked into traveler-safe dict"
 
-    def test_excludes_commercial_data(self):
-        packet = make_full_packet()
-        decision = run_gap_and_decision(packet)
-        strategy = build_session_strategy(decision, packet)
-        candidate = build_plan_candidate(packet, decision, strategy, fees={"total": 50000})
-        safe = candidate.to_traveler_safe_dict()
-        safe_str = json.dumps(safe)
-        assert '"fees"' not in safe_str
+    def test_traveler_status_uses_safe_mapped_values(self):
+        """traveler_status must only be one of the safe mapped values."""
+        safe_statuses = set(_TRAVELER_STATUS_MAP.values())
+        for state in DECISION_STATES:
+            packet = make_full_packet()
+            decision = DecisionResult(packet_id=packet.packet_id, current_stage="discovery",
+                                      operating_mode="normal_intake", decision_state=state)
+            strategy = build_session_strategy(decision, packet)
+            candidate = build_plan_candidate(packet, decision, strategy)
+            safe = candidate.to_traveler_safe_dict()
+            assert safe["traveler_status"] in safe_statuses, \
+                f"traveler_status '{safe['traveler_status']}' not in safe set for state={state}"
 
-    def test_includes_traveler_safe_fields(self):
+    def test_traveler_summary_is_deterministic(self):
+        """traveler_summary comes from decision_state map, never from strategy_goal."""
+        for state in DECISION_STATES:
+            packet = make_full_packet()
+            decision = DecisionResult(packet_id=packet.packet_id, current_stage="discovery",
+                                      operating_mode="normal_intake", decision_state=state)
+            strategy = build_session_strategy(decision, packet)
+            candidate = build_plan_candidate(packet, decision, strategy)
+            safe = candidate.to_traveler_safe_dict()
+            expected = _TRAVELER_SUMMARY_MAP.get(state, "We are reviewing your trip request.")
+            assert safe["traveler_summary"] == expected, \
+                f"traveler_summary mismatch for state={state}"
+
+    def test_traveler_summary_no_internal_terms(self):
+        for state in DECISION_STATES:
+            packet = make_full_packet()
+            decision = DecisionResult(packet_id=packet.packet_id, current_stage="discovery",
+                                      operating_mode="normal_intake", decision_state=state)
+            strategy = build_session_strategy(decision, packet)
+            candidate = build_plan_candidate(packet, decision, strategy)
+            safe = candidate.to_traveler_safe_dict()
+            summary_lower = safe["traveler_summary"].lower()
+            for term in INTERNAL_ONLY_TERMS:
+                assert term not in summary_lower, \
+                    f"'{term}' found in traveler_summary for state={state}"
+
+    def test_only_allowed_keys_in_traveler_safe_dict(self):
+        """The traveler-safe dict must contain ONLY these keys."""
         packet = make_full_packet()
         decision = run_gap_and_decision(packet)
         strategy = build_session_strategy(decision, packet)
         candidate = build_plan_candidate(packet, decision, strategy)
         safe = candidate.to_traveler_safe_dict()
-        assert "plan_id" in safe
-        assert "traveler_snapshot" in safe
-        assert "readiness" in safe
-        assert "traveler_goal" in safe
-        assert safe["traveler_snapshot"]["destination_candidates"] == ["Singapore"]
+        for key in safe:
+            assert key in TRAVELER_SAFE_ALLOWED_KEYS, \
+                f"Unexpected key '{key}' in traveler-safe dict"
 
     def test_critical_suitability_not_traveler_safe(self):
         packet = make_full_packet()
@@ -305,10 +433,33 @@ class TestTravelerSafeDict:
             candidate = build_plan_candidate(packet, decision, strategy)
             safe = candidate.to_traveler_safe_dict()
             assert "plan_id" in safe
-            assert "readiness" in safe
-            assert "traveler_goal" in safe
-            assert "next_action" not in safe, f"next_action leaked for state={state}"
-            assert "decision_state" not in safe, f"decision_state leaked for state={state}"
+            assert "traveler_status" in safe
+            assert "traveler_summary" in safe
+            for forbidden_key in INTERNAL_ONLY_FIELDS:
+                assert forbidden_key not in safe, f"'{forbidden_key}' leaked for state={state}"
+
+    def test_includes_traveler_safe_fields(self):
+        packet = make_full_packet()
+        decision = run_gap_and_decision(packet)
+        strategy = build_session_strategy(decision, packet)
+        candidate = build_plan_candidate(packet, decision, strategy)
+        safe = candidate.to_traveler_safe_dict()
+        assert "plan_id" in safe
+        assert "traveler_snapshot" in safe
+        assert "traveler_status" in safe
+        assert "traveler_summary" in safe
+        assert safe["traveler_snapshot"]["destination_candidates"] == ["Singapore"]
+
+    def test_operating_mode_never_in_traveler_safe(self):
+        """operating_mode must NEVER appear regardless of mode value."""
+        for mode in ("normal_intake", "follow_up", "post_trip", "audit", "emergency"):
+            packet = make_minimal_packet(mode=mode)
+            decision = DecisionResult(packet_id=packet.packet_id, current_stage="discovery",
+                                      operating_mode=mode, decision_state="PROCEED_INTERNAL_DRAFT")
+            strategy = build_session_strategy(decision, packet)
+            candidate = build_plan_candidate(packet, decision, strategy)
+            safe = candidate.to_traveler_safe_dict()
+            assert "operating_mode" not in safe, f"operating_mode leaked for mode={mode}"
 
 
 class TestOrchestrationIntegration:
@@ -381,6 +532,19 @@ class TestPlanCandidateSerialization:
                      "commercial", "suitability_flags", "readiness",
                      "missing_inputs", "next_action"):
             assert key in d, f"'{key}' missing from internal dict"
+
+    def test_internal_dict_may_contain_internal_fields(self):
+        """Internal dict is expected to have internal fields."""
+        packet = make_full_packet()
+        decision = run_gap_and_decision(packet)
+        strategy = build_session_strategy(decision, packet)
+        candidate = build_plan_candidate(packet, decision, strategy)
+        d = candidate.to_internal_dict()
+        assert "decision_state" in d
+        assert "next_action" in d
+        assert "operating_mode" in d
+        assert "strategy_goal" in d
+        assert "readiness" in d
 
 
 if __name__ == "__main__":

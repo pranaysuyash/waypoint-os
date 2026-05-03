@@ -823,71 +823,155 @@ class AssignmentStore:
 
 
 class AuditStore:
-    """Simple audit logging to JSON files."""
+    """Atomic append-only audit logging to JSONL.
     
-    AUDIT_FILE = AUDIT_DIR / "events.json"
-    MAX_EVENTS = 10000  # Rotate after this many
+    Design (v2):
+    - Each event is written as one JSON line (append mode).
+    - No read-modify-write cycle on log_event — crash-safe at the event level.
+    - File rotation (MAX_EVENTS cap) is a periodic compaction that rewrites
+      only the tail; failed compaction is non-destructive (original file kept
+      until new file is atomically renamed).
+    - Migrates legacy events.json to events.jsonl on first access.
+    """
+    
+    AUDIT_FILE = AUDIT_DIR / "events.jsonl"
+    MAX_EVENTS = 10000
     _lock = threading.RLock()
-    
-    @staticmethod
-    def _load_events() -> list:
-        """Load all events."""
-        with AuditStore._lock:
-            if not AuditStore.AUDIT_FILE.exists():
-                return []
-            try:
-                with open(AuditStore.AUDIT_FILE) as f:
-                    events = json.load(f)
-                return events if isinstance(events, list) else []
-            except json.JSONDecodeError as exc:
-                archive = AuditStore.AUDIT_FILE.with_suffix(
-                    f".corrupt-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.json"
-                )
-                try:
-                    AuditStore.AUDIT_FILE.rename(archive)
-                    logger.error("Archived corrupt audit log %s to %s: %s", AuditStore.AUDIT_FILE, archive, exc)
-                except OSError:
-                    logger.error("Failed to archive corrupt audit log %s: %s", AuditStore.AUDIT_FILE, exc)
-                return []
-    
-    @staticmethod
-    def _save_events(events: list):
-        """Save events, rotating if too many."""
-        # Keep only last MAX_EVENTS
-        if len(events) > AuditStore.MAX_EVENTS:
-            events = events[-AuditStore.MAX_EVENTS:]
+    _write_count = 0
+    _WRITE_COUNT_BEFORE_TRIM = 100
 
+    # ------------------------------------------------------------------
+    # Migration
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _migrate_if_needed():
+        """One-shot: migrate legacy events.json to events.jsonl."""
+        legacy = AUDIT_DIR / "events.json"
+        if not legacy.exists():
+            return
+        try:
+            with open(legacy) as f:
+                old_events = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            try:
+                legacy.rename(legacy.with_suffix(".corrupt.json"))
+            except OSError:
+                pass
+            return
+        if not isinstance(old_events, list):
+            try:
+                legacy.rename(legacy.with_suffix(".corrupt.json"))
+            except OSError:
+                pass
+            return
+        # Convert JSON array to JSONL
         AuditStore.AUDIT_FILE.parent.mkdir(parents=True, exist_ok=True)
+        tmp = AuditStore.AUDIT_FILE.with_suffix(".migrating")
+        try:
+            with open(tmp, "w") as out:
+                for event in old_events[-AuditStore.MAX_EVENTS:]:
+                    out.write(json.dumps(event) + "\n")
+            os.replace(tmp, AuditStore.AUDIT_FILE)
+            destination = legacy.with_suffix(".migrated-from")
+            if destination.exists():
+                destination.unlink()
+            legacy.rename(destination)
+            logger.info("Migrated %d legacy audit events to %s", min(len(old_events), AuditStore.MAX_EVENTS), AuditStore.AUDIT_FILE)
+        except OSError:
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    # ------------------------------------------------------------------
+    # Core I/O
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _read_events() -> list:
+        """Read all events from JSONL, skipping corrupted lines."""
+        AuditStore._migrate_if_needed()
+        if not AuditStore.AUDIT_FILE.exists():
+            return []
+        events = []
+        with open(AuditStore.AUDIT_FILE) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    events.append(json.loads(line))
+                except json.JSONDecodeError:
+                    pass  # Skip corrupted line
+        return events
+
+    @staticmethod
+    def _append_event(event: dict):
+        """Append one event as a JSON line. Atomic at the event level."""
+        AuditStore.AUDIT_FILE.parent.mkdir(parents=True, exist_ok=True)
+        line = json.dumps(event) + "\n"
         with file_lock(AuditStore.AUDIT_FILE):
-            with open(AuditStore.AUDIT_FILE, "w") as f:
-                json.dump(events, f, indent=2)
+            with open(AuditStore.AUDIT_FILE, "a") as f:
+                f.write(line)
+
+    @staticmethod
+    def _trim_if_needed():
+        """Periodically compact the file to MAX_EVENTS lines.
+        
+        Uses atomic rename (write to temp, then replace) so a crash during
+        trim leaves the original file intact.
+        """
+        if AuditStore._write_count % AuditStore._WRITE_COUNT_BEFORE_TRIM != 0:
+            return
+        if not AuditStore.AUDIT_FILE.exists():
+            return
+        with AuditStore._lock:
+            events = AuditStore._read_events()
+            if len(events) <= AuditStore.MAX_EVENTS:
+                return
+            events = events[-AuditStore.MAX_EVENTS:]
+            tmp = AuditStore.AUDIT_FILE.with_suffix(".trim")
+            try:
+                with open(tmp, "w") as out:
+                    for e in events:
+                        out.write(json.dumps(e) + "\n")
+                os.replace(tmp, AuditStore.AUDIT_FILE)
+            except OSError:
+                try:
+                    tmp.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
+    # ------------------------------------------------------------------
+    # Public API (unchanged signatures)
+    # ------------------------------------------------------------------
 
     @staticmethod
     def log_event(event_type: str, user_id: str, details: dict):
-        """Log an audit event."""
+        """Log an audit event — append-only, crash-safe per event."""
+        event = {
+            "id": f"evt_{uuid4().hex[:12]}",
+            "type": event_type,
+            "user_id": user_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "details": details,
+        }
         with AuditStore._lock:
-            events = AuditStore._load_events()
-            
-            events.append({
-                "id": f"evt_{uuid4().hex[:12]}",
-                "type": event_type,
-                "user_id": user_id,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "details": details,
-            })
-            
-            AuditStore._save_events(events)
-    
+            AuditStore._append_event(event)
+            AuditStore._write_count += 1
+        AuditStore._trim_if_needed()
+
     @staticmethod
     def get_events(limit: int = 100) -> list:
-        """Get recent events."""
-        events = AuditStore._load_events()
+        """Get recent events (up to `limit`)."""
+        events = AuditStore._read_events()
         return events[-limit:]
-    
+
     @staticmethod
     def get_events_for_trip(trip_id: str) -> list:
-        """Get events for a specific trip."""
-        events = AuditStore._load_events()
+        """Get events for a specific trip. Chronological order."""
+        events = AuditStore._read_events()
         return [
             e for e in events
             if e.get("details", {}).get("trip_id") == trip_id

@@ -38,6 +38,8 @@ function hasValidationWarning(trip: Trip | null | undefined, fieldName: string):
 }
 
 function readPlanningPriorityValue(trip?: Trip | null): string | null {
+  const canonical = trip?.tripPriorities?.trim();
+  if (canonical && canonical.toLowerCase() !== "none") return canonical;
   const rawValue = trip?.activityProvenance?.trim();
   return rawValue && rawValue.toLowerCase() !== "none" ? rawValue : null;
 }
@@ -113,7 +115,8 @@ export function getRecommendedPlanningFields(trip?: Trip | null): string[] {
     recommendedFields.push("Trip priorities / must-haves");
   }
 
-  if (!trip.dateWindow?.trim() || hasApproximateDateWindow(trip.dateWindow)) {
+  const hasDateFlex = trip?.dateFlexibility?.trim() && trip.dateFlexibility.trim().toLowerCase() !== "none";
+  if (!hasDateFlex && (!trip?.dateWindow?.trim() || hasApproximateDateWindow(trip.dateWindow))) {
     recommendedFields.push("Date flexibility");
   }
 

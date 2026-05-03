@@ -661,6 +661,28 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def _extract_date_flexibility(text: str) -> Optional[str]:
+    text_lower = text.lower()
+    if any(phrase in text_lower for phrase in [
+        "dates are firm", "exact dates", "cannot change",
+        "fixed dates", "no flexibility", "must travel on",
+        "specific dates", "dates are fixed",
+    ]):
+        return "firm"
+    if any(phrase in text_lower for phrase in [
+        "flexible dates", "dates are flexible", "date flexible",
+        "flexible on date", "anytime in", "flexible within",
+        "can shift", "+/-", "+-", "plus minus", "give or take",
+        "approximately", "roughly around", "some flexibility",
+    ]):
+        return "flexible"
+    if any(phrase in text_lower for phrase in [
+        "moderate flexibility", "slightly flexible",
+    ]):
+        return "moderate"
+    return None
+
+
 def _extract_budget_flexibility(text: str) -> str:
     if any(phrase in text.lower() for phrase in [
         "can stretch", "flexible budget", "budget is flexible",
@@ -912,6 +934,37 @@ def _extract_trip_intent(text: str) -> Dict[str, Any]:
         soft.append(candidate)
     if soft:
         results["soft_preferences"] = soft
+
+    # Trip priorities — explicit must-haves and preference signals
+    priorities: List[str] = []
+
+    _MUST_HAVE_RE = re.compile(
+        r"\b(?:must[-\s]*(?:have|visit|see|do)|must\s+(?:have|visit|see|do)|can'?t\s+miss)\s+([^.,;]+)",
+        re.IGNORECASE,
+    )
+    for m in _MUST_HAVE_RE.finditer(text):
+        priorities.append(m.group(1).strip())
+
+    _PRIORITY_SIGNALS = {
+        "kid-friendly": r"\b(kid[-\s]?friendly|family[-\s]?friendly|child[-\s]?friendly|toddler[-\s]?friendly)\b",
+        "luxury experience": r"\b(luxury\s+(?:experience|stay|resort|hotel)|premium\s+(?:experience|stay))\b",
+        "budget conscious": r"\b(budget[-\s]?(?:conscious|friendly|travel)|cheapest?\s+(?:option|flight|stay))\b",
+        "beach access": r"\b(beach[-\s]?(?:front|side|access|resort)|sea[-\s]?facing|ocean[-\s]?view)\b",
+        "direct flights": r"\b(direct\s+flights?|non[-\s]?stop|no\s+layover)\b",
+        "vegetarian food": r"\b(vegetarian|vegan|jain\s+food|halal\s+food|pure\s+veg)\b",
+        "adventure activities": r"\b(adventure\s+(?:activities|sports)|trekking|rafting|paragliding|scuba|snorkeling)\b",
+        "relaxed pace": r"\b(relaxed\s+pace|slow\s+pace|leisurely|not\s+rushed|chilled?)\b",
+        "quick trip": r"\b(quick\s+trip|short\s+trip|weekend\s+getaway|tight\s+schedule)\b",
+        "cultural experience": r"\b(cultural\s+(?:experience|tour|visit)|heritage|temple\s+visit|pilgrimage)\b",
+        "honeymoon special": r"\b(honeymoon\s+(?:special|package|suite)|romantic\s+(?:dinner|getaway|setup))\b",
+        "accessibility needs": r"\b(accessible|wheelchair[-\s]?(?:friendly|accessible)|senior[-\s]?friendly|elderly)\b",
+    }
+    for label, pattern in _PRIORITY_SIGNALS.items():
+        if re.search(pattern, text_lower):
+            priorities.append(label)
+
+    if priorities:
+        results["trip_priorities"] = priorities
 
     _ATTRACTION_RE = re.compile(
         r"\b((?:Universal\s+Studios|Sentosa|Gardens\s+by\s+the\s+Bay|Disney|Sea\s+World|Legoland|Marina\s+Bay|Sanctuary|National\s+Park|Nature\s+Park|Safari|Aquarium|Zoo|Waterpark|Theme\s+Park)\b)"
@@ -1186,7 +1239,7 @@ class ExtractionPipeline:
     def __init__(self, model_client=None):
         self.model_client = model_client
 
-    def extract(self, envelopes: List[SourceEnvelope]) -> CanonicalPacket:
+    def extract(self, envelopes: List[SourceEnvelope], stage: str = "discovery") -> CanonicalPacket:
         packet = CanonicalPacket(
             packet_id=f"pkt_{uuid.uuid4().hex[:8]}",
         )
@@ -1204,7 +1257,7 @@ class ExtractionPipeline:
             all_texts.append(text)
 
             if envelope.content_type == "freeform_text":
-                self._extract_from_freeform(envelope, packet)
+                self._extract_from_freeform(envelope, packet, stage=stage)
             elif envelope.content_type == "structured_json":
                 self._extract_from_structured(envelope, packet)
             elif envelope.content_type == "hybrid":
@@ -1243,7 +1296,7 @@ class ExtractionPipeline:
             notes=notes,
         )
 
-    def _extract_from_freeform(self, envelope: SourceEnvelope, packet: CanonicalPacket) -> None:
+    def _extract_from_freeform(self, envelope: SourceEnvelope, packet: CanonicalPacket, stage: str = "discovery") -> None:
         text = envelope.content
         text_lower = text.lower()
         eid = envelope.envelope_id
@@ -1352,6 +1405,13 @@ class ExtractionPipeline:
             packet.set_fact("budget_currency", self._make_slot(
                 "INR", 0.9, AuthorityLevel.EXPLICIT_USER,
                 "Default currency", eid,
+            ))
+
+        date_flex = _extract_date_flexibility(text)
+        if date_flex is not None:
+            packet.set_fact("date_flexibility", self._make_slot(
+                date_flex, 0.75, AuthorityLevel.EXPLICIT_USER,
+                date_flex, eid,
             ))
 
         budget_flex = _extract_budget_flexibility(text)
@@ -1564,6 +1624,8 @@ class ExtractionPipeline:
             "party_composition": "party_composition",
             "child_ages": "child_ages",
             "trip_purpose": "trip_purpose",
+            "trip_priorities": "trip_priorities",
+            "date_flexibility": "date_flexibility",
             "activities": "soft_preferences",
             "follow_up_due_date": "follow_up_due_date",
             "pace_preference": "pace_preference",
@@ -1780,17 +1842,24 @@ class ExtractionPipeline:
                 "derived", extraction_mode="derived", maturity="verified",
             ))
 
-        # sourcing_path (stub)
+        # sourcing_path — routing through SourcingPathResolver (single extension point)
         if "destination_candidates" in packet.facts:
-            dests = packet.facts["destination_candidates"].value
-            default_path = "open_market"
-            if "owner_constraints" in packet.facts:
-                default_path = "network"
+            from .sourcing_path import resolve_sourcing_path
+
+            result = resolve_sourcing_path(packet)
+            resolver_used = not result.metadata.get("stub", False)
+            maturity = "heuristic" if resolver_used else "stub"
+            confidence = min(result.confidence, 0.7) if not resolver_used else result.confidence
+
+            notes = result.reason
+            if result.supplier_hints:
+                notes += f" | Hints: {', '.join(result.supplier_hints)}"
+
             packet.set_derived_signal("sourcing_path", self._make_slot(
-                default_path, 0.3, AuthorityLevel.DERIVED_SIGNAL,
-                "Stub — enrich with internal package lookup and preferred supplier data",
-                "derived", extraction_mode="derived", maturity="stub",
-                notes="Stub signal — no real supplier data available yet",
+                result.tier.value, confidence, AuthorityLevel.DERIVED_SIGNAL,
+                f"Sourcing tier resolved via SourcingPathResolver: {result.reason}",
+                "derived", extraction_mode="derived", maturity=maturity,
+                notes=notes,
             ))
 
     # ------------------------------------------------------------------

@@ -308,3 +308,11 @@ def get_telemetry() -> DecisionTelemetry:
     if _global_telemetry is None:
         _global_telemetry = DecisionTelemetry()
     return _global_telemetry
+
+
+def reset_telemetry() -> None:
+    """Reset the global telemetry singleton for test isolation."""
+    global _global_telemetry
+    if _global_telemetry is not None:
+        _global_telemetry.reset()
+    _global_telemetry = None

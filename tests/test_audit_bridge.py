@@ -118,30 +118,23 @@ class TestScheduleSQLWrite:
             )
         # Should not raise or call run_coroutine_threadsafe
 
-    def test_schedule_fallback_creates_loop(self):
+    def test_schedule_fallback_creates_loop(self, monkeypatch):
         """If no running loop and not dev/test, creates one via asyncio.run."""
+        monkeypatch.setenv("ENVIRONMENT", "production")
         import spine_api.core.audit_bridge as bridge
-        original_dev = bridge._IS_DEV
-        original_test = bridge._IS_TEST
-        try:
-            bridge._IS_DEV = False
-            bridge._IS_TEST = False
-            with patch("spine_api.core.audit_bridge.asyncio") as mock_asyncio:
-                mock_asyncio.get_running_loop.side_effect = RuntimeError("no loop")
-                _schedule_sql_write(
-                    action="test",
-                    user_id="u1",
-                    agency_id="a1",
-                    resource_type=None,
-                    resource_id=None,
-                    changes=None,
-                    ip_address=None,
-                    user_agent=None,
-                )
+        with patch("spine_api.core.audit_bridge.asyncio") as mock_asyncio:
+            mock_asyncio.get_running_loop.side_effect = RuntimeError("no loop")
+            _schedule_sql_write(
+                action="test",
+                user_id="u1",
+                agency_id="a1",
+                resource_type=None,
+                resource_id=None,
+                changes=None,
+                ip_address=None,
+                user_agent=None,
+            )
             mock_asyncio.run.assert_called_once()
-        finally:
-            bridge._IS_DEV = original_dev
-            bridge._IS_TEST = original_test
 
 
 class TestWriteToSQL:

@@ -4,7 +4,6 @@ import {
   transformSpineTripsResponseToTrips,
   isWorkspaceTrip,
 } from "@/lib/bff-trip-adapters";
-import type { Trip } from "@/lib/api-client";
 import type { SpineRunRequest } from "@/types/generated/spine-api";
 
 // Kill switch for call capture feature
@@ -49,7 +48,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   if (CALL_CAPTURE_DISABLED) {
     return bffJson(
       { error: "Call capture feature is temporarily disabled" },
@@ -74,32 +73,31 @@ export async function POST(req: Request) {
       operating_mode: body.operating_mode ?? "normal_intake",
       strict_leakage: body.strict_leakage ?? false,
       scenario_id: body.scenario_id ?? null,
+      follow_up_due_date: body.follow_up_due_date ?? undefined,
+      pace_preference: body.pace_preference ?? undefined,
+      lead_source: body.lead_source ?? undefined,
+      activity_provenance: body.activity_provenance ?? undefined,
+      date_year_confidence: body.date_year_confidence ?? undefined,
     };
 
-    // TODO: Call spine pipeline (reuse existing logic if available)
-    // const result = await executeSpinePipeline(spinRequest);
+    // Forward to spine API /run endpoint (async pipeline execution)
+    const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/run`;
+    const response = await fetch(
+      spineApiUrl,
+      bffFetchOptions(req, "POST", undefined, { "Content-Type": "application/json" }, spinRequest),
+    );
 
-    // Temporarily return mock for testing structure
-    const trip: Trip = {
-      id: crypto.randomUUID(),
-      destination: "TBD",
-      type: "unknown",
-      state: "blue",
-      age: "0",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      followUpDueDate: body.follow_up_due_date ?? undefined,
-      partyComposition: body.party_composition ?? undefined,
-      pacePreference: body.pace_preference ?? undefined,
-      dateYearConfidence: body.date_year_confidence ?? undefined,
-      leadSource: body.lead_source ?? undefined,
-      activityProvenance: body.activity_provenance ?? undefined,
-      status: "open",
-      customerMessage: body.raw_note,
-      agentNotes: body.owner_note,
-    };
+    if (!response.ok) {
+      if (isAuthStatus(response.status)) {
+        return bffJson({ error: "Not authenticated" }, response.status);
+      }
+      console.error(`Spine API returned ${response.status}`);
+      return bffJson({ error: "Failed to submit trip for processing" }, 502);
+    }
 
-    return bffJson(trip, 201);
+    const result = await response.json();
+    // Returns { run_id, state: "queued" } — frontend polls /api/runs/{run_id}
+    return bffJson(result, 202);
   } catch (error) {
     console.error("Error creating trip:", error);
     return bffJson({ error: "Failed to create trip" }, 500);

@@ -2,6 +2,9 @@
 tests/test_stage_transitions — Behavioral tests for durable stage transitions.
 
 Phase 2B: PATCH /trips/{trip_id}/stage endpoint.
+
+Tests create their own trip fixtures via TripStore.save_trip() — never depend
+on pre-existing trips or pytest.skip when the DB is empty.
 """
 
 import pytest
@@ -45,14 +48,32 @@ QUOTE_READY_FACTS = {
 }
 
 
-def _get_any_trip_id(session_client):
-    """Get any trip ID from the /trips endpoint."""
-    resp = session_client.get("/trips")
-    body = resp.json()
-    items = body.get("items", [])
-    if not items:
-        pytest.skip("No trips in database")
-    return items[0]["id"]
+@pytest.fixture()
+def created_trip_id(session_client):
+    """Create a trip directly via TripStore and return its ID.
+
+    Uses the same agency_id as session_client's JWT so ownership checks pass.
+    Cleans up the trip file after the test.
+    """
+    from spine_api.persistence import TripStore
+
+    trip_data = {
+        "source": "test_stage_fixture",
+        "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "status": "assigned",
+        "stage": "discovery",
+        "extracted": {},
+        "validation": {},
+        "decision": {},
+        "raw_input": {},
+    }
+    trip_id = TripStore.save_trip(trip_data, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+    yield trip_id
+    # Cleanup
+    try:
+        TripStore.delete_trip(trip_id)
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -64,9 +85,6 @@ class TestStagePersistence:
 
     def test_default_stage_is_discovery(self):
         from spine_api.models.trips import Trip
-        trip = Trip(id="test-stage-default")
-        # SQLAlchemy mapped_column default applies at DB flush, not Python init
-        # But we can check the column default value
         from spine_api.models.trips import Trip as TripModel
         stage_col = TripModel.__table__.c.stage
         assert stage_col.default.arg == "discovery"
@@ -159,8 +177,8 @@ class TestStagePersistence:
 class TestStageTransitionEndpoint:
     """Test PATCH /trips/{trip_id}/stage endpoint behavior."""
 
-    def test_valid_transition(self, session_client):
-        trip_id = _get_any_trip_id(session_client)
+    def test_valid_transition(self, session_client, created_trip_id):
+        trip_id = created_trip_id
 
         trip_resp = session_client.get(f"/trips/{trip_id}")
         old_stage = trip_resp.json().get("stage", "discovery")
@@ -171,7 +189,7 @@ class TestStageTransitionEndpoint:
             f"/trips/{trip_id}/stage",
             json={"target_stage": target, "reason": "Test transition"},
         )
-        assert resp.status_code == 200
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
         body = resp.json()
         assert body["changed"] is True
         assert body["old_stage"] == old_stage
@@ -181,14 +199,8 @@ class TestStageTransitionEndpoint:
         trip_resp2 = session_client.get(f"/trips/{trip_id}")
         assert trip_resp2.json().get("stage") == target
 
-        # Revert for test isolation
-        session_client.patch(
-            f"/trips/{trip_id}/stage",
-            json={"target_stage": old_stage, "reason": "Test cleanup"},
-        )
-
-    def test_invalid_target_stage_returns_422(self, session_client):
-        trip_id = _get_any_trip_id(session_client)
+    def test_invalid_target_stage_returns_422(self, session_client, created_trip_id):
+        trip_id = created_trip_id
 
         resp = session_client.patch(
             f"/trips/{trip_id}/stage",
@@ -196,8 +208,8 @@ class TestStageTransitionEndpoint:
         )
         assert resp.status_code == 422
 
-    def test_expected_current_stage_mismatch_returns_409(self, session_client):
-        trip_id = _get_any_trip_id(session_client)
+    def test_expected_current_stage_mismatch_returns_409(self, session_client, created_trip_id):
+        trip_id = created_trip_id
 
         resp = session_client.patch(
             f"/trips/{trip_id}/stage",
@@ -209,8 +221,8 @@ class TestStageTransitionEndpoint:
         )
         assert resp.status_code == 409
 
-    def test_same_stage_returns_changed_false(self, session_client):
-        trip_id = _get_any_trip_id(session_client)
+    def test_same_stage_returns_changed_false(self, session_client, created_trip_id):
+        trip_id = created_trip_id
 
         trip_resp = session_client.get(f"/trips/{trip_id}")
         current_stage = trip_resp.json().get("stage", "discovery")
@@ -223,32 +235,24 @@ class TestStageTransitionEndpoint:
         body = resp.json()
         assert body["changed"] is False
 
-    def test_status_not_affected_by_stage_change(self, session_client):
-        trip_id = _get_any_trip_id(session_client)
+    def test_status_not_affected_by_stage_change(self, session_client, created_trip_id):
+        trip_id = created_trip_id
 
         trip_resp = session_client.get(f"/trips/{trip_id}")
         original_status = trip_resp.json().get("status")
-        old_stage = trip_resp.json().get("stage", "discovery")
 
-        target = "shortlist" if old_stage != "shortlist" else "proposal"
         session_client.patch(
             f"/trips/{trip_id}/stage",
-            json={"target_stage": target, "reason": "Status test"},
+            json={"target_stage": "shortlist", "reason": "Status test"},
         )
 
         trip_resp2 = session_client.get(f"/trips/{trip_id}")
         assert trip_resp2.json().get("status") == original_status
 
-        # Cleanup
-        session_client.patch(
-            f"/trips/{trip_id}/stage",
-            json={"target_stage": old_stage, "reason": "Cleanup"},
-        )
-
-    def test_audit_event_written(self, session_client):
+    def test_audit_event_written(self, session_client, created_trip_id):
         """Verify stage_transition audit event is logged."""
         from spine_api.persistence import AuditStore
-        trip_id = _get_any_trip_id(session_client)
+        trip_id = created_trip_id
 
         trip_resp = session_client.get(f"/trips/{trip_id}")
         old_stage = trip_resp.json().get("stage", "discovery")
@@ -260,13 +264,11 @@ class TestStageTransitionEndpoint:
         )
 
         # Check that AuditStore has a stage_transition event
-        # Use get_events (not get_events_for_trip) because audit_bridge writes
-        # resource_id as a separate field, not nested inside details.trip_id
-        events = AuditStore.get_events() if hasattr(AuditStore, "get_events") else []
+        events = AuditStore.get_events(limit=200)
         stage_events = [
             e for e in events
             if e.get("type") == "stage_transition"
-            and e.get("details", {}).get("to") == target
+            and e.get("details", {}).get("trip_id") == trip_id
         ]
         assert len(stage_events) >= 1, f"No stage_transition events found for {trip_id}"
         evt = stage_events[-1]
@@ -275,11 +277,34 @@ class TestStageTransitionEndpoint:
         assert details.get("to") == target
         assert details.get("trigger") == "manual"
 
-        # Cleanup
-        session_client.patch(
-            f"/trips/{trip_id}/stage",
-            json={"target_stage": old_stage, "reason": "Cleanup"},
+    def test_generic_patch_rejects_stage(self, session_client, created_trip_id):
+        """Generic PATCH /trips/{trip_id} must reject stage changes."""
+        trip_id = created_trip_id
+
+        resp = session_client.patch(
+            f"/trips/{trip_id}",
+            json={"stage": "booking"},
         )
+        assert resp.status_code == 400, f"Expected 400, got {resp.status_code}: {resp.text}"
+        assert "stage" in resp.json().get("detail", "").lower()
+
+        # Verify stage was NOT changed
+        trip_resp = session_client.get(f"/trips/{trip_id}")
+        assert trip_resp.json().get("stage") == "discovery"
+
+    def test_generic_patch_still_works_for_status(self, session_client, created_trip_id):
+        """Generic PATCH still works for non-stage fields."""
+        trip_id = created_trip_id
+
+        resp = session_client.patch(
+            f"/trips/{trip_id}",
+            json={"status": "in_progress"},
+        )
+        # Should not reject — only stage is blocked
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+
+        trip_resp = session_client.get(f"/trips/{trip_id}")
+        assert trip_resp.json().get("status") == "in_progress"
 
 
 # ---------------------------------------------------------------------------
@@ -291,10 +316,10 @@ class TestReadinessStageIntegration:
 
     def test_compute_readiness_does_not_mutate_packet_stage(self):
         packet = _make_packet(**QUOTE_READY_FACTS)
-        original_stage = packet.stage  # CanonicalPacket has its own stage field
+        original_stage = packet.stage
         result = compute_readiness(packet)
         assert result.suggested_next_stage == "shortlist"
-        assert packet.stage == original_stage  # Stage should be unchanged
+        assert packet.stage == original_stage
 
     def test_readiness_suggests_shortlist_for_quote_ready(self):
         packet = _make_packet(**QUOTE_READY_FACTS)
@@ -310,23 +335,29 @@ class TestReadinessStageIntegration:
         assert result.highest_ready_tier == "quote_ready"
         assert result.suggested_next_stage == "shortlist"
 
-    def test_readiness_snapshot_included_in_stage_response(self, session_client):
+    def test_readiness_snapshot_included_in_stage_response(self, session_client, created_trip_id):
         """Verify the stage transition response includes readiness from validation."""
-        trip_id = _get_any_trip_id(session_client)
-        trip_resp = session_client.get(f"/trips/{trip_id}")
-        old_stage = trip_resp.json().get("stage", "discovery")
-        target = "shortlist" if old_stage != "shortlist" else "proposal"
+        trip_id = created_trip_id
+
+        # Set validation with readiness
+        from spine_api.persistence import TripStore
+        trip = TripStore.get_trip(trip_id)
+        trip["validation"] = {
+            "is_valid": True,
+            "errors": [],
+            "warnings": [],
+            "readiness": {
+                "highest_ready_tier": "quote_ready",
+                "suggested_next_stage": "shortlist",
+            },
+        }
+        TripStore.update_trip(trip_id, {"validation": trip["validation"]})
 
         resp = session_client.patch(
             f"/trips/{trip_id}/stage",
-            json={"target_stage": target, "reason": "Readiness test"},
+            json={"target_stage": "shortlist", "reason": "Readiness test"},
         )
         body = resp.json()
-        # readiness field should be present (may be null if no validation)
         assert "readiness" in body
-
-        # Cleanup
-        session_client.patch(
-            f"/trips/{trip_id}/stage",
-            json={"target_stage": old_stage, "reason": "Cleanup"},
-        )
+        assert body["readiness"] is not None
+        assert body["readiness"]["highest_ready_tier"] == "quote_ready"

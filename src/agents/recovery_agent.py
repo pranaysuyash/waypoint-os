@@ -36,21 +36,24 @@ from typing import Optional
 logger = logging.getLogger("recovery_agent")
 
 # ── Thresholds ────────────────────────────────────────────────────────────────
+# Read at call time so tests can monkeypatch without importlib.reload.
 
-# How long a trip can stay in a stage before the agent considers it "stuck".
-# Values are in hours. Override via environment variables.
-STUCK_THRESHOLDS_HOURS: dict[str, int] = {
-    "intake":   int(os.environ.get("RECOVERY_STUCK_INTAKE_H",  "48")),
-    "decision": int(os.environ.get("RECOVERY_STUCK_DECISION_H", "72")),
-    "review":   int(os.environ.get("RECOVERY_STUCK_REVIEW_H",  "24")),
-    "booking":  int(os.environ.get("RECOVERY_STUCK_BOOKING_H", "336")),   # 14 days
-}
 
-# How many consecutive re_queue attempts before escalating to a human.
-MAX_REQUEUE_ATTEMPTS = int(os.environ.get("RECOVERY_MAX_REQUEUE", "2"))
+def _get_stuck_thresholds() -> dict[str, int]:
+    return {
+        "intake":   int(os.environ.get("RECOVERY_STUCK_INTAKE_H",  "48")),
+        "decision": int(os.environ.get("RECOVERY_STUCK_DECISION_H", "72")),
+        "review":   int(os.environ.get("RECOVERY_STUCK_REVIEW_H",  "24")),
+        "booking":  int(os.environ.get("RECOVERY_STUCK_BOOKING_H", "336")),  # 14 days
+    }
 
-# Poll interval for the recovery loop.
-RECOVERY_INTERVAL_SECONDS = int(os.environ.get("RECOVERY_INTERVAL_S", "300"))  # 5 min
+
+def _get_max_requeue_attempts() -> int:
+    return int(os.environ.get("RECOVERY_MAX_REQUEUE", "2"))
+
+
+def _get_recovery_interval() -> int:
+    return int(os.environ.get("RECOVERY_INTERVAL_S", "300"))  # 5 min
 
 
 # ── Data model ────────────────────────────────────────────────────────────────
@@ -87,12 +90,12 @@ class RecoveryAgent:
 
     def __init__(
         self,
-        interval_seconds: int = RECOVERY_INTERVAL_SECONDS,
+        interval_seconds: Optional[int] = None,
         audit_store=None,         # AuditStore instance (injected)
         trip_repo=None,           # Trip repository for querying/updating trips
         spine_runner=None,        # callable(trip_id) → triggers re-processing
     ):
-        self._interval = interval_seconds
+        self._interval = interval_seconds if interval_seconds is not None else _get_recovery_interval()
         self._audit = audit_store
         self._trip_repo = trip_repo
         self._spine_runner = spine_runner
@@ -175,7 +178,7 @@ class RecoveryAgent:
             if not stage or not updated_at:
                 continue
 
-            threshold_h = STUCK_THRESHOLDS_HOURS.get(stage)
+            threshold_h = _get_stuck_thresholds().get(stage)
             if threshold_h is None:
                 continue
 
@@ -207,7 +210,7 @@ class RecoveryAgent:
           attempts < MAX_REQUEUE_ATTEMPTS → re_queue
           attempts >= MAX_REQUEUE_ATTEMPTS → escalate (human review)
         """
-        if trip.requeue_attempts < MAX_REQUEUE_ATTEMPTS and self._spine_runner is not None:
+        if trip.requeue_attempts < _get_max_requeue_attempts() and self._spine_runner is not None:
             return self._action_requeue(trip)
         else:
             return self._action_escalate(trip)

@@ -418,6 +418,22 @@ export function transformSpineTripToTrip(
       fixture_id: null,
       execution_ms: 0,
     },
+    tripPriorities: asString(
+      firstPresent(
+        getNestedValue(spineTrip, "trip_priorities", undefined),
+        getNestedValue(spineTrip, "extracted.facts.trip_priorities.value", undefined)
+      ),
+      ""
+    ) || undefined,
+    dateFlexibility: asString(
+      firstPresent(
+        getNestedValue(spineTrip, "date_flexibility", undefined),
+        getNestedValue(spineTrip, "extracted.facts.date_flexibility.value", undefined)
+      ),
+      ""
+    ) || undefined,
+    customerMessage: asString(getNestedValue(spineTrip, "customerMessage", ""), "") || undefined,
+    agentNotes: asString(getNestedValue(spineTrip, "agentNotes", ""), "") || undefined,
   };
 }
 

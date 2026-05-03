@@ -16,6 +16,7 @@ import logging
 import os
 import time
 from datetime import datetime
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Callable
 from dataclasses import dataclass, field
 
@@ -26,7 +27,10 @@ from .cache_key import generate_cache_key
 from .telemetry import get_telemetry
 from .health import get_health_checker
 
-LLM_GUARD_ENABLED = os.environ.get("LLM_GUARD_ENABLED", "1") == "1"
+
+@lru_cache(maxsize=1)
+def _is_llm_guard_enabled() -> bool:
+    return os.environ.get("LLM_GUARD_ENABLED", "1") == "1"
 
 try:
     from src.llm.usage_guard import get_usage_guard
@@ -537,7 +541,7 @@ class HybridDecisionEngine:
             completion_tokens_estimate = self.llm_client.count_tokens('{"result": "x"}')
             estimated_cost = self.llm_client.estimate_cost(prompt_tokens, completion_tokens_estimate)
 
-            if LLM_GUARD_ENABLED and get_usage_guard is not None:
+            if _is_llm_guard_enabled() and get_usage_guard is not None:
                 try:
                     guard = get_usage_guard()
                     usage_decision = guard.check_before_call(
@@ -578,7 +582,7 @@ class HybridDecisionEngine:
                     logger.warning(
                         f"LLM usage guard check failed (failing open): {guard_error}"
                     )
-            elif not LLM_GUARD_ENABLED:
+            elif not _is_llm_guard_enabled():
                 logger.debug("LLM usage guard disabled via LLM_GUARD_ENABLED=0")
 
             decision = self.llm_client.decide(
@@ -596,7 +600,7 @@ class HybridDecisionEngine:
                 f"model={llm_model}, cost=₹{cost:.2f}"
             )
 
-            if LLM_GUARD_ENABLED and get_usage_guard is not None:
+            if _is_llm_guard_enabled() and get_usage_guard is not None:
                 try:
                     guard = get_usage_guard()
                     guard.record_call(
@@ -619,7 +623,7 @@ class HybridDecisionEngine:
 
         except Exception as e:
             logger.error(f"LLM call failed for {decision_type}: {e}")
-            if LLM_GUARD_ENABLED and get_usage_guard is not None:
+            if _is_llm_guard_enabled() and get_usage_guard is not None:
                 try:
                     guard = get_usage_guard()
                     guard.record_call(

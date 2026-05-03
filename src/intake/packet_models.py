@@ -1,8 +1,14 @@
 """
-intake.packet_models — CanonicalPacket v0.2 and all supporting dataclasses.
+intake.packet_models — CanonicalPacket v0.3 and all supporting dataclasses.
 
 This is the single source of truth for the packet shape.
 The JSON schema (specs/canonical_packet.schema.json) must mirror these classes.
+
+v0.3 improvements:
+- _EventTrackingDict: all dict mutations on facts/derived_signals/hypotheses
+  automatically emit events — no more silent mutations.
+- ContradictionState: contradiction lifecycle (detected → open → resolved).
+- HypothesisState: hypothesis lifecycle (proposed → active → validated/rejected → stale).
 """
 
 from __future__ import annotations
@@ -10,6 +16,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
+from enum import StrEnum
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from .constants import DecisionState
@@ -289,19 +296,98 @@ class SourceEnvelope:
 
 
 # =============================================================================
-# SECTION 6: CANONICAL PACKET (v0.2)
+# SECTION 5A: EVENT TRACKING DICT (enforces "no silent mutations")
+# =============================================================================
+
+class _EventTrackingDict(dict):
+    """A dict whose mutations automatically emit events on the owning packet.
+
+    When any code writes ``packet.facts["key"] = slot``, the dict intercepts
+    ``__setitem__`` and emits an event BEFORE the value is stored.  This
+    guarantees every visible state change is auditable — no convention needed.
+
+    ``__delitem__`` is also intercepted to emit removal events.
+
+    The owner/category kwargs are optional so that ``dataclasses.asdict()``
+    (which calls ``type(obj)(items)``) can reconstruct the dict without
+    a packet reference.
+    """
+    __slots__ = ("_owner", "_category")
+
+    def __init__(self, *args, owner: "CanonicalPacket | None" = None, category: str = "", **kwargs):
+        self._owner = owner
+        self._category = category
+        super().__init__(*args, **kwargs)
+
+    @property
+    def _has_owner(self) -> bool:
+        return self._owner is not None and self._category
+
+    def __setitem__(self, key, value):
+        old = self.get(key) if key in self else None
+        super().__setitem__(key, value)
+        if self._has_owner:
+            event_type = {
+                "facts": "fact_set",
+                "derived_signals": "derived_signal_set",
+                "hypotheses": "hypothesis_set",
+            }.get(self._category, f"{self._category}_set")
+            new_val = value.value if hasattr(value, "value") else value
+            old_val = old.value if hasattr(old, "value") else old if old else None
+            self._owner._emit_event(event_type, {
+                "field_name": key,
+                "old_value": old_val,
+                "new_value": new_val,
+            })
+
+    def __delitem__(self, key):
+        if key in self:
+            old = self[key]
+            old_val = old.value if hasattr(old, "value") else old
+            super().__delitem__(key)
+            if self._has_owner:
+                self._owner._emit_event(f"{self._category.rstrip('s')}_removed", {
+                    "field_name": key,
+                    "old_value": old_val,
+                })
+
+
+# =============================================================================
+# SECTION 5B: CONTRADICTION & HYPOTHESIS STATE ENUMS
+# =============================================================================
+
+class ContradictionState(StrEnum):
+    DETECTED = "detected"
+    OPEN = "open"
+    RESOLVED = "resolved"
+
+
+class HypothesisState(StrEnum):
+    PROPOSED = "proposed"
+    ACTIVE = "active"
+    VALIDATED = "validated"
+    REJECTED = "rejected"
+    STALE = "stale"
+
+
+# =============================================================================
+# SECTION 6: CANONICAL PACKET (v0.3)
 # =============================================================================
 
 @dataclass(slots=True)
 class CanonicalPacket:
     """
-    Agency-OS Packet v0.2 — the single source of truth for all intake data.
+    Agency-OS Packet v0.3 — the single source of truth for all intake data.
 
     CRITICAL: operating_mode is top-level (system routing), NOT inside facts.
     CRITICAL: facts vs derived_signals are strictly separated — no duplication.
+
+    v0.3: _EventTrackingDict on facts/derived_signals/hypotheses guarantees
+    every mutation emits an event. Contradictions and hypotheses have explicit
+    lifecycle state tracking.
     """
     packet_id: str
-    schema_version: str = "0.2"
+    schema_version: str = "0.3"
     stage: Literal["discovery", "shortlist", "proposal", "booking"] = "discovery"
     operating_mode: Literal[
         "normal_intake", "audit", "emergency", "follow_up",
@@ -309,7 +395,9 @@ class CanonicalPacket:
     ] = "normal_intake"
     decision_state: Optional[DecisionState] = None
 
-    # Core data layers — STRICTLY SEPARATED
+    # Core data layers — STRICTLY SEPARATED, auto-tracking via _EventTrackingDict
+    # These start as plain dicts (default_factory=dict) and are wrapped with
+    # _EventTrackingDict in __post_init__ so every mutation emits an audit event.
     facts: Dict[str, Slot] = field(default_factory=dict)
     derived_signals: Dict[str, Slot] = field(default_factory=dict)
     hypotheses: Dict[str, Slot] = field(default_factory=dict)
@@ -332,6 +420,18 @@ class CanonicalPacket:
     events: List[Dict[str, Any]] = field(default_factory=list)
 
     # ------------------------------------------------------------------
+    # Initialisation — wrap raw dicts with _EventTrackingDict
+    # ------------------------------------------------------------------
+
+    def __post_init__(self):
+        # Wrap the plain dicts with _EventTrackingDict so every mutation
+        # (including direct ``packet.facts["key"] = slot``) is audited.
+        # Existing items are copied via _EventTrackingDict.__init__.
+        self.facts = _EventTrackingDict(self.facts, owner=self, category="facts")
+        self.derived_signals = _EventTrackingDict(self.derived_signals, owner=self, category="derived_signals")
+        self.hypotheses = _EventTrackingDict(self.hypotheses, owner=self, category="hypotheses")
+
+    # ------------------------------------------------------------------
     # Mutation methods (all go through _emit_event for audit trail)
     # ------------------------------------------------------------------
 
@@ -350,6 +450,9 @@ class CanonicalPacket:
         Merge policy: never overwrite a non-empty value with an empty one.
         Lists (e.g. destination candidates) are appended, not replaced.
         Scalars are kept if the existing value has higher confidence.
+
+        Event emission is automatic — _EventTrackingDict.__setitem__ fires
+        on every assignment.
         """
         if slot.authority_level not in AuthorityLevel.FACT_LEVELS:
             raise ValueError(
@@ -359,18 +462,14 @@ class CanonicalPacket:
 
         existing = self.facts.get(field_name)
         if existing is not None:
-            # --- merge: do not clobber a real value with an empty one ---
             new_val = slot.value
             old_val = existing.value
 
             if new_val is None or new_val == [] or new_val == "":
-                # New envelope provided nothing for this field: keep existing
                 return
             if old_val is None or old_val == [] or old_val == "":
-                # Existing is empty: accept the new value
                 pass
             elif isinstance(new_val, list) and isinstance(old_val, list):
-                # Merge lists uniquely (e.g. destination candidates, interests)
                 merged = list(dict.fromkeys(old_val + new_val))
                 slot = Slot(
                     value=merged,
@@ -380,11 +479,9 @@ class CanonicalPacket:
                     evidence_refs=existing.evidence_refs + slot.evidence_refs,
                 )
             elif slot.confidence < existing.confidence:
-                # Lower-confidence extraction should not override higher-confidence one
                 return
 
         self.facts[field_name] = slot
-        self._emit_event("fact_set", {"field_name": field_name, "value": slot.value})
 
     def set_derived_signal(self, field_name: str, slot: Slot) -> None:
         """Set a derived signal. CRITICAL: only accepts derived_signal authority."""
@@ -394,17 +491,18 @@ class CanonicalPacket:
                 f"got '{slot.authority_level}'"
             )
         self.derived_signals[field_name] = slot
-        self._emit_event("derived_signal_set", {"field_name": field_name, "value": slot.value})
 
     def set_hypothesis(self, field_name: str, slot: Slot) -> None:
-        """Set a soft hypothesis."""
+        """Set a soft hypothesis. Initial state is PROPOSED (lifecycle tracking)."""
         if slot.authority_level != AuthorityLevel.SOFT_HYPOTHESIS:
             raise ValueError(
                 f"set_hypothesis requires authority_level='soft_hypothesis', "
                 f"got '{slot.authority_level}'"
             )
+        if not isinstance(slot.value, dict):
+            slot.value = {"value": slot.value}
+        slot.value["_hypothesis_state"] = HypothesisState.PROPOSED
         self.hypotheses[field_name] = slot
-        self._emit_event("hypothesis_set", {"field_name": field_name, "value": slot.value})
 
     def add_ambiguity(self, ambiguity: Ambiguity) -> None:
         self.ambiguities.append(ambiguity)
@@ -425,6 +523,10 @@ class CanonicalPacket:
     ) -> None:
         """Add a contradiction. Supports both legacy and new structured formats.
 
+        Lifecycle: starts in ContradictionState.DETECTED.  Caller should call
+        ``open_contradiction()`` after presenting to the operator, then
+        ``resolve_contradiction()`` once a resolution is chosen.
+
         Legacy: add_contradiction("budget", ["3L", "4L"], ["email", "chat"])
         New: add_contradiction("budget", [
             ContradictionValue("3L", "email", "explicit_user"),
@@ -433,13 +535,10 @@ class CanonicalPacket:
         """
         detected_at = datetime.now().isoformat()
 
-        # Check if values is already structured (new format)
         if values and isinstance(values[0], ContradictionValue):
             structured_values = values
-            # Maintain backward-compatible sources list
             sources_list = [v.source for v in structured_values]
         else:
-            # Legacy format: convert to structured
             structured_values = []
             sources_list = sources or []
             for i, val in enumerate(values):
@@ -447,24 +546,173 @@ class CanonicalPacket:
                 structured_values.append(
                     ContradictionValue(value=val, source=source, authority="explicit_user")
                 )
-            # Extend sources_list to match values count for backward compatibility
             while len(sources_list) < len(values):
                 sources_list.append("unknown")
 
-        self.contradictions.append({
+        entry = {
             "field_name": field_name,
             "values": structured_values,
-            "values_legacy": [v.value for v in structured_values],  # For backward compat
+            "values_legacy": [v.value for v in structured_values],
             "sources": sources_list,
             "detected_at": detected_at,
+            "state": ContradictionState.DETECTED,
+            "resolved_at": None,
+            "resolution": None,
+            "resolved_by": None,
+        }
+        self.contradictions.append(entry)
+        self._emit_event("contradiction_detected", {
+            "field_name": field_name,
+            "state": ContradictionState.DETECTED,
         })
-        self._emit_event("contradiction_detected", {"field_name": field_name, "values": values})
+
+    # ------------------------------------------------------------------
+    # Contradiction lifecycle (v0.3)
+    # ------------------------------------------------------------------
+
+    def _find_contradiction_index(self, field_name: str) -> int:
+        for i, c in enumerate(self.contradictions):
+            if c.get("field_name") == field_name:
+                return i
+        return -1
+
+    def open_contradiction(self, field_name: str) -> bool:
+        """Transition a DETECTED contradiction to OPEN (shown to operator)."""
+        idx = self._find_contradiction_index(field_name)
+        if idx < 0:
+            return False
+        if self.contradictions[idx]["state"] not in (ContradictionState.DETECTED, ContradictionState.RESOLVED):
+            return False
+        self.contradictions[idx]["state"] = ContradictionState.OPEN
+        self._emit_event("contradiction_opened", {"field_name": field_name})
+        return True
+
+    def resolve_contradiction(
+        self,
+        field_name: str,
+        resolution: str,
+        resolved_by: str = "operator",
+    ) -> bool:
+        """Transition an OPEN contradiction to RESOLVED.
+
+        Args:
+            field_name: The field with the contradiction.
+            resolution: Description of how it was resolved (e.g. "chose value A").
+            resolved_by: Actor identifier (operator id).
+        """
+        idx = self._find_contradiction_index(field_name)
+        if idx < 0:
+            return False
+        if self.contradictions[idx]["state"] != ContradictionState.OPEN:
+            return False
+        self.contradictions[idx]["state"] = ContradictionState.RESOLVED
+        self.contradictions[idx]["resolved_at"] = datetime.now().isoformat()
+        self.contradictions[idx]["resolution"] = resolution
+        self.contradictions[idx]["resolved_by"] = resolved_by
+        self._emit_event("contradiction_resolved", {
+            "field_name": field_name,
+            "resolution": resolution,
+            "resolved_by": resolved_by,
+        })
+        return True
+
+    def reopen_contradiction(self, field_name: str) -> bool:
+        """Reopen a previously RESOLVED contradiction."""
+        idx = self._find_contradiction_index(field_name)
+        if idx < 0:
+            return False
+        if self.contradictions[idx]["state"] != ContradictionState.RESOLVED:
+            return False
+        self.contradictions[idx]["state"] = ContradictionState.OPEN
+        self.contradictions[idx]["resolved_at"] = None
+        self.contradictions[idx]["resolution"] = None
+        self.contradictions[idx]["resolved_by"] = None
+        self._emit_event("contradiction_reopened", {"field_name": field_name})
+        return True
+
+    # ------------------------------------------------------------------
+    # Hypothesis lifecycle (v0.3)
+    # ------------------------------------------------------------------
+
+    def activate_hypothesis(self, field_name: str) -> bool:
+        """Transition a PROPOSED hypothesis to ACTIVE (in use by decision engine)."""
+        slot = self.hypotheses.get(field_name)
+        if slot is None:
+            return False
+        if not isinstance(slot.value, dict):
+            return False
+        if slot.value.get("_hypothesis_state") != HypothesisState.PROPOSED:
+            return False
+        slot.value["_hypothesis_state"] = HypothesisState.ACTIVE
+        self._emit_event("hypothesis_activated", {"field_name": field_name})
+        return True
+
+    def validate_hypothesis(self, field_name: str, confidence: float = 1.0) -> bool:
+        """Transition an ACTIVE hypothesis to VALIDATED (confirmed correct)."""
+        slot = self.hypotheses.get(field_name)
+        if slot is None:
+            return False
+        if not isinstance(slot.value, dict):
+            return False
+        current = slot.value.get("_hypothesis_state")
+        if current not in (HypothesisState.ACTIVE, HypothesisState.PROPOSED):
+            return False
+        slot.value["_hypothesis_state"] = HypothesisState.VALIDATED
+        slot.confidence = confidence
+        self._emit_event("hypothesis_validated", {
+            "field_name": field_name,
+            "confidence": confidence,
+        })
+        return True
+
+    def reject_hypothesis(self, field_name: str, reason: str = "") -> bool:
+        """Transition an ACTIVE hypothesis to REJECTED (found incorrect)."""
+        slot = self.hypotheses.get(field_name)
+        if slot is None:
+            return False
+        if not isinstance(slot.value, dict):
+            return False
+        current = slot.value.get("_hypothesis_state")
+        if current not in (HypothesisState.ACTIVE, HypothesisState.PROPOSED):
+            return False
+        slot.value["_hypothesis_state"] = HypothesisState.REJECTED
+        slot.value["_rejection_reason"] = reason
+        slot.confidence = 0.0
+        self._emit_event("hypothesis_rejected", {
+            "field_name": field_name,
+            "reason": reason,
+        })
+        return True
+
+    def mark_hypothesis_stale(self, field_name: str) -> bool:
+        """Mark a validated or rejected hypothesis as STALE (superseded)."""
+        slot = self.hypotheses.get(field_name)
+        if slot is None:
+            return False
+        if not isinstance(slot.value, dict):
+            return False
+        current = slot.value.get("_hypothesis_state")
+        if current not in (HypothesisState.VALIDATED, HypothesisState.REJECTED):
+            return False
+        slot.value["_hypothesis_state"] = HypothesisState.STALE
+        self._emit_event("hypothesis_staled", {"field_name": field_name})
+        return True
 
     # ------------------------------------------------------------------
     # Serialisation
     # ------------------------------------------------------------------
 
     def to_dict(self) -> dict:
+        contradictions_out = []
+        for c in self.contradictions:
+            entry = dict(c)
+            if "values" in entry and entry["values"]:
+                entry["values"] = [
+                    asdict(v) if isinstance(v, ContradictionValue) else v
+                    for v in entry["values"]
+                ]
+            contradictions_out.append(entry)
+
         return {
             "packet_id": self.packet_id,
             "schema_version": self.schema_version,
@@ -477,7 +725,7 @@ class CanonicalPacket:
             "lifecycle": asdict(self.lifecycle) if self.lifecycle else None,
             "ambiguities": [asdict(a) for a in self.ambiguities],
             "unknowns": [asdict(u) for u in self.unknowns],
-            "contradictions": self.contradictions,
+            "contradictions": contradictions_out,
             "source_envelope_ids": self.source_envelope_ids,
             "revision_count": self.revision_count,
             "event_cursor": self.event_cursor,

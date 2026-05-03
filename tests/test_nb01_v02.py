@@ -496,7 +496,7 @@ class TestSchemaRoundtrip:
         data = pkt.to_dict()
 
         # Verify schema version
-        assert data["schema_version"] == "0.2"
+        assert data["schema_version"] == "0.3"
 
         # Verify operating_mode is present
         assert "operating_mode" in data

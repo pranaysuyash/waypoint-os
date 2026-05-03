@@ -109,6 +109,8 @@ class SpineRunRequest(BaseModel):
     pace_preference: Optional[str] = None
     lead_source: Optional[str] = None
     activity_provenance: Optional[str] = None
+    trip_priorities: Optional[str] = None
+    date_flexibility: Optional[str] = None
     date_year_confidence: Optional[str] = None
     draft_id: Optional[str] = None  # Links run to a pre-trip draft
 
@@ -234,6 +236,8 @@ class OverrideResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     version: str
+    components: Optional[Dict[str, Any]] = None
+    issues: Optional[List[str]] = None
 
 
 # =============================================================================

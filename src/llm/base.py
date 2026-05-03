@@ -83,6 +83,19 @@ class BaseLLMClient(ABC):
         # Default implementation - subclasses should override
         return 0.0
 
+    def ping(self) -> bool:
+        """
+        Lightweight connectivity check for the LLM provider.
+
+        Returns True if the LLM API is reachable and responsive.
+        Subclasses should override with a real light API call
+        (e.g. token counting or a minimal completion).
+
+        Returns:
+            True if the LLM is reachable
+        """
+        return self.is_available()
+
     def count_tokens(self, text: str) -> int:
         """
         Estimate the number of tokens in a text string.

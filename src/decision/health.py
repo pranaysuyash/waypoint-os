@@ -178,11 +178,19 @@ class HybridEngineHealth:
             self._llm_available = False
             return False
 
-        # TODO: Add actual LLM ping/health check
-        # For now, assume available if circuit allows
-        self._llm_available = True
+        # Actual LLM connectivity check with cached result (60s TTL)
+        if self._llm_last_check and (datetime.now() - self._llm_last_check).seconds < 60:
+            return self._llm_available
+
+        try:
+            from src.llm import create_llm_client
+            client = create_llm_client()
+            self._llm_available = client.ping()
+        except Exception:
+            self._llm_available = False
+
         self._llm_last_check = datetime.now()
-        return True
+        return self._llm_available
 
     def record_llm_success(self) -> None:
         """Record successful LLM call."""
@@ -274,6 +282,12 @@ def get_health_checker() -> HybridEngineHealth:
     if _global_health is None:
         _global_health = HybridEngineHealth()
     return _global_health
+
+
+def reset_health() -> None:
+    """Reset the global health singleton for test isolation."""
+    global _global_health
+    _global_health = None
 
 
 def health_check_dict() -> Dict[str, Any]:

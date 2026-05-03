@@ -40,6 +40,8 @@ class Trip(Base):
     date_year_confidence: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     lead_source: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     activity_provenance: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    trip_priorities: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    date_flexibility: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     
     # Spine output fields
     extracted: Mapped[dict] = mapped_column(JSON, default=dict)

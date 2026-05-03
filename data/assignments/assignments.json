@@ -3,105 +3,105 @@
     "trip_id": "trip_alpha_011",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-05-03T05:23:59.146111+00:00",
+    "assigned_at": "2026-05-03T11:10:39.550428+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_012": {
     "trip_id": "trip_alpha_012",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-05-03T05:23:59.153138+00:00",
+    "assigned_at": "2026-05-03T11:10:39.551548+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_013": {
     "trip_id": "trip_alpha_013",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-05-03T05:23:59.158674+00:00",
+    "assigned_at": "2026-05-03T11:10:39.552670+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_014": {
     "trip_id": "trip_alpha_014",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-05-03T05:23:59.164773+00:00",
+    "assigned_at": "2026-05-03T11:10:39.553747+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_015": {
     "trip_id": "trip_alpha_015",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-05-03T05:23:59.170810+00:00",
+    "assigned_at": "2026-05-03T11:10:39.554593+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_016": {
     "trip_id": "trip_alpha_016",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-05-03T05:23:59.176772+00:00",
+    "assigned_at": "2026-05-03T11:10:39.555359+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_017": {
     "trip_id": "trip_alpha_017",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-05-03T05:23:59.182801+00:00",
+    "assigned_at": "2026-05-03T11:10:39.556150+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_018": {
     "trip_id": "trip_alpha_018",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-05-03T05:23:59.188969+00:00",
+    "assigned_at": "2026-05-03T11:10:39.557042+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_019": {
     "trip_id": "trip_alpha_019",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-05-03T05:23:59.194564+00:00",
+    "assigned_at": "2026-05-03T11:10:39.558519+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_020": {
     "trip_id": "trip_alpha_020",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-05-03T05:23:59.200275+00:00",
+    "assigned_at": "2026-05-03T11:10:39.559643+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_021": {
     "trip_id": "trip_alpha_021",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-05-03T05:23:59.205828+00:00",
+    "assigned_at": "2026-05-03T11:10:39.560628+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_022": {
     "trip_id": "trip_alpha_022",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-05-03T05:23:59.211282+00:00",
+    "assigned_at": "2026-05-03T11:10:39.561456+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_023": {
     "trip_id": "trip_alpha_023",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-05-03T05:23:59.217841+00:00",
+    "assigned_at": "2026-05-03T11:10:39.562262+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_024": {
     "trip_id": "trip_alpha_024",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-05-03T05:23:59.225039+00:00",
+    "assigned_at": "2026-05-03T11:10:39.563426+00:00",
     "assigned_by": "seed"
   },
   "trip_alpha_025": {
     "trip_id": "trip_alpha_025",
     "agent_id": "agent_001",
     "agent_name": "Agent Smith",
-    "assigned_at": "2026-05-03T05:23:59.231260+00:00",
+    "assigned_at": "2026-05-03T11:10:39.564280+00:00",
     "assigned_by": "seed"
   },
   "trip_4b9e0d894872": {

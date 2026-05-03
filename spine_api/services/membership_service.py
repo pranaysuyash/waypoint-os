@@ -5,17 +5,27 @@ Replaces TeamStore (file-based JSON) as the source of truth for team members.
 Every team member is a real User with a Membership in an agency.
 
 Operations are async and agency-scoped.
+
+Invite flow:
+- When a new user is created via invite, a cryptographically secure random
+  password is generated (not guessable) and a password reset token is
+  auto-generated. The admin receives the reset token and shares it with the
+  invited user, who uses the forgot-password / reset-password flow to set
+  their own password.
 """
 
+import hashlib
 import logging
-from datetime import datetime, timezone
+import os
+import secrets
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spine_api.core.security import hash_password
-from spine_api.models.tenant import User, Membership
+from spine_api.models.tenant import User, Membership, PasswordResetToken
 
 logger = logging.getLogger("spine_api.membership_service")
 
@@ -50,21 +60,40 @@ async def invite_member(
     Add a team member to an agency.
 
     If the email already belongs to a User, creates a Membership for them.
-    Otherwise creates a new User (with a placeholder password) + Membership.
+    Otherwise creates a new User with a cryptographically secure random password
+    and auto-generates a password reset token so the invited user can set
+    their own password.
 
-    Returns the serialized member dict.
+    Returns the serialized member dict with an optional reset_token field
+    (in development mode with EXPOSE_RESET_TOKEN=1).
     """
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
+    reset_token = None
     if not user:
+        secure_password = secrets.token_urlsafe(32)
         user = User(
             email=email,
-            password_hash=hash_password("PLACEHOLDER_" + email),
+            password_hash=hash_password(secure_password),
             name=name,
         )
         db.add(user)
         await db.flush()
+
+        plain_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(plain_token.encode()).hexdigest()
+        reset = PasswordResetToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=72),
+        )
+        db.add(reset)
+        reset_token = plain_token
+        logger.info(
+            "New user created via invite: user=%s email=%s — reset token generated",
+            user.id, email,
+        )
 
     existing = await db.execute(
         select(Membership).where(
@@ -90,7 +119,12 @@ async def invite_member(
 
     logger.info("Member invited: user=%s agency=%s role=%s", user.id, agency_id, role)
 
-    return _member_to_dict(member, user)
+    response = _member_to_dict(member, user)
+
+    if reset_token and os.getenv("ENVIRONMENT", "development").lower() == "development" and os.getenv("EXPOSE_RESET_TOKEN") == "1":
+        response["reset_token"] = reset_token
+
+    return response
 
 
 async def list_members(

@@ -334,3 +334,79 @@ class TestDefaultMode:
 
     def test_default_is_dogfood(self):
         assert is_dogfood_mode()
+
+
+# =============================================================================
+# agentNotes / agent_notes / owner_note freeform blocking
+# =============================================================================
+
+class TestAgentNotesBlocking:
+    def test_agentNotes_camelcase_blocked_dogfood(self):
+        trip = {
+            "agentNotes": "This is a very long freeform note about the customer preferences for their upcoming trip",
+            "source": "user_input",
+        }
+        with pytest.raises(PrivacyGuardError):
+            check_trip_data(trip)
+
+    def test_agent_notes_snakecase_blocked_dogfood(self):
+        trip = {
+            "agent_notes": "Detailed customer notes with sensitive travel preferences and itinerary",
+            "source": "user_input",
+        }
+        with pytest.raises(PrivacyGuardError):
+            check_trip_data(trip)
+
+    def test_owner_note_blocked_dogfood(self):
+        trip = {
+            "owner_note": "Owner notes about customer preferences and special requirements",
+            "source": "user_input",
+        }
+        with pytest.raises(PrivacyGuardError):
+            check_trip_data(trip)
+
+    def test_agentNotes_with_email_still_blocked(self):
+        trip = {
+            "agentNotes": "Customer email: john@example.com",
+            "source": "user_input",
+        }
+        with pytest.raises(PrivacyGuardError):
+            check_trip_data(trip)
+
+    def test_agentNotes_with_phone_still_blocked(self):
+        trip = {
+            "agentNotes": "Call customer at 9876543210 for details",
+            "source": "user_input",
+        }
+        with pytest.raises(PrivacyGuardError):
+            check_trip_data(trip)
+
+    def test_agentNotes_short_content_allowed(self):
+        trip = {
+            "agentNotes": "OK",
+            "source": "user_input",
+        }
+        check_trip_data(trip)
+
+    def test_agentNotes_fixture_allowed(self):
+        trip = {
+            "agentNotes": "This is a detailed customer note from the fixture",
+            "raw_input": {"fixture_id": "clean_family_booking"},
+        }
+        check_trip_data(trip)
+
+    def test_agentNotes_seed_scenario_allowed(self):
+        trip = {
+            "agentNotes": "Seeder agent note with scenarios",
+            "source": "seed_scenario",
+        }
+        check_trip_data(trip)
+
+    def test_agentNotes_beta_mode_allows(self, monkeypatch):
+        monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
+        from src.security.privacy_guard import check_trip_data
+        trip = {
+            "agentNotes": "Real user note with details about preferences",
+            "source": "user_input",
+        }
+        check_trip_data(trip)

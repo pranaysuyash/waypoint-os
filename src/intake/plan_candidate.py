@@ -32,6 +32,26 @@ _READINESS_MAP: Dict[str, str] = {
     "PROCEED_TRAVELER_SAFE": "traveler_safe",
 }
 
+# Traveler-safe status: maps internal decision_state to customer-facing labels.
+# These are the ONLY values exposed in to_traveler_safe_dict().
+_TRAVELER_STATUS_MAP: Dict[str, str] = {
+    "STOP_NEEDS_REVIEW": "being_reviewed",
+    "ASK_FOLLOWUP": "needs_more_details",
+    "BRANCH_OPTIONS": "ready_to_share",
+    "PROCEED_INTERNAL_DRAFT": "being_reviewed",
+    "PROCEED_TRAVELER_SAFE": "ready_to_share",
+}
+
+# Traveler-safe summary: deterministic copy per decision state.
+# No internal terms, no strategy_goal reuse.
+_TRAVELER_SUMMARY_MAP: Dict[str, str] = {
+    "ASK_FOLLOWUP": "A few details are needed before options can be prepared.",
+    "STOP_NEEDS_REVIEW": "This request needs review before options are shared.",
+    "PROCEED_TRAVELER_SAFE": "Trip options can be prepared from the confirmed details.",
+    "BRANCH_OPTIONS": "A few route or budget options can be compared.",
+    "PROCEED_INTERNAL_DRAFT": "The plan is being prepared for review.",
+}
+
 _INTERNAL_ONLY_RISK_CATEGORIES = frozenset({
     "margin", "commercial", "operational_complexity",
 })
@@ -39,10 +59,10 @@ _INTERNAL_ONLY_RISK_CATEGORIES = frozenset({
 _INTERNAL_ONLY_RISK_TERMS = frozenset({
     "hypothesis", "contradiction", "blocker",
     "owner_constraint", "internal_only", "agency_note",
-    "confidence", "decision_state",
+    "confidence", "decision_state", "next_action",
+    "operator_review", "owner_review", "traveler-facing",
+    "escalate", "senior review",
 })
-
-_TRAVELER_SAFE_OPERATING_MODES = frozenset({"normal_intake", "follow_up", "post_trip"})
 
 TRAVELER_SAFE_FACT_FIELDS = frozenset({
     "destination_candidates",
@@ -60,12 +80,6 @@ _TRAVELER_SAFE_RISK_CATEGORIES = frozenset({
     "budget", "activity", "pacing", "logistics",
     "documents", "routing", "seasonality",
 })
-
-_TRAVELER_GOAL_BY_READINESS: Dict[str, str] = {
-    "blocked": "We need a few more details before preparing your trip options.",
-    "internal_draft": "We are preparing options tailored to your requirements.",
-    "traveler_safe": "Here are your personalized trip options based on everything you have shared.",
-}
 
 
 @dataclass(slots=True)
@@ -155,57 +169,66 @@ class PlanCandidate:
             "schema_version": self.schema_version,
         }
 
-    def _operating_mode_is_traveler_safe(self) -> bool:
-        return self.operating_mode in _TRAVELER_SAFE_OPERATING_MODES
-
     def _any_term_in_text(self, text: str) -> bool:
         lower = text.lower()
         return any(t in lower for t in _INTERNAL_ONLY_RISK_TERMS)
 
     def to_traveler_safe_dict(self) -> Dict[str, Any]:
+        # Risks: only include if explicitly traveler_safe, not internal category,
+        # and no internal terms in flag or message.
         safe_risks = [
-            asdict(r) for r in self.risks
+            {
+                "flag": r.flag,
+                "severity": r.severity,
+                "category": r.category,
+                "message": r.message,
+            }
+            for r in self.risks
             if r.traveler_safe
                and r.category not in _INTERNAL_ONLY_RISK_CATEGORIES
-               and not self._any_term_in_text(r.message)
                and not self._any_term_in_text(r.flag)
+               and not self._any_term_in_text(r.message)
         ]
 
+        # Constraints: only those explicitly marked traveler_safe
         safe_constraints = [
-            asdict(c) for c in self.constraints if c.traveler_safe
+            {"field": c.field, "value": c.value, "source": c.source}
+            for c in self.constraints if c.traveler_safe
         ]
 
+        # Suitability: exclude critical severity, filter internal terms
         safe_suitability = [
             f for f in self.suitability_flags
-            if not self._any_term_in_text(str(f.get("reason", "")))
+            if str(f.get("severity", "")) not in ("critical",)
+               and not self._any_term_in_text(str(f.get("reason", "")))
+               and not self._any_term_in_text(str(f.get("flag_type", "")))
         ]
 
-        result: Dict[str, Any] = {
+        # Map internal decision_state to traveler-safe status
+        traveler_status = _TRAVELER_STATUS_MAP.get(
+            self.decision_state, "needs_more_details"
+        )
+
+        # Deterministic traveler-facing summary — never raw strategy_goal
+        traveler_summary = _TRAVELER_SUMMARY_MAP.get(
+            self.decision_state, "We are reviewing your trip request."
+        )
+
+        return {
             "plan_id": self.plan_id,
             "stage": self.stage,
             "traveler_snapshot": asdict(self.traveler_snapshot),
             "constraints": safe_constraints,
             "risks": safe_risks,
             "suitability_flags": safe_suitability,
-            "readiness": self.readiness,
-            "traveler_goal": _TRAVELER_GOAL_BY_READINESS.get(
-                self.readiness, _TRAVELER_GOAL_BY_READINESS["blocked"]
-            ),
+            "traveler_status": traveler_status,
+            "traveler_summary": traveler_summary,
             "schema_version": self.schema_version,
         }
-
-        if self._operating_mode_is_traveler_safe():
-            result["operating_mode"] = self.operating_mode
-
-        return result
 
 
 def _fact_is_traveler_safe(field_name: str) -> bool:
     return field_name in TRAVELER_SAFE_FACT_FIELDS
-
-
-def _risk_category_is_traveler_safe(category: str) -> bool:
-    return category in _TRAVELER_SAFE_RISK_CATEGORIES
 
 
 def _suitability_severity_is_traveler_safe(severity: str) -> bool:
@@ -269,16 +292,27 @@ def build_plan_candidate(
             reason="soft blocker",
         ))
 
+    # Decision risk_flags: default to traveler_safe=False.
+    # Only explicitly safe categories get traveler_safe=True.
     risks: List[PlanningRisk] = []
     for r in getattr(decision, "risk_flags", []) or []:
         if isinstance(r, dict):
             category = str(r.get("category", r.get("source", "decision")))
+            message = str(r.get("message", ""))
+            flag = str(r.get("flag", ""))
+            # Default False; only True if category is in the safe set AND
+            # neither the message nor flag contains internal terms
+            is_safe = (
+                category in _TRAVELER_SAFE_RISK_CATEGORIES
+                and not any(t in message.lower() for t in _INTERNAL_ONLY_RISK_TERMS)
+                and not any(t in flag.lower() for t in _INTERNAL_ONLY_RISK_TERMS)
+            )
             risks.append(PlanningRisk(
-                flag=str(r.get("flag", r.get("message", ""))),
+                flag=flag,
                 severity=str(r.get("severity", "medium")),
                 category=category,
-                message=str(r.get("message", "")),
-                traveler_safe=_risk_category_is_traveler_safe(category),
+                message=message,
+                traveler_safe=is_safe,
                 details=r.get("details", {}) if isinstance(r.get("details"), dict) else {},
             ))
 
