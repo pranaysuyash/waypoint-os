@@ -142,6 +142,7 @@ async def post_signup(
     request: Request,
     response: Response,
     signup_req: SignupRequest,
+    audit: AuditContext = Depends(audit_logger()),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -167,9 +168,17 @@ async def post_signup(
             is_test=is_test,
         )
     except ValueError as e:
+        await audit.log(AuditAction.LOGIN_FAILED, resource_type="user", changes={"email": signup_req.email, "reason": str(e)})
         raise HTTPException(status_code=400, detail=str(e))
 
     _set_auth_cookies(response, result["access_token"], result["refresh_token"])
+
+    await audit.log(
+        AuditAction.CREATE,
+        resource_type="user",
+        resource_id=result["user"]["id"],
+        changes={"email": signup_req.email, "agency": result["agency"]["name"]},
+    )
 
     return AuthResponse(
         ok=True,
@@ -185,14 +194,18 @@ async def post_login(
     request: Request,
     response: Response,
     login_req: LoginRequest,
+    audit: AuditContext = Depends(audit_logger()),
     db: AsyncSession = Depends(get_db),
 ):
     try:
         result = await login_service(db=db, email=login_req.email, password=login_req.password)
     except ValueError as e:
+        await audit.log(AuditAction.LOGIN_FAILED, resource_type="user", changes={"email": login_req.email, "reason": str(e)})
         raise HTTPException(status_code=401, detail=str(e))
 
     _set_auth_cookies(response, result["access_token"], result["refresh_token"])
+
+    await audit.log(AuditAction.LOGIN, resource_type="user", resource_id=result["user"]["id"])
 
     return AuthResponse(
         ok=True,
@@ -203,8 +216,13 @@ async def post_login(
 
 
 @router.post("/logout")
-async def post_logout(response: Response):
+async def post_logout(
+    response: Response,
+    membership: Membership = Depends(get_current_membership),
+    audit: AuditContext = Depends(audit_logger()),
+):
     _clear_auth_cookies(response)
+    await audit.log(AuditAction.LOGOUT, resource_type="session")
     return {"ok": True}
 
 
@@ -278,9 +296,15 @@ async def post_refresh(request: Request, response: Response, db: AsyncSession = 
 async def post_request_password_reset(
     request: Request,
     reset_req: PasswordResetRequest,
+    audit: AuditContext = Depends(audit_logger()),
     db: AsyncSession = Depends(get_db),
 ):
     result = await request_password_reset(db=db, email=reset_req.email)
+    await audit.log(
+        AuditAction.PASSWORD_RESET_REQUEST,
+        resource_type="user",
+        changes={"email": reset_req.email},
+    )
     response = {
         "ok": True,
         "message": "If the email exists, a reset link has been sent",
@@ -300,12 +324,23 @@ async def post_request_password_reset(
 async def post_confirm_password_reset(
     request: Request,
     confirm_req: PasswordResetConfirm,
+    audit: AuditContext = Depends(audit_logger()),
     db: AsyncSession = Depends(get_db),
 ):
     try:
         result = await confirm_password_reset(
             db=db, token=confirm_req.token, new_password=confirm_req.new_password
         )
+        await audit.log(
+            AuditAction.PASSWORD_RESET_CONFIRM,
+            resource_type="user",
+            changes={"success": True},
+        )
         return result
     except ValueError as e:
+        await audit.log(
+            AuditAction.PASSWORD_RESET_CONFIRM,
+            resource_type="user",
+            changes={"success": False, "reason": str(e)},
+        )
         raise HTTPException(status_code=400, detail=str(e))

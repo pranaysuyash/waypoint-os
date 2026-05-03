@@ -329,6 +329,7 @@ export function transformSpineTripToTrip(
     })(),
     packet: trip.extracted ?? undefined,
     status,
+    stage: asString(trip.stage, "discovery") || "discovery",
     review_status: (analytics.review_status as Trip["review_status"]) ?? undefined,
     reviewedBy: asString(getNestedValue(analytics, "review_metadata.reviewed_by", ""), "") || undefined,
     reviewedAt: asString(getNestedValue(analytics, "review_metadata.reviewed_at", ""), "") || undefined,
@@ -365,7 +366,7 @@ export function transformSpineTripToTrip(
         ? validation.ambiguity_report
         : [],
       evidence_coverage: asRecord(validation.evidence_coverage),
-      readiness: asRecord(validation.readiness) || undefined,
+      readiness: (isRecord(validation.readiness) && Object.keys(validation.readiness).length > 0) ? validation.readiness : undefined,
     } as unknown) as Trip["validation"],
     decision: ({
       packet_id: asString(decision.packet_id, ""),

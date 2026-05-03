@@ -29,6 +29,7 @@ class Trip(Base):
     
     source: Mapped[str] = mapped_column(String(100), default="unknown")
     status: Mapped[str] = mapped_column(String(50), default="new")
+    stage: Mapped[str] = mapped_column(String(50), default="discovery", nullable=False)
     
     # Intake fields
     follow_up_due_date: Mapped[Optional[datetime]] = mapped_column(

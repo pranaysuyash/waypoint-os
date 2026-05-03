@@ -122,6 +122,7 @@ class SpineRunResponse(BaseModel):
     validation: Optional[Dict[str, Any]] = None
     decision: Optional[Dict[str, Any]] = None
     strategy: Optional[Dict[str, Any]] = None
+    plan_candidate: Optional[Dict[str, Any]] = None
     traveler_bundle: Optional[Dict[str, Any]] = None
     internal_bundle: Optional[Dict[str, Any]] = None
     safety: SafetyResult = Field(default_factory=SafetyResult)

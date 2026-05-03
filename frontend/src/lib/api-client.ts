@@ -301,6 +301,7 @@ export interface Trip {
   origin?: string;
   budget?: string;
   status?: string;
+  stage?: string;
   // Pipeline result fields (returned by mock API, not yet in real API)
   packet?: unknown;
   validation?: ValidationReport;
@@ -593,6 +594,27 @@ export async function acknowledgeSuitabilityFlags(
   flagTypes: string[],
 ): Promise<{ success: boolean; trip_id: string; acknowledged_flags: string[] }> {
   return api.post(`/api/trips/${tripId}/suitability/acknowledge`, { acknowledged_flags: flagTypes });
+}
+
+export interface StageTransitionResponse {
+  trip_id: string;
+  old_stage: string;
+  new_stage: string;
+  changed: boolean;
+  readiness?: Record<string, unknown> | null;
+}
+
+export async function transitionTripStage(
+  tripId: string,
+  targetStage: string,
+  reason?: string,
+  expectedCurrentStage?: string,
+): Promise<StageTransitionResponse> {
+  return api.patch(`/trips/${tripId}/stage`, {
+    target_stage: targetStage,
+    reason,
+    expected_current_stage: expectedCurrentStage,
+  });
 }
 
 export async function getOverride(overrideId: string): Promise<{ ok: boolean; override: any }> {

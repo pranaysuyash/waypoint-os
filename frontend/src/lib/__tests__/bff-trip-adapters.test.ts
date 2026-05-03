@@ -214,4 +214,42 @@ describe("BFF trip adapters", () => {
       reference: "NEW",
     });
   });
+
+  it("preserves validation.readiness from backend response", () => {
+    const tripWithReadiness = transformSpineTripToTrip(
+      {
+        ...spineTrip,
+        validation: {
+          is_valid: true,
+          errors: [],
+          warnings: [],
+          readiness: {
+            highest_ready_tier: "quote_ready",
+            suggested_next_stage: "shortlist",
+            should_auto_advance_stage: false,
+            missing_for_next: ["trip_priorities", "date_flexibility"],
+            tiers: {
+              intake_minimum: { tier: "intake_minimum", ready: true, met: ["destination_candidates", "date_window"], unmet: [] },
+              quote_ready: { tier: "quote_ready", ready: true, met: [], unmet: [] },
+              proposal_ready: { tier: "proposal_ready", ready: false, met: [], unmet: ["trip_priorities", "date_flexibility"] },
+              booking_ready: { tier: "booking_ready", ready: false, met: [], unmet: ["booking_data"] },
+            },
+          },
+        },
+      },
+      now
+    );
+
+    expect((tripWithReadiness.validation as Record<string, unknown>)?.readiness).toMatchObject({
+      highest_ready_tier: "quote_ready",
+      suggested_next_stage: "shortlist",
+      should_auto_advance_stage: false,
+      missing_for_next: ["trip_priorities", "date_flexibility"],
+    });
+  });
+
+  it("gracefully handles missing readiness in backend response", () => {
+    const tripWithoutReadiness = transformSpineTripToTrip(spineTrip, now);
+    expect((tripWithoutReadiness.validation as Record<string, unknown>)?.readiness).toBeUndefined();
+  });
 });

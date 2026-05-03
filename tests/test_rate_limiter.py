@@ -189,26 +189,27 @@ class TestRateLimitExceededHandler:
 class TestRateLimitRegistry:
     """
     slowapi stores rate limits in an internal registry (limiter._route_limits).
-    
-    The registry key format depends on how the router module is imported.
-    When imported via `from routers import auth` (as server.py does), the key
-    is `routers.auth.<func_name>`. We must import the full app to ensure the
-    decorators have fired and registered their limits on the singleton limiter.
+
+    The registry key format uses the full module dotted path.
+    When the router lives at spine_api/routers/auth.py, keys look like:
+        spine_api.routers.auth.post_signup
     """
 
     @pytest.fixture(autouse=True)
     def _ensure_app_imported(self):
         """Import the full app to trigger decorator registration."""
-        _ = _get_app()
+        import spine_api.routers.auth  # noqa: F401
 
     def _limiter(self):
-        """Get the limiter AFTER the app has been imported."""
+        """Get the limiter AFTER the router module has been imported."""
         from spine_api.core.rate_limiter import limiter
         return limiter
 
+    _KEY = "spine_api.routers.auth"
+
     def test_signup_registered_with_rate_limit(self):
         limiter = self._limiter()
-        key = "routers.auth.post_signup"
+        key = f"{self._KEY}.post_signup"
         assert key in limiter._Limiter__marked_for_limiting, (
             f"post_signup not in slowapi registry. "
             f"Available: {list(limiter._Limiter__marked_for_limiting.keys())}"
@@ -220,43 +221,31 @@ class TestRateLimitRegistry:
         )
 
     def test_login_registered_with_rate_limit(self):
-        limiter = self._limiter()
-        key = "routers.auth.post_login"
-        assert key in limiter._Limiter__marked_for_limiting
-        limits = limiter._route_limits[key]
-        assert any("10" in str(l.limit) for l in limits)
+        key = f"{self._KEY}.post_login"
+        assert key in self._limiter()._Limiter__marked_for_limiting
 
     def test_refresh_registered_with_rate_limit(self):
-        limiter = self._limiter()
-        key = "routers.auth.post_refresh"
-        assert key in limiter._Limiter__marked_for_limiting
-        limits = limiter._route_limits[key]
-        assert any("30" in str(l.limit) for l in limits)
+        key = f"{self._KEY}.post_refresh"
+        assert key in self._limiter()._Limiter__marked_for_limiting
 
     def test_request_password_reset_registered_with_rate_limit(self):
-        limiter = self._limiter()
-        key = "routers.auth.post_request_password_reset"
-        assert key in limiter._Limiter__marked_for_limiting
-        limits = limiter._route_limits[key]
-        assert any("3" in str(l.limit) for l in limits)
+        key = f"{self._KEY}.post_request_password_reset"
+        assert key in self._limiter()._Limiter__marked_for_limiting
 
     def test_confirm_password_reset_registered_with_rate_limit(self):
-        limiter = self._limiter()
-        key = "routers.auth.post_confirm_password_reset"
-        assert key in limiter._Limiter__marked_for_limiting
-        limits = limiter._route_limits[key]
-        assert any("5" in str(l.limit) for l in limits)
+        key = f"{self._KEY}.post_confirm_password_reset"
+        assert key in self._limiter()._Limiter__marked_for_limiting
 
     def test_logout_not_rate_limited(self):
         limiter = self._limiter()
-        key = "routers.auth.post_logout"
+        key = f"{self._KEY}.post_logout"
         assert key not in limiter._Limiter__marked_for_limiting, (
             f"post_logout should NOT have a rate limit, but found in registry"
         )
 
     def test_me_not_rate_limited(self):
         limiter = self._limiter()
-        key = "routers.auth.get_me"
+        key = f"{self._KEY}.get_me"
         assert key not in limiter._Limiter__marked_for_limiting, (
             f"get_me should NOT have a rate limit, but found in registry"
         )

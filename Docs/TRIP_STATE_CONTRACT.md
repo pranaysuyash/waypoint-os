@@ -1,7 +1,8 @@
 # Trip State Contract — Implementation Plan
 
-**Status:** Phase 1 implemented, Phase 2–4 planned
+**Status:** Phase 1 + Phase 1.5 + Phase 2A + Phase 2B complete, Phase 3 planned
 **Created:** 2026-05-02
+**Updated:** 2026-05-03
 **Scope:** Persistence repair, encryption, stage/readiness model, ops panel
 
 ---
@@ -115,56 +116,73 @@ All 5 missing compartments fixed together. Dual encryption model: blob encryptio
 
 **Not yet done (separate PRs):**
 
-### Phase 2: Stage/Readiness Model
+### Phase 2A: Readiness Engine (Complete)
 
-**2.1 Add readiness tiers to validation.py**
-File: `src/intake/validation.py`
-```python
-PROPOSAL_READY = QUOTE_READY + [
-    "sourcing_route",
-    "package_candidates",
-    "suitability_flags",
-]
-BOOKING_READY = PROPOSAL_READY + [
-    "traveler_identities",
-    "primary_payer",
-    "emergency_contacts",
-    "document_ownership",
-]
+**Architecture:**
+- `src/intake/readiness.py` — Pure computation module, no side effects
+- Readiness computed AFTER all pipeline outputs exist (after fee calculation, Phase 9.6 in orchestration)
+- Stored in `validation.readiness` (nested dict within the validation JSON blob)
+- `should_auto_advance_stage` always `False` — stage transitions require explicit action
+
+**Tier model (cumulative, gated by real outputs):**
+```
+intake_minimum  — packet.facts: destination_candidates + date_window (usable values)
+quote_ready     — packet.facts: 6 MVB fields with usable values
+proposal_ready  — quote_ready + traveler_bundle + internal_bundle + fees + safety pass + no critical blockers
+booking_ready   — booking_data must exist (cannot be faked from packet facts alone)
 ```
 
-**2.2 Add readiness to CanonicalPacket**
-File: `src/intake/packet_models.py`
-```python
-readiness: Dict[str, bool] = field(default_factory=dict)
-suggested_next_stage: Optional[str] = None
-```
+**Key design decisions:**
+- `intake_minimum` and `quote_ready` check packet facts with usable-value checks (not just key existence — empty strings, None, [], {} don't count)
+- `proposal_ready` requires pipeline outputs: traveler_bundle, internal_bundle, fees, safety.is_safe=True, no critical suitability blockers in decision.hard_blockers
+- `booking_ready` is always `false` until `booking_data` is provided — packet facts alone cannot unlock it
+- Signature: `compute_readiness(packet, validation, decision, traveler_bundle, internal_bundle, safety, fees, booking_data)`
+- Frontend reads readiness from `result_validation || trip.validation` (store-first for live runs, trip for persisted)
 
-**2.3 Stage transitions via AuditStore**
-Extend existing `AuditStore` (persistence.py:745-815) for business lifecycle events:
-```json
-{
-  "type": "stage_transition",
-  "trip_id": "...",
-  "from": "discovery",
-  "to": "shortlist",
-  "trigger": "manual",
-  "reason": "quote_ready=true; decision=PROCEED_TRAVELER_SAFE",
-  "readiness": {"intake_minimum": true, "quote_ready": true, "proposal_ready": false, "booking_ready": false},
-  "actor": "agent",
-  "user_id": "..."
-}
-```
-RunLedger = per-run execution trace. AuditStore = durable business events.
+**Implementation files:**
+- `src/intake/readiness.py`: `compute_readiness()`, `ReadinessResult`, `TierDetail`, tier constants
+- `src/intake/validation.py`: Added `readiness: Dict[str, Any]` field to `PacketValidationReport`
+- `src/intake/orchestration.py`: Wired `compute_readiness()` after fee calculation (Phase 9.6)
+- `frontend/src/types/spine.ts`: `ReadinessAssessment` interface, added to `ValidationReport`
+- `frontend/src/lib/bff-trip-adapters.ts`: Maps `validation.readiness` from backend (skips empty)
+- `frontend/src/components/workspace/panels/DecisionPanel.tsx`: Minimal readiness banner (tier badge + missing fields count)
 
-**2.4 UI: stage advancement banner**
-In PacketPanel or DecisionPanel:
-```
-Ready to move to Shortlist
-Reason: MVB complete, decision=PROCEED_TRAVELER_SAFE
-[Advance to Shortlist]
-```
-Button triggers explicit stage transition via AuditStore. Never auto-advance.
+**Tests:**
+- `tests/test_readiness_engine.py`: 31 tests — all tiers, usable-value checks, booking_ready gating, pipeline-output checks, serialization, mutation guard
+- `frontend/src/lib/__tests__/bff-trip-adapters.test.ts`: 2 readiness preservation tests
+- `frontend/src/components/workspace/panels/__tests__/DecisionPanel.readiness.test.tsx`: 5 frontend tests (store vs trip, preference, missing data)
+
+### Phase 2B: Stage Lifecycle + Audit (Complete)
+
+**Architecture:**
+- Durable `stage` column on Trip model (separate from `status`)
+- Default `"discovery"`, valid values: `discovery`, `shortlist`, `proposal`, `booking`
+- `PATCH /trips/{trip_id}/stage` endpoint for manual transitions with optimistic concurrency
+- AuditStore logs `stage_transition` events with readiness snapshot
+- Frontend shows "Advance to [Stage]" button when readiness suggests next stage
+- No auto-advance — `should_auto_advance_stage` always `False`
+
+**Key design decisions:**
+- `stage` vs `status`: `status` = inbox/ops state (new, assigned, incomplete, completed); `stage` = commercial workflow phase
+- Optimistic concurrency: `expected_current_stage` field, 409 Conflict on mismatch
+- Same-stage transition returns `changed: false` (idempotent)
+- AuditStore events include `from`, `to`, `trigger` (always `"manual"`), `reason`
+- Stage transition does not affect `status`
+- `_build_processed_trip()` derives stage from `meta.stage` or `packet.stage`, defaulting to `"discovery"`
+
+**Implementation files:**
+- `spine_api/models/trips.py`: Added `stage: Mapped[str]` column with `"discovery"` default
+- `spine_api/persistence.py`: `_to_dict()` includes stage, `save_trip()` persists stage, `_build_processed_trip()` derives stage
+- `spine_api/server.py`: `PATCH /trips/{trip_id}/stage` endpoint with `StageTransitionRequest` model
+- `alembic/versions/add_stage_to_trips.py`: Migration adding stage column
+- `frontend/src/lib/api-client.ts`: `StageTransitionResponse` interface, `transitionTripStage()` function, `stage` on Trip
+- `frontend/src/lib/bff-trip-adapters.ts`: Maps `trip.stage` with `"discovery"` default
+- `frontend/src/components/workspace/panels/StageAdvanceButton.tsx`: Standalone advance button component
+- `frontend/src/components/workspace/panels/DecisionPanel.tsx`: Readiness banner with conditional advance button
+
+**Tests:**
+- `tests/test_stage_transitions.py`: 13 tests — persistence (4), endpoint behavior (6), readiness integration (3)
+- `frontend/src/components/workspace/panels/__tests__/StageAdvanceButton.test.tsx`: 6 tests — button appearance, same-stage hiding, PATCH call, reload, no-readiness hiding, no auto-advance
 
 ### Phase 3: OpsPanel (stage-gated)
 
@@ -230,8 +248,20 @@ Not in this round. Design decisions locked:
 | `alembic/versions/add_frontier_result_and_fees.py` | New migration | 1 |
 | `frontend/src/app/(agency)/workbench/page.tsx` | Add `setResultFrontier`, `setResultFees` to hydration | 1 |
 | `frontend/src/components/workspace/FrontierDashboard.tsx` | Read from store, remove hardcoded defaults | 1 |
-| `src/intake/validation.py` | Add `PROPOSAL_READY`, `BOOKING_READY` tiers | 2 |
-| `src/intake/packet_models.py` | Add `readiness`, `suggested_next_stage` | 2 |
+| `src/intake/readiness.py` | New — `compute_readiness()` with 4 tiers, pipeline-output gating | 2A |
+| `src/intake/validation.py` | Added `readiness` field to `PacketValidationReport` | 2A |
+| `src/intake/orchestration.py` | Wire `compute_readiness()` after fee calculation | 2A |
+| `frontend/src/types/spine.ts` | `ReadinessAssessment` interface, added to `ValidationReport` | 2A |
+| `frontend/src/lib/bff-trip-adapters.ts` | Maps `validation.readiness` from backend | 2A |
+| `frontend/src/components/workspace/panels/DecisionPanel.tsx` | Readiness banner (store-first hydration) | 2A |
+| `spine_api/models/trips.py` | Add `stage` column with `"discovery"` default | 2B |
+| `spine_api/persistence.py` | `_to_dict`/`save_trip`/`_build_processed_trip` include stage | 2B |
+| `spine_api/server.py` | `PATCH /trips/{trip_id}/stage` endpoint with AuditStore | 2B |
+| `alembic/versions/add_stage_to_trips.py` | Migration adding stage column | 2B |
+| `frontend/src/lib/api-client.ts` | `transitionTripStage()`, `StageTransitionResponse`, `stage` on Trip | 2B |
+| `frontend/src/lib/bff-trip-adapters.ts` | Maps `trip.stage` with default | 2B |
+| `frontend/src/components/workspace/panels/StageAdvanceButton.tsx` | New — stage advance button component | 2B |
+| `frontend/src/components/workspace/panels/DecisionPanel.tsx` | Advance button in readiness banner | 2B |
 | `src/intake/extractors.py` | Gate passport extraction by stage | 3 |
 | `frontend/src/components/workspace/panels/OpsPanel.tsx` | New — Booking Readiness panel | 3 |
 

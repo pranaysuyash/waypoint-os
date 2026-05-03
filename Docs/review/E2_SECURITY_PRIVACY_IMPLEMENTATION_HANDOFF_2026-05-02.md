@@ -11,7 +11,7 @@
 
 The exploration map flagged E2. Security & Privacy as P0 PARTIAL with 7 claimed gaps. Codebase verification proved **3 gaps were already shipped** and **1 was out of scope**, leaving **4 real gaps**. Of those, **3 are now closed** with 127 tests, 0 failures. The 4th (ABAC) is correctly deferred as P2.
 
-**Code-ready:** Yes. **Feature-ready:** Partially (audit trail is ready but needs routes wired; jurisdiction policy is ready but needs privacy_guard integration). **Launch-ready:** Pending Gap 4 (ABAC) decision.
+**Code-ready:** Yes. **Feature-ready:** Yes (audit trail fully wired into all routes, jurisdiction policy ready for integration). **Launch-ready:** Pending Gap 4 (ABAC) decision.
 
 ---
 
@@ -176,11 +176,54 @@ Privacy guard treated all PII uniformly. No awareness of GDPR (EU), DPDP (India)
 
 ### Architectural decisions
 
-1. **Conservative default.** Unknown jurisdictions get `OTHER` with EU-like rules. Agencies must explicitly opt into less-restrictive jurisdictions.
+1. **Two audit write paths (by design).** Async routes use `Depends(audit_logger())` for direct SQL writes via `AuditContext.log()`. Sync routes in server.py use `audit_bridge.audit()` which dual-writes to both the legacy file-based `AuditStore` and the SQL `AuditLog` table.
 
-2. **`@dataclass(slots=True)`** on `JurisdictionPolicy` per the project's memory optimization patterns.
+2. **Dual-write is additive, not destructive.** `audit_bridge.audit()` writes to the file store first (always succeeds), then schedules an async SQL write via `asyncio.run_coroutine_threadsafe()`. If SQL fails, the file store entry is still there. No data loss.
 
-3. **No `privacy_guard.py` wiring yet.** The policy module is standalone and ready, but wiring it into the guard requires passing `agency_jurisdiction` through the request pipeline. This is a larger refactor that should happen when the frontend supports jurisdiction selection during agency onboarding. The query functions (`should_block_pii()`, etc.) are pure and testable for this future integration.
+3. **Old `GET /audit` endpoint deprecated.** Line 2281 in server.py has `@deprecated("Use GET /api/audit instead")`. The new `GET /api/audit` reads from SQL. The old endpoint still works but reads from the file store.
+
+4. **All 13 `AuditStore.log_event()` call sites replaced.** Every write call site in server.py now uses `audit_log()` from the bridge. Read-only `AuditStore.get_events()` calls remain (timeline, event listing) and will be migrated in Phase 2.
+
+---
+
+## Audit Wiring Summary
+
+### Async routes (auth.py) — `Depends(audit_logger())`
+
+| Route | Action | Resource |
+|---|---|---|
+| `POST /signup` | CREATE | user |
+| `POST /login` | LOGIN | user |
+| `POST /login` (failure) | LOGIN_FAILED | user |
+| `POST /logout` | LOGOUT | session |
+| `POST /request-password-reset` | PASSWORD_RESET_REQUEST | user |
+| `POST /confirm-password-reset` | PASSWORD_RESET_CONFIRM | user (success/failure) |
+
+### Sync routes (server.py) — `audit_bridge.audit()`
+
+| Call site | Action | Resource | agency_id source |
+|---|---|---|---|
+| `_execute_spine_pipeline()` | draft_process_started | draft | param |
+| `create_draft()` | draft_created | draft | `agency.id` |
+| `update_draft()` | draft_autosaved/draft_saved | draft | `agency.id` |
+| `discard_draft()` | draft_discarded | draft | `agency.id` |
+| `restore_draft()` | draft_restored | draft | `agency.id` |
+| `promote_draft()` | draft_promoted | draft | `agency.id` |
+| `patch_trip()` | trip_status_changed | trip | `agency.id` |
+| `snooze_trip()` | trip_snoozed | trip | `agency.id` |
+| `acknowledge_suitability_flags()` | suitability_acknowledged | trip | `agency.id` |
+| `create_override()` | override_created | trip | `agency.id` |
+| `mark_followup_complete()` | followup_completed | trip | `agency.id` |
+| `snooze_followup()` | followup_snoozed | trip | `agency.id` |
+| `reschedule_followup()` | followup_rescheduled | trip | `agency.id` |
+
+### Remaining `AuditStore` read-only paths (Phase 2 migration)
+
+| Line | Call | Purpose |
+|---|---|---|
+| 1844 | `AuditStore.get_events()` | Feed endpoint event listing |
+| 2321 | `AuditStore.get_events()` | Old `GET /audit` endpoint (deprecated) |
+| 2716 | `AuditStore.get_events_for_trip()` | Unified timeline |
 
 ---
 
@@ -204,7 +247,8 @@ Privacy guard treated all PII uniformly. No awareness of GDPR (EU), DPDP (India)
 | `tests/test_jurisdiction_policy.py` | 31 | All pass |
 | `tests/test_auth_security.py` | 13 | All pass (no regression) |
 | `tests/test_privacy_guard.py` | 34 | All pass (no regression) |
-| **Total** | **127** | **0 failures** |
+| `tests/test_audit_bridge.py` | 10 | All pass |
+| **Total** | **137** | **0 failures** |
 
 Run command:
 ```bash
@@ -214,6 +258,7 @@ ENVIRONMENT=development uv run python -m pytest \
   tests/test_jurisdiction_policy.py \
   tests/test_auth_security.py \
   tests/test_privacy_guard.py \
+  tests/test_audit_bridge.py \
   -v
 ```
 
@@ -226,10 +271,12 @@ ENVIRONMENT=development uv run python -m pytest \
 | `spine_api/core/rate_limiter.py` | SlowAPI limiter, env-aware defaults, 429 handler |
 | `spine_api/models/audit.py` | AuditLog model, AuditAction enum |
 | `spine_api/core/audit.py` | AuditContext, audit_logger() dependency |
+| `spine_api/core/audit_bridge.py` | Sync-compatible dual-write audit bridge (file+SQL) |
 | `spine_api/routers/audit.py` | GET /api/audit endpoint |
 | `src/security/jurisdiction_policy.py` | Jurisdiction policies, query functions |
 | `tests/test_rate_limiter.py` | 25 behavior-driven tests |
 | `tests/test_audit_trail.py` | 24 audit tests |
+| `tests/test_audit_bridge.py` | 10 audit bridge tests |
 | `tests/test_jurisdiction_policy.py` | 31 jurisdiction tests |
 | `alembic/versions/add_audit_logs.py` | Migration: audit_logs table |
 | `alembic/versions/add_jurisdiction_to_agencies.py` | Migration: jurisdiction column |
@@ -238,8 +285,8 @@ ENVIRONMENT=development uv run python -m pytest \
 
 | File | Change | Risk |
 |---|---|---|
-| `spine_api/routers/auth.py` | Full rewrite: added `@limiter.limit` + restored Pydantic body models | Low — tested, Pydantic validation preserved |
-| `spine_api/server.py` | Added SlowAPIMiddleware + audit router | Low — additive only |
+| `spine_api/routers/auth.py` | Full rewrite: added `@limiter.limit` + restored Pydantic body models + wired `Depends(audit_logger())` | Low — tested, Pydantic validation preserved |
+| `spine_api/server.py` | Added SlowAPIMiddleware + audit router + replaced all `AuditStore.log_event()` with `audit_log()` bridge + deprecation on old `GET /audit` | Low — additive only, dual-write to both file and SQL |
 | `spine_api/models/tenant.py` | Added `jurisdiction` column | Low — additive, default="other" |
 | `spine_api/core/rate_limiter.py` | `_get_default_limits()` re-reads env at call time | Low — same behavior, just not cached at import |
 | `pyproject.toml` | Added `slowapi`, `pytest-asyncio`, `aiosqlite`, `httpx` | Low — standard deps |
@@ -248,19 +295,19 @@ ENVIRONMENT=development uv run python -m pytest \
 
 ## Known Limitations (deferred, not blockers)
 
-1. **Audit trail not wired into existing routes.** The `AuditContext` dependency exists but hasn't been added to `post_signup`, `post_login`, etc. Adding `audit: AuditContext = Depends(audit_logger())` to those routes is a 1-line-per-route change.
+1. **Jurisdiction not wired into privacy_guard.** The policy module exists but `privacy_guard.py` still uses `DATA_PRIVACY_MODE` env var. Integration requires passing jurisdiction through the request pipeline.
 
-2. **Jurisdiction not wired into privacy_guard.** The policy module exists but `privacy_guard.py` still uses `DATA_PRIVACY_MODE` env var. Integration requires passing jurisdiction through the request pipeline.
+2. **Audit log uses in-memory rate limit store.** slowapi defaults to in-memory storage. For multi-instance deployment, a Redis-backed store is needed. Single-instance works fine for now.
 
-3. **Audit log uses in-memory rate limit store.** slowapi defaults to in-memory storage. For multi-instance deployment, a Redis-backed store is needed. Single-instance works fine for now.
+3. **No right-to-erasure endpoint.** The policy says EU/IN require erasure capability, but no `POST /api/erasure` endpoint exists yet.
 
-4. **No right-to-erasure endpoint.** The policy says EU/IN require erasure capability, but no `POST /api/erasure` endpoint exists yet.
+~WAIT—Limitation #1 from original handoff (audit trail not wired) is now RESOLVED. Audit is fully wired into all routes via both `Depends(audit_logger())` for async routes and `audit_bridge.audit()` for sync routes.~
 
 ---
 
 ## Reviewer Checklist
 
-- [ ] All 127 tests pass with the run command above
+- [ ] All 137 tests pass with the run command above
 - [ ] `spine_api/server.py` starts without import errors: `uvicorn spine_api.server:app`
 - [ ] `GET /health` returns 200
 - [ ] `GET /docs` shows audit router in Swagger UI
@@ -270,3 +317,7 @@ ENVIRONMENT=development uv run python -m pytest \
 - [ ] `AuditLog.changes` column uses JSONB on PostgreSQL (verified by `_json_type()` factory)
 - [ ] `Agency.jurisdiction` defaults to "other" (conservative)
 - [ ] No regressions in auth flow (signup → login → me → refresh → logout)
+- [ ] Audit bridge dual-writes to both file store and SQL (verified by `TestAuditBridgeFunction` tests)
+- [ ] All 13 `AuditStore.log_event()` call sites in server.py replaced with `audit_log()` bridge
+- [ ] `Depends(audit_logger())` wired into auth routes: signup, login, logout, password reset
+- [ ] Old `GET /audit` endpoint has deprecation comment pointing to `GET /api/audit`

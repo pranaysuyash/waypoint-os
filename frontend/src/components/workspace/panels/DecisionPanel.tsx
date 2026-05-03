@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback } from "react";
-import { acknowledgeSuitabilityFlags } from "@/lib/api-client";
+import { useCallback, useState } from "react";
+import { acknowledgeSuitabilityFlags, transitionTripStage } from "@/lib/api-client";
 import { useWorkbenchStore } from "@/stores/workbench";
 import { useTripContext } from "@/contexts/TripContext";
 import type { DecisionState, BudgetBreakdownResult, CostBucketEstimate, DecisionOutput, SuitabilityFlagData, SuitabilityProfile } from "@/types/spine";
 import type { Trip } from "@/lib/api-client";
 import { SuitabilitySignal } from "./SuitabilitySignal";
 import { SuitabilityCard } from "./SuitabilityCard";
+import { StageAdvanceButton } from "./StageAdvanceButton";
 import { STATE_COLORS } from "@/lib/tokens";
 import Link from "next/link";
 
@@ -45,8 +46,9 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
   const trip = propTrip || context?.trip || null;
   const tripId = propTripId || trip?.id || context?.tripId || "";
 
-  const { result_decision, debug_raw_json, setDebugRawJson, acknowledged_suitability_flags, acknowledgeFlag } = useWorkbenchStore();
+  const { result_decision, result_validation, debug_raw_json, setDebugRawJson, acknowledged_suitability_flags, acknowledgeFlag } = useWorkbenchStore();
   const decision: DecisionOutput | null = result_decision || trip?.decision || null;
+  const validation = result_validation || trip?.validation || null;
 
   if (!decision) {
     return (
@@ -130,7 +132,7 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
 
       {/* Readiness banner */}
       {(() => {
-        const readiness = (trip?.validation as Record<string, unknown> | undefined)?.readiness as {
+        const readiness = (validation as Record<string, unknown> | null)?.readiness as {
           highest_ready_tier: string | null;
           suggested_next_stage: string;
           should_auto_advance_stage: boolean;
@@ -145,6 +147,8 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
         };
         const label = tierLabel[readiness.highest_ready_tier ?? ""] ?? "Not Ready";
         const missing = readiness.missing_for_next ?? [];
+        const currentStage = trip?.stage ?? (trip?.packet as Record<string, unknown> | undefined)?.stage as string ?? "discovery";
+        const canAdvance = readiness.suggested_next_stage && readiness.highest_ready_tier && readiness.suggested_next_stage !== currentStage && tripId;
         return (
           <div className="rounded-xl p-3 border border-[rgba(var(--accent-blue-rgb)/0.2)] bg-[rgba(var(--accent-blue-rgb)/0.04)]">
             <div className="flex items-center gap-2 flex-wrap">
@@ -154,6 +158,14 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
                 <span className="text-ui-sm text-text-muted">
                   {missing.length} field{missing.length !== 1 ? "s" : ""} needed for {tierLabel[readiness.suggested_next_stage] ?? readiness.suggested_next_stage}
                 </span>
+              )}
+              {canAdvance && (
+                <StageAdvanceButton
+                  tripId={tripId}
+                  currentStage={currentStage}
+                  targetStage={readiness.suggested_next_stage}
+                  tierLabel={tierLabel[readiness.suggested_next_stage] ?? readiness.suggested_next_stage}
+                />
               )}
             </div>
           </div>

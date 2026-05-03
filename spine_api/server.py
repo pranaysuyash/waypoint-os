@@ -300,6 +300,36 @@ if os.environ.get("TRAVELER_SAFE_STRICT", "").strip() in ("1", "true", "yes"):
 # Lifespan handler
 # =============================================================================
 
+async def _ensure_agencies_schema_compatibility() -> None:
+    """
+    Backfill missing agencies columns for local/stale databases.
+    """
+    try:
+        async with engine.begin() as conn:
+            table_exists_result = await conn.execute(text("""
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public' AND table_name = 'agencies'
+                )
+            """))
+            if not bool(table_exists_result.scalar()):
+                return
+
+            await conn.execute(text("""
+                ALTER TABLE agencies
+                ADD COLUMN IF NOT EXISTS is_test BOOLEAN DEFAULT false
+            """))
+            await conn.execute(text("""
+                ALTER TABLE agencies
+                ADD COLUMN IF NOT EXISTS jurisdiction VARCHAR(10) DEFAULT 'other'
+            """))
+            logger.info("Schema compatibility check complete for agencies table")
+    except Exception as e:
+        logger.error("Failed agencies schema compatibility check: %s", e)
+        raise
+
+
 async def _ensure_memberships_schema_compatibility() -> None:
     """
     Backfill missing memberships columns for local/stale databases.
@@ -357,6 +387,7 @@ async def lifespan(app: FastAPI):
         )
     if os.environ.get("SPINE_API_DISABLE_AUTH"):
         logger.warning("⚠️  AUTH DISABLED — local/test only. Do not use in production.")
+    await _ensure_agencies_schema_compatibility()
     await _ensure_memberships_schema_compatibility()
     install_sensitive_data_filter()
     app.state.limiter = limiter
@@ -1034,6 +1065,7 @@ def _execute_spine_pipeline(
                     "validation": _to_dict(result.validation) if hasattr(result, "validation") else None,
                     "decision": _to_dict(result.decision) if hasattr(result, "decision") else None,
                     "strategy": _to_dict(result.strategy) if hasattr(result, "strategy") else None,
+                    "plan_candidate": _to_dict(result.plan_candidate) if hasattr(result, "plan_candidate") and result.plan_candidate else None,
                     "traveler_bundle": _to_dict(result.traveler_bundle) if hasattr(result, "traveler_bundle") and result.traveler_bundle else None,
                     "internal_bundle": _to_dict(result.internal_bundle) if hasattr(result, "internal_bundle") and result.internal_bundle else None,
                     "safety": _to_dict(result.safety) if hasattr(result, "safety") else None,
@@ -1101,6 +1133,7 @@ def _execute_spine_pipeline(
                 "validation": _to_dict(result.validation) if hasattr(result, "validation") else None,
                 "decision": _to_dict(result.decision) if hasattr(result, "decision") else None,
                 "strategy": _to_dict(result.strategy) if hasattr(result, "strategy") else None,
+                "plan_candidate": _to_dict(result.plan_candidate) if hasattr(result, "plan_candidate") and result.plan_candidate else None,
                 "traveler_bundle": _to_dict(result.traveler_bundle) if hasattr(result, "traveler_bundle") and result.traveler_bundle else None,
                 "internal_bundle": _to_dict(result.internal_bundle) if hasattr(result, "internal_bundle") and result.internal_bundle else None,
                 "safety": _to_dict(result.safety) if hasattr(result, "safety") else None,
@@ -2055,7 +2088,13 @@ def patch_trip(
     trip = TripStore.get_trip(trip_id)
     if not trip or trip.get("agency_id") != agency.id:
         raise HTTPException(status_code=404, detail="Trip not found")
-    
+
+    if "stage" in updates:
+        raise HTTPException(
+            status_code=400,
+            detail="Use PATCH /trips/{trip_id}/stage to change stage",
+        )
+
     old_status = trip.get("status")
     new_status = updates.get("status")
 
@@ -2167,6 +2206,73 @@ def patch_trip(
             AssignmentStore.unassign_trip(trip_id, "operator")
             
     return updated_trip
+
+
+VALID_STAGES = {"discovery", "shortlist", "proposal", "booking"}
+
+
+class StageTransitionRequest(BaseModel):
+    target_stage: str
+    reason: Optional[str] = None
+    expected_current_stage: Optional[str] = None
+
+
+@app.patch("/trips/{trip_id}/stage")
+def transition_trip_stage(
+    trip_id: str,
+    request: StageTransitionRequest,
+    agency: Agency = Depends(get_current_agency),
+):
+    """Durable manual stage transition with optimistic concurrency and audit."""
+    trip = TripStore.get_trip(trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    if request.target_stage not in VALID_STAGES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid target_stage '{request.target_stage}'. Must be one of {sorted(VALID_STAGES)}",
+        )
+
+    current_stage = trip.get("stage", "discovery")
+
+    if request.expected_current_stage is not None and request.expected_current_stage != current_stage:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Stage conflict",
+                "expected": request.expected_current_stage,
+                "actual": current_stage,
+            },
+        )
+
+    if request.target_stage == current_stage:
+        return {
+            "trip_id": trip_id,
+            "old_stage": current_stage,
+            "new_stage": current_stage,
+            "changed": False,
+            "readiness": trip.get("validation", {}).get("readiness"),
+        }
+
+    TripStore.update_trip(trip_id, {"stage": request.target_stage})
+
+    AuditStore.log_event("stage_transition", agency.id, {
+        "trip_id": trip_id,
+        "from": current_stage,
+        "to": request.target_stage,
+        "trigger": "manual",
+        "reason": request.reason,
+        "actor": "operator",
+    })
+
+    return {
+        "trip_id": trip_id,
+        "old_stage": current_stage,
+        "new_stage": request.target_stage,
+        "changed": True,
+        "readiness": trip.get("validation", {}).get("readiness"),
+    }
 
 
 @app.post("/trips/{trip_id}/assign")

@@ -443,6 +443,7 @@ class SQLTripStore:
             "user_id": trip_obj.user_id,
             "source": trip_obj.source,
             "status": trip_obj.status,
+            "stage": trip_obj.stage,
             "follow_up_due_date": trip_obj.follow_up_due_date.isoformat() if trip_obj.follow_up_due_date else None,
             "party_composition": trip_obj.party_composition,
             "pace_preference": trip_obj.pace_preference,
@@ -474,6 +475,7 @@ class SQLTripStore:
             "user_id": trip_data.get("user_id"),
             "source": trip_data.get("source", "unknown"),
             "status": trip_data.get("status", "new"),
+            "stage": trip_data.get("stage", "discovery"),
             "follow_up_due_date": SQLTripStore._parse_datetime(trip_data.get("follow_up_due_date")),
             "party_composition": trip_data.get("party_composition"),
             "pace_preference": trip_data.get("pace_preference"),
@@ -710,6 +712,11 @@ def _build_processed_trip(
         "user_id": user_id,
         "source": source,
         "status": trip_status,
+        "stage": (
+            (spine_output.get("meta") or {}).get("stage")
+            or (packet or {}).get("stage")
+            or "discovery"
+        ),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "follow_up_due_date": follow_up_due_date,
         "party_composition": party_composition,

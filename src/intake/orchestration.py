@@ -46,6 +46,7 @@ from .strategy import (
     SessionStrategy,
     PromptBundle,
 )
+from .plan_candidate import PlanCandidate, build_plan_candidate
 from .safety import (
     sanitize_for_traveler,
     check_no_leakage,
@@ -124,6 +125,9 @@ class SpineResult:
 
     # Safety outputs
     leakage_result: Dict[str, Any]  # { "leaks": [...], "is_safe": bool }
+
+    # Plan candidate
+    plan_candidate: Optional[PlanCandidate] = None
 
     # Fee calculation
     fees: Optional[Dict[str, Any]] = None
@@ -409,13 +413,21 @@ def run_spine_once(
     if stage_callback:
         _emit_stage_event("strategy", "completed", _obj_to_dict(strategy))
     else:
-        # Emit strategy stage event to AuditStore
         _emit_audit_event(
             trip_id=packet.packet_id,
             stage="strategy",
             state="built",
             reason="Session strategy constructed"
         )
+
+    # --- Phase 4.5: Fee Calculation ---
+    with _otel_tracer.start_as_current_span("fee_calculation"):
+        fees = calculate_trip_fees(packet, decision)
+
+    # --- Phase 4.6: Plan Candidate ---
+    _emit_stage_event("plan_candidate", "entered")
+    plan_candidate = build_plan_candidate(packet, decision, strategy, fees=fees)
+    _emit_stage_event("plan_candidate", "completed", plan_candidate.to_internal_dict())
 
     # --- Phase 5: Internal Bundle ---
     _emit_stage_event("output", "entered")
@@ -425,6 +437,7 @@ def run_spine_once(
 
             # --- Phase 6: Traveler-Safe Bundle ---
             # If decision state dropped to INTERNAL_DRAFT or STOP, traveler bundle should be empty/minimal
+            # Traveler bundle does NOT receive raw PlanCandidate — safety boundary preserved
             traveler_bundle = build_traveler_safe_bundle(strategy, decision)
 
         # Callback for bundles
@@ -471,13 +484,18 @@ def run_spine_once(
             reason=f"Leakage check completed - {'safe' if leakage_result['is_safe'] else 'unsafe'}"
         )
 
-    # --- Phase 9.5: Fee Calculation ---
-    with _otel_tracer.start_as_current_span("fee_calculation"):
-        fees = calculate_trip_fees(packet, decision)
-
     # --- Phase 9.6: Readiness Computation ---
     with _otel_tracer.start_as_current_span("readiness"):
-        readiness_result = compute_readiness(packet)
+        readiness_result = compute_readiness(
+            packet=packet,
+            validation=validation,
+            decision=_obj_to_dict(decision) if decision else None,
+            traveler_bundle=_obj_to_dict(traveler_bundle) if traveler_bundle else None,
+            internal_bundle=_obj_to_dict(internal_bundle) if internal_bundle else None,
+            safety=leakage_result,
+            fees=_obj_to_dict(fees) if fees else None,
+            booking_data=None,
+        )
         validation.readiness = readiness_result.to_dict()
 
     # --- Phase 10: Fixture Compare (optional) ---
@@ -496,6 +514,7 @@ def run_spine_once(
         validation=validation,
         decision=decision,
         strategy=strategy,
+        plan_candidate=plan_candidate,
         internal_bundle=internal_bundle,
         traveler_bundle=traveler_bundle,
         sanitized_view=sanitized_view,
@@ -536,6 +555,18 @@ def _create_empty_spine_result(packet, validation, decision, timestamp, block_re
     """Helper for early exit on gate failure."""
     from .strategy import SessionStrategy, PromptBundle
     from .safety import SanitizedPacketView
+    from .plan_candidate import build_plan_candidate
+    plan_candidate = build_plan_candidate(packet, decision,
+        SessionStrategy(
+            session_goal="Gate failure — early exit.",
+            priority_sequence=[],
+            tonal_guardrails=[],
+            risk_flags=[],
+            suggested_opening="",
+            exit_criteria=[],
+            next_action=decision.decision_state,
+        ),
+    )
     return SpineResult(
         packet=packet,
         validation=validation,
@@ -549,6 +580,7 @@ def _create_empty_spine_result(packet, validation, decision, timestamp, block_re
             exit_criteria=[],
             next_action=decision.decision_state,
         ),
+        plan_candidate=plan_candidate,
         internal_bundle=PromptBundle(
             system_context="",
             user_message="",
@@ -584,6 +616,7 @@ def _create_partial_intake_result(packet, validation, decision, timestamp):
     """Helper for degraded intake — save trip but block quote generation."""
     from .strategy import SessionStrategy, PromptBundle
     from .safety import SanitizedPacketView
+    from .plan_candidate import build_plan_candidate
     from .validation import QUOTE_READY, INTAKE_MINIMUM
 
     missing_quote_fields = [f for f in QUOTE_READY if f not in packet.facts]
@@ -595,19 +628,23 @@ def _create_partial_intake_result(packet, validation, decision, timestamp):
         f"Add the missing information and reprocess to generate a quote."
     )
 
+    strategy = SessionStrategy(
+        session_goal="Partial intake — awaiting enrichment.",
+        priority_sequence=[],
+        tonal_guardrails=[],
+        risk_flags=[],
+        suggested_opening="",
+        exit_criteria=[],
+        next_action="ASK_FOLLOWUP",
+    )
+    plan_candidate = build_plan_candidate(packet, decision, strategy)
+
     return SpineResult(
         packet=packet,
         validation=validation,
         decision=decision,
-        strategy=SessionStrategy(
-            session_goal="Partial intake — awaiting enrichment.",
-            priority_sequence=[],
-            tonal_guardrails=[],
-            risk_flags=[],
-            suggested_opening="",
-            exit_criteria=[],
-            next_action="ASK_FOLLOWUP",
-        ),
+        strategy=strategy,
+        plan_candidate=plan_candidate,
         internal_bundle=PromptBundle(
             system_context="",
             user_message="",
