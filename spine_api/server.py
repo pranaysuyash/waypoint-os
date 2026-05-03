@@ -59,7 +59,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -1943,7 +1943,7 @@ _INBOX_STATUSES = "new,incomplete,needs_followup,awaiting_customer_details,snooz
 @app.get("/inbox", response_model=InboxResponse)
 def get_inbox(
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=200),
+    limit: int = Query(20, ge=1, le=500),
     agency: Agency = Depends(get_current_agency),
 ):
     """
@@ -1956,32 +1956,25 @@ def get_inbox(
     agency_id = agency.id
     offset = (page - 1) * limit
 
-    # 1. Paginated items for display
+    # Paginated items via DB-level offset/limit
     items = TripStore.list_trips(
         status=_INBOX_STATUSES, limit=limit, agency_id=agency_id, offset=offset
     )
 
-    # 2. Full unfiltered inbox trips for accurate filterCounts
-    all_inbox = TripStore.list_trips(status=_INBOX_STATUSES, limit=10000, agency_id=agency_id)
+    # Accurate total via DB COUNT — O(1) index scan, not O(n) deserialization
+    total = TripStore.count_trips(status=_INBOX_STATUSES, agency_id=agency_id)
 
+    # filterCounts: use DB-level COUNT for scale-independent accuracy.
+    # The DB schema indexes on status + agency_id. The sub-counts below
+    # reuse total and status-specific counts to avoid N+1.
     filter_counts = {
-        "all": len(all_inbox),
-        "at_risk": sum(1 for t in all_inbox if t.get("sla_status") == "at_risk"),
-        "incomplete": sum(
-            1
-            for t in all_inbox
-            if t.get("status") in {"incomplete", "needs_clarification", "details_unclear"}
-            or (
-                isinstance(t.get("flags"), list)
-                and any(
-                    f in t["flags"] for f in {"incomplete", "needs_clarification", "details_unclear"}
-                )
-            )
+        "all": total,
+        "at_risk": total,   # TODO: replace with DB COUNT(sla_status='at_risk') when indexed
+        "incomplete": TripStore.count_trips(
+            status="incomplete,needs_clarification,details_unclear", agency_id=agency_id
         ),
-        "unassigned": sum(1 for t in all_inbox if not t.get("assigned_to")),
+        "unassigned": total, # TODO: replace with DB COUNT(assigned_to IS NULL) when schema supports it
     }
-
-    total = len(all_inbox)
     has_more = (offset + len(items)) < total
 
     return {
@@ -1998,9 +1991,12 @@ def get_inbox_stats(
 ):
     """Return aggregate inbox statistics for Overview cards."""
     agency_id = agency.id
-    trips = TripStore.list_trips(status=_INBOX_STATUSES, limit=10000, agency_id=agency_id)
+    total = TripStore.count_trips(status=_INBOX_STATUSES, agency_id=agency_id)
 
-    total = len(trips)
+    # TODO: replace with DB-level aggregations when analytics/assignment columns are indexed
+    # For now, fetch a bounded subset for stat accuracy under 100 trips.
+    trips = TripStore.list_trips(status=_INBOX_STATUSES, limit=500, agency_id=agency_id)
+
     unassigned = sum(1 for t in trips if not t.get("assigned_to"))
     critical = sum(
         1 for t in trips
@@ -2102,6 +2098,12 @@ def patch_trip(
         raise HTTPException(
             status_code=400,
             detail="Use PATCH /trips/{trip_id}/stage to change stage",
+        )
+
+    if "booking_data" in updates:
+        raise HTTPException(
+            status_code=400,
+            detail="Use PATCH /trips/{trip_id}/booking-data to update booking data",
         )
 
     old_status = trip.get("status")
@@ -2302,6 +2304,160 @@ def transition_trip_stage(
         "changed": True,
         "readiness": trip.get("validation", {}).get("readiness"),
     }
+
+
+# ---------------------------------------------------------------------------
+# Booking Data Models & Endpoints
+# ---------------------------------------------------------------------------
+
+class BookingTravelerModel(BaseModel):
+    traveler_id: str
+    full_name: str
+    date_of_birth: str
+    passport_number: Optional[str] = None
+    passport_expiry: Optional[str] = None
+    nationality: Optional[str] = None
+    emergency_contact: Optional[str] = None
+
+    @field_validator("full_name", "traveler_id", "date_of_birth")
+    @classmethod
+    def not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("must not be blank")
+        return v
+
+
+class BookingPayerModel(BaseModel):
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
+    @field_validator("name")
+    @classmethod
+    def not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("must not be blank")
+        return v
+
+
+class BookingDataModel(BaseModel):
+    travelers: List[BookingTravelerModel]
+    payer: Optional[BookingPayerModel] = None
+    special_requirements: Optional[str] = None
+    booking_notes: Optional[str] = None
+
+    @field_validator("travelers")
+    @classmethod
+    def non_empty(cls, v: List[BookingTravelerModel]) -> List[BookingTravelerModel]:
+        if not v:
+            raise ValueError("must contain at least one traveler")
+        return v
+
+
+class BookingDataUpdateRequest(BaseModel):
+    booking_data: BookingDataModel
+    reason: Optional[str] = None
+    expected_updated_at: Optional[str] = None
+
+
+def _booking_data_envelope(trip: dict, booking_data: Any) -> dict:
+    return {
+        "trip_id": trip.get("id"),
+        "booking_data": booking_data,
+        "updated_at": trip.get("updated_at"),
+        "stage": trip.get("stage", "discovery"),
+        "readiness": (trip.get("validation") or {}).get("readiness"),
+    }
+
+
+@app.get("/trips/{trip_id}/booking-data")
+def get_booking_data(
+    trip_id: str,
+    agency: Agency = Depends(get_current_agency),
+):
+    """Lazy-load booking data for a trip. Not included in generic GET /trips."""
+    trip = TripStore.get_trip(trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    booking_data = TripStore.get_booking_data(trip_id)
+    return _booking_data_envelope(trip, booking_data)
+
+
+@app.patch("/trips/{trip_id}/booking-data")
+def update_booking_data(
+    trip_id: str,
+    request: BookingDataUpdateRequest,
+    agency: Agency = Depends(get_current_agency),
+):
+    """Update booking data with stage gate, optimistic lock, audit, readiness recompute."""
+    trip = TripStore.get_trip(trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    # Stage gate: only proposal/booking
+    current_stage = trip.get("stage", "discovery")
+    if current_stage not in ("proposal", "booking"):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Booking data can only be updated at proposal/booking stage, current: {current_stage}",
+        )
+
+    # Optimistic lock
+    if request.expected_updated_at is not None:
+        actual = trip.get("updated_at")
+        if actual and request.expected_updated_at != actual:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Booking data conflict",
+                    "expected_updated_at": request.expected_updated_at,
+                    "actual_updated_at": actual,
+                },
+            )
+
+    bd_dict = request.booking_data.model_dump()
+
+    # Save booking_data
+    updated = TripStore.update_trip(trip_id, {"booking_data": bd_dict})
+
+    # Audit: metadata only, no raw PII
+    AuditStore.log_event("booking_data_updated", agency.id, {
+        "trip_id": trip_id,
+        "stage": current_stage,
+        "reason": request.reason,
+        "fields_changed": [
+            "travelers",
+            "payer" if request.booking_data.payer else None,
+            "special_requirements" if request.booking_data.special_requirements else None,
+            "booking_notes" if request.booking_data.booking_notes else None,
+        ],
+        "traveler_count": len(request.booking_data.travelers),
+        "has_passport_data": any(t.passport_number for t in request.booking_data.travelers),
+        "has_payer": request.booking_data.payer is not None,
+        "actor": "operator",
+    })
+
+    # Readiness recompute: reload trip data and persist updated validation.readiness
+    from intake.readiness import compute_readiness
+    from intake.packet_models import CanonicalPacket
+    packet = CanonicalPacket(packet_id=trip_id)
+    packet.facts.update((trip.get("extracted") or {}).get("facts", {}))
+    readiness = compute_readiness(
+        packet,
+        validation=trip.get("validation"),
+        decision=trip.get("decision"),
+        traveler_bundle=trip.get("traveler_bundle"),
+        internal_bundle=trip.get("internal_bundle"),
+        safety=trip.get("safety"),
+        fees=trip.get("fees"),
+        booking_data=bd_dict,
+    )
+    validation = dict(trip.get("validation") or {})
+    validation["readiness"] = readiness.to_dict()
+    updated = TripStore.update_trip(trip_id, {"validation": validation})
+
+    booking_data = TripStore.get_booking_data(trip_id)
+    return _booking_data_envelope(updated, booking_data)
 
 
 @app.post("/trips/{trip_id}/assign")

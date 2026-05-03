@@ -308,6 +308,12 @@ class FileTripStore:
                     return True
         return False
 
+    @staticmethod
+    def get_booking_data(trip_id: str) -> Optional[dict]:
+        """Get booking_data from file store. Returns None if trip missing."""
+        trip = FileTripStore.get_trip(trip_id)
+        return trip.get("booking_data") if trip else None
+
 
 class SQLTripStore:
     """PostgreSQL-backed trip storage with dual encryption model.
@@ -325,6 +331,7 @@ class SQLTripStore:
         "safety",
         "fees",
         "frontier_result",
+        "booking_data",
     })
 
     # Fields where only specific PII sub-keys are encrypted recursively.
@@ -491,6 +498,7 @@ class SQLTripStore:
             "safety": SQLTripStore._encrypt_field_for_storage("safety", trip_data.get("safety")),
             "frontier_result": SQLTripStore._encrypt_field_for_storage("frontier_result", trip_data.get("frontier_result")),
             "fees": SQLTripStore._encrypt_field_for_storage("fees", trip_data.get("fees")),
+            "booking_data": SQLTripStore._encrypt_field_for_storage("booking_data", trip_data.get("booking_data")),
             "raw_input": SQLTripStore._encrypt_field_for_storage("raw_input", trip_data.get("raw_input") or {}),
             "analytics": trip_data.get("analytics"),
             "created_at": SQLTripStore._parse_datetime(trip_data.get("created_at")) or datetime.now(timezone.utc),
@@ -581,15 +589,37 @@ class SQLTripStore:
             await session.commit()
             return True
 
+    @staticmethod
+    async def get_booking_data(trip_id: str) -> Optional[dict]:
+        """Get decrypted booking_data only. Returns None if trip missing or no data."""
+        async with tripstore_session_maker() as session:
+            trip_obj = await session.get(Trip, trip_id)
+            if not trip_obj:
+                return None
+            return SQLTripStore._decrypt_field_from_storage("booking_data", trip_obj.booking_data)
+
 
 def _run_async_blocking(coro):
-    """Run an async SQL operation from the existing synchronous TripStore API."""
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(coro)
-    coro.close()
-    raise RuntimeError("Use TripStore async methods from an active event loop")
+    """Run an async SQL operation from the existing synchronous TripStore API.
+
+    Uses a dedicated thread with a fresh event loop to avoid conflicts with
+    any running event loop in the caller's thread (e.g. FastAPI's async
+    event loop). This makes the sync TripStore facade safe to call from both
+    sync and async contexts.
+    """
+    import concurrent.futures
+
+    def _run_in_fresh_loop(coro):
+        loop = asyncio.new_event_loop()
+        try:
+            asyncio.set_event_loop(loop)
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(_run_in_fresh_loop, coro)
+        return future.result()
 
 
 class TripStore:
@@ -685,6 +715,14 @@ class TripStore:
         if backend is FileTripStore:
             return FileTripStore.delete_trip(trip_id)
         return await SQLTripStore.delete_trip(trip_id)
+
+    @staticmethod
+    def get_booking_data(trip_id: str) -> Optional[dict]:
+        """Get decrypted booking_data only. Not included in generic trip reads."""
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.get_booking_data(trip_id)
+        return _run_async_blocking(SQLTripStore.get_booking_data(trip_id))
 
 
 def _build_processed_trip(

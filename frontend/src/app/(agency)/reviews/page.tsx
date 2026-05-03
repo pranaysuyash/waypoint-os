@@ -138,8 +138,8 @@ const ReviewCard = memo(function ReviewCard({
           {review.riskFlags.length > 0 && (
             <div className='flex items-center gap-2 mt-2'>
               <span className='text-ui-xs text-[#8b949e]'>Risk flags:</span>
-              {review.riskFlags.map((flag) => (
-                <RiskFlagBadge key={flag} flag={flag} />
+              {review.riskFlags.map((flag, flagIndex) => (
+                <RiskFlagBadge key={`${flag}-${flagIndex}`} flag={flag} />
               ))}
             </div>
           )}
@@ -194,12 +194,14 @@ const ReviewCard = memo(function ReviewCard({
             </div>
           )}
           
-          <Link
-            href={getTripRoute(review.tripId)}
-            className='flex items-center justify-center gap-1 text-ui-xs text-[#58a6ff] hover:text-[#79b8ff] transition-colors'
-          >
-            View Details <ChevronRight className='w-3 h-3' />
-          </Link>
+          {review.tripId && (
+            <Link
+              href={getTripRoute(review.tripId)}
+              className='flex items-center justify-center gap-1 text-ui-xs text-[#58a6ff] hover:text-[#79b8ff] transition-colors'
+            >
+              View Details <ChevronRight className='w-3 h-3' />
+            </Link>
+          )}
         </div>
       </div>
     </div>
@@ -363,9 +365,9 @@ export default function OwnerReviewsPage() {
             <p className='text-ui-xs mt-2'>Trips will appear here after options are prepared and ready for approval.</p>
           </div>
         ) : (
-          sortedReviews.map((review) => (
+          sortedReviews.map((review, index) => (
             <ReviewCard
-              key={review.id}
+              key={review.id || `review-${index}`}
               review={review}
               onApprove={handleApprove}
               onReject={handleReject}

@@ -189,7 +189,7 @@ describe("P1 Happy Path Journey", () => {
   it("supports inbox -> workspace process -> return link flow", async () => {
     render(<InboxPage />);
 
-    const openLink = screen.getByRole("link", { name: /review lead/i });
+    const openLink = screen.getByTestId("trip-card-view-link");
     expect(openLink).toHaveAttribute("href", "/trips/TRIP-123/intake");
 
     render(<IntakePanel tripId="TRIP-123" trip={workspaceTrip} />);
@@ -235,7 +235,7 @@ describe("P1 Happy Path Journey", () => {
     } as any);
 
     render(<TripsPage />);
-    const returnInbox = screen.getByRole("link", { name: /Review Lead Inbox/i });
+    const returnInbox = screen.getByRole("link", { name: /Lead Inbox/i });
     expect(returnInbox).toHaveAttribute("href", "/inbox");
   });
 });

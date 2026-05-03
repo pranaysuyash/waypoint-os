@@ -418,6 +418,36 @@ Before removing **any** code (function, type, component, export), apply this wor
 - Keep institutional-memory and GTM decision artifacts under `Docs/context/`.
 - Keep internal-only process notes under `Archive/context_ingest/internal_notes_*`.
 
+### Data Safety: Test Data Must Be Additive (2026-05-03)
+
+**Rule: Under NO circumstances may you overwrite, truncate, delete, or reset the existing test database (`waypoint_os` Postgres) when seeding or running tests.**
+
+The default test agency ID is `d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b` (user: `newuser@test.com`).
+This agency contains persistent trip data representing the developer's working environment.
+
+**What this means in practice:**
+
+1. **`TRIPSTORE_BACKEND=sql` must remain in `.env`** — do not revert to file store, which would silently lose all SQL trips.
+2. **Test scripts that seed trips must INSERT with `ON CONFLICT DO NOTHING` logic** — skip existing, never replace all.
+3. **Never run `TRUNCATE` or `DELETE` on production or test databases without explicit user permission.**
+4. **The `seed_test_user.py` script is additive by design** (`aget_trip` skip — check existing before inserting).
+
+**Root cause learned 2026-05-03:** Previous agent restarted uvicorn without `TRIPSTORE_BACKEND=sql` → file store activated → 40 Postgres trips became invisible → `count=0` in UI → user thought 55 trips were "missing." In reality, backend was looking at the wrong database.
+
+**Dual-Store Architecture Warning:** The `TripStore` facade (`spine_api/persistence.py`) supports both JSON file store (`data/trips/`) and PostgreSQL via `TRIPSTORE_BACKEND` env var. The default is **file store** if the env var is absent. This creates a split-brain where:
+- Auth data (Users, Agencies, Memberships) is always in PostgreSQL ✅
+- Trip data may be in file store OR PostgreSQL depending on env ⚠️
+- **This ambiguity caused the "missing trips" bug on 2026-05-03**
+
+**Resolution:** `TRIPSTORE_BACKEND=sql` is pinned in `.env`. Future agents must never remove this or trips will silently evaporate from the UI.
+
+**Long-term:** Migrate to PostgreSQL as the sole persistence layer to eliminate dual-store risk.
+
+**If you ever need to create a clean test DB:**
+- Clone the existing test DB (`createdb waypoint_os_copy --template waypoint_os`) first
+- Operate on the copy, never the original
+- Document the change in `Archive/` with datestamp
+
 ## Development Discipline & Comprehensive Quality Framework
 
 ### Core Principle

@@ -1,9 +1,9 @@
 # Trip State Contract — Implementation Plan
 
-**Status:** Phase 1 + Phase 1.5 + Phase 2A + Phase 2B complete, Phase 3 planned
+**Status:** Phase 1 + Phase 1.5 + Phase 2A + Phase 2B + Phase 3A + Phase 3B complete
 **Created:** 2026-05-02
 **Updated:** 2026-05-03
-**Scope:** Persistence repair, encryption, stage/readiness model, ops panel
+**Scope:** Persistence repair, encryption, stage/readiness model, ops panel, booking data
 
 ---
 
@@ -30,7 +30,7 @@ Every field the pipeline emits, its classification, and persistence behavior:
 | `safety` | check_no_leakage() | SafetyPanel | all | Medium (may flag medical/visa) | `safety` | Yes | Yes | Redacted | Agent-only |
 | `fees` | calculate_trip_fees() | OutputPanel, future OpsPanel | proposal+ | Medium (commercial) | `fees` | Yes | Yes | No | Agent-only |
 | `frontier_result` | run_frontier_orchestration() | FrontierDashboard | all | High (sentiment, intel) | `frontier_result` | Yes | Yes | No | Agent-only |
-| `booking_data` | (future) Agent/Customer | OpsPanel | booking | Critical (passports, DOB) | *(not yet added)* | Yes | Lazy (OpsPanel only) | No | Agent + owner |
+| `booking_data` | Agent/OpsPanel edit | OpsPanel | proposal, booking | Critical (passports, DOB) | `booking_data` | Yes (blob) | Lazy (OpsPanel only) | No | Agent + owner |
 
 ### Authority hierarchy
 ```
@@ -58,7 +58,7 @@ Two tiers, enforced by `_encrypt_field_for_storage` / `_decrypt_field_from_stora
 
 | Tier | Fields | Method | Stored shape |
 |:---|:---|:---|:---|
-| Private blob | `traveler_bundle`, `internal_bundle`, `safety`, `fees`, `frontier_result` | Entire JSON → single Fernet token | `{"__encrypted_blob": true, "v": 1, "ciphertext": "..."}` |
+| Private blob | `traveler_bundle`, `internal_bundle`, `safety`, `fees`, `frontier_result`, `booking_data` | Entire JSON → single Fernet token | `{"__encrypted_blob": true, "v": 1, "ciphertext": "..."}` |
 | PII-key redaction | `extracted`, `raw_input` | Recursive: encrypt string values whose key is in `_PII_FIELDS` | Same JSON structure, PII values replaced with tokens |
 | None | `validation`, `decision`, `strategy`, all scalar fields | Plaintext | As-is |
 
@@ -184,45 +184,45 @@ booking_ready   — booking_data must exist (cannot be faked from packet facts a
 - `tests/test_stage_transitions.py`: 13 tests — persistence (4), endpoint behavior (6), readiness integration (3)
 - `frontend/src/components/workspace/panels/__tests__/StageAdvanceButton.test.tsx`: 6 tests — button appearance, same-stage hiding, PATCH call, reload, no-readiness hiding, no auto-advance
 
-### Phase 3: OpsPanel (stage-gated)
+### Phase 3: OpsPanel (stage-gated) — COMPLETE
 
 Named "Ops" not "Booking" — room for documents, payments, confirmations, emergency later.
 
-Visible only when:
-```
-stage === "proposal" || stage === "booking" || booking_blockers.length > 0
-```
-NOT shown merely because `suggested_next_stage = proposal`.
+**Phase 3A** (complete): OpsPanel shell, passport extraction gating, readiness signals, URL bypass fix.
 
-**3.1 Create OpsPanel.tsx**
-File: `frontend/src/components/workspace/panels/OpsPanel.tsx` (new)
-V1 scope: **Booking Readiness only**
-```
-What is blocking this trip from being safely booked?
-[x] Traveler identities — 2 of 3 collected
-[ ] Emergency contacts — missing
-[x] Payer identified — yes
-[ ] Passport validity — not checked
-[ ] Documents collected — 0 of 4
-```
+**Phase 3B** (complete): Booking data encrypted column, dedicated GET/PATCH endpoints, OpsPanel edit surface.
 
-**3.2 Wire into workbench**
-File: `frontend/src/app/(agency)/workbench/page.tsx`
-Add as conditional tab.
+#### Phase 3B Architecture
 
-**3.3 Gate passport extraction by stage**
-File: `src/intake/extractors.py`
-Wrap `_extract_passport_visa` to only run at `proposal`/`booking` stage.
-At discovery: extract only `visa_concerns_present: bool`.
+**Privacy boundary**: `booking_data` is NOT included in `_to_dict()` or generic `GET /trips/{trip_id}` responses. Dedicated accessors only:
+- `SQLTripStore.get_booking_data(trip_id)` — loads ORM object, decrypts just booking_data
+- `FileTripStore.get_booking_data(trip_id)` — reads JSON, returns just booking_data
+- `TripStore.get_booking_data(trip_id)` — facade that delegates to correct backend
 
-### Phase 4: Booking Data (future)
+**Endpoints**:
+- `GET /trips/{trip_id}/booking-data` — returns envelope `{trip_id, booking_data, updated_at, stage, readiness}`
+- `PATCH /trips/{trip_id}/booking-data` — stage-gated (proposal/booking only), optimistic lock (409), audit (metadata only, no raw PII), readiness recompute + persist
+- Generic `PATCH /trips/{trip_id}` rejects booking_data (400)
 
-Not in this round. Design decisions locked:
-- `booking_data` encrypted JSON column on `trips` — added when first write path exists
-- Separate from `canonical_packet` (planning vs. execution state)
-- Phase 1 of product: agent-assisted entry
-- Phase 2 of product: customer self-service collection link
-- Booking data is lazy-hydrated, not global store
+**Encryption**: `booking_data` is in `_PRIVATE_BLOB_FIELDS` — entire JSON encrypted as single Fernet token.
+
+**Readiness**: `_check_booking_ready()` validates semantic minimum: travelers non-empty, each has `traveler_id`/`full_name`/`date_of_birth`, payer with `name`. Passport optional.
+
+**Frontend**: OpsPanel lazy-fetches booking_data via dedicated endpoint, keeps in local state only (not in global workbench store).
+
+**Implementation files:**
+- `alembic/versions/add_booking_data_to_trips.py` — Guarded migration (SQLAlchemy inspector)
+- `spine_api/models/trips.py` — `booking_data` column
+- `spine_api/persistence.py` — `_PRIVATE_BLOB_FIELDS`, dedicated `get_booking_data()`, NOT in `_to_dict()`
+- `spine_api/server.py` — Pydantic models, GET/PATCH endpoints, audit, stage gate, optimistic lock, readiness recompute
+- `src/intake/readiness.py` — `_check_booking_ready()` with field validation
+- `frontend/src/lib/api-client.ts` — `BookingData` types, `getBookingData()`, `updateBookingData()`
+- `frontend/src/app/(agency)/workbench/OpsPanel.tsx` — Full edit surface with local state
+
+**Tests:**
+- `tests/test_booking_data.py` — 24 tests: encryption, readiness, endpoints, stage gate, optimistic lock, mutation guards, audit PII absence, Pydantic validation, privacy boundary (generic GET excludes booking_data)
+- `tests/test_readiness_engine.py` — 31 tests (including updated booking_ready with new schema)
+- `frontend/src/app/(agency)/workbench/__tests__/OpsPanel.test.tsx` — 5 frontend tests
 
 ---
 
@@ -262,8 +262,18 @@ Not in this round. Design decisions locked:
 | `frontend/src/lib/bff-trip-adapters.ts` | Maps `trip.stage` with default | 2B |
 | `frontend/src/components/workspace/panels/StageAdvanceButton.tsx` | New — stage advance button component | 2B |
 | `frontend/src/components/workspace/panels/DecisionPanel.tsx` | Advance button in readiness banner | 2B |
-| `src/intake/extractors.py` | Gate passport extraction by stage | 3 |
-| `frontend/src/components/workspace/panels/OpsPanel.tsx` | New — Booking Readiness panel | 3 |
+| `src/intake/extractors.py` | Gate passport extraction by stage | 3A |
+| `src/intake/readiness.py` | `_check_booking_ready()` field validation, `signals` dict | 3A/3B |
+| `frontend/src/types/spine.ts` | `signals` on `ReadinessAssessment` | 3A |
+| `frontend/src/app/(agency)/workbench/OpsPanel.tsx` | New — Readiness tiers + booking data edit surface | 3A/3B |
+| `frontend/src/app/(agency)/workbench/page.tsx` | Ops tab with `effectiveTab` normalization | 3A |
+| `alembic/versions/add_booking_data_to_trips.py` | Guarded migration (SQLAlchemy inspector) | 3B |
+| `spine_api/models/trips.py` | Add `booking_data` column | 3B |
+| `spine_api/persistence.py` | `_PRIVATE_BLOB_FIELDS`, `get_booking_data()`, NOT in `_to_dict()` | 3B |
+| `spine_api/server.py` | Pydantic models, GET/PATCH booking-data endpoints | 3B |
+| `frontend/src/lib/api-client.ts` | `BookingData` types, `getBookingData()`, `updateBookingData()` | 3B |
+| `tests/test_booking_data.py` | 24 tests — encryption, endpoints, audit, privacy boundary | 3B |
+| `tests/test_passport_gating.py` | 29 tests — extraction gating, signals, stage gate | 3A |
 
 ---
 
@@ -271,5 +281,6 @@ Not in this round. Design decisions locked:
 
 1. **Phase 1**: `alembic upgrade head` → run pipeline → query DB (all 9 compartments present, encrypted fields not plaintext) → refresh workbench → full state survives
 2. **Phase 2**: Submit discovery note → see readiness scores → manual stage advance → transition event in AuditStore
-3. **Phase 3**: Set stage to proposal → OpsPanel appears → shows booking blockers
-4. **Refresh parity test**: Automated test that runs pipeline, saves, reloads, asserts all compartments match
+3. **Phase 3A**: Set stage to proposal → OpsPanel appears → shows booking blockers → `?tab=ops` at discovery redirects
+4. **Phase 3B**: At proposal → click "Add booking details" → fill traveler info → save → booking_ready becomes true → generic GET does not include booking_data
+5. **Refresh parity test**: Automated test that runs pipeline, saves, reloads, asserts all compartments match

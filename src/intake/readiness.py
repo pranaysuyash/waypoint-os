@@ -240,22 +240,37 @@ def _check_booking_ready(
     booking_data: Any = None,
 ) -> TierDetail:
     """
-    Booking-ready requires booking_data to exist.
-    Always false until booking_data is provided.
+    Booking-ready requires booking_data with semantic minimum:
+    - travelers list non-empty
+    - every traveler has traveler_id, full_name, date_of_birth
+    - payer present with name
+    - passport optional (destination-specific rules not yet available)
     """
-    unmet: List[str] = ["booking_data"]
-    met: List[str] = []
+    if booking_data is None or not _has_usable_pipeline_output(booking_data):
+        return TierDetail(tier="booking_ready", ready=False, met=[], unmet=["booking_data"])
 
-    if booking_data is not None and _has_usable_pipeline_output(booking_data):
-        met.append("booking_data")
-        unmet = []
+    travelers = booking_data.get("travelers", []) if isinstance(booking_data, dict) else []
+    issues: List[str] = []
 
-    return TierDetail(
-        tier="booking_ready",
-        ready=len(unmet) == 0,
-        met=met,
-        unmet=unmet,
-    )
+    if not travelers:
+        issues.append("travelers")
+    else:
+        for i, t in enumerate(travelers):
+            if not isinstance(t, dict):
+                issues.append(f"traveler_{i}_invalid")
+                continue
+            if not str(t.get("full_name", "")).strip():
+                issues.append(f"traveler_{i}_full_name")
+            if not str(t.get("date_of_birth", "")).strip():
+                issues.append(f"traveler_{i}_date_of_birth")
+
+    payer = booking_data.get("payer") if isinstance(booking_data, dict) else None
+    if not payer or not str(payer.get("name", "")).strip():
+        issues.append("payer_name")
+
+    if issues:
+        return TierDetail(tier="booking_ready", ready=False, met=["booking_data"], unmet=issues)
+    return TierDetail(tier="booking_ready", ready=True, met=["booking_data"], unmet=[])
 
 
 def compute_readiness(

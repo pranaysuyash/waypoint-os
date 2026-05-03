@@ -30,12 +30,19 @@ export type WorkspaceStage =
 /** Workbench tab identifiers (matches tab search-param values in /workbench). */
 export type WorkbenchTab = 'intake' | 'packet' | 'decision' | 'strategy' | 'safety';
 
+const _warnedTripIds = new Set<string>();
+
 export function getTripRoute(
   tripId: string | undefined | null,
   stage: WorkspaceStage = 'intake',
 ): string {
   if (!tripId) {
-    console.warn('[routes] getTripRoute called with falsy tripId — falling back to /trips');
+    // Deduped warning — only log once per falsy value to prevent console spam
+    const key = String(tripId);
+    if (!_warnedTripIds.has(key)) {
+      _warnedTripIds.add(key);
+      console.warn('[routes] getTripRoute called with falsy tripId — falling back to /trips');
+    }
     return '/trips';
   }
   return `/trips/${tripId}/${stage}`;

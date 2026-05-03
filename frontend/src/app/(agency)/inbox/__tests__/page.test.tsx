@@ -63,7 +63,7 @@ describe('InboxPage', () => {
     expect(screen.getByRole('link', { name: /back to overview/i })).toHaveAttribute('href', '/overview');
   });
 
-  it('uses lead language and exposes an explicit review action', () => {
+  it('uses lead language and exposes an explicit view action', () => {
     mockUseInboxTrips.mockReturnValue({
       data: [baseTrip],
       total: 1,
@@ -81,13 +81,10 @@ describe('InboxPage', () => {
     expect(screen.getByRole('heading', { name: /lead inbox/i })).toBeInTheDocument();
     expect(screen.getByText('New customer inquiries sorted by urgency.')).toBeInTheDocument();
     expect(screen.getByText('1 lead total')).toBeInTheDocument();
-    expect(screen.getByText('All leads')).toBeInTheDocument();
-    expect(screen.getAllByText('Needs details').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Unassigned').length).toBeGreaterThan(0);
-    expect(screen.getByText('Singapore family trip')).toBeInTheDocument();
-    expect(screen.getByText('Budget $220.0k')).toBeInTheDocument();
-    expect(screen.getByText('Next: review customer details before planning.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /review lead/i })).toHaveAttribute(
+    // v2 card asserts: destination shown, metrics row, view link
+    expect(screen.getByTestId('trip-card-destination')).toHaveTextContent('Singapore family');
+    expect(screen.getByTestId('trip-card-metrics')).toBeInTheDocument();
+    expect(screen.getByTestId('trip-card-view-link')).toHaveAttribute(
       'href',
       '/trips/TRIP-123/intake'
     );

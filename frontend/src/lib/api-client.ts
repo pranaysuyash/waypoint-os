@@ -745,3 +745,55 @@ export async function discardDraft(draftId: string): Promise<{ ok: boolean; draf
 export async function promoteDraft(draftId: string, tripId: string): Promise<{ ok: boolean; draft_id: string; trip_id: string; status: string }> {
   return api.post<{ ok: boolean; draft_id: string; trip_id: string; status: string }>(`/api/drafts/${draftId}/promote`, { trip_id: tripId });
 }
+
+// ---------------------------------------------------------------------------
+// Booking Data — lazy-loaded, not part of Trip interface
+// ---------------------------------------------------------------------------
+
+export interface BookingTraveler {
+  traveler_id: string;
+  full_name: string;
+  date_of_birth: string;
+  passport_number?: string | null;
+  passport_expiry?: string | null;
+  nationality?: string | null;
+  emergency_contact?: string | null;
+}
+
+export interface BookingPayer {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+}
+
+export interface BookingData {
+  travelers: BookingTraveler[];
+  payer?: BookingPayer | null;
+  special_requirements?: string | null;
+  booking_notes?: string | null;
+}
+
+export interface BookingDataResponse {
+  trip_id: string;
+  booking_data: BookingData | null;
+  updated_at: string | null;
+  stage: string;
+  readiness: Record<string, unknown>;
+}
+
+export async function getBookingData(tripId: string): Promise<BookingDataResponse> {
+  return api.get<BookingDataResponse>(`/api/trips/${tripId}/booking-data`);
+}
+
+export async function updateBookingData(
+  tripId: string,
+  data: BookingData,
+  reason?: string,
+  expectedUpdatedAt?: string,
+): Promise<BookingDataResponse> {
+  return api.patch<BookingDataResponse>(`/api/trips/${tripId}/booking-data`, {
+    booking_data: data,
+    reason: reason || undefined,
+    expected_updated_at: expectedUpdatedAt || undefined,
+  });
+}

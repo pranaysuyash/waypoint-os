@@ -19,7 +19,7 @@ export default function AuditPage() {
     let cancelled = false;
     async function fetchAudit() {
       try {
-        const res = await fetch("/api/spine/audit?limit=50");
+        const res = await fetch("/api/audit?limit=50");
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (!cancelled) {

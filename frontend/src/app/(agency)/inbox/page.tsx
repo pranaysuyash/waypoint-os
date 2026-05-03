@@ -146,7 +146,7 @@ export default function InboxPage() {
   const [selectedTrips, setSelectedTrips] = useState<Set<string>>(new Set());
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const FETCH_LIMIT = 500;
-  
+
   const {
     data: inboxTrips,
     total: inboxTotal,

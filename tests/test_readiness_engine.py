@@ -274,7 +274,14 @@ class TestBookingReady:
             internal_bundle=FULL_PIPELINE_OUTPUTS["internal_bundle"],
             safety=FULL_PIPELINE_OUTPUTS["safety"],
             fees=FULL_PIPELINE_OUTPUTS["fees"],
-            booking_data={"travelers": [{"name": "John Doe", "passport": "X1234567"}]},
+            booking_data={
+                "travelers": [{
+                    "traveler_id": "adult_1",
+                    "full_name": "John Doe",
+                    "date_of_birth": "1990-01-15",
+                }],
+                "payer": {"name": "Jane Doe"},
+            },
         )
         assert result.tiers["booking_ready"].ready is True
         assert result.highest_ready_tier == "booking_ready"
@@ -304,7 +311,14 @@ class TestInvariants:
             internal_bundle=FULL_PIPELINE_OUTPUTS["internal_bundle"],
             safety=FULL_PIPELINE_OUTPUTS["safety"],
             fees=FULL_PIPELINE_OUTPUTS["fees"],
-            booking_data={"travelers": [{"name": "John Doe"}]},
+            booking_data={
+                "travelers": [{
+                    "traveler_id": "adult_1",
+                    "full_name": "John Doe",
+                    "date_of_birth": "1990-01-15",
+                }],
+                "payer": {"name": "Jane Doe"},
+            },
         )
         assert result.should_auto_advance_stage is False
 

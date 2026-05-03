@@ -53,6 +53,7 @@ class Trip(Base):
     safety: Mapped[dict] = mapped_column(JSON, default=dict)
     frontier_result: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     fees: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    booking_data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     # Metadata
     raw_input: Mapped[dict] = mapped_column(JSON, default=dict)
