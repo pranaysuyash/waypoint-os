@@ -1,4 +1,4 @@
-import type { Trip } from "@/lib/api-client";
+import type { AgentOperationsMetadata, Trip } from "@/lib/api-client";
 import type { FeeCalculationResult, StrategyOutput, PromptBundle } from "@/types/spine";
 import type { InboxTrip, TripPriority } from "@/types/governance";
 
@@ -126,6 +126,65 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
     : [];
+}
+
+function asUnknownArray(value: unknown): unknown[] | undefined {
+  return Array.isArray(value) ? value : undefined;
+}
+
+function optionalRecord(value: unknown): Record<string, unknown> | undefined {
+  return isRecord(value) ? value : undefined;
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function setIfDefined<K extends keyof AgentOperationsMetadata>(
+  target: AgentOperationsMetadata,
+  key: K,
+  value: AgentOperationsMetadata[K] | undefined
+): void {
+  if (value !== undefined) {
+    target[key] = value;
+  }
+}
+
+function extractAgentOperations(trip: JsonRecord): AgentOperationsMetadata | undefined {
+  const agentOperations: AgentOperationsMetadata = {};
+  setIfDefined(agentOperations, "documentReadinessChecklist", optionalRecord(trip.document_readiness_checklist));
+  setIfDefined(agentOperations, "documentRiskLevel", optionalString(trip.document_risk_level));
+  setIfDefined(agentOperations, "mustConfirmDocuments", asUnknownArray(trip.must_confirm_documents));
+  setIfDefined(agentOperations, "destinationIntelligenceSnapshot", optionalRecord(trip.destination_intelligence_snapshot));
+  setIfDefined(agentOperations, "destinationRiskLevel", optionalString(trip.destination_risk_level));
+  setIfDefined(agentOperations, "destinationIntelligenceRecommendations", asUnknownArray(trip.destination_intelligence_recommendations));
+  setIfDefined(agentOperations, "weatherPivotPacket", optionalRecord(trip.weather_pivot_packet));
+  setIfDefined(agentOperations, "weatherPivotRiskLevel", optionalString(trip.weather_pivot_risk_level));
+  setIfDefined(agentOperations, "constraintFeasibilityAssessment", optionalRecord(trip.constraint_feasibility_assessment));
+  setIfDefined(agentOperations, "feasibilityStatus", optionalString(trip.feasibility_status));
+  setIfDefined(agentOperations, "proposalReadinessAssessment", optionalRecord(trip.proposal_readiness_assessment));
+  setIfDefined(agentOperations, "proposalReadinessStatus", optionalString(trip.proposal_readiness_status));
+  setIfDefined(agentOperations, "bookingReadinessAssessment", optionalRecord(trip.booking_readiness_assessment));
+  setIfDefined(agentOperations, "bookingReadinessStatus", optionalString(trip.booking_readiness_status));
+  setIfDefined(agentOperations, "flightStatusSnapshot", optionalRecord(trip.flight_status_snapshot));
+  setIfDefined(agentOperations, "flightDisruptionRiskLevel", optionalString(trip.flight_disruption_risk_level));
+  setIfDefined(agentOperations, "ticketPriceWatchAlert", optionalRecord(trip.ticket_price_watch_alert));
+  setIfDefined(agentOperations, "quoteRevalidationRequired", typeof trip.quote_revalidation_required === "boolean" ? trip.quote_revalidation_required : undefined);
+  setIfDefined(agentOperations, "priceWatchRiskLevel", optionalString(trip.price_watch_risk_level));
+  setIfDefined(agentOperations, "safetyAlertPacket", optionalRecord(trip.safety_alert_packet));
+  setIfDefined(agentOperations, "safetyRiskLevel", optionalString(trip.safety_risk_level));
+  setIfDefined(agentOperations, "gdsSchemaBridge", optionalRecord(trip.gds_schema_bridge));
+  setIfDefined(agentOperations, "pnrShadowCheck", optionalRecord(trip.pnr_shadow_check));
+  setIfDefined(agentOperations, "pnrShadowRiskLevel", optionalString(trip.pnr_shadow_risk_level));
+  setIfDefined(agentOperations, "supplierIntelligenceSnapshot", optionalRecord(trip.supplier_intelligence_snapshot));
+  setIfDefined(agentOperations, "supplierRiskLevel", optionalString(trip.supplier_risk_level));
+  setIfDefined(agentOperations, "canonicalTravelObjects", asUnknownArray(trip.canonical_travel_objects));
+  setIfDefined(agentOperations, "lastAgentAction", optionalString(trip.last_agent_action));
+  setIfDefined(agentOperations, "lastAgentActionAt", optionalString(trip.last_agent_action_at));
+
+  return Object.values(agentOperations).some((value) => value !== undefined)
+    ? agentOperations
+    : undefined;
 }
 
 function calculateAge(isoDateString: string, now: Date = new Date()): string {
@@ -412,6 +471,7 @@ export function transformSpineTripToTrip(
     safety: trip.safety || {},
     fees: (trip.fees as FeeCalculationResult | undefined) ?? undefined,
     frontier_result: trip.frontier_result ?? undefined,
+    agentOperations: extractAgentOperations(trip),
     rawInput: trip.raw_input || {
       stage: "discovery",
       operating_mode: "normal_intake",

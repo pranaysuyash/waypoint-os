@@ -89,12 +89,24 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["items", { backendPath: "items" }],
   ["health", { backendPath: "health", timeoutMs: DEFAULT_ROUTE_TIMEOUT_MS }],
 
+  // ── Product-agent runtime ─────────────────────────────────────
+  ["agents/runtime", { backendPath: "agents/runtime" }],
+  [
+    "agents/runtime/run-once",
+    {
+      backendPath: "agents/runtime/run-once",
+      timeoutMs: LONG_RUNNING_COMMAND_TIMEOUT_MS,
+    },
+  ],
+  ["agents/runtime/events", { backendPath: "agents/runtime/events" }],
+
   // ── Review / Override resources ──────────────────────────────
   ["reviews/bulk-action", { backendPath: "analytics/reviews/bulk-action" }],
   ["overrides", { backendPath: "overrides" }],
 
   // ── Dynamic patterns (last segment is an ID) ─────────────────
   ["trips/{id}/timeline", { backendPath: "api/trips/{id}/timeline" }],
+  ["trips/{id}/agent-events", { backendPath: "trips/{id}/agent-events" }],
   ["trips/{id}/assign", { backendPath: "trips/{id}/assign" }],
   ["trips/{id}/unassign", { backendPath: "trips/{id}/unassign" }],
   ["trips/{id}/snooze", { backendPath: "trips/{id}/snooze" }],

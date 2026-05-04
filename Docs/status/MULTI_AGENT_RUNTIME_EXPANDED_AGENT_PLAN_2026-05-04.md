@@ -104,7 +104,7 @@ Acceptance:
 - tests prove stale tool data is not used as fresh evidence;
 - no secret values from `frontend/.env.local` are logged.
 
-### Phase B: Document + Live Intelligence MVP
+### Phase B: Document + Live Intelligence Foundation
 
 1. `document_readiness_agent`
 2. `destination_intelligence_agent`
@@ -147,8 +147,30 @@ Acceptance:
 Implemented in this pass:
 
 - `src/agents/tool_contracts.py` with `ToolFreshnessPolicy`, `ToolEvidence`, and `ToolResult`.
+- `src/agents/live_tools.py` with deterministic mock weather and opt-in Open-Meteo weather adapter.
+- Configurable HTTP provider adapters in `src/agents/live_tools.py` for flight status, quote/price watch, and safety alert feeds.
+- A State Department travel advisory safety adapter in `src/agents/live_tools.py`, gated behind `TRAVEL_AGENT_SAFETY_PROVIDER=state_dept`.
 - `document_readiness_agent` in `src/agents/runtime.py`.
-- Tests in `tests/test_agent_runtime.py` covering stale evidence and document checklist output.
+- `destination_intelligence_agent` in `src/agents/runtime.py`.
+- `weather_pivot_agent` in `src/agents/runtime.py`.
+- `constraint_feasibility_agent` in `src/agents/runtime.py`.
+- `proposal_readiness_agent` in `src/agents/runtime.py`.
+- `booking_readiness_agent` in `src/agents/runtime.py`.
+- `flight_status_agent` in `src/agents/runtime.py`.
+- `ticket_price_watch_agent` in `src/agents/runtime.py`.
+- `safety_alert_agent` in `src/agents/runtime.py`.
+- `gds_schema_bridge_agent`, `pnr_shadow_agent`, and `supplier_intelligence_agent` in `src/agents/runtime.py`.
+- Durable SQL work coordination through `SQLWorkCoordinator`, `AgentWorkLease`, and `alembic/versions/add_agent_work_leases.py`.
+- Async TripStore adapter boundary hardening in `spine_api/server.py`, so synchronous agent scans resolve accidental coroutine results from SQL-backed list/update calls.
+- SQL sync/async bridge hardening in `spine_api/persistence.py`, using a serialized background bridge and loop-local TripStore SQL engines for synchronous SQL facade calls.
+- Stale ownerless audit-lock recovery in `spine_api/persistence.py`.
+- Frontend BFF preservation of agent-operation metadata in `frontend/src/lib/bff-trip-adapters.ts`.
+- Operator packet-page surface for document, destination, weather, feasibility, proposal, booking, flight, price, safety, supplier, GDS, and PNR packets in `frontend/src/components/workspace/panels/PacketPanel.tsx`.
+- Catch-all proxy route-map entries for canonical runtime/event APIs in `frontend/src/lib/route-map.ts`.
+- Packet-page refresh action that runs the canonical backend runtime pass through `/api/agents/runtime/run-once`.
+- Tests in `tests/test_agent_runtime.py` covering stale evidence, document checklist output, destination intelligence freshness, weather pivot packets, constraint feasibility blockers, proposal readiness, booking readiness, flight status, ticket price watch, safety alerts, and supplier/GDS checks.
+- Regression coverage in `tests/test_agent_tripstore_adapter.py` for async TripStore adapter behavior.
+- Frontend adapter coverage in `frontend/src/lib/__tests__/bff-trip-adapters.test.ts`.
 
 Implementation result:
 
@@ -156,6 +178,31 @@ Implementation result:
 - It writes `document_readiness_checklist`, `document_risk_level`, and `must_confirm_documents`.
 - It includes tool evidence with source, fetched timestamp, expiry, confidence, and freshness.
 - It explicitly avoids legal finality and requires authoritative verification before quote or booking.
+- `DestinationIntelligenceAgent` writes `destination_intelligence_snapshot`, `destination_risk_level`, and internal recommendations.
+- It uses `ToolResult` for weather evidence and refuses stale weather evidence as current proof.
+- The default weather adapter is deterministic/mock; setting `TRAVEL_AGENT_ENABLE_LIVE_TOOLS=1` uses the keyless Open-Meteo adapter.
+- Flight, price, and safety tools can now be switched from deterministic local tools to configured HTTP JSON providers with URL-template environment variables while preserving the same `ToolResult` output contract.
+- The safety tool can use a State Department advisory adapter for public advisory evidence; the output remains operator evidence and does not claim legal/compliance finality.
+- `WeatherPivotAgent` writes `weather_pivot_packet`, `weather_pivot_risk_level`, and operator next action from fresh destination intelligence.
+- It refuses stale destination/weather evidence and asks operators to refresh intelligence before making pivot decisions.
+- `ConstraintFeasibilityAgent` writes `constraint_feasibility_assessment`, `feasibility_status`, hard blockers, soft constraints, missing facts, and operator next action.
+- It detects budget pressure, compressed dates, document readiness risk, weather pivot risk, pace, accessibility, and senior-traveler constraints without auto-rejecting or mutating canonical stage.
+- `ProposalReadinessAgent` writes `proposal_readiness_assessment`, `proposal_readiness_status`, missing elements, unresolved risks, and operator next action.
+- It blocks thin/risky proposals from operator review until options, budget assumptions, risks, and next action are present.
+- `BookingReadinessAgent` writes `booking_readiness_assessment`, `booking_readiness_status`, missing elements, blocking risks, and operator next action.
+- It verifies names, DOB/passport, payer, contact, special requirement confirmation, and unresolved proposal/document/feasibility risks before human booking.
+- `FlightStatusAgent` writes `flight_status_snapshot`, `flight_disruption_risk_level`, and operator next action from `ToolResult` flight evidence.
+- `TicketPriceWatchAgent` writes `ticket_price_watch_alert`, `quote_revalidation_required`, `price_watch_risk_level`, and operator next action from `ToolResult` price evidence.
+- `SafetyAlertAgent` writes `safety_alert_packet`, `safety_risk_level`, affected travelers, and operator next action from `ToolResult` safety evidence.
+- `GDSSchemaBridgeAgent` writes canonical travel objects from provider records.
+- `PNRShadowAgent` writes mismatch checks between booking data and PNR records.
+- `SupplierIntelligenceAgent` writes supplier reliability/response risk metadata.
+- Durable SQL work coordination is implemented through `SQLWorkCoordinator`, `AgentWorkLease`, and `alembic/versions/add_agent_work_leases.py`.
+- `_TripStoreAdapter` resolves accidental async `list_trips` and `update_trip` results before agent scans consume them.
+- The SQL TripStore sync facade no longer creates a fresh event loop per call and no longer shares one TripStore async engine across the FastAPI loop and bridge loop, avoiding asyncpg loop-bound pool/lock failures under runtime scans.
+- Ownerless stale audit lock directories are reclaimed so interrupted audit writes do not block supervisor startup events.
+- The frontend `Trip` model now carries `agentOperations`, and the packet page renders the new runtime packets for operators instead of hiding them behind raw JSON.
+- Operators can trigger a runtime refresh from the packet page without adding a duplicate API route; the existing catch-all proxy forwards to `POST /agents/runtime/run-once`.
 
 Previous recommendation rationale:
 
@@ -168,14 +215,13 @@ Reason:
 
 ## Next Implementation Recommendation
 
-Implement `destination_intelligence_agent` plus a mocked/live-switchable weather adapter next.
+Remaining hardening work should focus on production durability and real provider adapters.
 
 Acceptance:
 
-- Uses `ToolResult` for every live/weather/safety result.
-- Refuses stale tool data as current evidence.
-- Attaches `destination_intelligence_snapshot` with fetched timestamps, source, expiry, and confidence.
-- Recommends only internal pivots/escalations; no customer sends or booking changes.
+- Apply and operationalize the SQL work-lease migration before multi-worker deployment.
+- Wire chosen production vendors into `TRAVEL_AGENT_FLIGHT_STATUS_URL_TEMPLATE`, `TRAVEL_AGENT_PRICE_WATCH_URL_TEMPLATE`, and `TRAVEL_AGENT_SAFETY_ALERT_URL_TEMPLATE`, including credentials through header environment variables.
+- Deepen operator controls from read-only packet visibility into task actions, acknowledgments, and provider refresh/revalidation flows.
 
 ## OpenAI Key Note
 

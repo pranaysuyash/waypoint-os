@@ -1,5 +1,6 @@
 'use client';
 
+import { useTrips } from '@/hooks/useTrips';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -22,9 +23,11 @@ import { useInboxTrips } from '@/hooks/useGovernance';
 import { InlineError } from '@/components/error-boundary';
 import { TripCard } from '@/components/inbox/TripCard';
 import { ComposableFilterBar } from '@/components/inbox/ComposableFilterBar';
+import { ViewProfileToggle } from '@/components/inbox/ViewProfileToggle';
 import { InboxEmptyState } from '@/components/inbox/InboxEmptyState';
 import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
-import { deserializeFilters, serializeFilters, SORT_OPTIONS as SORT_HELPERS } from '@/lib/inbox-helpers';
+import { deserializeFilters, serializeFilters, getSavedViewProfile, roleToViewProfile, viewProfileToRole } from '@/lib/inbox-helpers';
+import type { ViewProfile } from '@/lib/inbox-helpers';
 import type { InboxTrip, InboxFilters } from '@/types/governance';
 type SortKey = 'priority' | 'destination' | 'value' | 'party' | 'dates' | 'sla';
 type SortDirection = 'asc' | 'desc';
@@ -150,6 +153,18 @@ export default function InboxPage() {
 
   const [selectedTrips, setSelectedTrips] = useState<Set<string>>(new Set());
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+
+  // View profile from URL role param, falling back to localStorage, then default
+  const [viewProfile, setViewProfile] = useState<ViewProfile>(() => {
+    const fromUrl = searchParams.get('role');
+    if (fromUrl) return roleToViewProfile(fromUrl);
+    return getSavedViewProfile() ?? 'operations';
+  });
+
+  const handleViewProfileChange = useCallback((profile: ViewProfile) => {
+    setViewProfile(profile);
+    updateParams({ role: viewProfileToRole(profile) });
+  }, [updateParams]);
 
   const {
     data: inboxTrips,
@@ -377,6 +392,11 @@ export default function InboxPage() {
             )}
           </div>
 
+          <ViewProfileToggle
+            current={viewProfile}
+            onChange={handleViewProfileChange}
+          />
+
           <span className='text-ui-sm text-[#8b949e]'>
           <span className="text-ui-sm text-[#8b949e]">
           {isLoading ? 'Loading...' : leadCountLabel(inboxTotal)}
@@ -450,7 +470,7 @@ export default function InboxPage() {
               trip={trip}
               isSelected={selectedTrips.has(trip.id)}
               onSelect={handleSelect}
-              viewProfile='operations'
+              viewProfile={viewProfile}
             />
           ))}
           {inboxTrips.length === 0 && !isLoading && (

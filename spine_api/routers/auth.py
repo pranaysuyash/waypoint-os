@@ -45,10 +45,13 @@ from spine_api.services.auth_service import (
 logger = logging.getLogger("spine_api.auth")
 
 # ---------------------------------------------------------------------------
-# Environment-aware cookie security
+# Call-time env helpers — read at function time, not import time —
+# so tests can change ENVIRONMENT without importlib.reload().
 # ---------------------------------------------------------------------------
-_ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").lower()
-_COOKIE_SECURE = _ENVIRONMENT == "production"
+
+def _is_cookie_secure() -> bool:
+    return os.environ.get("ENVIRONMENT", "development").lower() == "production"
+
 
 # Access token: short-lived, sent on every request
 _ACCESS_TTL_SECONDS = 15 * 60  # 15 minutes
@@ -65,11 +68,12 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 def _set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
     """Set both access_token and refresh_token as httpOnly cookies."""
+    is_secure = _is_cookie_secure()
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=_COOKIE_SECURE,
+        secure=is_secure,
         samesite="lax",
         max_age=_ACCESS_TTL_SECONDS,
         path="/",
@@ -78,7 +82,7 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=_COOKIE_SECURE,
+        secure=is_secure,
         samesite="lax",
         max_age=_REFRESH_TTL_SECONDS,
         path="/api/auth",
@@ -162,8 +166,9 @@ async def post_signup(
     but only in development. In production, @test.com signups are treated
     as normal accounts with no test data.
     """
+    is_dev = os.environ.get("ENVIRONMENT", "development").lower() == "development"
     is_test = (
-        _ENVIRONMENT == "development"
+        is_dev
         and signup_req.email.lower().endswith("@test.com")
     )
 
@@ -319,7 +324,7 @@ async def post_request_password_reset(
         "message": "If the email exists, a reset link has been sent",
     }
     if (
-        _ENVIRONMENT == "development"
+        os.environ.get("ENVIRONMENT", "development").lower() == "development"
         and os.environ.get("EXPOSE_RESET_TOKEN") == "1"
         and isinstance(result, dict)
         and "reset_token" in result

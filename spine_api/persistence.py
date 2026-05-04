@@ -35,19 +35,41 @@ from src.security.encryption import decrypt, encrypt
 
 logger = logging.getLogger(__name__)
 
-tripstore_engine = create_async_engine(
-    DATABASE_URL,
-    echo=False,
-    future=True,
-    poolclass=NullPool,
-    pool_pre_ping=True,
-)
-tripstore_session_maker = async_sessionmaker(
-    tripstore_engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autoflush=False,
-)
+_tripstore_session_makers: dict[int, async_sessionmaker[AsyncSession]] = {}
+_tripstore_session_makers_lock = threading.Lock()
+
+
+def _create_tripstore_session_maker() -> async_sessionmaker[AsyncSession]:
+    engine = create_async_engine(
+        DATABASE_URL,
+        echo=False,
+        future=True,
+        poolclass=NullPool,
+        pool_pre_ping=True,
+    )
+    return async_sessionmaker(
+        engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autoflush=False,
+    )
+
+
+def tripstore_session_maker() -> AsyncSession:
+    """Return an AsyncSession bound to the current event loop's engine.
+
+    asyncpg/SQLAlchemy internals keep loop-bound synchronization primitives.
+    Runtime agents call the async TripStore through a synchronous bridge loop,
+    while FastAPI endpoints use the app loop. Keeping one engine/sessionmaker per
+    loop prevents cross-loop pool and event mutex reuse.
+    """
+    loop_id = id(asyncio.get_running_loop())
+    with _tripstore_session_makers_lock:
+        maker = _tripstore_session_makers.get(loop_id)
+        if maker is None:
+            maker = _create_tripstore_session_maker()
+            _tripstore_session_makers[loop_id] = maker
+    return maker()
 
 # Data directories
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -161,7 +183,18 @@ def file_lock(filepath: Path, timeout_seconds: float = 30.0):
                 else:
                     last_owner = f"pid={lock_pid} (alive)"
             except (FileNotFoundError, ValueError):
-                last_owner = "unknown (no pid file)"
+                stale_age_seconds = _time.time() - lock_dir.stat().st_mtime if lock_dir.exists() else 0
+                if stale_age_seconds > timeout_seconds:
+                    try:
+                        if pid_file.exists():
+                            _os.remove(pid_file)
+                        _os.rmdir(lock_dir)
+                        last_owner = f"unknown (stale ownerless lock removed after {stale_age_seconds:.1f}s)"
+                        continue
+                    except OSError:
+                        last_owner = "unknown (ownerless stale lock could not be removed)"
+                else:
+                    last_owner = "unknown (no pid file)"
             _time.sleep(delay)
             delay = min(delay * 1.5, 0.3)
 
@@ -455,6 +488,7 @@ class SQLTripStore:
             "run_id": trip_obj.run_id,
             "agency_id": trip_obj.agency_id,
             "user_id": trip_obj.user_id,
+            "assigned_to_id": trip_obj.assigned_to_id,
             "source": trip_obj.source,
             "status": trip_obj.status,
             "stage": trip_obj.stage,
@@ -483,11 +517,16 @@ class SQLTripStore:
     @staticmethod
     async def save_trip(trip_data: dict, agency_id: Optional[str] = None) -> str:
         trip_id = trip_data.get("id") or f"trip_{uuid4().hex[:12]}"
+
+        # Privacy guard: block real-user PII in dogfood mode (same as FileTripStore)
+        from src.security.privacy_guard import check_trip_data
+        check_trip_data(trip_data)
         model_data = {
             "id": trip_id,
             "run_id": trip_data.get("run_id"),
             "agency_id": agency_id or trip_data.get("agency_id"),
             "user_id": trip_data.get("user_id"),
+            "assigned_to_id": trip_data.get("assigned_to_id"),
             "source": trip_data.get("source", "unknown"),
             "status": trip_data.get("status", "new"),
             "stage": trip_data.get("stage", "discovery"),
@@ -573,6 +612,17 @@ class SQLTripStore:
 
     @staticmethod
     async def update_trip(trip_id: str, updates: dict) -> Optional[dict]:
+        # Privacy guard: only check for PII if updates touch user-input fields.
+        # Checking updates directly (without full trip context) would false-positive
+        # on legitimate agent notes or non-PII text in raw_input. Full-trip merge
+        # is the correct check (as FileTripStore does) but requires extra DB read
+        # + decryption; the guard on save_trip already prevents initial PII entry.
+        # Check only email/phone-like values in updates (fast, no false positives).
+        _pii_sensitive_keys = {"raw_input", "extracted", "extracted_facts"}
+        if set(updates.keys()) & _pii_sensitive_keys:
+            from src.security.privacy_guard import check_trip_data
+            check_trip_data(updates)
+
         _encrypted_fields = SQLTripStore._PRIVATE_BLOB_FIELDS | SQLTripStore._PII_KEY_FIELDS
         async with tripstore_session_maker() as session:
             trip_obj = await session.get(Trip, trip_id)
@@ -621,24 +671,48 @@ class SQLTripStore:
 def _run_async_blocking(coro):
     """Run an async SQL operation from the existing synchronous TripStore API.
 
-    Uses a dedicated thread with a fresh event loop to avoid conflicts with
-    any running event loop in the caller's thread (e.g. FastAPI's async
-    event loop). This makes the sync TripStore facade safe to call from both
-    sync and async contexts.
+    Uses one process-wide background event loop. Async SQLAlchemy/asyncpg keep
+    loop-bound connection-pool state, so creating a fresh loop per sync call can
+    bind locks/connections to different loops under agent-runtime scans.
     """
-    import concurrent.futures
+    try:
+        running_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        running_loop = None
 
-    def _run_in_fresh_loop(coro):
-        loop = asyncio.new_event_loop()
-        try:
-            asyncio.set_event_loop(loop)
-            return loop.run_until_complete(coro)
-        finally:
-            loop.close()
+    bridge = _get_sync_async_bridge()
+    if running_loop is bridge.loop:
+        raise RuntimeError("Cannot synchronously wait on the TripStore SQL bridge from its own event loop")
+    return bridge.run(coro)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(_run_in_fresh_loop, coro)
-        return future.result()
+
+class _SyncAsyncBridge:
+    def __init__(self) -> None:
+        import threading
+
+        self.loop = asyncio.new_event_loop()
+        self._run_lock = threading.Lock()
+        self._thread = threading.Thread(target=self._run, name="tripstore-sql-sync-bridge", daemon=True)
+        self._thread.start()
+
+    def _run(self) -> None:
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
+
+    def run(self, coro):
+        with self._run_lock:
+            future = asyncio.run_coroutine_threadsafe(coro, self.loop)
+            return future.result()
+
+
+_SYNC_ASYNC_BRIDGE: _SyncAsyncBridge | None = None
+
+
+def _get_sync_async_bridge() -> _SyncAsyncBridge:
+    global _SYNC_ASYNC_BRIDGE
+    if _SYNC_ASYNC_BRIDGE is None:
+        _SYNC_ASYNC_BRIDGE = _SyncAsyncBridge()
+    return _SYNC_ASYNC_BRIDGE
 
 
 class TripStore:

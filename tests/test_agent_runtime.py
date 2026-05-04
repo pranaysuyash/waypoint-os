@@ -5,12 +5,23 @@ from datetime import datetime, timedelta, timezone
 from src.agents.tool_contracts import ToolFreshnessPolicy, ToolResult
 from src.agents.runtime import (
     AgentSupervisor,
+    BookingReadinessAgent,
+    ConstraintFeasibilityAgent,
+    DestinationIntelligenceAgent,
     DocumentReadinessAgent,
+    FlightStatusAgent,
     FrontDoorAgent,
     FollowUpAgent,
+    GDSSchemaBridgeAgent,
     InMemoryWorkCoordinator,
+    PNRShadowAgent,
+    ProposalReadinessAgent,
     QualityEscalationAgent,
+    SafetyAlertAgent,
     SalesActivationAgent,
+    SupplierIntelligenceAgent,
+    TicketPriceWatchAgent,
+    WeatherPivotAgent,
     WorkItem,
     WorkStatus,
     build_default_registry,
@@ -53,6 +64,17 @@ def test_default_registry_exposes_operational_product_agents_beyond_recovery():
         "front_door_agent",
         "sales_activation_agent",
         "document_readiness_agent",
+        "destination_intelligence_agent",
+        "weather_pivot_agent",
+        "constraint_feasibility_agent",
+        "proposal_readiness_agent",
+        "booking_readiness_agent",
+        "flight_status_agent",
+        "ticket_price_watch_agent",
+        "safety_alert_agent",
+        "gds_schema_bridge_agent",
+        "pnr_shadow_agent",
+        "supplier_intelligence_agent",
         "follow_up_agent",
         "quality_escalation_agent",
     } <= names
@@ -196,6 +218,509 @@ def test_document_readiness_agent_skips_when_checklist_exists():
     ])
 
     assert list(DocumentReadinessAgent().scan(repo)) == []
+
+
+class _FakeWeatherTool:
+    def __init__(self, result: ToolResult):
+        self.result = result
+        self.queries = []
+
+    def current_conditions(self, destination: str) -> ToolResult:
+        self.queries.append(destination)
+        return self.result
+
+
+def test_destination_intelligence_agent_attaches_fresh_weather_snapshot():
+    fetched_at = datetime(2026, 5, 4, tzinfo=timezone.utc)
+    tool_result = ToolResult.from_static(
+        tool_name="open_meteo_weather",
+        query={"destination": "Singapore"},
+        data={
+            "location": {"name": "Singapore", "latitude": 1.29, "longitude": 103.85},
+            "current": {"temperature_c": 31.5, "wind_speed_kmh": 16.0, "precipitation_mm": 0.2},
+            "daily": {"precipitation_probability_max": 82, "uv_index_max": 9.1},
+        },
+        source="unit_test_weather",
+        freshness=ToolFreshnessPolicy(max_age_seconds=3600),
+        confidence=0.9,
+        now=fetched_at,
+    )
+    repo = _Repo([
+        {
+            "id": "trip_destination",
+            "stage": "proposal",
+            "extracted": {"facts": {"destination": {"value": "Singapore"}}},
+        },
+    ])
+    agent = DestinationIntelligenceAgent(weather_tool=_FakeWeatherTool(tool_result), now_provider=lambda: fetched_at + timedelta(minutes=10))
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    snapshot = repo.trips["trip_destination"]["destination_intelligence_snapshot"]
+    assert snapshot["risk_level"] == "medium"
+    assert snapshot["destinations"][0]["destination"] == "singapore"
+    assert snapshot["destinations"][0]["tool_evidence"][0]["fresh"] is True
+    assert any("rain" in recommendation.lower() for recommendation in snapshot["recommendations"])
+    assert repo.trips["trip_destination"]["destination_risk_level"] == "medium"
+
+
+def test_destination_intelligence_agent_refuses_stale_weather_as_current_evidence():
+    fetched_at = datetime(2026, 5, 4, tzinfo=timezone.utc)
+    tool_result = ToolResult.from_static(
+        tool_name="open_meteo_weather",
+        query={"destination": "Tokyo"},
+        data={"current": {"temperature_c": 22.0}},
+        source="unit_test_weather",
+        freshness=ToolFreshnessPolicy(max_age_seconds=60),
+        now=fetched_at,
+    )
+    repo = _Repo([
+        {
+            "id": "trip_stale_destination",
+            "stage": "proposal",
+            "destination": "Tokyo",
+        },
+    ])
+    agent = DestinationIntelligenceAgent(weather_tool=_FakeWeatherTool(tool_result), now_provider=lambda: fetched_at + timedelta(seconds=90))
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    snapshot = repo.trips["trip_stale_destination"]["destination_intelligence_snapshot"]
+    assert snapshot["risk_level"] == "unknown"
+    assert snapshot["destinations"][0]["status"] == "stale"
+    assert "Refresh destination intelligence" in snapshot["recommendations"][0]
+    assert repo.trips["trip_stale_destination"]["destination_risk_level"] == "unknown"
+
+
+def test_weather_pivot_agent_builds_activity_and_transfer_pivot_packet():
+    fetched_at = datetime(2026, 5, 4, tzinfo=timezone.utc)
+    evidence = ToolResult.from_static(
+        tool_name="open_meteo_weather",
+        query={"destination": "Singapore"},
+        data={
+            "daily": {"precipitation_probability_max": 86, "uv_index_max": 9.4},
+            "current": {"wind_speed_kmh": 18},
+        },
+        source="unit_test_weather",
+        freshness=ToolFreshnessPolicy(max_age_seconds=3600),
+        now=fetched_at,
+    ).to_dict(now=fetched_at + timedelta(minutes=5))
+    repo = _Repo([
+        {
+            "id": "trip_weather_pivot",
+            "stage": "proposal",
+            "destination_intelligence_snapshot": {
+                "checked_at": (fetched_at + timedelta(minutes=5)).isoformat(),
+                "risk_level": "medium",
+                "destinations": [
+                    {
+                        "destination": "singapore",
+                        "status": "fresh",
+                        "risk_level": "medium",
+                        "signals": [
+                            {"category": "weather", "severity": "medium", "message": "Rain probability is 86%."},
+                            {"category": "weather", "severity": "medium", "message": "UV index max is 9.4."},
+                        ],
+                        "tool_evidence": [evidence],
+                    }
+                ],
+            },
+            "itinerary_items": [
+                {"title": "Gardens by the Bay walk", "type": "outdoor"},
+                {"title": "Airport transfer", "type": "transfer"},
+            ],
+        },
+    ])
+    agent = WeatherPivotAgent(now_provider=lambda: fetched_at + timedelta(minutes=10))
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    packet = repo.trips["trip_weather_pivot"]["weather_pivot_packet"]
+    assert packet["risk_level"] == "medium"
+    assert any(item["title"] == "Gardens by the Bay walk" for item in packet["affected_activities"])
+    assert any(item["title"] == "Airport transfer" for item in packet["transport_risks"])
+    assert any("indoor" in option.lower() for option in packet["pivot_options"])
+    assert packet["operator_next_action"] == "review_weather_pivots"
+
+
+def test_weather_pivot_agent_refuses_stale_destination_evidence():
+    fetched_at = datetime(2026, 5, 4, tzinfo=timezone.utc)
+    stale_evidence = ToolResult.from_static(
+        tool_name="open_meteo_weather",
+        query={"destination": "Tokyo"},
+        data={"daily": {"precipitation_probability_max": 75}},
+        source="unit_test_weather",
+        freshness=ToolFreshnessPolicy(max_age_seconds=60),
+        now=fetched_at,
+    ).to_dict(now=fetched_at + timedelta(seconds=90))
+    repo = _Repo([
+        {
+            "id": "trip_stale_weather_pivot",
+            "stage": "proposal",
+            "destination_intelligence_snapshot": {
+                "checked_at": (fetched_at + timedelta(seconds=90)).isoformat(),
+                "risk_level": "unknown",
+                "destinations": [
+                    {
+                        "destination": "tokyo",
+                        "status": "stale",
+                        "risk_level": "unknown",
+                        "tool_evidence": [stale_evidence],
+                    }
+                ],
+            },
+        },
+    ])
+    agent = WeatherPivotAgent(now_provider=lambda: fetched_at + timedelta(seconds=90))
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    packet = repo.trips["trip_stale_weather_pivot"]["weather_pivot_packet"]
+    assert packet["risk_level"] == "unknown"
+    assert packet["operator_next_action"] == "refresh_destination_intelligence"
+    assert "stale" in packet["summary"].lower()
+
+
+def test_constraint_feasibility_agent_flags_hard_and_soft_blockers():
+    repo = _Repo([
+        {
+            "id": "trip_feasibility",
+            "stage": "proposal",
+            "raw_input": {"raw_note": "Need fast-paced Singapore trip for senior traveler, wheelchair access, budget $800"},
+            "extracted": {
+                "facts": {
+                    "destination": {"value": "Singapore"},
+                    "date_window": {"value": "2026-05-10 to 2026-05-12"},
+                    "budget": {"value": "$800"},
+                    "travelers": {"value": 4},
+                }
+            },
+            "travelers": [{"traveler_type": "senior"}],
+            "document_readiness_checklist": {
+                "risk_level": "high",
+                "must_confirm": ["passport expiry for traveler 1", "current visa/entry requirement"],
+            },
+            "weather_pivot_packet": {
+                "risk_level": "medium",
+                "operator_next_action": "review_weather_pivots",
+            },
+        },
+    ])
+    agent = ConstraintFeasibilityAgent(now_provider=lambda: datetime(2026, 5, 4, tzinfo=timezone.utc))
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    assessment = repo.trips["trip_feasibility"]["constraint_feasibility_assessment"]
+    assert assessment["status"] == "blocked"
+    assert repo.trips["trip_feasibility"]["feasibility_status"] == "blocked"
+    assert any(blocker["category"] == "document_readiness" for blocker in assessment["hard_blockers"])
+    assert any(blocker["category"] == "budget" for blocker in assessment["hard_blockers"])
+    assert any(flag["category"] == "accessibility" for flag in assessment["soft_constraints"])
+    assert assessment["operator_next_action"] == "human_feasibility_review"
+
+
+def test_constraint_feasibility_agent_skips_when_current_assessment_exists():
+    repo = _Repo([
+        {
+            "id": "trip_feasibility_done",
+            "stage": "proposal",
+            "destination": "Singapore",
+            "constraint_feasibility_assessment": {
+                "assessed_at": "2026-05-04T00:00:00+00:00",
+                "facts_marker": "proposal|singapore|no_date_window|no_budget|no_travelers",
+            },
+        },
+    ])
+
+    assert list(ConstraintFeasibilityAgent().scan(repo)) == []
+
+
+def test_proposal_readiness_agent_blocks_thin_or_risky_proposal():
+    repo = _Repo([
+        {
+            "id": "trip_proposal",
+            "stage": "proposal",
+            "proposal": {
+                "options": [{"title": "Singapore quick trip"}],
+                "budget_summary": "",
+                "next_action": "",
+            },
+            "document_readiness_checklist": {"risk_level": "high"},
+            "constraint_feasibility_assessment": {"status": "blocked", "hard_blockers": [{"category": "budget"}]},
+            "weather_pivot_packet": {"risk_level": "medium"},
+        },
+    ])
+    agent = ProposalReadinessAgent()
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    readiness = repo.trips["trip_proposal"]["proposal_readiness_assessment"]
+    assert readiness["status"] == "blocked"
+    assert repo.trips["trip_proposal"]["proposal_readiness_status"] == "blocked"
+    assert "at least two proposal options" in readiness["missing_elements"]
+    assert any(risk["category"] == "feasibility" for risk in readiness["unresolved_risks"])
+    assert readiness["operator_next_action"] == "revise_proposal_before_review"
+
+
+def test_proposal_readiness_agent_marks_complete_proposal_reviewable():
+    repo = _Repo([
+        {
+            "id": "trip_proposal_ready",
+            "stage": "proposal",
+            "proposal": {
+                "options": [{"title": "Option A"}, {"title": "Option B"}],
+                "budget_summary": "Includes hotel and transfers, excludes flights.",
+                "risk_notes": "Weather and visa checks reviewed.",
+                "next_action": "Operator review then send to customer.",
+            },
+            "document_readiness_checklist": {"risk_level": "low"},
+            "constraint_feasibility_assessment": {"status": "feasible"},
+            "weather_pivot_packet": {"risk_level": "low"},
+        },
+    ])
+    agent = ProposalReadinessAgent()
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    readiness = repo.trips["trip_proposal_ready"]["proposal_readiness_assessment"]
+    assert readiness["status"] == "ready_for_operator_review"
+    assert readiness["missing_elements"] == []
+    assert readiness["operator_next_action"] == "operator_review_proposal"
+
+
+def test_booking_readiness_agent_blocks_missing_traveler_and_payer_data():
+    repo = _Repo([
+        {
+            "id": "trip_booking",
+            "stage": "booking",
+            "booking_data": {
+                "travelers": [{"name": "Adult 1"}, {"date_of_birth": "1990-01-01", "passport_number": "P123"}],
+                "payer": {},
+                "contact": {"email": "lead@example.com"},
+            },
+            "proposal_readiness_assessment": {"status": "blocked"},
+            "document_readiness_checklist": {"risk_level": "high"},
+        },
+    ])
+    agent = BookingReadinessAgent()
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    readiness = repo.trips["trip_booking"]["booking_readiness_assessment"]
+    assert readiness["status"] == "blocked"
+    assert repo.trips["trip_booking"]["booking_readiness_status"] == "blocked"
+    assert any("traveler 1 date of birth" in item for item in readiness["missing_elements"])
+    assert any("payer" in item for item in readiness["missing_elements"])
+    assert any(risk["category"] == "document_readiness" for risk in readiness["blocking_risks"])
+    assert readiness["operator_next_action"] == "collect_booking_details"
+
+
+def test_booking_readiness_agent_marks_complete_data_ready_for_human_booking():
+    repo = _Repo([
+        {
+            "id": "trip_booking_ready",
+            "stage": "booking",
+            "booking_data": {
+                "travelers": [
+                    {"name": "Adult 1", "date_of_birth": "1990-01-01", "passport_number": "P123", "passport_expiry": "2030-01-01"}
+                ],
+                "payer": {"name": "Adult 1", "email": "lead@example.com"},
+                "contact": {"email": "lead@example.com", "phone": "+1 555 0100"},
+                "special_requirements": "Vegetarian meal",
+            },
+            "proposal_readiness_assessment": {"status": "ready_for_operator_review"},
+            "document_readiness_checklist": {"risk_level": "low"},
+            "constraint_feasibility_assessment": {"status": "feasible"},
+        },
+    ])
+    agent = BookingReadinessAgent()
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    readiness = repo.trips["trip_booking_ready"]["booking_readiness_assessment"]
+    assert readiness["status"] == "ready_for_human_booking"
+    assert readiness["missing_elements"] == []
+    assert readiness["operator_next_action"] == "human_booking_review"
+
+
+class _FakeFlightStatusTool:
+    def __init__(self, result: ToolResult):
+        self.result = result
+
+    def flight_status(self, flight: dict):
+        return self.result
+
+
+class _FakePriceWatchTool:
+    def __init__(self, result: ToolResult):
+        self.result = result
+
+    def quote_price(self, quote: dict):
+        return self.result
+
+
+def test_flight_status_agent_attaches_delay_snapshot_and_escalates():
+    fetched_at = datetime(2026, 5, 4, tzinfo=timezone.utc)
+    tool_result = ToolResult.from_static(
+        tool_name="mock_flight_status",
+        query={"carrier": "SQ", "flight_number": "321"},
+        data={"status": "delayed", "delay_minutes": 95, "route": "LHR-SIN"},
+        source="unit_test_flight",
+        freshness=ToolFreshnessPolicy(max_age_seconds=1800),
+        now=fetched_at,
+    )
+    repo = _Repo([
+        {
+            "id": "trip_flight",
+            "stage": "booking",
+            "flights": [{"carrier": "SQ", "flight_number": "321"}],
+        },
+    ])
+    agent = FlightStatusAgent(flight_tool=_FakeFlightStatusTool(tool_result), now_provider=lambda: fetched_at + timedelta(minutes=5))
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    snapshot = repo.trips["trip_flight"]["flight_status_snapshot"]
+    assert snapshot["risk_level"] == "high"
+    assert snapshot["operator_next_action"] == "review_flight_disruption"
+    assert snapshot["flights"][0]["tool_evidence"][0]["fresh"] is True
+
+
+def test_ticket_price_watch_agent_flags_quote_drift():
+    fetched_at = datetime(2026, 5, 4, tzinfo=timezone.utc)
+    tool_result = ToolResult.from_static(
+        tool_name="mock_price_watch",
+        query={"quote_id": "quote_1"},
+        data={"current_price": 1250, "quoted_price": 1000, "currency": "USD", "drift_percent": 25.0},
+        source="unit_test_price",
+        freshness=ToolFreshnessPolicy(max_age_seconds=1800),
+        now=fetched_at,
+    )
+    repo = _Repo([
+        {
+            "id": "trip_price",
+            "stage": "quoted",
+            "quote": {"id": "quote_1", "price": 1000, "currency": "USD"},
+        },
+    ])
+    agent = TicketPriceWatchAgent(price_tool=_FakePriceWatchTool(tool_result), now_provider=lambda: fetched_at + timedelta(minutes=5))
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    alert = repo.trips["trip_price"]["ticket_price_watch_alert"]
+    assert alert["risk_level"] == "high"
+    assert alert["operator_next_action"] == "revalidate_quote_before_payment"
+    assert alert["tool_evidence"][0]["fresh"] is True
+
+
+class _FakeSafetyAlertTool:
+    def __init__(self, result: ToolResult):
+        self.result = result
+
+    def destination_alerts(self, destination: str):
+        return self.result
+
+
+def test_safety_alert_agent_attaches_alert_packet():
+    fetched_at = datetime(2026, 5, 4, tzinfo=timezone.utc)
+    tool_result = ToolResult.from_static(
+        tool_name="mock_safety_alerts",
+        query={"destination": "Haiti"},
+        data={"alerts": [{"severity": "high", "category": "security", "message": "Review active advisory."}]},
+        source="unit_test_safety",
+        freshness=ToolFreshnessPolicy(max_age_seconds=3600),
+        now=fetched_at,
+    )
+    repo = _Repo([
+        {
+            "id": "trip_safety",
+            "stage": "proposal",
+            "destination": "Haiti",
+            "travelers": [{"name": "Adult 1"}, {"name": "Adult 2"}],
+        },
+    ])
+    agent = SafetyAlertAgent(safety_tool=_FakeSafetyAlertTool(tool_result), now_provider=lambda: fetched_at + timedelta(minutes=5))
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    packet = repo.trips["trip_safety"]["safety_alert_packet"]
+    assert packet["risk_level"] == "high"
+    assert len(packet["affected_travelers"]) == 2
+    assert packet["operator_next_action"] == "human_safety_review"
+
+
+def test_gds_schema_bridge_agent_normalizes_provider_records():
+    repo = _Repo([
+        {
+            "id": "trip_gds",
+            "stage": "booking",
+            "provider_records": [
+                {"kind": "flight", "carrier": "SQ", "flight_number": "321", "origin": "LHR", "destination": "SIN"},
+                {"kind": "hotel", "name": "Marina Bay", "check_in": "2026-05-10"},
+            ],
+        },
+    ])
+    agent = GDSSchemaBridgeAgent()
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    bridge = repo.trips["trip_gds"]["gds_schema_bridge"]
+    assert len(bridge["canonical_objects"]) == 2
+    assert bridge["canonical_objects"][0]["type"] == "flight"
+    assert bridge["operator_next_action"] == "review_canonical_travel_objects"
+
+
+def test_pnr_shadow_agent_flags_name_mismatch():
+    repo = _Repo([
+        {
+            "id": "trip_pnr",
+            "stage": "booking",
+            "booking_data": {"travelers": [{"name": "Pranay Test"}]},
+            "pnr_record": {"travelers": [{"name": "P Test"}], "segments": [{"carrier": "SQ", "flight_number": "321"}]},
+        },
+    ])
+    agent = PNRShadowAgent()
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    shadow = repo.trips["trip_pnr"]["pnr_shadow_check"]
+    assert shadow["risk_level"] == "high"
+    assert any(issue["category"] == "traveler_names" for issue in shadow["issues"])
+
+
+def test_supplier_intelligence_agent_flags_low_reliability_supplier():
+    repo = _Repo([
+        {
+            "id": "trip_supplier",
+            "stage": "proposal",
+            "supplier_records": [
+                {"name": "Slow Hotel DMC", "response_hours": 72, "failure_count": 2},
+                {"name": "Fast Transfer", "response_hours": 4, "failure_count": 0},
+            ],
+        },
+    ])
+    agent = SupplierIntelligenceAgent()
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    intel = repo.trips["trip_supplier"]["supplier_intelligence_snapshot"]
+    assert intel["risk_level"] == "high"
+    assert any(item["supplier"] == "Slow Hotel DMC" for item in intel["supplier_risks"])
 
 
 def test_transient_dependency_failure_retries_then_succeeds():

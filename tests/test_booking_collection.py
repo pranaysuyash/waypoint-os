@@ -46,6 +46,10 @@ MINIMAL_BOOKING_DATA = {
     "payer": {"name": "Alice Smith"},
 }
 
+# Wrapper matching PublicBookingDataSubmitRequest
+def _submit_payload(booking_data):
+    return {"booking_data": booking_data}
+
 
 @pytest.fixture()
 def created_trip_id(session_client):
@@ -102,8 +106,8 @@ def allow_beta_privacy():
 
 
 def _extract_token_from_url(url: str) -> str:
-    """Extract the plain token from a collection URL like /c/{token}."""
-    return url.rstrip("/").split("/c/")[-1]
+    """Extract the plain token from a collection URL like /booking-collection/{token}."""
+    return url.rstrip("/").split("/booking-collection/")[-1]
 
 
 # ---------------------------------------------------------------------------
@@ -168,7 +172,7 @@ class TestCollectionLinkCRUD:
         assert resp.status_code == 200
         data = resp.json()
         assert "collection_url" in data
-        assert "/c/" in data["collection_url"]
+        assert "/booking-collection/" in data["collection_url"]
         assert data["status"] == "active"
         assert data["trip_id"] == created_trip_id
         assert data["token_id"]
@@ -273,7 +277,7 @@ class TestPublicCustomerEndpoints:
 
         resp = session_client.post(
             f"/api/public/booking-collection/{token}/submit",
-            json=MINIMAL_BOOKING_DATA,
+            json=_submit_payload(MINIMAL_BOOKING_DATA),
         )
         assert resp.status_code == 200
         assert resp.json()["ok"] is True
@@ -291,14 +295,14 @@ class TestPublicCustomerEndpoints:
 
         resp = session_client.post(
             f"/api/public/booking-collection/{token}/submit",
-            json={"travelers": [], "payer": {"name": ""}},
+            json=_submit_payload({"travelers": [], "payer": {"name": ""}}),
         )
         assert resp.status_code == 422
 
     def test_customer_submit_invalid_token_returns_410(self, session_client):
         resp = session_client.post(
             "/api/public/booking-collection/invalid-token/submit",
-            json=MINIMAL_BOOKING_DATA,
+            json=_submit_payload(MINIMAL_BOOKING_DATA),
         )
         assert resp.status_code == 410
 
@@ -308,14 +312,14 @@ class TestPublicCustomerEndpoints:
         # First submit
         resp1 = session_client.post(
             f"/api/public/booking-collection/{token}/submit",
-            json=MINIMAL_BOOKING_DATA,
+            json=_submit_payload(MINIMAL_BOOKING_DATA),
         )
         assert resp1.status_code == 200
 
         # Second submit (token already used — validate_token returns None)
         resp2 = session_client.post(
             f"/api/public/booking-collection/{token}/submit",
-            json=MINIMAL_BOOKING_DATA,
+            json=_submit_payload(MINIMAL_BOOKING_DATA),
         )
         assert resp2.status_code == 410  # Token no longer valid after first use
 
@@ -331,7 +335,7 @@ class TestAgentReview:
         token = _extract_token_from_url(gen.json()["collection_url"])
         session_client.post(
             f"/api/public/booking-collection/{token}/submit",
-            json=MINIMAL_BOOKING_DATA,
+            json=_submit_payload(MINIMAL_BOOKING_DATA),
         )
         return token
 
@@ -473,7 +477,7 @@ class TestAuditPrivacy:
         token = _extract_token_from_url(gen.json()["collection_url"])
         session_client.post(
             f"/api/public/booking-collection/{token}/submit",
-            json=VALID_BOOKING_DATA,
+            json=_submit_payload(VALID_BOOKING_DATA),
         )
         session_client.post(f"/trips/{created_trip_id}/pending-booking-data/accept")
 

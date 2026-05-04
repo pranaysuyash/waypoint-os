@@ -5,7 +5,6 @@
  * retry logic, and type safety.
  */
 
-import { SpineRunRequest, SpineRunResponse, RunAcceptedResponse, RunStatusResponse } from "@/types/spine";
 import type { ReviewStatus } from "@/types/governance";
 import type { ValidationReport, FeeCalculationResult, DecisionOutput, StrategyOutput, PromptBundle } from "@/types/spine";
 import type { IntegrityIssuesResponse } from "@/types/spine";
@@ -241,47 +240,6 @@ export const api = new ApiClient({
 });
 
 // ============================================================================
-// SPINE API
-// ============================================================================
-
-export async function runSpine(request: SpineRunRequest): Promise<RunStatusResponse> {
-  const accepted = await api.post<RunAcceptedResponse>("/api/spine/run", request, { retry: 0 });
-  if (!accepted.run_id) {
-    throw new ApiException("No run_id returned", 500, "NO_RUN_ID");
-  }
-
-  let result: RunStatusResponse | null = null;
-  const maxWaitMs = 180_000;
-  const pollIntervalMs = 2_000;
-  const start = Date.now();
-
-  while (Date.now() - start < maxWaitMs) {
-    await new Promise((r) => setTimeout(r, pollIntervalMs));
-    const status = await api.get<RunStatusResponse>(
-      `/api/runs/${accepted.run_id}`
-    );
-    if (["completed", "failed", "blocked"].includes(status.state)) {
-      result = status;
-      break;
-    }
-  }
-
-  if (!result) {
-    throw new ApiException("Run timed out", 504, "RUN_TIMEOUT");
-  }
-
-  if (result.state !== "completed") {
-    throw new ApiException(
-      result.error_message || `Run ${result.state}`,
-      500,
-      result.error_type || "RUN_ERROR"
-    );
-  }
-
-  return result;
-}
-
-// ============================================================================
 // TRIPS API
 // ============================================================================
 
@@ -312,6 +270,7 @@ export interface Trip {
   safety?: unknown;
   fees?: FeeCalculationResult;
   frontier_result?: unknown;
+  agentOperations?: AgentOperationsMetadata;
   rawInput?: unknown;
   // Input fields (returned by mock API)
   customerMessage?: string;
@@ -365,6 +324,38 @@ export interface Trip {
     acknowledged_flags?: string[];
     suitability_acknowledged_at?: string;
   };
+}
+
+export interface AgentOperationsMetadata {
+  documentReadinessChecklist?: Record<string, unknown>;
+  documentRiskLevel?: string;
+  mustConfirmDocuments?: unknown[];
+  destinationIntelligenceSnapshot?: Record<string, unknown>;
+  destinationRiskLevel?: string;
+  destinationIntelligenceRecommendations?: unknown[];
+  weatherPivotPacket?: Record<string, unknown>;
+  weatherPivotRiskLevel?: string;
+  constraintFeasibilityAssessment?: Record<string, unknown>;
+  feasibilityStatus?: string;
+  proposalReadinessAssessment?: Record<string, unknown>;
+  proposalReadinessStatus?: string;
+  bookingReadinessAssessment?: Record<string, unknown>;
+  bookingReadinessStatus?: string;
+  flightStatusSnapshot?: Record<string, unknown>;
+  flightDisruptionRiskLevel?: string;
+  ticketPriceWatchAlert?: Record<string, unknown>;
+  quoteRevalidationRequired?: boolean;
+  priceWatchRiskLevel?: string;
+  safetyAlertPacket?: Record<string, unknown>;
+  safetyRiskLevel?: string;
+  gdsSchemaBridge?: Record<string, unknown>;
+  pnrShadowCheck?: Record<string, unknown>;
+  pnrShadowRiskLevel?: string;
+  supplierIntelligenceSnapshot?: Record<string, unknown>;
+  supplierRiskLevel?: string;
+  canonicalTravelObjects?: unknown[];
+  lastAgentAction?: string;
+  lastAgentActionAt?: string;
 }
 
 export interface TripStats {
@@ -806,7 +797,16 @@ export interface CollectionLinkInfo {
   token_id: string;
   collection_url: string;
   expires_at: string;
+  trip_id: string;
   status: string;
+}
+
+export interface CollectionLinkStatus {
+  has_active_token: boolean;
+  token_id: string | null;
+  expires_at: string | null;
+  status: string | null;
+  has_pending_submission: boolean;
 }
 
 export interface PendingBookingDataResponse {
@@ -819,11 +819,13 @@ export interface PublicCollectionContext {
   valid: boolean;
   reason?: string;
   already_submitted?: boolean;
-  destination?: string;
-  departure_date?: string;
-  return_date?: string;
-  traveler_count?: number;
-  agency_name?: string;
+  trip_summary?: {
+    destination?: string;
+    date_window?: string;
+    traveler_count?: number | string;
+    agency_name?: string;
+  };
+  expires_at?: string;
 }
 
 const SPINE_API_URL = process.env.NEXT_PUBLIC_SPINE_API_URL || '';
@@ -838,8 +840,8 @@ export async function generateCollectionLink(
   });
 }
 
-export async function getCollectionLink(tripId: string): Promise<CollectionLinkInfo> {
-  return api.get<CollectionLinkInfo>(`/api/trips/${tripId}/collection-link`);
+export async function getCollectionLink(tripId: string): Promise<CollectionLinkStatus> {
+  return api.get<CollectionLinkStatus>(`/api/trips/${tripId}/collection-link`);
 }
 
 export async function revokeCollectionLink(tripId: string): Promise<{ ok: boolean }> {

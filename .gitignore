@@ -45,6 +45,7 @@ Thumbs.db
 .claude/settings.local.json
 .vscode/
 .idea/
+.deepseek/
 *.swp
 *.swo
 *~

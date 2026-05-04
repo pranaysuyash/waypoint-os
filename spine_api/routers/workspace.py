@@ -13,8 +13,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from spine_api.core.database import get_db
-from spine_api.core.auth import get_current_agency_id, get_current_membership
+from spine_api.core.rls import get_rls_db
+from spine_api.core.auth import get_current_agency_id, get_current_membership, require_permission
 from spine_api.services.workspace_service import get_workspace, update_workspace, generate_workspace_code
 
 logger = logging.getLogger("spine_api.workspace")
@@ -32,7 +32,8 @@ class WorkspaceUpdateRequest(BaseModel):
 @router.get("")
 async def get_current_workspace(
     agency_id: str = Depends(get_current_agency_id),
-    db: AsyncSession = Depends(get_db),
+    membership=require_permission("settings:read"),
+    db: AsyncSession = Depends(get_rls_db),
 ):
     workspace = await get_workspace(db, agency_id)
     if not workspace:
@@ -44,7 +45,8 @@ async def get_current_workspace(
 async def patch_current_workspace(
     request: WorkspaceUpdateRequest,
     agency_id: str = Depends(get_current_agency_id),
-    db: AsyncSession = Depends(get_db),
+    membership=require_permission("settings:write"),
+    db: AsyncSession = Depends(get_rls_db),
 ):
     updates = request.model_dump(exclude_none=True)
     if not updates:
@@ -63,10 +65,10 @@ class GenerateCodeRequest(BaseModel):
 @router.post("/codes")
 async def post_generate_workspace_code(
     request: GenerateCodeRequest,
-    membership=Depends(get_current_membership),
-    db: AsyncSession = Depends(get_db),
+    membership=require_permission("team:manage"),
+    db: AsyncSession = Depends(get_rls_db),
 ):
-    """Generate a new workspace invitation code. Marks the old code inactive."""
+    """Generate a new workspace invitation code. Requires team:manage permission (owner/admin)."""
     new_code = await generate_workspace_code(
         db,
         agency_id=membership.agency_id,

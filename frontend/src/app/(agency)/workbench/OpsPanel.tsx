@@ -7,6 +7,7 @@ import {
   type BookingData,
   type BookingTraveler,
   type CollectionLinkInfo,
+  type CollectionLinkStatus,
   type PendingBookingDataResponse,
   getBookingData,
   updateBookingData,
@@ -47,6 +48,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
   const [editPayerName, setEditPayerName] = useState('');
 
   // Collection link state
+  const [linkStatus, setLinkStatus] = useState<CollectionLinkStatus | null>(null);
   const [linkInfo, setLinkInfo] = useState<CollectionLinkInfo | null>(null);
   const [linkLoading, setLinkLoading] = useState(false);
   const [linkGenerating, setLinkGenerating] = useState(false);
@@ -89,11 +91,11 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
 
     let cancelled = false;
     (async () => {
-      // Fetch link status
+      // Fetch link status (no URL — just has_active_token + expires_at)
       setLinkLoading(true);
       try {
-        const info = await getCollectionLink(trip.id);
-        if (!cancelled) setLinkInfo(info);
+        const status = await getCollectionLink(trip.id);
+        if (!cancelled) setLinkStatus(status);
       } catch {
         // No active link is fine — 404 expected
       } finally {
@@ -159,7 +161,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
     }
   }, [trip?.id, editTravelers, editPayerName, updatedAt]);
 
-  // Generate collection link
+  // Generate collection link (always creates new, revokes old active)
   const handleGenerateLink = useCallback(async () => {
     if (!trip?.id) return;
     setLinkGenerating(true);
@@ -167,6 +169,13 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
     try {
       const info = await generateCollectionLink(trip.id);
       setLinkInfo(info);
+      setLinkStatus({
+        has_active_token: true,
+        token_id: info.token_id,
+        expires_at: info.expires_at,
+        status: info.status,
+        has_pending_submission: false,
+      });
     } catch (e) {
       setLinkError(e instanceof Error ? e.message : 'Failed to generate link');
     } finally {
@@ -181,6 +190,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
     try {
       await revokeCollectionLink(trip.id);
       setLinkInfo(null);
+      setLinkStatus(null);
     } catch (e) {
       setLinkError(e instanceof Error ? e.message : 'Failed to revoke link');
     }
@@ -576,17 +586,27 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
             <span className="text-xs text-[#8b949e]">Loading...</span>
           )}
 
+          {/* No URL available — show generate button (or "active link exists" indicator) */}
           {!linkLoading && !linkInfo && (
-            <button
-              data-testid="ops-generate-link-btn"
-              className="text-xs px-3 py-1 rounded bg-blue-900/50 text-blue-300 hover:bg-blue-800/50 disabled:opacity-50"
-              onClick={handleGenerateLink}
-              disabled={linkGenerating}
-            >
-              {linkGenerating ? 'Generating...' : 'Generate Customer Link'}
-            </button>
+            <div>
+              {linkStatus?.has_active_token && (
+                <div data-testid="ops-link-active-hint" className="mb-3 text-xs text-[#8b949e]">
+                  Active link exists (expires {linkStatus.expires_at ? new Date(linkStatus.expires_at).toLocaleString() : 'unknown'}).
+                  Generating a new link will revoke the old one.
+                </div>
+              )}
+              <button
+                data-testid="ops-generate-link-btn"
+                className="text-xs px-3 py-1 rounded bg-blue-900/50 text-blue-300 hover:bg-blue-800/50 disabled:opacity-50"
+                onClick={handleGenerateLink}
+                disabled={linkGenerating}
+              >
+                {linkGenerating ? 'Generating...' : 'Generate New Customer Link'}
+              </button>
+            </div>
           )}
 
+          {/* URL available after generate */}
           {!linkLoading && linkInfo && (
             <div data-testid="ops-link-info">
               <div className="flex items-center gap-2 mb-2">
@@ -608,13 +628,23 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
               <div className="text-xs text-[#8b949e] mb-3">
                 Expires: {new Date(linkInfo.expires_at).toLocaleString()}
               </div>
-              <button
-                data-testid="ops-revoke-link-btn"
-                className="text-xs px-3 py-1 rounded bg-red-900/50 text-red-300 hover:bg-red-800/50"
-                onClick={handleRevokeLink}
-              >
-                Revoke Link
-              </button>
+              <div className="flex gap-2">
+                <button
+                  data-testid="ops-revoke-link-btn"
+                  className="text-xs px-3 py-1 rounded bg-red-900/50 text-red-300 hover:bg-red-800/50"
+                  onClick={handleRevokeLink}
+                >
+                  Revoke Link
+                </button>
+                <button
+                  data-testid="ops-regenerate-link-btn"
+                  className="text-xs px-3 py-1 rounded bg-blue-900/50 text-blue-300 hover:bg-blue-800/50 disabled:opacity-50"
+                  onClick={handleGenerateLink}
+                  disabled={linkGenerating}
+                >
+                  Generate New Link
+                </button>
+              </div>
             </div>
           )}
         </div>

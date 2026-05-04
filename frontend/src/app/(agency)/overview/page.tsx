@@ -28,6 +28,7 @@ import {
   getPlanningStatusTone,
 } from '@/lib/planning-status';
 import { useOverviewSummary } from './useOverviewSummary';
+import { EmptyStateOnboarding } from '@/components/overview/EmptyStateOnboarding';
 
 // ── Severity grammar: color encodes state, not decoration ──────────────────
 
@@ -405,9 +406,14 @@ function RecentTrips({
   }
 
   if (trips.length === 0) {
+    // First-run: no trips and no leads → full onboarding checklist
+    if (!hasLeadsWaiting && planningTripsTotal === 0) {
+      return <EmptyStateOnboarding />;
+    }
+
+    // Leads exist but no trips yet → simpler prompt to review the lead
     return (
       <div className='p-8 text-center'>
-        {/* Empty state: intentional, not accidental */}
         <div
           className='w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-4'
           style={{
@@ -421,12 +427,10 @@ function RecentTrips({
           No trips in planning yet
         </p>
         <p className='text-[12px] leading-relaxed max-w-[280px] mx-auto' style={{ color: 'var(--text-secondary)' }}>
-          {hasLeadsWaiting
-            ? 'A lead is waiting in Lead Inbox. Review it to start planning, and the trip will appear here.'
-            : 'Add a customer inquiry and Waypoint will organize the details, flag missing information, and prepare the next planning step.'}
+          A lead is waiting in Lead Inbox. Review it to start planning, and the trip will appear here.
         </p>
         <Link
-          href={hasLeadsWaiting ? '/inbox' : INTAKE_HREF}
+          href='/inbox'
           className='inline-flex items-center gap-2 mt-5 px-4 py-2 rounded-lg text-[13px] font-medium transition-colors border'
           style={{
             background: 'transparent',
@@ -443,7 +447,7 @@ function RecentTrips({
           }}
         >
           <Send className='w-4 h-4' style={{ color: 'var(--accent-blue)' }} />
-          {hasLeadsWaiting ? 'Review Lead' : 'Add New Inquiry'}
+          Review Lead
           <ArrowRight className='w-3.5 h-3.5' style={{ color: 'var(--text-muted)' }} />
         </Link>
       </div>

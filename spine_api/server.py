@@ -92,7 +92,7 @@ from spine_api.core.env import load_project_env
 
 load_project_env()
 
-from spine_api.core.auth import get_current_user, get_current_agency_id, get_current_agency
+from spine_api.core.auth import get_current_user, get_current_agency_id, get_current_agency, _auth_or_skip, require_permission
 from spine_api.core.database import engine, get_db
 from spine_api.models.tenant import Agency, User
 from spine_api.core.logging_filter import install_sensitive_data_filter
@@ -133,6 +133,8 @@ from spine_api.contract import (
     SuitabilityFlagsResponse,
     InboxResponse,
     InboxStatsResponse,
+    AssignInboxRequest,
+    AssignInboxResponse,
 )
 from spine_api.services import membership_service
 from spine_api.services.inbox_projection import InboxProjectionService, build_inbox_response
@@ -203,6 +205,7 @@ from src.intake.config.agency_settings import AgencySettingsStore
 from src.analytics.policy_rules import ready_gate_failures
 from src.agents.recovery_agent import RecoveryAgent
 from src.agents.runtime import AgentSupervisor, build_default_registry
+from spine_api.services.agent_work_coordinator import SQLWorkCoordinator
 
 
 class _TripStoreAdapter:
@@ -210,15 +213,20 @@ class _TripStoreAdapter:
 
     def list_active(self) -> list:
         """Return trips that are in processing stages (not closed/cancelled)."""
-        trips_raw = TripStore.list_trips(limit=500)
+        trips_raw = self._resolve_sync(TripStore.list_trips(limit=500))
         terminal = {"closed", "cancelled", "completed", "archived"}
         return [t for t in trips_raw if (t.get("stage") or t.get("state") or t.get("status")) not in terminal]
 
     def set_review_status(self, trip_id: str, status: str) -> None:
-        TripStore.update_trip(trip_id, {"review_status": status})
+        self._resolve_sync(TripStore.update_trip(trip_id, {"review_status": status}))
 
     def update_trip(self, trip_id: str, updates: dict) -> Optional[dict]:
-        return TripStore.update_trip(trip_id, updates)
+        return self._resolve_sync(TripStore.update_trip(trip_id, updates))
+
+    def _resolve_sync(self, value):
+        if asyncio.iscoroutine(value):
+            return persistence._run_async_blocking(value)
+        return value
 
 
 class _AuditStoreAdapter:
@@ -234,6 +242,11 @@ class _AuditStoreAdapter:
 
 _agent_trip_repo = _TripStoreAdapter()
 _agent_audit_sink = _AuditStoreAdapter()
+_agent_work_coordinator = (
+    SQLWorkCoordinator(lease_seconds=int(os.environ.get("AGENT_WORK_LEASE_SECONDS", "60")))
+    if os.environ.get("AGENT_WORK_COORDINATOR", "").lower() == "sql" or os.environ.get("TRIPSTORE_BACKEND", "").lower() == "sql"
+    else None
+)
 _recovery_agent = RecoveryAgent(
     audit_store=_agent_audit_sink,
     trip_repo=_agent_trip_repo,
@@ -244,6 +257,7 @@ _agent_supervisor = AgentSupervisor(
     trip_repo=_agent_trip_repo,
     audit=_agent_audit_sink,
     interval_seconds=int(os.environ.get("AGENT_SUPERVISOR_INTERVAL_S", "300")),
+    coordinator=_agent_work_coordinator,
 )
 
 # Auth — Phase 1
@@ -448,14 +462,13 @@ app.add_exception_handler(RateLimitExceeded, RateLimitExceededHandler.handler)
 FastAPIInstrumentor.instrument_app(app)
 
 # Phase 1: Auth + Workspace routers
+# Auth enforcement: _auth_or_skip checks SPINE_API_DISABLE_AUTH at call time,
+# so tests can toggle auth behavior without importlib.reload().
 app.include_router(auth_router.router)
-app.include_router(
-    workspace_router.router,
-    dependencies=[Depends(get_current_user)] if not os.environ.get("SPINE_API_DISABLE_AUTH") else [],
-)
-app.include_router(frontier_router.router, dependencies=[Depends(get_current_user)] if not os.environ.get("SPINE_API_DISABLE_AUTH") else [])
-app.include_router(audit_router.router, dependencies=[Depends(get_current_user)] if not os.environ.get("SPINE_API_DISABLE_AUTH") else [])
-app.include_router(assignments_router.router, dependencies=[Depends(get_current_user)] if not os.environ.get("SPINE_API_DISABLE_AUTH") else [])
+app.include_router(workspace_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(frontier_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(audit_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(assignments_router.router, dependencies=[Depends(_auth_or_skip)])
 
 
 def _seed_scenario(agency_id: Optional[str] = None):
@@ -2020,6 +2033,33 @@ def get_inbox(
     return result
 
 
+@app.post("/inbox/assign", response_model=AssignInboxResponse)
+def assign_inbox_trips(
+    body: AssignInboxRequest,
+    agency: Agency = Depends(get_current_agency),
+):
+    """
+    Assign inbox trips to an agent.
+
+    Sets assigned_to_id and moves each trip from inbox to workspace (status=assigned).
+    This is the primitive endpoint. Higher-level logic (auto-assignment, round-robin,
+    workload balancing) should call this or use the same TripStore.update_trip pattern.
+    """
+    trip_ids = body.tripIds
+    assign_to_id = body.assignTo
+    assigned = 0
+
+    for trip_id in trip_ids:
+        result = TripStore.update_trip(trip_id, {
+            "assigned_to_id": assign_to_id,
+            "status": "assigned",
+        })
+        if result:
+            assigned += 1
+
+    return {"success": assigned == len(trip_ids), "assigned": assigned}
+
+
 @app.get("/inbox/stats", response_model=InboxStatsResponse)
 def get_inbox_stats(
     agency: Agency = Depends(get_current_agency),
@@ -2163,6 +2203,7 @@ def get_agent_runtime(
 def run_agent_runtime_once(
     agent_name: Optional[str] = Query(default=None),
     agency: Agency = Depends(get_current_agency),
+    _perm=require_permission("ai_workforce:manage"),
 ):
     """
     Synchronously run one supervisor pass for testing/admin operations.
@@ -2624,6 +2665,9 @@ class PublicSubmissionResponse(BaseModel):
     ok: bool
     message: str
 
+class PublicBookingDataSubmitRequest(BaseModel):
+    booking_data: BookingDataModel
+
 
 async def _ts(fn, *args, **kwargs):
     """Run a sync TripStore call from an async endpoint without blocking the event loop.
@@ -2659,7 +2703,7 @@ async def create_collection_link(
         )
 
     host = os.getenv("FRONTEND_URL", "http://localhost:3000")
-    collection_url = f"{host}/c/{plain_token}"
+    collection_url = f"{host}/booking-collection/{plain_token}"
 
     AuditStore.log_event("booking_collection_link_created", agency.id, {
         "trip_id": trip_id,
@@ -2739,7 +2783,7 @@ async def get_pending_booking_data(trip_id: str, agency: Agency = Depends(get_cu
 
 
 @app.post("/trips/{trip_id}/pending-booking-data/accept")
-async def accept_pending_booking_data(trip_id: str, request: ReviewActionRequest = ReviewActionRequest(), agency: Agency = Depends(get_current_agency)):
+async def accept_pending_booking_data(trip_id: str, request: Optional[ReviewActionRequest] = None, agency: Agency = Depends(get_current_agency)):
     """Accept pending customer submission into trusted booking_data."""
     trip = await _ts(TripStore.get_trip, trip_id)
     if not trip or trip.get("agency_id") != agency.id:
@@ -2785,7 +2829,7 @@ async def accept_pending_booking_data(trip_id: str, request: ReviewActionRequest
         "traveler_count": len(validated.travelers),
         "has_payer": validated.payer is not None,
         "has_passport_data": any(t.passport_number for t in validated.travelers),
-        "reason": request.reason,
+        "reason": request.reason if request else None,
     })
 
     booking_data = await _ts(TripStore.get_booking_data, trip_id)
@@ -2793,7 +2837,7 @@ async def accept_pending_booking_data(trip_id: str, request: ReviewActionRequest
 
 
 @app.post("/trips/{trip_id}/pending-booking-data/reject")
-async def reject_pending_booking_data(trip_id: str, request: ReviewActionRequest = ReviewActionRequest(), agency: Agency = Depends(get_current_agency)):
+async def reject_pending_booking_data(trip_id: str, request: Optional[ReviewActionRequest] = None, agency: Agency = Depends(get_current_agency)):
     """Reject pending customer submission. Clears pending data."""
     trip = await _ts(TripStore.get_trip, trip_id)
     if not trip or trip.get("agency_id") != agency.id:
@@ -2807,7 +2851,7 @@ async def reject_pending_booking_data(trip_id: str, request: ReviewActionRequest
 
     AuditStore.log_event("booking_data_rejected_from_customer", agency.id, {
         "trip_id": trip_id,
-        "reason": request.reason,
+        "reason": request.reason if request else None,
     })
 
     return {"ok": True, "message": "Pending booking data rejected"}
@@ -2859,7 +2903,7 @@ async def get_public_collection_form(request: Request, response: Response, token
 
 @app.post("/api/public/booking-collection/{token}/submit", response_model=PublicSubmissionResponse)
 @limiter.limit("5/minute")
-async def submit_public_booking_data(request: Request, response: Response, token: str, booking_data: BookingDataModel):
+async def submit_public_booking_data(request: Request, response: Response, token: str, payload: PublicBookingDataSubmitRequest):
     """Customer submits booking data. No auth. Writes to pending_booking_data."""
     from spine_api.services.collection_service import validate_token, mark_token_used
     from spine_api.core.database import async_session_maker
@@ -2874,17 +2918,15 @@ async def submit_public_booking_data(request: Request, response: Response, token
     if pending:
         raise HTTPException(status_code=409, detail="already_submitted")
 
-    # Validate via Pydantic (already done by model binding, but explicit)
+    booking_data = payload.booking_data
     bd_dict = booking_data.model_dump()
 
     # Write to pending_booking_data (encrypted)
     await _ts(TripStore.update_trip, record.trip_id, {"pending_booking_data": bd_dict})
 
     # Mark token as used
-    customer_ip = request.client.host if request.client else None
-
     async with async_session_maker() as db:
-        await mark_token_used(db, record.id, customer_ip)
+        await mark_token_used(db, record.id)
 
     AuditStore.log_event("customer_booking_data_submitted", record.agency_id, {
         "trip_id": record.trip_id,
@@ -3164,6 +3206,7 @@ def post_review_action(
     request: ReviewActionRequest,
     agency: Agency = Depends(get_current_agency),
     user: User = Depends(get_current_user),
+    _perm=require_permission("trips:write"),
 ):
     """Apply a review action (approve/reject/request_changes/escalate) to a trip."""
     try:
@@ -3190,7 +3233,10 @@ def post_review_action(
 # ============================================================================
 
 @app.get("/api/settings")
-def get_agency_settings(agency_id: str = "waypoint-hq"):
+def get_agency_settings(
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:read"),
+):
     """Return the complete agency configuration (profile + operational + autonomy)."""
     settings = AgencySettingsStore.load(agency_id)
     return {
@@ -3227,6 +3273,7 @@ def get_agency_settings(agency_id: str = "waypoint-hq"):
 def update_agency_operational_settings(
     request: UpdateOperationalSettings,
     agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:write"),
 ):
     """
     Update agency operational and profile settings.
@@ -3321,6 +3368,7 @@ def get_agency_autonomy_settings(agency_id: str = "waypoint-hq"):
 def update_agency_autonomy_settings(
     request: UpdateAutonomyPolicy,
     agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:write"),
 ):
     """
     Update the agency autonomy policy.
@@ -3777,6 +3825,7 @@ async def invite_team_member(
     request: InviteTeamMemberRequest,
     agency: Agency = Depends(get_current_agency),
     user: User = Depends(get_current_user),
+    _perm=require_permission("team:manage"),
     db: AsyncSession = Depends(get_db),
 ):
     """Invite a new team member (creates User + Membership)."""
@@ -3801,6 +3850,7 @@ async def update_team_member(
     member_id: str,
     request: InviteTeamMemberRequest,
     agency: Agency = Depends(get_current_agency),
+    _perm=require_permission("team:manage"),
     db: AsyncSession = Depends(get_db),
 ):
     """Update a team member's role, capacity, or specializations."""
@@ -3815,6 +3865,7 @@ async def update_team_member(
 async def deactivate_team_member(
     member_id: str,
     agency: Agency = Depends(get_current_agency),
+    _perm=require_permission("team:manage"),
     db: AsyncSession = Depends(get_db),
 ):
     """Deactivate a team member."""
@@ -3963,6 +4014,7 @@ def reassign_trip(
     agent_name: str,
     reassigned_by: str = "owner",
     agency: Agency = Depends(get_current_agency),
+    _perm=require_permission("trips:reassign"),
 ):
     """Reassign a trip to a different agent."""
     trip = TripStore.get_trip(trip_id)

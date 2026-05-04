@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { AlertTriangle, CheckCircle2, CloudSun, DollarSign, FileText, Plane, ShieldCheck } from "lucide-react";
 import { useWorkbenchStore } from "@/stores/workbench";
-import type { Trip } from "@/lib/api-client";
+import type { AgentOperationsMetadata, Trip } from "@/lib/api-client";
 import type { SlotValue, Ambiguity, PacketUnknown, PacketContradiction, ValidationReport } from "@/types/spine";
 import { FIELD_LABELS, SIGNAL_LABELS, labelOrTitle } from "@/lib/label-maps";
 import {
@@ -23,9 +26,30 @@ interface PacketPanelProps {
 }
 
 export function PacketPanel({ tripId, trip }: PacketPanelProps) {
+  const router = useRouter();
+  const [isRefreshingAgents, setIsRefreshingAgents] = useState(false);
+  const [agentRefreshMessage, setAgentRefreshMessage] = useState<string | null>(null);
   const { result_packet, result_validation, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
   const activePacket = result_packet || trip?.packet;
   const activeValidation = result_validation || (trip?.validation as ValidationReport | null);
+
+  async function refreshAgentChecks() {
+    setIsRefreshingAgents(true);
+    setAgentRefreshMessage(null);
+    try {
+      const response = await fetch("/api/agents/runtime/run-once", { method: "POST" });
+      if (!response.ok) {
+        setAgentRefreshMessage("Agent refresh failed");
+        return;
+      }
+      setAgentRefreshMessage("Agent checks refreshed");
+      router.refresh();
+    } catch {
+      setAgentRefreshMessage("Agent refresh failed");
+    } finally {
+      setIsRefreshingAgents(false);
+    }
+  }
 
   if (!activePacket) {
     return <TripDetailsFallback tripId={tripId} trip={trip ?? null} />;
@@ -50,6 +74,15 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
 
   return (
     <div className="space-y-8">
+      {trip && (
+        <AgentOperationsPanel
+          operations={trip.agentOperations}
+          isRefreshing={isRefreshingAgents}
+          refreshMessage={agentRefreshMessage}
+          onRefresh={refreshAgentChecks}
+        />
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {Object.entries(summaryData).map(([label, value]) => (
           <div key={label} className="bg-elevated p-3 rounded-xl border border-[var(--border-default)]">
@@ -117,6 +150,170 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
         </pre>
       )}
     </div>
+  );
+}
+
+function AgentOperationsPanel({
+  operations,
+  isRefreshing,
+  refreshMessage,
+  onRefresh,
+}: {
+  operations?: AgentOperationsMetadata;
+  isRefreshing: boolean;
+  refreshMessage: string | null;
+  onRefresh: () => void;
+}) {
+  const cards = [
+    {
+      key: "documents",
+      label: "Documents",
+      icon: FileText,
+      status: _readPacketStatus(operations?.documentReadinessChecklist, operations?.documentRiskLevel),
+      nextAction: _readNextAction(operations?.documentReadinessChecklist),
+      detail: _countDetail("Confirm", operations?.mustConfirmDocuments?.length),
+    },
+    {
+      key: "destination",
+      label: "Destination",
+      icon: CloudSun,
+      status: _readPacketStatus(operations?.destinationIntelligenceSnapshot, operations?.destinationRiskLevel),
+      nextAction: _firstString(
+        _readNextAction(operations?.destinationIntelligenceSnapshot),
+        _countDetail("Recommendation", operations?.destinationIntelligenceRecommendations?.length)
+      ),
+      detail: _readEvidenceFreshness(operations?.destinationIntelligenceSnapshot),
+    },
+    {
+      key: "weather",
+      label: "Weather Pivot",
+      icon: CloudSun,
+      status: _readPacketStatus(operations?.weatherPivotPacket, operations?.weatherPivotRiskLevel),
+      nextAction: _readNextAction(operations?.weatherPivotPacket),
+      detail: _formatPacketListCount("Pivot", operations?.weatherPivotPacket, ["activity_pivots", "transfer_pivots", "recommendations"]),
+    },
+    {
+      key: "feasibility",
+      label: "Feasibility",
+      icon: AlertTriangle,
+      status: _readPacketStatus(operations?.constraintFeasibilityAssessment, operations?.feasibilityStatus),
+      nextAction: _readNextAction(operations?.constraintFeasibilityAssessment),
+      detail: _formatPacketListCount("Blocker", operations?.constraintFeasibilityAssessment, ["hard_blockers", "soft_constraints", "missing_facts"]),
+    },
+    {
+      key: "proposal",
+      label: "Proposal",
+      icon: CheckCircle2,
+      status: _readPacketStatus(operations?.proposalReadinessAssessment, operations?.proposalReadinessStatus),
+      nextAction: _readNextAction(operations?.proposalReadinessAssessment),
+      detail: _formatPacketListCount("Risk", operations?.proposalReadinessAssessment, ["unresolved_risks", "missing_elements"]),
+    },
+    {
+      key: "booking",
+      label: "Booking",
+      icon: CheckCircle2,
+      status: _readPacketStatus(operations?.bookingReadinessAssessment, operations?.bookingReadinessStatus),
+      nextAction: _readNextAction(operations?.bookingReadinessAssessment),
+      detail: _formatPacketListCount("Issue", operations?.bookingReadinessAssessment, ["missing_elements", "blocking_risks"]),
+    },
+    {
+      key: "flight",
+      label: "Flight Status",
+      icon: Plane,
+      status: _readPacketStatus(operations?.flightStatusSnapshot, operations?.flightDisruptionRiskLevel),
+      nextAction: _readNextAction(operations?.flightStatusSnapshot),
+      detail: _readEvidenceFreshness(operations?.flightStatusSnapshot),
+    },
+    {
+      key: "price",
+      label: "Price Watch",
+      icon: DollarSign,
+      status: _readPacketStatus(operations?.ticketPriceWatchAlert, operations?.priceWatchRiskLevel),
+      nextAction: operations?.quoteRevalidationRequired ? "quote_revalidation_required" : _readNextAction(operations?.ticketPriceWatchAlert),
+      detail: operations?.quoteRevalidationRequired ? "Revalidation required" : _readEvidenceFreshness(operations?.ticketPriceWatchAlert),
+    },
+    {
+      key: "safety",
+      label: "Safety",
+      icon: ShieldCheck,
+      status: _readPacketStatus(operations?.safetyAlertPacket, operations?.safetyRiskLevel),
+      nextAction: _readNextAction(operations?.safetyAlertPacket),
+      detail: _formatPacketListCount("Alert", operations?.safetyAlertPacket, ["alerts", "affected_travelers"]),
+    },
+    {
+      key: "supplier",
+      label: "Supplier / PNR",
+      icon: AlertTriangle,
+      status: _firstString(operations?.supplierRiskLevel, operations?.pnrShadowRiskLevel, _readPacketStatus(operations?.supplierIntelligenceSnapshot, undefined)),
+      nextAction: _firstString(_readNextAction(operations?.supplierIntelligenceSnapshot), _readNextAction(operations?.pnrShadowCheck)),
+      detail: _firstString(
+        _formatPacketListCount("Supplier risk", operations?.supplierIntelligenceSnapshot, ["supplier_risks"]),
+        _formatPacketListCount("PNR issue", operations?.pnrShadowCheck, ["issues"]),
+        _countDetail("Canonical object", operations?.canonicalTravelObjects?.length)
+      ),
+    },
+  ].filter((card) => card.status || card.nextAction || card.detail);
+
+  return (
+    <section className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-ui-lg font-semibold text-text-primary">Agent Operations</h2>
+          <p className="mt-1 text-ui-sm text-text-muted">Live checks, readiness gates, and booking safeguards attached to this trip.</p>
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {refreshMessage && <span className="text-ui-xs text-text-muted">{refreshMessage}</span>}
+          <button
+            type="button"
+            className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? "Refreshing..." : "Refresh Agent Checks"}
+          </button>
+        </div>
+        {operations?.lastAgentAction && (
+          <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-2 text-right">
+            <div className="text-[10px] uppercase tracking-[0.16em] text-text-placeholder">Latest</div>
+            <div className="mt-1 text-ui-xs font-medium text-text-primary">{_formatAgentName(operations.lastAgentAction)}</div>
+            {operations?.lastAgentActionAt && <div className="mt-0.5 text-[11px] text-text-muted">{_formatDateTime(operations.lastAgentActionAt)}</div>}
+          </div>
+        )}
+      </div>
+
+      {cards.length > 0 ? (
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {cards.map(({ key, label, icon: Icon, status, nextAction, detail }) => {
+            const tone = _statusTone(status);
+            return (
+              <article key={key} className="rounded-lg border bg-[var(--bg-surface)] p-4" style={{ borderColor: tone.border }}>
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md" style={{ background: tone.background, color: tone.color }}>
+                    <Icon size={17} aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="truncate text-ui-sm font-semibold text-text-primary">{label}</h3>
+                      {status && (
+                        <span className="shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ borderColor: tone.border, color: tone.color, background: tone.background }}>
+                          {_formatStatus(status)}
+                        </span>
+                      )}
+                    </div>
+                    {nextAction && <p className="mt-2 text-ui-sm text-text-rationale">{_formatStatus(nextAction)}</p>}
+                    {detail && <p className="mt-1 text-ui-xs text-text-muted">{detail}</p>}
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="mt-4 rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] px-4 py-3 text-ui-sm text-text-muted">
+          No agent operation packets are attached yet.
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -252,6 +449,87 @@ function TripDetailsFallback({ tripId, trip }: { tripId: string; trip: Trip | nu
       </div>
     </div>
   );
+}
+
+function _firstString(...values: Array<string | undefined | null>): string | undefined {
+  return values.find((value): value is string => typeof value === "string" && value.length > 0);
+}
+
+function _readPacketStatus(packet: Record<string, unknown> | undefined, explicitStatus: string | undefined): string | undefined {
+  return _firstString(
+    explicitStatus,
+    typeof packet?.risk_level === "string" ? packet.risk_level : undefined,
+    typeof packet?.status === "string" ? packet.status : undefined,
+    packet ? "present" : undefined
+  );
+}
+
+function _readNextAction(packet: Record<string, unknown> | undefined): string | undefined {
+  return typeof packet?.operator_next_action === "string" ? packet.operator_next_action : undefined;
+}
+
+function _readEvidenceFreshness(packet: Record<string, unknown> | undefined): string | undefined {
+  const toolEvidence = packet?.tool_evidence;
+  const evidence = typeof toolEvidence === "object" && toolEvidence !== null && !Array.isArray(toolEvidence)
+    ? toolEvidence as Record<string, unknown>
+    : undefined;
+  const fresh = typeof evidence?.fresh === "boolean" ? evidence.fresh : undefined;
+  const source = typeof evidence?.source === "string" ? evidence.source : undefined;
+  const checkedAt = typeof packet?.checked_at === "string" ? packet.checked_at : undefined;
+
+  if (fresh !== undefined && source) return `${fresh ? "Fresh" : "Stale"} evidence from ${source}`;
+  if (fresh !== undefined) return fresh ? "Fresh evidence" : "Stale evidence";
+  if (checkedAt) return `Checked ${_formatDateTime(checkedAt)}`;
+  return undefined;
+}
+
+function _formatPacketListCount(label: string, packet: Record<string, unknown> | undefined, fields: string[]): string | undefined {
+  if (!packet) return undefined;
+  const count = fields.reduce((total, field) => {
+    const value = packet[field];
+    return total + (Array.isArray(value) ? value.length : 0);
+  }, 0);
+  return _countDetail(label, count);
+}
+
+function _countDetail(label: string, count: number | undefined): string | undefined {
+  if (!count || count <= 0) return undefined;
+  return `${count} ${label}${count === 1 ? "" : "s"}`;
+}
+
+function _formatStatus(value: string): string {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function _formatAgentName(value: string): string {
+  return _formatStatus(value.replace(/_agent$/i, ""));
+}
+
+function _formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function _statusTone(value: string | undefined): { color: string; border: string; background: string } {
+  const normalized = (value || "").toLowerCase();
+  if (["high", "critical", "blocked", "hard", "unknown"].some((needle) => normalized.includes(needle))) {
+    return { color: "#f85149", border: "rgba(248,81,73,0.28)", background: "rgba(248,81,73,0.08)" };
+  }
+  if (["medium", "review", "required", "stale", "soft"].some((needle) => normalized.includes(needle))) {
+    return { color: "#d29922", border: "rgba(210,153,34,0.3)", background: "rgba(210,153,34,0.08)" };
+  }
+  if (["ready", "feasible", "low", "fresh", "complete"].some((needle) => normalized.includes(needle))) {
+    return { color: "#3fb950", border: "rgba(63,185,80,0.26)", background: "rgba(63,185,80,0.08)" };
+  }
+  return { color: "#58a6ff", border: "rgba(88,166,255,0.25)", background: "rgba(88,166,255,0.08)" };
 }
 
 function _getFactValue(facts: Record<string, SlotValue>, field: string): unknown {

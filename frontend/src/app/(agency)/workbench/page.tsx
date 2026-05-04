@@ -435,6 +435,10 @@ function WorkbenchContent() {
         strict_leakage: store.strict_leakage,
         scenario_id: currentScenario || null,
         draft_id: resolvedDraftId || undefined,
+        // Preserves raw input for agency audit trail. Agency consent to us
+        // is via ToS/Privacy Policy at signup, not per-submission.
+        // Public checker handles consent via its own checkbox.
+        retention_consent: true,
       };
 
       const result = await executeSpineRun(request);

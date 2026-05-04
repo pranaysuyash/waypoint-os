@@ -1,5 +1,13 @@
 # Multi-Agent Backend Setup Audit and Completion (2026-05-04)
 
+> Superseded on 2026-05-04 by:
+> - `Docs/status/MULTI_AGENT_RUNTIME_COMPLETION_REPORT_2026-05-04.md`
+> - `Docs/status/MULTI_AGENT_RUNTIME_TEST_EVIDENCE_MATRIX_2026-05-04.md`
+> - `Docs/operations/MULTI_AGENT_RUNTIME_OPERATIONS_RUNBOOK_2026-05-04.md`
+>
+> Reason: this file contains stale statements (for example, that canonical agent
+> registry/supervisor are future work) that no longer match the current code.
+
 ## Scope
 - Backend-only assessment and completion pass for the current multi-agent setup.
 - Sources used: live codebase, repo docs, scenario tests, and external agent-architecture guidance.

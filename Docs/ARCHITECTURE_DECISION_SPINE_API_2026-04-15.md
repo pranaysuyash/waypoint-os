@@ -1,5 +1,7 @@
 # Architecture Decision: Spine API Service (2026-04-15)
 
+> **Note (2026-05-04):** This ADR documents the initial migration. The response contract has evolved significantly since then. `spine_api/contract.py` is the canonical source of truth for all current models. The ADR's 4-field response signature (`ok`, `safety`, `assertions`, `meta`) is historical — the actual `SpineRunResponse` now has 15+ fields including `packet`, `validation`, `decision`, `strategy`, `traveler_bundle`, `internal_bundle`, `fees`, `autonomy_outcome`, and `frontier_result`.
+
 **Date**: 2026-04-15
 **Decision**: Replace `spine-wrapper.py` (subprocess wrapper) with `spine_api` (FastAPI HTTP service)
 **Status**: Implemented and committed
@@ -21,7 +23,7 @@
 - **Communication**: HTTP with Pydantic models
 - **Process**: Persistent Python process, modules pre-loaded, HTTP endpoint
 
-**Frontend client**: `frontend/src/lib/spine-client.ts` (TypeScript fetch client)
+**Frontend client**: `frontend/src/lib/spine-client.ts` (TypeScript fetch client — **removed 2026-05-04**, superseded by `hooks/useSpineRun`)
 
 ---
 

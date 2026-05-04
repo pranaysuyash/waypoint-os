@@ -1,90 +1,139 @@
-# Multi-Agent Runtime Operations Runbook
+# Multi-Agent Runtime Operations Runbook (Backend) — 2026-05-04
 
-- Date: 2026-05-04
-- Scope: backend product-agent runtime
+## Scope
+Backend product-agent runtime operations for `travel_agency_agent`.
 
-## Runtime Surfaces
+## Canonical Runtime Surfaces
+- Registry + supervisor implementation: `src/agents/runtime.py`
+- Recovery loop: `src/agents/recovery_agent.py`
+- Event envelope: `src/agents/events.py`
+- Runtime APIs: `spine_api/server.py`
+  - `GET /agents/runtime`
+  - `POST /agents/runtime/run-once`
+  - `GET /agents/runtime/events`
+  - `GET /trips/{trip_id}/agent-events`
 
-| Operation | Command / Route | Expected Result |
-| --- | --- | --- |
-| Health/introspection | `GET /agents/runtime` | Registry definitions, supervisor health, recovery status. |
-| Manual runtime pass | `POST /agents/runtime/run-once` | One scan/execute pass across registered agents. |
-| Manual single-agent pass | `POST /agents/runtime/run-once?agent_name=front_door_agent` | Runs one registered agent only. |
-| Runtime events | `GET /agents/runtime/events?limit=100` | Recent canonical `agent_event` records. |
-| Trip events | `GET /trips/{trip_id}/agent-events` | Agent event history for a trip after agency access check. |
-| Scenario drill | `uv run python tools/run_multi_agent_runtime_scenarios.py` | Writes `Docs/status/MULTI_AGENT_RUNTIME_SCENARIO_EVIDENCE_2026-05-04.md`. |
+## Registered Product Agents (Current)
+- `front_door_agent`
+- `sales_activation_agent`
+- `document_readiness_agent`
+- `destination_intelligence_agent`
+- `weather_pivot_agent`
+- `constraint_feasibility_agent`
+- `proposal_readiness_agent`
+- `booking_readiness_agent`
+- `flight_status_agent`
+- `ticket_price_watch_agent`
+- `safety_alert_agent`
+- `gds_schema_bridge_agent`
+- `pnr_shadow_agent`
+- `supplier_intelligence_agent`
+- `follow_up_agent`
+- `quality_escalation_agent`
+- separate lifecycle loop: `recovery_agent`
 
-## Local LLM Test Key Handling
+## Operator Checks
+1. Runtime health:
+   - `GET /agents/runtime`
+   - Confirm `supervisor.running == true`
+   - Confirm expected agent names in `supervisor.registered_agents`
+2. Event stream:
+   - `GET /agents/runtime/events?limit=100`
+   - Filter by `agent_name` and `correlation_id` as needed
+3. Trip-specific trace:
+   - `GET /trips/{trip_id}/agent-events`
+4. Trip packet surface:
+   - Open `/trips/{trip_id}/packet`
+   - Confirm the Agent Operations panel shows any attached document, destination, weather, feasibility, proposal, booking, flight, price, safety, supplier, GDS, and PNR packets.
+   - Use `Refresh Agent Checks` to trigger the canonical `POST /agents/runtime/run-once` backend pass through the existing `/api/[...path]` proxy route map.
 
-- Local-only OpenAI credentials are available in `frontend/.env.local` for tests that explicitly need them.
-- Do not print, copy, or commit secret values into docs, fixtures, logs, or scenario artifacts.
-- Backend test commands should load only the needed environment variable into the process, then redact command output if an SDK prints configuration.
-- `frontend/.nv.local` was checked and does not exist.
+## Event Semantics
+- `agent_started` / `agent_stopped`: supervisor lifecycle
+- `agent_decision`: execution decision or skip reason
+- `agent_action`: successful action completion
+- `agent_retry`: transient failure/retry or ownership conflict skip
+- `agent_escalated`: terminal failure / poisoned work item
+- `agent_failed`: scan/runtime failure in an agent loop
 
-## Registered Operational Agents
+## Manual Runtime Drill
+- Trigger one pass for all agents:
+  - `POST /agents/runtime/run-once`
+- Trigger one pass for a specific agent:
+  - `POST /agents/runtime/run-once?agent_name=follow_up_agent`
+- Expected response contains:
+  - `results[]`
+  - `total`
+  - updated supervisor health snapshot
 
-| Agent | Purpose | Authority Boundary |
-| --- | --- | --- |
-| `front_door_agent` | Classify fresh/incomplete inquiries, identify missing basics, draft acknowledgment, set lead priority. | Draft/recommend/metadata only; no customer send and no assignment mutation. |
-| `sales_activation_agent` | Schedule stage-aware follow-up when an open lead is idle beyond SLA and has no pending follow-up. | May create follow-up task fields; does not send messages. |
-| `document_readiness_agent` | Build passport, visa, insurance, and transit readiness checklists with evidence metadata. | May block readiness metadata and escalate must-confirm items; no legal finality. |
-| `follow_up_agent` | Mark overdue follow-up tasks as due. | May update follow-up status; does not contact customer. |
-| `quality_escalation_agent` | Escalate blocked/high-risk trips for human review. | May set review escalation metadata; cannot approve/suppress risk. |
+## Failure Drills (Validated)
+1. Transient update failure:
+   - expected: first pass `retry_pending`, second pass success
+2. Retry budget exhaustion:
+   - expected: status transitions to `poisoned`, event `agent_escalated`
+3. Ownership collision/idempotent re-entry:
+   - expected: secondary acquire denied, completed work not re-executed
 
-## Planned Agent Families
+## Work Coordination
+- Local/drill fallback: `InMemoryWorkCoordinator` in `src/agents/runtime.py`.
+- Production SQL path: `SQLWorkCoordinator` in `spine_api/services/agent_work_coordinator.py`.
+- Schema:
+  - SQLAlchemy model: `spine_api/models/agent_work.py`
+  - Alembic migration: `alembic/versions/add_agent_work_leases.py`
+- Enable SQL coordination with either:
+  - `TRIPSTORE_BACKEND=sql` (default production/test trip store setting), or
+  - `AGENT_WORK_COORDINATOR=sql`
+- Apply the migration before enabling multi-worker runtime. The SQL coordinator stores durable terminal idempotency states (`completed`, `poisoned`) and row-locked leases for `running` work.
+- Local verification on 2026-05-04 applied `uv run alembic upgrade head`, which created `agent_work_leases` and also applied the already-pending RLS migration in the local database.
 
-The runtime roadmap is expanded in `Docs/status/MULTI_AGENT_RUNTIME_EXPANDED_AGENT_PLAN_2026-05-04.md`.
+## Live Tool Configuration
+- Weather:
+  - Default: deterministic `MockWeatherTool`
+  - Live keyless option: `TRAVEL_AGENT_ENABLE_LIVE_TOOLS=1` uses Open-Meteo
+- Flight status:
+  - Default: deterministic `MockFlightStatusTool`
+  - Provider option: set `TRAVEL_AGENT_FLIGHT_STATUS_URL_TEMPLATE`
+  - Optional provider label: `TRAVEL_AGENT_FLIGHT_STATUS_PROVIDER`
+  - Optional headers: `TRAVEL_AGENT_FLIGHT_STATUS_HEADER_<HEADER_NAME>`
+- Quote / price watch:
+  - Default: deterministic `MockPriceWatchTool`
+  - Provider option: set `TRAVEL_AGENT_PRICE_WATCH_URL_TEMPLATE`
+  - Optional provider label: `TRAVEL_AGENT_PRICE_WATCH_PROVIDER`
+  - Optional headers: `TRAVEL_AGENT_PRICE_WATCH_HEADER_<HEADER_NAME>`
+- Safety alerts:
+  - Default: deterministic `MockSafetyAlertTool`
+  - Provider option: set `TRAVEL_AGENT_SAFETY_ALERT_URL_TEMPLATE`
+  - Optional provider label: `TRAVEL_AGENT_SAFETY_ALERT_PROVIDER`
+  - Optional headers: `TRAVEL_AGENT_SAFETY_ALERT_HEADER_<HEADER_NAME>`
+  - State Department option: `TRAVEL_AGENT_SAFETY_PROVIDER=state_dept`
 
-Planned families:
+URL templates may reference fields such as `{carrier}`, `{flight_number}`, `{origin}`, `{destination}`, `{date}`, and `{quote_id}`. Query-string secrets named like key/token/secret/password/auth are redacted from tool evidence references.
 
-- live intelligence/tool-calling agents for weather, destination safety, flight status, ticket prices, and advisories;
-- document/compliance agents for visa, passport, insurance, transit, and expiry checks;
-- stage-specific agents for feasibility, shortlist, proposal readiness, booking readiness, in-trip pulse, and post-trip retention;
-- supplier/GDS agents for quote revalidation, schema normalization, PNR shadow checks, and supplier intelligence.
+## SLO Starter Set
+1. Runtime availability: `/agents/runtime` success >= 99.5%
+2. Event write reliability: `agent_action`/`agent_retry`/`agent_escalated` events present for agent outcomes >= 99%
+3. Decision-to-event latency: p95 < 2s in single-worker baseline
+4. Poison rate: track proportion of `agent_escalated` over total executed actions
 
-## Tool Evidence Contract
+## Guardrails
+- Do not create duplicate API routes for runtime operations.
+- Keep runtime on canonical pipeline; no parallel orchestration path.
+- Keep changes additive and evidence-tested.
+- Keep trip access agency-scoped on all event surfaces.
 
-`src/agents/tool_contracts.py` defines the common evidence shape for live/tool-calling agents:
+## Known Operational Limits
+1. SQL work coordination is implemented but requires the Alembic migration before production use.
+2. Recovery re-queue path depends on runner wiring availability.
+3. Tool-backed destination intelligence, weather pivots, and feasibility assessments use freshness-aware adapters. Weather has a keyless live path; flight, price, and external safety feeds require configured provider endpoints or the State Department advisory adapter. Authoritative source verification remains operator responsibility.
+4. FastAPI TestClient verification emitted async TripStore/list supervisor warnings; track a separate hardening task so runtime scans never leak unawaited SQL coroutines.
+   - Update: `_TripStoreAdapter` now resolves accidental coroutine results before handing data to synchronous agent scans. Regression coverage: `tests/test_agent_tripstore_adapter.py`.
+   - Update: the synchronous SQL facade now uses a serialized background bridge plus loop-local TripStore SQL engines, avoiding asyncpg/SQLAlchemy lock reuse across runtime scans and FastAPI lifespan work.
+5. File-backed audit events can leave ownerless lock directories after interrupted processes.
+   - Update: `file_lock()` now removes ownerless stale lock directories after the configured timeout window. Regression coverage: `tests/test_persistence_runtime_boundaries.py`.
+6. The packet page exposes agent-operation metadata read-only. Operator task actions, acknowledgments, and provider refresh controls still need dedicated workflow endpoints before launch-grade autonomous operations.
 
-- `ToolFreshnessPolicy`: max age and fail-closed behavior.
-- `ToolEvidence`: source, fetched timestamp, raw reference, confidence.
-- `ToolResult`: tool name, normalized query, normalized data, evidence, expiry, freshness check.
-
-Any weather, flight, ticket, visa, safety, supplier, or GDS agent must normalize provider output into this contract before updating trip metadata.
-
-## SLOs
-
-| SLO | Target | Current Signal |
-| --- | --- | --- |
-| Supervisor liveness | `running=true` during backend uptime | `/agents/runtime` |
-| Agent pass freshness | `last_pass_at` within `AGENT_SUPERVISOR_INTERVAL_S * 2` | `/agents/runtime` |
-| Poisoned work | 0 active poisoned items in normal operation | `/agents/runtime` coordinator snapshot |
-| Retry backlog | No item stuck in retry beyond retry budget | `/agents/runtime/events` and coordinator snapshot |
-| Audit write availability | Agent actions emit decision/action/retry/escalated events | `AuditStore` JSONL and event routes |
-
-## Alert Thresholds
-
-| Alert | Threshold | Triage |
-| --- | --- | --- |
-| Supervisor stopped | `running=false` while API healthy | Check backend logs, restart API process, inspect lifespan startup errors. |
-| Stale pass | `last_pass_at` older than 2 intervals | Check thread health, long-running scans, TripStore latency. |
-| Poisoned work present | Any `poisoned > 0` for more than one pass | Query `/agents/runtime/events`, inspect trip update failures, clear root cause before replay. |
-| Missing audit events | Runtime pass returns results but no `agent_event` records | Check `AuditStore.log_event`, file permissions, privacy guard errors. |
-| Unexpected retry surge | More than 5 retry events in 10 minutes | Check TripStore backend, DB connectivity, validation failures on updates. |
-
-## Triage Steps
-
-1. Call `GET /agents/runtime` and record `registered_agents`, `running`, `last_pass_at`, and coordinator snapshot.
-2. Query `GET /agents/runtime/events?limit=100` and group by `agent_name`, `event_type`, and `correlation_id`.
-3. For a trip-specific incident, query `GET /trips/{trip_id}/agent-events`.
-4. Run `uv run python tools/run_multi_agent_runtime_scenarios.py` to separate runtime logic defects from environment/TripStore defects.
-5. Run targeted tests:
-   - `uv run pytest tests/test_agent_runtime.py tests/test_agent_events_api.py tests/test_recovery_agent.py -q`
-   - `uv run python -m py_compile src/agents/events.py src/agents/recovery_agent.py src/agents/runtime.py spine_api/persistence.py spine_api/server.py tools/run_multi_agent_runtime_scenarios.py`
-
-## Production-Hardening Gaps
-
-- Replace in-memory leases with SQL-backed leases or queue-native visibility timeouts before multi-worker deployment.
-- Connect `RecoveryAgent` requeue to the canonical async run queue once that queue exists.
-- Add metrics export for event counts, poisoned work, pass duration, and update latency.
-- Add role-scoped admin permissions for runtime run-once endpoints before exposing to non-owner users.
+## Escalation Path
+- If recurring `agent_escalated` spikes:
+  1. Query `/agents/runtime/events?agent_name=<name>&limit=200`
+  2. Pivot on `reason`, `status`, `idempotency_key`
+  3. Trigger targeted `run-once` after remediation
+  4. If unresolved, switch affected trips to manual handling and open backend hardening task with evidence bundle

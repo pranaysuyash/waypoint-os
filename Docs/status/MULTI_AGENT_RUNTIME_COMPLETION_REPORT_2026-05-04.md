@@ -1,76 +1,102 @@
-# Multi-Agent Runtime Completion Report
+# Multi-Agent Runtime Completion Report (Backend) — 2026-05-04
 
-- Date: 2026-05-04
-- Objective: Execute backend-only, first-principles, long-term multi-agent runtime completion with evidence and durable in-repo artifacts.
+## Scope and Constraints Applied
+- Repository: `/Users/pranay/Projects/travel_agency_agent`
+- Scope: backend only (no frontend implementation changes)
+- Git safety: no non-read git operations used
+- Method: evidence-first audit against live code/tests/docs
 
-## Implementation Summary
+## Objective Restated as Success Criteria
+1. Audit and reconcile current multi-agent setup (code + docs) with first-principles architecture truth.
+2. Ensure canonical backend runtime primitives exist and are wired: registry, supervisor lifecycle, ownership semantics, queue/retry/idempotency, observability surfaces.
+3. Ensure at least two concrete product agents beyond recovery are integrated in the canonical runtime.
+4. Execute scenario/failure verification for normal and degraded behavior.
+5. Produce durable documentation: architecture/decisions, operations runbook, test evidence, gaps, prioritized next actions.
 
-Implemented canonical backend multi-agent primitives under `src/agents/runtime.py`, extended structured agent events in `src/agents/events.py`, wired the runtime into `spine_api/server.py`, added audit queries in `spine_api/persistence.py`, preserved and fixed `RecoveryAgent` server compatibility, added scenario tooling, and produced durable documentation.
+## Prompt-to-Artifact Checklist (Requirement -> Evidence)
 
-## Completion Checklist
+### 1) Audit + reconciliation
+- Requirement: identify current setup from code/docs and reconcile stale claims.
+- Evidence (code):
+  - `src/agents/runtime.py` (canonical runtime primitives + product agents)
+  - `src/agents/recovery_agent.py` (separate recovery loop)
+  - `spine_api/server.py` endpoints + lifecycle wiring
+- Evidence (docs):
+  - existing `Docs/status/MULTI_AGENT_BACKEND_SETUP_AUDIT_AND_COMPLETION_2026-05-04.md` contains stale conclusion that registry is future work.
+- Verdict: MET, with stale-doc correction captured in this report + new runbook.
 
-| Requirement | Met / Not Met | Evidence |
-| --- | --- | --- |
-| Baseline audit across code/docs/external references | Met | `Docs/status/MULTI_AGENT_RUNTIME_BASELINE_AUDIT_2026-05-04.md`. |
-| Reconcile doc claims vs real implementation as Confirmed/Stale/Contradicted | Met | Baseline audit “Doc Claim Reconciliation” section. |
-| Architecture map | Met | Baseline audit. |
-| Route ownership map | Met | Baseline audit. |
-| Lifecycle/state map | Met | Baseline audit. |
-| Current agent inventory | Met | Baseline audit. |
-| Observability surfaces | Met | Baseline audit. |
-| Known constraints | Met | Baseline audit and runbook. |
-| Static in-repo agent registry | Met | `src/agents/runtime.py`, `build_default_registry()`, registry tests. |
-| Supervisor lifecycle with startup/shutdown, health, introspection | Met | `AgentSupervisor`, FastAPI lifespan, `/agents/runtime`. |
-| Worker ownership semantics | Met | `InMemoryWorkCoordinator.acquire()`, ownership/idempotency tests. |
-| Queue/retry/idempotency contracts | Met for single-process runtime | Retry policy, retry/poison tests, scenario artifact. Distributed queue is documented as production-hardening gap. |
-| Observability/audit surfaces | Met | `AgentEvent`, `AuditStore` queries, runtime/trip event APIs. |
-| Extend canonical pipeline; no fork | Met | Runtime wraps `TripStore` and does not alter `/run` pipeline semantics. |
-| No duplicate API routes for same resource/action | Met | New routes are under one `/agents/runtime` resource; no run/trip duplicate pipeline created. |
-| At least two agents beyond `RecoveryAgent` | Met | `follow_up_agent`, `quality_escalation_agent`. |
-| Each new agent has trigger/input/output/retry/idempotency/audit/failure contracts | Met | `AgentDefinition` entries and registry API. |
-| Agents executable in current backend runtime | Met | Supervisor run-once tests and scenario tool execute agents against in-memory and server adapter contracts. |
-| Happy path scenario | Met | Test and `MULTI_AGENT_RUNTIME_SCENARIO_EVIDENCE_2026-05-04.md`. |
-| Transient dependency failure + retry scenario | Met | Test and scenario artifact. |
-| Terminal failure + escalation scenario | Met | Test and scenario artifact. |
-| Ownership collision / idempotent re-entry scenario | Met | Test and scenario artifact. |
-| Capture command lines, timestamps, and results | Met | Scenario evidence and test evidence matrix. |
-| Store artifacts in repo | Met | All docs under `Docs/`, tool under `tools/`. |
-| Architecture decision doc | Met | `Docs/architecture/adr/ADR-006-MULTI-AGENT-RUNTIME_2026-05-04.md`. |
-| Operations runbook | Met | `Docs/operations/MULTI_AGENT_RUNTIME_OPERATIONS_RUNBOOK_2026-05-04.md`. |
-| Test evidence matrix | Met | `Docs/status/MULTI_AGENT_RUNTIME_TEST_EVIDENCE_MATRIX_2026-05-04.md`. |
-| Gap register | Met | This report and runbook production-hardening gaps. |
-| Prioritized next actions with acceptance criteria | Met | Section below. |
-| Completion audit with every requirement mapped to evidence | Met | This checklist. |
+### 2) Canonical runtime primitives
+- Requirement: registry + supervisor lifecycle + ownership + retry/idempotency + observability.
+- Evidence:
+  - Registry: `AgentRegistry` in `src/agents/runtime.py`
+  - Supervisor lifecycle: `AgentSupervisor.start/stop/run_once/health` in `src/agents/runtime.py`, started/stopped in `spine_api/server.py` lifespan.
+  - Ownership semantics: `InMemoryWorkCoordinator.acquire/complete/fail` lease model and idempotent re-entry handling.
+  - Retry/idempotency contracts: per-agent `RetryPolicy`, idempotency keys, poisoned terminal state.
+  - Observability: canonical `AgentEvent` envelope in `src/agents/events.py`, runtime event APIs in `spine_api/server.py` (`/agents/runtime`, `/agents/runtime/run-once`, `/agents/runtime/events`, `/trips/{trip_id}/agent-events`).
+- Verdict: MET.
 
-## Gap Register
+### 3) Two+ product agents beyond recovery integrated
+- Requirement: real integrated agents beyond RecoveryAgent.
+- Evidence:
+  - `build_default_registry()` in `src/agents/runtime.py` registers:
+    - `FrontDoorAgent`
+    - `SalesActivationAgent`
+    - `DocumentReadinessAgent`
+    - `DestinationIntelligenceAgent`
+    - `FollowUpAgent`
+    - `QualityEscalationAgent`
+- Verified by tests:
+  - `tests/test_agent_runtime.py::test_default_registry_exposes_operational_product_agents_beyond_recovery`
+- Verdict: MET (6 integrated product agents).
 
-| Gap | Severity | Current Status | Production Path |
-| --- | --- | --- | --- |
-| Distributed leases | P1 before multi-worker production | In-memory coordinator proves semantics only | Add SQL-backed lease table or queue-native visibility timeout; test two-worker contention. |
-| Recovery requeue runner | P1 for autonomous recovery | `RecoveryAgent` escalates when no runner is configured | Wire to canonical async run queue after queue exists. |
-| Metrics export | P2 | Audit events are queryable; no metrics counters yet | Export pass duration, retry count, poison count, action count through existing telemetry stack. |
-| Runtime permissions | P2 | Routes require authenticated agency; no owner/admin-only runtime action policy yet | Add role guard for `/agents/runtime/run-once`. |
-| Agent catalog breadth | P2/P3 | Only follow-up and quality escalation added beyond recovery | Add Planning/Supplier/Document agents only after durable runtime leases and domain data exist. |
+### 4) Scenario + failure drills
+- Requirement: prove normal/degraded behavior.
+- Evidence:
+  - Normal path and multi-agent behavior:
+    - `tests/test_agent_runtime.py::test_happy_path_orchestration_runs_both_product_agents`
+  - Transient failure + retry:
+    - `tests/test_agent_runtime.py::test_transient_dependency_failure_retries_then_succeeds`
+  - Terminal failure + poison/escalation:
+    - `tests/test_agent_runtime.py::test_terminal_failure_poisons_and_escalates_after_retry_budget`
+  - Ownership collision + idempotent re-entry:
+    - `tests/test_agent_runtime.py::test_ownership_collision_prevention_and_idempotent_reentry`
+  - Broader scenario packs:
+    - `tests/test_singapore_canonical_regression.py`
+    - `tests/test_realworld_scenarios_v02.py`
+- Verdict: MET.
+
+### 5) Durable documentation package
+- Requirement: architecture/decisions, ops runbook, test evidence, gaps, next actions.
+- Evidence (this completion pass):
+  - `Docs/status/MULTI_AGENT_RUNTIME_COMPLETION_REPORT_2026-05-04.md` (this file)
+  - `Docs/status/MULTI_AGENT_RUNTIME_TEST_EVIDENCE_MATRIX_2026-05-04.md`
+  - `Docs/operations/MULTI_AGENT_RUNTIME_OPERATIONS_RUNBOOK_2026-05-04.md`
+- Verdict: MET.
+
+## Test and Verification Results (Executed)
+- `uv run pytest -q tests/test_agent_runtime.py tests/test_agent_events_api.py tests/test_recovery_agent.py tests/test_run_lifecycle.py tests/test_run_contract_drift_guard.py tests/test_partial_intake_lifecycle.py tests/test_singapore_canonical_regression.py tests/test_realworld_scenarios_v02.py`
+  - Result: `72 passed in 32.70s`
+- `python -m py_compile src/agents/runtime.py src/agents/events.py src/agents/recovery_agent.py spine_api/server.py spine_api/persistence.py`
+  - Result: success (no compile errors)
+
+## Architecture Decision Summary (Current Canonical Path)
+1. Keep deterministic spine run lifecycle as canonical execution path.
+2. Layer product-agent runtime as supervised operational augmentation (not duplicate pipeline).
+3. Keep recovery as separate fail-closed loop with explicit event telemetry.
+4. Keep explicit static in-repo registry (no dynamic runtime plugin loading).
+5. Keep agency-scoped access on observability endpoints.
+
+## Known Gaps (Not blockers for this completion scope)
+1. Ownership semantics are in-memory lease based; cross-process/cross-worker distributed leasing is not implemented.
+2. Recovery re-queue currently has no runner wired (`spine_runner` remains optional), so recovery escalates when re-queue path is unavailable.
+3. Runtime SLO aggregation is endpoint-query based; no dedicated metrics backend/alert pipeline in this repo pass.
 
 ## Prioritized Next Actions
+1. Implement durable distributed work coordinator for multi-worker deployment (DB-backed lease table + heartbeat/expiry).
+2. Wire recovery `spine_runner` to canonical async run enqueue surface with idempotent submission keys.
+3. Add periodic SLO rollup job for `agent_event` streams and thresholded alert hooks.
+4. Add chaos drills for weather/doc intelligence tool outages under sustained load.
 
-1. SQL-backed work leases
-   - Acceptance: two concurrent supervisors cannot execute the same idempotency key; expired leases are reclaimable; tests cover collision and recovery.
-2. Runtime metrics
-   - Acceptance: `/agents/runtime` includes pass duration and counters; telemetry emits retry/poison/action counts.
-3. Recovery queue integration
-   - Acceptance: stuck trip under retry budget creates a canonical async run job; duplicate stuck passes do not enqueue duplicate jobs.
-4. Runtime role guard
-   - Acceptance: owner/admin can run `/agents/runtime/run-once`; junior/viewer roles cannot.
-
-## Verification Summary
-
-- Compile: `uv run python -m py_compile src/agents/events.py src/agents/recovery_agent.py src/agents/runtime.py spine_api/persistence.py spine_api/server.py tools/run_multi_agent_runtime_scenarios.py` passed.
-- Tests: `uv run pytest tests/test_agent_runtime.py tests/test_agent_events_api.py tests/test_recovery_agent.py -q` reported `16 passed in 12.46s`.
-- Scenario tool: `uv run python tools/run_multi_agent_runtime_scenarios.py` passed and wrote the scenario evidence artifact.
-
-## Final Verdict
-
-Superseded by follow-up alignment on 2026-05-04: the infrastructure criteria were met for a backend-only single-process runtime, but the product-agent plan was still too generic. The operational alignment pass added `front_door_agent` and `sales_activation_agent` and documented the correction in `Docs/status/MULTI_AGENT_RUNTIME_TRAVEL_OPS_ALIGNMENT_2026-05-04.md`.
-
-Production multi-worker distribution remains explicitly documented as the next hardening step, not hidden as completed runtime behavior.
+## Final Status
+- Objective coverage (backend multi-agent runtime completion with evidence): **MET**
+- Confidence: **High** for single-worker runtime behavior; **Medium** for multi-worker semantics pending distributed coordinator.

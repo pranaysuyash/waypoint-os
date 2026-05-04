@@ -8,6 +8,7 @@ Provides:
 - get_current_agency_id: Extract primary agency_id from authenticated user
 """
 
+import os
 from typing import Optional
 
 from fastapi import Depends, HTTPException, status, Request
@@ -18,6 +19,7 @@ from sqlalchemy import select
 from spine_api.core.database import get_db
 from spine_api.core.security import decode_token_safe
 from spine_api.models.tenant import User, Membership
+from spine_api.core.rls import set_rls_agency
 
 # Security scheme for Swagger docs
 security_bearer = HTTPBearer(auto_error=False)
@@ -77,6 +79,21 @@ async def get_current_user(
     return user
 
 
+async def _auth_or_skip(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_bearer),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[User]:
+    """Authenticate unless SPINE_API_DISABLE_AUTH is set (dev/test only).
+
+    Reads the env var at call time — not at import time — so tests can
+    toggle auth behavior without importlib.reload().
+    """
+    if os.environ.get("SPINE_API_DISABLE_AUTH"):
+        return None
+    return await get_current_user(request, credentials, db)
+
+
 async def get_current_membership(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -104,6 +121,9 @@ async def get_current_membership(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User is not a member of any agency",
         )
+
+    # Populate the RLS ContextVar so get_rls_db() can enforce tenant isolation.
+    set_rls_agency(membership.agency_id)
 
     return membership
 

@@ -26,8 +26,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from spine_api.core.database import get_db
-from spine_api.core.auth import get_current_agency_id, get_current_membership
+from spine_api.core.rls import get_rls_db
+from spine_api.core.auth import get_current_agency_id, require_permission
 from spine_api.services import routing_service
 from spine_api.services.routing_service import RoutingError
 from spine_api.services.sla_service import compute_sla
@@ -73,7 +73,8 @@ def _routing_response(state: dict) -> dict:
 async def get_routing_state(
     trip_id: str,
     agency_id: str = Depends(get_current_agency_id),
-    db: AsyncSession = Depends(get_db),
+    membership=require_permission("trips:read"),
+    db: AsyncSession = Depends(get_rls_db),
 ):
     state = await routing_service.get_routing_state(db, trip_id, agency_id)
     if state is None:
@@ -100,8 +101,8 @@ async def get_routing_state(
 async def post_assign(
     trip_id: str,
     request: AssignRequest,
-    membership=Depends(get_current_membership),
-    db: AsyncSession = Depends(get_db),
+    membership=require_permission("trips:assign"),
+    db: AsyncSession = Depends(get_rls_db),
 ):
     try:
         state = await routing_service.assign_trip(
@@ -121,8 +122,8 @@ async def post_assign(
 @router.post("/{trip_id}/claim", status_code=status.HTTP_200_OK)
 async def post_claim(
     trip_id: str,
-    membership=Depends(get_current_membership),
-    db: AsyncSession = Depends(get_db),
+    membership=require_permission("trips:claim"),
+    db: AsyncSession = Depends(get_rls_db),
 ):
     try:
         state = await routing_service.claim_trip(
@@ -142,8 +143,8 @@ async def post_claim(
 async def post_escalate(
     trip_id: str,
     request: EscalateRequest,
-    membership=Depends(get_current_membership),
-    db: AsyncSession = Depends(get_db),
+    membership=require_permission("trips:escalate"),
+    db: AsyncSession = Depends(get_rls_db),
 ):
     try:
         state = await routing_service.escalate_trip(
@@ -165,8 +166,8 @@ async def post_escalate(
 async def post_reassign(
     trip_id: str,
     request: ReassignRequest,
-    membership=Depends(get_current_membership),
-    db: AsyncSession = Depends(get_db),
+    membership=require_permission("trips:reassign"),
+    db: AsyncSession = Depends(get_rls_db),
 ):
     try:
         state = await routing_service.reassign_trip(
@@ -188,8 +189,8 @@ async def post_reassign(
 async def post_return(
     trip_id: str,
     request: ReturnRequest,
-    membership=Depends(get_current_membership),
-    db: AsyncSession = Depends(get_db),
+    membership=require_permission("trips:write"),
+    db: AsyncSession = Depends(get_rls_db),
 ):
     try:
         state = await routing_service.return_for_changes(
@@ -210,8 +211,8 @@ async def post_return(
 async def post_unassign(
     trip_id: str,
     request: UnassignRequest,
-    membership=Depends(get_current_membership),
-    db: AsyncSession = Depends(get_db),
+    membership=require_permission("trips:assign"),
+    db: AsyncSession = Depends(get_rls_db),
 ):
     try:
         state = await routing_service.unassign_trip(

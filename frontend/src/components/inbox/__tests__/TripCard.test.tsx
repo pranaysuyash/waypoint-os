@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { TripCard } from '../TripCard';
-import type { InboxTrip } from '@/types/governance';
+import type { InboxTrip, TripPriority } from '@/types/governance';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -65,14 +65,14 @@ describe('TripCard v2 - accent bar', () => {
   });
 
   it('uses critical red for critical priority', () => {
-    const criticalTrip = { ...mockTrip, priority: 'critical' };
+    const criticalTrip = { ...mockTrip, priority: 'critical' as TripPriority };
     render(<TripCard trip={criticalTrip} isSelected={false} onSelect={vi.fn()} />);
     const accentBar = document.querySelector('[aria-hidden="true"]');
     expect(accentBar).toHaveStyle({ background: '#f85149' });
   });
 
   it('uses blue for medium priority', () => {
-    const mediumTrip = { ...mockTrip, priority: 'medium' };
+    const mediumTrip = { ...mockTrip, priority: 'medium' as TripPriority };
     render(<TripCard trip={mediumTrip} isSelected={false} onSelect={vi.fn()} />);
     const accentBar = document.querySelector('[aria-hidden="true"]');
     expect(accentBar).toHaveStyle({ background: '#58a6ff' });

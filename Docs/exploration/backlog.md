@@ -160,6 +160,39 @@ A living document of areas to explore, ideas to investigate, and potential impro
 - [ ] Log aggregation and search
 - [ ] Distributed tracing
 
+## Agent Runtime Control Plane
+
+- [ ] In-app agent graph (node/edge view) showing `agent_supervisor`, product agents, active work items, and per-trip execution paths from `agent_decision -> agent_action/agent_retry/agent_escalated`.
+  - Exploration acceptance checks:
+  - backend event model supports graph reconstruction without frontend-only assumptions
+  - graph can filter by `trip_id`, `agent_name`, `correlation_id`, and time window
+  - state colors and labels map to canonical runtime statuses
+- [ ] Human approval from graph for high-risk actions (approve/reject in UI).
+  - Exploration acceptance checks:
+  - define canonical approval gate in backend runtime contract (paused pending-approval state)
+  - add audited approve/reject API flow with operator identity and reason
+  - verify rejected actions route to manual/escalation path without silent execution
+- [ ] Agent runtime SLO panel in admin workspace (execution counts, retries, escalations, poison rate, time-to-action).
+  - Exploration acceptance checks:
+  - derive SLOs from canonical `agent_event` stream
+  - define alert thresholds and failure drill runbook links
+
+## Platform Admin Control Plane (All Workspaces/Clients)
+
+- [ ] Global admin view over all agencies/workspaces/clients signed up (backend-first, access-controlled).
+  - Exploration acceptance checks:
+  - define super-admin auth scope separate from agency-scoped JWT access
+  - list/search/sort agencies with key health and usage metrics
+  - enforce strict tenant isolation for normal users while enabling audited global read for super-admin
+- [ ] Workspace-level drill-down from global admin (agencies -> users -> trips -> runtime signals).
+  - Exploration acceptance checks:
+  - shared schema for cross-workspace metrics (status, backlog age, active runs, escalations)
+  - explicit audit trail for all super-admin reads/actions
+- [ ] Admin actions policy (allowed vs forbidden operations).
+  - Exploration acceptance checks:
+  - read-only baseline first, then controlled write actions (suspend/reactivate, quota changes, support overrides)
+  - dual confirmation + reason capture for sensitive write actions
+
 ## Documentation
 
 - [ ] API reference docs (OpenAPI/Swagger)

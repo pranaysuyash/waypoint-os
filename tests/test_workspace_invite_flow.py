@@ -192,14 +192,30 @@ class TestWorkspaceCodesEndpoint:
         routes = {r.path: r for r in router.routes}
         assert "/api/workspace/codes" in routes, "POST /api/workspace/codes route must exist"
 
-    def test_post_codes_handler_requires_membership_dep(self):
+    def test_post_codes_handler_requires_team_manage_permission(self):
+        """
+        The codes endpoint must use require_permission("team:manage") so that
+        junior_agent and viewer roles cannot revoke the workspace invite link.
+        """
         import inspect
         from spine_api.routers.workspace import post_generate_workspace_code
+        from spine_api.core.auth import ROLE_PERMISSIONS
 
         params = list(inspect.signature(post_generate_workspace_code).parameters.keys())
         assert "membership" in params, (
-            "post_generate_workspace_code must accept membership dep to read agency_id and user_id"
+            "post_generate_workspace_code must have membership dep (provided by require_permission)"
         )
+        # Verify the permission matrix: only owner/admin have team:manage.
+        for role in ("owner", "admin"):
+            perms = ROLE_PERMISSIONS.get(role, [])
+            assert "*" in perms or "team:manage" in perms, (
+                f"{role} must have team:manage to generate invite codes"
+            )
+        for role in ("senior_agent", "junior_agent", "viewer"):
+            perms = ROLE_PERMISSIONS.get(role, [])
+            assert "team:manage" not in perms and "*" not in perms, (
+                f"{role} must NOT have team:manage — invite link regeneration is owner/admin only"
+            )
 
     def test_generate_code_request_allows_internal_and_external(self):
         from spine_api.routers.workspace import GenerateCodeRequest

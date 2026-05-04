@@ -511,6 +511,18 @@ class InboxStatsResponse(BaseModel):
     atRisk: int
 
 
+class AssignInboxRequest(BaseModel):
+    """Assign trips to an agent."""
+    tripIds: List[str]
+    assignTo: str
+    notifyAssignee: bool = False
+
+
+class AssignInboxResponse(BaseModel):
+    success: bool
+    assigned: int
+
+
 # =============================================================================
 # Re-export analytics models (canonical source: src/analytics/models.py)
 # =============================================================================

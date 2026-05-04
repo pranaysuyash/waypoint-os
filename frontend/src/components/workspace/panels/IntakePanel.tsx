@@ -427,6 +427,12 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
         operating_mode: store.operating_mode,
         strict_leakage: store.strict_leakage,
         scenario_id: store.scenario_id || null,
+        // retention_consent=true preserves the raw input text in the trip
+        // metadata for the agency's own audit trail. Agency consent to us is
+        // governed by ToS/Privacy Policy at signup (same as any B2B SaaS).
+        // The public checker handles consent via its own checkbox because
+        // there's no agency intermediary in that flow.
+        retention_consent: true,
       };
 
       const completedRun = await executeSpineRun(request);

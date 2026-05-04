@@ -57,10 +57,45 @@ Superseded/expanded by `Docs/status/MULTI_AGENT_RUNTIME_EXPANDED_AGENT_PLAN_2026
    - Implemented in `src/agents/runtime.py`.
    - Emits missing passport/visa/insurance/transit checklist metadata and never claims final legal advice.
    - Uses `ToolResult` evidence from `src/agents/tool_contracts.py`.
-2. `BookingReadinessAgent`
-   - Verify `booking_data` / `pending_booking_data` completeness at proposal/booking stage.
-   - Acceptance: flags missing names, DOB/passport, payer, and special requirements; no GDS booking.
-3. SQL-backed leases
+2. `DestinationIntelligenceAgent`
+   - Implemented in `src/agents/runtime.py`.
+   - Attaches weather/destination snapshots and internal pivot recommendations.
+   - Uses `src/agents/live_tools.py` with deterministic mock weather by default and opt-in Open-Meteo live weather.
+   - Refuses stale weather data as current evidence.
+3. `WeatherPivotAgent`
+   - Implemented in `src/agents/runtime.py`.
+   - Builds on `destination_intelligence_snapshot` and trip activities/transfers.
+   - Produces indoor alternatives, transport/gear recommendations, and operator next action only.
+   - Refuses stale weather evidence as current pivot evidence.
+4. `ConstraintFeasibilityAgent`
+   - Implemented in `src/agents/runtime.py`.
+   - Detects impossible or risky budget/date/visa/pace/accessibility combinations before proposal.
+   - Writes internal feasibility metadata and blockers only; no auto-reject and no stage mutation.
+5. `ProposalReadinessAgent`
+   - Implemented in `src/agents/runtime.py`.
+   - Verifies proposal has options, risks, budget transparency, and next action before operator/customer review.
+   - Writes proposal readiness metadata only; no customer send and no supplier commitment.
+6. `BookingReadinessAgent`
+   - Implemented in `src/agents/runtime.py`.
+   - Verifies `booking_data` / `pending_booking_data` completeness at proposal/booking stage.
+   - Flags missing names, DOB/passport, payer, contacts, special requirements, and unresolved risks; no GDS booking.
+7. `FlightStatusAgent`
+   - Implemented in `src/agents/runtime.py`.
+   - Checks flight schedule/delay/disruption risk through `ToolResult` adapters.
+   - Internal status snapshot and escalation only; no rebooking.
+8. `TicketPriceWatchAgent`
+   - Implemented in `src/agents/runtime.py`.
+   - Checks quote/fare drift through `ToolResult` adapters.
+   - Internal price movement alert and quote revalidation only; no purchase.
+9. `SafetyAlertAgent`
+   - Implemented in `src/agents/runtime.py`.
+   - Monitors destination/trip safety, health, and disruption alerts.
+   - Internal alert packet and affected traveler list only; no customer send.
+10. Supplier/GDS agents
+   - Implemented `GDSSchemaBridgeAgent`, `PNRShadowAgent`, and `SupplierIntelligenceAgent` in `src/agents/runtime.py`.
+   - Quote revalidation is covered by `TicketPriceWatchAgent` metadata.
+   - Internal normalization/alerts only; no ticketing or supplier commitment.
+11. SQL-backed leases
    - Replace in-memory idempotency with durable DB leases before multi-worker production.
    - Acceptance: concurrent workers cannot execute the same idempotency key.
 

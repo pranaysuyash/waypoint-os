@@ -19,8 +19,6 @@ from starlette.responses import JSONResponse
 
 logger = logging.getLogger("spine_api.rate_limiter")
 
-_ENVIRONMENT = os.environ.get("ENVIRONMENT", "development").lower()
-
 
 def _key_func(request: Request) -> str:
     """Rate limit key: IP address from X-Forwarded-For or direct client."""

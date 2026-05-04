@@ -26,6 +26,9 @@ class Trip(Base):
     user_id: Mapped[Optional[str]] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+    assigned_to_id: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     
     source: Mapped[str] = mapped_column(String(100), default="unknown")
     status: Mapped[str] = mapped_column(String(50), default="new")
@@ -69,7 +72,7 @@ class Trip(Base):
     )
 
     agency: Mapped["Agency"] = relationship("Agency")
-    user: Mapped["User"] = relationship("User")
+    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
 
     __table_args__ = (
         Index("ix_trips_agency_id", "agency_id"),

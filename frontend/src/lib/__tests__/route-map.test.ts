@@ -37,6 +37,16 @@ describe("resolveBackendPath", () => {
     );
   });
 
+  it("maps product-agent runtime and trip event surfaces through the canonical proxy", () => {
+    expect(resolveBackendPath(["agents", "runtime"])).toBe("agents/runtime");
+    expect(resolveBackendRoute(["agents", "runtime", "run-once"])).toEqual({
+      backendPath: "agents/runtime/run-once",
+      timeoutMs: 60_000,
+    });
+    expect(resolveBackendPath(["agents", "runtime", "events"])).toBe("agents/runtime/events");
+    expect(resolveBackendPath(["trips", "trip_123", "agent-events"])).toBe("trips/trip_123/agent-events");
+  });
+
   it("resolves run step paths with placeholder substitution", () => {
     expect(
       resolveBackendPath([

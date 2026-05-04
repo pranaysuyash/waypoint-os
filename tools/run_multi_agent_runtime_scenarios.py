@@ -129,6 +129,167 @@ def run_scenarios() -> str:
     supervisor = AgentSupervisor(build_default_registry(), repo, audit, interval_seconds=1)
     lines += _result_lines("Document readiness checklist", supervisor.run_once(agent_name="document_readiness_agent"), repo, audit)
 
+    repo = MemoryTripRepo([
+        {
+            "id": "scenario_destination_intelligence",
+            "stage": "proposal",
+            "extracted": {"facts": {"destination": {"value": "Singapore"}}},
+        },
+    ])
+    audit = MemoryAudit()
+    supervisor = AgentSupervisor(build_default_registry(), repo, audit, interval_seconds=1)
+    lines += _result_lines("Destination intelligence snapshot", supervisor.run_once(agent_name="destination_intelligence_agent"), repo, audit)
+
+    repo = MemoryTripRepo([
+        {
+            "id": "scenario_weather_pivot",
+            "stage": "proposal",
+            "extracted": {"facts": {"destination": {"value": "Singapore"}}},
+            "itinerary_items": [
+                {"title": "Gardens by the Bay walk", "type": "outdoor"},
+                {"title": "Airport transfer", "type": "transfer"},
+            ],
+        },
+    ])
+    audit = MemoryAudit()
+    supervisor = AgentSupervisor(build_default_registry(), repo, audit, interval_seconds=1)
+    supervisor.run_once(agent_name="destination_intelligence_agent")
+    lines += _result_lines("Weather pivot packet", supervisor.run_once(agent_name="weather_pivot_agent"), repo, audit)
+
+    repo = MemoryTripRepo([
+        {
+            "id": "scenario_constraint_feasibility",
+            "stage": "proposal",
+            "raw_input": {"raw_note": "Need fast-paced Singapore trip for senior traveler, wheelchair access, budget $800"},
+            "extracted": {
+                "facts": {
+                    "destination": {"value": "Singapore"},
+                    "date_window": {"value": "2026-05-10 to 2026-05-12"},
+                    "budget": {"value": "$800"},
+                    "travelers": {"value": 4},
+                }
+            },
+            "travelers": [{"traveler_type": "senior"}],
+            "document_readiness_checklist": {
+                "risk_level": "high",
+                "must_confirm": ["passport expiry for traveler 1", "current visa/entry requirement"],
+            },
+            "weather_pivot_packet": {"risk_level": "medium", "operator_next_action": "review_weather_pivots"},
+        },
+    ])
+    audit = MemoryAudit()
+    supervisor = AgentSupervisor(build_default_registry(), repo, audit, interval_seconds=1)
+    lines += _result_lines("Constraint feasibility assessment", supervisor.run_once(agent_name="constraint_feasibility_agent"), repo, audit)
+
+    repo = MemoryTripRepo([
+        {
+            "id": "scenario_proposal_readiness",
+            "stage": "proposal",
+            "proposal": {
+                "options": [{"title": "Singapore quick trip"}],
+                "budget_summary": "",
+                "next_action": "",
+            },
+            "document_readiness_checklist": {"risk_level": "high"},
+            "constraint_feasibility_assessment": {"status": "blocked", "hard_blockers": [{"category": "budget"}]},
+            "weather_pivot_packet": {"risk_level": "medium"},
+        },
+    ])
+    audit = MemoryAudit()
+    supervisor = AgentSupervisor(build_default_registry(), repo, audit, interval_seconds=1)
+    lines += _result_lines("Proposal readiness assessment", supervisor.run_once(agent_name="proposal_readiness_agent"), repo, audit)
+
+    repo = MemoryTripRepo([
+        {
+            "id": "scenario_booking_readiness",
+            "stage": "booking",
+            "booking_data": {
+                "travelers": [{"name": "Adult 1"}, {"date_of_birth": "1990-01-01", "passport_number": "P123"}],
+                "payer": {},
+                "contact": {"email": "lead@example.com"},
+            },
+            "proposal_readiness_assessment": {"status": "blocked"},
+            "document_readiness_checklist": {"risk_level": "high"},
+        },
+    ])
+    audit = MemoryAudit()
+    supervisor = AgentSupervisor(build_default_registry(), repo, audit, interval_seconds=1)
+    lines += _result_lines("Booking readiness assessment", supervisor.run_once(agent_name="booking_readiness_agent"), repo, audit)
+
+    repo = MemoryTripRepo([
+        {
+            "id": "scenario_flight_status",
+            "stage": "booking",
+            "flights": [{"carrier": "SQ", "flight_number": "321", "status_hint": "delay"}],
+        },
+    ])
+    audit = MemoryAudit()
+    supervisor = AgentSupervisor(build_default_registry(), repo, audit, interval_seconds=1)
+    lines += _result_lines("Flight status snapshot", supervisor.run_once(agent_name="flight_status_agent"), repo, audit)
+
+    repo = MemoryTripRepo([
+        {
+            "id": "scenario_ticket_price_watch",
+            "stage": "quoted",
+            "quote": {"id": "quote_1", "price": 1000, "current_price": 1225, "currency": "USD"},
+        },
+    ])
+    audit = MemoryAudit()
+    supervisor = AgentSupervisor(build_default_registry(), repo, audit, interval_seconds=1)
+    lines += _result_lines("Ticket price watch alert", supervisor.run_once(agent_name="ticket_price_watch_agent"), repo, audit)
+
+    repo = MemoryTripRepo([
+        {
+            "id": "scenario_safety_alert",
+            "stage": "proposal",
+            "destination": "Haiti",
+            "travelers": [{"name": "Adult 1"}, {"name": "Adult 2"}],
+        },
+    ])
+    audit = MemoryAudit()
+    supervisor = AgentSupervisor(build_default_registry(), repo, audit, interval_seconds=1)
+    lines += _result_lines("Safety alert packet", supervisor.run_once(agent_name="safety_alert_agent"), repo, audit)
+
+    repo = MemoryTripRepo([
+        {
+            "id": "scenario_gds_bridge",
+            "stage": "booking",
+            "provider_records": [
+                {"kind": "flight", "carrier": "SQ", "flight_number": "321", "origin": "LHR", "destination": "SIN"},
+                {"kind": "hotel", "name": "Marina Bay", "check_in": "2026-05-10"},
+            ],
+        },
+    ])
+    audit = MemoryAudit()
+    supervisor = AgentSupervisor(build_default_registry(), repo, audit, interval_seconds=1)
+    lines += _result_lines("GDS schema bridge", supervisor.run_once(agent_name="gds_schema_bridge_agent"), repo, audit)
+
+    repo = MemoryTripRepo([
+        {
+            "id": "scenario_pnr_shadow",
+            "stage": "booking",
+            "booking_data": {"travelers": [{"name": "Pranay Test"}]},
+            "pnr_record": {"travelers": [{"name": "P Test"}], "segments": [{"carrier": "SQ", "flight_number": "321"}]},
+        },
+    ])
+    audit = MemoryAudit()
+    supervisor = AgentSupervisor(build_default_registry(), repo, audit, interval_seconds=1)
+    lines += _result_lines("PNR shadow check", supervisor.run_once(agent_name="pnr_shadow_agent"), repo, audit)
+
+    repo = MemoryTripRepo([
+        {
+            "id": "scenario_supplier_intelligence",
+            "stage": "proposal",
+            "supplier_records": [
+                {"name": "Slow Hotel DMC", "response_hours": 72, "failure_count": 2},
+                {"name": "Fast Transfer", "response_hours": 4, "failure_count": 0},
+            ],
+        },
+    ])
+    audit = MemoryAudit()
+    supervisor = AgentSupervisor(build_default_registry(), repo, audit, interval_seconds=1)
+    lines += _result_lines("Supplier intelligence snapshot", supervisor.run_once(agent_name="supplier_intelligence_agent"), repo, audit)
+
     return "\n".join(lines)
 
 

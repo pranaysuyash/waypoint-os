@@ -252,4 +252,72 @@ describe("BFF trip adapters", () => {
     const tripWithoutReadiness = transformSpineTripToTrip(spineTrip, now);
     expect((tripWithoutReadiness.validation as Record<string, unknown>)?.readiness).toBeUndefined();
   });
+
+  it("preserves backend product-agent operation packets for operator surfaces", () => {
+    const tripWithAgentOperations = transformSpineTripToTrip(
+      {
+        ...spineTrip,
+        document_readiness_checklist: {
+          risk_level: "high",
+          operator_next_action: "verify_documents",
+        },
+        destination_intelligence_snapshot: {
+          risk_level: "medium",
+          checked_at: "2026-05-04T00:00:00.000Z",
+        },
+        weather_pivot_packet: {
+          risk_level: "medium",
+          operator_next_action: "review_weather_pivots",
+        },
+        booking_readiness_assessment: {
+          status: "blocked",
+          operator_next_action: "collect_booking_data",
+        },
+        flight_status_snapshot: {
+          risk_level: "high",
+          operator_next_action: "review_delay",
+        },
+        ticket_price_watch_alert: {
+          risk_level: "medium",
+          operator_next_action: "revalidate_quote",
+        },
+        quote_revalidation_required: true,
+        safety_alert_packet: {
+          risk_level: "low",
+          operator_next_action: "monitor_safety_alerts",
+        },
+        gds_schema_bridge: {
+          object_count: 2,
+        },
+        pnr_shadow_check: {
+          risk_level: "high",
+          issues: [{ category: "traveler_name_mismatch" }],
+        },
+        supplier_intelligence_snapshot: {
+          supplier_risks: [{ supplier: "Slow Hotel DMC" }],
+        },
+        supplier_risk_level: "medium",
+        last_agent_action: "supplier_intelligence_agent",
+        last_agent_action_at: "2026-05-04T01:00:00.000Z",
+      },
+      now
+    );
+
+    expect(tripWithAgentOperations.agentOperations).toMatchObject({
+      documentReadinessChecklist: {
+        risk_level: "high",
+        operator_next_action: "verify_documents",
+      },
+      destinationIntelligenceSnapshot: {
+        risk_level: "medium",
+      },
+      bookingReadinessAssessment: {
+        status: "blocked",
+      },
+      quoteRevalidationRequired: true,
+      supplierRiskLevel: "medium",
+      lastAgentAction: "supplier_intelligence_agent",
+      lastAgentActionAt: "2026-05-04T01:00:00.000Z",
+    });
+  });
 });

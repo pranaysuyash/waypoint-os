@@ -303,7 +303,13 @@ def _extract_flags(source: Dict[str, Any]) -> List[str]:
         flags.add("incomplete")
 
     # Unassigned
-    assigned_to = _as_string(_first_present(source.get("assignedTo"), source.get("assigned_to"), source.get("user_id"), ""), "")
+    assigned_to = _as_string(_first_present(
+        source.get("assigned_to_id"),
+        source.get("assignedTo"),
+        source.get("assigned_to"),
+        source.get("user_id"),
+        ""
+    ), "")
     if not assigned_to:
         flags.add("unassigned")
 
@@ -371,7 +377,13 @@ class InboxProjectionService:
             priority_score = _DEFAULT_PRIORITY_SCORE[priority]
 
         assigned_to = _as_string(
-            _first_present(source.get("assignedTo"), source.get("assigned_to"), source.get("user_id"), ""),
+            _first_present(
+                source.get("assigned_to_id"),
+                source.get("assignedTo"),
+                source.get("assigned_to"),
+                source.get("user_id"),
+                ""
+            ),
             ""
         ) or None
 

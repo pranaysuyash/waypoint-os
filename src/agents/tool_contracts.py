@@ -45,14 +45,14 @@ class ToolResult:
         expires = _parse_dt(self.expires_at)
         return bool(expires and now <= expires)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, now: Optional[datetime] = None) -> dict[str, Any]:
         return {
             "tool_name": self.tool_name,
             "query": self.query,
             "data": self.data,
             "evidence": self.evidence.to_dict(),
             "expires_at": self.expires_at,
-            "fresh": self.is_fresh(),
+            "fresh": self.is_fresh(now=now),
         }
 
     @classmethod

@@ -19,7 +19,7 @@ from pydantic import BaseModel
 from sqlalchemy import select, and_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from spine_api.core.auth import get_current_membership
+from spine_api.core.auth import require_permission
 from spine_api.core.database import get_db
 from spine_api.models.audit import AuditLog
 from spine_api.models.tenant import Membership
@@ -55,7 +55,7 @@ async def list_audit_logs(
     action: Optional[str] = Query(default=None, max_length=50),
     since: Optional[str] = Query(default=None, description="ISO timestamp for filtering logs after this date"),
     limit: int = Query(default=50, ge=1, le=200),
-    membership: Membership = Depends(get_current_membership),
+    membership: Membership = require_permission("audit:read"),
     db: AsyncSession = Depends(get_db),
 ):
     """List audit log entries for the current agency.
@@ -63,16 +63,6 @@ async def list_audit_logs(
     Requires owner or admin role (audit:read permission).
     Results are scoped to the requesting user's agency.
     """
-    from spine_api.core.auth import ROLE_PERMISSIONS
-
-    role = membership.role.lower()
-    permissions = ROLE_PERMISSIONS.get(role, [])
-    if "*" not in permissions and "audit:read" not in permissions:
-        raise HTTPException(
-            status_code=403,
-            detail="Permission denied: audit:read",
-        )
-
     filters = [AuditLog.agency_id == membership.agency_id]
 
     if resource_type:

@@ -146,7 +146,6 @@ async def revoke_token(
 async def mark_token_used(
     db: AsyncSession,
     token_id: str,
-    customer_ip: Optional[str] = None,
 ) -> None:
     """Mark a token as used after customer submission."""
     result = await db.execute(

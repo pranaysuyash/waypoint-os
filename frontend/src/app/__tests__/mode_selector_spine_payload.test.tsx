@@ -231,6 +231,20 @@ describe("Mode Selector → /api/spine/run Payload Integration", () => {
     expect(payload.strict_leakage).toBe(true);
   });
 
+  it("sends retention_consent=true in the agency payload", async () => {
+    render(<IntakePanel tripId="TRIP-MODE-001" trip={mockTrip} />);
+
+    const processButton = screen.getByRole("button", { name: /Continue to options/i });
+    fireEvent.click(processButton);
+
+    await waitFor(() => {
+      expect(executeMock).toHaveBeenCalledTimes(1);
+    });
+
+    const payload = executeMock.mock.calls[0][0];
+    expect(payload.retention_consent).toBe(true);
+  });
+
   it("sends stage from store config in the payload", async () => {
     mockStore.stage = "proposal";
 

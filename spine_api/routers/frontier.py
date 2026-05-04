@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from spine_api.core.auth import get_current_agency_id
+from spine_api.core.auth import get_current_agency_id, require_permission
 from spine_api.core.database import get_db
 from spine_api.models.frontier import GhostWorkflow, EmotionalStateLog, IntelligencePoolRecord
 from pydantic import BaseModel, Field
@@ -71,6 +71,7 @@ class IntelligencePoolRequest(BaseModel):
 async def create_ghost_workflow(
     request: GhostWorkflowCreate,
     agency_id: str = Depends(get_current_agency_id),
+    membership=require_permission("ai_workforce:manage"),
     db: AsyncSession = Depends(get_db),
 ):
     """Start a new autonomic Ghost Concierge workflow scoped to the caller's agency."""
@@ -94,6 +95,7 @@ async def create_ghost_workflow(
 async def get_ghost_workflow(
     workflow_id: str,
     agency_id: str = Depends(get_current_agency_id),
+    membership=require_permission("trips:read"),
     db: AsyncSession = Depends(get_db),
 ):
     """Retrieve a Ghost workflow — returns 404 if not found or not owned by caller's agency."""
@@ -113,6 +115,7 @@ async def get_ghost_workflow(
 async def log_emotional_state(
     request: EmotionalLogRequest,
     agency_id: str = Depends(get_current_agency_id),
+    membership=require_permission("trips:write"),
     db: AsyncSession = Depends(get_db),
 ):
     """Log traveler emotional state scoped to the caller's agency."""
@@ -135,6 +138,7 @@ async def log_emotional_state(
 async def report_intelligence(
     request: IntelligencePoolRequest,
     _agency_id: str = Depends(get_current_agency_id),  # Auth required; data is anonymized
+    membership=require_permission("trips:write"),
     db: AsyncSession = Depends(get_db),
 ):
     """Submit anonymized risk data to the federated intelligence pool.

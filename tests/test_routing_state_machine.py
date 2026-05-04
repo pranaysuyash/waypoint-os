@@ -33,8 +33,7 @@ def _make_routing_state(
     escalated_at=None,
     handoff_history=None,
 ):
-    from spine_api.models.routing import TripRoutingState
-    s = TripRoutingState.__new__(TripRoutingState)
+    s = MagicMock()
     s.id = "rts-1"
     s.trip_id = trip_id
     s.agency_id = agency_id
