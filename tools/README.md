@@ -167,3 +167,25 @@ Output:
 Notes:
 - The file is a sample only and does not represent a real booking.
 - Uses `reportlab` and the existing project venv / uv environment.
+
+## 6) `run_multi_agent_runtime_scenarios.py`
+
+Purpose:
+- Run deterministic backend multi-agent runtime drills without touching the
+  production/test database.
+- Verify happy path orchestration, retry after transient dependency failure,
+  terminal failure escalation, and idempotent re-entry behavior.
+- Write durable Markdown evidence for implementation handoff and audit review.
+
+Usage:
+```bash
+cd /Users/pranay/Projects/travel_agency_agent
+uv run python tools/run_multi_agent_runtime_scenarios.py
+```
+
+Output:
+- `Docs/status/MULTI_AGENT_RUNTIME_SCENARIO_EVIDENCE_2026-05-04.md`
+
+Notes:
+- Uses an in-memory trip repository and audit sink.
+- Does not require backend or frontend servers.

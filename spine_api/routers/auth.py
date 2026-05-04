@@ -38,6 +38,8 @@ from spine_api.services.auth_service import (
     refresh_access_token,
     request_password_reset,
     confirm_password_reset,
+    validate_workspace_code,
+    join_with_code,
 )
 
 logger = logging.getLogger("spine_api.auth")
@@ -130,6 +132,13 @@ class PasswordResetRequest(BaseModel):
 class PasswordResetConfirm(BaseModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+class JoinRequest(BaseModel):
+    workspace_code: str = Field(min_length=1, max_length=64)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    name: str | None = Field(default=None, max_length=255)
 
 
 # ---------------------------------------------------------------------------
@@ -344,3 +353,93 @@ async def post_confirm_password_reset(
             changes={"success": False, "reason": str(e)},
         )
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Workspace code — validate and join
+# ---------------------------------------------------------------------------
+
+@router.get("/validate-code/{code}")
+async def get_validate_code(
+    code: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Validate a workspace invitation code without requiring authentication.
+
+    Used by the /join/[code] page to display the agency name before the user
+    commits to signing up. Returns 404 for any invalid/expired/revoked code
+    to avoid leaking information about code existence.
+
+    This endpoint is intentionally unauthenticated — it is listed under /api/auth/
+    which is a PUBLIC_PREFIX in the auth middleware, so no JWT is required.
+    """
+    try:
+        result = await validate_workspace_code(db=db, code=code)
+        return result
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation code not found")
+
+
+@router.post("/join", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
+async def post_join(
+    request: Request,
+    response: Response,
+    join_req: JoinRequest,
+    audit: AuditContext = Depends(audit_logger()),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Create a new user account and join an existing agency via a workspace invitation code.
+
+    This is the agent onboarding path — distinct from /signup which creates a new agency.
+    On success, sets the same httpOnly auth cookies as /signup and /login.
+
+    Codes are multi-use (reusable invitation links). The owner revokes a code to prevent
+    further joins. Role defaults to junior_agent regardless of code_type; the owner
+    promotes agents to senior_agent after onboarding review.
+    """
+    try:
+        result = await join_with_code(
+            db=db,
+            code=join_req.workspace_code,
+            email=join_req.email,
+            password=join_req.password,
+            name=join_req.name,
+        )
+    except ValueError as e:
+        await audit.log(
+            AuditAction.LOGIN_FAILED,
+            resource_type="user",
+            changes={"email": join_req.email, "reason": str(e)},
+        )
+        # Use 400 for email-taken / validation errors; 404 for bad code
+        code_str = str(e)
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if "invitation code" in code_str
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=status_code, detail=code_str)
+
+    _set_auth_cookies(response, result["access_token"], result["refresh_token"])
+
+    await audit.log(
+        AuditAction.CREATE,
+        resource_type="user",
+        resource_id=result["user"]["id"],
+        changes={
+            "email": join_req.email,
+            "agency": result["agency"]["name"],
+            "role": result["membership"]["role"],
+            "via": "workspace_code",
+        },
+    )
+
+    return AuthResponse(
+        ok=True,
+        user=result["user"],
+        agency=result["agency"],
+        membership=result["membership"],
+    )

@@ -1,34 +1,39 @@
 """
 Frontier Features Router for Waypoint OS.
+
+Tenant isolation: agency_id is ALWAYS sourced from the authenticated user's JWT
+membership via get_current_agency_id — never from caller-supplied request body.
+This prevents cross-tenant data injection by any authenticated user.
 """
 
 import uuid
 from datetime import datetime, timezone
-from typing import List, Optional, Dict, Any
+from typing import Optional, Dict, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+from spine_api.core.auth import get_current_agency_id
 from spine_api.core.database import get_db
-from spine_api.models.frontier import GhostWorkflow, EmotionalStateLog, IntelligencePoolRecord, LegacyAspiration
-from spine_api.contract import (
-    SpineRunResponse, # Fallback if needed
-)
+from spine_api.models.frontier import GhostWorkflow, EmotionalStateLog, IntelligencePoolRecord
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/frontier", tags=["Frontier"])
 
 # =============================================================================
-# Pydantic Models (Internal to Frontier Router for now)
+# Pydantic Models
+# Note: agency_id is intentionally absent from all request schemas.
+# It is injected via the get_current_agency_id dependency so that callers
+# cannot target another tenant's data.
 # =============================================================================
 
 class GhostWorkflowCreate(BaseModel):
-    agency_id: str
     trip_id: str
     task_type: str
     action_payload: Optional[Dict[str, Any]] = None
     autonomic_level: int = 0
+
 
 class GhostWorkflowResponse(BaseModel):
     id: str
@@ -40,20 +45,23 @@ class GhostWorkflowResponse(BaseModel):
     started_at: datetime
     completed_at: Optional[datetime] = None
 
+
 class EmotionalLogRequest(BaseModel):
-    agency_id: str
     traveler_id: str
     trip_id: str
     sentiment_score: float = Field(..., ge=0.0, le=1.0)
     anxiety_trigger: Optional[str] = None
     mitigation_action_id: Optional[str] = None
 
+
 class IntelligencePoolRequest(BaseModel):
+    """Federated cross-agency risk intelligence — anonymized by design, no agency_id."""
     incident_type: str
     anonymized_data: Dict[str, Any]
     severity: int = Field(1, ge=1, le=5)
     confidence: float = Field(1.0, ge=0.0, le=1.0)
     source_agency_hash: str
+
 
 # =============================================================================
 # Routes
@@ -62,62 +70,79 @@ class IntelligencePoolRequest(BaseModel):
 @router.post("/ghost/workflows", response_model=GhostWorkflowResponse)
 async def create_ghost_workflow(
     request: GhostWorkflowCreate,
-    db: AsyncSession = Depends(get_db)
+    agency_id: str = Depends(get_current_agency_id),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Start a new autonomic Ghost Concierge workflow."""
+    """Start a new autonomic Ghost Concierge workflow scoped to the caller's agency."""
     workflow = GhostWorkflow(
         id=str(uuid.uuid4()),
-        agency_id=request.agency_id,
+        agency_id=agency_id,
         trip_id=request.trip_id,
         task_type=request.task_type,
         action_payload=request.action_payload,
         autonomic_level=request.autonomic_level,
         status="pending",
-        started_at=datetime.now(timezone.utc)
+        started_at=datetime.now(timezone.utc),
     )
     db.add(workflow)
     await db.commit()
     await db.refresh(workflow)
     return workflow
 
+
 @router.get("/ghost/workflows/{workflow_id}", response_model=GhostWorkflowResponse)
 async def get_ghost_workflow(
     workflow_id: str,
-    db: AsyncSession = Depends(get_db)
+    agency_id: str = Depends(get_current_agency_id),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Retrieve the status of a Ghost workflow."""
-    result = await db.execute(select(GhostWorkflow).where(GhostWorkflow.id == workflow_id))
+    """Retrieve a Ghost workflow — returns 404 if not found or not owned by caller's agency."""
+    result = await db.execute(
+        select(GhostWorkflow).where(GhostWorkflow.id == workflow_id)
+    )
     workflow = result.scalar_one_or_none()
-    if not workflow:
-        raise HTTPException(status_code=404, detail="Workflow not found")
+
+    # 404 (not 403) to avoid confirming whether the workflow exists for another tenant.
+    if not workflow or workflow.agency_id != agency_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found")
+
     return workflow
+
 
 @router.post("/emotions/log")
 async def log_emotional_state(
     request: EmotionalLogRequest,
-    db: AsyncSession = Depends(get_db)
+    agency_id: str = Depends(get_current_agency_id),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Log traveler emotional state for sentiment tracking."""
+    """Log traveler emotional state scoped to the caller's agency."""
     log = EmotionalStateLog(
         id=str(uuid.uuid4()),
-        agency_id=request.agency_id,
+        agency_id=agency_id,
         traveler_id=request.traveler_id,
         trip_id=request.trip_id,
         sentiment_score=request.sentiment_score,
         anxiety_trigger=request.anxiety_trigger,
         mitigation_action_id=request.mitigation_action_id,
-        recorded_at=datetime.now(timezone.utc)
+        recorded_at=datetime.now(timezone.utc),
     )
     db.add(log)
     await db.commit()
     return {"ok": True, "log_id": log.id}
 
+
 @router.post("/intelligence/report")
 async def report_intelligence(
     request: IntelligencePoolRequest,
-    db: AsyncSession = Depends(get_db)
+    _agency_id: str = Depends(get_current_agency_id),  # Auth required; data is anonymized
+    db: AsyncSession = Depends(get_db),
 ):
-    """Submit anonymized risk data to the federated intelligence pool."""
+    """Submit anonymized risk data to the federated intelligence pool.
+
+    The intelligence pool is cross-agency by design (source_agency_hash instead of
+    agency_id). The _agency_id dependency is retained to enforce authentication without
+    storing the caller's identity in the pooled record.
+    """
     record = IntelligencePoolRecord(
         id=str(uuid.uuid4()),
         incident_type=request.incident_type,
@@ -125,7 +150,7 @@ async def report_intelligence(
         severity=request.severity,
         confidence=request.confidence,
         source_agency_hash=request.source_agency_hash,
-        verified_at=datetime.now(timezone.utc)
+        verified_at=datetime.now(timezone.utc),
     )
     db.add(record)
     await db.commit()

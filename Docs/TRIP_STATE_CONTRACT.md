@@ -1,9 +1,9 @@
 # Trip State Contract — Implementation Plan
 
-**Status:** Phase 1 + Phase 1.5 + Phase 2A + Phase 2B + Phase 3A + Phase 3B complete
+**Status:** Phase 1 + Phase 1.5 + Phase 2A + Phase 2B + Phase 3A + Phase 3B + Phase 4A complete
 **Created:** 2026-05-02
 **Updated:** 2026-05-03
-**Scope:** Persistence repair, encryption, stage/readiness model, ops panel, booking data
+**Scope:** Persistence repair, encryption, stage/readiness model, ops panel, booking data, customer collection
 
 ---
 
@@ -31,6 +31,8 @@ Every field the pipeline emits, its classification, and persistence behavior:
 | `fees` | calculate_trip_fees() | OutputPanel, future OpsPanel | proposal+ | Medium (commercial) | `fees` | Yes | Yes | No | Agent-only |
 | `frontier_result` | run_frontier_orchestration() | FrontierDashboard | all | High (sentiment, intel) | `frontier_result` | Yes | Yes | No | Agent-only |
 | `booking_data` | Agent/OpsPanel edit | OpsPanel | proposal, booking | Critical (passports, DOB) | `booking_data` | Yes (blob) | Lazy (OpsPanel only) | No | Agent + owner |
+| `pending_booking_data` | Customer form submission | OpsPanel (review) | proposal, booking | Critical (passports, DOB) | `pending_booking_data` | Yes (blob) | Lazy (accept/reject only) | No | Agent + owner |
+| `booking_data_source` | Accept action | OpsPanel (badge) | proposal, booking | Low (provenance) | None | No | Yes | Yes | Agent |
 
 ### Authority hierarchy
 ```
@@ -58,7 +60,7 @@ Two tiers, enforced by `_encrypt_field_for_storage` / `_decrypt_field_from_stora
 
 | Tier | Fields | Method | Stored shape |
 |:---|:---|:---|:---|
-| Private blob | `traveler_bundle`, `internal_bundle`, `safety`, `fees`, `frontier_result`, `booking_data` | Entire JSON → single Fernet token | `{"__encrypted_blob": true, "v": 1, "ciphertext": "..."}` |
+| Private blob | `traveler_bundle`, `internal_bundle`, `safety`, `fees`, `frontier_result`, `booking_data`, `pending_booking_data` | Entire JSON → single Fernet token | `{"__encrypted_blob": true, "v": 1, "ciphertext": "..."}` |
 | PII-key redaction | `extracted`, `raw_input` | Recursive: encrypt string values whose key is in `_PII_FIELDS` | Same JSON structure, PII values replaced with tokens |
 | None | `validation`, `decision`, `strategy`, all scalar fields | Plaintext | As-is |
 
@@ -192,6 +194,35 @@ Named "Ops" not "Booking" — room for documents, payments, confirmations, emerg
 
 **Phase 3B** (complete): Booking data encrypted column, dedicated GET/PATCH endpoints, OpsPanel edit surface.
 
+**Phase 4A** (complete): Customer booking-data collection link. Tokenized, time-limited URL; public form (no login); pending encrypted data; agent accept/reject review gate.
+
+#### Phase 4A Architecture
+
+**Review gate**: Customer submissions land in `pending_booking_data` (encrypted). Agent must explicitly accept before data becomes trusted `booking_data`. `_check_booking_ready()` only checks trusted `booking_data`.
+
+**Token model**: `BookingCollectionToken` — SHA-256 hashed, single-use, revocable, expirable. Follows `PasswordResetToken` pattern. Default TTL: 7 days.
+
+**Privacy**: `pending_booking_data` is NOT in `_to_dict()`. Public endpoint returns safe trip summary only — no PII, no internal fields.
+
+**Async boundary**: Agent endpoints are `async def`, using `asyncio.to_thread()` for sync TripStore calls (avoids deadlock with TestClient's anyio loop). Public endpoints use `async_session_maker` directly for collection service, `_ts()` for TripStore calls.
+
+**Endpoints**:
+- Agent: POST/GET/DELETE `/trips/{trip_id}/collection-link`
+- Agent: GET `/trips/{trip_id}/pending-booking-data`
+- Agent: POST accept/reject `/trips/{trip_id}/pending-booking-data/accept|reject`
+- Public: GET/POST `/api/public/booking-collection/{token}` (rate-limited)
+
+**Implementation files:**
+- `alembic/versions/add_booking_collection.py` — Table + columns migration
+- `spine_api/models/tenant.py` — `BookingCollectionToken` model
+- `spine_api/models/trips.py` — `pending_booking_data`, `booking_data_source` columns
+- `spine_api/persistence.py` — `_PRIVATE_BLOB_FIELDS` + `get_pending_booking_data()`, NOT in `_to_dict()`
+- `spine_api/services/collection_service.py` — Token lifecycle: generate, validate, revoke, mark_used
+- `spine_api/server.py` — 8 endpoints + `_ts()` async helper
+
+**Tests:**
+- `tests/test_booking_collection.py` — 33 tests: encryption, token CRUD, public form/submit, accept/reject, privacy boundaries, audit
+
 #### Phase 3B Architecture
 
 **Privacy boundary**: `booking_data` is NOT included in `_to_dict()` or generic `GET /trips/{trip_id}` responses. Dedicated accessors only:
@@ -274,6 +305,13 @@ Named "Ops" not "Booking" — room for documents, payments, confirmations, emerg
 | `frontend/src/lib/api-client.ts` | `BookingData` types, `getBookingData()`, `updateBookingData()` | 3B |
 | `tests/test_booking_data.py` | 24 tests — encryption, endpoints, audit, privacy boundary | 3B |
 | `tests/test_passport_gating.py` | 29 tests — extraction gating, signals, stage gate | 3A |
+| `alembic/versions/add_booking_collection.py` | Table + columns migration | 4A |
+| `spine_api/models/tenant.py` | `BookingCollectionToken` model | 4A |
+| `spine_api/models/trips.py` | `pending_booking_data`, `booking_data_source` columns | 4A |
+| `spine_api/persistence.py` | `pending_booking_data` in blob fields + dedicated accessor | 4A |
+| `spine_api/services/collection_service.py` | Token lifecycle: generate, validate, revoke, mark_used | 4A |
+| `spine_api/server.py` | 8 endpoints (6 agent + 2 public) + `_ts()` helper | 4A |
+| `tests/test_booking_collection.py` | 33 tests — encryption, token CRUD, public form, accept/reject, privacy | 4A |
 
 ---
 
@@ -283,4 +321,5 @@ Named "Ops" not "Booking" — room for documents, payments, confirmations, emerg
 2. **Phase 2**: Submit discovery note → see readiness scores → manual stage advance → transition event in AuditStore
 3. **Phase 3A**: Set stage to proposal → OpsPanel appears → shows booking blockers → `?tab=ops` at discovery redirects
 4. **Phase 3B**: At proposal → click "Add booking details" → fill traveler info → save → booking_ready becomes true → generic GET does not include booking_data
-5. **Refresh parity test**: Automated test that runs pipeline, saves, reloads, asserts all compartments match
+5. **Phase 4A**: Generate collection link → customer submits via public form → pending data stored encrypted → agent accepts → booking_data populated → readiness recomputed
+6. **Refresh parity test**: Automated test that runs pipeline, saves, reloads, asserts all compartments match

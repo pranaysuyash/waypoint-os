@@ -6,6 +6,7 @@ import {
   Building2,
   SlidersHorizontal,
   ShieldCheck,
+  Users,
   Save,
   RotateCcw,
   AlertCircle,
@@ -16,11 +17,13 @@ import type { AgencySettings, UpdateOperationalPayload, UpdateAutonomyPayload } 
 import { ProfileTab } from './components/ProfileTab';
 import { OperationalTab } from './components/OperationalTab';
 import { AutonomyTab } from './components/AutonomyTab';
+import { PeopleTab } from './components/PeopleTab';
 
 const TABS = [
   { id: 'profile', label: 'Profile', icon: Building2 },
   { id: 'operations', label: 'Operations', icon: SlidersHorizontal },
   { id: 'autonomy', label: 'Approval Rules', icon: ShieldCheck },
+  { id: 'people', label: 'People', icon: Users },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -252,6 +255,9 @@ export default function SettingsPage() {
           )}
           {activeTab === 'autonomy' && (
             <AutonomyTab draft={draft} onChange={updateDraft} />
+          )}
+          {activeTab === 'people' && (
+            <PeopleTab />
           )}
         </div>
       </div>

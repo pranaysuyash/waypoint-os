@@ -20,12 +20,12 @@ import {
 } from 'lucide-react';
 import { useInboxTrips } from '@/hooks/useGovernance';
 import { InlineError } from '@/components/error-boundary';
-import { tripMatchesQuery } from '@/lib/inbox-helpers';
 import { TripCard } from '@/components/inbox/TripCard';
-import { InboxFilterBar, type FilterKey } from '@/components/inbox/InboxFilterBar';
+import { ComposableFilterBar } from '@/components/inbox/ComposableFilterBar';
 import { InboxEmptyState } from '@/components/inbox/InboxEmptyState';
 import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
-import type { InboxTrip } from '@/types/governance';
+import { deserializeFilters, serializeFilters, SORT_OPTIONS as SORT_HELPERS } from '@/lib/inbox-helpers';
+import type { InboxTrip, InboxFilters } from '@/types/governance';
 type SortKey = 'priority' | 'destination' | 'value' | 'party' | 'dates' | 'sla';
 type SortDirection = 'asc' | 'desc';
 
@@ -127,12 +127,17 @@ export default function InboxPage() {
   const searchParams = useSearchParams();
   
   // URL Persistence Sync
-  const activeFilter = (searchParams.get('filter') as FilterKey) || 'all';
   const sortBy = (searchParams.get('sort') as SortKey) || 'priority';
   const sortDirection = (searchParams.get('dir') as SortDirection) || 'desc';
   const searchQuery = searchParams.get('q') || '';
   const page = Math.max(1, Number.parseInt(searchParams.get('page') || '1', 10) || 1);
   const limit = Math.max(1, Number.parseInt(searchParams.get('limit') || '20', 10) || 20);
+
+  // Composable filters from URL params
+  const activeFilters = useMemo<InboxFilters>(
+    () => deserializeFilters(searchParams.toString()),
+    [searchParams],
+  );
 
   const updateParams = useCallback((updates: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -145,16 +150,23 @@ export default function InboxPage() {
 
   const [selectedTrips, setSelectedTrips] = useState<Set<string>>(new Set());
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const FETCH_LIMIT = 500;
 
   const {
     data: inboxTrips,
     total: inboxTotal,
+    hasMore,
     isLoading,
     error,
     refetch,
     assignTrips,
-  } = useInboxTrips(undefined, 1, FETCH_LIMIT);
+  } = useInboxTrips(
+    activeFilters,
+    page,
+    limit,
+    sortBy,
+    sortDirection,
+    searchQuery
+  );
 
   const agents = useMemo(() => {
     const seen = new Map<string, string>();
@@ -167,88 +179,45 @@ export default function InboxPage() {
   }, [inboxTrips]);
 
   // ============================================================================
-  // FILTER CONFIGURATION
+  // FILTER HANDLING
   // ============================================================================
 
-  const filterConfigs = useMemo(() => [
-    { key: 'all' as FilterKey, label: 'All leads', tone: 'neutral' as const },
-    { key: 'incomplete' as FilterKey, label: 'Needs details', tone: 'attention' as const },
-    { key: 'unassigned' as FilterKey, label: 'Unassigned', tone: 'ownership' as const },
-    { key: 'at_risk' as FilterKey, label: 'At Risk', tone: 'risk' as const },
-  ], []);
+  const hasFilters = useMemo(() => {
+    const f = activeFilters;
+    return (
+      (f.priority?.length ?? 0) > 0 ||
+      (f.slaStatus?.length ?? 0) > 0 ||
+      (f.stage?.length ?? 0) > 0 ||
+      (f.assignedTo?.length ?? 0) > 0 ||
+      f.minValue !== undefined ||
+      f.maxValue !== undefined
+    );
+  }, [activeFilters]);
 
-  const filterCounts = useMemo(() => {
-    const counts: Record<string, number> = {
-      all: inboxTotal,
-      at_risk: inboxTrips.filter((t) => t.slaStatus === 'at_risk').length,
-      incomplete: inboxTrips.filter((t) =>
-        (t.flags || []).includes('incomplete') ||
-        (t.flags || []).includes('needs_clarification') ||
-        (t.flags || []).includes('details_unclear')
-      ).length,
-      unassigned: inboxTrips.filter((t) => !t.assignedTo).length,
-    };
+  const handleFiltersChange = useCallback((newFilters: InboxFilters) => {
+    const params = new URLSearchParams();
+    params.set('page', '1');
+    params.set('limit', String(limit));
+    if (sortBy) params.set('sort', sortBy);
+    if (sortDirection) params.set('dir', sortDirection);
+    if (searchQuery) params.set('q', searchQuery);
 
-    return counts;
-  }, [inboxTrips, inboxTotal]);
-
-  const filteredAll = useMemo(() => {
-    let result = [...inboxTrips];
-
-    // Standard filters
-    if (activeFilter === 'at_risk') {
-      result = result.filter((t) => t.slaStatus === 'at_risk');
-    } else if (activeFilter === 'incomplete') {
-      result = result.filter((t) =>
-        (t.flags || []).includes('incomplete') ||
-        (t.flags || []).includes('needs_clarification') ||
-        (t.flags || []).includes('details_unclear')
-      );
-    } else if (activeFilter === 'unassigned') {
-      result = result.filter((t) => !t.assignedTo);
+    // Serialize composable filters to URL params
+    const filterString = serializeFilters(newFilters);
+    const filterParams = new URLSearchParams(filterString);
+    for (const [key, value] of filterParams) {
+      params.set(key, value);
     }
 
-    if (searchQuery) {
-      result = result.filter((t) => tripMatchesQuery(t, searchQuery));
-    }
+    router.push(`?${params.toString()}`);
+  }, [router, limit, sortBy, sortDirection, searchQuery]);
 
-    const dir = sortDirection === 'asc' ? 1 : -1;
-    return result.sort((a, b) => {
-      switch (sortBy) {
-        case 'priority': {
-          const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-          const pa = priorityOrder[a.priority];
-          const pb = priorityOrder[b.priority];
-          if (pa !== pb) return (pa - pb) * dir;
-          const slaOrder = { breached: 0, at_risk: 1, on_track: 2 };
-          return (slaOrder[a.slaStatus] - slaOrder[b.slaStatus]) * dir;
-        }
-        case 'destination':
-          return a.destination.localeCompare(b.destination) * dir;
-        case 'value':
-          return (a.value - b.value) * dir;
-        case 'party':
-          return (a.partySize - b.partySize) * dir;
-        case 'dates':
-          return a.dateWindow.localeCompare(b.dateWindow) * dir;
-        case 'sla': {
-          const slaOrder = { breached: 0, at_risk: 1, on_track: 2 };
-          return (slaOrder[a.slaStatus] - slaOrder[b.slaStatus]) * dir;
-        }
-        default:
-          return 0;
-      }
-    });
-  }, [inboxTrips, activeFilter, searchQuery, sortBy, sortDirection]);
-  const totalFiltered = filteredAll.length;
-  const totalPages = Math.max(1, Math.ceil(totalFiltered / limit));
+  // Server drives pagination. We trust the returned items are already
+  // filtered/sorted/paged. Display them directly.
+  const totalFiltered = inboxTotal;
+  const totalPages = Math.max(1, Math.ceil(inboxTotal / limit));
   const currentPage = Math.min(page, totalPages);
-  const pageStart = (currentPage - 1) * limit;
-  const pagedTrips = useMemo(
-    () => filteredAll.slice(pageStart, pageStart + limit),
-    [filteredAll, pageStart, limit],
-  );
-  const hasNextPage = currentPage < totalPages;
+  const hasNextPage = hasMore;
 
   useEffect(() => {
     if (page !== currentPage) {
@@ -442,26 +411,19 @@ export default function InboxPage() {
       )}
 
       {/* Filters */}
-      <InboxFilterBar
-        activeFilter={activeFilter}
-        onFilterChange={(filter) => updateParams({
-          filter: filter === 'all' || filter === activeFilter ? null : filter,
-          page: '1',
-        })}
-        filters={filterConfigs.map((f) => ({
-          ...f,
-          count: filterCounts[f.key] || 0,
-          muted: f.key === 'at_risk' && (filterCounts[f.key] || 0) === 0,
-        }))}
+      <ComposableFilterBar
+        filters={activeFilters}
+        onFiltersChange={handleFiltersChange}
+        total={inboxTotal}
       />
-      {(activeFilter !== 'all' || !!searchQuery || sortBy !== 'priority' || sortDirection !== 'desc') && (
+      {!!searchQuery && (
         <div className='flex items-center justify-end'>
           <button
             type='button'
-            onClick={() => updateParams({ filter: null, q: null, sort: null, dir: null, page: '1' })}
+            onClick={() => updateParams({ q: null, page: '1' })}
             className='text-ui-xs text-[#8b949e] hover:text-[#e6edf3] underline underline-offset-2'
           >
-            Clear filters and sort
+            Clear search
           </button>
         </div>
       )}
@@ -482,7 +444,7 @@ export default function InboxPage() {
         </div>
       ) : (
         <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'>
-          {pagedTrips.map((trip) => (
+          {inboxTrips.map((trip) => (
             <TripCard
               key={trip.id}
               trip={trip}
@@ -491,12 +453,12 @@ export default function InboxPage() {
               viewProfile='operations'
             />
           ))}
-          {pagedTrips.length === 0 && !isLoading && (
+          {inboxTrips.length === 0 && !isLoading && (
             <InboxEmptyState
               hasSearch={!!searchQuery}
-              activeFilter={activeFilter}
+              hasFilters={hasFilters}
               onClearSearch={() => updateParams({ q: null, page: '1' })}
-              onClearFilter={() => updateParams({ filter: null, page: '1' })}
+              onClearAllFilters={() => handleFiltersChange({})}
             />
           )}
         </div>

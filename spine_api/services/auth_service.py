@@ -3,6 +3,7 @@ Auth service — business logic for signup, login, logout, token refresh.
 
 Handles:
 - User creation with bcrypt password hashing
+- Workspace code validation and agent join flow (join_with_code, validate_workspace_code)
 - Agency + Membership bootstrap on signup
 - JWT access + refresh token generation
 - httpOnly cookie management for token delivery
@@ -379,3 +380,160 @@ async def confirm_password_reset(db: AsyncSession, token: str, new_password: str
     logger.info("Password reset completed: user=%s", user.id)
 
     return {"ok": True, "message": "Password has been reset successfully"}
+
+
+async def validate_workspace_code(
+    db: AsyncSession,
+    code: str,
+) -> dict:
+    """
+    Validate a workspace invitation code without requiring authentication.
+
+    Used by the /join/[code] page to show the agency name before signup.
+
+    Returns:
+        dict with valid, agency_name, agency_id, code_type — or raises ValueError.
+
+    Design note: We return a consistent 404-style ValueError for any invalid code
+    (not found, revoked, used) to avoid leaking whether a given code format exists.
+    """
+    result = await db.execute(
+        select(WorkspaceCode)
+        .where(WorkspaceCode.code == code)
+        .where(WorkspaceCode.status == "active")
+    )
+    workspace_code = result.scalar_one_or_none()
+
+    if not workspace_code:
+        raise ValueError("Invalid or expired invitation code")
+
+    agency_result = await db.execute(
+        select(Agency).where(Agency.id == workspace_code.agency_id)
+    )
+    agency = agency_result.scalar_one_or_none()
+
+    if not agency:
+        raise ValueError("Invalid or expired invitation code")
+
+    return {
+        "valid": True,
+        "agency_name": agency.name,
+        "agency_id": agency.id,
+        "code_type": workspace_code.code_type,
+    }
+
+
+# Role assigned to agents joining via invitation code.
+# Owners/Admins can promote to SeniorAgent after onboarding review.
+_CODE_TYPE_ROLE: dict[str, str] = {
+    "internal": "junior_agent",
+    "external": "junior_agent",
+}
+
+
+async def join_with_code(
+    db: AsyncSession,
+    code: str,
+    email: str,
+    password: str,
+    name: Optional[str] = None,
+) -> dict:
+    """
+    Create a new user and join an existing agency via a workspace invitation code.
+
+    This is the agent onboarding path. Unlike signup(), it does NOT create a new agency.
+    The invitation code determines which agency the new user joins and at which role.
+
+    Codes are multi-use (reusable invitation links). They are not consumed on join;
+    the owner must explicitly revoke a code to stop further joins. This matches the
+    roadmap's "regeneratable" code model where old codes are invalidated by generating new ones.
+
+    Role assignment:
+        - Both internal and external codes start the joining agent at junior_agent.
+        - Owners and Admins can promote via the team management panel.
+
+    Returns:
+        Same shape as signup() — user, agency, membership, access_token, refresh_token.
+
+    Raises:
+        ValueError: if email taken, password too short, or code invalid.
+    """
+    # 1. Validate code (same logic as validate_workspace_code to stay consistent)
+    code_result = await db.execute(
+        select(WorkspaceCode)
+        .where(WorkspaceCode.code == code)
+        .where(WorkspaceCode.status == "active")
+    )
+    workspace_code = code_result.scalar_one_or_none()
+
+    if not workspace_code:
+        raise ValueError("Invalid or expired invitation code")
+
+    agency_result = await db.execute(
+        select(Agency).where(Agency.id == workspace_code.agency_id)
+    )
+    agency = agency_result.scalar_one_or_none()
+
+    if not agency:
+        raise ValueError("Invalid or expired invitation code")
+
+    # 2. Guard against duplicate email
+    user_result = await db.execute(select(User).where(User.email == email))
+    if user_result.scalar_one_or_none():
+        raise ValueError("Email already registered")
+
+    if len(password) < 8:
+        raise ValueError("Password must be at least 8 characters")
+
+    # 3. Create user and membership
+    user = User(
+        email=email,
+        password_hash=hash_password(password),
+        name=name or email.split("@")[0],
+    )
+    db.add(user)
+    await db.flush()  # get user.id before membership
+
+    role = _CODE_TYPE_ROLE.get(workspace_code.code_type, "junior_agent")
+    membership = Membership(
+        user_id=user.id,
+        agency_id=agency.id,
+        role=role,
+        is_primary=True,
+    )
+    db.add(membership)
+    await db.commit()
+    await db.refresh(user)
+    await db.refresh(membership)
+
+    access_token = create_access_token(
+        user_id=user.id,
+        agency_id=agency.id,
+        role=role,
+    )
+    refresh_token = create_refresh_token(user_id=user.id)
+
+    logger.info(
+        "Agent joined via code: user=%s agency=%s role=%s code_type=%s",
+        user.id, agency.id, role, workspace_code.code_type,
+    )
+
+    return {
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "name": user.name,
+        },
+        "agency": {
+            "id": agency.id,
+            "name": agency.name,
+            "slug": agency.slug,
+            "logo_url": agency.logo_url,
+        },
+        "membership": {
+            "role": membership.role,
+            "is_primary": membership.is_primary,
+        },
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+    }

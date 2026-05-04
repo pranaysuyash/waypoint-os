@@ -1,7 +1,13 @@
 import { NextRequest } from "next/server";
 import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
-import { transformSpineTripToInboxTrip } from "@/lib/bff-trip-adapters";
 
+/**
+ * Inbox API route — thin BFF pass-through.
+ *
+ * The backend now returns typed InboxTripItem objects (projected by
+ * InboxProjectionService). No JSON extraction, no business logic.
+ * We simply proxy the response transparently.
+ */
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -18,13 +24,8 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
-    const items = (data.items || []).map((t: unknown) =>
-      transformSpineTripToInboxTrip(t)
-    );
-    return bffJson({
-      ...data,
-      items,
-    });
+    // Backend returns typed InboxTripItem[] directly — no transformation needed.
+    return bffJson(data);
   } catch (error) {
     console.error("Error proxying inbox:", error);
     return bffJson({ error: "Failed to fetch inbox" }, 500);

@@ -106,8 +106,8 @@ function FlagBadgeRow({ trip, showMicroLabels }: { trip: InboxTrip; showMicroLab
   if (!trip.flags?.length) return null;
   return (
     <div data-testid="trip-card-flags" className="flex items-center gap-1.5 mt-2 flex-wrap">
-      {trip.flags.map((flag) => (
-        <FlagBadge key={flag} flag={flag} showLabel={showMicroLabels} />
+      {trip.flags.map((flag, index) => (
+        <FlagBadge key={`${flag}-${index}`} flag={flag} showLabel={showMicroLabels} />
       ))}
     </div>
   );
@@ -305,19 +305,6 @@ export const TripCard = memo(function TripCard({
             {trip.id}
           </span>
           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            {!trip.assignedTo && (
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md transition-colors"
-                style={{
-                  color: '#58a6ff',
-                  border: '1px solid rgba(88,166,255,0.30)',
-                  background: 'rgba(88,166,255,0.08)',
-                }}
-              >
-                Assign
-              </button>
-            )}
             <Link
               href={reviewHref}
               data-testid="trip-card-view-link"

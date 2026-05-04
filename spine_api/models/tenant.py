@@ -170,3 +170,35 @@ class PasswordResetToken(Base):
         Index("ix_password_reset_tokens_user_id", "user_id"),
         Index("ix_password_reset_tokens_expires_at", "expires_at"),
     )
+
+
+class BookingCollectionToken(Base):
+    """Time-limited, single-use tokens for customer booking-data collection."""
+    __tablename__ = "booking_collection_tokens"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    trip_id: Mapped[str] = mapped_column(
+        ForeignKey("trips.id", ondelete="CASCADE"), nullable=False
+    )
+    agency_id: Mapped[str] = mapped_column(
+        ForeignKey("agencies.id", ondelete="CASCADE"), nullable=False
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="active")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[str] = mapped_column(String(36), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    trip: Mapped["Trip"] = relationship("Trip")
+    agency: Mapped["Agency"] = relationship("Agency")
+
+    __table_args__ = (
+        Index("ix_bct_token_hash", "token_hash"),
+        Index("ix_bct_trip_id", "trip_id"),
+    )

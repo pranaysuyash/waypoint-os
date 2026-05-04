@@ -797,3 +797,96 @@ export async function updateBookingData(
     expected_updated_at: expectedUpdatedAt || undefined,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Booking Collection Link (Phase 4A) — agent + public endpoints
+// ---------------------------------------------------------------------------
+
+export interface CollectionLinkInfo {
+  token_id: string;
+  collection_url: string;
+  expires_at: string;
+  status: string;
+}
+
+export interface PendingBookingDataResponse {
+  trip_id: string;
+  pending_booking_data: BookingData | null;
+  booking_data_source: string | null;
+}
+
+export interface PublicCollectionContext {
+  valid: boolean;
+  reason?: string;
+  already_submitted?: boolean;
+  destination?: string;
+  departure_date?: string;
+  return_date?: string;
+  traveler_count?: number;
+  agency_name?: string;
+}
+
+const SPINE_API_URL = process.env.NEXT_PUBLIC_SPINE_API_URL || '';
+
+// Agent endpoints (proxied through BFF)
+export async function generateCollectionLink(
+  tripId: string,
+  expiresInHours?: number,
+): Promise<CollectionLinkInfo> {
+  return api.post<CollectionLinkInfo>(`/api/trips/${tripId}/collection-link`, {
+    expires_in_hours: expiresInHours,
+  });
+}
+
+export async function getCollectionLink(tripId: string): Promise<CollectionLinkInfo> {
+  return api.get<CollectionLinkInfo>(`/api/trips/${tripId}/collection-link`);
+}
+
+export async function revokeCollectionLink(tripId: string): Promise<{ ok: boolean }> {
+  return api.delete<{ ok: boolean }>(`/api/trips/${tripId}/collection-link`);
+}
+
+export async function getPendingBookingData(tripId: string): Promise<PendingBookingDataResponse> {
+  return api.get<PendingBookingDataResponse>(`/api/trips/${tripId}/pending-booking-data`);
+}
+
+export async function acceptPendingBookingData(
+  tripId: string,
+): Promise<BookingDataResponse> {
+  return api.post<BookingDataResponse>(`/api/trips/${tripId}/pending-booking-data/accept`);
+}
+
+export async function rejectPendingBookingData(
+  tripId: string,
+  reason?: string,
+): Promise<{ ok: boolean }> {
+  return api.post<{ ok: boolean }>(`/api/trips/${tripId}/pending-booking-data/reject`, {
+    reason: reason || undefined,
+  });
+}
+
+// Public endpoints (direct to backend, no auth)
+export async function getPublicCollectionForm(token: string): Promise<PublicCollectionContext> {
+  const url = `${SPINE_API_URL}/api/public/booking-collection/${encodeURIComponent(token)}`;
+  const res = await fetch(url, { credentials: 'omit' });
+  if (!res.ok) throw new Error(`Failed to load collection form (${res.status})`);
+  return res.json();
+}
+
+export async function submitPublicBookingData(
+  token: string,
+  data: BookingData,
+): Promise<{ ok: boolean; message: string }> {
+  const url = `${SPINE_API_URL}/api/public/booking-collection/${encodeURIComponent(token)}/submit`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'omit',
+    body: JSON.stringify({ booking_data: data }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `Submission failed (${res.status})`);
+  }
+  return res.json();
+}

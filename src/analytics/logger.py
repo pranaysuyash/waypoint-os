@@ -45,6 +45,7 @@ class TimelineEvent(BaseModel):
     decision: Optional[str] = None  # If applicable: "approve", "reject", "ask_followup"
     confidence: Optional[float] = None  # 0-100 confidence score
     reason: Optional[str] = None  # Why this stage/decision happened
+    actor: Optional[str] = None  # Who performed this action (user ID or "system"/"owner")
     pre_state: Optional[Dict[str, Any]] = None  # Raw delta (for debugging)
     post_state: Optional[Dict[str, Any]] = None  # Raw delta (for debugging)
 
@@ -193,6 +194,8 @@ class TimelineEventMapper:
         if decision_type:
             decision = decision_type.lower() if isinstance(decision_type, str) else str(decision_type)
 
+        # Extract actor from the event-level user_id field
+        actor = audit_event.get("user_id")
         
         # Build the TimelineEvent
         return TimelineEvent(
@@ -204,6 +207,7 @@ class TimelineEventMapper:
             decision=decision,
             confidence=details.get("confidence"),
             reason=details.get("reason"),
+            actor=actor,
             pre_state=details.get("pre_state"),
             post_state=details.get("post_state"),
         )

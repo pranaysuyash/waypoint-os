@@ -466,6 +466,7 @@ export interface TimelineEvent {
   decision?: string | null;
   confidence?: number | null;
   reason?: string | null;
+  actor?: string | null;
   pre_state?: {
     [k: string]: unknown;
   } | null;

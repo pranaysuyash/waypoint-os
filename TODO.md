@@ -111,7 +111,7 @@
 | 02 | Event replay to materialize CanonicalPacket | Deferred (see below) |
 | 03 | Contradiction lifecycle state machine | Done — `ContradictionState` + 4 transition methods |
 | 04 | Hypothesis lifecycle state machine | Done — `HypothesisState` + 5 transition methods |
-| 05 | UI audit trail (who/what/why/where) | Done — `actor`/`reason`/`pre_state` on `TimelineEvent` |
+| 05 | UI audit trail (who/what/why/where) | Done (2026-05-04) — `actor`/`reason`/`pre_state` on `TimelineEvent`. Had been claimed done but `actor` field was absent from model until May 4 fix. |
 | 06 | Value-to-event lineage tracing | Done — `old_value`/`new_value` in events + `Slot.evidence_refs` |
 | 07 | Align in-memory events with spec shape | Done — spec updated to match actual event format |
 | 08 | Verify append-only semantics enforced | Done — JSONL per AuditStore, append-only per `run_events` |
@@ -127,7 +127,7 @@
 | 02 | No replay mechanism | Claim removed from spec. Fresh extraction per run is correct for single-run pipeline. Deferred with revisit trigger in TODO. | `specs/event_log_and_snapshot_model.md` |
 | 03 | Contradiction detection only, no lifecycle | `ContradictionState` enum (`detected`/`open`/`resolved`). `add_contradiction()` stores state. `open_contradiction()`, `resolve_contradiction()`, `reopen_contradiction()` with event emission. | `src/intake/packet_models.py` |
 | 04 | Hypotheses dict only, no lifecycle | `HypothesisState` enum (`proposed`→`active`→`validated`/`rejected`→`stale`). `set_hypothesis()` auto-inits PROPOSED. `activate/validate/reject/stale` methods with event emission. | `src/intake/packet_models.py` |
-| 05 | Backend has data; frontend unverified | `actor` field added to `TimelineEvent`, mapped from AuditStore `user_id`. All four audit dimensions now present in API response. | `src/analytics/logger.py` |
+| 05 | Backend has data; frontend unverified | `actor` field added to `TimelineEvent` model, mapped from AuditStore `user_id`. Also added to `spine_api/contract.py`, `server.py` endpoint (both paths), frontend types, and `TimelinePanel.tsx` render. | `src/analytics/logger.py`, `spine_api/contract.py`, `spine_api/server.py`, `frontend/src/types/generated/spine-api.ts`, `frontend/src/components/workspace/panels/TimelinePanel.tsx` |
 | 06 | Lineage at Slot level only | Events now carry `old_value`/`new_value` per mutation. Combined with `Slot.evidence_refs` (`envelope_id`, `evidence_type`, `excerpt`), the full value→source chain is traceable. | `src/intake/packet_models.py` |
 | 07 | In-memory events use `event_id: int`, no `packet_id`/`actor` in payload | Spec updated to reflect actual shape: `{event_id, event_type, timestamp, details.{field_name, old_value, new_value}}`. The packet identity is implicit (events live on the packet). Actor is tracked at the `TimelineEvent` level. | `specs/event_log_and_snapshot_model.md` |
 | 08 | File-based AuditStore not crash-safe | Converted from load-modify-save JSON array → atomic JSONL append (one line per event, append mode). Trim uses `write-to-tmp + os.replace`. 1317 tests pass. | `spine_api/persistence.py` |
@@ -145,7 +145,7 @@
 | ISSUE-004 Hypothesis lifecycle | **Resolved** | `HypothesisState` enum (`proposed`/`active`/`validated`/`rejected`/`stale`). `set_hypothesis` auto-inits PROPOSED. `activate/validate/reject/stale` methods. Events: `hypothesis_activated`, `hypothesis_validated`, `hypothesis_rejected`, `hypothesis_staled`. |
 | ISSUE-005 Event shape drift | **Resolved** | Approach (b) selected: spec documents two-level provenance — events carry `field_name`/`old_value`/`new_value`; `Slot.evidence_refs` carry `envelope_id`/`evidence_type`/`excerpt`. Together they provide full audit trail without schema changes. |
 | ISSUE-006 Silent mutations | **Resolved** | `_EventTrackingDict.__setitem__` fires event on every dict write. `__delitem__` fires on removal. Enforcement is architectural, not convention-based. Any code path — `set_fact()` or direct `packet.facts["x"] = slot` — emits an event. |
-| ISSUE-007 UI audit trail | **Resolved** | Backend confirmed: `TimelineEvent` now carries `actor` (from AuditStore `user_id`), `reason`, `pre_state`/`post_state`. All 4 dimensions (who/why/where/previous) present in API response. Frontend rendering needs live-environment check. |
+| ISSUE-007 UI audit trail | **Resolved (2026-05-04)** | `actor` was missing from both `logger.py` model and mapper. Fixed: added to `TimelineEvent` Pydantic model + mapper extracts `user_id` from audit events. Frontend `TimelinePanel` now renders actor line. All 4 dimensions (who/why/where/previous) present in API response. |
 | ISSUE-008 Event type naming | **Resolved** | Spec updated to match actual event type vocabulary. No code changes needed — types were always correct, just documented differently. |
 | ISSUE-009 AuditStore atomicity | **Resolved** | Converted from load-modify-save JSON array → atomic JSONL append. `log_event` = one `f.write(line + "\n")` per call. Trim uses `write-to-tmp + os.replace` (non-destructive on crash). Legacy `events.json` auto-migrated to `events.jsonl`. |
 

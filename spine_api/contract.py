@@ -253,6 +253,7 @@ class TimelineEvent(BaseModel):
     decision: Optional[str] = None
     confidence: Optional[float] = None
     reason: Optional[str] = None
+    actor: Optional[str] = None  # Who performed this action (user ID or "system"/"owner")
     pre_state: Optional[Dict[str, Any]] = None
     post_state: Optional[Dict[str, Any]] = None
 
@@ -468,9 +469,36 @@ class FilterCounts(BaseModel):
     unassigned: int
 
 
+class InboxTripItem(BaseModel):
+    """Typed projection of a trip in the Inbox view.
+
+    These fields are computed by the service layer, not stored directly in the DB.
+    FastAPI validates and serializes this shape so the frontend contract is guaranteed.
+    """
+    id: str
+    reference: str
+    destination: str
+    tripType: str
+    partySize: int
+    dateWindow: str
+    value: int
+    priority: Literal["low", "medium", "high", "critical"]
+    priorityScore: int
+    stage: str
+    stageNumber: int
+    assignedTo: Optional[str] = None
+    assignedToName: Optional[str] = None
+    submittedAt: str
+    lastUpdated: str
+    daysInCurrentStage: int
+    slaStatus: Literal["on_track", "at_risk", "breached"]
+    customerName: str
+    flags: List[str] = Field(default_factory=list)
+
+
 class InboxResponse(BaseModel):
-    """Canonical inbox payload — DB-level filtered, BFF-thin."""
-    items: List[Dict[str, Any]]
+    """Canonical inbox payload — service-level projected and filtered."""
+    items: List[InboxTripItem]
     total: int
     hasMore: bool = False
     filterCounts: FilterCounts

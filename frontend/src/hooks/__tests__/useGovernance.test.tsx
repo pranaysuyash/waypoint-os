@@ -34,6 +34,7 @@ describe('useGovernance', () => {
       items: [],
       total: 0,
       hasMore: false,
+      filterCounts: {},
     } as never);
   });
 
@@ -72,7 +73,7 @@ describe('useGovernance', () => {
     });
 
     await waitFor(() => {
-      expect(governanceApi.getInboxTrips).toHaveBeenCalledWith(undefined, 1, 20);
+      expect(governanceApi.getInboxTrips).toHaveBeenCalledWith(undefined, 1, 20, undefined, undefined, undefined);
     });
 
     await act(async () => {

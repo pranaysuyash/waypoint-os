@@ -14,8 +14,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spine_api.core.database import get_db
-from spine_api.core.auth import get_current_agency_id
-from spine_api.services.workspace_service import get_workspace, update_workspace
+from spine_api.core.auth import get_current_agency_id, get_current_membership
+from spine_api.services.workspace_service import get_workspace, update_workspace, generate_workspace_code
 
 logger = logging.getLogger("spine_api.workspace")
 
@@ -54,3 +54,23 @@ async def patch_current_workspace(
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace not found")
     return {"ok": True, "workspace": workspace}
+
+
+class GenerateCodeRequest(BaseModel):
+    code_type: str = Field(default="internal", pattern="^(internal|external)$")
+
+
+@router.post("/codes")
+async def post_generate_workspace_code(
+    request: GenerateCodeRequest,
+    membership=Depends(get_current_membership),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate a new workspace invitation code. Marks the old code inactive."""
+    new_code = await generate_workspace_code(
+        db,
+        agency_id=membership.agency_id,
+        created_by=membership.user_id,
+        code_type=request.code_type,
+    )
+    return {"ok": True, "code": new_code}

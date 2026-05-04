@@ -33,7 +33,10 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from src.agents.events import AgentEvent, AgentEventType
+
 logger = logging.getLogger("recovery_agent")
+AGENT_NAME = "recovery_agent"
 
 # ── Thresholds ────────────────────────────────────────────────────────────────
 # Read at call time so tests can monkeypatch without importlib.reload.
@@ -148,6 +151,16 @@ class RecoveryAgent:
 
         results: list[RecoveryResult] = []
         for trip in stuck:
+            self._emit_agent_event(
+                AgentEventType.AGENT_DECISION,
+                trip_id=trip.trip_id,
+                payload={
+                    "decision": "re_queue" if trip.requeue_attempts < _get_max_requeue_attempts() else "escalate",
+                    "stage": trip.stage,
+                    "hours_stuck": trip.hours_stuck,
+                    "requeue_attempts": trip.requeue_attempts,
+                },
+            )
             result = self._recover(trip)
             results.append(result)
             self._audit_action(result)
@@ -173,8 +186,14 @@ class RecoveryAgent:
             return []
 
         for trip in active_trips:
-            stage = getattr(trip, "stage", None) or getattr(trip, "state", None)
-            updated_at = getattr(trip, "updated_at", None) or getattr(trip, "updatedAt", None)
+            if isinstance(trip, dict):
+                trip_id = trip.get("id", "")
+                stage = trip.get("stage") or trip.get("state")
+                updated_at = trip.get("updated_at") or trip.get("updatedAt")
+            else:
+                trip_id = getattr(trip, "id", "")
+                stage = getattr(trip, "stage", None) or getattr(trip, "state", None)
+                updated_at = getattr(trip, "updated_at", None) or getattr(trip, "updatedAt", None)
             if not stage or not updated_at:
                 continue
 
@@ -191,10 +210,10 @@ class RecoveryAgent:
             hours_stuck = (now - updated_at).total_seconds() / 3600
             if hours_stuck >= threshold_h:
                 stuck.append(StuckTrip(
-                    trip_id=trip.id,
+                    trip_id=trip_id,
                     stage=stage,
                     hours_stuck=round(hours_stuck, 1),
-                    requeue_attempts=self._requeue_counts.get(trip.id, 0),
+                    requeue_attempts=self._requeue_counts.get(trip_id, 0),
                 ))
 
         logger.info("RecoveryAgent: %d stuck trips detected", len(stuck))
@@ -270,21 +289,39 @@ class RecoveryAgent:
 
     def _audit_action(self, result: RecoveryResult) -> None:
         """Log the recovery action to the AuditStore."""
+        self._emit_agent_event(
+            AgentEventType.AGENT_ACTION if result.success else AgentEventType.AGENT_FAILED,
+            trip_id=result.trip_id,
+            payload={
+                "action": result.action,
+                "success": result.success,
+                "reason": result.reason,
+                "attempted_at": result.attempted_at.isoformat(),
+            },
+        )
+
+    def _emit_agent_event(
+        self,
+        event_type: AgentEventType,
+        trip_id: Optional[str],
+        payload: dict,
+    ) -> None:
         if self._audit is None:
             return
+        event = AgentEvent(
+            agent_name=AGENT_NAME,
+            event_type=event_type,
+            trip_id=trip_id,
+            payload=payload,
+        )
         try:
             self._audit.log(
-                event_type="recovery_agent",
-                trip_id=result.trip_id,
-                payload={
-                    "action": result.action,
-                    "success": result.success,
-                    "reason": result.reason,
-                    "attempted_at": result.attempted_at.isoformat(),
-                },
+                event_type="agent_event",
+                trip_id=trip_id or "",
+                payload=event.to_dict(),
             )
         except Exception:
-            logger.exception("RecoveryAgent: audit log failed for trip %s", result.trip_id)
+            logger.exception("RecoveryAgent: audit log failed for trip %s", trip_id)
 
     # ── Manual trigger (for testing / admin endpoint) ─────────────────────────
 

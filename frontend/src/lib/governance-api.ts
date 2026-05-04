@@ -35,6 +35,32 @@ import type {
 } from '@/types/governance';
 
 // ============================================================================
+// WORKSPACE API
+// ============================================================================
+
+export interface WorkspaceInfo {
+  id: string;
+  name: string;
+  slug: string;
+  email: string | null;
+  phone: string | null;
+  logo_url: string | null;
+  plan: string | null;
+  settings: Record<string, unknown>;
+  workspace_code: string | null;
+}
+
+export async function getWorkspace(): Promise<WorkspaceInfo> {
+  const res = await api.get<{ ok: boolean; workspace: WorkspaceInfo }>('/api/workspace');
+  return res.workspace;
+}
+
+export async function generateWorkspaceCode(codeType: 'internal' | 'external' = 'internal'): Promise<string> {
+  const res = await api.post<{ ok: boolean; code: string }>('/api/workspace/codes', { code_type: codeType });
+  return res.code;
+}
+
+// ============================================================================
 // REVIEWS API
 // ============================================================================
 
@@ -177,11 +203,15 @@ export async function getInboxTrips(
   filters?: InboxFilters,
   page: number = 1,
   limit: number = 20,
-): Promise<{ items: InboxTrip[]; total: number; hasMore: boolean }> {
+  sortBy?: string,
+  sortDir?: string,
+  searchQuery?: string,
+): Promise<{ items: InboxTrip[]; total: number; hasMore: boolean; filterCounts?: Record<string, number> }> {
   const params = new URLSearchParams();
   params.set('page', page.toString());
   params.set('limit', limit.toString());
 
+  if (filters?.filterTab) params.set('filter', filters.filterTab);
   if (filters?.priority) params.set('priority', filters.priority.join(','));
   if (filters?.stage) params.set('stage', filters.stage.join(','));
   if (filters?.assignedTo)
@@ -189,6 +219,9 @@ export async function getInboxTrips(
   if (filters?.slaStatus) params.set('slaStatus', filters.slaStatus.join(','));
   if (filters?.minValue) params.set('minValue', filters.minValue.toString());
   if (filters?.maxValue) params.set('maxValue', filters.maxValue.toString());
+  if (sortBy) params.set('sort', sortBy);
+  if (sortDir) params.set('dir', sortDir);
+  if (searchQuery) params.set('q', searchQuery);
 
   return api.get(`/api/inbox?${params.toString()}`);
 }

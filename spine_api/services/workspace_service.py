@@ -76,6 +76,15 @@ async def generate_workspace_code(
     created_by: str,
     code_type: str = "internal",
 ) -> str:
+    # Revoke all existing active codes for this agency before creating a new one.
+    existing = await db.execute(
+        select(WorkspaceCode)
+        .where(WorkspaceCode.agency_id == agency_id)
+        .where(WorkspaceCode.status == "active")
+    )
+    for old_code in existing.scalars().all():
+        old_code.status = "replaced"
+
     code = WorkspaceCode(
         agency_id=agency_id,
         code=f"WP-{secrets.token_urlsafe(8)}",

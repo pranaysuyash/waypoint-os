@@ -18,8 +18,10 @@ import type {
   OperationalAlert,
 } from "@/types/governance";
 import * as governanceApi from "@/lib/governance-api";
+import type { WorkspaceInfo } from "@/lib/governance-api";
 
 const QK = {
+  workspace: () => ["governance", "workspace"] as const,
   reviews: (f?: ReviewFilters) => ["governance", "reviews", f] as const,
   insightsSummary: (t: TimeRange) => ["governance", "insightsSummary", t] as const,
   pipelineMetrics: (t: TimeRange) => ["governance", "pipelineMetrics", t] as const,
@@ -29,12 +31,37 @@ const QK = {
   operationalAlerts: () => ["governance", "operationalAlerts"] as const,
   teamMembers: () => ["governance", "teamMembers"] as const,
   workloadDistribution: () => ["governance", "workloadDistribution"] as const,
-  inboxTrips: (f?: InboxFilters, p?: number, l?: number) =>
-    ["governance", "inboxTrips", f, p, l] as const,
+  inboxTrips: (f?: InboxFilters, p?: number, l?: number, s?: string, d?: string, q?: string) =>
+    ["governance", "inboxTrips", f, p, l, s, d, q] as const,
   inboxStats: () => ["governance", "inboxStats"] as const,
 };
 
 const DEFAULT_STALE_TIME = 30_000;
+
+export function useWorkspace() {
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: QK.workspace(),
+    queryFn: () => governanceApi.getWorkspace(),
+    staleTime: DEFAULT_STALE_TIME,
+  });
+
+  const generateCode = async (codeType: 'internal' | 'external' = 'internal') => {
+    const newCode = await governanceApi.generateWorkspaceCode(codeType);
+    queryClient.setQueryData<WorkspaceInfo>(QK.workspace(), (prev) =>
+      prev ? { ...prev, workspace_code: newCode } : prev
+    );
+    return newCode;
+  };
+
+  return {
+    data: query.data ?? null,
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: query.refetch,
+    generateCode,
+  };
+}
 
 export function useReviews(filters?: ReviewFilters) {
   const queryClient = useQueryClient();
@@ -187,11 +214,14 @@ export function useWorkloadDistribution() {
 export function useInboxTrips(
   filters?: InboxFilters,
   page: number = 1,
-  limit: number = 20
+  limit: number = 20,
+  sortBy?: string,
+  sortDir?: string,
+  searchQuery?: string,
 ) {
   const query = useQuery({
-    queryKey: QK.inboxTrips(filters, page, limit),
-    queryFn: () => governanceApi.getInboxTrips(filters, page, limit),
+    queryKey: QK.inboxTrips(filters, page, limit, sortBy, sortDir, searchQuery),
+    queryFn: () => governanceApi.getInboxTrips(filters, page, limit, sortBy, sortDir, searchQuery),
     staleTime: DEFAULT_STALE_TIME,
   });
 
@@ -222,6 +252,7 @@ export function useInboxTrips(
     data: query.data?.items ?? [],
     total: query.data?.total ?? 0,
     hasMore: query.data?.hasMore ?? false,
+    filterCounts: query.data?.filterCounts ?? {},
     isLoading: query.isLoading,
     error: query.error as Error | null,
     refetch: query.refetch,

@@ -58,6 +58,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query
+from starlette.requests import Request
+from starlette.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import text
@@ -133,6 +135,7 @@ from spine_api.contract import (
     InboxStatsResponse,
 )
 from spine_api.services import membership_service
+from spine_api.services.inbox_projection import InboxProjectionService, build_inbox_response
 
 from src.intake.orchestration import run_spine_once
 from src.intake.packet_models import SourceEnvelope
@@ -199,44 +202,48 @@ from spine_api.draft_store import DraftStore
 from src.intake.config.agency_settings import AgencySettingsStore
 from src.analytics.policy_rules import ready_gate_failures
 from src.agents.recovery_agent import RecoveryAgent
+from src.agents.runtime import AgentSupervisor, build_default_registry
 
 
 class _TripStoreAdapter:
-    """Thin adapter so RecoveryAgent can query TripStore without importing persistence internals."""
+    """Thin adapter so backend agents can query TripStore through a stable boundary."""
 
     def list_active(self) -> list:
         """Return trips that are in processing stages (not closed/cancelled)."""
         trips_raw = TripStore.list_trips(limit=500)
         terminal = {"closed", "cancelled", "completed", "archived"}
-        return [
-            type("_Trip", (), {
-                "id": t.get("id", ""),
-                "stage": t.get("stage") or t.get("state"),
-                "updated_at": t.get("updatedAt") or t.get("updated_at"),
-            })()
-            for t in trips_raw
-            if (t.get("stage") or t.get("state")) not in terminal
-        ]
+        return [t for t in trips_raw if (t.get("stage") or t.get("state") or t.get("status")) not in terminal]
 
     def set_review_status(self, trip_id: str, status: str) -> None:
         TripStore.update_trip(trip_id, {"review_status": status})
 
+    def update_trip(self, trip_id: str, updates: dict) -> Optional[dict]:
+        return TripStore.update_trip(trip_id, updates)
+
 
 class _AuditStoreAdapter:
-    """Thin adapter mapping RecoveryAgent's audit.log() to AuditStore.log_event()."""
+    """Thin adapter mapping product-agent audit events to AuditStore.log_event()."""
 
-    def log(self, event_type: str, trip_id: str, payload: dict) -> None:
+    def log(self, event_type: str, trip_id: str, payload: dict, user_id: Optional[str] = None) -> None:
         AuditStore.log_event(
             event_type=event_type,
-            user_id="recovery_agent",
+            user_id=user_id or payload.get("agent_name") or "agent_runtime",
             details={"trip_id": trip_id, **payload},
         )
 
 
+_agent_trip_repo = _TripStoreAdapter()
+_agent_audit_sink = _AuditStoreAdapter()
 _recovery_agent = RecoveryAgent(
-    audit_store=_AuditStoreAdapter(),
-    trip_repo=_TripStoreAdapter(),
+    audit_store=_agent_audit_sink,
+    trip_repo=_agent_trip_repo,
     # spine_runner left None — re-queue not wired until async job queue is added
+)
+_agent_supervisor = AgentSupervisor(
+    registry=build_default_registry(),
+    trip_repo=_agent_trip_repo,
+    audit=_agent_audit_sink,
+    interval_seconds=int(os.environ.get("AGENT_SUPERVISOR_INTERVAL_S", "300")),
 )
 
 # Auth — Phase 1
@@ -245,6 +252,7 @@ try:
     from routers import workspace as workspace_router
     from routers import frontier as frontier_router
     from routers import audit as audit_router
+    from routers import assignments as assignments_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -267,6 +275,11 @@ except (ImportError, ValueError):
     _audit_mod = importlib.util.module_from_spec(_audit_spec)
     _audit_spec.loader.exec_module(_audit_mod)
     audit_router = _audit_mod
+
+    _asgn_spec = importlib.util.spec_from_file_location("routers.assignments", _base / "routers" / "assignments.py")
+    _asgn_mod = importlib.util.module_from_spec(_asgn_spec)
+    _asgn_spec.loader.exec_module(_asgn_mod)
+    assignments_router = _asgn_mod
 
 logger = logging.getLogger("spine_api")
 
@@ -393,6 +406,7 @@ async def lifespan(app: FastAPI):
     app.state.limiter = limiter
     watchdog.start()
     _recovery_agent.start()
+    _agent_supervisor.start()
     _zombie_reaper_start()
     # Note: We no longer auto-seed at startup.
     # Seeding is now done per-agency for test users in the /trips endpoint.
@@ -400,6 +414,7 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
     _zombie_reaper_stop()
+    _agent_supervisor.stop()
     _recovery_agent.stop()
     watchdog.stop()
     logger.info("Spine API shutdown complete")
@@ -440,6 +455,7 @@ app.include_router(
 )
 app.include_router(frontier_router.router, dependencies=[Depends(get_current_user)] if not os.environ.get("SPINE_API_DISABLE_AUTH") else [])
 app.include_router(audit_router.router, dependencies=[Depends(get_current_user)] if not os.environ.get("SPINE_API_DISABLE_AUTH") else [])
+app.include_router(assignments_router.router, dependencies=[Depends(get_current_user)] if not os.environ.get("SPINE_API_DISABLE_AUTH") else [])
 
 
 def _seed_scenario(agency_id: Optional[str] = None):
@@ -1944,45 +1960,64 @@ _INBOX_STATUSES = "new,incomplete,needs_followup,awaiting_customer_details,snooz
 def get_inbox(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=500),
+    filter_key: Optional[str] = Query(None, alias="filter"),
+    sort: Optional[str] = Query("priority"),
+    dir: Optional[str] = Query("desc"),
+    q: Optional[str] = Query(None),
+    # Composable multi-select filter params
+    priority: Optional[str] = Query(None),
+    slaStatus: Optional[str] = Query(None),
+    stage: Optional[str] = Query(None),
+    assignedTo: Optional[str] = Query(None),
+    minValue: Optional[int] = Query(None),
+    maxValue: Optional[int] = Query(None),
     agency: Agency = Depends(get_current_agency),
 ):
     """
-    Canonical inbox endpoint — DB-level filtered by canonical inbox statuses.
+    Canonical inbox endpoint — service-level projected, filtered, sorted, paginated.
 
     Returns a stable {items, total, hasMore, filterCounts} envelope.
-    filterCounts are computed server-side from the FULL unfiltered dataset
-    so filter-tab counts are accurate regardless of page size.
+    filterCounts are computed over the FULL projected dataset so tab counts
+    are accurate regardless of active filter or page size.
+
+    Query params:
+      filter     — tab filter: all | at_risk | incomplete | unassigned
+      sort       — sort key: priority | destination | value | party | dates | sla
+      dir        — asc | desc
+      q          — fuzzy search on customerName, destination, reference, id
+      priority   — comma-separated: low,medium,high,critical
+      slaStatus  — comma-separated: on_track,at_risk,breached
+      stage      — comma-separated: intake,details,options,review,booking,completed
+      assignedTo — comma-separated agent IDs (or "unassigned")
+      minValue   — minimum trip budget
+      maxValue   — maximum trip budget
     """
     agency_id = agency.id
-    offset = (page - 1) * limit
 
-    # Paginated items via DB-level offset/limit
-    items = TripStore.list_trips(
-        status=_INBOX_STATUSES, limit=limit, agency_id=agency_id, offset=offset
+    # Fetch ALL inbox trips for this agency (bounded set, typically <10k).
+    raw_trips = TripStore.list_trips(
+        status=_INBOX_STATUSES,
+        limit=5000,
+        agency_id=agency_id,
     )
 
-    # Accurate total via DB COUNT — O(1) index scan, not O(n) deserialization
-    total = TripStore.count_trips(status=_INBOX_STATUSES, agency_id=agency_id)
+    result = build_inbox_response(
+        raw_trips,
+        page=page,
+        limit=limit,
+        filter_key=filter_key,
+        sort_key=sort,
+        sort_dir=dir,
+        search_query=q,
+        priorities=priority.split(",") if priority else None,
+        sla_statuses=slaStatus.split(",") if slaStatus else None,
+        stages=stage.split(",") if stage else None,
+        assigned_to=assignedTo.split(",") if assignedTo else None,
+        min_value=minValue,
+        max_value=maxValue,
+    )
 
-    # filterCounts: use DB-level COUNT for scale-independent accuracy.
-    # The DB schema indexes on status + agency_id. The sub-counts below
-    # reuse total and status-specific counts to avoid N+1.
-    filter_counts = {
-        "all": total,
-        "at_risk": total,   # TODO: replace with DB COUNT(sla_status='at_risk') when indexed
-        "incomplete": TripStore.count_trips(
-            status="incomplete,needs_clarification,details_unclear", agency_id=agency_id
-        ),
-        "unassigned": total, # TODO: replace with DB COUNT(assigned_to IS NULL) when schema supports it
-    }
-    has_more = (offset + len(items)) < total
-
-    return {
-        "items": items,
-        "total": total,
-        "hasMore": has_more,
-        "filterCounts": filter_counts,
-    }
+    return result
 
 
 @app.get("/inbox/stats", response_model=InboxStatsResponse)
@@ -2075,6 +2110,86 @@ def get_trip_suitability(
         trip_id=trip_id,
         suitability_flags=suitability_flags,
     )
+
+
+@app.get("/trips/{trip_id}/agent-events")
+def get_trip_agent_events(
+    trip_id: str,
+    limit: int = Query(default=100, ge=1, le=1000),
+    agency: Agency = Depends(get_current_agency),
+):
+    """
+    Return product-agent observability events for a single trip.
+
+    Includes only canonical `agent_event` records emitted by backend product
+    agents. Trip and agency access controls are enforced.
+    """
+    trip = TripStore.get_trip(trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    events = AuditStore.get_agent_events_for_trip(trip_id=trip_id, limit=limit)
+    return {"trip_id": trip_id, "events": events, "total": len(events)}
+
+
+@app.get("/agents/runtime")
+def get_agent_runtime(
+    agency: Agency = Depends(get_current_agency),
+):
+    """
+    Return canonical backend product-agent registry and supervisor health.
+
+    This is the single runtime introspection surface for backend product agents;
+    it intentionally exposes static in-repo registry contracts instead of
+    dynamic plugin metadata.
+    """
+    _ = agency
+    return {
+        "registry": _agent_supervisor.registry.definitions(),
+        "supervisor": _agent_supervisor.health(),
+        "recovery_agent": {
+            "name": "recovery_agent",
+            "running": _recovery_agent.is_running,
+            "trigger_contract": "Trips stuck beyond configured stage thresholds.",
+            "input_contract": "Active trip with id, stage/state, and updated_at/updatedAt.",
+            "output_contract": "Re-queue through runner when configured, else escalate review_status.",
+            "idempotency_contract": "Per-trip in-memory requeue count with max attempts before escalation.",
+            "failure_contract": "Fail closed by emitting agent_failed audit events.",
+        },
+    }
+
+
+@app.post("/agents/runtime/run-once")
+def run_agent_runtime_once(
+    agent_name: Optional[str] = Query(default=None),
+    agency: Agency = Depends(get_current_agency),
+):
+    """
+    Synchronously run one supervisor pass for testing/admin operations.
+    """
+    _ = agency
+    if agent_name and agent_name not in _agent_supervisor.health()["registered_agents"]:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    results = _agent_supervisor.run_once(agent_name=agent_name)
+    return {
+        "agent_name": agent_name,
+        "results": [result.to_dict() for result in results],
+        "total": len(results),
+        "supervisor": _agent_supervisor.health(),
+    }
+
+
+@app.get("/agents/runtime/events")
+def get_agent_runtime_events(
+    limit: int = Query(default=100, ge=1, le=1000),
+    agent_name: Optional[str] = Query(default=None),
+    correlation_id: Optional[str] = Query(default=None),
+    agency: Agency = Depends(get_current_agency),
+):
+    """Return canonical backend product-agent events across trips."""
+    _ = agency
+    events = AuditStore.get_agent_events(limit=limit, agent_name=agent_name, correlation_id=correlation_id)
+    return {"events": events, "total": len(events)}
 
 
 @app.patch("/trips/{trip_id}")
@@ -2458,6 +2573,331 @@ def update_booking_data(
 
     booking_data = TripStore.get_booking_data(trip_id)
     return _booking_data_envelope(updated, booking_data)
+
+
+# ---------------------------------------------------------------------------
+# Booking collection tokens + customer review
+# ---------------------------------------------------------------------------
+
+def _get_db_session():
+    """Get an async DB session for use in sync endpoints."""
+    from spine_api.core.database import async_session_maker
+    return async_session_maker()
+
+
+class CollectionLinkResponse(BaseModel):
+    token_id: str
+    collection_url: str
+    expires_at: str
+    trip_id: str
+    status: str
+
+
+class CollectionLinkStatusResponse(BaseModel):
+    has_active_token: bool
+    token_id: Optional[str] = None
+    expires_at: Optional[str] = None
+    status: Optional[str] = None
+    has_pending_submission: bool
+
+
+class PendingBookingDataResponse(BaseModel):
+    trip_id: str
+    pending_booking_data: Optional[dict] = None
+    booking_data_source: Optional[str] = None
+    submitted_at: Optional[str] = None
+
+
+class ReviewActionRequest(BaseModel):
+    reason: Optional[str] = None
+
+
+class PublicCollectionContext(BaseModel):
+    valid: bool
+    reason: Optional[str] = None
+    trip_summary: Optional[dict] = None
+    already_submitted: bool = False
+    expires_at: Optional[str] = None
+
+
+class PublicSubmissionResponse(BaseModel):
+    ok: bool
+    message: str
+
+
+async def _ts(fn, *args, **kwargs):
+    """Run a sync TripStore call from an async endpoint without blocking the event loop.
+
+    Offloads to a thread where _run_async_blocking creates a fresh asyncio loop
+    for asyncpg, avoiding deadlocks with TestClient's anyio loop.
+    """
+    import asyncio
+    return await asyncio.to_thread(fn, *args, **kwargs)
+
+
+@app.post("/trips/{trip_id}/collection-link", response_model=CollectionLinkResponse)
+async def create_collection_link(
+    trip_id: str,
+    expires_in_hours: int = 168,
+    agency: Agency = Depends(get_current_agency),
+):
+    """Generate a customer collection link for this trip."""
+    from spine_api.services.collection_service import generate_token
+    from spine_api.core.database import async_session_maker
+
+    trip = await _ts(TripStore.get_trip, trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    current_stage = trip.get("stage", "discovery")
+    if current_stage not in ("proposal", "booking"):
+        raise HTTPException(status_code=403, detail=f"Collection links only available at proposal/booking, current: {current_stage}")
+
+    async with async_session_maker() as db:
+        plain_token, record = await generate_token(
+            db, trip_id, agency.id, agency.id, expires_in_hours,
+        )
+
+    host = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    collection_url = f"{host}/c/{plain_token}"
+
+    AuditStore.log_event("booking_collection_link_created", agency.id, {
+        "trip_id": trip_id,
+        "token_id": record.id,
+        "expires_at": record.expires_at.isoformat(),
+    })
+
+    return CollectionLinkResponse(
+        token_id=record.id,
+        collection_url=collection_url,
+        expires_at=record.expires_at.isoformat(),
+        trip_id=trip_id,
+        status=record.status,
+    )
+
+
+@app.get("/trips/{trip_id}/collection-link", response_model=CollectionLinkStatusResponse)
+async def get_collection_link_status(trip_id: str, agency: Agency = Depends(get_current_agency)):
+    """Check collection link status and pending submission."""
+    from spine_api.services.collection_service import get_active_token_for_trip
+    from spine_api.core.database import async_session_maker
+
+    trip = await _ts(TripStore.get_trip, trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    async with async_session_maker() as db:
+        token = await get_active_token_for_trip(db, trip_id)
+    pending = await _ts(TripStore.get_pending_booking_data, trip_id)
+
+    return CollectionLinkStatusResponse(
+        has_active_token=token is not None,
+        token_id=token.id if token else None,
+        expires_at=token.expires_at.isoformat() if token else None,
+        status=token.status if token else None,
+        has_pending_submission=pending is not None,
+    )
+
+
+@app.delete("/trips/{trip_id}/collection-link")
+async def revoke_collection_link(trip_id: str, agency: Agency = Depends(get_current_agency)):
+    """Revoke the active collection link."""
+    from spine_api.services.collection_service import revoke_token
+    from spine_api.core.database import async_session_maker
+
+    trip = await _ts(TripStore.get_trip, trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    async with async_session_maker() as db:
+        revoked = await revoke_token(db, trip_id, agency.id)
+    if not revoked:
+        raise HTTPException(status_code=404, detail="No active collection link found")
+
+    AuditStore.log_event("booking_collection_link_revoked", agency.id, {
+        "trip_id": trip_id,
+    })
+    return {"ok": True}
+
+
+@app.get("/trips/{trip_id}/pending-booking-data", response_model=PendingBookingDataResponse)
+async def get_pending_booking_data(trip_id: str, agency: Agency = Depends(get_current_agency)):
+    """View pending customer submission. Agent-only."""
+    trip = await _ts(TripStore.get_trip, trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    pending = await _ts(TripStore.get_pending_booking_data, trip_id)
+    if not pending:
+        raise HTTPException(status_code=404, detail="No pending booking data")
+
+    return PendingBookingDataResponse(
+        trip_id=trip_id,
+        pending_booking_data=pending,
+        booking_data_source=trip.get("booking_data_source"),
+    )
+
+
+@app.post("/trips/{trip_id}/pending-booking-data/accept")
+async def accept_pending_booking_data(trip_id: str, request: ReviewActionRequest = ReviewActionRequest(), agency: Agency = Depends(get_current_agency)):
+    """Accept pending customer submission into trusted booking_data."""
+    trip = await _ts(TripStore.get_trip, trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    pending = await _ts(TripStore.get_pending_booking_data, trip_id)
+    if not pending:
+        raise HTTPException(status_code=404, detail="No pending booking data to accept")
+
+    # Re-validate through Pydantic (defensive)
+    validated = BookingDataModel(**pending)
+    bd_dict = validated.model_dump()
+
+    # Promote to trusted booking_data
+    await _ts(TripStore.update_trip, trip_id, {
+        "booking_data": bd_dict,
+        "pending_booking_data": None,
+        "booking_data_source": "customer_accepted",
+    })
+
+    # Readiness recompute
+    from intake.readiness import compute_readiness
+    from intake.packet_models import CanonicalPacket
+    refreshed_trip = await _ts(TripStore.get_trip, trip_id)
+    packet = CanonicalPacket(packet_id=trip_id)
+    packet.facts.update((refreshed_trip.get("extracted") or {}).get("facts", {}))
+    readiness = compute_readiness(
+        packet,
+        validation=refreshed_trip.get("validation"),
+        decision=refreshed_trip.get("decision"),
+        traveler_bundle=refreshed_trip.get("traveler_bundle"),
+        internal_bundle=refreshed_trip.get("internal_bundle"),
+        safety=refreshed_trip.get("safety"),
+        fees=refreshed_trip.get("fees"),
+        booking_data=bd_dict,
+    )
+    validation = dict(refreshed_trip.get("validation") or {})
+    validation["readiness"] = readiness.to_dict()
+    updated = await _ts(TripStore.update_trip, trip_id, {"validation": validation})
+
+    AuditStore.log_event("booking_data_accepted_from_customer", agency.id, {
+        "trip_id": trip_id,
+        "traveler_count": len(validated.travelers),
+        "has_payer": validated.payer is not None,
+        "has_passport_data": any(t.passport_number for t in validated.travelers),
+        "reason": request.reason,
+    })
+
+    booking_data = await _ts(TripStore.get_booking_data, trip_id)
+    return _booking_data_envelope(updated, booking_data)
+
+
+@app.post("/trips/{trip_id}/pending-booking-data/reject")
+async def reject_pending_booking_data(trip_id: str, request: ReviewActionRequest = ReviewActionRequest(), agency: Agency = Depends(get_current_agency)):
+    """Reject pending customer submission. Clears pending data."""
+    trip = await _ts(TripStore.get_trip, trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    pending = await _ts(TripStore.get_pending_booking_data, trip_id)
+    if not pending:
+        raise HTTPException(status_code=404, detail="No pending booking data to reject")
+
+    await _ts(TripStore.update_trip, trip_id, {"pending_booking_data": None})
+
+    AuditStore.log_event("booking_data_rejected_from_customer", agency.id, {
+        "trip_id": trip_id,
+        "reason": request.reason,
+    })
+
+    return {"ok": True, "message": "Pending booking data rejected"}
+
+
+# ---------------------------------------------------------------------------
+# Public customer endpoints (no auth)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/public/booking-collection/{token}", response_model=PublicCollectionContext)
+@limiter.limit("20/minute")
+async def get_public_collection_form(request: Request, response: Response, token: str):
+    """Customer loads form context. No auth required. Shows safe trip summary only."""
+    from spine_api.services.collection_service import validate_token
+    from spine_api.core.database import async_session_maker
+
+    async with async_session_maker() as db:
+        record = await validate_token(db, token)
+    if not record:
+        return PublicCollectionContext(valid=False, reason="invalid")
+
+    trip = await _ts(TripStore.get_trip, record.trip_id)
+    if not trip:
+        return PublicCollectionContext(valid=False, reason="invalid")
+
+    # Build safe summary — NO PII, NO internal fields
+    extracted = trip.get("extracted") or {}
+    facts = extracted.get("facts", {}) if isinstance(extracted, dict) else {}
+
+    dest = facts.get("destination_candidates")
+    dest_val = getattr(dest, "value", dest) if dest else None
+    date_win = facts.get("date_window")
+    date_val = getattr(date_win, "value", date_win) if date_win else None
+
+    pending = await _ts(TripStore.get_pending_booking_data, record.trip_id)
+
+    return PublicCollectionContext(
+        valid=True,
+        trip_summary={
+            "destination": dest_val,
+            "date_window": date_val,
+            "traveler_count": trip.get("party_composition"),
+            "agency_name": "Waypoint Travel",
+        },
+        already_submitted=pending is not None,
+        expires_at=record.expires_at.isoformat(),
+    )
+
+
+@app.post("/api/public/booking-collection/{token}/submit", response_model=PublicSubmissionResponse)
+@limiter.limit("5/minute")
+async def submit_public_booking_data(request: Request, response: Response, token: str, booking_data: BookingDataModel):
+    """Customer submits booking data. No auth. Writes to pending_booking_data."""
+    from spine_api.services.collection_service import validate_token, mark_token_used
+    from spine_api.core.database import async_session_maker
+
+    async with async_session_maker() as db:
+        record = await validate_token(db, token)
+    if not record:
+        raise HTTPException(status_code=410, detail="invalid")
+
+    # Check not already submitted
+    pending = await _ts(TripStore.get_pending_booking_data, record.trip_id)
+    if pending:
+        raise HTTPException(status_code=409, detail="already_submitted")
+
+    # Validate via Pydantic (already done by model binding, but explicit)
+    bd_dict = booking_data.model_dump()
+
+    # Write to pending_booking_data (encrypted)
+    await _ts(TripStore.update_trip, record.trip_id, {"pending_booking_data": bd_dict})
+
+    # Mark token as used
+    customer_ip = request.client.host if request.client else None
+
+    async with async_session_maker() as db:
+        await mark_token_used(db, record.id, customer_ip)
+
+    AuditStore.log_event("customer_booking_data_submitted", record.agency_id, {
+        "trip_id": record.trip_id,
+        "token_id": record.id,
+        "traveler_count": len(booking_data.travelers),
+        "has_payer": booking_data.payer is not None,
+        "has_passport_data": any(t.passport_number for t in booking_data.travelers),
+    })
+
+    return PublicSubmissionResponse(
+        ok=True,
+        message="Your booking details have been submitted. The travel agent will review them shortly.",
+    )
 
 
 @app.post("/trips/{trip_id}/assign")
@@ -3003,6 +3443,8 @@ def get_trip_timeline(
                     event_dict["confidence"] = confidence
                 if mapped_event.reason is not None:
                     event_dict["reason"] = mapped_event.reason
+                if mapped_event.actor is not None:
+                    event_dict["actor"] = mapped_event.actor
                 if mapped_event.pre_state is not None:
                     event_dict["pre_state"] = mapped_event.pre_state
                 if mapped_event.post_state is not None:
@@ -3029,6 +3471,9 @@ def get_trip_timeline(
                     "status": resolved_state or "unknown",
                     "state_snapshot": {"stage": details.get("stage", "unknown")},
                 }
+                actor = audit_event.get("user_id")
+                if actor is not None:
+                    event_dict["actor"] = actor
                 
                 if details.get("decision_type"):
                     event_dict["decision"] = details.get("decision_type")

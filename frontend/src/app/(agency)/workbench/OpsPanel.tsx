@@ -6,8 +6,16 @@ import {
   type Trip,
   type BookingData,
   type BookingTraveler,
+  type CollectionLinkInfo,
+  type PendingBookingDataResponse,
   getBookingData,
   updateBookingData,
+  generateCollectionLink,
+  getCollectionLink,
+  revokeCollectionLink,
+  getPendingBookingData,
+  acceptPendingBookingData,
+  rejectPendingBookingData,
 } from '@/lib/api-client';
 import type { ReadinessAssessment } from '@/types/spine';
 
@@ -29,6 +37,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
   // Booking data — local state only, not in global store
   const [bookingData, setBookingData] = useState<BookingData | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [bookingDataSource, setBookingDataSource] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +45,20 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
   const [editing, setEditing] = useState(false);
   const [editTravelers, setEditTravelers] = useState<BookingTraveler[]>([emptyTraveler()]);
   const [editPayerName, setEditPayerName] = useState('');
+
+  // Collection link state
+  const [linkInfo, setLinkInfo] = useState<CollectionLinkInfo | null>(null);
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkGenerating, setLinkGenerating] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  // Pending booking data state
+  const [pendingData, setPendingData] = useState<BookingData | null>(null);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [accepting, setAccepting] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [pendingError, setPendingError] = useState<string | null>(null);
 
   // Lazy fetch booking data
   const fetchBookingData = useCallback(async () => {
@@ -56,6 +79,44 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
   useEffect(() => {
     if (trip?.id) fetchBookingData();
   }, [trip?.id, fetchBookingData]);
+
+  // Lazy fetch collection link + pending data at proposal/booking stage
+  const stage = trip?.stage;
+  const canGenerateLink = stage === 'proposal' || stage === 'booking';
+
+  useEffect(() => {
+    if (!trip?.id || !canGenerateLink) return;
+
+    let cancelled = false;
+    (async () => {
+      // Fetch link status
+      setLinkLoading(true);
+      try {
+        const info = await getCollectionLink(trip.id);
+        if (!cancelled) setLinkInfo(info);
+      } catch {
+        // No active link is fine — 404 expected
+      } finally {
+        if (!cancelled) setLinkLoading(false);
+      }
+
+      // Fetch pending data
+      setPendingLoading(true);
+      try {
+        const resp = await getPendingBookingData(trip.id);
+        if (!cancelled) {
+          setPendingData(resp.pending_booking_data);
+          setBookingDataSource(resp.booking_data_source);
+        }
+      } catch {
+        // No pending data is fine
+      } finally {
+        if (!cancelled) setPendingLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [trip?.id, canGenerateLink]);
 
   // Start editing
   const startEdit = useCallback(() => {
@@ -85,6 +146,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
       const resp = await updateBookingData(trip.id, data, undefined, updatedAt ?? undefined);
       setBookingData(resp.booking_data);
       setUpdatedAt(resp.updated_at);
+      setBookingDataSource('agent');
       setEditing(false);
     } catch (e: unknown) {
       if (e instanceof Error && 'status' in e && (e as { status?: number }).status === 409) {
@@ -96,6 +158,74 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
       setSaving(false);
     }
   }, [trip?.id, editTravelers, editPayerName, updatedAt]);
+
+  // Generate collection link
+  const handleGenerateLink = useCallback(async () => {
+    if (!trip?.id) return;
+    setLinkGenerating(true);
+    setLinkError(null);
+    try {
+      const info = await generateCollectionLink(trip.id);
+      setLinkInfo(info);
+    } catch (e) {
+      setLinkError(e instanceof Error ? e.message : 'Failed to generate link');
+    } finally {
+      setLinkGenerating(false);
+    }
+  }, [trip?.id]);
+
+  // Revoke collection link
+  const handleRevokeLink = useCallback(async () => {
+    if (!trip?.id) return;
+    setLinkError(null);
+    try {
+      await revokeCollectionLink(trip.id);
+      setLinkInfo(null);
+    } catch (e) {
+      setLinkError(e instanceof Error ? e.message : 'Failed to revoke link');
+    }
+  }, [trip?.id]);
+
+  // Copy link
+  const handleCopyLink = useCallback(() => {
+    if (!linkInfo?.collection_url) return;
+    navigator.clipboard.writeText(linkInfo.collection_url).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    });
+  }, [linkInfo?.collection_url]);
+
+  // Accept pending
+  const handleAccept = useCallback(async () => {
+    if (!trip?.id) return;
+    setAccepting(true);
+    setPendingError(null);
+    try {
+      await acceptPendingBookingData(trip.id);
+      setPendingData(null);
+      setBookingDataSource('customer_accepted');
+      await fetchBookingData();
+    } catch (e) {
+      setPendingError(e instanceof Error ? e.message : 'Failed to accept');
+    } finally {
+      setAccepting(false);
+    }
+  }, [trip?.id, fetchBookingData]);
+
+  // Reject pending
+  const handleReject = useCallback(async () => {
+    if (!trip?.id) return;
+    setRejecting(true);
+    setPendingError(null);
+    try {
+      await rejectPendingBookingData(trip.id);
+      setPendingData(null);
+    } catch (e) {
+      setPendingError(e instanceof Error ? e.message : 'Failed to reject');
+    } finally {
+      setRejecting(false);
+    }
+  }, [trip?.id]);
 
   if (!readiness) {
     return (
@@ -191,9 +321,90 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
         </div>
       )}
 
+      {/* Pending submission review — shown when customer has submitted data */}
+      {pendingLoading && (
+        <div data-testid="ops-pending-loading" className="border border-[#30363d] rounded-lg p-4">
+          <span className="text-xs text-[#8b949e]">Checking for customer submissions...</span>
+        </div>
+      )}
+
+      {!pendingLoading && pendingData && (
+        <div data-testid="ops-pending-review" className="border border-amber-800/50 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <h4 className="text-sm font-medium text-[#e6edf3]">Customer Submission</h4>
+            <span className="text-xs px-2 py-0.5 rounded bg-amber-900/50 text-amber-400">
+              Submitted by customer
+            </span>
+          </div>
+
+          {pendingError && (
+            <div data-testid="ops-pending-error" className="mb-3 text-xs text-red-400">{pendingError}</div>
+          )}
+
+          <table className="w-full text-xs mb-3">
+            <thead>
+              <tr className="text-[#8b949e]">
+                <th className="text-left py-1">ID</th>
+                <th className="text-left py-1">Name</th>
+                <th className="text-left py-1">DOB</th>
+                <th className="text-left py-1">Passport</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingData.travelers.map((t, i) => (
+                <tr key={i} className="text-[#e6edf3]">
+                  <td className="py-1">{t.traveler_id}</td>
+                  <td className="py-1">{t.full_name}</td>
+                  <td className="py-1">{t.date_of_birth}</td>
+                  <td className="py-1">{t.passport_number || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {pendingData.payer && (
+            <div className="mb-3 text-xs text-[#8b949e]">
+              Payer: <span className="text-[#e6edf3]">{pendingData.payer.name}</span>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              data-testid="ops-accept-btn"
+              className="text-xs px-3 py-1 rounded bg-emerald-900/50 text-emerald-300 hover:bg-emerald-800/50 disabled:opacity-50"
+              onClick={handleAccept}
+              disabled={accepting}
+            >
+              {accepting ? 'Accepting...' : 'Accept'}
+            </button>
+            <button
+              data-testid="ops-reject-btn"
+              className="text-xs px-3 py-1 rounded bg-red-900/50 text-red-300 hover:bg-red-800/50 disabled:opacity-50"
+              onClick={handleReject}
+              disabled={rejecting}
+            >
+              {rejecting ? 'Rejecting...' : 'Reject'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Booking data section */}
       <div data-testid="ops-booking-data" className="border border-[#30363d] rounded-lg p-4">
-        <h4 className="text-sm font-medium text-[#e6edf3] mb-3">Booking Details</h4>
+        <div className="flex items-center gap-2 mb-3">
+          <h4 className="text-sm font-medium text-[#e6edf3]">Booking Details</h4>
+          {bookingDataSource && (
+            <span
+              data-testid="ops-source-badge"
+              className={`text-xs px-2 py-0.5 rounded ${
+                bookingDataSource === 'customer_accepted'
+                  ? 'bg-blue-900/50 text-blue-300'
+                  : 'bg-[#30363d] text-[#8b949e]'
+              }`}
+            >
+              {bookingDataSource === 'customer_accepted' ? 'Customer (verified)' : 'Agent'}
+            </span>
+          )}
+        </div>
 
         {loading && <span className="text-xs text-[#8b949e]">Loading...</span>}
 
@@ -351,6 +562,63 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
           </div>
         )}
       </div>
+
+      {/* Collection link generator — only at proposal/booking stage */}
+      {canGenerateLink && (
+        <div data-testid="ops-collection-link" className="border border-[#30363d] rounded-lg p-4">
+          <h4 className="text-sm font-medium text-[#e6edf3] mb-3">Customer Collection Link</h4>
+
+          {linkError && (
+            <div data-testid="ops-link-error" className="mb-3 text-xs text-red-400">{linkError}</div>
+          )}
+
+          {linkLoading && (
+            <span className="text-xs text-[#8b949e]">Loading...</span>
+          )}
+
+          {!linkLoading && !linkInfo && (
+            <button
+              data-testid="ops-generate-link-btn"
+              className="text-xs px-3 py-1 rounded bg-blue-900/50 text-blue-300 hover:bg-blue-800/50 disabled:opacity-50"
+              onClick={handleGenerateLink}
+              disabled={linkGenerating}
+            >
+              {linkGenerating ? 'Generating...' : 'Generate Customer Link'}
+            </button>
+          )}
+
+          {!linkLoading && linkInfo && (
+            <div data-testid="ops-link-info">
+              <div className="flex items-center gap-2 mb-2">
+                <input
+                  readOnly
+                  data-testid="ops-link-url"
+                  className="flex-1 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-[#e6edf3] font-mono"
+                  value={linkInfo.collection_url}
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                />
+                <button
+                  data-testid="ops-copy-link-btn"
+                  className="text-xs px-3 py-1 rounded bg-[#30363d] text-[#e6edf3] hover:bg-[#484f58]"
+                  onClick={handleCopyLink}
+                >
+                  {linkCopied ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+              <div className="text-xs text-[#8b949e] mb-3">
+                Expires: {new Date(linkInfo.expires_at).toLocaleString()}
+              </div>
+              <button
+                data-testid="ops-revoke-link-btn"
+                className="text-xs px-3 py-1 rounded bg-red-900/50 text-red-300 hover:bg-red-800/50"
+                onClick={handleRevokeLink}
+              >
+                Revoke Link
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -314,6 +314,12 @@ class FileTripStore:
         trip = FileTripStore.get_trip(trip_id)
         return trip.get("booking_data") if trip else None
 
+    @staticmethod
+    def get_pending_booking_data(trip_id: str) -> Optional[dict]:
+        """Get pending_booking_data from file store. Returns None if trip missing."""
+        trip = FileTripStore.get_trip(trip_id)
+        return trip.get("pending_booking_data") if trip else None
+
 
 class SQLTripStore:
     """PostgreSQL-backed trip storage with dual encryption model.
@@ -332,6 +338,7 @@ class SQLTripStore:
         "fees",
         "frontier_result",
         "booking_data",
+        "pending_booking_data",
     })
 
     # Fields where only specific PII sub-keys are encrypted recursively.
@@ -468,6 +475,7 @@ class SQLTripStore:
             "fees": SQLTripStore._decrypt_field_from_storage("fees", trip_obj.fees),
             "raw_input": SQLTripStore._decrypt_field_from_storage("raw_input", trip_obj.raw_input or {}),
             "analytics": trip_obj.analytics,
+            "booking_data_source": trip_obj.booking_data_source,
             "created_at": trip_obj.created_at.isoformat() if trip_obj.created_at else None,
             "updated_at": trip_obj.updated_at.isoformat() if trip_obj.updated_at else None,
         }
@@ -499,6 +507,8 @@ class SQLTripStore:
             "frontier_result": SQLTripStore._encrypt_field_for_storage("frontier_result", trip_data.get("frontier_result")),
             "fees": SQLTripStore._encrypt_field_for_storage("fees", trip_data.get("fees")),
             "booking_data": SQLTripStore._encrypt_field_for_storage("booking_data", trip_data.get("booking_data")),
+            "pending_booking_data": SQLTripStore._encrypt_field_for_storage("pending_booking_data", trip_data.get("pending_booking_data")),
+            "booking_data_source": trip_data.get("booking_data_source"),
             "raw_input": SQLTripStore._encrypt_field_for_storage("raw_input", trip_data.get("raw_input") or {}),
             "analytics": trip_data.get("analytics"),
             "created_at": SQLTripStore._parse_datetime(trip_data.get("created_at")) or datetime.now(timezone.utc),
@@ -597,6 +607,15 @@ class SQLTripStore:
             if not trip_obj:
                 return None
             return SQLTripStore._decrypt_field_from_storage("booking_data", trip_obj.booking_data)
+
+    @staticmethod
+    async def get_pending_booking_data(trip_id: str) -> Optional[dict]:
+        """Get decrypted pending_booking_data only. Returns None if trip missing."""
+        async with tripstore_session_maker() as session:
+            trip_obj = await session.get(Trip, trip_id)
+            if not trip_obj:
+                return None
+            return SQLTripStore._decrypt_field_from_storage("pending_booking_data", trip_obj.pending_booking_data)
 
 
 def _run_async_blocking(coro):
@@ -723,6 +742,14 @@ class TripStore:
         if backend is FileTripStore:
             return FileTripStore.get_booking_data(trip_id)
         return _run_async_blocking(SQLTripStore.get_booking_data(trip_id))
+
+    @staticmethod
+    def get_pending_booking_data(trip_id: str) -> Optional[dict]:
+        """Get decrypted pending_booking_data only. Not in generic trip reads."""
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.get_pending_booking_data(trip_id)
+        return _run_async_blocking(SQLTripStore.get_pending_booking_data(trip_id))
 
 
 def _build_processed_trip(
@@ -1014,6 +1041,38 @@ class AuditStore:
             e for e in events
             if e.get("details", {}).get("trip_id") == trip_id
         ]
+
+    @staticmethod
+    def get_agent_events_for_trip(trip_id: str, limit: int = 100) -> list:
+        """Get canonical product-agent events for a specific trip."""
+        events = AuditStore._read_events()
+        filtered = [
+            e for e in events
+            if e.get("type") == "agent_event"
+            and e.get("details", {}).get("trip_id") == trip_id
+        ]
+        return filtered[-limit:]
+
+    @staticmethod
+    def get_agent_events(
+        limit: int = 100,
+        agent_name: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+    ) -> list:
+        """Get canonical product-agent events across trips."""
+        events = AuditStore._read_events()
+        filtered = [e for e in events if e.get("type") == "agent_event"]
+        if agent_name:
+            filtered = [
+                e for e in filtered
+                if e.get("details", {}).get("agent_name") == agent_name
+            ]
+        if correlation_id:
+            filtered = [
+                e for e in filtered
+                if e.get("details", {}).get("correlation_id") == correlation_id
+            ]
+        return filtered[-limit:]
 
 
 class PublicCheckerArtifactStore:

@@ -39,6 +39,10 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["insights/alerts", { backendPath: "analytics/alerts" }],
   ["insights/export", { backendPath: "analytics/export" }],
 
+  // ── Workspace ────────────────────────────────────────────────
+  ["workspace", { backendPath: "api/workspace" }],
+  ["workspace/codes", { backendPath: "api/workspace/codes" }],
+
   // ── Team ─────────────────────────────────────────────────────
   ["team/members", { backendPath: "api/team/members" }],
   ["team/invite", { backendPath: "api/team/invite" }],
@@ -102,6 +106,12 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ],
   ["trips/{id}/override", { backendPath: "trips/{id}/override" }],
   ["trips/{id}/overrides", { backendPath: "trips/{id}/overrides" }],
+
+  // ── Booking collection (Phase 4A) ──────────────────────────────
+  ["trips/{id}/collection-link", { backendPath: "trips/{id}/collection-link" }],
+  ["trips/{id}/pending-booking-data", { backendPath: "trips/{id}/pending-booking-data" }],
+  ["trips/{id}/pending-booking-data/accept", { backendPath: "trips/{id}/pending-booking-data/accept" }],
+  ["trips/{id}/pending-booking-data/reject", { backendPath: "trips/{id}/pending-booking-data/reject" }],
 
   ["runs/{id}", { backendPath: "runs/{id}" }],
   ["runs/{id}/events", { backendPath: "runs/{id}/events" }],

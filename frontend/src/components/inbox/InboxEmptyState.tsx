@@ -14,20 +14,24 @@ import { Search, Filter, Inbox, Plus } from 'lucide-react';
 
 export interface InboxEmptyStateProps {
   hasSearch: boolean;
-  activeFilter: string;
+  activeFilter?: string;
+  hasFilters?: boolean;
   onClearSearch?: () => void;
   onClearFilter?: () => void;
+  onClearAllFilters?: () => void;
   className?: string;
 }
 
 export const InboxEmptyState = memo(function InboxEmptyState({
   hasSearch,
   activeFilter,
+  hasFilters,
   onClearSearch,
   onClearFilter,
+  onClearAllFilters,
   className,
 }: InboxEmptyStateProps) {
-  const isFiltered = activeFilter !== 'all';
+  const isFiltered = hasFilters !== undefined ? hasFilters : (activeFilter ?? 'all') !== 'all';
   const isTrulyEmpty = !isFiltered && !hasSearch;
 
   return (
@@ -87,15 +91,15 @@ className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[var(--u
             Clear search
           </button>
         )}
-        {isFiltered && onClearFilter && (
+        {isFiltered && (onClearFilter || onClearAllFilters) && (
           <button
             type="button"
-            onClick={onClearFilter}
-className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[var(--ui-text-xs)] font-medium transition-colors"
-             style={{
-               color: 'var(--text-secondary)',
-                background: 'rgba(var(--text-muted-rgb), 0.08)',
-             }}
+            onClick={onClearAllFilters || onClearFilter}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[var(--ui-text-xs)] font-medium transition-colors"
+            style={{
+              color: 'var(--text-secondary)',
+              background: 'rgba(var(--text-muted-rgb), 0.08)',
+            }}
           >
             <Filter className="w-3.5 h-3.5" />
             Show all trips

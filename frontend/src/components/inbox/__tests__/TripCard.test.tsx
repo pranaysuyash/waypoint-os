@@ -165,12 +165,6 @@ describe('TripCard v2 - footer', () => {
     );
   });
 
-  it('shows "Assign" button when unassigned', () => {
-    const unassigned = { ...mockTrip, assignedTo: undefined, assignedToName: undefined };
-    render(<TripCard trip={unassigned} isSelected={false} onSelect={vi.fn()} />);
-    expect(screen.getByRole('button', { name: /assign/i })).toBeInTheDocument();
-  });
-
   it('calls onSelect when checkbox clicked', () => {
     const onSelect = vi.fn();
     render(<TripCard trip={mockTrip} isSelected={false} onSelect={onSelect} />);

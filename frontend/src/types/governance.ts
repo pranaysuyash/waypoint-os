@@ -169,6 +169,7 @@ export interface InboxFilters {
   dateRange?: { from: string; to: string };
   minValue?: number;
   maxValue?: number;
+  filterTab?: 'all' | 'at_risk' | 'incomplete' | 'unassigned';
 }
 
 export interface BulkActionRequest {

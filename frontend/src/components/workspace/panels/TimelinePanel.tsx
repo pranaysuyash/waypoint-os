@@ -84,6 +84,11 @@ function TimelineEventCard({
                     <span className="font-semibold">Reason:</span> {event.reason}
                   </p>
                 )}
+                {event.actor && (
+                  <p className="text-ui-xs text-text-muted mt-1">
+                    <span className="font-semibold">By:</span> {event.actor}
+                  </p>
+                )}
               </div>
             </div>
           )}
