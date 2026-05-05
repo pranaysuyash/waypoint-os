@@ -11,6 +11,7 @@ Tests GET /trips/{trip_id}/suitability endpoint with:
 """
 
 import json
+from datetime import datetime
 import pytest
 import sys
 from pathlib import Path
@@ -301,6 +302,6 @@ class TestGetTripSuitabilityEndpoint:
         assert response.status_code == 200
         data = response.json()
         flag = data["suitability_flags"][0]
-        assert flag["created_at"] == created_at
+        assert datetime.fromisoformat(flag["created_at"]) == datetime.fromisoformat(created_at)
 
 

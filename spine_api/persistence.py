@@ -1296,13 +1296,21 @@ class OverrideStore:
         override_data["trip_id"] = trip_id
         override_data["created_at"] = datetime.now(timezone.utc).isoformat()
         
-        # Ensure trip overrides file exists
+        # Ensure trip overrides directory exists
+        OVERRIDES_PER_TRIP_DIR.mkdir(parents=True, exist_ok=True)
         trip_overrides_file = OVERRIDES_PER_TRIP_DIR / f"{trip_id}.jsonl"
         
         # Append to JSONL (immutable log)
         with open(trip_overrides_file, "a") as f:
             json.dump(override_data, f)
             f.write("\n")
+        
+        # Verify the file was actually created (robustness check)
+        if not trip_overrides_file.exists():
+            raise IOError(
+                f"Failed to create override file at {trip_overrides_file}. "
+                f"OVERRIDES_PER_TRIP_DIR={OVERRIDES_PER_TRIP_DIR}"
+            )
         
         # Update index
         OverrideStore._update_index(override_id, trip_id, str(trip_overrides_file))

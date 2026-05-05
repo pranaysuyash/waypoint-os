@@ -53,6 +53,33 @@ if str(spine_api_dir) not in sys.path:
     sys.path.insert(0, str(spine_api_dir))
 
 # ---------------------------------------------------------------------------
+# Module alias: canonicalise persistence module identity
+# ---------------------------------------------------------------------------
+# Canonicalise the persistence module so that ``import persistence`` and
+# ``from spine_api import persistence`` always resolve to the *same* module
+# object.  Without this, server.py's ``import persistence`` fallback creates
+# a second copy of the module, and monkey-patching one copy does not affect
+# the other → test isolation bugs (11 ghost failures on 2026-05-04).
+#
+# We MUST do this at module level (not inside a fixture) because test files
+# import OverrideStore etc. at module import time, before any fixture runs.
+#
+# NOTE: forced assignment (not setdefault) because
+# spine_api/core/audit_bridge.py may have already imported
+# spine_api.persistence, creating a separate sys.modules entry.
+# We also set spine_api.persistence as a package attribute because
+# ``from spine_api import persistence`` uses the package's __dict__,
+# not sys.modules, when resolving the submodule.
+try:
+    import persistence as _persistence
+    sys.modules["spine_api.persistence"] = _persistence
+    import spine_api as _spine_api
+    _spine_api.persistence = _persistence
+except ImportError:
+    # Running in a context where spine_api is not yet importable
+    pass
+
+# ---------------------------------------------------------------------------
 # Shared session-scoped TestClient (prevents asyncpg loop mismatches)
 # ---------------------------------------------------------------------------
 
@@ -76,25 +103,6 @@ def session_client():
     from fastapi.testclient import TestClient
     from server import app
     from spine_api.core.security import create_access_token
-
-    # Canonicalise the persistence module identity so that
-    # ``import persistence`` and ``from spine_api import persistence``
-    # always resolve to the *same* module object.  Without this,
-    # server.py's import-persistence fallback creates a second copy of
-    # the module, and monkey-patching one copy does not affect the
-    # other → test isolation bugs (11 ghost failures on 2026-05-04).
-    #
-    # NOTE: forced assignment (not setdefault) because
-    # spine_api/core/audit_bridge.py imports from spine_api.persistence
-    # before this runs, creating a separate sys.modules entry.
-    # We also set spine_api.persistence as a package attribute because
-    # from spine_api import persistence uses the package's __dict__,
-    # not sys.modules, when resolving the submodule.
-    import sys as _sys
-    import persistence as _persistence
-    _sys.modules["spine_api.persistence"] = _persistence
-    import spine_api as _spine_api
-    _spine_api.persistence = _persistence
 
     token = create_access_token(
         user_id="323468de-ba3d-437b-aa10-35b281a0c6a6",

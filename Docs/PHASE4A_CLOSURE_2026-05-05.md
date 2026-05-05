@@ -24,9 +24,12 @@
 
 ### Pre-existing Issues Fixed During Closure
 1. **vitest.config.ts**: Added `.claude` to exclude list — git worktrees under `.claude/worktrees/` were polluting test discovery
-2. **EmptyStateOnboarding.test.tsx**: Added missing `import { describe, expect, it } from 'vitest'`
-3. **overview/page.test.tsx**: Fixed "true empty-account state" test — was asserting "No trips in planning yet" but component renders `EmptyStateOnboarding` when both `leadInboxTotal: 0` and `planningTripsTotal: 0`
-4. **Toolchain issue documented**: `npx vitest` resolves to global cache binary that can't find local `jsdom`; must use `npm test -- --run` or `./node_modules/.bin/vitest`
+2. **vitest.config.ts**: Increased `testTimeout` from 15000 to 30000 — heavy tests (marketing pages, ~9s in isolation) timeout under concurrent suite load
+3. **EmptyStateOnboarding.test.tsx**: Added missing `import { describe, expect, it } from 'vitest'`
+4. **overview/page.test.tsx**: Fixed "true empty-account state" test — was asserting "No trips in planning yet" but component renders `EmptyStateOnboarding` when both `leadInboxTotal: 0` and `planningTripsTotal: 0`
+5. **TripCard.tsx**: Added `data-testid="trip-card-view-link"` to View link in QuickActions — test was asserting this testid but component didn't have it
+6. **inbox/page.tsx**: Fixed `BulkActionsToolbar onAssign` prop — was using `handleCardAssign(tripId, agentId)` which has wrong signature; corrected to `handleBulkAssign(agentId)`
+7. **Toolchain issue documented**: `npx vitest` resolves to global cache binary that can't find local `jsdom`; must use `npm test -- --run` or `./node_modules/.bin/vitest`
 
 ### Database
 - Migration `add_booking_collection` applied at head `f1a2b3c4d5e6`
@@ -60,7 +63,9 @@
 | `frontend/src/app/(public)/layout.tsx` | Minimal public layout |
 | `frontend/src/app/(public)/booking-collection/[token]/page.tsx` | Customer form |
 | `frontend/src/app/(agency)/workbench/OpsPanel.tsx` | Link generator + pending review + source badge |
-| `frontend/vitest.config.ts` | Added `.claude` to exclude |
+| `frontend/vitest.config.ts` | Added `.claude` to exclude, increased timeout to 30s |
+| `frontend/src/components/inbox/TripCard.tsx` | Added `data-testid="trip-card-view-link"` |
+| `frontend/src/app/(agency)/inbox/page.tsx` | Fixed `onAssign` prop to use `handleBulkAssign` |
 | `tests/test_booking_collection.py` | 41 backend tests |
 | `frontend/src/components/overview/__tests__/EmptyStateOnboarding.test.tsx` | Added vitest import |
 | `frontend/src/app/(agency)/overview/__tests__/page.test.tsx` | Fixed empty-account state test |

@@ -39,6 +39,12 @@ def override_uses_tmp_path(monkeypatch, tmp_path):
     monkeypatch.setattr(spine_persistence, "OVERRIDES_PATTERNS_DIR", patterns)
     monkeypatch.setattr(spine_persistence, "OVERRIDES_INDEX_FILE", index_file)
 
+    # Verify monkeypatch worked (this is a guard, not just debug)
+    import spine_api.persistence as _check_module
+    assert _check_module.OVERRIDES_PER_TRIP_DIR == per_trip, (
+        f"Monkeypatch failed! Expected {per_trip}, got {_check_module.OVERRIDES_PER_TRIP_DIR}"
+    )
+
     yield
 
 
@@ -50,7 +56,7 @@ class TestOverrideStore:
     def test_save_override_creates_jsonl_file(self, override_uses_tmp_path):
         """Override should be appended to trip's JSONL file."""
         from spine_api import persistence as spine_persistence
-
+        
         trip_id = f"trip_{uuid4().hex[:12]}"
         override_data = {
             "flag": "elderly_mobility_risk",
@@ -61,12 +67,12 @@ class TestOverrideStore:
             "scope": "pattern",
             "original_severity": "high",
         }
-
+        
         override_id = OverrideStore.save_override(trip_id, override_data)
-
+        
         # Verify override_id was generated
         assert override_id.startswith("ovr_")
-
+        
         # Verify file was created in the fixture-redirected location
         override_file = spine_persistence.OVERRIDES_PER_TRIP_DIR / f"{trip_id}.jsonl"
         assert override_file.exists()

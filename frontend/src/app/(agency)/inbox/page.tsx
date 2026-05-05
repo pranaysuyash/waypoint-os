@@ -261,7 +261,7 @@ export default function InboxPage() {
   }, [assignTrips]);
 
   const handleBulkAssign = useCallback((agentId: string) => {
-    assignTrips({ tripIds: Array.from(selectedTrips), assignTo: agentId, notifyAssignee: true });
+      const tripIds = [...selectedTrips];
     handleClearSelection();
   }, [selectedTrips, handleClearSelection, assignTrips]);
 
@@ -428,7 +428,7 @@ export default function InboxPage() {
         <BulkActionsToolbar
           selectedCount={selectedTrips.size}
           onClearSelection={handleClearSelection}
-          onAssign={handleAssign}
+          onAssign={handleBulkAssign}
           onExport={handleExport}
           agents={agents}
         />

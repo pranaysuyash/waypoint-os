@@ -84,6 +84,9 @@ data/audit/
 !data/decision_cache/.gitkeep
 !data/audit/.gitkeep
 
+# Data files — overrides (runtime-created, not source)
+data/overrides/
+
 # Data files — generated trip seed data (runtime-created per test/seed run)
 data/trips/trip_seed_*.json
 

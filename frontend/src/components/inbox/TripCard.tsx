@@ -277,6 +277,7 @@ function QuickActions({
     <Link
       key="view"
       href={reviewHref}
+      data-testid="trip-card-view-link"
       onClick={(e) => e.stopPropagation()}
       className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors"
       style={{ color: 'var(--accent-blue)' }}

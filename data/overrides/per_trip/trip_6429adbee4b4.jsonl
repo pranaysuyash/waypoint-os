@@ -1,1 +1,0 @@
-{"flag": "elderly_mobility_risk", "decision_type": "elderly_mobility_risk", "action": "suppress", "overridden_by": "agent_priya", "reason": "Traveler confirmed fitness via video call. No mobility aids needed.", "scope": "pattern", "original_severity": "high", "override_id": "ovr_2040f9f8dc43", "trip_id": "trip_6429adbee4b4", "created_at": "2026-05-05T09:20:27.263010+00:00"}

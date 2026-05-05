@@ -1,1 +1,0 @@
-{"flag": "elderly_mobility_risk", "decision_type": "elderly_mobility_risk", "action": "downgrade", "new_severity": "medium", "overridden_by": "agent_priya", "reason": "Comprehensive assessment completed", "scope": "pattern", "original_severity": "high", "override_id": "ovr_37a8e7ac89cb", "trip_id": "trip_6cc33817bedc", "created_at": "2026-05-05T09:52:24.559781+00:00"}

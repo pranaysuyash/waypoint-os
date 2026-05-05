@@ -520,15 +520,44 @@ class TestNonPIIFieldIntegrity:
 # ===========================================================================
 
 class TestSQLRawRowSentinel:
-    """Full save-path sentinel: exercises SQLTripStore.save_trip() end-to-end
-    (with mocked DB session) and verifies the raw column values that would be
-    written to the database contain no plaintext sentinel strings.
+    """Verify raw DB columns contain NO plaintext sentinels for private compartments."""
 
-    Strategy: mock the async session to capture the Trip() constructor kwargs,
-    which are exactly the values SQLAlchemy would write to database columns.
-    """
+    @staticmethod
+    def _ensure_test_agency():
+        """Create the 'test_agency' agency in DB if it doesn't exist."""
+        import asyncio as _asyncio
+        from sqlalchemy import text
+        from spine_api.persistence import tripstore_session_maker
+
+        async def _run():
+            async with tripstore_session_maker() as session:
+                # Check by id or slug
+                result = await session.execute(
+                    text("SELECT 1 FROM agencies WHERE id = 'test_agency' OR slug = 'test-agency'")
+                )
+                if result.first() is None:
+                    try:
+                        await session.execute(
+                            text(
+                                "INSERT INTO agencies (id, slug, name, plan, settings, created_at, jurisdiction) "
+                                "VALUES ('test_agency', 'test-agency', 'Test Agency', 'beta', '{}', NOW(), 'US')"
+                            )
+                        )
+                        await session.commit()
+                    except Exception:
+                        await session.rollback()
+                else:
+                    # Already exists, make sure slug is correct
+                    await session.execute(
+                        text("UPDATE agencies SET slug = 'test-agency' WHERE id = 'test_agency'")
+                    )
+                    await session.commit()
+
+        _asyncio.run(_run())
 
     def _make_sentinel_trip(self) -> dict:
+        """Build a trip dict with sentinel markers for raw-column verification."""
+        from tests.test_state_contract_parity import _make_full_trip_data
         trip = _make_full_trip_data()
         trip["internal_bundle"] = {
             "agent_notes": SENTINEL + "INTERNAL",
@@ -552,10 +581,12 @@ class TestSQLRawRowSentinel:
         }
         return trip
 
-    def test_save_path_raw_columns_no_plaintext(self):
+    def test_save_path_raw_columns_no_plaintext(self, monkeypatch):
         """save_trip() must produce Trip kwargs with zero plaintext sentinels
         in any private compartment column."""
         import asyncio as _asyncio
+
+        self._ensure_test_agency()
 
         trip_data = self._make_sentinel_trip()
         captured: dict = {}
@@ -575,11 +606,15 @@ class TestSQLRawRowSentinel:
 
             mock_maker = MagicMock(return_value=mock_session)
 
-            with patch("spine_api.persistence.tripstore_session_maker", mock_maker):
-                with patch("spine_api.persistence.Trip", CapturingTrip):
-                    await SQLTripStore.save_trip(
-                        trip_data, agency_id="test_agency"
-                    )
+            monkeypatch.setattr(
+                "spine_api.persistence.tripstore_session_maker", mock_maker
+            )
+            monkeypatch.setattr(
+                "spine_api.persistence.Trip", CapturingTrip
+            )
+            await SQLTripStore.save_trip(
+                trip_data, agency_id="test_agency"
+            )
 
         _asyncio.run(_run())
 
@@ -593,9 +628,23 @@ class TestSQLRawRowSentinel:
                 f"{raw_serialized[:200]}"
             )
 
-    def test_save_path_raw_round_trip_preserves_data(self):
+        _asyncio.run(_run())
+
+        for field in PRIVATE_BLOB_COMPARTMENTS:
+            raw_value = captured.get(field)
+            if raw_value is None:
+                continue
+            raw_serialized = json.dumps(raw_value, default=str)
+            assert SENTINEL not in raw_serialized, (
+                f"Plaintext sentinel in raw DB column '{field}': "
+                f"{raw_serialized[:200]}"
+            )
+
+    def test_save_path_raw_round_trip_preserves_data(self, monkeypatch):
         """After save + read through _to_dict, sentinel data is fully recovered."""
         import asyncio as _asyncio
+
+        self._ensure_test_agency()
 
         trip_data = self._make_sentinel_trip()
 
@@ -620,11 +669,15 @@ class TestSQLRawRowSentinel:
 
             mock_maker = MagicMock(return_value=mock_session)
 
-            with patch("spine_api.persistence.tripstore_session_maker", mock_maker):
-                with patch("spine_api.persistence.Trip", FakeTrip):
-                    await SQLTripStore.save_trip(
-                        trip_data, agency_id="test_agency"
-                    )
+            monkeypatch.setattr(
+                "spine_api.persistence.tripstore_session_maker", mock_maker
+            )
+            monkeypatch.setattr(
+                "spine_api.persistence.Trip", FakeTrip
+            )
+            await SQLTripStore.save_trip(
+                trip_data, agency_id="test_agency"
+            )
 
             return stored
 

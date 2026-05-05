@@ -1,1 +1,0 @@
-{"flag": "elderly_mobility_risk", "decision_type": "elderly_mobility_risk", "action": "suppress", "overridden_by": "agent_priya", "reason": "Pattern-level override", "scope": "pattern", "original_severity": "high", "override_id": "ovr_5cc330ec1844", "trip_id": "trip_006a1b006548", "created_at": "2026-05-05T09:43:34.147726+00:00"}

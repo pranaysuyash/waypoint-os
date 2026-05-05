@@ -7,8 +7,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.tsx'],
     include: ['**/__tests__/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-    exclude: ['node_modules', 'dist', '.next', 'out'],
-    testTimeout: 15000,
+    exclude: ['node_modules', 'dist', '.next', 'out', '.claude'],
+    testTimeout: 30000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

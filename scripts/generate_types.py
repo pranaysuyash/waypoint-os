@@ -6,12 +6,14 @@ Usage:
     uv run python scripts/generate_types.py
 
 Output:
-    frontend/src/types/generated/spine_api.ts
     frontend/src/types/generated/spine-api.ts
 
 This script reads the canonical Pydantic models from spine_api/contract.py
 and generates matching TypeScript interfaces. The frontend build will
 fail if UI code references types that no longer match the backend schema.
+
+NOTE: This is the **only** canonical generated type file.
+Do not create aliases — all frontend imports must use this single path.
 """
 
 import sys
