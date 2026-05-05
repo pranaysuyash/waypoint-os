@@ -214,3 +214,32 @@ Outputs:
 Notes:
 - Heuristic and additive, not a source-of-truth database.
 - Uses only the repository's existing docs and standard library.
+
+## 8) `recovery_guard_report.py`
+
+Purpose:
+- Provide a read-only starting point when an agent suspects unsafe stash/reset/worktree activity.
+- Surface current branch/worktree/stash state without replaying anything.
+- Point agents to the repo's safe selective-recovery workflow instead of destructive shortcuts.
+
+Usage:
+```bash
+cd /Users/pranay/Projects/travel_agency_agent
+.venv/bin/python tools/recovery_guard_report.py
+```
+
+Outputs:
+- Console report covering:
+  - `git status --short --branch`
+  - `git worktree list --porcelain`
+  - visible stash entries
+  - stash-log presence
+  - tracked `.claude/worktrees` artifacts
+  - the safe recovery checklist
+
+Related note:
+- `Docs/SAFE_STASH_RESET_RECOVERY_PROTOCOL_2026-05-05.md`
+
+Notes:
+- Read-only by design.
+- Use this before any stash/worktree recovery decision.

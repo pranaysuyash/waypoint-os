@@ -405,6 +405,7 @@ Before removing **any** code (function, type, component, export), apply this wor
 - Reject any stash/commit fragment that reintroduces duplicate API routes, stale imports, deleted documentation, removed tests, downgraded validation, or behavior that current commits already fixed.
 - When recovering from another agent's stash/reset, document the decision per file: merged, already present, rejected, or needs user decision. Keep the stash intact unless the user explicitly asks to drop it.
 - If an agent previously used stash/reset carelessly, treat that as a process defect: add or update a repo-local guardrail and run verification before claiming recovery is complete.
+- Before any stash/worktree recovery investigation, run `.venv/bin/python tools/recovery_guard_report.py` and follow `Docs/SAFE_STASH_RESET_RECOVERY_PROTOCOL_2026-05-05.md`.
 
 ### Commit Message Rules (Critical)
 
