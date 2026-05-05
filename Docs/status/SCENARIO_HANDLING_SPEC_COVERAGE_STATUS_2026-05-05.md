@@ -65,6 +65,7 @@ Implemented in this session:
 - Safety-alert and flight-disruption snapshots are now consumed as first-class feasibility constraints.
 - Cohort inference now distinguishes explicit elderly vs ambiguous parent cohorts, detects infant presence, and avoids over-triggering elderly hard risk when ages indicate younger parents.
 - Public checker now includes basic regional advisory hints (non-weather hazard surface) for known high-risk destinations.
+- Regional disruption heuristics now include conflict-zone signals and Europe summer high-friction hub pressure checks in feasibility routing/safety constraints.
 
 Files:
 - `src/agents/runtime.py`
@@ -106,11 +107,11 @@ Files:
 
 Command:
 
-`pytest -q tests/test_agent_runtime.py tests/test_route_analysis.py tests/test_public_checker_live_checks.py tests/test_risk_contracts.py`
+`pytest -q tests/test_agent_runtime.py tests/test_route_analysis.py tests/test_public_checker_live_checks.py tests/test_risk_contracts.py tests/test_regional_risk.py`
 
 Result:
 
-- `42 passed`
+- `47 passed`
 
 ## What Is Still Pending vs `SCENARIO_HANDLING_SPEC.md`
 
