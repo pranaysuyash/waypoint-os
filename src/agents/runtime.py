@@ -20,6 +20,7 @@ from uuid import uuid4
 from src.agents.events import AgentEvent, AgentEventType
 from src.agents.risk_contracts import feasibility_constraint_to_structured
 from src.intake.route_analysis import analyze_route_complexity, parse_itinerary_text
+from src.intake.regional_risk import assess_regional_disruption
 from src.intake.scenario_policy import ScenarioPolicy, load_scenario_policy
 from src.agents.live_tools import (
     FlightStatusTool,
@@ -1602,7 +1603,12 @@ class ConstraintFeasibilityAgent:
         if assessed_at is None:
             return True
         age = self.now_provider() - assessed_at
-        return age >= timedelta(hours=max(1, self.policy.feasibility_refresh_hours_active))
+        stage_hours = self.policy.feasibility_refresh_hours_active
+        if stage == "pre_departure":
+            stage_hours = self.policy.feasibility_refresh_hours_pre_departure
+        elif stage in {"in_progress", "traveling"}:
+            stage_hours = self.policy.feasibility_refresh_hours_in_progress
+        return age >= timedelta(hours=max(1, stage_hours))
 
     def _extract_party_composition(self, facts: dict[str, Any]) -> dict[str, int]:
         slot = facts.get("party_composition")
@@ -1661,12 +1667,25 @@ class ConstraintFeasibilityAgent:
             transfer_like_items = int(inferred.get("inferred_transfer_like_items") or 0)
             activity_count = int(inferred.get("inferred_activity_count") or 0)
 
+        route_hubs = self._extract_route_hubs(raw_flights)
         return {
             "flight_legs": flight_legs,
             "transfer_like_items": transfer_like_items,
             "activity_count": activity_count,
             "tight_connections": tight_connections,
+            "route_hubs": route_hubs,
         }
+
+    def _extract_route_hubs(self, raw_flights: Any) -> list[str]:
+        hubs: list[str] = []
+        for item in _flatten_values(raw_flights):
+            if not isinstance(item, dict):
+                continue
+            for key in ("arrival_airport", "departure_airport", "origin", "destination", "from", "to"):
+                value = str(item.get(key) or "").upper().strip()
+                if len(value) == 3 and value.isalpha() and value not in hubs:
+                    hubs.append(value)
+        return hubs
 
     def _tight_connection_count(self, raw_flights: Any) -> int:
         flights: list[dict[str, Any]] = [item for item in _flatten_values(raw_flights) if isinstance(item, dict)]
@@ -1777,6 +1796,7 @@ class ConstraintFeasibilityAgent:
         raw_note = str(context.get("raw_note") or "").lower()
         date_window = context.get("date_window")
         travel_dates = _extract_date_range(date_window)
+        month = travel_dates[0].month if travel_dates else None
 
         if not destinations:
             missing_facts.append("destination")
@@ -1961,6 +1981,7 @@ class ConstraintFeasibilityAgent:
         transfer_like_items = int(route_summary.get("transfer_like_items") or 0)
         activity_count = int(route_summary.get("activity_count") or 0)
         tight_connections = int(route_summary.get("tight_connections") or 0)
+        route_hubs = route_summary.get("route_hubs") if isinstance(route_summary.get("route_hubs"), list) else []
         activity_titles = context.get("activity_titles") if isinstance(context.get("activity_titles"), list) else []
         activity_text = " ".join(_stringify(value).lower() for value in activity_titles)
         route_analysis = analyze_route_complexity(
@@ -2077,6 +2098,33 @@ class ConstraintFeasibilityAgent:
                     "Elderly traveler context includes water-intensity activity risk.",
                     "Confirm medical fitness, supervision, and lower-intensity alternatives for elderly travelers.",
                     {"elderly_count": elderly_count, "route_analysis": route_analysis.to_dict()},
+                )
+            )
+
+        regional = assess_regional_disruption(
+            destinations=[str(d) for d in destinations],
+            month=month,
+            route_hubs=[str(h) for h in route_hubs],
+            flight_legs=flight_legs,
+        )
+        if regional.risk_level == "high":
+            hard_blockers.append(
+                self._constraint(
+                    "safety",
+                    "hard",
+                    "Regional disruption/security risk assessed as high.",
+                    "Require regional safety and disruption review before confirmation.",
+                    {"signals": regional.signals, "details": regional.details, "recommendations": regional.recommendations},
+                )
+            )
+        elif regional.risk_level == "medium":
+            soft_constraints.append(
+                self._constraint(
+                    "routing",
+                    "soft",
+                    "Regional disruption pressure detected for this route window.",
+                    "Add contingency buffers and route alternatives before locking itinerary.",
+                    {"signals": regional.signals, "details": regional.details, "recommendations": regional.recommendations},
                 )
             )
 

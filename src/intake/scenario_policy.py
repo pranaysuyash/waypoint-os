@@ -37,6 +37,8 @@ class ScenarioPolicy:
     elderly_water_risk_terms: set[str]
     feasibility_refresh_hours_active: int
     stress_hub_airports: set[str]
+    feasibility_refresh_hours_pre_departure: int
+    feasibility_refresh_hours_in_progress: int
 
 
 def load_scenario_policy() -> ScenarioPolicy:
@@ -62,4 +64,6 @@ def load_scenario_policy() -> ScenarioPolicy:
             "TRAVEL_AGENT_STRESS_HUB_AIRPORTS",
             {"CDG", "JFK", "LHR", "FRA", "AMS"},
         ),
+        feasibility_refresh_hours_pre_departure=_int_env("TRAVEL_AGENT_FEASIBILITY_REFRESH_HOURS_PRE_DEPARTURE", 4),
+        feasibility_refresh_hours_in_progress=_int_env("TRAVEL_AGENT_FEASIBILITY_REFRESH_HOURS_IN_PROGRESS", 2),
     )

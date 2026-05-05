@@ -233,6 +233,21 @@ def reset_global_singletons():
         import spine_api.persistence as _persistence
         _persistence._tripstore_instance = None
         _persistence._sql_tripstore_instance = None
+        # Reset module-level path attributes to defaults so that ANY test
+        # that monkeypatched them (or leaked state) starts fresh.
+        # Without this, a leaked TRIPS_DIR from test A causes test B to fail.
+        _default_data_dir = Path(_persistence.__file__).parent.parent / "data"
+        _persistence.DATA_DIR = _default_data_dir
+        _persistence.TRIPS_DIR = _default_data_dir / "trips"
+        _persistence.ASSIGNMENTS_DIR = _default_data_dir / "assignments"
+        _persistence.AUDIT_DIR = _default_data_dir / "audit"
+        _persistence.PUBLIC_CHECKER_DIR = _default_data_dir / "public_checker"
+        _persistence.PUBLIC_CHECKER_UPLOADS_DIR = _persistence.PUBLIC_CHECKER_DIR / "uploads"
+        _persistence.PUBLIC_CHECKER_MANIFESTS_DIR = _persistence.PUBLIC_CHECKER_DIR / "manifests"
+        _persistence.OVERRIDES_DIR = _default_data_dir / "overrides"
+        _persistence.OVERRIDES_PER_TRIP_DIR = _persistence.OVERRIDES_DIR / "per_trip"
+        _persistence.OVERRIDES_PATTERNS_DIR = _persistence.OVERRIDES_DIR / "patterns"
+        _persistence.OVERRIDES_INDEX_FILE = _persistence.OVERRIDES_DIR / "index.json"
     except Exception:
         pass
 

@@ -242,3 +242,55 @@ Observed effect:
 - `/Users/pranay/Projects/travel_agency_agent/tests/test_override_api.py`
 - `/Users/pranay/Projects/travel_agency_agent/Docs/RECOVERY_FORENSICS_AND_REGRESSION_2026-05-05.md`
 
+
+## Follow-up Recovery Pass: Post-Push Source Additions
+
+After the earlier recovery/push pass, additional working-tree changes appeared. These were triaged into:
+
+1. runtime override churn
+2. real source/test additions
+
+### Runtime-only churn
+
+The following were identified as ongoing runtime artifact churn rather than canonical source recovery:
+
+- `data/overrides/index.json`
+- `data/overrides/patterns/elderly_mobility_risk.jsonl`
+- newly created `data/overrides/per_trip/trip_*.jsonl`
+
+These files reflected new override events and per-trip manifests generated after the earlier push. They were not treated as source regressions.
+
+### Recovered/kept source additions
+
+The following source/test changes were verified as additive and architecturally coherent:
+
+- `src/intake/scenario_policy.py`
+  - adds stage-specific feasibility refresh windows:
+    - `feasibility_refresh_hours_pre_departure`
+    - `feasibility_refresh_hours_in_progress`
+- `src/intake/regional_risk.py`
+  - deterministic regional disruption assessment helper
+- `src/agents/runtime.py`
+  - integrates `assess_regional_disruption(...)` into canonical feasibility evaluation
+  - extracts route hubs into route summary for downstream analysis
+  - uses stage-specific refresh windows from `ScenarioPolicy`
+- `tests/test_regional_risk.py`
+  - validates conflict-zone and Europe summer hub scenarios
+- `tests/test_agent_runtime.py`
+  - validates runtime soft-constraint generation for Europe summer hub disruption pressure
+- `tests/conftest.py`
+  - hardens persistence path reset isolation to prevent leaked monkeypatched paths across tests
+
+### Follow-up regression evidence
+
+Commands run in repo venv:
+
+1. `.venv/bin/pytest tests/test_regional_risk.py tests/test_route_analysis.py tests/test_public_checker_live_checks.py -q`
+   - result: `8 passed in 3.84s`
+
+2. `.venv/bin/pytest tests/test_agent_runtime.py -q`
+   - result: `37 passed in 1.70s`
+
+### Follow-up conclusion
+
+The source additions above are worth keeping and should be committed independently of the fresh runtime override churn.

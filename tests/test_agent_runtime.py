@@ -694,6 +694,39 @@ def test_constraint_feasibility_tight_connection_stress_hub_threshold():
     )
 
 
+def test_constraint_feasibility_adds_regional_disruption_pressure_for_europe_hubs():
+    now = datetime(2026, 5, 4, 12, 0, tzinfo=timezone.utc)
+    repo = _Repo([
+        {
+            "id": "trip_europe_hub_pressure",
+            "stage": "proposal",
+            "raw_input": {"raw_note": "Europe summer hop itinerary"},
+            "extracted": {
+                "facts": {
+                    "destination_candidates": {"value": ["France", "Italy", "Switzerland"]},
+                    "date_window": {"value": "2026-08-10 to 2026-08-15"},
+                    "budget": {"value": "$9000"},
+                    "travelers": {"value": 2},
+                }
+            },
+            "flights": [
+                {"departure_airport": "DEL", "arrival_airport": "CDG"},
+                {"departure_airport": "CDG", "arrival_airport": "FRA"},
+                {"departure_airport": "FRA", "arrival_airport": "ZRH"},
+                {"departure_airport": "ZRH", "arrival_airport": "MXP"},
+            ],
+        }
+    ])
+    agent = ConstraintFeasibilityAgent(now_provider=lambda: now)
+    result = agent.execute(next(agent.scan(repo)), repo)
+    assert result.success is True
+    assessment = repo.trips["trip_europe_hub_pressure"]["constraint_feasibility_assessment"]
+    assert any(
+        item["category"] in {"routing", "safety"} and "regional disruption pressure" in item["message"].lower()
+        for item in assessment["soft_constraints"]
+    )
+
+
 def test_proposal_readiness_agent_blocks_thin_or_risky_proposal():
     repo = _Repo([
         {
