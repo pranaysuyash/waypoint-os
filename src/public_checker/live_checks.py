@@ -16,6 +16,7 @@ from datetime import date, datetime
 from typing import Any, Optional
 
 import requests
+from src.agents.risk_contracts import to_structured_risk
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,37 @@ MONTHS = {
     "november": 11,
     "december": 12,
 }
+
+SEASONAL_HINTS: dict[str, dict[str, Any]] = {
+    "bali": {"risk_type": "monsoon", "high_risk_months": {11, 12, 1, 2}, "better_months": [3, 4, 5, 6, 7, 8, 9]},
+    "phuket": {"risk_type": "monsoon", "high_risk_months": {5, 6, 7, 8, 9, 10}, "better_months": [12, 1, 2, 3]},
+    "maldives": {"risk_type": "monsoon", "high_risk_months": {5, 6, 7, 8, 9, 10}, "better_months": [1, 2, 3, 12]},
+    "dubai": {"risk_type": "extreme_heat", "high_risk_months": {6, 7, 8, 9}, "better_months": [11, 12, 1, 2, 3]},
+}
+
+REGIONAL_ADVISORY_HINTS: dict[str, str] = {
+    "israel": "Regional security advisories can change rapidly; verify current safety guidance before finalizing.",
+    "ukraine": "Active conflict-zone advisories may affect viability; human safety review is required.",
+    "haiti": "Security and infrastructure advisories can be severe; confirm current regional guidance.",
+}
+
+
+def _seasonal_hint(destination: str, month: int) -> Optional[dict[str, Any]]:
+    key = destination.strip().lower()
+    hint = SEASONAL_HINTS.get(key)
+    if not hint:
+        return None
+    if month not in hint.get("high_risk_months", set()):
+        return None
+    return {
+        "risk_type": hint["risk_type"],
+        "better_months": list(hint.get("better_months", [])),
+    }
+
+
+def _regional_advisory_hint(destination: str) -> Optional[str]:
+    key = destination.strip().lower()
+    return REGIONAL_ADVISORY_HINTS.get(key)
 
 
 @dataclass(frozen=True)
@@ -232,6 +264,19 @@ def _climate_summary(location: ClimateLocation, month: int, year: int) -> Option
             notes.append("tropical storm season")
             score_penalty += 5
 
+        seasonal_hint = _seasonal_hint(location.name, month)
+        if seasonal_hint:
+            risk_type = seasonal_hint["risk_type"]
+            better_months = seasonal_hint["better_months"]
+            soft_blockers.append(
+                f"{location.name} is in a known {risk_type.replace('_', ' ')} window for {calendar.month_name[month]}."
+            )
+            notes.append(risk_type)
+            score_penalty += 5
+        else:
+            risk_type = None
+            better_months = []
+
         if not hard_blockers and not soft_blockers:
             return None
 
@@ -251,6 +296,8 @@ def _climate_summary(location: ClimateLocation, month: int, year: int) -> Option
                 "humidity_pct_avg": round(humidity, 1) if humidity is not None else None,
             },
             "signals": notes,
+            "risk_type": risk_type,
+            "better_months": better_months,
             "hard_blockers": hard_blockers,
             "soft_blockers": soft_blockers,
             "score_penalty": min(30, score_penalty),
@@ -389,6 +436,69 @@ def build_live_checker_signals(packet: dict[str, Any], raw_text: str) -> Optiona
         signals.extend(current.get("signals") or [])
         score_penalty += int(current.get("score_penalty") or 0)
 
+    regional_hint = _regional_advisory_hint(location.name)
+    if regional_hint:
+        soft_blockers.append(regional_hint)
+        signals.append("regional_safety_advisory")
+        score_penalty += 8
+
+    structured_risks: list[dict[str, Any]] = []
+    if climate:
+        climate_risk_type = climate.get("risk_type")
+        for item in climate.get("hard_blockers") or []:
+            structured_risks.append(
+                to_structured_risk(
+                    flag=f"weather_{climate_risk_type or 'seasonal'}",
+                    severity="high",
+                    category="weather",
+                    message=str(item),
+                    details={"risk_type": climate_risk_type, "better_months": climate.get("better_months")},
+                    detected_by="public_checker_live_checks",
+                )
+            )
+        for item in climate.get("soft_blockers") or []:
+            structured_risks.append(
+                to_structured_risk(
+                    flag=f"weather_{climate_risk_type or 'seasonal'}",
+                    severity="medium",
+                    category="weather",
+                    message=str(item),
+                    details={"risk_type": climate_risk_type, "better_months": climate.get("better_months")},
+                    detected_by="public_checker_live_checks",
+                )
+            )
+    if current:
+        for item in current.get("hard_blockers") or []:
+            structured_risks.append(
+                to_structured_risk(
+                    flag="weather_current_conditions",
+                    severity="high",
+                    category="weather",
+                    message=str(item),
+                    detected_by="public_checker_live_checks",
+                )
+            )
+    if regional_hint:
+        structured_risks.append(
+            to_structured_risk(
+                flag="regional_safety_advisory",
+                severity="high",
+                category="safety",
+                message=regional_hint,
+                detected_by="public_checker_live_checks",
+            )
+        )
+        for item in current.get("soft_blockers") or []:
+            structured_risks.append(
+                to_structured_risk(
+                    flag="weather_current_conditions",
+                    severity="medium",
+                    category="weather",
+                    message=str(item),
+                    detected_by="public_checker_live_checks",
+                )
+            )
+
     return {
         "destination": location.name,
         "country_code": location.country_code,
@@ -398,6 +508,7 @@ def build_live_checker_signals(packet: dict[str, Any], raw_text: str) -> Optiona
         "signals": list(dict.fromkeys(signals)),
         "hard_blockers": list(dict.fromkeys(hard_blockers)),
         "soft_blockers": list(dict.fromkeys(soft_blockers)),
+        "structured_risks": structured_risks,
         "score_penalty": min(35, score_penalty),
         "source": "open-meteo",
     }

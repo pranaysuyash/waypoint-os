@@ -1,0 +1,443 @@
+{
+  "cluster_map": {
+    "Docs/AGENT_FEEDBACK_LOOP_SPEC_2026-04-22.md": [
+      "feedback_learning",
+      "live_intelligence",
+      "agent_governance"
+    ],
+    "Docs/AI_WORKFORCE_REGISTRY_CONTRACT_2026-04-22.md": [
+      "feedback_learning",
+      "live_intelligence",
+      "agent_governance"
+    ],
+    "Docs/ARCHITECTURE_DECISION_D5_OVERRIDE_LEARNING_2026-04-18.md": [
+      "feedback_learning",
+      "live_intelligence",
+      "agent_governance"
+    ],
+    "Docs/CROSS_PROJECT_AGENTIC_PATTERNS_2026-04-20.md": [
+      "feedback_learning",
+      "graph_memory",
+      "agent_governance"
+    ],
+    "Docs/EXPLORATION_FRONTIER.md": [
+      "agent_governance"
+    ],
+    "Docs/FEEDBACK_LOOPS_AND_IMPROVEMENT.md": [
+      "feedback_learning",
+      "live_intelligence"
+    ],
+    "Docs/INDEX.md": [
+      "autoresearch",
+      "feedback_learning",
+      "graph_memory",
+      "live_intelligence",
+      "agent_governance"
+    ],
+    "Docs/ROUTING_STRATEGY.md": [
+      "autoresearch",
+      "feedback_learning",
+      "agent_governance"
+    ],
+    "Docs/TECHNICAL_SCAFFOLD_AND_AUTORESEARCH.md": [
+      "autoresearch",
+      "feedback_learning",
+      "agent_governance"
+    ],
+    "Docs/product_features/SEMANTIC_TASTE_GRAPH_DISCOVERY.md": [
+      "graph_memory",
+      "live_intelligence",
+      "agent_governance"
+    ],
+    "Docs/research/AGENT_GRAPH_AND_GLOBAL_ADMIN_EXPLORATION_2026-05-04.md": [
+      "feedback_learning",
+      "graph_memory",
+      "live_intelligence",
+      "agent_governance"
+    ],
+    "Docs/research/FLW_SPEC_FEEDBACK_LEARNING.md": [
+      "feedback_learning"
+    ],
+    "Docs/research/LIVE_INTEL_TOOLCALLING_EXPLORATION_2026-05-05.md": [
+      "live_intelligence",
+      "agent_governance"
+    ]
+  },
+  "edges": [
+    {
+      "relation": "supports",
+      "source": "doc:Docs/AGENT_FEEDBACK_LOOP_SPEC_2026-04-22.md",
+      "target": "concept:feedback",
+      "weight": 1
+    },
+    {
+      "relation": "anchors",
+      "source": "doc:Docs/AGENT_FEEDBACK_LOOP_SPEC_2026-04-22.md",
+      "target": "concept:governance",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/AGENT_FEEDBACK_LOOP_SPEC_2026-04-22.md",
+      "target": "concept:governance",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/AGENT_FEEDBACK_LOOP_SPEC_2026-04-22.md",
+      "target": "concept:live",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/AI_WORKFORCE_REGISTRY_CONTRACT_2026-04-22.md",
+      "target": "concept:feedback",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/AI_WORKFORCE_REGISTRY_CONTRACT_2026-04-22.md",
+      "target": "concept:governance",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/AI_WORKFORCE_REGISTRY_CONTRACT_2026-04-22.md",
+      "target": "concept:live",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/ARCHITECTURE_DECISION_D5_OVERRIDE_LEARNING_2026-04-18.md",
+      "target": "concept:feedback",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/ARCHITECTURE_DECISION_D5_OVERRIDE_LEARNING_2026-04-18.md",
+      "target": "concept:governance",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/ARCHITECTURE_DECISION_D5_OVERRIDE_LEARNING_2026-04-18.md",
+      "target": "concept:live",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/CROSS_PROJECT_AGENTIC_PATTERNS_2026-04-20.md",
+      "target": "concept:feedback",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/CROSS_PROJECT_AGENTIC_PATTERNS_2026-04-20.md",
+      "target": "concept:governance",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/CROSS_PROJECT_AGENTIC_PATTERNS_2026-04-20.md",
+      "target": "concept:graph",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/EXPLORATION_FRONTIER.md",
+      "target": "concept:governance",
+      "weight": 1
+    },
+    {
+      "relation": "anchors",
+      "source": "doc:Docs/FEEDBACK_LOOPS_AND_IMPROVEMENT.md",
+      "target": "concept:feedback",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/FEEDBACK_LOOPS_AND_IMPROVEMENT.md",
+      "target": "concept:feedback",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/FEEDBACK_LOOPS_AND_IMPROVEMENT.md",
+      "target": "concept:live",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/INDEX.md",
+      "target": "concept:autoresearch",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/INDEX.md",
+      "target": "concept:feedback",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/INDEX.md",
+      "target": "concept:governance",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/INDEX.md",
+      "target": "concept:graph",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/INDEX.md",
+      "target": "concept:live",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/ROUTING_STRATEGY.md",
+      "target": "concept:autoresearch",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/ROUTING_STRATEGY.md",
+      "target": "concept:feedback",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/ROUTING_STRATEGY.md",
+      "target": "concept:governance",
+      "weight": 1
+    },
+    {
+      "relation": "anchors",
+      "source": "doc:Docs/TECHNICAL_SCAFFOLD_AND_AUTORESEARCH.md",
+      "target": "concept:autoresearch",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/TECHNICAL_SCAFFOLD_AND_AUTORESEARCH.md",
+      "target": "concept:autoresearch",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/TECHNICAL_SCAFFOLD_AND_AUTORESEARCH.md",
+      "target": "concept:feedback",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/TECHNICAL_SCAFFOLD_AND_AUTORESEARCH.md",
+      "target": "concept:governance",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/product_features/SEMANTIC_TASTE_GRAPH_DISCOVERY.md",
+      "target": "concept:governance",
+      "weight": 1
+    },
+    {
+      "relation": "anchors",
+      "source": "doc:Docs/product_features/SEMANTIC_TASTE_GRAPH_DISCOVERY.md",
+      "target": "concept:graph",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/product_features/SEMANTIC_TASTE_GRAPH_DISCOVERY.md",
+      "target": "concept:graph",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/product_features/SEMANTIC_TASTE_GRAPH_DISCOVERY.md",
+      "target": "concept:live",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/research/AGENT_GRAPH_AND_GLOBAL_ADMIN_EXPLORATION_2026-05-04.md",
+      "target": "concept:feedback",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/research/AGENT_GRAPH_AND_GLOBAL_ADMIN_EXPLORATION_2026-05-04.md",
+      "target": "concept:governance",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/research/AGENT_GRAPH_AND_GLOBAL_ADMIN_EXPLORATION_2026-05-04.md",
+      "target": "concept:graph",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/research/AGENT_GRAPH_AND_GLOBAL_ADMIN_EXPLORATION_2026-05-04.md",
+      "target": "concept:live",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/research/FLW_SPEC_FEEDBACK_LEARNING.md",
+      "target": "concept:feedback",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/research/LIVE_INTEL_TOOLCALLING_EXPLORATION_2026-05-05.md",
+      "target": "concept:governance",
+      "weight": 1
+    },
+    {
+      "relation": "anchors",
+      "source": "doc:Docs/research/LIVE_INTEL_TOOLCALLING_EXPLORATION_2026-05-05.md",
+      "target": "concept:live",
+      "weight": 1
+    },
+    {
+      "relation": "supports",
+      "source": "doc:Docs/research/LIVE_INTEL_TOOLCALLING_EXPLORATION_2026-05-05.md",
+      "target": "concept:live",
+      "weight": 1
+    }
+  ],
+  "nodes": [
+    {
+      "id": "concept:autoresearch",
+      "kind": "concept",
+      "label": "Autoresearch Loop",
+      "path": null,
+      "score": 0
+    },
+    {
+      "id": "concept:feedback",
+      "kind": "concept",
+      "label": "Feedback / Learning Loop",
+      "path": null,
+      "score": 0
+    },
+    {
+      "id": "concept:governance",
+      "kind": "concept",
+      "label": "Governance / Routing",
+      "path": null,
+      "score": 0
+    },
+    {
+      "id": "concept:graph",
+      "kind": "concept",
+      "label": "Graph / Lineage Memory",
+      "path": null,
+      "score": 0
+    },
+    {
+      "id": "concept:live",
+      "kind": "concept",
+      "label": "Live Intelligence",
+      "path": null,
+      "score": 0
+    },
+    {
+      "id": "doc:Docs/AGENT_FEEDBACK_LOOP_SPEC_2026-04-22.md",
+      "kind": "doc",
+      "label": "Agent Feedback Loop: Suitability Overrides \u2014 Full Specification",
+      "path": "Docs/AGENT_FEEDBACK_LOOP_SPEC_2026-04-22.md",
+      "score": 0
+    },
+    {
+      "id": "doc:Docs/research/AGENT_GRAPH_AND_GLOBAL_ADMIN_EXPLORATION_2026-05-04.md",
+      "kind": "doc",
+      "label": "Agent Graph + Global Admin Exploration (First-Principles) \u2014 2026-05-04",
+      "path": "Docs/research/AGENT_GRAPH_AND_GLOBAL_ADMIN_EXPLORATION_2026-05-04.md",
+      "score": 0
+    },
+    {
+      "id": "doc:Docs/AI_WORKFORCE_REGISTRY_CONTRACT_2026-04-22.md",
+      "kind": "doc",
+      "label": "AI Workforce Registry Contract",
+      "path": "Docs/AI_WORKFORCE_REGISTRY_CONTRACT_2026-04-22.md",
+      "score": 0
+    },
+    {
+      "id": "doc:Docs/ARCHITECTURE_DECISION_D5_OVERRIDE_LEARNING_2026-04-18.md",
+      "kind": "doc",
+      "label": "Architecture Decision: D5 \u2014 Override Learning (Feedback Bus)",
+      "path": "Docs/ARCHITECTURE_DECISION_D5_OVERRIDE_LEARNING_2026-04-18.md",
+      "score": 0
+    },
+    {
+      "id": "doc:Docs/CROSS_PROJECT_AGENTIC_PATTERNS_2026-04-20.md",
+      "kind": "doc",
+      "label": "Cross-Project Agentic Pattern Exchange \u2014 WaypointOS \u2194 AdShot",
+      "path": "Docs/CROSS_PROJECT_AGENTIC_PATTERNS_2026-04-20.md",
+      "score": 0
+    },
+    {
+      "id": "doc:Docs/product_features/SEMANTIC_TASTE_GRAPH_DISCOVERY.md",
+      "kind": "doc",
+      "label": "Feature: Semantic Taste Graph Discovery",
+      "path": "Docs/product_features/SEMANTIC_TASTE_GRAPH_DISCOVERY.md",
+      "score": 0
+    },
+    {
+      "id": "doc:Docs/FEEDBACK_LOOPS_AND_IMPROVEMENT.md",
+      "kind": "doc",
+      "label": "Feedback Loops and Improvement",
+      "path": "Docs/FEEDBACK_LOOPS_AND_IMPROVEMENT.md",
+      "score": 0
+    },
+    {
+      "id": "doc:Docs/research/FLW_SPEC_FEEDBACK_LEARNING.md",
+      "kind": "doc",
+      "label": "Flow Spec: Agentic Feedback-Learning (FLW-003)",
+      "path": "Docs/research/FLW_SPEC_FEEDBACK_LEARNING.md",
+      "score": 0
+    },
+    {
+      "id": "doc:Docs/research/LIVE_INTEL_TOOLCALLING_EXPLORATION_2026-05-05.md",
+      "kind": "doc",
+      "label": "Live Intel Toolcalling Exploration \u2014 2026-05-05",
+      "path": "Docs/research/LIVE_INTEL_TOOLCALLING_EXPLORATION_2026-05-05.md",
+      "score": 0
+    },
+    {
+      "id": "doc:Docs/ROUTING_STRATEGY.md",
+      "kind": "doc",
+      "label": "Routing and Optimization Architecture",
+      "path": "Docs/ROUTING_STRATEGY.md",
+      "score": 0
+    },
+    {
+      "id": "doc:Docs/TECHNICAL_SCAFFOLD_AND_AUTORESEARCH.md",
+      "kind": "doc",
+      "label": "Technical Scaffold and Autoresearch Optimization",
+      "path": "Docs/TECHNICAL_SCAFFOLD_AND_AUTORESEARCH.md",
+      "score": 0
+    },
+    {
+      "id": "doc:Docs/EXPLORATION_FRONTIER.md",
+      "kind": "doc",
+      "label": "The Exploration Frontier",
+      "path": "Docs/EXPLORATION_FRONTIER.md",
+      "score": 0
+    },
+    {
+      "id": "doc:Docs/INDEX.md",
+      "kind": "doc",
+      "label": "Validation and Testing (2026-04-17)",
+      "path": "Docs/INDEX.md",
+      "score": 0
+    }
+  ],
+  "root": "/Users/pranay/Projects/travel_agency_agent"
+}

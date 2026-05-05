@@ -81,12 +81,9 @@ def created_trip_id(session_client):
 
 
 @pytest.fixture(autouse=True)
-def allow_beta_privacy():
+def allow_beta_privacy(monkeypatch):
     """Allow beta privacy mode so booking_data with PII can be stored in tests."""
-    original = os.environ.get("DATA_PRIVACY_MODE", "dogfood")
-    os.environ["DATA_PRIVACY_MODE"] = "beta"
-    yield
-    os.environ["DATA_PRIVACY_MODE"] = original
+    monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
 
 
 # ---------------------------------------------------------------------------

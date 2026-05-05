@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "spine_api"))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from server import app
-from persistence import AuditStore
+from spine_api.persistence import AuditStore
 from src.intake.orchestration import run_spine_once
 from src.intake.packet_models import SourceEnvelope
 

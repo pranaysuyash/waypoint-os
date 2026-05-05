@@ -14,46 +14,32 @@ Tests POST /trips/{trip_id}/override endpoint with:
 import json
 import pytest
 import sys
-import shutil
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 from uuid import uuid4
 
-# Add spine_api directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "spine_api"))
-
-# Import the persistence module to test OverrideStore directly
-from persistence import (
+from spine_api.persistence import (
     OverrideStore,
-    OVERRIDES_PER_TRIP_DIR,
-    OVERRIDES_PATTERNS_DIR,
-    OVERRIDES_INDEX_FILE,
 )
 
 
 @pytest.fixture(autouse=True)
-def cleanup_all_overrides():
-    """Cleanup all override files before and after tests."""
-    # Clean before
-    if OVERRIDES_PER_TRIP_DIR.exists():
-        shutil.rmtree(OVERRIDES_PER_TRIP_DIR)
-    if OVERRIDES_PATTERNS_DIR.exists():
-        shutil.rmtree(OVERRIDES_PATTERNS_DIR)
-    if OVERRIDES_INDEX_FILE.exists():
-        OVERRIDES_INDEX_FILE.unlink()
-    
-    OVERRIDES_PER_TRIP_DIR.mkdir(parents=True, exist_ok=True)
-    OVERRIDES_PATTERNS_DIR.mkdir(parents=True, exist_ok=True)
-    
+def override_uses_tmp_path(monkeypatch, tmp_path):
+    """Redirect override stores to tmp_path to avoid shared-data contamination."""
+    from spine_api import persistence as spine_persistence
+
+    per_trip = tmp_path / "overrides" / "per_trip"
+    patterns = tmp_path / "overrides" / "patterns"
+    index_file = tmp_path / "overrides" / "index.json"
+
+    per_trip.mkdir(parents=True, exist_ok=True)
+    patterns.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr(spine_persistence, "OVERRIDES_PER_TRIP_DIR", per_trip)
+    monkeypatch.setattr(spine_persistence, "OVERRIDES_PATTERNS_DIR", patterns)
+    monkeypatch.setattr(spine_persistence, "OVERRIDES_INDEX_FILE", index_file)
+
     yield
-    
-    # Clean after
-    if OVERRIDES_PER_TRIP_DIR.exists():
-        shutil.rmtree(OVERRIDES_PER_TRIP_DIR)
-    if OVERRIDES_PATTERNS_DIR.exists():
-        shutil.rmtree(OVERRIDES_PATTERNS_DIR)
-    if OVERRIDES_INDEX_FILE.exists():
-        OVERRIDES_INDEX_FILE.unlink()
 
 
 
@@ -61,8 +47,10 @@ def cleanup_all_overrides():
 class TestOverrideStore:
     """Test OverrideStore persistence layer."""
     
-    def test_save_override_creates_jsonl_file(self):
+    def test_save_override_creates_jsonl_file(self, override_uses_tmp_path):
         """Override should be appended to trip's JSONL file."""
+        from spine_api import persistence as spine_persistence
+
         trip_id = f"trip_{uuid4().hex[:12]}"
         override_data = {
             "flag": "elderly_mobility_risk",
@@ -73,21 +61,21 @@ class TestOverrideStore:
             "scope": "pattern",
             "original_severity": "high",
         }
-        
+
         override_id = OverrideStore.save_override(trip_id, override_data)
-        
+
         # Verify override_id was generated
         assert override_id.startswith("ovr_")
-        
-        # Verify file was created
-        override_file = OVERRIDES_PER_TRIP_DIR / f"{trip_id}.jsonl"
+
+        # Verify file was created in the fixture-redirected location
+        override_file = spine_persistence.OVERRIDES_PER_TRIP_DIR / f"{trip_id}.jsonl"
         assert override_file.exists()
-        
+
         # Verify override was written
         with open(override_file) as f:
             line = f.readline()
             saved = json.loads(line)
-        
+
         assert saved["override_id"] == override_id
         assert saved["flag"] == "elderly_mobility_risk"
         assert saved["action"] == "suppress"
@@ -173,27 +161,29 @@ class TestOverrideStore:
         assert len(active) == 1
         assert active[0]["override_id"] == override_id_1
     
-    def test_pattern_overrides_stored_separately(self):
+    def test_pattern_overrides_stored_separately(self, override_uses_tmp_path):
         """Pattern-scope overrides should be stored in pattern files."""
+        from spine_api import persistence as spine_persistence
+
         trip_id = f"trip_{uuid4().hex[:12]}"
         decision_type = "elderly_mobility_risk"
-        
+
         override_data = {
             "flag": "elderly_mobility_risk",
             "decision_type": decision_type,
             "action": "suppress",
             "overridden_by": "agent_priya",
             "reason": "Pattern-level override",
-            "scope": "pattern",  # Pattern scope
+            "scope": "pattern",
             "original_severity": "high",
         }
-        
+
         OverrideStore.save_override(trip_id, override_data)
-        
+
         # Check pattern file exists
-        pattern_file = OVERRIDES_PATTERNS_DIR / f"{decision_type}.jsonl"
+        pattern_file = spine_persistence.OVERRIDES_PATTERNS_DIR / f"{decision_type}.jsonl"
         assert pattern_file.exists()
-        
+
         # Retrieve pattern overrides
         pattern_overrides = OverrideStore.get_pattern_overrides(decision_type)
         assert len(pattern_overrides) >= 1

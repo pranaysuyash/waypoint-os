@@ -1,0 +1,2 @@
+{"flag": "elderly_mobility_risk", "action": "suppress", "overridden_by": "agent_1", "reason": "First override", "scope": "this_trip", "override_id": "ovr_700ed7614b96", "trip_id": "trip_5b283beca9ed", "created_at": "2026-05-05T09:48:28.277573+00:00"}
+{"flag": "toddler_pacing_risk", "action": "acknowledge", "overridden_by": "agent_2", "reason": "Second override", "scope": "this_trip", "override_id": "ovr_0fa3cd92d5ac", "trip_id": "trip_5b283beca9ed", "created_at": "2026-05-05T09:48:28.278129+00:00"}

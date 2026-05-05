@@ -6,6 +6,7 @@ from spine_api.persistence import TripStore
 
 
 def test_revision_loop_auto_escalates_on_second_request(tmp_path, monkeypatch):
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
     monkeypatch.setattr(persistence, "DATA_DIR", tmp_path)
     monkeypatch.setattr(persistence, "TRIPS_DIR", tmp_path / "trips")
     (tmp_path / "trips").mkdir()

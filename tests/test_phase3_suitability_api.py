@@ -13,46 +13,25 @@ Tests GET /trips/{trip_id}/suitability endpoint with:
 import json
 import pytest
 import sys
-import os
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 from uuid import uuid4
 
-# Add project root to path
-PROJECT_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / "spine_api"))
-sys.path.insert(0, str(PROJECT_ROOT))
-
-# Privacy mode is managed by the autouse reset_data_privacy_mode fixture
-# in conftest.py. Set to "test" here via fixture to allow saving synthetic data.
-
-from spine_api.persistence import TripStore, TRIPS_DIR
-import shutil
+from spine_api.persistence import TripStore
 
 
 @pytest.fixture(autouse=True)
-def setup_test_env():
-    """Setup privacy mode and ensure trips directory exists; cleanup after."""
-    original_mode = os.environ.get("DATA_PRIVACY_MODE", "dogfood")
-    os.environ["DATA_PRIVACY_MODE"] = "test"
-    TRIPS_DIR.mkdir(parents=True, exist_ok=True)
-    
+def setup_test_env(monkeypatch, tmp_path):
+    """Redirect TripStore to tmp_path so tests never write to the shared data/ directory."""
+    from spine_api import persistence as spine_persistence
+
+    trips_dir = tmp_path / "trips"
+    trips_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(spine_persistence, "TRIPS_DIR", trips_dir)
+
+    monkeypatch.setenv("DATA_PRIVACY_MODE", "test")
+
     yield
-    
-    os.environ["DATA_PRIVACY_MODE"] = original_mode
-    # Cleanup: remove test trips but preserve the shared directory.
-    if TRIPS_DIR.exists():
-        for item in list(TRIPS_DIR.iterdir()):
-            if item.is_file() and item.suffix == ".json":
-                try:
-                    item.unlink()
-                except OSError:
-                    pass
-            elif item.is_dir() and item.suffix == ".lockdir":
-                try:
-                    shutil.rmtree(item)
-                except OSError:
-                    pass
 
 
 def make_trip_data(trip_id: str, agency_id: str, **overrides) -> dict:
@@ -64,7 +43,7 @@ def make_trip_data(trip_id: str, agency_id: str, **overrides) -> dict:
         "raw_input": {
             "fixture_id": f"test_fixture_{uuid4().hex[:8]}",
         },
-        "decision_output": None,
+        "decision": None,
         "created_at": "2026-04-23T10:00:00Z",
     }
     data.update(overrides)
@@ -109,7 +88,7 @@ class TestGetTripSuitabilityEndpoint:
             trip_id,
             agency_id,
             status="in_progress",
-            decision_output={
+            decision={
                 "suitability_flags": [
                     {
                         "flag_type": "elderly_mobility_risk",
@@ -144,7 +123,7 @@ class TestGetTripSuitabilityEndpoint:
             trip_id,
             agency_id,
             status="in_progress",
-            decision_output={
+            decision={
                 "suitability_flags": [
                     {
                         "flag_type": "visa_risk",
@@ -173,7 +152,7 @@ class TestGetTripSuitabilityEndpoint:
             trip_id,
             agency_id,
             status="in_progress",
-            decision_output={
+            decision={
                 "suitability_flags": [
                     {
                         "flag_type": "elderly_mobility_risk",
@@ -222,7 +201,7 @@ class TestGetTripSuitabilityEndpoint:
             trip_id,
             agency_id,
             status="in_progress",
-            decision_output={
+            decision={
                 "suitability_flags": [
                     {
                         "flag_type": "critical_flag",
@@ -273,7 +252,7 @@ class TestGetTripSuitabilityEndpoint:
             trip_id,
             agency_id,
             status="in_progress",
-            decision_output={
+            decision={
                 "suitability_flags": [
                     {
                         "flag_type": "test_flag",
@@ -304,7 +283,7 @@ class TestGetTripSuitabilityEndpoint:
             agency_id,
             status="in_progress",
             created_at=created_at,
-            decision_output={
+            decision={
                 "suitability_flags": [
                     {
                         "flag_type": "test_flag",

@@ -1,0 +1,1 @@
+{"flag": "elderly_mobility_risk", "decision_type": "elderly_mobility_risk", "action": "suppress", "overridden_by": "agent_priya", "reason": "Traveler confirmed fitness via video call. Doctor clearance on file.", "scope": "this_trip", "original_severity": "high", "override_id": "ovr_bf07e6e46268", "trip_id": "trip_088791df28f0", "created_at": "2026-05-05T10:14:26.317968+00:00"}

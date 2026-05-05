@@ -701,8 +701,17 @@ class _SyncAsyncBridge:
 
     def run(self, coro):
         with self._run_lock:
-            future = asyncio.run_coroutine_threadsafe(coro, self.loop)
-            return future.result()
+            try:
+                future = asyncio.run_coroutine_threadsafe(coro, self.loop)
+                return future.result()
+            except RuntimeError as exc:
+                if "cannot schedule new futures after shutdown" in str(exc):
+                    raise RuntimeError(
+                        "TripStore SQL bridge event loop was shut down "
+                        "(possible cause: app lifespan closed the connection pool). "
+                        "Ensure PostgreSQL is reachable or set TRIPSTORE_BACKEND=file."
+                    ) from exc
+                raise
 
 
 _SYNC_ASYNC_BRIDGE: _SyncAsyncBridge | None = None
@@ -711,6 +720,8 @@ _SYNC_ASYNC_BRIDGE: _SyncAsyncBridge | None = None
 def _get_sync_async_bridge() -> _SyncAsyncBridge:
     global _SYNC_ASYNC_BRIDGE
     if _SYNC_ASYNC_BRIDGE is None:
+        _SYNC_ASYNC_BRIDGE = _SyncAsyncBridge()
+    elif _SYNC_ASYNC_BRIDGE.loop.is_closed():
         _SYNC_ASYNC_BRIDGE = _SyncAsyncBridge()
     return _SYNC_ASYNC_BRIDGE
 

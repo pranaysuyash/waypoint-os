@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "spine_api"))
 
 from src.analytics.logger import TimelineEventMapper, TimelineEvent
-from persistence import AuditStore
+from spine_api.persistence import AuditStore
 
 # Import test utilities
 from src.intake.orchestration import run_spine_once

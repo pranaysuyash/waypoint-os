@@ -189,3 +189,28 @@ Output:
 Notes:
 - Uses an in-memory trip repository and audit sink.
 - Does not require backend or frontend servers.
+
+## 7) `build_agent_intelligence_graph.py`
+
+Purpose:
+- Turn the repo's autoresearch, feedback-loop, graph-memory, and live-intelligence docs into a living navigation graph.
+- Produce a durable Markdown + JSON artifact that agents can read before planning changes.
+
+Use cases:
+- Seed a canonical "where to look next" graph from the docs that already define learning, memory, and graph behavior.
+- Surface cross-links between autoresearch, feedback loops, taste graphs, governance, and live intelligence.
+- Keep the repo's improvement system additive instead of relying on a single index file.
+
+Usage:
+```bash
+cd /Users/pranay/Projects/travel_agency_agent
+uv run python tools/build_agent_intelligence_graph.py
+```
+
+Outputs:
+- `Docs/context/AGENT_INTELLIGENCE_GRAPH.md`
+- `Docs/context/agent_intelligence_graph.json`
+
+Notes:
+- Heuristic and additive, not a source-of-truth database.
+- Uses only the repository's existing docs and standard library.

@@ -4,6 +4,7 @@
   - [Feature Completeness Audit](BASELINE_FEATURE_COMPLETENESS_AUDIT_2026-05-02.md) — 20 feature areas vs vision. **Overall score: 24.5%**. Build sequence.
   - [Documentation Health Audit](BASELINE_DOCUMENTATION_HEALTH_2026-05-02.md) — 44 doc issues found across 60+ docs. Root causes. Fix actions.
   - [Master Action Plan](BASELINE_MASTER_ACTION_PLAN_2026-05-02.md) — 49-item dependency-ordered plan. ~4-5 months to production-readiness.
+- [Agent Intelligence Graph](context/AGENT_INTELLIGENCE_GRAPH.md) — Living navigation layer for autoresearch, feedback loops, graph memory, live intelligence, and governance.
 - [Industry Domain Knowledge](industry_domain/INDEX.md) — Core mechanics of travel agencies: roles, vendors, pricing, and compliance.
 - [Product Features & Functionalities](product_features/INDEX.md) — Specific system capabilities from Business and User POV.
     - [Ghost Concierge Autonomic Engine](product_features/GHOST_CONCIERGE_AUTONOMIC_ENGINE.md)

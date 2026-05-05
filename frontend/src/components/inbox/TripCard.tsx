@@ -1,8 +1,8 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useState, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { CheckSquare, Square, ChevronRight, Flag, UserX } from 'lucide-react';
+import { CheckSquare, Square, ChevronRight, Flag, UserX, UserPlus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import type { InboxTrip } from '@/types/governance';
 import type { ViewProfile, MetricField } from '@/lib/inbox-helpers';
@@ -13,6 +13,17 @@ import {
   shouldShowMicroLabels,
   DEFAULT_STAGE_SLA_HOURS,
 } from '@/lib/inbox-helpers';
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Touch detection
+// ──────────────────────────────────────────────────────────────────────────────
+
+function isTouchDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+}
+
+const IS_TOUCH = isTouchDevice();
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Color tokens mapping
@@ -190,13 +201,104 @@ function TripCardStageBadge({ stage }: { stage: string }) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Main
+// Quick Action Chips
 // ──────────────────────────────────────────────────────────────────────────────
+
+function QuickActions({
+  trip,
+  onAssign,
+  agents,
+  isSelected,
+}: {
+  trip: InboxTrip;
+  onAssign?: (tripId: string, agentId: string) => void;
+  agents?: { id: string; name: string }[];
+  isSelected: boolean;
+}) {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    if (showDropdown) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showDropdown]);
+
+  // Suppress during bulk selection
+  if (isSelected) return null;
+
+  const reviewHref = `/trips/${trip.id}/intake`;
+  const isUnassigned = !trip.assignedTo;
+  const hoverClass = IS_TOUCH ? '' : 'opacity-0 group-hover:opacity-100';
+  const actions: React.ReactNode[] = [];
+
+  if (isUnassigned && onAssign && agents && agents.length > 0) {
+    actions.push(
+      <div key="assign" className="relative" ref={dropdownRef}>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setShowDropdown(!showDropdown); }}
+          className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors"
+          style={{ color: 'var(--accent-blue)' }}
+        >
+          <UserPlus className="w-3 h-3" />
+          Assign
+        </button>
+        {showDropdown && (
+          <div className="absolute bottom-full left-0 mb-1 w-44 bg-[#0f1115] border border-[#30363d] rounded-lg shadow-xl z-20 py-1">
+            {agents.map((agent) => (
+              <button
+                key={agent.id}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAssign(trip.id, agent.id);
+                  setShowDropdown(false);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-left text-ui-xs text-[#e6edf3] hover:bg-[#1c2128] transition-colors"
+              >
+                <span className="h-5 w-5 rounded-full bg-[rgba(88,166,255,0.15)] flex items-center justify-center text-[10px] font-bold text-[#58a6ff]">
+                  {agent.name.charAt(0)}
+                </span>
+                <span>{agent.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>,
+    );
+  }
+
+  actions.push(
+    <Link
+      key="view"
+      href={reviewHref}
+      onClick={(e) => e.stopPropagation()}
+      className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors"
+      style={{ color: 'var(--accent-blue)' }}
+    >
+      <ChevronRight className="w-3 h-3" />
+      View
+    </Link>,
+  );
+
+  return (
+    <div className={`flex items-center gap-1 transition-opacity ${hoverClass}`}>
+      {actions}
+    </div>
+  );
+}
 
 export interface TripCardProps {
   trip: InboxTrip;
   isSelected: boolean;
   onSelect: (id: string, selected: boolean) => void;
+  onAssign?: (tripId: string, agentId: string) => void;
+  agents?: { id: string; name: string }[];
   viewProfile?: ViewProfile;
 }
 
@@ -204,6 +306,8 @@ export const TripCard = memo(function TripCard({
   trip,
   isSelected,
   onSelect,
+  onAssign,
+  agents,
   viewProfile = 'operations',
 }: TripCardProps) {
   const accentColor = PRIORITY_BAR[trip.priority] || PRIORITY_BAR.medium;
@@ -304,17 +408,12 @@ export const TripCard = memo(function TripCard({
           >
             {trip.id}
           </span>
-          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Link
-              href={reviewHref}
-              data-testid="trip-card-view-link"
-              className="inline-flex items-center gap-1 text-[11px] font-medium transition-colors"
-              style={{ color: 'var(--accent-blue)' }}
-            >
-              View
-              <ChevronRight className="h-3.5 w-3.5" style={{ color: 'var(--accent-blue)' }} />
-            </Link>
-          </div>
+          <QuickActions
+            trip={trip}
+            onAssign={onAssign}
+            agents={agents}
+            isSelected={isSelected}
+          />
         </div>
       </div>
     </Card>

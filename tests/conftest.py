@@ -31,6 +31,16 @@ import os
 if not os.environ.get("JWT_SECRET"):
     os.environ["JWT_SECRET"] = "test-jwt-secret-for-pytest-only-32byt"
 
+# Tell the app we are inside a test run so the lifespan skips background
+# agents that would create the TripStore SQL bridge (agent_work_coordinator
+# always uses _run_async_blocking, bypassing TRIPSTORE_BACKEND=file).
+os.environ["RUNNING_TESTS"] = "1"
+
+# Disable OpenTelemetry in tests — the BatchSpanProcessor background thread
+# outlives the TestClient event loop and corrupts the asyncpg pool. OTel would
+# try to export to localhost:4317 (the collector) which isn't running in tests.
+os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = ""
+
 # ---------------------------------------------------------------------------
 # Module paths (needed before app import)
 # ---------------------------------------------------------------------------
@@ -67,6 +77,25 @@ def session_client():
     from server import app
     from spine_api.core.security import create_access_token
 
+    # Canonicalise the persistence module identity so that
+    # ``import persistence`` and ``from spine_api import persistence``
+    # always resolve to the *same* module object.  Without this,
+    # server.py's import-persistence fallback creates a second copy of
+    # the module, and monkey-patching one copy does not affect the
+    # other → test isolation bugs (11 ghost failures on 2026-05-04).
+    #
+    # NOTE: forced assignment (not setdefault) because
+    # spine_api/core/audit_bridge.py imports from spine_api.persistence
+    # before this runs, creating a separate sys.modules entry.
+    # We also set spine_api.persistence as a package attribute because
+    # from spine_api import persistence uses the package's __dict__,
+    # not sys.modules, when resolving the submodule.
+    import sys as _sys
+    import persistence as _persistence
+    _sys.modules["spine_api.persistence"] = _persistence
+    import spine_api as _spine_api
+    _spine_api.persistence = _persistence
+
     token = create_access_token(
         user_id="323468de-ba3d-437b-aa10-35b281a0c6a6",
         agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
@@ -86,6 +115,10 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers",
         "integration: marks tests that require a live spine_api instance (skip with -m 'not integration')",
+    )
+    config.addinivalue_line(
+        "markers",
+        "require_postgres: marks tests that require a running PostgreSQL instance",
     )
 
 
@@ -119,13 +152,18 @@ def pytest_collection_modifyitems(config, items):
 # ---------------------------------------------------------------------------
 @pytest.fixture(autouse=True)
 def reset_data_privacy_mode():
-    """Reset DATA_PRIVACY_MODE to dogfood before and after each test."""
+    """Reset DATA_PRIVACY_MODE to dogfood before and after each test.
+
+    Previously this saved and restored the *current* value, which meant a
+    leaked DATA_PRIVACY_MODE from a buggy fixture would cascade to the next
+    test (the restore re-applied the leaked value).  Always restore to
+    dogfood so each test starts fresh regardless of what neighbours do.
+    """
     import os
 
-    original = os.environ.get("DATA_PRIVACY_MODE", "dogfood")
     os.environ["DATA_PRIVACY_MODE"] = "dogfood"
     yield
-    os.environ["DATA_PRIVACY_MODE"] = original
+    os.environ["DATA_PRIVACY_MODE"] = "dogfood"
 
 
 # ---------------------------------------------------------------------------
@@ -190,4 +228,43 @@ def reset_global_singletons():
     except Exception:
         pass
 
+    # Reset persistence module state (monkeypatched paths leak between tests)
+    try:
+        import spine_api.persistence as _persistence
+        _persistence._tripstore_instance = None
+        _persistence._sql_tripstore_instance = None
+    except Exception:
+        pass
+
+    # Reset LLMUsageGuard singleton so env changes are picked up
+    try:
+        from src.llm.usage_guard import reset_usage_guard
+        reset_usage_guard()
+    except Exception:
+        pass
+
     yield
+
+
+# ---------------------------------------------------------------------------
+# Postgres availability check
+# Auto-skips tests requiring a running PostgreSQL when unavailable.
+# ---------------------------------------------------------------------------
+
+def _is_postgres_available() -> bool:
+    import socket
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)
+        result = sock.connect_ex(('localhost', 5432))
+        sock.close()
+        return result == 0
+    except Exception:
+        return False
+
+
+@pytest.fixture(autouse=True)
+def _skip_if_no_postgres(request):
+    if request.node.get_closest_marker("require_postgres"):
+        if not _is_postgres_available():
+            pytest.skip("PostgreSQL not available (docker compose up -d postgres)")

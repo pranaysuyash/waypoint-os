@@ -1,11 +1,15 @@
 Use sources in this order:
-1) travel_agency_agent/frontend/AGENTS.md (if present)
-2) Project-local docs/prompts/worklogs under travel_agency_agent/frontend
-3) travel_agency_agent/frontend/docs/context/agent-start/SESSION_CONTEXT.md
-4) /Users/pranay/Projects/workspace_memory/sources/...
+1) /Users/pranay/AGENTS.md
+2) /Users/pranay/Projects/AGENTS.md
+3) travel_agency_agent/AGENTS.md or travel_agency_agent/CLAUDE.md (if present)
+4) Project-local docs/prompts/worklogs under travel_agency_agent
+5) travel_agency_agent/Docs/context/AGENT_INTELLIGENCE_GRAPH.md (if present)
+6) travel_agency_agent/Docs/context/agent-start/SESSION_CONTEXT.md
+7) /Users/pranay/Projects/workspace_memory/sources/...
 
 Rules:
 - Cite concrete file paths for decisions or constraints.
 - If sources conflict, show the conflict and ask before proceeding.
 - Prefer latest dated docs when available.
+- Treat travel_agency_agent/.agent/* as compatibility mirrors only.
 - Append new decisions/worklogs to project docs, then re-run agent-start.

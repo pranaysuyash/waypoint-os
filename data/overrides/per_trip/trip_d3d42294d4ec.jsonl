@@ -1,0 +1,1 @@
+{"flag": "elderly_mobility_risk", "action": "downgrade", "new_severity": "medium", "overridden_by": "agent_priya", "reason": "Traveler confirmed fitness", "scope": "this_trip", "original_severity": "high", "override_id": "ovr_cfa5774d64ce", "trip_id": "trip_d3d42294d4ec", "created_at": "2026-05-05T09:43:34.320275+00:00"}

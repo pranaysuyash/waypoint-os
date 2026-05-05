@@ -24,7 +24,7 @@ if not JWT_SECRET:
         "JWT_SECRET is required. Set it in the environment before starting the API."
     )
 JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_HOURS = 24
+ACCESS_TOKEN_EXPIRE_HOURS = 0.25  # 15 minutes, aligned with cookie max_age in auth.py:52
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 

@@ -256,7 +256,11 @@ export default function InboxPage() {
     setSelectedTrips(new Set());
   }, []);
 
-  const handleAssign = useCallback((agentId: string) => {
+  const handleCardAssign = useCallback((tripId: string, agentId: string) => {
+    assignTrips({ tripIds: [tripId], assignTo: agentId, notifyAssignee: true });
+  }, [assignTrips]);
+
+  const handleBulkAssign = useCallback((agentId: string) => {
     assignTrips({ tripIds: Array.from(selectedTrips), assignTo: agentId, notifyAssignee: true });
     handleClearSelection();
   }, [selectedTrips, handleClearSelection, assignTrips]);
@@ -470,6 +474,8 @@ export default function InboxPage() {
               trip={trip}
               isSelected={selectedTrips.has(trip.id)}
               onSelect={handleSelect}
+              onAssign={handleCardAssign}
+              agents={agents}
               viewProfile={viewProfile}
             />
           ))}

@@ -273,10 +273,10 @@ class TestRateLimitMiddlewareRegistration:
             f"Handlers: {list(app.exception_handlers.keys())}"
         )
 
-    def test_auth_router_has_7_routes(self):
+    def test_auth_router_has_9_routes(self):
         from spine_api.routers.auth import router
-        assert len(router.routes) == 7, (
-            f"Expected 7 auth routes, got {len(router.routes)}: "
+        assert len(router.routes) == 9, (
+            f"Expected 9 auth routes, got {len(router.routes)}: "
             f"{[r.path for r in router.routes]}"
         )
 

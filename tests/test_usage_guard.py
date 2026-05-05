@@ -400,63 +400,45 @@ class TestLLMUsageGuard:
         assert result.allowed is True
         assert len(result.warnings) >= 2
 
-    def test_from_env_defaults(self):
+    def test_from_env_defaults(self, monkeypatch):
         """from_env creates guard with defaults when env vars not set."""
-        import os
-        env_backup = os.environ.copy()
-        try:
-            for key in ["LLM_GUARD_ENABLED", "LLM_MAX_CALLS_PER_HOUR", "LLM_DAILY_BUDGET"]:
-                os.environ.pop(key, None)
+        for key in ["LLM_GUARD_ENABLED", "LLM_MAX_CALLS_PER_HOUR", "LLM_DAILY_BUDGET"]:
+            monkeypatch.delenv(key, raising=False)
 
-            reset_usage_guard()
-            guard = LLMUsageGuard.from_env()
+        reset_usage_guard()
+        guard = LLMUsageGuard.from_env()
 
-            assert guard.enabled is True
-            assert guard.max_calls_per_hour is None
-            assert guard.daily_budget is None
-            assert guard.budget_mode == "warn"
-            assert guard.budget_warning_thresholds == [0.5, 0.8, 1.0]
-        finally:
-            os.environ.clear()
-            os.environ.update(env_backup)
+        assert guard.enabled is True
+        assert guard.max_calls_per_hour is None
+        assert guard.daily_budget is None
+        assert guard.budget_mode == "warn"
+        assert guard.budget_warning_thresholds == [0.5, 0.8, 1.0]
 
-    def test_from_env_parses_values(self):
+    def test_from_env_parses_values(self, monkeypatch):
         """from_env parses environment variables correctly."""
-        import os
-        env_backup = os.environ.copy()
-        try:
-            os.environ["LLM_GUARD_ENABLED"] = "1"
-            os.environ["LLM_MAX_CALLS_PER_HOUR"] = "50"
-            os.environ["LLM_DAILY_BUDGET"] = "500.0"
-            os.environ["LLM_BUDGET_MODE"] = "block"
-            os.environ["LLM_BUDGET_WARNING_THRESHOLDS"] = "0.25,0.5,0.75,1.0"
+        monkeypatch.setenv("LLM_GUARD_ENABLED", "1")
+        monkeypatch.setenv("LLM_MAX_CALLS_PER_HOUR", "50")
+        monkeypatch.setenv("LLM_DAILY_BUDGET", "500.0")
+        monkeypatch.setenv("LLM_BUDGET_MODE", "block")
+        monkeypatch.setenv("LLM_BUDGET_WARNING_THRESHOLDS", "0.25,0.5,0.75,1.0")
 
-            reset_usage_guard()
-            guard = LLMUsageGuard.from_env()
+        reset_usage_guard()
+        guard = LLMUsageGuard.from_env()
 
-            assert guard.enabled is True
-            assert guard.max_calls_per_hour == 50
-            assert guard.daily_budget == 500.0
-            assert guard.budget_mode == "block"
-            assert guard.budget_warning_thresholds == [0.25, 0.5, 0.75, 1.0]
-        finally:
-            os.environ.clear()
-            os.environ.update(env_backup)
+        assert guard.enabled is True
+        assert guard.max_calls_per_hour == 50
+        assert guard.daily_budget == 500.0
+        assert guard.budget_mode == "block"
+        assert guard.budget_warning_thresholds == [0.25, 0.5, 0.75, 1.0]
 
-    def test_guard_disabled_from_env(self):
+    def test_guard_disabled_from_env(self, monkeypatch):
         """from_env respects LLM_GUARD_ENABLED=0."""
-        import os
-        env_backup = os.environ.copy()
-        try:
-            os.environ["LLM_GUARD_ENABLED"] = "0"
+        monkeypatch.setenv("LLM_GUARD_ENABLED", "0")
 
-            reset_usage_guard()
-            guard = LLMUsageGuard.from_env()
+        reset_usage_guard()
+        guard = LLMUsageGuard.from_env()
 
-            assert guard.enabled is False
-        finally:
-            os.environ.clear()
-            os.environ.update(env_backup)
+        assert guard.enabled is False
 
 
 class TestLLMUsageGuardIntegration:

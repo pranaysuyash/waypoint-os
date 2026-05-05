@@ -419,17 +419,24 @@ async def lifespan(app: FastAPI):
     install_sensitive_data_filter()
     app.state.limiter = limiter
     watchdog.start()
-    _recovery_agent.start()
-    _agent_supervisor.start()
-    _zombie_reaper_start()
+
+    # Skip background agents during test runs so they don't create the
+    # TripStore SQL bridge (agent_work_coordinator always uses
+    # _run_async_blocking, bypassing TRIPSTORE_BACKEND=file), which can
+    # leave the bridge's event loop in a broken state after teardown.
+    if not os.environ.get("RUNNING_TESTS"):
+        _recovery_agent.start()
+        _agent_supervisor.start()
+        _zombie_reaper_start()
     # Note: We no longer auto-seed at startup.
     # Seeding is now done per-agency for test users in the /trips endpoint.
     logger.info("Spine API startup complete")
     yield
     # Shutdown
-    _zombie_reaper_stop()
-    _agent_supervisor.stop()
-    _recovery_agent.stop()
+    if not os.environ.get("RUNNING_TESTS"):
+        _zombie_reaper_stop()
+        _agent_supervisor.stop()
+        _recovery_agent.stop()
     watchdog.stop()
     logger.info("Spine API shutdown complete")
 
@@ -2126,7 +2133,7 @@ def get_trip_suitability(
     
     try:
         # Get the decision output if it exists
-        decision_output = trip.get("decision_output")
+        decision_output = trip.get("decision")
         if decision_output and isinstance(decision_output, dict):
             # Extract suitability_flags from decision_output
             flags_from_decision = decision_output.get("suitability_flags", [])
@@ -2669,6 +2676,10 @@ class PublicBookingDataSubmitRequest(BaseModel):
     booking_data: BookingDataModel
 
 
+class GenerateCollectionLinkRequest(BaseModel):
+    expires_in_hours: int = 168
+
+
 async def _ts(fn, *args, **kwargs):
     """Run a sync TripStore call from an async endpoint without blocking the event loop.
 
@@ -2679,10 +2690,17 @@ async def _ts(fn, *args, **kwargs):
     return await asyncio.to_thread(fn, *args, **kwargs)
 
 
+def _safe_fact_value(slot: object) -> object:
+    """Extract only the primitive value from a fact slot that may carry metadata."""
+    if isinstance(slot, dict):
+        return slot.get("value")
+    return getattr(slot, "value", slot)
+
+
 @app.post("/trips/{trip_id}/collection-link", response_model=CollectionLinkResponse)
 async def create_collection_link(
     trip_id: str,
-    expires_in_hours: int = 168,
+    request: GenerateCollectionLinkRequest = GenerateCollectionLinkRequest(),
     agency: Agency = Depends(get_current_agency),
 ):
     """Generate a customer collection link for this trip."""
@@ -2699,7 +2717,7 @@ async def create_collection_link(
 
     async with async_session_maker() as db:
         plain_token, record = await generate_token(
-            db, trip_id, agency.id, agency.id, expires_in_hours,
+            db, trip_id, agency.id, agency.id, request.expires_in_hours,
         )
 
     host = os.getenv("FRONTEND_URL", "http://localhost:3000")
@@ -2789,6 +2807,9 @@ async def accept_pending_booking_data(trip_id: str, request: Optional[ReviewActi
     if not trip or trip.get("agency_id") != agency.id:
         raise HTTPException(status_code=404, detail="Trip not found")
 
+    if trip.get("stage", "discovery") not in ("proposal", "booking"):
+        raise HTTPException(status_code=403, detail="Accept only allowed at proposal/booking stage")
+
     pending = await _ts(TripStore.get_pending_booking_data, trip_id)
     if not pending:
         raise HTTPException(status_code=404, detail="No pending booking data to accept")
@@ -2829,7 +2850,7 @@ async def accept_pending_booking_data(trip_id: str, request: Optional[ReviewActi
         "traveler_count": len(validated.travelers),
         "has_payer": validated.payer is not None,
         "has_passport_data": any(t.passport_number for t in validated.travelers),
-        "reason": request.reason if request else None,
+        "reason_present": bool(request and request.reason),
     })
 
     booking_data = await _ts(TripStore.get_booking_data, trip_id)
@@ -2851,7 +2872,7 @@ async def reject_pending_booking_data(trip_id: str, request: Optional[ReviewActi
 
     AuditStore.log_event("booking_data_rejected_from_customer", agency.id, {
         "trip_id": trip_id,
-        "reason": request.reason if request else None,
+        "reason_present": bool(request and request.reason),
     })
 
     return {"ok": True, "message": "Pending booking data rejected"}
@@ -2877,14 +2898,16 @@ async def get_public_collection_form(request: Request, response: Response, token
     if not trip:
         return PublicCollectionContext(valid=False, reason="invalid")
 
-    # Build safe summary — NO PII, NO internal fields
+    # Stage gate: collection only valid at proposal/booking
+    if trip.get("stage", "discovery") not in ("proposal", "booking"):
+        return PublicCollectionContext(valid=False, reason="invalid")
+
+    # Build safe summary — NO PII, NO internal fields, NO fact metadata
     extracted = trip.get("extracted") or {}
     facts = extracted.get("facts", {}) if isinstance(extracted, dict) else {}
 
-    dest = facts.get("destination_candidates")
-    dest_val = getattr(dest, "value", dest) if dest else None
-    date_win = facts.get("date_window")
-    date_val = getattr(date_win, "value", date_win) if date_win else None
+    dest_val = _safe_fact_value(facts.get("destination_candidates"))
+    date_val = _safe_fact_value(facts.get("date_window"))
 
     pending = await _ts(TripStore.get_pending_booking_data, record.trip_id)
 
@@ -2911,6 +2934,11 @@ async def submit_public_booking_data(request: Request, response: Response, token
     async with async_session_maker() as db:
         record = await validate_token(db, token)
     if not record:
+        raise HTTPException(status_code=410, detail="invalid")
+
+    # Stage gate: submission only valid at proposal/booking
+    trip = await _ts(TripStore.get_trip, record.trip_id)
+    if not trip or trip.get("stage", "discovery") not in ("proposal", "booking"):
         raise HTTPException(status_code=410, detail="invalid")
 
     # Check not already submitted

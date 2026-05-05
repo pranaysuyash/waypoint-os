@@ -14,6 +14,8 @@ import json
 from datetime import datetime, timedelta, timezone
 import pytest
 
+pytestmark = pytest.mark.require_postgres
+
 
 class TestTripFollowUpDueDate:
     """Tests for follow_up_due_date field in Trip model."""

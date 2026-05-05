@@ -207,9 +207,9 @@ describe('OverviewPage', () => {
 
     render(<OverviewPage />);
 
-    expect(screen.getByText('No trips in planning yet')).toBeInTheDocument();
-    expect(screen.getByText(/Add a customer inquiry and Waypoint/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /add new inquiry/i })).toHaveAttribute('href', ROUTES.intake);
+    expect(screen.getByText('Welcome to Waypoint')).toBeInTheDocument();
+    expect(screen.getByText('Invite your team')).toBeInTheDocument();
+    expect(screen.getByText('Add your first inquiry')).toBeInTheDocument();
   });
 
   it('keeps the trip list visible when planning already has trips', () => {

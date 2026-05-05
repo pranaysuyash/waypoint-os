@@ -258,6 +258,7 @@ class TestCallCaptureFollowUpDueDate:
         """Consent should persist the raw upload bytes plus a manifest."""
         import spine_api.persistence as persistence
 
+        monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
         monkeypatch.setattr(persistence, "DATA_DIR", tmp_path, raising=False)
         monkeypatch.setattr(persistence, "TRIPS_DIR", tmp_path / "trips", raising=False)
         monkeypatch.setattr(persistence, "ASSIGNMENTS_DIR", tmp_path / "assignments", raising=False)
@@ -328,7 +329,7 @@ class TestCallCaptureFollowUpDueDate:
 
     def test_public_checker_export_and_delete_routes_work(self, disable_audit_logging, tmp_path, monkeypatch, session_client):
         """The public checker should export and purge consented artifacts through the API."""
-        import persistence
+        from spine_api import persistence
 
         monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
         monkeypatch.setattr(persistence, "DATA_DIR", tmp_path, raising=False)

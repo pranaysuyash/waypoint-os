@@ -29,9 +29,10 @@ engine = create_async_engine(
     DATABASE_URL,
     echo=False,  # Set to True for SQL logging during development
     future=True,
-    pool_size=20,
-    max_overflow=10,
+    pool_size=30,
+    max_overflow=20,
     pool_pre_ping=True,
+    pool_recycle=3600,
 )
 
 # Async session factory

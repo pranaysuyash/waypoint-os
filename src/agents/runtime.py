@@ -18,6 +18,9 @@ from typing import Any, Callable, Iterable, Optional, Protocol
 from uuid import uuid4
 
 from src.agents.events import AgentEvent, AgentEventType
+from src.agents.risk_contracts import feasibility_constraint_to_structured
+from src.intake.route_analysis import analyze_route_complexity, parse_itinerary_text
+from src.intake.scenario_policy import ScenarioPolicy, load_scenario_policy
 from src.agents.live_tools import (
     FlightStatusTool,
     PriceWatchTool,
@@ -814,7 +817,7 @@ class QualityEscalationAgent:
 
         flags = get_field(trip, "suitability_flags", "suitabilityFlags")
         if not flags and isinstance(trip, dict):
-            decision_output = trip.get("decision_output")
+            decision_output = trip.get("decision")
             if isinstance(decision_output, dict):
                 flags = decision_output.get("suitability_flags")
         if isinstance(flags, list):
@@ -1483,10 +1486,11 @@ class ConstraintFeasibilityAgent:
     )
 
     _terminal_statuses = {"closed", "cancelled", "completed", "archived", "lost"}
-    _eligible_stages = {"", "discovery", "intake", "qualification", "feasibility", "shortlist", "proposal", "quoted", "booking"}
-
-    def __init__(self, now_provider: Callable[[], datetime] | None = None):
+    _eligible_stages = {"", "discovery", "intake", "qualification", "feasibility", "shortlist", "proposal", "quoted", "booking", "ticketed", "pre_departure", "in_progress", "traveling"}
+    _active_refresh_stages = {"ticketed", "pre_departure", "in_progress", "traveling"}
+    def __init__(self, now_provider: Callable[[], datetime] | None = None, policy: ScenarioPolicy | None = None):
         self.now_provider = now_provider or (lambda: datetime.now(timezone.utc))
+        self.policy = policy or load_scenario_policy()
 
     def scan(self, trip_repo: TripRepository) -> Iterable[WorkItem]:
         for trip in trip_repo.list_active():
@@ -1500,7 +1504,11 @@ class ConstraintFeasibilityAgent:
             if not context["destinations"] and context["stage"] not in {"feasibility", "shortlist", "proposal", "quoted", "booking"}:
                 continue
             existing = get_field(trip, "constraint_feasibility_assessment")
-            if isinstance(existing, dict) and existing.get("facts_marker") == context["facts_marker"]:
+            if (
+                isinstance(existing, dict)
+                and existing.get("facts_marker") == context["facts_marker"]
+                and not self._needs_periodic_refresh(context["stage"], existing)
+            ):
                 continue
             yield WorkItem(
                 agent_name=self.definition.name,
@@ -1550,6 +1558,9 @@ class ConstraintFeasibilityAgent:
         traveler_count = self._traveler_count(travelers_value)
         stage = str(first_non_empty(get_field(trip, "stage"), get_field(trip, "status"), "")).lower()
         raw_note = str(first_non_empty(get_nested(trip, "raw_input.raw_note"), get_field(trip, "raw_note"), "") or "")
+        party_composition = self._extract_party_composition(facts)
+        route_summary = self._extract_route_summary(trip)
+        activity_titles = self._extract_activity_titles(trip)
         facts_marker = "|".join(
             [
                 stage or "unknown",
@@ -1557,6 +1568,12 @@ class ConstraintFeasibilityAgent:
                 str(date_window or "no_date_window").lower(),
                 str(budget_value or "no_budget").lower(),
                 str(traveler_count or "no_travelers"),
+                str(route_summary.get("flight_legs") or 0),
+                str(route_summary.get("transfer_like_items") or 0),
+                str(route_summary.get("tight_connections") or 0),
+                str(route_summary.get("activity_count") or 0),
+                str(party_composition.get("elderly") or 0),
+                str(party_composition.get("toddlers") or 0),
             ]
         )
         return {
@@ -1567,11 +1584,159 @@ class ConstraintFeasibilityAgent:
             "traveler_count": traveler_count,
             "raw_note": raw_note,
             "travelers": get_field(trip, "travelers") or [],
+            "party_composition": party_composition,
+            "route_summary": route_summary,
+            "activity_titles": activity_titles,
             "document_readiness": get_field(trip, "document_readiness_checklist") or {},
             "destination_intelligence": get_field(trip, "destination_intelligence_snapshot") or {},
             "weather_pivot": get_field(trip, "weather_pivot_packet") or {},
+            "safety_alert": get_field(trip, "safety_alert_packet") or {},
+            "flight_status": get_field(trip, "flight_status_snapshot") or {},
             "facts_marker": facts_marker,
         }
+
+    def _needs_periodic_refresh(self, stage: str, existing_assessment: dict[str, Any]) -> bool:
+        if stage not in self._active_refresh_stages:
+            return False
+        assessed_at = parse_dt(existing_assessment.get("assessed_at"))
+        if assessed_at is None:
+            return True
+        age = self.now_provider() - assessed_at
+        return age >= timedelta(hours=max(1, self.policy.feasibility_refresh_hours_active))
+
+    def _extract_party_composition(self, facts: dict[str, Any]) -> dict[str, int]:
+        slot = facts.get("party_composition")
+        raw = _slot_value(slot) if slot is not None else None
+        if not isinstance(raw, dict):
+            return {}
+        output: dict[str, int] = {}
+        for key in ("adults", "children", "toddlers", "elderly"):
+            value = raw.get(key)
+            if isinstance(value, (int, float)) and value > 0:
+                output[key] = int(value)
+        return output
+
+    def _extract_route_summary(self, trip: Any) -> dict[str, int]:
+        raw_flights = first_non_empty(
+            get_field(trip, "flights", "flight_segments"),
+            get_nested(trip, "booking_data.flights"),
+            get_nested(trip, "itinerary.flights"),
+            [],
+        )
+        flight_legs = sum(1 for item in _flatten_values(raw_flights) if isinstance(item, dict) or _stringify(item))
+
+        raw_items = first_non_empty(
+            get_field(trip, "itinerary_items", "activities", "planned_activities"),
+            get_nested(trip, "itinerary.items"),
+            get_nested(trip, "structured_json.itinerary_items"),
+            [],
+        )
+        transfer_like_items = 0
+        activity_count = 0
+        for item in _flatten_values(raw_items):
+            text = ""
+            if isinstance(item, dict):
+                activity_count += 1
+                text = " ".join(
+                    [
+                        _stringify(item.get("title")),
+                        _stringify(item.get("name")),
+                        _stringify(item.get("label")),
+                        _stringify(item.get("type")),
+                        _stringify(item.get("category")),
+                    ]
+                ).lower()
+            else:
+                text = _stringify(item).lower()
+                if text:
+                    activity_count += 1
+            if text and any(term in text for term in self.policy.transfer_terms):
+                transfer_like_items += 1
+
+        tight_connections = self._tight_connection_count(raw_flights)
+        if flight_legs == 0 and transfer_like_items == 0 and activity_count == 0:
+            note_text = _stringify(first_non_empty(get_nested(trip, "raw_input.raw_note"), get_field(trip, "raw_note"), ""))
+            inferred = parse_itinerary_text(note_text)
+            flight_legs = int(inferred.get("inferred_flight_legs") or 0)
+            transfer_like_items = int(inferred.get("inferred_transfer_like_items") or 0)
+            activity_count = int(inferred.get("inferred_activity_count") or 0)
+
+        return {
+            "flight_legs": flight_legs,
+            "transfer_like_items": transfer_like_items,
+            "activity_count": activity_count,
+            "tight_connections": tight_connections,
+        }
+
+    def _tight_connection_count(self, raw_flights: Any) -> int:
+        flights: list[dict[str, Any]] = [item for item in _flatten_values(raw_flights) if isinstance(item, dict)]
+        if len(flights) < 2:
+            return 0
+        count = 0
+        for idx in range(len(flights) - 1):
+            current = flights[idx]
+            nxt = flights[idx + 1]
+            explicit_minutes = first_non_empty(
+                nxt.get("connection_minutes"),
+                nxt.get("layover_minutes"),
+                current.get("connection_minutes"),
+                current.get("layover_minutes"),
+            )
+            explicit = _as_float(explicit_minutes)
+            if explicit is not None:
+                threshold = float(self.policy.tight_connection_minutes_threshold)
+                if self._connection_uses_stress_hub(current, nxt):
+                    threshold += 20.0
+                if explicit < threshold:
+                    count += 1
+                continue
+            arr = parse_dt(first_non_empty(current.get("arrival_time"), current.get("arrival_at"), current.get("arrive_at")))
+            dep = parse_dt(first_non_empty(nxt.get("departure_time"), nxt.get("departure_at"), nxt.get("depart_at")))
+            if arr and dep:
+                delta_minutes = (dep - arr).total_seconds() / 60.0
+                threshold = float(self.policy.tight_connection_minutes_threshold)
+                if self._connection_uses_stress_hub(current, nxt):
+                    threshold += 20.0
+                if 0 <= delta_minutes < threshold:
+                    count += 1
+        return count
+
+    def _connection_uses_stress_hub(self, current: dict[str, Any], nxt: dict[str, Any]) -> bool:
+        current_arrival = str(
+            first_non_empty(
+                current.get("arrival_airport"),
+                current.get("destination"),
+                current.get("to"),
+            )
+            or ""
+        ).upper()
+        next_departure = str(
+            first_non_empty(
+                nxt.get("departure_airport"),
+                nxt.get("origin"),
+                nxt.get("from"),
+            )
+            or ""
+        ).upper()
+        hubs = self.policy.stress_hub_airports
+        return (current_arrival in hubs) or (next_departure in hubs)
+
+    def _extract_activity_titles(self, trip: Any) -> list[str]:
+        raw_items = first_non_empty(
+            get_field(trip, "itinerary_items", "activities", "planned_activities"),
+            get_nested(trip, "itinerary.items"),
+            get_nested(trip, "structured_json.itinerary_items"),
+            [],
+        )
+        titles: list[str] = []
+        for item in _flatten_values(raw_items):
+            if isinstance(item, dict):
+                text = _stringify(first_non_empty(item.get("title"), item.get("name"), item.get("label"), item.get("type"), item.get("category")))
+            else:
+                text = _stringify(item)
+            if text:
+                titles.append(text)
+        return titles
 
     def _normalize_list(self, value: Any) -> list[str]:
         values: list[str] = []
@@ -1673,6 +1838,16 @@ class ConstraintFeasibilityAgent:
                         "Reduce destination count or add nights before proposal.",
                     )
                 )
+            if len(destinations) >= 3 and trip_days <= len(destinations):
+                hard_blockers.append(
+                    self._constraint(
+                        "routing",
+                        "hard",
+                        "Multi-country hop density is too high for available trip days.",
+                        "Reduce destination count or add nights to avoid same-day cross-country fatigue.",
+                        {"destinations": destinations, "trip_days": trip_days},
+                    )
+                )
 
         document_readiness = context.get("document_readiness") if isinstance(context.get("document_readiness"), dict) else {}
         doc_risk = str(document_readiness.get("risk_level") or "").lower()
@@ -1708,6 +1883,48 @@ class ConstraintFeasibilityAgent:
                 self._constraint("weather", "soft", "Weather pivot risk needs operator review.", "Include weather alternatives and buffers in proposal.")
             )
 
+        safety_alert = context.get("safety_alert") if isinstance(context.get("safety_alert"), dict) else {}
+        safety_risk = str(safety_alert.get("risk_level") or "").lower()
+        if safety_risk in {"high", "unknown"}:
+            hard_blockers.append(
+                self._constraint(
+                    "safety",
+                    "hard",
+                    f"Regional safety advisory risk is {safety_risk}.",
+                    "Require human safety review, alternate routing, and traveler briefing before confirmation.",
+                )
+            )
+        elif safety_risk == "medium":
+            soft_constraints.append(
+                self._constraint(
+                    "safety",
+                    "soft",
+                    "Regional safety advisory needs review.",
+                    "Include safety assumptions, contingency support, and route alternatives.",
+                )
+            )
+
+        flight_status = context.get("flight_status") if isinstance(context.get("flight_status"), dict) else {}
+        flight_risk = str(flight_status.get("risk_level") or "").lower()
+        if flight_risk in {"high", "unknown"}:
+            hard_blockers.append(
+                self._constraint(
+                    "flight_disruption",
+                    "hard",
+                    f"Flight disruption risk is {flight_risk}.",
+                    "Revalidate operational timing and alternatives before traveler commitment.",
+                )
+            )
+        elif flight_risk == "medium":
+            soft_constraints.append(
+                self._constraint(
+                    "flight_disruption",
+                    "soft",
+                    "Flight disruption risk needs operator review.",
+                    "Add buffer plans and disruption contingencies.",
+                )
+            )
+
         if any(term in raw_note for term in {"wheelchair", "accessible", "mobility", "step-free"}):
             soft_constraints.append(
                 self._constraint(
@@ -1731,8 +1948,145 @@ class ConstraintFeasibilityAgent:
                 self._constraint("pace", "soft", "Fast-paced trip requested.", "Validate pace against traveler profile before proposal.")
             )
 
+        composition = context.get("party_composition") if isinstance(context.get("party_composition"), dict) else {}
+        profile = self._infer_party_profile(composition, context.get("travelers"), raw_note)
+        elderly_count = int(profile.get("elderly_count") or 0)
+        toddler_count = int(composition.get("toddlers") or 0)
+        parent_ambiguous = bool(profile.get("parent_ambiguous"))
+        older_adult_present = bool(profile.get("older_adult_present"))
+        infant_present = bool(profile.get("infant_present"))
+        mobility_constrained_present = bool(profile.get("mobility_constrained_present"))
+        route_summary = context.get("route_summary") if isinstance(context.get("route_summary"), dict) else {}
+        flight_legs = int(route_summary.get("flight_legs") or 0)
+        transfer_like_items = int(route_summary.get("transfer_like_items") or 0)
+        activity_count = int(route_summary.get("activity_count") or 0)
+        tight_connections = int(route_summary.get("tight_connections") or 0)
+        activity_titles = context.get("activity_titles") if isinstance(context.get("activity_titles"), list) else []
+        activity_text = " ".join(_stringify(value).lower() for value in activity_titles)
+        route_analysis = analyze_route_complexity(
+            flight_legs=flight_legs,
+            transfer_like_items=transfer_like_items,
+            activity_count=activity_count,
+            elderly_count=elderly_count,
+            toddler_count=toddler_count,
+        )
+
+        if elderly_count > 0 and flight_legs >= self.policy.elderly_hard_flight_leg_threshold:
+            hard_blockers.append(
+                self._constraint(
+                    "routing",
+                    "hard",
+                    f"Elderly traveler context with {flight_legs} flight legs indicates high transfer-fatigue risk.",
+                    "Reduce flight legs, insert recovery windows, and confirm assisted transfer support before proposal.",
+                    {"elderly_count": elderly_count, "flight_legs": flight_legs, "route_analysis": route_analysis.to_dict()},
+                )
+            )
+        elif elderly_count > 0 and (
+            flight_legs >= self.policy.elderly_soft_flight_leg_threshold
+            or transfer_like_items >= self.policy.elderly_soft_transfer_threshold
+        ):
+            soft_constraints.append(
+                self._constraint(
+                    "routing",
+                    "soft",
+                    "Elderly traveler context suggests route complexity/transfer fatigue risk.",
+                    "Prefer simpler routing and confirm mobility-assist transfer planning.",
+                    {
+                        "elderly_count": elderly_count,
+                        "flight_legs": flight_legs,
+                        "transfer_like_items": transfer_like_items,
+                        "route_analysis": route_analysis.to_dict(),
+                    },
+                )
+            )
+
+        if toddler_count > 0 and any(term in activity_text for term in self.policy.extreme_activity_terms):
+            hard_blockers.append(
+                self._constraint(
+                    "activity",
+                    "hard",
+                    "Toddler traveler context conflicts with extreme-intensity activity plan.",
+                    "Replace trek/extreme segments with toddler-safe alternatives or split itinerary by traveler cohort.",
+                    {"toddlers": toddler_count, "route_analysis": route_analysis.to_dict()},
+                )
+            )
+
+        if parent_ambiguous and (flight_legs >= self.policy.elderly_soft_flight_leg_threshold or transfer_like_items >= self.policy.elderly_soft_transfer_threshold):
+            soft_constraints.append(
+                self._constraint(
+                    "routing",
+                    "soft",
+                    "Parent cohort is present but age/mobility tolerance is not explicit for route complexity.",
+                    "Confirm parent transfer tolerance before locking dense multi-hop routing.",
+                    {"flight_legs": flight_legs, "transfer_like_items": transfer_like_items},
+                )
+            )
+
+        if older_adult_present and flight_legs >= self.policy.elderly_hard_flight_leg_threshold:
+            soft_constraints.append(
+                self._constraint(
+                    "routing",
+                    "soft",
+                    "Older-adult traveler context detected on a high-leg itinerary.",
+                    "Confirm comfort, recovery windows, and transfer support before confirmation.",
+                    {"flight_legs": flight_legs},
+                )
+            )
+
+        if infant_present and (flight_legs >= 2 or activity_count >= 4):
+            soft_constraints.append(
+                self._constraint(
+                    "pace",
+                    "soft",
+                    "Infant traveler context suggests elevated transfer and pacing sensitivity.",
+                    "Prefer longer layovers, reduce activity density, and confirm infant-ready logistics.",
+                    {"flight_legs": flight_legs, "activity_count": activity_count},
+                )
+            )
+
+        if tight_connections > 0 and (elderly_count > 0 or toddler_count > 0):
+            hard_blockers.append(
+                self._constraint(
+                    "routing",
+                    "hard",
+                    f"{tight_connections} tight flight connection(s) detected for vulnerable traveler composition.",
+                    "Increase layover buffers or simplify routing before proposal confirmation.",
+                    {
+                        "tight_connections": tight_connections,
+                        "threshold_minutes": self.policy.tight_connection_minutes_threshold,
+                        "route_analysis": route_analysis.to_dict(),
+                    },
+                )
+            )
+        elif tight_connections > 0 and mobility_constrained_present:
+            hard_blockers.append(
+                self._constraint(
+                    "routing",
+                    "hard",
+                    "Tight connections detected with mobility-constrained traveler context.",
+                    "Increase connection buffers and verify assisted transfer support.",
+                    {"tight_connections": tight_connections, "threshold_minutes": self.policy.tight_connection_minutes_threshold},
+                )
+            )
+
+        if elderly_count > 0 and any(term in activity_text for term in self.policy.elderly_water_risk_terms):
+            soft_constraints.append(
+                self._constraint(
+                    "activity",
+                    "soft",
+                    "Elderly traveler context includes water-intensity activity risk.",
+                    "Confirm medical fitness, supervision, and lower-intensity alternatives for elderly travelers.",
+                    {"elderly_count": elderly_count, "route_analysis": route_analysis.to_dict()},
+                )
+            )
+
         status = "blocked" if hard_blockers else "review" if soft_constraints or missing_facts else "feasible"
         operator_next_action = "human_feasibility_review" if hard_blockers else "clarify_feasibility_facts" if missing_facts else "include_constraints_in_proposal" if soft_constraints else "continue_proposal"
+        structured_risks = [
+            feasibility_constraint_to_structured(item, self.definition.name)
+            for item in [*hard_blockers, *soft_constraints]
+            if isinstance(item, dict)
+        ]
         return {
             "assessed_at": assessed_at.isoformat(),
             "source": self.definition.name,
@@ -1740,6 +2094,7 @@ class ConstraintFeasibilityAgent:
             "status": status,
             "hard_blockers": hard_blockers,
             "soft_constraints": soft_constraints,
+            "structured_risks": structured_risks,
             "missing_facts": sorted(set(missing_facts)),
             "operator_next_action": operator_next_action,
             "authority": "Internal feasibility support only. Do not auto-reject, auto-send, book, or mutate canonical trip stage.",
@@ -1755,6 +2110,59 @@ class ConstraintFeasibilityAgent:
         if metadata:
             item["metadata"] = metadata
         return item
+
+    def _infer_party_profile(self, composition: dict[str, Any], travelers: Any, raw_note: str) -> dict[str, Any]:
+        elderly_count = int(composition.get("elderly") or 0)
+        older_adult_present = False
+        parent_ambiguous = False
+        infant_present = bool(composition.get("infants") or 0)
+        mobility_constrained_present = False
+        note = (raw_note or "").lower()
+
+        explicit_elderly_terms = {"elderly", "senior", "ageing parent", "aging parent", "grandparent", "grandparents"}
+        if elderly_count == 0 and any(term in note for term in explicit_elderly_terms):
+            elderly_count = 1
+
+        if any(term in note for term in {"parent", "parents", "mom", "mother", "dad", "father", "in-law", "in laws", "inlaws"}):
+            parent_ambiguous = True
+        if any(term in note for term in {"grandma", "grandmother", "grandpa", "grandfather", "grandparents"}):
+            elderly_count = max(1, elderly_count)
+            parent_ambiguous = False
+        if any(term in note for term in {"infant", "baby", "newborn"}):
+            infant_present = True
+        if any(term in note for term in {"wheelchair", "knee issue", "mobility issue", "step-free", "cannot walk long"}):
+            mobility_constrained_present = True
+
+        for traveler in _flatten_values(travelers):
+            if not isinstance(traveler, dict):
+                continue
+            age = first_non_empty(traveler.get("age"), traveler.get("traveler_age"), traveler.get("age_years"))
+            age_val = _as_float(age)
+            if age_val is None:
+                traveler_type = str(first_non_empty(traveler.get("traveler_type"), traveler.get("type"), traveler.get("age_group"), "")).lower()
+                if traveler_type in {"infant", "baby"}:
+                    infant_present = True
+                if traveler_type in {"senior", "elderly"}:
+                    elderly_count += 1
+                    parent_ambiguous = False
+                if traveler.get("mobility_constraint") or traveler.get("wheelchair_required"):
+                    mobility_constrained_present = True
+                continue
+            if age_val < 2:
+                infant_present = True
+            elif age_val >= 60:
+                elderly_count += 1
+                parent_ambiguous = False
+            elif age_val >= 45:
+                older_adult_present = True
+
+        return {
+            "elderly_count": max(0, elderly_count),
+            "older_adult_present": older_adult_present,
+            "parent_ambiguous": parent_ambiguous and elderly_count == 0,
+            "infant_present": infant_present,
+            "mobility_constrained_present": mobility_constrained_present,
+        }
 
 
 class ProposalReadinessAgent:

@@ -432,12 +432,266 @@ def test_constraint_feasibility_agent_skips_when_current_assessment_exists():
             "destination": "Singapore",
             "constraint_feasibility_assessment": {
                 "assessed_at": "2026-05-04T00:00:00+00:00",
-                "facts_marker": "proposal|singapore|no_date_window|no_budget|no_travelers",
+                "facts_marker": "proposal|singapore|no_date_window|no_budget|no_travelers|0|0|0|0|0|0",
             },
         },
     ])
 
     assert list(ConstraintFeasibilityAgent().scan(repo)) == []
+
+
+def test_constraint_feasibility_agent_flags_route_fatigue_and_toddler_extreme_activity():
+    repo = _Repo([
+        {
+            "id": "trip_route_activity_risk",
+            "stage": "proposal",
+            "raw_input": {"raw_note": "Family inquiry with elderly parents and toddler, wants mountain trek loop"},
+            "extracted": {
+                "facts": {
+                    "destination": {"value": "Nepal"},
+                    "date_window": {"value": "2026-09-10 to 2026-09-20"},
+                    "budget": {"value": "$9000"},
+                    "travelers": {"value": 5},
+                    "party_composition": {"value": {"adults": 2, "toddlers": 1, "elderly": 2}},
+                }
+            },
+            "flights": [
+                {"carrier": "SQ", "flight_number": "406"},
+                {"carrier": "AI", "flight_number": "215"},
+                {"carrier": "RA", "flight_number": "229"},
+                {"carrier": "RA", "flight_number": "230"},
+            ],
+            "itinerary_items": [
+                {"title": "Kathmandu airport transfer", "type": "transfer"},
+                {"title": "Annapurna basecamp trek", "type": "outdoor"},
+            ],
+        },
+    ])
+    agent = ConstraintFeasibilityAgent(now_provider=lambda: datetime(2026, 5, 4, tzinfo=timezone.utc))
+
+    result = agent.execute(next(agent.scan(repo)), repo)
+
+    assert result.success is True
+    assessment = repo.trips["trip_route_activity_risk"]["constraint_feasibility_assessment"]
+    assert assessment["status"] == "blocked"
+    assert isinstance(assessment.get("structured_risks"), list) and assessment["structured_risks"]
+    assert any(
+        blocker["category"] == "routing" and "flight legs" in blocker["message"].lower()
+        for blocker in assessment["hard_blockers"]
+    )
+    assert any(
+        blocker["category"] == "activity" and "toddler" in blocker["message"].lower()
+        for blocker in assessment["hard_blockers"]
+    )
+    assert any(risk.get("category") == "routing" for risk in assessment["structured_risks"])
+
+
+def test_constraint_feasibility_agent_flags_safety_and_flight_disruption_for_active_trip():
+    now = datetime(2026, 5, 4, 12, 0, tzinfo=timezone.utc)
+    repo = _Repo([
+        {
+            "id": "trip_live_risk",
+            "stage": "in_progress",
+            "extracted": {
+                "facts": {
+                    "destination": {"value": "Paris"},
+                    "date_window": {"value": "2026-05-01 to 2026-05-07"},
+                    "budget": {"value": "$5000"},
+                    "travelers": {"value": 2},
+                }
+            },
+            "safety_alert_packet": {"risk_level": "high"},
+            "flight_status_snapshot": {"risk_level": "medium"},
+        },
+    ])
+    agent = ConstraintFeasibilityAgent(now_provider=lambda: now)
+    result = agent.execute(next(agent.scan(repo)), repo)
+    assert result.success is True
+    assessment = repo.trips["trip_live_risk"]["constraint_feasibility_assessment"]
+    assert any(blocker["category"] == "safety" for blocker in assessment["hard_blockers"])
+    assert any(flag["category"] == "flight_disruption" for flag in assessment["soft_constraints"])
+
+
+def test_constraint_feasibility_agent_refreshes_active_stage_on_age():
+    now = datetime(2026, 5, 4, 12, 0, tzinfo=timezone.utc)
+    old_assessed = (now - timedelta(hours=8)).isoformat()
+    repo = _Repo([
+        {
+            "id": "trip_refresh_active",
+            "stage": "in_progress",
+            "destination": "Singapore",
+            "constraint_feasibility_assessment": {
+                "assessed_at": old_assessed,
+                "facts_marker": "in_progress|singapore|no_date_window|no_budget|no_travelers|0|0|0|0|0|0",
+            },
+        }
+    ])
+    agent = ConstraintFeasibilityAgent(now_provider=lambda: now)
+    items = list(agent.scan(repo))
+    assert len(items) == 1
+
+
+def test_constraint_feasibility_uses_itinerary_text_when_structured_route_missing():
+    repo = _Repo([
+        {
+            "id": "trip_text_route",
+            "stage": "proposal",
+            "raw_input": {
+                "raw_note": (
+                    "2 elderly travelers and 1 toddler. "
+                    "Fly Paris to Zurich then Milan then Prague in 4 days. "
+                    "Airport transfer each stop and mountain trek day."
+                )
+            },
+            "extracted": {
+                "facts": {
+                    "destination": {"value": "Europe"},
+                    "date_window": {"value": "2026-06-10 to 2026-06-13"},
+                    "budget": {"value": "$7000"},
+                    "travelers": {"value": 3},
+                    "party_composition": {"value": {"elderly": 2, "toddlers": 1}},
+                }
+            },
+        },
+    ])
+    agent = ConstraintFeasibilityAgent(now_provider=lambda: datetime(2026, 5, 4, tzinfo=timezone.utc))
+    result = agent.execute(next(agent.scan(repo)), repo)
+    assert result.success is True
+    assessment = repo.trips["trip_text_route"]["constraint_feasibility_assessment"]
+    assert assessment["status"] in {"review", "blocked"}
+    assert any(item["category"] == "routing" for item in [*assessment["hard_blockers"], *assessment["soft_constraints"]])
+
+
+def test_constraint_feasibility_does_not_assume_parents_are_elderly():
+    repo = _Repo([
+        {
+            "id": "trip_parents_not_elderly",
+            "stage": "proposal",
+            "raw_input": {
+                "raw_note": (
+                    "I am 19 booking for my parents (44 and 46). "
+                    "Fly Paris to Zurich then Milan then Prague. airport transfers included."
+                )
+            },
+            "extracted": {
+                "facts": {
+                    "destination": {"value": "Europe"},
+                    "date_window": {"value": "2026-07-10 to 2026-07-16"},
+                    "budget": {"value": "$6000"},
+                    "travelers": {"value": 3},
+                }
+            },
+            "travelers": [
+                {"name": "Booker", "age": 19},
+                {"name": "Parent A", "age": 44},
+                {"name": "Parent B", "age": 46},
+            ],
+        }
+    ])
+    agent = ConstraintFeasibilityAgent(now_provider=lambda: datetime(2026, 5, 4, tzinfo=timezone.utc))
+    result = agent.execute(next(agent.scan(repo)), repo)
+    assert result.success is True
+    assessment = repo.trips["trip_parents_not_elderly"]["constraint_feasibility_assessment"]
+    # Should review due to route density/ambiguity, but must not trigger elderly hard blocker.
+    assert not any(
+        item["category"] == "routing" and "elderly traveler context" in item["message"].lower()
+        for item in assessment["hard_blockers"]
+    )
+    assert any(
+        item["category"] == "routing" and "parent cohort" in item["message"].lower()
+        for item in assessment["soft_constraints"]
+    )
+
+
+def test_constraint_feasibility_flags_infant_pacing_sensitivity():
+    repo = _Repo([
+        {
+            "id": "trip_infant_pacing",
+            "stage": "proposal",
+            "raw_input": {
+                "raw_note": (
+                    "Traveling with a baby. Fly Paris to Zurich then Milan then Prague. "
+                    "Airport transfer at each stop."
+                )
+            },
+            "extracted": {
+                "facts": {
+                    "destination": {"value": "Europe"},
+                    "date_window": {"value": "2026-07-10 to 2026-07-16"},
+                    "budget": {"value": "$7000"},
+                    "travelers": {"value": 3},
+                }
+            },
+            "travelers": [{"name": "Parent", "age": 33}, {"name": "Baby", "age": 1}],
+        }
+    ])
+    agent = ConstraintFeasibilityAgent(now_provider=lambda: datetime(2026, 5, 4, tzinfo=timezone.utc))
+    result = agent.execute(next(agent.scan(repo)), repo)
+    assert result.success is True
+    assessment = repo.trips["trip_infant_pacing"]["constraint_feasibility_assessment"]
+    assert any(item["category"] == "pace" and "infant traveler context" in item["message"].lower() for item in assessment["soft_constraints"])
+
+
+def test_constraint_feasibility_flags_grandparents_as_elderly_context():
+    repo = _Repo([
+        {
+            "id": "trip_grandparents",
+            "stage": "proposal",
+            "raw_input": {
+                "raw_note": (
+                    "Traveling with grandparents. Fly Paris to Zurich then Milan then Prague then Vienna."
+                )
+            },
+            "extracted": {
+                "facts": {
+                    "destination": {"value": "Europe"},
+                    "date_window": {"value": "2026-07-10 to 2026-07-18"},
+                    "budget": {"value": "$9000"},
+                    "travelers": {"value": 4},
+                }
+            },
+        }
+    ])
+    agent = ConstraintFeasibilityAgent(now_provider=lambda: datetime(2026, 5, 4, tzinfo=timezone.utc))
+    result = agent.execute(next(agent.scan(repo)), repo)
+    assert result.success is True
+    assessment = repo.trips["trip_grandparents"]["constraint_feasibility_assessment"]
+    assert any(
+        item["category"] == "routing" and "elderly traveler context" in item["message"].lower()
+        for item in [*assessment["hard_blockers"], *assessment["soft_constraints"]]
+    )
+
+
+def test_constraint_feasibility_tight_connection_stress_hub_threshold():
+    now = datetime(2026, 5, 4, 12, 0, tzinfo=timezone.utc)
+    repo = _Repo([
+        {
+            "id": "trip_stress_hub_connection",
+            "stage": "proposal",
+            "raw_input": {"raw_note": "Family with toddler"},
+            "extracted": {
+                "facts": {
+                    "destination": {"value": "Europe"},
+                    "date_window": {"value": "2026-07-10 to 2026-07-14"},
+                    "budget": {"value": "$7000"},
+                    "travelers": {"value": 3},
+                    "party_composition": {"value": {"toddlers": 1}},
+                }
+            },
+            "flights": [
+                {"departure_airport": "DEL", "arrival_airport": "CDG", "arrival_time": "2026-07-10T10:00:00+00:00"},
+                {"departure_airport": "CDG", "arrival_airport": "ZRH", "departure_time": "2026-07-10T11:35:00+00:00"},
+            ],
+        }
+    ])
+    agent = ConstraintFeasibilityAgent(now_provider=lambda: now)
+    result = agent.execute(next(agent.scan(repo)), repo)
+    assert result.success is True
+    assessment = repo.trips["trip_stress_hub_connection"]["constraint_feasibility_assessment"]
+    assert any(
+        blocker["category"] == "routing" and "tight flight connection" in blocker["message"].lower()
+        for blocker in assessment["hard_blockers"]
+    )
 
 
 def test_proposal_readiness_agent_blocks_thin_or_risky_proposal():
@@ -790,7 +1044,7 @@ def test_quality_agent_escalates_high_suitability_flags():
         {
             "id": "trip_flag",
             "status": "new",
-            "decision_output": {"suitability_flags": [{"severity": "high", "reason": "mobility"}]},
+            "decision": {"suitability_flags": [{"severity": "high", "reason": "mobility"}]},
         },
     ])
     result = QualityEscalationAgent().execute(next(QualityEscalationAgent().scan(repo)), repo)
