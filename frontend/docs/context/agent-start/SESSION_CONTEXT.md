@@ -1,6 +1,6 @@
 # Session Context
 
-- Generated: 2026-05-05T10:08:20Z
+- Generated: 2026-05-05T10:18:06Z
 - Project: `travel_agency_agent`
 - Provider: `local`
 - Model: `BAAI/bge-m3`

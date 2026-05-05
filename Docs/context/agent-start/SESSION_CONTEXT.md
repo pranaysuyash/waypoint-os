@@ -49,3 +49,10 @@ _Search timed out. Retry when the retrieval store is less busy._
 ### Common Failure Modes
 - Collection: `projects_workspace_shared`
 - Query: `lessons learned mistakes retrospectives postmortems`
+_Search timed out. Retry when the retrieval store is less busy._
+
+### System Learning Graph
+- Collection: `projects_workspace_shared`
+- Query: `knowledge graph memory learning feedback loops autoresearch semantic taste graph`
+_Search timed out. Retry when the retrieval store is less busy._
+
