@@ -36,6 +36,7 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["insights/bottlenecks", { backendPath: "analytics/bottlenecks" }],
   ["insights/escalations", { backendPath: "analytics/escalations" }],
   ["insights/funnel", { backendPath: "analytics/funnel" }],
+  ["insights/product-b/kpis", { backendPath: "analytics/product-b/kpis" }],
   ["insights/alerts", { backendPath: "analytics/alerts" }],
   ["insights/export", { backendPath: "analytics/export" }],
 
@@ -83,6 +84,7 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
       timeoutMs: LONG_RUNNING_COMMAND_TIMEOUT_MS,
     },
   ],
+  ["public-checker/events", { backendPath: "api/public-checker/events" }],
   ["public-checker/{id}", { backendPath: "api/public-checker/{id}" }],
   ["public-checker/{id}/export", { backendPath: "api/public-checker/{id}/export" }],
   ["assignments", { backendPath: "assignments" }],

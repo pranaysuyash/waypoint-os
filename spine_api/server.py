@@ -138,6 +138,7 @@ from spine_api.contract import (
 )
 from spine_api.services import membership_service
 from spine_api.services.inbox_projection import InboxProjectionService, build_inbox_response
+from spine_api.product_b_events import ProductBEventStore
 
 from src.intake.orchestration import run_spine_once
 from src.intake.packet_models import SourceEnvelope
@@ -163,7 +164,17 @@ ConfigStore = persistence.ConfigStore
 save_processed_trip = persistence.save_processed_trip
 save_processed_trip_async = persistence.save_processed_trip_async
 
-PUBLIC_CHECKER_AGENCY_ID = "waypoint-hq"
+DEFAULT_PUBLIC_CHECKER_AGENCY_ID = "waypoint-hq"
+
+
+def _get_public_checker_agency_id() -> str:
+    """Resolve public-checker agency id from environment with strict normalization."""
+    agency_id = os.environ.get("PUBLIC_CHECKER_AGENCY_ID", DEFAULT_PUBLIC_CHECKER_AGENCY_ID)
+    return str(agency_id or "").strip()
+
+
+def _is_sql_tripstore_backend() -> bool:
+    return os.getenv("TRIPSTORE_BACKEND", "file").lower().strip() == "sql"
 
 # Import TimelineEventMapper from analytics
 # Note: logger not available yet, so we suppress warnings here
@@ -403,6 +414,63 @@ async def _ensure_memberships_schema_compatibility() -> None:
         raise
 
 
+async def _validate_public_checker_agency_configuration() -> None:
+    """
+    Enforce public-checker agency invariants before serving traffic.
+
+    In SQL mode, public-checker trips persist with a fixed agency_id. That id
+    must be explicitly configured (or use default) and must exist in agencies.
+    """
+    agency_id = _get_public_checker_agency_id()
+    if not agency_id:
+        raise RuntimeError(
+            "PUBLIC_CHECKER_AGENCY_ID resolved to empty string. "
+            "Set PUBLIC_CHECKER_AGENCY_ID to a valid agencies.id."
+        )
+
+    if not _is_sql_tripstore_backend():
+        logger.info(
+            "Public checker agency validation skipped (TRIPSTORE_BACKEND!=sql). "
+            "configured_agency_id=%s",
+            agency_id,
+        )
+        return
+
+    try:
+        async with engine.begin() as conn:
+            table_exists_result = await conn.execute(text("""
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public' AND table_name = 'agencies'
+                )
+            """))
+            agencies_table_exists = bool(table_exists_result.scalar())
+            if not agencies_table_exists:
+                raise RuntimeError(
+                    "Public checker requires SQL agencies table, but 'agencies' does not exist. "
+                    "Run migrations before starting in TRIPSTORE_BACKEND=sql mode."
+                )
+
+            agency_exists_result = await conn.execute(
+                text("SELECT EXISTS (SELECT 1 FROM agencies WHERE id = :agency_id)"),
+                {"agency_id": agency_id},
+            )
+            agency_exists = bool(agency_exists_result.scalar())
+            if not agency_exists:
+                raise RuntimeError(
+                    "Public checker agency invariant failed: configured agency_id "
+                    f"'{agency_id}' (env PUBLIC_CHECKER_AGENCY_ID) is missing from agencies table. "
+                    "Create/seed that agency or set PUBLIC_CHECKER_AGENCY_ID to an existing agencies.id."
+                )
+
+        logger.info("Public checker agency validation passed for agency_id=%s", agency_id)
+    except RuntimeError:
+        raise
+    except Exception as exc:
+        raise RuntimeError(f"Failed public checker agency validation: {exc}") from exc
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan context manager (replaces deprecated on_event)."""
@@ -416,6 +484,7 @@ async def lifespan(app: FastAPI):
         logger.warning("⚠️  AUTH DISABLED — local/test only. Do not use in production.")
     await _ensure_agencies_schema_compatibility()
     await _ensure_memberships_schema_compatibility()
+    await _validate_public_checker_agency_configuration()
     install_sensitive_data_filter()
     app.state.limiter = limiter
     watchdog.start()
@@ -1283,6 +1352,24 @@ def _execute_spine_pipeline(
         set_strict_mode(False)
 
 
+def _derive_product_b_finding_category(finding_text: str) -> str:
+    text = finding_text.lower()
+    if any(token in text for token in ("price", "budget", "cost", "fare", "expensive")):
+        return "cost"
+    if any(token in text for token in ("visa", "policy", "entry", "insurance", "passport")):
+        return "policy"
+    if any(token in text for token in ("timing", "transfer", "connection", "delay", "distance", "weather")):
+        return "logistics"
+    return "suitability"
+
+
+def _safe_log_product_b_event(payload: dict[str, Any]) -> None:
+    try:
+        ProductBEventStore.log_event(payload)
+    except Exception as event_err:
+        logger.warning("product_b_event_log_failed event=%s error=%s", payload.get("event_name"), event_err)
+
+
 def _run_public_checker_submission(request_dict: dict[str, Any]) -> RunStatusResponse:
     """Run the public checker synchronously and return a result payload."""
     t0 = time.perf_counter()
@@ -1298,10 +1385,52 @@ def _run_public_checker_submission(request_dict: dict[str, Any]) -> RunStatusRes
     if request.strict_leakage:
         set_strict_mode(True)
 
+    source_payload: dict[str, Any] = {}
+    if isinstance(request.structured_json, dict):
+        maybe_source_payload = request.structured_json.get("source_payload")
+        if isinstance(maybe_source_payload, dict):
+            source_payload = maybe_source_payload
+
+    session_id = str(source_payload.get("session_id") or request_dict.get("session_id") or f"sess_{uuid.uuid4()}")
+    inquiry_id = str(source_payload.get("inquiry_id") or request_dict.get("inquiry_id") or run_id)
+
+    input_mode = "freeform_text"
+    if source_payload.get("kind") == "file_upload":
+        input_mode = "upload"
+    elif source_payload.get("kind") == "mixed":
+        input_mode = "mixed"
+
+    trip_context = source_payload.get("trip_context") if isinstance(source_payload.get("trip_context"), dict) else {}
+    has_destination = bool(trip_context.get("destination_candidates") or trip_context.get("destination") or request_dict.get("destination"))
+    has_dates = bool(trip_context.get("date_window") or trip_context.get("travel_window") or request_dict.get("date_window"))
+    has_budget_band = bool(trip_context.get("budget_raw_text") or request_dict.get("budget") or request_dict.get("budget_band"))
+    has_traveler_profile = bool(trip_context.get("party_size") or request_dict.get("party_size") or request_dict.get("traveler_profile"))
+
+    intake_event = ProductBEventStore.build_event(
+        event_name="intake_started",
+        session_id=session_id,
+        inquiry_id=inquiry_id,
+        trip_id=None,
+        actor_type="traveler",
+        actor_id=None,
+        workspace_id=_get_public_checker_agency_id(),
+        channel="web",
+        locale=None,
+        currency=None,
+        properties={
+            "input_mode": input_mode,
+            "has_destination": has_destination,
+            "has_dates": has_dates,
+            "has_budget_band": has_budget_band,
+            "has_traveler_profile": has_traveler_profile,
+        },
+    )
+    _safe_log_product_b_event(intake_event)
+
     try:
         envelopes = build_envelopes(request.model_dump(exclude_none=True))
         fixture_expectations = load_fixture_expectations(request.scenario_id)
-        agency_settings = AgencySettingsStore.load(PUBLIC_CHECKER_AGENCY_ID)
+        agency_settings = AgencySettingsStore.load(_get_public_checker_agency_id())
         stage_started_at: dict[str, float] = {}
         current_stage: Optional[str] = None
 
@@ -1425,13 +1554,55 @@ def _run_public_checker_submission(request_dict: dict[str, Any]) -> RunStatusRes
                     "execution_ms": round(execution_ms, 2),
                     "submission": consented_submission,
                     "retention_consent": request.retention_consent,
+                    "session_id": session_id,
+                    "inquiry_id": inquiry_id,
                 },
             },
             source="public_checker",
-            agency_id=PUBLIC_CHECKER_AGENCY_ID,
+            agency_id=_get_public_checker_agency_id(),
             user_id=None,
             trip_status=trip_status,
         )
+
+        primary_hard_blockers = [str(item) for item in decision_payload.get("hard_blockers") or [] if str(item).strip()]
+        primary_soft_blockers = [str(item) for item in decision_payload.get("soft_blockers") or [] if str(item).strip()]
+        first_finding_text = ""
+        finding_severity = "optional"
+        if primary_hard_blockers:
+            first_finding_text = primary_hard_blockers[0]
+            finding_severity = "must_fix"
+        elif primary_soft_blockers:
+            first_finding_text = primary_soft_blockers[0]
+            finding_severity = "should_review"
+
+        if first_finding_text:
+            confidence_score_raw = validation_payload.get("overall_score")
+            if isinstance(confidence_score_raw, (int, float)):
+                confidence_score = max(0.0, min(1.0, float(confidence_score_raw) / 100.0))
+            else:
+                confidence_score = 0.5
+
+            first_finding_event = ProductBEventStore.build_event(
+                event_name="first_credible_finding_shown",
+                session_id=session_id,
+                inquiry_id=inquiry_id,
+                trip_id=trip_id_saved,
+                actor_type="system",
+                actor_id=None,
+                workspace_id=_get_public_checker_agency_id(),
+                channel="api",
+                locale=None,
+                currency=None,
+                properties={
+                    "time_from_intake_start_ms": int(round(execution_ms)),
+                    "finding_id": f"fnd_{abs(hash(first_finding_text)) % 10_000_000}",
+                    "finding_category": _derive_product_b_finding_category(first_finding_text),
+                    "severity": finding_severity,
+                    "confidence_score": round(confidence_score, 3),
+                    "evidence_present": True,
+                },
+            )
+            _safe_log_product_b_event(first_finding_event)
 
         now_iso = datetime.now(timezone.utc).isoformat()
 
@@ -1441,7 +1612,7 @@ def _run_public_checker_submission(request_dict: dict[str, Any]) -> RunStatusRes
             trip_id=trip_id_saved,
             stage=request.stage,
             operating_mode=request.operating_mode,
-            agency_id=PUBLIC_CHECKER_AGENCY_ID,
+            agency_id=_get_public_checker_agency_id(),
             created_at=now_iso,
             started_at=now_iso,
             completed_at=now_iso,
@@ -1473,6 +1644,52 @@ def run_public_checker(
 ) -> RunStatusResponse:
     """Submit a public itinerary checker run without agency auth."""
     return _run_public_checker_submission(request.model_dump(exclude_none=True))
+
+
+class PublicCheckerEventEnvelope(BaseModel):
+    event_name: str
+    event_version: int = 1
+    event_id: Optional[str] = None
+    occurred_at: Optional[str] = None
+    session_id: str
+    inquiry_id: str
+    trip_id: Optional[str] = None
+    actor_type: str
+    actor_id: Optional[str] = None
+    workspace_id: Optional[str] = None
+    channel: str
+    locale: Optional[str] = None
+    currency: Optional[str] = None
+    properties: Dict[str, Any]
+
+
+@app.post("/api/public-checker/events")
+def post_public_checker_event(event: PublicCheckerEventEnvelope):
+    payload = event.model_dump(exclude_none=False)
+    if not payload.get("event_id"):
+        payload["event_id"] = str(uuid.uuid4())
+    if not payload.get("occurred_at"):
+        payload["occurred_at"] = datetime.now(timezone.utc).isoformat()
+
+    try:
+        result = ProductBEventStore.log_event(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        logger.error("public_checker_event_write_failed error=%s", exc)
+        raise HTTPException(status_code=500, detail="Could not record event")
+
+    return {"ok": True, **result}
+
+
+@app.get("/analytics/product-b/kpis")
+def get_product_b_kpis(
+    window_days: int = Query(default=30, ge=1, le=365),
+    qualified_only: bool = Query(default=False),
+    agency: Agency = Depends(get_current_agency),
+):
+    _ = agency
+    return ProductBEventStore.compute_kpis(window_days=window_days, qualified_only=qualified_only)
 
 
 @app.post("/run", response_model=RunAcceptedResponse)

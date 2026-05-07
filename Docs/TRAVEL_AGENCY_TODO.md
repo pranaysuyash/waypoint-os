@@ -1,5 +1,12 @@
 # Travel Agency Agent - TODO List
 
+## Immediate Product B TODOs (Queued 2026-05-07)
+- [ ] Lock deployment config: add `PUBLIC_CHECKER_AGENCY_ID` to `.env.example`, deployment templates, and startup runbook with SQL preflight requirement (`agencies.id` must exist).
+- [ ] Add API-level tests for `/api/public-checker/run`, `/api/public-checker/events`, and `/analytics/product-b/kpis` including auth failures and malformed payloads.
+- [ ] Run full verification sweep: full backend pytest, frontend lint + build, and one SQL-seeded end-to-end smoke run.
+- [ ] Eliminate environment ambiguity: choose one canonical non-prod public-checker agency id and seed it in dev/staging DB bootstrap.
+- [ ] KPI closure check: ensure observed revision, inferred/unknown buckets, and dark-funnel/non-return metrics are visible in dashboard/query outputs; add missing instrumentation if needed.
+
 ## Completed (End-to-End Flow with Real Data)
 - [x] Fixed JSON serialization errors in spine_api persistence layer
 - [x] Fixed import path issues in spine_api server

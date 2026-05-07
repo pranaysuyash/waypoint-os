@@ -26,3 +26,20 @@ Immediate execution priorities:
 
 ## The thing most people miss about this
 Product B is not a free tool. It is the top of a behavior funnel whose success is measured only by downstream agency adoption pressure.
+
+## Addendum - Champion Thesis Hardening (2026-05-07)
+Assessment: Real and aligned with core strategy.
+
+What to tighten:
+1. Keep success definition downstream:
+   - Product B value is proven only when it creates measurable Product A demand.
+2. Add anti-delusion checks:
+   - High consumer usage without agency pull-through is failure, not partial success.
+3. Prioritize credibility stack before growth:
+   - Evidence quality, confidence calibration, and phrasing rigor before acquisition scaling.
+4. Protect non-marketplace stance:
+   - No routing/referral incentives that break trust or distort wedge behavior.
+5. Tie founder advantage to execution cadence:
+   - Rapid research-to-iteration loop with explicit threshold-based decisions.
+
+Champion call: The thesis is strong if and only if execution preserves discipline on pull-through metrics and avoids feature drift.

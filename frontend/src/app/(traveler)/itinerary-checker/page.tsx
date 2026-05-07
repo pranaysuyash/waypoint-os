@@ -191,6 +191,23 @@ function inferTravelContext(text: string): Record<string, unknown> {
   };
 }
 
+const makeTrackingId = (prefix: 'sess' | 'inq') =>
+  `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+
+type ProductBEventPayload = {
+  event_name: string;
+  session_id: string;
+  inquiry_id: string;
+  trip_id?: string | null;
+  actor_type: 'traveler' | 'system' | 'operator';
+  actor_id?: string | null;
+  workspace_id?: string | null;
+  channel: 'web' | 'mobile_web' | 'api';
+  locale?: string | null;
+  currency?: string | null;
+  properties: Record<string, unknown>;
+};
+
 // ── Upload card (reused in hero) ──────────────────────────────────────────────
 function UploadCard({
   onAnalyze,
@@ -1232,11 +1249,15 @@ const rSevBadgeTxt = { Critical: T.red, Warning: T.amber, Info: T.blue } as cons
 function ResultsView({
   rootRef,
   onReset,
+  onEmitEvent,
+  tracking,
   analysis,
   errorMessage,
 }: {
   rootRef: RefObject<HTMLDivElement | null>;
   onReset: () => void;
+  onEmitEvent: (eventName: string, properties: Record<string, unknown>, tripId?: string | null) => Promise<void>;
+  tracking: { sessionId: string; inquiryId: string } | null;
   analysis?: RunStatusResponse | null;
   errorMessage?: string | null;
 }) {
@@ -1283,6 +1304,15 @@ function ResultsView({
       link.download = `waypoint-checker-${tripId}.json`;
       link.click();
       URL.revokeObjectURL(url);
+      await onEmitEvent(
+        'finding_evidence_opened',
+        {
+          finding_id: `trip_${tripId}`,
+          evidence_type: 'source_snippet',
+          open_index: 1,
+        },
+        tripId,
+      );
       setManageMessage('Export downloaded.');
     } catch {
       setManageMessage('Could not export this report.');
@@ -1307,6 +1337,73 @@ function ResultsView({
     } finally {
       setManageBusy(null);
     }
+  };
+
+  const handleShareReport = async () => {
+    if (!tracking) return;
+    const packetId = tripId ?? `packet_${Date.now().toString(36)}`;
+    const shareText = `${summaryCopy}\nReport ID: ${tripId ?? 'pending'}`;
+
+    let shareChannel: 'whatsapp' | 'email' | 'copy_paste' | 'other' = 'copy_paste';
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: 'Waypoint itinerary findings',
+          text: shareText,
+        });
+        shareChannel = 'other';
+      } catch {
+        // User cancelled or share failed. Fall back to clipboard.
+      }
+    }
+
+    if (shareChannel === 'copy_paste') {
+      try {
+        await navigator.clipboard.writeText(shareText);
+        await onEmitEvent(
+          'action_packet_copied',
+          {
+            packet_id: packetId,
+            packet_type: 'agent_message',
+            finding_count: blockerItems.length,
+            had_manual_edits: false,
+          },
+          tripId,
+        );
+      } catch {
+        // ignore clipboard failure for telemetry; user still has visible summary
+      }
+    }
+
+    await onEmitEvent(
+      'action_packet_shared',
+      {
+        packet_id: packetId,
+        share_channel: shareChannel,
+        had_manual_edits: false,
+      },
+      tripId,
+    );
+  };
+
+  const handleReportRevision = async (revisionOutcome: 'revised' | 'no_change' | 'rejected') => {
+    if (!tracking) return;
+    await onEmitEvent(
+      'agency_revision_reported',
+      {
+        revision_report_mode: 'self_report',
+        revision_outcome: revisionOutcome,
+        time_from_share_ms: null,
+      },
+      tripId,
+    );
+    setManageMessage(
+      revisionOutcome === 'revised'
+        ? 'Marked as revised. Thanks for closing the loop.'
+        : revisionOutcome === 'no_change'
+          ? 'Marked as no change.'
+          : 'Marked as rejected.',
+    );
   };
 
   return (
@@ -1516,6 +1613,62 @@ function ResultsView({
                   {manageBusy === 'delete' ? 'Deleting…' : 'Delete saved data'}
                 </button>
               </div>
+              <div style={{ marginTop: 10, fontSize: 11, color: T.t3 }}>
+                Did your advisor revise after seeing this report?
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                <button
+                  onClick={() => void handleReportRevision('revised')}
+                  style={{
+                    height: 30,
+                    padding: '0 12px',
+                    borderRadius: 999,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    fontFamily: T.fBody,
+                    background: 'rgba(63,185,80,0.12)',
+                    color: T.green,
+                    border: '1px solid rgba(63,185,80,0.24)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Yes, revised
+                </button>
+                <button
+                  onClick={() => void handleReportRevision('no_change')}
+                  style={{
+                    height: 30,
+                    padding: '0 12px',
+                    borderRadius: 999,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    fontFamily: T.fBody,
+                    background: 'rgba(210,153,34,0.12)',
+                    color: T.amber,
+                    border: '1px solid rgba(210,153,34,0.24)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  No change
+                </button>
+                <button
+                  onClick={() => void handleReportRevision('rejected')}
+                  style={{
+                    height: 30,
+                    padding: '0 12px',
+                    borderRadius: 999,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    fontFamily: T.fBody,
+                    background: 'rgba(248,81,73,0.12)',
+                    color: T.red,
+                    border: '1px solid rgba(248,81,73,0.24)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Rejected
+                </button>
+              </div>
               <div style={{ fontSize: 10, color: T.t4, marginTop: 8 }}>
                 Report ID: {tripId ?? 'pending'}
               </div>
@@ -1580,7 +1733,9 @@ function ResultsView({
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-            <button style={{
+            <button
+              onClick={handleShareReport}
+              style={{
               display: 'inline-flex', alignItems: 'center', gap: 7,
               height: 34, padding: '0 14px', borderRadius: 999,
               fontSize: 12, fontWeight: 600, fontFamily: T.fBody,
@@ -1614,7 +1769,38 @@ export default function ItineraryCheckerPage() {
   const [analysis, setAnalysis] = useState<RunStatusResponse | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [tracking, setTracking] = useState<{ sessionId: string; inquiryId: string } | null>(null);
   const motionRootRef = useRef<HTMLDivElement>(null);
+  const sessionIdRef = useRef<string>(makeTrackingId('sess'));
+
+  const emitProductBEvent = async (
+    eventName: string,
+    properties: Record<string, unknown>,
+    tripId?: string | null,
+    context?: { sessionId: string; inquiryId: string } | null,
+  ) => {
+    const eventContext = context ?? tracking;
+    if (!eventContext) return;
+    const payload: ProductBEventPayload = {
+      event_name: eventName,
+      session_id: eventContext.sessionId,
+      inquiry_id: eventContext.inquiryId,
+      trip_id: tripId ?? analysis?.trip_id ?? null,
+      actor_type: 'traveler',
+      actor_id: null,
+      workspace_id: 'waypoint-hq',
+      channel: 'web',
+      locale: typeof navigator !== 'undefined' ? navigator.language : null,
+      currency: null,
+      properties,
+    };
+
+    try {
+      await api.post('/api/public-checker/events', payload);
+    } catch {
+      // Telemetry should not block traveler flow.
+    }
+  };
 
   useEffect(() => {
     const root = motionRootRef.current;
@@ -1720,17 +1906,44 @@ export default function ItineraryCheckerPage() {
 
     const retentionConsent = Boolean(sourcePayload?.retention_consent);
     const inferredContext = inferTravelContext(trimmed);
-    const storedPayload = retentionConsent
-      ? { ...(sourcePayload ?? {}), trip_context: inferredContext }
-      : undefined;
+    const nextTracking = {
+      sessionId: sessionIdRef.current,
+      inquiryId: makeTrackingId('inq'),
+    };
 
+    if (analysis?.trip_id && tracking?.inquiryId) {
+      await emitProductBEvent(
+        're_audit_started',
+        {
+          prior_packet_id: analysis.trip_id,
+          revision_input_mode: sourcePayload?.kind === 'file_upload' ? 'upload' : sourcePayload?.kind === 'mixed' ? 'mixed' : 'freeform_text',
+        },
+        analysis.trip_id,
+        tracking,
+      );
+    }
+
+    const storedPayload = retentionConsent
+      ? {
+          ...(sourcePayload ?? {}),
+          trip_context: inferredContext,
+          session_id: nextTracking.sessionId,
+          inquiry_id: nextTracking.inquiryId,
+        }
+      : {
+          ...(sourcePayload ?? {}),
+          session_id: nextTracking.sessionId,
+          inquiry_id: nextTracking.inquiryId,
+        };
+
+    setTracking(nextTracking);
     setIsAnalyzing(true);
     try {
       const result = await api.post<RunStatusResponse>('/api/public-checker/run', {
         raw_note: trimmed,
         owner_note: '',
         itinerary_text: trimmed,
-        structured_json: storedPayload ? { source_payload: storedPayload, ...inferredContext } : null,
+        structured_json: { source_payload: storedPayload, ...inferredContext },
         retention_consent: retentionConsent,
         stage: 'discovery',
         operating_mode: 'normal_intake',
@@ -1782,7 +1995,16 @@ export default function ItineraryCheckerPage() {
   };
 
   if (view === 'results') {
-    return <ResultsView rootRef={motionRootRef} onReset={() => { setAnalysis(null); setAnalysisError(null); setView('upload'); }} analysis={analysis} errorMessage={analysisError} />;
+    return (
+      <ResultsView
+        rootRef={motionRootRef}
+        onReset={() => { setAnalysis(null); setAnalysisError(null); setView('upload'); }}
+        onEmitEvent={emitProductBEvent}
+        tracking={tracking}
+        analysis={analysis}
+        errorMessage={analysisError}
+      />
+    );
   }
 
   return (

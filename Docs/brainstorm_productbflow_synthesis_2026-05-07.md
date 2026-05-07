@@ -63,3 +63,14 @@ Phase 3: Product A bridge
 
 ## 10) Working hypothesis for Product B flow
 "If travelers receive specific, evidence-backed negotiation prompts within 90 seconds, they will use them with their existing agent, increasing plan revision frequency and creating measurable demand pull for Product A."
+
+## 11) Addendum - Decision Boundary (2026-05-07)
+Verdict after role-by-role review:
+1. Product B is valid only as a behavior-change wedge into Product A.
+2. Primary success event is agency revision achieved, not content sharing alone.
+3. Launch gate is credibility + forwardability + pull-through, not usage volume.
+4. Scope must remain audit + action packet + re-audit compare.
+5. Kill logic must use calibrated sample-quality and confidence thresholds.
+
+Execution implication:
+- Prioritize instrumentation, evidence grounding, and language quality before any expansion features.

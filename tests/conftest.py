@@ -36,6 +36,10 @@ if not os.environ.get("JWT_SECRET"):
 # always uses _run_async_blocking, bypassing TRIPSTORE_BACKEND=file).
 os.environ["RUNNING_TESTS"] = "1"
 
+# Ensure startup public-checker agency validation resolves to the canonical
+# seeded test agency used across auth fixtures and JWTs.
+os.environ.setdefault("PUBLIC_CHECKER_AGENCY_ID", "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+
 # Disable OpenTelemetry in tests — the BatchSpanProcessor background thread
 # outlives the TestClient event loop and corrupts the asyncpg pool. OTel would
 # try to export to localhost:4317 (the collector) which isn't running in tests.

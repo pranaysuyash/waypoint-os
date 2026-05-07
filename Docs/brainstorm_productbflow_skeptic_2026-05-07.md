@@ -29,3 +29,22 @@ What to validate first:
 
 ## The thing most people miss about this
 "Useful" is not enough. Findings must be conversation-usable in the exact language travelers can forward without edits.
+
+## Addendum - Skeptic Filters as Launch Gates (2026-05-07)
+Assessment: Real and should be treated as gating criteria.
+
+What to tighten:
+1. Convert skepticism into measurable gates:
+   - Generic-output rejection rate threshold
+   - Forward-without-edit rate threshold
+   - Evidence-attached finding rate threshold
+2. Add phrasing-risk control:
+   - Maintain dual templates: assertive negotiation language vs legal-safe fallback language.
+3. Enforce finding count ceiling by default:
+   - 5-8 findings maximum unless user explicitly expands.
+4. Add reuse signal, not just first-use signal:
+   - Track re-audit return behavior after agency revision attempt.
+5. Treat trust break as high severity incident:
+   - If false/high-noise findings spike, halt scaling and fix quality first.
+
+Skeptic call: Do not launch based on "interesting output." Launch only when findings are forwardable, evidence-backed, and repeatedly drive real revision behavior.

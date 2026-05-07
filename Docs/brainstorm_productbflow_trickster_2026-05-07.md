@@ -22,3 +22,20 @@ Output style:
 
 ## The thing most people miss about this
 People do not need perfect plans. They need confidence in hard conversations. Product B wins when it gives language, not just analysis.
+
+## Addendum - Creative Framing With Guardrails (2026-05-07)
+Assessment: Real, with controlled-use value.
+
+What to tighten:
+1. Keep "Trip Red Team" as messaging layer, not product sprawl:
+   - Treat modes as presentation templates over one core audit engine.
+2. Avoid novelty drift:
+   - Every mode output must map to a concrete behavior: ask, challenge, revise.
+3. Add credibility anchors to scripts:
+   - Pair every script line with evidence pointer or rule rationale.
+4. Keep tone calibration explicit:
+   - Assertive enough for negotiation, bounded enough for legal/compliance safety.
+5. Measure script utility directly:
+   - Track forward rate and revision-conversion rate by script style.
+
+Trickster call: Use creativity to increase conversation power, not to add product complexity.

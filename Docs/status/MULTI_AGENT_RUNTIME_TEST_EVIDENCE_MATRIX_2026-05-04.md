@@ -121,6 +121,16 @@
 - Runtime events query API
   - `tests/test_agent_events_api.py::test_get_agent_runtime_events_filters_agent_events`
 
+## Continuation verification (2026-05-07)
+1. `TMPDIR=/private/tmp PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m py_compile src/agents/runtime.py src/agents/events.py src/agents/recovery_agent.py spine_api/server.py spine_api/persistence.py`
+   - Result: success
+2. `TMPDIR=/private/tmp PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q tests/test_agent_runtime.py tests/test_recovery_agent.py tests/test_agent_tripstore_adapter.py`
+   - Result: `43 passed in 29.94s`
+3. `TMPDIR=/private/tmp PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q tests/test_agent_events_api.py`
+   - Result: `5 passed in 65.71s`
+4. `TMPDIR=/private/tmp PYTHONDONTWRITEBYTECODE=1 .venv/bin/python tools/run_multi_agent_runtime_scenarios.py`
+   - Result: success; refreshed `Docs/status/MULTI_AGENT_RUNTIME_SCENARIO_EVIDENCE_2026-05-04.md`
+
 ### Recovery loop verification
 - Recovery requeue/escalation/fail-closed behavior
   - `tests/test_recovery_agent.py` (full file)
