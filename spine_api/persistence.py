@@ -618,7 +618,7 @@ class SQLTripStore:
         # is the correct check (as FileTripStore does) but requires extra DB read
         # + decryption; the guard on save_trip already prevents initial PII entry.
         # Check only email/phone-like values in updates (fast, no false positives).
-        _pii_sensitive_keys = {"raw_input", "extracted", "extracted_facts"}
+        _pii_sensitive_keys = {"raw_input", "raw_note", "extracted", "extracted_facts"}
         if set(updates.keys()) & _pii_sensitive_keys:
             from src.security.privacy_guard import check_trip_data
             check_trip_data(updates)

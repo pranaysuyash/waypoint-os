@@ -12,6 +12,8 @@ The system has a well-specified 16-state lifecycle machine (`LEAD_LIFECYCLE_AND_
 
 The honest state: the lifecycle machine is a `Literal` type annotation and a set of mathematically correct scoring functions that have nothing to score.
 
+**Update 2026-05-05**: A Person Model architecture design has been produced at `Docs/design/PERSON_MODEL_ARCHITECTURE.md`. It supersedes the model proposals in this document and in the CRM docs series. See that document for the canonical data model design.
+
 ---
 
 ## 2. Evidence Inventory

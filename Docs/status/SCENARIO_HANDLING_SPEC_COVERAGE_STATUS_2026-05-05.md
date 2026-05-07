@@ -66,6 +66,7 @@ Implemented in this session:
 - Cohort inference now distinguishes explicit elderly vs ambiguous parent cohorts, detects infant presence, and avoids over-triggering elderly hard risk when ages indicate younger parents.
 - Public checker now includes basic regional advisory hints (non-weather hazard surface) for known high-risk destinations.
 - Regional disruption heuristics now include conflict-zone signals and Europe summer high-friction hub pressure checks in feasibility routing/safety constraints.
+- Added stage-aware risk action policy output (`risk_action_plan`) so pre-trip and in-trip handling diverge deterministically by severity.
 
 Files:
 - `src/agents/runtime.py`
@@ -107,11 +108,11 @@ Files:
 
 Command:
 
-`pytest -q tests/test_agent_runtime.py tests/test_route_analysis.py tests/test_public_checker_live_checks.py tests/test_risk_contracts.py tests/test_regional_risk.py`
+`pytest -q tests/test_agent_runtime.py tests/test_route_analysis.py tests/test_public_checker_live_checks.py tests/test_risk_contracts.py tests/test_regional_risk.py tests/test_risk_action_policy.py`
 
 Result:
 
-- `47 passed`
+- `49 passed`
 
 ## What Is Still Pending vs `SCENARIO_HANDLING_SPEC.md`
 

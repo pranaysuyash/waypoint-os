@@ -29,8 +29,7 @@ from pydantic2ts import generate_typescript_defs
 
 OUTPUT_DIR = PROJECT_ROOT / "frontend" / "src" / "types" / "generated"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-OUTPUT_FILE = OUTPUT_DIR / "spine_api.ts"
-ALIAS_OUTPUT_FILE = OUTPUT_DIR / "spine-api.ts"
+OUTPUT_FILE = OUTPUT_DIR / "spine-api.ts"
 
 HEADER = """\
 // ============================================================================
@@ -58,11 +57,7 @@ try:
     with open(OUTPUT_FILE, "w") as f:
         f.write(HEADER + body)
 
-    with open(ALIAS_OUTPUT_FILE, "w") as f:
-        f.write(HEADER + body)
-
     print(f"Generated TypeScript types: {OUTPUT_FILE}")
-    print(f"Generated TypeScript types: {ALIAS_OUTPUT_FILE}")
     print(f"Size: {OUTPUT_FILE.stat().st_size} bytes")
 
 except Exception as e:

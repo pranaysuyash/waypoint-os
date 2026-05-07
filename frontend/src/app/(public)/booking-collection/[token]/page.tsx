@@ -4,8 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   type BookingTraveler,
   type BookingData,
+  type CustomerDocumentResponse,
   getPublicCollectionForm,
   submitPublicBookingData,
+  uploadPublicDocument,
 } from '@/lib/api-client';
 
 type FormState = 'loading' | 'invalid' | 'already_submitted' | 'active' | 'success' | 'error';
@@ -39,6 +41,12 @@ export default function BookingCollectionPage({
   const [payerPhone, setPayerPhone] = useState('');
   const [specialReqs, setSpecialReqs] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Document upload state
+  const [uploadedDocs, setUploadedDocs] = useState<CustomerDocumentResponse[]>([]);
+  const [docUploading, setDocUploading] = useState(false);
+  const [docError, setDocError] = useState('');
+  const [docType, setDocType] = useState('passport');
 
   useEffect(() => {
     params.then((p) => setToken(p.token));
@@ -96,6 +104,28 @@ export default function BookingCollectionPage({
       setSubmitting(false);
     }
   }, [token, travelers, payerName, payerEmail, payerPhone, specialReqs]);
+
+  const handleDocUpload = useCallback(async () => {
+    if (!token) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,.jpg,.jpeg,.png';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      setDocUploading(true);
+      setDocError('');
+      try {
+        const resp = await uploadPublicDocument(token, file, docType);
+        setUploadedDocs((prev) => [...prev, resp]);
+      } catch (e) {
+        setDocError(e instanceof Error ? e.message : 'Upload failed');
+      } finally {
+        setDocUploading(false);
+      }
+    };
+    input.click();
+  }, [token, docType]);
 
   if (formState === 'loading') {
     return (
@@ -287,6 +317,50 @@ export default function BookingCollectionPage({
             value={specialReqs}
             onChange={(e) => setSpecialReqs(e.target.value)}
           />
+        </div>
+
+        {/* Document upload (Phase 4B) */}
+        <div data-testid="collection-documents" className="border border-[#30363d] rounded-lg p-4 mb-6 space-y-3">
+          <div className="text-sm font-medium text-[#e6edf3]">Upload Documents</div>
+          <div className="text-xs text-[#8b949e]">Upload travel documents (passports, visas, etc.) for review by the agency.</div>
+
+          {docError && (
+            <div className="text-xs text-red-400">{docError}</div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <select
+              value={docType}
+              onChange={(e) => setDocType(e.target.value)}
+              className="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-[#e6edf3]"
+            >
+              <option value="passport">Passport</option>
+              <option value="visa">Visa</option>
+              <option value="insurance">Insurance</option>
+              <option value="flight_ticket">Flight Ticket</option>
+              <option value="hotel_confirmation">Hotel Confirmation</option>
+              <option value="other">Other</option>
+            </select>
+            <button
+              data-testid="collection-doc-upload-btn"
+              className="text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              onClick={handleDocUpload}
+              disabled={docUploading}
+            >
+              {docUploading ? 'Uploading...' : 'Choose File'}
+            </button>
+          </div>
+
+          {uploadedDocs.length > 0 && (
+            <div className="space-y-1">
+              {uploadedDocs.map((d, i) => (
+                <div key={d.id} data-testid={`collection-doc-${i}`} className="flex items-center gap-2 text-xs">
+                  <span className="text-emerald-400">Uploaded</span>
+                  <span className="text-[#8b949e]">({d.status.replace('_', ' ')})</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <button

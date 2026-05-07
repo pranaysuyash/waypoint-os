@@ -19,6 +19,7 @@ from uuid import uuid4
 
 from src.agents.events import AgentEvent, AgentEventType
 from src.agents.risk_contracts import feasibility_constraint_to_structured
+from src.intake.risk_action_policy import build_risk_action_plan
 from src.intake.route_analysis import analyze_route_complexity, parse_itinerary_text
 from src.intake.regional_risk import assess_regional_disruption
 from src.intake.scenario_policy import ScenarioPolicy, load_scenario_policy
@@ -2135,6 +2136,10 @@ class ConstraintFeasibilityAgent:
             for item in [*hard_blockers, *soft_constraints]
             if isinstance(item, dict)
         ]
+        risk_action_plan = build_risk_action_plan(
+            stage=str(context.get("stage") or ""),
+            structured_risks=structured_risks,
+        )
         return {
             "assessed_at": assessed_at.isoformat(),
             "source": self.definition.name,
@@ -2143,6 +2148,7 @@ class ConstraintFeasibilityAgent:
             "hard_blockers": hard_blockers,
             "soft_constraints": soft_constraints,
             "structured_risks": structured_risks,
+            "risk_action_plan": risk_action_plan,
             "missing_facts": sorted(set(missing_facts)),
             "operator_next_action": operator_next_action,
             "authority": "Internal feasibility support only. Do not auto-reject, auto-send, book, or mutate canonical trip stage.",

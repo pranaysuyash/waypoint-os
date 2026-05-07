@@ -209,14 +209,15 @@ def _get_lower_set():
 
 ## Default Task Lifecycle (Adopted)
 
-1. Analyze request and constraints.
-2. Document baseline scope/assumptions.
-3. Plan implementation order.
-4. Research needed details.
-5. Document decision rationale.
-6. Implement scoped changes.
-7. Verify functionality and run tests.
-8. Document outcomes and pending items.
+1. **If this is a new project, strategic question, or discussion — start with `wide-open-brainstorm`.** This skill spawns 8 thinking roles (Strategist, Operator, Skeptic, Executioner, Trickster, Cartographer, Future Self, Champion) in parallel to interrogate the idea from every angle before any building starts. This is the first skill to load for any new initiative. Skill path: `product-strategy/wide-open-brainstorm`.
+2. Analyze request and constraints.
+3. Document baseline scope/assumptions.
+4. Plan implementation order.
+5. Research needed details.
+6. Document decision rationale.
+7. Implement scoped changes.
+8. Verify functionality and run tests.
+9. Document outcomes and pending items.
 
 ## Autonomous Review + Handoff Protocol (Critical)
 

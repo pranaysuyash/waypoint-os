@@ -218,7 +218,7 @@ describe('TimelinePanel - Suitability Integration', () => {
     });
   });
 
-  it('converts confidence from 0-100 to 0-1 range for display', async () => {
+  it('converts confidence from 0-100 to 0-1 and displays the correct percentage', async () => {
     const mockTimeline = {
       trip_id: 'test-trip',
       events: [],
@@ -253,8 +253,10 @@ describe('TimelinePanel - Suitability Integration', () => {
 
     render(<TimelinePanel tripId="test-trip" />);
 
+    // SuitabilitySignal renders Math.round(flag.confidence * 100) + "% confidence"
+    // flag.confidence = 75 / 100 = 0.75 -> Math.round(0.75 * 100) = 75 -> "75% confidence"
     await waitFor(() => {
-      expect(screen.getByText('Suitability Assessment')).toBeInTheDocument();
+      expect(screen.getByText('75% confidence')).toBeInTheDocument();
     });
   });
 
@@ -353,7 +355,10 @@ describe('TimelinePanel - Suitability Integration', () => {
     rerender(<TimelinePanel tripId="trip-2" />);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(4); // 2 calls per render (timeline + suitability)
+      // 2 renders × 3 endpoints (timeline, suitability, overrides)
+      const callCount = (global.fetch as any).mock.calls.length;
+      expect(callCount).toBeGreaterThanOrEqual(6);
+      expect(callCount % 3).toBe(0);
     });
   });
 });

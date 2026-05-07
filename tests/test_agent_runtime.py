@@ -510,6 +510,7 @@ def test_constraint_feasibility_agent_flags_safety_and_flight_disruption_for_act
     assessment = repo.trips["trip_live_risk"]["constraint_feasibility_assessment"]
     assert any(blocker["category"] == "safety" for blocker in assessment["hard_blockers"])
     assert any(flag["category"] == "flight_disruption" for flag in assessment["soft_constraints"])
+    assert assessment["risk_action_plan"]["mode"] == "incident_response"
 
 
 def test_constraint_feasibility_agent_refreshes_active_stage_on_age():
@@ -725,6 +726,7 @@ def test_constraint_feasibility_adds_regional_disruption_pressure_for_europe_hub
         item["category"] in {"routing", "safety"} and "regional disruption pressure" in item["message"].lower()
         for item in assessment["soft_constraints"]
     )
+    assert assessment["risk_action_plan"]["mode"] in {"pre_commit_review", "pre_commit_block"}
 
 
 def test_proposal_readiness_agent_blocks_thin_or_risky_proposal():

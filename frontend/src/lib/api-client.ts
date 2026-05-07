@@ -892,3 +892,212 @@ export async function submitPublicBookingData(
   }
   return res.json();
 }
+
+// ============================================================================
+// DOCUMENT UPLOAD (Phase 4B)
+// ============================================================================
+
+export interface BookingDocument {
+  id: string;
+  trip_id: string;
+  traveler_id: string | null;
+  uploaded_by_type: 'agent' | 'customer';
+  document_type: string;
+  filename_present: boolean;
+  filename_ext: string;
+  mime_type: string;
+  size_bytes: number;
+  status: 'pending_review' | 'accepted' | 'rejected' | 'deleted';
+  scan_status: 'skipped' | 'clean' | 'suspicious' | 'failed';
+  review_notes_present: boolean;
+  created_at: string;
+  updated_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+}
+
+export interface DocumentListResponse {
+  trip_id: string;
+  documents: BookingDocument[];
+}
+
+export interface CustomerDocumentResponse {
+  id: string;
+  status: string;
+}
+
+export interface DownloadUrlResponse {
+  url: string;
+  expires_in: number;
+}
+
+// Agent document endpoints (proxied through BFF)
+
+export async function uploadDocument(
+  tripId: string,
+  file: File,
+  documentType: string,
+  travelerId?: string,
+): Promise<BookingDocument> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('document_type', documentType);
+  if (travelerId) formData.append('traveler_id', travelerId);
+
+  const res = await fetch(`/api/trips/${tripId}/documents`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `Upload failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function getDocuments(tripId: string): Promise<DocumentListResponse> {
+  return api.get<DocumentListResponse>(`/api/trips/${tripId}/documents`);
+}
+
+export async function getDocumentDownloadUrl(
+  tripId: string,
+  documentId: string,
+): Promise<DownloadUrlResponse> {
+  return api.get<DownloadUrlResponse>(
+    `/api/trips/${tripId}/documents/${documentId}/download-url`,
+  );
+}
+
+export async function acceptDocument(
+  tripId: string,
+  documentId: string,
+  notesPresent?: boolean,
+): Promise<BookingDocument> {
+  return api.post<BookingDocument>(
+    `/api/trips/${tripId}/documents/${documentId}/accept`,
+    { notes_present: notesPresent },
+  );
+}
+
+export async function rejectDocument(
+  tripId: string,
+  documentId: string,
+  notesPresent?: boolean,
+): Promise<BookingDocument> {
+  return api.post<BookingDocument>(
+    `/api/trips/${tripId}/documents/${documentId}/reject`,
+    { notes_present: notesPresent },
+  );
+}
+
+export async function deleteDocument(
+  tripId: string,
+  documentId: string,
+): Promise<{ ok: boolean; status: string }> {
+  return api.delete<{ ok: boolean; status: string }>(
+    `/api/trips/${tripId}/documents/${documentId}`,
+  );
+}
+
+// Phase 4C: Document extraction
+
+export interface ExtractionFieldView {
+  field_name: string;
+  value: string | null;
+  confidence: number;
+  present: boolean;
+}
+
+export interface ExtractionResponse {
+  id: string;
+  document_id: string;
+  status: 'pending_review' | 'applied' | 'rejected';
+  extracted_by: string;
+  overall_confidence: number | null;
+  field_count: number;
+  fields: ExtractionFieldView[];
+  created_at: string;
+  updated_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+}
+
+export interface ApplyConflict {
+  field_name: string;
+  existing_value: string;
+  extracted_value: string;
+}
+
+export interface ApplyExtractionResponse {
+  applied: boolean;
+  conflicts: ApplyConflict[];
+  extraction: ExtractionResponse | null;
+}
+
+export async function extractDocument(
+  tripId: string,
+  documentId: string,
+): Promise<ExtractionResponse> {
+  return api.post<ExtractionResponse>(
+    `/api/trips/${tripId}/documents/${documentId}/extract`,
+  );
+}
+
+export async function getExtraction(
+  tripId: string,
+  documentId: string,
+): Promise<ExtractionResponse> {
+  return api.get<ExtractionResponse>(
+    `/api/trips/${tripId}/documents/${documentId}/extraction`,
+  );
+}
+
+export async function applyExtraction(
+  tripId: string,
+  documentId: string,
+  body: {
+    traveler_id: string;
+    fields_to_apply: string[];
+    allow_overwrite?: boolean;
+    create_traveler_if_missing?: boolean;
+  },
+): Promise<ApplyExtractionResponse> {
+  return api.post<ApplyExtractionResponse>(
+    `/api/trips/${tripId}/documents/${documentId}/extraction/apply`,
+    body,
+  );
+}
+
+export async function rejectExtraction(
+  tripId: string,
+  documentId: string,
+): Promise<ExtractionResponse> {
+  return api.post<ExtractionResponse>(
+    `/api/trips/${tripId}/documents/${documentId}/extraction/reject`,
+  );
+}
+
+// Public customer document upload (direct to backend, no auth)
+
+export async function uploadPublicDocument(
+  token: string,
+  file: File,
+  documentType: string,
+): Promise<CustomerDocumentResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('document_type', documentType);
+
+  const url = `${SPINE_API_URL}/api/public/booking-collection/${encodeURIComponent(token)}/documents`;
+  const res = await fetch(url, {
+    method: 'POST',
+    credentials: 'omit',
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `Upload failed (${res.status})`);
+  }
+  return res.json();
+}

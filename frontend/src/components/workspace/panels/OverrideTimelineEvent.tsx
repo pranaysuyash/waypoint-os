@@ -9,8 +9,6 @@
  * Format:
  *   {
  *     "timestamp": "2026-04-22T14:32:00Z",
- *     "stage": "override",
- *     "event_type": "override_created",
  *     "flag": "elderly_mobility_risk",
  *     "action": "downgrade",
  *     "new_severity": "high",
@@ -26,46 +24,41 @@
 import React from 'react';
 import { AlertCircle, CheckCircle2, TrendingDown } from 'lucide-react';
 import { FLAG_LABELS, labelOrTitle } from '@/lib/label-maps';
+import type { OverrideData } from '@/types/spine';
 
-interface OverrideEventDisplay {
-  timestamp: string;
-  flag: string;
-  action: "suppress" | "downgrade" | "acknowledge";
-  original_severity?: string;
-  new_severity?: string;
-  reason: string;
-  overridden_by: string;
-}
+const VALID_ACTIONS = new Set(["suppress", "downgrade", "acknowledge"]);
 
-export function OverrideTimelineEvent({ event }: { event: OverrideEventDisplay }) {
-  const time = new Date(event.timestamp).toLocaleTimeString('en-US', {
+type OverrideAction = "suppress" | "downgrade" | "acknowledge";
+
+export function OverrideTimelineEvent({ event }: { event: OverrideData }) {
+  const time = new Date(event.created_at).toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
   });
 
+  const action: OverrideAction = VALID_ACTIONS.has(event.action)
+    ? (event.action as OverrideAction)
+    : "acknowledge";
+
   const getActionLabel = () => {
-    switch (event.action) {
+    switch (action) {
       case 'suppress':
         return `${labelOrTitle(FLAG_LABELS, event.flag)} suppressed`;
       case 'downgrade':
         return `${labelOrTitle(FLAG_LABELS, event.flag)} downgraded from ${event.original_severity?.toUpperCase()} to ${event.new_severity?.toUpperCase()}`;
       case 'acknowledge':
         return `${labelOrTitle(FLAG_LABELS, event.flag)} acknowledged`;
-      default:
-        return event.action;
     }
   };
 
   const getIcon = () => {
-    switch (event.action) {
+    switch (action) {
       case 'suppress':
         return <AlertCircle className="h-4 w-4 text-accent-red" />;
       case 'downgrade':
         return <TrendingDown className="h-4 w-4 text-accent-orange" />;
       case 'acknowledge':
         return <CheckCircle2 className="h-4 w-4 text-accent-green" />;
-      default:
-        return <AlertCircle className="h-4 w-4 text-text-muted" />;
     }
   };
 
@@ -93,17 +86,8 @@ export function OverrideTimelineEvent({ event }: { event: OverrideEventDisplay }
 }
 
 /**
- * Integration notes for TimelinePanel:
- * 
- * 1. Fetch overrides for trip:
- *    const overrides = await getOverrides(tripId);
- * 
- * 2. Merge override events with timeline events
- *    by sorting on timestamp
- * 
- * 3. Filter timeline events by stage if needed
- *    but overrides should always be shown
- * 
- * 4. Render override events between other events
- *    using OverrideTimelineEvent component
+ * TimelinePanel integration: see TimelinePanel.tsx for merge/sort/filter logic.
+ * Overrides are fetched via direct fetch() to /api/trips/{tripId}/overrides,
+ * merged with timeline events sorted by timestamp, and shown regardless of
+ * stage filter (overrides lack stage metadata that maps to the timeline filter).
  */

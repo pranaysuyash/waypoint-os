@@ -226,6 +226,24 @@ export interface SuitabilityFlag {
 }
 
 /**
+ * Override data returned by GET /trips/{trip_id}/overrides.
+ * Matches the raw JSONL-stored shape from OverrideStore.
+ */
+export interface OverrideData {
+  override_id: string;
+  trip_id: string;
+  flag: string;
+  action: string;
+  new_severity?: string;
+  original_severity?: string;
+  overridden_by: string;
+  reason: string;
+  scope: string;
+  rescinded?: boolean;
+  created_at: string;
+}
+
+/**
  * API response from GET /trips/{trip_id}/suitability
  * Returns all suitability flags for a given trip with confidence and tier information.
  */

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { Trip } from "@/lib/api-client";
-import type { TimelineEvent, TimelineResponse, SuitabilityFlag } from "@/types/spine";
+import type { TimelineEvent, TimelineResponse, SuitabilityFlag, OverrideData } from "@/types/spine";
 import { STAGE_LABELS, STATUS_LABELS, labelOrTitle } from "@/lib/label-maps";
 import { SuitabilitySignal } from "./SuitabilitySignal";
+import { OverrideTimelineEvent } from "./OverrideTimelineEvent";
 
 interface TimelinePanelProps {
   trip?: Trip | null;
@@ -33,18 +34,18 @@ function formatTimestamp(iso: string): string {
 
 function TimelineEventCard({
   event,
-  index,
+  isLast,
 }: {
   event: TimelineEvent;
-  index: number;
+  isLast: boolean;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const colors = STAGE_COLORS[event.stage] || STAGE_COLORS.intake;
+  const detailsId = `timeline-details-${event.timestamp}-${event.stage}`;
 
   return (
-    <div className="relative">
-      {/* Timeline line (not on last item) */}
-      {index < 0 && (
+    <div className="relative" role="listitem">
+      {!isLast && (
         <div className="absolute left-5 top-12 w-0.5 h-8 bg-border-default" />
       )}
 
@@ -96,6 +97,8 @@ function TimelineEventCard({
           {/* Expandable JSON */}
           <button
             onClick={() => setIsExpanded(!isExpanded)}
+            aria-expanded={isExpanded}
+            aria-controls={detailsId}
             className="mt-2 flex items-center gap-1 text-ui-xs text-text-muted hover:text-text-secondary transition-colors"
           >
             {isExpanded ? (
@@ -107,7 +110,10 @@ function TimelineEventCard({
           </button>
 
           {isExpanded && (
-            <div className="mt-2 p-2 bg-elevated rounded border border-border-default overflow-x-auto">
+            <div
+              id={detailsId}
+              className="mt-2 p-2 bg-elevated rounded border border-border-default overflow-x-auto"
+            >
               <pre className="text-ui-xs text-text-muted font-mono">
                 {JSON.stringify(event, null, 2)}
               </pre>
@@ -126,6 +132,7 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
   const tripId = propTripId || propTrip?.id;
   const [timeline, setTimeline] = useState<TimelineResponse | null>(null);
   const [suitabilityFlags, setSuitabilityFlags] = useState<SuitabilityFlag[]>([]);
+  const [overrides, setOverrides] = useState<OverrideData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedStage, setSelectedStage] = useState<string | null>(null);
@@ -135,52 +142,66 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
     onStageFilter?.(stage);
   };
 
-  useEffect(() => {
+  const fetchAll = useCallback(async () => {
     if (!tripId) return;
 
-    const fetchTimelineAndSuitability = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Fetch timeline
+      const timelineUrl = selectedStage
+        ? `/api/trips/${tripId}/timeline?stage=${selectedStage}`
+        : `/api/trips/${tripId}/timeline`;
+      const timelineResponse = await fetch(timelineUrl, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!timelineResponse.ok) {
+        throw new Error(`Failed to fetch timeline: ${timelineResponse.statusText}`);
+      }
+      const timelineData = await timelineResponse.json();
+      setTimeline(timelineData);
+
+      // Fetch suitability flags
       try {
-        setIsLoading(true);
-        setError(null);
-        
-        // Fetch timeline
-        const timelineUrl = selectedStage 
-          ? `/api/trips/${tripId}/timeline?stage=${selectedStage}`
-          : `/api/trips/${tripId}/timeline`;
-        const timelineResponse = await fetch(timelineUrl, {
+        const suitabilityUrl = `/api/trips/${tripId}/suitability`;
+        const suitabilityResponse = await fetch(suitabilityUrl, {
           credentials: "include",
           cache: "no-store",
         });
-        if (!timelineResponse.ok) {
-          throw new Error(`Failed to fetch timeline: ${timelineResponse.statusText}`);
+        if (suitabilityResponse.ok) {
+          const suitabilityData = await suitabilityResponse.json();
+          setSuitabilityFlags(suitabilityData.suitability_flags || []);
         }
-        const timelineData = await timelineResponse.json();
-        setTimeline(timelineData);
-
-        // Fetch suitability flags
-        try {
-          const suitabilityUrl = `/api/trips/${tripId}/suitability`;
-          const suitabilityResponse = await fetch(suitabilityUrl, {
-            credentials: "include",
-            cache: "no-store",
-          });
-          if (suitabilityResponse.ok) {
-            const suitabilityData = await suitabilityResponse.json();
-            setSuitabilityFlags(suitabilityData.suitability_flags || []);
-          }
-          // If suitability endpoint doesn't exist yet, just skip it gracefully
-        } catch (_err) {
-          // Silently fail if suitability endpoint not available
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load timeline");
-      } finally {
-        setIsLoading(false);
+      } catch (_err) {
+        // Silently fail if suitability endpoint not available
       }
-    };
 
-    fetchTimelineAndSuitability();
+      // Fetch overrides
+      try {
+        const overridesUrl = `/api/trips/${tripId}/overrides`;
+        const overridesResponse = await fetch(overridesUrl, {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (overridesResponse.ok) {
+          const overridesData = await overridesResponse.json();
+          setOverrides(overridesData.overrides || []);
+        }
+      } catch (_err) {
+        // Silently fail if overrides endpoint not available
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load timeline");
+    } finally {
+      setIsLoading(false);
+    }
   }, [tripId, selectedStage]);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
   if (isLoading) {
     return (
@@ -195,6 +216,12 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
       <div className="p-6">
         <div className="rounded-lg border border-[rgba(var(--accent-red-rgb)/0.3)] bg-[rgba(var(--accent-red-rgb)/0.06)] p-4">
           <p className="text-ui-sm text-accent-red">{error}</p>
+          <button
+            onClick={() => fetchAll()}
+            className="mt-3 text-ui-sm px-3 py-1.5 rounded-md bg-accent-red text-text-on-accent hover:opacity-90 transition-opacity"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -202,7 +229,17 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
 
   const events = timeline?.events ?? [];
 
-  if (!timeline || (events.length === 0 && suitabilityFlags.length === 0)) {
+  // Merge timeline events with override events, sorted by timestamp
+  // Override events: show them regardless of stage filter because they don't
+  // have a stage field that maps to the timeline stage filter. They represent
+  // operator actions that are relevant context regardless of which stage is selected.
+  const mergedItems: Array<{ type: "event" | "override"; data: TimelineEvent | OverrideData; timestamp: string }> = [
+    ...events.map((e) => ({ type: "event" as const, data: e, timestamp: e.timestamp })),
+    ...overrides.map((o) => ({ type: "override" as const, data: o, timestamp: o.created_at })),
+  ];
+  mergedItems.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+  if (events.length === 0 && suitabilityFlags.length === 0 && overrides.length === 0) {
     return (
       <div className="p-6 text-center">
         <p className="text-ui-sm font-medium text-text-primary">No activity yet</p>
@@ -210,6 +247,8 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
       </div>
     );
   }
+
+  const totalCount = mergedItems.length;
 
   return (
     <div className="p-6" data-testid="timeline-panel">
@@ -241,11 +280,12 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
           <div className="flex flex-wrap gap-2 mb-4">
             <button
               onClick={() => handleStageFilter(null)}
-               className={`px-3 py-1.5 text-ui-sm rounded-md font-medium transition-colors ${
-                 selectedStage === null
-                   ? "bg-accent-blue text-text-on-accent"
-                   : "bg-elevated text-text-muted hover:bg-highlight hover:text-text-primary"
-               }`}
+              aria-pressed={selectedStage === null}
+              className={`px-3 py-1.5 text-ui-sm rounded-md font-medium transition-colors ${
+                selectedStage === null
+                  ? "bg-accent-blue text-text-on-accent"
+                  : "bg-elevated text-text-muted hover:bg-highlight hover:text-text-primary"
+              }`}
             >
               All
             </button>
@@ -253,6 +293,7 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
               <button
                 key={stage}
                 onClick={() => handleStageFilter(stage)}
+                aria-pressed={selectedStage === stage}
                 className={`px-3 py-1.5 text-ui-sm rounded-md font-medium transition-colors ${
                   selectedStage === stage
                     ? `${STAGE_COLORS[stage]?.badge} opacity-100`
@@ -265,11 +306,26 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
           </div>
         </div>
 
-        {/* Timeline Events */}
-        <div className="space-y-3">
-          {events.map((event, index) => (
-            <TimelineEventCard key={`${event.timestamp}-${index}`} event={event} index={index} />
-          ))}
+        {/* Timeline Events + Overrides */}
+        <div className="space-y-3" role="list" aria-label="Timeline events">
+          {mergedItems.map((item, index) => {
+            if (item.type === "override") {
+              const override = item.data as OverrideData;
+              return (
+                <div key={`override-${override.override_id || override.created_at}`} role="listitem">
+                  <OverrideTimelineEvent event={override} />
+                </div>
+              );
+            }
+            const event = item.data as TimelineEvent;
+            return (
+              <TimelineEventCard
+                key={`event-${event.timestamp}-${event.stage}`}
+                event={event}
+                isLast={index === totalCount - 1}
+              />
+            );
+          })}
         </div>
       </div>
 

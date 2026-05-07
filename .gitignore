@@ -86,7 +86,8 @@ data/audit/
 
 # Data files — overrides (runtime-created, not source)
 data/overrides/
-
+# Document storage runtime files
+data/documents/
 # Data files — generated trip seed data (runtime-created per test/seed run)
 data/trips/trip_seed_*.json
 

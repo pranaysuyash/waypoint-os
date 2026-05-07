@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional, List
 
-from sqlalchemy import String, ForeignKey, DateTime, Boolean, Integer, Text, JSON, Index
+from sqlalchemy import String, ForeignKey, DateTime, Boolean, Integer, Float, Text, JSON, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from spine_api.core.database import Base
@@ -201,4 +201,127 @@ class BookingCollectionToken(Base):
     __table_args__ = (
         Index("ix_bct_token_hash", "token_hash"),
         Index("ix_bct_trip_id", "trip_id"),
+    )
+
+
+class BookingDocument(Base):
+    """Uploaded travel documents — passports, visas, tickets, insurance, etc.
+
+    Documents are binary evidence awaiting agent review. They are NOT trusted
+    execution data and do not affect booking_ready. Access only through
+    dedicated endpoints — never inlined into trip hydration.
+    """
+    __tablename__ = "booking_documents"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    trip_id: Mapped[str] = mapped_column(
+        ForeignKey("trips.id", ondelete="CASCADE"), nullable=False
+    )
+    agency_id: Mapped[str] = mapped_column(
+        ForeignKey("agencies.id", ondelete="CASCADE"), nullable=False
+    )
+    traveler_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    uploaded_by_type: Mapped[str] = mapped_column(String(20), nullable=False)  # agent | customer
+    uploaded_by_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    collection_token_id: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("booking_collection_tokens.id", ondelete="SET NULL"), nullable=True
+    )
+    # No original_filename stored — hash + extension only.
+    filename_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    filename_ext: Mapped[str] = mapped_column(String(10), nullable=False)
+    storage_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    document_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), server_default="pending_review")
+    scan_status: Mapped[str] = mapped_column(String(20), server_default="skipped")
+    review_notes_present: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    storage_delete_status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+
+    trip: Mapped["Trip"] = relationship("Trip")
+    agency: Mapped["Agency"] = relationship("Agency")
+    collection_token: Mapped[Optional["BookingCollectionToken"]] = relationship("BookingCollectionToken")
+
+    __table_args__ = (
+        Index("ix_bd_trip_id", "trip_id"),
+        Index("ix_bd_agency_id", "agency_id"),
+        Index("ix_bd_status", "status"),
+    )
+
+
+class DocumentExtraction(Base):
+    __tablename__ = "document_extractions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    document_id: Mapped[str] = mapped_column(
+        ForeignKey("booking_documents.id", ondelete="CASCADE"),
+        unique=True, nullable=False,
+    )
+    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False)
+    agency_id: Mapped[str] = mapped_column(ForeignKey("agencies.id", ondelete="CASCADE"), nullable=False)
+
+    # Encrypted blob — Fernet-encrypted JSON of extracted PII fields
+    # Shape: {"full_name": "...", "passport_number": "...", ...}
+    extracted_fields_encrypted: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    # Plaintext indicators for queryability — no PII values
+    fields_present: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    field_count: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Confidence scores — numbers only, no PII
+    confidence_scores: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    overall_confidence: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+    # Status: pending_review → applied / rejected / failed (terminal)
+    status: Mapped[str] = mapped_column(String(20), server_default="pending_review")
+    extracted_by: Mapped[str] = mapped_column(String(20), server_default="noop_extractor")
+
+    # Provider metadata (Phase 4D)
+    provider_name: Mapped[str] = mapped_column(String(30), server_default="noop_extractor")
+    model_name: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    latency_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    prompt_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    completion_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    total_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    cost_estimate_usd: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    error_code: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    error_summary: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    confidence_method: Mapped[str] = mapped_column(String(30), server_default="model")
+
+    # Review metadata
+    reviewed_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    # Relationships
+    document: Mapped["BookingDocument"] = relationship("BookingDocument")
+    trip: Mapped["Trip"] = relationship("Trip")
+    agency: Mapped["Agency"] = relationship("Agency")
+
+    __table_args__ = (
+        Index("ix_de_document_id", "document_id", unique=True),
+        Index("ix_de_trip_id", "trip_id"),
+        Index("ix_de_status", "status"),
     )

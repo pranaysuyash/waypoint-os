@@ -125,6 +125,18 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["trips/{id}/pending-booking-data/accept", { backendPath: "trips/{id}/pending-booking-data/accept" }],
   ["trips/{id}/pending-booking-data/reject", { backendPath: "trips/{id}/pending-booking-data/reject" }],
 
+  // ── Documents (Phase 4B) ──────────────────────────────────────────
+  ["trips/{id}/documents", { backendPath: "trips/{id}/documents" }],
+  ["trips/{id}/documents/{documentId}/download-url", { backendPath: "trips/{id}/documents/{documentId}/download-url" }],
+  ["trips/{id}/documents/{documentId}/accept", { backendPath: "trips/{id}/documents/{documentId}/accept" }],
+  ["trips/{id}/documents/{documentId}/reject", { backendPath: "trips/{id}/documents/{documentId}/reject" }],
+  ["trips/{id}/documents/{documentId}", { backendPath: "trips/{id}/documents/{documentId}" }],
+  // Phase 4C: extraction
+  ["trips/{id}/documents/{documentId}/extract", { backendPath: "trips/{id}/documents/{documentId}/extract" }],
+  ["trips/{id}/documents/{documentId}/extraction", { backendPath: "trips/{id}/documents/{documentId}/extraction" }],
+  ["trips/{id}/documents/{documentId}/extraction/apply", { backendPath: "trips/{id}/documents/{documentId}/extraction/apply" }],
+  ["trips/{id}/documents/{documentId}/extraction/reject", { backendPath: "trips/{id}/documents/{documentId}/extraction/reject" }],
+
   ["runs/{id}", { backendPath: "runs/{id}" }],
   ["runs/{id}/events", { backendPath: "runs/{id}/events" }],
   ["runs/{id}/steps/{step_name}", { backendPath: "runs/{id}/steps/{step_name}" }],
