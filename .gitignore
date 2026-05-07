@@ -31,6 +31,8 @@ Thumbs.db
 
 # Test/type/lint caches
 .pytest_cache/
+pytest-of-pranay/
+pytest-of-pranay*/
 .mypy_cache/
 .ruff_cache/
 
@@ -54,6 +56,9 @@ Thumbs.db
 # Package manager locks (project uses uv; lockfile is source-controlled
 # but local lock diffs are noise)
 # uv.lock is tracked intentionally
+*.lock
+!uv.lock
+!**/uv.lock
 
 # Frontend generated files
 node_modules/
@@ -83,6 +88,9 @@ data/decision_cache/
 data/audit/
 !data/decision_cache/.gitkeep
 !data/audit/.gitkeep
+
+# Product B runtime event logs
+data/product_b_events/*.jsonl
 
 # Data files — overrides (runtime-created, not source)
 data/overrides/

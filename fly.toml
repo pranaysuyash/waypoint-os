@@ -12,7 +12,7 @@ primary_region = "iad"
 image = "ghcr.io/your-org/spine-api:latest"
 
 [deploy]
-  release_command = ""
+  release_command = "sh -c 'alembic upgrade head && python scripts/bootstrap_public_checker_agency.py'"
 
 [env]
   PORT = "8000"
@@ -21,6 +21,7 @@ image = "ghcr.io/your-org/spine-api:latest"
   SPINE_API_WORKERS = "4"
   SPINE_API_RELOAD = "0"
   TRAVELER_SAFE_STRICT = "0"
+  PUBLIC_CHECKER_AGENCY_ID = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
 
 [http_service]
   internal_port = 8000

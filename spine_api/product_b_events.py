@@ -76,6 +76,10 @@ class ProductBEventStore:
     ALLOWED_ACTOR_TYPES = {"traveler", "system", "operator"}
     ALLOWED_CHANNELS = {"web", "mobile_web", "api"}
 
+    MAX_EVENT_BYTES = 16 * 1024
+    MAX_PROPERTIES = 64
+    MAX_ID_LENGTH = 128
+
     EVENT_REQUIRED_PROPERTIES: Dict[str, set[str]] = {
         "intake_started": {
             "input_mode",
@@ -209,6 +213,10 @@ class ProductBEventStore:
         if not isinstance(payload, dict):
             raise ValueError("event payload must be an object")
 
+        payload_size = len(json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
+        if payload_size > cls.MAX_EVENT_BYTES:
+            raise ValueError("event payload exceeds maximum size")
+
         missing = [field for field in cls.REQUIRED_ENVELOPE_FIELDS if field not in payload]
         if missing:
             raise ValueError(f"missing required envelope fields: {', '.join(sorted(missing))}")
@@ -224,6 +232,8 @@ class ProductBEventStore:
         event_id = str(payload.get("event_id") or "").strip()
         if not event_id:
             raise ValueError("event_id must be non-empty")
+        if len(event_id) > cls.MAX_ID_LENGTH:
+            raise ValueError("event_id is too long")
 
         occurred_at = _parse_iso_utc(str(payload.get("occurred_at")))
 
@@ -233,6 +243,10 @@ class ProductBEventStore:
             raise ValueError("session_id must be non-empty")
         if not inquiry_id:
             raise ValueError("inquiry_id must be non-empty")
+        if len(session_id) > cls.MAX_ID_LENGTH:
+            raise ValueError("session_id is too long")
+        if len(inquiry_id) > cls.MAX_ID_LENGTH:
+            raise ValueError("inquiry_id is too long")
 
         actor_type = str(payload.get("actor_type") or "").strip()
         if actor_type not in cls.ALLOWED_ACTOR_TYPES:
@@ -245,6 +259,8 @@ class ProductBEventStore:
         properties = payload.get("properties")
         if not isinstance(properties, dict):
             raise ValueError("properties must be an object")
+        if len(properties) > cls.MAX_PROPERTIES:
+            raise ValueError("properties has too many keys")
 
         required_properties = cls.EVENT_REQUIRED_PROPERTIES.get(event_name, set())
         missing_properties = [key for key in required_properties if key not in properties]
@@ -256,6 +272,10 @@ class ProductBEventStore:
         if event_name == "first_credible_finding_shown" and not bool(properties.get("evidence_present")):
             raise ValueError("first_credible_finding_shown requires evidence_present=true")
 
+        trip_id = payload.get("trip_id")
+        if trip_id is not None and len(str(trip_id)) > cls.MAX_ID_LENGTH:
+            raise ValueError("trip_id is too long")
+
         normalized = {
             "event_name": event_name,
             "event_version": event_version,
@@ -264,7 +284,7 @@ class ProductBEventStore:
             "occurred_at_epoch_ms": int(occurred_at.timestamp() * 1000),
             "session_id": session_id,
             "inquiry_id": inquiry_id,
-            "trip_id": payload.get("trip_id"),
+            "trip_id": trip_id,
             "actor_type": actor_type,
             "actor_id": payload.get("actor_id"),
             "workspace_id": payload.get("workspace_id"),

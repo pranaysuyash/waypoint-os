@@ -1,0 +1,1037 @@
+{
+  "route_count": 129,
+  "routes": [
+    {
+      "path": "/agents/runtime",
+      "name": "get_agent_runtime",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/agents/runtime/events",
+      "name": "get_agent_runtime_events",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/agents/runtime/run-once",
+      "name": "run_agent_runtime_once",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/analytics/agent/{agent_id}/drill-down",
+      "name": "get_agent_drill_down",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/analytics/alerts",
+      "name": "get_analytics_alerts",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/analytics/alerts/{alert_id}/dismiss",
+      "name": "post_dismiss_alert",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/analytics/bottlenecks",
+      "name": "get_analytics_bottlenecks",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/analytics/escalations",
+      "name": "get_escalation_heatmap",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/analytics/export",
+      "name": "export_insights",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/analytics/funnel",
+      "name": "get_conversion_funnel",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/analytics/pipeline",
+      "name": "get_analytics_pipeline",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/analytics/product-b/kpis",
+      "name": "get_product_b_kpis",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/analytics/revenue",
+      "name": "get_analytics_revenue",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/analytics/reviews",
+      "name": "get_pending_reviews",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/analytics/reviews/bulk-action",
+      "name": "bulk_review_action",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/analytics/reviews/{review_id}",
+      "name": "get_review",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/analytics/summary",
+      "name": "get_analytics_summary",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/analytics/team",
+      "name": "get_analytics_team",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/assignments/{trip_id}",
+      "name": "get_routing_state",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/assignments/{trip_id}/assign",
+      "name": "post_assign",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/assignments/{trip_id}/claim",
+      "name": "post_claim",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/assignments/{trip_id}/escalate",
+      "name": "post_escalate",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/assignments/{trip_id}/reassign",
+      "name": "post_reassign",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/assignments/{trip_id}/return",
+      "name": "post_return",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/assignments/{trip_id}/unassign",
+      "name": "post_unassign",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/audit",
+      "name": "list_audit_logs",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/auth/confirm-password-reset",
+      "name": "post_confirm_password_reset",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/auth/join",
+      "name": "post_join",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/auth/login",
+      "name": "post_login",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/auth/logout",
+      "name": "post_logout",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/auth/me",
+      "name": "get_me",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/auth/refresh",
+      "name": "post_refresh",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/auth/request-password-reset",
+      "name": "post_request_password_reset",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/auth/signup",
+      "name": "post_signup",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/auth/validate-code/{code}",
+      "name": "get_validate_code",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/dashboard/stats",
+      "name": "get_dashboard_stats",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/drafts",
+      "name": "list_drafts",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/drafts",
+      "name": "create_draft",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/drafts/{draft_id}",
+      "name": "discard_draft",
+      "methods": [
+        "DELETE"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/drafts/{draft_id}",
+      "name": "get_draft",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/drafts/{draft_id}",
+      "name": "patch_draft",
+      "methods": [
+        "PATCH"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/drafts/{draft_id}",
+      "name": "update_draft",
+      "methods": [
+        "PUT"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/drafts/{draft_id}/events",
+      "name": "get_draft_events",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/drafts/{draft_id}/promote",
+      "name": "promote_draft",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/drafts/{draft_id}/restore",
+      "name": "restore_draft",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/drafts/{draft_id}/runs",
+      "name": "get_draft_runs",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/internal/documents/{document_id}/download",
+      "name": "internal_document_download",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/public-checker/events",
+      "name": "post_public_checker_event",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/public-checker/run",
+      "name": "run_public_checker",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/public-checker/{trip_id}",
+      "name": "delete_public_checker_package",
+      "methods": [
+        "DELETE"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/public-checker/{trip_id}",
+      "name": "get_public_checker_package",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/public-checker/{trip_id}/export",
+      "name": "export_public_checker_package",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/public/booking-collection/{token}",
+      "name": "get_public_collection_form",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/public/booking-collection/{token}/documents",
+      "name": "upload_public_document",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/public/booking-collection/{token}/submit",
+      "name": "submit_public_booking_data",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings",
+      "name": "get_agency_settings",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/approvals",
+      "name": "get_approval_thresholds",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/approvals",
+      "name": "set_approval_thresholds",
+      "methods": [
+        "PUT"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/autonomy",
+      "name": "get_agency_autonomy_settings",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/autonomy",
+      "name": "update_agency_autonomy_settings",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/operational",
+      "name": "update_agency_operational_settings",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/pipeline",
+      "name": "get_pipeline_stages",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/pipeline",
+      "name": "set_pipeline_stages",
+      "methods": [
+        "PUT"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/system/integrity/issues",
+      "name": "get_integrity_issues",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/system/unified-state",
+      "name": "get_unified_state",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/team/invite",
+      "name": "invite_team_member",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/team/members",
+      "name": "list_team_members",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/team/members/{member_id}",
+      "name": "deactivate_team_member",
+      "methods": [
+        "DELETE"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/team/members/{member_id}",
+      "name": "get_team_member",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/team/members/{member_id}",
+      "name": "update_team_member",
+      "methods": [
+        "PATCH"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/team/workload",
+      "name": "get_workload_distribution",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/trips/{trip_id}/timeline",
+      "name": "get_trip_timeline",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/workspace",
+      "name": "get_current_workspace",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/workspace",
+      "name": "patch_current_workspace",
+      "methods": [
+        "PATCH"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/workspace/codes",
+      "name": "post_generate_workspace_code",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/assignments",
+      "name": "list_assignments",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/audit",
+      "name": "get_audit_events",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/followups/dashboard",
+      "name": "get_followups_dashboard",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/followups/{trip_id}/mark-complete",
+      "name": "mark_followup_complete",
+      "methods": [
+        "PATCH"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/followups/{trip_id}/reschedule",
+      "name": "reschedule_followup",
+      "methods": [
+        "PATCH"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/followups/{trip_id}/snooze",
+      "name": "snooze_followup",
+      "methods": [
+        "PATCH"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/frontier/emotions/log",
+      "name": "log_emotional_state",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/frontier/ghost/workflows",
+      "name": "create_ghost_workflow",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/frontier/ghost/workflows/{workflow_id}",
+      "name": "get_ghost_workflow",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/frontier/intelligence/report",
+      "name": "report_intelligence",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/health",
+      "name": "health",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/inbox",
+      "name": "get_inbox",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/inbox/assign",
+      "name": "assign_inbox_trips",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/inbox/bulk",
+      "name": "bulk_inbox_action",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/inbox/stats",
+      "name": "get_inbox_stats",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/overrides/{override_id}",
+      "name": "get_override",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/run",
+      "name": "run_spine",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/runs",
+      "name": "list_runs",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/runs/{run_id}",
+      "name": "get_run_status",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/runs/{run_id}/events",
+      "name": "get_run_event_stream",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/runs/{run_id}/steps/{step_name}",
+      "name": "get_run_step",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips",
+      "name": "list_trips",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}",
+      "name": "get_trip",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}",
+      "name": "patch_trip",
+      "methods": [
+        "PATCH"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/activities/provenance",
+      "name": "get_activities_provenance",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/agent-events",
+      "name": "get_trip_agent_events",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/assign",
+      "name": "assign_trip",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/booking-data",
+      "name": "get_booking_data",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/booking-data",
+      "name": "update_booking_data",
+      "methods": [
+        "PATCH"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/collection-link",
+      "name": "revoke_collection_link",
+      "methods": [
+        "DELETE"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/collection-link",
+      "name": "get_collection_link_status",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/collection-link",
+      "name": "create_collection_link",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/documents",
+      "name": "list_trip_documents",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/documents",
+      "name": "upload_trip_document",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/documents/{document_id}",
+      "name": "delete_trip_document",
+      "methods": [
+        "DELETE"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/documents/{document_id}/accept",
+      "name": "accept_trip_document",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/documents/{document_id}/download-url",
+      "name": "get_document_download_url",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/documents/{document_id}/extract",
+      "name": "extract_document",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/documents/{document_id}/extraction",
+      "name": "get_extraction",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/documents/{document_id}/extraction/apply",
+      "name": "apply_extraction",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/documents/{document_id}/extraction/reject",
+      "name": "reject_extraction",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/documents/{document_id}/reject",
+      "name": "reject_trip_document",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/override",
+      "name": "create_override",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/overrides",
+      "name": "list_overrides",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/pending-booking-data",
+      "name": "get_pending_booking_data",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/pending-booking-data/accept",
+      "name": "accept_pending_booking_data",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/pending-booking-data/reject",
+      "name": "reject_pending_booking_data",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/reassign",
+      "name": "reassign_trip",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/review/action",
+      "name": "post_review_action",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/snooze",
+      "name": "snooze_trip",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/stage",
+      "name": "transition_trip_stage",
+      "methods": [
+        "PATCH"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/suitability",
+      "name": "get_trip_suitability",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/suitability/acknowledge",
+      "name": "acknowledge_suitability_flags",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/unassign",
+      "name": "unassign_trip",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    }
+  ]
+}

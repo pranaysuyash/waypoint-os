@@ -83,6 +83,23 @@
 4. If ingestion broken:
    - treat as observability incident; do not claim recovery health until restored.
 
+## Public Checker SQL Startup Preflight (Required)
+
+If `TRIPSTORE_BACKEND=sql`, startup now assumes the configured `PUBLIC_CHECKER_AGENCY_ID` exists in `agencies.id`.
+
+1. Confirm config value:
+   - `echo $PUBLIC_CHECKER_AGENCY_ID`
+2. Run SQL preflight before app start:
+   - `SELECT id, slug, name FROM agencies WHERE id = '<PUBLIC_CHECKER_AGENCY_ID>';`
+3. If missing, run bootstrap seed:
+   - `TMPDIR=/private/tmp PYTHONDONTWRITEBYTECODE=1 uv run python scripts/bootstrap_public_checker_agency.py`
+4. If `agencies` table missing, run migrations first:
+   - `uv run alembic upgrade head`
+
+Expected behavior:
+- SQL mode + missing agency row -> startup fail-fast with actionable error.
+- SQL mode + seeded row -> startup succeeds.
+
 ## Verification Checklist (Before Claiming Healthy)
 1. `RecoveryAgent` lifecycle initialized on startup logs.
 2. `GET /trips/{trip_id}/agent-events` returns records for synthetic or live recovery run.
@@ -90,6 +107,7 @@
    - `tests/test_recovery_agent.py`
    - run lifecycle + scenario suites.
 4. No auth scope violations on trip agent-event endpoint.
+5. Public-checker SQL preflight passes for `PUBLIC_CHECKER_AGENCY_ID`.
 
 ## Known Limits
 1. Recovery runner currently depends on in-process callback wiring.

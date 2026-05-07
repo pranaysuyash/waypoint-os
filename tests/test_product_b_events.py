@@ -173,6 +173,153 @@ def test_compute_kpis_respects_qualified_filter(isolated_product_b_store):
     assert qualified_kpis["sample"]["qualified_inquiries"] == 1
 
 
+def test_compute_kpis_exposes_observed_inferred_unknown_and_dark_funnel(isolated_product_b_store):
+    store = isolated_product_b_store
+
+    def add_inquiry(inquiry_id: str, event_suffix: str, confidence_tier: str | None):
+        store.log_event(
+            store.build_event(
+                event_name="intake_started",
+                session_id=f"sess_{event_suffix}",
+                inquiry_id=inquiry_id,
+                trip_id=f"trip_{event_suffix}",
+                actor_type="traveler",
+                actor_id=None,
+                workspace_id="waypoint-hq",
+                channel="web",
+                locale="en-US",
+                currency="USD",
+                event_id=f"evt_{event_suffix}_1",
+                occurred_at="2026-05-07T10:00:00+00:00",
+                properties={
+                    "input_mode": "freeform_text",
+                    "has_destination": True,
+                    "has_dates": True,
+                    "has_budget_band": False,
+                    "has_traveler_profile": True,
+                },
+            )
+        )
+        store.log_event(
+            store.build_event(
+                event_name="first_credible_finding_shown",
+                session_id=f"sess_{event_suffix}",
+                inquiry_id=inquiry_id,
+                trip_id=f"trip_{event_suffix}",
+                actor_type="system",
+                actor_id=None,
+                workspace_id="waypoint-hq",
+                channel="api",
+                locale="en-US",
+                currency="USD",
+                event_id=f"evt_{event_suffix}_2",
+                occurred_at="2026-05-07T10:00:01+00:00",
+                properties={
+                    "time_from_intake_start_ms": 800,
+                    "finding_id": f"fnd_{event_suffix}",
+                    "finding_category": "policy",
+                    "severity": "must_fix",
+                    "confidence_score": 0.9,
+                    "evidence_present": True,
+                },
+            )
+        )
+        store.log_event(
+            store.build_event(
+                event_name="action_packet_shared",
+                session_id=f"sess_{event_suffix}",
+                inquiry_id=inquiry_id,
+                trip_id=f"trip_{event_suffix}",
+                actor_type="traveler",
+                actor_id=None,
+                workspace_id="waypoint-hq",
+                channel="web",
+                locale="en-US",
+                currency="USD",
+                event_id=f"evt_{event_suffix}_3",
+                occurred_at="2026-05-07T10:00:02+00:00",
+                properties={
+                    "packet_id": f"pkt_{event_suffix}",
+                    "share_channel": "copy_paste",
+                    "had_manual_edits": False,
+                },
+            )
+        )
+        if confidence_tier is not None:
+            store.log_event(
+                store.build_event(
+                    event_name="agency_revision_reported",
+                    session_id=f"sess_{event_suffix}",
+                    inquiry_id=inquiry_id,
+                    trip_id=f"trip_{event_suffix}",
+                    actor_type="traveler",
+                    actor_id=None,
+                    workspace_id="waypoint-hq",
+                    channel="web",
+                    locale="en-US",
+                    currency="USD",
+                    event_id=f"evt_{event_suffix}_4",
+                    occurred_at="2026-05-07T10:00:03+00:00",
+                    properties={
+                        "revision_report_mode": "manual",
+                        "revision_outcome": "revised",
+                        "time_from_share_ms": 2000,
+                        "confidence_tier": confidence_tier,
+                    },
+                )
+            )
+
+    add_inquiry("inq_obs", "obs", "observed")
+    add_inquiry("inq_inf", "inf", "inferred")
+    add_inquiry("inq_unk", "unk", None)
+
+    kpis = store.compute_kpis(window_days=365, qualified_only=True)
+
+    assert kpis["counts"]["observed_revised"] == 1
+    assert kpis["counts"]["inferred_revised"] == 1
+    assert kpis["counts"]["unknown_outcomes"] == 1
+    assert kpis["kpis"]["dark_funnel_rate"] == pytest.approx(1 / 3)
+    assert kpis["confidence_tiers"] == {"observed": 1, "inferred": 1, "unknown": 1}
+
+
+def test_public_checker_run_is_public_route(session_client, monkeypatch):
+    import server
+
+    monkeypatch.setattr(
+        server,
+        "_run_public_checker_submission",
+        lambda _payload: {
+            "run_id": "pc-run-1",
+            "state": "completed",
+            "trip_id": "trip_1",
+            "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "steps_completed": [],
+            "events": [],
+            "follow_up_questions": [],
+            "hard_blockers": [],
+            "soft_blockers": [],
+        },
+    )
+
+    resp = session_client.post(
+        "/api/public-checker/run",
+        headers={"Authorization": "Bearer clearly-invalid-token"},
+        json={"raw_note": "test note", "retention_consent": True},
+    )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["run_id"] == "pc-run-1"
+
+
+def test_public_checker_run_rejects_unknown_fields(session_client):
+    resp = session_client.post(
+        "/api/public-checker/run",
+        json={"raw_note": "test note", "retention_consent": True, "unknown_field": "boom"},
+    )
+
+    assert resp.status_code == 422
+
+
 def test_public_checker_event_api_validation_error(session_client, monkeypatch):
     import server
 
@@ -197,6 +344,22 @@ def test_public_checker_event_api_validation_error(session_client, monkeypatch):
     assert "bad event payload" in resp.text
 
 
+def test_public_checker_event_api_rejects_malformed_payload(session_client):
+    resp = session_client.post(
+        "/api/public-checker/events",
+        json={
+            "event_name": "intake_started",
+            "session_id": "sess_1",
+            "inquiry_id": "inq_1",
+            "actor_type": "traveler",
+            "channel": "web",
+            "properties": [],
+        },
+    )
+
+    assert resp.status_code == 422
+
+
 def test_product_b_kpis_endpoint_returns_payload(session_client, monkeypatch):
     import server
 
@@ -218,3 +381,71 @@ def test_product_b_kpis_endpoint_returns_payload(session_client, monkeypatch):
     assert data["window_days"] == 14
     assert data["qualified_only"] is True
     assert data["kpis"]["product_a_pull_through"] == 0.3
+
+
+def test_product_b_kpis_requires_auth(session_client):
+    resp_invalid = session_client.get(
+        "/analytics/product-b/kpis",
+        headers={"Authorization": "Bearer clearly-invalid-token"},
+    )
+    assert resp_invalid.status_code == 401
+
+    resp_missing = session_client.get(
+        "/analytics/product-b/kpis",
+        headers={"Authorization": ""},
+    )
+    assert resp_missing.status_code == 401
+
+
+def test_public_checker_event_api_rejects_oversized_payload(session_client):
+    giant_payload = "x" * 20000
+    resp = session_client.post(
+        "/api/public-checker/events",
+        json={
+            "event_name": "intake_started",
+            "session_id": "sess_1",
+            "inquiry_id": "inq_1",
+            "actor_type": "traveler",
+            "channel": "web",
+            "properties": {
+                "input_mode": "freeform_text",
+                "has_destination": True,
+                "has_dates": True,
+                "has_budget_band": False,
+                "has_traveler_profile": True,
+                "oversized": giant_payload,
+            },
+        },
+    )
+    assert resp.status_code == 413
+
+
+def test_public_checker_run_masks_internal_errors(monkeypatch):
+    import server
+    import spine_api.services.public_checker_service as public_checker_service
+
+    def _raise_internal(*_args, **_kwargs):
+        raise RuntimeError("sensitive internal failure details")
+
+    monkeypatch.setattr(public_checker_service, "run_spine_once", _raise_internal)
+
+    with pytest.raises(server.HTTPException) as exc:
+        server._run_public_checker_submission({"raw_note": "test note", "retention_consent": True})
+
+    assert exc.value.status_code == 500
+    assert "sensitive internal failure details" not in str(exc.value.detail)
+    assert "Public checker submission failed" in str(exc.value.detail)
+
+
+def test_public_checker_export_delete_require_auth(session_client):
+    export_resp = session_client.get(
+        "/api/public-checker/trip_abc/export",
+        headers={"Authorization": ""},
+    )
+    delete_resp = session_client.delete(
+        "/api/public-checker/trip_abc",
+        headers={"Authorization": ""},
+    )
+
+    assert export_resp.status_code == 401
+    assert delete_resp.status_code == 401

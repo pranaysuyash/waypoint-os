@@ -138,6 +138,13 @@ from spine_api.contract import (
 )
 from spine_api.services import membership_service
 from spine_api.services.inbox_projection import InboxProjectionService, build_inbox_response
+from spine_api.services.live_checker_service import (
+    apply_live_checker_adjustments,
+    build_consented_submission,
+    collect_raw_text_sources,
+)
+from spine_api.services.public_checker_service import run_public_checker_submission
+from spine_api.services.pipeline_execution_service import execute_spine_pipeline
 from spine_api.product_b_events import ProductBEventStore
 
 from src.intake.orchestration import run_spine_once
@@ -164,7 +171,7 @@ ConfigStore = persistence.ConfigStore
 save_processed_trip = persistence.save_processed_trip
 save_processed_trip_async = persistence.save_processed_trip_async
 
-DEFAULT_PUBLIC_CHECKER_AGENCY_ID = "waypoint-hq"
+DEFAULT_PUBLIC_CHECKER_AGENCY_ID = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
 
 
 def _get_public_checker_agency_id() -> str:
@@ -208,7 +215,6 @@ from spine_api.run_events import (
     emit_run_blocked,
     emit_stage_entered,
     emit_stage_completed,
-    get_run_events,
 )
 from spine_api.run_ledger import RunLedger
 from spine_api.draft_store import DraftStore
@@ -278,6 +284,7 @@ try:
     from routers import frontier as frontier_router
     from routers import audit as audit_router
     from routers import assignments as assignments_router
+    from routers import run_status as run_status_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -305,6 +312,11 @@ except (ImportError, ValueError):
     _asgn_mod = importlib.util.module_from_spec(_asgn_spec)
     _asgn_spec.loader.exec_module(_asgn_mod)
     assignments_router = _asgn_mod
+
+    _run_status_spec = importlib.util.spec_from_file_location("routers.run_status", _base / "routers" / "run_status.py")
+    _run_status_mod = importlib.util.module_from_spec(_run_status_spec)
+    _run_status_spec.loader.exec_module(_run_status_mod)
+    run_status_router = _run_status_mod
 
 logger = logging.getLogger("spine_api")
 
@@ -545,6 +557,7 @@ app.include_router(workspace_router.router, dependencies=[Depends(_auth_or_skip)
 app.include_router(frontier_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(audit_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(assignments_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(run_status_router.router)
 
 
 def _seed_scenario(agency_id: Optional[str] = None):
@@ -907,34 +920,6 @@ def _close_inherited_lock_fds() -> None:
         logging.getLogger("spine_api").debug("Closed %d inherited lock fds", closed)
 
 
-def _update_draft_for_terminal_state(
-    run_id: str,
-    run_state: str,
-    trip_id: Optional[str] = None,
-    snapshot: Optional[dict] = None,
-) -> None:
-    """Update the draft linked to this run with its final state.
-
-    Looks up draft_id from RunLedger meta and calls DraftStore.update_run_state.
-    No-ops if no draft is linked.
-    """
-    try:
-        meta = RunLedger.get_meta(run_id)
-        if not meta:
-            return
-        draft_id = meta.get("draft_id")
-        if not draft_id:
-            return
-        DraftStore.update_run_state(
-            draft_id=draft_id,
-            run_id=run_id,
-            run_state=run_state,
-            run_snapshot=snapshot,
-        )
-    except Exception as exc:
-        logger.debug("Draft state update skipped for run %s: %s", run_id, exc)
-
-
 def _execute_spine_pipeline(
     run_id: str,
     request_dict: dict[str, Any],
@@ -942,708 +927,61 @@ def _execute_spine_pipeline(
     user_id: str,
 ) -> None:
     """Run the spine pipeline in the background and persist status/events."""
-    t0 = time.perf_counter()
-    current_stage: Optional[str] = None
-
-    def _checkpoint_result_steps(run_id: str, result: Any) -> None:
-        """Persist core result artifacts for observability even on partial/early exits."""
-        try:
-            existing = RunLedger.get_all_steps(run_id)
-            if "packet" not in existing and hasattr(result, "packet"):
-                RunLedger.save_step(run_id, "packet", _to_dict(result.packet))
-            if "validation" not in existing and hasattr(result, "validation"):
-                RunLedger.save_step(run_id, "validation", _to_dict(result.validation))
-            if "decision" not in existing and hasattr(result, "decision"):
-                RunLedger.save_step(run_id, "decision", _to_dict(result.decision))
-            if "strategy" not in existing and hasattr(result, "strategy"):
-                RunLedger.save_step(run_id, "strategy", _to_dict(result.strategy))
-        except Exception as e:
-            logger.error("Wave A: result step checkpointing failed for run %s: %s", run_id, e)
-
-    try:
-        # Close inherited lock file descriptors to prevent fork-deadlock on macOS.
-        # When multiprocessing forks, the child inherits all parent fds including
-        # fcntl.flock-held files. Closing them here ensures the child can acquire
-        # fresh locks via the file_lock context manager.
-        _close_inherited_lock_fds()
-
-        request = SpineRunRequest(**request_dict)
-        consented_submission = request_dict if request.retention_consent else {
-            key: value
-            for key, value in request_dict.items()
-            if key not in {"raw_note", "owner_note", "itinerary_text", "structured_json"}
-        }
-
-        if request.strict_leakage:
-            set_strict_mode(True)
-
-        meta = RunMeta(
-            stage=request.stage,
-            operating_mode=request.operating_mode,
-            fixture_id=request.scenario_id,
-            execution_ms=0.0,
-        )
-
-        RunLedger.set_state(run_id, RunState.RUNNING)
-        
-        # Update linked draft status if draft_id was provided
-        draft_id = request_dict.get("draft_id")
-        if draft_id:
-            try:
-                DraftStore.update_run_state(draft_id, run_id, "running")
-                AuditStore.log_event("draft_process_started", user_id, {
-                    "draft_id": draft_id,
-                    "run_id": run_id,
-                    "stage": request.stage,
-                    "operating_mode": request.operating_mode,
-                    "scenario_id": request.scenario_id,
-                })
-            except Exception as draft_err:
-                logger.warning("Failed to update draft state for draft_id=%s: %s", draft_id, draft_err)
-        
-        emit_run_started(
-            run_id=run_id,
-            trip_id=None,
-            stage=request.stage,
-            operating_mode=request.operating_mode,
-        )
-
-        envelopes = build_envelopes(request.model_dump(exclude_none=True))
-        fixture_expectations = load_fixture_expectations(request.scenario_id)
-        agency_settings = AgencySettingsStore.load(agency_id)
-        stage_started_at: dict[str, float] = {}
-
-        def _stage_checkpoint(stage_name: str, data: Any) -> None:
-            """Emit lifecycle-aware stage events and checkpoint data."""
-            nonlocal current_stage
-            try:
-                event = "completed"
-                payload_data = data
-                error_message: Optional[str] = None
-
-                if isinstance(data, dict) and isinstance(data.get("event"), str):
-                    event = data.get("event", "completed")
-                    payload_data = data.get("data")
-                    error_message = data.get("error")
-
-                if event == "entered":
-                    current_stage = stage_name
-                    stage_started_at[stage_name] = time.perf_counter()
-                    emit_stage_entered(run_id, stage_name, trip_id=None)
-                    return
-
-                if event == "failed":
-                    current_stage = stage_name
-                    RunLedger.save_step(run_id, f"{stage_name}_failed", {
-                        "stage_name": stage_name,
-                        "error": error_message or "stage_failed",
-                    })
-                    return
-
-                stage_start = stage_started_at.get(stage_name)
-                if stage_start is None:
-                    current_stage = stage_name
-                    emit_stage_entered(run_id, stage_name, trip_id=None)
-                    stage_start = time.perf_counter()
-                    stage_started_at[stage_name] = stage_start
-
-                val = _to_dict(payload_data) if payload_data is not None else None
-                if val is not None:
-                    RunLedger.save_step(run_id, stage_name, val)
-
-                emit_stage_completed(
-                    run_id,
-                    stage_name,
-                    execution_ms=(time.perf_counter() - stage_start) * 1000,
-                    trip_id=None,
-                )
-                current_stage = stage_name
-            except Exception as e:
-                logger.error("Wave A: mid-run checkpoint failed stage=%s error=%s", stage_name, e)
-
-        with _otel_tracer.start_as_current_span("spine_pipeline") as pipeline_span:
-            pipeline_span.set_attribute("stage", request.stage)
-            pipeline_span.set_attribute("run_id", run_id)
-            pipeline_span.set_attribute("agency_id", agency_id)
-            pipeline_span.set_attribute("user_id", user_id)
-
-        result = run_spine_once(
-            envelopes=envelopes,
-            stage=request.stage,
-            operating_mode=request.operating_mode,
-            fixture_expectations=fixture_expectations,
-            agency_settings=agency_settings,
-            stage_callback=_stage_checkpoint,
-        )
-
-        execution_ms = (time.perf_counter() - t0) * 1000
-        meta.execution_ms = round(execution_ms, 2)
-        pipeline_span.set_attribute("execution_ms", round(execution_ms, 2))
-        if hasattr(result, "packet"):
-            pipeline_span.set_attribute("trip_id", result.packet.packet_id if hasattr(result.packet, "packet_id") else "")
-
-        raw_text_sources = [
-            request.raw_note,
-            request.owner_note,
-            request.itinerary_text,
-        ]
-        if isinstance(request.structured_json, dict):
-            source_payload = request.structured_json.get("source_payload")
-            if isinstance(source_payload, dict):
-                uploaded_file = source_payload.get("uploaded_file")
-                if isinstance(uploaded_file, dict):
-                    raw_text_sources.append(str(uploaded_file.get("extracted_text") or ""))
-        raw_text = "\n".join(str(item) for item in raw_text_sources if item)
-
-        packet_payload = _to_dict(result.packet) if hasattr(result, "packet") else {}
-        live_checker = build_live_checker_signals(packet_payload or {}, raw_text)
-        if live_checker:
-            validation_payload = _to_dict(result.validation) if hasattr(result, "validation") else {}
-            decision_payload = _to_dict(result.decision) if hasattr(result, "decision") else {}
-
-            validation_base = validation_payload.get("overall_score")
-            if not isinstance(validation_base, (int, float)):
-                validation_base = validation_payload.get("quality_score")
-            if not isinstance(validation_base, (int, float)):
-                validation_base = packet_payload.get("quality_score")
-            if not isinstance(validation_base, (int, float)):
-                validation_base = packet_payload.get("score")
-            if not isinstance(validation_base, (int, float)):
-                decision_state = str(decision_payload.get("decision_state") or "").upper()
-                decision_base = {
-                    "PROCEED_TRAVELER_SAFE": 82,
-                    "PROCEED_INTERNAL_DRAFT": 74,
-                    "ASK_FOLLOWUP": 64,
-                    "STOP_NEEDS_REVIEW": 42,
-                }.get(decision_state)
-                validation_base = decision_base if decision_base is not None else 70
-
-            adjusted_score = max(0, min(100, round(float(validation_base) - float(live_checker.get("score_penalty", 0)))))
-            validation_payload["overall_score"] = adjusted_score
-            validation_payload["public_checker_live_checks"] = live_checker
-            decision_payload["public_checker_live_checks"] = live_checker
-            decision_payload["hard_blockers"] = list(dict.fromkeys([
-                *([str(item) for item in decision_payload.get("hard_blockers") or []]),
-                *([str(item) for item in live_checker.get("hard_blockers") or []]),
-            ]))
-            decision_payload["soft_blockers"] = list(dict.fromkeys([
-                *([str(item) for item in decision_payload.get("soft_blockers") or []]),
-                *([str(item) for item in live_checker.get("soft_blockers") or []]),
-            ]))
-            packet_payload["public_checker_live_checks"] = live_checker
-            packet_payload["score"] = adjusted_score
-            result.validation = validation_payload
-            result.decision = decision_payload
-            result.packet = packet_payload
-
-        _checkpoint_result_steps(run_id, result)
-
-        if getattr(result, "early_exit", False):
-            logger.warning(
-                "spine_run early_exit run_id=%s reason=%s execution_ms=%.2f",
-                run_id,
-                result.early_exit_reason,
-                execution_ms,
-            )
-            RunLedger.save_step(run_id, "blocked_result", {
-                "packet": _to_dict(result.packet) if hasattr(result, "packet") else None,
-                "validation": _to_dict(result.validation) if hasattr(result, "validation") else None,
-                "decision": _to_dict(result.decision) if hasattr(result, "decision") else None,
-                "early_exit_reason": result.early_exit_reason,
-                "meta": meta.model_dump(),
-            })
-            block_reason = result.early_exit_reason or "Pipeline blocked"
-            RunLedger.block(run_id, block_reason=block_reason)
-            _update_draft_for_terminal_state(run_id, "blocked", snapshot={"block_reason": block_reason, "stage_at_block": current_stage})
-            emit_run_blocked(
-                run_id=run_id,
-                block_reason=block_reason,
-                stage_at_block=current_stage,
-                trip_id=None,
-            )
-            return
-
-        if getattr(result, "partial_intake", False):
-            logger.info(
-                "spine_run partial_intake run_id=%s reason=%s execution_ms=%.2f",
-                run_id,
-                result.early_exit_reason,
-                execution_ms,
-            )
-            # Save the partial trip with incomplete status
-            # (packet is valid but missing quote-ready fields)
-            trip_id_saved = save_processed_trip(
-                {
-                    "run_id": run_id,
-                    "packet": _to_dict(result.packet) if hasattr(result, "packet") else None,
-                    "validation": _to_dict(result.validation) if hasattr(result, "validation") else None,
-                    "decision": _to_dict(result.decision) if hasattr(result, "decision") else None,
-                    "strategy": _to_dict(result.strategy) if hasattr(result, "strategy") else None,
-                    "plan_candidate": _to_dict(result.plan_candidate) if hasattr(result, "plan_candidate") and result.plan_candidate else None,
-                    "traveler_bundle": _to_dict(result.traveler_bundle) if hasattr(result, "traveler_bundle") and result.traveler_bundle else None,
-                    "internal_bundle": _to_dict(result.internal_bundle) if hasattr(result, "internal_bundle") and result.internal_bundle else None,
-                    "safety": _to_dict(result.safety) if hasattr(result, "safety") else None,
-                    "fees": _to_dict(result.fees) if hasattr(result, "fees") and result.fees else None,
-                    "frontier_result": _to_dict(result.frontier_result) if hasattr(result, "frontier_result") and result.frontier_result else None,
-                    "meta": {
-                        **meta.model_dump(),
-                        "submission": consented_submission,
-                        "retention_consent": request.retention_consent,
-                    },
-                },
-                source="spine_api",
-                agency_id=agency_id,
-                user_id=user_id,
-                trip_status="incomplete",
-            )
-            if not trip_id_saved:
-                raise RuntimeError("save_processed_trip returned no trip_id for partial intake")
-            RunLedger.update_meta(run_id, trip_id=trip_id_saved)
-            logger.info("Partial trip saved: %s", trip_id_saved)
-
-            RunLedger.complete(run_id, total_ms=execution_ms)
-            _update_draft_for_terminal_state(run_id, "completed", trip_id=trip_id_saved, snapshot={"early_exit_reason": "partial_intake", "trip_id": trip_id_saved})
-            emit_run_completed(run_id=run_id, trip_id=trip_id_saved, total_ms=execution_ms)
-            return
-
-        if hasattr(result, "validation") and result.validation and not getattr(result.validation, "is_valid", True):
-            logger.warning(
-                "spine_run validation_invalid run_id=%s execution_ms=%.2f",
-                run_id,
-                execution_ms,
-            )
-            RunLedger.save_step(run_id, "blocked_result", {
-                "packet": _to_dict(result.packet) if hasattr(result, "packet") else None,
-                "validation": _to_dict(result.validation) if hasattr(result, "validation") else None,
-                "decision": _to_dict(result.decision) if hasattr(result, "decision") else None,
-                "early_exit_reason": "validation_invalid",
-                "meta": meta.model_dump(),
-            })
-            RunLedger.block(run_id, block_reason="Validation failed (defense-in-depth)")
-            _update_draft_for_terminal_state(run_id, "blocked", snapshot={"block_reason": "Validation failed (defense-in-depth)", "stage_at_block": current_stage})
-            emit_run_blocked(
-                run_id=run_id,
-                block_reason="Validation failed (defense-in-depth)",
-                stage_at_block=current_stage,
-                trip_id=None,
-            )
-            return
-
-        logger.info(
-            "spine_run ok=True run_id=%s stage=%s mode=%s scenario_id=%s execution_ms=%.2f agency_id=%s",
-            run_id,
-            request.stage,
-            request.operating_mode,
-            request.scenario_id,
-            execution_ms,
-            agency_id,
-        )
-
-        # Save the trip to persistence scoped to the user's agency
-        trip_id_saved = save_processed_trip(
-            {
-                "run_id": run_id,
-                "packet": _to_dict(result.packet) if hasattr(result, "packet") else None,
-                "validation": _to_dict(result.validation) if hasattr(result, "validation") else None,
-                "decision": _to_dict(result.decision) if hasattr(result, "decision") else None,
-                "strategy": _to_dict(result.strategy) if hasattr(result, "strategy") else None,
-                "plan_candidate": _to_dict(result.plan_candidate) if hasattr(result, "plan_candidate") and result.plan_candidate else None,
-                "traveler_bundle": _to_dict(result.traveler_bundle) if hasattr(result, "traveler_bundle") and result.traveler_bundle else None,
-                "internal_bundle": _to_dict(result.internal_bundle) if hasattr(result, "internal_bundle") and result.internal_bundle else None,
-                "safety": _to_dict(result.safety) if hasattr(result, "safety") else None,
-                "fees": _to_dict(result.fees) if hasattr(result, "fees") and result.fees else None,
-                "frontier_result": _to_dict(result.frontier_result) if hasattr(result, "frontier_result") and result.frontier_result else None,
-                "meta": {
-                    **meta.model_dump(),
-                    "submission": consented_submission,
-                    "retention_consent": request.retention_consent,
-                },
-            },
-            source="spine_api",
-            agency_id=agency_id,
-            user_id=user_id,
-        )
-        if not trip_id_saved:
-            raise RuntimeError("save_processed_trip returned no trip_id")
-        RunLedger.update_meta(run_id, trip_id=trip_id_saved)
-        logger.info("Trip saved: %s", trip_id_saved)
-
-        # Wave 10: Feedback-Driven Recovery Trigger
-        trip_post = TripStore.get_trip(trip_id_saved)
-        if trip_post and trip_post.get("analytics", {}).get("feedback_reopen"):
-            from src.analytics.review import trigger_feedback_recovery
-            trigger_feedback_recovery(trip_id_saved, reason=trip_post["analytics"].get("review_reason"))
-            logger.info("Feedback recovery triggered for trip: %s", trip_id_saved)
-
-        # Compute leakage results first — used both by checkpoint and response
-        all_leaks: List[str] = (
-            result.leakage_result.get("leaks", [])
-            if hasattr(result, "leakage_result") and result.leakage_result
-            else []
-        )
-        is_safe: bool = (
-            result.leakage_result.get("is_safe", len(all_leaks) == 0)
-            if hasattr(result, "leakage_result") and result.leakage_result
-            else len(all_leaks) == 0
-        )
-
-        # Wave A: complete the ledger and emit terminal event
-        # (All pipeline steps were already checkpointed incrementally via
-        # stage_callback inside run_spine_once above.)
-        try:
-            RunLedger.complete(run_id, total_ms=execution_ms)
-            _update_draft_for_terminal_state(run_id, "completed", trip_id=trip_id_saved, snapshot={"trip_id": trip_id_saved})
-            emit_run_completed(run_id=run_id, trip_id=trip_id_saved, total_ms=execution_ms)
-        except Exception as e:
-            logger.error("Wave A: ledger complete failed for run %s: %s", run_id, e)
-
-    except ValueError as e:
-        # Strict leakage violation — traveler_bundle suppressed, ok=False
-        execution_ms = (time.perf_counter() - t0) * 1000
-        meta.execution_ms = round(execution_ms, 2)
-
-        error_message = str(e)
-        logger.warning(
-            "spine_run ok=False run_id=%s strict_leakage=True error=%s execution_ms=%.2f",
-            run_id,
-            error_message,
-            execution_ms,
-        )
-
-        # Wave A: mark as BLOCKED (distinct from FAILED)
-        try:
-            RunLedger.block(run_id, block_reason=error_message)
-            _update_draft_for_terminal_state(run_id, "blocked", snapshot={"block_reason": error_message, "stage_at_block": current_stage})
-            emit_run_blocked(
-                run_id=run_id,
-                block_reason=error_message,
-                stage_at_block=current_stage,
-                trip_id=None,
-            )
-        except Exception as ledger_err:
-            logger.error("Wave A: block ledger failed for run %s: %s", run_id, ledger_err)
-
-    except Exception as e:
-        execution_ms = (time.perf_counter() - t0) * 1000
-        logger.error(
-            "spine_run error run_id=%s type=%s error=%s execution_ms=%.2f",
-            run_id,
-            type(e).__name__,
-            str(e),
-            execution_ms,
-        )
-
-        # Wave A: mark as FAILED
-        try:
-            RunLedger.fail(run_id, error_type=type(e).__name__, error_message=str(e))
-            _update_draft_for_terminal_state(run_id, "failed", snapshot={"error_type": type(e).__name__, "error_message": str(e), "stage_at_failure": current_stage})
-            emit_run_failed(
-                run_id=run_id,
-                error_type=type(e).__name__,
-                error_message=str(e),
-                stage_at_failure=current_stage,
-                trip_id=None,
-            )
-        except Exception as ledger_err:
-            logger.error("Wave A: fail ledger failed for run %s: %s", run_id, ledger_err)
-
-    finally:
-        # Reset strict mode after every request to prevent state leaking to the next
-        set_strict_mode(False)
-
-
-def _derive_product_b_finding_category(finding_text: str) -> str:
-    text = finding_text.lower()
-    if any(token in text for token in ("price", "budget", "cost", "fare", "expensive")):
-        return "cost"
-    if any(token in text for token in ("visa", "policy", "entry", "insurance", "passport")):
-        return "policy"
-    if any(token in text for token in ("timing", "transfer", "connection", "delay", "distance", "weather")):
-        return "logistics"
-    return "suitability"
-
-
-def _safe_log_product_b_event(payload: dict[str, Any]) -> None:
-    try:
-        ProductBEventStore.log_event(payload)
-    except Exception as event_err:
-        logger.warning("product_b_event_log_failed event=%s error=%s", payload.get("event_name"), event_err)
+    return execute_spine_pipeline(
+        run_id=run_id,
+        request_dict=request_dict,
+        agency_id=agency_id,
+        user_id=user_id,
+        build_envelopes=build_envelopes,
+        load_fixture_expectations=load_fixture_expectations,
+        to_dict=_to_dict,
+        close_inherited_lock_fds=_close_inherited_lock_fds,
+        save_processed_trip=save_processed_trip,
+        trip_store=TripStore,
+        audit_store=AuditStore,
+        run_spine_once_fn=run_spine_once,
+        logger=logger,
+        otel_tracer=_otel_tracer,
+        run_ledger=RunLedger,
+        run_state_running=RunState.RUNNING,
+        draft_store=DraftStore,
+        agency_settings_store=AgencySettingsStore,
+        set_strict_mode_fn=set_strict_mode,
+        build_live_checker_signals_fn=build_live_checker_signals,
+        emit_run_started_fn=emit_run_started,
+        emit_run_completed_fn=emit_run_completed,
+        emit_run_failed_fn=emit_run_failed,
+        emit_run_blocked_fn=emit_run_blocked,
+        emit_stage_entered_fn=emit_stage_entered,
+        emit_stage_completed_fn=emit_stage_completed,
+    )
 
 
 def _run_public_checker_submission(request_dict: dict[str, Any]) -> RunStatusResponse:
-    """Run the public checker synchronously and return a result payload."""
-    t0 = time.perf_counter()
-    request = SpineRunRequest(**request_dict)
-    consented_submission = request_dict if request.retention_consent else {
-        key: value
-        for key, value in request_dict.items()
-        if key not in {"raw_note", "owner_note", "itinerary_text", "structured_json"}
-    }
-    run_id = str(uuid.uuid4())
-    steps_completed: list[str] = []
-
-    if request.strict_leakage:
-        set_strict_mode(True)
-
-    source_payload: dict[str, Any] = {}
-    if isinstance(request.structured_json, dict):
-        maybe_source_payload = request.structured_json.get("source_payload")
-        if isinstance(maybe_source_payload, dict):
-            source_payload = maybe_source_payload
-
-    session_id = str(source_payload.get("session_id") or request_dict.get("session_id") or f"sess_{uuid.uuid4()}")
-    inquiry_id = str(source_payload.get("inquiry_id") or request_dict.get("inquiry_id") or run_id)
-
-    input_mode = "freeform_text"
-    if source_payload.get("kind") == "file_upload":
-        input_mode = "upload"
-    elif source_payload.get("kind") == "mixed":
-        input_mode = "mixed"
-
-    trip_context = source_payload.get("trip_context") if isinstance(source_payload.get("trip_context"), dict) else {}
-    has_destination = bool(trip_context.get("destination_candidates") or trip_context.get("destination") or request_dict.get("destination"))
-    has_dates = bool(trip_context.get("date_window") or trip_context.get("travel_window") or request_dict.get("date_window"))
-    has_budget_band = bool(trip_context.get("budget_raw_text") or request_dict.get("budget") or request_dict.get("budget_band"))
-    has_traveler_profile = bool(trip_context.get("party_size") or request_dict.get("party_size") or request_dict.get("traveler_profile"))
-
-    intake_event = ProductBEventStore.build_event(
-        event_name="intake_started",
-        session_id=session_id,
-        inquiry_id=inquiry_id,
-        trip_id=None,
-        actor_type="traveler",
-        actor_id=None,
-        workspace_id=_get_public_checker_agency_id(),
-        channel="web",
-        locale=None,
-        currency=None,
-        properties={
-            "input_mode": input_mode,
-            "has_destination": has_destination,
-            "has_dates": has_dates,
-            "has_budget_band": has_budget_band,
-            "has_traveler_profile": has_traveler_profile,
-        },
+    return run_public_checker_submission(
+        request_dict=request_dict,
+        build_envelopes=build_envelopes,
+        load_fixture_expectations=load_fixture_expectations,
+        to_dict=_to_dict,
+        save_processed_trip=save_processed_trip,
+        get_public_checker_agency_id=_get_public_checker_agency_id,
+        logger=logger,
     )
-    _safe_log_product_b_event(intake_event)
 
-    try:
-        envelopes = build_envelopes(request.model_dump(exclude_none=True))
-        fixture_expectations = load_fixture_expectations(request.scenario_id)
-        agency_settings = AgencySettingsStore.load(_get_public_checker_agency_id())
-        stage_started_at: dict[str, float] = {}
-        current_stage: Optional[str] = None
 
-        def _stage_checkpoint(stage_name: str, data: Any) -> None:
-            nonlocal current_stage
-            event = "completed"
-            payload_data = data
-
-            if isinstance(data, dict) and isinstance(data.get("event"), str):
-                event = data.get("event", "completed")
-                payload_data = data.get("data")
-
-            if event == "entered":
-                current_stage = stage_name
-                stage_started_at[stage_name] = time.perf_counter()
-                return
-
-            if event == "completed":
-                if stage_name not in steps_completed:
-                    steps_completed.append(stage_name)
-            current_stage = stage_name
-            _ = payload_data
-
-        result = run_spine_once(
-            envelopes=envelopes,
-            stage=request.stage,
-            operating_mode=request.operating_mode,
-            fixture_expectations=fixture_expectations,
-            agency_settings=agency_settings,
-            stage_callback=_stage_checkpoint,
-        )
-
-        execution_ms = (time.perf_counter() - t0) * 1000
-
-        raw_text_sources = [
-            request.raw_note,
-            request.owner_note,
-            request.itinerary_text,
-        ]
-        if isinstance(request.structured_json, dict):
-            source_payload = request.structured_json.get("source_payload")
-            if isinstance(source_payload, dict):
-                uploaded_file = source_payload.get("uploaded_file")
-                if isinstance(uploaded_file, dict):
-                    raw_text_sources.append(str(uploaded_file.get("extracted_text") or ""))
-        raw_text = "\n".join(str(item) for item in raw_text_sources if item)
-
-        packet_payload = _to_dict(result.packet) if hasattr(result, "packet") else {}
-        live_checker = build_live_checker_signals(packet_payload or {}, raw_text)
-        validation_payload = _to_dict(result.validation) if hasattr(result, "validation") else {}
-        decision_payload = _to_dict(result.decision) if hasattr(result, "decision") else {}
-
-        if live_checker:
-            validation_base = validation_payload.get("overall_score")
-            if not isinstance(validation_base, (int, float)):
-                validation_base = validation_payload.get("quality_score")
-            if not isinstance(validation_base, (int, float)):
-                validation_base = packet_payload.get("quality_score")
-            if not isinstance(validation_base, (int, float)):
-                validation_base = packet_payload.get("score")
-            if not isinstance(validation_base, (int, float)):
-                decision_state = str(decision_payload.get("decision_state") or "").upper()
-                validation_base = {
-                    "PROCEED_TRAVELER_SAFE": 82,
-                    "PROCEED_INTERNAL_DRAFT": 74,
-                    "ASK_FOLLOWUP": 64,
-                    "STOP_NEEDS_REVIEW": 42,
-                }.get(decision_state, 70)
-
-            adjusted_score = max(0, min(100, round(float(validation_base) - float(live_checker.get("score_penalty", 0)))))
-            validation_payload["overall_score"] = adjusted_score
-            validation_payload["public_checker_live_checks"] = live_checker
-            decision_payload["public_checker_live_checks"] = live_checker
-            decision_payload["hard_blockers"] = list(dict.fromkeys([
-                *([str(item) for item in decision_payload.get("hard_blockers") or []]),
-                *([str(item) for item in live_checker.get("hard_blockers") or []]),
-            ]))
-            decision_payload["soft_blockers"] = list(dict.fromkeys([
-                *([str(item) for item in decision_payload.get("soft_blockers") or []]),
-                *([str(item) for item in live_checker.get("soft_blockers") or []]),
-            ]))
-            packet_payload["public_checker_live_checks"] = live_checker
-            packet_payload["score"] = adjusted_score
-
-        result_state = "completed"
-        error_type: Optional[str] = None
-        error_message: Optional[str] = None
-        block_reason: Optional[str] = None
-
-        if getattr(result, "early_exit", False):
-            result_state = "blocked"
-            block_reason = result.early_exit_reason or "Pipeline blocked"
-
-        if hasattr(result, "validation") and result.validation and not getattr(result.validation, "is_valid", True):
-            result_state = "blocked"
-            block_reason = "Validation failed (defense-in-depth)"
-
-        if getattr(result, "partial_intake", False):
-            trip_status = "incomplete"
-        elif result_state == "blocked":
-            trip_status = "blocked"
-        else:
-            trip_status = "new"
-
-        trip_id_saved = save_processed_trip(
-            # Reduced persistence contract: public checker only persists the 5
-            # non-private compartments. Internal/frontier/fees data is intentionally
-            # excluded — public checker is customer-facing and should not persist
-            # agent-only private compartments (internal_bundle, safety, fees,
-            # frontier_result, traveler_bundle). See TRIP_STATE_CONTRACT.md.
-            {
-                "run_id": run_id,
-                "packet": packet_payload if packet_payload else None,
-                "validation": validation_payload if validation_payload else None,
-                "decision": decision_payload if decision_payload else None,
-                "strategy": _to_dict(result.strategy) if hasattr(result, "strategy") else None,
-                "meta": {
-                    "stage": request.stage,
-                    "operating_mode": request.operating_mode,
-                    "fixture_id": request.scenario_id,
-                    "execution_ms": round(execution_ms, 2),
-                    "submission": consented_submission,
-                    "retention_consent": request.retention_consent,
-                    "session_id": session_id,
-                    "inquiry_id": inquiry_id,
-                },
-            },
-            source="public_checker",
-            agency_id=_get_public_checker_agency_id(),
-            user_id=None,
-            trip_status=trip_status,
-        )
-
-        primary_hard_blockers = [str(item) for item in decision_payload.get("hard_blockers") or [] if str(item).strip()]
-        primary_soft_blockers = [str(item) for item in decision_payload.get("soft_blockers") or [] if str(item).strip()]
-        first_finding_text = ""
-        finding_severity = "optional"
-        if primary_hard_blockers:
-            first_finding_text = primary_hard_blockers[0]
-            finding_severity = "must_fix"
-        elif primary_soft_blockers:
-            first_finding_text = primary_soft_blockers[0]
-            finding_severity = "should_review"
-
-        if first_finding_text:
-            confidence_score_raw = validation_payload.get("overall_score")
-            if isinstance(confidence_score_raw, (int, float)):
-                confidence_score = max(0.0, min(1.0, float(confidence_score_raw) / 100.0))
-            else:
-                confidence_score = 0.5
-
-            first_finding_event = ProductBEventStore.build_event(
-                event_name="first_credible_finding_shown",
-                session_id=session_id,
-                inquiry_id=inquiry_id,
-                trip_id=trip_id_saved,
-                actor_type="system",
-                actor_id=None,
-                workspace_id=_get_public_checker_agency_id(),
-                channel="api",
-                locale=None,
-                currency=None,
-                properties={
-                    "time_from_intake_start_ms": int(round(execution_ms)),
-                    "finding_id": f"fnd_{abs(hash(first_finding_text)) % 10_000_000}",
-                    "finding_category": _derive_product_b_finding_category(first_finding_text),
-                    "severity": finding_severity,
-                    "confidence_score": round(confidence_score, 3),
-                    "evidence_present": True,
-                },
-            )
-            _safe_log_product_b_event(first_finding_event)
-
-        now_iso = datetime.now(timezone.utc).isoformat()
-
-        return RunStatusResponse(
-            run_id=run_id,
-            state=result_state,
-            trip_id=trip_id_saved,
-            stage=request.stage,
-            operating_mode=request.operating_mode,
-            agency_id=_get_public_checker_agency_id(),
-            created_at=now_iso,
-            started_at=now_iso,
-            completed_at=now_iso,
-            total_ms=round(execution_ms, 2),
-            steps_completed=steps_completed,
-            events=[],
-            error_type=error_type,
-            error_message=error_message,
-            stage_at_failure=None,
-            block_reason=block_reason,
-            validation=validation_payload if validation_payload else None,
-            packet=packet_payload if packet_payload else None,
-            decision_state=str(decision_payload.get("decision_state") or None),
-            follow_up_questions=list(result.follow_up_questions) if hasattr(result, "follow_up_questions") else [],
-            hard_blockers=list(decision_payload.get("hard_blockers") or []),
-            soft_blockers=list(decision_payload.get("soft_blockers") or []),
-        )
-    except Exception as exc:
-        execution_ms = (time.perf_counter() - t0) * 1000
-        logger.error("Public checker submission failed: %s", exc)
-        raise HTTPException(status_code=500, detail=str(exc))
-    finally:
-        set_strict_mode(False)
+PUBLIC_CHECKER_EVENT_MAX_BYTES = 16 * 1024
 
 
 @app.post("/api/public-checker/run", response_model=RunStatusResponse)
+@limiter.limit("12/minute")
 def run_public_checker(
-    request: SpineRunRequest,
+    request: Request,
+    response: Response,
+    payload: SpineRunRequest,
 ) -> RunStatusResponse:
     """Submit a public itinerary checker run without agency auth."""
-    return _run_public_checker_submission(request.model_dump(exclude_none=True))
+    _ = (request, response)
+    return _run_public_checker_submission(payload.model_dump(exclude_none=True))
 
 
 class PublicCheckerEventEnvelope(BaseModel):
@@ -1664,8 +1002,13 @@ class PublicCheckerEventEnvelope(BaseModel):
 
 
 @app.post("/api/public-checker/events")
-def post_public_checker_event(event: PublicCheckerEventEnvelope):
+@limiter.limit("30/minute")
+def post_public_checker_event(request: Request, response: Response, event: PublicCheckerEventEnvelope):
     payload = event.model_dump(exclude_none=False)
+    payload_size = len(json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
+    if payload_size > PUBLIC_CHECKER_EVENT_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="Event payload too large")
+
     if not payload.get("event_id"):
         payload["event_id"] = str(uuid.uuid4())
     if not payload.get("occurred_at"):
@@ -1679,6 +1022,7 @@ def post_public_checker_event(event: PublicCheckerEventEnvelope):
         logger.error("public_checker_event_write_failed error=%s", exc)
         raise HTTPException(status_code=500, detail="Could not record event")
 
+    _ = (request, response)
     return {"ok": True, **result}
 
 
@@ -1729,145 +1073,16 @@ async def run_spine(
     return RunAcceptedResponse(run_id=run_id, state="queued")
 
 
-# =============================================================================
-# Run Status Endpoints (Wave A)
-# =============================================================================
-
-@app.get("/runs")
-def list_runs(
-    trip_id: Optional[str] = None,
-    state: Optional[str] = None,
-    limit: int = 50,
-    agency: Agency = Depends(get_current_agency),
-):
-    """
-    List run records, newest first.
-    Optionally filter by trip_id and/or state (queued|running|completed|failed|blocked).
-    """
-    runs = RunLedger.list_runs(trip_id=trip_id, state=state, limit=500)
-    agency_runs = [r for r in runs if r.get("agency_id") == agency.id][:limit]
-    return {"items": agency_runs, "total": len(agency_runs)}
-
-
-@app.get("/runs/{run_id}", response_model=RunStatusResponse)
-def get_run_status(
-    run_id: str,
-    agency: Agency = Depends(get_current_agency),
-) -> RunStatusResponse:
-    """
-    Full run status including metadata and latest checkpointed steps.
-    Returns 404 if the run_id is not found in the ledger.
-    """
-    meta = RunLedger.get_meta(run_id)
-    if meta is None:
-        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
-    if meta.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
-
-    if meta.get("state") in ("queued", "running"):
-        RunLedger.timeout_stale_runs(max_age_seconds=300)
-
-    meta = RunLedger.get_meta(run_id)
-    if meta is None:
-        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
-
-    steps = RunLedger.get_all_steps(run_id)
-    events = get_run_events(run_id)
-
-    decision_data = None
-    blocked_result_data = None
-    if "decision" in steps:
-        decision_data = steps["decision"].get("data")
-    elif "blocked_result" in steps:
-        blocked_result_data = steps["blocked_result"].get("data") or {}
-        decision_data = blocked_result_data.get("decision")
-
-    decision_state = None
-    follow_up_questions: list[dict[str, Any]] = []
-    hard_blockers: list[str] = []
-    soft_blockers: list[str] = []
-    if isinstance(decision_data, dict):
-        decision_state = decision_data.get("decision_state")
-        follow_up_questions = decision_data.get("follow_up_questions") or []
-        hard_blockers = decision_data.get("hard_blockers") or []
-        soft_blockers = decision_data.get("soft_blockers") or []
-
-    # Extract validation and packet from blocked_result or individual steps
-    validation_data = None
-    packet_data = None
-    if blocked_result_data:
-        validation_data = blocked_result_data.get("validation")
-        packet_data = blocked_result_data.get("packet")
-    if not validation_data and "validation" in steps:
-        validation_data = steps["validation"].get("data")
-    if not packet_data and "packet" in steps:
-        packet_data = steps["packet"].get("data")
-
-    return RunStatusResponse(
-        **meta,
-        steps_completed=list(steps.keys()),
-        events=events,
-        decision_state=decision_state,
-        follow_up_questions=follow_up_questions,
-        hard_blockers=hard_blockers,
-        soft_blockers=soft_blockers,
-        validation=validation_data,
-        packet=packet_data,
-    )
-
-
-@app.get("/runs/{run_id}/steps/{step_name}")
-def get_run_step(
-    run_id: str,
-    step_name: str,
-    agency: Agency = Depends(get_current_agency),
-):
-    """
-    Return the full checkpointed output for a single pipeline step.
-    Returns 404 if the step has not been checkpointed yet.
-    """
-    meta = RunLedger.get_meta(run_id)
-    if meta is None:
-        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
-    if meta.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
-
-    step = RunLedger.get_step(run_id, step_name)
-    if step is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Step '{step_name}' not yet checkpointed for run {run_id}",
-        )
-    return step
-
-
-@app.get("/runs/{run_id}/events")
-def get_run_event_stream(
-    run_id: str,
-    agency: Agency = Depends(get_current_agency),
-):
-    """
-    Return the append-only event log for a run in chronological order.
-    Returns empty list if the run_id is unknown (no events written yet).
-    """
-    meta = RunLedger.get_meta(run_id)
-    if meta is None:
-        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
-    if meta.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
-
-    meta = RunLedger.get_meta(run_id)
-    if meta is None:
-        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
-    if meta.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
-
-    events = get_run_events(run_id)
-    return {"run_id": run_id, "events": events, "total": len(events)}
+# Run status endpoints (/runs*) moved to spine_api/routers/run_status.py
 
 
 @app.get("/api/public-checker/{trip_id}", response_model=PublicCheckerExportResponse)
-def get_public_checker_package(trip_id: str):
+def get_public_checker_package(
+    trip_id: str,
+    agency: Agency = Depends(get_current_agency),
+    user: User = Depends(get_current_user),
+):
+    _ = (agency, user)
     package = persistence.PublicCheckerArtifactStore.export_trip_package(trip_id)
     if not package:
         raise HTTPException(status_code=404, detail="Public checker record not found")
@@ -1875,7 +1090,12 @@ def get_public_checker_package(trip_id: str):
 
 
 @app.get("/api/public-checker/{trip_id}/export", response_model=PublicCheckerExportResponse)
-def export_public_checker_package(trip_id: str):
+def export_public_checker_package(
+    trip_id: str,
+    agency: Agency = Depends(get_current_agency),
+    user: User = Depends(get_current_user),
+):
+    _ = (agency, user)
     package = persistence.PublicCheckerArtifactStore.export_trip_package(trip_id)
     if not package:
         raise HTTPException(status_code=404, detail="Public checker record not found")
@@ -1883,7 +1103,12 @@ def export_public_checker_package(trip_id: str):
 
 
 @app.delete("/api/public-checker/{trip_id}", response_model=PublicCheckerDeleteResponse)
-def delete_public_checker_package(trip_id: str):
+def delete_public_checker_package(
+    trip_id: str,
+    agency: Agency = Depends(get_current_agency),
+    user: User = Depends(get_current_user),
+):
+    _ = (agency, user)
     deleted_artifacts = persistence.PublicCheckerArtifactStore.delete_trip_artifacts(trip_id)
     deleted_trip = TripStore.delete_trip(trip_id)
     if not deleted_artifacts and not deleted_trip:

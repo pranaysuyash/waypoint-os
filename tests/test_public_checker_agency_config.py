@@ -88,7 +88,7 @@ async def test_validate_public_checker_agency_configuration_skips_when_not_sql(m
 
 def test_get_public_checker_agency_id_uses_default_and_strips(monkeypatch):
     monkeypatch.delenv("PUBLIC_CHECKER_AGENCY_ID", raising=False)
-    assert server._get_public_checker_agency_id() == "waypoint-hq"
+    assert server._get_public_checker_agency_id() == "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
 
     monkeypatch.setenv("PUBLIC_CHECKER_AGENCY_ID", "  custom-agency  ")
     assert server._get_public_checker_agency_id() == "custom-agency"

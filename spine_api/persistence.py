@@ -111,10 +111,21 @@ def _make_json_serializable(obj: Any) -> Any:
         return str(obj)
 
 
+_SAFE_TRIP_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
+
+
 def _safe_filename(name: str) -> str:
     """Return a filesystem-safe filename while preserving the base name."""
     base = Path(name).name or "upload.bin"
     return re.sub(r"[^A-Za-z0-9._-]+", "_", base)
+
+
+def _validate_trip_id(trip_id: str) -> str:
+    """Validate trip IDs used in file-backed paths to prevent path traversal."""
+    value = str(trip_id or "").strip()
+    if not value or not _SAFE_TRIP_ID_RE.fullmatch(value):
+        raise ValueError("invalid trip_id format")
+    return value
 
 
 def _is_process_dead(pid: int) -> bool:
@@ -233,7 +244,15 @@ class FileTripStore:
 
         check_trip_data(trip_data)
 
-        trip_id = trip_data.get("id") or f"trip_{uuid4().hex[:12]}"
+        candidate_trip_id = trip_data.get("id")
+        if candidate_trip_id is not None:
+            try:
+                trip_id = _validate_trip_id(str(candidate_trip_id))
+            except ValueError:
+                logger.warning("Discarding unsafe trip_id from payload; generating canonical id")
+                trip_id = f"trip_{uuid4().hex[:12]}"
+        else:
+            trip_id = f"trip_{uuid4().hex[:12]}"
         trip_data["id"] = trip_id
         trip_data["saved_at"] = datetime.now(timezone.utc).isoformat()
         
@@ -255,10 +274,15 @@ class FileTripStore:
     @staticmethod
     def get_trip(trip_id: str) -> Optional[dict]:
         """Get a trip by ID."""
-        filepath = TRIPS_DIR / f"{trip_id}.json"
+        try:
+            safe_trip_id = _validate_trip_id(trip_id)
+        except ValueError:
+            return None
+
+        filepath = TRIPS_DIR / f"{safe_trip_id}.json"
         if not filepath.exists():
             return None
-        
+
         with open(filepath) as f:
             return json.load(f)
     
@@ -309,11 +333,16 @@ class FileTripStore:
         from src.security.privacy_guard import check_trip_data
 
         check_trip_data(updates)
-        filepath = TRIPS_DIR / f"{trip_id}.json"
-        
+        try:
+            safe_trip_id = _validate_trip_id(trip_id)
+        except ValueError:
+            return None
+
+        filepath = TRIPS_DIR / f"{safe_trip_id}.json"
+
         with FileTripStore._lock:
             with file_lock(filepath):
-                trip = FileTripStore.get_trip(trip_id)
+                trip = FileTripStore.get_trip(safe_trip_id)
                 if not trip:
                     return None
                 
@@ -330,7 +359,12 @@ class FileTripStore:
 
     @staticmethod
     def delete_trip(trip_id: str) -> bool:
-        filepath = TRIPS_DIR / f"{trip_id}.json"
+        try:
+            safe_trip_id = _validate_trip_id(trip_id)
+        except ValueError:
+            return False
+
+        filepath = TRIPS_DIR / f"{safe_trip_id}.json"
         if not filepath.exists():
             return False
 
@@ -1163,23 +1197,42 @@ class AuditStore:
 class PublicCheckerArtifactStore:
     """Persist consented public checker uploads and manifests."""
 
+    MAX_ARCHIVE_BYTES = 10 * 1024 * 1024  # 10 MiB hard cap for retained artifacts
+
     @staticmethod
     def _trip_dir(trip_id: str) -> Path:
-        return PUBLIC_CHECKER_UPLOADS_DIR / trip_id
+        safe_trip_id = _validate_trip_id(trip_id)
+        return PUBLIC_CHECKER_UPLOADS_DIR / safe_trip_id
 
     @staticmethod
     def _manifest_path(trip_id: str) -> Path:
-        return PUBLIC_CHECKER_MANIFESTS_DIR / f"{trip_id}.json"
+        safe_trip_id = _validate_trip_id(trip_id)
+        return PUBLIC_CHECKER_MANIFESTS_DIR / f"{safe_trip_id}.json"
 
     @staticmethod
     def save_trip_artifacts(trip_id: str, submission: Optional[dict], trip_record: Optional[dict] = None) -> Optional[dict]:
         if not submission or not submission.get("retention_consent"):
             return None
 
+        try:
+            safe_trip_id = _validate_trip_id(trip_id)
+        except ValueError:
+            logger.warning("Refusing to persist artifacts for invalid trip_id")
+            return None
+
         source_payload = submission.get("source_payload") or {}
         uploaded_file = source_payload.get("uploaded_file") or {}
         content_base64 = uploaded_file.get("content_base64")
         if not content_base64:
+            return None
+
+        approximate_bytes = (len(str(content_base64).strip()) * 3) // 4
+        if approximate_bytes > PublicCheckerArtifactStore.MAX_ARCHIVE_BYTES:
+            logger.warning(
+                "Refusing oversized consented upload for trip %s (%s bytes approx)",
+                safe_trip_id,
+                approximate_bytes,
+            )
             return None
 
         file_name = _safe_filename(str(uploaded_file.get("file_name") or "upload.bin"))
@@ -1190,10 +1243,18 @@ class PublicCheckerArtifactStore:
         try:
             raw_bytes = base64.b64decode(content_base64)
         except Exception as exc:
-            logger.warning("Failed to decode consented upload for trip %s: %s", trip_id, exc)
+            logger.warning("Failed to decode consented upload for trip %s: %s", safe_trip_id, exc)
             return None
 
-        trip_dir = PublicCheckerArtifactStore._trip_dir(trip_id)
+        if len(raw_bytes) > PublicCheckerArtifactStore.MAX_ARCHIVE_BYTES:
+            logger.warning(
+                "Refusing oversized decoded upload for trip %s (%s bytes)",
+                safe_trip_id,
+                len(raw_bytes),
+            )
+            return None
+
+        trip_dir = PublicCheckerArtifactStore._trip_dir(safe_trip_id)
         trip_dir.mkdir(parents=True, exist_ok=True)
 
         archive_path = trip_dir / file_name
@@ -1201,7 +1262,7 @@ class PublicCheckerArtifactStore:
             handle.write(raw_bytes)
 
         manifest = {
-            "trip_id": trip_id,
+            "trip_id": safe_trip_id,
             "saved_at": datetime.now(timezone.utc).isoformat(),
             "retention_consent": True,
             "artifact_type": "public_checker_upload",
@@ -1222,7 +1283,7 @@ class PublicCheckerArtifactStore:
                 "agency_id": trip_record.get("agency_id"),
             }
 
-        manifest_path = PublicCheckerArtifactStore._manifest_path(trip_id)
+        manifest_path = PublicCheckerArtifactStore._manifest_path(safe_trip_id)
         with file_lock(manifest_path):
             with open(manifest_path, "w") as handle:
                 json.dump(manifest, handle, indent=2)
@@ -1231,7 +1292,10 @@ class PublicCheckerArtifactStore:
 
     @staticmethod
     def get_trip_artifacts(trip_id: str) -> Optional[dict]:
-        manifest_path = PublicCheckerArtifactStore._manifest_path(trip_id)
+        try:
+            manifest_path = PublicCheckerArtifactStore._manifest_path(trip_id)
+        except ValueError:
+            return None
         if not manifest_path.exists():
             return None
         with open(manifest_path) as handle:
@@ -1239,8 +1303,11 @@ class PublicCheckerArtifactStore:
 
     @staticmethod
     def delete_trip_artifacts(trip_id: str) -> bool:
-        manifest_path = PublicCheckerArtifactStore._manifest_path(trip_id)
-        trip_dir = PublicCheckerArtifactStore._trip_dir(trip_id)
+        try:
+            manifest_path = PublicCheckerArtifactStore._manifest_path(trip_id)
+            trip_dir = PublicCheckerArtifactStore._trip_dir(trip_id)
+        except ValueError:
+            return False
         removed = False
 
         if manifest_path.exists():
@@ -1291,14 +1358,16 @@ class OverrideStore:
         Save an override for a trip. Returns override_id.
         Appends to trip's overrides JSONL file.
         """
+        safe_trip_id = _validate_trip_id(trip_id)
+
         override_id = f"ovr_{uuid4().hex[:12]}"
         override_data["override_id"] = override_id
-        override_data["trip_id"] = trip_id
+        override_data["trip_id"] = safe_trip_id
         override_data["created_at"] = datetime.now(timezone.utc).isoformat()
         
         # Ensure trip overrides directory exists
         OVERRIDES_PER_TRIP_DIR.mkdir(parents=True, exist_ok=True)
-        trip_overrides_file = OVERRIDES_PER_TRIP_DIR / f"{trip_id}.jsonl"
+        trip_overrides_file = OVERRIDES_PER_TRIP_DIR / f"{safe_trip_id}.jsonl"
         
         # Append to JSONL (immutable log)
         with open(trip_overrides_file, "a") as f:
@@ -1313,7 +1382,7 @@ class OverrideStore:
             )
         
         # Update index
-        OverrideStore._update_index(override_id, trip_id, str(trip_overrides_file))
+        OverrideStore._update_index(override_id, safe_trip_id, str(trip_overrides_file))
         
         # If scope is "pattern", also add to pattern file
         if override_data.get("scope") == "pattern" and override_data.get("decision_type"):
@@ -1324,7 +1393,12 @@ class OverrideStore:
     @staticmethod
     def get_overrides_for_trip(trip_id: str) -> list:
         """List all overrides for a trip."""
-        trip_overrides_file = OVERRIDES_PER_TRIP_DIR / f"{trip_id}.jsonl"
+        try:
+            safe_trip_id = _validate_trip_id(trip_id)
+        except ValueError:
+            return []
+
+        trip_overrides_file = OVERRIDES_PER_TRIP_DIR / f"{safe_trip_id}.jsonl"
         
         if not trip_overrides_file.exists():
             return []

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>server.py Refactor Status</title>
+  <style>
+    :root {
+      --bg: #f7f5ef;
+      --card: #fffdf8;
+      --text: #1f1a14;
+      --muted: #6d6358;
+      --ok: #1f7a42;
+      --warn: #9a5f00;
+      --line: #dfd7ca;
+    }
+    body { margin: 0; font-family: "Avenir Next", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    .wrap { max-width: 920px; margin: 32px auto; padding: 0 16px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    h1, h2 { margin: 0 0 12px; }
+    p, li { color: var(--muted); line-height: 1.45; }
+    .ok { color: var(--ok); font-weight: 600; }
+    .warn { color: var(--warn); font-weight: 600; }
+    code { background: #f1ece3; padding: 1px 6px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <h1>server.py Refactor Status (2026-05-07)</h1>
+      <p>Scope: verify what is done, complete the next safe slice, and prepare for re-review.</p>
+    </section>
+    <section class="card">
+      <h2>Completed</h2>
+      <ul>
+        <li class="ok">Phase 0 safety gates already in place (route/OpenAPI/startup invariants).</li>
+        <li class="ok">Phase 1 pure helper extraction completed (no route movement, no startup relocation).</li>
+        <li class="ok">Duplicated consent/redaction logic extracted.</li>
+        <li class="ok">Duplicated raw-text collection logic extracted.</li>
+        <li class="ok">Duplicated live-checker score/blocker adjustment logic extracted.</li>
+        <li class="ok">Targeted regression suite passed: <code>29 passed</code>.</li>
+      </ul>
+    </section>
+    <section class="card">
+      <h2>Artifacts</h2>
+      <ul>
+        <li><code>spine_api/services/live_checker_service.py</code></li>
+        <li><code>tests/test_live_checker_service.py</code></li>
+        <li><code>Docs/status/SERVER_PY_REFACTOR_PHASE1_COMPLETION_2026-05-07.md</code></li>
+      </ul>
+    </section>
+    <section class="card">
+      <h2>Next Recommended Slice</h2>
+      <p class="warn">Phase 2 only: service extraction delegation while keeping route decorators in <code>server.py</code>.</p>
+    </section>
+  </main>
+</body>
+</html>

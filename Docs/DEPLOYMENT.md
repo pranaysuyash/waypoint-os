@@ -79,8 +79,13 @@ Unit-1 introduces the Call Capture & Follow-Up Task feature. This document cover
    # Standard deployment procedure for spine_api
    # (use your existing CD pipeline)
    ```
-   - No configuration changes required
-   - No environment variables needed
+   - Required env in SQL mode: `PUBLIC_CHECKER_AGENCY_ID`
+   - Canonical non-prod value: `d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b`
+   - Required bootstrap before app starts in SQL mode:
+     - `alembic upgrade head`
+     - `python scripts/bootstrap_public_checker_agency.py`
+   - SQL preflight (must return a row):
+     - `SELECT id, slug, name FROM agencies WHERE id = '<PUBLIC_CHECKER_AGENCY_ID>';`
 
 3. **Deploy Frontend**
    ```bash

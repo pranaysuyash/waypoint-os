@@ -27,6 +27,11 @@ trap cleanup SIGINT SIGTERM
 
 start_spine_api() {
   echo "Starting spine-api on http://127.0.0.1:8000 ..."
+  if [ "${TRIPSTORE_BACKEND:-file}" = "sql" ]; then
+    echo "Running SQL bootstrap preflight for public checker agency ..."
+    TMPDIR=/private/tmp PYTHONDONTWRITEBYTECODE=1 uv run alembic upgrade head
+    TMPDIR=/private/tmp PYTHONDONTWRITEBYTECODE=1 uv run python scripts/bootstrap_public_checker_agency.py
+  fi
   uv run uvicorn spine_api.server:app --port 8000 --reload &
   SPINE_API_PID=$!
   echo "spine-api started (PID $SPINE_API_PID)"
