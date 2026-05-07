@@ -49,8 +49,10 @@ pytest-of-pranay*/
 .vscode/
 .idea/
 .deepseek/
+.commandcode/
 *.swp
 *.swo
+*.bak
 *~
 
 # Package manager locks (project uses uv; lockfile is source-controlled

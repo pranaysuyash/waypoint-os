@@ -446,7 +446,7 @@ class TestIntegrityIssues:
 
     def test_integrity_endpoint_passes_current_agency_scope(self, session_client):
         with patch(
-            "spine_api.server.IntegrityService.list_integrity_issues",
+            "spine_api.routers.system_dashboard.IntegrityService.list_integrity_issues",
             return_value={"items": [], "total": 0},
         ) as mocked_list:
             response = session_client.get("/api/system/integrity/issues")

@@ -111,7 +111,6 @@ from spine_api.contract import (
     RunStatusResponse,
     OverrideRequest,
     OverrideResponse,
-    HealthResponse,
     TimelineEvent,
     TimelineResponse,
     ReviewActionRequest,
@@ -151,7 +150,6 @@ from src.intake.orchestration import run_spine_once
 from src.intake.packet_models import SourceEnvelope
 from src.intake.safety import set_strict_mode
 from src.public_checker.live_checks import build_live_checker_signals
-from src.services.integrity_service import IntegrityService
 
 # OTel tracer for pipeline spans
 _otel_tracer = trace.get_tracer("spine_api.pipeline")
@@ -285,6 +283,8 @@ try:
     from routers import audit as audit_router
     from routers import assignments as assignments_router
     from routers import run_status as run_status_router
+    from routers import health as health_router
+    from routers import system_dashboard as system_dashboard_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -317,6 +317,16 @@ except (ImportError, ValueError):
     _run_status_mod = importlib.util.module_from_spec(_run_status_spec)
     _run_status_spec.loader.exec_module(_run_status_mod)
     run_status_router = _run_status_mod
+
+    _health_spec = importlib.util.spec_from_file_location("routers.health", _base / "routers" / "health.py")
+    _health_mod = importlib.util.module_from_spec(_health_spec)
+    _health_spec.loader.exec_module(_health_mod)
+    health_router = _health_mod
+
+    _system_dashboard_spec = importlib.util.spec_from_file_location("routers.system_dashboard", _base / "routers" / "system_dashboard.py")
+    _system_dashboard_mod = importlib.util.module_from_spec(_system_dashboard_spec)
+    _system_dashboard_spec.loader.exec_module(_system_dashboard_mod)
+    system_dashboard_router = _system_dashboard_mod
 
 logger = logging.getLogger("spine_api")
 
@@ -558,6 +568,8 @@ app.include_router(frontier_router.router, dependencies=[Depends(_auth_or_skip)]
 app.include_router(audit_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(assignments_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(run_status_router.router)
+app.include_router(health_router.router)
+app.include_router(system_dashboard_router.router)
 
 
 def _seed_scenario(agency_id: Optional[str] = None):
@@ -840,19 +852,6 @@ def load_fixture_expectations(scenario_id: Optional[str]) -> Optional[dict[str, 
 # =============================================================================
 # Routes
 # =============================================================================
-
-@app.get("/health", response_model=HealthResponse)
-def health() -> HealthResponse:
-    try:
-        from src.decision.health import health_check_dict
-        return HealthResponse(
-            status="ok",
-            version="1.0.0",
-            components=health_check_dict().get("components"),
-            issues=health_check_dict().get("issues"),
-        )
-    except Exception:
-        return HealthResponse(status="ok", version="1.0.0")
 
 
 _zombie_thread: Optional[threading.Thread] = None
@@ -3880,57 +3879,6 @@ def get_override(override_id: str) -> dict:
 # Dev entrypoint
 # =============================================================================
 
-
-# =============================================================================
-# System Integrity API
-# =============================================================================
-
-from src.services.dashboard_aggregator import DashboardAggregator
-
-@app.get("/api/system/unified-state")
-async def get_unified_state(agency: Agency = Depends(get_current_agency)):
-    """
-    Return unified state. Scoped to the current user's agency.
-    """
-    try:
-        return DashboardAggregator.get_unified_state(agency_id=agency.id)
-    except Exception as e:
-        logger.error(f"Failed to aggregate unified state: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="Internal integrity error"
-        )
-
-
-@app.get("/api/system/integrity/issues", response_model=IntegrityIssuesResponse)
-async def get_integrity_issues(agency: Agency = Depends(get_current_agency)):
-    """
-    Return typed integrity issues. Scoped to the current user's agency.
-    """
-    try:
-        return IntegrityService.list_integrity_issues(agency_id=agency.id)
-    except Exception as e:
-        logger.error(f"Failed to aggregate integrity issues: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="Internal integrity error",
-        )
-
-
-@app.get("/api/dashboard/stats", response_model=DashboardStatsResponse)
-async def get_dashboard_stats(agency: Agency = Depends(get_current_agency)):
-    """
-    Dashboard stat cards — computed entirely by the backend aggregator.
-    Scopes all metrics to the current user's agency.
-    """
-    try:
-        return DashboardAggregator.get_dashboard_stats(agency_id=agency.id)
-    except Exception as e:
-        logger.error(f"Failed to compute dashboard stats: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to compute dashboard stats"
-        )
 
 # =============================================================================
 # Team Management API
