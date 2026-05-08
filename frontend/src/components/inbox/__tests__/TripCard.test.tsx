@@ -50,32 +50,36 @@ const mockTrip: InboxTrip = {
   slaStatus: 'at_risk',
   customerName: 'Sharma Family',
   flags: ['high_value', 'needs_clarification'],
+  urgency: 60,
+  importance: 50,
+  urgencyBreakdown: { sla_breach: 60, departure_proximity: 50 },
+  importanceBreakdown: { revenue: 35, client_tier: 70 },
 };
 
-describe('TripCard v2 - accent bar', () => {
+describe('TripCard v2 - priority indicator', () => {
   beforeEach(() => {
     localStorageMock.clear();
   });
 
-  it('renders an accent bar on the left edge matching trip priority', () => {
+  it('renders PriorityIndicator with urgency dot and priority text', () => {
     render(<TripCard trip={mockTrip} isSelected={false} onSelect={vi.fn()} />);
-    const accentBar = document.querySelector('[aria-hidden="true"]');
-    expect(accentBar).toBeInTheDocument();
-    expect(accentBar).toHaveStyle({ background: '#d29922' }); // high - amber
+    const indicator = screen.getByRole('status');
+    expect(indicator).toBeInTheDocument();
+    expect(indicator).toHaveAttribute('aria-label', expect.stringContaining('Urgency'));
   });
 
-  it('uses critical red for critical priority', () => {
-    const criticalTrip = { ...mockTrip, priority: 'critical' as TripPriority };
+  it('shows critical label for critical priority', () => {
+    const criticalTrip = { ...mockTrip, priority: 'critical' as TripPriority, urgency: 90, importance: 80 };
     render(<TripCard trip={criticalTrip} isSelected={false} onSelect={vi.fn()} />);
-    const accentBar = document.querySelector('[aria-hidden="true"]');
-    expect(accentBar).toHaveStyle({ background: '#f85149' });
+    const indicator = screen.getByRole('status');
+    expect(indicator).toHaveTextContent('CRIT');
   });
 
-  it('uses blue for medium priority', () => {
-    const mediumTrip = { ...mockTrip, priority: 'medium' as TripPriority };
+  it('shows medium label for medium priority', () => {
+    const mediumTrip = { ...mockTrip, priority: 'medium' as TripPriority, urgency: 30, importance: 25 };
     render(<TripCard trip={mediumTrip} isSelected={false} onSelect={vi.fn()} />);
-    const accentBar = document.querySelector('[aria-hidden="true"]');
-    expect(accentBar).toHaveStyle({ background: '#58a6ff' });
+    const indicator = screen.getByRole('status');
+    expect(indicator).toHaveTextContent('MEDI');
   });
 });
 

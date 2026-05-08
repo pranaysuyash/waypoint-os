@@ -4,6 +4,7 @@ import { memo, useState, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { CheckSquare, Square, ChevronRight, Flag, UserX, UserPlus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { PriorityIndicator } from '@/components/ui/PriorityIndicator';
 import type { InboxTrip } from '@/types/governance';
 import type { ViewProfile, MetricField } from '@/lib/inbox-helpers';
 import {
@@ -311,7 +312,6 @@ export const TripCard = memo(function TripCard({
   agents,
   viewProfile = 'operations',
 }: TripCardProps) {
-  const accentColor = PRIORITY_BAR[trip.priority] || PRIORITY_BAR.medium;
   const showMicroLabels = shouldShowMicroLabels();
 
   const reviewHref = `/trips/${trip.id}/intake`;
@@ -333,12 +333,6 @@ export const TripCard = memo(function TripCard({
         (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-surface)';
       }}
     >
-      {/* Accent bar */}
-      <div
-        className="absolute left-0 top-0 bottom-0 w-[3px]"
-        style={{ background: accentColor }}
-        aria-hidden="true"
-      />
 
       {/* Checkbox hover-reveal */}
       <button
@@ -361,6 +355,13 @@ export const TripCard = memo(function TripCard({
         <div className="flex items-start justify-between gap-3 pr-6">
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2">
+              <PriorityIndicator
+                urgency={trip.urgency ?? 50}
+                importance={trip.importance ?? 50}
+                priorityLabel={trip.priority}
+                variant="dot-only"
+                size="sm"
+              />
               <span
                 data-testid="trip-card-destination"
                 className="text-[15px] font-semibold truncate leading-tight"

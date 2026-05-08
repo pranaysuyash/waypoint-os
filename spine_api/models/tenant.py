@@ -324,4 +324,53 @@ class DocumentExtraction(Base):
         Index("ix_de_document_id", "document_id", unique=True),
         Index("ix_de_trip_id", "trip_id"),
         Index("ix_de_status", "status"),
+        Index("ix_de_current_attempt_id", "current_attempt_id"),
+    )
+
+    # Phase 4E: attempt tracking columns
+    current_attempt_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    run_count: Mapped[int] = mapped_column(Integer, default=0)
+    page_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+
+class DocumentExtractionAttempt(Base):
+    """One attempt row per provider call. Preserves full fallback history."""
+    __tablename__ = "document_extraction_attempts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    extraction_id: Mapped[str] = mapped_column(
+        ForeignKey("document_extractions.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    run_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    fallback_rank: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # Provider details for this specific call
+    provider_name: Mapped[str] = mapped_column(String(30), nullable=False)
+    model_name: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+
+    # Timing and usage
+    latency_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    prompt_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    completion_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    total_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    cost_estimate_usd: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+    # Result
+    status: Mapped[str] = mapped_column(String(20), nullable=False)  # "success" or "failed"
+    error_code: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    error_summary: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+
+    # Encrypted fields — NULL for failed attempts, populated only for success
+    extracted_fields_encrypted: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    fields_present: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    field_count: Mapped[int] = mapped_column(Integer, default=0)
+    confidence_scores: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    overall_confidence: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    confidence_method: Mapped[str] = mapped_column(String(30), server_default="model")
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
     )

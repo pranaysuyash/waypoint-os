@@ -285,6 +285,9 @@ try:
     from routers import run_status as run_status_router
     from routers import health as health_router
     from routers import system_dashboard as system_dashboard_router
+    from routers import followups as followups_router
+    from routers import team as team_router
+    from routers import product_b_analytics as product_b_analytics_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -327,6 +330,21 @@ except (ImportError, ValueError):
     _system_dashboard_mod = importlib.util.module_from_spec(_system_dashboard_spec)
     _system_dashboard_spec.loader.exec_module(_system_dashboard_mod)
     system_dashboard_router = _system_dashboard_mod
+
+    _followups_spec = importlib.util.spec_from_file_location("routers.followups", _base / "routers" / "followups.py")
+    _followups_mod = importlib.util.module_from_spec(_followups_spec)
+    _followups_spec.loader.exec_module(_followups_mod)
+    followups_router = _followups_mod
+
+    _team_spec = importlib.util.spec_from_file_location("routers.team", _base / "routers" / "team.py")
+    _team_mod = importlib.util.module_from_spec(_team_spec)
+    _team_spec.loader.exec_module(_team_mod)
+    team_router = _team_mod
+
+    _product_b_analytics_spec = importlib.util.spec_from_file_location("routers.product_b_analytics", _base / "routers" / "product_b_analytics.py")
+    _product_b_analytics_mod = importlib.util.module_from_spec(_product_b_analytics_spec)
+    _product_b_analytics_spec.loader.exec_module(_product_b_analytics_mod)
+    product_b_analytics_router = _product_b_analytics_mod
 
 logger = logging.getLogger("spine_api")
 
@@ -570,6 +588,9 @@ app.include_router(assignments_router.router, dependencies=[Depends(_auth_or_ski
 app.include_router(run_status_router.router)
 app.include_router(health_router.router)
 app.include_router(system_dashboard_router.router)
+app.include_router(followups_router.router)
+app.include_router(team_router.router)
+app.include_router(product_b_analytics_router.router)
 
 
 def _seed_scenario(agency_id: Optional[str] = None):
@@ -1025,16 +1046,6 @@ def post_public_checker_event(request: Request, response: Response, event: Publi
     return {"ok": True, **result}
 
 
-@app.get("/analytics/product-b/kpis")
-def get_product_b_kpis(
-    window_days: int = Query(default=30, ge=1, le=365),
-    qualified_only: bool = Query(default=False),
-    agency: Agency = Depends(get_current_agency),
-):
-    _ = agency
-    return ProductBEventStore.compute_kpis(window_days=window_days, qualified_only=qualified_only)
-
-
 @app.post("/run", response_model=RunAcceptedResponse)
 async def run_spine(
     request: SpineRunRequest,
@@ -1432,6 +1443,8 @@ def get_inbox(
     assignedTo: Optional[str] = Query(None),
     minValue: Optional[int] = Query(None),
     maxValue: Optional[int] = Query(None),
+    minUrgency: Optional[int] = Query(None),
+    minImportance: Optional[int] = Query(None),
     agency: Agency = Depends(get_current_agency),
 ):
     """
@@ -1442,16 +1455,18 @@ def get_inbox(
     are accurate regardless of active filter or page size.
 
     Query params:
-      filter     — tab filter: all | at_risk | incomplete | unassigned
-      sort       — sort key: priority | destination | value | party | dates | sla
-      dir        — asc | desc
-      q          — fuzzy search on customerName, destination, reference, id
-      priority   — comma-separated: low,medium,high,critical
-      slaStatus  — comma-separated: on_track,at_risk,breached
-      stage      — comma-separated: intake,details,options,review,booking,completed
-      assignedTo — comma-separated agent IDs (or "unassigned")
-      minValue   — minimum trip budget
-      maxValue   — maximum trip budget
+      filter       — tab filter: all | at_risk | incomplete | unassigned
+      sort         — sort key: priority | destination | value | party | dates | sla | urgency | importance
+      dir          — asc | desc
+      q            — fuzzy search on customerName, destination, reference, id
+      priority     — comma-separated: low,medium,high,critical
+      slaStatus    — comma-separated: on_track,at_risk,breached
+      stage        — comma-separated: intake,details,options,review,booking,completed
+      assignedTo   — comma-separated agent IDs (or "unassigned")
+      minValue     — minimum trip budget
+      maxValue     — maximum trip budget
+      minUrgency   — minimum urgency score (0-100)
+      minImportance — minimum importance score (0-100)
     """
     agency_id = agency.id
 
@@ -2813,6 +2828,24 @@ class ExtractionResponse(BaseModel):
     error_code: Optional[str] = None
     error_summary: Optional[str] = None
     confidence_method: Optional[str] = None
+    # Phase 4E attempt tracking
+    attempt_count: int = 0
+    run_count: int = 0
+    current_attempt_id: Optional[str] = None
+    page_count: Optional[int] = None
+
+
+class AttemptSummaryResponse(BaseModel):
+    attempt_id: str
+    run_number: int
+    attempt_number: int
+    fallback_rank: Optional[int] = None
+    provider_name: str
+    model_name: Optional[str] = None
+    latency_ms: Optional[int] = None
+    status: str
+    error_code: Optional[str] = None
+    created_at: Optional[str] = None
 
 
 class ApplyExtractionRequest(BaseModel):
@@ -2872,6 +2905,10 @@ def _extraction_to_response(ext) -> ExtractionResponse:
         error_code=getattr(ext, "error_code", None),
         error_summary=getattr(ext, "error_summary", None),
         confidence_method=getattr(ext, "confidence_method", None),
+        attempt_count=getattr(ext, "attempt_count", 0) or 0,
+        run_count=getattr(ext, "run_count", 0) or 0,
+        current_attempt_id=getattr(ext, "current_attempt_id", None),
+        page_count=getattr(ext, "page_count", None),
     )
 
 
@@ -2882,7 +2919,7 @@ async def extract_document(
     agency: Agency = Depends(get_current_agency),
 ):
     """Run OCR extraction on a document. Allowed for pending_review or accepted documents."""
-    from spine_api.services.extraction_service import run_extraction, get_extractor
+    from spine_api.services.extraction_service import run_extraction, get_extractor, ExtractionValidationError
     from spine_api.services.document_service import get_document_by_id
     from spine_api.services.document_storage import get_document_storage
     from spine_api.core.database import async_session_maker
@@ -2902,23 +2939,21 @@ async def extract_document(
             raise HTTPException(status_code=409, detail=f"Cannot extract from document with status {doc.status}")
 
         # MIME prevalidation: reject unsupported MIME before creating any extraction row
-        try:
-            extractor = get_extractor()
-        except RuntimeError as e:
-            raise HTTPException(status_code=500, detail=str(e))
-
-        if extractor.__class__.__name__ == "OpenAIVisionExtractor" and doc.mime_type not in ("image/jpeg", "image/png"):
+        ALLOWED_EXTRACTION_MIME_TYPES = {"image/jpeg", "image/png", "application/pdf"}
+        if doc.mime_type not in ALLOWED_EXTRACTION_MIME_TYPES:
             raise HTTPException(
                 status_code=422,
                 detail={
                     "error_code": "unsupported_mime_type",
-                    "message": "PDF extraction not supported by openai_vision in Phase 4D",
+                    "message": f"MIME type '{doc.mime_type}' not supported for extraction",
                 },
             )
 
         storage = get_document_storage()
         try:
             extraction = await run_extraction(db, doc, storage, agency.id)
+        except ExtractionValidationError as e:
+            raise HTTPException(status_code=422, detail=str(e))
         except ValueError as e:
             raise HTTPException(status_code=409, detail=str(e))
 
@@ -2975,6 +3010,93 @@ async def get_extraction(
         raise HTTPException(status_code=404, detail="No extraction found for this document")
 
     return _extraction_to_response(extraction)
+
+
+@app.post("/trips/{trip_id}/documents/{document_id}/extraction/retry", response_model=ExtractionResponse)
+async def retry_extraction(
+    trip_id: str,
+    document_id: str,
+    agency: Agency = Depends(get_current_agency),
+):
+    """Retry a failed extraction. Creates new run with attempt rows."""
+    from spine_api.services.extraction_service import run_extraction, ExtractionValidationError
+    from spine_api.services.document_service import get_document_by_id
+    from spine_api.services.document_storage import get_document_storage
+    from spine_api.core.database import async_session_maker
+
+    trip = await _ts(TripStore.get_trip, trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    if trip.get("stage", "discovery") not in ("proposal", "booking"):
+        raise HTTPException(status_code=403, detail="Retry requires proposal or booking stage")
+
+    async with async_session_maker() as db:
+        doc = await get_document_by_id(db, document_id, agency.id)
+        if not doc or doc.trip_id != trip_id:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        storage = get_document_storage()
+        try:
+            extraction = await run_extraction(db, doc, storage, agency.id)
+        except ExtractionValidationError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        except ValueError as e:
+            raise HTTPException(status_code=409, detail=str(e))
+
+    if extraction.status == "failed":
+        raise HTTPException(status_code=422, detail={
+            "message": "Extraction retry failed",
+            "error_code": extraction.error_code,
+            "error_summary": extraction.error_summary,
+            "provider": extraction.provider_name,
+        })
+
+    return _extraction_to_response(extraction)
+
+
+@app.get("/trips/{trip_id}/documents/{document_id}/extraction/attempts", response_model=list[AttemptSummaryResponse])
+async def list_extraction_attempts(
+    trip_id: str,
+    document_id: str,
+    agency: Agency = Depends(get_current_agency),
+):
+    """List all extraction attempts for a document (audit trail). No PII."""
+    from spine_api.services.extraction_service import get_extraction_for_document
+    from spine_api.core.database import async_session_maker
+    from spine_api.models.tenant import DocumentExtractionAttempt
+    from sqlalchemy import select
+
+    trip = await _ts(TripStore.get_trip, trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    async with async_session_maker() as db:
+        extraction = await get_extraction_for_document(db, document_id, agency.id)
+        if not extraction:
+            raise HTTPException(status_code=404, detail="No extraction found")
+
+        attempts = (await db.execute(
+            select(DocumentExtractionAttempt)
+            .where(DocumentExtractionAttempt.extraction_id == extraction.id)
+            .order_by(DocumentExtractionAttempt.attempt_number)
+        )).scalars().all()
+
+    return [
+        AttemptSummaryResponse(
+            attempt_id=a.id,
+            run_number=a.run_number,
+            attempt_number=a.attempt_number,
+            fallback_rank=a.fallback_rank,
+            provider_name=a.provider_name,
+            model_name=a.model_name,
+            latency_ms=a.latency_ms,
+            status=a.status,
+            error_code=a.error_code,
+            created_at=a.created_at.isoformat() if a.created_at else None,
+        )
+        for a in attempts
+    ]
 
 
 @app.post("/trips/{trip_id}/documents/{document_id}/extraction/apply", response_model=ApplyExtractionResponse)
@@ -3881,119 +4003,6 @@ def get_override(override_id: str) -> dict:
 
 
 # =============================================================================
-# Team Management API
-# =============================================================================
-
-@app.get("/api/team/members", response_model=dict)
-async def list_team_members(
-    agency: Agency = Depends(get_current_agency),
-    db: AsyncSession = Depends(get_db),
-):
-    """List all team members for the current agency."""
-    members = await membership_service.list_members(db, agency_id=agency.id)
-    return {"items": members, "total": len(members)}
-
-
-@app.get("/api/team/members/{member_id}")
-async def get_team_member(
-    member_id: str,
-    db: AsyncSession = Depends(get_db),
-):
-    """Get a single team member by membership ID."""
-    member = await membership_service.get_member(db, member_id)
-    if not member:
-        raise HTTPException(status_code=404, detail="Team member not found")
-    return member
-
-
-@app.post("/api/team/invite")
-async def invite_team_member(
-    request: InviteTeamMemberRequest,
-    agency: Agency = Depends(get_current_agency),
-    user: User = Depends(get_current_user),
-    _perm=require_permission("team:manage"),
-    db: AsyncSession = Depends(get_db),
-):
-    """Invite a new team member (creates User + Membership)."""
-    try:
-        member = await membership_service.invite_member(
-            db=db,
-            agency_id=agency.id,
-            email=request.email,
-            name=request.name,
-            role=request.role,
-            capacity=request.capacity,
-            specializations=request.specializations,
-            invited_by=user.id,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e))
-    return {"success": True, "member": member}
-
-
-@app.patch("/api/team/members/{member_id}")
-async def update_team_member(
-    member_id: str,
-    request: InviteTeamMemberRequest,
-    agency: Agency = Depends(get_current_agency),
-    _perm=require_permission("team:manage"),
-    db: AsyncSession = Depends(get_db),
-):
-    """Update a team member's role, capacity, or specializations."""
-    updates = request.model_dump(exclude_none=True, include={"role", "capacity", "specializations"})
-    member = await membership_service.update_member(db, member_id, agency.id, updates)
-    if not member:
-        raise HTTPException(status_code=404, detail="Team member not found")
-    return member
-
-
-@app.delete("/api/team/members/{member_id}")
-async def deactivate_team_member(
-    member_id: str,
-    agency: Agency = Depends(get_current_agency),
-    _perm=require_permission("team:manage"),
-    db: AsyncSession = Depends(get_db),
-):
-    """Deactivate a team member."""
-    success = await membership_service.deactivate_member(db, member_id, agency.id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Team member not found")
-    return {"success": True}
-
-
-@app.get("/api/team/workload")
-async def get_workload_distribution(
-    agency: Agency = Depends(get_current_agency),
-    db: AsyncSession = Depends(get_db),
-):
-    """Get workload distribution across active team members."""
-    members = await membership_service.list_members(db, agency_id=agency.id, active_only=True)
-    assignments = AssignmentStore._load_assignments()
-    
-    # Get agency trip IDs to filter assignments
-    agency_trips = TripStore.list_trips(agency_id=agency.id, limit=10000)
-    agency_trip_ids = {t["id"] for t in agency_trips if t.get("id")}
-    
-    distribution = []
-    for member in members:
-        member_id = member["id"]
-        assigned_trips = [
-            a for a in assignments.values()
-            if a.get("agent_id") == member_id and a.get("trip_id") in agency_trip_ids
-        ]
-        distribution.append({
-            "member_id": member_id,
-            "name": member.get("name"),
-            "role": member.get("role"),
-            "capacity": member.get("capacity", 5),
-            "assigned": len(assigned_trips),
-            "available": max(0, member.get("capacity", 5) - len(assigned_trips)),
-        })
-    
-    return {"items": distribution, "total": len(distribution)}
-
-
-# =============================================================================
 # Single Review + Bulk Review Actions
 # =============================================================================
 
@@ -4186,206 +4195,6 @@ def set_approval_thresholds(request: List[ApprovalThresholdConfig]):
     """Update approval threshold configuration."""
     ConfigStore.set_approval_thresholds([t.model_dump() for t in request])
     return {"success": True}
-
-
-# =============================================================================
-# Follow-up Workflow & Reminders (Phase 5)
-# =============================================================================
-
-@app.get("/followups/dashboard")
-def get_followups_dashboard(
-    status: Optional[str] = None,
-    filter: Optional[str] = None,
-    agency: Agency = Depends(get_current_agency),
-):
-    """
-    Get all trips with follow-up reminders.
-    
-    Query params:
-    - status: pending|completed|snoozed
-    - filter: due_today|overdue|upcoming
-    
-    Returns: List of trips with follow-up info sorted by due date
-    """
-    from pathlib import Path
-    
-    trips_dir = Path(__file__).parent.parent / "data" / "trips"
-    followups = []
-    
-    if trips_dir.exists():
-        for trip_file in trips_dir.glob("*.json"):
-            try:
-                with open(trip_file, "r") as f:
-                    trip = json.load(f)
-                
-                # Only include trips for this agency
-                if trip.get("agency_id") != agency.id:
-                    continue
-                
-                # Only include trips with follow_up_due_date
-                due_date_str = trip.get("follow_up_due_date")
-                if not due_date_str:
-                    continue
-                
-                try:
-                    due_date = datetime.fromisoformat(due_date_str.replace('Z', '+00:00'))
-                except (ValueError, AttributeError):
-                    continue
-                
-                # Extract follow-up status
-                follow_up_status = trip.get("follow_up_status", "pending")
-                trip_status = trip.get("status", "new")
-                
-                # Filter by status if provided
-                if status and follow_up_status != status:
-                    continue
-                
-                # Apply filter if provided
-                now = datetime.now(timezone.utc)
-                if filter == "due_today":
-                    if due_date.date() != now.date():
-                        continue
-                elif filter == "overdue":
-                    if due_date > now:
-                        continue
-                elif filter == "upcoming":
-                    if due_date <= now:
-                        continue
-                
-                followups.append({
-                    "trip_id": trip.get("id"),
-                    "traveler_name": trip.get("traveler_name", "Unknown"),
-                    "agent_name": trip.get("agent_name", "Unassigned"),
-                    "due_date": due_date_str,
-                    "status": follow_up_status,
-                    "trip_status": trip_status,
-                    "days_until_due": (due_date.date() - now.date()).days,
-                })
-            except (json.JSONDecodeError, IOError):
-                continue
-    
-    # Sort by due_date ascending
-    followups.sort(key=lambda x: x["due_date"])
-    
-    return {
-        "items": followups,
-        "total": len(followups),
-    }
-
-
-@app.patch("/followups/{trip_id}/mark-complete")
-def mark_followup_complete(
-    trip_id: str,
-    agency: Agency = Depends(get_current_agency),
-):
-    """Mark a follow-up as completed."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail="Trip not found")
-    
-    if not trip.get("follow_up_due_date"):
-        raise HTTPException(status_code=400, detail="Trip has no follow-up scheduled")
-    
-    updated = TripStore.update_trip(trip_id, {
-        "follow_up_status": "completed",
-        "follow_up_completed_at": datetime.now(timezone.utc).isoformat(),
-    })
-    
-    AuditStore.log_event("followup_completed", "operator", {
-        "trip_id": trip_id,
-        "due_date": trip.get("follow_up_due_date"),
-        "completed_at": datetime.now(timezone.utc).isoformat(),
-    })
-    
-    return updated
-
-
-@app.patch("/followups/{trip_id}/snooze")
-def snooze_followup(
-    trip_id: str,
-    days: int = 1,
-    agency: Agency = Depends(get_current_agency),
-):
-    """
-    Snooze a follow-up reminder.
-    
-    Query params:
-    - days: 1, 3, or 7 (default: 1)
-    """
-    from datetime import timedelta
-    
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail="Trip not found")
-    
-    if not trip.get("follow_up_due_date"):
-        raise HTTPException(status_code=400, detail="Trip has no follow-up scheduled")
-    
-    # Validate days parameter
-    if days not in [1, 3, 7]:
-        raise HTTPException(status_code=400, detail="days must be 1, 3, or 7")
-    
-    # Parse current due_date and add days
-    try:
-        current_due = datetime.fromisoformat(
-            trip.get("follow_up_due_date", "").replace('Z', '+00:00')
-        )
-    except (ValueError, AttributeError):
-        raise HTTPException(status_code=400, detail="Invalid follow_up_due_date format")
-    
-    new_due_date = (current_due + timedelta(days=days)).isoformat()
-    
-    updated = TripStore.update_trip(trip_id, {
-        "follow_up_due_date": new_due_date,
-        "follow_up_status": "snoozed",
-    })
-    
-    AuditStore.log_event("followup_snoozed", "operator", {
-        "trip_id": trip_id,
-        "original_due_date": trip.get("follow_up_due_date"),
-        "new_due_date": new_due_date,
-        "snooze_days": days,
-    })
-    
-    return updated
-
-
-@app.patch("/followups/{trip_id}/reschedule")
-def reschedule_followup(
-    trip_id: str,
-    new_date: str,
-    agency: Agency = Depends(get_current_agency),
-):
-    """
-    Reschedule a follow-up to a new date.
-    
-    Body: {"new_date": "2026-05-15T14:00:00Z"}
-    """
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail="Trip not found")
-    
-    if not trip.get("follow_up_due_date"):
-        raise HTTPException(status_code=400, detail="Trip has no follow-up scheduled")
-    
-    # Validate new_date format
-    try:
-        datetime.fromisoformat(new_date.replace('Z', '+00:00'))
-    except (ValueError, AttributeError):
-        raise HTTPException(status_code=400, detail="Invalid date format. Use ISO-8601")
-    
-    updated = TripStore.update_trip(trip_id, {
-        "follow_up_due_date": new_date,
-        "follow_up_status": "pending",
-    })
-    
-    AuditStore.log_event("followup_rescheduled", "operator", {
-        "trip_id": trip_id,
-        "old_due_date": trip.get("follow_up_due_date"),
-        "new_due_date": new_date,
-    })
-    
-    return updated
 
 
 # =============================================================================

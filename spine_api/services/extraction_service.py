@@ -3,14 +3,12 @@
 import json
 import logging
 import os
+import time
 from dataclasses import dataclass, field
-from typing import Optional, Protocol
+from typing import Optional, Protocol, Union
 
+from src.extraction.exceptions import ExtractionValidationError
 from src.security.encryption import encrypt, decrypt
-
-
-class ExtractionValidationError(ValueError):
-    """Invalid input — should map to 422 in the endpoint."""
 
 logger = logging.getLogger(__name__)
 
@@ -100,24 +98,83 @@ class NoopExtractor:
         )
 
 
-def get_extractor() -> DocumentExtractor:
-    """Get the configured extraction provider.
+def get_extractor() -> Union[DocumentExtractor, "ModelChain"]:
+    """Build the extraction chain from EXTRACTION_MODEL_CHAIN env var.
 
-    Unknown provider falls back to noop only when APP_ENV is local/test/development.
-    Missing OPENAI_API_KEY fails fast when EXTRACTION_PROVIDER=openai_vision.
+    Returns one of: NoopExtractor, OpenAIVisionExtractor, GeminiVisionExtractor, or ModelChain.
+    ModelChain has no extract() method — service layer iterates it via _get_model_chain().
     """
-    provider = os.environ.get("EXTRACTION_PROVIDER", "noop").lower()
-    if provider == "noop":
-        return NoopExtractor()
-    elif provider == "openai_vision":
-        from src.extraction.openai_vision_extractor import OpenAIVisionExtractor
-        return OpenAIVisionExtractor()  # raises if OPENAI_API_KEY missing
-    else:
-        app_env = os.environ.get("APP_ENV", "production").lower()
-        if app_env in ("local", "test", "development"):
-            logger.warning("Unknown EXTRACTION_PROVIDER '%s' in %s, falling back to noop", provider, app_env)
+    chain_str = os.environ.get("EXTRACTION_MODEL_CHAIN", "").strip()
+
+    if not chain_str:
+        # Legacy: fall back to EXTRACTION_PROVIDER or noop
+        provider = os.environ.get("EXTRACTION_PROVIDER", "noop").lower()
+        if provider == "noop":
             return NoopExtractor()
-        raise RuntimeError(f"Unknown EXTRACTION_PROVIDER '{provider}'")
+        elif provider == "openai_vision":
+            from src.extraction.openai_vision_extractor import OpenAIVisionExtractor
+            return OpenAIVisionExtractor()
+        else:
+            app_env = os.environ.get("APP_ENV", "production").lower()
+            if app_env in ("local", "test", "development"):
+                logger.warning("Unknown EXTRACTION_PROVIDER '%s' in %s, falling back to noop", provider, app_env)
+                return NoopExtractor()
+            raise RuntimeError(f"Unknown EXTRACTION_PROVIDER '{provider}'")
+
+    models = [m.strip() for m in chain_str.split(",") if m.strip()]
+    if not models:
+        return NoopExtractor()
+
+    extractors: list[tuple[str, DocumentExtractor]] = []
+    for model in models:
+        provider = _model_to_provider(model)
+        if provider == "openai":
+            from src.extraction.openai_vision_extractor import OpenAIVisionExtractor
+            extractors.append((model, OpenAIVisionExtractor(model=model)))
+        elif provider == "gemini":
+            from src.extraction.gemini_vision_extractor import GeminiVisionExtractor
+            extractors.append((model, GeminiVisionExtractor(model=model)))
+        else:
+            raise RuntimeError(f"Unknown provider for model '{model}'")
+
+    if len(extractors) == 1:
+        return extractors[0][1]
+
+    from src.extraction.model_chain import ModelChain
+    return ModelChain(extractors)
+
+
+def _model_to_provider(model: str) -> str:
+    """Determine provider from model name prefix."""
+    if model.startswith("gemini"):
+        return "gemini"
+    if model.startswith("gpt-"):
+        return "openai"
+    raise ValueError(f"Cannot determine provider for model '{model}'")
+
+
+def _resolve_provider_name(model_name: str) -> str:
+    """Get provider_name for attempt row. Handles noop and unknown safely."""
+    if model_name == "noop":
+        return "noop_extractor"
+    try:
+        return _model_to_provider(model_name)
+    except ValueError:
+        return model_name
+
+
+def _get_model_chain(extractor) -> list[tuple[str, object]]:
+    """Normalize any extractor into a list of (model_name, extractor) pairs."""
+    from src.extraction.model_chain import ModelChain
+    if isinstance(extractor, ModelChain):
+        return extractor.models
+    if isinstance(extractor, NoopExtractor):
+        return [("noop", extractor)]
+    # Single vision extractor — get model from client
+    model = getattr(extractor, "_model", None)
+    if not isinstance(model, str):
+        model = "unknown"
+    return [(model, extractor)]
 
 
 # ---------------------------------------------------------------------------
@@ -125,93 +182,160 @@ def get_extractor() -> DocumentExtractor:
 # ---------------------------------------------------------------------------
 
 async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtraction":
-    """Run extraction on a document (pending_review or accepted). Creates encrypted record."""
-    from spine_api.models.tenant import DocumentExtraction
-    from src.extraction.vision_client import ExtractionProviderError, ERROR_CODES
+    """Run extraction with full fallback history.
 
-    # Check no existing extraction
+    Invariant: validation failures (PDF page limit) must not leave
+    any extraction row or attempt row in the database.
+    """
+    from spine_api.models.tenant import DocumentExtraction, DocumentExtractionAttempt
+    from src.extraction.vision_client import ExtractionProviderError, ERROR_CODES
+    from src.extraction.model_chain import RETRIABLE_ERRORS
+    from src.extraction.pdf_utils import validate_pdf_pages
     from sqlalchemy import select
+
+    # --- Step 0: Check existing state (read-only) ---
     existing = (await db.execute(
         select(DocumentExtraction).where(DocumentExtraction.document_id == document.id)
     )).scalar_one_or_none()
-    if existing:
-        raise ValueError("Extraction already exists for this document")
 
-    # Read file from storage
+    if existing and existing.status in ("applied", "rejected", "pending_review"):
+        raise ValueError("Cannot retry: extraction already resolved")
+    if existing is not None and existing.status == "running":
+        raise ValueError("Extraction already in progress")
+
+    is_retry = existing is not None and existing.status == "failed"
+
+    # --- Step 1: Read file and validate BEFORE any DB mutation ---
     file_data = await storage.get(document.storage_key)
+    page_count = validate_pdf_pages(file_data, document.mime_type)  # raises ExtractionValidationError → no row created
 
-    # Run extractor
-    extractor = get_extractor()
-    provider_name = "noop_extractor"
-    if isinstance(extractor, NoopExtractor):
-        provider_name = "noop_extractor"
+    # --- Step 2: Find or create extraction aggregate ---
+    if is_retry:
+        extraction = existing
+        extraction.status = "running"
+        extraction.run_count = (extraction.run_count or 0) + 1
+        await db.commit()
     else:
-        cls_name = extractor.__class__.__name__
-        if "OpenAI" in cls_name or "Vision" in cls_name:
-            provider_name = "openai_vision"
-        else:
-            provider_name = cls_name.lower()[:29]
-
-    try:
-        result = await extractor.extract(file_data, document.mime_type, document.document_type)
-    except ExtractionProviderError as e:
-        # Provider failed — create failed row with no PII
-        error_code = e.error_code
-        error_summary = ERROR_CODES.get(error_code, "Unknown error")
         extraction = DocumentExtraction(
             document_id=document.id,
             trip_id=document.trip_id,
             agency_id=agency_id,
+            status="running",
+            attempt_count=0,
+            run_count=1,
             extracted_fields_encrypted=None,
             fields_present={},
             field_count=0,
-            confidence_scores=None,
-            overall_confidence=None,
-            status="failed",
-            extracted_by=provider_name,
-            error_code=error_code,
-            error_summary=error_summary,
+            extracted_by="pending",
+            provider_name="pending",
         )
         db.add(extraction)
         await db.commit()
         await db.refresh(extraction)
-        return extraction
 
-    # Filter to valid fields only
-    filtered_fields = {k: v for k, v in result.fields.items() if k in VALID_EXTRACTION_FIELDS}
-    filtered_confidence = {k: v for k, v in result.confidence_scores.items() if k in VALID_EXTRACTION_FIELDS}
+    run_number = extraction.run_count
+    attempt_base = extraction.attempt_count
 
-    # Encrypt PII
-    encrypted = encrypt_blob(filtered_fields)
+    # --- Step 3: Run extractor chain with per-call attempt tracking ---
+    extractor = get_extractor()
+    last_error = None
+    success_attempt = None
+    models_to_try = _get_model_chain(extractor)
 
-    # Build plaintext indicators
-    fields_present = {k: k in filtered_fields and filtered_fields[k] is not None for k in VALID_EXTRACTION_FIELDS}
-    field_count = sum(1 for v in fields_present.values() if v)
+    try:
+        for rank, (model_name, model_extractor) in enumerate(models_to_try):
+            attempt_number = attempt_base + rank + 1
 
-    # Provider metadata
-    meta = result.provider_metadata or {}
+            attempt = DocumentExtractionAttempt(
+                extraction_id=extraction.id,
+                run_number=run_number,
+                attempt_number=attempt_number,
+                fallback_rank=rank,
+                provider_name=_resolve_provider_name(model_name),
+                model_name=model_name,
+                status="failed",  # pessimistic default
+            )
+            db.add(attempt)
+            await db.commit()
+            await db.refresh(attempt)
 
-    extraction = DocumentExtraction(
-        document_id=document.id,
-        trip_id=document.trip_id,
-        agency_id=agency_id,
-        extracted_fields_encrypted=encrypted,
-        fields_present=fields_present,
-        field_count=field_count,
-        confidence_scores=filtered_confidence,
-        overall_confidence=result.overall_confidence,
-        status="pending_review",
-        extracted_by=provider_name,
-        provider_name=provider_name,
-        model_name=meta.get("model_name"),
-        latency_ms=meta.get("latency_ms"),
-        prompt_tokens=meta.get("prompt_tokens"),
-        completion_tokens=meta.get("completion_tokens"),
-        total_tokens=meta.get("total_tokens"),
-        cost_estimate_usd=meta.get("cost_estimate_usd"),
-        confidence_method=result.confidence_method,
-    )
-    db.add(extraction)
+            start = time.monotonic()
+            try:
+                result = await model_extractor.extract(file_data, document.mime_type, document.document_type)
+            except ExtractionProviderError as e:
+                attempt.error_code = e.error_code
+                attempt.error_summary = ERROR_CODES.get(e.error_code, "Unknown error")
+                attempt.latency_ms = int((time.monotonic() - start) * 1000)
+                attempt.extracted_fields_encrypted = None  # explicit: no PII on failure
+                await db.commit()
+                extraction.attempt_count = attempt_number
+
+                if e.error_code not in RETRIABLE_ERRORS:
+                    last_error = e
+                    break
+                last_error = e
+                logger.warning("Model %s failed with %s, trying next", model_name, e.error_code)
+                continue
+
+            # --- Success path ---
+            filtered_fields = {k: v for k, v in result.fields.items() if k in VALID_EXTRACTION_FIELDS}
+            encrypted = encrypt_blob(filtered_fields)
+            fields_present = {k: k in filtered_fields and filtered_fields[k] is not None for k in VALID_EXTRACTION_FIELDS}
+            field_count = sum(1 for v in fields_present.values() if v)
+            meta = result.provider_metadata or {}
+
+            attempt.status = "success"
+            attempt.extracted_fields_encrypted = encrypted
+            attempt.fields_present = fields_present
+            attempt.field_count = field_count
+            attempt.confidence_scores = _filter_confidence(result.confidence_scores)
+            attempt.overall_confidence = result.overall_confidence
+            attempt.confidence_method = result.confidence_method
+            attempt.latency_ms = meta.get("latency_ms")
+            attempt.prompt_tokens = meta.get("prompt_tokens")
+            attempt.completion_tokens = meta.get("completion_tokens")
+            attempt.total_tokens = meta.get("total_tokens")
+            attempt.cost_estimate_usd = meta.get("cost_estimate_usd")
+            await db.commit()
+
+            success_attempt = attempt
+            extraction.attempt_count = attempt_number
+            break
+
+    except Exception:
+        # Unexpected exception (not ExtractionProviderError) — try to mark as failed
+        try:
+            extraction.status = "failed"
+            extraction.error_code = "internal_error"
+            extraction.error_summary = ERROR_CODES.get("internal_error", "Internal error during extraction")
+            await db.commit()
+        except Exception:
+            pass  # DB may be broken; don't mask original error
+        raise
+
+    # --- Step 4: Update extraction aggregate ---
+    if success_attempt:
+        extraction.status = "pending_review"
+        extraction.current_attempt_id = success_attempt.id
+        extraction.extracted_fields_encrypted = success_attempt.extracted_fields_encrypted
+        extraction.fields_present = success_attempt.fields_present
+        extraction.field_count = success_attempt.field_count
+        extraction.confidence_scores = success_attempt.confidence_scores
+        extraction.overall_confidence = success_attempt.overall_confidence
+        extraction.confidence_method = success_attempt.confidence_method
+        extraction.error_code = None
+        extraction.error_summary = None
+        extraction.provider_name = success_attempt.provider_name
+        extraction.extracted_by = success_attempt.provider_name
+        extraction.model_name = success_attempt.model_name
+        extraction.latency_ms = success_attempt.latency_ms
+        extraction.page_count = page_count
+    else:
+        extraction.status = "failed"
+        if last_error:
+            extraction.error_code = last_error.error_code
+            extraction.error_summary = ERROR_CODES.get(last_error.error_code, "Unknown error")
+
     await db.commit()
     await db.refresh(extraction)
     return extraction
@@ -363,6 +487,11 @@ async def reject_extraction(db, extraction, reviewed_by: str) -> "DocumentExtrac
 def decrypt_extraction_fields(extraction) -> dict:
     """Decrypt and return extracted fields for API response."""
     return decrypt_blob(extraction.extracted_fields_encrypted) if extraction else {}
+
+
+def _filter_confidence(confidence_scores: dict) -> dict:
+    """Filter confidence scores to valid extraction fields only."""
+    return {k: v for k, v in confidence_scores.items() if k in VALID_EXTRACTION_FIELDS}
 
 
 def _mask_value(val: str, visible_chars: int = 2) -> str:

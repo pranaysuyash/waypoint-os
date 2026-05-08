@@ -19,6 +19,7 @@ ERROR_CODES: dict[str, str] = {
     "schema_validation_failed": "Response did not match expected schema",
     "empty_response": "Provider returned empty response",
     "unsupported_mime_type": "MIME type not supported by provider",
+    "internal_error": "Internal error during extraction",
 }
 
 
@@ -80,7 +81,10 @@ class OpenAIVisionClient:
     The public extract_from_image method is async.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, model: str = "gpt-5.4-nano", timeout: int = 30) -> None:
+        self._model = model
+        self._timeout = timeout
+
         api_key = os.environ.get("OPENAI_API_KEY", "").strip()
         if not api_key:
             raise RuntimeError("OPENAI_API_KEY is required when EXTRACTION_PROVIDER=openai_vision")
@@ -91,22 +95,29 @@ class OpenAIVisionClient:
             raise RuntimeError("openai package is required: pip install openai")
 
         self._client = OpenAI(api_key=api_key)
-        self._model = os.environ.get("OPENAI_VISION_MODEL", "gpt-4o")
-        self._timeout = int(os.environ.get("OPENAI_VISION_TIMEOUT_SECONDS", "30"))
 
     async def extract_from_image(
         self, image_data: bytes, mime_type: str, json_schema: dict, prompt: str,
     ) -> VisionExtractionResult:
-        """Extract structured fields from an image using OpenAI Responses API."""
-        b64_image = base64.b64encode(image_data).decode("utf-8")
-        data_url = f"data:{mime_type};base64,{b64_image}"
+        """Extract structured fields from an image or PDF using OpenAI Responses API."""
+        # Build the user content based on MIME type
+        if mime_type == "application/pdf":
+            b64_data = base64.b64encode(image_data).decode("utf-8")
+            user_content = [
+                {"type": "input_text", "text": prompt},
+                {"type": "input_file", "file_data": b64_data, "filename": "document.pdf"},
+            ]
+        else:
+            b64_image = base64.b64encode(image_data).decode("utf-8")
+            data_url = f"data:{mime_type};base64,{b64_image}"
+            user_content = [
+                {"type": "input_text", "text": prompt},
+                {"type": "input_image", "image_url": data_url},
+            ]
 
         messages = [
             {"role": "system", "content": "You are a document data extraction assistant. Extract only the requested fields accurately."},
-            {"role": "user", "content": [
-                {"type": "input_text", "text": prompt},
-                {"type": "input_image", "image_url": data_url},
-            ]},
+            {"role": "user", "content": user_content},
         ]
 
         start = time.monotonic()
@@ -175,15 +186,14 @@ class OpenAIVisionClient:
         completion_tokens = getattr(usage, "output_tokens", None) if usage else None
         total_tokens = (prompt_tokens or 0) + (completion_tokens or 0) if (prompt_tokens is not None and completion_tokens is not None) else None
 
-        # Cost estimate from env config
+        # Cost estimate from pricing table
         cost_estimate_usd = None
-        input_cost = os.environ.get("OPENAI_VISION_INPUT_COST_PER_1M", "").strip()
-        output_cost = os.environ.get("OPENAI_VISION_OUTPUT_COST_PER_1M", "").strip()
-        if input_cost and output_cost and prompt_tokens is not None and completion_tokens is not None:
-            try:
-                cost_estimate_usd = (prompt_tokens * float(input_cost) + completion_tokens * float(output_cost)) / 1_000_000
-            except (ValueError, TypeError):
-                cost_estimate_usd = None
+        if prompt_tokens is not None and completion_tokens is not None:
+            from src.extraction.pricing import calculate_cost
+            cost_estimate_usd = calculate_cost(self._model, prompt_tokens, completion_tokens)
+
+        # Pricing source for audit provenance
+        from src.extraction.pricing import PRICING_TABLE_SOURCE
 
         return VisionExtractionResult(
             fields=validated,
@@ -197,5 +207,6 @@ class OpenAIVisionClient:
                 "completion_tokens": completion_tokens,
                 "total_tokens": total_tokens,
                 "cost_estimate_usd": cost_estimate_usd,
+                "pricing_source": PRICING_TABLE_SOURCE,
             },
         )

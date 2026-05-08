@@ -149,6 +149,10 @@ export interface InboxTrip {
   value: number;
   priority: TripPriority;
   priorityScore: number;
+  urgency: number;
+  importance: number;
+  urgencyBreakdown?: Record<string, number>;
+  importanceBreakdown?: Record<string, number>;
   stage: string;
   stageNumber: number;
   assignedTo?: string;
@@ -169,6 +173,8 @@ export interface InboxFilters {
   dateRange?: { from: string; to: string };
   minValue?: number;
   maxValue?: number;
+  minUrgency?: number;
+  minImportance?: number;
   filterTab?: 'all' | 'at_risk' | 'incomplete' | 'unassigned';
 }
 

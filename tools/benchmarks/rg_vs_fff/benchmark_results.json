@@ -1,0 +1,146 @@
+{
+  "generatedAt": "2026-05-08T05:31:57.868Z",
+  "repoRoot": "/Users/pranay/Projects/travel_agency_agent",
+  "environment": {
+    "nodeVersion": "v24.13.0",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "queries": [
+    "TODO",
+    "FastAPI",
+    "Trip",
+    "confidence",
+    "__RG_FFF_BENCH_1778218317868_2khjtrlb8rn__"
+  ],
+  "rg": {
+    "version": "ripgrep 14.1.1",
+    "perQuery": {
+      "TODO": {
+        "totalMatched": 83,
+        "uniqueFiles": 35,
+        "durationMs": 119.769,
+        "rssBytes": 10174464
+      },
+      "FastAPI": {
+        "totalMatched": 335,
+        "uniqueFiles": 133,
+        "durationMs": 53.353,
+        "rssBytes": 10862592
+      },
+      "Trip": {
+        "totalMatched": 7261,
+        "uniqueFiles": 1157,
+        "durationMs": 71.406,
+        "rssBytes": 10633216
+      },
+      "confidence": {
+        "totalMatched": 5222,
+        "uniqueFiles": 707,
+        "durationMs": 74.962,
+        "rssBytes": 11206656
+      },
+      "__RG_FFF_BENCH_1778218317868_2khjtrlb8rn__": {
+        "totalMatched": 0,
+        "uniqueFiles": 0,
+        "durationMs": 47.577,
+        "rssBytes": 10584064
+      }
+    }
+  },
+  "fff": {
+    "initAndScanMs": 58.35,
+    "processRssBytesAfterScan": 71827456,
+    "scanProgress": {
+      "scannedFilesCount": 3454,
+      "isScanning": false
+    },
+    "perQuery": {
+      "TODO": {
+        "totalMatched": 83,
+        "uniqueFiles": 35,
+        "durationMs": 13.958,
+        "processRssBytesCurrent": 122257408
+      },
+      "FastAPI": {
+        "totalMatched": 354,
+        "uniqueFiles": 135,
+        "durationMs": 41.787,
+        "processRssBytesCurrent": 125763584
+      },
+      "Trip": {
+        "totalMatched": 7313,
+        "uniqueFiles": 1161,
+        "durationMs": 828.085,
+        "processRssBytesCurrent": 179617792
+      },
+      "confidence": {
+        "totalMatched": 5813,
+        "uniqueFiles": 710,
+        "durationMs": 673.811,
+        "processRssBytesCurrent": 202407936
+      },
+      "__RG_FFF_BENCH_1778218317868_2khjtrlb8rn__": {
+        "totalMatched": 0,
+        "uniqueFiles": 0,
+        "durationMs": 0.295,
+        "processRssBytesCurrent": 202424320
+      }
+    }
+  },
+  "comparison": {
+    "TODO": {
+      "rgOnlyCount": 0,
+      "fffOnlyCount": 0,
+      "sampleRgOnly": [],
+      "sampleFffOnly": [],
+      "speedupFffVsRg": 8.581
+    },
+    "FastAPI": {
+      "rgOnlyCount": 0,
+      "fffOnlyCount": 19,
+      "sampleRgOnly": [],
+      "sampleFffOnly": [
+        "Archive/context_ingest/travel_agency_context_2_2026-04-14.txt:9651",
+        "Archive/context_ingest/travel_agency_context_2_2026-04-14.txt:9741",
+        "Archive/context_ingest/travel_agency_context_2_2026-04-14.txt:9793",
+        "Archive/context_ingest/travel_agency_context_2_2026-04-14.txt:9799",
+        "Archive/context_ingest/travelagency_context_2026-04-14.txt:40094"
+      ],
+      "speedupFffVsRg": 1.277
+    },
+    "Trip": {
+      "rgOnlyCount": 0,
+      "fffOnlyCount": 52,
+      "sampleRgOnly": [],
+      "sampleFffOnly": [
+        ".gitignore:129",
+        "frontend/docs/TRAVEL_POLICY_02_DUTY_OF_CARE.md:102",
+        "frontend/docs/TRAVEL_POLICY_02_DUTY_OF_CARE.md:110",
+        "frontend/docs/TRAVEL_POLICY_02_DUTY_OF_CARE.md:223",
+        "Archive/context_ingest/travel_agency_context_2_2026-04-14.txt:24"
+      ],
+      "speedupFffVsRg": 0.086
+    },
+    "confidence": {
+      "rgOnlyCount": 0,
+      "fffOnlyCount": 591,
+      "sampleRgOnly": [],
+      "sampleFffOnly": [
+        ".impeccable.md:11",
+        "Archive/context_ingest/travel_agency_context_2_2026-04-14.txt:55",
+        "Archive/context_ingest/travel_agency_context_2_2026-04-14.txt:81",
+        "Archive/context_ingest/travel_agency_context_2_2026-04-14.txt:209",
+        "Archive/context_ingest/travel_agency_context_2_2026-04-14.txt:298"
+      ],
+      "speedupFffVsRg": 0.111
+    },
+    "__RG_FFF_BENCH_1778218317868_2khjtrlb8rn__": {
+      "rgOnlyCount": 0,
+      "fffOnlyCount": 0,
+      "sampleRgOnly": [],
+      "sampleFffOnly": [],
+      "speedupFffVsRg": 161.254
+    }
+  }
+}

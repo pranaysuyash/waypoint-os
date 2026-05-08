@@ -1,5 +1,5 @@
 {
-  "route_count": 129,
+  "route_count": 131,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -922,8 +922,24 @@
       "operation_id": null
     },
     {
+      "path": "/trips/{trip_id}/documents/{document_id}/extraction/attempts",
+      "name": "list_extraction_attempts",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/trips/{trip_id}/documents/{document_id}/extraction/reject",
       "name": "reject_extraction",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/documents/{document_id}/extraction/retry",
+      "name": "retry_extraction",
       "methods": [
         "POST"
       ],

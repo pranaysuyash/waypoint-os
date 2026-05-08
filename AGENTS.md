@@ -85,6 +85,15 @@ If instructions conflict, follow the stricter rule and cite concrete file paths.
 - If you find a symlink fixing a naming mismatch: **delete symlink + rename directory** immediately
 - Add this check to every task: "Does the directory name match language conventions?"
 
+## Search Tool Default Policy (2026-05-08)
+
+After benchmark evidence in `Docs/RIPGREP_VS_FFF_BENCHMARK_2026-05-08.md`, default search behavior is:
+
+1. **Default content search = `rg` (ripgrep).**
+2. **Do not use `grep` for repository content search.**
+3. **Use FFF only for explicit fuzzy/indexed workflows** where higher memory overhead is acceptable and FFF is installed.
+4. If no special fuzzy/indexed requirement is stated, choose `rg`.
+
 ## Package / Dependency Preference
 
 Before writing custom code for any well-understood functionality, **always search for an existing package first.**

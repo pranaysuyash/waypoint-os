@@ -15,6 +15,8 @@ Author: Agent
 Date: 2026-05-04
 """
 
+from spine_api.scoring import score_trip
+import os
 import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
@@ -25,7 +27,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 InboxTripView = Dict[str, Any]
 FilterKey = str  # 'all' | 'at_risk' | 'incomplete' | 'unassigned'
-SortKey = str    # 'priority' | 'destination' | 'value' | 'party' | 'dates' | 'sla'
+SortKey = str    # 'priority' | 'destination' | 'value' | 'party' | 'dates' | 'sla' | 'urgency' | 'importance'
 SortDir = str    # 'asc' | 'desc'
 
 
@@ -361,20 +363,25 @@ class InboxProjectionService:
         validation = _as_record(source.get("validation"))
         decision = _as_record(source.get("decision"))
 
-        # Priority derivation (same rules as bff-trip-adapters)
-        priority = "medium"
-        priority_score = _DEFAULT_PRIORITY_SCORE[priority]
-        if (
-            sla_status == "at_risk"
-            or analytics.get("requires_review") is True
-            or validation.get("is_valid") is False
-            or (_as_int(decision.get("confidence_score"), 0) < 50)
-        ):
-            priority = "high"
+        pr = score_trip(source, now=self._now)
+
+        if os.getenv("USE_2D_PRIORITY", "true") == "true":
+            priority = pr.label
+            priority_score = pr.score
+        else:
+            priority = "medium"
             priority_score = _DEFAULT_PRIORITY_SCORE[priority]
-        if sla_status == "breached" or analytics.get("escalation_severity") == "critical":
-            priority = "critical"
-            priority_score = _DEFAULT_PRIORITY_SCORE[priority]
+            if (
+                sla_status == "at_risk"
+                or analytics.get("requires_review") is True
+                or validation.get("is_valid") is False
+                or (_as_int(decision.get("confidence_score"), 0) < 50)
+            ):
+                priority = "high"
+                priority_score = _DEFAULT_PRIORITY_SCORE[priority]
+            if sla_status == "breached" or analytics.get("escalation_severity") == "critical":
+                priority = "critical"
+                priority_score = _DEFAULT_PRIORITY_SCORE[priority]
 
         assigned_to = _as_string(
             _first_present(
@@ -403,6 +410,10 @@ class InboxProjectionService:
             "value": _budget_value(source),
             "priority": priority,
             "priorityScore": priority_score,
+            "urgency": pr.urgency,
+            "importance": pr.importance,
+            "urgencyBreakdown": pr.urgency_breakdown,
+            "importanceBreakdown": pr.importance_breakdown,
             "stage": stage,
             "stageNumber": _STAGE_NUMBERS.get(stage, 0),
             "assignedTo": assigned_to,
@@ -462,6 +473,8 @@ class InboxProjectionService:
                 {"breached": 3, "at_risk": 2, "on_track": 1}.get(t.get("slaStatus", ""), 0),
                 t.get("daysInCurrentStage", 0),
             ),
+            "urgency": lambda t: t.get("urgency", 50),
+            "importance": lambda t: t.get("importance", 50),
         }.get(sort_key, lambda t: (_DEFAULT_PRIORITY_SCORE.get(t.get("priority", "medium"), 50), t.get("priorityScore", 0)))
 
         reverse = direction.lower() != "asc"
@@ -480,6 +493,10 @@ class InboxProjectionService:
         assigned_to: Optional[List[str]] = None,
         min_value: Optional[int] = None,
         max_value: Optional[int] = None,
+        min_urgency: Optional[int] = None,
+        max_urgency: Optional[int] = None,
+        min_importance: Optional[int] = None,
+        max_importance: Optional[int] = None,
     ) -> List[InboxTripView]:
         """
         Apply composable multi-select filters to a projected dataset.
@@ -518,6 +535,16 @@ class InboxProjectionService:
             result = [t for t in result if (t.get("value") or 0) >= min_value]
         if max_value is not None:
             result = [t for t in result if (t.get("value") or 0) <= max_value]
+
+        if min_urgency is not None:
+            result = [t for t in result if (t.get("urgency") or 0) >= min_urgency]
+        if max_urgency is not None:
+            result = [t for t in result if (t.get("urgency") or 100) <= max_urgency]
+
+        if min_importance is not None:
+            result = [t for t in result if (t.get("importance") or 0) >= min_importance]
+        if max_importance is not None:
+            result = [t for t in result if (t.get("importance") or 100) <= max_importance]
 
         return result
 
@@ -574,6 +601,10 @@ def build_inbox_response(
     assigned_to: Optional[List[str]] = None,
     min_value: Optional[int] = None,
     max_value: Optional[int] = None,
+    min_urgency: Optional[int] = None,
+    max_urgency: Optional[int] = None,
+    min_importance: Optional[int] = None,
+    max_importance: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     End-to-end projection & pagination for the /inbox endpoint.
@@ -593,6 +624,10 @@ def build_inbox_response(
         assigned_to=assigned_to,
         min_value=min_value,
         max_value=max_value,
+        min_urgency=min_urgency,
+        max_urgency=max_urgency,
+        min_importance=min_importance,
+        max_importance=max_importance,
     )
     sorted_trips = svc.apply_sort(multi_filtered, sort_key, sort_dir or "desc")
     items, total, _, has_more = svc.paginate(sorted_trips, page, limit)

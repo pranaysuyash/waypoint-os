@@ -582,9 +582,36 @@ Legend:
 
 **Related Topics**: Evaluation Framework (metrics), Prompt Engineering (versioning)
 
----
+### 20. Multi-Dimensional Priority Scoring for Travel Operations 🔴
 
-## Current Recommendations
+**Status:** Active Research — Design doc complete, implementation pending
+
+**Overview:** Travel agency CRM tools universally lack computed priority scores. Operators visually scan lists of 20-50 trips and manually decide what to work on next. This is research into a 2D priority model (urgency × importance) that computes actionable priority from SLA states, departure dates, trip values, client tiers, and lead sources.
+
+**Key Questions:**
+- What signals constitute urgency vs importance in travel operations?
+- How do enterprise design systems (IBM Carbon) visualize multi-dimensional priority?
+- What patterns exist in ITIL/ITSM, Salesforce, HubSpot, Zendesk for ticket/lead scoring?
+- How do the major travel agency CRMs (TravelJoy, Travefy, Tern) handle priority?
+- What dashboard UX patterns (Smashing Magazine, NN/G) apply to priority visualization?
+
+**Research Areas:**
+- ITIL/ITSM urgency × impact priority matrices (5×5 grid → P1-P4)
+- Salesforce lead scoring: fit signals + interest signals + recency decay
+- HubSpot predictive lead scoring with negative signals
+- IBM Carbon shape indicator patterns (WCAG compliant: color + shape + text)
+- NN/G conditional indicator taxonomy (contextual, passive, space-aware)
+- Smashing Magazine real-time dashboard UX (delta indicators, sparklines, micro-animations)
+- Dashboard Design Patterns (curated vs data collection dashboards)
+- Travel agency CRM gap analysis (none have computed priority — white space opportunity)
+
+**Deliverable:** Comprehensive design document with scoring formulas, visual indicator patterns, implementation plan, and operational safety (kill switch, rollback, monitoring)
+
+**Detailed Research:** [Docs/DESIGN_2D_PRIORITY_MODEL_2026-05-08.md](Docs/DESIGN_2D_PRIORITY_MODEL_2026-05-08.md) *[DESIGN COMPLETE]*
+
+**Related Topics:** Real-World Validation (operator testing), Evaluation Framework (scoring accuracy), Future Roadmap (learning from operator behavior)
+
+---
 
 ### Start Now (High Priority 🔴)
 

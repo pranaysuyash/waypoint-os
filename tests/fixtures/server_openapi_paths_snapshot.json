@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 113,
+  "openapi_path_count": 115,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -100,7 +100,9 @@
     "/trips/{trip_id}/documents/{document_id}/extract",
     "/trips/{trip_id}/documents/{document_id}/extraction",
     "/trips/{trip_id}/documents/{document_id}/extraction/apply",
+    "/trips/{trip_id}/documents/{document_id}/extraction/attempts",
     "/trips/{trip_id}/documents/{document_id}/extraction/reject",
+    "/trips/{trip_id}/documents/{document_id}/extraction/retry",
     "/trips/{trip_id}/documents/{document_id}/reject",
     "/trips/{trip_id}/override",
     "/trips/{trip_id}/overrides",

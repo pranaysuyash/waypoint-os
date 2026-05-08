@@ -38,6 +38,8 @@ export const VIEW_PROFILE_LABELS: Record<ViewProfile, string> = {
 /** Canonical sort options */
 export const SORT_OPTIONS = [
   { key: 'priority', label: 'Priority', defaultDirection: 'desc' as const },
+  { key: 'urgency', label: 'Urgency', defaultDirection: 'desc' as const },
+  { key: 'importance', label: 'Importance', defaultDirection: 'desc' as const },
   { key: 'sla', label: 'SLA Status', defaultDirection: 'asc' as const },
   { key: 'value', label: 'Value', defaultDirection: 'desc' as const },
   { key: 'destination', label: 'Destination', defaultDirection: 'asc' as const },
@@ -283,10 +285,14 @@ const VIEW_PROFILE_KEY = 'inbox_view_profile';
  */
 export function getSavedViewProfile(): ViewProfile | undefined {
   if (typeof window === 'undefined') return undefined;
-  const raw = localStorage.getItem(VIEW_PROFILE_KEY);
-  if (!raw) return undefined;
-  if (VIEW_PROFILES.includes(raw as ViewProfile)) {
-    return raw as ViewProfile;
+  try {
+    const raw = localStorage.getItem(VIEW_PROFILE_KEY);
+    if (!raw) return undefined;
+    if (VIEW_PROFILES.includes(raw as ViewProfile)) {
+      return raw as ViewProfile;
+    }
+  } catch {
+    // localStorage unavailable (private browsing, quota exceeded)
   }
   return undefined;
 }
@@ -296,7 +302,11 @@ export function getSavedViewProfile(): ViewProfile | undefined {
  */
 export function saveViewProfile(profile: ViewProfile): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(VIEW_PROFILE_KEY, profile);
+  try {
+    localStorage.setItem(VIEW_PROFILE_KEY, profile);
+  } catch {
+    // localStorage unavailable
+  }
 }
 
 /**
@@ -369,14 +379,22 @@ const VISIT_COUNT_KEY = 'inbox_visit_count';
 
 export function getInboxVisitCount(): number {
   if (typeof window === 'undefined') return 0;
-  const raw = localStorage.getItem(VISIT_COUNT_KEY);
-  return raw ? parseInt(raw, 10) : 0;
+  try {
+    const raw = localStorage.getItem(VISIT_COUNT_KEY);
+    return raw ? parseInt(raw, 10) : 0;
+  } catch {
+    return 0;
+  }
 }
 
 export function incrementInboxVisitCount(): void {
   if (typeof window === 'undefined') return;
-  const count = getInboxVisitCount();
-  localStorage.setItem(VISIT_COUNT_KEY, (count + 1).toString());
+  try {
+    const count = getInboxVisitCount();
+    localStorage.setItem(VISIT_COUNT_KEY, (count + 1).toString());
+  } catch {
+    // localStorage unavailable
+  }
 }
 
 export function shouldShowMicroLabels(): boolean {

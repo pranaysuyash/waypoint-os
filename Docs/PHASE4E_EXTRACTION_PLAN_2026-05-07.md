@@ -762,8 +762,12 @@ Migration steps (all idempotent):
 
 ```bash
 # Extraction Configuration
+# Phase 4E uses EXTRACTION_MODEL_CHAIN as the primary config.
+# To run a single model locally: EXTRACTION_MODEL_CHAIN=gpt-5.4-nano
+# The old EXTRACTION_PROVIDER=openai_vision is no longer the primary config.
+# If EXTRACTION_MODEL_CHAIN is empty, factory falls back to noop in local/test/development.
 EXTRACTION_MODEL_CHAIN=gemini-2.5-flash,gpt-5.4-nano,gemini-2.5-flash-lite
-EXTRACTION_PROVIDER=noop  # legacy, ignored if EXTRACTION_MODEL_CHAIN is set
+EXTRACTION_PROVIDER=noop  # legacy fallback when EXTRACTION_MODEL_CHAIN is empty
 EXTRACTION_MAX_PDF_PAGES=10  # reject PDFs with more pages before provider call
 
 # Provider: OpenAI

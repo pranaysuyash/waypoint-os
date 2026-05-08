@@ -274,6 +274,7 @@ class TestFailedExtraction:
 
         with patch("spine_api.services.extraction_service.get_extractor") as mock_get:
             mock_extractor = AsyncMock()
+            mock_extractor._model = "gpt-5.4-nano"
             mock_extractor.extract = AsyncMock(side_effect=ExtractionProviderError("api_timeout"))
             mock_extractor.__class__.__name__ = "OpenAIVisionExtractor"
             mock_get.return_value = mock_extractor
@@ -295,8 +296,8 @@ class TestFailedExtraction:
         except Exception:
             pass
 
-    def test_failed_extraction_blocks_re_extraction(self, session_client):
-        """A failed extraction still blocks re-extraction (409)."""
+    def test_failed_extraction_allows_retry(self, session_client):
+        """A failed extraction can be retried via the same endpoint (Phase 4E)."""
         from spine_api.persistence import TripStore
 
         trip_data = {
@@ -326,6 +327,7 @@ class TestFailedExtraction:
 
         with patch("spine_api.services.extraction_service.get_extractor") as mock_get:
             mock_extractor = AsyncMock()
+            mock_extractor._model = "gpt-5.4-nano"
             mock_extractor.extract = AsyncMock(side_effect=ExtractionProviderError("api_server_error"))
             mock_extractor.__class__.__name__ = "OpenAIVisionExtractor"
             mock_get.return_value = mock_extractor
@@ -333,9 +335,10 @@ class TestFailedExtraction:
 
         assert resp1.status_code == 422
 
-        # Second attempt blocked (409)
+        # Phase 4E: failed extractions can be retried — succeeds on second attempt
         resp2 = session_client.post(f"/trips/{trip_id}/documents/{doc_id}/extract")
-        assert resp2.status_code == 409
+        assert resp2.status_code == 200
+        assert resp2.json()["status"] == "pending_review"
 
         # Cleanup
         try:
@@ -350,12 +353,12 @@ class TestFailedExtraction:
 
 
 class TestMIMEPrevalidation:
-    def test_openai_vision_pdf_returns_422_no_extraction_row(self, session_client):
-        """openai_vision + PDF returns 422 and creates no document_extractions row."""
+    def test_pdf_mime_accepted_in_phase_4e(self, session_client):
+        """Phase 4E: PDF MIME type is accepted for extraction."""
         from spine_api.persistence import TripStore
 
         trip_data = {
-            "source": "test_mime_pdf",
+            "source": "test_mime_pdf_4e",
             "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
             "status": "assigned",
             "stage": "proposal",
@@ -377,20 +380,24 @@ class TestMIMEPrevalidation:
         doc_id = resp.json()["id"]
         session_client.post(f"/trips/{trip_id}/documents/{doc_id}/accept")
 
-        # Configure openai_vision provider
-        with patch.dict(os.environ, {
-            "EXTRACTION_PROVIDER": "openai_vision",
-            "OPENAI_API_KEY": "test-key-12345",
-        }):
+        # Phase 4E: PDF MIME type should pass prevalidation
+        with patch("spine_api.services.extraction_service.get_extractor") as mock_get:
+            from spine_api.services.extraction_service import ExtractionResult
+            mock_extractor = AsyncMock()
+            mock_extractor._model = "gpt-5.4-nano"
+            mock_extractor.extract = AsyncMock(return_value=ExtractionResult(
+                fields={"full_name": "TEST"},
+                confidence_scores={"full_name": 0.9},
+                overall_confidence=0.9,
+                confidence_method="heuristic_presence",
+                provider_metadata={"model_name": "gpt-5.4-nano", "latency_ms": 100},
+            ))
+            mock_get.return_value = mock_extractor
+
             resp = session_client.post(f"/trips/{trip_id}/documents/{doc_id}/extract")
 
-        assert resp.status_code == 422
-        detail = resp.json()["detail"]
-        assert detail["error_code"] == "unsupported_mime_type"
-
-        # Verify no extraction row was created — try GET which should 404
-        get_resp = session_client.get(f"/trips/{trip_id}/documents/{doc_id}/extraction")
-        assert get_resp.status_code == 404
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "pending_review"
 
         # Cleanup
         try:
@@ -443,6 +450,7 @@ class TestMIMEPrevalidation:
             )
             with patch("spine_api.services.extraction_service.get_extractor") as mock_get:
                 mock_extractor = AsyncMock()
+                mock_extractor._model = "gpt-5.4-nano"
                 mock_extractor.extract = AsyncMock(return_value=mock_result)
                 mock_extractor.__class__.__name__ = "OpenAIVisionExtractor"
                 mock_get.return_value = mock_extractor
@@ -453,7 +461,7 @@ class TestMIMEPrevalidation:
         assert resp.status_code == 200
         body = resp.json()
         assert body["status"] == "pending_review"
-        assert body["provider_name"] == "openai_vision"
+        assert body["provider_name"] == "openai"
 
         # Cleanup
         try:
@@ -500,11 +508,9 @@ class TestMissingApiKey:
 
 class TestCostMetadataNullable:
     def test_cost_estimate_null_without_pricing_config(self):
-        """cost_estimate_usd is null when pricing env vars are not set."""
+        """cost_estimate_usd is calculated from pricing table for known models."""
         with patch.dict(os.environ, {
             "OPENAI_API_KEY": "test-key-12345",
-            "OPENAI_VISION_INPUT_COST_PER_1M": "",
-            "OPENAI_VISION_OUTPUT_COST_PER_1M": "",
         }):
             from src.extraction.vision_client import OpenAIVisionClient
             client = OpenAIVisionClient()
@@ -523,9 +529,36 @@ class TestCostMetadataNullable:
                     b"fake", "image/jpeg", json_schema, schema["prompt"],
                 ))
 
-            assert result.provider_metadata["cost_estimate_usd"] is None
+            assert result.provider_metadata["cost_estimate_usd"] is not None
+            assert result.provider_metadata["cost_estimate_usd"] > 0
             assert result.provider_metadata["prompt_tokens"] == 100
             assert result.provider_metadata["completion_tokens"] == 50
+            # Pricing source tracks provenance
+            assert "pricing_source" in result.provider_metadata
+
+    def test_cost_estimate_null_for_unknown_model(self):
+        """cost_estimate_usd is None when model is not in pricing table."""
+        with patch.dict(os.environ, {
+            "OPENAI_API_KEY": "test-key-12345",
+        }):
+            from src.extraction.vision_client import OpenAIVisionClient
+            client = OpenAIVisionClient(model="future-unknown-model-x")
+
+            mock_response = MagicMock()
+            mock_response.output_text = json.dumps({"full_name": "TEST"})
+            mock_response.usage = MagicMock()
+            mock_response.usage.input_tokens = 100
+            mock_response.usage.output_tokens = 50
+
+            with patch.object(client._client.responses, "create", return_value=mock_response):
+                from src.extraction.schemas import build_json_schema, get_schema
+                schema = get_schema("default")
+                json_schema = build_json_schema(schema["fields"])
+                result = asyncio.run(client.extract_from_image(
+                    b"fake", "image/jpeg", json_schema, schema["prompt"],
+                ))
+
+            assert result.provider_metadata["cost_estimate_usd"] is None
 
 
 # ---------------------------------------------------------------------------
@@ -568,6 +601,7 @@ class TestSchemaValidationProof:
         # Mock extractor to raise schema_validation_failed
         with patch("spine_api.services.extraction_service.get_extractor") as mock_get:
             mock_extractor = AsyncMock()
+            mock_extractor._model = "gpt-5.4-nano"
             mock_extractor.extract = AsyncMock(
                 side_effect=ExtractionProviderError("schema_validation_failed")
             )

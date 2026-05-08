@@ -484,6 +484,10 @@ class InboxTripItem(BaseModel):
     value: int
     priority: Literal["low", "medium", "high", "critical"]
     priorityScore: int
+    urgency: int = 50
+    importance: int = 50
+    urgencyBreakdown: Dict[str, float] = Field(default_factory=dict)
+    importanceBreakdown: Dict[str, float] = Field(default_factory=dict)
     stage: str
     stageNumber: int
     assignedTo: Optional[str] = None
