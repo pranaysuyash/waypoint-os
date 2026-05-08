@@ -71,6 +71,9 @@ def execute_spine_pipeline(
     emit_run_blocked_fn: Callable[..., None],
     emit_stage_entered_fn: Callable[..., None],
     emit_stage_completed_fn: Callable[..., None],
+    target_trip_id: Optional[str] = None,
+    audit_event_type: str = "trip_created",
+    existing_trip_status: Optional[str] = None,
 ) -> None:
     """Run the spine pipeline in the background and persist status/events."""
     t0 = time.perf_counter()
@@ -292,7 +295,9 @@ def execute_spine_pipeline(
                 source="spine_api",
                 agency_id=agency_id,
                 user_id=user_id,
-                trip_status="incomplete",
+                trip_status=existing_trip_status or "incomplete",
+                preserve_trip_id=target_trip_id,
+                audit_event_type=audit_event_type,
             )
             if not trip_id_saved:
                 raise RuntimeError("save_processed_trip returned no trip_id for partial intake")
@@ -360,6 +365,9 @@ def execute_spine_pipeline(
             source="spine_api",
             agency_id=agency_id,
             user_id=user_id,
+            trip_status=existing_trip_status or "new",
+            preserve_trip_id=target_trip_id,
+            audit_event_type=audit_event_type,
         )
         if not trip_id_saved:
             raise RuntimeError("save_processed_trip returned no trip_id")

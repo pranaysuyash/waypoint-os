@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import type { SupportedCurrency } from '@/lib/currency';
+import { formatMoney } from '@/lib/currency';
 
 interface CurrencyContextValue {
   preferredCurrency: SupportedCurrency;
@@ -21,7 +22,6 @@ interface CurrencyProviderProps {
 export function CurrencyProvider({ children, defaultCurrency = 'INR' }: CurrencyProviderProps) {
   const [preferredCurrency, setPreferredCurrencyState] = useState<SupportedCurrency>(defaultCurrency);
 
-  // Load from localStorage on mount
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY) as SupportedCurrency;
@@ -43,12 +43,8 @@ export function CurrencyProvider({ children, defaultCurrency = 'INR' }: Currency
   }, []);
 
   const formatAsPreferred = useCallback((amount: number, fromCurrency: SupportedCurrency): string => {
-    if (fromCurrency === preferredCurrency) {
-      return amount.toLocaleString('en-IN');
-    }
-    // Simple conversion - in production, use the currency utilities
-    return amount.toLocaleString('en-IN');
-  }, [preferredCurrency]);
+    return formatMoney(amount, fromCurrency);
+  }, []);
 
   return (
     <CurrencyContext.Provider value={{ preferredCurrency, setPreferredCurrency, formatAsPreferred }}>

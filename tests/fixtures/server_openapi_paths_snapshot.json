@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 115,
+  "openapi_path_count": 120,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -36,6 +36,11 @@
     "/api/auth/request-password-reset",
     "/api/auth/signup",
     "/api/auth/validate-code/{code}",
+    "/api/booking-tasks/{trip_id}",
+    "/api/booking-tasks/{trip_id}/generate",
+    "/api/booking-tasks/{trip_id}/{task_id}",
+    "/api/booking-tasks/{trip_id}/{task_id}/cancel",
+    "/api/booking-tasks/{trip_id}/{task_id}/complete",
     "/api/dashboard/stats",
     "/api/drafts",
     "/api/drafts/{draft_id}",

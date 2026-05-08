@@ -116,6 +116,15 @@ export default function SettingsPage() {
     if (draft.autonomy.learn_from_overrides !== settings.autonomy.learn_from_overrides) {
       autonomyPayload.learn_from_overrides = draft.autonomy.learn_from_overrides;
     }
+    if (draft.autonomy.auto_reprocess_on_edit !== settings.autonomy.auto_reprocess_on_edit) {
+      autonomyPayload.auto_reprocess_on_edit = draft.autonomy.auto_reprocess_on_edit;
+    }
+    if (draft.autonomy.allow_explicit_reassess !== settings.autonomy.allow_explicit_reassess) {
+      autonomyPayload.allow_explicit_reassess = draft.autonomy.allow_explicit_reassess;
+    }
+    if (JSON.stringify(draft.autonomy.auto_reprocess_stages) !== JSON.stringify(settings.autonomy.auto_reprocess_stages)) {
+      autonomyPayload.auto_reprocess_stages = draft.autonomy.auto_reprocess_stages;
+    }
 
     if (Object.keys(autonomyPayload).length > 0) {
       promises.push(updateAutonomy(autonomyPayload));

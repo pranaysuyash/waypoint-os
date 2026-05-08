@@ -45,6 +45,7 @@ describe("resolveBackendPath", () => {
     });
     expect(resolveBackendPath(["agents", "runtime", "events"])).toBe("agents/runtime/events");
     expect(resolveBackendPath(["trips", "trip_123", "agent-events"])).toBe("trips/trip_123/agent-events");
+    expect(resolveBackendPath(["trips", "trip_123", "reassess"])).toBe("trips/trip_123/reassess");
   });
 
   it("resolves run step paths with placeholder substitution", () => {

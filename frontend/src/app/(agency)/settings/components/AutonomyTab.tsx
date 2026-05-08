@@ -54,6 +54,13 @@ const DECISION_STATES: Array<{
   },
 ] as const;
 
+const REPROCESS_STAGES: Array<{ key: string; label: string; description: string }> = [
+  { key: "discovery", label: "Discovery", description: "Re-evaluate intake facts while requirements are still moving." },
+  { key: "shortlist", label: "Shortlist", description: "Re-score options when user constraints or risk profile changes." },
+  { key: "proposal", label: "Proposal", description: "Refresh pricing and suitability before customer-facing proposals." },
+  { key: "booking", label: "Booking", description: "Re-check execution risks before final confirmations." },
+];
+
 export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
   const autonomy = draft.autonomy;
 
@@ -65,9 +72,20 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
     });
   };
 
-  const toggleFlag = (key: 'auto_proceed_with_warnings' | 'learn_from_overrides') => {
+  const toggleFlag = (key: 'auto_proceed_with_warnings' | 'learn_from_overrides' | 'auto_reprocess_on_edit' | 'allow_explicit_reassess') => {
     onChange((prev) => {
       prev.autonomy[key] = !prev.autonomy[key];
+      return prev;
+    });
+  };
+
+  const toggleReprocessStage = (stage: string) => {
+    onChange((prev) => {
+      const current = prev.autonomy.auto_reprocess_stages?.[stage] ?? true;
+      prev.autonomy.auto_reprocess_stages = {
+        ...(prev.autonomy.auto_reprocess_stages || {}),
+        [stage]: !current,
+      };
       return prev;
     });
   };
@@ -243,6 +261,83 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
             </p>
           </div>
         </label>
+
+        <label className="flex items-start gap-3 cursor-pointer group">
+          <input
+            type="checkbox"
+            checked={autonomy.auto_reprocess_on_edit}
+            onChange={() => toggleFlag('auto_reprocess_on_edit')}
+            className="sr-only"
+          />
+          <div
+            className={`w-9 h-5 rounded-full transition-colors relative shrink-0 mt-0.5 ${
+              autonomy.auto_reprocess_on_edit ? 'bg-[var(--accent-blue)]' : 'bg-[var(--border-default)]'
+            }`}
+          >
+            <div
+              className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                autonomy.auto_reprocess_on_edit ? 'left-[18px]' : 'left-0.5'
+              }`}
+            />
+          </div>
+          <div>
+            <p className="text-[var(--ui-text-sm)] text-[var(--text-primary)]">Auto re-run after meaningful edits</p>
+            <p className="text-[var(--ui-text-sm)] text-[var(--text-secondary)]">
+              Automatically re-run decisioning when an operator updates critical trip inputs.
+            </p>
+          </div>
+        </label>
+
+        <label className="flex items-start gap-3 cursor-pointer group">
+          <input
+            type="checkbox"
+            checked={autonomy.allow_explicit_reassess}
+            onChange={() => toggleFlag('allow_explicit_reassess')}
+            className="sr-only"
+          />
+          <div
+            className={`w-9 h-5 rounded-full transition-colors relative shrink-0 mt-0.5 ${
+              autonomy.allow_explicit_reassess ? 'bg-[var(--accent-blue)]' : 'bg-[var(--border-default)]'
+            }`}
+          >
+            <div
+              className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                autonomy.allow_explicit_reassess ? 'left-[18px]' : 'left-0.5'
+              }`}
+            />
+          </div>
+          <div>
+            <p className="text-[var(--ui-text-sm)] text-[var(--text-primary)]">Allow manual reassessment</p>
+            <p className="text-[var(--ui-text-sm)] text-[var(--text-secondary)]">
+              Lets operators explicitly trigger a full re-evaluation when context changes.
+            </p>
+          </div>
+        </label>
+      </div>
+
+      <div className="rounded-lg border border-[var(--border-default)] p-4 space-y-3">
+        <h3 className="text-[var(--ui-text-xs)] font-semibold text-[var(--text-secondary)] uppercase tracking-wide">
+          Auto Reprocess By Stage
+        </h3>
+        <div className="space-y-2">
+          {REPROCESS_STAGES.map((stage) => {
+            const enabled = autonomy.auto_reprocess_stages?.[stage.key] ?? true;
+            return (
+              <label key={stage.key} className="flex items-start gap-3 cursor-pointer group rounded-md border border-[var(--border-default)] p-3">
+                <input
+                  type="checkbox"
+                  checked={enabled}
+                  onChange={() => toggleReprocessStage(stage.key)}
+                  className="mt-1"
+                />
+                <div>
+                  <p className="text-[var(--ui-text-sm)] text-[var(--text-primary)]">{stage.label}</p>
+                  <p className="text-[var(--ui-text-sm)] text-[var(--text-secondary)]">{stage.description}</p>
+                </div>
+              </label>
+            );
+          })}
+        </div>
       </div>
 
       {/* Approval rules note */}

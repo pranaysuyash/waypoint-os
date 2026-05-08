@@ -48,6 +48,22 @@ class _FakeEngine:
         return _FakeBegin(self.conn)
 
 
+def test_startup_invariant_tripstore_rejects_unknown_backend(monkeypatch):
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "redis")
+    monkeypatch.setenv("ENVIRONMENT", "development")
+
+    with pytest.raises(RuntimeError, match="Unknown TRIPSTORE_BACKEND"):
+        server._get_tripstore_backend()
+
+
+def test_startup_invariant_tripstore_requires_sql_in_production(monkeypatch):
+    monkeypatch.delenv("TRIPSTORE_BACKEND", raising=False)
+    monkeypatch.setenv("ENVIRONMENT", "production")
+
+    with pytest.raises(RuntimeError, match="TRIPSTORE_BACKEND must be set explicitly in production/staging"):
+        server._get_tripstore_backend()
+
+
 @pytest.mark.asyncio
 async def test_startup_invariant_file_backend_skips_sql_check(monkeypatch):
     monkeypatch.setenv("TRIPSTORE_BACKEND", "file")

@@ -2,7 +2,7 @@
 Behavior tests for Slice E team router extraction.
 
 Covers:
-- preserved unscoped get_member handler dependency profile
+- scoped get_member handler dependency profile
 - list members agency scoping
 - invite uses agency.id and user.id
 - permission dependency presence on update/deactivate handlers
@@ -46,19 +46,36 @@ def _get_route(path: str, method: str):
     raise AssertionError(f"Route not found: {method} {path}")
 
 
-def test_get_member_handler_preserves_unscoped_dependency_profile():
-    """
-    Preserve extraction behavior: handler stays unscoped (no agency dependency added).
-    This checks handler signature/dependency profile, not global middleware auth semantics.
-    """
+def test_get_member_handler_scopes_agency_and_user_dependencies():
+    """GET /api/team/members/{member_id} should stay tenant- and user-scoped."""
     params = list(inspect.signature(team.get_team_member).parameters.keys())
-    assert "agency" not in params
-    assert params == ["member_id", "db"]
+    assert params == ["member_id", "agency", "_user", "db"]
 
     route = _get_route("/api/team/members/{member_id}", "GET")
     dependency_calls = [dep.call for dep in route.dependant.dependencies]
     assert team.get_db in dependency_calls
-    assert team.get_current_agency not in dependency_calls
+    assert team.get_current_agency in dependency_calls
+    assert team.get_current_user in dependency_calls
+
+
+def test_get_member_scopes_lookup_to_current_agency(session_client, monkeypatch):
+    captured = {}
+
+    async def _get_member(db, membership_id, agency_id):
+        captured["db"] = db
+        captured["membership_id"] = membership_id
+        captured["agency_id"] = agency_id
+        return {"id": membership_id}
+
+    monkeypatch.setattr(team.membership_service, "get_member", _get_member)
+
+    resp = session_client.get("/api/team/members/m1")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["id"] == "m1"
+    assert captured["membership_id"] == "m1"
+    assert captured["agency_id"] == "agency_test"
+    assert captured["db"].name == "db_test"
 
 
 def test_list_members_is_agency_scoped(session_client, monkeypatch):

@@ -30,6 +30,8 @@ import {
   applyExtraction,
   rejectExtraction,
 } from '@/lib/api-client';
+import { ExtractionHistoryPanel } from '@/components/workspace/panels/ExtractionHistoryPanel';
+import BookingExecutionPanel from '@/components/workspace/panels/BookingExecutionPanel';
 import type { ReadinessAssessment } from '@/types/spine';
 
 interface OpsPanelProps {
@@ -973,7 +975,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
                   )}
                 </div>
                 {/* Phase 4C: Extraction results */}
-                {extractions[doc.id] && (
+                {extractions[doc.id] && trip && (
                   <div data-testid={`ops-extraction-${doc.id}`} className="mt-2 border-t border-[#30363d] pt-2 space-y-2">
                     <div className="flex items-center gap-2 text-xs">
                       <span className="text-[#8b949e]">Extraction:</span>
@@ -1105,11 +1107,24 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
                     )}
                   </div>
                 )}
+                {extractions[doc.id] && (
+                  <ExtractionHistoryPanel
+                    tripId={trip!.id}
+                    documentId={doc.id}
+                    extraction={extractions[doc.id]}
+                    onRetryComplete={(updated) => {
+                      setExtractions((prev) => ({ ...prev, [doc.id]: updated }));
+                    }}
+                  />
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Booking execution tasks (Phase 5A) */}
+      {trip?.id && <BookingExecutionPanel tripId={trip.id} />}
     </div>
   );
 }

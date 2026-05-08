@@ -1,5 +1,5 @@
 {
-  "route_count": 131,
+  "route_count": 137,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -278,6 +278,54 @@
       "name": "get_validate_code",
       "methods": [
         "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/booking-tasks/{trip_id}",
+      "name": "list_booking_tasks",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/booking-tasks/{trip_id}",
+      "name": "create_booking_task",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/booking-tasks/{trip_id}/generate",
+      "name": "generate_booking_tasks",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/booking-tasks/{trip_id}/{task_id}",
+      "name": "update_booking_task",
+      "methods": [
+        "PATCH"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/booking-tasks/{trip_id}/{task_id}/cancel",
+      "name": "cancel_booking_task",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/booking-tasks/{trip_id}/{task_id}/complete",
+      "name": "complete_booking_task",
+      "methods": [
+        "POST"
       ],
       "operation_id": null
     },

@@ -310,6 +310,9 @@ export interface AgencyAutonomyPolicy {
   mode_overrides: Record<string, Record<string, string>>;
   auto_proceed_with_warnings: boolean;
   learn_from_overrides: boolean;
+  auto_reprocess_on_edit: boolean;
+  allow_explicit_reassess: boolean;
+  auto_reprocess_stages: Record<string, boolean>;
   min_proceed_confidence?: number;
   min_draft_confidence?: number;
 }
@@ -326,6 +329,9 @@ export interface UpdateAutonomyPolicyRequest {
   mode_overrides?: Record<string, Record<string, string>>;
   auto_proceed_with_warnings?: boolean;
   learn_from_overrides?: boolean;
+  auto_reprocess_on_edit?: boolean;
+  allow_explicit_reassess?: boolean;
+  auto_reprocess_stages?: Record<string, boolean>;
 }
 
 export async function updateAutonomyPolicy(

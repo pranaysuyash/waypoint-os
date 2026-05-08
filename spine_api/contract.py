@@ -353,6 +353,16 @@ class UpdateAutonomyPolicy(BaseModel):
     mode_overrides: Optional[Dict[str, Dict[str, str]]] = None
     auto_proceed_with_warnings: Optional[bool] = None
     learn_from_overrides: Optional[bool] = None
+    auto_reprocess_on_edit: Optional[bool] = None
+    allow_explicit_reassess: Optional[bool] = None
+    auto_reprocess_stages: Optional[Dict[str, bool]] = None
+
+
+class ExplicitReassessRequest(BaseModel):
+    reason: Optional[str] = None
+    stage: Optional[str] = None
+    operating_mode: Optional[str] = None
+    strict_leakage: Optional[bool] = None
 
 
 # =============================================================================

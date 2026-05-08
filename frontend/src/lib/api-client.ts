@@ -482,6 +482,9 @@ export interface AgencyAutonomyResponse {
   mode_overrides: Record<string, Record<string, string>>;
   auto_proceed_with_warnings: boolean;
   learn_from_overrides: boolean;
+  auto_reprocess_on_edit: boolean;
+  allow_explicit_reassess: boolean;
+  auto_reprocess_stages: Record<string, boolean>;
   min_proceed_confidence: number;
   min_draft_confidence: number;
 }
@@ -506,6 +509,9 @@ export interface UpdateAgencyAutonomyRequest {
   mode_overrides?: Record<string, Record<string, string>>;
   auto_proceed_with_warnings?: boolean;
   learn_from_overrides?: boolean;
+  auto_reprocess_on_edit?: boolean;
+  allow_explicit_reassess?: boolean;
+  auto_reprocess_stages?: Record<string, boolean>;
 }
 
 export type AgencySettings = AgencySettingsResponse;
@@ -608,6 +614,28 @@ export async function transitionTripStage(
     reason,
     expected_current_stage: expectedCurrentStage,
   });
+}
+
+export interface ExplicitReassessRequest {
+  reason?: string;
+  stage?: string;
+  operating_mode?: string;
+  strict_leakage?: boolean;
+}
+
+export interface ExplicitReassessResponse {
+  ok: boolean;
+  trip_id: string;
+  run_id: string;
+  state: string;
+  trigger: string;
+}
+
+export async function reassessTrip(
+  tripId: string,
+  request: ExplicitReassessRequest = {},
+): Promise<ExplicitReassessResponse> {
+  return api.post<ExplicitReassessResponse>(`/api/trips/${tripId}/reassess`, request);
 }
 
 export async function getOverride(overrideId: string): Promise<{ ok: boolean; override: any }> {
@@ -1012,7 +1040,7 @@ export interface ExtractionFieldView {
 export interface ExtractionResponse {
   id: string;
   document_id: string;
-  status: 'pending_review' | 'applied' | 'rejected';
+  status: 'pending_review' | 'applied' | 'rejected' | 'failed' | 'running';
   extracted_by: string;
   overall_confidence: number | null;
   field_count: number;
@@ -1021,6 +1049,33 @@ export interface ExtractionResponse {
   updated_at: string;
   reviewed_at: string | null;
   reviewed_by: string | null;
+  provider_name: string | null;
+  model_name: string | null;
+  latency_ms: number | null;
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  total_tokens: number | null;
+  cost_estimate_usd: number | null;
+  error_code: string | null;
+  error_summary: string | null;
+  confidence_method: string | null;
+  attempt_count: number;
+  run_count: number;
+  current_attempt_id: string | null;
+  page_count: number | null;
+}
+
+export interface AttemptSummary {
+  attempt_id: string;
+  run_number: number;
+  attempt_number: number;
+  fallback_rank: number | null;
+  provider_name: string;
+  model_name: string | null;
+  latency_ms: number | null;
+  status: 'success' | 'failed';
+  error_code: string | null;
+  created_at: string | null;
 }
 
 export interface ApplyConflict {
@@ -1078,6 +1133,24 @@ export async function rejectExtraction(
   );
 }
 
+export async function listExtractionAttempts(
+  tripId: string,
+  documentId: string,
+): Promise<AttemptSummary[]> {
+  return api.get<AttemptSummary[]>(
+    `/api/trips/${tripId}/documents/${documentId}/extraction/attempts`,
+  );
+}
+
+export async function retryExtraction(
+  tripId: string,
+  documentId: string,
+): Promise<ExtractionResponse> {
+  return api.post<ExtractionResponse>(
+    `/api/trips/${tripId}/documents/${documentId}/extraction/retry`,
+  );
+}
+
 // Public customer document upload (direct to backend, no auth)
 
 export async function uploadPublicDocument(
@@ -1100,4 +1173,116 @@ export async function uploadPublicDocument(
     throw new Error(body.detail || `Upload failed (${res.status})`);
   }
   return res.json();
+}
+
+// Phase 5A: Booking tasks
+
+export interface BookingTask {
+  id: string;
+  trip_id: string;
+  agency_id: string;
+  task_type: string;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  owner_id: string | null;
+  due_at: string | null;
+  blocker_code: string | null;
+  blocker_refs: Record<string, unknown> | null;
+  source: string;
+  generation_hash: string | null;
+  created_by: string;
+  completed_by: string | null;
+  completed_at: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BookingTaskSummary {
+  total: number;
+  not_started: number;
+  blocked: number;
+  ready: number;
+  in_progress: number;
+  waiting_on_customer: number;
+  completed: number;
+  cancelled: number;
+}
+
+export interface BookingTaskListResponse {
+  ok: boolean;
+  tasks: BookingTask[];
+  summary: BookingTaskSummary;
+}
+
+export interface BookingTaskCreateRequest {
+  task_type: string;
+  title: string;
+  description?: string;
+  priority?: string;
+  owner_id?: string;
+  due_at?: string;
+}
+
+export interface BookingTaskUpdateRequest {
+  status?: string;
+  priority?: string;
+  owner_id?: string;
+  due_at?: string;
+  title?: string;
+}
+
+export interface ReconciliationEntry {
+  task_id: string;
+  old_status: string;
+  new_status: string;
+}
+
+export interface GenerateTasksResponse {
+  ok: boolean;
+  created: BookingTask[];
+  skipped: string[];
+  reconciled: ReconciliationEntry[];
+}
+
+export async function listBookingTasks(tripId: string): Promise<BookingTaskListResponse> {
+  return api.get<BookingTaskListResponse>(`/api/booking-tasks/${tripId}`);
+}
+
+export async function createBookingTask(
+  tripId: string,
+  data: BookingTaskCreateRequest,
+): Promise<{ ok: boolean; task: BookingTask }> {
+  return api.post(`/api/booking-tasks/${tripId}`, data);
+}
+
+export async function generateBookingTasks(
+  tripId: string,
+  force = false,
+): Promise<GenerateTasksResponse> {
+  return api.post<GenerateTasksResponse>(`/api/booking-tasks/${tripId}/generate`, { force });
+}
+
+export async function updateBookingTask(
+  tripId: string,
+  taskId: string,
+  data: BookingTaskUpdateRequest,
+): Promise<{ ok: boolean; task: BookingTask }> {
+  return api.patch(`/api/booking-tasks/${tripId}/${taskId}`, data);
+}
+
+export async function completeBookingTask(
+  tripId: string,
+  taskId: string,
+): Promise<{ ok: boolean; task: BookingTask }> {
+  return api.post(`/api/booking-tasks/${tripId}/${taskId}/complete`);
+}
+
+export async function cancelBookingTask(
+  tripId: string,
+  taskId: string,
+): Promise<{ ok: boolean; task: BookingTask }> {
+  return api.post(`/api/booking-tasks/${tripId}/${taskId}/cancel`);
 }

@@ -64,11 +64,8 @@ export function forwardAuthHeaders(req: NextRequest): Record<string, string> {
   const contentType = req.headers.get("content-type");
   if (contentType) headers["content-type"] = contentType;
 
-  const cookie = req.headers.get("cookie");
+ const cookie = req.headers.get("cookie");
   if (cookie) headers["cookie"] = cookie;
-
-  const authz = req.headers.get("authorization");
-  if (authz) headers["authorization"] = authz;
 
   // Trace IDs help correlate frontend and backend logs
   const requestId = req.headers.get("x-request-id");

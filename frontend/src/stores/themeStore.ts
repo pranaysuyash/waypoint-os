@@ -46,11 +46,6 @@ export const useThemeStore = create<ThemeState>()(
 
       setTheme: (theme) => {
         set({ currentTheme: theme });
-        // Apply theme-specific classes to body
-        document.body.className = document.body.className
-          .replace(/theme-\w+/g, "")
-          .trim();
-        document.body.classList.add(`theme-${theme}`);
       },
 
       setComponentVariant: (component, variant) => {

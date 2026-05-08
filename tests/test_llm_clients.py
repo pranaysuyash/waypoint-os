@@ -272,6 +272,7 @@ class TestFactoryFunctions:
             pytest.skip("transformers not installed")
 
 
+@pytest.mark.integration
 class TestLLMDecide:
     """Integration tests for LLM decide method (require API keys)."""
 

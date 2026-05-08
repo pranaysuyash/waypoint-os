@@ -63,6 +63,8 @@ describe("P1 Happy Path Journey", () => {
     value: 220000,
     priority: "high",
     priorityScore: 90,
+    urgency: 70,
+    importance: 70,
     stage: "intake",
     stageNumber: 1,
     assignedTo: "agent-1",

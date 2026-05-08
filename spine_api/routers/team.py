@@ -48,10 +48,12 @@ async def list_team_members(
 @router.get("/api/team/members/{member_id}")
 async def get_team_member(
     member_id: str,
+    agency: Agency = Depends(get_current_agency),
+    _user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a single team member by membership ID."""
-    member = await membership_service.get_member(db, member_id)
+    member = await membership_service.get_member(db, member_id, agency.id)
     if not member:
         raise HTTPException(status_code=404, detail="Team member not found")
     return member

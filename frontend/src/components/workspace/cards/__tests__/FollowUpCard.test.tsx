@@ -170,8 +170,8 @@ describe('FollowUpCard', () => {
       expect(screen.getByText('Snooze Follow-up')).toBeInTheDocument();
     });
     
-    const cancelButton = screen.getAllByText('Cancel')[0];
-    fireEvent.click(cancelButton);
+    const closeButton = screen.getByRole('button', { name: 'Close modal' });
+    fireEvent.click(closeButton);
     
     await waitFor(() => {
       expect(screen.queryByText('Snooze Follow-up')).not.toBeInTheDocument();

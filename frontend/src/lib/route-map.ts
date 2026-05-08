@@ -114,6 +114,7 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["trips/{id}/snooze", { backendPath: "trips/{id}/snooze" }],
   ["trips/{id}/reassign", { backendPath: "trips/{id}/reassign" }],
   ["trips/{id}/review/action", { backendPath: "trips/{id}/review/action" }],
+  ["trips/{id}/reassess", { backendPath: "trips/{id}/reassess" }],
   [
     "trips/{id}/suitability/acknowledge",
     { backendPath: "trips/{id}/suitability/acknowledge" },

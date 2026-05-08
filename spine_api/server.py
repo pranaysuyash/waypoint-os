@@ -126,6 +126,7 @@ from spine_api.contract import (
     PublicCheckerDeleteResponse,
     UpdateOperationalSettings,
     UpdateAutonomyPolicy,
+    ExplicitReassessRequest,
     IntegrityIssuesResponse,
     UnifiedStateResponse,
     DashboardStatsResponse,
@@ -179,7 +180,44 @@ def _get_public_checker_agency_id() -> str:
 
 
 def _is_sql_tripstore_backend() -> bool:
-    return os.getenv("TRIPSTORE_BACKEND", "file").lower().strip() == "sql"
+    return _get_tripstore_backend() == "sql"
+
+
+def _validate_tripstore_backend_configuration() -> None:
+    """Fail fast on invalid TripStore backend configuration before serving traffic."""
+    backend = _get_tripstore_backend()
+    if backend not in {"file", "sql"}:
+        raise RuntimeError(
+            "Invalid TRIPSTORE_BACKEND after normalization. Allowed values are file, json, or sql."
+        )
+
+    if backend == "sql":
+        logger.info("TripStore configured for SQL persistence")
+    else:
+        logger.info("TripStore configured for file persistence")
+
+
+def _get_tripstore_backend() -> str:
+    """Resolve and validate TRIPSTORE_BACKEND with explicit environment safety checks."""
+    raw_backend = os.getenv("TRIPSTORE_BACKEND", "").strip().lower()
+    if not raw_backend:
+        environment = os.getenv("ENVIRONMENT", os.getenv("NODE_ENV", "development")).lower().strip()
+        if environment in {"production", "staging"}:
+            raise RuntimeError(
+                "TRIPSTORE_BACKEND must be set explicitly in production/staging. "
+                "Current ENVIRONMENT is set to production/staging, and no value was provided."
+            )
+        logger.warning("TRIPSTORE_BACKEND is unset; defaulting to file store")
+        return "file"
+
+    backend = raw_backend
+    if backend == "json":
+        backend = "file"
+    if backend not in {"file", "sql"}:
+        raise RuntimeError(
+            f"Unknown TRIPSTORE_BACKEND='{backend}'. Allowed values: file, json, sql."
+        )
+    return backend
 
 # Import TimelineEventMapper from analytics
 # Note: logger not available yet, so we suppress warnings here
@@ -288,6 +326,7 @@ try:
     from routers import followups as followups_router
     from routers import team as team_router
     from routers import product_b_analytics as product_b_analytics_router
+    from routers import booking_tasks as booking_tasks_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -345,6 +384,11 @@ except (ImportError, ValueError):
     _product_b_analytics_mod = importlib.util.module_from_spec(_product_b_analytics_spec)
     _product_b_analytics_spec.loader.exec_module(_product_b_analytics_mod)
     product_b_analytics_router = _product_b_analytics_mod
+
+    _booking_tasks_spec = importlib.util.spec_from_file_location("routers.booking_tasks", _base / "routers" / "booking_tasks.py")
+    _booking_tasks_mod = importlib.util.module_from_spec(_booking_tasks_spec)
+    _booking_tasks_spec.loader.exec_module(_booking_tasks_mod)
+    booking_tasks_router = _booking_tasks_mod
 
 logger = logging.getLogger("spine_api")
 
@@ -522,6 +566,7 @@ async def lifespan(app: FastAPI):
         )
     if os.environ.get("SPINE_API_DISABLE_AUTH"):
         logger.warning("⚠️  AUTH DISABLED — local/test only. Do not use in production.")
+    _validate_tripstore_backend_configuration()
     await _ensure_agencies_schema_compatibility()
     await _ensure_memberships_schema_compatibility()
     await _validate_public_checker_agency_configuration()
@@ -591,6 +636,7 @@ app.include_router(system_dashboard_router.router)
 app.include_router(followups_router.router)
 app.include_router(team_router.router)
 app.include_router(product_b_analytics_router.router)
+app.include_router(booking_tasks_router.router, dependencies=[Depends(_auth_or_skip)])
 
 
 def _seed_scenario(agency_id: Optional[str] = None):
@@ -945,6 +991,9 @@ def _execute_spine_pipeline(
     request_dict: dict[str, Any],
     agency_id: str,
     user_id: str,
+    target_trip_id: Optional[str] = None,
+    audit_event_type: str = "trip_created",
+    existing_trip_status: Optional[str] = None,
 ) -> None:
     """Run the spine pipeline in the background and persist status/events."""
     return execute_spine_pipeline(
@@ -974,6 +1023,9 @@ def _execute_spine_pipeline(
         emit_run_blocked_fn=emit_run_blocked,
         emit_stage_entered_fn=emit_stage_entered,
         emit_stage_completed_fn=emit_stage_completed,
+        target_trip_id=target_trip_id,
+        audit_event_type=audit_event_type,
+        existing_trip_status=existing_trip_status,
     )
 
 
@@ -1696,11 +1748,107 @@ def get_agent_runtime_events(
     return {"events": events, "total": len(events)}
 
 
+REASSESS_EDIT_TRIGGER_FIELDS = {
+    "origin",
+    "destination",
+    "budget",
+    "party_composition",
+    "pace_preference",
+    "date_year_confidence",
+    "lead_source",
+    "activity_provenance",
+    "trip_priorities",
+    "date_flexibility",
+    "follow_up_due_date",
+    "owner_note",
+    "raw_note",
+    "structured_json",
+    "itinerary_text",
+}
+
+
+def _build_reassessment_request_from_trip(
+    trip: Dict[str, Any],
+    *,
+    stage_override: Optional[str] = None,
+    operating_mode_override: Optional[str] = None,
+    strict_leakage_override: Optional[bool] = None,
+) -> dict[str, Any]:
+    raw_input = trip.get("raw_input") if isinstance(trip.get("raw_input"), dict) else {}
+    submission = raw_input.get("submission") if isinstance(raw_input.get("submission"), dict) else {}
+    extracted = trip.get("extracted") if isinstance(trip.get("extracted"), dict) else {}
+
+    request_dict: dict[str, Any] = {
+        "raw_note": submission.get("raw_note"),
+        "owner_note": submission.get("owner_note"),
+        "structured_json": submission.get("structured_json"),
+        "itinerary_text": submission.get("itinerary_text"),
+        "retention_consent": bool(raw_input.get("retention_consent", False)),
+        "stage": stage_override or trip.get("stage") or raw_input.get("stage") or "discovery",
+        "operating_mode": operating_mode_override or raw_input.get("operating_mode") or "normal_intake",
+        "strict_leakage": bool(strict_leakage_override if strict_leakage_override is not None else raw_input.get("strict_leakage", False)),
+        "scenario_id": raw_input.get("fixture_id"),
+        "follow_up_due_date": trip.get("follow_up_due_date"),
+        "pace_preference": trip.get("pace_preference"),
+        "lead_source": trip.get("lead_source"),
+        "activity_provenance": trip.get("activity_provenance"),
+        "date_year_confidence": trip.get("date_year_confidence"),
+    }
+
+    if not any(request_dict.get(k) for k in ("raw_note", "owner_note", "structured_json", "itinerary_text")):
+        # Fallback to structured replay of extracted facts so reassess can still run.
+        request_dict["structured_json"] = {"extracted_snapshot": extracted}
+
+    return request_dict
+
+
+def _queue_trip_reassessment(
+    trip: Dict[str, Any],
+    *,
+    agency_id: str,
+    user_id: str,
+    request_dict: dict[str, Any],
+    trigger: str,
+    reason: Optional[str] = None,
+) -> str:
+    run_id = str(uuid.uuid4())
+    RunLedger.create(
+        run_id=run_id,
+        trip_id=trip.get("id"),
+        stage=request_dict.get("stage", trip.get("stage") or "discovery"),
+        operating_mode=request_dict.get("operating_mode", "normal_intake"),
+        agency_id=agency_id,
+        draft_id=None,
+    )
+    thread = threading.Thread(
+        target=_execute_spine_pipeline,
+        args=(run_id, request_dict, agency_id, user_id, trip.get("id"), "trip_reassessed", trip.get("status")),
+        daemon=True,
+        name=f"reassess-{run_id[:8]}",
+    )
+    thread.start()
+
+    AuditStore.log_event(
+        "trip_reassess_queued",
+        user_id,
+        {
+            "trip_id": trip.get("id"),
+            "run_id": run_id,
+            "trigger": trigger,
+            "reason": reason,
+            "stage": request_dict.get("stage"),
+            "operating_mode": request_dict.get("operating_mode"),
+        },
+    )
+    return run_id
+
+
 @app.patch("/trips/{trip_id}")
 def patch_trip(
     trip_id: str,
     updates: Dict[str, Any],
     agency: Agency = Depends(get_current_agency),
+    user: User = Depends(get_current_user),
 ):
     """
     Update trip fields (e.g. status, follow_up_due_date).
@@ -1838,6 +1986,8 @@ def patch_trip(
 
     updates = _sync_manual_trip_fields(trip, updates)
 
+    edited_fields = set(updates.keys())
+
     # Perform update
     updated_trip = TripStore.update_trip(trip_id, updates)
     
@@ -1854,8 +2004,79 @@ def patch_trip(
         # If moving back to 'new', ensure it's unassigned
         if new_status == "new":
             AssignmentStore.unassign_trip(trip_id, "operator")
-            
+
+    # Auto reassessment on meaningful edits when policy + stage allow.
+    settings = AgencySettingsStore.load(agency.id)
+    policy = settings.autonomy
+    current_stage = str((updated_trip or {}).get("stage") or "discovery")
+    should_auto_reassess = (
+        bool(updated_trip)
+        and policy.auto_reprocess_on_edit
+        and policy.auto_reprocess_stages.get(current_stage, False)
+        and bool(edited_fields & REASSESS_EDIT_TRIGGER_FIELDS)
+    )
+    if should_auto_reassess and updated_trip:
+        request_dict = _build_reassessment_request_from_trip(updated_trip)
+        run_id = _queue_trip_reassessment(
+            updated_trip,
+            agency_id=agency.id,
+            user_id=user.id,
+            request_dict=request_dict,
+            trigger="auto_edit",
+            reason=f"fields_changed:{','.join(sorted(edited_fields & REASSESS_EDIT_TRIGGER_FIELDS))}",
+        )
+        updated_trip["reassess"] = {
+            "queued": True,
+            "run_id": run_id,
+            "trigger": "auto_edit",
+        }
+
     return updated_trip
+
+
+@app.post("/trips/{trip_id}/reassess")
+def reassess_trip(
+    trip_id: str,
+    request: ExplicitReassessRequest,
+    agency: Agency = Depends(get_current_agency),
+    user: User = Depends(get_current_user),
+):
+    trip = TripStore.get_trip(trip_id)
+    if not trip or trip.get("agency_id") != agency.id:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    settings = AgencySettingsStore.load(agency.id)
+    policy = settings.autonomy
+    if not policy.allow_explicit_reassess:
+        raise HTTPException(status_code=403, detail="Explicit reassessment is disabled by policy")
+
+    if request.stage and request.stage not in VALID_STAGES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid stage '{request.stage}'. Must be one of {sorted(VALID_STAGES)}",
+        )
+
+    request_dict = _build_reassessment_request_from_trip(
+        trip,
+        stage_override=request.stage,
+        operating_mode_override=request.operating_mode,
+        strict_leakage_override=request.strict_leakage,
+    )
+    run_id = _queue_trip_reassessment(
+        trip,
+        agency_id=agency.id,
+        user_id=user.id,
+        request_dict=request_dict,
+        trigger="explicit",
+        reason=request.reason,
+    )
+    return {
+        "ok": True,
+        "trip_id": trip_id,
+        "run_id": run_id,
+        "state": "queued",
+        "trigger": "explicit",
+    }
 
 
 VALID_STAGES = {"discovery", "shortlist", "proposal", "booking"}
@@ -3523,6 +3744,9 @@ def get_agency_settings(
             "mode_overrides": settings.autonomy.mode_overrides,
             "auto_proceed_with_warnings": settings.autonomy.auto_proceed_with_warnings,
             "learn_from_overrides": settings.autonomy.learn_from_overrides,
+            "auto_reprocess_on_edit": settings.autonomy.auto_reprocess_on_edit,
+            "allow_explicit_reassess": settings.autonomy.allow_explicit_reassess,
+            "auto_reprocess_stages": settings.autonomy.auto_reprocess_stages,
             "min_proceed_confidence": settings.autonomy.min_proceed_confidence,
             "min_draft_confidence": settings.autonomy.min_draft_confidence,
         },
@@ -3618,6 +3842,9 @@ def get_agency_autonomy_settings(agency_id: str = "waypoint-hq"):
         "mode_overrides": policy.mode_overrides,
         "auto_proceed_with_warnings": policy.auto_proceed_with_warnings,
         "learn_from_overrides": policy.learn_from_overrides,
+        "auto_reprocess_on_edit": policy.auto_reprocess_on_edit,
+        "allow_explicit_reassess": policy.allow_explicit_reassess,
+        "auto_reprocess_stages": policy.auto_reprocess_stages,
         "min_proceed_confidence": policy.min_proceed_confidence,
         "min_draft_confidence": policy.min_draft_confidence,
     }
@@ -3669,6 +3896,26 @@ def update_agency_autonomy_settings(
         policy.learn_from_overrides = request.learn_from_overrides
         changes.append("learn_from_overrides")
 
+    if request.auto_reprocess_on_edit is not None:
+        policy.auto_reprocess_on_edit = request.auto_reprocess_on_edit
+        changes.append("auto_reprocess_on_edit")
+
+    if request.allow_explicit_reassess is not None:
+        policy.allow_explicit_reassess = request.allow_explicit_reassess
+        changes.append("allow_explicit_reassess")
+
+    if request.auto_reprocess_stages is not None:
+        allowed_stages = {"discovery", "shortlist", "proposal", "booking"}
+        sanitized = {
+            stage: bool(enabled)
+            for stage, enabled in request.auto_reprocess_stages.items()
+            if stage in allowed_stages
+        }
+        for stage in allowed_stages:
+            sanitized.setdefault(stage, policy.auto_reprocess_stages.get(stage, True))
+        policy.auto_reprocess_stages = sanitized
+        changes.append("auto_reprocess_stages")
+
     # Persist
     AgencySettingsStore.save(settings)
 
@@ -3678,6 +3925,9 @@ def update_agency_autonomy_settings(
         "mode_overrides": policy.mode_overrides,
         "auto_proceed_with_warnings": policy.auto_proceed_with_warnings,
         "learn_from_overrides": policy.learn_from_overrides,
+        "auto_reprocess_on_edit": policy.auto_reprocess_on_edit,
+        "allow_explicit_reassess": policy.allow_explicit_reassess,
+        "auto_reprocess_stages": policy.auto_reprocess_stages,
         "changes": changes,
     }
 

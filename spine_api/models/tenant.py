@@ -374,3 +374,105 @@ class DocumentExtractionAttempt(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
     )
+
+
+# ---------------------------------------------------------------------------
+# Booking task constants
+# ---------------------------------------------------------------------------
+
+TASK_STATUSES = (
+    "not_started", "blocked", "ready", "in_progress",
+    "waiting_on_customer", "completed", "cancelled",
+)
+
+TASK_TYPES = (
+    "verify_traveler_details", "verify_passport", "verify_visa", "verify_insurance",
+    "confirm_flights", "confirm_hotels", "collect_payment_proof",
+    "send_final_confirmation", "custom",
+)
+
+TASK_SOURCES = (
+    "system_suggested", "agent_created", "readiness_generated",
+    "document_generated", "extraction_generated",
+)
+
+TASK_PRIORITIES = ("low", "medium", "high", "critical")
+
+BLOCKER_CODES = (
+    "missing_booking_data", "missing_document", "missing_extraction",
+    "extraction_not_reviewed", "document_not_accepted",
+    "missing_passport_field", "missing_visa_field", "missing_insurance_field",
+    "manual_block",
+)
+
+VALID_TRANSITIONS: dict[str, set[str]] = {
+    "not_started": {"ready", "blocked", "cancelled"},
+    "blocked": {"ready", "cancelled"},
+    "ready": {"in_progress", "blocked", "cancelled"},
+    "in_progress": {"completed", "waiting_on_customer", "cancelled"},
+    "waiting_on_customer": {"in_progress", "cancelled"},
+    "completed": set(),
+    "cancelled": set(),
+}
+
+TASK_TITLE_TEMPLATES: dict[str, str] = {
+    "verify_traveler_details": "Verify traveler details for Traveler {ordinal}",
+    "verify_passport": "Verify passport for Traveler {ordinal}",
+    "verify_visa": "Verify visa for Traveler {ordinal}",
+    "verify_insurance": "Verify insurance for Traveler {ordinal}",
+    "confirm_flights": "Confirm flights",
+    "confirm_hotels": "Confirm hotels",
+    "collect_payment_proof": "Collect payment proof",
+    "send_final_confirmation": "Send final confirmation",
+}
+
+
+class BookingTask(Base):
+    """A booking execution task for a trip."""
+    __tablename__ = "booking_tasks"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    trip_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    agency_id: Mapped[str] = mapped_column(
+        ForeignKey("agencies.id", ondelete="CASCADE"), nullable=False
+    )
+
+    task_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="not_started")
+    priority: Mapped[str] = mapped_column(String(20), nullable=False, server_default="medium")
+
+    owner_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    due_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    blocker_code: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    blocker_refs: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    source: Mapped[str] = mapped_column(String(30), nullable=False, server_default="agent_created")
+    generation_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+
+    created_by: Mapped[str] = mapped_column(String(36), nullable=False)
+    completed_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        Index("ix_bt_trip_id", "trip_id"),
+        Index("ix_bt_agency_id", "agency_id"),
+        Index("ix_bt_status", "status"),
+        Index("ix_bt_task_type", "task_type"),
+        Index("ix_bt_trip_status", "trip_id", "status"),
+        Index("ix_bt_generation_hash", "generation_hash"),
+    )

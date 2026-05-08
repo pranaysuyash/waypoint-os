@@ -46,8 +46,10 @@ export function useRuntimeVersion(): RuntimeVersionState {
 
         if (isMounted) {
           setState({
-            versionLabel: "Operations live",
-            detailsLabel: "",
+            versionLabel: payload.version
+              ? `v${payload.version}`
+              : FALLBACK_VERSION_LABEL,
+            detailsLabel: details,
           });
         }
       } catch {

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { X, ChevronRight, Loader, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { ChevronRight, Loader, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { Drawer } from '@/components/ui/drawer';
 import type { DrillDownMetric } from '@/components/visual/TeamPerformanceChart';
 
 interface Trip {
@@ -61,8 +62,6 @@ export function MetricDrillDownDrawer({
     }
   }, [isOpen, agentId, fetchTripData]);
 
-  if (!isOpen) return null;
-
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'approved':
@@ -86,137 +85,112 @@ export function MetricDrillDownDrawer({
   };
 
   return (
-    <div className='fixed inset-0 z-50'>
-      {/* Overlay */}
-      <div
-        className='absolute inset-0 bg-black/50'
-        onClick={onClose}
-      />
-
-      {/* Drawer */}
-      <div className='absolute right-0 top-0 h-full w-full max-w-2xl bg-[#0d1117] border-l border-[#30363d] shadow-lg flex flex-col'>
-        {/* Header */}
-        <div className='border-b border-[#30363d] p-6'>
-          <div className='flex items-center justify-between mb-2'>
-            <h2 className='text-ui-lg font-semibold text-text-primary'>
-              {metric.label} Details
-            </h2>
-            <button
-              onClick={onClose}
-              className='p-2 hover:bg-elevated rounded-lg transition-colors'
-            >
-              <X className='h-5 w-5 text-text-muted' />
-            </button>
+    <Drawer
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`${metric.label} Details`}
+      description={`${agentName} • ${trips.length} trips`}
+    >
+      {isLoading && (
+        <div className='flex items-center justify-center h-full'>
+          <div className='flex flex-col items-center gap-2'>
+            <Loader className='h-8 w-8 text-accent-blue animate-spin' />
+            <p className='text-ui-sm text-text-muted'>Loading trip data...</p>
           </div>
-          <p className='text-ui-sm text-text-muted'>
-            {agentName} • {trips.length} trips
-          </p>
         </div>
+      )}
 
-        {/* Content */}
-        <div className='flex-1 overflow-y-auto'>
-          {isLoading && (
-            <div className='flex items-center justify-center h-full'>
-              <div className='flex flex-col items-center gap-2'>
-                <Loader className='h-8 w-8 text-accent-blue animate-spin' />
-                <p className='text-ui-sm text-text-muted'>Loading trip data...</p>
+      {error && (
+        <div className='p-6'>
+          <div className='flex items-center gap-3 p-4 rounded-lg bg-[rgba(var(--accent-red-rgb),0.15)] text-accent-red border border-[#da3633]'>
+            <AlertCircle className='h-5 w-5 flex-shrink-0' />
+            <p className='text-ui-sm'>{error}</p>
+          </div>
+        </div>
+      )}
+
+      {!isLoading && !error && trips.length === 0 && (
+        <div className='flex items-center justify-center h-full'>
+          <div className='text-center'>
+            <p className='text-text-muted mb-2'>No trips found for this metric</p>
+            <p className='text-ui-xs text-text-tertiary'>
+              Try adjusting the time range or metric filters
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!isLoading && !error && trips.length > 0 && (
+        <div className='space-y-3 p-6'>
+          {trips.map((trip) => (
+            <button
+              key={trip.tripId}
+              onClick={() => {
+                onTripSelect(trip.tripId);
+                onClose();
+              }}
+              className='w-full text-left p-4 rounded-lg border border-[#30363d] bg-elevated hover:border-[#58a6ff] hover:bg-[#0f1115] transition-all'
+            >
+              <div className='flex items-start justify-between mb-2'>
+                <div className='flex-1'>
+                  <p className='font-medium text-text-primary mb-1'>
+                    {trip.destinationName || 'Trip ' + trip.tripId.substring(0, 8)}
+                  </p>
+                  <p className='text-ui-xs text-text-muted'>ID: {trip.tripId}</p>
+                </div>
+                <div className='flex items-center gap-2 ml-4'>
+                  {getStatusIcon(trip.status)}
+                  <span
+                    className={`px-2 py-1 rounded text-ui-xs font-medium ${getStatusColor(
+                      trip.status
+                    )}`}
+                  >
+                    {trip.status}
+                  </span>
+                </div>
               </div>
-            </div>
-          )}
 
-          {error && (
-            <div className='p-6'>
-              <div className='flex items-center gap-3 p-4 rounded-lg bg-[rgba(var(--accent-red-rgb),0.15)] text-accent-red border border-[#da3633]'>
-                <AlertCircle className='h-5 w-5 flex-shrink-0' />
-                <p className='text-ui-sm'>{error}</p>
+              <div className='grid grid-cols-3 gap-3 mb-3 text-ui-xs'>
+                {trip.responseTime !== undefined && (
+                  <div>
+                    <span className='text-text-muted block mb-1'>Response</span>
+                    <span className='text-text-primary font-medium'>
+                      {trip.responseTime}h
+                    </span>
+                  </div>
+                )}
+                {trip.suitabilityScore !== undefined && (
+                  <div>
+                    <span className='text-text-muted block mb-1'>Suitability</span>
+                    <span className='text-text-primary font-medium'>
+                      {trip.suitabilityScore}%
+                    </span>
+                  </div>
+                )}
+                {trip.createdAt && (
+                  <div>
+                    <span className='text-text-muted block mb-1'>Date</span>
+                    <span className='text-text-primary font-medium'>
+                      {new Date(trip.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
 
-          {!isLoading && !error && trips.length === 0 && (
-            <div className='flex items-center justify-center h-full'>
-              <div className='text-center'>
-                <p className='text-text-muted mb-2'>No trips found for this metric</p>
-                <p className='text-ui-xs text-text-tertiary'>
-                  Try adjusting the time range or metric filters
+              {trip.decisionReason && (
+                <p className='text-ui-xs text-text-muted mb-3 p-2 rounded bg-[#0f1115]'>
+                  <span className='font-medium'>Reason:</span> {trip.decisionReason}
                 </p>
+              )}
+
+              <div className='flex items-center justify-between text-ui-xs text-accent-blue'>
+                <span>View timeline</span>
+                <ChevronRight className='h-4 w-4' />
               </div>
-            </div>
-          )}
-
-          {!isLoading && !error && trips.length > 0 && (
-            <div className='space-y-3 p-6'>
-              {trips.map((trip) => (
-                <button
-                  key={trip.tripId}
-                  onClick={() => {
-                    onTripSelect(trip.tripId);
-                    onClose();
-                  }}
-                  className='w-full text-left p-4 rounded-lg border border-[#30363d] bg-elevated hover:border-[#58a6ff] hover:bg-[#0f1115] transition-all'
-                >
-                  <div className='flex items-start justify-between mb-2'>
-                    <div className='flex-1'>
-                      <p className='font-medium text-text-primary mb-1'>
-                        {trip.destinationName || 'Trip ' + trip.tripId.substring(0, 8)}
-                      </p>
-                      <p className='text-ui-xs text-text-muted'>ID: {trip.tripId}</p>
-                    </div>
-                    <div className='flex items-center gap-2 ml-4'>
-                      {getStatusIcon(trip.status)}
-                      <span
-                        className={`px-2 py-1 rounded text-ui-xs font-medium ${getStatusColor(
-                          trip.status
-                        )}`}
-                      >
-                        {trip.status}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className='grid grid-cols-3 gap-3 mb-3 text-ui-xs'>
-                    {trip.responseTime !== undefined && (
-                      <div>
-                        <span className='text-text-muted block mb-1'>Response</span>
-                        <span className='text-text-primary font-medium'>
-                          {trip.responseTime}h
-                        </span>
-                      </div>
-                    )}
-                    {trip.suitabilityScore !== undefined && (
-                      <div>
-                        <span className='text-text-muted block mb-1'>Suitability</span>
-                        <span className='text-text-primary font-medium'>
-                          {trip.suitabilityScore}%
-                        </span>
-                      </div>
-                    )}
-                    {trip.createdAt && (
-                      <div>
-                        <span className='text-text-muted block mb-1'>Date</span>
-                        <span className='text-text-primary font-medium'>
-                          {new Date(trip.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {trip.decisionReason && (
-                    <p className='text-ui-xs text-text-muted mb-3 p-2 rounded bg-[#0f1115]'>
-                      <span className='font-medium'>Reason:</span> {trip.decisionReason}
-                    </p>
-                  )}
-
-                  <div className='flex items-center justify-between text-ui-xs text-accent-blue'>
-                    <span>View timeline</span>
-                    <ChevronRight className='h-4 w-4' />
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
+            </button>
+          ))}
         </div>
-      </div>
-    </div>
+      )}
+    </Drawer>
   );
 }

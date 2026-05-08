@@ -172,6 +172,8 @@ describe('inbox-helpers', () => {
     value: 10000,
     priority: 'medium',
     priorityScore: 50,
+    urgency: 50,
+    importance: 50,
     stage: 'intake',
     stageNumber: 1,
     submittedAt: '2026-04-23',

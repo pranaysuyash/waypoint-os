@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import {
   ArrowRight,
@@ -16,7 +16,7 @@ import {
   Sparkles,
   UploadCloud,
 } from 'lucide-react';
-import styles from './marketing.module.css';
+import styles from './marketing-v2.module.css';
 
 type HeroSceneProps = {
   mode: 'checker';
@@ -53,7 +53,7 @@ export function DataTransformationHero() {
   const [isStructured, setIsStructured] = useState(false);
 
   // Toggle every 4 seconds to show the transformation
-  useMemo(() => {
+  useEffect(() => {
     const timer = setInterval(() => {
       setIsStructured((prev) => !prev);
     }, 4000);

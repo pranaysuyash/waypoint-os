@@ -763,13 +763,29 @@ def _get_sync_async_bridge() -> _SyncAsyncBridge:
 class TripStore:
     """Stable synchronous TripStore facade over file or SQL persistence."""
 
+    _ALLOWED_BACKENDS = frozenset({"file", "sql", "json"})
+
     @staticmethod
     def _backend():
-        backend = os.getenv("TRIPSTORE_BACKEND", "file").lower().strip()
-        if backend == "sql":
+        raw_backend = os.getenv("TRIPSTORE_BACKEND", "").strip().lower()
+        if not raw_backend:
+            logger.warning("TRIPSTORE_BACKEND is unset; defaulting to file store")
+            return FileTripStore
+
+        # Backward-compatible alias: json behaves like file store.
+        if raw_backend == "json":
+            logger.info("TRIPSTORE_BACKEND=json is treated as file store")
+            return FileTripStore
+
+        if raw_backend not in TripStore._ALLOWED_BACKENDS:
+            raise RuntimeError(
+                f"Unknown TRIPSTORE_BACKEND='{raw_backend}'. "
+                f"Allowed values: {', '.join(sorted(TripStore._ALLOWED_BACKENDS))}."
+            )
+
+        if raw_backend == "sql":
             return SQLTripStore
-        if backend not in {"", "file", "json"}:
-            logger.warning("Unknown TRIPSTORE_BACKEND=%s; falling back to file store", backend)
+
         return FileTripStore
 
     @staticmethod
@@ -882,6 +898,8 @@ def _build_processed_trip(
     lead_source: Optional[str],
     activity_provenance: Optional[str],
     trip_status: str,
+    preserve_trip_id: Optional[str] = None,
+    preserve_created_at: Optional[str] = None,
 ) -> dict:
     packet = spine_output.get("packet", {}) or {}
     validation = spine_output.get("validation", {}) or {}
@@ -891,7 +909,7 @@ def _build_processed_trip(
     fees = spine_output.get("fees")
 
     trip = {
-        "id": f"trip_{uuid4().hex[:12]}",
+        "id": preserve_trip_id or f"trip_{uuid4().hex[:12]}",
         "run_id": spine_output.get("run_id"),
         "user_id": user_id,
         "source": source,
@@ -901,7 +919,7 @@ def _build_processed_trip(
             or (packet or {}).get("stage")
             or "discovery"
         ),
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": preserve_created_at or datetime.now(timezone.utc).isoformat(),
         "follow_up_due_date": follow_up_due_date,
         "party_composition": party_composition,
         "pace_preference": pace_preference,
@@ -1672,7 +1690,9 @@ def save_processed_trip(
     date_year_confidence: Optional[str] = None,
     lead_source: Optional[str] = None,
     activity_provenance: Optional[str] = None,
-    trip_status: str = "new"
+    trip_status: str = "new",
+    preserve_trip_id: Optional[str] = None,
+    audit_event_type: str = "trip_created",
 ) -> str:
     """
     Convert spine output to a savable trip and persist it.
@@ -1692,6 +1712,12 @@ def save_processed_trip(
     Returns:
         The saved trip ID
     """
+    preserve_created_at: Optional[str] = None
+    if preserve_trip_id:
+        existing_trip = TripStore.get_trip(preserve_trip_id)
+        if existing_trip:
+            preserve_created_at = existing_trip.get("created_at")
+
     serializable_trip = _build_processed_trip(
         spine_output=spine_output,
         source=source,
@@ -1703,6 +1729,8 @@ def save_processed_trip(
         lead_source=lead_source,
         activity_provenance=activity_provenance,
         trip_status=trip_status,
+        preserve_trip_id=preserve_trip_id,
+        preserve_created_at=preserve_created_at,
     )
     logger.debug(f"Serializable trip keys: {list(serializable_trip.keys())}")
     
@@ -1721,7 +1749,7 @@ def save_processed_trip(
             logger.warning("Failed to attach public checker artifact manifest to %s: %s", trip_id, exc)
     
     # Log creation
-    AuditStore.log_event("trip_created", "system", {
+    AuditStore.log_event(audit_event_type, "system", {
         "trip_id": trip_id,
         "source": source,
         "agency_id": agency_id,
@@ -1741,9 +1769,17 @@ async def save_processed_trip_async(
     date_year_confidence: Optional[str] = None,
     lead_source: Optional[str] = None,
     activity_provenance: Optional[str] = None,
-    trip_status: str = "new"
+    trip_status: str = "new",
+    preserve_trip_id: Optional[str] = None,
+    audit_event_type: str = "trip_created",
 ) -> str:
     """Async variant for FastAPI/background tasks and SQL-backed persistence."""
+    preserve_created_at: Optional[str] = None
+    if preserve_trip_id:
+        existing_trip = TripStore.get_trip(preserve_trip_id)
+        if existing_trip:
+            preserve_created_at = existing_trip.get("created_at")
+
     serializable_trip = _build_processed_trip(
         spine_output=spine_output,
         source=source,
@@ -1755,12 +1791,14 @@ async def save_processed_trip_async(
         lead_source=lead_source,
         activity_provenance=activity_provenance,
         trip_status=trip_status,
+        preserve_trip_id=preserve_trip_id,
+        preserve_created_at=preserve_created_at,
     )
     logger.debug(f"Serializable trip keys: {list(serializable_trip.keys())}")
 
     trip_id = await TripStore.asave_trip(serializable_trip, agency_id=agency_id)
 
-    AuditStore.log_event("trip_created", "system", {
+    AuditStore.log_event(audit_event_type, "system", {
         "trip_id": trip_id,
         "source": source,
         "agency_id": agency_id,

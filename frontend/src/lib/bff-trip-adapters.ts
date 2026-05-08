@@ -542,6 +542,18 @@ export function transformSpineTripToInboxTrip(
     priorityScore = 90;
   }
 
+  // Urgency: time-pressure signal driven by SLA status
+  let urgency = 50;
+  if (slaStatus === "breached") urgency = 90;
+  else if (slaStatus === "at_risk") urgency = 70;
+  else if (daysInCurrentStage > 7) urgency = 60;
+
+  // Importance: value/priority signal
+  let importance = 50;
+  if (priority === "critical") importance = 90;
+  else if (priority === "high") importance = 70;
+  if (budgetValue(source) > 100000) importance = Math.min(importance + 10, 100);
+
   return {
     id: trip.id,
     reference: deriveInboxReference(source, trip.id),
@@ -552,6 +564,8 @@ export function transformSpineTripToInboxTrip(
     value: budgetValue(source),
     priority,
     priorityScore,
+    urgency,
+    importance,
     stage,
     stageNumber: STAGE_NUMBERS[stage] || 0,
     assignedTo: asString(firstPresent(source.assignedTo, source.assigned_to), "") || undefined,

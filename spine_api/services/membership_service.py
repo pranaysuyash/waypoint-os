@@ -153,12 +153,16 @@ async def list_members(
 async def get_member(
     db: AsyncSession,
     membership_id: str,
+    agency_id: str,
 ) -> Optional[dict]:
-    """Get a single member by membership ID."""
+    """Get a single member by membership ID within the current agency."""
     result = await db.execute(
         select(Membership, User)
         .join(User, Membership.user_id == User.id)
-        .where(Membership.id == membership_id)
+        .where(
+            Membership.id == membership_id,
+            Membership.agency_id == agency_id,
+        )
     )
     row = result.one_or_none()
     if not row:

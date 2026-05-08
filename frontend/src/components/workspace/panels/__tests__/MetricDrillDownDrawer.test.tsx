@@ -219,7 +219,7 @@ describe('MetricDrillDownDrawer', () => {
       />
     );
 
-    const closeButton = screen.getByRole('button', { name: '' }); // X button
+    const closeButton = screen.getByRole('button', { name: 'Close' });
     fireEvent.click(closeButton);
 
     expect(mockClose).toHaveBeenCalled();

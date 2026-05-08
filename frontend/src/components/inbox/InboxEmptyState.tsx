@@ -1,16 +1,8 @@
-/**
- * InboxEmptyState
- *
- * Guidance component shown when no trips match the current filters.
- * Provides contextual help and quick actions to recover.
- */
-
 'use client';
 
 import { memo } from 'react';
-import Link from 'next/link';
-import { Search, Filter, Inbox, Plus } from 'lucide-react';
-
+import { Search, Filter, Inbox } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export interface InboxEmptyStateProps {
   hasSearch: boolean;
@@ -34,79 +26,45 @@ export const InboxEmptyState = memo(function InboxEmptyState({
   const isFiltered = hasFilters !== undefined ? hasFilters : (activeFilter ?? 'all') !== 'all';
   const isTrulyEmpty = !isFiltered && !hasSearch;
 
+  const title = isTrulyEmpty
+    ? 'No new leads'
+    : hasSearch && isFiltered
+    ? 'No leads match this filter and search.'
+    : hasSearch
+    ? 'No leads match your search.'
+    : isFiltered
+    ? 'No leads match this filter.'
+    : 'Your inbox is empty.';
+
+  const description = isTrulyEmpty
+    ? 'New customer inquiries will appear here before planning starts. Leads you start planning move to Trips in Planning.'
+    : hasSearch && isFiltered
+    ? 'Try broadening your search or clearing the filter.'
+    : hasSearch
+    ? 'Try a different search term.'
+    : isFiltered
+    ? 'Try a different filter or check back later.'
+    : 'New inquiries will appear here as they come in.';
+
   return (
-    <div className={`col-span-full py-16 text-center ${className || ''}`}>
-      <div
-        className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-4"
-        style={{ background: 'rgba(139, 148, 158, 0.08)' }}
-      >
-        <Inbox className="w-6 h-6" style={{ color: 'var(--text-muted)' }} />
-      </div>
-
-      <p className="text-[var(--ui-text-sm)] font-medium" style={{ color: 'var(--text-secondary)' }}>
-        {isTrulyEmpty
-          ? 'No new leads'
-          : hasSearch && isFiltered
-          ? 'No leads match this filter and search.'
-          : hasSearch
-          ? 'No leads match your search.'
-          : isFiltered
-          ? 'No leads match this filter.'
-          : 'Your inbox is empty.'}
-      </p>
-
-      <p className="text-[var(--ui-text-xs)] mt-1" style={{ color: 'var(--text-muted)' }}>
-        {isTrulyEmpty
-          ? 'New customer inquiries will appear here before planning starts. Leads you start planning move to Trips in Planning.'
-          : hasSearch && isFiltered
-          ? 'Try broadening your search or clearing the filter.'
-          : hasSearch
-          ? 'Try a different search term.'
-          : isFiltered
-          ? 'Try a different filter or check back later.'
-          : 'New inquiries will appear here as they come in.'}
-      </p>
-
-      <div className="flex items-center justify-center gap-3 mt-4">
-        {isTrulyEmpty && (
-          <Link
-            href="/workbench"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--accent-blue)] text-[var(--text-on-accent)] rounded-lg text-[var(--ui-text-sm)] font-semibold hover:bg-[var(--accent-blue-hover)] transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            New Inquiry
-          </Link>
-        )}
-        {hasSearch && onClearSearch && (
-          <button
-            type="button"
-            onClick={onClearSearch}
-className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[var(--ui-text-xs)] font-medium transition-colors"
-             style={{
-               color: 'var(--accent-blue)',
-                background: 'rgba(var(--accent-blue-rgb), 0.1)',
-             }}
-          >
-            <Search className="w-3.5 h-3.5" />
-            Clear search
-          </button>
-        )}
-        {isFiltered && (onClearFilter || onClearAllFilters) && (
-          <button
-            type="button"
-            onClick={onClearAllFilters || onClearFilter}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[var(--ui-text-xs)] font-medium transition-colors"
-            style={{
-              color: 'var(--text-secondary)',
-              background: 'rgba(var(--text-muted-rgb), 0.08)',
-            }}
-          >
-            <Filter className="w-3.5 h-3.5" />
-            Show all trips
-          </button>
-        )}
-      </div>
-    </div>
+    <EmptyState
+      icon={isTrulyEmpty ? Inbox : hasSearch ? Search : Filter}
+      title={title}
+      description={description}
+      className={className}
+      action={
+        isTrulyEmpty
+          ? { label: 'New Inquiry', href: '/workbench' }
+          : hasSearch && onClearSearch
+          ? { label: 'Clear search', onClick: onClearSearch }
+          : undefined
+      }
+      secondaryAction={
+        isFiltered && (onClearFilter || onClearAllFilters)
+          ? { label: 'Show all trips', onClick: onClearAllFilters || onClearFilter }
+          : undefined
+      }
+    />
   );
 });
 

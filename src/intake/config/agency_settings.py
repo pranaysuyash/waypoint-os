@@ -34,6 +34,15 @@ _DEFAULT_APPROVAL_GATES: Dict[str, Literal["auto", "review", "block"]] = {
     "STOP_NEEDS_REVIEW": "block",
 }
 
+# Re-assessment policy defaults (Auto + explicit re-run controls)
+_DEFAULT_AUTO_REPROCESS_STAGES: Dict[str, bool] = {
+    "discovery": True,
+    "shortlist": True,
+    "proposal": True,
+    "booking": True,
+}
+
+
 # Default operating_mode overrides
 _DEFAULT_MODE_OVERRIDES: Dict[str, Dict[str, str]] = {
     "emergency": {"PROCEED_TRAVELER_SAFE": "block"},
@@ -61,6 +70,13 @@ class AgencyAutonomyPolicy:
 
     auto_proceed_with_warnings: bool = False
     learn_from_overrides: bool = True
+
+    # Re-assessment controls (edit-driven + explicit reruns)
+    auto_reprocess_on_edit: bool = True
+    allow_explicit_reassess: bool = True
+    auto_reprocess_stages: Dict[str, bool] = field(
+        default_factory=lambda: dict(_DEFAULT_AUTO_REPROCESS_STAGES)
+    )
 
     # Legacy compatibility fields
     min_proceed_confidence: float = 0.8
@@ -111,9 +127,20 @@ class AgencyAutonomyPolicy:
             }
 
         for key in ("min_proceed_confidence", "min_draft_confidence",
-                    "auto_proceed_with_warnings", "learn_from_overrides"):
+                    "auto_proceed_with_warnings", "learn_from_overrides",
+                    "auto_reprocess_on_edit", "allow_explicit_reassess"):
             if key in data:
                 setattr(policy, key, data[key])
+
+        raw_reprocess_stages = data.get("auto_reprocess_stages")
+        if isinstance(raw_reprocess_stages, dict):
+            policy.auto_reprocess_stages = {
+                stage: bool(enabled)
+                for stage, enabled in raw_reprocess_stages.items()
+                if stage in ("discovery", "shortlist", "proposal", "booking")
+            }
+            for stage, enabled in _DEFAULT_AUTO_REPROCESS_STAGES.items():
+                policy.auto_reprocess_stages.setdefault(stage, enabled)
 
         policy.__post_init__()
         return policy

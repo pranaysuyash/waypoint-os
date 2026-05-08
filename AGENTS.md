@@ -55,6 +55,18 @@ If instructions conflict, follow the stricter rule and cite concrete file paths.
 - Maintain a vision-oriented approach while staying open to updates and avoiding rigidity.
 - Treat "works with the current code" as necessary but not sufficient. The expected bar is a first-principles solution that is long-term coherent, scalable, additive, better than the existing state, and compatible with the intended architecture.
 - When recovering or evaluating partial work, do not reject a direction merely because it requires architectural work. Separate "right long-term direction" from "unsafe partial implementation," then recover the direction through a comprehensive, verified implementation path.
+- User commandment: optimize for real-world behavior and business impact before matching existing code assumptions.
+- User commandment: execute requested tasks fully, using validation evidence before completion claims, with no default "if you want" handoff framing.
+- User commandment: prioritize contract-driven verification (runtime behavior, API shape, and end-user flow) over code-path assumptions.
+- User commandment: evaluate real-world consequences for stakeholders and business value, not only whether a test passes.
+- User commandment: treat existing code as evidence, not authority; if logic and real-world behavior conflict, improve the code to match first-principles outcomes.
+
+## User Commandments (Persisted)
+
+1. Apply first-principles reasoning before implementation: confirm intended outcome, failure modes, and real user flow.
+2. Favor runtime truth over static interpretation: verify behavior through tests and direct integration checks.
+3. Treat instructions from this file as binding: when asked to complete, complete end-to-end and validate.
+4. Use practical sequencing: fix highest real-world blockers first, then harden secondary edges.
 
 ## Preview & Feedback (Critical)
 

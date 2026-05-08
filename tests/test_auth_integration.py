@@ -154,6 +154,13 @@ class TestAuthMiddleware:
             f"Middleware blocked public route /api/auth/login; expected 422 got {resp.status_code}"
         )
 
+    def test_public_booking_collection_route_needs_no_token(self, session_client):
+        # /api/public/booking-collection/* should be reachable without auth.
+        resp = session_client.get("/api/public/booking-collection/dummy-token", headers={})
+        assert resp.status_code != 401, (
+            f"Middleware blocked public route /api/public/booking-collection/*; got {resp.status_code}"
+        )
+
 
 # ── get_current_user: valid user, inactive user ───────────────────────────────
 # These tests unit-test the dependency function directly to avoid the app

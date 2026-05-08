@@ -90,3 +90,9 @@ When modifying code that consumes backend endpoints, you MUST verify the actual 
 
 This version has breaking changes — APIs, conventions, and file structure may differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
+
+## Real-World Logic Rule
+
+- Existing code is context, not authority.
+- If current implementation conflicts with first-principles product logic, stakeholder impact, or real runtime behavior, update the implementation.
+- Frontend acceptance is not "type-safe only"; it must be behavior-safe with real backend payloads and user flow outcomes.
