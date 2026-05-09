@@ -40,18 +40,35 @@ export function Drawer({
   );
 
   useEffect(() => {
-    if (isOpen) {
-      previousActiveElement.current = document.activeElement;
-      document.body.style.overflow = 'hidden';
-      document.addEventListener('keydown', handleKeyDown);
+    if (!isOpen) return;
 
-      requestAnimationFrame(() => {
-        const closeButton = drawerRef.current?.querySelector<HTMLElement>(
-          'button[aria-label]'
-        );
-        closeButton?.focus();
-      });
+    previousActiveElement.current = document.activeElement;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', handleKeyDown);
+
+    const styleId = 'drawer-slide-keyframes';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        @keyframes drawer-slide-in-right {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+        @keyframes drawer-slide-in-left {
+          from { transform: translateX(-100%); }
+          to { transform: translateX(0); }
+        }
+      `;
+      document.head.appendChild(style);
     }
+
+    requestAnimationFrame(() => {
+      const closeButton = drawerRef.current?.querySelector<HTMLElement>(
+        'button[aria-label]'
+      );
+      closeButton?.focus();
+    });
 
     return () => {
       document.body.style.overflow = '';
@@ -65,6 +82,7 @@ export function Drawer({
   if (!isOpen) return null;
 
   const positionClasses = position === 'right' ? 'right-0 border-l' : 'left-0 border-r';
+  const animName = position === 'right' ? 'drawer-slide-in-right' : 'drawer-slide-in-left';
 
   return (
     <div className="fixed inset-0 z-50" role="presentation">
@@ -83,7 +101,7 @@ export function Drawer({
           positionClasses,
           width
         )}
-        style={{ animation: 'drawer-slide-in 0.2s ease-out' }}
+        style={{ animation: `${animName} 0.2s ease-out` }}
       >
         {(title || showCloseButton) && (
           <div className="flex items-center justify-between p-6 border-b border-[#30363d] shrink-0">
@@ -113,17 +131,6 @@ export function Drawer({
           {children}
         </div>
       </div>
-
-      <style jsx global>{`
-        @keyframes drawer-slide-in {
-          from {
-            transform: translateX(${position === 'right' ? '100%' : '-100%'});
-          }
-          to {
-            transform: translateX(0);
-          }
-        }
-      `}</style>
     </div>
   );
 }

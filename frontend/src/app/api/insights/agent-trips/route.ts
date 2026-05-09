@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
   try {
     const response = await fetch(
       `${SPINE_API_URL}/analytics/agent/${encodeURIComponent(agentId)}/drill-down?metric=${metric}`,
-      bffFetchOptions(request, "GET")
+      { ...bffFetchOptions(request, "GET"), cache: "no-store" }
     );
 
     if (!response.ok) {

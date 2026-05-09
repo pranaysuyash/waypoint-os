@@ -84,12 +84,15 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {Object.entries(summaryData).map(([label, value]) => (
-          <div key={label} className="bg-elevated p-3 rounded-xl border border-[var(--border-default)]">
-            <div className="text-[var(--ui-text-xs)] font-bold text-text-placeholder uppercase tracking-widest mb-1">{label}</div>
-            <div className="text-ui-sm font-semibold text-text-primary font-mono">{String(value)}</div>
-          </div>
-        ))}
+        {Object.entries(summaryData).map((entry) => {
+          const [label, value] = entry;
+          return (
+            <div key={label} className="bg-elevated p-3 rounded-xl border border-[var(--border-default)]">
+              <div className="text-[var(--ui-text-xs)] font-bold text-text-placeholder uppercase tracking-widest mb-1">{label}</div>
+              <div className="text-ui-sm font-semibold text-text-primary font-mono">{String(value)}</div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Facts Section */}
@@ -106,14 +109,17 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1c2128]">
-              {Object.entries(facts).map(([field, slot]) => (
+              {Object.entries(facts).map((entry) => {
+                const [field, slot] = entry;
+                return (
                 <tr key={`fact-${field}`} className="text-text-rationale">
                   <td className="px-4 py-2 text-ui-xs">{labelOrTitle(FIELD_LABELS, field)}</td>
                   <td className="px-4 py-2">{_formatValue(slot.value)}</td>
                   <td className="px-4 py-2 text-text-muted">{_formatConfidence(slot.confidence)}</td>
                   <td className="px-4 py-2 text-text-muted">{slot.authority_level || "-"}</td>
                 </tr>
-              ))}
+              );
+            })}
             </tbody>
           </table>
         </div>
@@ -124,12 +130,15 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
         <section>
           <h3 className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-text-placeholder mb-3">Inferred Details</h3>
           <div className="bg-[#0a0d11] rounded-lg border border-highlight p-4 divide-y divide-[#1c2128]">
-            {Object.entries(derivedSignals).map(([signal, slot]) => (
-              <div key={`sig-${signal}`} className="flex justify-between py-2 text-ui-sm text-text-rationale">
-                <span className="font-medium">{labelOrTitle(SIGNAL_LABELS, signal)}</span>
-                <span className="text-text-muted text-ui-xs">{String(slot.value)} ({_formatConfidence(slot.confidence)})</span>
-              </div>
-            ))}
+            {Object.entries(derivedSignals).map((entry) => {
+              const [signal, slot] = entry;
+              return (
+                <div key={`sig-${signal}`} className="flex justify-between py-2 text-ui-sm text-text-rationale">
+                  <span className="font-medium">{labelOrTitle(SIGNAL_LABELS, signal)}</span>
+                  <span className="text-text-muted text-ui-xs">{String(slot.value)} ({_formatConfidence(slot.confidence)})</span>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
@@ -283,7 +292,8 @@ function AgentOperationsPanel({
 
       {cards.length > 0 ? (
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {cards.map(({ key, label, icon: Icon, status, nextAction, detail }) => {
+          {cards.map((card) => {
+            const { key, label, icon: Icon, status, nextAction, detail } = card;
             const tone = _statusTone(status);
             return (
               <article key={key} className="rounded-lg border bg-[var(--bg-surface)] p-4" style={{ borderColor: tone.border }}>

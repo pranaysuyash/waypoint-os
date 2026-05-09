@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
     const response = await fetch(
       `${SPINE_API_URL}/analytics/reviews`,
-      bffFetchOptions(request, "GET")
+      { ...bffFetchOptions(request, "GET"), cache: "no-store" }
     );
 
     if (!response.ok) {

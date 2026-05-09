@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-export function useClientDate(
+function useClientDate(
   dateInput: string | Date | null | undefined,
   options?: Intl.DateTimeFormatOptions,
 ): string {
@@ -18,7 +18,7 @@ export function useClientDate(
   return formatted;
 }
 
-export function useClientDateTime(
+function useClientDateTime(
   dateInput: string | Date | null | undefined,
 ): string {
   const [formatted, setFormatted] = useState("");
@@ -33,7 +33,7 @@ export function useClientDateTime(
   return formatted;
 }
 
-export function useClientTime(
+function useClientTime(
   dateInput: string | Date | null | undefined,
   options?: Intl.DateTimeFormatOptions,
 ): string {
@@ -49,15 +49,7 @@ export function useClientTime(
   return formatted;
 }
 
-export function useClientDateString(): string {
-  const [value, setValue] = useState("");
-  useEffect(() => {
-    setValue(new Date().toISOString());
-  }, []);
-  return value;
-}
-
-export function useClientNow(options?: Intl.DateTimeFormatOptions): string {
+function useClientNow(options?: Intl.DateTimeFormatOptions): string {
   const [value, setValue] = useState("");
   useEffect(() => {
     setValue(new Date().toLocaleDateString("en-US", options));
@@ -65,15 +57,40 @@ export function useClientNow(options?: Intl.DateTimeFormatOptions): string {
   return value;
 }
 
-export function useClientRelativeTime(dateInput: string | Date): string {
-  const [text, setText] = useState("");
-  useEffect(() => {
-    const diff = Date.now() - new Date(dateInput).getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    if (days === 0) setText("today");
-    else if (days === 1) setText("yesterday");
-    else if (days < 7) setText(`${days} days ago`);
-    else setText(`${Math.floor(days / 7)} weeks ago`);
-  }, [dateInput]);
-  return text;
+// ─── Component wrappers for use in JSX (avoids inline hook calls) ───
+
+export function ClientDate({
+  value,
+  options,
+}: {
+  value: string | Date | null | undefined;
+  options?: Intl.DateTimeFormatOptions;
+}) {
+  return <>{useClientDate(value, options)}</>;
+}
+
+export function ClientDateTime({
+  value,
+}: {
+  value: string | Date | null | undefined;
+}) {
+  return <>{useClientDateTime(value)}</>;
+}
+
+export function ClientTime({
+  value,
+  options,
+}: {
+  value: string | Date | null | undefined;
+  options?: Intl.DateTimeFormatOptions;
+}) {
+  return <>{useClientTime(value, options)}</>;
+}
+
+export function ClientNow({
+  options,
+}: {
+  options?: Intl.DateTimeFormatOptions;
+}) {
+  return <>{useClientNow(options)}</>;
 }

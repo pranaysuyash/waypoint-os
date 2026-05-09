@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth';
 import { api, ApiException } from '@/lib/api-client';
 
-export default function SignupPage() {
+function SignupPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const hydrate = useAuthStore((s) => s.hydrate);
@@ -136,5 +136,13 @@ export default function SignupPage() {
         <Link href='/login'>Sign in</Link>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="auth-card"><p className="auth-subtitle">Loading…</p></div>}>
+      <SignupPageInner />
+    </Suspense>
   );
 }

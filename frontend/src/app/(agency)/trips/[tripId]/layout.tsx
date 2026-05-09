@@ -7,7 +7,7 @@ import { AlertTriangle, ChevronLeft, Lock, PanelRightClose, PanelRightOpen } fro
 import { ErrorBoundary, InlineError } from "@/components/error-boundary";
 import { InlineLoading } from "@/components/ui/loading";
 import { useTrip } from "@/hooks/useTrips";
-import { useClientTime } from "@/hooks/useClientDate";
+import { ClientTime } from "@/hooks/useClientDate";
 import {
   canAccessPlanningStage,
   getPlanningBlockerBody,
@@ -240,7 +240,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                     </span>
                     {result_run_ts && (
                       <span className="text-[var(--ui-text-xs)] text-[var(--border-default)]">
-                        processed {useClientTime(result_run_ts)}
+                        processed <ClientTime value={result_run_ts} />
                       </span>
                     )}
                   </div>

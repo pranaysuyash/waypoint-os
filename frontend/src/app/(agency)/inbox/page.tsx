@@ -1,7 +1,7 @@
 'use client';
 
 import { useTrips } from '@/hooks/useTrips';
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Briefcase,
@@ -126,6 +126,14 @@ function BulkActionsToolbar({
 // ============================================================================
 
 export default function InboxPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-[#8b949e]">Loading inbox…</div>}>
+      <InboxPageWithSearchParams />
+    </Suspense>
+  );
+}
+
+function InboxPageWithSearchParams() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -144,7 +152,8 @@ export default function InboxPage() {
 
   const updateParams = useCallback((updates: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
-    Object.entries(updates).forEach(([key, value]) => {
+    Object.entries(updates).forEach((entry) => {
+      const [key, value] = entry;
       if (value === null) params.delete(key);
       else params.set(key, value);
     });
@@ -190,7 +199,10 @@ export default function InboxPage() {
         seen.set(t.assignedTo, t.assignedToName);
       }
     }
-    return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
+    return Array.from(seen.entries()).map((entry) => {
+      const [id, name] = entry;
+      return { id, name };
+    });
   }, [inboxTrips]);
 
   // ============================================================================

@@ -151,7 +151,8 @@ export function useUrlStateMap<T extends Record<string, Serializable>>(
     const params = new URLSearchParams(searchParams.toString());
 
     // Apply updates
-    Object.entries(newUpdates).forEach(([key, value]) => {
+    Object.entries(newUpdates).forEach(entry => {
+      const [key, value] = entry;
       const serialized = serialize(value);
       if (serialized === null) {
         params.delete(key);
@@ -219,7 +220,8 @@ export function buildUrl(
 ): string {
   const searchParams = new URLSearchParams();
 
-  Object.entries(params).forEach(([key, value]) => {
+  Object.entries(params).forEach(entry => {
+    const [key, value] = entry;
     const serialized = serialize(value);
     if (serialized !== null) {
       searchParams.set(key, serialized);
@@ -268,7 +270,8 @@ export function urlStateMiddleware<T extends object>(
     api.subscribe((state: T, prevState: T) => {
       const url = new URL(window.location.href);
 
-      Object.entries(stateMapping).forEach(([storeKey, urlKey]) => {
+      Object.entries(stateMapping).forEach(entry => {
+        const [storeKey, urlKey] = entry;
         const newValue = serialize(state[storeKey as keyof T] as Serializable);
         const prevValue = serialize(prevState[storeKey as keyof T] as Serializable);
 

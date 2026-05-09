@@ -182,11 +182,14 @@ export function useOverviewSummary() {
   const pipeline = useMemo(() => {
     if (!unifiedState) return null;
     return Object.entries(unifiedState.stages)
-      .filter(([label]) => PLANNING_PIPELINE_STAGES.has(label))
-      .map(([label, count]) => ({
-        label: label.charAt(0).toUpperCase() + label.slice(1).replace('_', ' '),
-        count,
-      }));
+      .filter(entry => PLANNING_PIPELINE_STAGES.has(entry[0]))
+      .map(entry => {
+        const [label, count] = entry;
+        return {
+          label: label.charAt(0).toUpperCase() + label.slice(1).replace('_', ' '),
+          count,
+        };
+      });
   }, [unifiedState]);
 
   const headerSubtitle = useMemo(() => {

@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
 
     const response = await fetch(
       spineApiUrl,
-      bffFetchOptions(request, "POST", "access_only", { "Content-Type": "application/json" }, await request.json()),
+      { ...bffFetchOptions(request, "POST", "access_only", { "Content-Type": "application/json" }, await request.json()), cache: "no-store" },
     );
 
     if (!response.ok) {

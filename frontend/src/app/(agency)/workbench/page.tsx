@@ -2,8 +2,8 @@
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Suspense, useState, useCallback, useEffect, useRef } from 'react';
-import { useClientTime, useClientDateTime } from '@/hooks/useClientDate';
+import { Suspense, useState, useCallback, useEffect, useRef, useReducer } from 'react';
+import { ClientTime, ClientDateTime } from '@/hooks/useClientDate';
 import { Tabs } from '@/components/ui/tabs';
 import { PipelineFlow, type PipelineStageId } from './PipelineFlow';
 import {
@@ -200,7 +200,7 @@ function WorkbenchContent() {
 
   // Draft hydration - load draft from backend and populate store
   const prevDraftRef = useRef<string | null>(null);
-  const [draftLoading, setDraftLoading] = useState(false);
+  const draftLoadingRef = useRef(false);
   const [draftError, setDraftError] = useState<string | null>(null);
   const { clearDraft, hydrateFromDraft, setDraftStatus } = store;
   useEffect(() => {
@@ -215,16 +215,16 @@ function WorkbenchContent() {
     if (draftParam === prevDraftRef.current) return;
     prevDraftRef.current = draftParam;
 
-    setDraftLoading(true);
+    draftLoadingRef.current = true;
     setDraftError(null);
     getDraft(draftParam)
       .then((draft) => {
         hydrateFromDraft(draft);
-        setDraftLoading(false);
+        draftLoadingRef.current = false;
       })
       .catch((err) => {
         setDraftError(err instanceof Error ? err.message : 'Failed to load draft');
-        setDraftLoading(false);
+        draftLoadingRef.current = false;
       });
   }, [draftParam, clearDraft, hydrateFromDraft]);
 
@@ -840,7 +840,7 @@ function WorkbenchContent() {
               )}
               {store.save_state === 'saved' && store.draft_last_saved_at && (
                 <span className='text-ui-xs text-[#3fb950]'>
-                  Saved at {useClientTime(store.draft_last_saved_at, { hour: '2-digit', minute: '2-digit' })}
+                  Saved at <ClientTime value={store.draft_last_saved_at} options={{ hour: '2-digit', minute: '2-digit' }} />
                 </span>
               )}
               {store.save_state === 'conflict' && (
@@ -865,7 +865,7 @@ function WorkbenchContent() {
             )}
             {store.result_run_ts && (
               <p className='text-ui-xs text-[#8b949e] mt-1'>
-                Last processed: {useClientDateTime(store.result_run_ts)}
+                Last processed: <ClientDateTime value={store.result_run_ts} />
               </p>
             )}
           </div>

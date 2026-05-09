@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { Clock, User, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { useFieldAuditLog } from '@/hooks/useFieldAuditLog';
-import { useClientDate, useClientDateTime } from '@/hooks/useClientDate';
+import { ClientDate, ClientDateTime } from '@/hooks/useClientDate';
 import { getChangeDescription, formatFieldLabel, getChangeSummary } from '@/types/audit';
 import { useState } from 'react';
 import type { Trip } from '@/lib/api-client';
@@ -106,7 +106,7 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
             <span className='text-[var(--ui-text-xs)] text-text-muted uppercase tracking-wide'>Last Edit</span>
             <p className='text-ui-sm font-semibold text-text-primary'>
               {summary.lastChangeAt
-                ? useClientDate(summary.lastChangeAt)
+                ? <ClientDate value={summary.lastChangeAt} />
                 : '-'}
             </p>
           </div>
@@ -127,8 +127,7 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
 
       {/* Changes List */}
       <div className='space-y-2 max-h-96 overflow-y-auto'>
-        {[...changes]
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        {changes.toSorted((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
           .map((change) => {
             const isExpanded = expandedChanges.has(change.id);
             const description = getChangeDescription(change);
@@ -148,7 +147,7 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
                       </span>
                       <span className='flex items-center gap-1'>
                         <Clock className='size-3' />
-                        {useClientDateTime(change.timestamp)}
+                        <ClientDateTime value={change.timestamp} />
                       </span>
                       {change.reason && (
                         <span className='flex items-center gap-1 text-accent-blue'>

@@ -138,7 +138,7 @@ export function useFieldAuditLog({
     const fieldChanges = getChangesForField(field);
     if (fieldChanges.length === 0) return null;
     // Sort by timestamp descending and return first
-    return [...fieldChanges].sort((a, b) =>
+    return fieldChanges.toSorted((a, b) =>
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     )[0];
   }, [getChangesForField]);

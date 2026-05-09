@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const query = searchParams.toString();
     const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/inbox${query ? `?${query}` : ""}`;
 
-    const response = await fetch(spineApiUrl, bffFetchOptions(request, "GET"));
+    const response = await fetch(spineApiUrl, { ...bffFetchOptions(request, "GET"), cache: "no-store" });
 
     if (!response.ok) {
       if (isAuthStatus(response.status)) {

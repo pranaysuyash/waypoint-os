@@ -168,13 +168,16 @@ export function AgencyHeroCockpit() {
             ['Follow up', 'Family trip to Japan', '18m', '#58a6ff'],
             ['Change request', 'Photo safari route', '1h', '#8fb0c9'],
             ['Supplier update', 'DMC response', '2h', '#39d0d8'],
-          ].map(([title, body, time, color]) => (
+          ].map((item) => {
+            const [title, body, time, color] = item;
+            return (
             <div key={title} className={styles.inboxRow}>
               <i style={{ background: color }} />
               <span><strong>{title}</strong>{body}</span>
               <em>{time}</em>
             </div>
-          ))}
+            );
+          })}
         </section>
 
         <section className={`${styles.cockpitPanel} ${styles.workspacePanel}`}>
@@ -188,13 +191,16 @@ export function AgencyHeroCockpit() {
               ['Decision & Clarification', '12', '#58a6ff'],
               ['Quotes & Options', '15', '#39d0d8'],
               ['Booking Readiness', '9', '#8fb0c9'],
-            ].map(([label, value, color]) => (
+            ].map((item) => {
+              const [label, value, color] = item;
+              return (
               <div key={label}>
                 <span style={{ background: color }} />
                 <strong>{label}</strong>
                 <em>{value}</em>
               </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 

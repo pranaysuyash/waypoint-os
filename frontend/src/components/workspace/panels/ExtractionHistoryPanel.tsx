@@ -43,6 +43,8 @@ function groupAttemptsByRun(attempts: AttemptSummary[]): Map<number, AttemptSumm
   }
   for (const [, arr] of groups) {
     arr.sort((a, b) => a.attempt_number - b.attempt_number);
+    // toSorted not used here because arr is a reference into the Map value
+    // and we mutate in place intentionally for the grouping algorithm
   }
   return groups;
 }
@@ -90,7 +92,7 @@ export function ExtractionHistoryPanel({
 
   const canRetry = extraction?.status === 'failed' && !retrying;
   const grouped = groupAttemptsByRun(attempts);
-  const sortedRuns = [...grouped.entries()].sort((a, b) => b[0] - a[0]);
+  const sortedRuns = [...grouped.entries()].toSorted((a, b) => b[0] - a[0]);
   const currentAttemptId = extraction?.current_attempt_id;
 
   return (
@@ -156,7 +158,9 @@ export function ExtractionHistoryPanel({
       {/* Attempt groups by run */}
       {sortedRuns.length > 0 && (
         <div className="space-y-3 max-h-80 overflow-y-auto">
-          {sortedRuns.map(([runNumber, runAttempts]) => (
+          {sortedRuns.map((item) => {
+            const [runNumber, runAttempts] = item;
+            return (
             <div key={runNumber}>
               <div className="text-ui-xs text-text-muted uppercase tracking-wide mb-1">
                 Run {runNumber}{runNumber === (extraction?.run_count ?? 0) ? ' (latest)' : ''}
@@ -222,7 +226,8 @@ export function ExtractionHistoryPanel({
                 })}
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import {
   Building2,
@@ -32,7 +32,7 @@ function isValidTab(tab: string | null): tab is TabId {
   return TABS.some((t) => t.id === tab);
 }
 
-export default function SettingsPage() {
+function SettingsPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -271,5 +271,13 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-[#8b949e] animate-pulse">Loading settings…</div>}>
+      <SettingsPageInner />
+    </Suspense>
   );
 }

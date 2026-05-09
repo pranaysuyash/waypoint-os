@@ -2,7 +2,7 @@
 
 import { useState, useMemo, memo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useClientDateTime } from '@/hooks/useClientDate';
+import { ClientDateTime } from '@/hooks/useClientDate';
 import {
   TrendingUp,
   Users,
@@ -159,7 +159,7 @@ const CriticalAlertBanner = memo(function CriticalAlertBanner({
                 <div className='text-ui-xs opacity-80 flex items-center gap-2 mt-0.5'>
                   <span>Trip ID: {alert.tripId}</span>
                   <span>•</span>
-                   <span>{useClientDateTime(alert.timestamp)}</span>
+                   <span><ClientDateTime value={alert.timestamp} /></span>
                   {deadline && (
                     <>
                       <span>•</span>

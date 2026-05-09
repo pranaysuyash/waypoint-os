@@ -57,8 +57,8 @@ describe("ExecutionTimelinePanel", () => {
     vi.mocked(api.getExecutionTimeline).mockResolvedValue({
       ok: true,
       events: [
-        mockEvent({ event_type: "task_created", status_to: "not_started" }),
-        mockEvent({ event_type: "confirmation_created", event_category: "confirmation", subject_type: "booking_confirmation", status_to: "draft" }),
+        mockEvent({ event_type: "task_created", status_to: "not_started", subject_id: "task-1", timestamp: "2026-05-09T10:00:00Z" }),
+        mockEvent({ event_type: "confirmation_created", event_category: "confirmation", subject_type: "booking_confirmation", status_to: "draft", subject_id: "task-2", timestamp: "2026-05-09T10:01:00Z" }),
       ],
       summary: { total: 2, task: 1, confirmation: 1, document: 0, extraction: 0 },
     });

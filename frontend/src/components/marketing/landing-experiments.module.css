@@ -1,0 +1,598 @@
+.page,
+.v4Page {
+  min-height: 100vh;
+  color: #f6f0e8;
+  background:
+    linear-gradient(135deg, rgba(12, 16, 18, 0.92), rgba(18, 27, 25, 0.98)),
+    #101315;
+  overflow: hidden;
+}
+
+.page::before,
+.v4Page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(246, 240, 232, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(246, 240, 232, 0.03) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.82), transparent 88%);
+}
+
+.header {
+  position: sticky;
+  top: 16px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(1180px, calc(100% - 32px));
+  margin: 16px auto 0;
+  padding: 12px 14px 12px 18px;
+  border: 1px solid rgba(246, 240, 232, 0.14);
+  border-radius: 8px;
+  background: rgba(14, 18, 20, 0.72);
+  backdrop-filter: blur(18px);
+}
+
+.brand {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(246, 240, 232, 0.72);
+  font-size: 13px;
+}
+
+.nav a {
+  border-radius: 8px;
+  padding: 9px 12px;
+  transition: background 180ms ease, color 180ms ease;
+}
+
+.nav a:hover {
+  color: #fff;
+  background: rgba(246, 240, 232, 0.08);
+}
+
+.labHero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 0.86fr) minmax(420px, 1.14fr);
+  gap: 32px;
+  width: min(1180px, calc(100% - 32px));
+  margin: 72px auto 38px;
+  align-items: center;
+}
+
+.labCopy h1,
+.v4Overlay h1 {
+  max-width: 780px;
+  font-size: clamp(44px, 7vw, 94px);
+  line-height: 0.96;
+  letter-spacing: 0;
+}
+
+.labCopy p,
+.v4Overlay p,
+.selectedExperiment p,
+.variantCard p,
+.variantCardNoImage p,
+.proofBand p {
+  color: rgba(246, 240, 232, 0.72);
+  line-height: 1.7;
+}
+
+.kicker {
+  display: inline-flex;
+  width: fit-content;
+  margin-bottom: 16px;
+  color: #ffd166;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 28px;
+  padding: 6px;
+  border: 1px solid rgba(246, 240, 232, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.segment,
+.segmentActive {
+  min-height: 42px;
+  border-radius: 6px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 750;
+  color: rgba(246, 240, 232, 0.72);
+  transition: transform 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.segmentActive {
+  color: #13201e;
+  background: #9ee6d8;
+}
+
+.segment:hover,
+.segmentActive:hover {
+  transform: translateY(-1px);
+}
+
+.generatedFrame,
+.variantCard {
+  position: relative;
+  min-height: 430px;
+  overflow: hidden;
+  border: 1px solid rgba(246, 240, 232, 0.12);
+  border-radius: 8px;
+  background: #171d1f;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+}
+
+.generatedFrame img,
+.variantCard img,
+.v4Hero img {
+  object-fit: cover;
+}
+
+.routeCanvas,
+.v4Canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  mix-blend-mode: screen;
+}
+
+.selectedExperiment,
+.variantGrid,
+.v4Flow,
+.proofBand {
+  position: relative;
+  z-index: 1;
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.selectedExperiment {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(320px, 0.58fr);
+  gap: 24px;
+  align-items: stretch;
+  padding: 30px;
+  border: 1px solid rgba(246, 240, 232, 0.12);
+  border-radius: 8px;
+  background: rgba(246, 240, 232, 0.055);
+}
+
+.selectedExperiment h2,
+.proofBand h2 {
+  max-width: 780px;
+  font-size: clamp(28px, 4vw, 56px);
+  line-height: 1.02;
+}
+
+.signalStack {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(158, 230, 216, 0.18);
+  border-radius: 8px;
+  background: rgba(9, 15, 17, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.signalHeader,
+.signalRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.signalHeader {
+  color: #9ee6d8;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.signalRow {
+  animation: signalEnter 620ms ease both;
+  animation-delay: var(--delay);
+  border-radius: 6px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.signalRow strong {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.signalRow small {
+  color: rgba(246, 240, 232, 0.52);
+}
+
+.signalPulse {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #ffd166;
+  box-shadow: 0 0 0 0 rgba(255, 209, 102, 0.5);
+  animation: pulse 1.8s ease infinite;
+}
+
+.scorePanel {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.scorePanel span {
+  color: rgba(246, 240, 232, 0.62);
+  font-size: 12px;
+}
+
+.scorePanel strong {
+  font-size: 34px;
+}
+
+.scorePanel div {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(246, 240, 232, 0.1);
+}
+
+.scorePanel div span {
+  display: block;
+  width: 82%;
+  height: 100%;
+  background: linear-gradient(90deg, #9ee6d8, #ffd166);
+}
+
+.variantGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 24px;
+  padding-bottom: 86px;
+}
+
+.variantCard,
+.variantCardNoImage {
+  min-height: 360px;
+  border-radius: 8px;
+}
+
+.variantCard > div {
+  position: absolute;
+  inset: auto 16px 16px;
+  padding: 18px;
+  border-radius: 8px;
+  background: rgba(10, 15, 17, 0.78);
+  backdrop-filter: blur(14px);
+}
+
+.variantCard span {
+  color: #ffd166;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.variantCard h3,
+.variantCardNoImage h3 {
+  margin-top: 8px;
+  font-size: 24px;
+}
+
+.variantCardNoImage {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid rgba(246, 240, 232, 0.12);
+  padding: 18px;
+  background:
+    linear-gradient(145deg, rgba(21, 34, 31, 0.92), rgba(22, 20, 17, 0.96)),
+    #151b1c;
+}
+
+.consoleMock,
+.checkerMock {
+  display: grid;
+  gap: 10px;
+}
+
+.consoleMock div,
+.checkerMock {
+  border: 1px solid rgba(246, 240, 232, 0.1);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.consoleMock div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.consoleMock strong,
+.checkerMock strong {
+  color: #9ee6d8;
+}
+
+.checkerMock span {
+  color: rgba(246, 240, 232, 0.62);
+  font-size: 12px;
+}
+
+.checkerMock strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 22px;
+}
+
+.v4Hero {
+  position: relative;
+  min-height: calc(100vh - 96px);
+  margin-top: -78px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.v4Hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(10, 14, 15, 0.94), rgba(10, 14, 15, 0.62) 48%, rgba(10, 14, 15, 0.2)),
+    linear-gradient(0deg, #101315 0%, transparent 26%, transparent 78%, rgba(16, 19, 21, 0.82) 100%);
+}
+
+.v4Overlay {
+  position: relative;
+  z-index: 2;
+  width: min(1180px, calc(100% - 32px));
+  padding-top: 120px;
+}
+
+.v4Overlay p {
+  max-width: 680px;
+  margin-top: 22px;
+  font-size: 18px;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 30px;
+}
+
+.primaryCta,
+.secondaryCta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  border-radius: 8px;
+  padding: 0 18px;
+  font-weight: 800;
+  transition: transform 180ms ease, background 180ms ease;
+}
+
+.primaryCta {
+  gap: 10px;
+  color: #13201e;
+  background: #9ee6d8;
+}
+
+.secondaryCta {
+  color: #f6f0e8;
+  border: 1px solid rgba(246, 240, 232, 0.18);
+  background: rgba(246, 240, 232, 0.08);
+}
+
+.primaryCta:hover,
+.secondaryCta:hover {
+  transform: translateY(-2px);
+}
+
+.v4Hero .signalStack {
+  position: absolute;
+  z-index: 3;
+  right: max(24px, calc((100vw - 1180px) / 2));
+  bottom: 12vh;
+  width: min(360px, calc(100% - 32px));
+}
+
+.v4Flow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: -42px;
+}
+
+.flowCard {
+  display: grid;
+  gap: 12px;
+  min-height: 150px;
+  border: 1px solid rgba(246, 240, 232, 0.12);
+  border-radius: 8px;
+  padding: 18px;
+  background: rgba(246, 240, 232, 0.07);
+  backdrop-filter: blur(16px);
+}
+
+.flowCard svg {
+  color: #ffd166;
+}
+
+.flowCard span {
+  color: rgba(246, 240, 232, 0.62);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.flowCard strong {
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.proofBand {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(320px, 0.7fr);
+  gap: 32px;
+  align-items: start;
+  padding: 92px 0 110px;
+}
+
+.proofList {
+  display: grid;
+  gap: 12px;
+}
+
+.proofList p {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+}
+
+.proofList svg {
+  flex: 0 0 auto;
+  margin-top: 5px;
+  color: #9ee6d8;
+}
+
+@keyframes pulse {
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 209, 102, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 209, 102, 0);
+  }
+}
+
+@keyframes signalEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .variantCard,
+  .variantCardNoImage,
+  .flowCard,
+  .proofBand {
+    animation: reveal both ease-out;
+    animation-timeline: view();
+    animation-range: entry 8% cover 32%;
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0.25;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signalPulse,
+  .signalRow,
+  .variantCard,
+  .variantCardNoImage,
+  .flowCard,
+  .proofBand {
+    animation: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .labHero,
+  .selectedExperiment,
+  .proofBand {
+    grid-template-columns: 1fr;
+  }
+
+  .generatedFrame {
+    min-height: 360px;
+  }
+
+  .variantGrid,
+  .v4Flow {
+    grid-template-columns: 1fr;
+  }
+
+  .v4Hero {
+    min-height: 920px;
+    place-items: start;
+  }
+
+  .v4Hero .signalStack {
+    left: 16px;
+    right: 16px;
+    bottom: 72px;
+    width: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .nav {
+    flex-wrap: wrap;
+  }
+
+  .labHero {
+    margin-top: 42px;
+  }
+
+  .labCopy h1,
+  .v4Overlay h1 {
+    font-size: 42px;
+  }
+
+  .segmented {
+    grid-template-columns: 1fr;
+  }
+
+  .selectedExperiment {
+    padding: 18px;
+  }
+}

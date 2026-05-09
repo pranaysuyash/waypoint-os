@@ -23,7 +23,7 @@ export async function GET(
   const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/api/auth/validate-code/${encodeURIComponent(code)}`;
 
   try {
-    const response = await fetch(spineApiUrl, bffFetchOptions(request, "GET"));
+    const response = await fetch(spineApiUrl, { ...bffFetchOptions(request, "GET"), cache: "no-store" });
 
     if (response.status === 404) {
       return bffJson({ error: "Invitation code not found" }, 404);

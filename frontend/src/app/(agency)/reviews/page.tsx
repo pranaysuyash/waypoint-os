@@ -203,7 +203,7 @@ export default function OwnerReviewsPage() {
   });
 
   // Sort by urgency (days waiting desc, then value desc)
-  const sortedReviews = [...filteredReviews].sort((a, b) => {
+  const sortedReviews = filteredReviews.toSorted((a, b) => {
     const daysA = Math.floor((Date.now() - new Date(a.submittedAt).getTime()) / (1000 * 60 * 60 * 24));
     const daysB = Math.floor((Date.now() - new Date(b.submittedAt).getTime()) / (1000 * 60 * 60 * 24));
     if (daysA !== daysB) return daysB - daysA;

@@ -13,6 +13,7 @@ export async function PATCH(
       {
         ...bffFetchOptions(request, "PATCH"),
         method: "PATCH",
+        cache: "no-store",
       }
     );
 

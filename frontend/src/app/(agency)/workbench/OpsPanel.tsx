@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useWorkbenchStore } from '@/stores/workbench';
-import { useClientDateTime } from '@/hooks/useClientDate';
+import { ClientDateTime } from '@/hooks/useClientDate';
 import {
   type Trip,
   type BookingData,
@@ -455,7 +455,9 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
       {tierEntries.length > 0 && (
         <div data-testid="ops-tiers" className="space-y-4">
           <h3 className="text-sm font-medium text-[#e6edf3]">Booking Readiness Tiers</h3>
-          {tierEntries.map(([name, tier]) => (
+          {tierEntries.map((entry) => {
+            const [name, tier] = entry;
+            return (
             <div
               key={name}
               data-testid={`ops-tier-${name}`}
@@ -488,7 +490,8 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
                 </div>
               )}
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
 
@@ -780,7 +783,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
             <div>
               {linkStatus?.has_active_token && (
                 <div data-testid="ops-link-active-hint" className="mb-3 text-xs text-[#8b949e]">
-                  Active link exists (expires {linkStatus.expires_at ? useClientDateTime(linkStatus.expires_at) : 'unknown'}).
+                  Active link exists (expires {linkStatus.expires_at ? <ClientDateTime value={linkStatus.expires_at} /> : 'unknown'}).
                   Generating a new link will revoke the old one.
                 </div>
               )}
@@ -815,7 +818,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
                 </button>
               </div>
               <div className="text-xs text-[#8b949e] mb-3">
-                Expires: {useClientDateTime(linkInfo.expires_at)}
+                Expires: <ClientDateTime value={linkInfo.expires_at} />
               </div>
               <div className="flex gap-2">
                 <button

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronRight, Loader, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { Drawer } from '@/components/ui/drawer';
-import { useClientDate } from '@/hooks/useClientDate';
+import { ClientDate } from '@/hooks/useClientDate';
 import type { DrillDownMetric } from '@/components/visual/TeamPerformanceChart';
 
 interface Trip {
@@ -172,7 +172,7 @@ export function MetricDrillDownDrawer({
                   <div>
                     <span className='text-text-muted block mb-1'>Date</span>
                     <span className='text-text-primary font-medium'>
-                      {useClientDate(trip.createdAt)}
+                      <ClientDate value={trip.createdAt} />
                     </span>
                   </div>
                 )}

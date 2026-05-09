@@ -15,6 +15,7 @@ export async function PATCH(
         ...bffFetchOptions(request, "PATCH"),
         method: "PATCH",
         body: JSON.stringify(body),
+        cache: "no-store",
       }
     );
 

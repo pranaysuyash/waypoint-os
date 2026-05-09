@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -133,13 +134,13 @@ export function DefaultErrorFallback({
             <RefreshCw className="size-4" />
             Try again
           </button>
-          <a
+          <Link
             href="/overview"
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-lg font-medium hover:bg-[var(--bg-count-badge)] transition-colors text-[13px]"
           >
             <Home className="size-4" />
             Back to overview
-          </a>
+          </Link>
         </div>
       </div>
     </div>

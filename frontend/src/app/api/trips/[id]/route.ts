@@ -13,7 +13,7 @@ export async function GET(
     // Forward request to spine_api
     const spineApiUrl = `${SPINE_API_URL}/trips/${encodeURIComponent(id)}`;
 
-    const response = await fetch(spineApiUrl, bffFetchOptions(request, "GET"));
+    const response = await fetch(spineApiUrl, { ...bffFetchOptions(request, "GET"), cache: "no-store" });
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -92,13 +92,13 @@ export async function PATCH(
 
     const response = await fetch(
       spineApiUrl,
-      bffFetchOptions(
+      { ...bffFetchOptions(
         request,
         "PATCH",
         "access_only",
         { "Content-Type": "application/json" },
         updates
-      )
+      ), cache: "no-store" }
     );
 
     if (!response.ok) {

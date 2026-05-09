@@ -654,7 +654,8 @@ export default function OverviewPage() {
               Planning Status · {planningTripsTotal} planning
             </h2>
             <div className='mt-3 space-y-2'>
-              {stateEntries.map(([key, meta]) => {
+              {stateEntries.map((entry) => {
+                const [key, meta] = entry;
                 const count = recentTrips?.filter((t) => getPlanningStatusTone(t) === key).length ?? 0;
                 return (
                   <div key={meta.label} className='flex items-center gap-2.5'>

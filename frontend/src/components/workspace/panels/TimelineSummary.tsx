@@ -7,7 +7,7 @@ import {
   getTimelineEventTitle,
   getTimelineStageLabel,
 } from "@/lib/timeline-rail";
-import { useClientTime } from "@/hooks/useClientDate";
+import { ClientTime } from "@/hooks/useClientDate";
 
 interface TimelineSummaryProps {
   tripId: string;
@@ -98,11 +98,11 @@ export function TimelineSummary({ tripId, timeline: providedTimeline, loading: p
           <div className="flex justify-between items-center">
             <dt className="text-ui-xs text-text-muted">Last event</dt>
             <dd className="text-ui-xs text-text-secondary">
-              {useClientTime(lastEvent.timestamp, {
+              <ClientTime value={lastEvent.timestamp} options={{
                 hour: "2-digit",
                 minute: "2-digit",
                 hour12: true,
-              })}
+              }} />
             </dd>
           </div>
             <div className="flex justify-between items-center">

@@ -82,7 +82,7 @@ function WedgeHeader() {
         </div>
         <div className='itinerary-reveal'>
           <div style={{ fontSize: 13, fontWeight: 700, color: T.t1, letterSpacing: '-0.01em', fontFamily: T.fBody }}>Waypoint</div>
-          <div style={{ fontSize: 10, color: T.t3, lineHeight: 1, fontFamily: T.fBody }}>Travel plan checker</div>
+          <div style={{ fontSize: 12, color: T.t3, lineHeight: 1, fontFamily: T.fBody }}>Travel plan checker</div>
         </div>
       </Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -319,7 +319,7 @@ function UploadCard({
             padding: '10px 16px', borderTop: `1px solid ${T.b0}`,
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           }}>
-            <span style={{ fontSize: 11, color: T.t4 }}>
+            <span style={{ fontSize: 12, color: T.t4 }}>
               {text.length > 0 ? `${text.length} characters` : 'Messy inputs work fine'}
             </span>
             <button onClick={() => onAnalyze(text, { kind: 'paste', source: 'typed', retention_consent: retentionConsent })} disabled={text.length < 10 || isBusy || isProcessingFile} style={{
@@ -378,7 +378,7 @@ function UploadCard({
               onChange={(e) => setRetentionConsent(e.target.checked)}
               style={{ marginTop: 3, accentColor: T.cyan }}
             />
-            <div style={{ fontSize: 11.5, color: T.t2, lineHeight: 1.45 }}>
+            <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.45 }}>
               Store my upload, extracted text, and score for product improvement and future training.
               I can turn this off for a one-time analysis.
             </div>
@@ -446,7 +446,7 @@ function UploadCard({
         {['Free to use', 'No sign-up required', 'Consent-based storage'].map(label => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <Check size={12} color={T.green} strokeWidth={2.5} />
-            <span style={{ fontSize: 11, color: T.t4 }}>{label}</span>
+            <span style={{ fontSize: 12, color: T.t4 }}>{label}</span>
           </div>
         ))}
       </div>
@@ -481,7 +481,7 @@ function TravelPreviewCard() {
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14,
         }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.cyan }}>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.cyan }}>
             Travel plan ATS
           </div>
           <div className='itinerary-stamp' style={{
@@ -489,7 +489,7 @@ function TravelPreviewCard() {
             background: 'rgba(255,193,122,0.12)',
             border: '1px solid rgba(255,193,122,0.24)',
             color: '#ffd6a6',
-            fontSize: 10,
+            fontSize: 12,
             fontWeight: 700,
             textTransform: 'uppercase',
             letterSpacing: '0.08em',
@@ -510,7 +510,7 @@ function TravelPreviewCard() {
             padding: '8px 10px', borderRadius: 14,
             background: 'rgba(57,208,216,0.08)', border: '1px solid rgba(57,208,216,0.18)',
           }}>
-            <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.t3 }}>Score preview</div>
+            <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.t3 }}>Score preview</div>
             <div style={{ fontSize: 26, fontWeight: 900, color: T.t1, fontFamily: T.fDisplay, lineHeight: 1 }}>62</div>
           </div>
         </div>
@@ -523,7 +523,7 @@ function TravelPreviewCard() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: T.t1 }}>Route ribbon</div>
-            <div style={{ fontSize: 11, color: T.t3 }}>Upload, paste, or screenshot</div>
+            <div style={{ fontSize: 12, color: T.t3 }}>Upload, paste, or screenshot</div>
           </div>
           <svg viewBox='0 0 420 120' width='100%' height='120' aria-hidden style={{ display: 'block' }}>
             <defs>
@@ -581,7 +581,7 @@ function TravelPreviewCard() {
                   }}>
                     <Icon size={13} strokeWidth={1.9} />
                   </div>
-                  <div style={{ fontSize: 11, color: T.t3 }}>{item.label}</div>
+                  <div style={{ fontSize: 12, color: T.t3 }}>{item.label}</div>
                 </div>
                 <div style={{ fontSize: 12.5, fontWeight: 700, color: T.t1, lineHeight: 1.35 }}>{item.value}</div>
               </div>
@@ -722,7 +722,7 @@ function UploadView({
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 7,
             padding: '5px 12px', borderRadius: 999, marginBottom: 24,
-            color: '#ffd6a6', fontSize: 10.5, letterSpacing: '0.13em',
+            color: '#ffd6a6', fontSize: 12, letterSpacing: '0.13em',
             textTransform: 'uppercase', fontFamily: T.fBody, fontWeight: 600,
             border: '1px solid rgba(255,193,122,0.24)', background: 'rgba(25,18,10,0.74)',
           }}>
@@ -770,7 +770,7 @@ function UploadView({
                 border: '1px solid rgba(168,179,193,0.12)',
               }}>
                 <div style={{ fontSize: 22, fontWeight: 900, color: T.t1, fontFamily: T.fDisplay, lineHeight: 1 }}>{s.stat}</div>
-                <div style={{ fontSize: 11, color: T.t3, marginTop: 4, lineHeight: 1.45 }}>{s.label}</div>
+                <div style={{ fontSize: 12, color: T.t3, marginTop: 4, lineHeight: 1.45 }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -850,7 +850,7 @@ function UploadView({
           <div style={{ textAlign: 'center', marginBottom: 52 }}>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
-              fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
+              fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
               color: T.cyan, marginBottom: 14,
             }}>
               <FileCheck size={13} /> Six trip checks
@@ -905,7 +905,7 @@ function UploadView({
             {/* Left: copy */}
             <div style={{ paddingTop: 8 }}>
               <div style={{
-                fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
+                fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
                 color: T.amber, marginBottom: 16,
               }}>
                 Example upgrade report
@@ -950,7 +950,7 @@ function UploadView({
                     <span style={{
                       display: 'inline-flex', alignItems: 'center',
                       padding: '2px 7px', borderRadius: 5, marginTop: 1,
-                      fontSize: 10, fontWeight: 700, fontFamily: T.fMono,
+                      fontSize: 12, fontWeight: 700, fontFamily: T.fMono,
                       textTransform: 'uppercase', letterSpacing: '0.04em',
                       color: sevBadgeTxt[sev], background: sevBadgeBg[sev], border: `1px solid ${sevBadgeBdr[sev]}`,
                       flexShrink: 0, whiteSpace: 'nowrap',
@@ -959,7 +959,7 @@ function UploadView({
                     </span>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600, color: T.t1, marginBottom: 3 }}>{f.label}</div>
-                      <div style={{ fontSize: 11.5, color: T.t2, lineHeight: 1.55 }}>{f.body}</div>
+                      <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.55 }}>{f.body}</div>
                     </div>
                   </div>
                 );
@@ -979,7 +979,7 @@ function UploadView({
         <div style={{ maxWidth: 1140, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
             <div style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
+              fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
               color: T.blue, marginBottom: 14,
             }}>
               What you receive
@@ -1013,7 +1013,7 @@ function UploadView({
                 flex: 1, height: 22, borderRadius: 4, background: T.surface,
                 margin: '0 12px', display: 'flex', alignItems: 'center', paddingLeft: 10,
               }}>
-                <span style={{ fontSize: 11, color: T.t4, fontFamily: T.fMono }}>waypoint.travel/report/trip-a8k2f</span>
+                <span style={{ fontSize: 12, color: T.t4, fontFamily: T.fMono }}>waypoint.travel/report/trip-a8k2f</span>
               </div>
             </div>
 
@@ -1037,7 +1037,7 @@ function UploadView({
                     <span style={{ fontSize: 8, color: T.t3 }}>/100</span>
                   </div>
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: T.amber }}>Needs Attention</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: T.amber }}>Needs Attention</div>
                 <div style={{ display: 'flex', gap: 6, marginTop: 12, justifyContent: 'center' }}>
                   {[{ n: 1, c: T.red }, { n: 2, c: T.amber }, { n: 1, c: T.blue }].map((m) => (
                     <div key={`${m.n}-${m.c}`} style={{ textAlign: 'center' }}>
@@ -1051,7 +1051,7 @@ function UploadView({
               {/* Summary lines */}
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: T.t1, marginBottom: 4 }}>Europe Summer 2025 - 16-Day Report</div>
-                <div style={{ fontSize: 11, color: T.t3, marginBottom: 18 }}>Generated 2026-04-28 · LAX → LHR → CDG → FCO → LAX</div>
+                <div style={{ fontSize: 12, color: T.t3, marginBottom: 18 }}>Generated 2026-04-28 · LAX → LHR → CDG → FCO → LAX</div>
 
                 {[
                   { label: 'Duration', value: '16 days · 5 segments · 4 hotels' },
@@ -1063,7 +1063,7 @@ function UploadView({
                     display: 'flex', alignItems: 'baseline', gap: 10,
                     padding: '7px 0', borderBottom: `1px solid ${T.b0}`,
                   }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: T.t4, minWidth: 80 }}>{row.label}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: T.t4, minWidth: 80 }}>{row.label}</span>
                     <span style={{ fontSize: 12, color: T.t2, fontFamily: T.fMono }}>{row.value}</span>
                   </div>
                 ))}
@@ -1072,7 +1072,7 @@ function UploadView({
                   <button style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6,
                     height: 32, padding: '0 14px', borderRadius: 999,
-                    fontSize: 11, fontWeight: 600, fontFamily: T.fBody,
+                    fontSize: 12, fontWeight: 600, fontFamily: T.fBody,
                     background: 'linear-gradient(135deg, #7ab9ff 0%, #39d0d8 100%)',
                     color: '#071018', border: 'none', cursor: 'pointer',
                   }}>
@@ -1081,7 +1081,7 @@ function UploadView({
                   <button style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6,
                     height: 32, padding: '0 14px', borderRadius: 999,
-                    fontSize: 11, fontWeight: 600, fontFamily: T.fBody,
+                    fontSize: 12, fontWeight: 600, fontFamily: T.fBody,
                     background: 'transparent', color: T.t2,
                     border: `1px solid ${T.b1}`, cursor: 'pointer',
                   }}>
@@ -1115,8 +1115,8 @@ function UploadView({
                 borderTop: `2px solid ${t.color}`,
               }}>
                 <div style={{ display: 'flex', marginBottom: 14, gap: 2 }}>
-                  {'★★★★★'.split('').map((s) => (
-                    <span key={`star-${s}`} style={{ color: T.amber, fontSize: 13 }}>{s}</span>
+                  {'★★★★★'.split('').map((s, i) => (
+                    <span key={`star-${i}`} style={{ color: T.amber, fontSize: 13 }}>{s}</span>
                   ))}
                 </div>
                 <p style={{ fontSize: 13.5, color: T.t1, lineHeight: 1.65, marginBottom: 18 }}>
@@ -1124,7 +1124,7 @@ function UploadView({
                 </p>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: T.t1 }}>{t.name}</div>
-                  <div style={{ fontSize: 11, color: T.t3, marginTop: 2 }}>{t.role}</div>
+                  <div style={{ fontSize: 12, color: T.t3, marginTop: 2 }}>{t.role}</div>
                 </div>
               </div>
             ))}
@@ -1143,7 +1143,7 @@ function UploadView({
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 7,
             padding: '5px 12px', borderRadius: 999, marginBottom: 24,
-            color: '#d8eef0', fontSize: 10.5, letterSpacing: '0.13em',
+            color: '#d8eef0', fontSize: 12, letterSpacing: '0.13em',
             textTransform: 'uppercase', fontFamily: T.fBody, fontWeight: 600,
             border: '1px solid rgba(57,208,216,0.22)', background: 'rgba(7,22,26,0.8)',
           }}>
@@ -1182,7 +1182,7 @@ function UploadView({
               {['No account needed', 'Results in 60 seconds', 'Private & secure'].map(label => (
                 <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <Check size={12} color={T.green} strokeWidth={2.5} />
-                  <span style={{ fontSize: 11, color: T.t4 }}>{label}</span>
+                  <span style={{ fontSize: 12, color: T.t4 }}>{label}</span>
                 </div>
               ))}
             </div>
@@ -1427,7 +1427,7 @@ function ResultsView({
         <div className='itinerary-reveal' style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginBottom: 24 }}>
           {/* Score card */}
             <div style={{ padding: '24px 26px', borderRadius: 20, background: T.surface, border: `1px solid ${T.b0}` }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t3, marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t3, marginBottom: 14 }}>
                 Itinerary Health Score
               </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
@@ -1449,7 +1449,7 @@ function ResultsView({
                 </div>
                 <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.55 }}>{summaryCopy}</div>
                 {errorMessage ? (
-                  <div style={{ fontSize: 11, color: T.red, lineHeight: 1.55, marginTop: 8 }}>
+                  <div style={{ fontSize: 12, color: T.red, lineHeight: 1.55, marginTop: 8 }}>
                     {errorMessage}
                   </div>
                 ) : null}
@@ -1463,7 +1463,7 @@ function ResultsView({
               ].map(m => (
                 <div key={m.l} style={{ flex: 1, padding: '8px 10px', background: T.elevated, borderRadius: 8, textAlign: 'center' }}>
                   <div style={{ fontSize: 20, fontWeight: 800, color: m.c, fontFamily: T.fDisplay }}>{m.v}</div>
-                  <div style={{ fontSize: 10, color: T.t3, marginTop: 1 }}>{m.l}</div>
+                  <div style={{ fontSize: 12, color: T.t3, marginTop: 1 }}>{m.l}</div>
                 </div>
               ))}
             </div>
@@ -1472,7 +1472,7 @@ function ResultsView({
           {/* Trip summary + email gate */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ padding: '18px 20px', borderRadius: 16, background: T.surface, border: `1px solid ${T.b0}`, flex: 1 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t3, marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t3, marginBottom: 12 }}>
                 Trip Summary (Extracted)
               </div>
               <div className='itinerary-stagger' style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
@@ -1488,10 +1488,10 @@ function ResultsView({
             {liveChecks ? (
               <div style={{ padding: '16px 18px', borderRadius: 14, background: 'rgba(57,208,216,0.04)', border: '1px solid rgba(57,208,216,0.16)' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: T.t1, marginBottom: 3 }}>Live destination check</div>
-                <div style={{ fontSize: 11, color: T.t2, marginBottom: 10 }}>
+                <div style={{ fontSize: 12, color: T.t2, marginBottom: 10 }}>
                   {String(liveChecks.destination ?? 'Destination')} · {String(liveChecks.climate?.precipitation_mm_avg ?? 'n/a')} mm avg rain · {String(liveChecks.climate?.wind_kmh_avg ?? 'n/a')} km/h wind
                 </div>
-                <div style={{ fontSize: 11, color: T.t3, marginBottom: 10 }}>
+                <div style={{ fontSize: 12, color: T.t3, marginBottom: 10 }}>
                   {liveChecks.current_conditions ? (
                     <>
                       Current weather: {String(liveChecks.current_conditions.current?.temperature_c ?? 'n/a')}°C now
@@ -1508,17 +1508,17 @@ function ResultsView({
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {Array.isArray(liveChecks.signals) && liveChecks.signals.length > 0 ? (
-                    <div style={{ fontSize: 11.5, color: T.cyan, lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 12, color: T.cyan, lineHeight: 1.5 }}>
                       Source signals: {liveChecks.signals.slice(0, 3).join(' · ')}
                     </div>
                   ) : null}
                   {(Array.isArray(liveChecks.soft_blockers) ? liveChecks.soft_blockers : []).slice(0, 2).map((item: string) => (
-                    <div key={item} style={{ fontSize: 11.5, color: T.t1, lineHeight: 1.5 }}>
+                    <div key={item} style={{ fontSize: 12, color: T.t1, lineHeight: 1.5 }}>
                       • {item}
                     </div>
                   ))}
                   {(Array.isArray(liveChecks.hard_blockers) ? liveChecks.hard_blockers : []).slice(0, 1).map((item: string) => (
-                    <div key={item} style={{ fontSize: 11.5, color: T.red, lineHeight: 1.5 }}>
+                    <div key={item} style={{ fontSize: 12, color: T.red, lineHeight: 1.5 }}>
                       • {item}
                     </div>
                   ))}
@@ -1533,13 +1533,13 @@ function ResultsView({
                   <span style={{ color: T.green, fontSize: 20 }}>✓</span>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: T.t1 }}>Report sent!</div>
-                    <div style={{ fontSize: 11, color: T.t2 }}>Check your inbox for the full PDF.</div>
+                    <div style={{ fontSize: 12, color: T.t2 }}>Check your inbox for the full PDF.</div>
                   </div>
                 </div>
               ) : (
                 <>
                   <div style={{ fontSize: 13, fontWeight: 600, color: T.t1, marginBottom: 3 }}>Get your full report</div>
-                  <div style={{ fontSize: 11, color: T.t2, marginBottom: 10 }}>Detailed findings + advisor-ready brief sent to your inbox.</div>
+                  <div style={{ fontSize: 12, color: T.t2, marginBottom: 10 }}>Detailed findings + advisor-ready brief sent to your inbox.</div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <div style={{
                       flex: 1, display: 'flex', alignItems: 'center', gap: 8,
@@ -1571,9 +1571,9 @@ function ResultsView({
                       Send →
                     </button>
                   </div>
-                  <div style={{ fontSize: 10, color: T.t4, marginTop: 7 }}>Stored only with consent. Not shared. Delete anytime.</div>
+                  <div style={{ fontSize: 12, color: T.t4, marginTop: 7 }}>Stored only with consent. Not shared. Delete anytime.</div>
                   {manageMessage ? (
-                    <div style={{ fontSize: 10, color: T.t3, marginTop: 7 }}>{manageMessage}</div>
+                    <div style={{ fontSize: 12, color: T.t3, marginTop: 7 }}>{manageMessage}</div>
                   ) : null}
                 </>
               )}
@@ -1581,7 +1581,7 @@ function ResultsView({
 
             <div style={{ padding: '16px 18px', borderRadius: 14, background: 'rgba(57,208,216,0.04)', border: '1px solid rgba(57,208,216,0.16)' }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: T.t1, marginBottom: 3 }}>Manage your saved data</div>
-              <div style={{ fontSize: 11, color: T.t2, marginBottom: 10 }}>
+              <div style={{ fontSize: 12, color: T.t2, marginBottom: 10 }}>
                 Your report is stored only if you opted in. Export or delete the saved record with this report ID.
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -1613,7 +1613,7 @@ function ResultsView({
                   {manageBusy === 'delete' ? 'Deleting…' : 'Delete saved data'}
                 </button>
               </div>
-              <div style={{ marginTop: 10, fontSize: 11, color: T.t3 }}>
+              <div style={{ marginTop: 10, fontSize: 12, color: T.t3 }}>
                 Did your advisor revise after seeing this report?
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
@@ -1623,7 +1623,7 @@ function ResultsView({
                     height: 30,
                     padding: '0 12px',
                     borderRadius: 999,
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 600,
                     fontFamily: T.fBody,
                     background: 'rgba(63,185,80,0.12)',
@@ -1640,7 +1640,7 @@ function ResultsView({
                     height: 30,
                     padding: '0 12px',
                     borderRadius: 999,
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 600,
                     fontFamily: T.fBody,
                     background: 'rgba(210,153,34,0.12)',
@@ -1657,7 +1657,7 @@ function ResultsView({
                     height: 30,
                     padding: '0 12px',
                     borderRadius: 999,
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 600,
                     fontFamily: T.fBody,
                     background: 'rgba(248,81,73,0.12)',
@@ -1669,7 +1669,7 @@ function ResultsView({
                   Rejected
                 </button>
               </div>
-              <div style={{ fontSize: 10, color: T.t4, marginTop: 8 }}>
+              <div style={{ fontSize: 12, color: T.t4, marginTop: 8 }}>
                 Report ID: {tripId ?? 'pending'}
               </div>
             </div>
@@ -1678,7 +1678,7 @@ function ResultsView({
 
         {/* Findings */}
         <div className='itinerary-stagger' style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t2, marginBottom: 12 }}>Findings</div>
+          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t2, marginBottom: 12 }}>Findings</div>
           {blockerItems.length > 0 ? (
             <div className='itinerary-stagger' style={{ display: 'grid', gap: 10 }}>
               {blockerItems.map((item, index) => {
@@ -1694,7 +1694,7 @@ function ResultsView({
                     <span style={{
                       display: 'inline-flex', alignItems: 'center', gap: 4,
                       padding: '2px 7px', borderRadius: 5, marginTop: 1,
-                      fontSize: 10, fontWeight: 700, fontFamily: T.fMono,
+                      fontSize: 12, fontWeight: 700, fontFamily: T.fMono,
                       textTransform: 'uppercase', letterSpacing: '0.04em',
                       color: rSevBadgeTxt[c], background: rSevBadgeBg[c], border: `1px solid ${rSevBadgeBdr[c]}`,
                       flexShrink: 0,

@@ -132,7 +132,7 @@ export default function FollowupsPage() {
   );
 
   // Sort followups
-  const sortedFollowups = [...followups].sort((a, b) => {
+  const sortedFollowups = followups.toSorted((a, b) => {
     if (sortBy === 'due_date') {
       return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
     } else {

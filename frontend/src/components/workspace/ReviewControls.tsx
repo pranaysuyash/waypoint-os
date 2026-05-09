@@ -3,7 +3,7 @@
 import React, { useState, useId } from "react";
 import { submitTripReviewAction } from "@/lib/api-client";
 import { useWorkbenchStore } from "@/stores/workbench";
-import { useClientDate } from "@/hooks/useClientDate";
+import { ClientDate } from "@/hooks/useClientDate";
 import type { ReviewActionRequest, ReviewStatus } from "@/types/governance";
 import type { Trip } from "@/lib/api-client";
 import type { SuitabilityFlagData } from "@/types/spine";
@@ -98,7 +98,7 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
         <div className={styles.reviewInfo}>
           <strong>Status: {REVIEW_STATUS_LABELS[currentStatus] || currentStatus}</strong>
           {trip?.reviewedBy && <span> by {trip.reviewedBy}</span>}
-          {trip?.reviewedAt && <span> on {useClientDate(trip.reviewedAt)}</span>}
+          {trip?.reviewedAt && <span> on <ClientDate value={trip.reviewedAt} /></span>}
         </div>
         {trip?.reviewNotes && (
           <div className={styles.reviewNotes}>
@@ -143,7 +143,7 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
               <option key={cat.id} value={cat.id}>{cat.label}</option>
             ))}
           </select>
-          <p className={styles.helpText} style={{ fontSize: '11px', marginTop: '4px', opacity: 0.7 }}>
+            <p className={styles.helpText} style={{ fontSize: '12px', marginTop: '4px', opacity: 0.7 }}>
             This feedback helps improve future trip recommendations.
           </p>
         </div>
@@ -192,7 +192,7 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
             Escalate
           </button>
         </div>
-        <p className={styles.helpText} style={{ fontSize: '11px', marginTop: '6px', opacity: 0.8 }}>
+        <p className={styles.helpText} style={{ fontSize: '12px', marginTop: '6px', opacity: 0.8 }}>
           Approval completes the review step. Sending to the customer still follows your send policy.
         </p>
       </div>

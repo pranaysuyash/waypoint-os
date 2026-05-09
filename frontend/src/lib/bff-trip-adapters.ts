@@ -285,9 +285,11 @@ function computeDaysInCurrentStage(spineTrip: JsonRecord, now: Date): number {
     }
   }
 
-  const validTimes = timestamps
-    .map((timestamp) => new Date(timestamp).getTime())
-    .filter((time) => Number.isFinite(time));
+  const validTimes: number[] = [];
+  for (const timestamp of timestamps) {
+    const time = new Date(timestamp).getTime();
+    if (Number.isFinite(time)) validTimes.push(time);
+  }
   if (validTimes.length === 0) return 0;
 
   const mostRecent = Math.max(...validTimes);

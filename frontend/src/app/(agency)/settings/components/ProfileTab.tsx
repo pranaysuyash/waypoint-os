@@ -131,7 +131,7 @@ export function ProfileTab({ draft, onChange }: ProfileTabProps) {
             {draft.profile.logo_url ? (
               <img
                 src={draft.profile.logo_url}
-                alt=""
+                alt={`${draft.profile.agency_name} logo`}
                 className="size-10 rounded-lg object-cover border border-[#30363d]"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';

@@ -2,7 +2,7 @@
 
 import { Trip } from "@/lib/api-client";
 import { Star, MessageSquare, Info, CheckCircle2 } from "lucide-react";
-import { useClientNow } from "@/hooks/useClientDate";
+import { ClientNow } from "@/hooks/useClientDate";
 import styles from "@/components/workbench/workbench.module.css";
 
 interface FeedbackPanelProps {
@@ -76,7 +76,7 @@ export default function FeedbackPanel({ trip }: FeedbackPanelProps) {
             Verified Response
           </div>
           <span className="text-[var(--ui-text-xs)] text-text-muted">
-            Received via WhatsApp • {useClientNow()}
+            Received via WhatsApp • <ClientNow />
           </span>
         </div>
       </div>

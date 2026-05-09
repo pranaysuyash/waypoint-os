@@ -400,14 +400,17 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(result_fees.service_breakdowns).map(([service, breakdown]) => (
+                {Object.entries(result_fees.service_breakdowns).map((entry) => {
+                  const [service, breakdown] = entry;
+                  return (
                   <tr key={service} style={{ borderBottom: "1px solid var(--color-border)" }}>
                     <td style={{ padding: "8px", fontSize: "13px" }}>{titleCase(service)}</td>
                     <td style={{ padding: "8px", fontSize: "13px" }}>{formatCurrency(breakdown.base_fee, "USD")}</td>
                     <td style={{ padding: "8px", fontSize: "13px" }}>{breakdown.multiplier}x</td>
                     <td style={{ padding: "8px", fontSize: "13px" }}>{formatCurrency(breakdown.adjusted_fee, "USD")}</td>
                   </tr>
-                ))}
+                );
+              })}
                 <tr style={{ borderTop: "2px solid var(--color-border)", fontWeight: "bold" }}>
                   <td style={{ padding: "8px", fontSize: "13px" }}>Total</td>
                   <td style={{ padding: "8px", fontSize: "13px" }}>{formatCurrency(result_fees.total_base_fee, "USD")}</td>

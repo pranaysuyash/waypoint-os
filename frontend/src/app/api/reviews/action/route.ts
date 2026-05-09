@@ -17,12 +17,12 @@ export async function POST(request: NextRequest) {
 
     const response = await fetch(
       `${SPINE_API_URL}/trips/${encodeURIComponent(reviewId)}/review/action`,
-      bffFetchOptions(request, "POST", "access_only", {}, {
+      { ...bffFetchOptions(request, "POST", "access_only", {}, {
         action,
         notes,
         reassign_to: reassignTo,
         error_category: errorCategory,
-      })
+      }), cache: "no-store" }
     );
 
     if (!response.ok) {

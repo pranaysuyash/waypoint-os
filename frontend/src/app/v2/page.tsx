@@ -17,7 +17,14 @@ import {
 } from '@/components/marketing/marketing';
 import { CtaBand } from '@/components/marketing/marketing-client';
 import { DynamicDataTransformationHero } from '@/components/marketing/dynamic-visuals';
+import type { Metadata } from "next";
 import styles from '@/components/marketing/marketing-v2.module.css';
+
+export const metadata: Metadata = {
+  title: "Waypoint OS — Stop Guessing What Your Clients Want",
+  description:
+    "Turn messy WhatsApp messages, emails, and PDFs into structured, bookable trips in seconds. The operating system for modern boutique travel agencies.",
+};
 
 const painPoints = [
   {
@@ -133,7 +140,9 @@ export default function HomePage() {
         </div>
 
         <div className={styles.problemRail}>
-          {painPoints.map(({ icon: Icon, title, body }) => (
+          {painPoints.map((point) => {
+            const { icon: Icon, title, body } = point;
+            return (
             <article key={title} className={styles.problemItem}>
               <Icon className='size-5' />
               <div>
@@ -141,7 +150,8 @@ export default function HomePage() {
                 <p>{body}</p>
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
       </section>
 

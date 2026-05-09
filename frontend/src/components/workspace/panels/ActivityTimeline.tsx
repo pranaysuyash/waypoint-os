@@ -1,4 +1,4 @@
-import { useClientTime } from '@/hooks/useClientDate';
+import { ClientTime } from '@/hooks/useClientDate';
 
 /**
  * ActivityTimeline - Display all trip activities grouped by day with provenance.
@@ -175,7 +175,8 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
 
       {/* Date Groups */}
       <div className="space-y-4">
-        {sortedDates.map(([dateKey, dateActivities]) => {
+        {sortedDates.map((item) => {
+          const [dateKey, dateActivities] = item;
           const isExpanded = expandedDates.has(dateKey);
           const suggestedCount = dateActivities.filter((a) => a.source === 'suggested').length;
           const requestedCount = dateActivities.filter((a) => a.source === 'requested').length;
@@ -222,10 +223,10 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
                           )}
                           {activity.timestamp && (
                             <p className="text-ui-xs text-text-muted mt-1">
-                              {useClientTime(activity.timestamp, {
+                              <ClientTime value={activity.timestamp} options={{
                                 hour: '2-digit',
                                 minute: '2-digit',
-                              })}
+                              }} />
                             </p>
                           )}
                         </div>

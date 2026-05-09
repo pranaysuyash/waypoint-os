@@ -260,15 +260,10 @@ export function tripMatchesQuery(trip: InboxTrip, query: string): boolean {
   const q = query.toLowerCase().trim();
   if (!q) return true;
 
-  const searchable = [
-    trip.destination,
-    trip.id,
-    trip.tripType,
-    trip.customerName,
-    trip.assignedToName,
-  ]
-    .filter(Boolean)
-    .map((s) => s!.toLowerCase());
+  const searchable: string[] = [];
+  for (const field of [trip.destination, trip.id, trip.tripType, trip.customerName, trip.assignedToName]) {
+    if (field) searchable.push(field.toLowerCase());
+  }
 
   return searchable.some((field) => field.includes(q));
 }

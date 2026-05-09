@@ -30,6 +30,7 @@ export default function SuitabilityPage() {
           credentials: "include",
           cache: "no-store",
         });
+        // cache: no-store ensures fresh trip data every render
         if (!response.ok) throw new Error('Failed to fetch trip');
 
         const trip = await response.json();

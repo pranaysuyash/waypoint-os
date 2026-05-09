@@ -285,8 +285,12 @@ export function getPlanningMissingDetails(trip?: Trip | null): PlanningMissingDe
 
 export function getPlanningFollowUpDraft(trip?: Trip | null): string {
   const missingDetails = getPlanningMissingDetails(trip);
-  const requiredFields = missingDetails.filter((d) => d.requirement === "Required").map((d) => d.label.toLowerCase());
-  const recommendedFields = missingDetails.filter((d) => d.requirement === "Recommended").map((d) => d.label.toLowerCase());
+  const requiredFields: string[] = [];
+  const recommendedFields: string[] = [];
+  for (const d of missingDetails) {
+    if (d.requirement === "Required") requiredFields.push(d.label.toLowerCase());
+    else if (d.requirement === "Recommended") recommendedFields.push(d.label.toLowerCase());
+  }
 
   const extraRequests: (string | null)[] = [];
 

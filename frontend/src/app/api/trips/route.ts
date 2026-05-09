@@ -17,12 +17,15 @@ export async function GET(request: NextRequest) {
 
     // Build a clean query string, filtering out frontend-only params
     const query = Array.from(searchParams.entries())
-      .filter(([key]) => key !== "view")
-      .map(([key, val]) => `${encodeURIComponent(key)}=${encodeURIComponent(val)}`)
+      .filter(entry => entry[0] !== "view")
+      .map(entry => {
+        const [key, val] = entry;
+        return `${encodeURIComponent(key)}=${encodeURIComponent(val)}`;
+      })
       .join("&");
     const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/trips${query ? `?${query}` : ""}`;
 
-    const response = await fetch(spineApiUrl, bffFetchOptions(request, "GET"));
+    const response = await fetch(spineApiUrl, { ...bffFetchOptions(request, "GET"), cache: "no-store" });
 
     if (!response.ok) {
       if (isAuthStatus(response.status)) {
@@ -86,7 +89,7 @@ export async function POST(req: NextRequest) {
     const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/run`;
     const response = await fetch(
       spineApiUrl,
-      bffFetchOptions(req, "POST", undefined, { "Content-Type": "application/json" }, spinRequest),
+      { ...bffFetchOptions(req, "POST", undefined, { "Content-Type": "application/json" }, spinRequest), cache: "no-store" },
     );
 
     if (!response.ok) {

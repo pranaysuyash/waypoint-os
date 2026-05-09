@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useClientDateTime } from "@/hooks/useClientDate";
+import { ClientDateTime } from "@/hooks/useClientDate";
 
 interface AuditEvent {
   id: string;
@@ -20,7 +20,7 @@ export default function AuditPage() {
     let cancelled = false;
     async function fetchAudit() {
       try {
-        const res = await fetch("/api/audit?limit=50");
+        const res = await fetch("/api/audit?limit=50", { cache: "no-store" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (!cancelled) {
@@ -77,7 +77,7 @@ export default function AuditPage() {
                   {event.type}
                 </span>
                 <span className="text-muted-foreground text-xs">
-                  {useClientDateTime(event.timestamp)}
+                  <ClientDateTime value={event.timestamp} />
                 </span>
               </div>
               <div className="text-xs text-muted-foreground font-mono truncate">

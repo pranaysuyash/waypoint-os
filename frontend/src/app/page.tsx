@@ -109,6 +109,14 @@ const productMoments = [
   },
 ];
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Waypoint OS — The Operating System for Boutique Travel Agencies",
+  description:
+    "From messy WhatsApp notes to client-safe proposals, Waypoint structures the intake, surfaces the risks, and protects your margins.",
+};
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
@@ -279,12 +287,15 @@ export default function HomePage() {
                     ['Budget','$8,500 – $12,000'],
                     ['Travel style','Romantic, Relaxed, Culture'],
                     ['Lead score','High'],
-                  ] as const).map(([k,v]) => (
+                  ] as const).map((item) => {
+                    const [k, v] = item;
+                    return (
                     <div key={k} className={styles.mockupMetaRow}>
                       <span>{k}</span>
                       <strong>{v}</strong>
                     </div>
-                  ))}
+                    );
+                  })}
               </div>
             </div>
             <div className={styles.mockupRight}>

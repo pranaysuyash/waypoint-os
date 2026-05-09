@@ -21,7 +21,7 @@ export async function POST(
 
     const response = await fetch(
       `${SPINE_API_URL}/trips/${encodeURIComponent(tripId)}/snooze`,
-      bffFetchOptions(request, "POST", "access_only", {}, { snooze_until: snoozeUntil })
+      { ...bffFetchOptions(request, "POST", "access_only", {}, { snooze_until: snoozeUntil }), cache: "no-store" }
     );
 
     if (!response.ok) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ClientTime } from '@/hooks/useClientDate';
 import {
   CheckCircle,
   Circle,
@@ -130,7 +131,8 @@ export default function ExecutionTimelinePanel({ tripId }: ExecutionTimelinePane
 
       {/* Category filter chips */}
       <div className="flex gap-1 flex-wrap">
-        {Object.entries(CATEGORY_LABELS).map(([key, label]) => {
+        {Object.entries(CATEGORY_LABELS).map((entry) => {
+          const [key, label] = entry;
           const count = key === "all" ? (summary.total ?? 0) : (summary[key] ?? 0);
           return (
             <button
@@ -179,7 +181,7 @@ function TimelineRow({ event }: { event: ExecutionTimelineEvent }) {
   const actor = event.actor_type === "system" ? "System" : event.actor_id?.slice(0, 8) ?? "Unknown";
 
   const ts = event.timestamp
-    ? new Date(event.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    ? <ClientTime value={event.timestamp} options={{ hour: "2-digit", minute: "2-digit" }} />
     : "";
 
   return (

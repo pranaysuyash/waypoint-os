@@ -141,8 +141,8 @@ export function getRecentChanges(
   changes: FieldChange[],
   limit: number = 10
 ): FieldChange[] {
-  return [...changes]
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  return changes
+    .toSorted((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, limit);
 }
 
@@ -170,7 +170,7 @@ export function getChangeSummary(changes: FieldChange[]): ChangeSummary {
   if (changes.length === 0) return summary;
 
   // Sort by timestamp descending to get most recent
-  const sorted = [...changes].sort((a, b) =>
+  const sorted = changes.toSorted((a, b) =>
     new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
 

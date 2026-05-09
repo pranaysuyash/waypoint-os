@@ -42,10 +42,13 @@ export default function PacketTab({ trip }: PacketTabProps) {
     Party: _getFactValue(facts, "party_size") || "-",
   };
 
-  const summaryCards = Object.entries(summaryData).map(([label, value]) => ({
-    label,
-    value: String(value),
-  }));
+  const summaryCards = Object.entries(summaryData).map((entry) => {
+    const [label, value] = entry;
+    return {
+      label,
+      value: String(value),
+    };
+  });
 
   // Derive issues from either legacy shape (errors/warnings arrays) or
   // current backend shape (status/gate/reasons + packet.unknowns).
@@ -204,14 +207,17 @@ export default function PacketTab({ trip }: PacketTabProps) {
               </tr>
             </thead>
             <tbody>
-              {Object.entries(facts).map(([field, slot]) => (
+              {Object.entries(facts).map((entry) => {
+                const [field, slot] = entry;
+                return (
                 <tr key={`fact-${field}`} className="border-b border-[#30363d] last:border-0">
                   <td className="px-3 py-2 text-ui-sm text-[#e6edf3]">{labelOrTitle(FIELD_LABELS, field)}</td>
                   <td className="px-3 py-2 text-ui-sm text-[#e6edf3]">{_formatValue(slot.value)}</td>
                   <td className="px-3 py-2 text-ui-sm text-[#8b949e]">{_formatConfidence(slot.confidence)}</td>
                   <td className="px-3 py-2 text-ui-sm text-[#8b949e]">{slot.authority_level || "-"}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -222,7 +228,9 @@ export default function PacketTab({ trip }: PacketTabProps) {
         <div>
           <h3 className="text-ui-base font-semibold text-[#e6edf3] mb-3">Inferred Details</h3>
           <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4">
-            {Object.entries(derivedSignals).map(([signal, slot]) => (
+            {Object.entries(derivedSignals).map((entry) => {
+              const [signal, slot] = entry;
+              return (
               <div
                 key={`sig-${signal}`}
                 className="flex justify-between py-2 border-b border-[#30363d] last:border-0"
@@ -232,7 +240,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
                   {String(slot.value)} ({_formatConfidence(slot.confidence)})
                 </span>
               </div>
-            ))}
+            )})}
           </div>
         </div>
       )}

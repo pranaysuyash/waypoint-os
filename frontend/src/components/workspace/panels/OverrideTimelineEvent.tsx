@@ -25,16 +25,13 @@ import React from 'react';
 import { AlertCircle, CheckCircle2, TrendingDown } from 'lucide-react';
 import { FLAG_LABELS, labelOrTitle } from '@/lib/label-maps';
 import type { OverrideData } from '@/types/spine';
+import { ClientTime } from '@/hooks/useClientDate';
 
 const VALID_ACTIONS = new Set(["suppress", "downgrade", "acknowledge"]);
 
 type OverrideAction = "suppress" | "downgrade" | "acknowledge";
 
 export function OverrideTimelineEvent({ event }: { event: OverrideData }) {
-  const time = new Date(event.created_at).toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 
   const action: OverrideAction = VALID_ACTIONS.has(event.action)
     ? (event.action as OverrideAction)
@@ -70,7 +67,7 @@ export function OverrideTimelineEvent({ event }: { event: OverrideData }) {
       </div>
       <div className="flex-1 pt-1">
         <div className="flex items-center gap-2">
-          <span className="text-ui-xs text-text-muted font-mono">{time}</span>
+          <span className="text-ui-xs text-text-muted font-mono"><ClientTime value={event.created_at} options={{ hour: '2-digit', minute: '2-digit' }} /></span>
           <span className="text-ui-sm font-medium text-text-primary">Override</span>
         </div>
         <p className="text-ui-sm text-text-rationale mt-1">{getActionLabel()}</p>
