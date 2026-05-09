@@ -77,8 +77,8 @@ export function SuitabilityCard({ profile, compact = false }: SuitabilityCardPro
       {/* Dimensions */}
       {!compact && dimensions.length > 0 && (
         <div className="border-t border-border-default">
-          {dimensions.map((dim, idx) => (
-            <DimensionRow key={idx} dimension={dim} />
+          {dimensions.map((dim) => (
+            <DimensionRow key={dim.type} dimension={dim} />
           ))}
         </div>
       )}

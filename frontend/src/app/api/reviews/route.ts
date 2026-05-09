@@ -32,6 +32,12 @@ interface SpineReviewsResponse {
   total: number;
 }
 
+interface SpineReviewsEnvelope {
+  data?: SpineReview[];
+  items?: SpineReview[];
+  total?: number;
+}
+
 const STATUS_MAP: Record<string, ReviewStatus> = {
   pending: "pending",
   approved: "approved",
@@ -77,10 +83,22 @@ export async function GET(request: NextRequest) {
       if (isAuthStatus(response.status)) {
         return bffJson({ error: "Not authenticated" }, response.status);
       }
-      throw new Error(`Spine API returned ${response.status}`);
+
+      // Degrade gracefully when analytics upstream is unavailable so
+      // overview/reviews surfaces stay operational instead of hard failing.
+      console.warn(
+        `Reviews upstream unavailable: ${response.status}. Returning empty reviews payload.`
+      );
+      return bffJson({ items: [], total: 0, unavailable: true });
     }
 
-    const spineApiData = (await response.json()) as SpineReviewsResponse;
+    const raw = (await response.json()) as SpineReviewsResponse | SpineReview[] | SpineReviewsEnvelope;
+    const spineApiData: SpineReviewsResponse = Array.isArray(raw)
+      ? { items: raw, total: raw.length }
+      : {
+          items: raw.items ?? raw.data ?? [],
+          total: typeof raw.total === "number" ? raw.total : (raw.items ?? raw.data ?? []).length,
+        };
 
     const reviews = spineApiData.items ?? [];
     const frontendReviews = reviews.map(transformReviewToFrontendFormat);
@@ -101,6 +119,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error fetching reviews from spine_api:", error);
-    return bffJson({ error: "Failed to fetch reviews" }, 500);
+    return bffJson({ items: [], total: 0, unavailable: true });
   }
 }

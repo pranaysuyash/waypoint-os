@@ -1024,7 +1024,7 @@ function UploadView({
                 padding: '18px 20px', borderRadius: 14, background: T.surface,
                 border: `1px solid ${T.b0}`, textAlign: 'center', minWidth: 130,
               }}>
-                <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t4, marginBottom: 12 }}>Health Score</div>
+                <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t4, marginBottom: 12 }}>Health Score</div>
                 <div style={{ position: 'relative', width: 72, height: 72, margin: '0 auto 12px' }}>
                   <svg width='72' height='72' viewBox='0 0 72 72' style={{ transform: 'rotate(-90deg)' }}>
                     <circle cx='36' cy='36' r='28' fill='none' stroke={T.b0} strokeWidth='6' />
@@ -1034,7 +1034,7 @@ function UploadView({
                   </svg>
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                     <span style={{ fontSize: 22, fontWeight: 900, color: T.t1, fontFamily: T.fDisplay, lineHeight: 1 }}>62</span>
-                    <span style={{ fontSize: 8, color: T.t3 }}>/100</span>
+                    <span style={{ fontSize: 12, color: T.t3 }}>/100</span>
                   </div>
                 </div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: T.amber }}>Needs Attention</div>
@@ -1115,9 +1115,9 @@ function UploadView({
                 borderTop: `2px solid ${t.color}`,
               }}>
                 <div style={{ display: 'flex', marginBottom: 14, gap: 2 }}>
-                  {'★★★★★'.split('').map((s, i) => (
-                    <span key={`star-${i}`} style={{ color: T.amber, fontSize: 13 }}>{s}</span>
-                  ))}
+                    {'★★★★★'.split('').map((s, i) => (
+                      <span key={`star-${s}-${i}`} style={{ color: T.amber, fontSize: 13 }}>{s}</span>
+                    ))}
                 </div>
                 <p style={{ fontSize: 13.5, color: T.t1, lineHeight: 1.65, marginBottom: 18 }}>
                   &ldquo;{t.quote}&rdquo;
@@ -1440,7 +1440,7 @@ function ResultsView({
                 </svg>
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                   <div style={{ fontSize: 26, fontWeight: 900, color: T.t1, fontFamily: T.fDisplay, lineHeight: 1 }}>{SCORE}</div>
-                  <div style={{ fontSize: 9, color: T.t3, marginTop: 1 }}>/100</div>
+                  <div style={{ fontSize: 12, color: T.t3, marginTop: 1 }}>/100</div>
                 </div>
               </div>
               <div>
@@ -1478,7 +1478,7 @@ function ResultsView({
               <div className='itinerary-stagger' style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
                 {(tripSummary.length > 0 ? tripSummary : [{ l: 'Status', v: errorMessage ? 'No live analysis returned' : 'Waiting for parsed itinerary details' }]).map(f => (
                   <div key={f.l}>
-                    <div style={{ fontSize: 9.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: T.t4 }}>{f.l}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: T.t4 }}>{f.l}</div>
                     <div style={{ fontSize: 12.5, color: T.t1, marginTop: 2, fontFamily: T.fMono }}>{f.v}</div>
                   </div>
                 ))}

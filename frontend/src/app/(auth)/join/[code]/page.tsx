@@ -62,6 +62,7 @@ export default function JoinPage() {
     async function validate() {
       try {
         const res = await fetch(`/api/auth/validate-code/${encodeURIComponent(code)}`, {
+          cache: 'no-store',
           credentials: 'include',
           cache: 'no-store',
         });

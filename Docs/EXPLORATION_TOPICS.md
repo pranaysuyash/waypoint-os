@@ -657,7 +657,37 @@ These are **blocking** for moving from notebooks to real implementation.
 
 ---
 
-## Recently Completed
+### 21. UI/UX Affordances 🟢
+**Status**: Proposed — Research not started
+
+**Overview**: Systematic treatment of affordances as an HCI concept — how UI elements signal their possible actions (perceived, hidden, false, metaphorical affordances) and how the Travel Agency Agent UI can be audited and improved against these principles.
+
+**Key Questions**:
+- What types of affordances apply to travel agency operational software? (perceived, hidden, false, pattern, metaphorical)
+- Where does the current UI have false affordances (elements that look actionable but aren't) or hidden affordances (actions that exist but can't be discovered)?
+- How do we audit affordances systematically? (cognitive walkthrough, heuristic evaluation, Norman's principles)
+- What are the signifier patterns for AI-generated content vs human-verified content?
+- How do affordances differ for the 4 personas? (Owner, Agent, Junior, Traveler)
+- What cross-platform affordance issues exist? (hover-only on desktop vs touch on mobile)
+- How do we design affordances for AI-stateful UI? (processing, draft, needs-review, approved — each with different action possibilities)
+
+**Research Areas**:
+- Don Norman's affordance framework (The Design of Everyday Things)
+- Hartson's taxonomy: cognitive, physical, sensory, functional affordances
+- Nielsen's 10 usability heuristics (especially visibility of system status, match with real world)
+- Signifier patterns for AI state visibility
+- False affordance detection methodology
+- Hidden affordance discovery (hover-only controls, right-click menus)
+- Cross-device affordance mapping (desktop hover → touch tap)
+- Platform convention affordances (system UI patterns users already know)
+- Affordance audit methodology for CRMs/operational tools
+- Travel agency CRM affordance patterns (competitor analysis)
+
+**Deliverable**: Affordance audit framework + annotated UI findings + design guidelines per persona
+
+**Related Topics**: UX Anti-Patterns, DATA_CAPTURE_UI_UX_AUDIT, Real-World Validation, DESIGN_2D_PRIORITY_MODEL
+
+---
 
 - [x] Notebook 01 implementation review
 - [x] Notebook 02 implementation review
