@@ -15,9 +15,7 @@ vi.mock("@/stores/workbench", () => ({
 }));
 
 vi.mock("@/contexts/TripContext", () => ({
-  useTripContext: () => {
-    throw new Error("Context not available");
-  },
+  useTripContext: () => null,
 }));
 
 describe("DecisionPanel with SuitabilitySignal Integration", () => {

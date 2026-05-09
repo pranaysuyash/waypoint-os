@@ -272,16 +272,19 @@ export default function HomePage() {
               <div className={styles.mockupTripTitle}>Italy Honeymoon <span className={styles.mockupNew}>New</span></div>
               <div className={styles.mockupTripSub}>Arnab Couri &amp; Puja</div>
               <div className={styles.mockupMetaGrid}>
-                {[
-                  ['Channel','Website'],['Traveler','Jessica &amp; Michael'],
-                  ['Travel window','Sep 7 – Sep 18'],['Budget','$8,500 – $12,000'],
-                  ['Travel style','Romantic, Relaxed, Culture'],['Lead score','High'],
-                ].map(([k,v]) => (
-                  <div key={k} className={styles.mockupMetaRow}>
-                    <span dangerouslySetInnerHTML={{ __html: k }} />
-                    <strong dangerouslySetInnerHTML={{ __html: v }} />
-                  </div>
-                ))}
+                  {([
+                    ['Channel','Website'],
+                    ['Traveler','Jessica & Michael'],
+                    ['Travel window','Sep 7 – Sep 18'],
+                    ['Budget','$8,500 – $12,000'],
+                    ['Travel style','Romantic, Relaxed, Culture'],
+                    ['Lead score','High'],
+                  ] as const).map(([k,v]) => (
+                    <div key={k} className={styles.mockupMetaRow}>
+                      <span>{k}</span>
+                      <strong>{v}</strong>
+                    </div>
+                  ))}
               </div>
             </div>
             <div className={styles.mockupRight}>

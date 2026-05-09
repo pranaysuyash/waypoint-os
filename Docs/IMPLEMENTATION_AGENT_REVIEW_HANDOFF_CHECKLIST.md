@@ -51,7 +51,33 @@ If a doc is superseded by a newer dated version, prefer the latest dated version
 
 ---
 
-## 4) Standard review output format (always)
+## 4) Historical handoff freshness check (required)
+
+Before turning any prior handoff, phase plan, external review, or model-generated task list into implementation work:
+
+1. Treat prior handoffs as historical evidence, not authority.
+2. Verify the claimed current state against the live codebase.
+3. Classify each relevant prior item as:
+   - `done`
+   - `still valid`
+   - `partially valid`
+   - `stale / superseded`
+   - `needs redesign`
+4. If the app has evolved, update the requirements before assigning implementation work.
+5. Prefer current product/business value over mechanically completing an old checklist.
+6. Do not implement component inventory, broad refactors, or infrastructure work only because an old handoff listed them.
+7. Convert the refreshed plan into atomic, verifiable task packages.
+
+For frontend/design-system work specifically:
+
+- New shared components must either be adopted in a real workflow or explicitly documented as foundational.
+- Design primitives should encode business meaning where applicable, not generic styling only.
+- Large refactors must be characterization-first: lock current behavior and call sites before extraction.
+- Token cleanup should happen through shared primitives and targeted adoption before broad CSS rewrites.
+
+---
+
+## 5) Standard review output format (always)
 
 ### A. Review verdict
 - One-line status (e.g., `B+ foundation, hardening required`).
@@ -76,7 +102,7 @@ For each task include:
 
 ---
 
-## 5) Autonomous behavior policy (no repetitive asking)
+## 6) Autonomous behavior policy (no repetitive asking)
 
 By default, do **not** ask the user to restate process preferences for review/handoff.
 Proceed using this checklist unless one of these blockers exists:
@@ -89,7 +115,7 @@ If blocked, ask one concise clarification question and continue.
 
 ---
 
-## 6) Task proposal quality bar (implementation-agent handoff)
+## 7) Task proposal quality bar (implementation-agent handoff)
 
 Every proposed task must be:
 - **Atomic**: can be completed and verified independently.
@@ -101,7 +127,7 @@ Prefer a sequence of 2–5 atomic tasks over one large ambiguous task.
 
 ---
 
-## 7) Checklist completion marker
+## 8) Checklist completion marker
 
 When done, include this confirmation line in the review response:
 

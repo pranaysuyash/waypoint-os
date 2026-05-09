@@ -95,7 +95,7 @@ describe("BookingExecutionPanel", () => {
     });
   });
 
-  it("shows generate button and calls generate endpoint", async () => {
+  it("shows generate button and calls generate endpoint at booking stage", async () => {
     const user = userEvent.setup();
     vi.mocked(api.listBookingTasks).mockResolvedValue({
       ok: true,
@@ -109,13 +109,39 @@ describe("BookingExecutionPanel", () => {
       reconciled: [],
     });
 
-    render(<BookingExecutionPanel tripId="trip-1" />);
+    render(<BookingExecutionPanel tripId="trip-1" stage="booking" />);
 
     const btn = await screen.findByRole("button", { name: /generate \/ reconcile/i });
-    expect(btn).toBeInTheDocument();
+    expect(btn).toBeEnabled();
 
     await user.click(btn);
     expect(api.generateBookingTasks).toHaveBeenCalledWith("trip-1");
+  });
+
+  it("disables generate button outside proposal/booking stage", async () => {
+    vi.mocked(api.listBookingTasks).mockResolvedValue({
+      ok: true,
+      tasks: [],
+      summary: emptySummary,
+    });
+
+    render(<BookingExecutionPanel tripId="trip-1" stage="intake" />);
+
+    const btn = await screen.findByRole("button", { name: /generate \/ reconcile/i });
+    expect(btn).toBeDisabled();
+  });
+
+  it("disables generate button when stage is undefined", async () => {
+    vi.mocked(api.listBookingTasks).mockResolvedValue({
+      ok: true,
+      tasks: [],
+      summary: emptySummary,
+    });
+
+    render(<BookingExecutionPanel tripId="trip-1" />);
+
+    const btn = await screen.findByRole("button", { name: /generate \/ reconcile/i });
+    expect(btn).toBeDisabled();
   });
 
   it("shows blocked badge for blocked tasks", async () => {

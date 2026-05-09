@@ -1,6 +1,6 @@
 # Session Context
 
-- Generated: 2026-05-08T19:41:38Z
+- Generated: 2026-05-09T04:34:51Z
 - Project: `travel_agency_agent`
 - Provider: `local`
 - Model: `BAAI/bge-m3`
@@ -17,7 +17,7 @@ _Search timed out. Retry when the retrieval store is less busy._
 ### Project Management Workflow
 - Collection: `projects_proj_travel_agency_agent`
 - Query: `project management workflow for travel_agency_agent`
-_Search timed out. Retry when the retrieval store is less busy._
+_Project retrieval store is busy. Try again in a minute._
 
 ### Known Issues and Worklogs
 - Collection: `projects_proj_travel_agency_agent`
@@ -27,8 +27,3 @@ _Search timed out. Retry when the retrieval store is less busy._
 ### Prompts and Guidelines
 - Collection: `projects_proj_travel_agency_agent`
 - Query: `prompts and guidelines for travel_agency_agent`
-_Search timed out. Retry when the retrieval store is less busy._
-
-### System Learning Graph
-- Collection: `projects_proj_travel_agency_agent`
-- Query: `knowledge graph memory learning feedback loops autoresearch semantic taste graph for travel_agency_agent`

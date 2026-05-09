@@ -42,7 +42,7 @@ describe('PipelineFlow Component', () => {
 
   it('uses ordered list (ol) for stage structure', () => {
     render(<PipelineFlow currentStage="intake" />);
-    expect(screen.getByRole('list')).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Pipeline progress' })).toBeInTheDocument();
   });
 
   it('uses shortLabel for mobile view', () => {

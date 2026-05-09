@@ -38,10 +38,7 @@ const BUCKET_DISPLAY: Record<string, string> = {
 };
 
 export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPanelProps) {
-  let context;
-  try {
-    context = useTripContext();
-  } catch (e) {}
+  const context = useTripContext({ optional: true });
 
   const trip = propTrip || context?.trip || null;
   const tripId = propTripId || trip?.id || context?.tripId || "";

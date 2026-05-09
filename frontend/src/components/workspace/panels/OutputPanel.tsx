@@ -22,13 +22,7 @@ interface OutputPanelProps {
  * Wave 8 adds review controls and delivery actions.
  */
 export default function OutputPanel({ trip: propTrip, tripId: propTripId }: OutputPanelProps) {
-  // Try to get trip from context if prop not provided
-  let context;
-  try {
-    context = useTripContext();
-  } catch (e) {
-    // Silently continue if context unavailable
-  }
+  const context = useTripContext({ optional: true });
 
   const trip = propTrip || context?.trip || null;
   const tripId = propTripId || trip?.id || context?.tripId || "";

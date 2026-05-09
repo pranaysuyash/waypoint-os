@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 120,
+  "openapi_path_count": 121,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -114,6 +114,7 @@
     "/trips/{trip_id}/pending-booking-data",
     "/trips/{trip_id}/pending-booking-data/accept",
     "/trips/{trip_id}/pending-booking-data/reject",
+    "/trips/{trip_id}/reassess",
     "/trips/{trip_id}/reassign",
     "/trips/{trip_id}/review/action",
     "/trips/{trip_id}/snooze",

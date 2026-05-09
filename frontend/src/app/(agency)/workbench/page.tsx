@@ -39,6 +39,7 @@ import type { WorkbenchStore, DraftStatus, SaveState } from '@/stores/workbench'
 import { ErrorBoundary } from '@/components/error-boundary';
 import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { RunProgressPanel } from './RunProgressPanel';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 const IntakeTab = dynamic(() => import('./IntakeTab'));
 const PacketTab = dynamic(() => import('./PacketTab'));
@@ -356,6 +357,7 @@ function WorkbenchContent() {
   const { mutate: saveTrip, isSaving } = useUpdateTrip();
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
   // Ensure a draft exists before processing — creates one if needed.
   // Returns the draft_id to use, or null if there's no meaningful content.
@@ -1034,7 +1036,7 @@ function WorkbenchContent() {
             )}
             <button
               type='button'
-              onClick={handleReset}
+              onClick={() => setIsResetDialogOpen(true)}
               className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg font-medium hover:bg-[#21262d] transition-colors'
               aria-label='Reset pipeline'
             >
@@ -1103,6 +1105,16 @@ function WorkbenchContent() {
           onClose={() => setPanelOpen('integrity', false)}
         />
       </Suspense>
+
+      <ConfirmDialog
+        isOpen={isResetDialogOpen}
+        onClose={() => setIsResetDialogOpen(false)}
+        onConfirm={handleReset}
+        title="Reset Pipeline"
+        message="This will clear the current workbench state and all processing results. Draft data will not be affected."
+        confirmLabel="Reset"
+        variant="danger"
+      />
     </div>
   );
 }

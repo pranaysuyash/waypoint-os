@@ -118,6 +118,7 @@ async def create_booking_task(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
+    logger.info("task created: id=%s type=%s source=agent_created by=%s", task.id, task.task_type, membership.user_id)
     return {"ok": True, "task": _task_to_dict(task)}
 
 
@@ -141,6 +142,10 @@ async def generate_booking_tasks(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
+    logger.info(
+        "tasks generated: trip=%s created=%d skipped=%d reconciled=%d by=%s",
+        trip_id, len(result.created), len(result.skipped), len(result.reconciled), membership.user_id,
+    )
     return {
         "ok": True,
         "created": [_task_to_dict(t) for t in result.created],
@@ -175,6 +180,7 @@ async def update_booking_task(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
+    logger.info("task updated: id=%s type=%s fields=%s", task.id, task.task_type, ",".join(data.keys()))
     return {"ok": True, "task": _task_to_dict(task)}
 
 
@@ -196,6 +202,7 @@ async def complete_booking_task(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
+    logger.info("task completed: id=%s type=%s by=%s", task.id, task.task_type, membership.user_id)
     return {"ok": True, "task": _task_to_dict(task)}
 
 
@@ -216,4 +223,5 @@ async def cancel_booking_task(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
+    logger.info("task cancelled: id=%s type=%s", task.id, task.task_type)
     return {"ok": True, "task": _task_to_dict(task)}

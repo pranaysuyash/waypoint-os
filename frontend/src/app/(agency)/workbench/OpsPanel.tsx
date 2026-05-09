@@ -1124,7 +1124,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
       </div>
 
       {/* Booking execution tasks (Phase 5A) */}
-      {trip?.id && <BookingExecutionPanel tripId={trip.id} />}
+      {trip?.id && <BookingExecutionPanel tripId={trip.id} stage={stage ?? undefined} />}
     </div>
   );
 }

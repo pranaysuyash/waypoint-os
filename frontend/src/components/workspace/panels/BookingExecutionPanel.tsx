@@ -48,9 +48,12 @@ const PRIORITY_BADGE: Record<string, string> = {
 
 interface BookingExecutionPanelProps {
   tripId: string;
+  stage?: string;
 }
 
-export default function BookingExecutionPanel({ tripId }: BookingExecutionPanelProps) {
+const GENERATE_ALLOWED_STAGES = new Set(["proposal", "booking"]);
+
+export default function BookingExecutionPanel({ tripId, stage }: BookingExecutionPanelProps) {
   const [tasks, setTasks] = useState<BookingTask[]>([]);
   const [summary, setSummary] = useState<BookingTaskSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,7 +78,10 @@ export default function BookingExecutionPanel({ tripId }: BookingExecutionPanelP
     fetchTasks();
   }, [fetchTasks]);
 
+  const canGenerate = stage ? GENERATE_ALLOWED_STAGES.has(stage) : false;
+
   const handleGenerate = useCallback(async () => {
+    if (!canGenerate) return;
     setGenerating(true);
     setError(null);
     setGenResult(null);
@@ -88,7 +94,7 @@ export default function BookingExecutionPanel({ tripId }: BookingExecutionPanelP
     } finally {
       setGenerating(false);
     }
-  }, [tripId, fetchTasks]);
+  }, [tripId, fetchTasks, canGenerate]);
 
   const handleComplete = useCallback(
     async (taskId: string) => {
@@ -169,7 +175,7 @@ export default function BookingExecutionPanel({ tripId }: BookingExecutionPanelP
           )}
           <button
             onClick={handleGenerate}
-            disabled={generating}
+            disabled={generating || !canGenerate}
             className="flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[#1f6feb] text-white hover:bg-[#388bfd] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {generating ? (

@@ -23,9 +23,12 @@ export function TripContextProvider({ value, children }: TripContextProviderProp
   return <TripContext.Provider value={value}>{children}</TripContext.Provider>;
 }
 
-export function useTripContext(): TripContextValue {
+export function useTripContext(): TripContextValue;
+export function useTripContext(opts: { optional: true }): TripContextValue | null;
+export function useTripContext(opts?: { optional?: boolean }): TripContextValue | null {
   const context = useContext(TripContext);
   if (!context) {
+    if (opts?.optional) return null;
     throw new Error("useTripContext must be used within TripContextProvider");
   }
   return context;

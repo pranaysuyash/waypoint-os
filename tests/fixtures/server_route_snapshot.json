@@ -1,5 +1,5 @@
 {
-  "route_count": 137,
+  "route_count": 138,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -1036,6 +1036,14 @@
     {
       "path": "/trips/{trip_id}/pending-booking-data/reject",
       "name": "reject_pending_booking_data",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/trips/{trip_id}/reassess",
+      "name": "reassess_trip",
       "methods": [
         "POST"
       ],

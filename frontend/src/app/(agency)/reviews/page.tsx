@@ -18,37 +18,16 @@ import {
 import { useReviews } from '@/hooks/useGovernance';
 import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { getTripRoute } from '@/lib/routes';
+import { StatusBadge } from '@/components/ui/status-badge';
 import type { TripReview, ReviewStatus, RiskFlag } from '@/types/governance';
 
-// ============================================================================
-// COMPONENTS
-// ============================================================================
-
-const StatusBadge = memo(function StatusBadge({ status }: { status: ReviewStatus }) {
-  const styles = {
-    pending:         { bg: 'rgba(210,153,34,0.12)', color: '#d29922', label: 'Pending Review' },
-    revision_needed: { bg: 'rgba(170,70,20,0.12)',  color: '#e36f2f', label: 'Revision Needed' },
-    approved:        { bg: 'rgba(63,185,80,0.12)',  color: '#3fb950', label: 'Approved' },
-    rejected:        { bg: 'rgba(248,81,73,0.12)',   color: '#f85149', label: 'Rejected' },
-    escalated:       { bg: 'rgba(163,113,247,0.12)', color: '#a371f7', label: 'Escalated' },  // purple, distinct from amber/blue
-  };
-
-  const style = styles[status];
-
-  return (
-    <span
-      className='inline-flex items-center gap-1 px-2 py-1 rounded-md text-ui-xs font-medium'
-      style={{ background: style.bg, color: style.color }}
-    >
-      {status === 'pending' && <Clock className='w-3 h-3' />}
-      {status === 'revision_needed' && <RefreshCw className='w-3 h-3' />}
-      {status === 'approved' && <CheckCircle className='w-3 h-3' />}
-      {status === 'rejected' && <XCircle className='w-3 h-3' />}
-      {status === 'escalated' && <AlertTriangle className='w-3 h-3' />}
-      {style.label}
-    </span>
-  );
-});
+const REVIEW_STATUS_MAP = {
+  pending:         { label: 'Pending Review',   color: '#d29922', icon: Clock },
+  revision_needed: { label: 'Revision Needed',  color: '#e36f2f', icon: RefreshCw },
+  approved:        { label: 'Approved',         color: '#3fb950', icon: CheckCircle },
+  rejected:        { label: 'Rejected',         color: '#f85149', icon: XCircle },
+  escalated:       { label: 'Escalated',        color: '#a371f7', icon: AlertTriangle },
+};
 
 const RiskFlagBadge = memo(function RiskFlagBadge({ flag }: { flag: RiskFlag }) {
   /* one colour per flag so identical flags are identical and distinct flags are distinct */
@@ -101,7 +80,7 @@ const ReviewCard = memo(function ReviewCard({
           <div className='flex items-center gap-2 mb-1'>
             {isUrgent && <AlertTriangle className='w-4 h-4 text-[#f85149] shrink-0' />}
             <span className='text-ui-sm text-[#8b949e] font-mono'>{review.tripReference}</span>
-            <StatusBadge status={review.status} />
+            <StatusBadge status={review.status} map={REVIEW_STATUS_MAP} />
           </div>
           
           <h3 className='text-ui-base font-semibold text-[#e6edf3] mb-1'>

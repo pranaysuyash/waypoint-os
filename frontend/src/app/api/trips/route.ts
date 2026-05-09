@@ -15,10 +15,11 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const view = searchParams.get("view");
 
-    // Strip our custom param before forwarding to spine_api
-    const forwardParams = new URLSearchParams(searchParams.toString());
-    forwardParams.delete("view");
-    const query = forwardParams.toString();
+    // Build a clean query string, filtering out frontend-only params
+    const query = Array.from(searchParams.entries())
+      .filter(([key]) => key !== "view")
+      .map(([key, val]) => `${encodeURIComponent(key)}=${encodeURIComponent(val)}`)
+      .join("&");
     const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/trips${query ? `?${query}` : ""}`;
 
     const response = await fetch(spineApiUrl, bffFetchOptions(request, "GET"));

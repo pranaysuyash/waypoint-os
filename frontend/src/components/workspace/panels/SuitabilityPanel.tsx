@@ -15,6 +15,7 @@ import React, { useState, useCallback } from 'react';
 import { AlertTriangle, AlertCircle } from 'lucide-react';
 import { OverrideModal, OverrideRequest } from '../modals/OverrideModal';
 import { submitOverride } from '@/lib/api-client';
+import { toast } from '@/lib/toast-store';
 
 export interface SuitabilityFlag {
   flag: string;
@@ -44,7 +45,6 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
     isOpen: boolean;
     flag?: SuitabilityFlag;
   }>({ isOpen: false });
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [pendingOverride, setPendingOverride] = useState<string | null>(null);
 
   if (flags.length === 0) {
@@ -80,7 +80,7 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
   const handleSubmitOverride = useCallback(
     async (request: OverrideRequest) => {
       if (!tripId) {
-        setToast({ message: "Trip ID required for override", type: "error" });
+        toast('Trip ID required for override', 'error');
         return;
       }
 
@@ -89,15 +89,14 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
         const response = await submitOverride(tripId, request);
         
         if (response.ok) {
-          setToast({ message: "Override recorded successfully", type: "success" });
-          // Mark flag as acknowledged optimistically
+          toast('Override recorded successfully', 'success');
           setAcknowledgedFlags((prev) => new Set(prev).add(request.flag));
         } else {
-          setToast({ message: "Failed to record override", type: "error" });
+          toast('Failed to record override', 'error');
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to record override";
-        setToast({ message, type: "error" });
+        const message = error instanceof Error ? error.message : 'Failed to record override';
+        toast(message, 'error');
         throw error;
       } finally {
         setPendingOverride(null);
@@ -125,19 +124,6 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
 
   return (
     <div className="space-y-4 p-4">
-      {/* Toast Notification */}
-      {toast && (
-        <div
-          className={`p-3 rounded-lg text-ui-sm ${
-            toast.type === 'success'
-              ? 'bg-green-100 text-green-800 border border-green-300'
-              : 'bg-red-100 text-red-800 border border-red-300'
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
-
       <div className="mb-4">
         <h3 className="text-ui-lg font-semibold text-gray-900">Suitability Assessment</h3>
         <p className="text-ui-sm text-gray-600 mt-1">
