@@ -1,6 +1,5 @@
 """Extraction service: OCR/document extraction with encrypted PII storage."""
 
-import json
 import logging
 import os
 import time
@@ -8,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import Optional, Protocol, Union
 
 from src.extraction.exceptions import ExtractionValidationError
-from src.security.encryption import encrypt, decrypt
+from spine_api.services.private_fields import encrypt_blob, decrypt_blob
 
 logger = logging.getLogger(__name__)
 
@@ -17,30 +16,6 @@ VALID_EXTRACTION_FIELDS = frozenset({
     "nationality", "visa_type", "visa_number", "visa_expiry",
     "insurance_provider", "insurance_policy_number",
 })
-
-
-# ---------------------------------------------------------------------------
-# Encryption helpers (same blob pattern as SQLTripStore)
-# ---------------------------------------------------------------------------
-
-def encrypt_blob(data: dict) -> dict:
-    """Encrypt a JSON dict as a single Fernet token."""
-    if data is None:
-        return None
-    serialized = json.dumps(data, default=str)
-    token = encrypt(serialized)
-    return {"__encrypted_blob": True, "v": 1, "ciphertext": token}
-
-
-def decrypt_blob(data: dict) -> dict:
-    """Decrypt a blob-encrypted JSON dict back to original form."""
-    if data is None:
-        return None
-    if isinstance(data, dict) and data.get("__encrypted_blob"):
-        token = data.get("ciphertext", "")
-        serialized = decrypt(token)
-        return json.loads(serialized)
-    return data
 
 
 # ---------------------------------------------------------------------------

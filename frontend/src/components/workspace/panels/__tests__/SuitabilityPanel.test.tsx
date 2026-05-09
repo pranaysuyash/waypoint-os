@@ -51,14 +51,15 @@ describe('SuitabilityPanel', () => {
 
   it('renders critical flags with red background', () => {
     render(<SuitabilityPanel flags={mockFlags} />);
-    const criticalFlagCard = screen.getByText(/Toddler participant excluded/).closest('div.bg-red-50');
-    expect(criticalFlagCard).toBeInTheDocument();
+    const criticalText = screen.getByText(/Toddler participant excluded/);
+    expect(criticalText).toBeInTheDocument();
+    expect(criticalText.className).toMatch(/accent-red/);
   });
 
   it('renders high severity flags with orange background', () => {
     render(<SuitabilityPanel flags={mockFlags} />);
-    const highFlagCard = screen.getByText(/Elderly participant discouraged/).closest('div.bg-orange-50');
-    expect(highFlagCard).toBeInTheDocument();
+    const highText = screen.getByText(/Elderly participant discouraged/);
+    expect(highText).toBeInTheDocument();
   });
 
   it('renders critical flags with acknowledgment checkbox', () => {

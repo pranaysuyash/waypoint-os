@@ -40,7 +40,7 @@ export const ViewProfileToggle = memo(function ViewProfileToggle({
             aria-checked={active}
             onClick={() => handleClick(profile)}
             className={cn(
-              'px-2.5 py-1.5 text-[11px] font-medium transition-colors',
+              'px-2.5 py-1.5 text-[12px] font-medium transition-colors',
               active
                 ? 'bg-[#1c2128] text-[#e6edf3]'
                 : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#161b22]',

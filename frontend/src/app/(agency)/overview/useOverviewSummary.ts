@@ -45,11 +45,11 @@ function opsHealthSummary(
   hasError: boolean,
 ): { value: string | number; sub: string } {
   if (hasError) {
-    return { value: '—', sub: 'System check unavailable' };
+    return { value: '-', sub: 'System check unavailable' };
   }
 
   if (isLoading) {
-    return { value: '—', sub: 'Checking...' };
+    return { value: '-', sub: 'Checking…' };
   }
 
   return {
@@ -82,7 +82,7 @@ export function useOverviewSummary() {
         title: 'Trips in Planning',
         value: workspace.total,
         sub: workspace.isLoading
-          ? 'Loading...'
+          ? 'Loading…'
           : `${pluralize(workspace.total, 'trip', 'trips')} being planned`,
         ctaLabel: 'Open trips',
         href: '/trips',
@@ -95,7 +95,7 @@ export function useOverviewSummary() {
         title: 'Lead Inbox',
         value: inbox.total,
         sub: inbox.isLoading
-          ? 'Loading...'
+          ? 'Loading…'
           : `${pluralize(inbox.total, 'new lead', 'new leads')} to review`,
         ctaLabel: inbox.total > 0 ? 'Review leads' : 'Open inbox',
         href: '/inbox',
@@ -108,7 +108,7 @@ export function useOverviewSummary() {
         title: 'Quote Review',
         value: pendingApprovalCount,
         sub: pendingReviews.isLoading
-          ? 'Loading...'
+          ? 'Loading…'
           : `${pluralize(pendingApprovalCount, 'quote', 'quotes')} to review`,
         ctaLabel: pendingApprovalCount > 0 ? 'Review quotes' : 'Open quote review',
         href: '/reviews',
@@ -191,7 +191,7 @@ export function useOverviewSummary() {
 
   const headerSubtitle = useMemo(() => {
     if (workspace.isLoading && inbox.isLoading && pendingReviews.isLoading && unifiedLoading) {
-      return 'Loading...';
+      return 'Loading…';
     }
 
     return `${pluralize(workspace.total, 'trip', 'trips')} in planning · ${pluralize(inbox.total, 'lead', 'leads')} · ${pluralize(pendingApprovalCount, 'quote', 'quotes')} to review`;

@@ -11,7 +11,7 @@ export function PlanningStageGate({ tripId, reason }: PlanningStageGateProps) {
   return (
     <div className="flex min-h-[440px] items-center justify-center p-6">
       <div className="w-full max-w-xl rounded-xl border border-[rgba(210,153,34,0.25)] bg-[rgba(210,153,34,0.05)] p-6">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent-amber)]">
+        <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-[var(--accent-amber)]">
           Planning gate
         </p>
         <h2 className="mt-2 text-ui-xl font-semibold text-[var(--text-primary)]">

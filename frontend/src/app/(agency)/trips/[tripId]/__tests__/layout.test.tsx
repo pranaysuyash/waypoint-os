@@ -56,7 +56,7 @@ describe("trips/[tripId]/layout", () => {
       );
     });
 
-    expect(screen.getByText("Loading workspace...")).toBeInTheDocument();
+    expect(screen.getByText("Loading workspace…")).toBeInTheDocument();
   });
 
   it("renders trip header and stage tabs", () => {

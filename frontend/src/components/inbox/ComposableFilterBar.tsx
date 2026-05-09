@@ -115,7 +115,7 @@ const FilterDropdown = memo(function FilterDropdown({
             className="w-full flex items-center gap-2 px-3 py-2 text-left text-ui-sm text-[#e6edf3] hover:bg-[#1c2128] transition-colors"
           >
             <span
-              className={`inline-flex items-center justify-center w-4 h-4 rounded border ${
+              className={`inline-flex items-center justify-center size-4 rounded border ${
                 active
                   ? 'bg-[#58a6ff] border-[#58a6ff]'
                   : 'border-[#30363d]'
@@ -194,7 +194,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
       {chips.map((chip, i) => (
         <span
           key={`${chip.key}-${chip.value ?? i}`}
-          className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors"
+          className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[12px] font-medium transition-colors"
           style={{
             background: 'rgba(88,166,255,0.10)',
             color: '#58a6ff',
@@ -205,10 +205,10 @@ const ActiveFilterChips = memo(function ActiveFilterChips({
           <button
             type="button"
             onClick={() => onRemove(chip.key, chip.value)}
-            className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full hover:bg-[rgba(88,166,255,0.20)] transition-colors"
+            className="inline-flex items-center justify-center size-3.5 rounded-full hover:bg-[rgba(88,166,255,0.20)] transition-colors"
             aria-label={`Remove ${chip.label}`}
           >
-            <X className="w-2.5 h-2.5" />
+            <X className="size-2.5" />
           </button>
         </span>
       ))}
@@ -263,7 +263,7 @@ const QuickPresets = memo(function QuickPresets({ onApply }: QuickPresetsProps) 
         className="flex items-center gap-1.5 px-3 py-2 bg-[#161b22] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3] hover:border-[#484f58] transition-colors"
       >
         Quick presets
-        <ChevronDown className="w-3.5 h-3.5 text-[#8b949e]" />
+        <ChevronDown className="size-3.5 text-[#8b949e]" />
       </button>
       {open && (
         <div className="absolute top-full right-0 mt-1 w-48 bg-[#0f1115] border border-[#30363d] rounded-lg shadow-xl z-20 py-1">
@@ -373,7 +373,7 @@ export const ComposableFilterBar = memo(function ComposableFilterBar({
           {total !== undefined ? `All (${total})` : 'All'}
         </button>
 
-        {/* Filter dropdowns — skip minValue/maxValue for now (input-based) */}
+        {/* Filter dropdowns - skip minValue/maxValue for now (input-based) */}
         {FILTER_GROUPS.filter((g) => g.multi).map((group) => {
           const selected = filters[group.key] as readonly string[] | undefined;
           const count = selected?.length ?? 0;
@@ -394,7 +394,7 @@ export const ComposableFilterBar = memo(function ComposableFilterBar({
                     {count}
                   </span>
                 )}
-                <ChevronDown className="w-3 h-3" />
+                <ChevronDown className="size-3" />
               </button>
               {openDropdown === group.key && (
                 <FilterDropdown

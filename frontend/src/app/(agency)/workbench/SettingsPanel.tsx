@@ -31,9 +31,9 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           <label className='flex items-center justify-between cursor-pointer group'>
             <div className='flex items-center gap-2'>
               {strict_leakage ? (
-                <ToggleRight className='w-5 h-5 text-[#f85149]' />
+                <ToggleRight className='size-5 text-[#f85149]' />
               ) : (
-                <ToggleLeft className='w-5 h-5 text-[#8b949e] group-hover:text-[#e6edf3]' />
+                <ToggleLeft className='size-5 text-[#8b949e] group-hover:text-[#e6edf3]' />
               )}
               <div>
                 <p className='text-ui-sm text-[#e6edf3]'>Strict Leakage Check</p>
@@ -54,7 +54,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               }`}
             >
               <div
-                className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                className={`absolute top-0.5 size-4 bg-white rounded-full transition-transform ${
                   strict_leakage ? 'left-[18px]' : 'left-0.5'
                 }`}
               />

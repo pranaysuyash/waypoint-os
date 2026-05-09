@@ -327,6 +327,7 @@ try:
     from routers import team as team_router
     from routers import product_b_analytics as product_b_analytics_router
     from routers import booking_tasks as booking_tasks_router
+    from routers import confirmations as confirmations_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -389,6 +390,11 @@ except (ImportError, ValueError):
     _booking_tasks_mod = importlib.util.module_from_spec(_booking_tasks_spec)
     _booking_tasks_spec.loader.exec_module(_booking_tasks_mod)
     booking_tasks_router = _booking_tasks_mod
+
+    _confirmations_spec = importlib.util.spec_from_file_location("routers.confirmations", _base / "routers" / "confirmations.py")
+    _confirmations_mod = importlib.util.module_from_spec(_confirmations_spec)
+    _confirmations_spec.loader.exec_module(_confirmations_mod)
+    confirmations_router = _confirmations_mod
 
 logger = logging.getLogger("spine_api")
 
@@ -637,6 +643,7 @@ app.include_router(followups_router.router)
 app.include_router(team_router.router)
 app.include_router(product_b_analytics_router.router)
 app.include_router(booking_tasks_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(confirmations_router.router, dependencies=[Depends(_auth_or_skip)])
 
 
 def _seed_scenario(agency_id: Optional[str] = None):

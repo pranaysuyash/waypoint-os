@@ -1,5 +1,7 @@
+import { useClientTime } from '@/hooks/useClientDate';
+
 /**
- * ActivityTimeline — Display all trip activities grouped by day with provenance.
+ * ActivityTimeline - Display all trip activities grouped by day with provenance.
  *
  * Shows:
  * - Activities grouped by date (Date headers with activities below)
@@ -98,7 +100,7 @@ function sortDateGroups(
 }
 
 /**
- * ActivityTimeline — Display activities grouped by day with provenance badges
+ * ActivityTimeline - Display activities grouped by day with provenance badges
  */
 export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
   activities,
@@ -136,7 +138,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
 
   if (activities.length === 0) {
     return showEmpty ? (
-      <div className={cn('p-4 text-center text-ui-sm text-gray-500', className)}>
+      <div className={cn('p-4 text-center text-ui-sm text-text-muted', className)}>
         No activities recorded yet.
       </div>
     ) : null;
@@ -146,14 +148,14 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
     <div className={cn('w-full space-y-4', className)}>
       {/* Sort Controls */}
       <div className="flex items-center gap-2 border-b pb-4">
-        <span className="text-ui-xs font-semibold text-gray-600 uppercase">Sort:</span>
+        <span className="text-ui-xs font-semibold text-text-secondary uppercase">Sort:</span>
         <button
           onClick={() => handleSortChange('newest')}
           className={cn(
             'px-3 py-1 rounded text-ui-xs font-medium transition-colors',
             currentSortOrder === 'newest'
-              ? 'bg-blue-100 text-blue-700'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              ? 'bg-[rgba(var(--accent-blue-rgb)/0.18)] text-accent-blue'
+              : 'bg-elevated text-text-secondary hover:bg-elevated'
           )}
         >
           Newest First
@@ -163,8 +165,8 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
           className={cn(
             'px-3 py-1 rounded text-ui-xs font-medium transition-colors',
             currentSortOrder === 'oldest'
-              ? 'bg-blue-100 text-blue-700'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              ? 'bg-[rgba(var(--accent-blue-rgb)/0.18)] text-accent-blue'
+              : 'bg-elevated text-text-secondary hover:bg-elevated'
           )}
         >
           Oldest First
@@ -183,11 +185,11 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
               {/* Date Header */}
               <button
                 onClick={() => toggleDateExpanded(dateKey)}
-                className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 flex items-center justify-between transition-colors"
+                className="w-full px-4 py-3 bg-surface hover:bg-elevated flex items-center justify-between transition-colors"
               >
                 <div className="text-left">
-                  <h3 className="font-semibold text-gray-900">{dateKey}</h3>
-                  <p className="text-ui-xs text-gray-600 mt-1">
+                  <h3 className="font-semibold text-text-primary">{dateKey}</h3>
+                  <p className="text-ui-xs text-text-secondary mt-1">
                     {suggestedCount > 0 && (
                       <span>
                         🤖 {suggestedCount} suggested{suggestedCount !== 1 ? 's' : ''}
@@ -210,17 +212,17 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
                   {dateActivities.map((activity, idx) => (
                     <div
                       key={activity.id || idx}
-                      className="px-4 py-3 hover:bg-blue-50 transition-colors"
+                      className="px-4 py-3 hover:bg-[rgba(var(--accent-blue-rgb)/0.10)] transition-colors"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
-                          <p className="font-medium text-gray-900">{activity.name}</p>
+                          <p className="font-medium text-text-primary">{activity.name}</p>
                           {activity.description && (
-                            <p className="text-ui-sm text-gray-600 mt-1">{activity.description}</p>
+                            <p className="text-ui-sm text-text-secondary mt-1">{activity.description}</p>
                           )}
                           {activity.timestamp && (
-                            <p className="text-ui-xs text-gray-500 mt-1">
-                              {new Date(activity.timestamp).toLocaleTimeString('en-US', {
+                            <p className="text-ui-xs text-text-muted mt-1">
+                              {useClientTime(activity.timestamp, {
                                 hour: '2-digit',
                                 minute: '2-digit',
                               })}

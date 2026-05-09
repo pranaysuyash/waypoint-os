@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useWorkbenchStore } from '@/stores/workbench';
+import { useClientDateTime } from '@/hooks/useClientDate';
 import {
   type Trip,
   type BookingData,
@@ -32,6 +33,8 @@ import {
 } from '@/lib/api-client';
 import { ExtractionHistoryPanel } from '@/components/workspace/panels/ExtractionHistoryPanel';
 import BookingExecutionPanel from '@/components/workspace/panels/BookingExecutionPanel';
+import ConfirmationPanel from '@/components/workspace/panels/ConfirmationPanel';
+import ExecutionTimelinePanel from '@/components/workspace/panels/ExecutionTimelinePanel';
 import type { ReadinessAssessment } from '@/types/spine';
 
 interface OpsPanelProps {
@@ -49,7 +52,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
     (result_validation as { readiness?: ReadinessAssessment } | null)?.readiness ??
     (trip?.validation as { readiness?: ReadinessAssessment } | null)?.readiness;
 
-  // Booking data — local state only, not in global store
+  // Booking data - local state only, not in global store
   const [bookingData, setBookingData] = useState<BookingData | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [bookingDataSource, setBookingDataSource] = useState<string | null>(null);
@@ -94,7 +97,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
     travelerId: string;
     selectedFields: string[];
   }>>({});
-  // Conflict state — shown until user confirms overwrite
+  // Conflict state - shown until user confirms overwrite
   const [extractionConflicts, setExtractionConflicts] = useState<Record<string, Array<{
     field_name: string;
     existing_value: string;
@@ -130,13 +133,13 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
 
     let cancelled = false;
     (async () => {
-      // Fetch link status (no URL — just has_active_token + expires_at)
+      // Fetch link status (no URL - just has_active_token + expires_at)
       setLinkLoading(true);
       try {
         const status = await getCollectionLink(trip.id);
         if (!cancelled) setLinkStatus(status);
       } catch {
-        // No active link is fine — 404 expected
+        // No active link is fine - 404 expected
       } finally {
         if (!cancelled) setLinkLoading(false);
       }
@@ -517,10 +520,10 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
         </div>
       )}
 
-      {/* Pending submission review — shown when customer has submitted data */}
+      {/* Pending submission review - shown when customer has submitted data */}
       {pendingLoading && (
         <div data-testid="ops-pending-loading" className="border border-[#30363d] rounded-lg p-4">
-          <span className="text-xs text-[#8b949e]">Checking for customer submissions...</span>
+          <span className="text-xs text-[#8b949e]">Checking for customer submissions…</span>
         </div>
       )}
 
@@ -547,12 +550,12 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
               </tr>
             </thead>
             <tbody>
-              {pendingData.travelers.map((t, i) => (
-                <tr key={i} className="text-[#e6edf3]">
+              {pendingData.travelers.map((t) => (
+                <tr key={t.traveler_id} className="text-[#e6edf3]">
                   <td className="py-1">{t.traveler_id}</td>
                   <td className="py-1">{t.full_name}</td>
                   <td className="py-1">{t.date_of_birth}</td>
-                  <td className="py-1">{t.passport_number || '—'}</td>
+                  <td className="py-1">{t.passport_number || '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -570,7 +573,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
               onClick={handleAccept}
               disabled={accepting}
             >
-              {accepting ? 'Accepting...' : 'Accept'}
+              {accepting ? 'Accepting…' : 'Accept'}
             </button>
             <button
               data-testid="ops-reject-btn"
@@ -578,7 +581,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
               onClick={handleReject}
               disabled={rejecting}
             >
-              {rejecting ? 'Rejecting...' : 'Reject'}
+              {rejecting ? 'Rejecting…' : 'Reject'}
             </button>
           </div>
         </div>
@@ -602,7 +605,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
           )}
         </div>
 
-        {loading && <span className="text-xs text-[#8b949e]">Loading...</span>}
+        {loading && <span className="text-xs text-[#8b949e]">Loading…</span>}
 
         {conflict && (
           <div data-testid="ops-conflict" className="mb-3 text-xs text-amber-400">
@@ -632,12 +635,12 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
                 </tr>
               </thead>
               <tbody>
-                {bookingData.travelers.map((t, i) => (
-                  <tr key={i} className="text-[#e6edf3]">
+                {bookingData.travelers.map((t) => (
+                  <tr key={t.traveler_id} className="text-[#e6edf3]">
                     <td className="py-1">{t.traveler_id}</td>
                     <td className="py-1">{t.full_name}</td>
                     <td className="py-1">{t.date_of_birth}</td>
-                    <td className="py-1">{t.passport_number || '—'}</td>
+                    <td className="py-1">{t.passport_number || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -673,7 +676,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
         {editing && (
           <div data-testid="ops-booking-editor" className="space-y-3">
             {editTravelers.map((t, i) => (
-              <div key={i} className="border border-[#30363d] rounded p-3 space-y-2">
+              <div key={`traveler-${t.traveler_id || i}`} className="border border-[#30363d] rounded p-3 space-y-2">
                 <div className="text-xs text-[#8b949e]">Traveler {i + 1}</div>
                 <div className="grid grid-cols-2 gap-2">
                   <input
@@ -746,7 +749,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
                 onClick={handleSave}
                 disabled={saving}
               >
-                {saving ? 'Saving...' : 'Save'}
+                {saving ? 'Saving…' : 'Save'}
               </button>
               <button
                 className="text-xs px-3 py-1 rounded bg-[#30363d] text-[#e6edf3] hover:bg-[#484f58]"
@@ -759,7 +762,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
         )}
       </div>
 
-      {/* Collection link generator — only at proposal/booking stage */}
+      {/* Collection link generator - only at proposal/booking stage */}
       {canGenerateLink && (
         <div data-testid="ops-collection-link" className="border border-[#30363d] rounded-lg p-4">
           <h4 className="text-sm font-medium text-[#e6edf3] mb-3">Customer Collection Link</h4>
@@ -769,15 +772,15 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
           )}
 
           {linkLoading && (
-            <span className="text-xs text-[#8b949e]">Loading...</span>
+            <span className="text-xs text-[#8b949e]">Loading…</span>
           )}
 
-          {/* No URL available — show generate button (or "active link exists" indicator) */}
+          {/* No URL available - show generate button (or "active link exists" indicator) */}
           {!linkLoading && !linkInfo && (
             <div>
               {linkStatus?.has_active_token && (
                 <div data-testid="ops-link-active-hint" className="mb-3 text-xs text-[#8b949e]">
-                  Active link exists (expires {linkStatus.expires_at ? new Date(linkStatus.expires_at).toLocaleString() : 'unknown'}).
+                  Active link exists (expires {linkStatus.expires_at ? useClientDateTime(linkStatus.expires_at) : 'unknown'}).
                   Generating a new link will revoke the old one.
                 </div>
               )}
@@ -787,7 +790,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
                 onClick={handleGenerateLink}
                 disabled={linkGenerating}
               >
-                {linkGenerating ? 'Generating...' : 'Generate New Customer Link'}
+                {linkGenerating ? 'Generating…' : 'Generate New Customer Link'}
               </button>
             </div>
           )}
@@ -812,7 +815,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
                 </button>
               </div>
               <div className="text-xs text-[#8b949e] mb-3">
-                Expires: {new Date(linkInfo.expires_at).toLocaleString()}
+                Expires: {useClientDateTime(linkInfo.expires_at)}
               </div>
               <div className="flex gap-2">
                 <button
@@ -860,7 +863,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
                 onClick={handleDocUpload}
                 disabled={docUploading}
               >
-                {docUploading ? 'Uploading...' : 'Upload'}
+                {docUploading ? 'Uploading…' : 'Upload'}
               </button>
             </div>
           )}
@@ -871,7 +874,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
         )}
 
         {docsLoading && (
-          <span className="text-xs text-[#8b949e]">Loading documents...</span>
+          <span className="text-xs text-[#8b949e]">Loading documents…</span>
         )}
 
         {!docsLoading && documents.length === 0 && (
@@ -970,7 +973,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
                       onClick={() => handleExtract(doc.id)}
                       disabled={extractingDocId === doc.id}
                     >
-                      {extractingDocId === doc.id ? 'Extracting...' : 'Extract'}
+                      {extractingDocId === doc.id ? 'Extracting…' : 'Extract'}
                     </button>
                   )}
                 </div>
@@ -1013,7 +1016,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
                           />
                           )}
                           <span className="text-[#8b949e] w-32">{f.field_name.replace(/_/g, ' ')}:</span>
-                          <span className="text-[#e6edf3]">{f.value ?? '—'}</span>
+                          <span className="text-[#e6edf3]">{f.value ?? '-'}</span>
                           <span className={`text-[10px] px-1 rounded ${
                             f.confidence >= 0.9 ? 'text-emerald-400' :
                             f.confidence >= 0.7 ? 'text-yellow-400' :
@@ -1043,7 +1046,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
                             <option value="">Select traveler</option>
                             {(bookingData?.travelers ?? []).map((t) => (
                               <option key={t.traveler_id} value={t.traveler_id}>
-                                {t.traveler_id}{t.full_name ? ` — ${t.full_name}` : ''}
+                                {t.traveler_id}{t.full_name ? ` - ${t.full_name}` : ''}
                               </option>
                             ))}
                           </select>
@@ -1068,7 +1071,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
                               }}
                               disabled={extractionAction === doc.id}
                             >
-                              {extractionAction === doc.id ? 'Overwriting...' : 'Apply with overwrite'}
+                              {extractionAction === doc.id ? 'Overwriting…' : 'Apply with overwrite'}
                             </button>
                           </div>
                         )}
@@ -1089,7 +1092,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
                               !(extractionSelections[doc.id]?.selectedFields.length > 0)
                             }
                           >
-                            {extractionAction === doc.id ? 'Applying...' : 'Apply selected'}
+                            {extractionAction === doc.id ? 'Applying…' : 'Apply selected'}
                           </button>
                           <button
                             data-testid={`ops-extraction-reject-btn-${doc.id}`}
@@ -1125,6 +1128,8 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
 
       {/* Booking execution tasks (Phase 5A) */}
       {trip?.id && <BookingExecutionPanel tripId={trip.id} stage={stage ?? undefined} />}
+      {trip?.id && <ConfirmationPanel tripId={trip.id} />}
+      {trip?.id && <ExecutionTimelinePanel tripId={trip.id} />}
     </div>
   );
 }

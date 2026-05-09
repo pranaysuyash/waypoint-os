@@ -40,7 +40,7 @@ function ToastItem({ toast }: { toast: Toast }) {
         borderColor: 'var(--border-default)',
       }}
     >
-      <Icon className="h-4 w-4 mt-0.5 shrink-0" style={{ color }} />
+      <Icon className="size-4 mt-0.5 shrink-0" style={{ color }} />
       <p className="text-ui-sm flex-1" style={{ color: 'var(--text-primary)' }}>
         {toast.message}
       </p>
@@ -49,7 +49,7 @@ function ToastItem({ toast }: { toast: Toast }) {
         className="p-0.5 hover:bg-[var(--bg-elevated)] rounded transition-colors shrink-0"
         aria-label="Dismiss notification"
       >
-        <X className="h-3.5 w-3.5" style={{ color: 'var(--text-muted)' }} />
+        <X className="size-3.5" style={{ color: 'var(--text-muted)' }} />
       </button>
     </div>
   );

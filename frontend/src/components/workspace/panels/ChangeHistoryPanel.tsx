@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { Clock, User, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { useFieldAuditLog } from '@/hooks/useFieldAuditLog';
+import { useClientDate, useClientDateTime } from '@/hooks/useClientDate';
 import { getChangeDescription, formatFieldLabel, getChangeSummary } from '@/types/audit';
 import { useState } from 'react';
 import type { Trip } from '@/lib/api-client';
@@ -51,10 +52,10 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
     return (
       <div className='bg-elevated border border-border-default rounded-xl p-4'>
         <div className='flex items-center gap-2 mb-4'>
-          <Clock className='w-4 h-4 text-text-muted' />
+          <Clock className='size-4 text-text-muted' />
           <h3 className='text-ui-sm font-semibold text-text-primary'>Change History</h3>
         </div>
-        <p className='text-ui-sm text-text-muted'>Loading change history...</p>
+        <p className='text-ui-sm text-text-muted'>Loading change history…</p>
       </div>
     );
   }
@@ -64,7 +65,7 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
       <div className='bg-elevated border border-border-default rounded-xl p-4'>
         <div className='flex items-center justify-between mb-4'>
           <div className='flex items-center gap-2'>
-            <Clock className='w-4 h-4 text-text-muted' />
+            <Clock className='size-4 text-text-muted' />
             <h3 className='text-ui-sm font-semibold text-text-primary'>Change History</h3>
           </div>
           <span className='text-ui-xs text-text-muted'>No changes yet</span>
@@ -80,7 +81,7 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
     <div className='bg-elevated border border-border-default rounded-xl p-4'>
       <div className='flex items-center justify-between mb-4'>
         <div className='flex items-center gap-2'>
-          <Clock className='w-4 h-4 text-text-muted' />
+          <Clock className='size-4 text-text-muted' />
           <h3 className='text-ui-sm font-semibold text-text-primary'>Change History</h3>
           <span className='text-ui-xs bg-[#58a6ff] text-[#0d1117] px-2 py-0.5 rounded-full'>
             {changes.length}
@@ -105,14 +106,14 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
             <span className='text-[var(--ui-text-xs)] text-text-muted uppercase tracking-wide'>Last Edit</span>
             <p className='text-ui-sm font-semibold text-text-primary'>
               {summary.lastChangeAt
-                ? new Date(summary.lastChangeAt).toLocaleDateString()
-                : '—'}
+                ? useClientDate(summary.lastChangeAt)
+                : '-'}
             </p>
           </div>
           <div>
             <span className='text-[var(--ui-text-xs)] text-text-muted uppercase tracking-wide'>Edited By</span>
             <p className='text-ui-sm font-semibold text-text-primary'>
-              {summary.lastChangeBy || '—'}
+              {summary.lastChangeBy || '-'}
             </p>
           </div>
           <div>
@@ -142,16 +143,16 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
                     <p className='text-ui-sm text-text-primary'>{description}</p>
                     <div className='flex items-center gap-3 mt-1 text-ui-xs text-text-muted'>
                       <span className='flex items-center gap-1'>
-                        <User className='w-3 h-3' />
+                        <User className='size-3' />
                         {change.changedByName}
                       </span>
                       <span className='flex items-center gap-1'>
-                        <Clock className='w-3 h-3' />
-                        {new Date(change.timestamp).toLocaleString()}
+                        <Clock className='size-3' />
+                        {useClientDateTime(change.timestamp)}
                       </span>
                       {change.reason && (
                         <span className='flex items-center gap-1 text-accent-blue'>
-                          <FileText className='w-3 h-3' />
+                          <FileText className='size-3' />
                           {change.reason}
                         </span>
                       )}
@@ -162,9 +163,9 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
                     className='text-text-muted hover:text-text-primary flex-shrink-0'
                   >
                     {isExpanded ? (
-                      <ChevronUp className='w-4 h-4' />
+                      <ChevronUp className='size-4' />
                     ) : (
-                      <ChevronDown className='w-4 h-4' />
+                      <ChevronDown className='size-4' />
                     )}
                   </button>
                 </div>

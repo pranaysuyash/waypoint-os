@@ -307,7 +307,7 @@ function UploadCard({
           <textarea
             value={text}
             onChange={e => setText(e.target.value)}
-            placeholder={'Paste your day-by-day plan here…\n\nDay 1: Arrive LAX → London Heathrow (AA100, dep 10:30)\nDay 2: London — check-in The Connaught, walking tour\nDay 3: Paris Eurostar (07:55) — Musée d\'Orsay, Seine dinner\n…'}
+            placeholder={'Paste your day-by-day plan here…\n\nDay 1: Arrive LAX → London Heathrow (AA100, dep 10:30)\nDay 2: London - check-in The Connaught, walking tour\nDay 3: Paris Eurostar (07:55) - Musée d\'Orsay, Seine dinner\n…'}
             style={{
               width: '100%', minHeight: 180, padding: '16px 18px',
               background: 'none', border: 'none', outline: 'none', resize: 'none',
@@ -645,7 +645,7 @@ const SAMPLE_FINDINGS = [
     sev: 'Info', color: T.blue,
     bg: 'rgba(88,166,255,0.05)', border: 'rgba(88,166,255,0.15)',
     label: 'Schengen visa status not confirmed',
-    body: 'Trip includes Paris + Rome. Confirm passport validity — 6 months beyond return date required.',
+    body: 'Trip includes Paris + Rome. Confirm passport validity - 6 months beyond return date required.',
   },
 ];
 
@@ -918,7 +918,7 @@ function UploadView({
                 Real upgrades, not generic warnings
               </h2>
               <p style={{ fontSize: 15, color: T.t2, lineHeight: 1.7, marginBottom: 28, maxWidth: '38ch' }}>
-                Every finding is specific to the plan you already have — the actual route, the exact dates, the specific travelers, and the most useful upgrade points for you or your agent.
+                Every finding is specific to the plan you already have - the actual route, the exact dates, the specific travelers, and the most useful upgrade points for you or your agent.
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {[
@@ -991,7 +991,7 @@ function UploadView({
               A structured brief your advisor can act on
             </h2>
             <p style={{ fontSize: 15, color: T.t2, maxWidth: '44ch', margin: '0 auto', lineHeight: 1.65 }}>
-              Not a vague summary. A scored, categorized, advisor-ready document — shareable with one click.
+              Not a vague summary. A scored, categorized, advisor-ready document - shareable with one click.
             </p>
           </div>
 
@@ -1039,8 +1039,8 @@ function UploadView({
                 </div>
                 <div style={{ fontSize: 11, fontWeight: 600, color: T.amber }}>Needs Attention</div>
                 <div style={{ display: 'flex', gap: 6, marginTop: 12, justifyContent: 'center' }}>
-                  {[{ n: 1, c: T.red }, { n: 2, c: T.amber }, { n: 1, c: T.blue }].map((m, i) => (
-                    <div key={i} style={{ textAlign: 'center' }}>
+                  {[{ n: 1, c: T.red }, { n: 2, c: T.amber }, { n: 1, c: T.blue }].map((m) => (
+                    <div key={`${m.n}-${m.c}`} style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: 14, fontWeight: 800, color: m.c, fontFamily: T.fDisplay }}>{m.n}</div>
                       <div style={{ width: 6, height: 6, borderRadius: '50%', background: m.c, margin: '3px auto 0' }} />
                     </div>
@@ -1050,14 +1050,14 @@ function UploadView({
 
               {/* Summary lines */}
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: T.t1, marginBottom: 4 }}>Europe Summer 2025 — 16-Day Report</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: T.t1, marginBottom: 4 }}>Europe Summer 2025 - 16-Day Report</div>
                 <div style={{ fontSize: 11, color: T.t3, marginBottom: 18 }}>Generated 2026-04-28 · LAX → LHR → CDG → FCO → LAX</div>
 
                 {[
                   { label: 'Duration', value: '16 days · 5 segments · 4 hotels' },
                   { label: 'Travelers', value: '2 adults · no minors' },
-                  { label: 'Insurance', value: 'Not detected — flag for discussion' },
-                  { label: 'Visa', value: 'Schengen — verify 6-month validity' },
+                  { label: 'Insurance', value: 'Not detected - flag for discussion' },
+                  { label: 'Visa', value: 'Schengen - verify 6-month validity' },
                 ].map(row => (
                   <div key={row.label} style={{
                     display: 'flex', alignItems: 'baseline', gap: 10,
@@ -1115,8 +1115,8 @@ function UploadView({
                 borderTop: `2px solid ${t.color}`,
               }}>
                 <div style={{ display: 'flex', marginBottom: 14, gap: 2 }}>
-                  {'★★★★★'.split('').map((s, i) => (
-                    <span key={i} style={{ color: T.amber, fontSize: 13 }}>{s}</span>
+                  {'★★★★★'.split('').map((s) => (
+                    <span key={`star-${s}`} style={{ color: T.amber, fontSize: 13 }}>{s}</span>
                   ))}
                 </div>
                 <p style={{ fontSize: 13.5, color: T.t1, lineHeight: 1.65, marginBottom: 18 }}>
@@ -1230,7 +1230,7 @@ function scoreFromAnalysis(analysis: RunStatusResponse | null): number {
 }
 
 function summaryFromAnalysis(analysis: RunStatusResponse | null): string {
-  if (!analysis) return 'Example report — your score depends on what your plan contains';
+  if (!analysis) return 'Example report - your score depends on what your plan contains';
 
   const decisionState = analysis.decision_state ?? 'unknown';
   const hardBlockers = analysis.hard_blockers?.length ?? 0;
@@ -1685,7 +1685,7 @@ function ResultsView({
                 const severity = index < (analysis?.hard_blockers?.length ?? 0) ? 'Critical' : 'Warning';
                 const c = rSevColor(severity) as keyof typeof rSevBadgeTxt;
                 return (
-                  <div key={`${severity}-${index}-${item}`} style={{
+                  <div key={`${severity}-${item.slice(0, 30)}`} style={{
                     padding: '14px 16px', borderRadius: 12,
                     background: severity === 'Critical' ? 'rgba(248,81,73,0.06)' : 'rgba(210,153,34,0.06)',
                     border: severity === 'Critical' ? '1px solid rgba(248,81,73,0.2)' : '1px solid rgba(210,153,34,0.2)',
@@ -1729,7 +1729,7 @@ function ResultsView({
           <div>
             <div style={{ fontSize: 14, fontWeight: 600, color: T.t1, marginBottom: 4 }}>Working with a travel advisor?</div>
             <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.55, maxWidth: '50ch' }}>
-              Share this report with them directly — or find an advisor who uses Waypoint OS to fix these issues professionally.
+              Share this report with them directly - or find an advisor who uses Waypoint OS to fix these issues professionally.
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>

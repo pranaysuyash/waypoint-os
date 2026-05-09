@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 const dynamicModules: Record<string, ReactNode> = {};
 vi.mock('next/dynamic', () => ({
   default: (loader: { loading: () => ReactNode }) => {
-    // Return a stub that renders nothing — we just test the page shell
+    // Return a stub that renders nothing - we just test the page shell
     return function DynamicStub() {
       return <div data-testid='dynamic-stub' />;
     };

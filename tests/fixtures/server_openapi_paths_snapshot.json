@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 121,
+  "openapi_path_count": 127,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -67,6 +67,12 @@
     "/api/team/members",
     "/api/team/members/{member_id}",
     "/api/team/workload",
+    "/api/trips/{trip_id}/confirmations",
+    "/api/trips/{trip_id}/confirmations/{confirmation_id}",
+    "/api/trips/{trip_id}/confirmations/{confirmation_id}/record",
+    "/api/trips/{trip_id}/confirmations/{confirmation_id}/verify",
+    "/api/trips/{trip_id}/confirmations/{confirmation_id}/void",
+    "/api/trips/{trip_id}/execution-timeline",
     "/api/trips/{trip_id}/timeline",
     "/api/workspace",
     "/api/workspace/codes",

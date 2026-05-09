@@ -84,8 +84,8 @@ function BulkActionsToolbar({
             onClick={() => setShowAssignDropdown(!showAssignDropdown)}
             className='flex items-center gap-1.5 px-3 py-1.5 bg-[#58a6ff] text-[#0d1117] rounded-lg text-ui-sm font-medium hover:bg-[#6eb5ff] transition-colors'
           >
-            <UserPlus className='w-4 h-4' />
-            Assign to...
+            <UserPlus className='size-4' />
+            Assign to…
           </button>
           
           {showAssignDropdown && (
@@ -99,7 +99,7 @@ function BulkActionsToolbar({
                   }}
                   className='w-full flex items-center gap-2 px-3 py-2 text-left text-ui-sm text-[#e6edf3] hover:bg-[#161b22] first:rounded-t-lg last:rounded-b-lg'
                 >
-                  <div className='h-6 w-6 rounded-full bg-[#58a6ff]/20 flex items-center justify-center text-[#58a6ff] text-ui-xs font-bold'>
+                  <div className='size-6 rounded-full bg-[#58a6ff]/20 flex items-center justify-center text-[#58a6ff] text-ui-xs font-bold'>
                     {agent.name.split(' ').map(n => n[0]).join('')}
                   </div>
                   <div>{agent.name}</div>
@@ -113,7 +113,7 @@ function BulkActionsToolbar({
           onClick={onExport}
           className='flex items-center gap-1.5 px-3 py-1.5 bg-[#161b22] text-[#8b949e] rounded-lg text-ui-sm hover:text-[#e6edf3] transition-colors'
         >
-          <Download className='w-4 h-4' />
+          <Download className='size-4' />
           Export
         </button>
       </div>
@@ -316,10 +316,10 @@ export default function InboxPage() {
         
         <div className='flex items-center gap-3 flex-wrap'>
           <div className='relative flex-1 min-w-[180px] max-w-64'>
-            <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8b949e]' />
+            <Search className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[#8b949e]' />
             <input
               type='text'
-              placeholder='Search by customer, destination, or lead ref...'
+              placeholder='Search by customer, destination, or lead ref…'
               value={searchQuery}
               onChange={(e) => updateParams({ q: e.target.value || null, page: '1' })}
               className='w-full pl-9 pr-3 py-2 bg-[#161b22] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3] placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]'
@@ -331,12 +331,12 @@ export default function InboxPage() {
               onClick={() => setShowSortDropdown(!showSortDropdown)}
               className='flex items-center gap-2 px-3 py-2 bg-[#161b22] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3] hover:border-[#484f58] transition-colors'
             >
-              <ArrowUpDown className='w-4 h-4 text-[#8b949e]' />
+              <ArrowUpDown className='size-4 text-[#8b949e]' />
               <span>Sort by {SORT_OPTIONS[sortBy].label}</span>
               {sortDirection === 'asc' ? (
-                <ChevronUp className='w-4 h-4 text-[#8b949e]' />
+                <ChevronUp className='size-4 text-[#8b949e]' />
               ) : (
-                <ChevronDown className='w-4 h-4 text-[#8b949e]' />
+                <ChevronDown className='size-4 text-[#8b949e]' />
               )}
             </button>
 
@@ -354,7 +354,7 @@ export default function InboxPage() {
                             : 'text-[#8b949e] hover:text-[#e6edf3]'
                         }`}
                       >
-                        <ChevronUp className='w-4 h-4' />
+                        <ChevronUp className='size-4' />
                       </button>
                       <button
                         onClick={() => updateParams({ dir: 'desc', page: '1' })}
@@ -364,7 +364,7 @@ export default function InboxPage() {
                             : 'text-[#8b949e] hover:text-[#e6edf3]'
                         }`}
                       >
-                        <ChevronDown className='w-4 h-4' />
+                        <ChevronDown className='size-4' />
                       </button>
                     </div>
                   </div>
@@ -386,7 +386,7 @@ export default function InboxPage() {
                             : 'text-[#e6edf3] hover:bg-[#161b22]'
                         }`}
                       >
-                        <Icon className='w-4 h-4' />
+                        <Icon className='size-4' />
                         <span>{option.label}</span>
                       </button>
                     );
@@ -403,7 +403,7 @@ export default function InboxPage() {
 
           <span className='text-ui-sm text-[#8b949e]'>
           <span className="text-ui-sm text-[#8b949e]">
-          {isLoading ? 'Loading...' : leadCountLabel(inboxTotal)}
+          {isLoading ? 'Loading…' : leadCountLabel(inboxTotal)}
         </span>
           </span>
           <div className='flex items-center gap-2'>
@@ -501,7 +501,7 @@ export default function InboxPage() {
             disabled={currentPage <= 1}
             className='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#30363d] text-ui-xs text-[#e6edf3] disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#484f58] transition-colors'
           >
-            <ChevronLeft className='w-3.5 h-3.5' />
+            <ChevronLeft className='size-3.5' />
             Prev
           </button>
           <button
@@ -511,7 +511,7 @@ export default function InboxPage() {
             className='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#30363d] text-ui-xs text-[#e6edf3] disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#484f58] transition-colors'
           >
             Next
-            <ChevronRight className='w-3.5 h-3.5' />
+            <ChevronRight className='size-3.5' />
           </button>
         </div>
       </div>

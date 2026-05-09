@@ -1,5 +1,5 @@
 {
-  "route_count": 138,
+  "route_count": 146,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -612,6 +612,70 @@
     {
       "path": "/api/team/workload",
       "name": "get_workload_distribution",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/trips/{trip_id}/confirmations",
+      "name": "list_confirmations",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/trips/{trip_id}/confirmations",
+      "name": "create_confirmation",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/trips/{trip_id}/confirmations/{confirmation_id}",
+      "name": "get_confirmation",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/trips/{trip_id}/confirmations/{confirmation_id}",
+      "name": "update_confirmation",
+      "methods": [
+        "PATCH"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/trips/{trip_id}/confirmations/{confirmation_id}/record",
+      "name": "record_confirmation",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/trips/{trip_id}/confirmations/{confirmation_id}/verify",
+      "name": "verify_confirmation",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/trips/{trip_id}/confirmations/{confirmation_id}/void",
+      "name": "void_confirmation",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/trips/{trip_id}/execution-timeline",
+      "name": "get_execution_timeline",
       "methods": [
         "GET"
       ],

@@ -66,11 +66,11 @@ export function UserMenu() {
         aria-haspopup='true'
         aria-label='User menu'
       >
-        <div className='h-6 w-6 rounded-md bg-gradient-to-br from-[var(--accent-blue)] to-[var(--accent-cyan)] flex items-center justify-center text-white text-[var(--ui-text-xs)] font-semibold shrink-0'>
+        <div className='size-6 rounded-md bg-gradient-to-br from-[var(--accent-blue)] to-[var(--accent-cyan)] flex items-center justify-center text-white text-[var(--ui-text-xs)] font-semibold shrink-0'>
           {initials}
         </div>
         <ChevronDown
-          className={`h-3 w-3 text-[var(--text-secondary)] transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`size-3 text-[var(--text-secondary)] transition-transform ${open ? 'rotate-180' : ''}`}
           aria-hidden='true'
         />
       </button>
@@ -92,7 +92,7 @@ export function UserMenu() {
           {agency && (
             <div className='px-3 py-2 border-b border-[var(--border-default)]'>
               <div className='flex items-center gap-1.5'>
-                <Building2 className='h-3 w-3 text-[var(--text-secondary)]' aria-hidden='true' />
+                <Building2 className='size-3 text-[var(--text-secondary)]' aria-hidden='true' />
                 <span className='text-[var(--ui-text-xs)] text-[var(--text-secondary)] truncate'>
                   {agency.name}
                 </span>
@@ -113,7 +113,7 @@ export function UserMenu() {
             className='w-full flex items-center gap-2 px-3 py-1.5 text-[var(--ui-text-sm)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors'
             role='menuitem'
           >
-            <Settings className='h-3.5 w-3.5' aria-hidden='true' />
+            <Settings className='size-3.5' aria-hidden='true' />
             Settings
           </button>
 
@@ -122,7 +122,7 @@ export function UserMenu() {
             className='w-full flex items-center gap-2 px-3 py-1.5 text-[var(--ui-text-sm)] text-[var(--accent-red)] hover:bg-[var(--bg-surface-hover)] transition-colors'
             role='menuitem'
           >
-            <LogOut className='h-3.5 w-3.5' aria-hidden='true' />
+            <LogOut className='size-3.5' aria-hidden='true' />
             Sign out
           </button>
         </div>

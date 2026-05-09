@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     const spineApiData = await response.json();
     let transformedItems = transformSpineTripsResponseToTrips(spineApiData);
 
-    // Server-side view filter — canonical definitions live here
+    // Server-side view filter - canonical definitions live here
     if (view === "workspace") {
       transformedItems = transformedItems.filter(isWorkspaceTrip);
     }
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await response.json();
-    // Returns { run_id, state: "queued" } — frontend polls /api/runs/{run_id}
+    // Returns { run_id, state: "queued" } - frontend polls /api/runs/{run_id}
     return bffJson(result, 202);
   } catch (error) {
     console.error("Error creating trip:", error);

@@ -18,7 +18,7 @@
  *   }
  * 
  * Display format:
- *   "14:32 | Override | elderly_mobility_risk downgraded from CRITICAL to HIGH | Reason: Client confirmed..."
+ *   "14:32 | Override | elderly_mobility_risk downgraded from CRITICAL to HIGH | Reason: Client confirmed…"
  */
 
 import React from 'react';
@@ -54,11 +54,11 @@ export function OverrideTimelineEvent({ event }: { event: OverrideData }) {
   const getIcon = () => {
     switch (action) {
       case 'suppress':
-        return <AlertCircle className="h-4 w-4 text-accent-red" />;
+        return <AlertCircle className="size-4 text-accent-red" />;
       case 'downgrade':
-        return <TrendingDown className="h-4 w-4 text-accent-orange" />;
+        return <TrendingDown className="size-4 text-accent-orange" />;
       case 'acknowledge':
-        return <CheckCircle2 className="h-4 w-4 text-accent-green" />;
+        return <CheckCircle2 className="size-4 text-accent-green" />;
     }
   };
 

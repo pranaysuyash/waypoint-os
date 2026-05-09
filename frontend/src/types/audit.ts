@@ -76,7 +76,7 @@ export function formatChangeType(changeType: FieldChangeType): string {
 }
 
 export function formatValue(value: string | number | null): string {
-  if (value === null) return '—';
+  if (value === null) return '-';
   if (typeof value === 'number') return value.toString();
   if (value === '') return '(empty)';
   return value;

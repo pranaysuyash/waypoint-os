@@ -165,7 +165,7 @@ export default function FollowupsPage() {
       {/* Filters & Sorting */}
       <div className="flex flex-col gap-4 p-4 rounded-lg border" style={{ borderColor: 'var(--border-default)' }}>
         <div className="flex items-center gap-2 mb-2">
-          <Filter className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+          <Filter className="size-4" style={{ color: 'var(--text-muted)' }} />
           <h3 className="text-ui-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
             Filters
           </h3>
@@ -203,9 +203,9 @@ export default function FollowupsPage() {
 
         {/* Status Filter */}
         <div>
-          <label className="text-ui-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+          <span className="text-ui-xs font-medium" style={{ color: 'var(--text-muted)' }}>
             Status:
-          </label>
+          </span>
           <div className="flex flex-wrap gap-2 mt-1">
             {(['all', 'pending', 'completed', 'snoozed'] as const).map((status) => (
               <button
@@ -237,9 +237,9 @@ export default function FollowupsPage() {
 
         {/* Sort Options */}
         <div>
-          <label className="text-ui-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+          <span className="text-ui-xs font-medium" style={{ color: 'var(--text-muted)' }}>
             Sort by:
-          </label>
+          </span>
           <div className="flex gap-2 mt-1">
             {(['due_date', 'days_until_due'] as const).map((sort) => (
               <button
@@ -273,9 +273,9 @@ export default function FollowupsPage() {
       {/* Loading State */}
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--text-muted)' }} />
+          <Loader2 className="size-6 animate-spin" style={{ color: 'var(--text-muted)' }} />
           <span className="ml-2" style={{ color: 'var(--text-secondary)' }}>
-            Loading follow-ups...
+            Loading follow-ups…
           </span>
         </div>
       )}
@@ -290,7 +290,7 @@ export default function FollowupsPage() {
           }}
         >
           <AlertCircle
-            className="w-5 h-5 shrink-0 mt-0.5"
+            className="size-5 shrink-0 mt-0.5"
             style={{ color: 'var(--accent-red)' }}
           />
           <div>

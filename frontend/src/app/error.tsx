@@ -20,8 +20,8 @@ export default function Error({
       <div className="max-w-md w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-6">
         {/* Icon */}
         <div className="flex justify-center mb-4">
-          <div className="h-12 w-12 rounded-full bg-[var(--accent-red)]/10 flex items-center justify-center">
-            <AlertTriangle className="h-6 w-6 text-[var(--accent-red)]" />
+          <div className="size-12 rounded-full bg-[var(--accent-red)]/10 flex items-center justify-center">
+            <AlertTriangle className="size-6 text-[var(--accent-red)]" />
           </div>
         </div>
 
@@ -56,14 +56,14 @@ export default function Error({
             onClick={reset}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[var(--accent-blue)] text-[var(--text-on-accent)] rounded-lg font-medium hover:bg-[var(--accent-blue-hover)] transition-colors text-[13px]"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="size-4" />
             Try again
           </button>
           <a
             href="/overview"
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[var(--bg-surface-hover)] text-[var(--text-primary)] border border-[var(--border-default)] rounded-lg font-medium hover:bg-[var(--bg-count-badge)] transition-colors text-[13px]"
           >
-            <Home className="w-4 h-4" />
+            <Home className="size-4" />
             Back to overview
           </a>
         </div>

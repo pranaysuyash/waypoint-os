@@ -138,8 +138,8 @@ export default function BookingExecutionPanel({ tripId, stage }: BookingExecutio
     return (
       <div className="bg-elevated border border-border-default rounded-xl p-4">
         <div className="flex items-center gap-2 text-sm text-muted">
-          <Loader className="w-4 h-4 animate-spin" />
-          Loading booking tasks...
+          <Loader className="size-4 animate-spin" />
+          Loading booking tasks…
         </div>
       </div>
     );
@@ -179,11 +179,11 @@ export default function BookingExecutionPanel({ tripId, stage }: BookingExecutio
             className="flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[#1f6feb] text-white hover:bg-[#388bfd] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {generating ? (
-              <Loader className="w-3 h-3 animate-spin" />
+              <Loader className="size-3 animate-spin" />
             ) : (
-              <RotateCcw className="w-3 h-3" />
+              <RotateCcw className="size-3" />
             )}
-            {generating ? "Generating..." : "Generate / Reconcile"}
+            {generating ? "Generating…" : "Generate / Reconcile"}
           </button>
         </div>
       </div>
@@ -227,9 +227,9 @@ export default function BookingExecutionPanel({ tripId, stage }: BookingExecutio
                 className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 py-1"
               >
                 {showCompleted ? (
-                  <ChevronUp className="w-3 h-3" />
+                  <ChevronUp className="size-3" />
                 ) : (
-                  <ChevronDown className="w-3 h-3" />
+                  <ChevronDown className="size-3" />
                 )}
                 {completedTasks.length} completed
               </button>
@@ -272,7 +272,7 @@ function TaskRow({ task, onComplete, onCancel, onStatusChange }: TaskRowProps) {
       }`}
     >
       {/* Status icon */}
-      <Icon className={`w-3.5 h-3.5 shrink-0 ${meta.color}`} />
+      <Icon className={`size-3.5 shrink-0 ${meta.color}`} />
 
       {/* Title */}
       <span className={`flex-1 truncate ${isTerminal ? "line-through text-zinc-500" : "text-zinc-200"}`}>
@@ -307,7 +307,7 @@ function TaskRow({ task, onComplete, onCancel, onStatusChange }: TaskRowProps) {
               className="p-1 rounded hover:bg-zinc-700 text-blue-400"
               title="Start"
             >
-              <Play className="w-3 h-3" />
+              <Play className="size-3" />
             </button>
           )}
           {task.status === "in_progress" && (
@@ -316,7 +316,7 @@ function TaskRow({ task, onComplete, onCancel, onStatusChange }: TaskRowProps) {
               className="p-1 rounded hover:bg-zinc-700 text-emerald-400"
               title="Complete"
             >
-              <CheckCircle className="w-3 h-3" />
+              <CheckCircle className="size-3" />
             </button>
           )}
           <button
@@ -324,7 +324,7 @@ function TaskRow({ task, onComplete, onCancel, onStatusChange }: TaskRowProps) {
             className="p-1 rounded hover:bg-zinc-700 text-zinc-500"
             title="Cancel"
           >
-            <Ban className="w-3 h-3" />
+            <Ban className="size-3" />
           </button>
         </div>
       )}

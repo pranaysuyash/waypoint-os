@@ -476,3 +476,155 @@ class BookingTask(Base):
         Index("ix_bt_trip_status", "trip_id", "status"),
         Index("ix_bt_generation_hash", "generation_hash"),
     )
+
+
+# ---------------------------------------------------------------------------
+# Confirmation constants
+# ---------------------------------------------------------------------------
+
+CONFIRMATION_TYPES = ("flight", "hotel", "insurance", "payment", "other")
+
+CONFIRMATION_STATUSES = ("draft", "recorded", "verified", "voided")
+
+CONFIRMATION_VALID_TRANSITIONS: dict[str, set[str]] = {
+    "draft": {"recorded", "voided"},
+    "recorded": {"verified", "voided"},
+    "verified": {"voided"},
+    "voided": set(),
+}
+
+NOTES_MAX_LENGTH = 2000
+
+ALLOWED_EVIDENCE_REF_TYPES = frozenset({
+    "booking_document", "document_extraction", "extraction_attempt", "booking_task",
+})
+
+# ---------------------------------------------------------------------------
+# Execution event constants
+# ---------------------------------------------------------------------------
+
+EVENT_CATEGORIES = ("task", "confirmation", "document", "extraction")
+
+TASK_EVENT_TYPES = (
+    "task_created", "task_blocked", "task_ready", "task_started",
+    "task_waiting", "task_completed", "task_cancelled",
+)
+
+CONFIRMATION_EVENT_TYPES = (
+    "confirmation_created", "confirmation_updated", "confirmation_recorded",
+    "confirmation_verified", "confirmation_voided",
+)
+
+ALLOWED_EVENT_METADATA_KEYS = frozenset({
+    "task_type", "confirmation_type", "document_type",
+    "provider", "model", "blocker_code", "evidence_ref_count",
+})
+
+FORBIDDEN_METADATA_PATTERNS = frozenset({
+    "supplier_name", "confirmation_number", "notes", "traveler_name",
+    "dob", "passport_number", "filename", "storage_key", "signed_url",
+    "extracted_fields", "blocker_refs",
+})
+
+
+class BookingConfirmation(Base):
+    """Durable booking confirmation record with encrypted private fields."""
+    __tablename__ = "booking_confirmations"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    agency_id: Mapped[str] = mapped_column(
+        ForeignKey("agencies.id", ondelete="CASCADE"), nullable=False
+    )
+    trip_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    task_id: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("booking_tasks.id", ondelete="SET NULL"), nullable=True
+    )
+
+    confirmation_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    confirmation_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="draft"
+    )
+
+    # Encrypted private fields
+    supplier_name_encrypted: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    confirmation_number_encrypted: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    notes_encrypted: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    external_ref_encrypted: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    # Queryable indicators (no decryption needed for list views)
+    has_supplier: Mapped[bool] = mapped_column(Boolean, default=False)
+    has_confirmation_number: Mapped[bool] = mapped_column(Boolean, default=False)
+    notes_present: Mapped[bool] = mapped_column(Boolean, default=False)
+    external_ref_present: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Typed evidence refs
+    evidence_refs: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    # Lifecycle actors
+    recorded_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    recorded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    verified_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    voided_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    voided_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    created_by: Mapped[str] = mapped_column(String(36), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        Index("ix_bc_trip_id", "trip_id"),
+        Index("ix_bc_agency_id", "agency_id"),
+        Index("ix_bc_task_id", "task_id"),
+        Index("ix_bc_status", "confirmation_status"),
+        Index("ix_bc_type", "confirmation_type"),
+        Index("ix_bc_trip_status", "trip_id", "confirmation_status"),
+    )
+
+
+class ExecutionEvent(Base):
+    """Durable execution event ledger — source of truth for timeline."""
+    __tablename__ = "execution_events"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    agency_id: Mapped[str] = mapped_column(
+        ForeignKey("agencies.id", ondelete="CASCADE"), nullable=False
+    )
+    trip_id: Mapped[str] = mapped_column(String(36), nullable=False)
+
+    subject_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    subject_id: Mapped[str] = mapped_column(String(36), nullable=False)
+
+    event_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    event_category: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    status_from: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    status_to: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    actor_type: Mapped[str] = mapped_column(String(20), nullable=False, server_default="system")
+    actor_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+
+    source: Mapped[str] = mapped_column(String(30), nullable=False, server_default="agent_action")
+
+    event_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        Index("ix_ee_trip_id", "trip_id"),
+        Index("ix_ee_agency_id", "agency_id"),
+        Index("ix_ee_subject", "subject_type", "subject_id"),
+        Index("ix_ee_category", "event_category"),
+        Index("ix_ee_trip_created", "trip_id", "created_at"),
+    )

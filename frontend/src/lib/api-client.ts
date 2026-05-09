@@ -51,7 +51,7 @@ const DEFAULT_RETRY = 0;
 const DEFAULT_RETRY_DELAY = 1000;
 
 // ============================================================================
-// AUTH — cookie-based (httpOnly), no localStorage token needed
+// AUTH - cookie-based (httpOnly), no localStorage token needed
 // ============================================================================
 
 // ============================================================================
@@ -97,7 +97,7 @@ class ApiClient {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-        // Build headers — auth is cookie-based (httpOnly), no Authorization header needed
+        // Build headers - auth is cookie-based (httpOnly), no Authorization header needed
         const incomingHeaders = fetchOptions.headers as Record<string, string> | undefined;
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
@@ -320,7 +320,7 @@ export interface Trip {
     ownerReviewDeadline?: string;
     escalationSeverity?: "high" | "critical";
     revisionCount?: number;
-    // Suitability acknowledgment — persisted server-side when operator acknowledges Tier 1 flags
+    // Suitability acknowledgment - persisted server-side when operator acknowledges Tier 1 flags
     acknowledged_flags?: string[];
     suitability_acknowledged_at?: string;
   };
@@ -377,7 +377,7 @@ export interface StartPlanningResponse {
 }
 
 /**
- * Analytics pipeline stage — returned by /analytics/pipeline.
+ * Analytics pipeline stage - returned by /analytics/pipeline.
  * Contains runtime metrics, not configuration.
  */
 export interface AnalyticsPipelineStage {
@@ -766,7 +766,7 @@ export async function promoteDraft(draftId: string, tripId: string): Promise<{ o
 }
 
 // ---------------------------------------------------------------------------
-// Booking Data — lazy-loaded, not part of Trip interface
+// Booking Data - lazy-loaded, not part of Trip interface
 // ---------------------------------------------------------------------------
 
 export interface BookingTraveler {
@@ -818,7 +818,7 @@ export async function updateBookingData(
 }
 
 // ---------------------------------------------------------------------------
-// Booking Collection Link (Phase 4A) — agent + public endpoints
+// Booking Collection Link (Phase 4A) - agent + public endpoints
 // ---------------------------------------------------------------------------
 
 export interface CollectionLinkInfo {
@@ -1285,4 +1285,131 @@ export async function cancelBookingTask(
   taskId: string,
 ): Promise<{ ok: boolean; task: BookingTask }> {
   return api.post(`/api/booking-tasks/${tripId}/${taskId}/cancel`);
+}
+
+// ── Phase 5B: Confirmations + Execution Timeline ────────────────────────────
+
+export interface ConfirmationSummary {
+  id: string;
+  trip_id: string;
+  task_id: string | null;
+  confirmation_type: string;
+  confirmation_status: string;
+  has_supplier: boolean;
+  has_confirmation_number: boolean;
+  external_ref_present: boolean;
+  notes_present: boolean;
+  evidence_ref_count: number;
+  recorded_at: string | null;
+  verified_at: string | null;
+  voided_at: string | null;
+  created_by: string;
+  created_at: string;
+}
+
+export interface ConfirmationDetail extends ConfirmationSummary {
+  evidence_refs: { type: string; id: string }[] | null;
+  supplier_name: string | null;
+  confirmation_number: string | null;
+  notes: string | null;
+  external_ref: string | null;
+  recorded_by: string | null;
+  verified_by: string | null;
+  voided_by: string | null;
+  updated_at: string;
+}
+
+export interface CreateConfirmationRequest {
+  confirmation_type: string;
+  task_id?: string;
+  supplier_name?: string;
+  confirmation_number?: string;
+  notes?: string;
+  external_ref?: string;
+  evidence_refs?: { type: string; id: string }[];
+}
+
+export interface UpdateConfirmationRequest {
+  confirmation_type?: string;
+  task_id?: string;
+  supplier_name?: string;
+  confirmation_number?: string;
+  notes?: string;
+  external_ref?: string;
+  evidence_refs?: { type: string; id: string }[];
+}
+
+export interface ExecutionTimelineEvent {
+  event_type: string;
+  event_category: string;
+  subject_type: string;
+  subject_id: string;
+  status_from: string | null;
+  status_to: string;
+  actor_type: string;
+  actor_id: string | null;
+  source: string;
+  event_metadata: Record<string, unknown> | null;
+  timestamp: string;
+}
+
+export async function listConfirmations(
+  tripId: string,
+): Promise<{ ok: boolean; confirmations: ConfirmationSummary[] }> {
+  return api.get(`/api/trips/${tripId}/confirmations`);
+}
+
+export async function getConfirmation(
+  tripId: string,
+  confirmationId: string,
+): Promise<{ ok: boolean; confirmation: ConfirmationDetail }> {
+  return api.get(`/api/trips/${tripId}/confirmations/${confirmationId}`);
+}
+
+export async function createConfirmation(
+  tripId: string,
+  data: CreateConfirmationRequest,
+): Promise<{ ok: boolean; confirmation: ConfirmationDetail }> {
+  return api.post(`/api/trips/${tripId}/confirmations`, data);
+}
+
+export async function updateConfirmation(
+  tripId: string,
+  confirmationId: string,
+  data: UpdateConfirmationRequest,
+): Promise<{ ok: boolean; confirmation: ConfirmationDetail }> {
+  return api.patch(`/api/trips/${tripId}/confirmations/${confirmationId}`, data);
+}
+
+export async function recordConfirmation(
+  tripId: string,
+  confirmationId: string,
+): Promise<{ ok: boolean; confirmation: ConfirmationSummary }> {
+  return api.post(`/api/trips/${tripId}/confirmations/${confirmationId}/record`);
+}
+
+export async function verifyConfirmation(
+  tripId: string,
+  confirmationId: string,
+): Promise<{ ok: boolean; confirmation: ConfirmationSummary }> {
+  return api.post(`/api/trips/${tripId}/confirmations/${confirmationId}/verify`);
+}
+
+export async function voidConfirmation(
+  tripId: string,
+  confirmationId: string,
+): Promise<{ ok: boolean; confirmation: ConfirmationSummary }> {
+  return api.post(`/api/trips/${tripId}/confirmations/${confirmationId}/void`);
+}
+
+export async function getExecutionTimeline(
+  tripId: string,
+  category?: string,
+): Promise<{
+  ok: boolean;
+  events: ExecutionTimelineEvent[];
+  summary: Record<string, number>;
+}> {
+  const params = category ? `?category=${category}` : "";
+  return api.get(`/api/trips/${tripId}/execution-timeline${params}`);
 }

@@ -63,8 +63,8 @@ export const PriorityIndicator = memo(function PriorityIndicator({
   const iLevel = importanceLabel(importance);
   const uColor = COLOR_MAP[uLevel];
   const iColor = COLOR_MAP[iLevel];
-  const dotSize = size === 'sm' ? 'h-2 w-2' : 'h-2.5 w-2.5';
-  const textSize = size === 'sm' ? 'text-[10px]' : 'text-[11px]';
+  const dotSize = size === 'sm' ? 'size-2' : 'size-2.5';
+  const textSize = size === 'sm' ? 'text-[10px]' : 'text-[12px]';
 
   if (variant === 'compact') {
     const highLabel = priorityLabel === 'critical' ? 'CRIT' : priorityLabel.toUpperCase().slice(0, 4);
@@ -102,8 +102,8 @@ export const PriorityIndicator = memo(function PriorityIndicator({
       </span>
       <span className="inline-flex items-center gap-1">
         <span className={`inline-block ${dotSize} shrink-0`} style={{
-          width: dotSize === 'h-2 w-2' ? '0.5rem' : '0.625rem',
-          height: dotSize === 'h-2 w-2' ? '0.5rem' : '0.625rem',
+          width: dotSize === 'size-2' ? '0.5rem' : '0.625rem',
+          height: dotSize === 'size-2' ? '0.5rem' : '0.625rem',
           border: `2px solid ${iColor}`,
           borderRadius: '2px',
           backgroundColor: 'transparent',

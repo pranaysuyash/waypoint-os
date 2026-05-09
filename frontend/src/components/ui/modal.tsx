@@ -129,7 +129,7 @@ export function Modal({
               className="p-2 hover:bg-[#161b22] rounded-lg transition-colors ml-4 shrink-0"
               aria-label="Close modal"
             >
-              <X className="h-5 w-5 text-[#8b949e]" />
+              <X className="size-5 text-[#8b949e]" />
             </button>
           </div>
         )}

@@ -29,7 +29,7 @@ interface WorkbenchInputState {
   setInputItineraryText: (value: string) => void;
 }
 
-// Draft metadata — source-of-truth is the backend draft; Zustand is the editing buffer.
+// Draft metadata - source-of-truth is the backend draft; Zustand is the editing buffer.
 interface WorkbenchDraftState {
   draft_id: string | null;
   draft_name: string;
@@ -89,7 +89,7 @@ interface WorkbenchResultState {
   // Do not expose in production UI without a real data path.
   result_frontier: any | null;
   result_run_ts: string | null;
-  // Suitability acknowledgment — cross-tab session state.
+  // Suitability acknowledgment - cross-tab session state.
   // Populated optimistically when an operator acknowledges a Tier 1 flag;
   // cleared on pipeline reset. Consumed by ReviewControls to gate approval.
   acknowledged_suitability_flags: ReadonlySet<string>;

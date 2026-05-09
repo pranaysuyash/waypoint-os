@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './auth.css';
 
 export const metadata: Metadata = {
-  title: 'Waypoint OS — Sign In',
+  title: 'Waypoint OS - Sign In',
   description: 'Sign in to your Waypoint workspace',
 };
 

@@ -32,7 +32,7 @@ export type {
 } from '@/types/generated/spine-api';
 
 // ============================================================================
-// Run polling types (frontend-only — not yet in generated contract)
+// Run polling types (frontend-only - not yet in generated contract)
 // ============================================================================
 
 export interface RunAcceptedResponse {
@@ -83,7 +83,7 @@ export interface RunStatusResponse {
 }
 
 // ============================================================================
-// Frontend-only types (not in backend contract — UI presentation layer)
+// Frontend-only types (not in backend contract - UI presentation layer)
 // ============================================================================
 
 export type SpineStage = "discovery" | "shortlist" | "proposal" | "booking";
@@ -314,7 +314,7 @@ export interface ValidationReport {
   gate?: string;
   /** Semantic pipeline stage identifier (e.g. "intake_extraction"). Canonical for FE lookup. */
   stage?: string;
-  /** Legacy NB code (e.g. "NB01") — temporary compat, will be removed. */
+  /** Legacy NB code (e.g. "NB01") - temporary compat, will be removed. */
   legacy_gate?: string;
   reasons?: string[];
   errors?: Array<{ severity: string; code: string; message: string; field: string }>;
@@ -357,7 +357,7 @@ export function validationLabelFor(gateKey: string | undefined, context?: string
   if (context === 'alert_title') {
     if (gateKey === 'intake_completion' || gateKey === 'NB01') return 'Trip Details Need Attention';
     if (gateKey === 'decision_readiness' || gateKey === 'NB02') return 'Quote Readiness Check';
-    return `${label} — Needs Attention`;
+    return `${label} - Needs Attention`;
   }
   return label;
 }

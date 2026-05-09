@@ -120,7 +120,7 @@ const RescheduleModal = memo(function RescheduleModal({
         type="datetime-local"
         value={date}
         onChange={(e) => setDate(e.target.value)}
-        className="w-full px-4 py-2 rounded border bg-gray-800"
+        className="w-full px-4 py-2 rounded border bg-surface"
         style={{
           color: 'var(--text-primary)',
           borderColor: 'var(--border-default)',
@@ -257,7 +257,7 @@ export const FollowUpCard = memo(function FollowUpCard({
         {/* Due Date + Urgency */}
         <div className="flex items-center gap-3 mb-4 pb-4 border-b" style={{ borderColor: 'var(--border-default)' }}>
           <div className="flex items-center gap-1">
-            <Calendar className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
+            <Calendar className="size-3" style={{ color: 'var(--text-muted)' }} />
             <span className="text-ui-xs" style={{ color: 'var(--text-secondary)' }}>
               {formattedDate}
             </span>
@@ -285,7 +285,7 @@ export const FollowUpCard = memo(function FollowUpCard({
                   color: '#fff',
                 }}
               >
-                <CheckCircle className="w-3 h-3" />
+                <CheckCircle className="size-3" />
                 Complete
               </button>
               <button
@@ -297,7 +297,7 @@ export const FollowUpCard = memo(function FollowUpCard({
                   borderColor: 'var(--border-default)',
                 }}
               >
-                <Clock className="w-3 h-3" />
+                <Clock className="size-3" />
                 Snooze
               </button>
               <button
@@ -315,7 +315,7 @@ export const FollowUpCard = memo(function FollowUpCard({
           )}
           {status === 'completed' && (
             <div className="w-full flex items-center justify-center gap-2">
-              <CheckCircle className="w-4 h-4" style={{ color: 'var(--accent-green)' }} />
+              <CheckCircle className="size-4" style={{ color: 'var(--accent-green)' }} />
               <span className="text-ui-xs" style={{ color: 'var(--text-secondary)' }}>
                 Follow-up completed
               </span>

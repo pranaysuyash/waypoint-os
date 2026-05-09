@@ -84,7 +84,7 @@ function TripCardMetrics({ trip, profile }: { trip: InboxTrip; profile: ViewProf
   return (
     <div
       data-testid="trip-card-metrics"
-      className="flex items-center gap-2 text-[11px] mt-2 flex-wrap"
+      className="flex items-center gap-2 text-[12px] mt-2 flex-wrap"
       style={{ color: 'var(--text-muted)' }}
     >
       {fields.map((field, i) => (
@@ -118,8 +118,8 @@ function FlagBadgeRow({ trip, showMicroLabels }: { trip: InboxTrip; showMicroLab
   if (!trip.flags?.length) return null;
   return (
     <div data-testid="trip-card-flags" className="flex items-center gap-1.5 mt-2 flex-wrap">
-      {trip.flags.map((flag, index) => (
-        <FlagBadge key={`${flag}-${index}`} flag={flag} showLabel={showMicroLabels} />
+      {trip.flags.map((flag) => (
+        <FlagBadge key={`flag-${flag}`} flag={flag} showLabel={showMicroLabels} />
       ))}
     </div>
   );
@@ -178,7 +178,7 @@ function TripCardAssignment({ trip }: { trip: InboxTrip }) {
         border: `1px solid ${style.border}`,
       }}
     >
-      <UserX className="w-3.5 h-3.5" />
+      <UserX className="size-3.5" />
       Unassigned
     </span>
   );
@@ -243,10 +243,10 @@ function QuickActions({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); setShowDropdown(!showDropdown); }}
-          className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors"
+          className="inline-flex items-center gap-1 rounded px-2 py-1 text-[12px] font-medium transition-colors"
           style={{ color: 'var(--accent-blue)' }}
         >
-          <UserPlus className="w-3 h-3" />
+          <UserPlus className="size-3" />
           Assign
         </button>
         {showDropdown && (
@@ -262,7 +262,7 @@ function QuickActions({
                 }}
                 className="w-full flex items-center gap-2 px-3 py-2 text-left text-ui-xs text-[#e6edf3] hover:bg-[#1c2128] transition-colors"
               >
-                <span className="h-5 w-5 rounded-full bg-[rgba(88,166,255,0.15)] flex items-center justify-center text-[10px] font-bold text-[#58a6ff]">
+                <span className="size-5 rounded-full bg-[rgba(88,166,255,0.15)] flex items-center justify-center text-[10px] font-bold text-[#58a6ff]">
                   {agent.name.charAt(0)}
                 </span>
                 <span>{agent.name}</span>
@@ -280,10 +280,10 @@ function QuickActions({
       href={reviewHref}
       data-testid="trip-card-view-link"
       onClick={(e) => e.stopPropagation()}
-      className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors"
+      className="inline-flex items-center gap-1 rounded px-2 py-1 text-[12px] font-medium transition-colors"
       style={{ color: 'var(--accent-blue)' }}
     >
-      <ChevronRight className="w-3 h-3" />
+      <ChevronRight className="size-3" />
       View
     </Link>,
   );
@@ -344,9 +344,9 @@ export const TripCard = memo(function TripCard({
         className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10"
       >
         {isSelected ? (
-          <CheckSquare className="w-4 h-4" style={{ color: 'var(--accent-blue)' }} />
+          <CheckSquare className="size-4" style={{ color: 'var(--accent-blue)' }} />
         ) : (
-          <Square className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+          <Square className="size-4" style={{ color: 'var(--text-muted)' }} />
         )}
       </button>
 
@@ -373,7 +373,7 @@ export const TripCard = memo(function TripCard({
             </div>
             <span
               data-testid="trip-card-customer"
-              className="text-[11px] mt-0.5 truncate"
+              className="text-[12px] mt-0.5 truncate"
               style={{ color: 'var(--text-secondary)' }}
             >
               {trip.customerName || 'Customer name unavailable'}

@@ -189,7 +189,7 @@ describe('useOverviewSummary', () => {
       (item) => item.label === 'System Check'
     );
 
-    expect(integrityMetric?.value).toBe('—');
+    expect(integrityMetric?.value).toBe('-');
     expect(integrityMetric?.sub).toBe('System check unavailable');
     expect(integrityMetric?.error).toBeNull();
     expect(integrityNav?.sub).toBe('System check unavailable');

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Agent join page — /join/[code]
+ * Agent join page - /join/[code]
  *
  * Allows an agent to create an account and join an existing agency via a
  * workspace invitation code shared by the agency owner or admin.
@@ -118,7 +118,7 @@ export default function JoinPage() {
         return;
       }
 
-      // Backend set auth cookies — rehydrate store then navigate
+      // Backend set auth cookies - rehydrate store then navigate
       await hydrate();
       router.replace('/overview');
     } catch (err) {
@@ -133,7 +133,7 @@ export default function JoinPage() {
     return (
       <div className="auth-card">
         <div className="flex flex-col items-center gap-3 py-8">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           <p className="text-sm text-foreground">Checking invitation…</p>
         </div>
       </div>

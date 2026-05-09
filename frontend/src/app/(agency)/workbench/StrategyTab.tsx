@@ -31,14 +31,14 @@ export default function StrategyTab({ trip }: StrategyTabProps) {
       <div className={styles.section}>
         <h3 className={styles.sectionTitle}>Session Goal</h3>
         <div className={styles.card}>
-          <p>{strategy.session_goal || "—"}</p>
+          <p>{strategy.session_goal || "-"}</p>
         </div>
       </div>
 
       <div className={styles.section}>
         <h3 className={styles.sectionTitle}>Suggested Opening</h3>
         <div className={styles.card}>
-          <p>"{strategy.suggested_opening || "—"}"</p>
+          <p>"{strategy.suggested_opening || "-"}"</p>
         </div>
       </div>
 
@@ -48,7 +48,7 @@ export default function StrategyTab({ trip }: StrategyTabProps) {
           <div className={styles.card}>
             <ol style={{ margin: "0 0 0 20px", padding: 0 }}>
               {strategy.priority_sequence.map((item, i) => (
-                <li key={`priority-${item.slice(0, 20)}-${i}`} style={{ padding: "4px 0" }}>{item}</li>
+                <li key={`priority-${item.slice(0, 30)}`} style={{ padding: "4px 0" }}>{item}</li>
               ))}
             </ol>
           </div>
@@ -56,12 +56,12 @@ export default function StrategyTab({ trip }: StrategyTabProps) {
       )}
 
       <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Tone: {strategy.suggested_tone || "—"}</h3>
+        <h3 className={styles.sectionTitle}>Tone: {strategy.suggested_tone || "-"}</h3>
         {strategy.tonal_guardrails && strategy.tonal_guardrails.length > 0 && (
           <div className={styles.card}>
             <ul className={styles.list}>
               {strategy.tonal_guardrails.map((guardrail, i) => (
-                <li key={`guard-${guardrail.slice(0, 20)}-${i}`} className={styles.listItem}>
+                <li key={`guard-${guardrail.slice(0, 30)}`} className={styles.listItem}>
                   <span className={`${styles.listIcon} ${styles.iconInfo}`}>•</span>
                   {guardrail}
                 </li>
@@ -77,7 +77,7 @@ export default function StrategyTab({ trip }: StrategyTabProps) {
           <div className={styles.card}>
             <ul className={styles.list}>
               {strategy.assumptions.map((assumption, i) => (
-                <li key={`assume-${assumption.slice(0, 20)}-${i}`} className={styles.listItem}>
+                <li key={`assume-${assumption.slice(0, 30)}`} className={styles.listItem}>
                   <span className={`${styles.listIcon} ${styles.iconWarning}`}>?</span>
                   {assumption}
                 </li>

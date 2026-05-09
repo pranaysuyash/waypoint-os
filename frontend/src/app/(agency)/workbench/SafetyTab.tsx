@@ -68,7 +68,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
           <div className={styles.leakagePass}>
             <div className={styles.leakageTitle}>
               <span className={`${styles.listIcon} ${styles.iconSuccess}`} style={{ marginRight: "8px" }}>✓</span>
-              PASS — Safe for Customer
+              PASS - Safe for Customer
             </div>
             <p style={{ fontSize: "13px", color: "var(--color-text-muted)", margin: "8px 0 0 0" }}>
               No internal jargon or sensitive details found in the customer-facing message.
@@ -78,7 +78,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
           <div className={styles.leakageFail}>
             <div className={styles.leakageTitle}>
               <span className={`${styles.listIcon} ${styles.iconDanger}`} style={{ marginRight: "8px" }}>✗</span>
-              FAIL — Internal Jargon Found
+              FAIL - Internal Jargon Found
             </div>
             <p style={{ fontSize: "13px", color: "var(--color-text-muted)", margin: "8px 0 0 0" }}>
               Internal-only terms were found in the message the customer would see.
@@ -104,7 +104,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
           <div className={styles.card}>
             <ul className={styles.list}>
               {strippedFields.map((item: any, i: number) => (
-                <li key={`leak-${item.slice(0, 15)}-${i}`} className={styles.listItem}>
+                <li key={`leak-${item.slice(0, 30)}`} className={styles.listItem}>
                   <span className={`${styles.listIcon} ${styles.iconDanger}`}>X</span>
                   {item}
                 </li>
@@ -118,7 +118,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
         <div className={styles.section}>
           <h3 className={styles.sectionTitle}>Special Handling Checklist</h3>
           {specialtyHits.map((hit, i) => (
-            <div key={`sk-${hit.niche}-${i}`} className={styles.card} style={{ marginBottom: "12px" }}>
+            <div key={`sk-${hit.niche}`} className={styles.card} style={{ marginBottom: "12px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                 <strong style={{ fontSize: "14px" }}>{hit.niche}</strong>
                 <span className={`${styles.badge} ${URGENCY_STYLES[hit.urgency ?? "NORMAL"] ?? styles.stateBlue}`}>
@@ -129,8 +129,8 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
                 <div style={{ marginBottom: "8px" }}>
                   <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Checklist</strong>
                   <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
-                    {hit.checklists.map((item, j) => (
-                      <li key={`cl-${j}`} style={{ marginBottom: "2px" }}>{item}</li>
+                    {hit.checklists.map((item) => (
+                      <li key={`cl-${item.slice(0, 20)}`} style={{ marginBottom: "2px" }}>{item}</li>
                     ))}
                   </ul>
                 </div>
@@ -139,8 +139,8 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
                 <div style={{ marginBottom: "8px" }}>
                   <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Compliance</strong>
                   <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
-                    {hit.compliance.map((item, j) => (
-                      <li key={`comp-${j}`} style={{ marginBottom: "2px" }}>{item}</li>
+                    {hit.compliance.map((item) => (
+                      <li key={`comp-${item.slice(0, 20)}`} style={{ marginBottom: "2px" }}>{item}</li>
                     ))}
                   </ul>
                 </div>
@@ -164,13 +164,13 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
               <div style={{ marginBottom: "12px" }}>
                 <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>System Context</strong>
                   <p style={{ fontSize: "13px", whiteSpace: "pre-wrap", marginTop: "4px" }}>
-                    {travelerBundle?.system_context || "—"}
+                    {travelerBundle?.system_context || "-"}
                 </p>
               </div>
               <div style={{ marginBottom: "12px" }}>
                 <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>User Message</strong>
                 <p style={{ fontSize: "13px", whiteSpace: "pre-wrap", marginTop: "4px" }}>
-                  {travelerBundle.user_message || "—"}
+                  {travelerBundle.user_message || "-"}
                 </p>
               </div>
               {travelerBundle.follow_up_sequence && travelerBundle.follow_up_sequence.length > 0 && (
@@ -178,7 +178,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
                   <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Follow-up Sequence</strong>
                   <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
                     {travelerBundle.follow_up_sequence.map((f, i) => (
-                      <li key={`fseq-${f.field_name}-${i}`} style={{ marginBottom: "4px" }}>
+                      <li key={`fseq-${f.field_name}`} style={{ marginBottom: "4px" }}>
                         <strong>[{f.priority}]</strong> {f.question}
                       </li>
                     ))}
@@ -190,7 +190,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
                   <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Constraints</strong>
                   <ul style={{ margin: "4px 0 0 16px", fontSize: "12px" }}>
                     {travelerBundle.constraints.map((c, i) => (
-                      <li key={`iconst-${c.slice(0, 20)}-${i}`}>{c}</li>
+                      <li key={`iconst-${c.slice(0, 30)}`}>{c}</li>
                     ))}
                   </ul>
                 </div>
@@ -198,7 +198,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
             </div>
           ) : (
             <p style={{ color: "var(--color-text-muted)" }}>
-              {isStrictFail ? "Cannot be sent — contains internal jargon" : "No customer message available"}
+              {isStrictFail ? "Cannot be sent - contains internal jargon" : "No customer message available"}
             </p>
           )}
         </div>

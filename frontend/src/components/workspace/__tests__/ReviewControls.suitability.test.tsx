@@ -33,7 +33,7 @@ function buildTrip(overrides: Partial<Trip> = {}): Trip {
   };
 }
 
-describe("ReviewControls — suitability gate", () => {
+describe("ReviewControls - suitability gate", () => {
   beforeEach(() => {
     mockStoreState.acknowledged_suitability_flags = new Set<string>();
   });

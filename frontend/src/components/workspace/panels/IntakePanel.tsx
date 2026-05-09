@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useDeferredValue, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useDeferredValue, useEffect, useRef, useId } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ChevronDown,
@@ -111,7 +111,7 @@ const NOTE_DETAIL_PREFIX: Record<string, string> = {
 function normalizePlanningDisplayValue(value?: string | null): string | null {
   const normalized = value?.trim();
   if (!normalized) return null;
-  if (['tbd', 'to confirm', 'budget missing', 'unknown', '—'].includes(normalized.toLowerCase())) return null;
+  if (['tbd', 'to confirm', 'budget missing', 'unknown', '-'].includes(normalized.toLowerCase())) return null;
   return normalized;
 }
 
@@ -397,6 +397,10 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
         ? 'Build trip options'
         : 'Continue to options';
   const [notesExpanded, setNotesExpanded] = useState(!planningPanelVisible);
+  const notesId = useId();
+  const agentNotesId = useId();
+  const stageId = useId();
+  const requestTypeId = useId();
 
   useEffect(() => {
     setNotesExpanded(!planningPanelVisible);
@@ -434,7 +438,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       const completedRun = await executeSpineRun(request);
 
       // After async completion, the trip is saved on the backend.
-      // Refresh data by navigating — workspace will re-fetch from API.
+      // Refresh data by navigating - workspace will re-fetch from API.
       store.setResultRunTs(new Date().toISOString());
       setRunSuccess(true);
       setTimeout(() => setRunSuccess(false), 3000);
@@ -858,7 +862,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       {/* Compact guidance strip */}
       <div className='grid grid-cols-1 gap-2 rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3 md:grid-cols-3'>
         <div className='min-w-0 rounded-lg bg-[rgba(210,153,34,0.05)] px-3 py-2'>
-          <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-amber)]'>
+          <p className='text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-amber)]'>
             {getPlanningBlockerTitle(isLeadReview, trip)}
           </p>
           {hardBlockers.length > 0 ? (
@@ -897,7 +901,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
         </div>
 
         <div className='min-w-0 rounded-lg bg-[rgba(57,208,216,0.04)] px-3 py-2'>
-          <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-cyan)]'>
+          <p className='text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-cyan)]'>
             {!isLeadReview && !hasPlanningBriefBlocker(trip) ? "Next Steps" : "Suggested Next Move"}
           </p>
           {isLeadReview ? (
@@ -943,7 +947,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
         </div>
 
         <div className='min-w-0 rounded-lg bg-[rgba(88,166,255,0.04)] px-3 py-2'>
-          <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-blue)]'>Watch</p>
+          <p className='text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-blue)]'>Watch</p>
           {isLeadReview ? (
             <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>Incomplete intake.</p>
           ) : hasPlanningBriefBlocker(trip) ? (
@@ -970,7 +974,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
           <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
             <div className='flex items-start gap-3'>
               <div
-                className='mt-1 h-4 w-4 rounded-full border-2 border-[var(--accent-blue)]/30 border-t-[var(--accent-blue)] animate-spin'
+                className='mt-1 size-4 rounded-full border-2 border-[var(--accent-blue)]/30 border-t-[var(--accent-blue)] animate-spin'
                 aria-hidden='true'
               />
               <div>
@@ -1047,7 +1051,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       )}
       <div className='bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl p-4'>
         <div className='flex items-center gap-2 mb-4'>
-          <Plane className='w-4 h-4 text-[var(--accent-blue)]' />
+          <Plane className='size-4 text-[var(--accent-blue)]' />
           <h3 className='text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)]'>
             Trip Details
           </h3>
@@ -1058,7 +1062,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
               <EditableField
                 label='Origin'
                 value={editValues.origin}
-                displayValue={normalizePlanningDisplayValue(trip.origin) ?? '—'}
+                displayValue={normalizePlanningDisplayValue(trip.origin) ?? '-'}
                 field='origin'
                 icon={MapPin}
                 isEditing={editingField === 'origin'}
@@ -1093,7 +1097,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
               <EditableField
                 label='Party Size'
                 value={editValues.party}
-                displayValue={trip.party ? `${trip.party} pax` : '—'}
+                displayValue={trip.party ? `${trip.party} pax` : '-'}
                 field='party'
                 icon={Users}
                 type='number'
@@ -1195,15 +1199,16 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
           <div className='mt-4 grid grid-cols-1 lg:grid-cols-2 gap-6'>
             <div className='bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl p-4'>
               <div className='flex items-center gap-2 mb-3'>
-                <FileText className='w-4 h-4 text-[var(--text-secondary)]' />
-                <label className='text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]'>
+                <FileText className='size-4 text-[var(--text-secondary)]' />
+                <label htmlFor={notesId} className='text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]'>
                   Customer Message
                 </label>
               </div>
               <textarea
+                id={notesId}
                 value={deferredRawNote}
                 onChange={(e) => setInputRawNote(e.target.value)}
-                placeholder='Paste the incoming traveler note here...'
+                placeholder='Paste the incoming traveler note here…'
                 rows={6}
                 className='w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--ui-text-sm)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none font-mono'
               />
@@ -1211,15 +1216,16 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
 
             <div className='bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl p-4'>
               <div className='flex items-center gap-2 mb-3'>
-                <User className='w-4 h-4 text-[var(--accent-blue)]' />
-                <label className='text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]'>
+                <User className='size-4 text-[var(--accent-blue)]' />
+                <label htmlFor={agentNotesId} className='text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]'>
                   Agent Notes
                 </label>
               </div>
               <textarea
+                id={agentNotesId}
                 value={deferredOwnerNote}
                 onChange={(e) => setInputOwnerNote(e.target.value)}
-                placeholder="Add owner's comments or clarifications..."
+                placeholder="Add owner's comments or clarifications…"
                 rows={6}
                 className='w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--ui-text-sm)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none'
               />
@@ -1230,16 +1236,17 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
 
       <details className='bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-xl p-4'>
         <summary className='flex cursor-pointer list-none items-center gap-2 text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)]'>
-          <Settings className='w-4 h-4 text-[var(--text-secondary)]' />
+          <Settings className='size-4 text-[var(--text-secondary)]' />
           Advanced configuration
         </summary>
         <div className='mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4'>
           <div>
-            <label className='block text-[var(--ui-text-sm)] font-medium text-[var(--text-secondary)] mb-2'>
+            <label htmlFor={stageId} className='block text-[var(--ui-text-sm)] font-medium text-[var(--text-secondary)] mb-2'>
               Stage
             </label>
             <div className='relative'>
               <select
+                id={stageId}
                 value={stage}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -1253,15 +1260,16 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
                   </option>
                 ))}
               </select>
-              <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)] pointer-events-none' />
+              <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 size-4 text-[var(--text-secondary)] pointer-events-none' />
             </div>
           </div>
           <div>
-            <label className='block text-[var(--ui-text-sm)] font-medium text-[var(--text-secondary)] mb-2'>
+            <label htmlFor={requestTypeId} className='block text-[var(--ui-text-sm)] font-medium text-[var(--text-secondary)] mb-2'>
               Request Type
             </label>
             <div className='relative'>
               <select
+                id={requestTypeId}
                 value={operating_mode}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -1275,7 +1283,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
                   </option>
                 ))}
               </select>
-              <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)] pointer-events-none' />
+              <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 size-4 text-[var(--text-secondary)] pointer-events-none' />
             </div>
           </div>
         </div>
@@ -1284,54 +1292,54 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       <div className='flex flex-col gap-4 pt-4 border-t border-[var(--border-default)]'>
         <div className='flex items-center gap-4 text-[var(--ui-text-sm)] text-[var(--text-secondary)] flex-wrap'>
           <div className='flex items-center gap-2'>
-            <div className='w-2 h-2 rounded-full bg-[var(--accent-green)]'></div>
+            <div className='size-2 rounded-full bg-[var(--accent-green)]'></div>
             <span>System Ready</span>
           </div>
           {runError && (
             <div className='flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-red)]/10 border border-[var(--accent-red)]/30 rounded-lg text-[var(--ui-text-xs)] text-[var(--accent-red)]'>
-              <AlertTriangle className='w-3 h-3' />
+              <AlertTriangle className='size-3' />
               <span className='max-w-[42rem]'>{runError}</span>
             </div>
           )}
           {runSuccess && (
             <div className='flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-green)]/10 border border-[var(--accent-green)]/30 rounded-lg text-[var(--ui-text-xs)] text-[var(--accent-green)]'>
-              <CheckCircle className='w-3 h-3' />
+              <CheckCircle className='size-3' />
               Processed successfully
             </div>
           )}
           {saveSuccess && (
             <div className='flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-green)]/10 border border-[var(--accent-green)]/30 rounded-lg text-[var(--ui-text-xs)] text-[var(--accent-green)]'>
-              <CheckCircle className='w-3 h-3' />
+              <CheckCircle className='size-3' />
               Saved
             </div>
           )}
           {saveError && (
             <div className='flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-red)]/10 border border-[var(--accent-red)]/30 rounded-lg text-[var(--ui-text-xs)] text-[var(--accent-red)]'>
-              <AlertTriangle className='w-3 h-3' />
+              <AlertTriangle className='size-3' />
               <span className='max-w-xs truncate'>{saveError}</span>
             </div>
           )}
           {startPlanningSuccess && (
             <div className='flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-green)]/10 border border-[var(--accent-green)]/30 rounded-lg text-[var(--ui-text-xs)] text-[var(--accent-green)]'>
-              <CheckCircle className='w-3 h-3' />
+              <CheckCircle className='size-3' />
               Planning started
             </div>
           )}
           {startPlanningError && (
             <div className='flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-red)]/10 border border-[var(--accent-red)]/30 rounded-lg text-[var(--ui-text-xs)] text-[var(--accent-red)]'>
-              <AlertTriangle className='w-3 h-3' />
+              <AlertTriangle className='size-3' />
               <span className='max-w-[42rem] truncate'>{startPlanningError}</span>
             </div>
           )}
           {readySuccess && (
             <div className='flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-green)]/10 border border-[var(--accent-green)]/30 rounded-lg text-[var(--ui-text-xs)] text-[var(--accent-green)]'>
-              <CheckCircle className='w-3 h-3' />
+              <CheckCircle className='size-3' />
               Ready state set
             </div>
           )}
           {readyError && (
             <div className='flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-red)]/10 border border-[var(--accent-red)]/30 rounded-lg text-[var(--ui-text-xs)] text-[var(--accent-red)]'>
-              <AlertTriangle className='w-3 h-3' />
+              <AlertTriangle className='size-3' />
               <span className='max-w-[42rem] truncate'>{readyError}</span>
             </div>
           )}
@@ -1346,18 +1354,18 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
               className='text-text-tertiary'
               aria-label='Capture call notes'
             >
-              <Phone className='w-3.5 h-3.5' aria-hidden='true' />
+              <Phone className='size-3.5' aria-hidden='true' />
               Capture call notes
             </Button>
           </div>
           <div className='flex flex-col gap-2 lg:items-end'>
             {isLeadReview && (
-              <p className='text-[11px] text-[var(--text-secondary)] max-w-[22rem] lg:text-right'>
+              <p className='text-[12px] text-[var(--text-secondary)] max-w-[22rem] lg:text-right'>
                 Start planning will assign this lead and move it to Trips in Planning.
               </p>
             )}
             {!isLeadReview && requiredPlanningDetails.length === 0 && recommendedPlanningDetails.length > 0 && (
-              <p className='text-[11px] text-[var(--text-secondary)] max-w-[24rem] lg:text-right'>
+              <p className='text-[12px] text-[var(--text-secondary)] max-w-[24rem] lg:text-right'>
                 Required fields are complete. You can continue now, or tighten the recommended details first for better options.
               </p>
             )}
@@ -1374,14 +1382,14 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
                 {isSaving ? (
                   <>
                     <div
-                      className='w-3.5 h-3.5 border-2 border-text-tertiary/30 border-t-text-tertiary rounded-full animate-spin'
+                      className='size-3.5 border-2 border-text-tertiary/30 border-t-text-tertiary rounded-full animate-spin'
                       aria-hidden='true'
                     />
-                    Saving...
+                    Saving…
                   </>
                 ) : (
                   <>
-                    <Save className='w-3.5 h-3.5' aria-hidden='true' />
+                    <Save className='size-3.5' aria-hidden='true' />
                     Save changes
                   </>
                 )}
@@ -1399,16 +1407,16 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
                   {isStartingPlanning ? (
                     <>
                       <div
-                        className='w-4 h-4 border-2 border-text-on-accent/30 border-t-text-on-accent rounded-full animate-spin'
+                        className='size-4 border-2 border-text-on-accent/30 border-t-text-on-accent rounded-full animate-spin'
                         aria-hidden='true'
                       />
-                      <span>Starting planning...</span>
+                      <span>Starting planning…</span>
                     </>
                   ) : (
                     <>
-                      <Play className='w-4 h-4' aria-hidden='true' />
+                      <Play className='size-4' aria-hidden='true' />
                       Start Planning
-                      <ChevronRight className='w-4 h-4' aria-hidden='true' />
+                      <ChevronRight className='size-4' aria-hidden='true' />
                     </>
                   )}
                 </Button>
@@ -1427,14 +1435,14 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
                         {isMarkingReady ? (
                           <>
                             <div
-                              className='w-3.5 h-3.5 border-2 border-[var(--accent-green)]/30 border-t-[var(--accent-green)] rounded-full animate-spin'
+                              className='size-3.5 border-2 border-[var(--accent-green)]/30 border-t-[var(--accent-green)] rounded-full animate-spin'
                               aria-hidden='true'
                             />
-                            Checking...
+                            Checking…
                           </>
                         ) : (
                           <>
-                            <CheckCircle className='w-3.5 h-3.5' aria-hidden='true' />
+                            <CheckCircle className='size-3.5' aria-hidden='true' />
                             Mark Ready
                           </>
                         )}
@@ -1453,14 +1461,14 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
                       {(!planningPanelVisible || requiredPlanningDetails.length === 0) && isRunning ? (
                         <>
                           <div
-                            className='w-4 h-4 border-2 border-text-on-accent/30 border-t-text-on-accent rounded-full animate-spin'
+                            className='size-4 border-2 border-text-on-accent/30 border-t-text-on-accent rounded-full animate-spin'
                             aria-hidden='true'
                           />
                           <span>Processing {formatElapsedTime(runElapsedSeconds)}</span>
                         </>
                       ) : (
                         <>
-                          <Play className='w-4 h-4' aria-hidden='true' />
+                          <Play className='size-4' aria-hidden='true' />
                           {processButtonLabel}
                         </>
                       )}

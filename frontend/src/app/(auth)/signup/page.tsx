@@ -127,7 +127,7 @@ export default function SignupPage() {
         )}
 
         <button className='auth-button' type='submit' disabled={loading}>
-          {loading ? 'Creating workspace...' : 'Create workspace'}
+          {loading ? 'Creating workspace…' : 'Create workspace'}
         </button>
       </form>
 

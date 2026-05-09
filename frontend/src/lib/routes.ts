@@ -1,8 +1,8 @@
 /**
  * Centralized trip route generation.
  *
- * All code that navigates to a trip—inbox cards, overview rows,
- * owner reviews, etc.—must use these helpers instead of inline strings.
+ * All code that navigates to a trip-inbox cards, overview rows,
+ * owner reviews, etc.-must use these helpers instead of inline strings.
  * This prevents route drift as the workspace surface matures (Wave 2+).
  *
  * Migration notes
@@ -37,11 +37,11 @@ export function getTripRoute(
   stage: WorkspaceStage = 'intake',
 ): string {
   if (!tripId) {
-    // Deduped warning — only log once per falsy value to prevent console spam
+    // Deduped warning - only log once per falsy value to prevent console spam
     const key = String(tripId);
     if (!_warnedTripIds.has(key)) {
       _warnedTripIds.add(key);
-      console.warn('[routes] getTripRoute called with falsy tripId — falling back to /trips');
+      console.warn('[routes] getTripRoute called with falsy tripId - falling back to /trips');
     }
     return '/trips';
   }

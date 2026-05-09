@@ -110,7 +110,7 @@ export default function ResetPasswordPage() {
         </div>
 
         <button className='auth-button' type='submit' disabled={loading}>
-          {loading ? 'Updating...' : 'Reset password'}
+          {loading ? 'Updating…' : 'Reset password'}
         </button>
       </form>
 

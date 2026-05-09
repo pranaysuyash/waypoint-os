@@ -4,7 +4,7 @@
  * Validates a workspace invitation code and returns the agency name.
  * Used by the /join/[code] page before the user fills in the signup form.
  *
- * This is a public endpoint — no auth cookie required. The backend /api/auth/*
+ * This is a public endpoint - no auth cookie required. The backend /api/auth/*
  * prefix is on the PUBLIC_PREFIXES allowlist in FastAPI's auth middleware.
  *
  * Returns:

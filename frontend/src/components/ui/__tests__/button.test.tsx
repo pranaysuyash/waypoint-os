@@ -64,7 +64,7 @@ describe('Button Component', () => {
   it('applies icon size styles', () => {
     render(<Button size='icon'>X</Button>);
     const button = screen.getByRole('button');
-    expect(button).toHaveClass('h-8', 'w-8');
+    expect(button).toHaveClass('size-8');
   });
 
   it('is disabled when disabled prop is true', () => {

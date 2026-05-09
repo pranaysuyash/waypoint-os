@@ -137,7 +137,7 @@ export function parseBudgetString(input: string): Money | null {
  * Format a Money object as a display string.
  */
 export function formatMoneyObject(money: Money | null | undefined): string {
-  if (!money) return '—';
+  if (!money) return '-';
   return formatMoney(money.amount, money.currency);
 }
 

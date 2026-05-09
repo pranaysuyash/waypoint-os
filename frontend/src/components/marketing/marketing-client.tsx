@@ -37,7 +37,7 @@ export function CtaBand({
           <div className='flex flex-wrap gap-3 mt-5'>
             <Link href={primaryHref} className={styles.primaryButton}>
               {primaryLabel}
-              <ArrowRight className='h-4 w-4' />
+              <ArrowRight className='size-4' />
             </Link>
             {secondaryHref && secondaryLabel ? (
               <Link href={secondaryHref} className={styles.secondaryButton}>
@@ -64,13 +64,13 @@ export function CtaBand({
             ) : (
               <>
                 <div className='text-[13px] font-semibold text-[#e6edf3] mb-1'>Not ready for a demo?</div>
-                 <div className='text-[12px] text-[#9ba3b0] mb-3'>Join the waitlist — no pressure, no spam.</div>
+                 <div className='text-[12px] text-[#9ba3b0] mb-3'>Join the waitlist - no pressure, no spam.</div>
                 <div className='flex gap-2'>
                   <div
                     className='flex-1 flex items-center gap-2 px-3 py-2 rounded-[9px]'
                     style={{ background: '#111318', border: '1px solid #30363d' }}
                   >
-                    <Mail className='h-3.5 w-3.5 text-[#484f58] shrink-0' />
+                    <Mail className='size-3.5 text-[#484f58] shrink-0' />
                     <input
                       type='email'
                       value={email}
@@ -94,7 +94,7 @@ export function CtaBand({
                   </button>
                 </div>
                 <div className='flex items-center gap-1.5 mt-2.5'>
-                  <ShieldCheck className='h-3.5 w-3.5 text-[#484f58]' />
+                  <ShieldCheck className='size-3.5 text-[#484f58]' />
                    <span className='text-[var(--ui-text-xs)] text-[#8b949e]'>No spam. Unsubscribe anytime.</span>
                 </div>
               </>
@@ -111,7 +111,7 @@ export function DemoButton({ href, label }: { href: string; label: string }) {
     <Button asChild size='lg' className='rounded-full px-5'>
       <Link href={href}>
         {label}
-        <Sparkles className='h-4 w-4' />
+        <Sparkles className='size-4' />
       </Link>
     </Button>
   );

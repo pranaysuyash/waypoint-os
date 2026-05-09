@@ -244,7 +244,7 @@ describe('FollowupsPage', () => {
     );
 
     const { container } = render(<FollowupsPage />);
-    expect(screen.getByText('Loading follow-ups...')).toBeInTheDocument();
+    expect(screen.getByText('Loading follow-ups…')).toBeInTheDocument();
   });
 
   // ======== PAGINATION/COUNT TESTS ========

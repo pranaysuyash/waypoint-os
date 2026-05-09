@@ -1,5 +1,5 @@
 /**
- * ActivityProvenance — Badge component for activity source tracking.
+ * ActivityProvenance - Badge component for activity source tracking.
  *
  * Shows whether an activity was:
  * - 🤖 SUGGESTED (by AI) with confidence %
@@ -28,7 +28,7 @@ export interface ActivityProvenanceProps {
 }
 
 /**
- * ActivityProvenanceBadge — Renders a badge showing activity source and confidence
+ * ActivityProvenanceBadge - Renders a badge showing activity source and confidence
  */
 export const ActivityProvenanceBadge: React.FC<ActivityProvenanceProps> = ({
   source,
@@ -51,11 +51,11 @@ export const ActivityProvenanceBadge: React.FC<ActivityProvenanceProps> = ({
 
   // Color variants for suggested (AI-powered)
   const suggestedStyles =
-    'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:border-blue-300';
+    'bg-[rgba(var(--accent-blue-rgb)/0.10)] text-accent-blue border-[rgba(var(--accent-blue-rgb)/0.25)] hover:bg-[rgba(var(--accent-blue-rgb)/0.18)] hover:border-[rgba(var(--accent-blue-rgb)/0.35)]';
 
   // Color variants for requested (user-initiated)
   const requestedStyles =
-    'bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:border-green-300';
+    'bg-[rgba(var(--accent-green-rgb)/0.10)] text-accent-green border-[rgba(var(--accent-green-rgb)/0.25)] hover:bg-[rgba(var(--accent-green-rgb)/0.18)] hover:border-[rgba(var(--accent-green-rgb)/0.35)]';
 
   const variantStyles = isSuggested ? suggestedStyles : requestedStyles;
 
@@ -80,7 +80,7 @@ export const ActivityProvenanceBadge: React.FC<ActivityProvenanceProps> = ({
 };
 
 /**
- * ActivityProvenanceGroup — Renders provenance badge with additional context
+ * ActivityProvenanceGroup - Renders provenance badge with additional context
  *
  * Typically used in lists/tables where activity details are shown with source tracking.
  */
@@ -102,10 +102,10 @@ export const ActivityProvenanceGroup: React.FC<ActivityProvenanceGroupProps> = (
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
       <div className="flex items-center gap-2">
-        <span className="font-medium text-gray-900">{activityName}</span>
+        <span className="font-medium text-text-primary">{activityName}</span>
         <ActivityProvenanceBadge source={source} confidence={confidence} size="sm" />
       </div>
-      {timestamp && <div className="text-ui-xs text-gray-500">{timestamp}</div>}
+      {timestamp && <div className="text-ui-xs text-text-muted">{timestamp}</div>}
     </div>
   );
 };

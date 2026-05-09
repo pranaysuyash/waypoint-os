@@ -23,7 +23,7 @@ interface SuitabilitySignalProps {
  * are handled by deriveFlagLabel() using the flag's details payload instead.
  */
 const FLAG_LABELS: Record<string, string> = {
-  // Coherence flags — keys emitted by evaluate_itinerary_coherence
+  // Coherence flags - keys emitted by evaluate_itinerary_coherence
   suitability_overload_elderly: "Itinerary Intensity Overload for Elderly",
   suitability_pacing_toddler: "Too Many Activities: Toddler Stamina Risk",
   // Generic coherence fallback
@@ -51,12 +51,12 @@ const FLAG_LABELS: Record<string, string> = {
  * Derive a human-readable label from a flag.
  *
  * Priority:
- *   1. Static map — for coherence flags with stable, predictable keys
- *   2. Details payload — for activity-specific dynamic flags whose key encodes
+ *   1. Static map - for coherence flags with stable, predictable keys
+ *   2. Details payload - for activity-specific dynamic flags whose key encodes
  *      tier and activity_id. The details object carries activity_name and
  *      participant_label which produce a precise, readable label.
- *   3. Flag reason — the backend always provides a human-readable reason string
- *   4. Cleaned-up flag_type string — last resort
+ *   3. Flag reason - the backend always provides a human-readable reason string
+ *   4. Cleaned-up flag_type string - last resort
  */
 function deriveFlagLabel(flag: SuitabilityFlagData): string {
   if (FLAG_LABELS[flag.flag_type]) return FLAG_LABELS[flag.flag_type];
@@ -72,7 +72,7 @@ function deriveFlagLabel(flag: SuitabilityFlagData): string {
   }
 
   if (flag.reason && flag.reason.length > 0) {
-    // Trim long reasons to a headline — keep it to the first sentence
+    // Trim long reasons to a headline - keep it to the first sentence
     const first = flag.reason.split(/[.;]/)[0].trim();
     return first.length > 0 ? first : flag.flag_type;
   }
@@ -230,7 +230,7 @@ export function SuitabilitySignal({
             <strong>{flags.length}</strong> suitability issue{flags.length !== 1 ? "s" : ""} detected
             {tier1Flags.length > 0 && (
               <span className="text-accent-red">
-                {" — "}
+                {" - "}
                 <strong>{unacknowledgedCritical.length > 0 ? unacknowledgedCritical.length : tier1Flags.length}</strong>
                 {unacknowledgedCritical.length > 0
                   ? ` hard blocker${unacknowledgedCritical.length !== 1 ? "s" : ""} require acknowledgment before approval`

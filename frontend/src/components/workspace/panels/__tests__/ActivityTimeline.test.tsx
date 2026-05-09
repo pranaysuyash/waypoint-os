@@ -84,7 +84,7 @@ describe('ActivityTimeline', () => {
 
     const buttons = screen.getAllByRole('button');
     const newestButton = buttons.find((btn) => btn.textContent?.includes('Newest First'));
-    expect(newestButton?.className).toMatch(/bg-blue-100/);
+    expect(newestButton?.className).toMatch(/accent-blue/);
   });
 
   // Test 6: Sort by oldest first
@@ -95,7 +95,7 @@ describe('ActivityTimeline', () => {
     const oldestButton = screen.getByRole('button', { name: /Oldest First/i });
     await user.click(oldestButton);
 
-    expect(oldestButton.className).toMatch(/bg-blue-100/);
+    expect(oldestButton.className).toMatch(/accent-blue/);
   });
 
   // Test 7: Expand and collapse date groups
@@ -235,7 +235,7 @@ describe('ActivityTimeline - Edge cases', () => {
 
     render(<ActivityTimeline activities={specialActivities} />);
 
-    // Single group, auto-expanded — both activities are visible immediately
+    // Single group, auto-expanded - both activities are visible immediately
     expect(screen.getByText(/Café & Wine Tasting/)).toBeInTheDocument();
     expect(screen.getByText(/Rock Climbing \(Expert\)/)).toBeInTheDocument();
   });

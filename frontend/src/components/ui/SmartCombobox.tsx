@@ -14,7 +14,7 @@
  *   value={tripType}
  *   onChange={setTripType}
  *   options={TRIP_TYPE_OPTIONS}
- *   placeholder="Select or type trip type..."
+ *   placeholder="Select or type trip type…"
  *   label="Trip Type"
  * />
  */
@@ -48,7 +48,7 @@ export function SmartCombobox({
   value,
   onChange,
   options,
-  placeholder = 'Select or type...',
+  placeholder = 'Select or type…',
   label,
   allowCustom = true,
   fuzzyThreshold = 0.6,
@@ -214,7 +214,7 @@ export function SmartCombobox({
               className='p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors'
               title='Clear'
             >
-              <X className='w-4 h-4' />
+              <X className='size-4' />
             </button>
           )}
           <button
@@ -222,7 +222,7 @@ export function SmartCombobox({
             onClick={() => !disabled && setIsOpen(!isOpen)}
             className='p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors'
           >
-            <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`size-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </button>
         </div>
       </div>
@@ -230,7 +230,7 @@ export function SmartCombobox({
       {/* Duplicate warning */}
       {duplicateOption && inputValue !== duplicateOption.value && (
         <div className='mt-1 flex items-center gap-2 text-[var(--ui-text-xs)] text-[var(--accent-amber)]'>
-          <AlertCircle className='w-3 h-3 flex-shrink-0' />
+          <AlertCircle className='size-3 flex-shrink-0' />
           <span>
             Similar to existing option "{duplicateOption.value}". Use that instead?
           </span>
@@ -257,7 +257,7 @@ export function SmartCombobox({
                     onClick={handleCustomEntry}
                     className='flex items-center justify-center gap-2 w-full px-3 py-2 bg-[var(--accent-blue)] text-[var(--text-on-accent)] rounded-lg text-[var(--ui-text-sm)] font-medium hover:bg-[var(--accent-blue-hover)] transition-colors'
                   >
-                    <Plus className='w-4 h-4' />
+                    <Plus className='size-4' />
                     Add "{toTitleCase(inputValue)}"
                   </button>
                 </div>
@@ -320,7 +320,7 @@ export function SmartCombobox({
                     onClick={handleCustomEntry}
                     className='flex items-center justify-center gap-2 w-full px-3 py-2 bg-[var(--bg-count-badge)] text-[var(--accent-blue)] border border-[var(--border-default)] border-dashed rounded-lg text-[var(--ui-text-sm)] hover:bg-[var(--accent-blue)/0.1] transition-colors'
                   >
-                    <Plus className='w-4 h-4' />
+                    <Plus className='size-4' />
                     Add new option: "{toTitleCase(inputValue)}"
                   </button>
                 </div>

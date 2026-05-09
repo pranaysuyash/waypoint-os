@@ -7,6 +7,7 @@ import { AlertTriangle, ChevronLeft, Lock, PanelRightClose, PanelRightOpen } fro
 import { ErrorBoundary, InlineError } from "@/components/error-boundary";
 import { InlineLoading } from "@/components/ui/loading";
 import { useTrip } from "@/hooks/useTrips";
+import { useClientTime } from "@/hooks/useClientDate";
 import {
   canAccessPlanningStage,
   getPlanningBlockerBody,
@@ -135,7 +136,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   if (isLoading && !trip) {
     return (
       <div className="p-6">
-        <InlineLoading message="Loading workspace..." />
+        <InlineLoading message="Loading workspace…" />
       </div>
     );
   }
@@ -156,7 +157,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
             href={fallbackHref}
             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border-default)] text-ui-sm text-[#e6edf3] hover:bg-[#161b22] transition-colors"
           >
-            <ChevronLeft className="w-4 h-4" aria-hidden="true" />
+            <ChevronLeft className="size-4" aria-hidden="true" />
             {fallbackLabel}
           </Link>
         </div>
@@ -182,7 +183,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
               <div className="flex items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2 text-ui-xs text-[var(--text-tertiary)]">
                   <Link href={backHref} className="hover:text-[var(--text-muted)] transition-colors flex items-center gap-1">
-                    <ChevronLeft className="w-3 h-3" />
+                    <ChevronLeft className="size-3" />
                     {backLabel}
                   </Link>
                   <span>/</span>
@@ -202,8 +203,8 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                   aria-controls="workspace-right-rail"
                 >
                   {isRailOpen
-                    ? <><PanelRightClose className="w-3.5 h-3.5" aria-hidden="true" /> Hide activity</>
-                    : <><PanelRightOpen  className="w-3.5 h-3.5" aria-hidden="true" /> Show activity</>
+                    ? <><PanelRightClose className="size-3.5" aria-hidden="true" /> Hide activity</>
+                    : <><PanelRightOpen  className="size-3.5" aria-hidden="true" /> Show activity</>
                   }
                 </button>
               </div>
@@ -224,7 +225,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                       style={{ color: accent.color, background: `${accent.color}18`, border: `1px solid ${accent.border}` }}
                     >
                       <span
-                        className="w-1.5 h-1.5 rounded-full"
+                        className="size-1.5 rounded-full"
                         style={{ background: accent.color, boxShadow: `0 0 4px ${accent.color}` }}
                       />
                       {getPlanningStatusLabel(trip)}
@@ -239,33 +240,33 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                     </span>
                     {result_run_ts && (
                       <span className="text-[var(--ui-text-xs)] text-[var(--border-default)]">
-                        processed {new Date(result_run_ts).toLocaleTimeString()}
+                        processed {useClientTime(result_run_ts)}
                       </span>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Stage tabs — underline style */}
+              {/* Stage tabs - underline style */}
               {planningUnlockHint && (
                 <div className="mb-2 flex items-center gap-2 rounded-lg border border-[rgba(210,153,34,0.22)] bg-[rgba(210,153,34,0.06)] px-3 py-2">
-                  <Lock className="h-3.5 w-3.5 shrink-0 text-[var(--accent-amber)]" aria-hidden="true" />
+                  <Lock className="size-3.5 shrink-0 text-[var(--accent-amber)]" aria-hidden="true" />
                   <span className="text-[12px] font-medium text-[var(--text-secondary)]">
                     {planningUnlockHint}
                   </span>
                 </div>
               )}
               <div className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 px-1">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
+                <span className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
                   Stage
                 </span>
                 {stageProgressItems.map((item, index) => (
-                  <span key={`${item.label}-${index}`} className="flex items-center">
+                  <span key={item.label} className="flex items-center">
                     <span className="text-[12px] font-medium" style={{ color: item.color }}>
                       {item.label}
                     </span>
                     {index < stageProgressItems.length - 1 && (
-                      <span className="mx-1 text-[11px] text-[var(--text-muted)]">→</span>
+                      <span className="mx-1 text-[12px] text-[var(--text-muted)]">→</span>
                     )}
                   </span>
                 ))}
@@ -297,11 +298,11 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                           className="flex items-center gap-1.5 text-[13px]"
                           style={{ fontWeight: isActive ? 600 : 500 }}
                         >
-                          <Lock className="h-3.5 w-3.5 shrink-0 text-[var(--accent-amber)]" aria-hidden="true" />
+                          <Lock className="size-3.5 shrink-0 text-[var(--accent-amber)]" aria-hidden="true" />
                           <span>{tab.label}</span>
                         </div>
                         {lockedLabel && (
-                          <div className="mt-0.5 text-[11px] leading-tight text-[var(--text-secondary)]">
+                          <div className="mt-0.5 text-[12px] leading-tight text-[var(--text-secondary)]">
                             {lockedLabel}
                           </div>
                         )}
@@ -330,10 +331,10 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
             </div>
           </header>
 
-          {/* ── Flags alert — shown separately if blocked ── */}
+          {/* ── Flags alert - shown separately if blocked ── */}
           {trip.state === 'red' && (
             <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[rgba(248,81,73,0.35)] bg-[rgba(248,81,73,0.07)]">
-              <AlertTriangle className="w-4 h-4 text-[#f85149] shrink-0" aria-hidden="true" />
+              <AlertTriangle className="size-4 text-[#f85149] shrink-0" aria-hidden="true" />
               <span className="text-ui-sm font-semibold text-[#f85149]">Action required</span>
               <span className="text-ui-sm text-[#c9d1d9]">This trip has blockers that must be resolved before it can proceed.</span>
             </div>
@@ -363,7 +364,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                     <p className="mt-1 text-[12px] text-[var(--text-secondary)]">
                       {getPlanningBlockerBody(isLeadReview, trip)}
                     </p>
-                    <p className="mt-1.5 text-[11px] text-[var(--text-muted)]">{getPlanningNextAction(trip)}</p>
+                    <p className="mt-1.5 text-[12px] text-[var(--text-muted)]">{getPlanningNextAction(trip)}</p>
                   </div>
                 </div>
                 <div className="flex-1 overflow-y-auto">

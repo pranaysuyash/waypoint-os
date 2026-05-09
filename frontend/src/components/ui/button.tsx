@@ -20,10 +20,10 @@ const buttonVariants = cva(
         default: "h-8 px-space-4 py-space-2",
          sm: "h-7 px-space-3 text-[var(--ui-text-xs)]",
          lg: "h-10 px-space-6 text-[var(--ui-text-base)]",
-        icon: "h-8 w-8",
+        icon: "size-8",
          xl: "h-11 px-space-8 text-[var(--ui-text-base)]",
         touch: "h-11 px-space-4 text-[var(--ui-text-sm)]",
-        "icon-lg": "h-11 w-11",
+        "icon-lg": "size-11",
       },
     },
     defaultVariants: {

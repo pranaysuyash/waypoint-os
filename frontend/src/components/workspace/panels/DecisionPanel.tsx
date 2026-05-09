@@ -47,6 +47,17 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
   const decision: DecisionOutput | null = result_decision || trip?.decision || null;
   const validation = result_validation || trip?.validation || null;
 
+  const handleSuitabilityDrill = useCallback((_flagType: string) => {
+    document.querySelector('[data-testid="timeline-panel"]')?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  const handleAcknowledge = useCallback(async (flagType: string) => {
+    acknowledgeFlag(flagType);
+    if (tripId) {
+      try { await acknowledgeSuitabilityFlags(tripId, [flagType]); } catch {}
+    }
+  }, [tripId, acknowledgeFlag]);
+
   if (!decision) {
     return (
       <div className="p-6 text-center">
@@ -74,17 +85,6 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
   // fall back to flat suitability_flags for backward compatibility.
   const suitabilityProfile: SuitabilityProfile | null | undefined =
     decision.suitability_profile;
-
-  const handleSuitabilityDrill = useCallback((_flagType: string) => {
-    document.querySelector('[data-testid="timeline-panel"]')?.scrollIntoView({ behavior: "smooth" });
-  }, []);
-
-  const handleAcknowledge = useCallback(async (flagType: string) => {
-    acknowledgeFlag(flagType);
-    if (tripId) {
-      try { await acknowledgeSuitabilityFlags(tripId, [flagType]); } catch {}
-    }
-  }, [tripId, acknowledgeFlag]);
 
   // Map decision state to visual treatment
   const STATE_KEY: Record<string, keyof typeof STATE_COLORS> = {
@@ -169,15 +169,15 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
         );
       })()}
 
-      {/* Hard blockers — prominent */}
+      {/* Hard blockers - prominent */}
       {hardBlockers.length > 0 && (
         <div className="rounded-xl p-4 border border-[rgba(var(--accent-red-rgb)/0.3)] bg-[rgba(var(--accent-red-rgb)/0.06)]">
           <div className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-accent-red mb-2">
-            Hard Blockers — must resolve before quoting
+            Hard Blockers - must resolve before quoting
           </div>
           <ul className="space-y-1.5">
-            {hardBlockers.map((b, i) => (
-              <li key={i} className="flex items-start gap-2 text-ui-sm text-accent-red">
+            {hardBlockers.map((b) => (
+              <li key={`hb-${b.slice(0, 30)}`} className="flex items-start gap-2 text-ui-sm text-accent-red">
                 <span className="mt-0.5 shrink-0">✕</span>
                 <span>{b}</span>
               </li>
@@ -190,11 +190,11 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
       {softBlockers.length > 0 && (
         <div className="rounded-xl p-4 border border-[rgba(var(--accent-amber-rgb)/0.25)] bg-[rgba(var(--accent-amber-rgb)/0.06)]">
           <div className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-accent-amber mb-2">
-            Soft Blockers — worth discussing
+            Soft Blockers - worth discussing
           </div>
           <ul className="space-y-1.5">
-            {softBlockers.map((b, i) => (
-              <li key={i} className="flex items-start gap-2 text-ui-sm text-accent-amber">
+            {softBlockers.map((b) => (
+              <li key={`sb-${b.slice(0, 30)}`} className="flex items-start gap-2 text-ui-sm text-accent-amber">
                 <span className="mt-0.5 shrink-0">△</span>
                 <span>{b}</span>
               </li>

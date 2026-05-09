@@ -63,7 +63,7 @@ const personaCards = [
   {
     icon: Users,
     title: 'Solo Agents',
-    body: 'Be an agency of one — without the overwhelm.',
+    body: 'Be an agency of one - without the overwhelm.',
     accentColor: '#58a6ff',
     bullets: ['Run your full pipeline in one place', 'Save hours every week', 'Win more, with less stress'],
   },
@@ -100,7 +100,7 @@ const productMoments = [
   {
     label: '02',
     title: 'Risk question generation',
-    body: 'Waypoint surfaces the 3–5 questions that actually change the itinerary — visa gaps, pacing conflicts, supplier dependencies — before advisors start building.',
+    body: 'Waypoint surfaces the 3–5 questions that actually change the itinerary - visa gaps, pacing conflicts, supplier dependencies - before advisors start building.',
   },
   {
     label: '03',
@@ -142,7 +142,7 @@ export default function HomePage() {
           <div className={styles.heroActions}>
             <Link href='/signup' className={styles.primaryButton}>
               Book a demo
-              <ArrowRight className='h-4 w-4' />
+              <ArrowRight className='size-4' />
             </Link>
             <Link href='/itinerary-checker' className={styles.secondaryButton}>
               See the public checker
@@ -155,7 +155,7 @@ export default function HomePage() {
               'Public checker for traveler-led plan audits',
             ].map((t) => (
               <div key={t} className='flex items-center gap-1.5'>
-                <Check className='h-3.5 w-3.5 text-[#3fb950] shrink-0' />
+                <Check className='size-3.5 text-[#3fb950] shrink-0' />
                 <span className='text-[12px] text-[#6e7681]'>{t}</span>
               </div>
             ))}
@@ -189,7 +189,7 @@ export default function HomePage() {
         <div className={styles.contrastRight}>
           <p className={styles.contrastKicker}>Waypoint OS brings your agency together.</p>
           <p className={styles.contrastBody}>
-            One intelligent workspace that connects your people, processes, and partners —
+            One intelligent workspace that connects your people, processes, and partners -
             with AI that works alongside your team, not instead of them.
           </p>
           <div className={styles.contrastGoodList}>
@@ -200,7 +200,7 @@ export default function HomePage() {
               'More profit. Less busywork.',
             ].map((p) => (
               <div key={p} className={styles.contrastGoodItem}>
-                <Check className='h-4 w-4 text-[#3fb950] shrink-0' />
+                <Check className='size-4 text-[#3fb950] shrink-0' />
                 <span>{p}</span>
               </div>
             ))}
@@ -221,7 +221,7 @@ export default function HomePage() {
               <div key={stage.label} className={styles.pipelineStageWrap}>
                 <div className={styles.pipelineStage}>
                   <div className={styles.pipelineIcon}>
-                    <Icon className='h-5 w-5' />
+                    <Icon className='size-5' />
                   </div>
                   <div className={styles.pipelineLabel}>{stage.label}</div>
                   <div className={styles.pipelineBody}>{stage.body}</div>
@@ -252,7 +252,7 @@ export default function HomePage() {
                   <strong>{w.label}</strong>
                   <span>{w.body}</span>
                 </div>
-                <ArrowRight className='h-4 w-4 text-[#484f58] shrink-0' />
+                <ArrowRight className='size-4 text-[#484f58] shrink-0' />
               </div>
             ))}
           </div>
@@ -289,7 +289,7 @@ export default function HomePage() {
             </div>
             <div className={styles.mockupRight}>
               <div className={styles.mockupAiHeader}>
-                <Sparkles className='h-3.5 w-3.5 text-[#a371f7]' />
+                <Sparkles className='size-3.5 text-[#a371f7]' />
                 <span>AI Briefing</span>
               </div>
               <p className={styles.mockupAiBody}>
@@ -303,7 +303,7 @@ export default function HomePage() {
                   'Budget alignment check',
                 ].map((s) => (
                   <div key={s} className={styles.mockupStep}>
-                    <CheckCircle2 className='h-3.5 w-3.5 text-[#39d0d8] shrink-0' />
+                    <CheckCircle2 className='size-3.5 text-[#39d0d8] shrink-0' />
                     <span>{s}</span>
                   </div>
                 ))}
@@ -347,7 +347,7 @@ export default function HomePage() {
             return (
               <div key={cap.label} className={styles.aiCell}>
                 <div className={styles.aiCellIcon}>
-                  <Icon className='h-5 w-5' />
+                  <Icon className='size-5' />
                 </div>
                 <div className={styles.aiCellLabel}>{cap.label}</div>
                 <div className={styles.aiCellBody}>{cap.body}</div>
@@ -356,7 +356,7 @@ export default function HomePage() {
           })}
         </div>
         <div className={styles.aiPrivacyNote}>
-          <Lock className='h-4 w-4 text-[#3fb950] shrink-0' />
+          <Lock className='size-4 text-[#3fb950] shrink-0' />
           <span>Private by design. Your data stays yours. Models don&apos;t train on your content.</span>
         </div>
       </section>
@@ -373,20 +373,20 @@ export default function HomePage() {
             return (
               <article key={card.title} style={{ borderTop: `2px solid ${card.accentColor}` }}>
                 <div className={styles.personaIconWrap} style={{ color: card.accentColor }}>
-                  <Icon className='h-5 w-5' />
+                  <Icon className='size-5' />
                 </div>
                 <h3>{card.title}</h3>
                 <p>{card.body}</p>
                 <ul className={styles.personaBullets}>
                   {card.bullets.map((b) => (
                     <li key={b}>
-                      <Check className='h-3.5 w-3.5 shrink-0' style={{ color: card.accentColor }} />
+                      <Check className='size-3.5 shrink-0' style={{ color: card.accentColor }} />
                       <span>{b}</span>
                     </li>
                   ))}
                 </ul>
                 <Link href='/signup' className={styles.personaCta}>
-                  See how it helps <ArrowRight className='h-3.5 w-3.5' />
+                  See how it helps <ArrowRight className='size-3.5' />
                 </Link>
               </article>
             );
@@ -406,7 +406,7 @@ export default function HomePage() {
             return (
               <div key={item.title} className={styles.operationsCell}>
                 <div className={styles.operationsCellIcon}>
-                  <Icon className='h-5 w-5' />
+                  <Icon className='size-5' />
                 </div>
                 <h3>{item.title}</h3>
                 <p>{item.body}</p>
@@ -430,7 +430,7 @@ export default function HomePage() {
           <div className={styles.wedgeActions}>
             <Link href='/itinerary-checker' className={styles.primaryButton}>
               Try the free itinerary checker
-              <ArrowRight className='h-4 w-4' />
+              <ArrowRight className='size-4' />
             </Link>
           </div>
         </div>

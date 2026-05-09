@@ -19,6 +19,7 @@ from spine_api.models.tenant import (
     VALID_TRANSITIONS,
     TASK_TITLE_TEMPLATES,
 )
+from spine_api.services import execution_event_service
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +149,24 @@ async def create_task(
     db.add(task)
     await db.commit()
     await db.refresh(task)
+
+    await execution_event_service.emit_event(
+        db,
+        agency_id=agency_id,
+        trip_id=trip_id,
+        subject_type="booking_task",
+        subject_id=task.id,
+        event_type="task_created",
+        event_category="task",
+        status_from=None,
+        status_to="not_started",
+        actor_type="agent",
+        actor_id=created_by,
+        source="agent_action",
+        event_metadata={"task_type": task_type},
+    )
+    await db.commit()
+
     return task
 
 
@@ -171,7 +190,33 @@ async def update_task(
         if new_status not in TASK_STATUSES:
             raise ValueError(f"Invalid status: {new_status}")
         _validate_transition(task.status, new_status)
+        old_status = task.status
         task.status = new_status
+
+        # Map status to event type
+        event_type_map = {
+            "ready": "task_ready",
+            "blocked": "task_blocked",
+            "in_progress": "task_started",
+            "waiting_on_customer": "task_waiting",
+        }
+        event_type = event_type_map.get(new_status)
+        if event_type:
+            await execution_event_service.emit_event(
+                db,
+                agency_id=agency_id,
+                trip_id=task.trip_id,
+                subject_type="booking_task",
+                subject_id=task.id,
+                event_type=event_type,
+                event_category="task",
+                status_from=old_status,
+                status_to=new_status,
+                actor_type="agent",
+                actor_id=None,
+                source="agent_action",
+                event_metadata={"task_type": task.task_type},
+            )
 
     if "priority" in data:
         if data["priority"] not in TASK_PRIORITIES:
@@ -211,11 +256,30 @@ async def complete_task(
         raise ValueError("Cannot complete a blocked task. Reconcile or unblock first.")
 
     _validate_transition(task.status, "completed")
+    old_status = task.status
     task.status = "completed"
     task.completed_by = completed_by
     task.completed_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(task)
+
+    await execution_event_service.emit_event(
+        db,
+        agency_id=agency_id,
+        trip_id=task.trip_id,
+        subject_type="booking_task",
+        subject_id=task.id,
+        event_type="task_completed",
+        event_category="task",
+        status_from=old_status,
+        status_to="completed",
+        actor_type="agent",
+        actor_id=completed_by,
+        source="agent_action",
+        metadata={"task_type": task.task_type},
+    )
+    await db.commit()
+
     return task
 
 
@@ -234,10 +298,29 @@ async def cancel_task(
         raise ValueError("Task not found")
 
     _validate_transition(task.status, "cancelled")
+    old_status = task.status
     task.status = "cancelled"
     task.cancelled_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(task)
+
+    await execution_event_service.emit_event(
+        db,
+        agency_id=agency_id,
+        trip_id=task.trip_id,
+        subject_type="booking_task",
+        subject_id=task.id,
+        event_type="task_cancelled",
+        event_category="task",
+        status_from=old_status,
+        status_to="cancelled",
+        actor_type="agent",
+        actor_id=None,
+        source="agent_action",
+        metadata={"task_type": task.task_type},
+    )
+    await db.commit()
+
     return task
 
 
@@ -502,6 +585,25 @@ async def _create_missing_tasks(
         for t in created:
             await db.refresh(t)
 
+        # Emit creation events for system-generated tasks
+        for t in created:
+            await execution_event_service.emit_event(
+                db,
+                agency_id=t.agency_id,
+                trip_id=t.trip_id,
+                subject_type="booking_task",
+                subject_id=t.id,
+                event_type="task_created",
+                event_category="task",
+                status_from=None,
+                status_to=t.status,
+                actor_type="system",
+                actor_id=None,
+                source="system_generation",
+                metadata={"task_type": t.task_type},
+            )
+        await db.commit()
+
     return created, skipped
 
 
@@ -554,6 +656,7 @@ async def _reconcile_active_tasks(
                 task_id=task.id, old_status="blocked", new_status="ready"
             ))
         elif not current_blocked and should_be_blocked:
+            old_s = task.status
             task.status = "blocked"
             task.blocker_code = new_blocker
             task.blocker_refs = candidate.get("blocker_refs")
@@ -562,6 +665,31 @@ async def _reconcile_active_tasks(
             ))
 
     if reconciled:
+        await db.commit()
+
+        # Emit reconciliation events
+        for r in reconciled:
+            task_result = await db.execute(
+                select(BookingTask).where(BookingTask.id == r.task_id)
+            )
+            t = task_result.scalar_one_or_none()
+            if t:
+                event_type = "task_ready" if r.new_status == "ready" else "task_blocked"
+                await execution_event_service.emit_event(
+                    db,
+                    agency_id=t.agency_id,
+                    trip_id=t.trip_id,
+                    subject_type="booking_task",
+                    subject_id=t.id,
+                    event_type=event_type,
+                    event_category="task",
+                    status_from=r.old_status,
+                    status_to=r.new_status,
+                    actor_type="system",
+                    actor_id=None,
+                    source="reconciliation",
+                    event_metadata={"task_type": t.task_type, "blocker_code": t.blocker_code},
+                )
         await db.commit()
 
     return reconciled

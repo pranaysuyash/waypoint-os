@@ -45,7 +45,7 @@ export function useAgencySettings() {
       setData(result);
     } catch (err) {
       setError(err as Error);
-      // Skip console noise for 401 — AuthProvider handles redirect
+      // Skip console noise for 401 - AuthProvider handles redirect
       const status = (err as any)?.status ?? (err as any)?.code;
       if (status !== 401) {
         console.error("Failed to fetch agency settings:", err);

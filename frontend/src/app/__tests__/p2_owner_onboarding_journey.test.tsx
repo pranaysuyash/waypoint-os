@@ -228,7 +228,7 @@ describe("P2 Owner Onboarding Journey: Junior Quote → Coaching Warnings → Ow
   it("Step 1: IntakePanel renders with junior agent's trip data", async () => {
     render(<IntakePanel tripId="TRIP-JR-001" trip={juniorTrip} />);
 
-    // Notes section is collapsed when planning panel is visible — expand it
+    // Notes section is collapsed when planning panel is visible - expand it
     const openNotesBtn = screen.queryByRole("button", { name: /open notes/i });
     if (openNotesBtn) {
       fireEvent.click(openNotesBtn);
@@ -322,7 +322,7 @@ describe("P2 Owner Onboarding Journey: Junior Quote → Coaching Warnings → Ow
     });
   });
 
-  it("Step 5: Full journey — intake data flows through decision to coaching display", () => {
+  it("Step 5: Full journey - intake data flows through decision to coaching display", () => {
     const tripWithDecision = {
       ...juniorTrip,
       decision: decisionWithCoaching,

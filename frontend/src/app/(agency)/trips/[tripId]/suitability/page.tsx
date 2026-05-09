@@ -79,21 +79,21 @@ export default function SuitabilityPage() {
   };
 
   if (loading) {
-    return <div className="p-4">Loading suitability assessment...</div>;
+    return <div className="p-4">Loading suitability assessment…</div>;
   }
 
   if (error) {
-    return <div className="p-4 text-red-600">Error: {error}</div>;
+    return <div className="p-4 text-accent-red">Error: {error}</div>;
   }
 
   if (flags.length === 0) {
     // No flags, skip this stage
     return (
       <div className="p-4">
-        <p className="text-gray-600">No suitability concerns detected.</p>
+        <p className="text-text-secondary">No suitability concerns detected.</p>
         <button
           onClick={() => router.push(`/trips/${tripId}/packet`)}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="mt-4 px-4 py-2 bg-[rgba(var(--accent-blue-rgb)/0.30)] text-white rounded-lg hover:bg-[rgba(var(--accent-blue-rgb)/0.26)]"
         >
           Continue to Review Packet
         </button>

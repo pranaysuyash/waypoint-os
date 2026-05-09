@@ -44,24 +44,24 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
   return (
     <div className="space-y-6">
       <section>
-        <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Content Review</h3>
+        <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Content Review</h3>
         {safety.leakage_passed ? (
           <div className="border border-[#1c2128] rounded-lg p-4 bg-sidebar">
-            <div className="flex items-center text-emerald-400 font-semibold mb-1">
-              <CheckCircle className="w-4 h-4 mr-2" />
-              PASS — Safe for Customer
+            <div className="flex items-center text-accent-green font-semibold mb-1">
+              <CheckCircle className="size-4 mr-2" />
+              PASS - Safe for Customer
             </div>
-            <p className="text-ui-sm text-gray-400">
+            <p className="text-ui-sm text-text-muted">
               No internal jargon or sensitive details found in the customer-facing message.
             </p>
           </div>
         ) : (
-          <div className="border border-rose-900/30 rounded-lg p-4 bg-rose-950/10">
-            <div className="flex items-center text-rose-400 font-semibold mb-1">
-              <XCircle className="w-4 h-4 mr-2" />
-              FAIL — Internal Jargon Found
+          <div className="border border-[rgba(var(--accent-red-rgb)/0.4)]/30 rounded-lg p-4 bg-[rgba(var(--accent-red-rgb)/0.18)]/10">
+            <div className="flex items-center text-accent-red font-semibold mb-1">
+              <XCircle className="size-4 mr-2" />
+              FAIL - Internal Jargon Found
             </div>
-            <p className="text-ui-sm text-gray-400">
+            <p className="text-ui-sm text-text-muted">
               Internal-only terms were found in the message the customer would see.
             </p>
           </div>
@@ -69,12 +69,12 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
       </section>
 
       {safety.strict_leakage && !safety.leakage_passed && (
-        <div className="border-2 border-rose-500/50 rounded-lg p-4 bg-rose-950/20">
-          <div className="flex items-center text-rose-500 font-bold text-ui-sm mb-1">
-            <AlertTriangle className="w-4 h-4 mr-2" />
+        <div className="border-2 border-[rgba(var(--accent-red-rgb)/0.45)]/50 rounded-lg p-4 bg-[rgba(var(--accent-red-rgb)/0.18)]/20">
+          <div className="flex items-center text-accent-red font-bold text-ui-sm mb-1">
+            <AlertTriangle className="size-4 mr-2" />
             NOT SAFE TO SEND
           </div>
-          <p className="text-ui-sm text-gray-200">
+          <p className="text-ui-sm text-text-primary">
             Customer message contains internal jargon and cannot be sent until fixed.
           </p>
         </div>
@@ -82,12 +82,12 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
 
       {safety.leakage_errors && safety.leakage_errors.length > 0 && (
         <section>
-          <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Jargon Found in Customer Message</h3>
+          <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Jargon Found in Customer Message</h3>
           <div className="bg-sidebar rounded-lg border border-[#1c2128] p-4">
             <ul className="space-y-2">
               {safety.leakage_errors.map((item: string, i: number) => (
-                <li key={`leak-${item.slice(0, 15)}-${i}`} className="flex items-center text-ui-sm text-rose-400">
-                  <AlertCircle className="w-3.5 h-3.5 mr-2 shrink-0" />
+                <li key={`leak-${item.slice(0, 15)}-${i}`} className="flex items-center text-ui-sm text-accent-red">
+                  <AlertCircle className="size-3.5 mr-2 shrink-0" />
                   {item}
                 </li>
               ))}
@@ -97,29 +97,29 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
       )}
 
       <section>
-        <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Customer-Facing Message</h3>
+        <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Customer-Facing Message</h3>
         <div className="bg-sidebar rounded-lg border border-[#1c2128] p-4 space-y-4">
           {travelerBundle && !isStrictFail ? (
             <>
               <div>
-                <div className="text-[var(--ui-text-xs)] font-bold text-gray-500 uppercase tracking-wider">Background Notes</div>
-                <p className="text-ui-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
-                  {travelerBundle.system_context || "—"}
+                <div className="text-[var(--ui-text-xs)] font-bold text-text-muted uppercase tracking-wider">Background Notes</div>
+                <p className="text-ui-sm text-text-secondary mt-1 leading-relaxed whitespace-pre-wrap">
+                  {travelerBundle.system_context || "-"}
                 </p>
               </div>
               <div>
-                <div className="text-[var(--ui-text-xs)] font-bold text-gray-500 uppercase tracking-wider">Message Preview</div>
-                <p className="text-ui-sm text-gray-300 mt-1 leading-relaxed whitespace-pre-wrap">
-                  {travelerBundle.user_message || "—"}
+                <div className="text-[var(--ui-text-xs)] font-bold text-text-muted uppercase tracking-wider">Message Preview</div>
+                <p className="text-ui-sm text-text-secondary mt-1 leading-relaxed whitespace-pre-wrap">
+                  {travelerBundle.user_message || "-"}
                 </p>
               </div>
               {travelerBundle.follow_up_sequence && travelerBundle.follow_up_sequence.length > 0 && (
                 <div>
-                  <div className="text-[var(--ui-text-xs)] font-bold text-gray-500 uppercase tracking-wider">Follow-up Sequence</div>
+                  <div className="text-[var(--ui-text-xs)] font-bold text-text-muted uppercase tracking-wider">Follow-up Sequence</div>
                   <ul className="mt-1 space-y-1">
                     {travelerBundle.follow_up_sequence.map((f, i) => (
-                      <li key={`fseq-${f.field_name}-${i}`} className="text-ui-sm text-gray-400">
-                        <span className="font-semibold text-gray-500">[{f.priority}]</span> {f.question}
+                      <li key={`fseq-${f.field_name}-${i}`} className="text-ui-sm text-text-muted">
+                        <span className="font-semibold text-text-muted">[{f.priority}]</span> {f.question}
                       </li>
                     ))}
                   </ul>
@@ -127,8 +127,8 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
               )}
             </>
           ) : (
-            <p className="text-ui-sm text-gray-500 italic">
-              {isStrictFail ? "Cannot be sent — contains internal jargon" : "No customer message available"}
+            <p className="text-ui-sm text-text-muted italic">
+              {isStrictFail ? "Cannot be sent - contains internal jargon" : "No customer message available"}
             </p>
           )}
         </div>
@@ -136,14 +136,14 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
 
       <button
         type="button"
-        className="text-ui-xs text-blue-400 hover:text-blue-300 underline mt-2"
+        className="text-ui-xs text-accent-blue hover:text-accent-blue underline mt-2"
         onClick={() => setShowRaw(!effectiveShowRaw)}
       >
         {effectiveShowRaw ? "Hide" : "Show"} Technical Data
       </button>
 
       {effectiveShowRaw && (
-        <pre className="bg-sidebar p-4 rounded text-ui-xs font-mono text-gray-400 overflow-x-auto border border-[#1c2128]">
+        <pre className="bg-sidebar p-4 rounded text-ui-xs font-mono text-text-muted overflow-x-auto border border-[#1c2128]">
           {JSON.stringify({
             safety: result_safety,
             traveler_bundle: result_traveler_bundle,

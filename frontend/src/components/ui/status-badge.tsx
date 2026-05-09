@@ -55,7 +55,7 @@ export function StatusBadge({
         border: `1px solid ${config.color}33`,
       }}
     >
-      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <Icon className="size-3.5 shrink-0" />
       {config.label}
     </span>
   );

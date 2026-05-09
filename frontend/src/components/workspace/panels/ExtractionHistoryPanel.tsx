@@ -64,7 +64,7 @@ export function ExtractionHistoryPanel({
       const data = await listExtractionAttempts(tripId, documentId);
       setAttempts(data);
     } catch {
-      // Silently fail — attempt history is supplementary
+      // Silently fail - attempt history is supplementary
     } finally {
       setLoading(false);
     }
@@ -98,7 +98,7 @@ export function ExtractionHistoryPanel({
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-text-muted" />
+          <Clock className="size-4 text-text-muted" />
           <h3 className="text-ui-sm font-semibold text-text-primary">Extraction History</h3>
           {attempts.length > 0 && (
             <span className="text-ui-xs bg-[#58a6ff] text-[#0d1117] px-2 py-0.5 rounded-full">
@@ -118,8 +118,8 @@ export function ExtractionHistoryPanel({
             disabled={retrying}
             className="flex items-center gap-1 text-ui-xs text-accent-blue hover:text-[#79b8ff] disabled:opacity-50"
           >
-            <RotateCcw className="w-3 h-3" />
-            {retrying ? 'Retrying...' : 'Retry'}
+            <RotateCcw className="size-3" />
+            {retrying ? 'Retrying…' : 'Retry'}
           </button>
         )}
       </div>
@@ -138,7 +138,7 @@ export function ExtractionHistoryPanel({
           )}
           {extraction.page_count != null && extraction.page_count > 0 && (
             <span className="flex items-center gap-1">
-              <FileText className="w-3 h-3" />
+              <FileText className="size-3" />
               {extraction.page_count} page{extraction.page_count !== 1 ? 's' : ''}
             </span>
           )}
@@ -146,7 +146,7 @@ export function ExtractionHistoryPanel({
       )}
 
       {loading && attempts.length === 0 && (
-        <p className="text-ui-sm text-text-muted">Loading attempt history...</p>
+        <p className="text-ui-sm text-text-muted">Loading attempt history…</p>
       )}
 
       {!loading && attempts.length === 0 && (
@@ -178,9 +178,9 @@ export function ExtractionHistoryPanel({
                     >
                       {/* Status indicator */}
                       {isFailed ? (
-                        <XCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                        <XCircle className="size-3.5 text-red-400 flex-shrink-0" />
                       ) : (
-                        <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                        <CheckCircle className="size-3.5 text-emerald-400 flex-shrink-0" />
                       )}
 
                       {/* Current marker */}
@@ -210,10 +210,10 @@ export function ExtractionHistoryPanel({
                         </span>
                       )}
 
-                      {/* Error code — only error_code, never error_summary */}
+                      {/* Error code - only error_code, never error_summary */}
                       {isFailed && attempt.error_code && (
                         <span className="flex items-center gap-1 text-yellow-400">
-                          <AlertTriangle className="w-3 h-3" />
+                          <AlertTriangle className="size-3" />
                           {attempt.error_code}
                         </span>
                       )}

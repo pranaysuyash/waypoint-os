@@ -65,11 +65,11 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
   const contradictions = (bookingRequest.contradictions || []) as PacketContradiction[];
 
   const summaryData = {
-    Destination: _getFactValue(facts, "destination_candidates") || "—",
-    Origin: _getFactValue(facts, "origin_city") || "—",
-    Dates: _getFactValue(facts, "date_window") || _getFactValue(facts, "date_start") || "—",
-    Budget: _getFactValue(facts, "budget_raw_text") || "—",
-    Party: _getFactValue(facts, "party_size") || "—",
+    Destination: _getFactValue(facts, "destination_candidates") || "-",
+    Origin: _getFactValue(facts, "origin_city") || "-",
+    Dates: _getFactValue(facts, "date_window") || _getFactValue(facts, "date_start") || "-",
+    Budget: _getFactValue(facts, "budget_raw_text") || "-",
+    Party: _getFactValue(facts, "party_size") || "-",
   };
 
   return (
@@ -111,7 +111,7 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
                   <td className="px-4 py-2 text-ui-xs">{labelOrTitle(FIELD_LABELS, field)}</td>
                   <td className="px-4 py-2">{_formatValue(slot.value)}</td>
                   <td className="px-4 py-2 text-text-muted">{_formatConfidence(slot.confidence)}</td>
-                  <td className="px-4 py-2 text-text-muted">{slot.authority_level || "—"}</td>
+                  <td className="px-4 py-2 text-text-muted">{slot.authority_level || "-"}</td>
                 </tr>
               ))}
             </tbody>
@@ -134,7 +134,7 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
         </section>
       )}
 
-      {/* Validation/Ambiguities/Unknowns/Contradictions would follow the same pattern... */}
+      {/* Validation/Ambiguities/Unknowns/Contradictions would follow the same pattern… */}
 
       <button
         type="button"
@@ -269,14 +269,14 @@ function AgentOperationsPanel({
             onClick={onRefresh}
             disabled={isRefreshing}
           >
-            {isRefreshing ? "Refreshing..." : "Refresh Agent Checks"}
+            {isRefreshing ? "Refreshing…" : "Refresh Agent Checks"}
           </button>
         </div>
         {operations?.lastAgentAction && (
           <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-2 text-right">
             <div className="text-[10px] uppercase tracking-[0.16em] text-text-placeholder">Latest</div>
             <div className="mt-1 text-ui-xs font-medium text-text-primary">{_formatAgentName(operations.lastAgentAction)}</div>
-            {operations?.lastAgentActionAt && <div className="mt-0.5 text-[11px] text-text-muted">{_formatDateTime(operations.lastAgentActionAt)}</div>}
+            {operations?.lastAgentActionAt && <div className="mt-0.5 text-[12px] text-text-muted">{_formatDateTime(operations.lastAgentActionAt)}</div>}
           </div>
         )}
       </div>
@@ -288,7 +288,7 @@ function AgentOperationsPanel({
             return (
               <article key={key} className="rounded-lg border bg-[var(--bg-surface)] p-4" style={{ borderColor: tone.border }}>
                 <div className="flex items-start gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md" style={{ background: tone.background, color: tone.color }}>
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-md" style={{ background: tone.background, color: tone.color }}>
                     <Icon size={17} aria-hidden="true" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -364,7 +364,7 @@ function TripDetailsFallback({ tripId, trip }: { tripId: string; trip: Trip | nu
               return (
                 <div key={detail.label} className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <dt className="text-[11px] uppercase tracking-[0.16em] text-text-placeholder">{detail.label}</dt>
+                    <dt className="text-[12px] uppercase tracking-[0.16em] text-text-placeholder">{detail.label}</dt>
                     <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ color: sourceColor, background: `${sourceColor}15`, border: `1px solid ${sourceColor}30` }}>
                       {detail.source}
                     </span>
@@ -375,7 +375,7 @@ function TripDetailsFallback({ tripId, trip }: { tripId: string; trip: Trip | nu
                   <div className="mt-2 flex items-center gap-2">
                     <Link
                       href={`${intakeHref}?field=${detail.field}`}
-                      className="text-[11px] font-medium hover:underline transition-colors"
+                      className="text-[12px] font-medium hover:underline transition-colors"
                       style={{ color: 'var(--accent-blue)' }}
                     >
                       {isMissing ? `Add ${detail.label.toLowerCase()}` : 'Edit'}
@@ -385,7 +385,7 @@ function TripDetailsFallback({ tripId, trip }: { tripId: string; trip: Trip | nu
               );
             })}
             <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3">
-              <dt className="text-[11px] uppercase tracking-[0.16em] text-text-placeholder">Inquiry Ref</dt>
+              <dt className="text-[12px] uppercase tracking-[0.16em] text-text-placeholder">Inquiry Ref</dt>
               <dd className="mt-1 text-ui-sm font-medium text-text-primary">{formatInquiryReference(trip.id)}</dd>
             </div>
           </dl>
@@ -538,13 +538,13 @@ function _getFactValue(facts: Record<string, SlotValue>, field: string): unknown
 }
 
 function _formatValue(value: unknown): string {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return "-";
   if (Array.isArray(value)) return value.join(", ");
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
 }
 
 function _formatConfidence(confidence: number | undefined): string {
-  if (confidence === undefined || confidence === null) return "—";
+  if (confidence === undefined || confidence === null) return "-";
   return `${Math.round(confidence * 100)}%`;
 }

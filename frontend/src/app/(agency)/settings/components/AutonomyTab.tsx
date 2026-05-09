@@ -1,5 +1,6 @@
 'use client';
 
+import { useId } from 'react';
 import { Shield, Lock, AlertTriangle, BookOpen, Zap, GitBranch, MessageCircle, FileText, Ban } from 'lucide-react';
 import type { AgencySettings } from '@/hooks/useAgencySettings';
 
@@ -63,6 +64,11 @@ const REPROCESS_STAGES: Array<{ key: string; label: string; description: string 
 
 export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
   const autonomy = draft.autonomy;
+  const flagWarningsId = useId();
+  const flagLearnId = useId();
+  const flagAutoReprocessId = useId();
+  const flagReassessId = useId();
+  const reprocessBaseId = useId();
 
   const setGate = (state: string, action: 'auto' | 'review' | 'block') => {
     if (state === 'STOP_NEEDS_REVIEW') return; // Safety invariant
@@ -103,7 +109,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
       <div className="rounded-lg border border-[var(--border-default)] overflow-hidden">
         <div className="bg-[var(--bg-elevated)] px-4 py-2.5 border-b border-[var(--border-default)]">
           <h3 className="text-[var(--ui-text-xs)] font-semibold text-[var(--text-secondary)] uppercase tracking-wide flex items-center gap-1.5">
-            <Shield className="w-3.5 h-3.5" />
+            <Shield className="size-3.5" />
             Workflow Approvals
           </h3>
         </div>
@@ -121,13 +127,13 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                    className={`size-8 rounded-lg flex items-center justify-center shrink-0 ${
                       item.locked
                         ? 'bg-[var(--accent-red)/0.2] text-[var(--accent-red)]'
                         : 'bg-[var(--bg-count-badge)] text-[var(--text-secondary)]'
                     }`}
                   >
-                    {item.locked ? <Lock className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+                    {item.locked ? <Lock className="size-4" /> : <Icon className="size-4" />}
                   </div>
                   <div className="min-w-0">
                     <p className="text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]">{item.label}</p>
@@ -137,7 +143,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
 
                 {item.locked ? (
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--accent-red)/0.2] text-[var(--accent-red)] text-[var(--ui-text-xs)] font-medium border border-[var(--accent-red)/0.3]">
-                    <Lock className="w-3 h-3" />
+                    <Lock className="size-3" />
                     Always requires review
                   </div>
                 ) : (
@@ -174,7 +180,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3 space-y-2">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-[var(--accent-red)]" />
+              <AlertTriangle className="size-4 text-[var(--accent-red)]" />
               <span className="text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]">Emergency Handling</span>
             </div>
             <p className="text-[var(--ui-text-sm)] text-[var(--text-secondary)]">
@@ -187,7 +193,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
 
           <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3 space-y-2">
             <div className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-[var(--accent-amber)]" />
+              <BookOpen className="size-4 text-[var(--accent-amber)]" />
               <span className="text-[var(--ui-text-sm)] font-medium text-[var(--text-primary)]">Audit Handling</span>
             </div>
             <p className="text-[var(--ui-text-sm)] text-[var(--text-secondary)]">
@@ -209,8 +215,9 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
           Advanced Flags
         </h3>
 
-        <label className="flex items-start gap-3 cursor-pointer group">
+        <label htmlFor={flagWarningsId} className="flex items-start gap-3 cursor-pointer group">
           <input
+            id={flagWarningsId}
             type="checkbox"
             checked={autonomy.auto_proceed_with_warnings}
             onChange={() => toggleFlag('auto_proceed_with_warnings')}
@@ -222,7 +229,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
             }`}
           >
             <div
-              className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+              className={`absolute top-0.5 size-4 bg-white rounded-full transition-transform ${
                 autonomy.auto_proceed_with_warnings ? 'left-[18px]' : 'left-0.5'
               }`}
             />
@@ -235,8 +242,9 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
           </div>
         </label>
 
-        <label className="flex items-start gap-3 cursor-pointer group">
+        <label htmlFor={flagLearnId} className="flex items-start gap-3 cursor-pointer group">
           <input
+            id={flagLearnId}
             type="checkbox"
             checked={autonomy.learn_from_overrides}
             onChange={() => toggleFlag('learn_from_overrides')}
@@ -248,7 +256,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
             }`}
           >
             <div
-              className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+              className={`absolute top-0.5 size-4 bg-white rounded-full transition-transform ${
                 autonomy.learn_from_overrides ? 'left-[18px]' : 'left-0.5'
               }`}
             />
@@ -262,8 +270,9 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
           </div>
         </label>
 
-        <label className="flex items-start gap-3 cursor-pointer group">
+        <label htmlFor={flagAutoReprocessId} className="flex items-start gap-3 cursor-pointer group">
           <input
+            id={flagAutoReprocessId}
             type="checkbox"
             checked={autonomy.auto_reprocess_on_edit}
             onChange={() => toggleFlag('auto_reprocess_on_edit')}
@@ -275,7 +284,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
             }`}
           >
             <div
-              className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+              className={`absolute top-0.5 size-4 bg-white rounded-full transition-transform ${
                 autonomy.auto_reprocess_on_edit ? 'left-[18px]' : 'left-0.5'
               }`}
             />
@@ -288,8 +297,9 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
           </div>
         </label>
 
-        <label className="flex items-start gap-3 cursor-pointer group">
+        <label htmlFor={flagReassessId} className="flex items-start gap-3 cursor-pointer group">
           <input
+            id={flagReassessId}
             type="checkbox"
             checked={autonomy.allow_explicit_reassess}
             onChange={() => toggleFlag('allow_explicit_reassess')}
@@ -301,7 +311,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
             }`}
           >
             <div
-              className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+              className={`absolute top-0.5 size-4 bg-white rounded-full transition-transform ${
                 autonomy.allow_explicit_reassess ? 'left-[18px]' : 'left-0.5'
               }`}
             />
@@ -323,8 +333,9 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
           {REPROCESS_STAGES.map((stage) => {
             const enabled = autonomy.auto_reprocess_stages?.[stage.key] ?? true;
             return (
-              <label key={stage.key} className="flex items-start gap-3 cursor-pointer group rounded-md border border-[var(--border-default)] p-3">
+              <label key={stage.key} htmlFor={reprocessBaseId + '-' + stage.key} className="flex items-start gap-3 cursor-pointer group rounded-md border border-[var(--border-default)] p-3">
                 <input
+                  id={reprocessBaseId + '-' + stage.key}
                   type="checkbox"
                   checked={enabled}
                   onChange={() => toggleReprocessStage(stage.key)}

@@ -35,11 +35,11 @@ export default function PacketTab({ trip }: PacketTabProps) {
   const contradictions = (bookingRequest.contradictions || []) as PacketContradiction[];
 
   const summaryData = {
-    Destination: _getFactValue(facts, "destination_candidates") || "—",
-    Origin: _getFactValue(facts, "origin_city") || "—",
-    Dates: _getFactValue(facts, "date_window") || _getFactValue(facts, "date_start") || "—",
-    Budget: _getFactValue(facts, "budget_raw_text") || "—",
-    Party: _getFactValue(facts, "party_size") || "—",
+    Destination: _getFactValue(facts, "destination_candidates") || "-",
+    Origin: _getFactValue(facts, "origin_city") || "-",
+    Dates: _getFactValue(facts, "date_window") || _getFactValue(facts, "date_start") || "-",
+    Budget: _getFactValue(facts, "budget_raw_text") || "-",
+    Party: _getFactValue(facts, "party_size") || "-",
   };
 
   const summaryCards = Object.entries(summaryData).map(([label, value]) => ({
@@ -65,7 +65,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
         <div className="rounded-xl border border-[#f85149]/40 bg-[#2b1011] p-4">
           <div className="flex items-start gap-3">
             <div className="shrink-0 mt-0.5">
-              <AlertTriangle className="w-5 h-5 text-[#f85149]" />
+              <AlertTriangle className="size-5 text-[#f85149]" />
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-ui-sm font-semibold text-[#f85149] mb-1">
@@ -81,10 +81,10 @@ export default function PacketTab({ trip }: PacketTabProps) {
                 <div className="space-y-1.5 mb-3">
                   {legacyErrors.map((err, i) => (
                     <div
-                      key={`err-${err.code}-${err.field}-${i}`}
+                      key={`err-${err.code}-${err.field}`}
                       className="flex items-start gap-2 px-3 py-2 rounded-lg text-ui-xs bg-[#f85149]/10 border border-[#f85149]/30"
                     >
-                      <XCircle className="w-3.5 h-3.5 text-[#f85149] shrink-0 mt-0.5" />
+                      <XCircle className="size-3.5 text-[#f85149] shrink-0 mt-0.5" />
                       <div>
                         <span className="font-medium text-[#e6edf3]">
                           {err.field ? labelOrTitle(FIELD_LABELS, err.field) : err.field}
@@ -95,10 +95,10 @@ export default function PacketTab({ trip }: PacketTabProps) {
                   ))}
                   {legacyWarnings.map((warn, i) => (
                     <div
-                      key={`warn-${warn.code}-${i}`}
+                      key={`warn-${warn.code}-${warn.field}`}
                       className="flex items-start gap-2 px-3 py-2 rounded-lg text-ui-xs bg-[#d29922]/10 border border-[#d29922]/30"
                     >
-                      <AlertTriangle className="w-3.5 h-3.5 text-[#d29922] shrink-0 mt-0.5" />
+                      <AlertTriangle className="size-3.5 text-[#d29922] shrink-0 mt-0.5" />
                       <div>
                         <span className="font-medium text-[#e6edf3]">
                           {warn.field ? labelOrTitle(FIELD_LABELS, warn.field) : warn.field}
@@ -115,16 +115,16 @@ export default function PacketTab({ trip }: PacketTabProps) {
                   <p className="text-ui-xs text-[#a8b3c1] font-medium mb-1">Missing fields:</p>
                   {unknownFields.map((unk, i) => (
                     <div
-                      key={`unk-${unk.field_name}-${i}`}
+                      key={`unk-${unk.field_name}`}
                       className="flex items-start gap-2 px-3 py-2 rounded-lg text-ui-xs bg-[#58a6ff]/10 border border-[#58a6ff]/30"
                     >
-                      <Info className="w-3.5 h-3.5 text-[#58a6ff] shrink-0 mt-0.5" />
+                      <Info className="size-3.5 text-[#58a6ff] shrink-0 mt-0.5" />
                       <div>
                         <span className="font-medium text-[#e6edf3]">
                           {labelOrTitle(FIELD_LABELS, unk.field_name)}
                         </span>
                         <span className="text-[#8b949e] ml-1 font-mono">({unk.field_name})</span>
-                        <span className="text-[#a8b3c1] ml-1">— {unk.reason.replace(/_/g, " ")}</span>
+                        <span className="text-[#a8b3c1] ml-1">- {unk.reason.replace(/_/g, " ")}</span>
                       </div>
                     </div>
                   ))}
@@ -142,7 +142,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
       {isValid && (
         <div className="rounded-xl border border-[#3fb950]/40 bg-[#132b1a] p-4">
           <div className="flex items-center gap-3">
-            <CheckCircle className="w-5 h-5 text-[#3fb950] shrink-0" />
+            <CheckCircle className="size-5 text-[#3fb950] shrink-0" />
             <div>
               <h3 className="text-ui-sm font-semibold text-[#3fb950]">All Checks Passed</h3>
               {!hasLegacyErrors && !hasLegacyWarnings && (
@@ -162,7 +162,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
       {!validation && (
         <div className="rounded-xl border border-[#30363d] bg-[#161b22] p-4">
           <div className="flex items-center gap-3">
-            <Info className="w-5 h-5 text-[#8b949e] shrink-0" />
+            <Info className="size-5 text-[#8b949e] shrink-0" />
             <div>
               <h3 className="text-ui-sm font-semibold text-[#e6edf3]">Validation Pending</h3>
               <p className="text-ui-xs text-[#8b949e] mt-0.5">
@@ -209,7 +209,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
                   <td className="px-3 py-2 text-ui-sm text-[#e6edf3]">{labelOrTitle(FIELD_LABELS, field)}</td>
                   <td className="px-3 py-2 text-ui-sm text-[#e6edf3]">{_formatValue(slot.value)}</td>
                   <td className="px-3 py-2 text-ui-sm text-[#8b949e]">{_formatConfidence(slot.confidence)}</td>
-                  <td className="px-3 py-2 text-ui-sm text-[#8b949e]">{slot.authority_level || "—"}</td>
+                  <td className="px-3 py-2 text-ui-sm text-[#8b949e]">{slot.authority_level || "-"}</td>
                 </tr>
               ))}
             </tbody>
@@ -244,7 +244,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
           <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4">
             <ul className="space-y-2">
               {ambiguities.map((amb, idx) => (
-                <li key={`amb-${amb.field_name}-${idx}`} className="flex items-start gap-2 py-1.5 border-b border-[#30363d] last:border-0">
+                <li key={`amb-${amb.field_name}`} className="flex items-start gap-2 py-1.5 border-b border-[#30363d] last:border-0">
                   <span className="text-[#d29922] shrink-0 mt-0.5 text-ui-sm">?</span>
                   <div>
                     <span className="text-ui-sm font-medium text-[#e6edf3]">
@@ -271,13 +271,13 @@ export default function PacketTab({ trip }: PacketTabProps) {
           <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4">
             <ul className="space-y-2">
               {unknowns.map((unk, idx) => (
-                <li key={`unk-${unk.field_name}-${idx}`} className="flex items-start gap-2 py-1.5 border-b border-[#30363d] last:border-0">
+                <li key={`unk-${unk.field_name}`} className="flex items-start gap-2 py-1.5 border-b border-[#30363d] last:border-0">
                   <span className="text-[#58a6ff] shrink-0 mt-0.5 text-ui-sm">!</span>
                   <div>
                     <span className="text-ui-sm font-medium text-[#e6edf3]">
                       {labelOrTitle(FIELD_LABELS, unk.field_name)}
                     </span>
-                    <span className="text-ui-sm text-[#a8b3c1] ml-1">— {unk.reason}</span>
+                    <span className="text-ui-sm text-[#a8b3c1] ml-1">- {unk.reason}</span>
                     {unk.notes && (
                       <p className="text-ui-xs text-[#8b949e] mt-0.5">{unk.notes}</p>
                     )}
@@ -296,7 +296,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
           <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4">
             <ul className="space-y-2">
               {contradictions.map((con, idx) => (
-                <li key={`con-${con.field_name}-${idx}`} className="flex items-start gap-2 py-1.5 border-b border-[#30363d] last:border-0">
+                <li key={`con-${con.field_name}`} className="flex items-start gap-2 py-1.5 border-b border-[#30363d] last:border-0">
                   <span className="text-[#f85149] shrink-0 mt-0.5 text-ui-sm font-bold">X</span>
                   <div>
                     <span className="text-ui-sm font-medium text-[#e6edf3]">
@@ -320,7 +320,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
           onClick={() => setShowRawJson(!showRawJson)}
           className="flex items-center gap-1.5 text-ui-xs text-[#8b949e] hover:text-[#e6edf3] transition-colors"
         >
-          {showRawJson ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          {showRawJson ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
           {showRawJson ? "Hide" : "Show"} Technical Data
         </button>
         {showRawJson && (
@@ -341,13 +341,13 @@ function _getFactValue(facts: Record<string, SlotValue>, field: string): unknown
 }
 
 function _formatValue(value: unknown): string {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return "-";
   if (Array.isArray(value)) return value.join(", ");
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
 }
 
 function _formatConfidence(confidence: number | undefined): string {
-  if (confidence === undefined || confidence === null) return "—";
+  if (confidence === undefined || confidence === null) return "-";
   return `${Math.round(confidence * 100)}%`;
 }

@@ -78,7 +78,7 @@ const ReviewCard = memo(function ReviewCard({
       <div className='flex items-start justify-between gap-4'>
         <div className='flex-1 min-w-0'>
           <div className='flex items-center gap-2 mb-1'>
-            {isUrgent && <AlertTriangle className='w-4 h-4 text-[#f85149] shrink-0' />}
+            {isUrgent && <AlertTriangle className='size-4 text-[#f85149] shrink-0' />}
             <span className='text-ui-sm text-[#8b949e] font-mono'>{review.tripReference}</span>
             <StatusBadge status={review.status} map={REVIEW_STATUS_MAP} />
           </div>
@@ -89,17 +89,17 @@ const ReviewCard = memo(function ReviewCard({
           
           <div className='flex items-center gap-4 text-ui-xs text-[#8b949e] mb-2'>
             <span className='flex items-center gap-1'>
-              <MapPin className='w-3 h-3' /> {review.tripType}
+              <MapPin className='size-3' /> {review.tripType}
             </span>
             <span className='flex items-center gap-1'>
-              <User className='w-3 h-3' /> {review.partySize} pax
+              <User className='size-3' /> {review.partySize} pax
             </span>
             <span className='flex items-center gap-1'>
-              <DollarSign className='w-3 h-3' /> 
+              <DollarSign className='size-3' /> 
               ${review.value.toLocaleString()}
             </span>
             <span className='flex items-center gap-1'>
-              <Clock className='w-3 h-3' /> {daysWaiting}d waiting
+              <Clock className='size-3' /> {daysWaiting}d waiting
             </span>
           </div>
           
@@ -110,7 +110,7 @@ const ReviewCard = memo(function ReviewCard({
           {review.agentNotes && (
             <blockquote className='text-ui-sm text-[#8b949e] border-l-2 border-[#30363d] pl-3 italic'>
               "{review.agentNotes}"
-              <span className='text-ui-xs text-[#484f58] not-italic ml-2'>— {review.agentName}</span>
+              <span className='text-ui-xs text-[#484f58] not-italic ml-2'>- {review.agentName}</span>
             </blockquote>
           )}
           
@@ -141,7 +141,7 @@ const ReviewCard = memo(function ReviewCard({
                 }}
                 className='flex items-center gap-1 px-3 py-1.5 bg-[#3fb950] text-white rounded-lg text-ui-sm font-medium hover:bg-[#4bc95b] transition-colors'
               >
-                <CheckCircle className='w-3.5 h-3.5' /> Approve
+                <CheckCircle className='size-3.5' /> Approve
               </button>
               
               <button
@@ -151,7 +151,7 @@ const ReviewCard = memo(function ReviewCard({
                 }}
                 className='flex items-center gap-1 px-3 py-1.5 bg-[#d29922] text-white rounded-lg text-ui-sm font-medium hover:bg-[#e3a532] transition-colors'
               >
-                <RefreshCw className='w-3.5 h-3.5' /> Request Changes
+                <RefreshCw className='size-3.5' /> Request Changes
               </button>
               
               <button
@@ -161,7 +161,7 @@ const ReviewCard = memo(function ReviewCard({
                 }}
                 className='flex items-center gap-1 px-3 py-1.5 bg-[#f85149] text-white rounded-lg text-ui-sm font-medium hover:bg-[#ff6b6b] transition-colors'
               >
-                <XCircle className='w-3.5 h-3.5' /> Reject
+                <XCircle className='size-3.5' /> Reject
               </button>
               
               <button
@@ -178,7 +178,7 @@ const ReviewCard = memo(function ReviewCard({
               href={getTripRoute(review.tripId)}
               className='flex items-center justify-center gap-1 text-ui-xs text-[#58a6ff] hover:text-[#79b8ff] transition-colors'
             >
-              View Details <ChevronRight className='w-3 h-3' />
+              View Details <ChevronRight className='size-3' />
             </Link>
           )}
         </div>
@@ -236,7 +236,7 @@ export default function OwnerReviewsPage() {
     return (
       <div className='p-12 text-center'>
         <div className='inline-flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20'>
-          <AlertTriangle className='w-5 h-5' />
+          <AlertTriangle className='size-5' />
           <span>Error loading reviews: {error.message}</span>
         </div>
         <button 
@@ -274,11 +274,11 @@ export default function OwnerReviewsPage() {
             onClick={() => refetch()}
             className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#8b949e] rounded-lg text-ui-sm hover:text-[#e6edf3] transition-colors'
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> Refresh
+            <RefreshCw className={`size-4 ${isLoading ? 'animate-spin' : ''}`} /> Refresh
           </button>
           
           <button className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#8b949e] rounded-lg text-ui-sm hover:text-[#e6edf3] transition-colors'>
-            <Filter className='w-4 h-4' /> Filters
+            <Filter className='size-4' /> Filters
           </button>
         </div>
       </header>
@@ -335,8 +335,8 @@ export default function OwnerReviewsPage() {
       <div className='space-y-3'>
         {isLoading && reviews.length === 0 ? (
           <div className='flex flex-col items-center justify-center py-20 gap-4 text-[#8b949e]'>
-            <div className='w-8 h-8 border-2 border-[#58a6ff]/30 border-t-[#58a6ff] rounded-full animate-spin' />
-            <p>Loading review queue...</p>
+            <div className='size-8 border-2 border-[#58a6ff]/30 border-t-[#58a6ff] rounded-full animate-spin' />
+            <p>Loading review queue…</p>
           </div>
         ) : sortedReviews.length === 0 ? (
           <div className='text-center py-12 text-[#8b949e]'>
@@ -360,8 +360,8 @@ export default function OwnerReviewsPage() {
       {isProcessing && (
         <div className='fixed inset-0 bg-[#0d1117]/80 flex items-center justify-center z-50'>
           <div className='flex items-center gap-3 text-[#e6edf3] font-inter'>
-            <div className='w-6 h-6 border-2 border-[#58a6ff]/30 border-t-[#58a6ff] rounded-full animate-spin' />
-            Processing decision...
+            <div className='size-6 border-2 border-[#58a6ff]/30 border-t-[#58a6ff] rounded-full animate-spin' />
+            Processing decision…
           </div>
         </div>
       )}

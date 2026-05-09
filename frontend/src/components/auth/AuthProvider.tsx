@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * AuthProvider — Root-level authentication lifecycle manager.
+ * AuthProvider - Root-level authentication lifecycle manager.
  *
  * Responsibilities:
  * 1. Call auth.hydrate() on mount to restore session from httpOnly cookie
@@ -41,13 +41,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.replace(`/login?redirect=${encodeURIComponent(redirectTarget)}`);
   }, [needsRedirect, pathname, router]);
 
-  // Still hydrating — block everything
+  // Still hydrating - block everything
   if (isLoading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <p className="text-sm text-foreground">Checking your session...</p>
+          <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-sm text-foreground">Checking your session…</p>
         </div>
       </div>
     );
@@ -57,8 +57,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <p className="text-sm text-foreground">Redirecting to login...</p>
+          <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-sm text-foreground">Redirecting to login…</p>
         </div>
       </div>
     );

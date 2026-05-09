@@ -2,6 +2,7 @@
 
 import { Trip } from "@/lib/api-client";
 import { Star, MessageSquare, Info, CheckCircle2 } from "lucide-react";
+import { useClientNow } from "@/hooks/useClientDate";
 import styles from "@/components/workbench/workbench.module.css";
 
 interface FeedbackPanelProps {
@@ -15,7 +16,7 @@ export default function FeedbackPanel({ trip }: FeedbackPanelProps) {
     return (
       <div className={styles.emptyState}>
         <div className="flex flex-col items-center justify-center p-12 text-center">
-          <MessageSquare className="h-12 w-12 text-border-default mb-4" />
+          <MessageSquare className="size-12 text-border-default mb-4" />
           <h3 className="text-ui-lg font-medium text-text-rationale mb-2">Awaiting Feedback</h3>
           <p className="text-ui-sm text-text-muted max-w-xs">
             We've reached out to the customer for their thoughts. Feedback will appear here once received.
@@ -33,7 +34,7 @@ export default function FeedbackPanel({ trip }: FeedbackPanelProps) {
       {/* Banner for Simulated Data */}
       {feedback.is_simulated && (
         <div className="p-3 bg-surface border border-border-default rounded-lg flex items-start gap-3">
-          <Info className="h-4 w-4 text-accent-blue mt-0.5" />
+          <Info className="size-4 text-accent-blue mt-0.5" />
           <div>
             <p className="text-ui-xs font-semibold text-accent-blue">FALLBACK DATA</p>
             <p className="text-[var(--ui-text-xs)] text-text-muted">
@@ -53,7 +54,7 @@ export default function FeedbackPanel({ trip }: FeedbackPanelProps) {
             {stars.map((s) => (
               <Star
                 key={s}
-                className={`h-8 w-8 ${
+                className={`size-8 ${
                   s <= rating ? "text-accent-amber fill-accent-amber" : "text-border-default"
                 }`}
               />
@@ -62,20 +63,20 @@ export default function FeedbackPanel({ trip }: FeedbackPanelProps) {
         </div>
 
         <div className="relative">
-          <MessageSquare className="h-4 w-4 text-border-default absolute -top-4 -left-4" />
+          <MessageSquare className="size-4 text-border-default absolute -top-4 -left-4" />
           <p className="text-ui-lg text-text-primary italic leading-relaxed font-light text-center">
             "{feedback.notes}"
           </p>
-          <MessageSquare className="h-4 w-4 text-border-default absolute -bottom-4 -right-4 rotate-180" />
+          <MessageSquare className="size-4 text-border-default absolute -bottom-4 -right-4 rotate-180" />
         </div>
 
         <div className="mt-8 pt-6 border-t border-border-default w-full flex items-center justify-center gap-4">
           <div className="flex items-center gap-1.5 text-ui-xs text-accent-green font-medium px-3 py-1 bg-[#0f1d16] rounded-full">
-            <CheckCircle2 className="h-3 w-3" />
+            <CheckCircle2 className="size-3" />
             Verified Response
           </div>
           <span className="text-[var(--ui-text-xs)] text-text-muted">
-            Received via WhatsApp • {new Date().toLocaleDateString()}
+            Received via WhatsApp • {useClientNow()}
           </span>
         </div>
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useId } from 'react';
 import {
   type BookingTraveler,
   type BookingData,
@@ -41,6 +41,11 @@ export default function BookingCollectionPage({
   const [payerPhone, setPayerPhone] = useState('');
   const [specialReqs, setSpecialReqs] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const travelerIdBase = useId();
+  const payerNameId = useId();
+  const payerEmailId = useId();
+  const payerPhoneId = useId();
+  const specialReqsId = useId();
 
   // Document upload state
   const [uploadedDocs, setUploadedDocs] = useState<CustomerDocumentResponse[]>([]);
@@ -130,7 +135,7 @@ export default function BookingCollectionPage({
   if (formState === 'loading') {
     return (
       <div data-testid="collection-loading" className="min-h-screen flex items-center justify-center bg-[#0d1117]">
-        <span className="text-[#8b949e] text-sm">Loading...</span>
+        <span className="text-[#8b949e] text-sm">Loading…</span>
       </div>
     );
   }
@@ -188,7 +193,7 @@ export default function BookingCollectionPage({
             <div className="text-xs text-[#8b949e] mb-1">Trip from {tripSummary.agency_name}</div>
             <div className="text-sm font-medium text-[#e6edf3] mb-2">{tripSummary.destination}</div>
             <div className="text-xs text-[#8b949e]">
-              {tripSummary.departure_date} — {tripSummary.return_date}
+              {tripSummary.departure_date} - {tripSummary.return_date}
               {' '}&middot; {tripSummary.traveler_count} traveler{tripSummary.traveler_count !== 1 ? 's' : ''}
             </div>
           </div>
@@ -205,12 +210,13 @@ export default function BookingCollectionPage({
         {/* Travelers */}
         <div className="space-y-4 mb-6">
           {travelers.map((t, i) => (
-            <div key={i} data-testid={`collection-traveler-${i}`} className="border border-[#30363d] rounded-lg p-4 space-y-3">
+            <div key={`traveler-${i}`} data-testid={`collection-traveler-${i}`} className="border border-[#30363d] rounded-lg p-4 space-y-3">
               <div className="text-sm font-medium text-[#e6edf3]">Traveler {i + 1}</div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-[#8b949e] mb-1">Traveler ID *</label>
+                  <label htmlFor={travelerIdBase + '-' + i + '-tid'} className="block text-xs text-[#8b949e] mb-1">Traveler ID *</label>
                   <input
+                    id={travelerIdBase + '-' + i + '-tid'}
                     placeholder="e.g. adult_1"
                     className="w-full bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-sm text-[#e6edf3]"
                     value={t.traveler_id}
@@ -222,8 +228,9 @@ export default function BookingCollectionPage({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-[#8b949e] mb-1">Full name *</label>
+                  <label htmlFor={travelerIdBase + '-' + i + '-name'} className="block text-xs text-[#8b949e] mb-1">Full name *</label>
                   <input
+                    id={travelerIdBase + '-' + i + '-name'}
                     className="w-full bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-sm text-[#e6edf3]"
                     value={t.full_name}
                     onChange={(e) => {
@@ -234,8 +241,9 @@ export default function BookingCollectionPage({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-[#8b949e] mb-1">Date of birth *</label>
+                  <label htmlFor={travelerIdBase + '-' + i + '-dob'} className="block text-xs text-[#8b949e] mb-1">Date of birth *</label>
                   <input
+                    id={travelerIdBase + '-' + i + '-dob'}
                     type="date"
                     className="w-full bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-sm text-[#e6edf3]"
                     value={t.date_of_birth}
@@ -247,8 +255,9 @@ export default function BookingCollectionPage({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-[#8b949e] mb-1">Passport number</label>
+                  <label htmlFor={travelerIdBase + '-' + i + '-pp'} className="block text-xs text-[#8b949e] mb-1">Passport number</label>
                   <input
+                    id={travelerIdBase + '-' + i + '-pp'}
                     className="w-full bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-sm text-[#e6edf3]"
                     value={t.passport_number ?? ''}
                     onChange={(e) => {
@@ -281,8 +290,9 @@ export default function BookingCollectionPage({
         <div className="border border-[#30363d] rounded-lg p-4 mb-6 space-y-3">
           <div className="text-sm font-medium text-[#e6edf3]">Payer Details</div>
           <div>
-            <label className="block text-xs text-[#8b949e] mb-1">Name *</label>
+            <label htmlFor={payerNameId} className="block text-xs text-[#8b949e] mb-1">Name *</label>
             <input
+              id={payerNameId}
               className="w-full bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-sm text-[#e6edf3]"
               value={payerName}
               onChange={(e) => setPayerName(e.target.value)}
@@ -290,8 +300,9 @@ export default function BookingCollectionPage({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-[#8b949e] mb-1">Email</label>
+              <label htmlFor={payerEmailId} className="block text-xs text-[#8b949e] mb-1">Email</label>
               <input
+                id={payerEmailId}
                 type="email"
                 className="w-full bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-sm text-[#e6edf3]"
                 value={payerEmail}
@@ -299,8 +310,9 @@ export default function BookingCollectionPage({
               />
             </div>
             <div>
-              <label className="block text-xs text-[#8b949e] mb-1">Phone</label>
+              <label htmlFor={payerPhoneId} className="block text-xs text-[#8b949e] mb-1">Phone</label>
               <input
+                id={payerPhoneId}
                 className="w-full bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-sm text-[#e6edf3]"
                 value={payerPhone}
                 onChange={(e) => setPayerPhone(e.target.value)}
@@ -311,8 +323,9 @@ export default function BookingCollectionPage({
 
         {/* Special requirements */}
         <div className="mb-6">
-          <label className="block text-xs text-[#8b949e] mb-1">Special requirements</label>
+          <label htmlFor={specialReqsId} className="block text-xs text-[#8b949e] mb-1">Special requirements</label>
           <textarea
+            id={specialReqsId}
             className="w-full bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-sm text-[#e6edf3] h-20 resize-none"
             value={specialReqs}
             onChange={(e) => setSpecialReqs(e.target.value)}
@@ -347,7 +360,7 @@ export default function BookingCollectionPage({
               onClick={handleDocUpload}
               disabled={docUploading}
             >
-              {docUploading ? 'Uploading...' : 'Choose File'}
+              {docUploading ? 'Uploading…' : 'Choose File'}
             </button>
           </div>
 
@@ -369,7 +382,7 @@ export default function BookingCollectionPage({
           onClick={handleSubmit}
           disabled={submitting}
         >
-          {submitting ? 'Submitting...' : 'Submit Booking Details'}
+          {submitting ? 'Submitting…' : 'Submit Booking Details'}
         </button>
       </div>
     </div>

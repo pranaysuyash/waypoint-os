@@ -21,7 +21,7 @@ export function BackToOverviewLink({
         className,
       )}
     >
-      <ChevronLeft className='h-4 w-4' aria-hidden='true' />
+      <ChevronLeft className='size-4' aria-hidden='true' />
       <span>{label}</span>
     </Link>
   );

@@ -16,7 +16,7 @@ interface FrontierResult {
 }
 
 interface FrontierDashboardProps {
-  /** Fallback packet ID — used when no store data available */
+  /** Fallback packet ID - used when no store data available */
   packetId?: string;
 }
 
@@ -35,7 +35,7 @@ export const FrontierDashboard: React.FC<FrontierDashboardProps> = ({
   const requiresAudit = frontier.requires_manual_audit ?? false;
   const mitigationApplied = frontier.mitigation_applied ?? false;
   const negotiationActive = frontier.negotiation_active ?? false;
-  const activePacketId = packetId ?? resultPacket?.packet_id ?? '—';
+  const activePacketId = packetId ?? resultPacket?.packet_id ?? '-';
 
   const hasRealData = resultFrontier !== null && resultFrontier !== undefined;
 
@@ -48,7 +48,7 @@ export const FrontierDashboard: React.FC<FrontierDashboardProps> = ({
           <p className="text-ui-2xl font-bold">{ghostActive ? 'ACTIVE' : 'IDLE'}</p>
         </div>
         <div className="flex items-center gap-2 mt-4 text-ui-xs text-secondary">
-          <div className={`w-2 h-2 rounded-full ${ghostActive ? 'bg-accent-green animate-pulse' : 'bg-muted'}`} />
+          <div className={`size-2 rounded-full ${ghostActive ? 'bg-accent-green animate-pulse' : 'bg-muted'}`} />
           <span>
             {ghostActive && frontier.ghost_workflow_id
               ? `Workflow: ${frontier.ghost_workflow_id}`
@@ -80,7 +80,7 @@ export const FrontierDashboard: React.FC<FrontierDashboardProps> = ({
           />
         </div>
         {!hasRealData && (
-          <p className="text-ui-xs text-muted mt-2 italic">No frontier data — run a pipeline to populate</p>
+          <p className="text-ui-xs text-muted mt-2 italic">No frontier data - run a pipeline to populate</p>
         )}
       </div>
 
@@ -88,14 +88,14 @@ export const FrontierDashboard: React.FC<FrontierDashboardProps> = ({
       <div className="bento-item col-span-1 md:col-span-2">
         <h3 className="text-ui-xs font-mono text-tertiary mb-2 uppercase tracking-widest">Federated Intelligence Pool</h3>
         <div className="space-y-3">
-          {intelHits.length > 0 ? intelHits.map((hit, i) => (
-            <div key={i} className="flex gap-3 items-start p-2 bg-lg-glass-bg rounded-lg border border-lg-glass-border">
+          {intelHits.length > 0 ? intelHits.map((hit) => (
+            <div key={`hit-${hit.type || hit.severity}-${(hit.message || '').slice(0, 20)}`} className="flex gap-3 items-start p-2 bg-lg-glass-bg rounded-lg border border-lg-glass-border">
               <div className={`p-1 rounded ${
                 hit.severity === 'critical' ? 'bg-accent-red/20' :
                 hit.severity === 'high' ? 'bg-accent-amber/20' :
                 'bg-accent-blue/20'
               }`}>
-                <svg className={`w-4 h-4 ${
+                <svg className={`size-4 ${
                   hit.severity === 'critical' ? 'text-accent-red' :
                   hit.severity === 'high' ? 'text-accent-amber' :
                   'text-accent-blue'
@@ -142,7 +142,7 @@ export const FrontierDashboard: React.FC<FrontierDashboardProps> = ({
       <div className="trust-anchor col-span-1 md:col-span-3">
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-ui-sm font-bold flex items-center gap-2">
-            <svg className="w-4 h-4 text-accent-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="size-4 text-accent-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
             Trust Anchor

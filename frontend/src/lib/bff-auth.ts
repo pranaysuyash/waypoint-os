@@ -1,5 +1,5 @@
 /**
- * bff-auth.ts — Shared auth forwarding for explicit BFF routes.
+ * bff-auth.ts - Shared auth forwarding for explicit BFF routes.
  *
  * Explicit routes (app/api/trips/route.ts, etc.) transform backend responses
  * and cannot use the generic proxyRequest() from proxy-core.ts.

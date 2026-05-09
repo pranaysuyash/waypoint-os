@@ -55,7 +55,7 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
           <span className={`${isCompact ? 'text-[14px]' : 'text-[16px]'} font-semibold`} style={{ color: 'var(--text-primary)' }}>
             {summary.title}
           </span>
-          <span className='text-[11px] font-semibold uppercase tracking-wide' style={{ color: meta.fg }}>
+          <span className='text-[12px] font-semibold uppercase tracking-wide' style={{ color: meta.fg }}>
             {summary.statusLabel}
           </span>
         </div>
@@ -72,7 +72,7 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
             </p>
           </div>
           <span
-            className='shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium justify-self-end'
+            className='shrink-0 rounded-full px-2.5 py-1 text-[12px] font-medium justify-self-end'
             style={{ color: fc.fg, background: fc.bg, border: `1px solid ${fc.border}` }}
             title={freshness.detail}
           >
@@ -81,18 +81,18 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
         </div>
 
         <div className='flex items-center gap-2'>
-          <span className='text-[11px]' style={{ color: 'var(--text-muted)' }}>{summary.assignmentLabel}</span>
+          <span className='text-[12px]' style={{ color: 'var(--text-muted)' }}>{summary.assignmentLabel}</span>
         </div>
 
         {/* Contact details */}
         {!hasCustomerName(trip.rawInput, trip.agentNotes, trip.contactName) && (
           <div className='rounded-xl border px-3.5 py-3' style={{ borderColor: 'rgba(139,148,158,0.15)', background: 'rgba(139,148,158,0.03)' }}>
-            <p className='text-[11px] font-semibold uppercase tracking-[0.16em]' style={{ color: 'var(--text-muted)' }}>Contact details</p>
+            <p className='text-[12px] font-semibold uppercase tracking-[0.16em]' style={{ color: 'var(--text-muted)' }}>Contact details</p>
             <div className='mt-2 flex flex-wrap items-center gap-x-3 gap-y-1'>
               <span className='text-[12px]' style={{ color: '#8b949e' }}>Contact name missing</span>
               <Link
                 href={`/trips/${trip.id}/intake?field=customerName`}
-                className='inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium hover:opacity-80 transition-opacity'
+                className='inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[12px] font-medium hover:opacity-80 transition-opacity'
                 style={{ color: '#8b949e', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
               >
                 Add contact name
@@ -104,7 +104,7 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
         {/* Missing trip details */}
         {summary.missingBadges.length > 0 && (
           <div className='rounded-xl border px-3.5 py-3' style={{ borderColor: 'rgba(210,153,34,0.25)', background: 'rgba(210,153,34,0.04)' }}>
-            <p className='text-[11px] font-semibold uppercase tracking-[0.16em]' style={{ color: 'var(--accent-amber)' }}>Missing trip details</p>
+            <p className='text-[12px] font-semibold uppercase tracking-[0.16em]' style={{ color: 'var(--accent-amber)' }}>Missing trip details</p>
             <div className='mt-3 flex flex-wrap gap-2'>
               {summary.missingBadges.slice(0, 2).map((badge) => {
                 const param = fieldParam[badge];
@@ -113,7 +113,7 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
                   <Link
                     key={badge}
                     href={`/trips/${trip.id}/intake?field=${param}`}
-                    className='inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium hover:opacity-80 transition-opacity'
+                    className='inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[12px] font-medium hover:opacity-80 transition-opacity'
                     style={{ color: '#d29922', background: 'rgba(210,153,34,0.12)', border: '1px solid rgba(210,153,34,0.25)' }}
                   >
                     Add {fieldName}
@@ -128,7 +128,7 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
         <div className='flex items-center gap-1.5 py-1'>
           <span className='text-[12px] font-semibold' style={{ color: 'var(--text-secondary)' }}>Stage:</span>
           <span className='text-[12px] font-semibold' style={{ color: 'var(--accent-blue)' }}>{summary.stage}</span>
-          <span className='text-[11px]' style={{ color: 'var(--text-muted)' }}>·</span>
+          <span className='text-[12px]' style={{ color: 'var(--text-muted)' }}>·</span>
           <span className='text-[12px]' style={{ color: 'var(--text-secondary)' }}>
             {getPlanningStageProgressItems(trip).map((item, i) => (
               <span key={item.label}>
@@ -154,7 +154,7 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
             style={{ color: 'var(--accent-blue)', background: 'rgba(88,166,255,0.08)', border: '1px solid rgba(88,166,255,0.25)' }}
           >
             {summary.action.label}
-            <ChevronRight className='h-4 w-4' aria-hidden='true' />
+            <ChevronRight className='size-4' aria-hidden='true' />
           </Link>
         </div>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useClientDateTime } from "@/hooks/useClientDate";
 
 interface AuditEvent {
   id: string;
@@ -41,7 +42,7 @@ export default function AuditPage() {
     return (
       <div className="p-6">
         <h1 className="text-xl font-semibold mb-4">Trip Fit & Compliance Audit</h1>
-        <p className="text-muted-foreground">Loading audit events...</p>
+        <p className="text-muted-foreground">Loading audit events…</p>
       </div>
     );
   }
@@ -76,7 +77,7 @@ export default function AuditPage() {
                   {event.type}
                 </span>
                 <span className="text-muted-foreground text-xs">
-                  {new Date(event.timestamp).toLocaleString()}
+                  {useClientDateTime(event.timestamp)}
                 </span>
               </div>
               <div className="text-xs text-muted-foreground font-mono truncate">

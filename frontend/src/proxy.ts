@@ -110,7 +110,7 @@ function isSafeRedirect(target: string): boolean {
 }
 
 /**
- * The proxy handler — used by the Next.js edge runtime.
+ * The proxy handler - used by the Next.js edge runtime.
  * Exported as both default and named so callers (including tests)
  * can import it whichever way is convenient.
  */
@@ -147,7 +147,7 @@ export default async function proxy(request: NextRequest) {
 export { proxy as proxy };
 
 /**
- * Matcher config — controls which paths run through this proxy.
+ * Matcher config - controls which paths run through this proxy.
  * - Excludes static files so they serve directly without middleware overhead
  * - All other paths go through proxy (including protected pages)
  */

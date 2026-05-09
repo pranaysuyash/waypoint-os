@@ -202,7 +202,7 @@ describe('FollowUpCard', () => {
       expect(screen.getByText('Reschedule Follow-up')).toBeInTheDocument();
     });
 
-    // datetime-local input — query by type attribute directly
+    // datetime-local input - query by type attribute directly
     const input = document.querySelector('input[type="datetime-local"]') as HTMLInputElement;
     expect(input).not.toBeNull();
     fireEvent.change(input, { target: { value: '2026-05-01T10:00' } });

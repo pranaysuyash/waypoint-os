@@ -115,9 +115,9 @@ export function TeamPerformanceChart({
 
       {/* Agent Cards */}
       <div className='space-y-4'>
-        {data.map((agent, index) => (
+        {data.map((agent) => (
           <div
-            key={index}
+            key={agent.userId || agent.name}
             className={`rounded-lg border transition-all ${
               selectedAgent === agent.userId
                 ? 'border-[#58a6ff] bg-[#161b22]'

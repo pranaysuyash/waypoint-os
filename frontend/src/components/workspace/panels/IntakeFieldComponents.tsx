@@ -49,7 +49,7 @@ export function EditableField({
               title='Save'
               aria-label='Save trip type'
             >
-              <CheckCircle className='w-3 h-3' />
+              <CheckCircle className='size-3' />
             </button>
             <button
               onClick={onCancelEdit}
@@ -57,7 +57,7 @@ export function EditableField({
               title='Cancel'
               aria-label='Cancel editing'
             >
-              <X className='w-3 h-3' />
+              <X className='size-3' />
             </button>
           </div>
         </div>
@@ -65,7 +65,7 @@ export function EditableField({
           value={value}
           onChange={(val) => onEditValueChange(field, val)}
           options={TRIP_TYPE_OPTIONS}
-          placeholder='Select or type trip type...'
+          placeholder='Select or type trip type…'
           allowCustom={true}
         />
       </div>
@@ -84,7 +84,7 @@ export function EditableField({
               title='Save'
               aria-label='Save destination'
             >
-              <CheckCircle className='w-3 h-3' />
+              <CheckCircle className='size-3' />
             </button>
             <button
               onClick={onCancelEdit}
@@ -92,7 +92,7 @@ export function EditableField({
               title='Cancel'
               aria-label='Cancel editing'
             >
-              <X className='w-3 h-3' />
+              <X className='size-3' />
             </button>
           </div>
         </div>
@@ -100,7 +100,7 @@ export function EditableField({
           value={value}
           onChange={(val) => onEditValueChange(field, val)}
           options={DESTINATION_OPTIONS}
-          placeholder='Select or type destination...'
+          placeholder='Select or type destination…'
           allowCustom={true}
         />
       </div>
@@ -141,7 +141,7 @@ export function EditableField({
             title='Save'
             aria-label={`Save ${label}`}
           >
-            <CheckCircle className='w-3 h-3' />
+            <CheckCircle className='size-3' />
           </button>
           <button
             onClick={onCancelEdit}
@@ -149,7 +149,7 @@ export function EditableField({
             title='Cancel'
             aria-label='Cancel editing'
           >
-            <X className='w-3 h-3' />
+            <X className='size-3' />
           </button>
         </div>
       </div>
@@ -160,7 +160,7 @@ export function EditableField({
     <div className='group relative'>
       <span className='text-[var(--ui-text-xs)] text-[var(--text-secondary)] uppercase tracking-wide'>{label}</span>
       <p className='text-[var(--ui-text-sm)] text-[var(--text-primary)] font-medium mt-0.5 flex items-center gap-1'>
-        {Icon && <Icon className='w-3 h-3 text-[var(--text-secondary)]' />}
+        {Icon && <Icon className='size-3 text-[var(--text-secondary)]' />}
         {displayValue || value}
         <button
           onClick={() => onStartEdit(field, value)}
@@ -168,7 +168,7 @@ export function EditableField({
           title={`Edit ${label}`}
           aria-label={`Edit ${label}`}
         >
-          <Edit2 className='w-3 h-3 text-[var(--accent-blue)]' />
+          <Edit2 className='size-3 text-[var(--accent-blue)]' />
         </button>
       </p>
     </div>
@@ -234,7 +234,7 @@ export function BudgetField({
             title='Save'
             aria-label='Save budget'
           >
-            <CheckCircle className='w-3 h-3' />
+            <CheckCircle className='size-3' />
           </button>
           <button
             onClick={onCancelEdit}
@@ -242,7 +242,7 @@ export function BudgetField({
             title='Cancel'
             aria-label='Cancel editing'
           >
-            <X className='w-3 h-3' />
+            <X className='size-3' />
           </button>
         </div>
       </div>
@@ -253,7 +253,7 @@ export function BudgetField({
     <div className='group relative'>
       <span className='text-[var(--ui-text-xs)] text-[var(--text-secondary)] uppercase tracking-wide'>Budget</span>
       <p className='text-[var(--ui-text-sm)] text-[var(--text-primary)] font-medium mt-0.5 flex items-center gap-1'>
-        <Wallet className='w-3 h-3 text-[var(--accent-green)]' />
+        <Wallet className='size-3 text-[var(--accent-green)]' />
         {displayBudget}
         <button
           onClick={onStartEdit}
@@ -261,7 +261,7 @@ export function BudgetField({
           title='Edit Budget'
           aria-label='Edit budget'
         >
-          <Edit2 className='w-3 h-3 text-[var(--accent-blue)]' />
+          <Edit2 className='size-3 text-[var(--accent-blue)]' />
         </button>
       </p>
     </div>
@@ -294,7 +294,7 @@ export function PlanningDetailSection({
   return (
     <div className={`rounded-xl border p-3 ${toneClasses}`}>
       <div className='mb-3 flex items-center justify-between gap-3'>
-        <h4 className='text-[11px] font-semibold text-[var(--text-secondary)]'>
+        <h4 className='text-[12px] font-semibold text-[var(--text-secondary)]'>
           {title}
         </h4>
         <span className='text-[var(--ui-text-xs)] text-[var(--text-secondary)]'>

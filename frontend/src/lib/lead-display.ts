@@ -43,7 +43,7 @@ function formatSimpleDateRange(value: string): string | null {
 export function formatLeadTitle(destination?: string | null, tripType?: string | null): string {
   const cleanDestination = destination?.trim();
   const cleanType = tripType?.trim();
-  const destinationKnown = cleanDestination && !['tbd', 'to confirm', 'unknown', 'not set', 'n/a', '—', '-'].includes(cleanDestination.toLowerCase());
+  const destinationKnown = cleanDestination && !['tbd', 'to confirm', 'unknown', 'not set', 'n/a', '-', '-'].includes(cleanDestination.toLowerCase());
 
   if (destinationKnown && cleanType) {
     const normalizedType = cleanType.toLowerCase().endsWith('trip')
@@ -64,7 +64,7 @@ export function formatLeadTitle(destination?: string | null, tripType?: string |
 }
 
 export function formatInquiryReference(value?: string | null): string {
-  if (!value) return '—';
+  if (!value) return '-';
   const normalized = value.replace(/^trip_/i, '').trim();
   const shortId = normalized.slice(0, 4).toUpperCase();
   return shortId || normalized;

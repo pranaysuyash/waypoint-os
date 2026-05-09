@@ -88,7 +88,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <LiveRegion />
       <a href='#main-content' className='sr-only-focusable'>Skip to main content</a>
 
-      {/* Sidebar — distinct surface, visible edge */}
+      {/* Sidebar - distinct surface, visible edge */}
       <aside
         className='flex flex-col w-[72px] md:w-[220px] shrink-0'
         style={{
@@ -103,10 +103,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
           style={{ borderBottom: '1px solid var(--border-default)' }}
         >
           <div
-            className='flex h-7 w-7 items-center justify-center rounded-sm shrink-0'
+            className='flex size-7 items-center justify-center rounded-sm shrink-0'
             style={{ background: 'var(--accent-blue)' }}
           >
-            <MapPin className='h-3.5 w-3.5' style={{ color: 'var(--text-on-accent)' }} aria-hidden='true' />
+            <MapPin className='size-3.5' style={{ color: 'var(--text-on-accent)' }} aria-hidden='true' />
           </div>
           <div className='hidden md:block overflow-hidden'>
             <div className='text-sm font-semibold leading-tight tracking-tight truncate'>
@@ -118,7 +118,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* New Inquiry CTA — action, not a place. Icon-only on collapsed sidebar. */}
+        {/* New Inquiry CTA - action, not a place. Icon-only on collapsed sidebar. */}
         <div className='px-2 md:px-4 pt-3 pb-1'>
           <Link
             href='/workbench?draft=new&tab=intake'
@@ -138,7 +138,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-primary)';
             }}
           >
-            <Send className='h-3.5 w-3.5 shrink-0' aria-hidden='true' />
+            <Send className='size-3.5 shrink-0' aria-hidden='true' />
             <span className='hidden md:inline'>New Inquiry</span>
           </Link>
         </div>
@@ -166,11 +166,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
                       <li key={item.href}>
                         <div
                           className='flex items-center justify-center md:justify-start gap-2.5 px-2.5 py-2 rounded-md opacity-40 cursor-not-allowed select-none'
-                          title={`${item.description} — Coming soon`}
+                          title={`${item.description} - Coming soon`}
                           aria-disabled='true'
                           aria-label={`${item.label}, coming soon`}
                         >
-                          <Icon className='h-3.5 w-3.5 shrink-0' aria-hidden='true' />
+                          <Icon className='size-3.5 shrink-0' aria-hidden='true' />
                           <span className='hidden md:inline text-[13px]' style={{ color: 'var(--text-muted)' }}>
                             {item.label}
                           </span>
@@ -207,7 +207,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                           />
                         )}
                         <Icon
-                          className='h-3.5 w-3.5 shrink-0'
+                          className='size-3.5 shrink-0'
                           style={isActive ? { color: 'var(--accent-blue)' } : { color: 'var(--text-muted)' }}
                           aria-hidden='true'
                         />
@@ -227,14 +227,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
           style={{ borderTop: '1px solid var(--border-default)' }}
         >
           <div className='flex items-center gap-2'>
-            <span className='inline-block h-1.5 w-1.5 rounded-full animate-pulse-dot' style={{ background: 'var(--accent-green)' }} aria-hidden='true' />
+            <span className='inline-block size-1.5 rounded-full animate-pulse-dot' style={{ background: 'var(--accent-green)' }} aria-hidden='true' />
             <span className='text-xs font-mono' style={{ color: 'var(--text-muted)' }} aria-live='polite'>
               Operations live
             </span>
           </div>
           {detailsLabel ? (
             <div className='mt-1 flex items-center gap-1.5 text-xs font-mono' style={{ color: 'var(--text-placeholder)' }}>
-              <Activity className='h-3 w-3' aria-hidden='true' />
+              <Activity className='size-3' aria-hidden='true' />
               <span aria-live='polite'>{detailsLabel}</span>
             </div>
           ) : null}
@@ -249,7 +249,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             className='flex items-center justify-center gap-2 py-1.5 px-4 text-center text-xs font-bold tracking-wider uppercase z-50'
             style={{ background: 'var(--accent-red)', color: '#ffffff' }}
           >
-            <AlertTriangle className='h-3 w-3' aria-hidden='true' />
+            <AlertTriangle className='size-3' aria-hidden='true' />
             CRITICAL: Data inconsistency detected. Please refresh.
           </div>
         )}
@@ -277,7 +277,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </nav>
           <div className='flex items-center gap-3'>
             <div className='flex items-center gap-1.5 text-xs font-mono' style={{ color: 'var(--text-muted)' }} role='status' aria-live='polite'>
-              <Zap className='h-3 w-3' style={{ color: 'var(--accent-amber)' }} aria-hidden='true' />
+              <Zap className='size-3' style={{ color: 'var(--accent-amber)' }} aria-hidden='true' />
               <span>System ready</span>
             </div>
             <UserMenu />

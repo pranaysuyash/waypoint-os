@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronRight, Loader, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { Drawer } from '@/components/ui/drawer';
+import { useClientDate } from '@/hooks/useClientDate';
 import type { DrillDownMetric } from '@/components/visual/TeamPerformanceChart';
 
 interface Trip {
@@ -65,11 +66,11 @@ export function MetricDrillDownDrawer({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'approved':
-        return <CheckCircle className='h-4 w-4 text-accent-green' />;
+        return <CheckCircle className='size-4 text-accent-green' />;
       case 'rejected':
-        return <AlertCircle className='h-4 w-4 text-accent-red' />;
+        return <AlertCircle className='size-4 text-accent-red' />;
       default:
-        return <Clock className='h-4 w-4 text-accent-amber' />;
+        return <Clock className='size-4 text-accent-amber' />;
     }
   };
 
@@ -94,8 +95,8 @@ export function MetricDrillDownDrawer({
       {isLoading && (
         <div className='flex items-center justify-center h-full'>
           <div className='flex flex-col items-center gap-2'>
-            <Loader className='h-8 w-8 text-accent-blue animate-spin' />
-            <p className='text-ui-sm text-text-muted'>Loading trip data...</p>
+            <Loader className='size-8 text-accent-blue animate-spin' />
+            <p className='text-ui-sm text-text-muted'>Loading trip data…</p>
           </div>
         </div>
       )}
@@ -103,7 +104,7 @@ export function MetricDrillDownDrawer({
       {error && (
         <div className='p-6'>
           <div className='flex items-center gap-3 p-4 rounded-lg bg-[rgba(var(--accent-red-rgb),0.15)] text-accent-red border border-[#da3633]'>
-            <AlertCircle className='h-5 w-5 flex-shrink-0' />
+            <AlertCircle className='size-5 flex-shrink-0' />
             <p className='text-ui-sm'>{error}</p>
           </div>
         </div>
@@ -171,7 +172,7 @@ export function MetricDrillDownDrawer({
                   <div>
                     <span className='text-text-muted block mb-1'>Date</span>
                     <span className='text-text-primary font-medium'>
-                      {new Date(trip.createdAt).toLocaleDateString()}
+                      {useClientDate(trip.createdAt)}
                     </span>
                   </div>
                 )}
@@ -185,7 +186,7 @@ export function MetricDrillDownDrawer({
 
               <div className='flex items-center justify-between text-ui-xs text-accent-blue'>
                 <span>View timeline</span>
-                <ChevronRight className='h-4 w-4' />
+                <ChevronRight className='size-4' />
               </div>
             </button>
           ))}

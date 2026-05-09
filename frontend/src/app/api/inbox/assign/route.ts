@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
 
 /**
- * POST /api/inbox/assign — proxy to backend /inbox/assign.
+ * POST /api/inbox/assign - proxy to backend /inbox/assign.
  *
  * Accepts: { tripIds: string[], assignTo: string, notifyAssignee?: boolean }
  * Forwards to backend as-is (camelCase matches backend contract).

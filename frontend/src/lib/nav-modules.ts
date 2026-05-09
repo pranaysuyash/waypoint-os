@@ -14,7 +14,7 @@ export interface NavSection {
 /**
  * Durable navigation model for the Agency OS.
  *
- * Sections encode the full agency lifecycle — not just what exists today.
+ * Sections encode the full agency lifecycle - not just what exists today.
  * Modules that are not yet ready are marked `enabled: false` and rendered
  * as grayed-out placeholders with a "Soon" badge, so the shell communicates
  * the product's operating model rather than only the current implementation surface.

@@ -158,7 +158,7 @@ describe('public marketing pages', () => {
     );
     expect(formsWithAction).toHaveLength(0);
 
-    // Should NOT say "sample preview" — the new design IS the real tool
+    // Should NOT say "sample preview" - the new design IS the real tool
     expect(screen.queryByText('Sample preview')).not.toBeInTheDocument();
 
     // Trust chips confirming it is free and privacy-safe

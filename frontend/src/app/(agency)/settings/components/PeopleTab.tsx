@@ -23,7 +23,7 @@ function WorkspaceCodePanel() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Clipboard API unavailable — fall back to selection
+      // Clipboard API unavailable - fall back to selection
     }
   }
 
@@ -51,7 +51,7 @@ function WorkspaceCodePanel() {
   if (error) {
     return (
       <div className="rounded-xl border border-[#f85149]/30 bg-[#f85149]/10 p-4 flex items-center gap-2 text-ui-sm text-[#f85149]">
-        <AlertCircle className="w-4 h-4 shrink-0" />
+        <AlertCircle className="size-4 shrink-0" />
         Failed to load workspace: {error.message}
       </div>
     );
@@ -70,7 +70,7 @@ function WorkspaceCodePanel() {
 
       {generateError && (
         <div className="flex items-center gap-2 rounded-lg border border-[#f85149]/30 bg-[#f85149]/10 p-3 text-ui-sm text-[#f85149]">
-          <AlertCircle className="w-4 h-4 shrink-0" />
+          <AlertCircle className="size-4 shrink-0" />
           {generateError}
         </div>
       )}
@@ -85,7 +85,7 @@ function WorkspaceCodePanel() {
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#30363d] text-ui-sm text-[#e6edf3] hover:bg-[#1c2128] transition-colors shrink-0"
             title="Copy invitation link"
           >
-            {copied ? <Check className="w-4 h-4 text-[#3fb950]" /> : <Copy className="w-4 h-4" />}
+            {copied ? <Check className="size-4 text-[#3fb950]" /> : <Copy className="size-4" />}
             {copied ? 'Copied' : 'Copy'}
           </button>
           <button
@@ -94,7 +94,7 @@ function WorkspaceCodePanel() {
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#30363d] text-ui-sm text-[#e6edf3] hover:bg-[#1c2128] transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             title="Generate new invitation link (revokes current)"
           >
-            <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`size-4 ${isGenerating ? 'animate-spin' : ''}`} />
             {isGenerating ? 'Regenerating…' : 'New link'}
           </button>
         </div>
@@ -106,7 +106,7 @@ function WorkspaceCodePanel() {
             disabled={isGenerating}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#58a6ff] text-[#0d1117] text-ui-sm font-medium hover:bg-[#79b8ff] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`size-4 ${isGenerating ? 'animate-spin' : ''}`} />
             Generate link
           </button>
         </div>
@@ -149,7 +149,7 @@ function TeamMemberList() {
   if (error) {
     return (
       <div className="flex items-center gap-2 text-ui-sm text-[#f85149]">
-        <AlertCircle className="w-4 h-4" />
+        <AlertCircle className="size-4" />
         Failed to load team members: {error.message}
       </div>
     );
@@ -158,7 +158,7 @@ function TeamMemberList() {
   if (members.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 py-8 text-center">
-        <Users className="w-8 h-8 text-[#30363d]" />
+        <Users className="size-8 text-[#30363d]" />
         <p className="text-ui-sm text-[#8b949e]">No team members yet.</p>
         <p className="text-ui-xs text-[#6e7681]">Share the invitation link above to onboard your first agent.</p>
       </div>
@@ -176,7 +176,7 @@ function TeamMemberList() {
             key={member.id}
             className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-[#161b22] transition-colors"
           >
-            <div className="w-8 h-8 rounded-full bg-[#1c2128] border border-[#30363d] flex items-center justify-center shrink-0">
+            <div className="size-8 rounded-full bg-[#1c2128] border border-[#30363d] flex items-center justify-center shrink-0">
               <span className="text-ui-xs font-semibold text-[#8b949e]">
                 {(member.name ?? member.email ?? '?')[0].toUpperCase()}
               </span>
@@ -189,7 +189,7 @@ function TeamMemberList() {
             </div>
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-ui-xs font-medium ${roleColor}`}>
               {roleKey === 'owner' || roleKey === 'admin' ? (
-                <Shield className="w-3 h-3" />
+                <Shield className="size-3" />
               ) : null}
               {roleLabel}
             </span>

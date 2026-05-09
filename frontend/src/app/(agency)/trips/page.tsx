@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * /trips — Active trips listing.
+ * /trips - Active trips listing.
  *
  * Domain boundary (explicit, not ad-hoc):
  *   Inbox  = intake queue. Trips that haven't been acted on yet (state: 'blue').
@@ -151,7 +151,7 @@ const SingleTripNextStepPanel = memo(function SingleTripNextStepPanel({ trip }: 
       }}
     >
       <div>
-        <p className='text-[11px] font-semibold uppercase tracking-[0.16em]' style={{ color: 'var(--text-tertiary)' }}>
+        <p className='text-[12px] font-semibold uppercase tracking-[0.16em]' style={{ color: 'var(--text-tertiary)' }}>
           Next step
         </p>
         <h2 className='mt-2 text-[18px] font-semibold' style={{ color: 'var(--text-primary)' }}>
@@ -161,7 +161,7 @@ const SingleTripNextStepPanel = memo(function SingleTripNextStepPanel({ trip }: 
 
       {summary.missingFields.length > 0 && (
         <div className='rounded-xl border px-4 py-3' style={{ borderColor: 'rgba(48,54,61,0.85)', background: 'rgba(255,255,255,0.02)' }}>
-          <p className='text-[11px] font-semibold uppercase tracking-[0.14em]' style={{ color: 'var(--text-tertiary)' }}>
+          <p className='text-[12px] font-semibold uppercase tracking-[0.14em]' style={{ color: 'var(--text-tertiary)' }}>
             Missing
           </p>
           <ul className='mt-3 space-y-2 text-[14px]' style={{ color: 'var(--text-primary)' }}>
@@ -178,7 +178,7 @@ const SingleTripNextStepPanel = memo(function SingleTripNextStepPanel({ trip }: 
         style={{ color: 'var(--accent-blue)' }}
       >
         {summary.action.label}
-        <ChevronRight className='h-4 w-4' aria-hidden='true' />
+        <ChevronRight className='size-4' aria-hidden='true' />
       </Link>
     </aside>
   );
@@ -191,8 +191,8 @@ const SingleTripNextStepPanel = memo(function SingleTripNextStepPanel({ trip }: 
 function EmptyWorkspace() {
   return (
     <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-12 text-center'>
-      <div className='w-12 h-12 rounded-full bg-[#161b22] flex items-center justify-center mx-auto mb-4'>
-        <Briefcase className='w-6 h-6 text-[var(--text-tertiary)]' aria-hidden='true' />
+      <div className='size-12 rounded-full bg-[#161b22] flex items-center justify-center mx-auto mb-4'>
+        <Briefcase className='size-6 text-[var(--text-tertiary)]' aria-hidden='true' />
       </div>
       <p className='text-[#e6edf3] font-medium mb-1'>No trips in planning</p>
       <p className='text-ui-sm text-[var(--text-muted)] mb-6'>
@@ -204,7 +204,7 @@ function EmptyWorkspace() {
           className='inline-flex items-center gap-2 px-5 py-2.5 bg-[#58a6ff] text-[#0d1117] rounded-lg text-ui-sm font-semibold hover:bg-[#6eb5ff] transition-colors'
         >
           Review Lead Inbox
-          <ChevronRight className='w-4 h-4' aria-hidden='true' />
+          <ChevronRight className='size-4' aria-hidden='true' />
         </Link>
         <Link
           href='/workbench'
@@ -241,7 +241,7 @@ function ViewToggle({
         aria-pressed={view === 'card'}
         aria-label='Card view'
       >
-        <LayoutGrid className='h-3.5 w-3.5' aria-hidden='true' />
+        <LayoutGrid className='size-3.5' aria-hidden='true' />
         <span className='hidden sm:inline'>Cards</span>
       </button>
       <button
@@ -255,7 +255,7 @@ function ViewToggle({
         aria-pressed={view === 'table'}
         aria-label='Table view'
       >
-        <Table2 className='h-3.5 w-3.5' aria-hidden='true' />
+        <Table2 className='size-3.5' aria-hidden='true' />
         <span className='hidden sm:inline'>Table</span>
       </button>
     </div>
@@ -312,7 +312,7 @@ export default function WorkspacesPage() {
         <div className='flex items-center gap-3'>
           {needsDetailsCount > 0 && (
             <span className='flex items-center gap-1.5 text-ui-sm text-[#d29922]'>
-              <AlertTriangle className='h-3.5 w-3.5' aria-hidden='true' />
+              <AlertTriangle className='size-3.5' aria-hidden='true' />
               {needsDetailsCount} needs details
             </span>
           )}

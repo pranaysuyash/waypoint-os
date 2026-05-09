@@ -56,7 +56,7 @@ export function SuitabilityCard({ profile, compact = false }: SuitabilityCardPro
       {/* Header */}
       <div className="p-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <StatusIcon className={`h-5 w-5 ${style.iconClassName}`} aria-hidden="true" />
+          <StatusIcon className={`size-5 ${style.iconClassName}`} aria-hidden="true" />
           <div>
             <h3 className={`font-semibold text-ui-sm ${style.text}`}>
               {SUITABILITY_STATUS_LABELS[summary.status] || summary.status}
@@ -97,7 +97,7 @@ function DimensionRow({ dimension }: { dimension: SuitabilityProfile["dimensions
 
   return (
     <div className="px-4 py-3 flex items-start gap-3 border-b border-border-default last:border-b-0">
-      <DimensionIcon className="h-4 w-4 mt-0.5 text-text-muted" aria-hidden="true" />
+      <DimensionIcon className="size-4 mt-0.5 text-text-muted" aria-hidden="true" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <span className="text-ui-sm font-medium capitalize text-text-primary">

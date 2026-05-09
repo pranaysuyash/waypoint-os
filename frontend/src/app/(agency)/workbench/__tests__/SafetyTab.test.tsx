@@ -78,7 +78,7 @@ const DECISION_WITHOUT_FRONTIER = {
   rationale: {},
 };
 
-describe('SafetyTab — Special Handling Checklist', () => {
+describe('SafetyTab - Special Handling Checklist', () => {
   beforeEach(() => {
     mockStore.result_safety = null;
     mockStore.result_decision = null;

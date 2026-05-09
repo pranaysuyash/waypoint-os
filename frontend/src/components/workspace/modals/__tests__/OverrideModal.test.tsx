@@ -115,7 +115,7 @@ describe("OverrideModal", () => {
     const textarea = screen.getByPlaceholderText(/minimum 10 characters/);
     fireEvent.change(textarea, { target: { value: "Valid reason text here" } });
 
-    const select = screen.getByDisplayValue("Select severity...");
+    const select = screen.getByDisplayValue("Select severity…");
     fireEvent.change(select, { target: { value: "high" } });
 
     const submitButton = screen.getByText("Submit Override");

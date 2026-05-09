@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useId } from "react";
 import { submitTripReviewAction } from "@/lib/api-client";
 import { useWorkbenchStore } from "@/stores/workbench";
+import { useClientDate } from "@/hooks/useClientDate";
 import type { ReviewActionRequest, ReviewStatus } from "@/types/governance";
 import type { Trip } from "@/lib/api-client";
 import type { SuitabilityFlagData } from "@/types/spine";
@@ -26,6 +27,8 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
   const [errorCategory, setErrorCategory] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const notesId = useId();
+  const categoryId = useId();
 
   const { acknowledged_suitability_flags } = useWorkbenchStore();
 
@@ -95,7 +98,7 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
         <div className={styles.reviewInfo}>
           <strong>Status: {REVIEW_STATUS_LABELS[currentStatus] || currentStatus}</strong>
           {trip?.reviewedBy && <span> by {trip.reviewedBy}</span>}
-          {trip?.reviewedAt && <span> on {new Date(trip.reviewedAt).toLocaleDateString()}</span>}
+          {trip?.reviewedAt && <span> on {useClientDate(trip.reviewedAt)}</span>}
         </div>
         {trip?.reviewNotes && (
           <div className={styles.reviewNotes}>
@@ -111,10 +114,11 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
       <h3 className={styles.sectionTitle}>Operator Review</h3>
       <div className={styles.card}>
         <div className={styles.formGroup}>
-          <label className={styles.label}>Reviewer Feedback (required for changes/rejection)</label>
+          <label htmlFor={notesId} className={styles.label}>Reviewer Feedback (required for changes/rejection)</label>
           <textarea
+            id={notesId}
             className={styles.textarea}
-            placeholder="Explain your decision or list required changes..."
+            placeholder="Explain your decision or list required changes…"
             value={notes}
             onChange={(e) => {
               setNotes(e.target.value);
@@ -126,8 +130,9 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
         </div>
 
         <div className={styles.formGroup}>
-          <label className={styles.label}>Systemic Error Category (Mandatory for Overrides)</label>
-          <select 
+          <label htmlFor={categoryId} className={styles.label}>Systemic Error Category (Mandatory for Overrides)</label>
+          <select
+            id={categoryId}
             className={styles.select}
             value={errorCategory}
             onChange={(e) => setErrorCategory(e.target.value)}
@@ -157,7 +162,7 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
             title={suitabilityBlocked ? "Acknowledge all critical suitability flags before approving" : undefined}
             data-testid="approve-button"
           >
-            {isSubmitting ? "Processing..." : "Approve & Ready"}
+            {isSubmitting ? "Processing…" : "Approve & Ready"}
           </button>
           
           <button

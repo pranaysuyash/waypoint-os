@@ -22,7 +22,7 @@ export default function LoginPage() {
 
     try {
       // Login sets httpOnly cookies (access_token, refresh_token).
-      // No tokens are returned in the response body — they are cookie-only.
+      // No tokens are returned in the response body - they are cookie-only.
       const data = await api.post<{
         ok: boolean;
         user: { id: string; email: string; name?: string };
@@ -90,7 +90,7 @@ export default function LoginPage() {
         </div>
 
         <button className='auth-button' type='submit' disabled={loading}>
-          {loading ? 'Signing in...' : 'Sign in'}
+          {loading ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
 

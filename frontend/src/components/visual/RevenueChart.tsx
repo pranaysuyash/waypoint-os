@@ -42,11 +42,11 @@ export function RevenueChart({ data }: RevenueChartProps) {
         <h2 className='text-base font-semibold text-[#e6edf3]'>Monthly Trend</h2>
         <div className='flex items-center gap-4 text-xs text-[#8b949e]'>
           <span className='inline-flex items-center gap-1.5'>
-            <span className='h-2 w-2 rounded-full bg-[#58a6ff]' aria-hidden='true' />
+            <span className='size-2 rounded-full bg-[#58a6ff]' aria-hidden='true' />
             Revenue
           </span>
           <span className='inline-flex items-center gap-1.5'>
-            <span className='h-2 w-2 rounded-full bg-[#3fb950]' aria-hidden='true' />
+            <span className='size-2 rounded-full bg-[#3fb950]' aria-hidden='true' />
             Booked
           </span>
         </div>

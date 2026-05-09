@@ -2,6 +2,7 @@
 
 import { useState, useMemo, memo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useClientDateTime } from '@/hooks/useClientDate';
 import {
   TrendingUp,
   Users,
@@ -55,8 +56,8 @@ const StatCard = memo(function StatCard({
             {subtext}
           </p>
         </div>
-        <div className='h-10 w-10 rounded-lg bg-[#161b22] flex items-center justify-center'>
-          <Icon className='h-5 w-5 text-[#58a6ff]' />
+        <div className='size-10 rounded-lg bg-[#161b22] flex items-center justify-center'>
+          <Icon className='size-5 text-[#58a6ff]' />
         </div>
       </div>
     </div>
@@ -141,9 +142,9 @@ const CriticalAlertBanner = memo(function CriticalAlertBanner({
           >
             <div className='flex items-center gap-3'>
               <div className="relative">
-                <AlertTriangle className={`h-5 w-5 flex-shrink-0 ${isBreached ? 'animate-pulse' : ''}`} />
+                <AlertTriangle className={`size-5 flex-shrink-0 ${isBreached ? 'animate-pulse' : ''}`} />
                 {isEscalated && (
-                  <div className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full border border-[#2b1011]" />
+                  <div className="absolute -top-1 -right-1 size-2 bg-red-500 rounded-full border border-[#2b1011]" />
                 )}
               </div>
               <div>
@@ -158,7 +159,7 @@ const CriticalAlertBanner = memo(function CriticalAlertBanner({
                 <div className='text-ui-xs opacity-80 flex items-center gap-2 mt-0.5'>
                   <span>Trip ID: {alert.tripId}</span>
                   <span>•</span>
-                  <span>{new Date(alert.timestamp).toLocaleString()}</span>
+                   <span>{useClientDateTime(alert.timestamp)}</span>
                   {deadline && (
                     <>
                       <span>•</span>
@@ -186,7 +187,7 @@ const CriticalAlertBanner = memo(function CriticalAlertBanner({
                 className='p-1.5 hover:bg-black/20 rounded-md transition-colors text-[#8b949e] hover:text-[#e6edf3]'
                 title="Acknowledge & Dismiss"
               >
-                <CheckCircle className='h-4 w-4' />
+                <CheckCircle className='size-4' />
               </button>
             </div>
           </div>
@@ -208,7 +209,7 @@ const TeamMemberRow = memo(function TeamMemberRow({ member }: { member: TeamMemb
     <tr className='border-b border-[#1c2128] last:border-0'>
       <td className='py-3'>
         <div className='flex items-center gap-3'>
-                <div className='h-8 w-8 rounded-full bg-[#58a6ff]/20 flex items-center justify-center text-[#58a6ff] text-ui-xs font-bold'>
+                <div className='size-8 rounded-full bg-[#58a6ff]/20 flex items-center justify-center text-[#58a6ff] text-ui-xs font-bold'>
                   {member.name.split(' ').map((n: string) => n[0]).join('')}
           </div>
           <div>
@@ -259,7 +260,7 @@ const BottleneckCard = memo(function BottleneckCard({ analysis }: { analysis: Bo
   return (
     <div className='rounded-xl border border-[#d29922]/30 bg-[#d29922]/5 p-4'>
       <div className='flex items-center gap-2 mb-3'>
-        <AlertTriangle className='w-5 h-5 text-[#d29922]' />
+        <AlertTriangle className='size-5 text-[#d29922]' />
         <h3 className='text-ui-base font-semibold text-[#e6edf3]'>
           Bottleneck: {analysis.stageName}
         </h3>
@@ -273,8 +274,8 @@ const BottleneckCard = memo(function BottleneckCard({ analysis }: { analysis: Bo
       </p>
       
       <div className='space-y-2'>
-        {analysis.primaryCauses.map((cause: any, i: number) => (
-          <div key={i} className='flex items-center justify-between py-2 border-b border-[#30363d]/50 last:border-0'>
+        {analysis.primaryCauses.map((cause: any) => (
+          <div key={`cause-${cause.cause?.slice(0, 30) || Math.random()}`} className='flex items-center justify-between py-2 border-b border-[#30363d]/50 last:border-0'>
             <div>
               <p className='text-ui-sm text-[#e6edf3]'>{cause.cause}</p>
               <p className='text-ui-xs text-[#8b949e]'>Affecting {cause.affectedTrips} trips · {cause.percentage}% of delays</p>
@@ -359,11 +360,11 @@ export default function OwnerInsightsPage() {
               <option value='mtd'>This month</option>
               <option value='ytd'>Year to date</option>
             </select>
-            <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8b949e] pointer-events-none' />
+            <ChevronDown className='absolute right-3 top-1/2 -translate-y-1/2 size-4 text-[#8b949e] pointer-events-none' />
           </div>
           
           <button className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg text-ui-sm hover:bg-[#21262d] transition-colors'>
-            <Download className='w-4 h-4' /> Export
+            <Download className='size-4' /> Export
           </button>
         </div>
       </header>
@@ -376,14 +377,14 @@ export default function OwnerInsightsPage() {
 
       {isLoading && (
         <div className="flex flex-col items-center justify-center py-20 bg-[#0f1115] border border-[#1c2128] rounded-xl">
-          <div className="h-10 w-10 border-4 border-[#58a6ff] border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-[#8b949e]">Calculating latest dashboard telemetry...</p>
+          <div className="size-10 border-4 border-[#58a6ff] border-t-transparent rounded-full animate-spin mb-4" />
+          <p className="text-[#8b949e]">Calculating latest dashboard telemetry…</p>
         </div>
       )}
 
       {hasError && (
         <div className="flex flex-col items-center justify-center py-20 bg-[#f85149]/5 border border-[#f85149]/30 rounded-xl">
-          <AlertTriangle className="h-10 w-10 text-[#f85149] mb-4" />
+          <AlertTriangle className="size-10 text-[#f85149] mb-4" />
           <p className="text-[#e6edf3] font-semibold">Failed to fetch live data</p>
           <p className="text-[#8b949e] text-ui-sm mt-1">Please ensure the backend analytics service is running.</p>
         </div>
@@ -595,7 +596,7 @@ export default function OwnerInsightsPage() {
             </div>
           ) : (
             <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-6 text-center'>
-              <CheckCircle className='w-8 h-8 text-[#3fb950] mx-auto mb-2' />
+              <CheckCircle className='size-8 text-[#3fb950] mx-auto mb-2' />
               <p className='text-ui-sm text-[#8b949e]'>No bottlenecks detected. Things are flowing smoothly!</p>
             </div>
           )}

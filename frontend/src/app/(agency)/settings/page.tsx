@@ -154,7 +154,7 @@ export default function SettingsPage() {
   if (isLoading && !draft) {
     return (
       <div className="p-6 flex items-center justify-center">
-        <div className="text-[#8b949e] text-ui-sm animate-pulse">Loading settings...</div>
+        <div className="text-[#8b949e] text-ui-sm animate-pulse">Loading settings…</div>
       </div>
     );
   }
@@ -164,7 +164,7 @@ export default function SettingsPage() {
       <div className="p-6">
         <div className="max-w-[900px] mx-auto rounded-xl border border-[#f85149]/30 bg-[#f85149]/10 p-6">
           <div className="flex items-center gap-2 text-[#f85149]">
-            <AlertCircle className="w-5 h-5" />
+            <AlertCircle className="size-5" />
             <h2 className="font-semibold">Failed to load settings</h2>
           </div>
           <p className="text-ui-sm text-[#e6edf3] mt-2">{error?.message}</p>
@@ -193,13 +193,13 @@ export default function SettingsPage() {
           <div className="flex items-center gap-2">
             {saveStatus === 'saved' && (
               <span className="flex items-center gap-1.5 text-ui-xs text-[#3fb950]">
-                <CheckCircle2 className="w-3.5 h-3.5" />
+                <CheckCircle2 className="size-3.5" />
                 Saved
               </span>
             )}
             {saveStatus === 'error' && (
               <span className="flex items-center gap-1.5 text-ui-xs text-[#f85149]">
-                <AlertCircle className="w-3.5 h-3.5" />
+                <AlertCircle className="size-3.5" />
                 Save failed
               </span>
             )}
@@ -208,7 +208,7 @@ export default function SettingsPage() {
               disabled={!isDirty || saveStatus === 'saving'}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#30363d] text-ui-sm text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#161b22] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw className="size-3.5" />
               Reset
             </button>
             <button
@@ -216,8 +216,8 @@ export default function SettingsPage() {
               disabled={!isDirty || saveStatus === 'saving'}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#58a6ff] text-[#0d1117] text-ui-sm font-medium hover:bg-[#79b8ff] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Save className="w-3.5 h-3.5" />
-              {saveStatus === 'saving' ? 'Saving...' : 'Save Changes'}
+              <Save className="size-3.5" />
+              {saveStatus === 'saving' ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
         </div>
@@ -225,7 +225,7 @@ export default function SettingsPage() {
         {/* Error summary */}
         {(opError || autonomyError) && (
           <div className="rounded-lg border border-[#f85149]/30 bg-[#f85149]/10 p-3 flex items-center gap-2 text-ui-sm text-[#f85149]">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+            <AlertCircle className="size-4 shrink-0" />
             {opError?.message || autonomyError?.message}
           </div>
         )}
@@ -246,7 +246,7 @@ export default function SettingsPage() {
                       : 'border-transparent text-[#8b949e] hover:text-[#c9d1d9]'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="size-4" />
                   {tab.label}
                 </button>
               );

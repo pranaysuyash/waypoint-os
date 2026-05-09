@@ -114,7 +114,7 @@ describe("ExtractionHistoryPanel", () => {
       expect(screen.getByText("Extraction History")).toBeInTheDocument();
     });
 
-    // Check metadata is displayed — provider/model may appear in multiple elements
+    // Check metadata is displayed - provider/model may appear in multiple elements
     expect(screen.getAllByText(/gemini/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/gemini-2.5-flash/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/openai/).length).toBeGreaterThanOrEqual(1);

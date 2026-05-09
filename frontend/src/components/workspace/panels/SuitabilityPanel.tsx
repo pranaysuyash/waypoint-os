@@ -1,5 +1,5 @@
 /**
- * SuitabilityPanel — Display suitability assessment flags for a trip.
+ * SuitabilityPanel - Display suitability assessment flags for a trip.
  *
  * Renders activity suitability concerns with color-coding by severity:
  * - CRITICAL (red): Mandatory acknowledgment required
@@ -47,17 +47,33 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
   }>({ isOpen: false });
   const [pendingOverride, setPendingOverride] = useState<string | null>(null);
 
-  if (flags.length === 0) {
-    return (
-      <div className="p-4 text-ui-sm text-gray-600">
-        No suitability concerns detected. Trip is suitable for these travelers.
-      </div>
-    );
-  }
+  const handleSubmitOverride = useCallback(
+    async (request: OverrideRequest) => {
+      if (!tripId) {
+        toast('Trip ID required for override', 'error');
+        return;
+      }
 
-  const criticalFlags = flags.filter((f) => f.severity === 'critical');
-  const highFlags = flags.filter((f) => f.severity === 'high');
-  const otherFlags = flags.filter((f) => f.severity !== 'critical' && f.severity !== 'high');
+      try {
+        setPendingOverride(request.flag);
+        const response = await submitOverride(tripId, request);
+
+        if (response.ok) {
+          toast('Override recorded successfully', 'success');
+          setAcknowledgedFlags((prev) => new Set(prev).add(request.flag));
+        } else {
+          toast('Failed to record override', 'error');
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to record override';
+        toast(message, 'error');
+        throw error;
+      } finally {
+        setPendingOverride(null);
+      }
+    },
+    [tripId]
+  );
 
   const handleAcknowledge = (flagType: string) => {
     const newAcknowledged = new Set(acknowledgedFlags);
@@ -77,33 +93,17 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
     setOverrideModal({ isOpen: false, flag: undefined });
   };
 
-  const handleSubmitOverride = useCallback(
-    async (request: OverrideRequest) => {
-      if (!tripId) {
-        toast('Trip ID required for override', 'error');
-        return;
-      }
+  if (flags.length === 0) {
+    return (
+      <div className="p-4 text-ui-sm text-text-secondary">
+        No suitability concerns detected. Trip is suitable for these travelers.
+      </div>
+    );
+  }
 
-      try {
-        setPendingOverride(request.flag);
-        const response = await submitOverride(tripId, request);
-        
-        if (response.ok) {
-          toast('Override recorded successfully', 'success');
-          setAcknowledgedFlags((prev) => new Set(prev).add(request.flag));
-        } else {
-          toast('Failed to record override', 'error');
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to record override';
-        toast(message, 'error');
-        throw error;
-      } finally {
-        setPendingOverride(null);
-      }
-    },
-    [tripId]
-  );
+  const criticalFlags = flags.filter((f) => f.severity === 'critical');
+  const highFlags = flags.filter((f) => f.severity === 'high');
+  const otherFlags = flags.filter((f) => f.severity !== 'critical' && f.severity !== 'high');
 
   const handleContinue = () => {
     if (onAcknowledge && criticalFlags.length > 0) {
@@ -125,8 +125,8 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
   return (
     <div className="space-y-4 p-4">
       <div className="mb-4">
-        <h3 className="text-ui-lg font-semibold text-gray-900">Suitability Assessment</h3>
-        <p className="text-ui-sm text-gray-600 mt-1">
+        <h3 className="text-ui-lg font-semibold text-text-primary">Suitability Assessment</h3>
+        <p className="text-ui-sm text-text-secondary mt-1">
           {criticalFlags.length > 0
             ? 'Operator review required before sending to customer'
             : 'Some concerns detected. Please review before proceeding.'}
@@ -136,23 +136,23 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
       {/* CRITICAL FLAGS */}
       {criticalFlags.length > 0 && (
         <div className="space-y-3">
-          <h4 className="font-semibold text-red-900 flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5" />
+          <h4 className="font-semibold text-accent-red flex items-center gap-2">
+            <AlertTriangle className="size-5" />
             Critical Concerns
           </h4>
           {criticalFlags.map((flag) => (
             <div
               key={getFlagKey(flag)}
-              className="bg-red-50 border border-red-200 rounded-lg p-4"
+              className="bg-[rgba(var(--accent-red-rgb)/0.08)] border border-[rgba(var(--accent-red-rgb)/0.25)] rounded-lg p-4"
             >
               <div className="flex items-start gap-3">
                 <div className="flex-1">
-                  <p className="font-medium text-red-900">{flag.reason}</p>
-                  <p className="text-ui-sm text-red-700 mt-1">
+                  <p className="font-medium text-accent-red">{flag.reason}</p>
+                  <p className="text-ui-sm text-accent-red mt-1">
                     Confidence: {(flag.confidence * 100).toFixed(0)}%
                   </p>
                   {flag.details?.activity_name && (
-                    <p className="text-ui-sm text-red-700">
+                    <p className="text-ui-sm text-accent-red">
                       Activity: {flag.details.activity_name}
                     </p>
                   )}
@@ -162,9 +162,9 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
                     <button
                       onClick={() => handleOpenOverrideModal(flag)}
                       disabled={pendingOverride === getFlagKey(flag)}
-                      className="px-3 py-1 text-ui-sm bg-red-200 hover:bg-red-300 text-red-900 rounded font-medium disabled:opacity-50 transition-colors whitespace-nowrap"
+                      className="px-3 py-1 text-ui-sm bg-[rgba(var(--accent-red-rgb)/0.22)] hover:bg-[rgba(var(--accent-red-rgb)/0.28)] text-accent-red rounded font-medium disabled:opacity-50 transition-colors whitespace-nowrap"
                     >
-                      {pendingOverride === getFlagKey(flag) ? "Submitting..." : "Override"}
+                      {pendingOverride === getFlagKey(flag) ? "Submitting…" : "Override"}
                     </button>
                   )}
                   <label className="flex items-center gap-2">
@@ -172,9 +172,9 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
                       type="checkbox"
                       checked={acknowledgedFlags.has(getFlagKey(flag))}
                       onChange={() => handleAcknowledge(getFlagKey(flag))}
-                      className="w-4 h-4"
+                      className="size-4"
                     />
-                    <span className="text-ui-sm text-red-900">Acknowledge</span>
+                    <span className="text-ui-sm text-accent-red">Acknowledge</span>
                   </label>
                 </div>
               </div>
@@ -186,23 +186,23 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
       {/* HIGH FLAGS */}
       {highFlags.length > 0 && (
         <div className="space-y-3">
-          <h4 className="font-semibold text-orange-900 flex items-center gap-2">
-            <AlertCircle className="h-5 w-5" />
+          <h4 className="font-semibold text-accent-amber flex items-center gap-2">
+            <AlertCircle className="size-5" />
             Important Warnings
           </h4>
           {highFlags.map((flag) => (
             <div
               key={getFlagKey(flag)}
-              className="bg-orange-50 border border-orange-200 rounded-lg p-4"
+              className="bg-[rgba(var(--accent-amber-rgb)/0.08)] border border-[rgba(var(--accent-amber-rgb)/0.25)] rounded-lg p-4"
             >
               <div className="flex items-start gap-3">
                 <div className="flex-1">
-                  <p className="font-medium text-orange-900">{flag.reason}</p>
-                  <p className="text-ui-sm text-orange-700 mt-1">
+                  <p className="font-medium text-accent-amber">{flag.reason}</p>
+                  <p className="text-ui-sm text-accent-amber mt-1">
                     Confidence: {(flag.confidence * 100).toFixed(0)}%
                   </p>
                   {flag.details?.activity_name && (
-                    <p className="text-ui-sm text-orange-700">
+                    <p className="text-ui-sm text-accent-amber">
                       Activity: {flag.details.activity_name}
                     </p>
                   )}
@@ -211,9 +211,9 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
                   <button
                     onClick={() => handleOpenOverrideModal(flag)}
                     disabled={pendingOverride === getFlagKey(flag)}
-                    className="px-3 py-1 text-ui-sm bg-orange-200 hover:bg-orange-300 text-orange-900 rounded font-medium disabled:opacity-50 transition-colors whitespace-nowrap"
+                    className="px-3 py-1 text-ui-sm bg-[rgba(var(--accent-amber-rgb)/0.22)] hover:bg-[rgba(var(--accent-amber-rgb)/0.26)] text-accent-amber rounded font-medium disabled:opacity-50 transition-colors whitespace-nowrap"
                   >
-                    {pendingOverride === getFlagKey(flag) ? "Submitting..." : "Override"}
+                    {pendingOverride === getFlagKey(flag) ? "Submitting…" : "Override"}
                   </button>
                 )}
               </div>
@@ -225,20 +225,20 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
       {/* OTHER FLAGS */}
       {otherFlags.length > 0 && (
         <div className="space-y-3">
-          <h4 className="font-semibold text-gray-700">Additional Information</h4>
+          <h4 className="font-semibold text-text-secondary">Additional Information</h4>
           {otherFlags.map((flag) => (
             <div
               key={getFlagKey(flag)}
-              className="bg-gray-50 border border-gray-200 rounded-lg p-4"
+              className="bg-surface border border-border-default rounded-lg p-4"
             >
               <div className="flex items-start gap-3">
                 <div className="flex-1">
-                  <p className="font-medium text-gray-900">{flag.reason}</p>
-                  <p className="text-ui-sm text-gray-600 mt-1">
+                  <p className="font-medium text-text-primary">{flag.reason}</p>
+                  <p className="text-ui-sm text-text-secondary mt-1">
                     Confidence: {(flag.confidence * 100).toFixed(0)}%
                   </p>
                   {flag.details?.activity_name && (
-                    <p className="text-ui-sm text-gray-600">
+                    <p className="text-ui-sm text-text-secondary">
                       Activity: {flag.details.activity_name}
                     </p>
                   )}
@@ -251,14 +251,14 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
 
       {/* ACTION BUTTONS */}
       {criticalFlags.length > 0 && (
-        <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200">
+        <div className="flex gap-3 mt-6 pt-4 border-t border-border-default">
           <button
             onClick={handleContinue}
             disabled={!allCriticalAcknowledged}
             className={`px-4 py-2 rounded-lg font-medium ${
               allCriticalAcknowledged
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                ? 'bg-[rgba(var(--accent-blue-rgb)/0.30)] text-white hover:bg-[rgba(var(--accent-blue-rgb)/0.26)]'
+                : 'bg-elevated text-text-muted cursor-not-allowed'
             }`}
           >
             Continue to Send

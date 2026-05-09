@@ -86,8 +86,8 @@ export function PipelineFunnel({ data }: { data: PipelineStage[] }) {
       {/* Conversion rates below chart */}
       <div className='mt-6 space-y-2'>
         <h3 className='text-sm font-medium text-[#e6edf3] mb-3'>Stage Conversion Rates</h3>
-        {chartData.map((stage, index) => (
-          <div key={index} className='flex items-center justify-between text-sm'>
+        {chartData.map((stage) => (
+          <div key={`stage-${stage.name}`} className='flex items-center justify-between text-sm'>
             <span className='text-[#8b949e]'>{stage.name}</span>
             <span className='text-[#e6edf3] font-medium'>{stage.conversion}</span>
           </div>

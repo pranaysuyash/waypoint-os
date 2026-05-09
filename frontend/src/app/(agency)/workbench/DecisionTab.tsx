@@ -115,7 +115,7 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
   }
 
   const decision: DecisionOutput = activeDecision!;
-  // Normalize state string before lookup — handles alias variants and makes
+  // Normalize state string before lookup - handles alias variants and makes
   // unknown states visible (fallback) rather than silently unstyled.
   const decisionState = normalizeDecisionState(
     (decision.decision_state as string) || 'ASK_FOLLOWUP',
@@ -153,7 +153,7 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
           <h3 className={styles.sectionTitle}>Rationale</h3>
           <div className={styles.card}>
             <div style={{ marginBottom: "8px" }}>
-              <strong>Feasibility:</strong> {rationale.feasibility || "—"}
+              <strong>Feasibility:</strong> {rationale.feasibility || "-"}
             </div>
             {rationale.confidence !== undefined && (
               <div style={{ marginBottom: "8px" }}>
@@ -164,7 +164,7 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
               <div style={{ marginBottom: "8px" }}>
                 <strong style={{ color: "var(--color-danger)" }}>Hard Blockers:</strong>
                 <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
-                  {rationale.hard_blockers.map((b, i) => <li key={`hb-${b}-${i}`}>{b}</li>)}
+                  {rationale.hard_blockers.map((b) => <li key={`hb-${b}`}>{b}</li>)}
                 </ul>
               </div>
             )}
@@ -172,7 +172,7 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
               <div>
                 <strong style={{ color: "var(--color-warning)" }}>Soft Blockers:</strong>
                 <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
-                  {rationale.soft_blockers.map((b, i) => <li key={`sb-${b}-${i}`}>{b}</li>)}
+                  {rationale.soft_blockers.map((b) => <li key={`sb-${b}`}>{b}</li>)}
                 </ul>
               </div>
             )}
@@ -186,8 +186,8 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
           <h3 className={styles.sectionTitle}>Branch Options</h3>
           <div className={styles.card}>
             <ul className={styles.list}>
-              {branchOptions.map((opt, i) => (
-                <li key={`branch-${opt}-${i}`} className={styles.listItem}>
+              {branchOptions.map((opt) => (
+                <li key={`branch-${opt}`} className={styles.listItem}>
                   <span className={`${styles.listIcon} ${styles.iconInfo}`}>→</span>
                   {opt}
                 </li>
@@ -282,8 +282,8 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
           <h3 className={styles.sectionTitle}>Follow-up Questions</h3>
           <div className={styles.card}>
             <ul className={styles.list}>
-              {followupQuestions.map((q, i) => (
-                <li key={`followup-${q.field_name}-${i}`} className={styles.listItem}>
+              {followupQuestions.map((q) => (
+                <li key={`followup-${q.field_name}`} className={styles.listItem}>
                   <span className={`${styles.listIcon} ${styles.iconInfo}`}>?</span>
                   <div>
                     <strong>[{q.priority.charAt(0).toUpperCase() + q.priority.slice(1)}] {titleCase(q.field_name)}</strong>
@@ -355,8 +355,8 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
               <div style={{ marginTop: "12px" }}>
                 <strong>Critical Changes:</strong>
                 <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
-                  {budgetBreakdown.critical_changes.map((c: string, i: number) => (
-                    <li key={`cc-${i}`}>{c}</li>
+                  {budgetBreakdown.critical_changes.map((c: string) => (
+                    <li key={`cc-${c.slice(0, 30)}`}>{c}</li>
                   ))}
                 </ul>
               </div>
@@ -365,8 +365,8 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
               <div style={{ marginTop: "12px" }}>
                 <strong>Must Confirm:</strong>
                 <ul style={{ margin: "4px 0 0 16px", fontSize: "13px", color: "var(--color-text-muted)" }}>
-                  {budgetBreakdown.must_confirm.map((m: string, i: number) => (
-                    <li key={`mc-${i}`}>{titleCase(m)}</li>
+                  {budgetBreakdown.must_confirm.map((m: string) => (
+                    <li key={`mc-${m.slice(0, 30)}`}>{titleCase(m)}</li>
                   ))}
                 </ul>
               </div>

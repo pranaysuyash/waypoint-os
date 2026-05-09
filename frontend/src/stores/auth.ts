@@ -1,5 +1,5 @@
 /**
- * Auth Store — Zustand store for authentication state.
+ * Auth Store - Zustand store for authentication state.
  *
  * Manages:
  * - User session (user, agency, role)
@@ -103,7 +103,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       // 1. Try current access token
       if (await tryMe()) return;
 
-      // 2. Access token expired — try refresh (refresh_token cookie is httpOnly, path=/api/auth)
+      // 2. Access token expired - try refresh (refresh_token cookie is httpOnly, path=/api/auth)
       const refreshRes = await fetch("/api/auth/refresh", {
         method: "POST",
         credentials: "include",
@@ -113,7 +113,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         if (await tryMe()) return;
       }
 
-      // 4. Refresh failed or /me still fails — force re-login
+      // 4. Refresh failed or /me still fails - force re-login
       set({
         user: null,
         agency: null,

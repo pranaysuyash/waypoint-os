@@ -214,7 +214,7 @@ describe("DecisionPanel stage advance button", () => {
     expect(screen.queryByTestId("stage-advance-btn")).not.toBeInTheDocument();
   });
 
-  it("never auto-advances — button requires explicit click", async () => {
+  it("never auto-advances - button requires explicit click", async () => {
     const { transitionTripStage } = await import("@/lib/api-client");
 
     const trip: Trip = {

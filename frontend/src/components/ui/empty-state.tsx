@@ -27,10 +27,10 @@ export function EmptyState({
     <div className={`col-span-full py-16 text-center ${className || ''}`}>
       {Icon && (
         <div
-          className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-4"
+          className="inline-flex items-center justify-center size-12 rounded-full mb-4"
           style={{ background: 'rgba(139, 148, 158, 0.08)' }}
         >
-          <Icon className="w-6 h-6" style={{ color: 'var(--text-muted)' }} />
+          <Icon className="size-6" style={{ color: 'var(--text-muted)' }} />
         </div>
       )}
 

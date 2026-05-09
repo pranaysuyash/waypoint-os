@@ -52,7 +52,7 @@ function TimelineEventCard({
       <div className={`flex gap-4 ${colors.bg} p-4 rounded-lg border border-border-default`}>
         {/* Timeline dot */}
         <div className="flex-shrink-0">
-          <div className={`w-3 h-3 rounded-full ${colors.dot} mt-1`} />
+          <div className={`size-3 rounded-full ${colors.dot} mt-1`} />
         </div>
 
         {/* Event content */}
@@ -102,9 +102,9 @@ function TimelineEventCard({
             className="mt-2 flex items-center gap-1 text-ui-xs text-text-muted hover:text-text-secondary transition-colors"
           >
             {isExpanded ? (
-              <ChevronDown className="w-3 h-3" />
+              <ChevronDown className="size-3" />
             ) : (
-              <ChevronRight className="w-3 h-3" />
+              <ChevronRight className="size-3" />
             )}
             <span>Show Details</span>
           </button>
@@ -206,7 +206,7 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
   if (isLoading) {
     return (
       <div className="p-6 text-center">
-        <p className="text-ui-sm text-text-muted">Loading timeline...</p>
+        <p className="text-ui-sm text-text-muted">Loading timeline…</p>
       </div>
     );
   }

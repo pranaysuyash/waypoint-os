@@ -131,41 +131,41 @@ const StatCard = memo(function StatCard({
         }}
       >
         <div className='flex items-center justify-between'>
-          <span className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>{title}</span>
-          <AlertTriangle className='h-4 w-4' style={{ color: 'var(--accent-red)' }} />
+          <span className='text-[12px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>{title}</span>
+          <AlertTriangle className='size-4' style={{ color: 'var(--accent-red)' }} />
         </div>
         <span className='text-[13px] font-medium' style={{ color: 'var(--accent-red)' }}>Failed to load</span>
       </div>
     );
   }
 
-  const displayValue = isLoading && value === '—' ? '—' : value;
-  const displaySub = isLoading && sub === 'Loading...' ? 'Loading...' : sub;
+  const displayValue = isLoading && value === '-' ? '-' : value;
+  const displaySub = isLoading && sub === 'Loading…' ? 'Loading…' : sub;
 
   const cardContent = (
     <>
       {/* Row: label + icon badge */}
       <div className='flex items-center justify-between'>
-        <span className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>{title}</span>
+        <span className='text-[12px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>{title}</span>
         <div
-          className='h-7 w-7 rounded-md flex items-center justify-center'
+          className='size-7 rounded-md flex items-center justify-center'
           style={{ background: meta.bg, border: `1px solid ${meta.border}` }}
         >
-          <Icon className='h-3.5 w-3.5' style={{ color: meta.fg }} />
+          <Icon className='size-3.5' style={{ color: meta.fg }} />
         </div>
       </div>
-      {/* Metric value — the anchor */}
+      {/* Metric value - the anchor */}
       <span
         className='text-[24px] font-bold tabular-nums leading-none'
-        style={{ color: displayValue === '—' ? 'var(--text-muted)' : meta.fg }}
+        style={{ color: displayValue === '-' ? 'var(--text-muted)' : meta.fg }}
       >
         {displayValue}
       </span>
-      {/* Subtext — tertiary */}
+      {/* Subtext - tertiary */}
       <span className='text-[12px] font-medium' style={{ color: 'var(--text-muted)' }}>{displaySub}</span>
       {href && (
-        <div className='flex items-center gap-1 mt-0.5 text-[11px] font-medium' style={{ color: 'var(--accent-blue)' }}>
-          {ctaLabel} <ArrowRight className='h-3 w-3' style={{ color: 'var(--accent-blue)' }} />
+        <div className='flex items-center gap-1 mt-0.5 text-[12px] font-medium' style={{ color: 'var(--accent-blue)' }}>
+          {ctaLabel} <ArrowRight className='size-3' style={{ color: 'var(--accent-blue)' }} />
         </div>
       )}
     </>
@@ -249,8 +249,8 @@ const PipelineBar = memo(function PipelineBar({
     return (
       <div className='rounded-xl border p-4' style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
         <div className='flex items-center justify-between mb-3'>
-          <h2 className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>Planning Progress</h2>
-          <span className='text-[12px] font-mono' style={{ color: 'var(--text-tertiary)' }}>Loading...</span>
+          <h2 className='text-[12px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>Planning Progress</h2>
+          <span className='text-[12px] font-mono' style={{ color: 'var(--text-tertiary)' }}>Loading…</span>
         </div>
         <div className='h-2 rounded-full overflow-hidden' style={{ background: 'var(--bg-elevated)' }}>
           <div className='h-full' style={{ width: '30%', background: 'var(--accent-blue)' }} />
@@ -264,7 +264,7 @@ const PipelineBar = memo(function PipelineBar({
     return (
       <div className='rounded-xl border p-4' style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
         <div className='flex items-center justify-between mb-1'>
-          <h2 className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>Planning Progress</h2>
+          <h2 className='text-[12px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>Planning Progress</h2>
           <span className='text-[13px] font-mono font-medium tabular-nums' style={{ color: 'var(--text-primary)' }}>0</span>
         </div>
         <p className='text-[12px]' style={{ color: 'var(--text-muted)' }}>
@@ -277,7 +277,7 @@ const PipelineBar = memo(function PipelineBar({
           className='inline-flex items-center gap-1.5 mt-3 text-[12px] font-medium transition-colors'
           style={{ color: 'var(--accent-blue)' }}
         >
-          {hasLeadsWaiting ? 'Review Lead' : 'Process New Inquiry'} <ArrowRight className='h-3.5 w-3.5' />
+          {hasLeadsWaiting ? 'Review Lead' : 'Process New Inquiry'} <ArrowRight className='size-3.5' />
         </Link>
       </div>
     );
@@ -292,10 +292,10 @@ const PipelineBar = memo(function PipelineBar({
     return (
       <div className='rounded-xl border p-4' style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
         <div className='flex items-center justify-between mb-2'>
-          <h2 className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>Planning Progress</h2>
+          <h2 className='text-[12px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>Planning Progress</h2>
           <button
             onClick={() => setIsExpanded(true)}
-            className='text-[11px] font-medium transition-colors'
+            className='text-[12px] font-medium transition-colors'
             style={{ color: 'var(--accent-blue)' }}
           >
             Expand
@@ -318,7 +318,7 @@ const PipelineBar = memo(function PipelineBar({
           </div>
           <span className='text-[13px] font-semibold tabular-nums' style={{ color: 'var(--text-primary)' }}>{total}</span>
         </div>
-        <p className='text-[11px] mt-1.5' style={{ color: 'var(--text-muted)' }}>
+        <p className='text-[12px] mt-1.5' style={{ color: 'var(--text-muted)' }}>
           {getPlanningSummaryText(topStage.label, total)}
         </p>
       </div>
@@ -329,12 +329,12 @@ const PipelineBar = memo(function PipelineBar({
   return (
     <div className='rounded-xl border p-4' style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
       <div className='flex items-center justify-between mb-3'>
-        <h2 className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>Planning Progress</h2>
+        <h2 className='text-[12px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>Planning Progress</h2>
         <div className='flex items-center gap-2'>
           <span className='text-[12px] font-mono tabular-nums' style={{ color: 'var(--text-tertiary)' }}>{total} total</span>
           <button
             onClick={() => setIsExpanded(false)}
-            className='text-[11px] font-medium transition-colors'
+            className='text-[12px] font-medium transition-colors'
             style={{ color: 'var(--text-muted)' }}
           >
             Collapse
@@ -415,13 +415,13 @@ function RecentTrips({
     return (
       <div className='p-8 text-center'>
         <div
-          className='w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-4'
+          className='size-14 rounded-xl flex items-center justify-center mx-auto mb-4'
           style={{
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border-default)',
           }}
         >
-          <MapPin className='w-6 h-6' style={{ color: 'var(--text-tertiary)' }} />
+          <MapPin className='size-6' style={{ color: 'var(--text-tertiary)' }} />
         </div>
         <p className='text-[14px] font-medium mb-1' style={{ color: 'var(--text-primary)' }}>
           No trips in planning yet
@@ -446,9 +446,9 @@ function RecentTrips({
             (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
           }}
         >
-          <Send className='w-4 h-4' style={{ color: 'var(--accent-blue)' }} />
+          <Send className='size-4' style={{ color: 'var(--accent-blue)' }} />
           Review Lead
-          <ArrowRight className='w-3.5 h-3.5' style={{ color: 'var(--text-muted)' }} />
+          <ArrowRight className='size-3.5' style={{ color: 'var(--text-muted)' }} />
         </Link>
       </div>
     );
@@ -522,7 +522,7 @@ export default function OverviewPage() {
           }}
         >
           Process New Inquiry
-          <ArrowRight className='h-3.5 w-3.5' aria-hidden='true' />
+          <ArrowRight className='size-3.5' aria-hidden='true' />
         </Link>
       </header>
 
@@ -556,8 +556,8 @@ export default function OverviewPage() {
             style={{ borderBottom: '1px solid var(--border-default)' }}
           >
             <div className='flex items-center gap-2'>
-              <Activity className='h-4 w-4' style={{ color: 'var(--text-tertiary)' }} aria-hidden='true' />
-              <h2 className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>
+              <Activity className='size-4' style={{ color: 'var(--text-tertiary)' }} aria-hidden='true' />
+              <h2 className='text-[12px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>
                 Trips in Planning
               </h2>
             </div>
@@ -568,7 +568,7 @@ export default function OverviewPage() {
               onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-primary)'; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'var(--accent-blue)'; }}
             >
-               Open trips <ArrowRight className='h-3.5 w-3.5' aria-hidden='true' />
+               Open trips <ArrowRight className='size-3.5' aria-hidden='true' />
             </Link>
           </header>
           <RecentTrips
@@ -594,7 +594,7 @@ export default function OverviewPage() {
             style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}
             aria-label='Quick navigation'
           >
-            <h2 className='text-[11px] font-semibold uppercase tracking-wider mb-3' style={{ color: 'var(--text-tertiary)' }}>
+            <h2 className='text-[12px] font-semibold uppercase tracking-wider mb-3' style={{ color: 'var(--text-tertiary)' }}>
               Jump To
             </h2>
             <ul className='space-y-1'>
@@ -616,26 +616,26 @@ export default function OverviewPage() {
                       }}
                     >
                       <div
-                        className='h-8 w-8 rounded-lg flex items-center justify-center shrink-0'
+                        className='size-8 rounded-lg flex items-center justify-center shrink-0'
                         style={{
                           background: 'var(--bg-elevated)',
                           border: '1px solid var(--border-default)',
                         }}
                       >
                         <Icon
-                          className='h-4 w-4'
+                          className='size-4'
                           style={{ color: 'var(--text-tertiary)' }}
                           aria-hidden='true'
                         />
                       </div>
                       <div className='flex-1 min-w-0'>
                         <div className='text-[13px] font-medium' style={{ color: 'var(--text-primary)' }}>{nav.label}</div>
-                        <div className='text-[11px] font-mono tabular-nums' style={{ color: nav.subColor }}>
+                        <div className='text-[12px] font-mono tabular-nums' style={{ color: nav.subColor }}>
                           {nav.sub}
                         </div>
                       </div>
                       <ChevronRight
-                        className='h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity'
+                        className='size-4 opacity-0 group-hover:opacity-100 transition-opacity'
                         style={{ color: 'var(--text-muted)' }}
                         aria-hidden='true'
                       />
@@ -650,7 +650,7 @@ export default function OverviewPage() {
             className='rounded-xl border p-4'
             style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}
           >
-            <h2 className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>
+            <h2 className='text-[12px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>
               Planning Status · {planningTripsTotal} planning
             </h2>
             <div className='mt-3 space-y-2'>
@@ -659,12 +659,12 @@ export default function OverviewPage() {
                 return (
                   <div key={meta.label} className='flex items-center gap-2.5'>
                     <span
-                      className='h-2 w-2 rounded-full shrink-0'
+                      className='size-2 rounded-full shrink-0'
                       style={{ background: meta.fg, boxShadow: `0 0 6px ${meta.fg}40` }}
                       aria-hidden='true'
                     />
                     <span className='text-[12px] font-medium' style={{ color: 'var(--text-secondary)' }}>{meta.label}</span>
-                    <span className='text-[11px]' style={{ color: 'var(--text-muted)' }}>· {count}</span>
+                    <span className='text-[12px]' style={{ color: 'var(--text-muted)' }}>· {count}</span>
                   </div>
                 );
               })}

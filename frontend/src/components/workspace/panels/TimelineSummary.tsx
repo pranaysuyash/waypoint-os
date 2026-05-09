@@ -7,6 +7,7 @@ import {
   getTimelineEventTitle,
   getTimelineStageLabel,
 } from "@/lib/timeline-rail";
+import { useClientTime } from "@/hooks/useClientDate";
 
 interface TimelineSummaryProps {
   tripId: string;
@@ -53,7 +54,7 @@ export function TimelineSummary({ tripId, timeline: providedTimeline, loading: p
   if (resolvedLoading) {
     return (
       <div className="p-4 text-center">
-        <p className="text-ui-xs text-text-muted">Loading...</p>
+        <p className="text-ui-xs text-text-muted">Loading…</p>
       </div>
     );
   }
@@ -97,7 +98,7 @@ export function TimelineSummary({ tripId, timeline: providedTimeline, loading: p
           <div className="flex justify-between items-center">
             <dt className="text-ui-xs text-text-muted">Last event</dt>
             <dd className="text-ui-xs text-text-secondary">
-              {new Date(lastEvent.timestamp).toLocaleTimeString("en-US", {
+              {useClientTime(lastEvent.timestamp, {
                 hour: "2-digit",
                 minute: "2-digit",
                 hour12: true,
@@ -132,10 +133,10 @@ export function TimelineSummary({ tripId, timeline: providedTimeline, loading: p
       <div>
         <h4 className="text-ui-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Recent Events</h4>
         <div className="space-y-2">
-          {events.slice(-5).reverse().map((event, index) => (
-            <div key={`${event.timestamp}-${index}`} className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2">
+          {events.slice(-5).reverse().map((event) => (
+            <div key={`${event.timestamp}-${event.stage}`} className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2">
               <p className="text-ui-xs font-medium text-text-primary">{getTimelineEventTitle(event)}</p>
-              <p className="mt-1 text-[11px] text-text-secondary">
+              <p className="mt-1 text-[12px] text-text-secondary">
                 {getTimelineStageLabel(event.stage)} · {labelOrTitle(STATUS_LABELS, event.status)}
               </p>
             </div>

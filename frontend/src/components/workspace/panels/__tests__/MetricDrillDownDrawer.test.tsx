@@ -122,7 +122,7 @@ describe('MetricDrillDownDrawer', () => {
       />
     );
 
-    expect(screen.getByText('Loading trip data...')).toBeInTheDocument();
+    expect(screen.getByText('Loading trip data…')).toBeInTheDocument();
   });
 
   it('displays trips after loading', async () => {

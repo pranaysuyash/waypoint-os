@@ -41,7 +41,7 @@ export function HeroScene({ mode: _mode }: HeroSceneProps) {
         ))}
       </div>
       <div className={styles.sceneArtifact}>
-        <NotebookPen className='h-5 w-5 text-[#39d0d8]' />
+        <NotebookPen className='size-5 text-[#39d0d8]' />
         <strong>Trip notebook active</strong>
         <span>Findings become questions worth asking.</span>
       </div>
@@ -77,7 +77,7 @@ export function DataTransformationHero() {
           <div className={styles.structuredView}>
             <div className={styles.cockpitPanelWide}>
               <div className={styles.panelTitle}>
-                <FileText className='h-4 w-4' />
+                <FileText className='size-4' />
                 <span>TRIP PACKET v0.2</span>
               </div>
               <div className={styles.packetGrid}>
@@ -99,7 +99,7 @@ export function DataTransformationHero() {
                 </div>
               </div>
               <div className={styles.blockerAlert}>
-                <CircleDashed className='h-4 w-4 text-[#d29922]' />
+                <CircleDashed className='size-4 text-[#d29922]' />
                 <span>Detected: Passport validity under 6 months for 1 passenger</span>
               </div>
             </div>
@@ -108,13 +108,13 @@ export function DataTransformationHero() {
           <div className={styles.rawView}>
             <div className={styles.cockpitPanelWide}>
               <div className={styles.panelTitle}>
-                <MessageSquareText className='h-4 w-4' />
+                <MessageSquareText className='size-4' />
                 <span>UNSTRUCTURED INTAKE</span>
               </div>
               <div className={styles.rawText}>
                 "Hey Alex, looking at Italy again for the summer. Maybe Amalfi? 2 weeks in June. 
                 Same group as last time. Need big rooms for the kids. One of the passports might be 
-                expiring soon though, can we check that? Budget is around what we spent in Japan..."
+                expiring soon though, can we check that? Budget is around what we spent in Japan…"
               </div>
               <div className={styles.scanLine} />
             </div>
@@ -160,7 +160,7 @@ export function AgencyHeroCockpit() {
       <div className={styles.dashboardGrid}>
         <section className={`${styles.cockpitPanel} ${styles.inboxPanel}`}>
           <div className={styles.panelTitle}>
-            <UploadCloud className='h-4 w-4' />
+            <UploadCloud className='size-4' />
             <span>Inbox</span>
           </div>
           {[
@@ -179,7 +179,7 @@ export function AgencyHeroCockpit() {
 
         <section className={`${styles.cockpitPanel} ${styles.workspacePanel}`}>
           <div className={styles.panelTitle}>
-            <NotebookPen className='h-4 w-4' />
+            <NotebookPen className='size-4' />
             <span>Workspaces</span>
           </div>
           <div className={styles.stateRows}>
@@ -200,7 +200,7 @@ export function AgencyHeroCockpit() {
 
         <section className={`${styles.cockpitPanel} ${styles.revenuePanel}`}>
           <div className={styles.panelTitle}>
-            <Search className='h-4 w-4' />
+            <Search className='size-4' />
             <span>Revenue MTD</span>
           </div>
           <div className={styles.revenueValue}>$284,600</div>
@@ -215,7 +215,7 @@ export function AgencyHeroCockpit() {
 
         <section className={`${styles.cockpitPanel} ${styles.aiPanel}`}>
           <div className={styles.panelTitle}>
-            <Sparkles className='h-4 w-4' />
+            <Sparkles className='size-4' />
             <span>AI Copilot</span>
           </div>
           <p className={styles.outputText}>27 tasks completed. 21 hours saved this week.</p>
@@ -283,7 +283,7 @@ export function NotebookAnalyzer() {
             accept='.pdf,.txt,.png,.jpg,.jpeg'
             onChange={(event) => setFileName(event.target.files?.[0]?.name ?? '')}
           />
-          <FileText className='h-5 w-5' />
+          <FileText className='size-5' />
           <span>{fileName || 'Upload PDF, screenshot, or notes'}</span>
         </label>
 
@@ -291,7 +291,7 @@ export function NotebookAnalyzer() {
           className={styles.tripTextarea}
           value={tripText}
           onChange={(event) => setTripText(event.target.value)}
-          placeholder='Paste a rough itinerary: flights, hotels, cities, dates, activities, transfers, concerns...'
+          placeholder='Paste a rough itinerary: flights, hotels, cities, dates, activities, transfers, concerns…'
         />
 
         <button
@@ -300,9 +300,9 @@ export function NotebookAnalyzer() {
           onClick={runNotebook}
           disabled={!hasInput || isRunning}
         >
-          {isRunning ? <Loader2 className='h-4 w-4 animate-spin' /> : <Sparkles className='h-4 w-4' />}
+          {isRunning ? <Loader2 className='size-4 animate-spin' /> : <Sparkles className='size-4' />}
           {isRunning ? 'Notebook is working' : 'Start notebook check'}
-          <ArrowRight className='h-4 w-4' />
+          <ArrowRight className='size-4' />
         </button>
       </section>
 
@@ -334,7 +334,7 @@ export function NotebookAnalyzer() {
               key={item.label}
               className={`${styles.notebookStep} ${index <= step && hasInput ? styles.notebookStepActive : ''}`}
             >
-              {index < step && hasInput ? <CheckCircle2 className='h-4 w-4' /> : <CircleDashed className='h-4 w-4' />}
+              {index < step && hasInput ? <CheckCircle2 className='size-4' /> : <CircleDashed className='size-4' />}
               <span>{item.label}</span>
             </div>
           ))}
@@ -343,7 +343,7 @@ export function NotebookAnalyzer() {
         <div className={styles.findingList}>
           {findings.map((finding) => (
             <div key={finding}>
-              <BookOpen className='h-4 w-4' />
+              <BookOpen className='size-4' />
               <span>{finding}</span>
             </div>
           ))}

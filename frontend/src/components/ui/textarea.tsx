@@ -23,7 +23,8 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     },
     ref
   ) => {
-    const textareaId = id || React.useId();
+    const fallbackId = React.useId();
+    const textareaId = id || fallbackId;
     const errorId = error ? `${textareaId}-error` : undefined;
     const descriptionId = description ? `${textareaId}-description` : undefined;
 

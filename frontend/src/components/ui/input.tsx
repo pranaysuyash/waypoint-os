@@ -26,7 +26,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     },
     ref
   ) => {
-    const inputId = id || React.useId();
+    const fallbackId = React.useId();
+    const inputId = id || fallbackId;
     const errorId = error ? `${inputId}-error` : undefined;
     const descriptionId = description ? `${inputId}-description` : undefined;
 

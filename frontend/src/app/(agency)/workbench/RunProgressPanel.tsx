@@ -117,11 +117,11 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onFixDetails
       <div className="rounded-xl border border-[#30363d] bg-[#0d1117] overflow-hidden min-w-[260px] shadow-lg">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#30363d]">
           <div className="flex items-center gap-2 text-[#58a6ff] text-ui-sm font-medium">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <Loader2 className="size-3.5 animate-spin" />
             Processing Trip
           </div>
           <div className="flex items-center gap-1.5 text-ui-xs text-[var(--text-muted)]">
-            <Clock className="w-3 h-3" />
+            <Clock className="size-3" />
             <span ref={durationRef}>{runState?.started_at ? elapsedSec(runState.started_at) : '--'}s</span>
           </div>
         </div>
@@ -138,11 +138,11 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onFixDetails
                 }`}
               >
                 {status === "done" ? (
-                  <CheckCircle className="w-3.5 h-3.5 text-[#3fb950] shrink-0" />
+                  <CheckCircle className="size-3.5 text-[#3fb950] shrink-0" />
                 ) : status === "current" ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--accent-amber)] shrink-0" />
+                  <Loader2 className="size-3.5 animate-spin text-[var(--accent-amber)] shrink-0" />
                 ) : (
-                  <div className="w-3.5 h-3.5 rounded-full border border-[var(--text-tertiary)] shrink-0" />
+                  <div className="size-3.5 rounded-full border border-[var(--text-tertiary)] shrink-0" />
                 )}
                 <span
                   className={`text-ui-xs font-medium ${
@@ -169,13 +169,13 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onFixDetails
     );
   }
 
-  // Blocked: compact result — details are shown in the inline banner
+  // Blocked: compact result - details are shown in the inline banner
   if (isBlocked) {
     return (
       <div className="rounded-xl border border-[var(--accent-amber)]/30 bg-[#0d1117] overflow-hidden min-w-[240px] shadow-lg">
         <div className="px-4 py-3 space-y-2.5">
           <div className="flex items-center gap-2 text-[var(--accent-amber)] text-ui-sm font-medium">
-            <AlertTriangle className="w-4 h-4" />
+            <AlertTriangle className="size-4" />
             Trip Details Need Attention
           </div>
           <p className="text-ui-xs text-[var(--text-muted)] leading-relaxed">
@@ -218,7 +218,7 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onFixDetails
       <div className="rounded-xl border border-[#f85149]/30 bg-[#0d1117] overflow-hidden min-w-[240px] shadow-lg">
         <div className="px-4 py-3 space-y-2.5">
           <div className="flex items-center gap-2 text-[#f85149] text-ui-sm font-medium">
-            <XCircle className="w-4 h-4" />
+            <XCircle className="size-4" />
             Processing Failed
           </div>
           <p className="text-ui-xs text-[var(--text-muted)] leading-relaxed">
@@ -229,7 +229,7 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onFixDetails
             onClick={onRetry}
             className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#da3633]/10 border border-[#da3633]/30 text-[#f85149] text-ui-xs font-medium rounded-md hover:bg-[#da3633]/20 transition-colors"
           >
-            <AlertTriangle className="w-3 h-3" />
+            <AlertTriangle className="size-3" />
             Retry Processing
           </button>
           <button
@@ -257,7 +257,7 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onFixDetails
       <div className="rounded-xl border border-[#3fb950]/30 bg-[#0d1117] overflow-hidden min-w-[240px] shadow-lg">
         <div className="px-4 py-3 space-y-2.5">
           <div className="flex items-center gap-2 text-[#3fb950] text-ui-sm font-medium">
-            <CheckCircle className="w-4 h-4" />
+            <CheckCircle className="size-4" />
             Processing Complete
           </div>
           {isIntakeOnlyCompletion && (
@@ -272,12 +272,12 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onFixDetails
               className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#238636] text-white text-ui-xs font-medium rounded-md hover:bg-[#2ea043] transition-colors"
             >
               View Trip
-              <ChevronRight className="w-3 h-3" />
+              <ChevronRight className="size-3" />
             </button>
           )}
           {!(runState?.trip_id || onViewTrip) && !isIntakeOnlyCompletion && (
             <div className="flex items-center gap-1.5 text-[#3fb950] text-ui-xs">
-              <CheckCircle className="w-3.5 h-3.5" />
+              <CheckCircle className="size-3.5" />
               Completed
             </div>
           )}
@@ -305,7 +305,7 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onFixDetails
       <div className="rounded-xl border border-[#f85149]/30 bg-[#0d1117] overflow-hidden min-w-[240px] shadow-lg">
         <div className="px-4 py-3 space-y-2.5">
           <div className="flex items-center gap-2 text-[#f85149] text-ui-sm font-medium">
-            <XCircle className="w-4 h-4" />
+            <XCircle className="size-4" />
             Processing Error
           </div>
           <p className="text-ui-xs text-[var(--text-muted)]">{error.message || "Timed out"}</p>
@@ -314,7 +314,7 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onFixDetails
             onClick={onRetry}
             className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#da3633]/10 border border-[#da3633]/30 text-[#f85149] text-ui-xs font-medium rounded-md hover:bg-[#da3633]/20 transition-colors"
           >
-            <AlertTriangle className="w-3 h-3" />
+            <AlertTriangle className="size-3" />
             Retry Processing
           </button>
         </div>

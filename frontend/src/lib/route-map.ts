@@ -5,7 +5,7 @@
  * (relative to SPINE_API_URL). Used by the catch-all proxy at /api/[...path].
  * 
  * Explicit routes (e.g., app/api/trips/route.ts) handle their own mapping
- * and do NOT use this registry — they know their own backend path directly.
+ * and do NOT use this registry - they know their own backend path directly.
  * 
  * If a path is NOT in this registry, the catch-all returns 404. Add only
  * backend-backed routes here; frontend-local routes should stay explicit.

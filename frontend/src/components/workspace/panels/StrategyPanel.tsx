@@ -34,23 +34,23 @@ export function StrategyPanel({ tripId }: StrategyPanelProps) {
   return (
     <div className="space-y-6">
       <section>
-        <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Session Goal</h3>
-        <div className="bg-sidebar rounded-lg border border-highlight p-4 text-ui-sm text-gray-300">
-          {strategy.session_goal || "—"}
+        <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Session Goal</h3>
+        <div className="bg-sidebar rounded-lg border border-highlight p-4 text-ui-sm text-text-secondary">
+          {strategy.session_goal || "-"}
         </div>
       </section>
 
       <section>
-        <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Suggested Opening</h3>
-        <div className="bg-sidebar rounded-lg border border-highlight p-4 text-ui-sm text-gray-300 italic">
-          "{strategy.suggested_opening || "—"}"
+        <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Suggested Opening</h3>
+        <div className="bg-sidebar rounded-lg border border-highlight p-4 text-ui-sm text-text-secondary italic">
+          "{strategy.suggested_opening || "-"}"
         </div>
       </section>
 
       {strategy.priority_sequence && strategy.priority_sequence.length > 0 && (
         <section>
-          <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Priority Sequence</h3>
-          <ol className="list-decimal list-inside space-y-2 bg-sidebar rounded-lg border border-highlight p-4 text-ui-sm text-gray-300">
+          <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Priority Sequence</h3>
+          <ol className="list-decimal list-inside space-y-2 bg-sidebar rounded-lg border border-highlight p-4 text-ui-sm text-text-secondary">
             {strategy.priority_sequence.map((item, i) => (
               <li key={`priority-${item.slice(0, 20)}-${i}`}>{item}</li>
             ))}
@@ -59,14 +59,14 @@ export function StrategyPanel({ tripId }: StrategyPanelProps) {
       )}
 
       <section>
-        <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
-          Tone: {strategy.suggested_tone || "—"}
+        <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
+          Tone: {strategy.suggested_tone || "-"}
         </h3>
         {strategy.tonal_guardrails && strategy.tonal_guardrails.length > 0 && (
-          <ul className="bg-sidebar rounded-lg border border-highlight p-4 space-y-2 text-ui-sm text-gray-300">
+          <ul className="bg-sidebar rounded-lg border border-highlight p-4 space-y-2 text-ui-sm text-text-secondary">
             {strategy.tonal_guardrails.map((guardrail, i) => (
               <li key={`guard-${guardrail.slice(0, 20)}-${i}`} className="flex items-start gap-2">
-                <span className="text-blue-400 mt-0.5">•</span>
+                <span className="text-accent-blue mt-0.5">•</span>
                 {guardrail}
               </li>
             ))}
@@ -76,11 +76,11 @@ export function StrategyPanel({ tripId }: StrategyPanelProps) {
 
       {strategy.assumptions && strategy.assumptions.length > 0 && (
         <section>
-          <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Assumptions</h3>
-          <ul className="bg-sidebar rounded-lg border border-highlight p-4 space-y-2 text-ui-sm text-gray-300">
+          <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Assumptions</h3>
+          <ul className="bg-sidebar rounded-lg border border-highlight p-4 space-y-2 text-ui-sm text-text-secondary">
             {strategy.assumptions.map((assumption, i) => (
               <li key={`assume-${assumption.slice(0, 20)}-${i}`} className="flex items-start gap-2">
-                <span className="text-amber-500 mt-0.5">?</span>
+                <span className="text-accent-amber mt-0.5">?</span>
                 {assumption}
               </li>
             ))}
@@ -90,14 +90,14 @@ export function StrategyPanel({ tripId }: StrategyPanelProps) {
 
       <button
         type="button"
-        className="text-ui-xs text-blue-400 hover:text-blue-300 underline"
+        className="text-ui-xs text-accent-blue hover:text-accent-blue underline"
         onClick={() => setDebugRawJson(!debug_raw_json)}
       >
         {debug_raw_json ? "Hide" : "Show"} Technical Data
       </button>
 
       {debug_raw_json && (
-        <pre className="bg-sidebar p-4 rounded text-ui-xs font-mono text-gray-400 overflow-x-auto">
+        <pre className="bg-sidebar p-4 rounded text-ui-xs font-mono text-text-muted overflow-x-auto">
           {JSON.stringify({ strategy }, null, 2)}
         </pre>
       )}

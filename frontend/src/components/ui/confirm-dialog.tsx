@@ -39,11 +39,11 @@ export function ConfirmDialog({
       <div className="flex items-start gap-3">
         {isDanger && (
           <div
-            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+            className="size-10 rounded-full flex items-center justify-center shrink-0"
             style={{ background: 'rgba(var(--accent-red-rgb), 0.1)' }}
           >
             <AlertTriangle
-              className="h-5 w-5"
+              className="size-5"
               style={{ color: 'var(--accent-red)' }}
             />
           </div>
@@ -75,7 +75,7 @@ export function ConfirmDialog({
               : 'var(--accent-blue)',
           }}
         >
-          {isLoading ? 'Please wait...' : confirmLabel}
+          {isLoading ? 'Please wait…' : confirmLabel}
         </button>
       </div>
     </Modal>

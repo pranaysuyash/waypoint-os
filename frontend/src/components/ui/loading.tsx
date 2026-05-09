@@ -12,9 +12,9 @@ export interface SpinnerProps {
 }
 
 const sizeMap = {
-  sm: "w-3 h-3",
-  md: "w-5 h-5",
-  lg: "w-8 h-8",
+  sm: "size-3",
+  md: "size-5",
+  lg: "size-8",
 };
 
 const colorMap = {
@@ -37,7 +37,7 @@ export function Spinner({ size = "md", color = "blue", className }: SpinnerProps
       role="status"
       aria-label="Loading"
     >
-      <span className="sr-only">Loading...</span>
+      <span className="sr-only">Loading…</span>
     </div>
   );
 }
@@ -116,9 +116,9 @@ export function SkeletonText({ lines = 3, className }: { lines?: number; classNa
 
 export function SkeletonAvatar({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
   const sizeMap = {
-    sm: "w-8 h-8",
-    md: "w-10 h-10",
-    lg: "w-12 h-12",
+    sm: "size-8",
+    md: "size-10",
+    lg: "size-12",
   };
   return <Skeleton variant="circular" className={sizeMap[size]} />;
 }
@@ -176,7 +176,7 @@ export interface InlineLoadingProps {
   size?: "sm" | "md" | "lg";
 }
 
-export function InlineLoading({ message = "Loading...", size = "sm" }: InlineLoadingProps) {
+export function InlineLoading({ message = "Loading…", size = "sm" }: InlineLoadingProps) {
   return (
     <div className="flex items-center gap-2 text-text-muted">
       <Spinner size={size} />

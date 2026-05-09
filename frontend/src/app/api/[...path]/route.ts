@@ -11,7 +11,7 @@
  *
  * Security note:
  *   - Mapped routes (via route-map.ts) are the ONLY paths forwarded.
- *   - Unknown paths return 404 — no fallback passthrough.
+ *   - Unknown paths return 404 - no fallback passthrough.
  *   - Every route must be explicitly mapped before use.
  */
 
@@ -35,7 +35,7 @@ function handler(method: string) {
 
     const backendRoute = resolveBackendRoute(segments);
     if (backendRoute == null) {
-      // Unknown route — deny. Map it in route-map.ts before use.
+      // Unknown route - deny. Map it in route-map.ts before use.
       return NextResponse.json(
         { error: "Not found" },
         { status: 404 }

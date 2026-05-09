@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { AlertCircle, CheckCircle2, ChevronDown } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 
@@ -44,6 +44,10 @@ export function OverrideModal({
   const [scope, setScope] = useState<"this_trip" | "pattern">("this_trip");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const actionId = useId();
+  const downgradeId = useId();
+  const scopeId = useId();
+  const reasonId = useId();
 
   const reasonLength = reason.length;
   const reasonValid = reasonLength >= 10;
@@ -133,9 +137,9 @@ export function OverrideModal({
         </div>
 
         <div>
-          <label className="block text-ui-sm font-medium text-[#e6edf3] mb-3">
+          <span className="block text-ui-sm font-medium text-[#e6edf3] mb-3">
             Action
-          </label>
+          </span>
           <div className="space-y-2">
             {[
               { value: "suppress" as const, label: "Suppress", desc: "Remove flag entirely" },
@@ -162,23 +166,24 @@ export function OverrideModal({
 
         {action === "downgrade" && (
           <div>
-            <label className="block text-ui-sm font-medium text-[#e6edf3] mb-3">
+            <label htmlFor={downgradeId} className="block text-ui-sm font-medium text-[#e6edf3] mb-3">
               Downgrade to
             </label>
             <div className="relative">
               <select
+                id={downgradeId}
                 value={newSeverity}
                 onChange={(e) => setNewSeverity(e.target.value)}
                 className="w-full px-4 py-2.5 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#e6edf3] text-ui-sm focus:outline-none focus:border-[#58a6ff] appearance-none cursor-pointer"
               >
-                <option value="">Select severity...</option>
+                <option value="">Select severity…</option>
                 {SEVERITY_LEVELS.slice(currentSeverityIndex + 1).map((sev) => (
                   <option key={sev} value={sev}>
                     {sev.charAt(0).toUpperCase() + sev.slice(1)}
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8b949e] pointer-events-none" />
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-[#8b949e] pointer-events-none" />
             </div>
             <p className="text-ui-xs text-[#8b949e] mt-2">
               Must be lower than current severity ({flag.severity})
@@ -187,9 +192,9 @@ export function OverrideModal({
         )}
 
         <div>
-          <label className="block text-ui-sm font-medium text-[#e6edf3] mb-3">
+          <span className="block text-ui-sm font-medium text-[#e6edf3] mb-3">
             Scope
-          </label>
+          </span>
           <div className="space-y-2">
             {[
               { value: "this_trip" as const, label: "This Trip", desc: "Override applies only to this trip" },
@@ -214,10 +219,11 @@ export function OverrideModal({
         </div>
 
         <div>
-          <label className="block text-ui-sm font-medium text-[#e6edf3] mb-3">
+          <label htmlFor={reasonId} className="block text-ui-sm font-medium text-[#e6edf3] mb-3">
             Reason for Override
           </label>
           <textarea
+            id={reasonId}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Explain why you're overriding this flag (minimum 10 characters)..."
@@ -228,13 +234,13 @@ export function OverrideModal({
             <p className={`text-ui-xs ${reasonValid ? "text-[#3fb950]" : "text-[#8b949e]"}`}>
               {reasonLength} / 10 characters minimum
             </p>
-            {reasonValid && <CheckCircle2 className="h-4 w-4 text-[#3fb950]" />}
+            {reasonValid && <CheckCircle2 className="size-4 text-[#3fb950]" />}
           </div>
         </div>
 
         {error && (
           <div className="flex items-start gap-3 p-4 bg-[#161b22] border border-[#da3633] rounded-lg">
-            <AlertCircle className="h-4 w-4 text-[#da3633] mt-0.5 flex-shrink-0" />
+            <AlertCircle className="size-4 text-[#da3633] mt-0.5 flex-shrink-0" />
             <p className="text-ui-sm text-[#da3633]">{error}</p>
           </div>
         )}
@@ -253,7 +259,7 @@ export function OverrideModal({
             disabled={isLoading || !reasonValid || (action === "downgrade" && !newSeverity)}
             className="flex-1 px-4 py-2.5 bg-[#238636] text-white rounded-lg font-medium hover:bg-[#2ea043] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {isLoading ? "Submitting..." : "Submit Override"}
+            {isLoading ? "Submitting…" : "Submit Override"}
           </button>
         </div>
       </form>

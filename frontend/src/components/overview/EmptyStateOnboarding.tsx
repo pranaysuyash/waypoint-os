@@ -1,12 +1,12 @@
 'use client';
 
 /**
- * EmptyStateOnboarding — first-run guide shown on /overview when the workspace
+ * EmptyStateOnboarding - first-run guide shown on /overview when the workspace
  * has no trips AND no inbox leads. Three sequential steps lead the owner from
  * a fresh workspace to the first trip in planning.
  *
  * Shown when: planningTripsTotal === 0 && leadInboxTotal === 0 && !isLoading
- * Hidden when: any trip or lead exists (planning has started — not first-run).
+ * Hidden when: any trip or lead exists (planning has started - not first-run).
  *
  * Step 1 links to /settings?tab=people (WorkspaceCodePanel from Task 1) so the
  * owner can immediately copy and share an invite link.
@@ -47,10 +47,10 @@ export function EmptyStateOnboarding() {
   return (
     <div className="flex flex-col items-center py-10 px-4">
       <div
-        className="w-12 h-12 rounded-xl flex items-center justify-center mb-5"
+        className="size-12 rounded-xl flex items-center justify-center mb-5"
         style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}
       >
-        <CheckCircle2 className="w-6 h-6" style={{ color: 'var(--accent-blue)' }} />
+        <CheckCircle2 className="size-6" style={{ color: 'var(--accent-blue)' }} />
       </div>
 
       <h2
@@ -87,7 +87,7 @@ export function EmptyStateOnboarding() {
                 }}
               >
                 <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-[11px] font-bold"
+                  className="size-7 rounded-full flex items-center justify-center shrink-0 text-[12px] font-bold"
                   style={{
                     background: 'var(--bg-elevated)',
                     border: '1px solid var(--border-default)',
@@ -98,26 +98,26 @@ export function EmptyStateOnboarding() {
                 </div>
 
                 <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                  className="size-8 rounded-lg flex items-center justify-center shrink-0"
                   style={{
                     background: 'rgba(88,166,255,0.10)',
                     border: '1px solid rgba(88,166,255,0.20)',
                   }}
                 >
-                  <Icon className="w-4 h-4" style={{ color: 'var(--accent-blue)' }} />
+                  <Icon className="size-4" style={{ color: 'var(--accent-blue)' }} />
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="text-[13px] font-medium" style={{ color: 'var(--text-primary)' }}>
                     {step.label}
                   </div>
-                  <div className="text-[11px] mt-0.5 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                  <div className="text-[12px] mt-0.5 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                     {step.description}
                   </div>
                 </div>
 
                 <ArrowRight
-                  className="w-4 h-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="size-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                   style={{ color: 'var(--text-muted)' }}
                 />
               </Link>
@@ -126,7 +126,7 @@ export function EmptyStateOnboarding() {
         })}
       </ol>
 
-      <p className="mt-6 text-[11px] text-center" style={{ color: 'var(--text-tertiary)' }}>
+      <p className="mt-6 text-[12px] text-center" style={{ color: 'var(--text-tertiary)' }}>
         This guide disappears once your first trip is in planning.
       </p>
     </div>

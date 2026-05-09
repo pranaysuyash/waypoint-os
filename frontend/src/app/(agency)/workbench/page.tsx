@@ -3,6 +3,7 @@
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Suspense, useState, useCallback, useEffect, useRef } from 'react';
+import { useClientTime, useClientDateTime } from '@/hooks/useClientDate';
 import { Tabs } from '@/components/ui/tabs';
 import { PipelineFlow, type PipelineStageId } from './PipelineFlow';
 import {
@@ -57,7 +58,7 @@ const FeedbackPanel = dynamic(
   () => import('@/components/workspace/panels/FeedbackPanel'),
 );
 
-// Safely parse structured JSON — returns null on invalid rather than throwing.
+// Safely parse structured JSON - returns null on invalid rather than throwing.
 function safeParseJson(raw: string): Record<string, unknown> | null {
   if (!raw.trim()) return null;
   try {
@@ -197,7 +198,7 @@ function WorkbenchContent() {
 
   const store = useWorkbenchStore();
 
-  // Draft hydration — load draft from backend and populate store
+  // Draft hydration - load draft from backend and populate store
   const prevDraftRef = useRef<string | null>(null);
   const [draftLoading, setDraftLoading] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
@@ -359,7 +360,7 @@ function WorkbenchContent() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
-  // Ensure a draft exists before processing — creates one if needed.
+  // Ensure a draft exists before processing - creates one if needed.
   // Returns the draft_id to use, or null if there's no meaningful content.
   const ensureDraftSaved = useCallback(async (): Promise<string | null> => {
     const hasContent =
@@ -538,7 +539,7 @@ function WorkbenchContent() {
       if (!isAuto) {
         setSaveError(
           isConflict
-            ? 'Save conflict — draft was modified elsewhere. Refresh and try again.'
+            ? 'Save conflict - draft was modified elsewhere. Refresh and try again.'
             : 'Failed to save draft. Check connection and try again.',
         );
         setTimeout(() => setSaveError(null), 8000);
@@ -655,7 +656,7 @@ function WorkbenchContent() {
         } catch (err) {
           const isConflict = err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 409;
           store.setSaveState(isConflict ? 'conflict' : 'error');
-          // Do NOT update prevContentRef on failure — same content is retryable
+          // Do NOT update prevContentRef on failure - same content is retryable
         }
       })();
     }, 5000);
@@ -730,7 +731,7 @@ function WorkbenchContent() {
       {isRecoveryMode && (
         <div className='bg-[#2b1011] border-b border-[#6b2a2b] px-6 py-2 flex items-center justify-between'>
           <div className='flex items-center gap-3 text-[#ff7b72]'>
-            <AlertTriangle className='h-4 w-4' />
+            <AlertTriangle className='size-4' />
             <span className='text-ui-xs font-bold uppercase tracking-wider'>
               Recovery Mode: Critical Feedback Detected
             </span>
@@ -739,14 +740,14 @@ function WorkbenchContent() {
             onClick={handleResolve}
             className='flex items-center gap-1.5 px-3 py-1 bg-[#ff7b72]/10 hover:bg-[#ff7b72]/20 border border-[#ff7b72]/30 rounded-md text-[#ff7b72] text-ui-xs font-semibold transition-all'
           >
-            <CheckCircle className='h-3.5 w-3.5' />
+            <CheckCircle className='size-3.5' />
             Mark Resolved
           </button>
         </div>
       )}
 
       <div className="mx-6 mt-2">
-        <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+        <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
           After processing: incomplete leads appear in Lead Inbox · planning continues in Trips in Planning · quotes needing approval appear in Quote Review
         </p>
       </div>
@@ -759,7 +760,7 @@ function WorkbenchContent() {
       ) && !spineRunId && (
         <div className="mx-6 mt-4 rounded-xl border border-[#f85149]/40 bg-[#2b1011] px-5 py-3">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-[#f85149] shrink-0 mt-0.5" />
+            <AlertTriangle className="size-5 text-[#f85149] shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -835,22 +836,22 @@ function WorkbenchContent() {
                 <span className='text-ui-xs text-[#d29922] font-medium'>Unsaved changes</span>
               )}
               {store.save_state === 'saving' && (
-                <span className='text-ui-xs text-[#8b949e]'>Saving...</span>
+                <span className='text-ui-xs text-[#8b949e]'>Saving…</span>
               )}
               {store.save_state === 'saved' && store.draft_last_saved_at && (
                 <span className='text-ui-xs text-[#3fb950]'>
-                  Saved at {new Date(store.draft_last_saved_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  Saved at {useClientTime(store.draft_last_saved_at, { hour: '2-digit', minute: '2-digit' })}
                 </span>
               )}
               {store.save_state === 'conflict' && (
-                <span className='text-ui-xs text-[#f85149] font-medium'>Save conflict — refresh to reload</span>
+                <span className='text-ui-xs text-[#f85149] font-medium'>Save conflict - refresh to reload</span>
               )}
               {store.save_state === 'error' && (
                 <span className='text-ui-xs text-[#f85149] font-medium'>Save failed</span>
               )}
             </div>
             {tripLoading && (
-              <p className='text-ui-sm text-[#8b949e] mt-1'>Loading trip...</p>
+              <p className='text-ui-sm text-[#8b949e] mt-1'>Loading trip…</p>
             )}
             {tripError && (
               <p className='text-ui-sm text-[#f85149] mt-1'>
@@ -864,14 +865,14 @@ function WorkbenchContent() {
             )}
             {store.result_run_ts && (
               <p className='text-ui-xs text-[#8b949e] mt-1'>
-                Last processed: {new Date(store.result_run_ts).toLocaleString()}
+                Last processed: {useClientDateTime(store.result_run_ts)}
               </p>
             )}
           </div>
           <div className='flex items-center gap-3 flex-wrap'>
             {runError && (
               <div className='flex items-center gap-2 px-3 py-2 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg text-ui-sm text-[#f85149]'>
-                <AlertTriangle className='w-4 h-4' />
+                <AlertTriangle className='size-4' />
                 {spineRunState?.validation && (
                   spineRunState.validation.is_valid === false ||
                   spineRunState.validation.status === "ESCALATED" ||
@@ -893,19 +894,19 @@ function WorkbenchContent() {
             )}
             {runSuccess && (
               <div className='flex items-center gap-2 px-3 py-2 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-lg text-ui-sm text-[#3fb950]'>
-                <CheckCircle className='w-4 h-4' />
+                <CheckCircle className='size-4' />
                 Processed successfully
               </div>
             )}
             {saveSuccess && (
               <div className='flex items-center gap-2 px-3 py-2 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-lg text-ui-sm text-[#3fb950]'>
-                <CheckCircle className='w-4 h-4' />
+                <CheckCircle className='size-4' />
                 Saved
               </div>
             )}
             {saveError && (
               <div className='flex items-center gap-2 px-3 py-2 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg text-ui-sm text-[#f85149]'>
-                <AlertTriangle className='w-4 h-4' />
+                <AlertTriangle className='size-4' />
                 <span className='max-w-xs truncate'>{saveError}</span>
               </div>
             )}
@@ -923,14 +924,14 @@ function WorkbenchContent() {
               {isRunning ? (
                 <>
                   <div
-                    className='w-4 h-4 border-2 border-[#0d1117]/30 border-t-[#0d1117] rounded-full animate-spin'
+                    className='size-4 border-2 border-[#0d1117]/30 border-t-[#0d1117] rounded-full animate-spin'
                     aria-hidden='true'
                   />
-                  Processing...
+                  Processing…
                 </>
               ) : (
                 <>
-                  <Play className='w-4 h-4' aria-hidden='true' />
+                  <Play className='size-4' aria-hidden='true' />
                   Process Inquiry
                 </>
               )}
@@ -942,7 +943,7 @@ function WorkbenchContent() {
                   onClick={() => router.push(`/trips/${completedTripId}/intake`)}
                   className='flex items-center gap-2 px-4 py-2 bg-[#3fb950] text-[#0d1117] rounded-lg font-medium hover:bg-[#4cc764] transition-colors'
                 >
-                  <CheckCircle className='w-4 h-4' />
+                  <CheckCircle className='size-4' />
                   View Trip
                 </button>
                 {store.draft_id && (
@@ -963,7 +964,7 @@ function WorkbenchContent() {
                     }}
                     className='flex items-center gap-2 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg font-medium hover:bg-[#6eb5ff] transition-colors'
                   >
-                    <CheckCircle className='w-4 h-4' />
+                    <CheckCircle className='size-4' />
                     Promote Draft
                   </button>
                 )}
@@ -998,14 +999,14 @@ function WorkbenchContent() {
               {store.save_state === 'saving' ? (
                 <>
                   <div
-                    className='w-4 h-4 border-2 border-[#8b949e]/30 border-t-[#8b949e] rounded-full animate-spin'
+                    className='size-4 border-2 border-[#8b949e]/30 border-t-[#8b949e] rounded-full animate-spin'
                     aria-hidden='true'
                   />
-                  Saving...
+                  Saving…
                 </>
               ) : (
                 <>
-                  <Save className='w-4 h-4' aria-hidden='true' />
+                  <Save className='size-4' aria-hidden='true' />
                   Save Draft
                 </>
               )}
@@ -1021,14 +1022,14 @@ function WorkbenchContent() {
                 {isSaving ? (
                   <>
                     <div
-                      className='w-4 h-4 border-2 border-[#8b949e]/30 border-t-[#8b949e] rounded-full animate-spin'
+                      className='size-4 border-2 border-[#8b949e]/30 border-t-[#8b949e] rounded-full animate-spin'
                       aria-hidden='true'
                     />
-                    Saving...
+                    Saving…
                   </>
                 ) : (
                   <>
-                    <Save className='w-4 h-4' aria-hidden='true' />
+                    <Save className='size-4' aria-hidden='true' />
                     Save Trip Changes
                   </>
                 )}
@@ -1040,7 +1041,7 @@ function WorkbenchContent() {
               className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg font-medium hover:bg-[#21262d] transition-colors'
               aria-label='Reset pipeline'
             >
-              <RotateCcw className='w-4 h-4' aria-hidden='true' />
+              <RotateCcw className='size-4' aria-hidden='true' />
               Reset
             </button>
             <button
@@ -1049,7 +1050,7 @@ function WorkbenchContent() {
               className='flex items-center gap-2 px-3 py-2 bg-[#161b22] text-[#e6edf3] border border-[#30363d] rounded-lg font-medium hover:bg-[#21262d] transition-colors'
               aria-label='Open settings'
             >
-              <Settings className='w-4 h-4' aria-hidden='true' />
+              <Settings className='size-4' aria-hidden='true' />
             </button>
           </div>
         </header>
@@ -1082,7 +1083,7 @@ function WorkbenchContent() {
           tabIndex={0}
         >
           <div className='p-6'>
-            <Suspense fallback={<InlineLoading message='Loading...' />}>
+            <Suspense fallback={<InlineLoading message='Loading…' />}>
               {effectiveTab === 'ops' && showOps ? (
                 <OpsPanel trip={trip} />
               ) : effectiveTab === 'safety' ? (

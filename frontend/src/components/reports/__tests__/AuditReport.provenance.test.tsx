@@ -159,7 +159,7 @@ describe('AuditReport - Activity Provenance Section', () => {
 
     render(<AuditReportMock trips={trips} />);
 
-    // 3 total activities, all suggested — /3/ matches both total and "3 (100%)"
+    // 3 total activities, all suggested - /3/ matches both total and "3 (100%)"
     const threeMatches = screen.getAllByText(/3/);
     expect(threeMatches.length).toBeGreaterThan(0);
     expect(screen.getByText(/3 \(100%\)/)).toBeInTheDocument();

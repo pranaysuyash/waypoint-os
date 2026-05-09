@@ -111,7 +111,7 @@ export default function HomePage() {
           <div className={styles.heroActions}>
             <Link href='/signup' className={styles.primaryButton}>
               Get Started
-              <ArrowRight className='h-4 w-4' />
+              <ArrowRight className='size-4' />
             </Link>
             <Link href='/itinerary-checker' className={styles.secondaryButton}>
               Try the Itinerary Checker
@@ -135,7 +135,7 @@ export default function HomePage() {
         <div className={styles.problemRail}>
           {painPoints.map(({ icon: Icon, title, body }) => (
             <article key={title} className={styles.problemItem}>
-              <Icon className='h-5 w-5' />
+              <Icon className='size-5' />
               <div>
                 <h3>{title}</h3>
                 <p>{body}</p>
@@ -225,7 +225,7 @@ export default function HomePage() {
           <div className={styles.trustList}>
             {proofCards.map((card) => (
               <article key={card.title}>
-                <CheckCircle2 className='h-5 w-5' />
+                <CheckCircle2 className='size-5' />
                 <div>
                   <h3>{card.title}</h3>
                   <p>{card.body}</p>
@@ -264,7 +264,7 @@ export default function HomePage() {
               Open itinerary checker
             </Link>
             <ProofChip>
-              <Sparkles className='h-4 w-4' />
+              <Sparkles className='size-4' />
               Upload-first, notebook-style interaction
             </ProofChip>
           </div>

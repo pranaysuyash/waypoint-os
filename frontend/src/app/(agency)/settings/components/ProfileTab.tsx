@@ -26,7 +26,7 @@ function Field({
   return (
     <div className="space-y-1.5">
       <label className="flex items-center gap-1.5 text-ui-xs font-medium text-[#8b949e]">
-        <Icon className="w-3.5 h-3.5" />
+        <Icon className="size-3.5" />
         {label}
       </label>
       <input
@@ -132,13 +132,13 @@ export function ProfileTab({ draft, onChange }: ProfileTabProps) {
               <img
                 src={draft.profile.logo_url}
                 alt=""
-                className="w-10 h-10 rounded-lg object-cover border border-[#30363d]"
+                className="size-10 rounded-lg object-cover border border-[#30363d]"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';
                 }}
               />
             ) : (
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#2563eb] to-[#39d0d8] flex items-center justify-center text-white text-ui-xs font-bold">
+              <div className="size-10 rounded-lg bg-gradient-to-br from-[#2563eb] to-[#39d0d8] flex items-center justify-center text-white text-ui-xs font-bold">
                 {draft.profile.agency_name.slice(0, 2).toUpperCase()}
               </div>
             )}

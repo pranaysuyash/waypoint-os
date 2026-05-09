@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
 
 /**
- * Inbox API route — thin BFF pass-through.
+ * Inbox API route - thin BFF pass-through.
  *
  * The backend now returns typed InboxTripItem objects (projected by
  * InboxProjectionService). No JSON extraction, no business logic.
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
-    // Backend returns typed InboxTripItem[] directly — no transformation needed.
+    // Backend returns typed InboxTripItem[] directly - no transformation needed.
     return bffJson(data);
   } catch (error) {
     console.error("Error proxying inbox:", error);

@@ -109,13 +109,13 @@ export default function CaptureCallPanel({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800">
+    <div className="flex flex-col h-full bg-white dark:bg-canvas border-l border-border-default dark:border-border-default">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-        <h2 className="text-ui-lg font-semibold text-gray-900 dark:text-gray-100">
+      <div className="px-6 py-4 border-b border-border-default dark:border-border-default">
+        <h2 className="text-ui-lg font-semibold text-text-primary dark:text-text-primary">
           Capture Call
         </h2>
-        <p className="text-ui-sm text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-ui-sm text-text-secondary dark:text-text-muted mt-1">
           Record the customer's travel intent and next steps
         </p>
       </div>
@@ -124,13 +124,13 @@ export default function CaptureCallPanel({
       <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
         {/* API Error Alert */}
         {apiError && (
-          <div className="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+          <div className="p-3 bg-[rgba(var(--accent-red-rgb)/0.08)] dark:bg-[rgba(var(--accent-red-rgb)/0.18)] border border-[rgba(var(--accent-red-rgb)/0.25)] dark:border-[rgba(var(--accent-red-rgb)/0.40)] rounded-lg flex items-start gap-3">
+            <AlertCircle className="size-5 text-accent-red dark:text-accent-red flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-ui-sm font-medium text-red-900 dark:text-red-100">
+              <p className="text-ui-sm font-medium text-accent-red dark:text-accent-red">
                 Error saving call
               </p>
-              <p className="text-ui-xs text-red-800 dark:text-red-200 mt-0.5">{apiError}</p>
+              <p className="text-ui-xs text-accent-red dark:text-accent-red mt-0.5">{apiError}</p>
             </div>
           </div>
         )}
@@ -139,7 +139,7 @@ export default function CaptureCallPanel({
         <div>
           <label
             htmlFor="rawNote"
-            className="block text-ui-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+            className="block text-ui-sm font-medium text-text-primary dark:text-text-primary mb-2"
           >
             What did the customer tell you?
           </label>
@@ -152,16 +152,16 @@ export default function CaptureCallPanel({
                 setErrors({ ...errors, rawNote: "" });
               }
             }}
-            placeholder="e.g., Family of 4 wants to explore Japan, late November..."
+            placeholder="e.g., Family of 4 wants to explore Japan, late November…"
             rows={4}
-            className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${
+            className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors ${
               errors.rawNote
-                ? "border-red-300 dark:border-red-700"
-                : "border-gray-300 dark:border-gray-700"
+                ? "border-[rgba(var(--accent-red-rgb)/0.3)] dark:border-[rgba(var(--accent-red-rgb)/0.35)]"
+                : "border-border-default dark:border-border-default"
             }`}
           />
           {errors.rawNote && (
-            <p className="text-ui-xs text-red-600 dark:text-red-400 mt-1">{errors.rawNote}</p>
+            <p className="text-ui-xs text-accent-red dark:text-accent-red mt-1">{errors.rawNote}</p>
           )}
         </div>
 
@@ -169,7 +169,7 @@ export default function CaptureCallPanel({
         <div>
           <label
             htmlFor="ownerNote"
-            className="block text-ui-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+            className="block text-ui-sm font-medium text-text-primary dark:text-text-primary mb-2"
           >
             Any notes for yourself?
           </label>
@@ -177,9 +177,9 @@ export default function CaptureCallPanel({
             id="ownerNote"
             value={ownerNote}
             onChange={(e) => setOwnerNote(e.target.value)}
-            placeholder="e.g., Mentioned budget concerns, needs early morning flights..."
+            placeholder="e.g., Mentioned budget concerns, needs early morning flights…"
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           />
         </div>
 
@@ -187,7 +187,7 @@ export default function CaptureCallPanel({
         <div>
           <label
             htmlFor="followUpDueDate"
-            className="block text-ui-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+            className="block text-ui-sm font-medium text-text-primary dark:text-text-primary mb-2"
           >
             Promise to follow up by:
           </label>
@@ -196,9 +196,9 @@ export default function CaptureCallPanel({
             type="datetime-local"
             value={followUpDueDate}
             onChange={(e) => setFollowUpDueDate(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           />
-          <p className="text-ui-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-ui-xs text-text-muted dark:text-text-muted mt-1">
             Leave blank if no promise was made
           </p>
         </div>
@@ -207,7 +207,7 @@ export default function CaptureCallPanel({
         <div>
           <label
             htmlFor="partyComposition"
-            className="block text-ui-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+            className="block text-ui-sm font-medium text-text-primary dark:text-text-primary mb-2"
           >
             Who's traveling?
           </label>
@@ -217,9 +217,9 @@ export default function CaptureCallPanel({
             onChange={(e) => setPartyComposition(e.target.value)}
             placeholder="e.g., 2 adults, 1 toddler (age 3), 1 infant"
             rows={2}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           />
-          <p className="text-ui-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-ui-xs text-text-muted dark:text-text-muted mt-1">
             Helps us plan family-friendly itineraries
           </p>
         </div>
@@ -228,7 +228,7 @@ export default function CaptureCallPanel({
         <div>
           <label
             htmlFor="pacePreference"
-            className="block text-ui-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+            className="block text-ui-sm font-medium text-text-primary dark:text-text-primary mb-2"
           >
             Travel pace preference?
           </label>
@@ -236,14 +236,14 @@ export default function CaptureCallPanel({
             id="pacePreference"
             value={pacePreference}
             onChange={(e) => setPacePreference(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           >
-            <option value="">Select pace preference...</option>
+            <option value="">Select pace preference…</option>
             <option value="rushed">Rushed</option>
             <option value="normal">Normal</option>
             <option value="relaxed">Relaxed</option>
           </select>
-          <p className="text-ui-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-ui-xs text-text-muted dark:text-text-muted mt-1">
             How much do they want to move around?
           </p>
         </div>
@@ -252,7 +252,7 @@ export default function CaptureCallPanel({
         <div>
           <label
             htmlFor="dateYearConfidence"
-            className="block text-ui-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+            className="block text-ui-sm font-medium text-text-primary dark:text-text-primary mb-2"
           >
             How certain about the dates?
           </label>
@@ -260,14 +260,14 @@ export default function CaptureCallPanel({
             id="dateYearConfidence"
             value={dateYearConfidence}
             onChange={(e) => setDateYearConfidence(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           >
-            <option value="">Select confidence level...</option>
+            <option value="">Select confidence level…</option>
             <option value="certain">Certain</option>
             <option value="likely">Likely</option>
             <option value="unsure">Unsure</option>
           </select>
-          <p className="text-ui-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-ui-xs text-text-muted dark:text-text-muted mt-1">
             Helps with scheduling and itinerary building
           </p>
         </div>
@@ -276,7 +276,7 @@ export default function CaptureCallPanel({
         <div>
           <label
             htmlFor="leadSource"
-            className="block text-ui-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+            className="block text-ui-sm font-medium text-text-primary dark:text-text-primary mb-2"
           >
             How did they find us?
           </label>
@@ -284,15 +284,15 @@ export default function CaptureCallPanel({
             id="leadSource"
             value={leadSource}
             onChange={(e) => setLeadSource(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           >
-            <option value="">Select lead source...</option>
+            <option value="">Select lead source…</option>
             <option value="referral">Referral</option>
             <option value="web">Web Search</option>
             <option value="social">Social Media</option>
             <option value="other">Other</option>
           </select>
-          <p className="text-ui-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-ui-xs text-text-muted dark:text-text-muted mt-1">
             Helps us understand marketing effectiveness
           </p>
         </div>
@@ -301,7 +301,7 @@ export default function CaptureCallPanel({
         <div>
           <label
             htmlFor="activityProvenance"
-            className="block text-ui-sm font-medium text-gray-900 dark:text-gray-100 mb-2"
+            className="block text-ui-sm font-medium text-text-primary dark:text-text-primary mb-2"
           >
             What activities interest them?
           </label>
@@ -311,30 +311,30 @@ export default function CaptureCallPanel({
             onChange={(e) => setActivityProvenance(e.target.value)}
             placeholder="e.g., hiking, museums, fine dining, adventure sports"
             rows={2}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           />
-          <p className="text-ui-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-ui-xs text-text-muted dark:text-text-muted mt-1">
             Guide interests, not limitations
           </p>
         </div>
       </form>
 
       {/* Footer with Buttons */}
-      <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex gap-3">
+      <div className="px-6 py-4 border-t border-border-default dark:border-border-default flex gap-3">
         <button
           onClick={handleCancel}
           disabled={isLoading}
-          className="flex-1 px-4 py-2 text-ui-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 px-4 py-2 text-ui-sm font-medium text-text-secondary dark:text-text-secondary bg-elevated dark:bg-surface hover:bg-elevated dark:hover:bg-elevated rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
           disabled={isLoading || !rawNote.trim()}
-          className="flex-1 px-4 py-2 text-ui-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex-1 px-4 py-2 text-ui-sm font-medium text-white bg-[rgba(var(--accent-blue-rgb)/0.30)] hover:bg-[rgba(var(--accent-blue-rgb)/0.26)] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-          {isLoading ? "Saving..." : "Save"}
+          {isLoading && <Loader2 className="size-4 animate-spin" />}
+          {isLoading ? "Saving…" : "Save"}
         </button>
       </div>
     </div>

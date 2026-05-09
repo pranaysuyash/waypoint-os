@@ -45,7 +45,7 @@ export default function IntegrityMonitorPanel({
 
         {loading ? (
           <div className='rounded-lg border border-[#30363d] bg-[#161b22] p-3 text-ui-xs text-[#8b949e]'>
-            Checking system status...
+            Checking system status…
           </div>
         ) : error ? (
           <div className='rounded-lg border border-[#f85149]/40 bg-[#161b22] p-3 text-ui-xs text-[#f85149]'>
@@ -68,15 +68,15 @@ export default function IntegrityMonitorPanel({
                   >
                     <div className='flex items-start justify-between gap-3'>
                       <div>
-                        <p className='text-[11px] uppercase tracking-wide text-[#8b949e]'>
+                        <p className='text-[12px] uppercase tracking-wide text-[#8b949e]'>
                           Routing issue
                         </p>
                         <p className='font-mono text-ui-xs text-[#e6edf3] break-all'>
                           {issue.entity_id}
                         </p>
                       </div>
-                      <span className='inline-flex items-center gap-1 rounded-full bg-[#e3b341]/15 px-2 py-1 text-[11px] font-medium text-[#e3b341]'>
-                        <AlertTriangle className='h-3 w-3' />
+                      <span className='inline-flex items-center gap-1 rounded-full bg-[#e3b341]/15 px-2 py-1 text-[12px] font-medium text-[#e3b341]'>
+                        <AlertTriangle className='size-3' />
                         {issue.severity.charAt(0).toUpperCase() + issue.severity.slice(1)}
                       </span>
                     </div>

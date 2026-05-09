@@ -30,7 +30,7 @@ function hasApproximateDateWindow(dateWindow?: string | null): boolean {
 function isMissingDisplayValue(value?: string | null): boolean {
   const normalized = value?.trim().toLowerCase();
   if (!normalized) return true;
-  return ["tbd", "to confirm", "unknown", "not set", "n/a", "na", "—", "-"].includes(normalized);
+  return ["tbd", "to confirm", "unknown", "not set", "n/a", "na", "-", "-"].includes(normalized);
 }
 
 function hasValidationWarning(trip: Trip | null | undefined, fieldName: string): boolean {

@@ -56,7 +56,7 @@ describe('ActivityProvenanceBadge', () => {
     const { container } = render(<ActivityProvenanceBadge source="suggested" confidence={95} />);
 
     const badge = container.querySelector('span');
-    expect(badge?.className).toMatch(/bg-blue-50|text-blue-700/);
+    expect(badge?.className).toMatch(/accent-blue/);
   });
 
   // Test 6: Apply correct styling for requested (green)
@@ -64,7 +64,7 @@ describe('ActivityProvenanceBadge', () => {
     const { container } = render(<ActivityProvenanceBadge source="requested" />);
 
     const badge = container.querySelector('span');
-    expect(badge?.className).toMatch(/bg-green-50|text-green-700/);
+    expect(badge?.className).toMatch(/accent-green/);
   });
 
     // Test 7: Support different sizes

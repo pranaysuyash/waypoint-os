@@ -59,7 +59,7 @@ export function PublicHeader({
         </Link>
         <Link href={ctaHref} className={styles.primaryButton}>
           {ctaLabel}
-          <ArrowRight className='h-4 w-4' />
+          <ArrowRight className='size-4' />
         </Link>
       </div>
     </header>
@@ -112,7 +112,7 @@ export function PublicFooter() {
 export function ProofChip({ children }: { children: ReactNode }) {
   return (
     <div className='inline-flex items-center gap-2 rounded-full border border-[rgba(88,166,255,0.18)] bg-[rgba(12,22,31,0.78)] px-4 py-2 text-[13px] text-[#dce9f4]'>
-      <ShieldCheck className='h-4 w-4 text-[#39d0d8]' />
+      <ShieldCheck className='size-4 text-[#39d0d8]' />
       {children}
     </div>
   );

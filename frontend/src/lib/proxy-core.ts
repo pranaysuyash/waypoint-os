@@ -1,5 +1,5 @@
 /**
- * proxy-core.ts  —  generic FastAPI proxy used by /api/[...path]/route.ts
+ * proxy-core.ts  -  generic FastAPI proxy used by /api/[...path]/route.ts
  *
  * Auth flow:
  *   Browser → Next.js middleware checks access_token cookie

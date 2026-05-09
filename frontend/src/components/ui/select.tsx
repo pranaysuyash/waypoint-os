@@ -26,14 +26,15 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       description,
       inputSize = "md",
       options,
-      placeholder = "Select an option...",
+      placeholder = "Select an option…",
       emptyText = "No options available",
       id,
       ...props
     },
     ref
   ) => {
-    const selectId = id || React.useId();
+    const fallbackId = React.useId();
+    const selectId = id || fallbackId;
     const errorId = error ? `${selectId}-error` : undefined;
     const descriptionId = description ? `${selectId}-description` : undefined;
 

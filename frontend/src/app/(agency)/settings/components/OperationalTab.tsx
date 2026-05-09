@@ -1,5 +1,6 @@
 'use client';
 
+import { useId } from 'react';
 import { Percent, Clock, Calendar, MessageSquare, Mic } from 'lucide-react';
 import type { AgencySettings } from '@/hooks/useAgencySettings';
 
@@ -18,6 +19,10 @@ const CHANNELS = ['whatsapp', 'email', 'phone', 'sms'];
 
 export function OperationalTab({ draft, onChange }: OperationalTabProps) {
   const op = draft.operational;
+  const marginId = useId();
+  const currencyId = useId();
+  const hoursId = useId();
+  const toneId = useId();
 
   const toggleDay = (day: string) => {
     onChange((prev) => {
@@ -55,12 +60,13 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Margin */}
         <div className="space-y-1.5">
-          <label className="flex items-center gap-1.5 text-ui-xs font-medium text-[var(--text-muted)]">
-            <Percent className="w-3.5 h-3.5" />
+          <label htmlFor={marginId} className="flex items-center gap-1.5 text-ui-xs font-medium text-[var(--text-muted)]">
+            <Percent className="size-3.5" />
             Target Margin (%)
           </label>
           <div className="flex items-center gap-3">
             <input
+              id={marginId}
               type="range"
               min={0}
               max={100}
@@ -84,11 +90,12 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
 
         {/* Currency */}
         <div className="space-y-1.5">
-          <label className="flex items-center gap-1.5 text-ui-xs font-medium text-[var(--text-muted)]">
-            <Percent className="w-3.5 h-3.5" />
+          <label htmlFor={currencyId} className="flex items-center gap-1.5 text-ui-xs font-medium text-[var(--text-muted)]">
+            <Percent className="size-3.5" />
             Default Currency
           </label>
           <select
+            id={currencyId}
             value={op.default_currency}
             onChange={(e) =>
               onChange((prev) => {
@@ -108,12 +115,13 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
 
         {/* Operating Hours */}
         <div className="space-y-1.5">
-          <label className="flex items-center gap-1.5 text-ui-xs font-medium text-[var(--text-muted)]">
-            <Clock className="w-3.5 h-3.5" />
+          <label htmlFor={hoursId} className="flex items-center gap-1.5 text-ui-xs font-medium text-[var(--text-muted)]">
+            <Clock className="size-3.5" />
             Operating Hours
           </label>
           <div className="flex items-center gap-2">
             <input
+              id={hoursId}
               type="time"
               value={op.operating_hours.start}
               onChange={(e) =>
@@ -141,11 +149,12 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
 
         {/* Brand Tone */}
         <div className="space-y-1.5">
-          <label className="flex items-center gap-1.5 text-ui-xs font-medium text-[var(--text-muted)]">
-            <Mic className="w-3.5 h-3.5" />
+          <label htmlFor={toneId} className="flex items-center gap-1.5 text-ui-xs font-medium text-[var(--text-muted)]">
+            <Mic className="size-3.5" />
             AI Brand Tone
           </label>
           <select
+            id={toneId}
             value={op.brand_tone}
             onChange={(e) =>
               onChange((prev) => {
@@ -169,10 +178,10 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
 
       {/* Operating Days */}
       <div className="space-y-2">
-        <label className="flex items-center gap-1.5 text-ui-xs font-medium text-[var(--text-muted)]">
-          <Calendar className="w-3.5 h-3.5" />
+        <span className="flex items-center gap-1.5 text-ui-xs font-medium text-[var(--text-muted)]">
+          <Calendar className="size-3.5" />
           Operating Days
-        </label>
+        </span>
         <div className="flex flex-wrap gap-2">
           {DAYS.map((day) => {
             const isActive = op.operating_days.includes(day);
@@ -195,10 +204,10 @@ export function OperationalTab({ draft, onChange }: OperationalTabProps) {
 
       {/* Preferred Channels */}
       <div className="space-y-2">
-        <label className="flex items-center gap-1.5 text-ui-xs font-medium text-[var(--text-muted)]">
-          <MessageSquare className="w-3.5 h-3.5" />
+        <span className="flex items-center gap-1.5 text-ui-xs font-medium text-[var(--text-muted)]">
+          <MessageSquare className="size-3.5" />
           Preferred Communication Channels
-        </label>
+        </span>
         <div className="flex flex-wrap gap-2">
           {CHANNELS.map((channel) => {
             const isActive = op.preferred_channels.includes(channel);

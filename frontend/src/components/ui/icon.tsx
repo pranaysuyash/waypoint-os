@@ -11,9 +11,9 @@ export interface IconWrapperProps {
 }
 
 const sizeMap = {
-  sm: "w-3 h-3",
-  md: "w-4 h-4",
-  lg: "w-5 h-5",
+  sm: "size-3",
+  md: "size-4",
+  lg: "size-5",
 };
 
 /**

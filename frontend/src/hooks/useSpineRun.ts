@@ -1,17 +1,17 @@
 /**
- * useSpineRun — Async spine pipeline execution with polling
+ * useSpineRun - Async spine pipeline execution with polling
  *
  * Submits a run via POST /api/spine/run, receives a run_id immediately,
  * then polls GET /api/runs/{run_id} every 2s until the run
  * reaches a terminal state (completed / failed / blocked).
  *
  * Returns:
- *   execute(payload)       — start the async run, returns run_id
- *   cancel()               — abort the current run
- *   state                   — RunStatusResponse | null  (updates in real time)
- *   isLoading                — boolean (true while polling)
- *   error                    — Error | null
- *   runId                    — string | null (set immediately after submit)
+ *   execute(payload)       - start the async run, returns run_id
+ *   cancel()               - abort the current run
+ *   state                   - RunStatusResponse | null  (updates in real time)
+ *   isLoading                - boolean (true while polling)
+ *   error                    - Error | null
+ *   runId                    - string | null (set immediately after submit)
  */
 
 import { useState, useCallback, useRef } from "react";

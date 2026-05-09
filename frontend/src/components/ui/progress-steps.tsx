@@ -68,14 +68,14 @@ export function ProgressSteps({
               <div
                 className={cn(
                   'flex items-center justify-center rounded-full transition-colors',
-                  size === 'md' ? 'w-8 h-8 text-sm' : 'w-6 h-6 text-xs',
+                  size === 'md' ? 'size-8 text-sm' : 'size-6 text-xs',
                   status === 'completed' && 'text-[var(--accent-green)] bg-[rgba(var(--accent-green-rgb),0.12)]',
                   status === 'current' && 'text-white bg-[var(--accent-blue)]',
                   status === 'pending' && 'text-[var(--text-muted)] bg-[var(--bg-elevated)]'
                 )}
               >
                 {status === 'completed' ? (
-                  <CheckCircle2 className={size === 'md' ? 'h-4 w-4' : 'h-3 w-3'} />
+                  <CheckCircle2 className={size === 'md' ? 'size-4' : 'size-3'} />
                 ) : (
                   <span className="font-semibold">{index + 1}</span>
                 )}
