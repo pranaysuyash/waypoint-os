@@ -13,6 +13,8 @@ import {
   AlertTriangle,
   ShieldCheck,
   FileText,
+  ScanLine,
+  Layers,
   XCircle,
   RotateCcw,
 } from "lucide-react";
@@ -44,6 +46,17 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   confirmation_recorded: "Recorded",
   confirmation_verified: "Verified",
   confirmation_voided: "Voided",
+  document_uploaded: "Uploaded",
+  document_accepted: "Accepted",
+  document_rejected: "Rejected",
+  document_deleted: "Deleted",
+  extraction_run_started: "Run started",
+  extraction_run_completed: "Run completed",
+  extraction_run_failed: "Run failed",
+  extraction_applied: "Applied",
+  extraction_rejected: "Rejected",
+  extraction_attempt_completed: "Attempt completed",
+  extraction_attempt_failed: "Attempt failed",
 };
 
 const STATUS_ICON: Record<string, typeof Circle> = {
@@ -58,6 +71,14 @@ const STATUS_ICON: Record<string, typeof Circle> = {
   recorded: FileText,
   verified: ShieldCheck,
   voided: XCircle,
+  pending_review: Clock,
+  accepted: CheckCircle,
+  rejected: XCircle,
+  deleted: Ban,
+  running: Loader,
+  failed: AlertTriangle,
+  applied: CheckCircle,
+  success: CheckCircle,
 };
 
 const STATUS_COLOR: Record<string, string> = {
@@ -72,6 +93,14 @@ const STATUS_COLOR: Record<string, string> = {
   recorded: "text-blue-400",
   verified: "text-emerald-400",
   voided: "text-zinc-500",
+  pending_review: "text-amber-400",
+  accepted: "text-emerald-400",
+  rejected: "text-red-400",
+  deleted: "text-zinc-500",
+  running: "text-blue-400",
+  failed: "text-red-400",
+  applied: "text-emerald-400",
+  success: "text-emerald-400",
 };
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -180,6 +209,12 @@ function TimelineRow({ event }: { event: ExecutionTimelineEvent }) {
   const typeLabel = EVENT_TYPE_LABELS[event.event_type] ?? event.event_type;
   const actor = event.actor_type === "system" ? "System" : event.actor_id?.slice(0, 8) ?? "Unknown";
 
+  const subjectLabel = event.subject_type
+    .replace("booking_", "")
+    .replace("document_extraction_attempt", "attempt")
+    .replace("document_extraction", "extraction")
+    .replace("_", " ");
+
   const ts = event.timestamp
     ? <ClientTime value={event.timestamp} options={{ hour: "2-digit", minute: "2-digit" }} />
     : "";
@@ -188,7 +223,7 @@ function TimelineRow({ event }: { event: ExecutionTimelineEvent }) {
     <div className="flex items-center gap-2 px-2 py-1 rounded text-xs">
       <Icon className={`size-3 shrink-0 ${color}`} />
       <span className="text-zinc-200 flex-1 truncate">
-        {event.subject_type.replace("booking_", "").replace("_", " ")} {typeLabel.toLowerCase()}
+        {subjectLabel} {typeLabel.toLowerCase()}
       </span>
       <span className="text-[10px] text-zinc-500">{actor}</span>
       <span className="text-[10px] text-zinc-600">{ts}</span>

@@ -6,7 +6,7 @@
  * credential handling, retries, and error shaping.
  */
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getAgencySettings,
   updateAgencyOperational,
@@ -17,108 +17,72 @@ import {
   type UpdateAutonomyPayload,
 } from "@/lib/api-client";
 
-const LOADING_DELAY_MS = 300;
+const SETTINGS_QUERY_KEY = ["agency", "settings"] as const;
+const SETTINGS_STALE_TIME_MS = 60_000;
 
 export type AgencySettings = AgencySettingsType;
 export type AgencyAutonomy = AgencyAutonomyType;
 export type { UpdateOperationalPayload, UpdateAutonomyPayload };
 
 export function useAgencySettings() {
-  const [data, setData] = useState<AgencySettings | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const query = useQuery({
+    queryKey: SETTINGS_QUERY_KEY,
+    queryFn: getAgencySettings,
+    staleTime: SETTINGS_STALE_TIME_MS,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
 
-  const loadSettings = useCallback(async () => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-
-    loadingTimeoutRef.current = setTimeout(() => {
-      setIsLoading(true);
-    }, LOADING_DELAY_MS);
-
-    setError(null);
-
-    try {
-      const result = await getAgencySettings();
-      setData(result);
-    } catch (err) {
-      setError(err as Error);
-      // Skip console noise for 401 - AuthProvider handles redirect
-      const status = (err as any)?.status ?? (err as any)?.code;
-      if (status !== 401) {
-        console.error("Failed to fetch agency settings:", err);
-      }
-    } finally {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = null;
-      }
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadSettings();
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, [loadSettings]);
-
-  return { data, isLoading, error, refetch: loadSettings };
+  return {
+    data: query.data ?? null,
+    isLoading: query.isLoading,
+    error: (query.error as Error) ?? null,
+    refetch: async () => {
+      await query.refetch();
+    },
+  };
 }
 
 export function useUpdateOperationalSettings() {
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-
-  const mutate = useCallback(
-    async (payload: UpdateOperationalPayload): Promise<AgencySettings | null> => {
-      setIsSaving(true);
-      setError(null);
-
-      try {
-        const result = await updateAgencyOperational(payload);
-        return result;
-      } catch (err) {
-        setError(err as Error);
-        console.error("Failed to update operational settings:", err);
-        return null;
-      } finally {
-        setIsSaving(false);
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: (payload: UpdateOperationalPayload) => updateAgencyOperational(payload),
+    onSuccess: (result) => {
+      if (result) {
+        queryClient.setQueryData(SETTINGS_QUERY_KEY, result);
       }
     },
-    []
-  );
+  });
 
-  return { mutate, isSaving, error };
+  const mutate = async (payload: UpdateOperationalPayload): Promise<AgencySettings | null> => {
+    try {
+      return await mutation.mutateAsync(payload);
+    } catch (err) {
+      console.error("Failed to update operational settings:", err);
+      return null;
+    }
+  };
+
+  return { mutate, isSaving: mutation.isPending, error: (mutation.error as Error) ?? null };
 }
 
 export function useUpdateAutonomyPolicy() {
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-
-  const mutate = useCallback(
-    async (payload: UpdateAutonomyPayload): Promise<AgencyAutonomy | null> => {
-      setIsSaving(true);
-      setError(null);
-
-      try {
-        const result = await updateAgencyAutonomy(payload);
-        return result;
-      } catch (err) {
-        setError(err as Error);
-        console.error("Failed to update autonomy policy:", err);
-        return null;
-      } finally {
-        setIsSaving(false);
-      }
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: (payload: UpdateAutonomyPayload) => updateAgencyAutonomy(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SETTINGS_QUERY_KEY });
     },
-    []
-  );
+  });
 
-  return { mutate, isSaving, error };
+  const mutate = async (payload: UpdateAutonomyPayload): Promise<AgencyAutonomy | null> => {
+    try {
+      return await mutation.mutateAsync(payload);
+    } catch (err) {
+      console.error("Failed to update autonomy policy:", err);
+      return null;
+    }
+  };
+
+  return { mutate, isSaving: mutation.isPending, error: (mutation.error as Error) ?? null };
 }

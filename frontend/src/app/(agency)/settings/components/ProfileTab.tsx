@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, Mail, Phone, Globe, ImageIcon } from 'lucide-react';
+import { Building2, Mail, Phone, Globe, ImageIcon, Sparkles, BadgeCheck } from 'lucide-react';
 import type { AgencySettings } from '@/hooks/useAgencySettings';
 
 interface ProfileTabProps {
@@ -62,6 +62,32 @@ export function ProfileTab({ draft, onChange }: ProfileTabProps) {
             })
           }
           placeholder="e.g., Bali Bliss Travels"
+        />
+
+        <Field
+          label="Sub-brand (Optional)"
+          icon={Sparkles}
+          value={draft.profile.sub_brand}
+          onChange={(v) =>
+            onChange((prev) => {
+              prev.profile.sub_brand = v;
+              return prev;
+            })
+          }
+          placeholder="e.g., Luxury Journeys"
+        />
+
+        <Field
+          label="Plan Label (Optional)"
+          icon={BadgeCheck}
+          value={draft.profile.plan_label}
+          onChange={(v) =>
+            onChange((prev) => {
+              prev.profile.plan_label = v;
+              return prev;
+            })
+          }
+          placeholder="e.g., Growth Plan"
         />
 
         <Field
@@ -144,6 +170,11 @@ export function ProfileTab({ draft, onChange }: ProfileTabProps) {
             )}
             <div>
               <p className="text-ui-sm font-medium text-[#e6edf3]">{draft.profile.agency_name}</p>
+              {(draft.profile.sub_brand || draft.profile.plan_label) && (
+                <p className="text-ui-xs text-[#8b949e]">
+                  {[draft.profile.sub_brand, draft.profile.plan_label].filter(Boolean).join(' · ')}
+                </p>
+              )}
               {draft.profile.contact_email && (
                 <p className="text-ui-xs text-[#8b949e]">{draft.profile.contact_email}</p>
               )}

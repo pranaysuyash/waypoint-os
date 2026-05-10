@@ -15,24 +15,22 @@ export interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectE
   options: SelectOption[];
   placeholder?: string;
   emptyText?: string;
+  ref?: React.Ref<HTMLSelectElement>;
 }
 
-const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
-  (
-    {
-      className,
-      label,
-      error,
-      description,
-      inputSize = "md",
-      options,
-      placeholder = "Select an option…",
-      emptyText = "No options available",
-      id,
-      ...props
-    },
-    ref
-  ) => {
+function Select({
+  className,
+  label,
+  error,
+  description,
+  inputSize = "md",
+  options,
+  placeholder = "Select an option…",
+  emptyText = "No options available",
+  id,
+  ref,
+  ...props
+}: SelectProps) {
     const fallbackId = React.useId();
     const selectId = id || fallbackId;
     const errorId = error ? `${selectId}-error` : undefined;
@@ -133,8 +131,6 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         )}
       </div>
     );
-  }
-);
-Select.displayName = "Select";
+}
 
 export { Select };

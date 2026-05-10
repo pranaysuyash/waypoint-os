@@ -30,7 +30,7 @@ const fieldParam: Record<string, string> = {
 
 interface PlanningTripCardProps {
   trip: Trip;
-  variant?: 'default' | 'compact';
+  variant?: 'default' | 'compact' | 'overview' | 'workspace';
 }
 
 export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant = 'default' }: PlanningTripCardProps) {
@@ -38,7 +38,9 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
   const freshness = getTripFreshnessLabel(trip);
   const fc = freshnessColors[freshness.tone] ?? freshnessColors.neutral;
   const meta = PLANNING_LIST_STATE_META[summary.statusTone] ?? PLANNING_LIST_STATE_META.blue;
-  const isCompact = variant === 'compact';
+  const isCompact = variant === 'compact' || variant === 'overview';
+  const isOverview = variant === 'overview';
+  const isWorkspace = variant === 'workspace' || variant === 'default';
 
   return (
     <div
@@ -106,7 +108,7 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
           <div className='rounded-xl border px-3.5 py-3' style={{ borderColor: 'rgba(210,153,34,0.25)', background: 'rgba(210,153,34,0.04)' }}>
             <p className='text-[12px] font-semibold uppercase tracking-[0.16em]' style={{ color: 'var(--accent-amber)' }}>Missing trip details</p>
             <div className='mt-3 flex flex-wrap gap-2'>
-              {summary.missingBadges.slice(0, 2).map((badge) => {
+              {summary.missingBadges.slice(0, isOverview ? 1 : 2).map((badge) => {
                 const param = fieldParam[badge];
                 const fieldName = badge.replace(/ missing$/i, '').toLowerCase();
                 return (
@@ -125,24 +127,26 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
         )}
 
         {/* Stage/progress */}
-        <div className='flex items-center gap-1.5 py-1'>
-          <span className='text-[12px] font-semibold' style={{ color: 'var(--text-secondary)' }}>Stage:</span>
-          <span className='text-[12px] font-semibold' style={{ color: 'var(--accent-blue)' }}>{summary.stage}</span>
-          <span className='text-[12px]' style={{ color: 'var(--text-muted)' }}>·</span>
-          <span className='text-[12px]' style={{ color: 'var(--text-secondary)' }}>
-            {getPlanningStageProgressItems(trip).map((item, i) => (
-              <span key={item.label}>
-                {i > 0 && <span className='mx-1'>·</span>}
-                <span style={{ color: item.color }}>{item.label}</span>
-              </span>
-            ))}
-          </span>
-        </div>
+        {isWorkspace && (
+          <div className='flex items-center gap-1.5 py-1'>
+            <span className='text-[12px] font-semibold' style={{ color: 'var(--text-secondary)' }}>Stage:</span>
+            <span className='text-[12px] font-semibold' style={{ color: 'var(--accent-blue)' }}>{summary.stage}</span>
+            <span className='text-[12px]' style={{ color: 'var(--text-muted)' }}>·</span>
+            <span className='text-[12px]' style={{ color: 'var(--text-secondary)' }}>
+              {getPlanningStageProgressItems(trip).map((item, i) => (
+                <span key={item.label}>
+                  {i > 0 && <span className='mx-1'>·</span>}
+                  <span style={{ color: item.color }}>{item.label}</span>
+                </span>
+              ))}
+            </span>
+          </div>
+        )}
 
         {/* Next step */}
         <div className='rounded-xl border px-3.5 py-3' style={{ borderColor: 'rgba(48,54,61,0.85)', background: 'rgba(255,255,255,0.02)' }}>
           <p className='text-[13px]' style={{ color: 'var(--text-primary)' }}>
-            {summary.nextAction}
+            {isOverview ? summary.nextAction.replace(/^Next:\s*/i, '') : summary.nextAction}
           </p>
         </div>
 

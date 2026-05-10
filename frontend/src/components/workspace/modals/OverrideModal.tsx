@@ -146,11 +146,13 @@ export function OverrideModal({
               { value: "downgrade" as const, label: "Downgrade", desc: "Lower severity" },
               { value: "acknowledge" as const, label: "Acknowledge", desc: "Keep but noted" },
             ].map((opt) => (
-              <label key={opt.value} className="flex items-start gap-3 p-3 rounded-lg hover:bg-[#161b22] cursor-pointer transition-colors">
+              <label key={opt.value} htmlFor={`action-${opt.value}`} className="flex items-start gap-3 p-3 rounded-lg hover:bg-[#161b22] cursor-pointer transition-colors">
                 <input
+                  id={`action-${opt.value}`}
                   type="radio"
                   name="action"
                   value={opt.value}
+                  aria-label={opt.label}
                   checked={action === opt.value}
                   onChange={(e) => setAction(e.target.value as typeof action)}
                   className="mt-1"
@@ -200,11 +202,13 @@ export function OverrideModal({
               { value: "this_trip" as const, label: "This Trip", desc: "Override applies only to this trip" },
               { value: "pattern" as const, label: "Pattern", desc: "Use for future similar cases" },
             ].map((opt) => (
-              <label key={opt.value} className="flex items-start gap-3 p-3 rounded-lg hover:bg-[#161b22] cursor-pointer transition-colors">
+              <label key={opt.value} htmlFor={`scope-${opt.value}`} className="flex items-start gap-3 p-3 rounded-lg hover:bg-[#161b22] cursor-pointer transition-colors">
                 <input
+                  id={`scope-${opt.value}`}
                   type="radio"
                   name="scope"
                   value={opt.value}
+                  aria-label={opt.label}
                   checked={scope === opt.value}
                   onChange={(e) => setScope(e.target.value as typeof scope)}
                   className="mt-1"

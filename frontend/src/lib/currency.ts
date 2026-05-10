@@ -57,14 +57,17 @@ export const CURRENCY_CONFIG: Record<SupportedCurrency, CurrencyConfig> = {
 /**
  * Format a money value with currency symbol and locale-specific formatting.
  */
+const _CURRENCY_FMTS = new Map<string, Intl.NumberFormat>();
+const _getFmt = (locale: string, code: string, dec: number) => {
+  const k = locale + '|' + code + '|' + dec;
+  let f = _CURRENCY_FMTS.get(k);
+  if (!f) { f = new Intl.NumberFormat(locale, { style: 'currency', currency: code, minimumFractionDigits: dec, maximumFractionDigits: dec }); _CURRENCY_FMTS.set(k, f); }
+  return f;
+};
+
 export function formatMoney(amount: number, currency: SupportedCurrency = 'INR'): string {
   const config = CURRENCY_CONFIG[currency];
-  return new Intl.NumberFormat(config.locale, {
-    style: 'currency',
-    currency: config.code,
-    minimumFractionDigits: config.decimals,
-    maximumFractionDigits: config.decimals,
-  }).format(amount);
+  return _getFmt(config.locale, config.code, config.decimals).format(amount);
 }
 
 /**
@@ -106,7 +109,8 @@ export function parseBudgetString(input: string): Money | null {
 
   // Try to extract currency code
   let currency: SupportedCurrency = 'INR'; // Default
-  for (const code of Object.keys(CURRENCY_CONFIG) as SupportedCurrency[]) {
+  const CURRENCY_KEYS = CURRENCY_CODES;
+  for (const code of CURRENCY_KEYS) {
     if (trimmed.includes(code)) {
       currency = code;
       break;
@@ -152,6 +156,8 @@ export function formatBudgetWithCode(amount: number, currency: SupportedCurrency
 // ============================================================================
 // CURRENCY SELECTOR OPTIONS
 // ============================================================================
+
+const CURRENCY_CODES = Object.keys(CURRENCY_CONFIG) as SupportedCurrency[];
 
 export function getCurrencyOptions(): Array<{
   value: SupportedCurrency;

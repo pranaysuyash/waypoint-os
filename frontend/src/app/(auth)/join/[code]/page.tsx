@@ -42,7 +42,7 @@ type PageState =
 export default function JoinPage() {
   const params = useParams<{ code: string }>();
   const code = params.code;
-  const router = useRouter();
+  const { replace } = useRouter();
   const hydrate = useAuthStore((s) => s.hydrate);
 
   const [state, setState] = useState<PageState>({ phase: 'loading' });
@@ -64,7 +64,6 @@ export default function JoinPage() {
         const res = await fetch(`/api/auth/validate-code/${encodeURIComponent(code)}`, {
           cache: 'no-store',
           credentials: 'include',
-          cache: 'no-store',
         });
 
         if (cancelled) return;
@@ -121,7 +120,7 @@ export default function JoinPage() {
 
       // Backend set auth cookies - rehydrate store then navigate
       await hydrate();
-      router.replace('/overview');
+      replace('/overview');
     } catch (err) {
       const message = err instanceof ApiException ? err.message : 'Network error. Please try again.';
       setState({ phase: 'error', agency, error: message });

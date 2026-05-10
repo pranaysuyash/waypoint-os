@@ -202,8 +202,7 @@ async function llmGenerate(prompt: string): Promise<Omit<DevScenarioPayload, "pe
       : undefined) ??
     (Array.isArray(data?.output)
       ? data.output
-          .flatMap((item: { content?: Array<{ text?: string }> }) => item?.content ?? [])
-          .map((content: { text?: string }) => content?.text ?? "")
+          .flatMap((item: { content?: Array<{ text?: string }> }) => item?.content?.map(c => c.text ?? "") ?? [])
           .join("")
           .trim()
       : "");

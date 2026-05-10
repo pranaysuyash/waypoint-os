@@ -20,13 +20,21 @@ import {
 } from "@/lib/lead-display";
 import { getRequiredPlanningFields } from "@/lib/planning-status";
 
+const _PACKET_DT_FMT = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
 interface PacketPanelProps {
   tripId: string;
   trip?: Trip | null;
 }
 
 export function PacketPanel({ tripId, trip }: PacketPanelProps) {
-  const router = useRouter();
+  const { refresh } = useRouter();
   const [isRefreshingAgents, setIsRefreshingAgents] = useState(false);
   const [agentRefreshMessage, setAgentRefreshMessage] = useState<string | null>(null);
   const { result_packet, result_validation, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
@@ -43,7 +51,7 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
         return;
       }
       setAgentRefreshMessage("Agent checks refreshed");
-      router.refresh();
+      refresh();
     } catch {
       setAgentRefreshMessage("Agent refresh failed");
     } finally {
@@ -520,12 +528,7 @@ function _formatAgentName(value: string): string {
 function _formatDateTime(value: string): string {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+  return _PACKET_DT_FMT.format(date);
 }
 
 function _statusTone(value: string | undefined): { color: string; border: string; background: string } {

@@ -86,7 +86,7 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
           <div className="bg-sidebar rounded-lg border border-[#1c2128] p-4">
             <ul className="space-y-2">
               {safety.leakage_errors.map((item: string, i: number) => (
-                <li key={`leak-${item.slice(0, 15)}-${i}`} className="flex items-center text-ui-sm text-accent-red">
+                <li key={`leak-${item.slice(0, 15)}`} className="flex items-center text-ui-sm text-accent-red">
                   <AlertCircle className="size-3.5 mr-2 shrink-0" />
                   {item}
                 </li>
@@ -118,7 +118,7 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
                   <div className="text-[var(--ui-text-xs)] font-bold text-text-muted uppercase tracking-wider">Follow-up Sequence</div>
                   <ul className="mt-1 space-y-1">
                     {travelerBundle.follow_up_sequence.map((f, i) => (
-                      <li key={`fseq-${f.field_name}-${i}`} className="text-ui-sm text-text-muted">
+                      <li key={`fseq-${f.field_name}`} className="text-ui-sm text-text-muted">
                         <span className="font-semibold text-text-muted">[{f.priority}]</span> {f.question}
                       </li>
                     ))}

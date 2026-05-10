@@ -189,6 +189,7 @@ describe('PlanningDetailSection', () => {
       requirement: 'Required' as const,
       addLabel: 'Add budget',
       askLabel: 'Ask traveler',
+      value: null,
     },
     {
       id: 'origin' as PlanningDetailId,
@@ -196,6 +197,7 @@ describe('PlanningDetailSection', () => {
       requirement: 'Recommended' as const,
       addLabel: 'Add origin',
       askLabel: 'Ask traveler',
+      value: null,
     },
   ];
 

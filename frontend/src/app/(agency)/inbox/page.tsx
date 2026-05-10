@@ -134,15 +134,16 @@ export default function InboxPage() {
 }
 
 function InboxPageWithSearchParams() {
-  const router = useRouter();
+  const { push } = useRouter();
   const searchParams = useSearchParams();
+  const getSearchParam = searchParams.get.bind(searchParams);
   
   // URL Persistence Sync
-  const sortBy = (searchParams.get('sort') as SortKey) || 'priority';
-  const sortDirection = (searchParams.get('dir') as SortDirection) || 'desc';
-  const searchQuery = searchParams.get('q') || '';
-  const page = Math.max(1, Number.parseInt(searchParams.get('page') || '1', 10) || 1);
-  const limit = Math.max(1, Number.parseInt(searchParams.get('limit') || '20', 10) || 20);
+  const sortBy = (getSearchParam('sort') as SortKey) || 'priority';
+  const sortDirection = (getSearchParam('dir') as SortDirection) || 'desc';
+  const searchQuery = getSearchParam('q') || '';
+  const page = Math.max(1, Number.parseInt(getSearchParam('page') || '1', 10) || 1);
+  const limit = Math.max(1, Number.parseInt(getSearchParam('limit') || '20', 10) || 20);
 
   // Composable filters from URL params
   const activeFilters = useMemo<InboxFilters>(
@@ -157,15 +158,15 @@ function InboxPageWithSearchParams() {
       if (value === null) params.delete(key);
       else params.set(key, value);
     });
-    router.push(`?${params.toString()}`);
-  }, [router, searchParams]);
+    push(`?${params.toString()}`);
+  }, [push, searchParams]);
 
   const [selectedTrips, setSelectedTrips] = useState<Set<string>>(new Set());
   const [showSortDropdown, setShowSortDropdown] = useState(false);
 
   // View profile from URL role param, falling back to localStorage, then default
   const [viewProfile, setViewProfile] = useState<ViewProfile>(() => {
-    const fromUrl = searchParams.get('role');
+    const fromUrl = getSearchParam('role');
     if (fromUrl) return roleToViewProfile(fromUrl);
     return getSavedViewProfile() ?? 'operations';
   });
@@ -236,8 +237,8 @@ function InboxPageWithSearchParams() {
       params.set(key, value);
     }
 
-    router.push(`?${params.toString()}`);
-  }, [router, limit, sortBy, sortDirection, searchQuery]);
+    push(`?${params.toString()}`);
+  }, [push, limit, sortBy, sortDirection, searchQuery]);
 
   // Server drives pagination. We trust the returned items are already
   // filtered/sorted/paged. Display them directly.
@@ -467,9 +468,9 @@ function InboxPageWithSearchParams() {
       {/* Trip Grid */}
       {isLoading && inboxTrips.length === 0 ? (
         <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'>
-          {[1, 2, 3, 4, 5, 6].map((i) => (
+          {['inbox-skeleton-1', 'inbox-skeleton-2', 'inbox-skeleton-3', 'inbox-skeleton-4', 'inbox-skeleton-5', 'inbox-skeleton-6'].map((skeletonKey) => (
             <div
-              key={i}
+              key={skeletonKey}
               className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 space-y-3'
             >
               <div className='h-4 bg-[#161b22] rounded w-1/2' />

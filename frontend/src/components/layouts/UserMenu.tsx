@@ -26,7 +26,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export function UserMenu() {
-  const router = useRouter();
+  const { push } = useRouter();
   const user = useAuthStore((s) => s.user);
   const agency = useAuthStore((s) => s.agency);
   const membership = useAuthStore((s) => s.membership);
@@ -51,7 +51,7 @@ export function UserMenu() {
       // ignore
     }
     logout();
-    router.push('/login');
+    push('/login');
   }
 
   const initials = getInitials(user?.name, user?.email);
@@ -108,7 +108,7 @@ export function UserMenu() {
           <button
             onClick={() => {
               setOpen(false);
-              router.push('/settings');
+              push('/settings');
             }}
             className='w-full flex items-center gap-2 px-3 py-1.5 text-[var(--ui-text-sm)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors'
             role='menuitem'

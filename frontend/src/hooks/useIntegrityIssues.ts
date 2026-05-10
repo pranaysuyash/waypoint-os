@@ -14,10 +14,11 @@ export function useIntegrityIssues() {
     queryFn: () => getIntegrityIssues(),
     staleTime: DEFAULT_STALE_TIME,
   });
+  const hasError = Boolean(query.error);
 
   return {
-    data: (query.data?.items ?? []) as IntegrityIssue[],
-    total: query.data?.total ?? 0,
+    data: (hasError ? [] : (query.data?.items ?? [])) as IntegrityIssue[],
+    total: hasError ? 0 : (query.data?.total ?? 0),
     isLoading: query.isLoading,
     error: query.error as Error | null,
     refetch: query.refetch,

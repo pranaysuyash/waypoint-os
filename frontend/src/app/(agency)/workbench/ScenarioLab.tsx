@@ -15,7 +15,7 @@ function formatScenarioLabel(item: ScenarioListItem) {
 }
 
 export default function ScenarioLab() {
-  const router = useRouter();
+  const { replace } = useRouter();
   const searchParams = useSearchParams();
   const {
     scenario_id,
@@ -66,7 +66,7 @@ export default function ScenarioLab() {
     params.set('stage', stage);
     params.set('mode', mode);
     params.set('scenario', scenarioId);
-    router.replace(`?${params.toString()}`, { scroll: false });
+    replace(`?${params.toString()}`, { scroll: false });
     setStage(stage as Parameters<typeof setStage>[0]);
     setOperatingMode(mode as Parameters<typeof setOperatingMode>[0]);
   };

@@ -5,15 +5,23 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth';
 import { api, ApiException } from '@/lib/api-client';
+import { DEFAULT_AUTH_REDIRECT, resolveSafeRedirect } from '@/lib/auth-redirect';
 
 function LoginPageInner() {
-  const router = useRouter();
+  const { push } = useRouter();
   const searchParams = useSearchParams();
+  const getSearchParam = searchParams.get.bind(searchParams);
   const hydrate = useAuthStore((s) => s.hydrate);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const redirectPath = resolveSafeRedirect(
+    getSearchParam('redirect') || getSearchParam('next'),
+    DEFAULT_AUTH_REDIRECT,
+  );
+  const redirectLabel = redirectPath.replace(/^\//, '') || 'overview';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,7 +45,7 @@ function LoginPageInner() {
 
       // Rehydrate auth state from the httpOnly cookies via /api/auth/me
       await hydrate();
-      router.push(searchParams.get('redirect') || searchParams.get('next') || '/overview');
+      push(redirectPath);
     } catch (err) {
       if (err instanceof ApiException) {
         setError(err.message || 'Invalid email or password');
@@ -52,7 +60,9 @@ function LoginPageInner() {
   return (
     <div className='auth-card'>
       <h1 className='auth-title'>Sign in</h1>
-      <p className='auth-subtitle'>Welcome back to your workspace</p>
+      <p className='auth-subtitle'>
+        Welcome back. Continue to <span className='auth-subtle-strong'>{redirectLabel}</span>.
+      </p>
 
       <form onSubmit={handleSubmit}>
         {error && <div className='auth-error'>{error}</div>}
@@ -72,26 +82,37 @@ function LoginPageInner() {
 
         <div className='auth-field'>
           <label htmlFor='password'>Password</label>
-          <input
-            id='password'
-            type='password'
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder='Enter your password'
-            required
-            autoComplete='current-password'
-          />
-        </div>
-
-        <div className='auth-footer' style={{ marginBottom: '1rem', textAlign: 'right' }}>
-          <Link href='/forgot-password' style={{ fontSize: '0.875rem' }}>
-            Forgot password?
-          </Link>
+          <div className='auth-password-wrap'>
+            <input
+              id='password'
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder='Enter your password'
+              required
+              autoComplete='current-password'
+            />
+            <button
+              type='button'
+              className='auth-password-toggle'
+              onClick={() => setShowPassword((prev) => !prev)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-pressed={showPassword}
+            >
+              {showPassword ? 'Hide' : 'Show'}
+            </button>
+          </div>
         </div>
 
         <button className='auth-button' type='submit' disabled={loading}>
           {loading ? 'Signing in…' : 'Sign in'}
         </button>
+
+        <div className='auth-inline-links'>
+          <Link href='/reset-password'>Reset password</Link>
+          <span aria-hidden='true'>·</span>
+          <Link href='/forgot-password'>Forgot password?</Link>
+        </div>
       </form>
 
       <div className='auth-footer'>

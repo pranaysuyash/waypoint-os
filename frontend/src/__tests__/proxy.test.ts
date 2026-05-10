@@ -27,13 +27,11 @@ function redirectLocation(response: Response): string | null {
 }
 
 describe("proxy.ts page guard", () => {
-  it("redirects unauthenticated protected route to /login with pathname + query preserved", async () => {
+  it("allows unauthenticated protected route shell for in-app auth modal", async () => {
     const req = mockRequest("/trips/123", {}, "?tab=reviews");
     const res = await proxy(req);
-    expect(res.status).toBe(307);
-    const loc = redirectLocation(res)!;
-    expect(loc).toContain("/login");
-    expect(loc).toContain("redirect=%2Ftrips%2F123%3Ftab%3Dreviews");
+    expect(res.status).toBe(200);
+    expect(redirectLocation(res)).toBeNull();
   });
 
   it("passes through unauthenticated /api/* requests", async () => {

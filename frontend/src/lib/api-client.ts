@@ -49,6 +49,17 @@ export interface RequestOptions extends RequestInit {
 const DEFAULT_TIMEOUT = 30000; // 30 seconds
 const DEFAULT_RETRY = 0;
 const DEFAULT_RETRY_DELAY = 1000;
+const AUTH_UNAUTHORIZED_EVENT = "waypoint:auth-unauthorized";
+let lastUnauthorizedEventAt = 0;
+
+function notifyUnauthorized(): void {
+  if (typeof window === "undefined") return;
+  const now = Date.now();
+  // Prevent event storms when several protected queries fail at once.
+  if (now - lastUnauthorizedEventAt < 1500) return;
+  lastUnauthorizedEventAt = now;
+  window.dispatchEvent(new CustomEvent(AUTH_UNAUTHORIZED_EVENT));
+}
 
 // ============================================================================
 // AUTH - cookie-based (httpOnly), no localStorage token needed
@@ -115,6 +126,9 @@ class ApiClient {
 
         // Handle non-OK responses
         if (!response.ok) {
+          if (response.status === 401) {
+            notifyUnauthorized();
+          }
           let errorData: ApiError = { message: response.statusText };
 
           try {
@@ -238,6 +252,8 @@ export const api = new ApiClient({
   retry: 2,
   retryDelay: DEFAULT_RETRY_DELAY,
 });
+
+export { AUTH_UNAUTHORIZED_EVENT };
 
 // ============================================================================
 // TRIPS API
@@ -458,6 +474,8 @@ export interface AgencySettingsResponse {
   agency_id: string;
   profile: {
     agency_name: string;
+    sub_brand: string;
+    plan_label: string;
     contact_email: string;
     contact_phone: string;
     logo_url: string;
@@ -491,6 +509,8 @@ export interface AgencyAutonomyResponse {
 
 export interface UpdateAgencyOperationalRequest {
   agency_name?: string;
+  sub_brand?: string;
+  plan_label?: string;
   contact_email?: string;
   contact_phone?: string;
   logo_url?: string;

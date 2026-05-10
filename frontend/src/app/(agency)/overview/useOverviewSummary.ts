@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { useTrips } from '@/hooks/useTrips';
 import { useInboxTrips, useReviews } from '@/hooks/useGovernance';
-import { useUnifiedState } from '@/hooks/useUnifiedState';
 import { useIntegrityIssues } from '@/hooks/useIntegrityIssues';
 
 export type OverviewStateKey = 'green' | 'amber' | 'red' | 'blue';
@@ -58,16 +57,11 @@ function opsHealthSummary(
   };
 }
 
-const PLANNING_PIPELINE_STAGES = new Set(['assigned', 'in_progress']);
-
 export function useOverviewSummary() {
   const workspace = useTrips({ view: 'workspace', limit: 5 });
   const inbox = useInboxTrips(undefined, 1, 1);
   const pendingReviews = useReviews({ status: 'pending' });
   const integrityIssues = useIntegrityIssues();
-  const { state: unifiedState, loading: unifiedLoading, error: unifiedErrorMessage } = useUnifiedState();
-
-  const unifiedError = unifiedErrorMessage ? new Error(unifiedErrorMessage) : null;
   const orphanCount = integrityIssues.total;
   const pendingApprovalCount = pendingReviews.total;
   const opsHealth = opsHealthSummary(
@@ -180,20 +174,16 @@ export function useOverviewSummary() {
   );
 
   const pipeline = useMemo(() => {
-    if (!unifiedState) return null;
-    return Object.entries(unifiedState.stages)
-      .filter(entry => PLANNING_PIPELINE_STAGES.has(entry[0]))
-      .map(entry => {
-        const [label, count] = entry;
-        return {
-          label: label.charAt(0).toUpperCase() + label.slice(1).replace('_', ' '),
-          count,
-        };
-      });
-  }, [unifiedState]);
+    return [
+      {
+        label: 'in_progress',
+        count: workspace.total,
+      },
+    ];
+  }, [workspace.total]);
 
   const headerSubtitle = useMemo(() => {
-    if (workspace.isLoading && inbox.isLoading && pendingReviews.isLoading && unifiedLoading) {
+    if (workspace.isLoading && inbox.isLoading && pendingReviews.isLoading) {
       return 'Loading…';
     }
 
@@ -203,7 +193,6 @@ export function useOverviewSummary() {
     inbox.total,
     pendingApprovalCount,
     pendingReviews.isLoading,
-    unifiedLoading,
     workspace.isLoading,
     workspace.total,
   ]);
@@ -213,8 +202,8 @@ export function useOverviewSummary() {
     metrics,
     navItems,
     pipeline,
-    pipelineLoading: unifiedLoading,
-    pipelineError: unifiedError,
+    pipelineLoading: workspace.isLoading,
+    pipelineError: workspace.error,
     recentTrips: workspace.data,
     recentTripsLoading: workspace.isLoading,
     recentTripsError: workspace.error,

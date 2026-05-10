@@ -164,7 +164,7 @@ export function EditableField({
         {displayValue || value}
         <button
           onClick={() => onStartEdit(field, value)}
-          className='ml-1 opacity-0 group-hover:opacity-100 transition-opacity'
+          className='ml-1 opacity-[0.3] group-hover:opacity-100 transition-opacity'
           title={`Edit ${label}`}
           aria-label={`Edit ${label}`}
         >
@@ -257,7 +257,7 @@ export function BudgetField({
         {displayBudget}
         <button
           onClick={onStartEdit}
-          className='ml-1 opacity-0 group-hover:opacity-100 transition-opacity'
+          className='ml-1 opacity-[0.3] group-hover:opacity-100 transition-opacity'
           title='Edit Budget'
           aria-label='Edit budget'
         >

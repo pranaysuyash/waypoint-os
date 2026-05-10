@@ -17,11 +17,7 @@ export async function GET(request: NextRequest) {
 
     // Build a clean query string, filtering out frontend-only params
     const query = Array.from(searchParams.entries())
-      .filter(entry => entry[0] !== "view")
-      .map(entry => {
-        const [key, val] = entry;
-        return `${encodeURIComponent(key)}=${encodeURIComponent(val)}`;
-      })
+      .flatMap(entry => entry[0] !== "view" ? [`${encodeURIComponent(entry[0])}=${encodeURIComponent(entry[1])}`] : [])
       .join("&");
     const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/trips${query ? `?${query}` : ""}`;
 

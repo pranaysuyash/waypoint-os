@@ -1,7 +1,25 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import HomePage from '@/app/page';
 import ItineraryCheckerPage from '@/app/(traveler)/itinerary-checker/page';
+
+// Mock gsap — animations are irrelevant in JSDOM and cause timeouts
+vi.mock('gsap', () => ({
+  default: {
+    context: (fn: () => void) => { fn(); return { revert: () => {} }; },
+    to: () => {},
+    fromTo: () => {},
+    registerPlugin: () => {},
+    set: () => {},
+    timeline: () => ({ to: () => {}, fromTo: () => {}, kill: () => {} }),
+    utils: { toArray: () => [] },
+  },
+}));
+
+vi.mock('gsap/ScrollTrigger', () => ({
+  ScrollTrigger: { getAll: () => [] },
+}));
 
 vi.mock('@/lib/api-client', () => {
   const api = {
@@ -198,20 +216,17 @@ describe('public marketing pages', () => {
   });
 
   it('accepts a text upload and runs the scoring flow', async () => {
-    const { container } = render(<ItineraryCheckerPage />);
+    render(<ItineraryCheckerPage />);
 
-    const fileInput = container.querySelector('input[type="file"]');
-    expect(fileInput).toBeTruthy();
+    const fileInput = screen.getByLabelText('Upload itinerary file');
 
     const file = new File(['Hong Kong in August for 2 elders and 1 child.'], 'trip.txt', {
       type: 'text/plain',
     });
 
-    fireEvent.change(fileInput as HTMLInputElement, {
-      target: { files: [file] },
-    });
+    await userEvent.upload(fileInput, file);
 
-    expect(await screen.findByText(/Live review/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Live review/i, {}, { timeout: 10_000 })).toBeInTheDocument();
     expect(screen.getByText(/PROCEED_TRAVELER_SAFE/i)).toBeInTheDocument();
     expect(screen.getByText(/Current weather:/i)).toBeInTheDocument();
   });

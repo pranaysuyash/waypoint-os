@@ -999,7 +999,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
                       )}
                     </div>
                     <div data-testid={`ops-extraction-fields-${doc.id}`} className="space-y-1">
-                      {extractions[doc.id].fields.filter(f => f.present).map((f) => (
+                      {extractions[doc.id].fields.flatMap(f => f.present ? [f] : []).map((f) => (
                         <div key={f.field_name} className="flex items-center gap-2 text-xs">
                           {extractions[doc.id].status === 'pending_review' && (
                             <input

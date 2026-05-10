@@ -142,13 +142,14 @@ export function findFuzzyMatches(
 
   const inputNorm = normalizeValue(input);
 
-  const matches = options
-    .map(option => ({
-      option,
-      score: calculateSimilarity(inputNorm, option.value),
-    }))
-    .filter(match => match.score >= threshold)
-    .sort((a, b) => b.score - a.score);
+  const matches: FuzzyMatch[] = [];
+  for (const option of options) {
+    const score = calculateSimilarity(inputNorm, option.value);
+    if (score >= threshold) {
+      matches.push({ option, score });
+    }
+  }
+  matches.sort((a, b) => b.score - a.score);
 
   return matches;
 }

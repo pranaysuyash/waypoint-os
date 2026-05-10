@@ -335,6 +335,8 @@ class ExportResponse(BaseModel):
 
 class UpdateOperationalSettings(BaseModel):
     agency_name: Optional[str] = None
+    sub_brand: Optional[str] = None
+    plan_label: Optional[str] = None
     contact_email: Optional[str] = None
     contact_phone: Optional[str] = None
     logo_url: Optional[str] = None

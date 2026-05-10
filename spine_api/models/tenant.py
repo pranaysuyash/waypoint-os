@@ -515,15 +515,61 @@ CONFIRMATION_EVENT_TYPES = (
     "confirmation_verified", "confirmation_voided",
 )
 
+DOCUMENT_EVENT_TYPES = (
+    "document_uploaded",
+    "document_accepted",
+    "document_rejected",
+    "document_deleted",
+)
+
+EXTRACTION_EVENT_TYPES = (
+    "extraction_run_started",
+    "extraction_run_completed",
+    "extraction_run_failed",
+    "extraction_applied",
+    "extraction_rejected",
+    "extraction_attempt_completed",
+    "extraction_attempt_failed",
+)
+
+ALLOWED_SUBJECT_TYPES = (
+    "booking_task",
+    "booking_confirmation",
+    "booking_document",
+    "document_extraction",
+    "document_extraction_attempt",
+)
+
+ALLOWED_EVENT_SOURCES = (
+    "agent_action",
+    "system_generation",
+    "reconciliation",
+    "customer_submission",
+)
+
 ALLOWED_EVENT_METADATA_KEYS = frozenset({
+    # Phase 5B
     "task_type", "confirmation_type", "document_type",
     "provider", "model", "blocker_code", "evidence_ref_count",
+    # Phase 5C — document metadata
+    "size_bytes", "mime_type", "uploaded_by_type", "scan_status",
+    "review_notes_present", "storage_delete_status",
+    # Phase 5C — extraction metadata
+    "run_count", "attempt_count", "page_count",
+    "overall_confidence", "field_count",
+    "latency_ms", "cost_estimate_usd",
+    "error_code",
+    # Phase 5C — attempt metadata
+    "run_number", "attempt_number", "fallback_rank",
+    "fields_applied_count", "allow_overwrite",
 })
 
 FORBIDDEN_METADATA_PATTERNS = frozenset({
     "supplier_name", "confirmation_number", "notes", "traveler_name",
-    "dob", "passport_number", "filename", "storage_key", "signed_url",
-    "extracted_fields", "blocker_refs",
+    "dob", "passport_number", "filename", "filename_hash", "sha256",
+    "storage_key", "signed_url",
+    "extracted_fields", "blocker_refs", "error_summary",
+    "confidence_scores", "raw_error",
 })
 
 

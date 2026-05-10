@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LiveRegion } from '@/lib/accessibility';
+import { toast } from '@/lib/toast-store';
 import { useUnifiedState } from '@/hooks/useUnifiedState';
 import { useAgencySettings } from '@/hooks/useAgencySettings';
 import { NAV_SECTIONS } from '@/lib/nav-modules';
@@ -73,10 +74,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const shellTripId = parseTripIdFromPathname(pathname);
   const { data: shellTrip, isLoading: isShellTripLoading } = useTrip(shellTripId);
-  const { versionLabel, detailsLabel } = useRuntimeVersion();
+  const { detailsLabel } = useRuntimeVersion();
   const { isConsistent } = useUnifiedState();
   const { data: agencySettings } = useAgencySettings();
-  const brandName = agencySettings?.profile?.agency_name || 'Waypoint';
+  const productName = 'Waypoint OS';
+  const agencyName = agencySettings?.profile?.agency_name || 'Agency Workspace';
+  const brandDescriptor = [agencySettings?.profile?.sub_brand, agencySettings?.profile?.plan_label]
+    .filter((v): v is string => Boolean(v && v.trim()))
+    .join(' · ');
   const isTripIntakeRoute = /^\/trips\/[^/]+\/intake$/.test(pathname);
   const isLeadReviewRoute =
     (pathname.startsWith('/trips/') &&
@@ -110,11 +115,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
           <div className='hidden md:block overflow-hidden'>
             <div className='text-sm font-semibold leading-tight tracking-tight truncate'>
-              {brandName}
+              {productName}
             </div>
-            <div className='text-xs font-mono' style={{ color: 'var(--text-muted)' }}>
-              {versionLabel}
+            <div className='text-xs font-mono truncate' style={{ color: 'var(--text-muted)' }}>
+              {agencyName}
             </div>
+            {brandDescriptor ? (
+              <div className='text-[10px] font-mono truncate' style={{ color: 'var(--text-placeholder)' }}>
+                {brandDescriptor}
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -130,12 +140,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
               borderColor: 'var(--border-default)',
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--accent-blue)';
-              (e.currentTarget as HTMLAnchorElement).style.color = 'var(--accent-blue)';
+              const el = e.currentTarget as HTMLAnchorElement;
+              el.style.borderColor = 'var(--accent-blue)'; el.style.color = 'var(--accent-blue)';
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--border-default)';
-              (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-primary)';
+              const el = e.currentTarget as HTMLAnchorElement;
+              el.style.borderColor = 'var(--border-default)'; el.style.color = 'var(--text-primary)';
             }}
           >
             <Send className='size-3.5 shrink-0' aria-hidden='true' />
@@ -164,8 +174,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   if (!item.enabled) {
                     return (
                       <li key={item.href}>
-                        <div
-                          className='flex items-center justify-center md:justify-start gap-2.5 px-2.5 py-2 rounded-md opacity-40 cursor-not-allowed select-none'
+                        <button
+                          type="button"
+                          onClick={() => toast(`${item.label} is coming soon. We'll notify you when it's ready.`, 'info')}
+                          className='w-full flex items-center justify-center md:justify-start gap-2.5 px-2.5 py-2 rounded-md opacity-40 cursor-pointer select-none hover:opacity-60 transition-opacity'
                           title={`${item.description} - Coming soon`}
                           aria-disabled='true'
                           aria-label={`${item.label}, coming soon`}
@@ -177,7 +189,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                           <span className='hidden md:inline text-[10px] ml-auto' style={{ color: 'var(--text-placeholder)' }}>
                             Planned
                           </span>
-                        </div>
+                        </button>
                       </li>
                     );
                   }
@@ -264,7 +276,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         >
           <nav className='flex items-center gap-2 text-sm' aria-label='Breadcrumb navigation'>
             <Link href='/overview' className='transition-colors' style={{ color: 'var(--text-placeholder)' }}>
-              {brandName}
+              Waypoint OS
             </Link>
             {pathname !== '/overview' && (
               <>

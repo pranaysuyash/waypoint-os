@@ -35,10 +35,11 @@ export function useTrips(params?: {
     queryFn: () => getTrips({ state, limit, offset, view }),
     staleTime: DEFAULT_STALE_TIME,
   });
+  const hasError = Boolean(query.error);
 
   return {
-    data: query.data?.items ?? [],
-    total: query.data?.total ?? 0,
+    data: hasError ? [] : (query.data?.items ?? []),
+    total: hasError ? 0 : (query.data?.total ?? 0),
     isLoading: query.isLoading,
     error: query.error as Error | null,
     refetch: query.refetch,

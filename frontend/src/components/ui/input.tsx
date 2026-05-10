@@ -8,24 +8,22 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   inputSize?: "sm" | "md" | "lg";
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  ref?: React.Ref<HTMLInputElement>;
 }
 
-const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  (
-    {
-      className,
-      type = "text",
-      label,
-      error,
-      description,
-      inputSize = "md",
-      leftIcon,
-      rightIcon,
-      id,
-      ...props
-    },
-    ref
-  ) => {
+function Input({
+  className,
+  type = "text",
+  label,
+  error,
+  description,
+  inputSize = "md",
+  leftIcon,
+  rightIcon,
+  id,
+  ref,
+  ...props
+}: InputProps) {
     const fallbackId = React.useId();
     const inputId = id || fallbackId;
     const errorId = error ? `${inputId}-error` : undefined;
@@ -102,8 +100,6 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
       </div>
     );
-  }
-);
-Input.displayName = "Input";
+}
 
 export { Input };

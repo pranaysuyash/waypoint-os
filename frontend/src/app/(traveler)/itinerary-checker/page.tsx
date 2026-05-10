@@ -295,7 +295,7 @@ function UploadCard({
             fontSize: 12, fontWeight: activeTab === tab.key ? 600 : 400,
             background: activeTab === tab.key ? T.elevated : 'transparent',
             color: activeTab === tab.key ? T.t1 : T.t2,
-            fontFamily: T.fBody, transition: 'all 150ms',
+            fontFamily: T.fBody, transition: 'color 150ms, background 150ms',
           }}>
             {tab.label}
           </button>
@@ -332,7 +332,7 @@ function UploadCard({
               color: text.length >= 10 && !isBusy ? '#071018' : T.t3,
               border: 'none', cursor: text.length >= 10 && !isBusy ? 'pointer' : 'not-allowed',
               boxShadow: text.length >= 10 && !isBusy ? '0 8px 24px rgba(57,208,216,0.3)' : 'none',
-              transition: 'all 160ms',
+              transition: 'background 160ms, color 160ms, box-shadow 160ms',
             }}>
               {isBusy ? 'Scoring…' : 'Score My Itinerary'} <ArrowRight size={13} />
             </button>
@@ -344,12 +344,16 @@ function UploadCard({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileRef.current?.click()}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileRef.current?.click(); } }}
+          role="button"
+          tabIndex={0}
+          aria-label={activeTab === 'screenshot' ? 'Upload itinerary screenshot' : 'Upload itinerary document'}
           style={{
             borderRadius: 14,
             border: `2px dashed ${dragging ? T.cyan : T.b1}`,
             background: dragging ? 'rgba(57,208,216,0.04)' : T.surface,
             padding: '44px 24px', textAlign: 'center',
-            cursor: 'pointer', transition: 'all 200ms',
+            cursor: 'pointer', transition: 'border-color 200ms, background 200ms',
           }}
         >
           <div style={{
@@ -1115,8 +1119,8 @@ function UploadView({
                 borderTop: `2px solid ${t.color}`,
               }}>
                 <div style={{ display: 'flex', marginBottom: 14, gap: 2 }}>
-                    {'★★★★★'.split('').map((s, i) => (
-                      <span key={`star-${s}-${i}`} style={{ color: T.amber, fontSize: 13 }}>{s}</span>
+                    {['star-1', 'star-2', 'star-3', 'star-4', 'star-5'].map((starKey) => (
+                      <span key={starKey} style={{ color: T.amber, fontSize: 13 }}>★</span>
                     ))}
                 </div>
                 <p style={{ fontSize: 13.5, color: T.t1, lineHeight: 1.65, marginBottom: 18 }}>

@@ -51,20 +51,18 @@ export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   width?: string | number;
   height?: string | number;
   animation?: "pulse" | "wave" | "none";
+  ref?: React.Ref<HTMLDivElement>;
 }
 
-const Skeleton = React.forwardRef<HTMLDivElement, SkeletonProps>(
-  (
-    {
-      className,
-      variant = "rectangular",
-      width,
-      height,
-      animation = "pulse",
-      ...props
-    },
-    ref
-  ) => {
+function Skeleton({
+  className,
+  variant = "rectangular",
+  width,
+  height,
+  animation = "pulse",
+  ref,
+  ...props
+}: SkeletonProps) {
     const variantStyles = {
       text: "rounded max-w-full",
       circular: "rounded-full",
@@ -91,9 +89,7 @@ const Skeleton = React.forwardRef<HTMLDivElement, SkeletonProps>(
         {...props}
       />
     );
-  }
-);
-Skeleton.displayName = "Skeleton";
+}
 
 // ============================================================================
 // SKELETON VARIANTS

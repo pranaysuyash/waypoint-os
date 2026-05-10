@@ -591,7 +591,6 @@ export function transformSpineTripsResponseToInboxTrips(
   const items = getNestedValue(spineApiData, "items", []);
   return Array.isArray(items)
     ? items
-        .filter((item) => isInboxTrip(transformSpineTripToTrip(item, now)))
-        .map((item) => transformSpineTripToInboxTrip(item, now))
+        .flatMap((item) => isInboxTrip(transformSpineTripToTrip(item, now)) ? [transformSpineTripToInboxTrip(item, now)] : [])
     : [];
 }

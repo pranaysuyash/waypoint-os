@@ -43,20 +43,21 @@ interface IntakeTabProps {
 
 export default function IntakeTab({ trip }: IntakeTabProps) {
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const getSearchParam = searchParams.get.bind(searchParams);
+  const { replace } = useRouter();
   const { input_raw_note, input_owner_note, setInputRawNote, setInputOwnerNote } = useWorkbenchStore();
   const id1 = useId();
   const id2 = useId();
   const id3 = useId();
   const id4 = useId();
 
-  const stage = (searchParams.get('stage') as SpineStage) || 'discovery';
-  const operatingMode = (searchParams.get('mode') as OperatingMode) || 'normal_intake';
+  const stage = (getSearchParam('stage') as SpineStage) || 'discovery';
+  const operatingMode = (getSearchParam('mode') as OperatingMode) || 'normal_intake';
 
   const updateUrlParam = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set(key, value);
-    router.replace(`?${params.toString()}`, { scroll: false });
+    replace(`?${params.toString()}`, { scroll: false });
   };
 
   const origin = trip?.origin || '-';

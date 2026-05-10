@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ApiException } from "@/lib/api-client";
 import type {
   TripReview,
   ReviewFilters,
@@ -46,9 +47,27 @@ export function useWorkspace() {
     staleTime: DEFAULT_STALE_TIME,
   });
 
+  const error = query.error as Error | null;
+  const errorStatus = error instanceof ApiException ? error.status : null;
+  const workspaceState =
+    query.isLoading
+      ? "loading"
+      : query.data
+        ? "ready"
+        : errorStatus === 403
+          ? "forbidden"
+          : errorStatus === 401
+            ? "unauthenticated"
+            : error
+              ? "error"
+              : "ready";
+  const canViewWorkspaceInvites = workspaceState === "ready";
+  const canGenerateWorkspaceInvite = workspaceState === "ready";
+  const workspaceUnavailableTransient = workspaceState === "error";
+
   const generateCode = async (codeType: 'internal' | 'external' = 'internal') => {
     const newCode = await governanceApi.generateWorkspaceCode(codeType);
-    queryClient.setQueryData<WorkspaceInfo>(QK.workspace(), (prev) =>
+    queryClient.setQueryData<WorkspaceInfo | null>(QK.workspace(), (prev) =>
       prev ? { ...prev, workspace_code: newCode } : prev
     );
     return newCode;
@@ -57,7 +76,12 @@ export function useWorkspace() {
   return {
     data: query.data ?? null,
     isLoading: query.isLoading,
-    error: query.error as Error | null,
+    error,
+    errorStatus,
+    workspaceState,
+    canViewWorkspaceInvites,
+    canGenerateWorkspaceInvite,
+    workspaceUnavailableTransient,
     refetch: query.refetch,
     generateCode,
   };
@@ -70,6 +94,7 @@ export function useReviews(filters?: ReviewFilters) {
     queryFn: () => governanceApi.getReviews(filters),
     staleTime: DEFAULT_STALE_TIME,
   });
+  const hasError = Boolean(query.error);
 
   const submitAction = useMutation({
     mutationFn: (request: ReviewActionRequest) =>
@@ -84,8 +109,8 @@ export function useReviews(filters?: ReviewFilters) {
   });
 
   return {
-    data: query.data?.items ?? [],
-    total: query.data?.total ?? 0,
+    data: hasError ? [] : (query.data?.items ?? []),
+    total: hasError ? 0 : (query.data?.total ?? 0),
     isLoading: query.isLoading,
     error: query.error as Error | null,
     refetch: query.refetch,
@@ -171,6 +196,19 @@ export function useTeamMembers() {
   });
 
   const queryClient = useQueryClient();
+  const error = query.error as Error | null;
+  const errorStatus = error instanceof ApiException ? error.status : null;
+  const teamMembersState =
+    query.isLoading
+      ? "loading"
+      : errorStatus === 403
+        ? "forbidden"
+        : errorStatus === 401
+          ? "unauthenticated"
+          : error
+            ? "error"
+            : "ready";
+  const canViewTeamMembers = teamMembersState === "ready";
 
   const inviteMember = async (data: { email: string; name: string; role: string; capacity?: number }) => {
     const result = await governanceApi.inviteTeamMember(data);
@@ -193,7 +231,10 @@ export function useTeamMembers() {
   return {
     data: query.data ?? [],
     isLoading: query.isLoading,
-    error: query.error as Error | null,
+    error,
+    errorStatus,
+    teamMembersState,
+    canViewTeamMembers,
     refetch: query.refetch,
     inviteMember,
     updateMember,
@@ -224,6 +265,7 @@ export function useInboxTrips(
     queryFn: () => governanceApi.getInboxTrips(filters, page, limit, sortBy, sortDir, searchQuery),
     staleTime: DEFAULT_STALE_TIME,
   });
+  const hasError = Boolean(query.error);
 
   const queryClient = useQueryClient();
 
@@ -249,8 +291,8 @@ export function useInboxTrips(
   };
 
   return {
-    data: query.data?.items ?? [],
-    total: query.data?.total ?? 0,
+    data: hasError ? [] : (query.data?.items ?? []),
+    total: hasError ? 0 : (query.data?.total ?? 0),
     hasMore: query.data?.hasMore ?? false,
     filterCounts: query.data?.filterCounts ?? {},
     isLoading: query.isLoading,

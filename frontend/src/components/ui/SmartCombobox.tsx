@@ -265,52 +265,61 @@ export function SmartCombobox({
             </div>
           ) : (
             <>
-              {/* Predefined options */}
-              {filteredOptions.filter(opt => !opt.isCustom).length > 0 && (
-                <div className='p-1'>
-                  {filteredOptions.filter(opt => !opt.isCustom).map((option, idx) => (
-                    <button
-                      key={option.value}
-                      type='button'
-                      onClick={() => handleSelect(option)}
-                      className={`w-full text-left px-3 py-2 text-[var(--ui-text-sm)] rounded-md transition-colors ${
-                        highlightedIndex === idx
-                          ? 'bg-[var(--accent-blue)] text-[var(--text-on-accent)]'
-                          : option.value === value
-                          ? 'bg-[var(--accent-blue)]/20 text-[var(--accent-blue)]'
-                          : 'text-[var(--text-primary)] hover:bg-[#161b22]'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Custom options section */}
-              {filteredOptions.some(opt => opt.isCustom) && (
-                <div className='border-t border-[var(--border-default)]'>
-                  <div className='px-3 py-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)] uppercase tracking-wide'>
-                    Custom
-                  </div>
-                  <div className='p-1'>
-                    {filteredOptions.filter(opt => opt.isCustom).map((option) => (
-                      <button
-                        key={option.value}
-                        type='button'
-                        onClick={() => handleSelect(option)}
-                        className={`w-full text-left px-3 py-2 text-[var(--ui-text-sm)] rounded-md transition-colors ${
-                          option.value === value
-                            ? 'bg-[var(--accent-blue)]/20 text-[var(--accent-blue)]'
-                            : 'text-[var(--text-primary)] hover:bg-[#161b22]'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {(() => {
+                const predefined: typeof filteredOptions = [];
+                const custom: typeof filteredOptions = [];
+                for (const opt of filteredOptions) {
+                  if (opt.isCustom) custom.push(opt);
+                  else predefined.push(opt);
+                }
+                return (
+                  <>
+                    {predefined.length > 0 && (
+                      <div className='p-1'>
+                        {predefined.map((option, idx) => (
+                          <button
+                            key={option.value}
+                            type='button'
+                            onClick={() => handleSelect(option)}
+                            className={`w-full text-left px-3 py-2 text-[var(--ui-text-sm)] rounded-md transition-colors ${
+                              highlightedIndex === idx
+                                ? 'bg-[var(--accent-blue)] text-[var(--text-on-accent)]'
+                                : option.value === value
+                                ? 'bg-[var(--accent-blue)]/20 text-[var(--accent-blue)]'
+                                : 'text-[var(--text-primary)] hover:bg-[#161b22]'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {custom.length > 0 && (
+                      <div className='border-t border-[var(--border-default)]'>
+                        <div className='px-3 py-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)] uppercase tracking-wide'>
+                          Custom
+                        </div>
+                        <div className='p-1'>
+                          {custom.map((option) => (
+                            <button
+                              key={option.value}
+                              type='button'
+                              onClick={() => handleSelect(option)}
+                              className={`w-full text-left px-3 py-2 text-[var(--ui-text-sm)] rounded-md transition-colors ${
+                                option.value === value
+                                  ? 'bg-[var(--accent-blue)]/20 text-[var(--accent-blue)]'
+                                  : 'text-[var(--text-primary)] hover:bg-[#161b22]'
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               {/* Add new custom option */}
               {allowCustom && isCustomValue && inputValue && !duplicateOption && (

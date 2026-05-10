@@ -60,7 +60,7 @@ async def apply_rls(session: AsyncSession, agency_id: str) -> None:
     same implicit transaction that the subsequent query will use.
     """
     await session.execute(
-        text("SET LOCAL app.current_agency_id = :agency_id"),
+        text("SELECT set_config('app.current_agency_id', :agency_id, true)"),
         {"agency_id": agency_id},
     )
 

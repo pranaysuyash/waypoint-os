@@ -127,7 +127,7 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
 
       {/* Changes List */}
       <div className='space-y-2 max-h-96 overflow-y-auto'>
-        {changes.toSorted((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        {changes.toSorted((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))
           .map((change) => {
             const isExpanded = expandedChanges.has(change.id);
             const description = getChangeDescription(change);

@@ -18,6 +18,7 @@ import { useState, useCallback, useRef } from "react";
 import { api, ApiException } from "@/lib/api-client";
 import type { SpineRunRequest, RunStatusResponse } from "@/types/spine";
 
+const STATUS_TERMINAL = new Set(["completed", "failed", "blocked"]);
 const POLL_INTERVAL_MS = 2_000;
 const MAX_WAIT_MS = 180_000;
 
@@ -69,7 +70,7 @@ export function useSpineRun() {
 
         setState(status);
 
-          if (["completed", "failed", "blocked"].includes(status.state)) {
+          if (STATUS_TERMINAL.has(status.state)) {
             setIsLoading(false);
 
             if (status.state !== "completed") {

@@ -340,9 +340,9 @@ export default function WorkspacesPage() {
       {/* Loading skeleton */}
       {isLoading && workspaceTrips.length === 0 && (
         <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'>
-          {[1, 2, 3].map((i) => (
+          {['trips-skeleton-1', 'trips-skeleton-2', 'trips-skeleton-3'].map((skeletonKey) => (
             <div
-              key={i}
+              key={skeletonKey}
               className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-4 space-y-3'
             >
               <div className='h-4 bg-[#161b22] rounded w-1/2 animate-pulse' />
@@ -361,13 +361,13 @@ export default function WorkspacesPage() {
           {viewMode === 'card' ? (
             sortedTrips.length === 1 ? (
               <div className='grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4 items-start'>
-                <PlanningTripCard trip={sortedTrips[0]!} />
+                <PlanningTripCard trip={sortedTrips[0]!} variant='workspace' />
                 <SingleTripNextStepPanel trip={sortedTrips[0]!} />
               </div>
             ) : (
               <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'>
                 {sortedTrips.map((trip) => (
-                  <PlanningTripCard key={trip.id} trip={trip} />
+                  <PlanningTripCard key={trip.id} trip={trip} variant='workspace' />
                 ))}
               </div>
             )

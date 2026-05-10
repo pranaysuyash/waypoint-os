@@ -6,6 +6,7 @@ import { useParams, usePathname } from "next/navigation";
 import { AlertTriangle, ChevronLeft, Lock, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { ErrorBoundary, InlineError } from "@/components/error-boundary";
 import { InlineLoading } from "@/components/ui/loading";
+import { toast } from "@/lib/toast-store";
 import { useTrip } from "@/hooks/useTrips";
 import { ClientTime } from "@/hooks/useClientDate";
 import {
@@ -283,12 +284,14 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
 
                   if (!isAccessible) {
                     return (
-                      <div
+                      <button
                         key={tab.id}
+                        type="button"
+                        onClick={() => toast(gateReason ?? `Complete the current stage first to unlock ${tab.label}.`, 'info')}
                         aria-current={isActive ? "page" : undefined}
                         aria-disabled="true"
                         title={gateReason ?? undefined}
-                        className="px-4 py-2.5 whitespace-nowrap border-b-2"
+                        className="px-4 py-2.5 whitespace-nowrap border-b-2 cursor-pointer hover:opacity-80 transition-opacity text-left"
                         style={{
                           color: "var(--text-secondary)",
                           borderColor: isActive ? accent.color : `${accent.color}55`,
@@ -306,7 +309,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                             {lockedLabel}
                           </div>
                         )}
-                      </div>
+                      </button>
                     );
                   }
 

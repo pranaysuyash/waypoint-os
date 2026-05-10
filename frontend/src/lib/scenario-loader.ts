@@ -99,9 +99,10 @@ function extractDocScenarioDescription(content: string): string {
   if (situationMatch?.[1]) {
     const lines = situationMatch[1]
       .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .filter((line) => !line.startsWith("###"));
+      .flatMap((line) => {
+        const t = line.trim();
+        return t && !t.startsWith("###") ? [t] : [];
+      });
     if (lines.length > 0) {
       return lines.slice(0, 3).join(" ");
     }

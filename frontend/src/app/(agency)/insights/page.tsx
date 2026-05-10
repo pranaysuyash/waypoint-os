@@ -275,7 +275,7 @@ const BottleneckCard = memo(function BottleneckCard({ analysis }: { analysis: Bo
       
       <div className='space-y-2'>
         {analysis.primaryCauses.map((cause: any) => (
-          <div key={`cause-${cause.cause?.slice(0, 30) || Math.random()}`} className='flex items-center justify-between py-2 border-b border-[#30363d]/50 last:border-0'>
+          <div key={`cause-${cause.cause ?? 'unknown'}-${cause.affectedTrips ?? 0}-${cause.percentage ?? 0}`} className='flex items-center justify-between py-2 border-b border-[#30363d]/50 last:border-0'>
             <div>
               <p className='text-ui-sm text-[#e6edf3]'>{cause.cause}</p>
               <p className='text-ui-xs text-[#8b949e]'>Affecting {cause.affectedTrips} trips · {cause.percentage}% of delays</p>
@@ -302,7 +302,7 @@ export default function OwnerInsightsPage() {
     agentName: string;
     metric: DrillDownMetric | null;
   } | null>(null);
-  const router = useRouter();
+  const { push } = useRouter();
   
   const { data: summary, isLoading: isSummaryLoading, error: summaryError } = useInsightsSummary(timeRange);
   const { data: pipelineMetrics, isLoading: isPipelineLoading, error: pipelineError } = usePipelineMetrics(timeRange);
@@ -326,7 +326,7 @@ export default function OwnerInsightsPage() {
   };
 
   const handleTripSelect = (tripId: string) => {
-    router.push(`/trips/${tripId}`);
+    push(`/trips/${tripId}`);
   };
 
   const maxStageTime = useMemo(() => 

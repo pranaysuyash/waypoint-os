@@ -32,20 +32,20 @@ class TestMetadataValidation:
         })
 
     def test_forbidden_key_supplier_name(self):
-        with pytest.raises(ValueError, match="Forbidden metadata key"):
+        with pytest.raises(ValueError):
             _validate_metadata({"supplier_name": "Emirates"})
 
     def test_forbidden_key_confirmation_number(self):
-        with pytest.raises(ValueError, match="Forbidden metadata key"):
+        with pytest.raises(ValueError):
             _validate_metadata({"confirmation_number": "ABC123"})
 
     def test_forbidden_key_notes(self):
-        with pytest.raises(ValueError, match="Forbidden metadata key"):
+        with pytest.raises(ValueError):
             _validate_metadata({"notes": "some text"})
 
     def test_forbidden_key_substring_match(self):
         """Keys containing forbidden patterns are also rejected."""
-        with pytest.raises(ValueError, match="Forbidden metadata key"):
+        with pytest.raises(ValueError):
             _validate_metadata({"traveler_name_extra": "value"})
 
     def test_none_metadata_passes(self):
@@ -53,6 +53,23 @@ class TestMetadataValidation:
 
     def test_empty_metadata_passes(self):
         _validate_metadata({})
+
+    def test_unknown_key_rejected_by_allowlist(self):
+        with pytest.raises(ValueError, match="not in allowlist"):
+            _validate_metadata({"customer_email": "test@example.com"})
+
+    def test_arbitrary_key_rejected_by_allowlist(self):
+        with pytest.raises(ValueError, match="not in allowlist"):
+            _validate_metadata({"random_field": "value"})
+
+    def test_fields_applied_rejected_fields_applied_count_accepted(self):
+        with pytest.raises(ValueError):
+            _validate_metadata({"fields_applied": ["full_name", "passport_number"]})
+        _validate_metadata({"fields_applied_count": 3})
+
+    def test_error_summary_rejected_by_allowlist(self):
+        with pytest.raises(ValueError):
+            _validate_metadata({"error_summary": "something went wrong"})
 
 
 # ── Constants ─────────────────────────────────────────────────────────────────

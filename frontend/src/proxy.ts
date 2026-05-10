@@ -7,12 +7,12 @@ import type { NextRequest } from 'next/server';
  * Page-level navigation guard for protected frontend routes.
  *
  * This runs as an edge middleware on every page request (via Next.js
- * proxy.ts convention). It checks for auth cookies before rendering
- * so unauthenticated users are redirected server-side.
+ * proxy.ts convention). It checks for auth cookies before rendering.
  *
  * NOTE: JWT validation still happens at FastAPI AuthMiddleware.
- * This is just a server-side redirect to avoid the flash-of-unauthenticated-content
- * that happens with client-side-only guards like AuthProvider.
+ * Authenticated users are redirected away from auth pages server-side.
+ * Unauthenticated users are allowed through so AuthProvider can present
+ * an in-app auth modal on protected page shells.
  */
 
 const PUBLIC_PAGES = new Set([
@@ -138,9 +138,10 @@ export default async function proxy(request: NextRequest) {
   }
 
   if (!authed) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', `${pathname}${search}`);
-    return NextResponse.redirect(loginUrl);
+    // Allow protected page shells to render and let client AuthProvider
+    // open an in-app login modal. API/data boundaries remain protected by
+    // FastAPI auth middleware and route handlers.
+    return NextResponse.next();
   }
 
   return NextResponse.next();

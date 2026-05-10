@@ -77,13 +77,11 @@ export function EmptyStateOnboarding() {
                 style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}
                 onMouseEnter={(e) => {
                   const el = e.currentTarget as HTMLAnchorElement;
-                  el.style.borderColor = 'var(--border-hover)';
-                  el.style.background = 'var(--bg-elevated)';
+                  el.style.borderColor = 'var(--border-hover)'; el.style.background = 'var(--bg-elevated)';
                 }}
                 onMouseLeave={(e) => {
                   const el = e.currentTarget as HTMLAnchorElement;
-                  el.style.borderColor = 'var(--border-default)';
-                  el.style.background = 'var(--bg-surface)';
+                  el.style.borderColor = 'var(--border-default)'; el.style.background = 'var(--bg-surface)';
                 }}
               >
                 <div

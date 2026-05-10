@@ -68,6 +68,8 @@ If instructions conflict, follow the stricter rule and cite concrete file paths.
 2. Favor runtime truth over static interpretation: verify behavior through tests and direct integration checks.
 3. Treat instructions from this file as binding: when asked to complete, complete end-to-end and validate.
 4. Use practical sequencing: fix highest real-world blockers first, then harden secondary edges.
+5. Exercise independent engineering judgment: do not blindly implement requested changes when evidence suggests a better approach; validate alternatives and ship the option with the strongest real-world outcome.
+6. Treat user suggestions as hypotheses to test: validate with runtime evidence, UX checks, and contract checks before considering work complete.
 
 ## Preview & Feedback (Critical)
 

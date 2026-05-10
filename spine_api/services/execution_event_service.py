@@ -43,10 +43,17 @@ class TimelineResult:
 
 
 def _validate_metadata(metadata: Optional[dict]) -> None:
-    """Raise ValueError if metadata contains forbidden keys."""
+    """Raise ValueError if metadata contains unknown or forbidden keys.
+
+    Enforces both allowlist (keys must be in ALLOWED_EVENT_METADATA_KEYS)
+    and denylist (keys must not match FORBIDDEN_METADATA_PATTERNS).
+    """
     if not metadata:
         return
     for key in metadata:
+        # Check allowlist — reject unknown keys
+        if key not in ALLOWED_EVENT_METADATA_KEYS:
+            raise ValueError(f"Unknown metadata key not in allowlist: {key}")
         # Check exact forbidden matches
         if key in FORBIDDEN_METADATA_PATTERNS:
             raise ValueError(f"Forbidden metadata key: {key}")
@@ -147,3 +154,49 @@ async def get_timeline(
         events=[_event_to_timeline(e) for e in rows],
         summary=summary,
     )
+
+
+async def emit_event_best_effort(
+    db: AsyncSession,
+    *,
+    agency_id: str,
+    trip_id: str,
+    subject_type: str,
+    subject_id: str,
+    event_type: str,
+    event_category: str,
+    status_from: Optional[str],
+    status_to: str,
+    actor_type: str = "system",
+    actor_id: Optional[str] = None,
+    source: str = "agent_action",
+    event_metadata: Optional[dict] = None,
+) -> None:
+    """Emit event with best-effort semantics — failure is logged, never rolls back.
+
+    Uses a nested transaction (savepoint) so that a failed event insert is
+    isolated from the caller's session state. The primary document/extraction
+    operation must have already committed before this is called.
+    """
+    try:
+        async with db.begin_nested():
+            await emit_event(
+                db,
+                agency_id=agency_id,
+                trip_id=trip_id,
+                subject_type=subject_type,
+                subject_id=subject_id,
+                event_type=event_type,
+                event_category=event_category,
+                status_from=status_from,
+                status_to=status_to,
+                actor_type=actor_type,
+                actor_id=actor_id,
+                source=source,
+                event_metadata=event_metadata,
+            )
+    except Exception:
+        logger.exception(
+            "Failed to emit execution event: type=%s subject=%s/%s",
+            event_type, subject_type, subject_id,
+        )

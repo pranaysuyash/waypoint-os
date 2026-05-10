@@ -186,12 +186,12 @@ const StatCard = memo(function StatCard({
         className={cardClassName}
         style={cardStyles}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--border-hover)';
-          (e.currentTarget as HTMLAnchorElement).style.background = 'var(--bg-elevated)';
+          const el = e.currentTarget as HTMLAnchorElement;
+          el.style.borderColor = 'var(--border-hover)'; el.style.background = 'var(--bg-elevated)';
         }}
         onMouseLeave={(e) => {
-          (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--border-default)';
-          (e.currentTarget as HTMLAnchorElement).style.background = 'var(--bg-surface)';
+          const el = e.currentTarget as HTMLAnchorElement;
+          el.style.borderColor = 'var(--border-default)'; el.style.background = 'var(--bg-surface)';
         }}
       >
         {cardContent}
@@ -204,12 +204,12 @@ const StatCard = memo(function StatCard({
       className={cardClassName}
       style={cardStyles}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-hover)';
-        (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-elevated)';
+        const el = e.currentTarget as HTMLDivElement;
+        el.style.borderColor = 'var(--border-hover)'; el.style.background = 'var(--bg-elevated)';
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-default)';
-        (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-surface)';
+        const el = e.currentTarget as HTMLDivElement;
+        el.style.borderColor = 'var(--border-default)'; el.style.background = 'var(--bg-surface)';
       }}
     >
       {cardContent}
@@ -398,8 +398,8 @@ function RecentTrips({
   if (isLoading && trips.length === 0) {
     return (
       <div className='p-4 space-y-2'>
-        {[1, 2, 3].map((i) => (
-          <div key={i} className='h-14 rounded-lg animate-pulse' style={{ background: 'var(--bg-elevated)' }} />
+        {['overview-skeleton-1', 'overview-skeleton-2', 'overview-skeleton-3'].map((skeletonKey) => (
+          <div key={skeletonKey} className='h-14 rounded-lg animate-pulse' style={{ background: 'var(--bg-elevated)' }} />
         ))}
       </div>
     );
@@ -438,12 +438,12 @@ function RecentTrips({
             borderColor: 'var(--border-default)',
           }}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--border-hover)';
-            (e.currentTarget as HTMLAnchorElement).style.background = 'var(--bg-elevated)';
+            const el = e.currentTarget as HTMLAnchorElement;
+            el.style.borderColor = 'var(--border-hover)'; el.style.background = 'var(--bg-elevated)';
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--border-default)';
-            (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
+            const el = e.currentTarget as HTMLAnchorElement;
+            el.style.borderColor = 'var(--border-default)'; el.style.background = 'transparent';
           }}
         >
           <Send className='size-4' style={{ color: 'var(--accent-blue)' }} />
@@ -458,7 +458,7 @@ function RecentTrips({
     <div className='p-4'>
       <div className='grid grid-cols-1 gap-4'>
         {trips.map((trip) => (
-          <PlanningTripCard key={trip.id} trip={trip} />
+          <PlanningTripCard key={trip.id} trip={trip} variant='overview' />
         ))}
       </div>
     </div>
@@ -607,12 +607,12 @@ export default function OverviewPage() {
                       className='flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group'
                       style={{ border: '1px solid transparent' }}
                       onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLAnchorElement).style.background = 'var(--bg-elevated)';
-                        (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--border-default)';
+                        const el = e.currentTarget as HTMLAnchorElement;
+                        el.style.background = 'var(--bg-elevated)'; el.style.borderColor = 'var(--border-default)';
                       }}
                       onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
-                        (e.currentTarget as HTMLAnchorElement).style.borderColor = 'transparent';
+                        const el = e.currentTarget as HTMLAnchorElement;
+                        el.style.background = 'transparent'; el.style.borderColor = 'transparent';
                       }}
                     >
                       <div

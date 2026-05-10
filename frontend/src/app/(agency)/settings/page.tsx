@@ -34,11 +34,13 @@ function isValidTab(tab: string | null): tab is TabId {
 
 function SettingsPageInner() {
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const { push } = useRouter();
   const pathname = usePathname();
 
-  const rawTab = searchParams.get('tab');
-  const activeTab: TabId = isValidTab(rawTab) ? rawTab : 'profile';
+  const getSearchParam = searchParams.get.bind(searchParams);
+  const rawTab = getSearchParam('tab');
+  const activeTabResult = rawTab;
+  const activeTab: TabId = isValidTab(activeTabResult) ? activeTabResult : 'profile';
 
   const { data: settings, isLoading, error, refetch } = useAgencySettings();
   const { mutate: updateOperational, isSaving: isSavingOperational, error: opError } = useUpdateOperationalSettings();
@@ -59,9 +61,9 @@ function SettingsPageInner() {
     (tabId: TabId) => {
       const params = new URLSearchParams(searchParams.toString());
       params.set('tab', tabId);
-      router.push(`${pathname}?${params.toString()}`);
+      push(`${pathname}?${params.toString()}`);
     },
-    [searchParams, router, pathname]
+    [searchParams, push, pathname]
   );
 
   const updateDraft = useCallback(
@@ -86,6 +88,8 @@ function SettingsPageInner() {
     // Detect profile/operational changes
     const opPayload: UpdateOperationalPayload = {};
     if (draft.profile.agency_name !== settings.profile.agency_name) opPayload.agency_name = draft.profile.agency_name;
+    if (draft.profile.sub_brand !== settings.profile.sub_brand) opPayload.sub_brand = draft.profile.sub_brand;
+    if (draft.profile.plan_label !== settings.profile.plan_label) opPayload.plan_label = draft.profile.plan_label;
     if (draft.profile.contact_email !== settings.profile.contact_email) opPayload.contact_email = draft.profile.contact_email;
     if (draft.profile.contact_phone !== settings.profile.contact_phone) opPayload.contact_phone = draft.profile.contact_phone;
     if (draft.profile.logo_url !== settings.profile.logo_url) opPayload.logo_url = draft.profile.logo_url;

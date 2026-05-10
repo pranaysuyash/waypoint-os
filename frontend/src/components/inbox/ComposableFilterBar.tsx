@@ -374,7 +374,7 @@ export const ComposableFilterBar = memo(function ComposableFilterBar({
         </button>
 
         {/* Filter dropdowns - skip minValue/maxValue for now (input-based) */}
-        {FILTER_GROUPS.filter((g) => g.multi).map((group) => {
+        {FILTER_GROUPS.flatMap((g) => g.multi ? [g] : []).map((group) => {
           const selected = filters[group.key] as readonly string[] | undefined;
           const count = selected?.length ?? 0;
           return (

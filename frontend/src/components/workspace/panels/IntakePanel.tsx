@@ -130,10 +130,13 @@ function readTaggedNoteValue(note: string | undefined, prefix: string): string |
 
 function upsertTaggedNoteValue(note: string | undefined, prefix: string, nextValue: string): string {
   const cleaned = nextValue.trim();
-  const lines = (note ?? '')
-    .split('\n')
-    .map((entry) => entry.trimEnd())
-    .filter((entry) => entry.trim().length > 0 && !entry.toLowerCase().startsWith(`${prefix.toLowerCase()}:`));
+  const lines: string[] = [];
+  for (const entry of (note ?? '').split('\n')) {
+    const trimmed = entry.trimEnd();
+    if (trimmed.trim().length > 0 && !trimmed.toLowerCase().startsWith(`${prefix.toLowerCase()}:`)) {
+      lines.push(trimmed);
+    }
+  }
 
   if (!cleaned) {
     return lines.join('\n');
@@ -190,9 +193,10 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const deferredRawNote = useDeferredValue(input_raw_note);
   const deferredOwnerNote = useDeferredValue(input_owner_note);
 
-  const router = useRouter();
+  const { push } = useRouter();
   const searchParams = useSearchParams();
-  const fieldParam = searchParams?.get('field');
+  const getSearchParam = searchParams.get.bind(searchParams);
+  const fieldParam = getSearchParam('field');
 
   // Auto-open editor when deep-linked from Trip Details
   useEffect(() => {
@@ -201,12 +205,12 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
     const inlineEditFields = ['type', 'dateWindow', 'party'];
     if (planningEditFields.includes(fieldParam as PlanningDetailId)) {
       openPlanningEditor(fieldParam as PlanningDetailId);
-      router.replace(`/trips/${tripId}/intake`, { scroll: false });
+      window.history.replaceState(null, '', `/trips/${tripId}/intake`);
     } else if (inlineEditFields.includes(fieldParam)) {
       setEditingField(fieldParam);
-      router.replace(`/trips/${tripId}/intake`, { scroll: false });
+      window.history.replaceState(null, '', `/trips/${tripId}/intake`);
     }
-  }, [fieldParam, router, tripId]);
+  }, [fieldParam, tripId]);
 
   const [isRunning, setIsRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
@@ -444,7 +448,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       setTimeout(() => setRunSuccess(false), 3000);
       const targetTripId = completedRun?.trip_id || tripId;
       if (targetTripId) {
-        router.push(getTripRoute(targetTripId, 'packet'));
+        push(getTripRoute(targetTripId, 'packet'));
       } else {
         setRunError('Processing completed but no trip workspace was saved. Check the run status and retry.');
       }
@@ -653,8 +657,8 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const handleCaptureCallSave = useCallback((newTrip: Trip) => {
     setShowCapturePanel(false);
     // Refresh the trip list by navigating to the new trip's workspace
-    router.push(getTripRoute(newTrip.id, 'packet'));
-  }, [router]);
+    push(getTripRoute(newTrip.id, 'packet'));
+  }, [push]);
 
   const handleCaptureCallCancel = useCallback(() => {
     setShowCapturePanel(false);
@@ -892,7 +896,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
           {!isLeadReview && !hasPlanningBriefBlocker(trip) && !hardBlockers.length && (
              <button
                type='button'
-               onClick={() => router.push(`/trips/${tripId}/strategy`)}
+               onClick={() => push(`/trips/${tripId}/strategy`)}
                className='mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-default)] text-[12px] font-medium text-[var(--text-primary)] hover:bg-elevated transition-colors'
              >
                Open options

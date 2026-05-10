@@ -38,6 +38,10 @@ interface SpineReviewsEnvelope {
   total?: number;
 }
 
+function isSpineReviewsEnvelope(value: unknown): value is SpineReviewsEnvelope {
+  return typeof value === "object" && value !== null;
+}
+
 const STATUS_MAP: Record<string, ReviewStatus> = {
   pending: "pending",
   approved: "approved",
@@ -95,10 +99,12 @@ export async function GET(request: NextRequest) {
     const raw = (await response.json()) as SpineReviewsResponse | SpineReview[] | SpineReviewsEnvelope;
     const spineApiData: SpineReviewsResponse = Array.isArray(raw)
       ? { items: raw, total: raw.length }
-      : {
-          items: raw.items ?? raw.data ?? [],
-          total: typeof raw.total === "number" ? raw.total : (raw.items ?? raw.data ?? []).length,
-        };
+      : isSpineReviewsEnvelope(raw)
+        ? {
+            items: raw.items ?? raw.data ?? [],
+            total: typeof raw.total === "number" ? raw.total : (raw.items ?? raw.data ?? []).length,
+          }
+        : { items: [], total: 0 };
 
     const reviews = spineApiData.items ?? [];
     const frontendReviews = reviews.map(transformReviewToFrontendFormat);

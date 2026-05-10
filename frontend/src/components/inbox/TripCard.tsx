@@ -234,7 +234,7 @@ function QuickActions({
 
   const reviewHref = `/trips/${trip.id}/intake`;
   const isUnassigned = !trip.assignedTo;
-  const hoverClass = IS_TOUCH ? '' : 'opacity-0 group-hover:opacity-100';
+  const hoverClass = IS_TOUCH ? '' : 'opacity-40 group-hover:opacity-100';
   const actions: React.ReactNode[] = [];
 
   if (isUnassigned && onAssign && agents && agents.length > 0) {
@@ -325,23 +325,23 @@ export const TripCard = memo(function TripCard({
         border: '1px solid var(--border-default)',
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-hover)';
-        (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-elevated)';
+        const el = e.currentTarget as HTMLDivElement;
+        el.style.borderColor = 'var(--border-hover)'; el.style.background = 'var(--bg-elevated)';
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-default)';
-        (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-surface)';
+        const el = e.currentTarget as HTMLDivElement;
+        el.style.borderColor = 'var(--border-default)'; el.style.background = 'var(--bg-surface)';
       }}
     >
 
-      {/* Checkbox hover-reveal */}
+      {/* Checkbox: always visible on touch, hover-reveal on desktop */}
       <button
         type="button"
         role="checkbox"
         aria-checked={isSelected}
         aria-label={`Select ${trip.destination}`}
         onClick={(e) => { e.stopPropagation(); onSelect(trip.id, !isSelected); }}
-        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+        className={`absolute top-3 right-3 z-10 transition-opacity ${IS_TOUCH ? 'opacity-60' : 'opacity-0 group-hover:opacity-100'}`}
       >
         {isSelected ? (
           <CheckSquare className="size-4" style={{ color: 'var(--accent-blue)' }} />

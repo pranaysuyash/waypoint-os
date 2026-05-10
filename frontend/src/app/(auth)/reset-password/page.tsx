@@ -7,10 +7,13 @@ import { api, ApiException } from '@/lib/api-client';
 
 function ResetPasswordPageInner() {
   const searchParams = useSearchParams();
-  const token = searchParams.get('token') || '';
+  const getSearchParam = searchParams.get.bind(searchParams);
+  const token = getSearchParam('token') || '';
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -84,29 +87,51 @@ function ResetPasswordPageInner() {
 
         <div className='auth-field'>
           <label htmlFor='password'>New password</label>
-          <input
-            id='password'
-            type='password'
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder='At least 8 characters'
-            required
-            autoComplete='new-password'
-            minLength={8}
-          />
+          <div className='auth-password-wrap'>
+            <input
+              id='password'
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder='At least 8 characters'
+              required
+              autoComplete='new-password'
+              minLength={8}
+            />
+            <button
+              type='button'
+              className='auth-password-toggle'
+              onClick={() => setShowPassword((prev) => !prev)}
+              aria-label={showPassword ? 'Hide new password' : 'Show new password'}
+              aria-pressed={showPassword}
+            >
+              {showPassword ? 'Hide' : 'Show'}
+            </button>
+          </div>
         </div>
 
         <div className='auth-field'>
           <label htmlFor='confirm-password'>Confirm password</label>
-          <input
-            id='confirm-password'
-            type='password'
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder='Re-enter your password'
-            required
-            autoComplete='new-password'
-          />
+          <div className='auth-password-wrap'>
+            <input
+              id='confirm-password'
+              type={showConfirmPassword ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder='Re-enter your password'
+              required
+              autoComplete='new-password'
+            />
+            <button
+              type='button'
+              className='auth-password-toggle'
+              onClick={() => setShowConfirmPassword((prev) => !prev)}
+              aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+              aria-pressed={showConfirmPassword}
+            >
+              {showConfirmPassword ? 'Hide' : 'Show'}
+            </button>
+          </div>
         </div>
 
         <button className='auth-button' type='submit' disabled={loading}>

@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Optional, Protocol, Union
 
 from src.extraction.exceptions import ExtractionValidationError
+from spine_api.services import execution_event_service
 from spine_api.services.private_fields import encrypt_blob, decrypt_blob
 
 logger = logging.getLogger(__name__)
@@ -217,6 +218,23 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
     success_attempt = None
     models_to_try = _get_model_chain(extractor)
 
+    primary_model = models_to_try[0][0] if models_to_try else "unknown"
+    primary_provider = _resolve_provider_name(primary_model)
+
+    await execution_event_service.emit_event_best_effort(
+        db, agency_id=agency_id, trip_id=document.trip_id,
+        subject_type="document_extraction", subject_id=extraction.id,
+        event_type="extraction_run_started", event_category="extraction",
+        status_from="failed" if is_retry else None, status_to="running",
+        actor_type="system", actor_id=None, source="system_generation",
+        event_metadata={
+            "document_type": document.document_type,
+            "provider": primary_provider,
+            "model": primary_model,
+            "run_count": extraction.run_count,
+        },
+    )
+
     try:
         for rank, (model_name, model_extractor) in enumerate(models_to_try):
             attempt_number = attempt_base + rank + 1
@@ -245,6 +263,22 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
                 await db.commit()
                 extraction.attempt_count = attempt_number
 
+                await execution_event_service.emit_event_best_effort(
+                    db, agency_id=agency_id, trip_id=document.trip_id,
+                    subject_type="document_extraction_attempt", subject_id=attempt.id,
+                    event_type="extraction_attempt_failed", event_category="extraction",
+                    status_from=None, status_to="failed",
+                    actor_type="system", actor_id=None, source="system_generation",
+                    event_metadata={
+                        "provider": attempt.provider_name,
+                        "model": attempt.model_name,
+                        "attempt_number": attempt.attempt_number,
+                        "fallback_rank": attempt.fallback_rank,
+                        "error_code": attempt.error_code,
+                        "latency_ms": attempt.latency_ms,
+                    },
+                )
+
                 if e.error_code not in RETRIABLE_ERRORS:
                     last_error = e
                     break
@@ -272,6 +306,22 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
             attempt.total_tokens = meta.get("total_tokens")
             attempt.cost_estimate_usd = meta.get("cost_estimate_usd")
             await db.commit()
+
+            await execution_event_service.emit_event_best_effort(
+                db, agency_id=agency_id, trip_id=document.trip_id,
+                subject_type="document_extraction_attempt", subject_id=attempt.id,
+                event_type="extraction_attempt_completed", event_category="extraction",
+                status_from=None, status_to="success",
+                actor_type="system", actor_id=None, source="system_generation",
+                event_metadata={
+                    "provider": attempt.provider_name,
+                    "model": attempt.model_name,
+                    "attempt_number": attempt.attempt_number,
+                    "fallback_rank": attempt.fallback_rank,
+                    "field_count": attempt.field_count,
+                    "latency_ms": attempt.latency_ms,
+                },
+            )
 
             success_attempt = attempt
             extraction.attempt_count = attempt_number
@@ -313,6 +363,39 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
 
     await db.commit()
     await db.refresh(extraction)
+
+    if success_attempt:
+        await execution_event_service.emit_event_best_effort(
+            db, agency_id=agency_id, trip_id=document.trip_id,
+            subject_type="document_extraction", subject_id=extraction.id,
+            event_type="extraction_run_completed", event_category="extraction",
+            status_from="running", status_to="pending_review",
+            actor_type="system", actor_id=None, source="system_generation",
+            event_metadata={
+                "document_type": document.document_type,
+                "provider": extraction.provider_name,
+                "model": extraction.model_name,
+                "attempt_count": extraction.attempt_count,
+                "field_count": extraction.field_count,
+                "overall_confidence": extraction.overall_confidence,
+                "latency_ms": extraction.latency_ms,
+            },
+        )
+    else:
+        await execution_event_service.emit_event_best_effort(
+            db, agency_id=agency_id, trip_id=document.trip_id,
+            subject_type="document_extraction", subject_id=extraction.id,
+            event_type="extraction_run_failed", event_category="extraction",
+            status_from="running", status_to="failed",
+            actor_type="system", actor_id=None, source="system_generation",
+            event_metadata={
+                "document_type": document.document_type,
+                "error_code": extraction.error_code,
+                "attempt_count": extraction.attempt_count,
+                "latency_ms": extraction.latency_ms,
+            },
+        )
+
     return extraction
 
 
@@ -442,6 +525,19 @@ async def apply_extraction(db, document, extraction, fields_to_apply: list[str],
     await db.commit()
     await db.refresh(extraction)
 
+    await execution_event_service.emit_event_best_effort(
+        db, agency_id=extraction.agency_id, trip_id=extraction.trip_id,
+        subject_type="document_extraction", subject_id=extraction.id,
+        event_type="extraction_applied", event_category="extraction",
+        status_from="pending_review", status_to="applied",
+        actor_type="agent", actor_id=reviewed_by, source="agent_action",
+        event_metadata={
+            "document_type": document.document_type,
+            "fields_applied_count": len(fields_to_apply),
+            "allow_overwrite": allow_overwrite,
+        },
+    )
+
     return {"applied": True, "conflicts": [], "extraction": extraction}
 
 
@@ -456,6 +552,16 @@ async def reject_extraction(db, extraction, reviewed_by: str) -> "DocumentExtrac
     extraction.reviewed_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(extraction)
+
+    await execution_event_service.emit_event_best_effort(
+        db, agency_id=extraction.agency_id, trip_id=extraction.trip_id,
+        subject_type="document_extraction", subject_id=extraction.id,
+        event_type="extraction_rejected", event_category="extraction",
+        status_from="pending_review", status_to="rejected",
+        actor_type="agent", actor_id=reviewed_by, source="agent_action",
+        event_metadata={},
+    )
+
     return extraction
 
 

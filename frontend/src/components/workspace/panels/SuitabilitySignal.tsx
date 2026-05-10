@@ -145,7 +145,9 @@ function FlagItem({ flag, onDrill, onAcknowledge, isAcknowledged = false, drilla
         isAcknowledged ? "opacity-60" : ""
       } ${drillable && !isAcknowledged ? "cursor-pointer hover:shadow-sm" : ""}`}
       onClick={drillable && !isAcknowledged ? handleDrill : undefined}
-      role={drillable && !isAcknowledged ? "button" : undefined}
+      onKeyDown={drillable && !isAcknowledged ? (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleDrill(); } } : undefined}
+      role="button"
+      aria-disabled={!drillable || isAcknowledged}
       tabIndex={drillable && !isAcknowledged ? 0 : undefined}
       data-testid={`suitability-flag-${flag.flag_type}`}
     >

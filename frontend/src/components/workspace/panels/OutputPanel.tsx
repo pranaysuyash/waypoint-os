@@ -106,7 +106,7 @@ export default function OutputPanel({ trip: propTrip, tripId: propTripId }: Outp
                     <div className="text-ui-xs font-semibold text-text-muted uppercase">Constraints</div>
                     <ul className="mt-1 list-disc list-inside text-ui-xs text-text-muted space-y-0.5">
                       {internalBundle.constraints.map((c, i) => (
-                        <li key={`icon-${c.slice(0, 20)}-${i}`}>{c}</li>
+                        <li key={`icon-${c.slice(0, 20)}`}>{c}</li>
                       ))}
                     </ul>
                   </div>
@@ -146,7 +146,7 @@ export default function OutputPanel({ trip: propTrip, tripId: propTripId }: Outp
                     <div className="text-ui-xs font-semibold text-text-muted uppercase">Follow-up Sequence</div>
                     <ul className="mt-1 list-disc list-inside text-ui-xs text-text-muted space-y-0.5">
                       {travelerBundle.follow_up_sequence.map((f, i) => (
-                        <li key={`fseq-${f.field_name}-${i}`}>{f.question}</li>
+                        <li key={`fseq-${f.field_name}`}>{f.question}</li>
                       ))}
                     </ul>
                   </div>

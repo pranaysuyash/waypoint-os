@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useId } from 'react';
+import { useState, useEffect, useCallback, useId, useMemo } from 'react';
 import {
   type BookingTraveler,
   type BookingData,
@@ -42,6 +42,10 @@ export default function BookingCollectionPage({
   const [specialReqs, setSpecialReqs] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const travelerIdBase = useId();
+  const travelerKeys = useMemo(
+    () => travelers.map((_, index) => `${travelerIdBase}-traveler-${index + 1}`),
+    [travelers.length, travelerIdBase],
+  );
   const payerNameId = useId();
   const payerEmailId = useId();
   const payerPhoneId = useId();
@@ -210,7 +214,7 @@ export default function BookingCollectionPage({
         {/* Travelers */}
         <div className="space-y-4 mb-6">
           {travelers.map((t, i) => (
-            <div key={`traveler-${i}`} data-testid={`collection-traveler-${i}`} className="border border-[#30363d] rounded-lg p-4 space-y-3">
+            <div key={travelerKeys[i]} data-testid={`collection-traveler-${i}`} className="border border-[#30363d] rounded-lg p-4 space-y-3">
               <div className="text-sm font-medium text-[#e6edf3]">Traveler {i + 1}</div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

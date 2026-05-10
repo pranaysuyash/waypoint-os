@@ -8,13 +8,25 @@ import { useTeamMembers } from '@/hooks/useGovernance';
 // ── WorkspaceCodePanel ────────────────────────────────────────────────────────
 
 function WorkspaceCodePanel() {
-  const { data: workspace, isLoading, error, generateCode } = useWorkspace();
+  const {
+    data: workspace,
+    isLoading,
+    error,
+    workspaceState,
+    canViewWorkspaceInvites,
+    canGenerateWorkspaceInvite,
+    workspaceUnavailableTransient,
+    generateCode,
+    refetch,
+  } = useWorkspace();
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
 
-  const code = workspace?.workspace_code;
+  const code = generatedCode ?? workspace?.workspace_code ?? null;
   const joinUrl = code ? `${window.location.origin}/join/${code}` : null;
+  const isPermissionError = workspaceState === "forbidden" || !canViewWorkspaceInvites;
 
   async function handleCopy() {
     if (!joinUrl) return;
@@ -31,7 +43,8 @@ function WorkspaceCodePanel() {
     setIsGenerating(true);
     setGenerateError(null);
     try {
-      await generateCode('internal');
+      const newCode = await generateCode('internal');
+      setGeneratedCode(newCode);
     } catch (err) {
       setGenerateError(err instanceof Error ? err.message : 'Failed to regenerate code');
     } finally {
@@ -48,11 +61,49 @@ function WorkspaceCodePanel() {
     );
   }
 
-  if (error) {
+  if (workspaceState === "unauthenticated" && !joinUrl) {
     return (
-      <div className="rounded-xl border border-[#f85149]/30 bg-[#f85149]/10 p-4 flex items-center gap-2 text-ui-sm text-[#f85149]">
-        <AlertCircle className="size-4 shrink-0" />
-        Failed to load workspace: {error.message}
+      <div className="rounded-xl border border-[#d29922]/30 bg-[#d29922]/10 p-4 space-y-3">
+        <div className="flex items-center gap-2 text-ui-sm text-[#d29922]">
+          <AlertCircle className="size-4 shrink-0" />
+          Your session expired. Sign in again to manage workspace invites.
+        </div>
+        <button
+          onClick={() => refetch()}
+          className="px-3 py-1.5 rounded border border-[#30363d] text-ui-xs text-[#e6edf3] hover:bg-[#1c2128] transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if ((workspaceState === "forbidden" || workspaceState === "error") && !joinUrl) {
+    return (
+      <div className="rounded-xl border border-[#f85149]/30 bg-[#f85149]/10 p-4 space-y-3">
+        <div className="flex items-center gap-2 text-ui-sm text-[#f85149]">
+          <AlertCircle className="size-4 shrink-0" />
+          {isPermissionError
+            ? 'You do not have permission to view workspace invites.'
+            : `Failed to load workspace: ${error?.message ?? "Unknown error"}`}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => refetch()}
+            className="px-3 py-1.5 rounded border border-[#30363d] text-ui-xs text-[#e6edf3] hover:bg-[#1c2128] transition-colors"
+          >
+            Retry
+          </button>
+          {!isPermissionError && canGenerateWorkspaceInvite && (
+            <button
+              onClick={handleRegenerate}
+              disabled={isGenerating}
+              className="px-3 py-1.5 rounded border border-[#30363d] text-ui-xs text-[#e6edf3] hover:bg-[#1c2128] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isGenerating ? 'Generating…' : 'Generate invite link'}
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -67,6 +118,13 @@ function WorkspaceCodePanel() {
           </p>
         </div>
       </div>
+
+      {(workspaceUnavailableTransient || workspaceState === "forbidden" || workspaceState === "unauthenticated") && joinUrl && (
+        <div className="flex items-center gap-2 rounded-lg border border-[#d29922]/30 bg-[#d29922]/10 p-3 text-ui-sm text-[#d29922]">
+          <AlertCircle className="size-4 shrink-0" />
+          Workspace details could not be refreshed. Your current invite link still works.
+        </div>
+      )}
 
       {generateError && (
         <div className="flex items-center gap-2 rounded-lg border border-[#f85149]/30 bg-[#f85149]/10 p-3 text-ui-sm text-[#f85149]">
@@ -90,7 +148,7 @@ function WorkspaceCodePanel() {
           </button>
           <button
             onClick={handleRegenerate}
-            disabled={isGenerating}
+            disabled={isGenerating || !canGenerateWorkspaceInvite}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#30363d] text-ui-sm text-[#e6edf3] hover:bg-[#1c2128] transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             title="Generate new invitation link (revokes current)"
           >
@@ -103,7 +161,7 @@ function WorkspaceCodePanel() {
           <p className="text-ui-sm text-[#8b949e] flex-1">No active invitation link. Generate one to start onboarding agents.</p>
           <button
             onClick={handleRegenerate}
-            disabled={isGenerating}
+            disabled={isGenerating || !canGenerateWorkspaceInvite}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#58a6ff] text-[#0d1117] text-ui-sm font-medium hover:bg-[#79b8ff] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <RefreshCw className={`size-4 ${isGenerating ? 'animate-spin' : ''}`} />
@@ -134,23 +192,57 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 function TeamMemberList() {
-  const { data: members, isLoading, error } = useTeamMembers();
+  const { data: members, isLoading, error, teamMembersState, canViewTeamMembers, refetch } = useTeamMembers();
 
   if (isLoading) {
     return (
       <div className="space-y-2">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-14 rounded-lg bg-[#161b22] animate-pulse" />
+        {['team-skeleton-1', 'team-skeleton-2', 'team-skeleton-3'].map((skeletonKey) => (
+          <div key={skeletonKey} className="h-14 rounded-lg bg-[#161b22] animate-pulse" />
         ))}
+      </div>
+    );
+  }
+
+  if (teamMembersState === "unauthenticated") {
+    return (
+      <div className="rounded-lg border border-[#d29922]/30 bg-[#d29922]/10 p-3 space-y-2">
+        <div className="flex items-center gap-2 text-ui-sm text-[#d29922]">
+          <AlertCircle className="size-4" />
+          Your session expired. Sign in again to view team members.
+        </div>
+        <button
+          onClick={() => refetch()}
+          className="px-3 py-1.5 rounded border border-[#30363d] text-ui-xs text-[#e6edf3] hover:bg-[#1c2128] transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (teamMembersState === "forbidden" || !canViewTeamMembers) {
+    return (
+      <div className="flex items-center gap-2 text-ui-sm text-[#f85149]">
+        <AlertCircle className="size-4" />
+        You do not have permission to view team members.
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center gap-2 text-ui-sm text-[#f85149]">
-        <AlertCircle className="size-4" />
-        Failed to load team members: {error.message}
+      <div className="rounded-lg border border-[#f85149]/30 bg-[#f85149]/10 p-3 space-y-2">
+        <div className="flex items-center gap-2 text-ui-sm text-[#f85149]">
+          <AlertCircle className="size-4" />
+          Failed to load team members: {error.message}
+        </div>
+        <button
+          onClick={() => refetch()}
+          className="px-3 py-1.5 rounded border border-[#30363d] text-ui-xs text-[#e6edf3] hover:bg-[#1c2128] transition-colors"
+        >
+          Retry
+        </button>
       </div>
     );
   }

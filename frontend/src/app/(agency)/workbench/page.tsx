@@ -164,16 +164,17 @@ function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
 
 function WorkbenchContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const getSearchParam = searchParams.get.bind(searchParams);
+  const { push, replace } = useRouter();
   const pathname = usePathname();
-  const tripId = searchParams.get('trip');
-  const draftParam = searchParams.get('draft');
-  const stageParam = searchParams.get('stage');
-  const scenarioParam = searchParams.get('scenario');
+  const tripId = getSearchParam('trip');
+  const draftParam = getSearchParam('draft');
+  const stageParam = getSearchParam('stage');
+  const scenarioParam = getSearchParam('scenario');
 
   // The ?stage= URL param drives Spine execution (not the pipeline UI)
   const spineStage = toSpineStage(stageParam) ?? 'discovery';
-  const currentMode = toOperatingMode(searchParams.get('mode')) ?? 'normal_intake';
+  const currentMode = toOperatingMode(getSearchParam('mode')) ?? 'normal_intake';
   const currentScenario = scenarioParam || '';
 
   const {
@@ -183,7 +184,7 @@ function WorkbenchContent() {
   } = useTrip(tripId);
   useHydrateStoreFromTrip(trip);
 
-  const activeTab = toWorkspaceTabId(searchParams.get('tab')) ?? 'intake';
+  const activeTab = toWorkspaceTabId(getSearchParam('tab')) ?? 'intake';
 
   // Ops tab visible only at proposal/booking stage
   const showOps = trip?.stage === 'proposal' || trip?.stage === 'booking';
@@ -257,9 +258,9 @@ function WorkbenchContent() {
       if (!visibleTabs.some((t) => t.id === tab)) return;
       const params = new URLSearchParams(searchParams.toString());
       params.set('tab', tab);
-      router.replace(`?${params.toString()}`, { scroll: false });
+      replace(`?${params.toString()}`, { scroll: false });
     },
-    [searchParams, router, visibleTabs],
+    [searchParams, replace, visibleTabs],
   );
 
   // Auto-switch away from ops tab if stage changes out of proposal/booking
@@ -279,7 +280,7 @@ function WorkbenchContent() {
   const [runSuccess, setRunSuccess] = useState(false);
   const inFlightRef = useRef(false);
   const [completedTripId, setCompletedTripId] = useState<string | null>(null);
-  const activePanel = searchParams.get('panel');
+  const activePanel = getSearchParam('panel');
   const settingsOpen = activePanel === 'settings';
   const integrityOpen = activePanel === 'integrity';
   const setPanelOpen = useCallback(
@@ -292,9 +293,9 @@ function WorkbenchContent() {
       }
 
       const query = params.toString();
-      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+      replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
     },
-    [pathname, router, searchParams]
+    [pathname, replace, searchParams]
   );
   const {
     execute: executeSpineRun,
@@ -410,10 +411,10 @@ function WorkbenchContent() {
     const params = new URLSearchParams(searchParams.toString());
     params.set('draft', result.draft_id);
     if (!params.get('tab')) params.set('tab', 'intake');
-    router.replace(`?${params.toString()}`, { scroll: false });
+    replace(`?${params.toString()}`, { scroll: false });
     store.setSaveState('saved');
     return result.draft_id;
-  }, [store, searchParams, router, spineStage, currentMode, currentScenario]);
+  }, [store, searchParams, replace, spineStage, currentMode, currentScenario]);
 
   const handleProcessTrip = useCallback(async () => {
     if (!store.input_raw_note && !store.input_owner_note) return;
@@ -521,7 +522,7 @@ function WorkbenchContent() {
         const params = new URLSearchParams(searchParams.toString());
         params.set('draft', result.draft_id);
         if (!params.get('tab')) params.set('tab', 'intake');
-        router.replace(`?${params.toString()}`, { scroll: false });
+        replace(`?${params.toString()}`, { scroll: false });
       }
 
       store.setSaveState('saved');
@@ -648,7 +649,7 @@ function WorkbenchContent() {
             const params = new URLSearchParams(searchParams.toString());
             params.set('draft', result.draft_id);
             if (!params.get('tab')) params.set('tab', 'intake');
-            router.replace(`?${params.toString()}`, { scroll: false });
+            window.history.replaceState(null, '', `?${params.toString()}`);
           }
           // Mark as saved only after successful API call
           store.setSaveState('saved');
@@ -940,7 +941,7 @@ function WorkbenchContent() {
               <>
                 <button
                   type='button'
-                  onClick={() => router.push(`/trips/${completedTripId}/intake`)}
+                  onClick={() => push(`/trips/${completedTripId}/intake`)}
                   className='flex items-center gap-2 px-4 py-2 bg-[#3fb950] text-[#0d1117] rounded-lg font-medium hover:bg-[#4cc764] transition-colors'
                 >
                   <CheckCircle className='size-4' />
@@ -960,7 +961,7 @@ function WorkbenchContent() {
                         setTimeout(() => setRunError(null), 8000);
                         return;
                       }
-                      router.push(`/trips/${completedTripId}/intake`);
+                      push(`/trips/${completedTripId}/intake`);
                     }}
                     className='flex items-center gap-2 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg font-medium hover:bg-[#6eb5ff] transition-colors'
                   >
@@ -984,9 +985,9 @@ function WorkbenchContent() {
                   resetSpine();
                   const params = new URLSearchParams(searchParams.toString());
                   params.set('tab', 'intake');
-                  router.replace(`/workbench?${params.toString()}`);
+                  replace(`/workbench?${params.toString()}`);
                 }}
-                onViewTrip={completedTripId ? () => router.push(`/trips/${completedTripId}/intake`) : undefined}
+                onViewTrip={completedTripId ? () => push(`/trips/${completedTripId}/intake`) : undefined}
               />
             )}
             <button
@@ -1061,7 +1062,9 @@ function WorkbenchContent() {
             Dev: Scenario Lab
           </summary>
           <div className='mt-2'>
-            <ScenarioLab />
+            <Suspense fallback={<div className="text-ui-xs text-text-muted">Loading scenario lab…</div>}>
+              <ScenarioLab />
+            </Suspense>
           </div>
         </details>
         )}

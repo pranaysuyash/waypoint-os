@@ -67,10 +67,13 @@ function formatPlanningFieldList(fields: string[]): string {
 }
 
 function formatPlanningFieldListTitleCase(fields: string[]): string {
-  const normalized = fields
-    .map((field) => field.trim())
-    .filter(Boolean)
-    .map((field) => field.charAt(0).toLowerCase() + field.slice(1));
+  const normalized: string[] = [];
+  for (const field of fields) {
+    const trimmed = field.trim();
+    if (trimmed) {
+      normalized.push(trimmed.charAt(0).toLowerCase() + trimmed.slice(1));
+    }
+  }
 
   if (normalized.length === 0) return "required trip details";
   if (normalized.length === 1) return normalized[0]!;

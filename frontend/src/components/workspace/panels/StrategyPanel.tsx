@@ -52,7 +52,7 @@ export function StrategyPanel({ tripId }: StrategyPanelProps) {
           <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Priority Sequence</h3>
           <ol className="list-decimal list-inside space-y-2 bg-sidebar rounded-lg border border-highlight p-4 text-ui-sm text-text-secondary">
             {strategy.priority_sequence.map((item, i) => (
-              <li key={`priority-${item.slice(0, 20)}-${i}`}>{item}</li>
+              <li key={`priority-${item.slice(0, 20)}`}>{item}</li>
             ))}
           </ol>
         </section>
@@ -65,7 +65,7 @@ export function StrategyPanel({ tripId }: StrategyPanelProps) {
         {strategy.tonal_guardrails && strategy.tonal_guardrails.length > 0 && (
           <ul className="bg-sidebar rounded-lg border border-highlight p-4 space-y-2 text-ui-sm text-text-secondary">
             {strategy.tonal_guardrails.map((guardrail, i) => (
-              <li key={`guard-${guardrail.slice(0, 20)}-${i}`} className="flex items-start gap-2">
+              <li key={`guard-${guardrail.slice(0, 20)}`} className="flex items-start gap-2">
                 <span className="text-accent-blue mt-0.5">•</span>
                 {guardrail}
               </li>
@@ -79,7 +79,7 @@ export function StrategyPanel({ tripId }: StrategyPanelProps) {
           <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Assumptions</h3>
           <ul className="bg-sidebar rounded-lg border border-highlight p-4 space-y-2 text-ui-sm text-text-secondary">
             {strategy.assumptions.map((assumption, i) => (
-              <li key={`assume-${assumption.slice(0, 20)}-${i}`} className="flex items-start gap-2">
+              <li key={`assume-${assumption.slice(0, 20)}`} className="flex items-start gap-2">
                 <span className="text-accent-amber mt-0.5">?</span>
                 {assumption}
               </li>

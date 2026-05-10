@@ -163,6 +163,8 @@ class AgencySettings:
 
     # -- Profile --
     agency_name: str = ""
+    sub_brand: str = ""
+    plan_label: str = ""
     contact_email: str = ""
     contact_phone: str = ""
     logo_url: str = ""

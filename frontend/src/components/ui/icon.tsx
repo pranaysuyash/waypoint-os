@@ -39,6 +39,7 @@ export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonEl
   variant?: "ghost" | "subtle" | "solid";
   size?: "sm" | "md" | "lg";
   color?: "blue" | "green" | "amber" | "red" | "neutral";
+  ref?: React.Ref<HTMLButtonElement>;
 }
 
 const variantStyles = {
@@ -64,86 +65,77 @@ const sizeStyles = {
 /**
  * Accessible icon button with proper ARIA attributes
  */
-export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
-  (
-    {
-      icon,
-      label,
-      variant = "ghost",
-      size = "md",
-      color = "neutral",
-      className,
-      type = "button",
-      ...props
-    },
-    ref
-  ) => {
-    return (
-      <button
-        ref={ref}
-        type={type}
-        className={cn(
-          "inline-flex items-center justify-center transition-colors",
-          "focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-2 focus:ring-offset-canvas",
-          "disabled:opacity-50 disabled:cursor-not-allowed",
-          variantStyles[variant],
-          colorStyles[color],
-          sizeStyles[size],
-          className
-        )}
-        aria-label={label}
-        {...props}
-      >
-        <span className={sizeMap[size]} aria-hidden="true">
-          {icon}
-        </span>
-      </button>
-    );
-  }
-);
-IconButton.displayName = "IconButton";
+export function IconButton({
+  icon,
+  label,
+  variant = "ghost",
+  size = "md",
+  color = "neutral",
+  className,
+  type = "button",
+  ref,
+  ...props
+}: IconButtonProps) {
+  return (
+    <button
+      ref={ref}
+      type={type}
+      className={cn(
+        "inline-flex items-center justify-center transition-colors",
+        "focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-2 focus:ring-offset-canvas",
+        "disabled:opacity-50 disabled:cursor-not-allowed",
+        variantStyles[variant],
+        colorStyles[color],
+        sizeStyles[size],
+        className
+      )}
+      aria-label={label}
+      {...props}
+    >
+      <span className={sizeMap[size]} aria-hidden="true">
+        {icon}
+      </span>
+    </button>
+  );
+}
 
 export interface IconLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   icon: React.ReactNode;
   label: string;
   size?: "sm" | "md" | "lg";
   color?: "blue" | "green" | "amber" | "red" | "neutral";
+  ref?: React.Ref<HTMLAnchorElement>;
 }
 
 /**
  * Accessible icon link with proper ARIA attributes
  */
-export const IconLink = React.forwardRef<HTMLAnchorElement, IconLinkProps>(
-  (
-    {
-      icon,
-      label,
-      size = "md",
-      color = "neutral",
-      className,
-      children,
-      ...props
-    },
-    ref
-  ) => {
-    return (
-      <a
-        ref={ref}
-        className={cn(
-          "inline-flex items-center gap-1.5 transition-colors",
-          "focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-2 focus:ring-offset-canvas rounded-md",
-          colorStyles[color],
-          className
-        )}
-        aria-label={label}
-        {...props}
-      >
-        <span className={sizeMap[size]} aria-hidden="true">
-          {icon}
-        </span>
-        {children && <span>{children}</span>}
-      </a>
-    );
-  }
-);
-IconLink.displayName = "IconLink";
+export function IconLink({
+  icon,
+  label,
+  size = "md",
+  color = "neutral",
+  className,
+  children,
+  ref,
+  ...props
+}: IconLinkProps) {
+  return (
+    <a
+      ref={ref}
+      className={cn(
+        "inline-flex items-center gap-1.5 transition-colors",
+        "focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-2 focus:ring-offset-canvas rounded-md",
+        colorStyles[color],
+        className
+      )}
+      aria-label={label}
+      {...props}
+    >
+      <span className={sizeMap[size]} aria-hidden="true">
+        {icon}
+      </span>
+      {children && <span>{children}</span>}
+    </a>
+  );
+}

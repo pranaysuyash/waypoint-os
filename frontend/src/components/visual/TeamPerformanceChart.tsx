@@ -139,9 +139,11 @@ export function TeamPerformanceChart({
                     label: 'Conversion Rate',
                   })
                 }
-                className={`rounded p-2 transition-colors ${
-                  onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : ''
-                }`}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMetricClick(agent.userId, { type: 'conversion', value: agent.conversionRate, label: 'Conversion Rate' }); } }}
+                className={`rounded p-2 transition-colors ${onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : ''} ${onDrillDown ? '' : ''}`}
+                role='button'
+                aria-disabled={!onDrillDown}
+                tabIndex={onDrillDown ? 0 : undefined}
               >
                 <div className='flex items-center justify-between mb-1'>
                   <span className='text-xs text-[#8b949e]'>Conversion</span>
@@ -172,9 +174,11 @@ export function TeamPerformanceChart({
                     label: 'Response Time',
                   })
                 }
-                className={`rounded p-2 transition-colors ${
-                  onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : ''
-                }`}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMetricClick(agent.userId, { type: 'response_time', value: agent.avgResponseTime ?? 0, label: 'Response Time' }); } }}
+                className={`rounded p-2 transition-colors ${onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : ''} ${onDrillDown ? '' : ''}`}
+                role='button'
+                aria-disabled={!onDrillDown}
+                tabIndex={onDrillDown ? 0 : undefined}
               >
                 <div className='flex items-center justify-between mb-1'>
                   <span className='text-xs text-[#8b949e]'>Response</span>
@@ -205,9 +209,11 @@ export function TeamPerformanceChart({
                     label: 'Customer Satisfaction',
                   })
                 }
-                className={`rounded p-2 transition-colors ${
-                  onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : ''
-                }`}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMetricClick(agent.userId, { type: 'csat', value: agent.customerSatisfaction, label: 'Customer Satisfaction' }); } }}
+                className={`rounded p-2 transition-colors ${onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : ''} ${onDrillDown ? '' : ''}`}
+                role='button'
+                aria-disabled={!onDrillDown}
+                tabIndex={onDrillDown ? 0 : undefined}
               >
                 <div className='flex items-center justify-between mb-1'>
                   <span className='text-xs text-[#8b949e]'>CSAT</span>
@@ -238,9 +244,11 @@ export function TeamPerformanceChart({
                     label: 'Workload',
                   })
                 }
-                className={`rounded p-2 transition-colors ${
-                  onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : ''
-                }`}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMetricClick(agent.userId, { type: 'workload', value: agent.workloadScore, label: 'Workload' }); } }}
+                className={`rounded p-2 transition-colors ${onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : ''} ${onDrillDown ? '' : ''}`}
+                role='button'
+                aria-disabled={!onDrillDown}
+                tabIndex={onDrillDown ? 0 : undefined}
               >
                 <div className='flex items-center justify-between mb-1'>
                   <span className='text-xs text-[#8b949e]'>Workload</span>

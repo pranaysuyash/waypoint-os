@@ -7,22 +7,20 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
   description?: string;
   inputSize?: "sm" | "md" | "lg";
   resize?: "none" | "both" | "horizontal" | "vertical" | "block";
+  ref?: React.Ref<HTMLTextAreaElement>;
 }
 
-const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  (
-    {
-      className,
-      label,
-      error,
-      description,
-      inputSize = "md",
-      resize = "vertical",
-      id,
-      ...props
-    },
-    ref
-  ) => {
+function Textarea({
+  className,
+  label,
+  error,
+  description,
+  inputSize = "md",
+  resize = "vertical",
+  id,
+  ref,
+  ...props
+}: TextareaProps) {
     const fallbackId = React.useId();
     const textareaId = id || fallbackId;
     const errorId = error ? `${textareaId}-error` : undefined;
@@ -83,8 +81,6 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         )}
       </div>
     );
-  }
-);
-Textarea.displayName = "Textarea";
+}
 
 export { Textarea };

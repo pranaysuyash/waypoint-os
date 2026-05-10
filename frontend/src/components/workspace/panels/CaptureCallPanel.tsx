@@ -179,7 +179,7 @@ export default function CaptureCallPanel({
             onChange={(e) => setOwnerNote(e.target.value)}
             placeholder="e.g., Mentioned budget concerns, needs early morning flights…"
             rows={3}
-            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
+            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           />
         </div>
 
@@ -217,7 +217,7 @@ export default function CaptureCallPanel({
             onChange={(e) => setPartyComposition(e.target.value)}
             placeholder="e.g., 2 adults, 1 toddler (age 3), 1 infant"
             rows={2}
-            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
+            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           />
           <p className="text-ui-xs text-text-muted dark:text-text-muted mt-1">
             Helps us plan family-friendly itineraries
@@ -311,7 +311,7 @@ export default function CaptureCallPanel({
             onChange={(e) => setActivityProvenance(e.target.value)}
             placeholder="e.g., hiking, museums, fine dining, adventure sports"
             rows={2}
-            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
+            className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           />
           <p className="text-ui-xs text-text-muted dark:text-text-muted mt-1">
             Guide interests, not limitations

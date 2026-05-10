@@ -13,7 +13,7 @@ import SuitabilityPanel from '@/components/workspace/panels/SuitabilityPanel';
 import type { SuitabilityFlag } from '@/components/workspace/panels/SuitabilityPanel';
 
 export default function SuitabilityPage() {
-  const router = useRouter();
+  const { push } = useRouter();
   const params = useParams();
   const tripId = params.tripId as string;
 
@@ -23,7 +23,7 @@ export default function SuitabilityPage() {
   const [acknowledgedFlags, setAcknowledgedFlags] = useState<string[]>([]);
 
   useEffect(() => {
-    // Fetch trip data including suitability flags
+    // OK: fetch is run once on mount for suitability assessment
     const fetchTrip = async () => {
       try {
         const response = await fetch(`/api/trips/${tripId}`, {
@@ -38,14 +38,16 @@ export default function SuitabilityPage() {
         // Convert suitability_flags to SuitabilityFlag format
         const formattedFlags: SuitabilityFlag[] = (
           trip.suitability_flags || []
-        ).map((flag: any) => ({
-          flag_type: flag.flag_type,
-          severity: flag.severity,
-          reason: flag.reason,
-          confidence: flag.confidence,
-          details: flag.details,
-          affected_travelers: flag.affected_travelers,
-        }));
+        ).map((flag: any) => {
+          return {
+            flag_type: flag.flag_type,
+            severity: flag.severity,
+            reason: flag.reason,
+            confidence: flag.confidence,
+            details: flag.details,
+            affected_travelers: flag.affected_travelers,
+          };
+        });
 
         setFlags(formattedFlags);
       } catch (err) {
@@ -73,7 +75,7 @@ export default function SuitabilityPage() {
       setAcknowledgedFlags(flagIds);
 
       // Redirect to packet/decision stage
-      router.push(`/trips/${tripId}/packet`);
+      push(`/trips/${tripId}/packet`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit acknowledgments');
     }
@@ -93,7 +95,7 @@ export default function SuitabilityPage() {
       <div className="p-4">
         <p className="text-text-secondary">No suitability concerns detected.</p>
         <button
-          onClick={() => router.push(`/trips/${tripId}/packet`)}
+          onClick={() => push(`/trips/${tripId}/packet`)}
           className="mt-4 px-4 py-2 bg-[rgba(var(--accent-blue-rgb)/0.30)] text-white rounded-lg hover:bg-[rgba(var(--accent-blue-rgb)/0.26)]"
         >
           Continue to Review Packet

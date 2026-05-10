@@ -216,6 +216,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
         </h3>
 
         <label htmlFor={flagWarningsId} className="flex items-start gap-3 cursor-pointer group">
+          <span className="sr-only">Allow low-risk warnings</span>
           <input
             id={flagWarningsId}
             type="checkbox"
@@ -243,6 +244,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
         </label>
 
         <label htmlFor={flagLearnId} className="flex items-start gap-3 cursor-pointer group">
+          <span className="sr-only">Learn from team corrections</span>
           <input
             id={flagLearnId}
             type="checkbox"
@@ -271,6 +273,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
         </label>
 
         <label htmlFor={flagAutoReprocessId} className="flex items-start gap-3 cursor-pointer group">
+          <span className="sr-only">Auto re-run after meaningful edits</span>
           <input
             id={flagAutoReprocessId}
             type="checkbox"
@@ -298,6 +301,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
         </label>
 
         <label htmlFor={flagReassessId} className="flex items-start gap-3 cursor-pointer group">
+          <span className="sr-only">Allow manual reassessment</span>
           <input
             id={flagReassessId}
             type="checkbox"
@@ -334,6 +338,7 @@ export function AutonomyTab({ draft, onChange }: AutonomyTabProps) {
             const enabled = autonomy.auto_reprocess_stages?.[stage.key] ?? true;
             return (
               <label key={stage.key} htmlFor={reprocessBaseId + '-' + stage.key} className="flex items-start gap-3 cursor-pointer group rounded-md border border-[var(--border-default)] p-3">
+                <span className="sr-only">{stage.label}</span>
                 <input
                   id={reprocessBaseId + '-' + stage.key}
                   type="checkbox"

@@ -3730,6 +3730,8 @@ def get_agency_settings(
         "agency_id": settings.agency_id,
         "profile": {
             "agency_name": settings.agency_name,
+            "sub_brand": settings.sub_brand,
+            "plan_label": settings.plan_label,
             "contact_email": settings.contact_email,
             "contact_phone": settings.contact_phone,
             "logo_url": settings.logo_url,
@@ -3776,6 +3778,12 @@ def update_agency_operational_settings(
     if request.agency_name is not None:
         settings.agency_name = request.agency_name
         changes.append("agency_name")
+    if request.sub_brand is not None:
+        settings.sub_brand = request.sub_brand
+        changes.append("sub_brand")
+    if request.plan_label is not None:
+        settings.plan_label = request.plan_label
+        changes.append("plan_label")
     if request.contact_email is not None:
         settings.contact_email = request.contact_email
         changes.append("contact_email")
@@ -3819,6 +3827,8 @@ def update_agency_operational_settings(
         "changes": changes,
         "profile": {
             "agency_name": settings.agency_name,
+            "sub_brand": settings.sub_brand,
+            "plan_label": settings.plan_label,
             "contact_email": settings.contact_email,
             "contact_phone": settings.contact_phone,
             "logo_url": settings.logo_url,

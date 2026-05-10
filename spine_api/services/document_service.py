@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spine_api.models.tenant import BookingDocument
+from spine_api.services import execution_event_service
 from spine_api.services.document_storage import DocumentStorageBackend, get_document_storage
 
 logger = logging.getLogger(__name__)
@@ -197,6 +198,25 @@ async def upload_document(
         "Document uploaded: id=%s trip=%s type=%s uploaded_by=%s scan=%s",
         doc.id, trip_id, document_type, uploaded_by_type, scan_result.status,
     )
+
+    actor_type = "agent" if uploaded_by_type == "agent" else "system"
+    actor_id = uploaded_by_id if uploaded_by_type == "agent" else None
+    source = "agent_action" if uploaded_by_type == "agent" else "customer_submission"
+    await execution_event_service.emit_event_best_effort(
+        db, agency_id=doc.agency_id, trip_id=doc.trip_id,
+        subject_type="booking_document", subject_id=doc.id,
+        event_type="document_uploaded", event_category="document",
+        status_from=None, status_to="pending_review",
+        actor_type=actor_type, actor_id=actor_id, source=source,
+        event_metadata={
+            "document_type": doc.document_type,
+            "size_bytes": doc.size_bytes,
+            "mime_type": doc.mime_type,
+            "uploaded_by_type": doc.uploaded_by_type,
+            "scan_status": doc.scan_status,
+        },
+    )
+
     return doc
 
 
@@ -253,6 +273,19 @@ async def accept_document(
     await db.refresh(doc)
 
     logger.info("Document accepted: id=%s reviewed_by=%s", document_id, reviewed_by)
+
+    await execution_event_service.emit_event_best_effort(
+        db, agency_id=doc.agency_id, trip_id=doc.trip_id,
+        subject_type="booking_document", subject_id=doc.id,
+        event_type="document_accepted", event_category="document",
+        status_from="pending_review", status_to="accepted",
+        actor_type="agent", actor_id=reviewed_by, source="agent_action",
+        event_metadata={
+            "document_type": doc.document_type,
+            "review_notes_present": notes_present,
+        },
+    )
+
     return doc
 
 
@@ -278,6 +311,19 @@ async def reject_document(
     await db.refresh(doc)
 
     logger.info("Document rejected: id=%s reviewed_by=%s", document_id, reviewed_by)
+
+    await execution_event_service.emit_event_best_effort(
+        db, agency_id=doc.agency_id, trip_id=doc.trip_id,
+        subject_type="booking_document", subject_id=doc.id,
+        event_type="document_rejected", event_category="document",
+        status_from="pending_review", status_to="rejected",
+        actor_type="agent", actor_id=reviewed_by, source="agent_action",
+        event_metadata={
+            "document_type": doc.document_type,
+            "review_notes_present": notes_present,
+        },
+    )
+
     return doc
 
 
@@ -297,6 +343,7 @@ async def soft_delete_document(
     if doc.status not in ("accepted", "rejected"):
         raise HTTPException(status_code=409, detail=f"Cannot delete document in status: {doc.status}")
 
+    old_status = doc.status
     doc.status = "deleted"
     doc.deleted_at = datetime.now(timezone.utc)
     doc.deleted_by = deleted_by
@@ -305,4 +352,17 @@ async def soft_delete_document(
     await db.refresh(doc)
 
     logger.info("Document soft-deleted: id=%s deleted_by=%s", document_id, deleted_by)
+
+    await execution_event_service.emit_event_best_effort(
+        db, agency_id=doc.agency_id, trip_id=doc.trip_id,
+        subject_type="booking_document", subject_id=doc.id,
+        event_type="document_deleted", event_category="document",
+        status_from=old_status, status_to="deleted",
+        actor_type="agent", actor_id=deleted_by, source="agent_action",
+        event_metadata={
+            "document_type": doc.document_type,
+            "storage_delete_status": "retained",
+        },
+    )
+
     return doc
