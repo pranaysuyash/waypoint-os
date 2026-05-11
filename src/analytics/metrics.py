@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import datetime, timezone
 import random
 
@@ -23,6 +23,21 @@ STAGE_CONVERSION_PROBABILITIES = {
     "safety": 0.95,
 }
 
+
+def _dict_payload(value: Any) -> dict:
+    """Return dict-shaped JSON payloads; treat null/malformed payloads as absent evidence."""
+    return value if isinstance(value, dict) else {}
+
+
+def _trip_analytics(trip: dict) -> dict:
+    return _dict_payload(trip.get("analytics"))
+
+
+def _trip_packet(trip: dict) -> dict:
+    extracted = _dict_payload(trip.get("extracted"))
+    return extracted or _dict_payload(trip.get("packet"))
+
+
 def aggregate_insights(trips: list, days: int = 30) -> InsightsSummary:
     """Compute actual pipeline metrics from trip data.
 
@@ -30,10 +45,14 @@ def aggregate_insights(trips: list, days: int = 30) -> InsightsSummary:
     real velocity metrics instead of hardcoded values.
     """
     total = len(trips)
-    converted = sum(1 for t in trips if t.get("status") == "booked" or t.get("analytics", {}).get("quality_score", 0) > 80)
+    converted = sum(
+        1
+        for t in trips
+        if t.get("status") == "booked" or _trip_analytics(t).get("quality_score", 0) > 80
+    )
 
     rate = (converted / total * 100) if total > 0 else 0
-    margin = sum((t.get("analytics", {}).get("margin_pct", 0) for t in trips))
+    margin = sum((_trip_analytics(t).get("margin_pct", 0) for t in trips))
 
     if total == 0:
         pipeline_velocity = PipelineVelocity(
@@ -176,8 +195,8 @@ def compute_team_metrics(trips: list, members: list, days: int = 30) -> List[Tea
 
         # Extract quality signal: Feedback Rating
         # Try both packet/feedback (Wave 9) and analytics/latest_feedback
-        packet = trip.get("extracted") or trip.get("packet") or {}
-        feedback = packet.get("feedback") or trip.get("analytics", {}).get("latest_feedback")
+        packet = _trip_packet(trip)
+        feedback = packet.get("feedback") or _trip_analytics(trip).get("latest_feedback")
 
         if feedback and isinstance(feedback, dict):
             rating = feedback.get("rating")
@@ -281,8 +300,8 @@ def compute_revenue_metrics(trips: list, days: int = 30) -> RevenueMetrics:
         monthly_data[month_key]["inquiries"] += 1
 
         # Determine value
-        packet = trip.get("extracted", {}) or trip.get("packet", {}) or {}
-        budget = packet.get("budget", {}) or {}
+        packet = _trip_packet(trip)
+        budget = _dict_payload(packet.get("budget"))
         # Some sample data has "value" as a string or nested. Normalise to float.
         raw_val = budget.get("value", 0)
         try:
@@ -291,7 +310,7 @@ def compute_revenue_metrics(trips: list, days: int = 30) -> RevenueMetrics:
             val = 0.0
 
         status = trip.get("status", "new")
-        stage = trip.get("meta", {}).get("stage", "discovery")
+        stage = _dict_payload(trip.get("meta")).get("stage", "discovery")
 
         if status == "booked":
             booked_revenue += val
@@ -343,7 +362,7 @@ def compute_alerts(trips: list) -> List[OperationalAlert]:
     alerts = []
 
     for trip in trips:
-        analytics = trip.get("analytics") or {}
+        analytics = _trip_analytics(trip)
 
         # Check for feedback re-open condition
         if analytics.get("feedback_reopen") and not analytics.get("feedback_dismissed"):

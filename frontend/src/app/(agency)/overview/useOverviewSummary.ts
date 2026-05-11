@@ -34,6 +34,8 @@ export interface OverviewNavItem {
   icon: LucideIcon;
 }
 
+const SYSTEM_CHECK_HREF = '/overview?panel=system-check';
+
 function pluralize(count: number, singular: string, plural: string): string {
   return `${count} ${count === 1 ? singular : plural}`;
 }
@@ -116,7 +118,7 @@ export function useOverviewSummary() {
         value: opsHealth.value,
         sub: opsHealth.sub,
         ctaLabel: 'Check status',
-        href: '/workbench?panel=integrity',
+        href: SYSTEM_CHECK_HREF,
         state: 'red',
         icon: AlertTriangle,
         isLoading: integrityIssues.isLoading,
@@ -163,7 +165,7 @@ export function useOverviewSummary() {
         icon: CheckCircle2,
       },
       {
-        href: '/workbench?panel=integrity',
+        href: SYSTEM_CHECK_HREF,
         label: 'System Check',
         sub: opsHealth.sub,
         subColor: 'var(--accent-red)',

@@ -1,14 +1,11 @@
-'use client';
+import type { Metadata } from 'next';
+import PageClient from './PageClient';
 
-import { useTripContext } from '@/contexts/TripContext';
-import { PacketPanel } from '@/components/workspace/panels/PacketPanel';
+export const metadata: Metadata = {
+  title: "Waypoint OS — Trip Details",
+  description: "Review structured trip details, customer requirements, and planning inputs.",
+};
 
-export default function PacketPage() {
-  const { tripId, trip } = useTripContext();
-  
-  return (
-    <div className='p-6'>
-      <PacketPanel tripId={tripId || ''} trip={trip} />
-    </div>
-  );
+export default function Page() {
+  return <PageClient />;
 }

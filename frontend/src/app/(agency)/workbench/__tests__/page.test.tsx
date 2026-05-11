@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import WorkbenchPage from '../page';
 
+const mockReplace = vi.fn();
+
 vi.mock('next/link', () => ({
   default: ({ children, href, ...props }: { children: ReactNode; href: string }) => (
     <a href={href} {...props}>
@@ -21,7 +23,7 @@ vi.mock('next/dynamic', () => ({
 
 vi.mock('next/navigation', () => ({
   useSearchParams: vi.fn(),
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: mockReplace }),
   usePathname: () => '/workbench',
 }));
 
@@ -114,14 +116,6 @@ import { useSearchParams } from 'next/navigation';
 describe('WorkbenchPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  it('renders a page-level return link when opened for ops health', () => {
-    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('panel=integrity') as never);
-
-    render(<WorkbenchPage />);
-
-    expect(screen.getByRole('link', { name: /back to overview/i })).toHaveAttribute('href', '/overview');
   });
 
   it('does not render the overview return link in the default workbench view', () => {

@@ -8,8 +8,10 @@ tests/conftest — Pytest configuration and shared fixtures.
   `RuntimeError: attached to a different loop`.
 """
 
+import os
 import sys
 import warnings
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -26,8 +28,6 @@ warnings.filterwarnings(
 # JWT_SECRET — must be set before *any* spine_api module is imported,
 # because security.py raises at import time if the var is missing.
 # ---------------------------------------------------------------------------
-import os
-
 if not os.environ.get("JWT_SECRET"):
     os.environ["JWT_SECRET"] = "test-jwt-secret-for-pytest-only-32byt"
 
@@ -112,6 +112,7 @@ def session_client():
         user_id="323468de-ba3d-437b-aa10-35b281a0c6a6",
         agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
         role="owner",
+        expires_delta=timedelta(hours=12),
     )
     with TestClient(app, headers={"Authorization": f"Bearer {token}"}) as client:
         yield client

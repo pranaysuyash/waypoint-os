@@ -566,3 +566,108 @@ Next recommended remediation sequence:
 3. Refactor `itinerary-checker/page.tsx` inline style/component-size findings as a dedicated visual QA task with browser screenshots.
 4. Review reducer candidates (`prefer-useReducer`, cascading/rerender state findings) by user flow, not by mechanical conversion.
 5. Re-check `no-fetch-in-effect` and `nextjs-no-client-fetch-for-server-data` against actual API/runtime contracts before moving data loading to server boundaries.
+
+## Supersession Batch 10: TypeScript Blocker + Async Loading State Repair
+
+Verdict: ACCEPT+MODIFY. The TypeScript blocker in `MetricDrillDownDrawer.test.tsx` was a test harness typing issue, but the stricter test revealed a real component design smell: `MetricDrillDownDrawer` used `useTransition` as an async fetch loading state.
+
+Decision rationale:
+
+- `useTransition` is for non-urgent UI state transitions, not fetch lifecycle ownership.
+- The drawer needs a deterministic async state machine: idle/loading/success/error.
+- A reducer is better than multiple independent `useState` calls because the states are mutually exclusive and should transition atomically.
+
+Changes:
+
+- Converted `MetricDrillDownDrawer` from `useTransition` + separate state setters to a reducer-backed state machine.
+- Fixed the loading-state test resolver to use a typed `Response` contract.
+- Tightened the drawer render test to assert the accessible `Close` button instead of assuming only one button exists after data loads.
+
+Verification:
+
+```text
+npm run test -- --run src/components/workspace/panels/__tests__/MetricDrillDownDrawer.test.tsx
+  1 file passed, 13 tests passed
+
+npx tsc --noEmit
+  exit code 0
+
+React Doctor
+  score 90, 131 warnings, 0 errors
+```
+
+## Supersession Batch 11: Metadata Server Wrapper Split
+
+Verdict: ACCEPT. `nextjs-missing-metadata` findings were on client pages. The installed Next.js docs state that `metadata` and `generateMetadata` exports are only supported in Server Components, so adding metadata directly to those client pages would be invalid.
+
+Decision rationale:
+
+- Preserve client behavior by moving existing page bodies into colocated `PageClient.tsx` files.
+- Make each `page.tsx` a tiny Server Component wrapper that exports typed `Metadata` and renders the colocated client component.
+- Preserve dynamic route contracts, including forwarding `params` for `/booking-collection/[token]`.
+
+Routes split:
+
+- `/booking-collection/[token]`
+- `/overview`
+- `/insights`
+- `/reviews`
+- `/trips`
+- `/trips/[tripId]/strategy`
+- `/itinerary-checker`
+- `/trips/[tripId]/output`
+- `/trips/[tripId]/packet`
+- `/trips/[tripId]/followups`
+- `/trips/[tripId]/timeline`
+- `/trips/[tripId]/decision`
+- `/trips/[tripId]/suitability`
+- `/inbox`
+- `/trips/[tripId]/intake`
+- `/trips/[tripId]/safety`
+- `/workbench`
+- `/audit`
+
+Verification:
+
+```text
+npx tsc --noEmit
+  exit code 0
+
+npm run test -- --run src/app/(public)/booking-collection/__tests__/page.test.tsx
+  1 file passed, 9 tests passed
+  Note: existing act(...) warning remains in the initial loading-state test.
+
+npm run test -- --run src/app/(agency)/reviews/__tests__/page.test.tsx src/app/(agency)/workbench/__tests__/page.test.tsx src/app/(agency)/workbench/__tests__/page-ops-tab.test.tsx src/app/(agency)/trips/[tripId]/__tests__/gated-stage-pages.test.tsx src/app/(agency)/trips/[tripId]/__tests__/layout.test.tsx
+  5 files passed, 22 tests passed
+  Note: existing act(...) warnings remain in trip layout async tests.
+
+npm run build
+  exit code 0, Next.js 16.2.4 production build completed
+
+React Doctor
+  score 91, 111 warnings, 0 errors
+  nextjs-missing-metadata: 0
+```
+
+Remaining React Doctor categories after Batch 11:
+
+```text
+40 no-inline-exhaustive-style
+16 no-giant-component
+15 prefer-useReducer
+12 rerender-state-only-in-handlers
+9 no-cascading-set-state
+6 no-fetch-in-effect
+3 rendering-usetransition-loading
+2 nextjs-no-client-fetch-for-server-data
+2 async-await-in-loop
+2 no-render-in-render
+2 no-derived-useState
+2 no-derived-state-effect
+```
+
+Next recommended sequence:
+
+1. Treat `/join/[code]` and trip layout route-level fetches as design tasks, not simple lint cleanup. They cross auth/session and dynamic trip context boundaries.
+2. Convert client-authenticated fetch effects (`audit`, `suitability`, `TimelineSummary`, `useRuntimeVersion`) to canonical query hooks or server boundaries only after confirming auth/runtime contracts.
+3. Refactor `itinerary-checker` as a dedicated visual/component split because it owns most `no-inline-exhaustive-style` and `no-giant-component` findings.

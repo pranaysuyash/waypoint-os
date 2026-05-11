@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MetricDrillDownDrawer } from '../MetricDrillDownDrawer';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -76,8 +76,8 @@ describe('MetricDrillDownDrawer', () => {
     );
 
     expect(await screen.findByText(/Conversion Rate Details/)).toBeInTheDocument();
-    // Verify the drawer is rendered with the overlay
-    expect(screen.getByRole('button')).toBeInTheDocument(); // Close button
+    // Verify the drawer close control is accessible by name.
+    expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
   });
 
   it('fetches trip data when opened', async () => {
@@ -100,11 +100,11 @@ describe('MetricDrillDownDrawer', () => {
     });
   });
 
-  it('displays loading state while fetching', () => {
-    let resolveFetch: ((value: unknown) => void) | null = null;
+  it('displays loading state while fetching', async () => {
+    let resolveFetch: (value: Response) => void = () => {};
     (global.fetch as any).mockImplementation(
       () =>
-        new Promise((resolve) => {
+        new Promise<Response>((resolve) => {
           resolveFetch = resolve;
         })
     );
@@ -121,9 +121,11 @@ describe('MetricDrillDownDrawer', () => {
     );
 
     expect(screen.getByText('Loading trip data…')).toBeInTheDocument();
-    resolveFetch?.({
-      ok: true,
-      json: async () => mockTripsResponse,
+    await act(async () => {
+      resolveFetch(new Response(JSON.stringify(mockTripsResponse), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }));
     });
     unmount();
   });

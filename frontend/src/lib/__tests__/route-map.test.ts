@@ -27,6 +27,23 @@ describe("resolveBackendPath", () => {
     expect(resolveBackendPath(["trips", "trip-123"])).toBeNull();
   });
 
+  it("denies stale BFF aliases that are not backed by runtime backend routes", () => {
+    expect(resolveBackendPath(["items"])).toBeNull();
+    expect(resolveBackendPath(["overrides"])).toBeNull();
+    expect(resolveBackendPath(["team", "members", "member-1", "workload"])).toBeNull();
+  });
+
+  it("keeps canonical override and team workload routes available", () => {
+    expect(resolveBackendPath(["trips", "trip_123", "overrides"])).toBe(
+      "trips/trip_123/overrides"
+    );
+    expect(resolveBackendPath(["overrides", "override-1"])).toBe("overrides/override-1");
+    expect(resolveBackendPath(["team", "workload"])).toBe("api/team/workload");
+    expect(resolveBackendPath(["team", "members", "member-1"])).toBe(
+      "api/team/members/member-1"
+    );
+  });
+
   it("denies unknown routes by returning null", () => {
     expect(resolveBackendPath(["unmapped", "resource"])).toBeNull();
   });

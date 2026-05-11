@@ -2,6 +2,54 @@
 
 This directory stores reusable helper utilities for this project.
 
+## Dev Server Manager: `dev_server_manager.py`
+
+Purpose:
+- Manage backend/frontend dev servers as detached processes for stable local QA loops.
+- Avoid fragile per-terminal sessions by keeping PID and log state in `.runtime/`.
+- Provide explicit `start/stop/restart/status/check/logs` commands with health validation.
+
+Usage:
+```bash
+python tools/dev_server_manager.py start --service all
+python tools/dev_server_manager.py status --service all
+python tools/dev_server_manager.py check --service all
+python tools/dev_server_manager.py logs --service backend --lines 80
+python tools/dev_server_manager.py restart --service all
+python tools/dev_server_manager.py stop --service all
+```
+
+Notes:
+- Backend health target: `http://127.0.0.1:8000/health`
+- Frontend health target: `http://127.0.0.1:3000/overview`
+- Runtime files:
+  - `.runtime/backend.pid`
+  - `.runtime/frontend.pid`
+  - `.runtime/backend.log`
+  - `.runtime/frontend.log`
+- If PID files drift, status recovers by discovering the process bound to the service port.
+
+## Architecture Route Inventory: `architecture_route_inventory.py`
+
+Purpose:
+- Inventory FastAPI route ownership across `spine_api/server.py` and `spine_api/routers/`.
+- Inventory the frontend BFF route registry in `frontend/src/lib/route-map.ts`.
+- Flag exact backend method/path duplicates before router decomposition work.
+- Flag BFF route-map entries whose `backendPath` does not match a current backend path after path-parameter normalization.
+- Produce Markdown/JSON evidence for architecture planning without importing the FastAPI app.
+
+Usage:
+```bash
+uv run python tools/architecture_route_inventory.py --format md \
+  --output Docs/status/ARCHITECTURE_ROUTE_INVENTORY_YYYY-MM-DD.md
+
+uv run python tools/architecture_route_inventory.py --format json
+```
+
+Notes:
+- This is a static architecture aid. Runtime route/OpenAPI parity is still covered by `scripts/snapshot_server_routes.py` and the server route parity tests.
+- Keep using it before moving route families out of `spine_api/server.py` so decomposition choices are based on current code, not stale line references.
+
 
 ## Frontend Contrast Validator: `frontend-validate-contrast.ts`
 

@@ -240,3 +240,53 @@ Remaining React Doctor categories:
 2 no-derived-state-effect
 2 async-await-in-loop
 ```
+
+## 2026-05-11 Metadata + Async State Addendum
+
+Additional remediation completed:
+
+- Fixed the `MetricDrillDownDrawer.test.tsx` TypeScript blocker.
+- Replaced `MetricDrillDownDrawer` async `useTransition` loading with a reducer-backed state machine.
+- Split 18 client pages into server metadata wrappers plus colocated `PageClient.tsx` components.
+- Preserved the `/booking-collection/[token]` dynamic params contract by forwarding `params` to its client component.
+
+Current React Doctor:
+
+```text
+score 91 Great total 111 errors 0 warnings 111
+nextjs-missing-metadata 0
+exports 0
+types 0
+```
+
+Verification:
+
+```text
+npx tsc --noEmit: passed
+MetricDrillDownDrawer targeted test: 1 file passed, 13 tests passed
+booking collection route test: 1 file passed, 9 tests passed
+representative route/page tests: 5 files passed, 22 tests passed
+npm run build: passed, Next.js 16.2.4 production build completed
+```
+
+Known test noise:
+
+- `booking-collection/__tests__/page.test.tsx` still emits an `act(...)` warning in the loading-state test.
+- `trips/[tripId]/__tests__/layout.test.tsx` still emits existing `act(...)` warnings from async layout updates.
+
+Remaining categories:
+
+```text
+40 no-inline-exhaustive-style
+16 no-giant-component
+15 prefer-useReducer
+12 rerender-state-only-in-handlers
+9 no-cascading-set-state
+6 no-fetch-in-effect
+3 rendering-usetransition-loading
+2 nextjs-no-client-fetch-for-server-data
+2 async-await-in-loop
+2 no-render-in-render
+2 no-derived-useState
+2 no-derived-state-effect
+```

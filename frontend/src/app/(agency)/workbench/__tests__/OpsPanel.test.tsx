@@ -100,6 +100,7 @@ describe('OpsPanel', () => {
     await waitFor(() => {
       expect(screen.getByTestId('ops-generate-link-btn')).toBeInTheDocument();
     });
+    expect(screen.getByTestId('ops-documents-canonical-path-hint')).toBeInTheDocument();
   });
 
   it('shows collection link section at booking stage', async () => {

@@ -7,7 +7,7 @@ const ROUTES = {
   workspaces: '/trips',
   inbox: '/inbox',
   approvals: '/reviews',
-  integrity: '/workbench?panel=integrity',
+  integrity: '/overview?panel=system-check',
   intake: '/workbench?draft=new&tab=intake',
 } as const;
 
@@ -144,6 +144,18 @@ vi.mock('next/link', () => ({
     <a href={href} {...props}>
       {children}
     </a>
+  ),
+}));
+
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/overview',
+  useRouter: () => ({ replace: vi.fn() }),
+}));
+
+vi.mock('@/app/(agency)/workbench/IntegrityMonitorPanel', () => ({
+  default: ({ open }: { open: boolean }) => (
+    open ? <div data-testid='system-check-panel'>System Check</div> : null
   ),
 }));
 

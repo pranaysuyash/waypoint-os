@@ -12,9 +12,45 @@ Run: uv run python -m pytest tests/test_api_trips_post.py -v
 
 import json
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 import pytest
 
+from spine_api.persistence import TripStore
+
 pytestmark = pytest.mark.require_postgres
+
+
+AGENCY_ID = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+
+
+@pytest.fixture
+def patchable_trip_id():
+    unique_suffix = uuid4().hex[:12]
+    trip_id = f"tfu_patch_{unique_suffix}"
+    now = datetime.now(timezone.utc).isoformat()
+    TripStore.save_trip(
+        {
+            "id": trip_id,
+            "run_id": f"run_tfu_{unique_suffix}",
+            "source": "pytest",
+            "status": "assigned",
+            "created_at": now,
+            "updated_at": now,
+            "extracted": {"facts": {}},
+            "validation": {"is_valid": True, "errors": [], "warnings": []},
+            "decision": {
+                "decision_state": "ASK_FOLLOWUP",
+                "hard_blockers": [],
+                "soft_blockers": [],
+            },
+            "raw_input": {"fixture_id": "SC-901"},
+        },
+        agency_id=AGENCY_ID,
+    )
+    try:
+        yield trip_id
+    finally:
+        TripStore.delete_trip(trip_id)
 
 
 class TestTripFollowUpDueDate:
@@ -36,18 +72,10 @@ class TestTripFollowUpDueDate:
             assert "follow_up_due_date" in trip or trip.get("follow_up_due_date") is None, \
                 "Trip should have follow_up_due_date field (can be null for existing trips)"
 
-    def test_patch_trip_with_follow_up_due_date(self, session_client):
+    def test_patch_trip_with_follow_up_due_date(self, session_client, patchable_trip_id):
         """PATCH /trips/{trip_id} can update follow_up_due_date field."""
-        # First, get an existing trip or list trips
-        list_response = session_client.get("/trips")
-        assert list_response.status_code == 200
-        
-        trips = list_response.json().get("items", [])
-        if not trips:
-            pytest.skip("No trips available to test PATCH")
-        
-        trip_id = trips[0]["id"]
-        
+        trip_id = patchable_trip_id
+
         # Create a future datetime (48 hours from now)
         future_time = datetime.now(timezone.utc) + timedelta(hours=48)
         follow_up_due_date = future_time.isoformat()
@@ -64,18 +92,10 @@ class TestTripFollowUpDueDate:
         assert updated_trip.get("follow_up_due_date") == follow_up_due_date, \
             f"follow_up_due_date should be set to {follow_up_due_date}"
 
-    def test_patch_trip_with_null_follow_up_due_date(self, session_client):
+    def test_patch_trip_with_null_follow_up_due_date(self, session_client, patchable_trip_id):
         """PATCH /trips/{trip_id} can clear follow_up_due_date by setting to null."""
-        # First, get an existing trip
-        list_response = session_client.get("/trips")
-        assert list_response.status_code == 200
-        
-        trips = list_response.json().get("items", [])
-        if not trips:
-            pytest.skip("No trips available to test PATCH")
-        
-        trip_id = trips[0]["id"]
-        
+        trip_id = patchable_trip_id
+
         # PATCH the trip with follow_up_due_date set to null
         patch_response = session_client.patch(
             f"/trips/{trip_id}",
@@ -88,19 +108,13 @@ class TestTripFollowUpDueDate:
         assert updated_trip.get("follow_up_due_date") is None, \
             "follow_up_due_date should be null"
 
-    def test_patch_trip_preserves_existing_fields(self, session_client):
+    def test_patch_trip_preserves_existing_fields(self, session_client, patchable_trip_id):
         """PATCH /trips/{trip_id} with follow_up_due_date preserves other fields."""
-        # First, get an existing trip
-        list_response = session_client.get("/trips")
-        assert list_response.status_code == 200
-        
-        trips = list_response.json().get("items", [])
-        if not trips:
-            pytest.skip("No trips available to test PATCH")
-        
-        trip_id = trips[0]["id"]
-        old_trip = trips[0]
-        
+        trip_id = patchable_trip_id
+        old_response = session_client.get(f"/trips/{trip_id}")
+        assert old_response.status_code == 200
+        old_trip = old_response.json()
+
         # Set follow_up_due_date
         future_time = datetime.now(timezone.utc) + timedelta(hours=48)
         follow_up_due_date = future_time.isoformat()
@@ -121,18 +135,10 @@ class TestTripFollowUpDueDate:
         assert updated_trip.get("status") == old_trip.get("status"), "Status should not change"
         assert updated_trip.get("created_at") == old_trip.get("created_at"), "created_at should not change"
 
-    def test_get_trip_by_id_returns_follow_up_due_date(self, session_client):
+    def test_get_trip_by_id_returns_follow_up_due_date(self, session_client, patchable_trip_id):
         """GET /trips/{trip_id} returns follow_up_due_date field."""
-        # First, get a trip list
-        list_response = session_client.get("/trips")
-        assert list_response.status_code == 200
-        
-        trips = list_response.json().get("items", [])
-        if not trips:
-            pytest.skip("No trips available to test GET")
-        
-        trip_id = trips[0]["id"]
-        
+        trip_id = patchable_trip_id
+
         # Set follow_up_due_date via PATCH
         future_time = datetime.now(timezone.utc) + timedelta(hours=48)
         follow_up_due_date = future_time.isoformat()
@@ -151,18 +157,10 @@ class TestTripFollowUpDueDate:
         assert retrieved_trip.get("follow_up_due_date") == follow_up_due_date, \
             "follow_up_due_date should be persisted and returned in GET"
 
-    def test_patch_trip_with_status_and_follow_up_due_date(self, session_client):
+    def test_patch_trip_with_status_and_follow_up_due_date(self, session_client, patchable_trip_id):
         """PATCH /trips/{trip_id} can update both status and follow_up_due_date."""
-        # First, get an existing trip
-        list_response = session_client.get("/trips")
-        assert list_response.status_code == 200
-        
-        trips = list_response.json().get("items", [])
-        if not trips:
-            pytest.skip("No trips available to test PATCH")
-        
-        trip_id = trips[0]["id"]
-        
+        trip_id = patchable_trip_id
+
         # Set both status and follow_up_due_date
         future_time = datetime.now(timezone.utc) + timedelta(hours=48)
         follow_up_due_date = future_time.isoformat()
@@ -183,18 +181,10 @@ class TestTripFollowUpDueDate:
         assert updated_trip.get("follow_up_due_date") == follow_up_due_date, \
             "follow_up_due_date should be set"
 
-    def test_follow_up_due_date_accepts_iso8601_datetime(self, session_client):
+    def test_follow_up_due_date_accepts_iso8601_datetime(self, session_client, patchable_trip_id):
         """PATCH /trips/{trip_id} accepts ISO-8601 datetime format."""
-        # First, get an existing trip
-        list_response = session_client.get("/trips")
-        assert list_response.status_code == 200
-        
-        trips = list_response.json().get("items", [])
-        if not trips:
-            pytest.skip("No trips available to test PATCH")
-        
-        trip_id = trips[0]["id"]
-        
+        trip_id = patchable_trip_id
+
         # Test various ISO-8601 formats
         test_datetimes = [
             "2026-04-29T14:30:00+00:00",  # With timezone
@@ -216,18 +206,10 @@ class TestTripFollowUpDueDate:
             assert updated_trip.get("follow_up_due_date") is not None, \
                 f"follow_up_due_date should be set for: {follow_up_due_date}"
 
-    def test_patch_trip_follow_up_due_date_persists_across_requests(self, session_client):
+    def test_patch_trip_follow_up_due_date_persists_across_requests(self, session_client, patchable_trip_id):
         """follow_up_due_date persists across multiple GET requests (data is saved)."""
-        # First, get an existing trip
-        list_response = session_client.get("/trips")
-        assert list_response.status_code == 200
-        
-        trips = list_response.json().get("items", [])
-        if not trips:
-            pytest.skip("No trips available to test persistence")
-        
-        trip_id = trips[0]["id"]
-        
+        trip_id = patchable_trip_id
+
         # Set follow_up_due_date
         future_time = datetime.now(timezone.utc) + timedelta(hours=48)
         follow_up_due_date = future_time.isoformat()

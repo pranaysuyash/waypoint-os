@@ -1,14 +1,11 @@
-'use client';
+import type { Metadata } from 'next';
+import PageClient from './PageClient';
 
-import { useTripContext } from '@/contexts/TripContext';
-import { IntakePanel } from '@/components/workspace/panels/IntakePanel';
+export const metadata: Metadata = {
+  title: "Waypoint OS — Trip Intake",
+  description: "Review and edit intake details for the selected customer trip.",
+};
 
-export default function IntakePage() {
-  const { tripId, trip } = useTripContext();
-  
-  return (
-    <div className='p-6'>
-      <IntakePanel tripId={tripId || ''} trip={trip} />
-    </div>
-  );
+export default function Page() {
+  return <PageClient />;
 }

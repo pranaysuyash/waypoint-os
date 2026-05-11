@@ -1,6 +1,10 @@
 # Output Panel & Bundle Generation: Deep Dive Master Index
 
-> Complete exploration of quote, itinerary, and document generation system
+> Complete research exploration of quote, itinerary, and document generation system
+
+Runtime status reference:
+- [RUNTIME_TRUTH_MATRIX_2026-05-11.md](./status/RUNTIME_TRUTH_MATRIX_2026-05-11.md)
+- This index is documentation-complete, not a guarantee that all described runtime modules are shipped.
 
 ---
 
@@ -41,6 +45,7 @@ This is a comprehensive exploration. Each document dives deep into one aspect.
 - Start with `OUTPUT_01_TECHNICAL_DEEP_DIVE.md`
 - Reference `OUTPUT_12_TEMPLATE_REFERENCE_COMPLETE.md` for template syntax
 - Use `OUTPUT_14_TESTING_SCENARIOS_COMPLETE.md` for test cases
+- Validate against current runtime before coding: `src/lib/nav-modules.ts` and `docs/status/RUNTIME_TRUTH_MATRIX_2026-05-11.md`
 
 ### For Business Understanding
 - Read `OUTPUT_03_BUSINESS_VALUE_DEEP_DIVE.md`
@@ -78,5 +83,5 @@ See `OUTPUT_03_BUSINESS_VALUE_DEEP_DIVE.md` - Section 4
 
 ---
 
-**Last Updated:** 2026-04-23
-**Version:** 1.0
+**Last Updated:** 2026-05-11
+**Version:** 1.1

@@ -1,14 +1,11 @@
-'use client';
+import type { Metadata } from 'next';
+import PageClient from './PageClient';
 
-import { useTripContext } from '@/contexts/TripContext';
-import { TimelinePanel } from '@/components/workspace/panels/TimelinePanel';
+export const metadata: Metadata = {
+  title: "Waypoint OS — Trip Timeline",
+  description: "Review the execution timeline and activity history for the selected trip.",
+};
 
-export default function TimelinePage() {
-  const { tripId } = useTripContext();
-  
-  return (
-    <div className='p-6'>
-      <TimelinePanel tripId={tripId || ''} />
-    </div>
-  );
+export default function Page() {
+  return <PageClient />;
 }

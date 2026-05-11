@@ -172,6 +172,31 @@ Full suite:
 # 2039 passed, 7 skipped in 187.07s
 ```
 
+Follow-up verification after trip PATCH isolation repair:
+
+```bash
+.venv/bin/python -m pytest tests/test_api_trips_post.py tests/test_call_capture_phase2.py -q
+# 29 passed in 307.36s
+```
+
+The previous order-dependent trip PATCH failures were removed by making the affected tests seed and clean up their own patch targets instead of selecting `items[0]` from shared `/trips` state.
+
+Long full-suite run after that repair:
+
+```bash
+.venv/bin/python -m pytest -q
+# 1975 passed, 59 failed, 5 skipped, 18 errors in 1865.79s
+```
+
+Interpretation: the earlier trip PATCH failures were absent from the failure list. The new broad failure cluster was caused by shared test auth/session behavior and concurrent environment load, not the traveler proposal boundary:
+
+- `tests/conftest.py` used one session-scoped `TestClient` token.
+- `spine_api/core/security.py` keeps default access tokens to 15 minutes.
+- The full suite took about 31 minutes, so protected `session_client` endpoints started returning `401 Invalid or expired token` after the token expired.
+- `tests/conftest.py` now creates the session test token with `expires_delta=timedelta(hours=12)`.
+- A representative previously failing protected route passed alone: `.venv/bin/python -m pytest tests/test_team_router_behavior.py::test_list_members_is_agency_scoped -q` -> `1 passed in 72.11s`.
+- Live-server lifecycle verification remains noisy while other agents have long-running pytest jobs and a live uvicorn process active in the same workspace; rerun the full suite after those processes clear.
+
 ## Operational Safety
 
 This boundary contract does not enable proposal generation or delivery. It does affect traveler-bundle persistence by forcing the existing public projection at the save boundary.

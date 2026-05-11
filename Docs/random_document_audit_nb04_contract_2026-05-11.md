@@ -11,7 +11,8 @@ Implementation follow-up on 2026-05-11:
 - `src/intake/traveler_proposal.py` now defines the public/internal proposal boundary contract.
 - `spine_api/services/pipeline_execution_service.py` now persists existing `traveler_bundle` output through `to_traveler_dict()` when available, preventing generic raw serialization from storing traveler-bundle `internal_notes`.
 - `tests/test_pipeline_execution_service_boundaries.py` includes a regression proving generic serialization would leak `internal_notes` and the public projection does not.
-- Full-suite verification found an unrelated order-dependent trip PATCH test isolation failure; the affected modules pass in isolation.
+- The unrelated order-dependent trip PATCH test isolation failure was repaired by giving the affected tests owned trip fixtures instead of patching ambient `/trips` list items.
+- A later full-suite run exposed a separate session auth expiry issue: the session-scoped `TestClient` token expired after 15 minutes during a 31-minute suite. `tests/conftest.py` now gives the test-session token a 12-hour expiry; rerun full-suite verification after concurrent agent pytest processes clear.
 - Proposal generation, supplier/cost foundations, and delivery/send behavior remain intentionally pending.
 
 ## 1. Document Inventory

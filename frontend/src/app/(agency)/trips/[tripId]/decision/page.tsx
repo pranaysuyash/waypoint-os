@@ -1,21 +1,11 @@
-'use client';
+import type { Metadata } from 'next';
+import PageClient from './PageClient';
 
-import { useTripContext } from '@/contexts/TripContext';
-import { DecisionPanel } from '@/components/workspace/panels/DecisionPanel';
-import { PlanningStageGate } from '@/components/workspace/PlanningStageGate';
-import { getPlanningStageGateReason } from '@/lib/planning-status';
+export const metadata: Metadata = {
+  title: "Waypoint OS — Quote Assessment",
+  description: "Assess whether the selected trip is ready for quote preparation.",
+};
 
-export default function DecisionPage() {
-  const { tripId, trip } = useTripContext();
-  const gateReason = getPlanningStageGateReason(trip, 'decision');
-
-  return (
-    <div className='p-6'>
-      {tripId && gateReason ? (
-        <PlanningStageGate tripId={tripId} reason={gateReason} />
-      ) : (
-        <DecisionPanel tripId={tripId || ''} />
-      )}
-    </div>
-  );
+export default function Page() {
+  return <PageClient />;
 }

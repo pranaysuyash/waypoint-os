@@ -1,21 +1,11 @@
-'use client';
+import type { Metadata } from 'next';
+import PageClient from './PageClient';
 
-import { useTripContext } from '@/contexts/TripContext';
-import { StrategyPanel } from '@/components/workspace/panels/StrategyPanel';
-import { PlanningStageGate } from '@/components/workspace/PlanningStageGate';
-import { getPlanningStageGateReason } from '@/lib/planning-status';
+export const metadata: Metadata = {
+  title: "Waypoint OS — Trip Options",
+  description: "Build and review trip options for the selected customer itinerary.",
+};
 
-export default function StrategyPage() {
-  const { tripId, trip } = useTripContext();
-  const gateReason = getPlanningStageGateReason(trip, 'strategy');
-
-  return (
-    <div className='p-6'>
-      {tripId && gateReason ? (
-        <PlanningStageGate tripId={tripId} reason={gateReason} />
-      ) : (
-        <StrategyPanel tripId={tripId || ''} />
-      )}
-    </div>
-  );
+export default function Page() {
+  return <PageClient />;
 }

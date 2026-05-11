@@ -465,3 +465,108 @@ Investigate full-suite order dependence around:
 - `tests/test_call_capture_phase2.py` selecting `trips[0]` from shared state and then PATCHing it
 - `tests/test_run_lifecycle.py` live run status 500 in strict leakage flow
 - `spine_api/persistence.py:file_lock()` ownerless-lock race on `data/audit/events.jsonl.lockdir`
+
+## Dev Server Lifecycle Hardening (2026-05-11, Session 3)
+
+### Problem
+Randomized QA loops were blocked by server sessions dropping between turns, causing false completion claims and repeated manual restarts.
+
+### Root cause
+- Ad-hoc terminal-bound process starts were not durable across tool sessions.
+- Runtime checks became inconsistent when PID ownership drifted or when Turbopack cold-compile delays outlived short health timeouts.
+
+### Solution implemented
+1. Added reusable supervisor tool:
+- `/Users/pranay/Projects/travel_agency_agent/tools/dev_server_manager.py`
+
+2. Capabilities:
+- `start`, `stop`, `restart`, `status`, `check`, `logs`
+- Detached process start with PID/log files under `.runtime/`
+- Port-based PID recovery (`lsof -ti tcp:<port>`) when PID files drift
+- Health checks for both backend and frontend
+
+3. Stability improvements:
+- Backend launch switched to `.venv/bin/python -m uvicorn spine_api.server:app ...` for direct process ownership.
+- Health probe timeout increased to handle Turbopack cold-start latency.
+
+4. Documentation updated:
+- `/Users/pranay/Projects/travel_agency_agent/tools/README.md`
+
+### Verification evidence
+- `python tools/dev_server_manager.py restart --service all` → both healthy
+- `python tools/dev_server_manager.py status --service all` → backend/frontend running + `health=200`
+- `python tools/dev_server_manager.py check --service all` → both `200`
+- Direct URL checks:
+  - `http://localhost:8000/health` → `200`
+  - `http://localhost:3000/workbench?draft=new&tab=safety` → `200`
+
+### Operator note
+Use the supervisor commands as the canonical startup path for randomized testing to reduce runtime drift and false-negative availability checks.
+
+## Full-Suite Order-Dependence Stabilization (2026-05-11, Session 4)
+
+### Problem
+The backend full suite had become order-dependent after the ledger-isolation test cleanup. Focused tests passed, but full-suite order exposed:
+- `tests/test_call_capture_phase2.py::TestPhase2StructuredFields` PATCH/GET failures when tests selected `trips[0]` from `/trips`.
+- `tests/test_integrity.py::TestIntegrityIssues::test_integrity_endpoint_passes_current_agency_scope` returning `401` after the suite had been running for longer than the default access-token lifetime.
+
+### Root Causes
+1. `tests/test_call_capture_phase2.py` used shared API list state as a fixture. In SQL-backed test runs, `/trips` can include seeded or previously-created trips, so `trips[0]` is not a stable ownership or schema contract for a PATCH test.
+2. `tests/conftest.py::session_client` created a real JWT with the production 15-minute default expiry. The full suite reached later authenticated endpoints after that token had expired.
+3. A parallel fixture edit briefly introduced `TripStore.delete_trip()` cleanup. That was rejected because repo data-safety rules prohibit deleting from the shared test database without explicit permission.
+4. The first unique trip ID format exceeded the SQL `trips.id varchar(36)` limit. The fixture now uses `trip_p2_` plus a 28-character hex suffix, exactly 36 characters.
+
+### Changes Implemented
+- `tests/test_call_capture_phase2.py`
+  - Added per-test `patchable_trip_id` fixture backed by a unique additive trip ID.
+  - Replaced PATCH/GET tests that depended on `trips[0]` with explicit fixture-owned trip IDs.
+  - Removed delete cleanup; fixture records are additive and bounded to test data markers.
+- `tests/conftest.py`
+  - Extended only the shared test client's JWT lifetime to 12 hours via `expires_delta=timedelta(hours=12)`.
+  - Left production token expiry unchanged in `spine_api/core/security.py`.
+
+### Verification
+Focused lint:
+
+```bash
+uv run ruff check tests/conftest.py tests/test_call_capture_phase2.py
+```
+
+Result:
+
+```text
+All checks passed!
+```
+
+Focused runtime checks:
+
+```bash
+uv run pytest -q tests/test_integrity.py::TestIntegrityIssues::test_integrity_endpoint_returns_items_and_total tests/test_integrity.py::TestIntegrityIssues::test_integrity_endpoint_passes_current_agency_scope
+uv run pytest -q tests/test_auth_integration.py::TestAuthMiddleware::test_expired_token_returns_401
+uv run pytest -q tests/test_call_capture_phase2.py::TestPhase2StructuredFields
+```
+
+Result:
+
+```text
+2 passed
+1 passed
+17 passed
+```
+
+Full-suite verification:
+
+```bash
+uv run pytest -q
+```
+
+Result:
+
+```text
+2057 passed, 7 skipped in 48.28s
+```
+
+### Notes for Future Agents
+- Do not reintroduce `trips[0]` as a mutable test target for PATCH/GET tests. Seed an explicit fixture-owned trip and use its ID.
+- Do not delete shared SQL test data as fixture cleanup. Use unique additive IDs and synthetic markers unless the user explicitly authorizes database deletion.
+- Keep production JWT expiry short; use explicit long-lived test fixture tokens only for session-scoped full-suite clients.

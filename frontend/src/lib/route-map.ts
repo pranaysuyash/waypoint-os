@@ -88,7 +88,6 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["public-checker/{id}", { backendPath: "api/public-checker/{id}" }],
   ["public-checker/{id}/export", { backendPath: "api/public-checker/{id}/export" }],
   ["assignments", { backendPath: "assignments" }],
-  ["items", { backendPath: "items" }],
   ["health", { backendPath: "health", timeoutMs: DEFAULT_ROUTE_TIMEOUT_MS }],
 
   // ── Product-agent runtime ─────────────────────────────────────
@@ -104,7 +103,6 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
 
   // ── Review / Override resources ──────────────────────────────
   ["reviews/bulk-action", { backendPath: "analytics/reviews/bulk-action" }],
-  ["overrides", { backendPath: "overrides" }],
 
   // ── Dynamic patterns (last segment is an ID) ─────────────────
   ["trips/{id}/timeline", { backendPath: "api/trips/{id}/timeline" }],
@@ -151,7 +149,6 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["insights/alerts/{id}/dismiss", { backendPath: "analytics/alerts/{id}/dismiss" }],
 
   ["team/members/{id}", { backendPath: "api/team/members/{id}" }],
-  ["team/members/{id}/workload", { backendPath: "api/team/members/{id}/workload" }],
 
   ["audit/trip/{id}", { backendPath: "audit" }],
 

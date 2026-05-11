@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useTransition } from 'react';
+import { useReducer, useEffect, useCallback } from 'react';
 import { ChevronRight, Loader, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { Drawer } from '@/components/ui/drawer';
 import { ClientDate } from '@/hooks/useClientDate';
@@ -15,6 +15,39 @@ interface Trip {
   suitabilityScore?: number;
   decisionReason?: string;
   createdAt?: string;
+}
+
+type DrawerState =
+  | { status: 'idle'; trips: Trip[]; error: null }
+  | { status: 'loading'; trips: Trip[]; error: null }
+  | { status: 'success'; trips: Trip[]; error: null }
+  | { status: 'error'; trips: Trip[]; error: string };
+
+type DrawerAction =
+  | { type: 'reset' }
+  | { type: 'loading' }
+  | { type: 'success'; trips: Trip[] }
+  | { type: 'error'; message: string };
+
+const initialDrawerState: DrawerState = {
+  status: 'idle',
+  trips: [],
+  error: null,
+};
+
+function drawerReducer(_state: DrawerState, action: DrawerAction): DrawerState {
+  switch (action.type) {
+    case 'reset':
+      return initialDrawerState;
+    case 'loading':
+      return { status: 'loading', trips: [], error: null };
+    case 'success':
+      return { status: 'success', trips: action.trips, error: null };
+    case 'error':
+      return { status: 'error', trips: [], error: action.message };
+    default:
+      return _state;
+  }
 }
 
 interface MetricDrillDownDrawerProps {
@@ -34,13 +67,16 @@ export function MetricDrillDownDrawer({
   onClose,
   onTripSelect,
 }: MetricDrillDownDrawerProps) {
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(drawerReducer, initialDrawerState);
+  const trips = state.trips;
+  const error = state.error;
+  const isLoading = state.status === 'loading';
 
   const fetchTripData = useCallback(() => {
-    startTransition(async () => {
-      setError(null);
+    let ignore = false;
+
+    async function loadTrips() {
+      dispatch({ type: 'loading' });
       try {
         const response = await fetch(`/api/insights/agent-trips?agentId=${agentId}&metric=${metric.type}`, {
           credentials: "include",
@@ -48,18 +84,32 @@ export function MetricDrillDownDrawer({
         });
         if (!response.ok) throw new Error('Failed to fetch trip data');
         const data = await response.json();
-        setTrips(data.trips || []);
+        if (!ignore) {
+          dispatch({ type: 'success', trips: data.trips || [] });
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load trip data');
-        setTrips([]);
+        if (!ignore) {
+          dispatch({
+            type: 'error',
+            message: err instanceof Error ? err.message : 'Failed to load trip data',
+          });
+        }
       }
-    });
+    }
+
+    loadTrips();
+
+    return () => {
+      ignore = true;
+    };
   }, [agentId, metric.type]);
 
   useEffect(() => {
     if (isOpen && agentId) {
-      fetchTripData();
+      return fetchTripData();
     }
+    dispatch({ type: 'reset' });
+    return undefined;
   }, [isOpen, agentId, fetchTripData]);
 
   const getStatusIcon = (status: string) => {
@@ -91,7 +141,7 @@ export function MetricDrillDownDrawer({
       title={`${metric.label} Details`}
       description={`${agentName} • ${trips.length} trips`}
     >
-      {isPending && (
+      {isLoading && (
         <div className='flex items-center justify-center h-full'>
           <div className='flex flex-col items-center gap-2'>
             <Loader className='size-8 text-accent-blue animate-spin' />
@@ -109,7 +159,7 @@ export function MetricDrillDownDrawer({
         </div>
       )}
 
-      {!isPending && !error && trips.length === 0 && (
+      {!isLoading && !error && trips.length === 0 && (
         <div className='flex items-center justify-center h-full'>
           <div className='text-center'>
             <p className='text-text-muted mb-2'>No trips found for this metric</p>
@@ -120,7 +170,7 @@ export function MetricDrillDownDrawer({
         </div>
       )}
 
-      {!isPending && !error && trips.length > 0 && (
+      {!isLoading && !error && trips.length > 0 && (
         <div className='space-y-3 p-6'>
           {trips.map((trip) => (
             <button

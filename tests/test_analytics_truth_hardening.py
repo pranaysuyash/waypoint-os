@@ -16,6 +16,13 @@ def test_aggregate_insights_marks_unavailable_response_time_and_pipeline_value_w
     assert result.pipelineVelocity is not None
 
 
+def test_aggregate_insights_handles_null_analytics_payloads():
+    trips = [{"id": "t1", "status": "new", "analytics": None}]
+    result = aggregate_insights(trips)
+    assert result.totalInquiries == 1
+    assert result.convertedToBooked == 0
+
+
 def test_aggregate_insights_marks_pipeline_value_evidence_backed_when_budget_exists():
     trips = [
         {"id": "t1", "status": "new", "packet": {"budget": {"value": 12000}}},
@@ -44,6 +51,29 @@ def test_team_metrics_marks_csat_unavailable_without_ratings():
     assert len(out) == 1
     assert out[0].userId == "agent_1"
     assert out[0].customerSatisfaction >= 0.0
+
+
+def test_team_metrics_handles_null_payloads_on_assigned_trip():
+    members = [{"id": "agent_1", "name": "A", "role": "senior_agent"}]
+    trips = [
+        {
+            "id": "t1",
+            "assigned_to": "agent_1",
+            "status": "new",
+            "extracted": None,
+            "packet": None,
+            "analytics": None,
+        }
+    ]
+    out = compute_team_metrics(trips, members)
+    assert len(out) == 1
+    assert out[0].activeTrips == 1
+
+
+def test_operational_alerts_handles_null_analytics_payloads():
+    from src.analytics.metrics import compute_alerts
+
+    assert compute_alerts([{"id": "t1", "analytics": None}]) == []
 
 
 def test_compute_bottlenecks_returns_empty_when_no_duration_evidence():

@@ -119,14 +119,10 @@ from spine_api.contract import (
     SnoozeRequest,
     InviteTeamMemberRequest,
     TeamMember,
-    PipelineStageConfig,
-    ApprovalThresholdConfig,
     ExportRequest,
     ExportResponse,
     PublicCheckerExportResponse,
     PublicCheckerDeleteResponse,
-    UpdateOperationalSettings,
-    UpdateAutonomyPolicy,
     ExplicitReassessRequest,
     IntegrityIssuesResponse,
     UnifiedStateResponse,
@@ -167,7 +163,6 @@ AssignmentStore = persistence.AssignmentStore
 AuditStore = persistence.AuditStore
 OverrideStore = persistence.OverrideStore
 TeamStore = persistence.TeamStore
-ConfigStore = persistence.ConfigStore
 save_processed_trip = persistence.save_processed_trip
 save_processed_trip_async = persistence.save_processed_trip_async
 
@@ -326,6 +321,8 @@ try:
     from routers import system_dashboard as system_dashboard_router
     from routers import followups as followups_router
     from routers import team as team_router
+    from routers import settings as settings_router
+    from routers import drafts as drafts_router
     from routers import product_b_analytics as product_b_analytics_router
     from routers import booking_tasks as booking_tasks_router
     from routers import confirmations as confirmations_router
@@ -381,6 +378,16 @@ except (ImportError, ValueError):
     _team_mod = importlib.util.module_from_spec(_team_spec)
     _team_spec.loader.exec_module(_team_mod)
     team_router = _team_mod
+
+    _settings_spec = importlib.util.spec_from_file_location("routers.settings", _base / "routers" / "settings.py")
+    _settings_mod = importlib.util.module_from_spec(_settings_spec)
+    _settings_spec.loader.exec_module(_settings_mod)
+    settings_router = _settings_mod
+
+    _drafts_spec = importlib.util.spec_from_file_location("routers.drafts", _base / "routers" / "drafts.py")
+    _drafts_mod = importlib.util.module_from_spec(_drafts_spec)
+    _drafts_spec.loader.exec_module(_drafts_mod)
+    drafts_router = _drafts_mod
 
     _product_b_analytics_spec = importlib.util.spec_from_file_location("routers.product_b_analytics", _base / "routers" / "product_b_analytics.py")
     _product_b_analytics_mod = importlib.util.module_from_spec(_product_b_analytics_spec)
@@ -642,6 +649,8 @@ app.include_router(health_router.router)
 app.include_router(system_dashboard_router.router)
 app.include_router(followups_router.router)
 app.include_router(team_router.router)
+app.include_router(settings_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(drafts_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(product_b_analytics_router.router)
 app.include_router(booking_tasks_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(confirmations_router.router, dependencies=[Depends(_auth_or_skip)])
@@ -1194,263 +1203,6 @@ def delete_public_checker_package(
 # =============================================================================
 # Draft Management Endpoints (Phase 0)
 # =============================================================================
-
-class CreateDraftRequest(BaseModel):
-    name: Optional[str] = None
-    customer_message: Optional[str] = None
-    agent_notes: Optional[str] = None
-    stage: str = "discovery"
-    operating_mode: str = "normal_intake"
-    scenario_id: Optional[str] = None
-    strict_leakage: bool = False
-
-
-class UpdateDraftRequest(BaseModel):
-    name: Optional[str] = None
-    customer_message: Optional[str] = None
-    agent_notes: Optional[str] = None
-    structured_json: Optional[dict] = None
-    itinerary_text: Optional[str] = None
-    stage: Optional[str] = None
-    operating_mode: Optional[str] = None
-    scenario_id: Optional[str] = None
-    strict_leakage: Optional[bool] = None
-    expected_version: Optional[int] = None
-    is_auto_save: bool = False
-
-
-class PromoteDraftRequest(BaseModel):
-    trip_id: str
-
-
-@app.post("/api/drafts")
-def create_draft(
-    request: CreateDraftRequest,
-    agency: Agency = Depends(get_current_agency),
-    user: User = Depends(get_current_user),
-):
-    """Create a new draft. Auto-generates name if not provided."""
-    name = request.name or _generate_draft_name(request.customer_message, request.agent_notes)
-    draft = DraftStore.create(
-        agency_id=agency.id,
-        created_by=user.id,
-        name=name,
-        customer_message=request.customer_message,
-        agent_notes=request.agent_notes,
-        stage=request.stage,
-        operating_mode=request.operating_mode,
-        scenario_id=request.scenario_id,
-        strict_leakage=request.strict_leakage,
-    )
-    AuditStore.log_event("draft_created", user.id, {
-        "draft_id": draft.id,
-        "agency_id": agency.id,
-        "name": draft.name,
-    })
-    return {
-        "draft_id": draft.id,
-        "name": draft.name,
-        "status": draft.status,
-        "created_at": draft.created_at,
-    }
-
-
-def _generate_draft_name(customer_message: Optional[str], agent_notes: Optional[str]) -> str:
-    """Auto-generate draft name from first line of content."""
-    content = (customer_message or "").strip() or (agent_notes or "").strip()
-    if content:
-        first_line = content.split("\n")[0].strip()
-        if len(first_line) > 60:
-            first_line = first_line[:57] + "..."
-        return first_line or f"Draft — {datetime.now(timezone.utc).strftime('%b %d, %H:%M')}"
-    return f"Draft — {datetime.now(timezone.utc).strftime('%b %d, %H:%M')}"
-
-
-@app.get("/api/drafts")
-def list_drafts(
-    status: Optional[str] = None,
-    limit: int = 100,
-    agency: Agency = Depends(get_current_agency),
-    user: User = Depends(get_current_user),
-):
-    """List drafts for the current agency, optionally filtered by status."""
-    drafts = DraftStore.list_by_agency(agency.id, status=status, limit=limit)
-    return {
-        "items": [
-            {
-                "draft_id": d.id,
-                "name": d.name,
-                "status": d.status,
-                "stage": d.stage,
-                "operating_mode": d.operating_mode,
-                "last_run_state": d.last_run_state,
-                "promoted_trip_id": d.promoted_trip_id,
-                "created_at": d.created_at,
-                "updated_at": d.updated_at,
-                "created_by": d.created_by,
-            }
-            for d in drafts
-        ],
-        "total": len(drafts),
-    }
-
-
-@app.get("/api/drafts/{draft_id}")
-def get_draft(
-    draft_id: str,
-    agency: Agency = Depends(get_current_agency),
-):
-    """Get a single draft by ID."""
-    draft = DraftStore.get(draft_id)
-    if not draft or draft.agency_id != agency.id:
-        raise HTTPException(status_code=404, detail="Draft not found")
-    return draft.model_dump()
-
-
-@app.put("/api/drafts/{draft_id}")
-def update_draft(
-    draft_id: str,
-    request: UpdateDraftRequest,
-    agency: Agency = Depends(get_current_agency),
-    user: User = Depends(get_current_user),
-):
-    """Full update of a draft. Requires version match for optimistic concurrency."""
-    draft = DraftStore.get(draft_id)
-    if not draft or draft.agency_id != agency.id:
-        raise HTTPException(status_code=404, detail="Draft not found")
-    
-    if draft.status in ("promoted", "merged", "discarded"):
-        raise HTTPException(status_code=409, detail=f"Cannot update draft in status: {draft.status}")
-    
-    updates = request.model_dump(exclude_none=True)
-    is_auto_save = updates.pop("is_auto_save", False)
-    expected_version = updates.pop("expected_version", None)
-    
-    try:
-        updated = DraftStore.patch(draft_id, updates, expected_version=expected_version)
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
-    
-    if updated:
-        AuditStore.log_event(
-            "draft_autosaved" if is_auto_save else "draft_saved",
-            user.id,
-            {"draft_id": draft_id, "fields_changed": list(updates.keys()), "auto_save": is_auto_save},
-        )
-    return updated.model_dump() if updated else None
-
-
-@app.patch("/api/drafts/{draft_id}")
-def patch_draft(
-    draft_id: str,
-    request: UpdateDraftRequest,
-    agency: Agency = Depends(get_current_agency),
-    user: User = Depends(get_current_user),
-):
-    """Partial update of a draft. Same as PUT but semantic PATCH."""
-    return update_draft(draft_id, request, agency, user)
-
-
-@app.delete("/api/drafts/{draft_id}")
-def discard_draft(
-    draft_id: str,
-    agency: Agency = Depends(get_current_agency),
-    user: User = Depends(get_current_user),
-):
-    """Soft-delete a draft."""
-    draft = DraftStore.get(draft_id)
-    if not draft or draft.agency_id != agency.id:
-        raise HTTPException(status_code=404, detail="Draft not found")
-    
-    discarded = DraftStore.discard(draft_id, user.id)
-    if discarded:
-        AuditStore.log_event("draft_discarded", user.id, {"draft_id": draft_id})
-    return {"ok": True, "draft_id": draft_id, "status": "discarded"}
-
-
-@app.post("/api/drafts/{draft_id}/restore")
-def restore_draft(
-    draft_id: str,
-    agency: Agency = Depends(get_current_agency),
-    user: User = Depends(get_current_user),
-):
-    """Restore a discarded draft."""
-    draft = DraftStore.get(draft_id)
-    if not draft or draft.agency_id != agency.id:
-        raise HTTPException(status_code=404, detail="Draft not found")
-    
-    restored = DraftStore.restore(draft_id)
-    if restored:
-        AuditStore.log_event("draft_restored", user.id, {"draft_id": draft_id})
-    return {"ok": True, "draft_id": draft_id, "status": restored.status if restored else "unknown"}
-
-
-@app.get("/api/drafts/{draft_id}/events")
-def get_draft_events(
-    draft_id: str,
-    limit: int = 100,
-    agency: Agency = Depends(get_current_agency),
-):
-    """Get audit events for a draft."""
-    draft = DraftStore.get(draft_id)
-    if not draft or draft.agency_id != agency.id:
-        raise HTTPException(status_code=404, detail="Draft not found")
-    
-    all_events = AuditStore.get_events(limit=limit * 2)  # Overfetch and filter
-    draft_events = [
-        e for e in all_events
-        if e.get("details", {}).get("draft_id") == draft_id
-    ]
-    return {"draft_id": draft_id, "events": draft_events[-limit:], "total": len(draft_events)}
-
-
-@app.get("/api/drafts/{draft_id}/runs")
-def get_draft_runs(
-    draft_id: str,
-    agency: Agency = Depends(get_current_agency),
-):
-    """Get runs linked to this draft via run_snapshots."""
-    draft = DraftStore.get(draft_id)
-    if not draft or draft.agency_id != agency.id:
-        raise HTTPException(status_code=404, detail="Draft not found")
-    
-    # Use run_snapshots from draft to find linked runs
-    runs = []
-    for snapshot in (draft.run_snapshots or []):
-        run_id = snapshot.get("run_id")
-        if not run_id:
-            continue
-        meta = RunLedger.get_meta(run_id)
-        if meta and meta.get("agency_id") == agency.id:
-            runs.append(meta)
-    
-    return {"draft_id": draft_id, "runs": runs, "total": len(runs)}
-
-
-@app.post("/api/drafts/{draft_id}/promote")
-def promote_draft(
-    draft_id: str,
-    request: PromoteDraftRequest,
-    agency: Agency = Depends(get_current_agency),
-    user: User = Depends(get_current_user),
-):
-    """Promote a draft to a trip. Marks draft as promoted and read-only."""
-    trip_id = request.trip_id
-    draft = DraftStore.get(draft_id)
-    if not draft or draft.agency_id != agency.id:
-        raise HTTPException(status_code=404, detail="Draft not found")
-    
-    if draft.status == "promoted":
-        raise HTTPException(status_code=409, detail="Draft already promoted")
-    
-    promoted = DraftStore.promote(draft_id, trip_id)
-    if promoted:
-        AuditStore.log_event("draft_promoted", user.id, {
-            "draft_id": draft_id,
-            "trip_id": trip_id,
-        })
-    return {"ok": True, "draft_id": draft_id, "trip_id": trip_id, "status": "promoted"}
-
 
 # =============================================================================
 # Trip Management Endpoints
@@ -3722,240 +3474,6 @@ def post_review_action(
         raise HTTPException(status_code=500, detail="Internal server error during review action")
 
 
-# ============================================================================
-# Agency Autonomy Settings (D1)
-# ============================================================================
-
-@app.get("/api/settings")
-def get_agency_settings(
-    agency_id: str = "waypoint-hq",
-    _perm=require_permission("settings:read"),
-):
-    """Return the complete agency configuration (profile + operational + autonomy)."""
-    settings = AgencySettingsStore.load(agency_id)
-    return {
-        "agency_id": settings.agency_id,
-        "profile": {
-            "agency_name": settings.agency_name,
-            "sub_brand": settings.sub_brand,
-            "plan_label": settings.plan_label,
-            "contact_email": settings.contact_email,
-            "contact_phone": settings.contact_phone,
-            "logo_url": settings.logo_url,
-            "website": settings.website,
-        },
-        "operational": {
-            "target_margin_pct": settings.target_margin_pct,
-            "default_currency": settings.default_currency,
-            "operating_hours": {
-                "start": settings.operating_hours_start,
-                "end": settings.operating_hours_end,
-            },
-            "operating_days": settings.operating_days,
-            "preferred_channels": settings.preferred_channels,
-            "brand_tone": settings.brand_tone,
-        },
-        "autonomy": {
-            "approval_gates": settings.autonomy.approval_gates,
-            "mode_overrides": settings.autonomy.mode_overrides,
-            "auto_proceed_with_warnings": settings.autonomy.auto_proceed_with_warnings,
-            "learn_from_overrides": settings.autonomy.learn_from_overrides,
-            "auto_reprocess_on_edit": settings.autonomy.auto_reprocess_on_edit,
-            "allow_explicit_reassess": settings.autonomy.allow_explicit_reassess,
-            "auto_reprocess_stages": settings.autonomy.auto_reprocess_stages,
-            "min_proceed_confidence": settings.autonomy.min_proceed_confidence,
-            "min_draft_confidence": settings.autonomy.min_draft_confidence,
-        },
-    }
-
-@app.post("/api/settings/operational")
-def update_agency_operational_settings(
-    request: UpdateOperationalSettings,
-    agency_id: str = "waypoint-hq",
-    _perm=require_permission("settings:write"),
-):
-    """
-    Update agency operational and profile settings.
-    Only fields provided in the request are modified; others remain unchanged.
-    """
-    settings = AgencySettingsStore.load(agency_id)
-    changes: list[str] = []
-
-    # Profile fields
-    if request.agency_name is not None:
-        settings.agency_name = request.agency_name
-        changes.append("agency_name")
-    if request.sub_brand is not None:
-        settings.sub_brand = request.sub_brand
-        changes.append("sub_brand")
-    if request.plan_label is not None:
-        settings.plan_label = request.plan_label
-        changes.append("plan_label")
-    if request.contact_email is not None:
-        settings.contact_email = request.contact_email
-        changes.append("contact_email")
-    if request.contact_phone is not None:
-        settings.contact_phone = request.contact_phone
-        changes.append("contact_phone")
-    if request.logo_url is not None:
-        settings.logo_url = request.logo_url
-        changes.append("logo_url")
-    if request.website is not None:
-        settings.website = request.website
-        changes.append("website")
-
-    # Operational fields
-    if request.target_margin_pct is not None:
-        settings.target_margin_pct = request.target_margin_pct
-        changes.append("target_margin_pct")
-    if request.default_currency is not None:
-        settings.default_currency = request.default_currency
-        changes.append("default_currency")
-    if request.operating_hours_start is not None:
-        settings.operating_hours_start = request.operating_hours_start
-        changes.append("operating_hours_start")
-    if request.operating_hours_end is not None:
-        settings.operating_hours_end = request.operating_hours_end
-        changes.append("operating_hours_end")
-    if request.operating_days is not None:
-        settings.operating_days = request.operating_days
-        changes.append("operating_days")
-    if request.preferred_channels is not None:
-        settings.preferred_channels = request.preferred_channels
-        changes.append("preferred_channels")
-    if request.brand_tone is not None:
-        settings.brand_tone = request.brand_tone
-        changes.append("brand_tone")
-
-    AgencySettingsStore.save(settings)
-
-    return {
-        "agency_id": settings.agency_id,
-        "changes": changes,
-        "profile": {
-            "agency_name": settings.agency_name,
-            "sub_brand": settings.sub_brand,
-            "plan_label": settings.plan_label,
-            "contact_email": settings.contact_email,
-            "contact_phone": settings.contact_phone,
-            "logo_url": settings.logo_url,
-            "website": settings.website,
-        },
-        "operational": {
-            "target_margin_pct": settings.target_margin_pct,
-            "default_currency": settings.default_currency,
-            "operating_hours": {
-                "start": settings.operating_hours_start,
-                "end": settings.operating_hours_end,
-            },
-            "operating_days": settings.operating_days,
-            "preferred_channels": settings.preferred_channels,
-            "brand_tone": settings.brand_tone,
-        },
-    }
-
-
-@app.get("/api/settings/autonomy")
-def get_agency_autonomy_settings(agency_id: str = "waypoint-hq"):
-    """Return the agency autonomy policy (gates, overrides, flags)."""
-    settings = AgencySettingsStore.load(agency_id)
-    policy = settings.autonomy
-    return {
-        "agency_id": settings.agency_id,
-        "approval_gates": policy.approval_gates,
-        "mode_overrides": policy.mode_overrides,
-        "auto_proceed_with_warnings": policy.auto_proceed_with_warnings,
-        "learn_from_overrides": policy.learn_from_overrides,
-        "auto_reprocess_on_edit": policy.auto_reprocess_on_edit,
-        "allow_explicit_reassess": policy.allow_explicit_reassess,
-        "auto_reprocess_stages": policy.auto_reprocess_stages,
-        "min_proceed_confidence": policy.min_proceed_confidence,
-        "min_draft_confidence": policy.min_draft_confidence,
-    }
-
-
-@app.post("/api/settings/autonomy")
-def update_agency_autonomy_settings(
-    request: UpdateAutonomyPolicy,
-    agency_id: str = "waypoint-hq",
-    _perm=require_permission("settings:write"),
-):
-    """
-    Update the agency autonomy policy.
-
-    - Rejects any attempt to set STOP_NEEDS_REVIEW to anything other than block.
-    - Persists to the file-backed AgencySettingsStore.
-    """
-    settings = AgencySettingsStore.load(agency_id)
-    policy = settings.autonomy
-    changes: list[str] = []
-
-    if request.approval_gates is not None:
-        for state, action in request.approval_gates.items():
-            if state == "STOP_NEEDS_REVIEW" and action != "block":
-                raise HTTPException(
-                    status_code=400,
-                    detail="Safety invariant: STOP_NEEDS_REVIEW must always be 'block'",
-                )
-            if action not in ("auto", "review", "block"):
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid action '{action}' for state '{state}'. Must be auto|review|block.",
-                )
-            policy.approval_gates[state] = action
-        changes.append("approval_gates")
-
-    if request.mode_overrides is not None:
-        policy.mode_overrides = {
-            k: dict(v) if isinstance(v, dict) else {}
-            for k, v in request.mode_overrides.items()
-        }
-        changes.append("mode_overrides")
-
-    if request.auto_proceed_with_warnings is not None:
-        policy.auto_proceed_with_warnings = request.auto_proceed_with_warnings
-        changes.append("auto_proceed_with_warnings")
-
-    if request.learn_from_overrides is not None:
-        policy.learn_from_overrides = request.learn_from_overrides
-        changes.append("learn_from_overrides")
-
-    if request.auto_reprocess_on_edit is not None:
-        policy.auto_reprocess_on_edit = request.auto_reprocess_on_edit
-        changes.append("auto_reprocess_on_edit")
-
-    if request.allow_explicit_reassess is not None:
-        policy.allow_explicit_reassess = request.allow_explicit_reassess
-        changes.append("allow_explicit_reassess")
-
-    if request.auto_reprocess_stages is not None:
-        allowed_stages = {"discovery", "shortlist", "proposal", "booking"}
-        sanitized = {
-            stage: bool(enabled)
-            for stage, enabled in request.auto_reprocess_stages.items()
-            if stage in allowed_stages
-        }
-        for stage in allowed_stages:
-            sanitized.setdefault(stage, policy.auto_reprocess_stages.get(stage, True))
-        policy.auto_reprocess_stages = sanitized
-        changes.append("auto_reprocess_stages")
-
-    # Persist
-    AgencySettingsStore.save(settings)
-
-    return {
-        "agency_id": settings.agency_id,
-        "approval_gates": policy.approval_gates,
-        "mode_overrides": policy.mode_overrides,
-        "auto_proceed_with_warnings": policy.auto_proceed_with_warnings,
-        "learn_from_overrides": policy.learn_from_overrides,
-        "auto_reprocess_on_edit": policy.auto_reprocess_on_edit,
-        "allow_explicit_reassess": policy.allow_explicit_reassess,
-        "auto_reprocess_stages": policy.auto_reprocess_stages,
-        "changes": changes,
-    }
-
-
 @app.get("/api/trips/{trip_id}/timeline", response_model=TimelineResponse)
 def get_trip_timeline(
     trip_id: str,
@@ -4441,38 +3959,6 @@ def bulk_inbox_action(
             failed += 1
     
     return {"success": failed == 0, "processed": processed, "failed": failed}
-
-
-# =============================================================================
-# Pipeline Stages + Approval Thresholds Settings
-# =============================================================================
-
-@app.get("/api/settings/pipeline")
-def get_pipeline_stages():
-    """Get pipeline stage configuration."""
-    stages = ConfigStore.get_pipeline_stages()
-    return {"items": stages}
-
-
-@app.put("/api/settings/pipeline")
-def set_pipeline_stages(request: List[PipelineStageConfig]):
-    """Update pipeline stage configuration."""
-    ConfigStore.set_pipeline_stages([s.model_dump() for s in request])
-    return {"success": True}
-
-
-@app.get("/api/settings/approvals")
-def get_approval_thresholds():
-    """Get approval threshold configuration."""
-    thresholds = ConfigStore.get_approval_thresholds()
-    return {"items": thresholds}
-
-
-@app.put("/api/settings/approvals")
-def set_approval_thresholds(request: List[ApprovalThresholdConfig]):
-    """Update approval threshold configuration."""
-    ConfigStore.set_approval_thresholds([t.model_dump() for t in request])
-    return {"success": True}
 
 
 # =============================================================================

@@ -11,11 +11,9 @@ Tests verify:
 Run: uv run python -m pytest tests/test_call_capture_phase2.py -v
 """
 
-import json
 from datetime import datetime, timezone
+from uuid import uuid4
 import pytest
-
-from spine_api.persistence import TripStore
 
 
 @pytest.fixture(autouse=True)
@@ -40,7 +38,7 @@ class TestPhase2StructuredFields:
     def _seed_patchable_trip(self) -> str:
         from spine_api.persistence import TripStore
 
-        trip_id = "trip_patch_canonical_sync"
+        trip_id = f"trip_p2_{uuid4().hex[:28]}"
         TripStore.save_trip(
             {
                 "id": trip_id,
@@ -74,6 +72,10 @@ class TestPhase2StructuredFields:
             agency_id=self.AGENCY_ID,
         )
         return trip_id
+
+    @pytest.fixture
+    def patchable_trip_id(self):
+        yield self._seed_patchable_trip()
 
     def test_create_trip_with_party_composition(self, session_client):
         """POST /run can save a trip with party_composition field."""
@@ -144,16 +146,9 @@ class TestPhase2StructuredFields:
             trip = data["items"][0]
             assert "activity_provenance" in trip or trip.get("activity_provenance") is None
 
-    def test_patch_party_composition(self, session_client):
+    def test_patch_party_composition(self, session_client, patchable_trip_id):
         """PATCH /trips/{trip_id} can update party_composition field."""
-        list_response = session_client.get("/trips")
-        assert list_response.status_code == 200
-        
-        trips = list_response.json().get("items", [])
-        if not trips:
-            pytest.skip("No trips available to test PATCH")
-        
-        trip_id = trips[0]["id"]
+        trip_id = patchable_trip_id
         party_data = "2 adults, 1 toddler, 1 infant"
         
         patch_response = session_client.patch(
@@ -165,16 +160,9 @@ class TestPhase2StructuredFields:
         updated_trip = patch_response.json()
         assert updated_trip.get("party_composition") == party_data
 
-    def test_patch_pace_preference(self, session_client):
+    def test_patch_pace_preference(self, session_client, patchable_trip_id):
         """PATCH /trips/{trip_id} can update pace_preference field."""
-        list_response = session_client.get("/trips")
-        assert list_response.status_code == 200
-        
-        trips = list_response.json().get("items", [])
-        if not trips:
-            pytest.skip("No trips available to test PATCH")
-        
-        trip_id = trips[0]["id"]
+        trip_id = patchable_trip_id
         pace_value = "relaxed"
         
         patch_response = session_client.patch(
@@ -186,16 +174,9 @@ class TestPhase2StructuredFields:
         updated_trip = patch_response.json()
         assert updated_trip.get("pace_preference") == pace_value
 
-    def test_patch_date_year_confidence(self, session_client):
+    def test_patch_date_year_confidence(self, session_client, patchable_trip_id):
         """PATCH /trips/{trip_id} can update date_year_confidence field."""
-        list_response = session_client.get("/trips")
-        assert list_response.status_code == 200
-        
-        trips = list_response.json().get("items", [])
-        if not trips:
-            pytest.skip("No trips available to test PATCH")
-        
-        trip_id = trips[0]["id"]
+        trip_id = patchable_trip_id
         confidence_value = "certain"
         
         patch_response = session_client.patch(
@@ -207,16 +188,9 @@ class TestPhase2StructuredFields:
         updated_trip = patch_response.json()
         assert updated_trip.get("date_year_confidence") == confidence_value
 
-    def test_patch_lead_source(self, session_client):
+    def test_patch_lead_source(self, session_client, patchable_trip_id):
         """PATCH /trips/{trip_id} can update lead_source field."""
-        list_response = session_client.get("/trips")
-        assert list_response.status_code == 200
-        
-        trips = list_response.json().get("items", [])
-        if not trips:
-            pytest.skip("No trips available to test PATCH")
-        
-        trip_id = trips[0]["id"]
+        trip_id = patchable_trip_id
         source_value = "referral"
         
         patch_response = session_client.patch(
@@ -228,16 +202,9 @@ class TestPhase2StructuredFields:
         updated_trip = patch_response.json()
         assert updated_trip.get("lead_source") == source_value
 
-    def test_patch_activity_provenance(self, session_client):
+    def test_patch_activity_provenance(self, session_client, patchable_trip_id):
         """PATCH /trips/{trip_id} can update activity_provenance field."""
-        list_response = session_client.get("/trips")
-        assert list_response.status_code == 200
-        
-        trips = list_response.json().get("items", [])
-        if not trips:
-            pytest.skip("No trips available to test PATCH")
-        
-        trip_id = trips[0]["id"]
+        trip_id = patchable_trip_id
         activities = "hiking, museums, fine dining"
         
         patch_response = session_client.patch(
@@ -266,16 +233,9 @@ class TestPhase2StructuredFields:
         # This test just verifies the schema allows null values
         assert True  # If we got here, schema is compatible
 
-    def test_patch_multiple_structured_fields_together(self, session_client):
+    def test_patch_multiple_structured_fields_together(self, session_client, patchable_trip_id):
         """PATCH /trips/{trip_id} can update multiple structured fields at once."""
-        list_response = session_client.get("/trips")
-        assert list_response.status_code == 200
-        
-        trips = list_response.json().get("items", [])
-        if not trips:
-            pytest.skip("No trips available to test PATCH")
-        
-        trip_id = trips[0]["id"]
+        trip_id = patchable_trip_id
         
         patch_response = session_client.patch(
             f"/trips/{trip_id}",
@@ -298,16 +258,9 @@ class TestPhase2StructuredFields:
         assert updated_trip.get("lead_source") == "web"
         assert updated_trip.get("activity_provenance") == "adventure sports, hiking"
 
-    def test_patch_structured_field_with_null_clears_value(self, session_client):
+    def test_patch_structured_field_with_null_clears_value(self, session_client, patchable_trip_id):
         """PATCH /trips/{trip_id} can clear structured fields by setting to null."""
-        list_response = session_client.get("/trips")
-        assert list_response.status_code == 200
-        
-        trips = list_response.json().get("items", [])
-        if not trips:
-            pytest.skip("No trips available to test PATCH")
-        
-        trip_id = trips[0]["id"]
+        trip_id = patchable_trip_id
         
         # First, set a value
         set_response = session_client.patch(
@@ -326,17 +279,12 @@ class TestPhase2StructuredFields:
         updated_trip = clear_response.json()
         assert updated_trip.get("party_composition") is None
 
-    def test_patch_preserves_existing_fields_with_structured_fields(self, session_client):
+    def test_patch_preserves_existing_fields_with_structured_fields(self, session_client, patchable_trip_id):
         """PATCH /trips/{trip_id} with structured fields preserves other fields."""
-        list_response = session_client.get("/trips")
-        assert list_response.status_code == 200
-        
-        trips = list_response.json().get("items", [])
-        if not trips:
-            pytest.skip("No trips available to test PATCH")
-        
-        trip_id = trips[0]["id"]
-        old_trip = trips[0]
+        trip_id = patchable_trip_id
+        old_response = session_client.get(f"/trips/{trip_id}")
+        assert old_response.status_code == 200
+        old_trip = old_response.json()
         
         # Patch with a structured field
         patch_response = session_client.patch(
@@ -354,9 +302,9 @@ class TestPhase2StructuredFields:
         assert updated_trip.get("id") == old_trip.get("id")
         assert updated_trip.get("createdAt") == old_trip.get("createdAt")
 
-    def test_patch_origin_syncs_extracted_fact_and_clears_origin_warning(self, session_client):
+    def test_patch_origin_syncs_extracted_fact_and_clears_origin_warning(self, session_client, patchable_trip_id):
         """PATCH /trips/{trip_id} keeps origin facts and validation warnings in sync."""
-        trip_id = self._seed_patchable_trip()
+        trip_id = patchable_trip_id
 
         patch_response = session_client.patch(
             f"/trips/{trip_id}",
@@ -371,9 +319,9 @@ class TestPhase2StructuredFields:
             for warning in updated_trip.get("validation", {}).get("warnings", [])
         )
 
-    def test_patch_budget_syncs_budget_facts_and_clears_budget_warning(self, session_client):
+    def test_patch_budget_syncs_budget_facts_and_clears_budget_warning(self, session_client, patchable_trip_id):
         """PATCH /trips/{trip_id} keeps budget facts and validation warnings in sync."""
-        trip_id = self._seed_patchable_trip()
+        trip_id = patchable_trip_id
 
         patch_response = session_client.patch(
             f"/trips/{trip_id}",
@@ -390,16 +338,9 @@ class TestPhase2StructuredFields:
             for warning in updated_trip.get("validation", {}).get("warnings", [])
         )
 
-    def test_get_trip_includes_all_structured_fields(self, session_client):
+    def test_get_trip_includes_all_structured_fields(self, session_client, patchable_trip_id):
         """GET /trips/{trip_id} returns all structured fields in response."""
-        list_response = session_client.get("/trips")
-        assert list_response.status_code == 200
-        
-        trips = list_response.json().get("items", [])
-        if not trips:
-            pytest.skip("No trips available to test GET")
-        
-        trip_id = trips[0]["id"]
+        trip_id = patchable_trip_id
         
         get_response = session_client.get(f"/trips/{trip_id}")
         assert get_response.status_code == 200

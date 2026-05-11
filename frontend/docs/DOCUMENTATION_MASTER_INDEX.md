@@ -7,8 +7,11 @@
 ## Overview
 
 **Total Documents:** 300+ research and specification documents
-**Last Updated:** 2026-04-27
+**Last Updated:** 2026-05-11
 **Format:** Research-oriented with questions, trade-offs, and open problems
+**Runtime Reconciliation:** [RUNTIME_TRUTH_MATRIX_2026-05-11.md](./status/RUNTIME_TRUTH_MATRIX_2026-05-11.md)
+
+> Important: "Complete" labels in this index refer to documentation/research completeness unless explicitly stated as runtime implemented.
 
 ---
 
@@ -56,11 +59,15 @@
 
 ### Output Panel / Bundle Generation
 **Description:** Quote, itinerary, and document generation
-**Documents:** 15 | **Status:** ✅ Complete
+**Documents:** 15 | **Status:** 🟡 Research Complete | Runtime Partial
 
 | # | Document |
 |---|----------|
 | 01-15 | See [OUTPUT_DEEP_DIVE_MASTER_INDEX.md](./OUTPUT_DEEP_DIVE_MASTER_INDEX.md) |
+
+Runtime note:
+- Current canonical runtime path is document ingestion/review/extraction under workbench Ops (not full template-generation pipeline).
+- See [RUNTIME_TRUTH_MATRIX_2026-05-11.md](./status/RUNTIME_TRUTH_MATRIX_2026-05-11.md) for evidence and guardrails.
 
 ---
 

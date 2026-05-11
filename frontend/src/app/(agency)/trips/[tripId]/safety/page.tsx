@@ -1,21 +1,11 @@
-'use client';
+import type { Metadata } from 'next';
+import PageClient from './PageClient';
 
-import { useTripContext } from '@/contexts/TripContext';
-import { SafetyPanel } from '@/components/workspace/panels/SafetyPanel';
-import { PlanningStageGate } from '@/components/workspace/PlanningStageGate';
-import { getPlanningStageGateReason } from '@/lib/planning-status';
+export const metadata: Metadata = {
+  title: "Waypoint OS — Risk Review",
+  description: "Review safety, compliance, and risk signals for the selected trip.",
+};
 
-export default function SafetyPage() {
-  const { tripId, trip } = useTripContext();
-  const gateReason = getPlanningStageGateReason(trip, 'safety');
-
-  return (
-    <div className='p-6'>
-      {tripId && gateReason ? (
-        <PlanningStageGate tripId={tripId} reason={gateReason} />
-      ) : (
-        <SafetyPanel tripId={tripId || ''} />
-      )}
-    </div>
-  );
+export default function Page() {
+  return <PageClient />;
 }

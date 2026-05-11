@@ -328,6 +328,8 @@ Document the current architecture as:
 
 This prevents future agents from forcing false choices between "monolith" and "microservices."
 
+**Phase 0 execution:** [Docs/status/ARCHITECTURE_TOPOLOGY_PHASE0_EXECUTION_2026-05-11.md](../status/ARCHITECTURE_TOPOLOGY_PHASE0_EXECUTION_2026-05-11.md) adds a reusable route/topology inventory tool and records the current route ownership baseline. Follow-up cleanup is recorded in [Docs/status/BFF_ROUTE_MAP_DRIFT_CLEANUP_2026-05-11.md](../status/BFF_ROUTE_MAP_DRIFT_CLEANUP_2026-05-11.md), which removes stale BFF aliases and restores the inventory invariant `bff_unmatched_backend_path_count=0`. Backend route extraction follow-ups are recorded in [Docs/status/SETTINGS_ROUTER_EXTRACTION_2026-05-11.md](../status/SETTINGS_ROUTER_EXTRACTION_2026-05-11.md) and [Docs/status/DRAFTS_ROUTER_EXTRACTION_2026-05-11.md](../status/DRAFTS_ROUTER_EXTRACTION_2026-05-11.md), moving settings and drafts ownership out of `server.py`.
+
 ### Phase 1 — Finish Backend Modularity
 
 Goal: reduce `spine_api/server.py` into an application shell.

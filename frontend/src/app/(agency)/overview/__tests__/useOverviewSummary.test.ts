@@ -150,9 +150,9 @@ describe('useOverviewSummary', () => {
 
     expect(integrityMetric?.value).toBe(3);
     expect(integrityMetric?.sub).toBe('3 items to check');
-    expect(integrityMetric?.href).toBe('/workbench?panel=integrity');
+    expect(integrityMetric?.href).toBe('/overview?panel=system-check');
     expect(integrityNav?.sub).toBe('3 items to check');
-    expect(integrityNav?.href).toBe('/workbench?panel=integrity');
+    expect(integrityNav?.href).toBe('/overview?panel=system-check');
     expect(result.current.metrics.map((metric) => metric.title)).toEqual([
       'Trips in Planning',
       'Lead Inbox',
