@@ -1,0 +1,27 @@
+version: 1
+categories:
+  budget:
+    status: gating
+    min_precision: 0.95
+    min_recall: 0.95
+    min_severity_accuracy: 0.90
+  activity:
+    status: shadow
+    min_precision: 0.90
+    min_recall: 0.85
+    min_severity_accuracy: 0.85
+  pacing:
+    status: planned
+    min_precision: 0.90
+    min_recall: 0.85
+    min_severity_accuracy: 0.85
+  logistics:
+    status: planned
+    min_precision: 0.90
+    min_recall: 0.85
+    min_severity_accuracy: 0.85
+  documents:
+    status: planned
+    min_precision: 0.90
+    min_recall: 0.85
+    min_severity_accuracy: 0.85

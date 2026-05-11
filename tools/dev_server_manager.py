@@ -20,7 +20,7 @@ from urllib.error import URLError
 from urllib.request import urlopen
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-RUNTIME_DIR = REPO_ROOT / ".runtime"
+RUNTIME_DIR = REPO_ROOT / ".runtime" / "local"
 RUNTIME_DIR.mkdir(exist_ok=True)
 
 

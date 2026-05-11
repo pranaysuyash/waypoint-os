@@ -527,6 +527,6 @@ With 20+ branches, agents get bombarded with cross-branch messages. Need intelli
 ---
 
 **Series:** Agency Network & Franchise Management
-**Document:** 2 of 5 (Branch Operations)
+**Document:** 2 of 4 (Branch Operations)
 **Last Updated:** 2026-04-28
 **Status:** Research Exploration

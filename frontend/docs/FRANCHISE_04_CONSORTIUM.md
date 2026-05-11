@@ -717,6 +717,6 @@ Indian Competition Commission has become active. A consortium that negotiates co
 ---
 
 **Series:** Agency Network & Franchise Management
-**Document:** 4 of 5 (Consortium Model)
+**Document:** 4 of 4 (Consortium Model)
 **Last Updated:** 2026-04-28
 **Status:** Research Exploration

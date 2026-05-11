@@ -6,7 +6,7 @@ This directory stores reusable helper utilities for this project.
 
 Purpose:
 - Manage backend/frontend dev servers as detached processes for stable local QA loops.
-- Avoid fragile per-terminal sessions by keeping PID and log state in `.runtime/`.
+- Avoid fragile per-terminal sessions by keeping mutable PID and log state in ignored `.runtime/local/`.
 - Provide explicit `start/stop/restart/status/check/logs` commands with health validation.
 
 Usage:
@@ -23,11 +23,38 @@ Notes:
 - Backend health target: `http://127.0.0.1:8000/health`
 - Frontend health target: `http://127.0.0.1:3000/overview`
 - Runtime files:
-  - `.runtime/backend.pid`
-  - `.runtime/frontend.pid`
-  - `.runtime/backend.log`
-  - `.runtime/frontend.log`
+  - `.runtime/local/backend.pid`
+  - `.runtime/local/frontend.pid`
+  - `.runtime/local/backend.log`
+  - `.runtime/local/frontend.log`
 - If PID files drift, status recovers by discovering the process bound to the service port.
+
+## Runtime Smoke Matrix: `runtime_smoke_matrix.py`
+
+Purpose:
+- Run a real authenticated smoke pass against key frontend pages and BFF routes.
+- Catch runtime regressions (401/500/drift) with one command before/after major edits.
+
+Usage:
+```bash
+python tools/runtime_smoke_matrix.py
+python tools/runtime_smoke_matrix.py --base http://localhost:3000 \
+  --email newuser@test.com --password testpass123
+```
+
+Checks:
+- `/api/auth/me`
+- `/overview`
+- `/workbench?draft=new&tab=safety`
+- `/api/inbox?page=1&limit=1`
+- `/api/trips?view=workspace&limit=5`
+- `/api/reviews?status=pending`
+- `/api/inbox/stats`
+- `/api/pipeline`
+
+Exit behavior:
+- Returns `0` when all checks match expected status.
+- Returns `1` and prints failing status/body snippets when any check fails.
 
 ## Architecture Route Inventory: `architecture_route_inventory.py`
 

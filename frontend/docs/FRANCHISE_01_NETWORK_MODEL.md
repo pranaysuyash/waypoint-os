@@ -572,6 +572,6 @@ Many Indian travel agencies operate a hybrid model: some corporate branches, som
 ---
 
 **Series:** Agency Network & Franchise Management
-**Document:** 1 of 5 (Network Models)
+**Document:** 1 of 4 (Network Models)
 **Last Updated:** 2026-04-28
 **Status:** Research Exploration

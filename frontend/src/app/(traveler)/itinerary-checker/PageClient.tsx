@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState, useRef, useReducer, type RefObject, DragEvent } from 'react';
+import { useEffect, useState, useRef, useReducer, type CSSProperties, type RefObject, DragEvent } from 'react';
 import gsap from 'gsap';
 import { api } from '@/lib/api-client';
 import type { RunStatusResponse } from '@/types/spine';
@@ -34,6 +34,202 @@ const T = {
   fMono:    "'JetBrains Mono', monospace",
 };
 
+const S = {
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '14px 32px',
+    borderBottom: `1px solid ${T.b0}`,
+    background: 'rgba(10,13,17,0.9)',
+    backdropFilter: 'blur(8px)',
+    position: 'sticky',
+    top: 0,
+    zIndex: 50,
+    flexShrink: 0,
+  },
+  logoMark: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    background: 'linear-gradient(135deg, #2563eb, #39d0d8)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'white',
+    flexShrink: 0,
+  },
+  agencyPillLink: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    height: 34,
+    padding: '0 14px',
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 600,
+    fontFamily: T.fBody,
+    background: 'rgba(15,17,21,0.72)',
+    color: '#c9d1d9',
+    border: '1px solid rgba(168,179,193,0.14)',
+    textDecoration: 'none',
+  },
+  uploadGlowFrame: {
+    position: 'absolute',
+    inset: '-16px -16px 0',
+    pointerEvents: 'none',
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  uploadRing: {
+    position: 'absolute',
+    right: -40,
+    top: -36,
+    width: 180,
+    height: 180,
+    borderRadius: '50%',
+    background: 'conic-gradient(from 0deg, rgba(122,185,255,0.14), rgba(57,208,216,0.04), rgba(163,113,247,0.14), rgba(57,208,216,0.04), rgba(122,185,255,0.14))',
+    filter: 'blur(1px)',
+    opacity: 0.8,
+  },
+  uploadScanline: {
+    position: 'absolute',
+    left: 18,
+    right: 18,
+    top: 18,
+    height: 2,
+    borderRadius: 999,
+    background: 'linear-gradient(90deg, transparent, rgba(57,208,216,0.92), rgba(122,185,255,0.18), transparent)',
+    boxShadow: '0 0 18px rgba(57,208,216,0.6)',
+  },
+  pasteTextarea: {
+    width: '100%',
+    minHeight: 180,
+    padding: '16px 18px',
+    background: 'none',
+    border: 'none',
+    resize: 'none',
+    color: T.t1,
+    fontSize: 13,
+    fontFamily: T.fMono,
+    lineHeight: 1.65,
+    boxSizing: 'border-box',
+  },
+  uploadIconFrame: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    background: 'rgba(88,166,255,0.1)',
+    border: '1px solid rgba(88,166,255,0.2)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: '0 auto 14px',
+    color: T.blue,
+  },
+  inlineError: {
+    marginTop: 10,
+    padding: '10px 12px',
+    borderRadius: 10,
+    border: '1px solid rgba(248,81,73,0.22)',
+    background: 'rgba(248,81,73,0.08)',
+    color: '#ffb4ae',
+    fontSize: 12,
+    lineHeight: 1.45,
+  },
+  previewCard: {
+    position: 'relative',
+    borderRadius: 28,
+    padding: 18,
+    background: 'linear-gradient(180deg, rgba(10,18,26,0.98), rgba(7,9,11,0.98))',
+    border: '1px solid rgba(88,166,255,0.22)',
+    boxShadow: '0 28px 80px rgba(0,0,0,0.42)',
+    overflow: 'hidden',
+  },
+  previewBackground: {
+    position: 'absolute',
+    inset: 0,
+    background:
+      'radial-gradient(circle at 18% 18%, rgba(255,193,122,0.22) 0%, transparent 26%), radial-gradient(circle at 86% 8%, rgba(57,208,216,0.18) 0%, transparent 24%), linear-gradient(135deg, rgba(122,185,255,0.04) 0%, transparent 40%)',
+    pointerEvents: 'none',
+  },
+  previewPlane: {
+    position: 'absolute',
+    right: 20,
+    top: 18,
+    color: '#d8eef0',
+    transform: 'rotate(12deg)',
+    filter: 'drop-shadow(0 8px 20px rgba(57,208,216,0.35))',
+  },
+  previewStamp: {
+    padding: '5px 9px',
+    borderRadius: 999,
+    background: 'rgba(255,193,122,0.12)',
+    border: '1px solid rgba(255,193,122,0.24)',
+    color: '#ffd6a6',
+    fontSize: 12,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+  },
+} satisfies Record<string, CSSProperties>;
+
+const tabButtonStyle = (isActive: boolean): CSSProperties => ({
+  flex: 1,
+  padding: '7px 0',
+  borderRadius: 7,
+  border: 'none',
+  cursor: 'pointer',
+  fontSize: 12,
+  fontWeight: isActive ? 600 : 400,
+  background: isActive ? T.elevated : 'transparent',
+  color: isActive ? T.t1 : T.t2,
+  fontFamily: T.fBody,
+  transition: 'color 150ms, background 150ms',
+});
+
+const primaryButtonStyle = (enabled: boolean, height = 34, padding = '0 14px'): CSSProperties => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 7,
+  height,
+  padding,
+  borderRadius: 999,
+  fontSize: height > 40 ? 13 : 12,
+  fontWeight: 600,
+  fontFamily: T.fBody,
+  background: enabled
+    ? 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, #39d0d8 100%)'
+    : T.elevated,
+  color: enabled ? '#071018' : T.t3,
+  border: 'none',
+  cursor: enabled ? 'pointer' : 'not-allowed',
+  boxShadow: enabled ? '0 8px 24px rgba(57,208,216,0.3)' : 'none',
+  transition: 'background 160ms, color 160ms, box-shadow 160ms',
+});
+
+const uploadDropZoneStyle = (dragging: boolean): CSSProperties => ({
+  borderRadius: 14,
+  border: `2px dashed ${dragging ? T.cyan : T.b1}`,
+  background: dragging ? 'rgba(57,208,216,0.04)' : T.surface,
+  padding: '44px 24px',
+  textAlign: 'center',
+  cursor: 'pointer',
+  transition: 'border-color 200ms, background 200ms',
+});
+
+const colorIconStyle = (color: string, size = 24, radius = 8): CSSProperties => ({
+  width: size,
+  height: size,
+  borderRadius: radius,
+  background: `${color}18`,
+  border: `1px solid ${color}2e`,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color,
+});
+
 const TRAVEL_MOMENTS = [
   {
     icon: PlaneTakeoff,
@@ -65,19 +261,9 @@ const TRAVEL_TAGS = [
 // ── Header ────────────────────────────────────────────────────────────────────
 function WedgeHeader() {
   return (
-    <header style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '14px 32px', borderBottom: `1px solid ${T.b0}`,
-      background: 'rgba(10,13,17,0.9)', backdropFilter: 'blur(8px)',
-      position: 'sticky', top: 0, zIndex: 50, flexShrink: 0,
-    }}>
+    <header style={S.header}>
       <Link href='/' style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none' }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: 8,
-          background: 'linear-gradient(135deg, #2563eb, #39d0d8)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'white', flexShrink: 0,
-        }}>
+        <div style={S.logoMark}>
           <MapPin size={14} />
         </div>
         <div className='itinerary-reveal'>
@@ -87,13 +273,7 @@ function WedgeHeader() {
       </Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <span style={{ fontSize: 12, color: T.t3, fontFamily: T.fBody }}>Free · No account required · 60 seconds</span>
-        <Link href='/signup' style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          height: 34, padding: '0 14px', borderRadius: 999,
-          fontSize: 12, fontWeight: 600, fontFamily: T.fBody,
-          background: 'rgba(15,17,21,0.72)', color: '#c9d1d9',
-          border: '1px solid rgba(168,179,193,0.14)', textDecoration: 'none',
-        }}>
+        <Link href='/signup' style={S.agencyPillLink}>
           For agencies →
         </Link>
       </div>
@@ -308,28 +488,14 @@ function UploadCard({
 
   return (
     <div style={{ width: '100%', position: 'relative' }}>
-      <div aria-hidden style={{
-        position: 'absolute', inset: '-16px -16px 0', pointerEvents: 'none',
-        borderRadius: 24, overflow: 'hidden',
-      }}>
+      <div aria-hidden style={S.uploadGlowFrame}>
         <div className='itinerary-glow' style={{
           position: 'absolute', inset: '14% 10% auto', height: 180,
           background: 'radial-gradient(circle, rgba(57,208,216,0.16) 0%, rgba(57,208,216,0.03) 38%, transparent 72%)',
           filter: 'blur(8px)',
         }} />
-        <div className='itinerary-ring' style={{
-          position: 'absolute', right: -40, top: -36, width: 180, height: 180,
-          borderRadius: '50%',
-          background: 'conic-gradient(from 0deg, rgba(122,185,255,0.14), rgba(57,208,216,0.04), rgba(163,113,247,0.14), rgba(57,208,216,0.04), rgba(122,185,255,0.14))',
-          filter: 'blur(1px)',
-          opacity: 0.8,
-        }} />
-        <div className='itinerary-scanline' style={{
-          position: 'absolute', left: 18, right: 18, top: 18, height: 2,
-          borderRadius: 999,
-          background: 'linear-gradient(90deg, transparent, rgba(57,208,216,0.92), rgba(122,185,255,0.18), transparent)',
-          boxShadow: '0 0 18px rgba(57,208,216,0.6)',
-        }} />
+        <div className='itinerary-ring' style={S.uploadRing} />
+        <div className='itinerary-scanline' style={S.uploadScanline} />
       </div>
       {/* Mode tabs */}
       <div style={{
@@ -338,13 +504,7 @@ function UploadCard({
         border: `1px solid ${T.b0}`,
       }}>
         {tabs.map(tab => (
-          <button key={tab.key} onClick={() => dispatch({ type: 'selectTab', tab: tab.key })} style={{
-            flex: 1, padding: '7px 0', borderRadius: 7, border: 'none', cursor: 'pointer',
-            fontSize: 12, fontWeight: activeTab === tab.key ? 600 : 400,
-            background: activeTab === tab.key ? T.elevated : 'transparent',
-            color: activeTab === tab.key ? T.t1 : T.t2,
-            fontFamily: T.fBody, transition: 'color 150ms, background 150ms',
-          }}>
+          <button key={tab.key} onClick={() => dispatch({ type: 'selectTab', tab: tab.key })} style={tabButtonStyle(activeTab === tab.key)}>
             {tab.label}
           </button>
         ))}
@@ -356,12 +516,7 @@ function UploadCard({
             value={text}
             onChange={e => dispatch({ type: 'setText', text: e.target.value })}
             placeholder={'Paste your day-by-day plan here…\n\nDay 1: Arrive LAX → London Heathrow (AA100, dep 10:30)\nDay 2: London - check-in The Connaught, walking tour\nDay 3: Paris Eurostar (07:55) - Musée d\'Orsay, Seine dinner\n…'}
-            style={{
-              width: '100%', minHeight: 180, padding: '16px 18px',
-              background: 'none', border: 'none', resize: 'none',
-              color: T.t1, fontSize: 13, fontFamily: T.fMono, lineHeight: 1.65,
-              boxSizing: 'border-box',
-            }}
+            style={S.pasteTextarea}
           />
           <div style={{
             padding: '10px 16px', borderTop: `1px solid ${T.b0}`,
@@ -370,18 +525,7 @@ function UploadCard({
             <span style={{ fontSize: 12, color: T.t4 }}>
               {text.length > 0 ? `${text.length} characters` : 'Messy inputs work fine'}
             </span>
-            <button onClick={() => onAnalyze(text, { kind: 'paste', source: 'typed', retention_consent: retentionConsent })} disabled={text.length < 10 || isBusy || isProcessingFile} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 7,
-              height: 34, padding: '0 14px', borderRadius: 999,
-              fontSize: 12, fontWeight: 600, fontFamily: T.fBody,
-              background: text.length >= 10 && !isBusy
-                ? 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, #39d0d8 100%)'
-                : T.elevated,
-              color: text.length >= 10 && !isBusy ? '#071018' : T.t3,
-              border: 'none', cursor: text.length >= 10 && !isBusy ? 'pointer' : 'not-allowed',
-              boxShadow: text.length >= 10 && !isBusy ? '0 8px 24px rgba(57,208,216,0.3)' : 'none',
-              transition: 'background 160ms, color 160ms, box-shadow 160ms',
-            }}>
+            <button onClick={() => onAnalyze(text, { kind: 'paste', source: 'typed', retention_consent: retentionConsent })} disabled={text.length < 10 || isBusy || isProcessingFile} style={primaryButtonStyle(text.length >= 10 && !isBusy)}>
               {isBusy ? 'Scoring…' : 'Score My Itinerary'} <ArrowRight size={13} />
             </button>
           </div>
@@ -396,20 +540,9 @@ function UploadCard({
           role="button"
           tabIndex={0}
           aria-label={activeTab === 'screenshot' ? 'Upload itinerary screenshot' : 'Upload itinerary document'}
-          style={{
-            borderRadius: 14,
-            border: `2px dashed ${dragging ? T.cyan : T.b1}`,
-            background: dragging ? 'rgba(57,208,216,0.04)' : T.surface,
-            padding: '44px 24px', textAlign: 'center',
-            cursor: 'pointer', transition: 'border-color 200ms, background 200ms',
-          }}
+          style={uploadDropZoneStyle(dragging)}
         >
-          <div style={{
-            width: 52, height: 52, borderRadius: 14,
-            background: 'rgba(88,166,255,0.1)', border: '1px solid rgba(88,166,255,0.2)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 14px', color: T.blue,
-          }}>
+          <div style={S.uploadIconFrame}>
             <Upload size={22} strokeWidth={1.5} />
           </div>
           <div style={{ fontSize: 15, fontWeight: 600, color: T.t1, marginBottom: 5 }}>
@@ -439,17 +572,7 @@ function UploadCard({
             <button
               type='button'
               disabled={isBusy || isProcessingFile}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 7,
-                height: 42, padding: '0 20px', borderRadius: 999,
-                fontSize: 13, fontWeight: 600, fontFamily: T.fBody,
-                background: isBusy || isProcessingFile
-                  ? T.elevated
-                  : 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, #39d0d8 100%)',
-                color: isBusy || isProcessingFile ? T.t3 : '#071018',
-                border: 'none', cursor: isBusy || isProcessingFile ? 'not-allowed' : 'pointer',
-                boxShadow: isBusy || isProcessingFile ? 'none' : '0 8px 24px rgba(57,208,216,0.3), inset 0 1px 0 rgba(255,255,255,0.38)',
-              }}
+              style={primaryButtonStyle(!(isBusy || isProcessingFile), 42, '0 20px')}
             >
               {isProcessingFile ? 'Reading file…' : 'Choose file to score'}
             </button>
@@ -481,11 +604,7 @@ function UploadCard({
       )}
 
       {fileError ? (
-        <div style={{
-          marginTop: 10, padding: '10px 12px', borderRadius: 10,
-          border: '1px solid rgba(248,81,73,0.22)', background: 'rgba(248,81,73,0.08)',
-          color: '#ffb4ae', fontSize: 12, lineHeight: 1.45,
-        }}>
+        <div style={S.inlineError}>
           {fileError}
         </div>
       ) : null}
@@ -508,25 +627,9 @@ function UploadCard({
 
 function TravelPreviewCard() {
   return (
-    <div style={{
-      position: 'relative',
-      borderRadius: 28,
-      padding: 18,
-      background: 'linear-gradient(180deg, rgba(10,18,26,0.98), rgba(7,9,11,0.98))',
-      border: '1px solid rgba(88,166,255,0.22)',
-      boxShadow: '0 28px 80px rgba(0,0,0,0.42)',
-      overflow: 'hidden',
-    }}>
-      <div aria-hidden style={{
-        position: 'absolute', inset: 0,
-        background:
-          'radial-gradient(circle at 18% 18%, rgba(255,193,122,0.22) 0%, transparent 26%), radial-gradient(circle at 86% 8%, rgba(57,208,216,0.18) 0%, transparent 24%), linear-gradient(135deg, rgba(122,185,255,0.04) 0%, transparent 40%)',
-        pointerEvents: 'none',
-      }} />
-      <div aria-hidden className='itinerary-plane' style={{
-        position: 'absolute', right: 20, top: 18, color: '#d8eef0',
-        transform: 'rotate(12deg)', filter: 'drop-shadow(0 8px 20px rgba(57,208,216,0.35))',
-      }}>
+    <div style={S.previewCard}>
+      <div aria-hidden style={S.previewBackground} />
+      <div aria-hidden className='itinerary-plane' style={S.previewPlane}>
         <PlaneTakeoff size={32} strokeWidth={1.6} />
       </div>
       <div style={{ position: 'relative' }}>
@@ -536,16 +639,7 @@ function TravelPreviewCard() {
           <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.cyan }}>
             Travel plan ATS
           </div>
-          <div className='itinerary-stamp' style={{
-            padding: '5px 9px', borderRadius: 999,
-            background: 'rgba(255,193,122,0.12)',
-            border: '1px solid rgba(255,193,122,0.24)',
-            color: '#ffd6a6',
-            fontSize: 12,
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-          }}>
+          <div className='itinerary-stamp' style={S.previewStamp}>
             Singapore • late May
           </div>
         </div>
@@ -626,11 +720,7 @@ function TravelPreviewCard() {
                 border: '1px solid rgba(168,179,193,0.12)',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <div style={{
-                    width: 24, height: 24, borderRadius: 8,
-                    background: `${item.color}18`, border: `1px solid ${item.color}2e`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: item.color,
-                  }}>
+                  <div style={colorIconStyle(item.color)}>
                     <Icon size={13} strokeWidth={1.9} />
                   </div>
                   <div style={{ fontSize: 12, color: T.t3 }}>{item.label}</div>

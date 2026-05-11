@@ -570,3 +570,88 @@ Result:
 - Do not reintroduce `trips[0]` as a mutable test target for PATCH/GET tests. Seed an explicit fixture-owned trip and use its ID.
 - Do not delete shared SQL test data as fixture cleanup. Use unique additive IDs and synthetic markers unless the user explicitly authorizes database deletion.
 - Keep production JWT expiry short; use explicit long-lived test fixture tokens only for session-scoped full-suite clients.
+
+## Dev Server Runtime State Hygiene (2026-05-11, Session 5)
+
+### Problem
+The dev server manager wrote live PID/log state directly under `.runtime/`, but `.runtime/backend.pid` and `.runtime/frontend.pid` were already tracked files. Running `python tools/dev_server_manager.py status --service all` therefore dirtied the worktree whenever the live frontend/backend PID changed.
+
+### Root Cause
+Mutable process state was sharing paths with tracked repository files. This made normal local QA operations look like source changes and created noise for every parallel agent doing a status check.
+
+### Changes Implemented
+- `.gitignore`
+  - Added `.runtime/local/` for ignored local dev-server runtime state.
+- `tools/dev_server_manager.py`
+  - Changed `RUNTIME_DIR` from `.runtime/` to `.runtime/local/`.
+  - Existing port-based PID recovery behavior is preserved.
+- `tools/README.md`
+  - Updated dev server manager documentation to point at `.runtime/local/*.pid` and `.runtime/local/*.log`.
+
+### Verification
+Focused lint:
+
+```bash
+uv run ruff check tools/dev_server_manager.py
+```
+
+Result:
+
+```text
+All checks passed!
+```
+
+Runtime status check:
+
+```bash
+python tools/dev_server_manager.py status --service all
+```
+
+Result:
+
+```text
+backend: running pid=50561 health=200
+frontend: running pid=66461 health=200
+```
+
+### Notes for Future Agents
+- Keep mutable server state under `.runtime/local/`; do not write changing PID/log files to tracked `.runtime/*` paths.
+- The old tracked PID files remain in the repository history. Removing them from tracking would require an explicit git index operation and was intentionally not performed in this session.
+
+## Runtime Truth Automation Addendum (2026-05-11, Session 4)
+
+### Why
+Randomized testing quality depends on repeatable runtime checks, not ad-hoc manual curl sequences.
+
+### What was added
+1. Reusable smoke tool:
+- `/Users/pranay/Projects/travel_agency_agent/tools/runtime_smoke_matrix.py`
+
+2. Tool docs:
+- `/Users/pranay/Projects/travel_agency_agent/tools/README.md`
+
+### Smoke scope
+The script logs in and verifies status contracts for:
+- `/api/auth/me`
+- `/overview`
+- `/workbench?draft=new&tab=safety`
+- `/api/inbox?page=1&limit=1`
+- `/api/trips?view=workspace&limit=5`
+- `/api/reviews?status=pending`
+- `/api/inbox/stats`
+- `/api/pipeline`
+
+### Verification run
+```bash
+python tools/runtime_smoke_matrix.py
+```
+Result:
+- login `200`
+- all route checks `200`
+- `Smoke matrix passed.`
+
+### Operational rule (recommended)
+Before claiming frontend/backend stability in local QA:
+1. `python tools/dev_server_manager.py status --service all`
+2. `python tools/runtime_smoke_matrix.py`
+Only claim stable when both pass.

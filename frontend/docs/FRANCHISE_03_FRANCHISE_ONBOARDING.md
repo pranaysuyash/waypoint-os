@@ -629,6 +629,6 @@ Indian courts have limited non-compete enforcement post-employment/contract. A d
 ---
 
 **Series:** Agency Network & Franchise Management
-**Document:** 3 of 5 (Franchise Onboarding & Lifecycle)
+**Document:** 3 of 4 (Franchise Onboarding & Lifecycle)
 **Last Updated:** 2026-04-28
 **Status:** Research Exploration

@@ -15,10 +15,16 @@ Usage:
 from .models import (
     ActivityDefinition,
     ActivitySuitability,
+    ItineraryOption,
     ParticipantRef,
+    PersonUtility,
     StructuredRisk,
+    SuitabilityBundle,
     SuitabilityContext,
+    WastedSpendItem,
+    WastedSpendSummary,
 )
+from .options import build_itinerary_option, build_suitability_bundle
 from .scoring import evaluate_activity
 from .context_rules import apply_tour_context_rules
 from .confidence import compute_confidence, collect_missing_signals
@@ -39,9 +45,16 @@ __all__ = [
     # Models
     "ActivityDefinition",
     "ActivitySuitability",
+    "ItineraryOption",
     "ParticipantRef",
+    "PersonUtility",
     "StructuredRisk",
+    "SuitabilityBundle",
     "SuitabilityContext",
+    "WastedSpendItem",
+    "WastedSpendSummary",
+    "build_itinerary_option",
+    "build_suitability_bundle",
     # Scoring functions
     "evaluate_activity",
     "apply_tour_context_rules",

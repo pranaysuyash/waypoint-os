@@ -114,3 +114,69 @@ class ActivitySuitability:
     scorer_version: str = "1"
     source: Literal["rule", "llm", "cache", "default"] = "rule"
 
+
+@dataclass(slots=True)
+class PersonUtility:
+    """Per-person utility view for one itinerary option."""
+
+    participant: ParticipantRef
+    utility_percentage: float
+    activity_scores: Dict[str, float] = field(default_factory=dict)
+    low_utility_activity_ids: List[str] = field(default_factory=list)
+    excluded_activity_ids: List[str] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class WastedSpendItem:
+    """Spend tied to low-utility or excluded participation."""
+
+    activity_id: str
+    activity_name: str
+    affected_participants: List[str]
+    amount: int
+    average_utility_percentage: float
+    reason: str
+
+
+@dataclass(slots=True)
+class WastedSpendSummary:
+    """Aggregate wasted-spend summary for an itinerary option."""
+
+    total_amount: int = 0
+    ratio: float = 0.0
+    items: List[WastedSpendItem] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class SuitabilityBundle:
+    """All participant assessments for one activity plus group-level economics."""
+
+    activity_id: str
+    activity_name: str
+    assessments: List[ActivitySuitability]
+    group_score: float
+    high_utility_count: int
+    total_participants: int
+    cost_per_person: Optional[int] = None
+    total_cost: int = 0
+    wasted_spend_ratio: float = 0.0
+    wasted_spend_amount: int = 0
+    generated_risks: List[StructuredRisk] = field(default_factory=list)
+    schedule_hints: List[Dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class ItineraryOption:
+    """Canonical travel-product artifact for a ranked itinerary option."""
+
+    option_id: str
+    title: str
+    destination_keys: List[str]
+    activities: List[ActivityDefinition]
+    participants: List[ParticipantRef]
+    suitability_bundles: List[SuitabilityBundle]
+    utility_by_person: Dict[str, PersonUtility]
+    wasted_spend: WastedSpendSummary
+    total_cost: int = 0
+    rank: Optional[int] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)

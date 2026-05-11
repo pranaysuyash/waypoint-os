@@ -8,6 +8,8 @@
 
 This series explores how a travel agency platform supports agencies scaling beyond a single office. From corporate multi-branch networks to franchise models and consortium alliances, the platform must serve fundamentally different governance, financial, and operational structures while sharing a common codebase.
 
+**Implementation Status:** Research complete, not product implementation complete. The current application has single-agency tenant isolation primitives; franchise/network entities, inter-entity ledgers, territory engines, royalty billing, and consortium workflows remain future implementation work.
+
 **Target Audience:** Platform architects, backend engineers, product managers, business development teams
 
 **Key Constraint:** Indian travel agencies operate in a fragmented regulatory environment (GST per entity, IATA accreditation tied to legal entity, state-level licenses) that makes network operations significantly more complex than in unified markets.
