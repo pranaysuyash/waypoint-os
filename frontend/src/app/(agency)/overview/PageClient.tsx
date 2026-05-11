@@ -30,7 +30,7 @@ import {
 } from '@/lib/planning-status';
 import { useOverviewSummary } from './useOverviewSummary';
 import { EmptyStateOnboarding } from '@/components/overview/EmptyStateOnboarding';
-import IntegrityMonitorPanel from '@/app/(agency)/workbench/IntegrityMonitorPanel';
+import SystemCheckPanel from '@/components/system/SystemCheckPanel';
 
 // ── Severity grammar: color encodes state, not decoration ──────────────────
 
@@ -692,7 +692,7 @@ function OverviewPageContent() {
       </div>
     </main>
     {systemCheckOpen && (
-      <IntegrityMonitorPanel
+      <SystemCheckPanel
         open={systemCheckOpen}
         onClose={closeSystemCheck}
       />

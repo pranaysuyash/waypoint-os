@@ -43,7 +43,7 @@ def test_get_trip_agent_events_enforces_agency_scope(session_client, monkeypatch
 
 
 def test_get_agent_runtime_returns_registry_and_health(session_client, monkeypatch):
-    import server
+    from routers import agent_runtime
 
     class _Registry:
         def definitions(self):
@@ -55,7 +55,7 @@ def test_get_agent_runtime_returns_registry_and_health(session_client, monkeypat
         def health(self):
             return {"running": True, "registered_agents": ["follow_up_agent"]}
 
-    monkeypatch.setattr(server, "_agent_supervisor", _Supervisor())
+    monkeypatch.setattr(agent_runtime, "_agent_supervisor", _Supervisor())
 
     resp = session_client.get("/agents/runtime")
 
@@ -67,7 +67,7 @@ def test_get_agent_runtime_returns_registry_and_health(session_client, monkeypat
 
 
 def test_run_agent_runtime_once_returns_results(session_client, monkeypatch):
-    import server
+    from routers import agent_runtime
 
     class _Result:
         def to_dict(self):
@@ -81,7 +81,7 @@ def test_run_agent_runtime_once_returns_results(session_client, monkeypatch):
             assert agent_name == "follow_up_agent"
             return [_Result()]
 
-    monkeypatch.setattr(server, "_agent_supervisor", _Supervisor())
+    monkeypatch.setattr(agent_runtime, "_agent_supervisor", _Supervisor())
 
     resp = session_client.post("/agents/runtime/run-once?agent_name=follow_up_agent")
 
@@ -92,7 +92,7 @@ def test_run_agent_runtime_once_returns_results(session_client, monkeypatch):
 
 
 def test_get_agent_runtime_events_filters_agent_events(session_client, monkeypatch):
-    import server
+    from routers import agent_runtime
 
     def _fake_get_agent_events(limit: int = 100, agent_name: str | None = None, correlation_id: str | None = None):
         assert limit == 5
@@ -100,7 +100,7 @@ def test_get_agent_runtime_events_filters_agent_events(session_client, monkeypat
         assert correlation_id == "corr_123"
         return [{"type": "agent_event", "details": {"agent_name": agent_name, "correlation_id": correlation_id}}]
 
-    monkeypatch.setattr(server.AuditStore, "get_agent_events", _fake_get_agent_events)
+    monkeypatch.setattr(agent_runtime.AuditStore, "get_agent_events", _fake_get_agent_events)
 
     resp = session_client.get("/agents/runtime/events?limit=5&agent_name=follow_up_agent&correlation_id=corr_123")
 

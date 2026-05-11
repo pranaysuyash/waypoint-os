@@ -197,6 +197,33 @@ Interpretation: the earlier trip PATCH failures were absent from the failure lis
 - A representative previously failing protected route passed alone: `.venv/bin/python -m pytest tests/test_team_router_behavior.py::test_list_members_is_agency_scoped -q` -> `1 passed in 72.11s`.
 - Live-server lifecycle verification remains noisy while other agents have long-running pytest jobs and a live uvicorn process active in the same workspace; rerun the full suite after those processes clear.
 
+Final full-suite verification after auth-session and suite-order test hardening:
+
+```bash
+.venv/bin/python -m pytest tests/evals/test_d6_audit_scaffold.py::test_d6_seed_fixture_corpus_loads -q
+# 1 passed in 5.47s
+
+.venv/bin/python -m pytest tests/test_public_checker_agency_config.py::test_validate_public_checker_agency_configuration_passes_when_agency_exists tests/test_public_checker_agency_config.py::test_validate_public_checker_agency_configuration_raises_when_agency_missing -q
+# 2 passed in 20.56s
+
+.venv/bin/python -m pytest tests/test_vision_extraction.py::TestSchemaValidationProof::test_wrong_type_fields_create_failed_row_no_pii -q
+# 1 passed in 29.52s
+
+.venv/bin/python -m pytest -q
+# 2080 passed, 7 skipped, 1 xfailed in 176.07s
+
+cd frontend && npm test -- --run
+# 106 test files passed, 852 tests passed in 106.03s
+```
+
+Notes recorded 2026-05-11 22:16 IST:
+
+- `tests/evals/test_d6_audit_scaffold.py` was already repaired by concurrent work to avoid assuming the first loaded fixture has expected findings.
+- `tests/test_public_checker_agency_config.py` now models the startup `set_config(...)` timeout query before agency invariant checks.
+- `tests/test_vision_extraction.py` now scopes the failed-extraction audit assertion to the test trip, removing dependence on the last 20 global audit events in the full suite.
+- The pasted frontend missing-export error for `getPlanningStageProgressItems` is no longer present in the current source because `frontend/src/lib/planning-list-display.ts` exports that helper and frontend tests pass.
+- No durable product behavior was changed in this final hardening pass; the edits are test-fake and test-isolation hardening.
+
 ## Operational Safety
 
 This boundary contract does not enable proposal generation or delivery. It does affect traveler-bundle persistence by forcing the existing public projection at the save boundary.

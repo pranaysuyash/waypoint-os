@@ -205,6 +205,67 @@ function TripCardStageBadge({ stage }: { stage: string }) {
 // Quick Action Chips
 // ──────────────────────────────────────────────────────────────────────────────
 
+function AssignAction({
+  trip,
+  agents,
+  onAssign,
+}: {
+  trip: InboxTrip;
+  agents: { id: string; name: string }[];
+  onAssign: (tripId: string, agentId: string) => void;
+}) {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    if (showDropdown) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showDropdown]);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          setShowDropdown((isOpen) => !isOpen);
+        }}
+        className="inline-flex items-center gap-1 rounded px-2 py-1 text-[12px] font-medium transition-colors"
+        style={{ color: 'var(--accent-blue)' }}
+      >
+        <UserPlus className="size-3" />
+        Assign
+      </button>
+      {showDropdown && (
+        <div className="absolute bottom-full left-0 mb-1 w-44 bg-[#0f1115] border border-[#30363d] rounded-lg shadow-xl z-20 py-1">
+          {agents.map((agent) => (
+            <button
+              key={agent.id}
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onAssign(trip.id, agent.id);
+                setShowDropdown(false);
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-left text-ui-xs text-[#e6edf3] hover:bg-[#1c2128] transition-colors"
+            >
+              <span className="size-5 rounded-full bg-[rgba(88,166,255,0.15)] flex items-center justify-center text-[10px] font-bold text-[#58a6ff]">
+                {agent.name.charAt(0)}
+              </span>
+              <span>{agent.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function QuickActions({
   trip,
   onAssign,
@@ -216,81 +277,28 @@ function QuickActions({
   agents?: { id: string; name: string }[];
   isSelected: boolean;
 }) {
-  const [showDropdown, setShowDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowDropdown(false);
-      }
-    };
-    if (showDropdown) document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showDropdown]);
-
   // Suppress during bulk selection
   if (isSelected) return null;
 
   const reviewHref = `/trips/${trip.id}/intake`;
   const isUnassigned = !trip.assignedTo;
   const hoverClass = IS_TOUCH ? '' : 'opacity-40 group-hover:opacity-100';
-  const actions: React.ReactNode[] = [];
-
-  if (isUnassigned && onAssign && agents && agents.length > 0) {
-    actions.push(
-      <div key="assign" className="relative" ref={dropdownRef}>
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); setShowDropdown(!showDropdown); }}
-          className="inline-flex items-center gap-1 rounded px-2 py-1 text-[12px] font-medium transition-colors"
-          style={{ color: 'var(--accent-blue)' }}
-        >
-          <UserPlus className="size-3" />
-          Assign
-        </button>
-        {showDropdown && (
-          <div className="absolute bottom-full left-0 mb-1 w-44 bg-[#0f1115] border border-[#30363d] rounded-lg shadow-xl z-20 py-1">
-            {agents.map((agent) => (
-              <button
-                key={agent.id}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAssign(trip.id, agent.id);
-                  setShowDropdown(false);
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-left text-ui-xs text-[#e6edf3] hover:bg-[#1c2128] transition-colors"
-              >
-                <span className="size-5 rounded-full bg-[rgba(88,166,255,0.15)] flex items-center justify-center text-[10px] font-bold text-[#58a6ff]">
-                  {agent.name.charAt(0)}
-                </span>
-                <span>{agent.name}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>,
-    );
-  }
-
-  actions.push(
-    <Link
-      key="view"
-      href={reviewHref}
-      data-testid="trip-card-view-link"
-      onClick={(e) => e.stopPropagation()}
-      className="inline-flex items-center gap-1 rounded px-2 py-1 text-[12px] font-medium transition-colors"
-      style={{ color: 'var(--accent-blue)' }}
-    >
-      <ChevronRight className="size-3" />
-      View
-    </Link>,
-  );
 
   return (
     <div className={`flex items-center gap-1 transition-opacity ${hoverClass}`}>
-      {actions}
+      {isUnassigned && onAssign && agents && agents.length > 0 && (
+        <AssignAction trip={trip} agents={agents} onAssign={onAssign} />
+      )}
+      <Link
+        href={reviewHref}
+        data-testid="trip-card-view-link"
+        onClick={(event) => event.stopPropagation()}
+        className="inline-flex items-center gap-1 rounded px-2 py-1 text-[12px] font-medium transition-colors"
+        style={{ color: 'var(--accent-blue)' }}
+      >
+        <ChevronRight className="size-3" />
+        View
+      </Link>
     </div>
   );
 }

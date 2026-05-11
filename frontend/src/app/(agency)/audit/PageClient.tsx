@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import { ClientDateTime } from "@/hooks/useClientDate";
 
 interface AuditEvent {
@@ -11,10 +11,33 @@ interface AuditEvent {
   details: Record<string, unknown>;
 }
 
+type AuditState =
+  | { status: "loading"; events: AuditEvent[]; error: null }
+  | { status: "success"; events: AuditEvent[]; error: null }
+  | { status: "error"; events: AuditEvent[]; error: string };
+
+type AuditAction =
+  | { type: "loaded"; events: AuditEvent[] }
+  | { type: "failed"; error: string };
+
+function auditReducer(state: AuditState, action: AuditAction): AuditState {
+  switch (action.type) {
+    case "loaded":
+      return { status: "success", events: action.events, error: null };
+    case "failed":
+      return { status: "error", events: state.events, error: action.error };
+    default:
+      return state;
+  }
+}
+
 export default function AuditPage() {
-  const [events, setEvents] = useState<AuditEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(auditReducer, {
+    status: "loading",
+    events: [],
+    error: null,
+  });
+  const { events, error } = state;
 
   useEffect(() => {
     let cancelled = false;
@@ -25,23 +48,19 @@ export default function AuditPage() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (!cancelled) {
-          setEvents(data.items ?? []);
-          setLoading(false);
+          dispatch({ type: "loaded", events: data.items ?? [] });
         }
-        // Multiple independent state updates — data and loading are unrelated
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load audit events");
-          setLoading(false);
+          dispatch({ type: "failed", error: err instanceof Error ? err.message : "Failed to load audit events" });
         }
-        // Multiple independent state updates — error and loading are unrelated
       }
     }
     fetchAudit();
     return () => { cancelled = true; };
   }, []);
 
-  if (loading) {
+  if (state.status === "loading") {
     return (
       <div className="p-6">
         <h1 className="text-xl font-semibold mb-4">Trip Fit & Compliance Audit</h1>

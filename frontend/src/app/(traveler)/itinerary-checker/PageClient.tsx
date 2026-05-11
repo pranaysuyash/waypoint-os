@@ -1051,27 +1051,18 @@ const TESTIMONIALS = [
   },
 ];
 
-// ── Upload view (landing + tool) ──────────────────────────────────────────────
-function UploadView({
-  rootRef,
+// ── Upload view sections ─────────────────────────────────────────────────────
+function UploadHeroSection({
   onAnalyze,
   onAnalyzeFile,
   isBusy,
 }: {
-  rootRef: RefObject<HTMLDivElement | null>;
   onAnalyze: (plan: string, sourcePayload?: Record<string, unknown>) => void;
   onAnalyzeFile: (file: File, retentionConsent: boolean) => Promise<void>;
   isBusy: boolean;
 }) {
   return (
-    <div ref={rootRef} style={{
-      background: T.canvas, fontFamily: T.fBody, color: T.t1,
-    }}>
-      <WedgeHeader />
-
-      {/* Background radial glow */}
-      <div style={S.pageBackdrop} />
-
+    <>
       {/* ── HERO: split 2-col ── */}
       <section style={S.heroSection}>
         {/* Left: headline + context */}
@@ -1144,7 +1135,13 @@ function UploadView({
           />
         </div>
       </section>
+    </>
+  );
+}
 
+function TravelMomentsSection() {
+  return (
+    <>
       {/* ── TRAVEL MOMENTS ── */}
       <section style={S.travelMomentsSection}>
         <div style={{
@@ -1172,7 +1169,13 @@ function UploadView({
           })}
         </div>
       </section>
+    </>
+  );
+}
 
+function TravelChecksSection() {
+  return (
+    <>
       {/* ── WHAT WE CHECK ── */}
       <section style={{ position: 'relative', zIndex: 1, padding: '88px 40px' }}>
         <div style={{ maxWidth: 1140, margin: '0 auto' }}>
@@ -1213,7 +1216,13 @@ function UploadView({
           </div>
         </div>
       </section>
+    </>
+  );
+}
 
+function ExampleFindingsSection() {
+  return (
+    <>
       {/* ── EXAMPLE FINDINGS ── */}
       <section style={{
         position: 'relative', zIndex: 1,
@@ -1278,7 +1287,13 @@ function UploadView({
           </div>
         </div>
       </section>
+    </>
+  );
+}
 
+function SampleBriefPreviewSection() {
+  return (
+    <>
       {/* ── SAMPLE BRIEF PREVIEW ── */}
       <section style={{
         position: 'relative', zIndex: 1,
@@ -1393,7 +1408,13 @@ function UploadView({
           </div>
         </div>
       </section>
+    </>
+  );
+}
 
+function TestimonialsSection() {
+  return (
+    <>
       {/* ── TESTIMONIALS ── */}
       <section style={{ position: 'relative', zIndex: 1, padding: '88px 40px' }}>
         <div style={{ maxWidth: 1140, margin: '0 auto' }}>
@@ -1431,7 +1452,13 @@ function UploadView({
           </div>
         </div>
       </section>
+    </>
+  );
+}
 
+function FinalCtaSection() {
+  return (
+    <>
       {/* ── FINAL CTA ── */}
       <section style={{
         position: 'relative', zIndex: 1,
@@ -1494,6 +1521,35 @@ function UploadView({
           </div>
         </div>
       </section>
+    </>
+  );
+}
+
+// ── Upload view (landing + tool) ──────────────────────────────────────────────
+function UploadView({
+  rootRef,
+  onAnalyze,
+  onAnalyzeFile,
+  isBusy,
+}: {
+  rootRef: RefObject<HTMLDivElement | null>;
+  onAnalyze: (plan: string, sourcePayload?: Record<string, unknown>) => void;
+  onAnalyzeFile: (file: File, retentionConsent: boolean) => Promise<void>;
+  isBusy: boolean;
+}) {
+  return (
+    <div ref={rootRef} style={{
+      background: T.canvas, fontFamily: T.fBody, color: T.t1,
+    }}>
+      <WedgeHeader />
+      <div style={S.pageBackdrop} />
+      <UploadHeroSection onAnalyze={onAnalyze} onAnalyzeFile={onAnalyzeFile} isBusy={isBusy} />
+      <TravelMomentsSection />
+      <TravelChecksSection />
+      <ExampleFindingsSection />
+      <SampleBriefPreviewSection />
+      <TestimonialsSection />
+      <FinalCtaSection />
     </div>
   );
 }
@@ -1611,177 +1667,56 @@ function itineraryCheckerReducer(
   }
 }
 
-// ── Results view ──────────────────────────────────────────────────────────────
-function ResultsView({
-  rootRef,
-  onReset,
-  onEmitEvent,
-  tracking,
+type ResultSummaryItem = { l: string; v: string };
+type ManageBusyState = 'export' | 'delete' | null;
+type RevisionOutcome = 'revised' | 'no_change' | 'rejected';
+
+function ResultsHeaderGrid({
+  score,
+  circumference,
   analysis,
   errorMessage,
+  summaryCopy,
+  blockerItems,
+  tripSummary,
+  liveChecks,
+  sent,
+  email,
+  setEmail,
+  setSent,
+  manageMessage,
+  manageBusy,
+  tripId,
+  onExport,
+  onDelete,
+  onReportRevision,
 }: {
-  rootRef: RefObject<HTMLDivElement | null>;
-  onReset: () => void;
-  onEmitEvent: (eventName: string, properties: Record<string, unknown>, tripId?: string | null) => Promise<void>;
-  tracking: { sessionId: string; inquiryId: string } | null;
+  score: number;
+  circumference: number;
   analysis?: RunStatusResponse | null;
   errorMessage?: string | null;
+  summaryCopy: string;
+  blockerItems: string[];
+  tripSummary: ResultSummaryItem[];
+  liveChecks?: Record<string, any>;
+  sent: boolean;
+  email: string;
+  setEmail: (email: string) => void;
+  setSent: (sent: boolean) => void;
+  manageMessage: string | null;
+  manageBusy: ManageBusyState;
+  tripId: string | null;
+  onExport: () => Promise<void>;
+  onDelete: () => Promise<void>;
+  onReportRevision: (revisionOutcome: RevisionOutcome) => Promise<void>;
 }) {
-  const [email, setEmail] = useState('');
-  const [sent,  setSent]  = useState(false);
-  const [manageMessage, setManageMessage] = useState<string | null>(null);
-  const [manageBusy, setManageBusy] = useState<'export' | 'delete' | null>(null);
-
-  const SCORE = scoreFromAnalysis(analysis ?? null);
-  const summaryCopy = summaryFromAnalysis(analysis ?? null);
-  const circumference = 2 * Math.PI * 36;
-  const tripId = analysis?.trip_id ?? null;
-  const liveChecks = ((analysis?.packet as Record<string, any> | null | undefined)?.public_checker_live_checks as Record<string, any> | undefined) ?? undefined;
-  const tripSummary = [
-    liveChecks?.destination ? { l: 'Destination', v: String(liveChecks.destination) } : null,
-    liveChecks?.travel_window?.start_date && liveChecks?.travel_window?.end_date
-      ? { l: 'Travel window', v: `${String(liveChecks.travel_window.start_date)} → ${String(liveChecks.travel_window.end_date)}` }
-      : null,
-    liveChecks?.climate?.precipitation_mm_avg != null
-      ? { l: 'Avg rain', v: `${String(liveChecks.climate.precipitation_mm_avg)} mm` }
-      : null,
-    liveChecks?.current_conditions?.current?.temperature_c != null
-      ? { l: 'Current temp', v: `${String(liveChecks.current_conditions.current.temperature_c)}°C` }
-      : null,
-    liveChecks?.source ? { l: 'Live source', v: String(liveChecks.source) } : null,
-  ].filter((item): item is { l: string; v: string } => Boolean(item));
-  const blockerItems = [
-    ...(Array.isArray(analysis?.hard_blockers) ? analysis?.hard_blockers : []),
-    ...(Array.isArray(analysis?.soft_blockers) ? analysis?.soft_blockers : []),
-  ];
-
-  const handleExport = async () => {
-    if (!tripId) return;
-    setManageBusy('export');
-    setManageMessage(null);
-    try {
-      const response = await fetch(`/api/public-checker/${tripId}/export`);
-      if (!response.ok) throw new Error('Export failed');
-      const payload = await response.json();
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `waypoint-checker-${tripId}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-      await onEmitEvent(
-        'finding_evidence_opened',
-        {
-          finding_id: `trip_${tripId}`,
-          evidence_type: 'source_snippet',
-          open_index: 1,
-        },
-        tripId,
-      );
-      setManageMessage('Export downloaded.');
-    } catch {
-      setManageMessage('Could not export this report.');
-    } finally {
-      setManageBusy(null);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!tripId) return;
-    const confirmed = window.confirm('Delete this saved itinerary report and its stored upload data?');
-    if (!confirmed) return;
-    setManageBusy('delete');
-    setManageMessage(null);
-    try {
-      const response = await fetch(`/api/public-checker/${tripId}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('Delete failed');
-      setManageMessage('Deleted.');
-      onReset();
-    } catch {
-      setManageMessage('Could not delete this report.');
-    } finally {
-      setManageBusy(null);
-    }
-  };
-
-  const handleShareReport = async () => {
-    if (!tracking) return;
-    const packetId = tripId ?? `packet_${Date.now().toString(36)}`;
-    const shareText = `${summaryCopy}\nReport ID: ${tripId ?? 'pending'}`;
-
-    let shareChannel: 'whatsapp' | 'email' | 'copy_paste' | 'other' = 'copy_paste';
-    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-      try {
-        await navigator.share({
-          title: 'Waypoint itinerary findings',
-          text: shareText,
-        });
-        shareChannel = 'other';
-      } catch {
-        // User cancelled or share failed. Fall back to clipboard.
-      }
-    }
-
-    if (shareChannel === 'copy_paste') {
-      try {
-        await navigator.clipboard.writeText(shareText);
-        await onEmitEvent(
-          'action_packet_copied',
-          {
-            packet_id: packetId,
-            packet_type: 'agent_message',
-            finding_count: blockerItems.length,
-            had_manual_edits: false,
-          },
-          tripId,
-        );
-      } catch {
-        // ignore clipboard failure for telemetry; user still has visible summary
-      }
-    }
-
-    await onEmitEvent(
-      'action_packet_shared',
-      {
-        packet_id: packetId,
-        share_channel: shareChannel,
-        had_manual_edits: false,
-      },
-      tripId,
-    );
-  };
-
-  const handleReportRevision = async (revisionOutcome: 'revised' | 'no_change' | 'rejected') => {
-    if (!tracking) return;
-    await onEmitEvent(
-      'agency_revision_reported',
-      {
-        revision_report_mode: 'self_report',
-        revision_outcome: revisionOutcome,
-        time_from_share_ms: null,
-      },
-      tripId,
-    );
-    setManageMessage(
-      revisionOutcome === 'revised'
-        ? 'Marked as revised. Thanks for closing the loop.'
-        : revisionOutcome === 'no_change'
-          ? 'Marked as no change.'
-          : 'Marked as rejected.',
-    );
-  };
-
+  const SCORE = score;
+  const handleExport = onExport;
+  const handleDelete = onDelete;
+  const handleReportRevision = onReportRevision;
   return (
-    <div ref={rootRef} style={S.resultsRoot}>
-      <WedgeHeader />
-      <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', maxWidth: 860, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-
-        <button onClick={onReset} style={S.backButton}>
-          ← Analyze another itinerary
-        </button>
-
-        {/* Results header grid */}
+    <>
+      {/* Results header grid */}
         <div className='itinerary-reveal' style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginBottom: 24 }}>
           {/* Score card */}
             <div style={{ padding: '24px 26px', borderRadius: 20, background: T.surface, border: `1px solid ${T.b0}` }}>
@@ -1982,8 +1917,20 @@ function ResultsView({
             </div>
           </div>
         </div>
+    </>
+  );
+}
 
-        {/* Findings */}
+function ResultsFindingsSection({
+  blockerItems,
+  analysis,
+}: {
+  blockerItems: string[];
+  analysis?: RunStatusResponse | null;
+}) {
+  return (
+    <>
+      {/* Findings */}
         <div className='itinerary-stagger' style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.t2, marginBottom: 12 }}>Findings</div>
           {blockerItems.length > 0 ? (
@@ -2024,8 +1971,19 @@ function ResultsView({
             </div>
           )}
         </div>
+    </>
+  );
+}
 
-        {/* Soft agency conversion */}
+function ResultsConversionSection({
+  onShareReport,
+}: {
+  onShareReport: () => Promise<void>;
+}) {
+  const handleShareReport = onShareReport;
+  return (
+    <>
+      {/* Soft agency conversion */}
         <div className='itinerary-reveal' style={S.conversionCard}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 600, color: T.t1, marginBottom: 4 }}>Working with a travel advisor?</div>
@@ -2044,14 +2002,205 @@ function ResultsView({
             </Link>
           </div>
         </div>
+    </>
+  );
+}
 
+// ── Results view ──────────────────────────────────────────────────────────────
+function ResultsView({
+  rootRef,
+  onReset,
+  onEmitEvent,
+  tracking,
+  analysis,
+  errorMessage,
+}: {
+  rootRef: RefObject<HTMLDivElement | null>;
+  onReset: () => void;
+  onEmitEvent: (eventName: string, properties: Record<string, unknown>, tripId?: string | null) => Promise<void>;
+  tracking: { sessionId: string; inquiryId: string } | null;
+  analysis?: RunStatusResponse | null;
+  errorMessage?: string | null;
+}) {
+  const [email, setEmail] = useState('');
+  const [sent,  setSent]  = useState(false);
+  const [manageMessage, setManageMessage] = useState<string | null>(null);
+  const [manageBusy, setManageBusy] = useState<'export' | 'delete' | null>(null);
+
+  const SCORE = scoreFromAnalysis(analysis ?? null);
+  const summaryCopy = summaryFromAnalysis(analysis ?? null);
+  const circumference = 2 * Math.PI * 36;
+  const tripId = analysis?.trip_id ?? null;
+  const liveChecks = ((analysis?.packet as Record<string, any> | null | undefined)?.public_checker_live_checks as Record<string, any> | undefined) ?? undefined;
+  const tripSummary = [
+    liveChecks?.destination ? { l: 'Destination', v: String(liveChecks.destination) } : null,
+    liveChecks?.travel_window?.start_date && liveChecks?.travel_window?.end_date
+      ? { l: 'Travel window', v: `${String(liveChecks.travel_window.start_date)} → ${String(liveChecks.travel_window.end_date)}` }
+      : null,
+    liveChecks?.climate?.precipitation_mm_avg != null
+      ? { l: 'Avg rain', v: `${String(liveChecks.climate.precipitation_mm_avg)} mm` }
+      : null,
+    liveChecks?.current_conditions?.current?.temperature_c != null
+      ? { l: 'Current temp', v: `${String(liveChecks.current_conditions.current.temperature_c)}°C` }
+      : null,
+    liveChecks?.source ? { l: 'Live source', v: String(liveChecks.source) } : null,
+  ].filter((item): item is { l: string; v: string } => Boolean(item));
+  const blockerItems = [
+    ...(Array.isArray(analysis?.hard_blockers) ? analysis?.hard_blockers : []),
+    ...(Array.isArray(analysis?.soft_blockers) ? analysis?.soft_blockers : []),
+  ];
+
+  const handleExport = async () => {
+    if (!tripId) return;
+    setManageBusy('export');
+    setManageMessage(null);
+    try {
+      const response = await fetch(`/api/public-checker/${tripId}/export`);
+      if (!response.ok) throw new Error('Export failed');
+      const payload = await response.json();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `waypoint-checker-${tripId}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      await onEmitEvent(
+        'finding_evidence_opened',
+        {
+          finding_id: `trip_${tripId}`,
+          evidence_type: 'source_snippet',
+          open_index: 1,
+        },
+        tripId,
+      );
+      setManageMessage('Export downloaded.');
+    } catch {
+      setManageMessage('Could not export this report.');
+    } finally {
+      setManageBusy(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!tripId) return;
+    const confirmed = window.confirm('Delete this saved itinerary report and its stored upload data?');
+    if (!confirmed) return;
+    setManageBusy('delete');
+    setManageMessage(null);
+    try {
+      const response = await fetch(`/api/public-checker/${tripId}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Delete failed');
+      setManageMessage('Deleted.');
+      onReset();
+    } catch {
+      setManageMessage('Could not delete this report.');
+    } finally {
+      setManageBusy(null);
+    }
+  };
+
+  const handleShareReport = async () => {
+    if (!tracking) return;
+    const packetId = tripId ?? `packet_${Date.now().toString(36)}`;
+    const shareText = `${summaryCopy}\nReport ID: ${tripId ?? 'pending'}`;
+
+    let shareChannel: 'whatsapp' | 'email' | 'copy_paste' | 'other' = 'copy_paste';
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: 'Waypoint itinerary findings',
+          text: shareText,
+        });
+        shareChannel = 'other';
+      } catch {
+        // User cancelled or share failed. Fall back to clipboard.
+      }
+    }
+
+    if (shareChannel === 'copy_paste') {
+      try {
+        await navigator.clipboard.writeText(shareText);
+        await onEmitEvent(
+          'action_packet_copied',
+          {
+            packet_id: packetId,
+            packet_type: 'agent_message',
+            finding_count: blockerItems.length,
+            had_manual_edits: false,
+          },
+          tripId,
+        );
+      } catch {
+        // ignore clipboard failure for telemetry; user still has visible summary
+      }
+    }
+
+    await onEmitEvent(
+      'action_packet_shared',
+      {
+        packet_id: packetId,
+        share_channel: shareChannel,
+        had_manual_edits: false,
+      },
+      tripId,
+    );
+  };
+
+  const handleReportRevision = async (revisionOutcome: 'revised' | 'no_change' | 'rejected') => {
+    if (!tracking) return;
+    await onEmitEvent(
+      'agency_revision_reported',
+      {
+        revision_report_mode: 'self_report',
+        revision_outcome: revisionOutcome,
+        time_from_share_ms: null,
+      },
+      tripId,
+    );
+    setManageMessage(
+      revisionOutcome === 'revised'
+        ? 'Marked as revised. Thanks for closing the loop.'
+        : revisionOutcome === 'no_change'
+          ? 'Marked as no change.'
+          : 'Marked as rejected.',
+    );
+  };
+
+  return (
+    <div ref={rootRef} style={S.resultsRoot}>
+      <WedgeHeader />
+      <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', maxWidth: 860, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+        <button onClick={onReset} style={S.backButton}>
+          ← Analyze another itinerary
+        </button>
+        <ResultsHeaderGrid
+          score={SCORE}
+          circumference={circumference}
+          analysis={analysis}
+          errorMessage={errorMessage}
+          summaryCopy={summaryCopy}
+          blockerItems={blockerItems}
+          tripSummary={tripSummary}
+          liveChecks={liveChecks}
+          sent={sent}
+          email={email}
+          setEmail={setEmail}
+          setSent={setSent}
+          manageMessage={manageMessage}
+          manageBusy={manageBusy}
+          tripId={tripId}
+          onExport={handleExport}
+          onDelete={handleDelete}
+          onReportRevision={handleReportRevision}
+        />
+        <ResultsFindingsSection blockerItems={blockerItems} analysis={analysis} />
+        <ResultsConversionSection onShareReport={handleShareReport} />
         <div style={{ paddingBottom: 48 }} />
       </div>
     </div>
   );
-}
-
-// ── Page ──────────────────────────────────────────────────────────────────────
+}// ── Page ──────────────────────────────────────────────────────────────────────
 export default function ItineraryCheckerPage() {
   const [state, dispatch] = useReducer(itineraryCheckerReducer, initialItineraryCheckerState);
   const { view, analysis, analysisError, isAnalyzing, tracking } = state;

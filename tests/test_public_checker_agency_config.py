@@ -20,6 +20,8 @@ class _FakeConn:
     async def execute(self, statement, params=None):
         sql = str(statement)
         self.calls.append((sql, params))
+        if "set_config(" in sql:
+            return _ScalarResult(True)
         if "information_schema.tables" in sql:
             return _ScalarResult(self.table_exists)
         if "FROM agencies WHERE id" in sql:
@@ -57,6 +59,12 @@ async def test_validate_public_checker_agency_configuration_passes_when_agency_e
     await server._validate_public_checker_agency_configuration()
 
     assert any("information_schema.tables" in sql for sql, _ in fake_conn.calls)
+    assert any(
+        "set_config(" in sql
+        and (params or {}).get("lock_timeout") == "5s"
+        and (params or {}).get("statement_timeout") == "20s"
+        for sql, params in fake_conn.calls
+    )
     assert any((params or {}).get("agency_id") == "agency-123" for _, params in fake_conn.calls)
 
 

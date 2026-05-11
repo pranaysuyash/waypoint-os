@@ -68,6 +68,7 @@ function safeParseJson(raw: string): Record<string, unknown> | null {
 
 const workspaceTabs = [
   { id: 'intake', label: 'New Inquiry' },
+  { id: 'packet', label: 'Trip Details' },
   { id: 'safety', label: 'Risk Review' },
   { id: 'ops', label: 'Ops' },
 ] as const;
@@ -181,21 +182,29 @@ function WorkbenchContent() {
     error: tripError,
   } = useTrip(tripId);
   useHydrateStoreFromTrip(trip);
+  const store = useWorkbenchStore();
 
   const activeTab = toWorkspaceTabId(getSearchParam('tab')) ?? 'intake';
 
+  const showPacket =
+    Boolean(trip) ||
+    Boolean(store.result_packet) ||
+    Boolean(store.result_validation) ||
+    store.draft_status === 'blocked' ||
+    store.draft_status === 'failed';
+
   // Ops tab visible only at proposal/booking stage
   const showOps = trip?.stage === 'proposal' || trip?.stage === 'booking';
-  const visibleTabs = showOps
-    ? workspaceTabs
-    : workspaceTabs.filter((t) => t.id !== 'ops');
+  const visibleTabs = workspaceTabs.filter((tab) => {
+    if (tab.id === 'packet') return showPacket;
+    if (tab.id === 'ops') return showOps;
+    return true;
+  });
 
   // Normalize: if URL requests a tab that isn't currently visible, fall back to intake
   const effectiveTab = visibleTabs.some((t) => t.id === activeTab)
     ? activeTab
     : 'intake';
-
-  const store = useWorkbenchStore();
 
   // Draft hydration - load draft from backend and populate store
   const prevDraftRef = useRef<string | null>(null);
@@ -347,7 +356,7 @@ function WorkbenchContent() {
       currentState !== prevState &&
       (currentState === 'blocked' || currentState === 'failed')
     ) {
-      handleTabChange('intake');
+      handleTabChange('packet');
     }
 
     prevRunStateRef.current = currentState;
@@ -979,9 +988,7 @@ function WorkbenchContent() {
                 }}
                 onFixDetails={() => {
                   resetSpine();
-                  const params = new URLSearchParams(searchParams.toString());
-                  params.set('tab', 'intake');
-                  replace(`/workbench?${params.toString()}`);
+                  handleTabChange(showPacket ? 'packet' : 'intake');
                 }}
                 onViewTrip={completedTripId ? () => push(`/trips/${completedTripId}/intake`) : undefined}
               />
@@ -1087,6 +1094,8 @@ function WorkbenchContent() {
                 <OpsPanel trip={trip} />
               ) : effectiveTab === 'safety' ? (
                 <SafetyTab trip={trip} />
+              ) : effectiveTab === 'packet' ? (
+                <PacketTab trip={trip} />
               ) : (
                 <IntakeTab trip={trip} />
               )}

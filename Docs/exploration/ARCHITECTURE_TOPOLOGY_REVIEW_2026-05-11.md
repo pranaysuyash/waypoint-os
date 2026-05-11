@@ -328,7 +328,7 @@ Document the current architecture as:
 
 This prevents future agents from forcing false choices between "monolith" and "microservices."
 
-**Phase 0 execution:** [Docs/status/ARCHITECTURE_TOPOLOGY_PHASE0_EXECUTION_2026-05-11.md](../status/ARCHITECTURE_TOPOLOGY_PHASE0_EXECUTION_2026-05-11.md) adds a reusable route/topology inventory tool and records the current route ownership baseline. Follow-up cleanup is recorded in [Docs/status/BFF_ROUTE_MAP_DRIFT_CLEANUP_2026-05-11.md](../status/BFF_ROUTE_MAP_DRIFT_CLEANUP_2026-05-11.md), which removes stale BFF aliases and restores the inventory invariant `bff_unmatched_backend_path_count=0`. Backend route extraction follow-ups are recorded in [Docs/status/SETTINGS_ROUTER_EXTRACTION_2026-05-11.md](../status/SETTINGS_ROUTER_EXTRACTION_2026-05-11.md) and [Docs/status/DRAFTS_ROUTER_EXTRACTION_2026-05-11.md](../status/DRAFTS_ROUTER_EXTRACTION_2026-05-11.md), moving settings and drafts ownership out of `server.py`.
+**Phase 0 execution:** [Docs/status/ARCHITECTURE_TOPOLOGY_PHASE0_EXECUTION_2026-05-11.md](../status/ARCHITECTURE_TOPOLOGY_PHASE0_EXECUTION_2026-05-11.md) adds a reusable route/topology inventory tool and records the current route ownership baseline. Follow-up cleanup is recorded in [Docs/status/BFF_ROUTE_MAP_DRIFT_CLEANUP_2026-05-11.md](../status/BFF_ROUTE_MAP_DRIFT_CLEANUP_2026-05-11.md), which removes stale BFF aliases and restores the inventory invariant `bff_unmatched_backend_path_count=0`. Backend route extraction follow-ups are recorded in [Docs/status/SETTINGS_ROUTER_EXTRACTION_2026-05-11.md](../status/SETTINGS_ROUTER_EXTRACTION_2026-05-11.md), [Docs/status/DRAFTS_ROUTER_EXTRACTION_2026-05-11.md](../status/DRAFTS_ROUTER_EXTRACTION_2026-05-11.md), [Docs/status/INBOX_ROUTER_EXTRACTION_2026-05-11.md](../status/INBOX_ROUTER_EXTRACTION_2026-05-11.md), [Docs/status/AGENT_RUNTIME_ROUTER_EXTRACTION_2026-05-11.md](../status/AGENT_RUNTIME_ROUTER_EXTRACTION_2026-05-11.md), and [Docs/status/ANALYTICS_ROUTER_EXTRACTION_2026-05-11.md](../status/ANALYTICS_ROUTER_EXTRACTION_2026-05-11.md), moving settings, drafts, inbox, product-agent runtime, and non-product-B analytics ownership out of `server.py`.
 
 ### Phase 1 — Finish Backend Modularity
 
@@ -337,12 +337,10 @@ Goal: reduce `spine_api/server.py` into an application shell.
 Move remaining large endpoint clusters into routers and services:
 
 - trips lifecycle,
-- inbox,
-- analytics,
-- settings,
 - documents/extraction,
 - public checker,
-- drafts.
+- booking collection,
+- overrides and audit-adjacent leftovers.
 
 Do not create duplicate route files for the same resource/action. Extend canonical routes per [AGENTS.md](../../AGENTS.md).
 
@@ -426,3 +424,66 @@ Without those, extraction is ceremony.
 **Near-term target:** Cleaner modular monolith plus optional worker process.  
 **Do not do now:** Microservices, service mesh, broker-first event architecture, or a large rewrite.  
 **Do next:** route/service modularization, persistence consolidation, and worker-boundary design.
+
+## Live Architecture Update (2026-05-11)
+
+### Runtime Topology (snapshot)
+
+This is the current observed topology after the public-route extraction and the latest router de-siloing pass:
+
+```text
+Browser
+  -> Next.js App Router + BFF proxy (frontend/src/lib/route-map.ts)
+     -> FastAPI app (spine_api/server.py + router modules)
+        -> domain services (spine_api/services/*)
+           -> orchestration/pipeline library (src/*)
+              -> persistence + RLS + background ledger/event tables (PostgreSQL-first)
+                 -> optional same-repo workers for long-running operations
+```
+
+### Live Route Distribution
+
+- Backend registered routes: `146`
+- Server shell routes still in `spine_api/server.py`: `43`
+- Router-owned routes: `103` across `20` router modules
+- Public-facing route families still in server shell include:
+  - `/trips/*` (`36` endpoints)
+  - `/api/*` (`3` endpoints)
+  - `run`, `overrides`, `assignments`, `audit`, `auth` compatibility edges
+
+### What we extracted in this round
+
+- Public checker routes moved into `spine_api/routers/public_checker.py`:
+  - `POST /api/public-checker/events`
+  - `GET /api/public-checker/{trip_id}`
+  - `GET /api/public-checker/{trip_id}/export`
+  - `DELETE /api/public-checker/{trip_id}`
+- Public collection routes moved into `spine_api/routers/public_collection.py`:
+  - `GET /api/public/booking-collection/{token}`
+  - `POST /api/public/booking-collection/{token}/submit`
+  - `POST /api/public/booking-collection/{token}/documents`
+- These are documented in [Docs/status/PUBLIC_ROUTES_ROUTER_EXTRACTION_2026-05-11.md](../status/PUBLIC_ROUTES_ROUTER_EXTRACTION_2026-05-11.md).
+
+### What is still left (next actionable slice)
+
+1. Create dedicated router modules for the highest-coupling route clusters currently in server shell (`trips`, documents/extraction, assignment/review transitions, overrides/status actions), then re-run the ownership/parity checks.
+2. Preserve `server.py` only as an application shell + shared exception/auth/bootstrap wiring after route extraction.
+3. Keep the next boundary at the process level as a worker boundary first (not service extraction): run queue/worker for long-running `run` and document extraction jobs.
+4. Continue with persistence unification before any service split.
+
+### Verification evidence (latest run)
+
+- `pytest` passing on route and startup invariants:
+  - `tests/test_architecture_route_inventory.py`
+  - `tests/test_server_route_parity.py`
+  - `tests/test_server_openapi_path_parity.py`
+  - `tests/test_server_startup_invariants.py`
+  - `tests/test_public_checker_path_safety.py`
+  - `tests/test_public_checker_agency_config.py`
+  - `tests/test_booking_collection.py`
+- Result: `64 passed`
+
+### Guidance for decision: diff architecture now?
+
+At this product stage, a **modular monolith with explicit router and worker boundaries** is the most scalable and safest path.  
+Moving directly to microservices now would add deployment and API-ownership complexity before route boundaries, contract ownership, and persistence unification are complete.

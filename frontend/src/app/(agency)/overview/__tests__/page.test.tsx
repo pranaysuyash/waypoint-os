@@ -153,7 +153,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn() }),
 }));
 
-vi.mock('@/app/(agency)/workbench/IntegrityMonitorPanel', () => ({
+vi.mock('@/components/system/SystemCheckPanel', () => ({
   default: ({ open }: { open: boolean }) => (
     open ? <div data-testid='system-check-panel'>System Check</div> : null
   ),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NAV_SECTIONS } from '../nav-modules';
+import { DOCUMENTS_MODULE_ROLLOUT_GATES, NAV_SECTIONS, isDocumentsModuleEnabled } from '../nav-modules';
 
 describe('NAV_SECTIONS', () => {
   it('aligns shell labels with the agency-facing dashboard vocabulary', () => {
@@ -12,5 +12,14 @@ describe('NAV_SECTIONS', () => {
     expect(command?.items.map((item) => item.label)).not.toContain('Approval Queue');
     expect(planning?.items.map((item) => item.label)).toContain('Trips in Planning');
     expect(planning?.items.map((item) => item.label)).not.toContain('Trips');
+  });
+
+  it('keeps Documents module gated until rollout gates are complete', () => {
+    expect(isDocumentsModuleEnabled()).toBe(false);
+    expect(DOCUMENTS_MODULE_ROLLOUT_GATES.some((gate) => gate.complete === false)).toBe(true);
+
+    const operations = NAV_SECTIONS.find((section) => section.label === 'OPERATIONS');
+    const documents = operations?.items.find((item) => item.href === '/documents');
+    expect(documents?.enabled).toBe(false);
   });
 });

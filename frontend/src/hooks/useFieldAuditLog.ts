@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useReducer } from 'react';
 import type { FieldChange, AuditLog, TripFieldType, FieldChangeType } from '@/types/audit';
 
 const STORAGE_PREFIX = 'trip_audit:v1:';
@@ -14,6 +14,24 @@ interface UseFieldAuditLogOptions {
   tripId: string;
   userId?: string;
   userName?: string;
+}
+
+type AuditLogState = {
+  auditLog: AuditLog | null;
+  isLoading: boolean;
+};
+
+type AuditLogAction = { type: 'loaded'; auditLog: AuditLog } | { type: 'updated'; auditLog: AuditLog };
+
+function auditLogReducer(_state: AuditLogState, action: AuditLogAction): AuditLogState {
+  switch (action.type) {
+    case 'loaded':
+      return { auditLog: action.auditLog, isLoading: false };
+    case 'updated':
+      return { auditLog: action.auditLog, isLoading: false };
+    default:
+      return _state;
+  }
 }
 
 /**
@@ -34,8 +52,11 @@ export function useFieldAuditLog({
   userId = 'current-user',
   userName = 'Current User',
 }: UseFieldAuditLogOptions) {
-  const [auditLog, setAuditLog] = useState<AuditLog | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [state, dispatch] = useReducer(auditLogReducer, {
+    auditLog: null,
+    isLoading: true,
+  });
+  const { auditLog, isLoading } = state;
 
   // Load audit log from localStorage
   useEffect(() => {
@@ -45,28 +66,33 @@ export function useFieldAuditLog({
         const parsed = JSON.parse(stored) as AuditLog;
         // Validate basic structure
         if (parsed.tripId === tripId && Array.isArray(parsed.changes)) {
-          setAuditLog(parsed);
+          dispatch({ type: 'loaded', auditLog: parsed });
+          return;
         }
-      } else {
-        // Initialize new audit log
-        setAuditLog({
+      }
+
+      // Initialize new audit log
+      dispatch({
+        type: 'loaded',
+        auditLog: {
           tripId,
           changes: [],
           lastModified: new Date().toISOString(),
           version: 0,
-        });
-      }
+        },
+      });
     } catch (error) {
       console.error('Failed to load audit log:', error);
       // Initialize empty log on error
-      setAuditLog({
-        tripId,
-        changes: [],
-        lastModified: new Date().toISOString(),
-        version: 0,
+      dispatch({
+        type: 'loaded',
+        auditLog: {
+          tripId,
+          changes: [],
+          lastModified: new Date().toISOString(),
+          version: 0,
+        },
       });
-    } finally {
-      setIsLoading(false);
     }
   }, [tripId]);
 
@@ -111,7 +137,7 @@ export function useFieldAuditLog({
       version: auditLog.version + 1,
     };
 
-    setAuditLog(updatedLog);
+    dispatch({ type: 'updated', auditLog: updatedLog });
     saveAuditLog(updatedLog);
 
     return change;
@@ -165,7 +191,7 @@ export function useFieldAuditLog({
       version: 0,
     };
 
-    setAuditLog(clearedLog);
+    dispatch({ type: 'updated', auditLog: clearedLog });
     saveAuditLog(clearedLog);
   }, [tripId, saveAuditLog]);
 

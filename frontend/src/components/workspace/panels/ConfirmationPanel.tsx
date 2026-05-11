@@ -138,18 +138,14 @@ export default function ConfirmationPanel({ tripId }: ConfirmationPanelProps) {
 
   // ── Render ──────────────────────────────────────────────────────────────
 
-  if (loading) {
-    return (
+  return loading ? (
       <div className="bg-elevated border border-border-default rounded-xl p-4">
         <div className="flex items-center gap-2 text-sm text-muted">
           <Loader className="size-4 animate-spin" />
           Loading confirmations…
         </div>
       </div>
-    );
-  }
-
-  return (
+  ) : (
     <div className="bg-elevated border border-border-default rounded-xl p-4 space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">

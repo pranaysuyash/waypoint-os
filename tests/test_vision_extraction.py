@@ -621,9 +621,10 @@ class TestSchemaValidationProof:
         assert len(travelers) == 1
         assert travelers[0]["full_name"] == "Original"
 
-        # Verify audit has no extracted values — read last events, find extraction_failed
+        # Verify audit has no extracted values for this trip. Scoping by trip_id
+        # avoids full-suite order dependence on unrelated audit events.
         from spine_api.persistence import AuditStore
-        events = AuditStore.get_events(limit=20)
+        events = AuditStore.get_events_for_trip(trip_id)
         failed_events = [e for e in events if e.get("type") == "extraction_failed"]
         assert len(failed_events) >= 1
         last_failed = failed_events[-1]

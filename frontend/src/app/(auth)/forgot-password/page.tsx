@@ -36,8 +36,7 @@ export default function ForgotPasswordPage() {
     }
   }
 
-  if (success) {
-    return (
+  return success ? (
       <div className='auth-card'>
         <h1 className='auth-title'>Check your email</h1>
         <p className='auth-subtitle'>
@@ -47,10 +46,7 @@ export default function ForgotPasswordPage() {
           Back to sign in
         </Link>
       </div>
-    );
-  }
-
-  return (
+  ) : (
     <div className='auth-card'>
       <h1 className='auth-title'>Reset your password</h1>
       <p className='auth-subtitle'>Enter your email and we'll send you a reset link.</p>

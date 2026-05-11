@@ -290,3 +290,87 @@ Remaining categories:
 2 no-derived-useState
 2 no-derived-state-effect
 ```
+
+## 2026-05-11 React Doctor Batch 12 Update
+
+Current verified React Doctor baseline:
+
+```text
+score 92 Great total 60 errors 0 warnings 60
+no-inline-exhaustive-style 0
+```
+
+What changed:
+
+- Extracted large traveler itinerary checker inline style payloads into named style constants/factories while preserving the current visual direction.
+- Converted several async `loading/data/error` flows to reducers: audit page, suitability page, timeline summary, field audit log, and trip layout timeline rail.
+- Preserved current System Check route ownership: `/overview?panel=system-check`.
+
+Verification:
+
+```text
+npx tsc --noEmit: passed
+TimelineSummary + useFieldAuditLog + trip layout tests: 3 files passed, 10 tests passed
+public marketing pages / itinerary checker tests: 1 file passed, 9 tests passed
+```
+
+Known test noise:
+
+- `trips/[tripId]/__tests__/layout.test.tsx` still emits existing React `act(...)` warnings from async layout updates.
+
+Remaining categories:
+
+```text
+16 no-giant-component
+13 prefer-useReducer
+8 rerender-state-only-in-handlers
+6 no-fetch-in-effect
+4 no-cascading-set-state
+3 rendering-usetransition-loading
+2 nextjs-no-client-fetch-for-server-data
+2 no-derived-useState
+2 no-render-in-render
+2 async-await-in-loop
+2 no-derived-state-effect
+```
+
+## 2026-05-11 React Doctor Batch 13 Update
+
+Current verified React Doctor baseline:
+
+```text
+score 93 Great total 45 errors 0 warnings 45
+```
+
+Refactor preservation status:
+
+- `IntegrityMonitorPanel` deletion is an intentional supersession by `frontend/src/components/system/SystemCheckPanel.tsx`, not an accidental functionality loss.
+- Preserved behavior: drawer props, `useIntegrityIssues()` contract, loading/error/empty/list states, allowed-action display, and read-only system health behavior.
+- Preserved route ownership: System Check belongs at `/overview?panel=system-check`; Workbench no longer owns or renders that panel.
+
+Verification:
+
+```text
+npx tsc --noEmit --incremental false: passed
+System Check + Overview + Workbench side-panel tests: 4 files passed, 13 tests passed
+booking collection + public marketing + overview/system tests: 4 files passed, 25 tests passed
+ActivityTimeline + IntakeFieldComponents tests: 2 files passed, 39 tests passed
+```
+
+Known test noise:
+
+- `booking-collection/__tests__/page.test.tsx` still emits an existing React `act(...)` warning in the initial loading-state test.
+
+Remaining categories:
+
+```text
+13 no-giant-component
+12 prefer-useReducer
+6 no-fetch-in-effect
+3 rendering-usetransition-loading
+3 no-cascading-set-state
+2 async-await-in-loop
+2 no-derived-state-effect
+2 no-render-in-render
+2 nextjs-no-client-fetch-for-server-data
+```

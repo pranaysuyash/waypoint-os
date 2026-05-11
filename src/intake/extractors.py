@@ -144,6 +144,18 @@ _SINGLE_MONTH_RE = re.compile(
     r"\s+(\d{4})",
     re.IGNORECASE,
 )
+_SINGLE_MONTH_NO_YEAR_RE = re.compile(
+    r"(?:in|during|for)\s+"
+    r"((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)\b",
+    re.IGNORECASE,
+)
+_AFTER_MONTH_DAY_RE = re.compile(
+    r"\b(?:after|from|post)\s+"
+    r"((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)\s+"
+    r"(\d{1,2})(?:st|nd|rd|th)?"
+    r"(?:\s+(\d{4}))?\b",
+    re.IGNORECASE,
+)
 _FUZZY_MONTH_RE = re.compile(
     r"(?:around|sometime\s+in|during)\s+((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)",
     re.IGNORECASE,
@@ -180,14 +192,28 @@ _HEDGING_RE = re.compile(
     re.IGNORECASE,
 )
 
+_NUMBER_WORDS = {
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+}
+_COUNT_TOKEN_RE = r"(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)"
+
 # People count patterns
-_ADULTS_RE = re.compile(r"(\d+)\s+adults?", re.IGNORECASE)
-_CHILDREN_RE = re.compile(r"(?:(\d+)\s+)?(?:kids?|children?|child|bachhe|baccha)", re.IGNORECASE)
+_ADULTS_RE = re.compile(rf"({_COUNT_TOKEN_RE})\s+adults?", re.IGNORECASE)
+_CHILDREN_RE = re.compile(rf"(?:(({_COUNT_TOKEN_RE})\s+))?(?:kids?|children?|child|bachhe|baccha)", re.IGNORECASE)
 _TODDLER_RE = re.compile(r"\b(?:a\s+)?(?:toddler|toddlers?)\b", re.IGNORECASE)
 _TODDLER_AGE_RE = re.compile(r"toddler\s+(?:age\s+)?(\d+)", re.IGNORECASE)
-_ELDERLY_RE = re.compile(r"(?:(\d+)\s+)?(?:elderly|seniors?|grandparents?|grandma|grandpa|grandmother|grandfather)", re.IGNORECASE)
+_ELDERLY_RE = re.compile(rf"(?:(({_COUNT_TOKEN_RE})\s+))?(?:elderly|seniors?|grandparents?|grandma|grandpa|grandmother|grandfather)", re.IGNORECASE)
 _ELDERLY_AGE_RE = re.compile(r"\b(?:elderly|seniors?)\b", re.IGNORECASE)
-_PEOPLE_RE = re.compile(r"(\d+)\s+(?:people|persons?|pax|travelers?)", re.IGNORECASE)
+_PEOPLE_RE = re.compile(rf"({_COUNT_TOKEN_RE})\s+(?:people|persons?|pax|travelers?)", re.IGNORECASE)
 
 # Age patterns
 _AGE_RE = re.compile(r"(\d+\.?\d*)\s*(?:years?|yr|y)[\s-]*(?:old|aged?)\s+(\w+)", re.IGNORECASE)
@@ -196,7 +222,7 @@ _MULTI_AGE_RE = re.compile(r"(\d+)\s*(?:,|and)\s*(\d+)\s*(?:,|and)?\s*(\d+)?\s*(
 
 # Family/group patterns
 _FAMILY_RE = re.compile(r"(?:family|they|customer)\s+(?:always\s+)?(?:prefers?|likes?)\s+([^.,]+)", re.IGNORECASE)
-_GROUP_SIZE_RE = re.compile(r"(?:family|group)\s+\w+\s*(?:of\s+)?(\d+)", re.IGNORECASE)
+_GROUP_SIZE_RE = re.compile(rf"(?:family|group)\s+(?:\w+\s*)?(?:of\s+)?({_COUNT_TOKEN_RE})", re.IGNORECASE)
 
 # Food preference patterns
 _FOOD_PREFERENCE_RE = re.compile(
@@ -274,6 +300,15 @@ _ORIGIN_DEST_RE = re.compile(
 @lru_cache(maxsize=32)
 def _month_to_num(month_str: str) -> Optional[int]:
     return _MONTH_MAP.get(month_str.lower()[:3].rstrip("e")) or _MONTH_MAP.get(month_str.lower())
+
+
+def _count_token_to_int(raw: str | None) -> Optional[int]:
+    if not raw:
+        return None
+    token = raw.strip().lower()
+    if token.isdigit():
+        return int(token)
+    return _NUMBER_WORDS.get(token)
 
 
 def _infer_year_from_context(text: str) -> str:
@@ -599,10 +634,28 @@ def _extract_dates(text: str) -> Optional[Tuple[str, Optional[str], Optional[str
         raw = month_window.group(0)
         return raw, None, None, "window"
 
+    # Open-ended customer windows: "after July 10", "from July 10".
+    # Keep the raw phrase as the canonical date_window even if the end date is unknown.
+    after_month_day = _AFTER_MONTH_DAY_RE.search(text_lower)
+    if after_month_day:
+        raw = after_month_day.group(0).strip()
+        month_num = _month_to_num(after_month_day.group(1))
+        year = after_month_day.group(3) or _infer_year_from_context(text)
+        if month_num:
+            start_iso = f"{year}-{month_num:02d}-{int(after_month_day.group(2)):02d}"
+            return raw, start_iso, None, "flexible_after"
+        return raw, None, None, "flexible_after"
+
     # Single month: "March 2026"
     single_month = _SINGLE_MONTH_RE.search(text_lower)
     if single_month:
         raw = single_month.group(0)
+        return raw, None, None, "flexible"
+
+    # Single month without explicit year: "in July".
+    single_month_no_year = _SINGLE_MONTH_NO_YEAR_RE.search(text_lower)
+    if single_month_no_year:
+        raw = single_month_no_year.group(0)
         return raw, None, None, "flexible"
 
     # "around March 2026", "sometime in May 2026"
@@ -792,12 +845,16 @@ def _extract_party(text: str) -> Dict[str, Any]:
     # Adults
     adult_match = _ADULTS_RE.search(text_lower)
     if adult_match:
-        composition["adults"] = int(adult_match.group(1))
+        adult_count = _count_token_to_int(adult_match.group(1))
+        if adult_count:
+            composition["adults"] = adult_count
 
     # Children — match "2 children" or bare "child/kid" or Hinglish "bachhe"/"bache"/"baccha"
-    child_match = re.search(r"(?:(\d+)\s+)?(?:kids?|children?|child|bachhe|bache|baccha)", text_lower)
-    if child_match and child_match.group(1):
-        composition["children"] = int(child_match.group(1))
+    child_match = re.search(rf"(?:(?P<count>{_COUNT_TOKEN_RE})\s+)?(?:kids?|children?|child|bachhe|bache|baccha)", text_lower)
+    if child_match and child_match.group("count"):
+        child_count = _count_token_to_int(child_match.group("count"))
+        if child_count:
+            composition["children"] = child_count
     # Try to extract ages: "kids ages 8 and 12", "children aged 5, 7", "child age 3"
     ages_match = re.search(
         r"(?:kids?|children?|child|ages?|bachhe|bache|baccha)\s+(?:ages?\s+)?(\d+(?:\s+(?:and|,)\s*\d+)*)",
@@ -819,7 +876,7 @@ def _extract_party(text: str) -> Dict[str, Any]:
     # Elderly — "1 elderly", "an elderly grandmother", "grandma age 78", "senior"
     elderly_match = _ELDERLY_RE.search(text_lower)
     if elderly_match:
-        composition["elderly"] = int(elderly_match.group(1)) if elderly_match.group(1) else 1
+        composition["elderly"] = _count_token_to_int(elderly_match.group(2)) or 1
     elif _ELDERLY_RE.search(text_lower):
         composition.setdefault("elderly", 1)
 
@@ -829,21 +886,21 @@ def _extract_party(text: str) -> Dict[str, Any]:
     # Prefer explicit stated headcount when present (e.g., "6 pax", "6 people").
     # If explicit and inferred counts conflict, explicit caller-provided count wins.
     explicit_size_match = _PEOPLE_RE.search(text_lower)
-    explicit_party_size = int(explicit_size_match.group(1)) if explicit_size_match else None
+    explicit_party_size = _count_token_to_int(explicit_size_match.group(1)) if explicit_size_match else None
     if explicit_party_size and explicit_party_size > 0:
         party_size = explicit_party_size
 
     # Fallback: "family of N", "group of N", "N people"
     if party_size == 0:
         size_match = re.search(
-            r"(?:family|group)\s+(?:of\s+)?(\d+)", text_lower
+            rf"(?:family|group)\s+(?:of\s+)?(?P<count>{_COUNT_TOKEN_RE})", text_lower
         )
         if size_match:
-            party_size = int(size_match.group(1))
+            party_size = _count_token_to_int(size_match.group("count")) or 0
         else:
-            pax_match = re.search(r"(\d+)\s+(?:people|persons|pax|travelers)", text_lower)
+            pax_match = re.search(rf"(?P<count>{_COUNT_TOKEN_RE})\s+(?:people|persons|pax|travelers)", text_lower)
             if pax_match:
-                party_size = int(pax_match.group(1))
+                party_size = _count_token_to_int(pax_match.group("count")) or 0
 
     return {
         "party_size": party_size,
@@ -879,7 +936,8 @@ def _extract_trip_intent(text: str) -> Dict[str, Any]:
     if "trip_purpose" not in results:
         _LEISURE_HINTS = {"universal studios", "disney", "sentosa", "nature park",
                           "theme park", "aquarium", "zoo", "safari", "gardens",
-                          "sightseeing", "attractions", "landmarks", "tourist"}
+                          "sightseeing", "attractions", "landmarks", "tourist",
+                          "beach resort", "kids club", "villa", "resort"}
         _FAMILY_HINTS = {"kid", "kids", "child", "children", "toddler", "baby",
                          "parents", "family", "wife", "husband",
                          "bachhe", "bache", "baccha"}
@@ -1505,6 +1563,9 @@ class ExtractionPipeline:
             )
             if origin_match:
                 city_raw = origin_match.group(2).strip()
+                city_raw_lower = city_raw.lower()
+                first_token = city_raw_lower.split()[0] if city_raw_lower.split() else ""
+                airport_context = "airport" in city_raw_lower or "transfer" in city_raw_lower
                 # Validate as a plausible city name using geography.py
                 # NOTE: A city being in destination lists doesn't disqualify it as origin.
                 # People can take trips FROM destinations. What matters is the pattern.
@@ -1513,7 +1574,9 @@ class ExtractionPipeline:
 
                 # Basic validation: must be a known city (or close enough) or multi-word
                 # Multi-word names like "New York" should be accepted even if not in city DB
-                if is_known_city(city) or len(city_raw.split()) > 1:
+                if not airport_context and first_token not in _STOP_WORDS and (
+                    is_known_city(city) or len(city_raw.split()) > 1
+                ):
                     packet.set_fact("origin_city", self._make_slot(
                         city, 0.9, AuthorityLevel.EXPLICIT_USER,
                         origin_match.group(0), eid, extraction_mode=mode,

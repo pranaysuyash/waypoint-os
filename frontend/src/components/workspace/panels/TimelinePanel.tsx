@@ -203,30 +203,6 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
     fetchAll();
   }, [fetchAll]);
 
-  if (isLoading) {
-    return (
-      <div className="p-6 text-center">
-        <p className="text-ui-sm text-text-muted">Loading timeline…</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-6">
-        <div className="rounded-lg border border-[rgba(var(--accent-red-rgb)/0.3)] bg-[rgba(var(--accent-red-rgb)/0.06)] p-4">
-          <p className="text-ui-sm text-accent-red">{error}</p>
-          <button
-            onClick={() => fetchAll()}
-            className="mt-3 text-ui-sm px-3 py-1.5 rounded-md bg-accent-red text-text-on-accent hover:opacity-90 transition-opacity"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   const events = timeline?.events ?? [];
 
   // Merge timeline events with override events, sorted by timestamp
@@ -239,18 +215,30 @@ export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilte
   ];
   mergedItems.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-  if (events.length === 0 && suitabilityFlags.length === 0 && overrides.length === 0) {
-    return (
-      <div className="p-6 text-center">
-        <p className="text-ui-sm font-medium text-text-primary">No activity yet</p>
-        <p className="text-ui-xs text-text-muted mt-2">Activity will appear when customer details are updated, follow-ups are drafted, options are built, or quotes are approved.</p>
-      </div>
-    );
-  }
-
   const totalCount = mergedItems.length;
 
-  return (
+  return isLoading ? (
+    <div className="p-6 text-center">
+      <p className="text-ui-sm text-text-muted">Loading timeline…</p>
+    </div>
+  ) : error ? (
+    <div className="p-6">
+      <div className="rounded-lg border border-[rgba(var(--accent-red-rgb)/0.3)] bg-[rgba(var(--accent-red-rgb)/0.06)] p-4">
+        <p className="text-ui-sm text-accent-red">{error}</p>
+        <button
+          onClick={() => fetchAll()}
+          className="mt-3 text-ui-sm px-3 py-1.5 rounded-md bg-accent-red text-text-on-accent hover:opacity-90 transition-opacity"
+        >
+          Retry
+        </button>
+      </div>
+    </div>
+  ) : events.length === 0 && suitabilityFlags.length === 0 && overrides.length === 0 ? (
+    <div className="p-6 text-center">
+      <p className="text-ui-sm font-medium text-text-primary">No activity yet</p>
+      <p className="text-ui-xs text-text-muted mt-2">Activity will appear when customer details are updated, follow-ups are drafted, options are built, or quotes are approved.</p>
+    </div>
+  ) : (
     <div className="p-6" data-testid="timeline-panel">
       <div className="space-y-4">
         {/* Suitability Flags Section */}

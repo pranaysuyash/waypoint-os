@@ -80,7 +80,7 @@ describe('AuthProvider', () => {
     );
   });
 
-  it('preserves the full protected path and query string in modal context', () => {
+  it('shows a human destination label while preserving the full protected redirect link', () => {
     const hydrate = vi.fn();
     mockPathname = '/trips/123';
     Object.defineProperty(window, 'location', {
@@ -99,7 +99,11 @@ describe('AuthProvider', () => {
       </AuthProvider>
     );
 
-    expect(screen.getByText('/trips/123?tab=reviews&mode=full')).toBeInTheDocument();
+    expect(screen.getByText('Trips in Planning')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /open full sign-in page/i })).toHaveAttribute(
+      'href',
+      '/login?redirect=%2Ftrips%2F123%3Ftab%3Dreviews%26mode%3Dfull'
+    );
   });
 
   it('does not show login modal on public routes', () => {

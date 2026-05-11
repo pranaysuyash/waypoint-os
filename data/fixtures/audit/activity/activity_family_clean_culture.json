@@ -1,0 +1,36 @@
+{
+  "fixture_id": "activity_family_clean_culture",
+  "category": "activity",
+  "subject": {
+    "subject_id": "fixture_activity_family_clean_culture",
+    "subject_type": "itinerary",
+    "destination_keys": ["jaipur"],
+    "party_composition": {
+      "adults": 2,
+      "elderly": 1
+    },
+    "activities": [
+      {
+        "activity_id": "museum_visit",
+        "canonical_name": "Museum Visit",
+        "tags": ["seated_show", "cultural"],
+        "intensity": "light",
+        "cost_per_person": 1000
+      }
+    ]
+  },
+  "expected_findings": [],
+  "expected_absent_findings": [
+    {
+      "category": "activity",
+      "flag": "low_utility_activity",
+      "reason": "Light seated cultural activity should be suitable for adults and elderly travelers."
+    },
+    {
+      "category": "activity",
+      "flag": "wasted_spend",
+      "reason": "No participant is below low-utility threshold."
+    }
+  ],
+  "notes": "Clean activity fixture for false-positive protection."
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useRef, useReducer, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { AlertTriangle, ChevronLeft, Lock, PanelRightClose, PanelRightOpen } from "lucide-react";
@@ -61,15 +61,44 @@ function getActiveStage(pathname: string): WorkspaceStage {
   return stage ?? "intake";
 }
 
+type TimelineRailState =
+  | { status: "idle"; timeline: TimelineResponse | null; error: null }
+  | { status: "loading"; timeline: TimelineResponse | null; error: null }
+  | { status: "success"; timeline: TimelineResponse; error: null }
+  | { status: "error"; timeline: TimelineResponse | null; error: string };
+
+type TimelineRailAction =
+  | { type: "loading" }
+  | { type: "loaded"; timeline: TimelineResponse }
+  | { type: "failed"; error: string };
+
+function timelineRailReducer(
+  state: TimelineRailState,
+  action: TimelineRailAction,
+): TimelineRailState {
+  switch (action.type) {
+    case "loading":
+      return { status: "loading", timeline: state.timeline, error: null };
+    case "loaded":
+      return { status: "success", timeline: action.timeline, error: null };
+    case "failed":
+      return { status: "error", timeline: state.timeline, error: action.error };
+    default:
+      return state;
+  }
+}
+
 export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) {
   const params = useParams<{ tripId?: string | string[] }>();
   const pathname = usePathname();
   const tripId = parseTripId(params?.tripId);
   const { data: trip, isLoading, error, refetch: refetchTrip, replaceTrip } = useTrip(tripId);
   const [isRailOpen, setIsRailOpen] = useState(false);
-  const [timeline, setTimeline] = useState<TimelineResponse | null>(null);
-  const [timelineLoading, setTimelineLoading] = useState(false);
-  const [timelineError, setTimelineError] = useState<string | null>(null);
+  const [timelineState, dispatchTimeline] = useReducer(timelineRailReducer, {
+    status: "idle",
+    timeline: null,
+    error: null,
+  });
   const hasRailPreferenceRef = useRef(false);
   const { result_run_ts } = useWorkbenchStore();
 
@@ -85,7 +114,9 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   const planningUnlockHint = getPlanningUnlockHint(trip);
   const visibleTabs = STAGE_TABS;
   const stageProgressItems = useMemo(() => getPlanningStageProgressItems(trip), [trip]);
-  const timelineEvents = timeline?.events ?? [];
+  const timelineEvents = timelineState.timeline?.events ?? [];
+  const timelineLoading = timelineState.status === "loading";
+  const timelineError = timelineState.error;
 
   useEffect(() => {
     hasRailPreferenceRef.current = false;
@@ -107,8 +138,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
 
     const fetchTimeline = async () => {
       try {
-        setTimelineLoading(true);
-        setTimelineError(null);
+        dispatchTimeline({ type: "loading" });
         // eslint-disable-next-line -- dynamic tripId param, auth via credentials: "include"
         const response = await fetch(`/api/trips/${tripId}/timeline`, {
           credentials: "include",
@@ -117,15 +147,13 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
         if (!response.ok) throw new Error(`Failed to fetch timeline: ${response.statusText}`);
         const data = (await response.json()) as TimelineResponse;
         if (cancelled) return;
-        setTimeline(data);
+        dispatchTimeline({ type: "loaded", timeline: data });
         if (!hasRailPreferenceRef.current) {
           setIsRailOpen(hasImportantTimelineEvent(data.events ?? []));
         }
       } catch (err) {
         if (cancelled) return;
-        setTimelineError(err instanceof Error ? err.message : "Failed to load timeline");
-      } finally {
-        if (!cancelled) setTimelineLoading(false);
+        dispatchTimeline({ type: "failed", error: err instanceof Error ? err.message : "Failed to load timeline" });
       }
     };
 
@@ -376,7 +404,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                   <ErrorBoundary>
                     <TimelineSummary
                       tripId={tripId as string}
-                      timeline={timeline}
+                      timeline={timelineState.timeline}
                       loading={timelineLoading}
                       error={timelineError}
                     />

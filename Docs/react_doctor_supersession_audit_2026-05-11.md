@@ -671,3 +671,125 @@ Next recommended sequence:
 1. Treat `/join/[code]` and trip layout route-level fetches as design tasks, not simple lint cleanup. They cross auth/session and dynamic trip context boundaries.
 2. Convert client-authenticated fetch effects (`audit`, `suitability`, `TimelineSummary`, `useRuntimeVersion`) to canonical query hooks or server boundaries only after confirming auth/runtime contracts.
 3. Refactor `itinerary-checker` as a dedicated visual/component split because it owns most `no-inline-exhaustive-style` and `no-giant-component` findings.
+
+## Supersession Batch 12: Itinerary Style Extraction + Async State Reducers
+
+Verdict: ACCEPT. The React Doctor re-baseline after parallel-agent drift was `91/100` with 108 warnings. The highest-concentration finding was the traveler itinerary checker: 40 inline-style findings plus two giant-component findings.
+
+Decision rationale:
+
+- Inline style literals with large object payloads are maintainability debt, but the visual design itself is product intent and should not be flattened into generic UI.
+- The safest first-principles fix was to preserve the exact visual language while extracting repeated/static style objects and small style factories out of render.
+- Async fetch states that transition through `loading/data/error` belong in reducers so state transitions are atomic and less cascade-prone.
+
+Changes:
+
+- Extracted large itinerary checker style literals into named `CSSProperties` constants and small style factories.
+- Cleared the entire `no-inline-exhaustive-style` React Doctor category.
+- Converted itinerary checker upload/page state to reducer-backed state machines.
+- Converted async state management in `AuditPage`, `SuitabilityPage`, `TimelineSummary`, `useFieldAuditLog`, and the trip layout timeline rail to reducers.
+- Preserved the product decision from `Docs/status/SYSTEM_CHECK_OVERVIEW_ROUTING_FIX_2026-05-11.md`: System Check belongs to `/overview?panel=system-check`, not `/workbench?panel=integrity`.
+
+Verification:
+
+```text
+npx tsc --noEmit
+  exit code 0
+
+react-doctor . --json
+  score 92, warnings 60, errors 0
+  no-inline-exhaustive-style: 0
+
+npm run test -- --run src/components/workspace/panels/__tests__/TimelineSummary.test.tsx src/hooks/__tests__/useFieldAuditLog.contract-surface.test.tsx src/app/(agency)/trips/[tripId]/__tests__/layout.test.tsx
+  3 files passed, 10 tests passed
+  Note: existing act(...) warnings remain in trip layout async tests.
+
+npm run test -- --run src/app/__tests__/public_marketing_pages.test.tsx
+  1 file passed, 9 tests passed
+```
+
+Remaining React Doctor categories:
+
+```text
+16 no-giant-component
+13 prefer-useReducer
+8 rerender-state-only-in-handlers
+6 no-fetch-in-effect
+4 no-cascading-set-state
+3 rendering-usetransition-loading
+2 nextjs-no-client-fetch-for-server-data
+2 no-derived-useState
+2 no-render-in-render
+2 async-await-in-loop
+2 no-derived-state-effect
+```
+
+Next recommended sequence:
+
+1. Split the two remaining itinerary checker giant components into focused presentational components; avoid changing upload/OCR/API behavior.
+2. Continue reducer conversion in self-contained panels (`BookingExecutionPanel`, `ExecutionTimelinePanel`, `ConfirmationPanel`) before attempting high-blast-radius workbench or intake rewrites.
+3. Treat `no-fetch-in-effect` and `nextjs-no-client-fetch-for-server-data` as architecture tasks requiring route/auth contract verification before moving data to server boundaries.
+4. Leave stale `/workbench?panel=integrity` compatibility removed unless the user explicitly asks for compatibility; the current product contract is Overview-owned system health.
+
+## Supersession Batch 13: Refactor Preservation Check + Public Flow Component Splits
+
+Verdict: ACCEPT. Current verified React Doctor baseline is `93/100` with 45 warnings and 0 errors.
+
+Context and status check:
+
+- Parallel agents were active during this pass. Fresh `git status --short` at `2026-05-11 22:22 IST` showed new router/docs/test work outside this React Doctor slice.
+- The deleted `frontend/src/app/(agency)/workbench/IntegrityMonitorPanel.tsx` was not an accidental loss. It is intentionally superseded by `frontend/src/components/system/SystemCheckPanel.tsx` per `Docs/status/SYSTEM_CHECK_OVERVIEW_ROUTING_FIX_2026-05-11.md`.
+- Supersession comparison preserved the same `open` / `onClose` props, `useIntegrityIssues()` data contract, loading/error/empty/list states, allowed-action display, and read-only behavior. Ownership changed from Workbench to Overview/system health, which matches the product route contract `/overview?panel=system-check`.
+
+Changes in this batch:
+
+- Split traveler itinerary checker upload/results rendering into focused presentational sections while preserving reducer-backed upload/OCR/API behavior.
+- Converted public booking collection route state to a reducer and then split terminal screens, trip summary, travelers, payer details, document upload, and active form rendering into focused components.
+- Fixed System Check loading copy to use the canonical ellipsis glyph.
+- Reshaped auth forgot/reset success branches into explicit conditional returns so React Doctor can see the rendered state branch without changing behavior.
+- Converted loading early-return panels (`ConfirmationPanel`, `BookingExecutionPanel`, `ExecutionTimelinePanel`, `TimelinePanel`) into returned conditional branches while preserving loading/loaded/error/empty UI.
+- Extracted inbox trip assignment dropdown into its own `AssignAction` component so dropdown state is local to the UI that renders it.
+- Removed derived state risks in `SmartCombobox` by deriving closed display from `value` and keeping draft input only while the dropdown is open.
+- Removed derived prop initialization in `ActivityTimeline` by separating controlled sort order from local fallback state.
+
+Verification:
+
+```text
+cd frontend && npx tsc --noEmit --incremental false
+  exit code 0
+
+cd frontend && react-doctor . --json
+  score 93, warnings 45, errors 0
+
+cd frontend && npm run -s test -- --run 'src/components/system/__tests__/SystemCheckPanel.test.tsx' 'src/app/(agency)/overview/__tests__/page.test.tsx' 'src/app/(agency)/overview/__tests__/useOverviewSummary.test.ts' 'src/app/(agency)/workbench/__tests__/integrity-panels.test.tsx'
+  4 files passed, 13 tests passed
+
+cd frontend && npm run -s test -- --run 'src/app/(public)/booking-collection/__tests__/page.test.tsx' 'src/app/__tests__/public_marketing_pages.test.tsx' 'src/components/system/__tests__/SystemCheckPanel.test.tsx' 'src/app/(agency)/overview/__tests__/page.test.tsx'
+  4 files passed, 25 tests passed
+  Note: existing act(...) warning remains in the booking collection loading-state test.
+
+cd frontend && npm run -s test -- --run 'src/components/workspace/panels/__tests__/ActivityTimeline.test.tsx' 'src/components/workspace/panels/__tests__/IntakeFieldComponents.test.tsx'
+  2 files passed, 39 tests passed
+```
+
+Remaining React Doctor categories:
+
+```text
+13 no-giant-component
+12 prefer-useReducer
+6 no-fetch-in-effect
+3 rendering-usetransition-loading
+3 no-cascading-set-state
+2 async-await-in-loop
+2 no-derived-state-effect
+2 no-render-in-render
+2 nextjs-no-client-fetch-for-server-data
+```
+
+Next recommended task package:
+
+1. `IntakePanel` architectural split: extract `renderPlanningDetailEditor` into a stable top-level editor component, then continue decomposing `IntakePanelInner` before attempting reducer consolidation.
+2. Workbench route split: decompose `PageClient` and `OpsPanel` first, because those own the largest `no-giant-component`, `prefer-useReducer`, and `no-cascading-set-state` clusters.
+3. Server-boundary fetch tasks: handle `/auth/join/[code]`, trip layout, audit page, suitability page, `TimelineSummary`, and `useRuntimeVersion` only after verifying auth/session and BFF contracts. These are architecture tasks, not lint-only cleanup.
+4. Self-contained reducer tasks: convert `ConfirmationPanel`, `BookingExecutionPanel`, `ExecutionTimelinePanel`, `CaptureCallPanel`, `OverrideModal`, `ScenarioLab`, and `FollowupsPage` to reducer-backed state machines in small verified batches.
+5. Giant component splits: continue with `SmartCombobox`, `CaptureCallPanel`, `DecisionTab`, `WorkspaceTripLayoutShell`, `PacketTab`, `InboxPageWithSearchParams`, `FollowupsPage`, `HomePage`, `OwnerInsightsPage`, and `AutonomyTab`, preserving UX and tests.

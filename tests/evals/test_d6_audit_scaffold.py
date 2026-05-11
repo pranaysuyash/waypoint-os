@@ -3,8 +3,10 @@ from pathlib import Path
 import pytest
 
 from src.evals.audit.fixtures import AuditFixture, ExpectedFinding, load_fixtures
+from src.evals.audit.gates import evaluate_report_against_manifest
 from src.evals.audit.manifest import load_manifest
 from src.evals.audit.metrics import compute_category_metrics
+from src.evals.audit.rules.activity import run_activity_fixture
 from src.evals.audit.runner import run_eval_suite
 from src.suitability.models import StructuredRisk
 
@@ -94,4 +96,29 @@ def test_d6_seed_fixture_corpus_loads():
     fixtures = load_fixtures(fixture_root)
 
     assert {fixture.fixture_id for fixture in fixtures} >= {"activity_toddler_low_utility"}
-    assert fixtures[0].expected_findings
+    assert any(fixture.expected_findings for fixture in fixtures)
+
+
+def test_d6_activity_rule_runner_detects_low_utility_and_waste():
+    fixture_root = Path(__file__).resolve().parents[2] / "data" / "fixtures" / "audit" / "activity"
+    fixtures = {fixture.fixture_id: fixture for fixture in load_fixtures(fixture_root)}
+
+    findings = run_activity_fixture(fixtures["activity_toddler_low_utility"])
+    clean_findings = run_activity_fixture(fixtures["activity_family_clean_culture"])
+
+    assert {finding.flag for finding in findings} == {"low_utility_activity", "wasted_spend"}
+    assert any("toddler_1" in finding.affected_travelers for finding in findings)
+    assert clean_findings == []
+
+
+def test_d6_report_gate_respects_manifest_status():
+    fixture_root = Path(__file__).resolve().parents[2] / "data" / "fixtures" / "audit" / "activity"
+    report = run_eval_suite(load_fixtures(fixture_root), rule_runner=run_activity_fixture)
+    manifest = load_manifest()
+
+    gate = evaluate_report_against_manifest(report, manifest)
+
+    assert gate.categories["activity"].status == "shadow"
+    assert gate.categories["activity"].meets_thresholds
+    assert not gate.categories["activity"].blocks_ci
+    assert not gate.categories["activity"].authoritative_for_public_surface

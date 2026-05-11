@@ -69,8 +69,7 @@ function ResetPasswordPageInner() {
     );
   }
 
-  if (success) {
-    return (
+  return success ? (
       <div className='auth-card'>
         <h1 className='auth-title'>Password updated</h1>
         <p className='auth-subtitle'>
@@ -80,10 +79,7 @@ function ResetPasswordPageInner() {
           Sign in
         </Link>
       </div>
-    );
-  }
-
-  return (
+  ) : (
     <div className='auth-card'>
       <h1 className='auth-title'>Set new password</h1>
       <p className='auth-subtitle'>Enter your new password below.</p>

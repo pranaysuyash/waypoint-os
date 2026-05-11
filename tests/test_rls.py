@@ -17,7 +17,7 @@ import asyncio
 import sys
 import os
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch, call
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -195,7 +195,7 @@ class TestAuthWiresRls:
 
     @pytest.mark.asyncio
     async def test_get_current_membership_sets_rls_agency(self):
-        from spine_api.core import auth, rls
+        from spine_api.core import auth
 
         user = MagicMock()
         user.id = "usr-001"
@@ -222,7 +222,7 @@ class TestAuthWiresRls:
     async def test_get_current_membership_does_not_set_rls_on_missing_membership(self):
         """If membership lookup fails (403), set_rls_agency must NOT be called."""
         from fastapi import HTTPException
-        from spine_api.core import auth, rls
+        from spine_api.core import auth
 
         user = MagicMock()
         user.id = "usr-ghost"
@@ -239,3 +239,75 @@ class TestAuthWiresRls:
 
         mock_set.assert_not_called()
         assert exc.value.status_code == 403
+
+
+# ── Runtime posture evaluation ────────────────────────────────────────────────
+
+class TestRlsRuntimePosture:
+
+    def test_non_owner_role_with_enabled_rls_has_no_risks(self):
+        from spine_api.core.rls import RlsRuntimePosture, RlsTablePosture
+
+        posture = RlsRuntimePosture(
+            current_user="waypoint_app",
+            is_superuser=False,
+            bypasses_rls=False,
+            tables=(
+                RlsTablePosture(
+                    table_name="trips",
+                    owner="waypoint_owner",
+                    rls_enabled=True,
+                    force_rls=False,
+                ),
+            ),
+            expected_tables=("trips",),
+        )
+
+        assert posture.risks == ()
+        assert posture.is_enforced_for_runtime_role is True
+
+    def test_owner_role_without_force_rls_is_reported_as_bypass_risk(self):
+        from spine_api.core.rls import RlsRuntimePosture, RlsTablePosture
+
+        posture = RlsRuntimePosture(
+            current_user="waypoint",
+            is_superuser=False,
+            bypasses_rls=False,
+            tables=(
+                RlsTablePosture(
+                    table_name="trips",
+                    owner="waypoint",
+                    rls_enabled=True,
+                    force_rls=False,
+                ),
+            ),
+            expected_tables=("trips",),
+        )
+
+        assert posture.is_enforced_for_runtime_role is False
+        assert posture.risks == (
+            "trips is owned by runtime role waypoint and FORCE RLS is disabled",
+        )
+
+    def test_missing_or_disabled_tables_are_reported_as_risks(self):
+        from spine_api.core.rls import RlsRuntimePosture, RlsTablePosture
+
+        posture = RlsRuntimePosture(
+            current_user="waypoint_app",
+            is_superuser=False,
+            bypasses_rls=False,
+            tables=(
+                RlsTablePosture(
+                    table_name="trips",
+                    owner="waypoint_owner",
+                    rls_enabled=False,
+                    force_rls=False,
+                ),
+            ),
+            expected_tables=("trips", "memberships"),
+        )
+
+        assert posture.risks == (
+            "memberships is missing from the live database",
+            "trips has row-level security disabled",
+        )

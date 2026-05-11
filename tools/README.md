@@ -239,7 +239,34 @@ Outputs:
 - Human-readable console report by default.
 - JSON report with `--json`, including current scan date, matched terms, missing terms, and evidence snippets.
 
-## 5) `singapore_scenario_regression.py`
+## 5) D6 Audit Eval Scaffold
+
+Purpose:
+- Measure audit-rule quality before findings become authoritative on consumer-facing surfaces.
+- Run fixture corpora through category-specific rule runners and compare expected vs actual findings.
+- Evaluate manifest thresholds for `planned`, `shadow`, and `gating` categories.
+
+Key modules:
+- `src/evals/audit/fixtures.py` — fixture schema and JSON loader.
+- `src/evals/audit/runner.py` — eval runner.
+- `src/evals/audit/metrics.py` — precision, recall, severity accuracy.
+- `src/evals/audit/gates.py` — manifest threshold and public-authority decisions.
+- `src/evals/audit/rules/activity.py` — activity utility/waste runner using `ItineraryOption`.
+
+Fixture location:
+- `data/fixtures/audit/`
+
+Usage:
+```bash
+cd /Users/pranay/Projects/travel_agency_agent
+uv run pytest -q tests/evals/test_d6_audit_scaffold.py
+```
+
+Notes:
+- `activity` is currently a shadow category, not a consumer-authoritative gate.
+- Promote categories to `gating` only after enough fixtures prove precision/recall.
+
+## 6) `singapore_scenario_regression.py`
 
 Purpose:
 - Run the canonical Ravi/Singapore messy-call scenario through both live async paths:
@@ -264,7 +291,7 @@ Notes:
 - Scenario fixture source: `data/fixtures/scenarios/SC-901_ravi_singapore_messy_call.json`.
 - Ensure backend and frontend dev servers are running before execution.
 
-## 6) `generate_dummy_singapore_itinerary_pdf.py`
+## 7) `generate_dummy_singapore_itinerary_pdf.py`
 
 Purpose:
 - Generate a realistic sample Singapore family itinerary PDF for checker upload testing.
@@ -287,7 +314,7 @@ Notes:
 - The file is a sample only and does not represent a real booking.
 - Uses `reportlab` and the existing project venv / uv environment.
 
-## 7) `run_multi_agent_runtime_scenarios.py`
+## 8) `run_multi_agent_runtime_scenarios.py`
 
 Purpose:
 - Run deterministic backend multi-agent runtime drills without touching the
@@ -309,7 +336,7 @@ Notes:
 - Uses an in-memory trip repository and audit sink.
 - Does not require backend or frontend servers.
 
-## 8) `build_agent_intelligence_graph.py`
+## 9) `build_agent_intelligence_graph.py`
 
 Purpose:
 - Turn the repo's autoresearch, feedback-loop, graph-memory, and live-intelligence docs into a living navigation graph.
@@ -334,7 +361,7 @@ Notes:
 - Heuristic and additive, not a source-of-truth database.
 - Uses only the repository's existing docs and standard library.
 
-## 9) `recovery_guard_report.py`
+## 10) `recovery_guard_report.py`
 
 Purpose:
 - Provide a read-only starting point when an agent suspects unsafe stash/reset/worktree activity.

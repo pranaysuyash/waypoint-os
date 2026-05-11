@@ -1,7 +1,7 @@
 # Architecture Topology Phase 0 Execution
 
 **Date:** 2026-05-11  
-**Status:** Complete for Phase 0 instrumentation; BFF drift, settings-router, and drafts-router follow-ups completed  
+**Status:** Complete for Phase 0 instrumentation; BFF drift, settings-router, drafts-router, inbox-router, agent-runtime-router, and analytics-router follow-ups completed  
 **Source exploration:** [Docs/exploration/ARCHITECTURE_TOPOLOGY_REVIEW_2026-05-11.md](../exploration/ARCHITECTURE_TOPOLOGY_REVIEW_2026-05-11.md)
 
 ---
@@ -22,9 +22,9 @@ Fresh inventory from `tools/architecture_route_inventory.py`:
 | --- | ---: |
 | Backend route decorators / registered routes | 146 |
 | OpenAPI paths | 127 |
-| Routes still owned by `spine_api/server.py` | 71 |
-| Routes owned by router modules | 75 |
-| Router modules with routes | 15 |
+| Routes still owned by `spine_api/server.py` | 50 |
+| Routes owned by router modules | 96 |
+| Router modules with routes | 18 |
 | BFF route-map entries | 71 |
 | Unique BFF backend paths | 70 |
 | Exact backend method/path duplicates | 0 |
@@ -56,6 +56,9 @@ Follow-up resolution: [Docs/status/BFF_ROUTE_MAP_DRIFT_CLEANUP_2026-05-11.md](BF
 - [Docs/status/BFF_ROUTE_MAP_DRIFT_CLEANUP_2026-05-11.md](BFF_ROUTE_MAP_DRIFT_CLEANUP_2026-05-11.md) — follow-up cleanup decision record for the stale BFF aliases.
 - [Docs/status/SETTINGS_ROUTER_EXTRACTION_2026-05-11.md](SETTINGS_ROUTER_EXTRACTION_2026-05-11.md) — follow-up settings route extraction and supersession record.
 - [Docs/status/DRAFTS_ROUTER_EXTRACTION_2026-05-11.md](DRAFTS_ROUTER_EXTRACTION_2026-05-11.md) — follow-up draft route extraction and supersession record.
+- [Docs/status/INBOX_ROUTER_EXTRACTION_2026-05-11.md](INBOX_ROUTER_EXTRACTION_2026-05-11.md) — follow-up inbox route extraction and supersession record.
+- [Docs/status/AGENT_RUNTIME_ROUTER_EXTRACTION_2026-05-11.md](AGENT_RUNTIME_ROUTER_EXTRACTION_2026-05-11.md) — follow-up product-agent runtime route extraction and supersession record.
+- [Docs/status/ANALYTICS_ROUTER_EXTRACTION_2026-05-11.md](ANALYTICS_ROUTER_EXTRACTION_2026-05-11.md) — follow-up analytics route extraction and supersession record.
 - [tools/README.md](../../tools/README.md) — usage documentation for the new tool.
 
 ---
@@ -78,9 +81,14 @@ Observed results:
 - Regenerated inventory summary after BFF cleanup: `backend_route_count=146`, `server_py_route_count=89`, `router_module_route_count=57`, `bff_route_map_count=71`, `bff_unmatched_backend_path_count=0`, `potential_duplicate_backend_route_count=0`.
 - Regenerated inventory summary after settings router extraction: `backend_route_count=146`, `server_py_route_count=81`, `router_module_route_count=65`, `router_module_count=14`, `bff_route_map_count=71`, `bff_unmatched_backend_path_count=0`, `potential_duplicate_backend_route_count=0`.
 - Regenerated inventory summary after drafts router extraction: `backend_route_count=146`, `server_py_route_count=71`, `router_module_route_count=75`, `router_module_count=15`, `bff_route_map_count=71`, `bff_unmatched_backend_path_count=0`, `potential_duplicate_backend_route_count=0`.
+- Regenerated inventory summary after inbox router extraction: `backend_route_count=146`, `server_py_route_count=67`, `router_module_route_count=79`, `router_module_count=16`, `bff_route_map_count=71`, `bff_unmatched_backend_path_count=0`, `potential_duplicate_backend_route_count=0`.
+- Regenerated inventory summary after agent-runtime router extraction: `backend_route_count=146`, `server_py_route_count=64`, `router_module_route_count=82`, `router_module_count=17`, `bff_route_map_count=71`, `bff_unmatched_backend_path_count=0`, `potential_duplicate_backend_route_count=0`.
+- Regenerated inventory summary after analytics router extraction: `backend_route_count=146`, `server_py_route_count=50`, `router_module_route_count=96`, `router_module_count=18`, `bff_route_map_count=71`, `bff_unmatched_backend_path_count=0`, `potential_duplicate_backend_route_count=0`.
 - Runtime snapshot: `route_count=146`, `openapi_path_count=127`.
 - Focused inventory tests: `5 passed`.
 - Route parity/startup/inventory regression suite: `13 passed`.
+- Analytics/router parity regression suite: `21 passed`.
+- Broader extracted-router regression suite after analytics extraction: `32 passed`.
 
 ---
 
@@ -94,7 +102,7 @@ The next safest architecture step is **not** a broad `server.py` route move. The
 
 Recommended next slices:
 
-1. **Backend router decomposition candidate refresh**: use the new inventory to choose the next route family still owned by `server.py`. Likely candidates are inbox, analytics, or document/booking collection, but each needs coupling analysis before movement.
+1. **Backend router decomposition candidate refresh**: use the new inventory to choose the next route family still owned by `server.py`. Likely candidates are public checker, booking collection, or document/extraction routes, but each needs coupling analysis before movement.
 2. **Worker-boundary design note**: define the minimum same-repo worker contract for long-running pipeline/extraction work, without implementing a queue until route/persistence ownership is clearer.
 3. **Persistence convergence plan**: remove the long-term dual-store risk by planning the path to PostgreSQL as the sole trip persistence layer.
 

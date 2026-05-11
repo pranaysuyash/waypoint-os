@@ -56,17 +56,17 @@ export function SmartCombobox({
   disabled = false,
 }: SmartComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [inputValue, setInputValue] = useState(value);
+  const [inputValue, setInputValue] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const displayValue = isOpen ? inputValue : value;
 
-  // Sync inputValue when value prop changes externally and dropdown is closed
-  const prevValueRef = useRef(value);
-  if (prevValueRef.current !== value && !isOpen) {
-    prevValueRef.current = value;
+  const openDropdown = useCallback(() => {
+    if (disabled) return;
     setInputValue(value);
-  }
+    setIsOpen(true);
+  }, [disabled, value]);
 
   // Group options into predefined and custom
   const { predefined, custom } = useMemo(
@@ -76,33 +76,33 @@ export function SmartCombobox({
 
   // Filter options based on input
   const filteredOptions = useMemo(() => {
-    if (!inputValue || inputValue.trim().length === 0) {
+    if (!displayValue || displayValue.trim().length === 0) {
       return [...predefined, ...custom];
     }
 
     // First check for near duplicate (exact match after normalization)
-    const nearDuplicate = findNearDuplicate(inputValue, options, duplicateThreshold);
+    const nearDuplicate = findNearDuplicate(displayValue, options, duplicateThreshold);
     if (nearDuplicate) {
       return [nearDuplicate];
     }
 
     // Otherwise, fuzzy match
-    const matches = findFuzzyMatches(inputValue, options, fuzzyThreshold);
+    const matches = findFuzzyMatches(displayValue, options, fuzzyThreshold);
     return matches.map(m => m.option);
-  }, [inputValue, options, predefined, custom, duplicateThreshold, fuzzyThreshold]);
+  }, [displayValue, options, predefined, custom, duplicateThreshold, fuzzyThreshold]);
 
   // Check if current input would be a duplicate
   const duplicateOption = useMemo(() => {
-    if (!inputValue || inputValue.trim().length === 0) return null;
-    return findNearDuplicate(inputValue, options, duplicateThreshold);
-  }, [inputValue, options, duplicateThreshold]);
+    if (!displayValue || displayValue.trim().length === 0) return null;
+    return findNearDuplicate(displayValue, options, duplicateThreshold);
+  }, [displayValue, options, duplicateThreshold]);
 
   // Check if input is a new custom value
   const isCustomValue = useMemo(() => {
-    if (!inputValue || inputValue.trim().length === 0) return false;
-    const normalized = toTitleCase(inputValue);
+    if (!displayValue || displayValue.trim().length === 0) return false;
+    const normalized = toTitleCase(displayValue);
     return !options.some(opt => opt.value.toLowerCase() === normalized.toLowerCase());
-  }, [inputValue, options]);
+  }, [displayValue, options]);
 
   // Split filtered options into predefined and custom (replaces IIFE in render)
   const splitFiltered = useMemo(() => {
@@ -125,24 +125,24 @@ export function SmartCombobox({
 
   // Handle custom value entry
   const handleCustomEntry = useCallback(() => {
-    if (!inputValue || inputValue.trim().length === 0) return;
+    if (!displayValue || displayValue.trim().length === 0) return;
     if (duplicateOption) {
       // Use the existing option instead
       handleSelect(duplicateOption);
       return;
     }
 
-    const normalized = toTitleCase(inputValue);
+    const normalized = toTitleCase(displayValue);
     setInputValue(normalized);
     onChange(normalized);
     setIsOpen(false);
-  }, [inputValue, duplicateOption, onChange, handleSelect]);
+  }, [displayValue, duplicateOption, onChange, handleSelect]);
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!isOpen) {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
-        setIsOpen(true);
+        openDropdown();
       }
       return;
     }
@@ -178,7 +178,7 @@ export function SmartCombobox({
         }
         break;
     }
-  }, [isOpen, filteredOptions, highlightedIndex, handleSelect, allowCustom, isCustomValue, handleCustomEntry]);
+  }, [isOpen, filteredOptions, highlightedIndex, handleSelect, allowCustom, isCustomValue, handleCustomEntry, openDropdown]);
 
   // Click outside to close
   useEffect(() => {
@@ -206,9 +206,9 @@ export function SmartCombobox({
         <input
           ref={inputRef}
           type='text'
-          value={inputValue}
+          value={displayValue}
           onChange={(e) => setInputValue(e.target.value)}
-          onFocus={() => !disabled && setIsOpen(true)}
+          onFocus={openDropdown}
           onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder={placeholder}
@@ -232,7 +232,13 @@ export function SmartCombobox({
           )}
           <button
             type='button'
-            onClick={() => !disabled && setIsOpen(!isOpen)}
+            onClick={() => {
+              if (isOpen) {
+                setIsOpen(false);
+              } else {
+                openDropdown();
+              }
+            }}
             className='p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors'
           >
             <ChevronDown className={`size-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -241,7 +247,7 @@ export function SmartCombobox({
       </div>
 
       {/* Duplicate warning */}
-      {duplicateOption && inputValue !== duplicateOption.value && (
+      {duplicateOption && displayValue !== duplicateOption.value && (
         <div className='mt-1 flex items-center gap-2 text-[var(--ui-text-xs)] text-[var(--accent-amber)]'>
           <AlertCircle className='size-3 flex-shrink-0' />
           <span>
@@ -263,7 +269,7 @@ export function SmartCombobox({
           {filteredOptions.length === 0 ? (
             <div className='p-3 text-[var(--ui-text-sm)] text-[var(--text-secondary)] text-center'>
               No matching options
-              {allowCustom && inputValue && (
+              {allowCustom && displayValue && (
                 <div className='mt-2'>
                   <button
                     type='button'
@@ -271,20 +277,17 @@ export function SmartCombobox({
                     className='flex items-center justify-center gap-2 w-full px-3 py-2 bg-[var(--accent-blue)] text-[var(--text-on-accent)] rounded-lg text-[var(--ui-text-sm)] font-medium hover:bg-[var(--accent-blue-hover)] transition-colors'
                   >
                     <Plus className='size-4' />
-                    Add "{toTitleCase(inputValue)}"
+                    Add "{toTitleCase(displayValue)}"
                   </button>
                 </div>
               )}
             </div>
           ) : (
             <>
-              {(() => {
-                const { predefined, custom } = splitFiltered;
-                return (
-                  <>
-                    {predefined.length > 0 && (
+              <>
+                    {splitFiltered.predefined.length > 0 && (
                       <div className='p-1'>
-                        {predefined.map((option, idx) => (
+                        {splitFiltered.predefined.map((option, idx) => (
                           <button
                             key={option.value}
                             type='button'
@@ -302,13 +305,13 @@ export function SmartCombobox({
                         ))}
                       </div>
                     )}
-                    {custom.length > 0 && (
+                    {splitFiltered.custom.length > 0 && (
                       <div className='border-t border-[var(--border-default)]'>
                         <div className='px-3 py-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)] uppercase tracking-wide'>
                           Custom
                         </div>
                         <div className='p-1'>
-                          {custom.map((option) => (
+                          {splitFiltered.custom.map((option) => (
                             <button
                               key={option.value}
                               type='button'
@@ -325,12 +328,10 @@ export function SmartCombobox({
                         </div>
                       </div>
                     )}
-                  </>
-                );
-              })()}
+              </>
 
               {/* Add new custom option */}
-              {allowCustom && isCustomValue && inputValue && !duplicateOption && (
+              {allowCustom && isCustomValue && displayValue && !duplicateOption && (
                 <div className='border-t border-[var(--border-default)] p-2'>
                   <button
                     type='button'
@@ -338,7 +339,7 @@ export function SmartCombobox({
                     className='flex items-center justify-center gap-2 w-full px-3 py-2 bg-[var(--bg-count-badge)] text-[var(--accent-blue)] border border-[var(--border-default)] border-dashed rounded-lg text-[var(--ui-text-sm)] hover:bg-[var(--accent-blue)/0.1] transition-colors'
                   >
                     <Plus className='size-4' />
-                    Add new option: "{toTitleCase(inputValue)}"
+                    Add new option: "{toTitleCase(displayValue)}"
                   </button>
                 </div>
               )}

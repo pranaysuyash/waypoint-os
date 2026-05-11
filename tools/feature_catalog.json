@@ -101,6 +101,22 @@
             "files": ["src/evals/audit/metrics.py", "tests/evals/test_d6_audit_scaffold.py"],
             "min_search_terms": ["compute_category_metrics", "precision", "recall", "severity_accuracy"]
           }
+        },
+        {
+          "id": "M4",
+          "name": "Activity rule runner",
+          "evidence": {
+            "files": ["src/evals/audit/rules/activity.py", "tests/evals/test_d6_audit_scaffold.py"],
+            "min_search_terms": ["run_activity_fixture", "build_itinerary_option", "low_utility_activity", "wasted_spend"]
+          }
+        },
+        {
+          "id": "M5",
+          "name": "Manifest gate decisions",
+          "evidence": {
+            "files": ["src/evals/audit/gates.py", "tests/evals/test_d6_audit_scaffold.py"],
+            "min_search_terms": ["evaluate_report_against_manifest", "authoritative_for_public_surface", "blocks_ci"]
+          }
         }
       ]
     }

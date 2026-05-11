@@ -219,6 +219,90 @@ These are syntax-safe but include pre-existing unused imports in legacy tests an
 
 ## Long-Term Notes
 
+---
+
+# Live PostgreSQL RLS Enforcement Addendum
+
+**Date:** 2026-05-11  
+**Status:** Investigation and test coverage added  
+**Scope:** Verify whether tenant RLS policies are enforced against the actual app database role.
+
+## Summary
+
+The RLS migration and mock tests exist, but live PostgreSQL verification found that the runtime role can still bypass tenant policies on `trips` because the same role owns the protected table and `FORCE ROW LEVEL SECURITY` is not enabled.
+
+## Instructions Applied
+
+- `/Users/pranay/AGENTS.md`
+- `/Users/pranay/Projects/AGENTS.md`
+- `/Users/pranay/Projects/travel_agency_agent/AGENTS.md`
+- `/Users/pranay/Projects/travel_agency_agent/CLAUDE.md`
+- `/Users/pranay/Projects/travel_agency_agent/Docs/context/agent-start/AGENT_KICKOFF_PROMPT.txt`
+- `/Users/pranay/Projects/travel_agency_agent/Docs/context/agent-start/SESSION_CONTEXT.md`
+
+Focused repo instruction search found no repo-local `QWEN.md`, `CODEX.md`, `COPILOT.md`, or `.github/copilot-instructions.md`.
+
+## Evidence
+
+- `alembic/versions/add_rls_tenant_isolation.py` enables RLS and policies on tenant tables but intentionally does not force RLS.
+- `spine_api/core/rls.py` applies transaction-local `app.current_agency_id` through `set_config`.
+- `tests/test_rls.py` verifies ContextVar and SQL wiring with mocks; it does not hit live PostgreSQL.
+- Live catalog query showed `current_user=waypoint`, `owner=waypoint`, `rolsuper=false`, `rolbypassrls=false`, `relrowsecurity=true`, and `relforcerowsecurity=false` for `trips`.
+- A rollback-only probe inserted two temporary agencies and two temporary trips, set `app.current_agency_id` to agency A, and still read agency B's trip through the app role.
+
+## Work Completed
+
+- Added `tests/test_rls_live_postgres.py`.
+- Added a catalog test proving protected tables have RLS and both expected policies.
+- Added a rollback-only live visibility test for `trips`.
+- The visibility test marks the current owner-bypass behavior as a known `xfail` instead of normalizing it as a passing security assertion.
+- Added `RlsRuntimePosture`, `RlsTablePosture`, and `inspect_rls_runtime_posture()` to `spine_api/core/rls.py` so future startup checks and diagnostics share one canonical RLS posture contract.
+- Updated `Docs/RLS_TENANT_ISOLATION_2026-05-04.md` with the live database finding and safer sequencing.
+
+## Why Not Force RLS Immediately
+
+Forcing RLS alone is not a safe small fix because some trip paths still use `TripStore` / `SQLTripStore` sessions instead of a request-scoped `get_rls_db` session. If `FORCE ROW LEVEL SECURITY` is applied before every SQL trip read/write reliably sets `app.current_agency_id`, core trip workflows can silently return no rows or fail writes.
+
+## Verification Results
+
+- `uv run pytest tests/test_rls.py tests/test_rls_live_postgres.py` -> `10 passed, 1 xfailed`.
+- `uv run pytest tests/test_api_trips_post.py tests/test_rls_live_postgres.py` -> `9 passed, 1 xfailed`.
+- `uv run pytest` -> `2067 passed, 7 skipped, 1 xfailed, 1 failed`.
+- The full-suite failure was `tests/test_architecture_route_inventory.py::test_route_inventory_detects_no_exact_backend_route_duplicates`; `tests/test_architecture_route_inventory.py` was already modified before this RLS work started, and the failing test passed on an isolated rerun.
+
+Follow-up RLS posture contract verification:
+
+- `uv run pytest tests/test_rls.py::TestRlsRuntimePosture -q` -> `3 passed`.
+- `uv run pytest tests/test_rls.py tests/test_rls_live_postgres.py` -> `13 passed, 1 xfailed`.
+- `uv run ruff check spine_api/core/rls.py tests/test_rls.py tests/test_rls_live_postgres.py` -> `All checks passed`.
+- `uv run pytest tests/test_api_trips_post.py tests/test_rls_live_postgres.py` -> `9 passed, 1 xfailed`.
+- `uv run pytest` -> `2071 passed, 7 skipped, 1 xfailed`.
+
+Post type-signature hardening verification:
+
+- `uv run ruff check spine_api/core/rls.py tests/test_rls.py tests/test_rls_live_postgres.py` -> `All checks passed`.
+- `uv run pytest tests/test_rls.py tests/test_rls_live_postgres.py` -> `13 passed, 1 xfailed`.
+- `uv run pytest` was rerun and failed after ~28 minutes with live HTTP read timeouts against `127.0.0.1:8000` in `tests/test_partial_intake_lifecycle.py`, `tests/test_run_lifecycle.py`, and `tests/test_spine_api_contract.py`; the RLS slice had already passed in that run. A follow-up `curl http://127.0.0.1:8000/health` returned `status=ok` with the LLM circuit breaker open, and the focused RLS tests still passed. Treat this as live-server/integration-suite instability, not evidence of an RLS regression.
+
+## Recommended Long-Term Direction
+
+Use a distinct non-owner application runtime database role, with schema ownership and migrations held by a separate owner/admin role. This keeps admin/migration workflows functional while making the app role subject to RLS without relying on `FORCE` as a blunt instrument.
+
+If the project keeps one database role for now, the safer sequence is:
+
+1. Thread request agency context through all SQL-backed trip store operations.
+2. Add live PostgreSQL tests for list, count, save, update, and direct route write paths.
+3. Apply `FORCE ROW LEVEL SECURITY` only after all SQL sessions touching protected tables set `app.current_agency_id`.
+4. Keep admin/migration access on a separate role that can still perform maintenance.
+
+## Acceptance Criteria For A Future Fix
+
+- [ ] App runtime DB role is not the owner of tenant-scoped tables, or `FORCE ROW LEVEL SECURITY` is enabled after all context plumbing exists.
+- [ ] Live PostgreSQL test scoped to agency A cannot read agency B trip rows.
+- [ ] Save, update, list, count, batch/import, seed, and public-checker write paths are covered or explicitly scoped out.
+- [ ] Full suite has no new failures; if a failure appears, rerun the failing slice and separate pre-existing or order-dependent failures from RLS regressions.
+- [ ] Operational docs explain admin/migration role versus runtime app role.
+
 - Default test suites should not call paid/network LLM APIs based only on the presence of API keys. Keep live-provider tests opt-in through `RUN_LIVE_LLM_TESTS=1`.
 - Prefer behavior or canonical-location assertions over source-string assertions. The ledger test was kept as a narrow source guard only because that was the existing test's purpose; the stronger long-term path is expanding `tests/test_pipeline_execution_service_boundaries.py` with behavioral fake-ledger failure cases.
 - RLS tenant scoping should continue to prioritize bound parameters and transaction-local behavior over matching a specific SQL spelling.
@@ -584,6 +668,7 @@ Mutable process state was sharing paths with tracked repository files. This made
   - Added `.runtime/local/` for ignored local dev-server runtime state.
 - `tools/dev_server_manager.py`
   - Changed `RUNTIME_DIR` from `.runtime/` to `.runtime/local/`.
+  - Creates the runtime directory with `parents=True` so first run remains safe even if `.runtime/` is absent in a future checkout.
   - Existing port-based PID recovery behavior is preserved.
 - `tools/README.md`
   - Updated dev server manager documentation to point at `.runtime/local/*.pid` and `.runtime/local/*.log`.
@@ -592,13 +677,25 @@ Mutable process state was sharing paths with tracked repository files. This made
 Focused lint:
 
 ```bash
-uv run ruff check tools/dev_server_manager.py
+uv run ruff check tools/dev_server_manager.py tests/test_dev_server_manager.py
 ```
 
 Result:
 
 ```text
 All checks passed!
+```
+
+Regression test:
+
+```bash
+uv run pytest -q tests/test_dev_server_manager.py
+```
+
+Result:
+
+```text
+2 passed
 ```
 
 Runtime status check:
@@ -616,6 +713,7 @@ frontend: running pid=66461 health=200
 
 ### Notes for Future Agents
 - Keep mutable server state under `.runtime/local/`; do not write changing PID/log files to tracked `.runtime/*` paths.
+- `tests/test_dev_server_manager.py` intentionally guards both the manager constants and `.gitignore` entry.
 - The old tracked PID files remain in the repository history. Removing them from tracking would require an explicit git index operation and was intentionally not performed in this session.
 
 ## Runtime Truth Automation Addendum (2026-05-11, Session 4)
@@ -655,3 +753,53 @@ Before claiming frontend/backend stability in local QA:
 1. `python tools/dev_server_manager.py status --service all`
 2. `python tools/runtime_smoke_matrix.py`
 Only claim stable when both pass.
+
+## Frontend Dev Cache Runtime Drift (2026-05-11, Session 6)
+
+### Problem
+Chrome rendered a blank gray app shell even though direct HTTP checks for `/login`, `/overview`, and `/workbench?draft=new&tab=safety` returned `200` and included expected HTML.
+
+### Root Cause
+The source had already superseded `frontend/src/app/(agency)/workbench/IntegrityMonitorPanel.tsx` with `frontend/src/components/system/SystemCheckPanel.tsx`, but the Next.js dev cache still held stale Turbopack/HMR artifacts referencing the removed file.
+
+Evidence:
+- Current source imports `SystemCheckPanel` from `@/components/system/SystemCheckPanel`.
+- `rg` over source found no live `IntegrityMonitorPanel` imports.
+- `.next/dev` still contained 29 compiled artifacts containing `IntegrityMonitorPanel`.
+- `frontend/.next/dev/logs/next-development.log` recorded browser/runtime module errors for the stale import.
+
+### Resolution
+Used the existing project reset path rather than editing source:
+
+```bash
+python tools/dev_server_manager.py stop --service frontend
+cd frontend && npm run dev:reset
+cd .. && python tools/dev_server_manager.py start --service frontend
+```
+
+This cleared `.next`, restarted the frontend, and attached fresh logs under `.runtime/local/frontend.log`.
+
+### Verification
+Server/runtime checks:
+
+```bash
+python tools/dev_server_manager.py status --service all
+python tools/runtime_smoke_matrix.py
+```
+
+Result:
+- Backend `health=200`
+- Frontend `health=200`
+- Authenticated smoke matrix passed all checked routes.
+
+Real browser check:
+- Opened Chrome at `http://localhost:3000/login?redirect=%2Fworkbench%3Fdraft%3Dnew%26tab%3Dsafety`.
+- Verified the login page rendered visibly, including show-password, reset-password, and forgot-password controls.
+- Logged in with the local test account.
+- Verified Chrome landed on `http://localhost:3000/workbench?draft=new&tab=safety`.
+- Verified the Workbench rendered with the selected `Risk Review` tab and the empty-state message: `No risk review data yet. Process a trip from the "New Inquiry" section first.`
+
+### Notes for Future Agents
+- If Chrome shows a blank app shell while `curl` returns valid HTML, do not assume the current source is broken. Check `frontend/.next/dev/logs/next-development.log` and search `.next/dev` for stale removed-module references.
+- Prefer the existing `frontend` script `npm run dev:reset` for dev-cache drift. It is a runtime/cache reset, not a source rollback.
+- Keep this as a dev-runtime hygiene finding; do not reintroduce deleted superseded components just to satisfy stale compiled artifacts.

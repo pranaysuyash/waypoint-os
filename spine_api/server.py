@@ -63,7 +63,6 @@ from starlette.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import text, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 # --- OpenTelemetry instrumentation ---
 from opentelemetry import trace
@@ -119,22 +118,12 @@ from spine_api.contract import (
     SnoozeRequest,
     InviteTeamMemberRequest,
     TeamMember,
-    ExportRequest,
-    ExportResponse,
-    PublicCheckerExportResponse,
-    PublicCheckerDeleteResponse,
     ExplicitReassessRequest,
     IntegrityIssuesResponse,
     UnifiedStateResponse,
     DashboardStatsResponse,
     SuitabilityFlagsResponse,
-    InboxResponse,
-    InboxStatsResponse,
-    AssignInboxRequest,
-    AssignInboxResponse,
 )
-from spine_api.services import membership_service
-from spine_api.services.inbox_projection import InboxProjectionService, build_inbox_response
 from spine_api.services.live_checker_service import (
     apply_live_checker_adjustments,
     build_consented_submission,
@@ -142,7 +131,7 @@ from spine_api.services.live_checker_service import (
 )
 from spine_api.services.public_checker_service import run_public_checker_submission
 from spine_api.services.pipeline_execution_service import execute_spine_pipeline
-from spine_api.product_b_events import ProductBEventStore
+from spine_api.product_b_events import ProductBEventStore  # noqa: F401  # Legacy re-export for tests/compatibility
 
 from src.intake.orchestration import run_spine_once
 from src.intake.packet_models import SourceEnvelope
@@ -214,6 +203,32 @@ def _get_tripstore_backend() -> str:
             f"Unknown TRIPSTORE_BACKEND='{backend}'. Allowed values: file, json, sql."
         )
     return backend
+
+
+def _get_startup_db_timeout(name: str, default: str) -> str:
+    value = os.getenv(name, default).strip()
+    return value or default
+
+
+async def _apply_startup_db_timeouts(conn) -> None:
+    """
+    Bound startup compatibility queries so stale transactions cannot keep the API offline indefinitely.
+
+    The settings are transaction-local via PostgreSQL set_config(..., true), so
+    they apply only to the current startup guard transaction and never leak into
+    normal request handling.
+    """
+    await conn.execute(
+        text("""
+            SELECT
+              set_config('lock_timeout', :lock_timeout, true),
+              set_config('statement_timeout', :statement_timeout, true)
+        """),
+        {
+            "lock_timeout": _get_startup_db_timeout("SPINE_API_STARTUP_LOCK_TIMEOUT", "5s"),
+            "statement_timeout": _get_startup_db_timeout("SPINE_API_STARTUP_STATEMENT_TIMEOUT", "20s"),
+        },
+    )
 
 # Import TimelineEventMapper from analytics
 # Note: logger not available yet, so we suppress warnings here
@@ -311,21 +326,26 @@ _agent_supervisor = AgentSupervisor(
 
 # Auth — Phase 1
 try:
-    from routers import auth as auth_router
-    from routers import workspace as workspace_router
-    from routers import frontier as frontier_router
-    from routers import audit as audit_router
-    from routers import assignments as assignments_router
-    from routers import run_status as run_status_router
-    from routers import health as health_router
-    from routers import system_dashboard as system_dashboard_router
-    from routers import followups as followups_router
-    from routers import team as team_router
-    from routers import settings as settings_router
-    from routers import drafts as drafts_router
-    from routers import product_b_analytics as product_b_analytics_router
-    from routers import booking_tasks as booking_tasks_router
-    from routers import confirmations as confirmations_router
+    from spine_api.routers import auth as auth_router
+    from spine_api.routers import workspace as workspace_router
+    from spine_api.routers import frontier as frontier_router
+    from spine_api.routers import audit as audit_router
+    from spine_api.routers import assignments as assignments_router
+    from spine_api.routers import run_status as run_status_router
+    from spine_api.routers import health as health_router
+    from spine_api.routers import system_dashboard as system_dashboard_router
+    from spine_api.routers import followups as followups_router
+    from spine_api.routers import team as team_router
+    from spine_api.routers import settings as settings_router
+    from spine_api.routers import drafts as drafts_router
+    from spine_api.routers import inbox as inbox_router
+    from spine_api.routers import agent_runtime as agent_runtime_router
+    from spine_api.routers import analytics as analytics_router
+    from spine_api.routers import product_b_analytics as product_b_analytics_router
+    from spine_api.routers import booking_tasks as booking_tasks_router
+    from spine_api.routers import confirmations as confirmations_router
+    from spine_api.routers import public_checker as public_checker_router
+    from spine_api.routers import public_collection as public_collection_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -389,6 +409,21 @@ except (ImportError, ValueError):
     _drafts_spec.loader.exec_module(_drafts_mod)
     drafts_router = _drafts_mod
 
+    _inbox_spec = importlib.util.spec_from_file_location("routers.inbox", _base / "routers" / "inbox.py")
+    _inbox_mod = importlib.util.module_from_spec(_inbox_spec)
+    _inbox_spec.loader.exec_module(_inbox_mod)
+    inbox_router = _inbox_mod
+
+    _agent_runtime_spec = importlib.util.spec_from_file_location("routers.agent_runtime", _base / "routers" / "agent_runtime.py")
+    _agent_runtime_mod = importlib.util.module_from_spec(_agent_runtime_spec)
+    _agent_runtime_spec.loader.exec_module(_agent_runtime_mod)
+    agent_runtime_router = _agent_runtime_mod
+
+    _analytics_spec = importlib.util.spec_from_file_location("routers.analytics", _base / "routers" / "analytics.py")
+    _analytics_mod = importlib.util.module_from_spec(_analytics_spec)
+    _analytics_spec.loader.exec_module(_analytics_mod)
+    analytics_router = _analytics_mod
+
     _product_b_analytics_spec = importlib.util.spec_from_file_location("routers.product_b_analytics", _base / "routers" / "product_b_analytics.py")
     _product_b_analytics_mod = importlib.util.module_from_spec(_product_b_analytics_spec)
     _product_b_analytics_spec.loader.exec_module(_product_b_analytics_mod)
@@ -403,6 +438,19 @@ except (ImportError, ValueError):
     _confirmations_mod = importlib.util.module_from_spec(_confirmations_spec)
     _confirmations_spec.loader.exec_module(_confirmations_mod)
     confirmations_router = _confirmations_mod
+
+    _public_checker_spec = importlib.util.spec_from_file_location("routers.public_checker", _base / "routers" / "public_checker.py")
+    _public_checker_mod = importlib.util.module_from_spec(_public_checker_spec)
+    _public_checker_spec.loader.exec_module(_public_checker_mod)
+    public_checker_router = _public_checker_mod
+
+    _public_collection_spec = importlib.util.spec_from_file_location(
+        "routers.public_collection",
+        _base / "routers" / "public_collection.py",
+    )
+    _public_collection_mod = importlib.util.module_from_spec(_public_collection_spec)
+    _public_collection_spec.loader.exec_module(_public_collection_mod)
+    public_collection_router = _public_collection_mod
 
 logger = logging.getLogger("spine_api")
 
@@ -442,6 +490,7 @@ async def _ensure_agencies_schema_compatibility() -> None:
     """
     try:
         async with engine.begin() as conn:
+            await _apply_startup_db_timeouts(conn)
             table_exists_result = await conn.execute(text("""
                 SELECT EXISTS (
                     SELECT 1
@@ -475,6 +524,7 @@ async def _ensure_memberships_schema_compatibility() -> None:
     """
     try:
         async with engine.begin() as conn:
+            await _apply_startup_db_timeouts(conn)
             table_exists_result = await conn.execute(text("""
                 SELECT EXISTS (
                     SELECT 1
@@ -536,6 +586,7 @@ async def _validate_public_checker_agency_configuration() -> None:
 
     try:
         async with engine.begin() as conn:
+            await _apply_startup_db_timeouts(conn)
             table_exists_result = await conn.execute(text("""
                 SELECT EXISTS (
                     SELECT 1
@@ -651,9 +702,18 @@ app.include_router(followups_router.router)
 app.include_router(team_router.router)
 app.include_router(settings_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(drafts_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(inbox_router.router, dependencies=[Depends(_auth_or_skip)])
+agent_runtime_router.configure_runtime(
+    agent_supervisor=_agent_supervisor,
+    recovery_agent=_recovery_agent,
+)
+app.include_router(agent_runtime_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(analytics_router.router)
 app.include_router(product_b_analytics_router.router)
 app.include_router(booking_tasks_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(confirmations_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(public_checker_router.router)
+app.include_router(public_collection_router.router)
 
 
 def _seed_scenario(agency_id: Optional[str] = None):
@@ -1054,11 +1114,8 @@ def _run_public_checker_submission(request_dict: dict[str, Any]) -> RunStatusRes
         to_dict=_to_dict,
         save_processed_trip=save_processed_trip,
         get_public_checker_agency_id=_get_public_checker_agency_id,
-        logger=logger,
+    logger=logger,
     )
-
-
-PUBLIC_CHECKER_EVENT_MAX_BYTES = 16 * 1024
 
 
 @app.post("/api/public-checker/run", response_model=RunStatusResponse)
@@ -1071,48 +1128,6 @@ def run_public_checker(
     """Submit a public itinerary checker run without agency auth."""
     _ = (request, response)
     return _run_public_checker_submission(payload.model_dump(exclude_none=True))
-
-
-class PublicCheckerEventEnvelope(BaseModel):
-    event_name: str
-    event_version: int = 1
-    event_id: Optional[str] = None
-    occurred_at: Optional[str] = None
-    session_id: str
-    inquiry_id: str
-    trip_id: Optional[str] = None
-    actor_type: str
-    actor_id: Optional[str] = None
-    workspace_id: Optional[str] = None
-    channel: str
-    locale: Optional[str] = None
-    currency: Optional[str] = None
-    properties: Dict[str, Any]
-
-
-@app.post("/api/public-checker/events")
-@limiter.limit("30/minute")
-def post_public_checker_event(request: Request, response: Response, event: PublicCheckerEventEnvelope):
-    payload = event.model_dump(exclude_none=False)
-    payload_size = len(json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
-    if payload_size > PUBLIC_CHECKER_EVENT_MAX_BYTES:
-        raise HTTPException(status_code=413, detail="Event payload too large")
-
-    if not payload.get("event_id"):
-        payload["event_id"] = str(uuid.uuid4())
-    if not payload.get("occurred_at"):
-        payload["occurred_at"] = datetime.now(timezone.utc).isoformat()
-
-    try:
-        result = ProductBEventStore.log_event(payload)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-    except Exception as exc:
-        logger.error("public_checker_event_write_failed error=%s", exc)
-        raise HTTPException(status_code=500, detail="Could not record event")
-
-    _ = (request, response)
-    return {"ok": True, **result}
 
 
 @app.post("/run", response_model=RunAcceptedResponse)
@@ -1152,54 +1167,6 @@ async def run_spine(
     return RunAcceptedResponse(run_id=run_id, state="queued")
 
 
-# Run status endpoints (/runs*) moved to spine_api/routers/run_status.py
-
-
-@app.get("/api/public-checker/{trip_id}", response_model=PublicCheckerExportResponse)
-def get_public_checker_package(
-    trip_id: str,
-    agency: Agency = Depends(get_current_agency),
-    user: User = Depends(get_current_user),
-):
-    _ = (agency, user)
-    package = persistence.PublicCheckerArtifactStore.export_trip_package(trip_id)
-    if not package:
-        raise HTTPException(status_code=404, detail="Public checker record not found")
-    return package
-
-
-@app.get("/api/public-checker/{trip_id}/export", response_model=PublicCheckerExportResponse)
-def export_public_checker_package(
-    trip_id: str,
-    agency: Agency = Depends(get_current_agency),
-    user: User = Depends(get_current_user),
-):
-    _ = (agency, user)
-    package = persistence.PublicCheckerArtifactStore.export_trip_package(trip_id)
-    if not package:
-        raise HTTPException(status_code=404, detail="Public checker record not found")
-    return package
-
-
-@app.delete("/api/public-checker/{trip_id}", response_model=PublicCheckerDeleteResponse)
-def delete_public_checker_package(
-    trip_id: str,
-    agency: Agency = Depends(get_current_agency),
-    user: User = Depends(get_current_user),
-):
-    _ = (agency, user)
-    deleted_artifacts = persistence.PublicCheckerArtifactStore.delete_trip_artifacts(trip_id)
-    deleted_trip = TripStore.delete_trip(trip_id)
-    if not deleted_artifacts and not deleted_trip:
-        raise HTTPException(status_code=404, detail="Public checker record not found")
-    return {
-        "ok": True,
-        "trip_id": trip_id,
-        "deleted_trip": deleted_trip,
-        "deleted_artifacts": deleted_artifacts,
-    }
-
-
 # =============================================================================
 # Draft Management Endpoints (Phase 0)
 # =============================================================================
@@ -1235,133 +1202,6 @@ async def list_trips(
     trips = TripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
     total = TripStore.count_trips(status=status, agency_id=agency_id)
     return {"items": trips, "total": total}
-
-
-# Canonical inbox statuses — shared source of truth for frontend + backend
-_INBOX_STATUSES = "new,incomplete,needs_followup,awaiting_customer_details,snoozed"
-
-@app.get("/inbox", response_model=InboxResponse)
-def get_inbox(
-    page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=500),
-    filter_key: Optional[str] = Query(None, alias="filter"),
-    sort: Optional[str] = Query("priority"),
-    dir: Optional[str] = Query("desc"),
-    q: Optional[str] = Query(None),
-    # Composable multi-select filter params
-    priority: Optional[str] = Query(None),
-    slaStatus: Optional[str] = Query(None),
-    stage: Optional[str] = Query(None),
-    assignedTo: Optional[str] = Query(None),
-    minValue: Optional[int] = Query(None),
-    maxValue: Optional[int] = Query(None),
-    minUrgency: Optional[int] = Query(None),
-    minImportance: Optional[int] = Query(None),
-    agency: Agency = Depends(get_current_agency),
-):
-    """
-    Canonical inbox endpoint — service-level projected, filtered, sorted, paginated.
-
-    Returns a stable {items, total, hasMore, filterCounts} envelope.
-    filterCounts are computed over the FULL projected dataset so tab counts
-    are accurate regardless of active filter or page size.
-
-    Query params:
-      filter       — tab filter: all | at_risk | incomplete | unassigned
-      sort         — sort key: priority | destination | value | party | dates | sla | urgency | importance
-      dir          — asc | desc
-      q            — fuzzy search on customerName, destination, reference, id
-      priority     — comma-separated: low,medium,high,critical
-      slaStatus    — comma-separated: on_track,at_risk,breached
-      stage        — comma-separated: intake,details,options,review,booking,completed
-      assignedTo   — comma-separated agent IDs (or "unassigned")
-      minValue     — minimum trip budget
-      maxValue     — maximum trip budget
-      minUrgency   — minimum urgency score (0-100)
-      minImportance — minimum importance score (0-100)
-    """
-    agency_id = agency.id
-
-    # Fetch ALL inbox trips for this agency (bounded set, typically <10k).
-    raw_trips = TripStore.list_trips(
-        status=_INBOX_STATUSES,
-        limit=5000,
-        agency_id=agency_id,
-    )
-
-    result = build_inbox_response(
-        raw_trips,
-        page=page,
-        limit=limit,
-        filter_key=filter_key,
-        sort_key=sort,
-        sort_dir=dir,
-        search_query=q,
-        priorities=priority.split(",") if priority else None,
-        sla_statuses=slaStatus.split(",") if slaStatus else None,
-        stages=stage.split(",") if stage else None,
-        assigned_to=assignedTo.split(",") if assignedTo else None,
-        min_value=minValue,
-        max_value=maxValue,
-    )
-
-    return result
-
-
-@app.post("/inbox/assign", response_model=AssignInboxResponse)
-def assign_inbox_trips(
-    body: AssignInboxRequest,
-    agency: Agency = Depends(get_current_agency),
-):
-    """
-    Assign inbox trips to an agent.
-
-    Sets assigned_to_id and moves each trip from inbox to workspace (status=assigned).
-    This is the primitive endpoint. Higher-level logic (auto-assignment, round-robin,
-    workload balancing) should call this or use the same TripStore.update_trip pattern.
-    """
-    trip_ids = body.tripIds
-    assign_to_id = body.assignTo
-    assigned = 0
-
-    for trip_id in trip_ids:
-        result = TripStore.update_trip(trip_id, {
-            "assigned_to_id": assign_to_id,
-            "status": "assigned",
-        })
-        if result:
-            assigned += 1
-
-    return {"success": assigned == len(trip_ids), "assigned": assigned}
-
-
-@app.get("/inbox/stats", response_model=InboxStatsResponse)
-def get_inbox_stats(
-    agency: Agency = Depends(get_current_agency),
-):
-    """Return aggregate inbox statistics for Overview cards."""
-    def analytics_payload(trip: dict) -> dict:
-        payload = trip.get("analytics")
-        return payload if isinstance(payload, dict) else {}
-
-    agency_id = agency.id
-    total = TripStore.count_trips(status=_INBOX_STATUSES, agency_id=agency_id)
-
-    # TODO: replace with DB-level aggregations when analytics/assignment columns are indexed
-    # For now, fetch a bounded subset for stat accuracy under 100 trips.
-    trips = TripStore.list_trips(status=_INBOX_STATUSES, limit=500, agency_id=agency_id)
-
-    unassigned = sum(1 for t in trips if not t.get("assigned_to"))
-    critical = sum(
-        1 for t in trips
-        if analytics_payload(t).get("escalation_severity") in ("high", "critical")
-    )
-    at_risk = sum(
-        1 for t in trips
-        if analytics_payload(t).get("sla_status") == "at_risk"
-    )
-
-    return {"total": total, "unassigned": unassigned, "critical": critical, "atRisk": at_risk}
 
 
 @app.get("/trips/{trip_id}")
@@ -1449,67 +1289,6 @@ def get_trip_agent_events(
 
     events = AuditStore.get_agent_events_for_trip(trip_id=trip_id, limit=limit)
     return {"trip_id": trip_id, "events": events, "total": len(events)}
-
-
-@app.get("/agents/runtime")
-def get_agent_runtime(
-    agency: Agency = Depends(get_current_agency),
-):
-    """
-    Return canonical backend product-agent registry and supervisor health.
-
-    This is the single runtime introspection surface for backend product agents;
-    it intentionally exposes static in-repo registry contracts instead of
-    dynamic plugin metadata.
-    """
-    _ = agency
-    return {
-        "registry": _agent_supervisor.registry.definitions(),
-        "supervisor": _agent_supervisor.health(),
-        "recovery_agent": {
-            "name": "recovery_agent",
-            "running": _recovery_agent.is_running,
-            "trigger_contract": "Trips stuck beyond configured stage thresholds.",
-            "input_contract": "Active trip with id, stage/state, and updated_at/updatedAt.",
-            "output_contract": "Re-queue through runner when configured, else escalate review_status.",
-            "idempotency_contract": "Per-trip in-memory requeue count with max attempts before escalation.",
-            "failure_contract": "Fail closed by emitting agent_failed audit events.",
-        },
-    }
-
-
-@app.post("/agents/runtime/run-once")
-def run_agent_runtime_once(
-    agent_name: Optional[str] = Query(default=None),
-    agency: Agency = Depends(get_current_agency),
-    _perm=require_permission("ai_workforce:manage"),
-):
-    """
-    Synchronously run one supervisor pass for testing/admin operations.
-    """
-    _ = agency
-    if agent_name and agent_name not in _agent_supervisor.health()["registered_agents"]:
-        raise HTTPException(status_code=404, detail="Agent not found")
-    results = _agent_supervisor.run_once(agent_name=agent_name)
-    return {
-        "agent_name": agent_name,
-        "results": [result.to_dict() for result in results],
-        "total": len(results),
-        "supervisor": _agent_supervisor.health(),
-    }
-
-
-@app.get("/agents/runtime/events")
-def get_agent_runtime_events(
-    limit: int = Query(default=100, ge=1, le=1000),
-    agent_name: Optional[str] = Query(default=None),
-    correlation_id: Optional[str] = Query(default=None),
-    agency: Agency = Depends(get_current_agency),
-):
-    """Return canonical backend product-agent events across trips."""
-    _ = agency
-    events = AuditStore.get_agent_events(limit=limit, agent_name=agent_name, correlation_id=correlation_id)
-    return {"events": events, "total": len(events)}
 
 
 REASSESS_EDIT_TRIGGER_FIELDS = {
@@ -2101,22 +1880,6 @@ class ReviewActionRequest(BaseModel):
     reason: Optional[str] = None
 
 
-class PublicCollectionContext(BaseModel):
-    valid: bool
-    reason: Optional[str] = None
-    trip_summary: Optional[dict] = None
-    already_submitted: bool = False
-    expires_at: Optional[str] = None
-
-
-class PublicSubmissionResponse(BaseModel):
-    ok: bool
-    message: str
-
-class PublicBookingDataSubmitRequest(BaseModel):
-    booking_data: BookingDataModel
-
-
 class GenerateCollectionLinkRequest(BaseModel):
     expires_in_hours: int = 168
 
@@ -2153,10 +1916,6 @@ class DocumentResponse(BaseModel):
     reviewed_at: Optional[str] = None
     reviewed_by: Optional[str] = None
 
-class CustomerDocumentResponse(BaseModel):
-    id: str
-    status: str
-
 class DocumentListResponse(BaseModel):
     trip_id: str
     documents: list[DocumentResponse]
@@ -2178,13 +1937,6 @@ async def _ts(fn, *args, **kwargs):
     """
     import asyncio
     return await asyncio.to_thread(fn, *args, **kwargs)
-
-
-def _safe_fact_value(slot: object) -> object:
-    """Extract only the primitive value from a fact slot that may carry metadata."""
-    if isinstance(slot, dict):
-        return slot.get("value")
-    return getattr(slot, "value", slot)
 
 
 @app.post("/trips/{trip_id}/collection-link", response_model=CollectionLinkResponse)
@@ -2366,98 +2118,6 @@ async def reject_pending_booking_data(trip_id: str, request: Optional[ReviewActi
     })
 
     return {"ok": True, "message": "Pending booking data rejected"}
-
-
-# ---------------------------------------------------------------------------
-# Public customer endpoints (no auth)
-# ---------------------------------------------------------------------------
-
-@app.get("/api/public/booking-collection/{token}", response_model=PublicCollectionContext)
-@limiter.limit("20/minute")
-async def get_public_collection_form(request: Request, response: Response, token: str):
-    """Customer loads form context. No auth required. Shows safe trip summary only."""
-    from spine_api.services.collection_service import validate_token
-    from spine_api.core.database import async_session_maker
-
-    async with async_session_maker() as db:
-        record = await validate_token(db, token)
-    if not record:
-        return PublicCollectionContext(valid=False, reason="invalid")
-
-    trip = await _ts(TripStore.get_trip, record.trip_id)
-    if not trip:
-        return PublicCollectionContext(valid=False, reason="invalid")
-
-    # Stage gate: collection only valid at proposal/booking
-    if trip.get("stage", "discovery") not in ("proposal", "booking"):
-        return PublicCollectionContext(valid=False, reason="invalid")
-
-    # Build safe summary — NO PII, NO internal fields, NO fact metadata
-    extracted = trip.get("extracted") or {}
-    facts = extracted.get("facts", {}) if isinstance(extracted, dict) else {}
-
-    dest_val = _safe_fact_value(facts.get("destination_candidates"))
-    date_val = _safe_fact_value(facts.get("date_window"))
-
-    pending = await _ts(TripStore.get_pending_booking_data, record.trip_id)
-
-    return PublicCollectionContext(
-        valid=True,
-        trip_summary={
-            "destination": dest_val,
-            "date_window": date_val,
-            "traveler_count": trip.get("party_composition"),
-            "agency_name": "Waypoint Travel",
-        },
-        already_submitted=pending is not None,
-        expires_at=record.expires_at.isoformat(),
-    )
-
-
-@app.post("/api/public/booking-collection/{token}/submit", response_model=PublicSubmissionResponse)
-@limiter.limit("5/minute")
-async def submit_public_booking_data(request: Request, response: Response, token: str, payload: PublicBookingDataSubmitRequest):
-    """Customer submits booking data. No auth. Writes to pending_booking_data."""
-    from spine_api.services.collection_service import validate_token, mark_token_used
-    from spine_api.core.database import async_session_maker
-
-    async with async_session_maker() as db:
-        record = await validate_token(db, token)
-    if not record:
-        raise HTTPException(status_code=410, detail="invalid")
-
-    # Stage gate: submission only valid at proposal/booking
-    trip = await _ts(TripStore.get_trip, record.trip_id)
-    if not trip or trip.get("stage", "discovery") not in ("proposal", "booking"):
-        raise HTTPException(status_code=410, detail="invalid")
-
-    # Check not already submitted
-    pending = await _ts(TripStore.get_pending_booking_data, record.trip_id)
-    if pending:
-        raise HTTPException(status_code=409, detail="already_submitted")
-
-    booking_data = payload.booking_data
-    bd_dict = booking_data.model_dump()
-
-    # Write to pending_booking_data (encrypted)
-    await _ts(TripStore.update_trip, record.trip_id, {"pending_booking_data": bd_dict})
-
-    # Mark token as used
-    async with async_session_maker() as db:
-        await mark_token_used(db, record.id)
-
-    AuditStore.log_event("customer_booking_data_submitted", record.agency_id, {
-        "trip_id": record.trip_id,
-        "token_id": record.id,
-        "traveler_count": len(booking_data.travelers),
-        "has_payer": booking_data.payer is not None,
-        "has_passport_data": any(t.passport_number for t in booking_data.travelers),
-    })
-
-    return PublicSubmissionResponse(
-        ok=True,
-        message="Your booking details have been submitted. The travel agent will review them shortly.",
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -2670,70 +2330,6 @@ async def delete_trip_document(trip_id: str, document_id: str, agency: Agency = 
     })
 
     return {"ok": True, "status": "deleted"}
-
-
-@app.post("/api/public/booking-collection/{token}/documents", response_model=CustomerDocumentResponse)
-@limiter.limit("10/minute")
-async def upload_public_document(
-    request: Request,
-    response: Response,
-    token: str,
-    document_type: str = Form(...),
-    file: UploadFile = File(...),
-):
-    """Customer uploads a document through a collection link token.
-
-    Token is NOT consumed — stays active for booking-data submit.
-    """
-    from spine_api.services.collection_service import validate_token
-    from spine_api.services.document_service import (
-        validate_file_upload, sanitize_extension, upload_document,
-    )
-    from spine_api.core.database import async_session_maker
-    import hashlib
-
-    async with async_session_maker() as db:
-        record = await validate_token(db, token)
-    if not record:
-        raise HTTPException(status_code=410, detail="invalid")
-
-    # Stage gate
-    trip = await _ts(TripStore.get_trip, record.trip_id)
-    if not trip or trip.get("stage", "discovery") not in ("proposal", "booking"):
-        raise HTTPException(status_code=410, detail="invalid")
-
-    file_data, mime_type = await validate_file_upload(file)
-    ext = sanitize_extension(file.filename)
-    filename_hash = hashlib.sha256((file.filename or "").encode()).hexdigest()
-
-    async with async_session_maker() as db:
-        doc = await upload_document(
-            db,
-            trip_id=record.trip_id,
-            agency_id=record.agency_id,
-            file_data=file_data,
-            mime_type=mime_type,
-            filename_hash=filename_hash,
-            filename_ext=ext,
-            document_type=document_type,
-            uploaded_by_type="customer",
-            collection_token_id=record.id,
-        )
-
-    AuditStore.log_event("document_uploaded", record.agency_id, {
-        "trip_id": record.trip_id,
-        "document_id": doc.id,
-        "document_type": document_type,
-        "uploaded_by_type": "customer",
-        "size_bytes": doc.size_bytes,
-        "mime_type": mime_type,
-        "sha256_present": True,
-        "filename_present": True,
-        "status": doc.status,
-        "scan_status": doc.scan_status,
-    })
-
-    return CustomerDocumentResponse(id=doc.id, status=doc.status)
 
 
 @app.get("/api/internal/documents/{document_id}/download")
@@ -3314,136 +2910,10 @@ def get_audit_events(
 
 
 # =============================================================================
-# Analytics Endpoints (Wave 1 Governance)
-# =============================================================================
-
-from src.analytics.models import InsightsSummary, StageMetrics
-from src.analytics.metrics import (
-    aggregate_insights,
-    compute_pipeline_metrics,
-    compute_team_metrics,
-    compute_bottlenecks,
-    compute_revenue_metrics,
-    compute_alerts,
-    TeamMemberMetrics,
-    BottleneckAnalysis,
-    RevenueMetrics,
-    OperationalAlert
-)
-
-@app.get("/analytics/summary", response_model=InsightsSummary)
-def get_analytics_summary(
-    range: str = "30d",
-    agency: Agency = Depends(get_current_agency),
-):
-    trips = TripStore.list_trips(limit=10000, agency_id=agency.id)
-    canonical_trips = [t for t in trips if t.get("id")]
-    return aggregate_insights(canonical_trips)
-
-
-@app.get("/analytics/pipeline", response_model=List[StageMetrics])
-def get_analytics_pipeline(
-    range: str = "30d",
-    agency: Agency = Depends(get_current_agency),
-):
-    trips = TripStore.list_trips(limit=10000, agency_id=agency.id)
-    canonical_trips = [t for t in trips if t.get("id")]
-    return compute_pipeline_metrics(canonical_trips)
-
-
-@app.get("/analytics/team", response_model=List[TeamMemberMetrics])
-async def get_analytics_team(
-    range: str = "30d",
-    agency: Agency = Depends(get_current_agency),
-    db: AsyncSession = Depends(get_db),
-):
-    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
-    members = await membership_service.list_members(db, agency_id=agency.id)
-    return compute_team_metrics(trips, members)
-
-
-@app.get("/analytics/bottlenecks", response_model=List[BottleneckAnalysis])
-def get_analytics_bottlenecks(
-    range: str = "30d",
-    agency: Agency = Depends(get_current_agency),
-):
-    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
-    return compute_bottlenecks(trips)
-
-
-@app.get("/analytics/revenue", response_model=RevenueMetrics)
-def get_analytics_revenue(
-    range: str = "30d",
-    agency: Agency = Depends(get_current_agency),
-):
-    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
-    return compute_revenue_metrics(trips)
-
-
-@app.get("/analytics/agent/{agent_id}/drill-down")
-def get_agent_drill_down(
-    agent_id: str,
-    metric: str = "conversion",
-    agency: Agency = Depends(get_current_agency),
-):
-    """Return trips and metrics for a specific agent."""
-    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
-    agent_trips = [
-        t for t in trips
-        if t.get("assigned_to") == agent_id or t.get("agent_id") == agent_id
-    ]
-    
-    return {
-        "agent_id": agent_id,
-        "metric": metric,
-        "trips": agent_trips,
-        "count": len(agent_trips),
-    }
-
-
-@app.get("/analytics/alerts", response_model=List[OperationalAlert])
-def get_analytics_alerts(agency: Agency = Depends(get_current_agency)):
-    """List pending operational alerts (Wave 10)."""
-    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
-    return compute_alerts(trips)
-
-
-@app.post("/analytics/alerts/{alert_id}/dismiss")
-def post_dismiss_alert(alert_id: str, agency: Agency = Depends(get_current_agency)):
-    """Dismiss an operational alert by flagging the source trip."""
-    # Alert ID format is alert_{trip_id}
-    trip_id = alert_id.replace("alert_", "")
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail=f"Target trip for alert {alert_id} not found")
-    
-    analytics = trip.get("analytics") or {}
-    analytics["feedback_dismissed"] = True
-    
-    TripStore.update_trip(trip_id, {"analytics": analytics})
-    return {"success": True}
-
-
-# =============================================================================
 # Review Management Endpoints (Wave 4)
 # =============================================================================
 
-from src.analytics.review import process_review_action, trip_to_review
-
-
-@app.get("/analytics/reviews")
-def get_pending_reviews(agency: Agency = Depends(get_current_agency)):
-    """List all trips currently flagged for owner review."""
-    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
-    # Filter for trips requiring review (per engine.py / review.py logic)
-    pending = []
-    for t in trips:
-        analytics = t.get("analytics")
-        if not isinstance(analytics, dict):
-            continue
-        if analytics.get("requires_review") is True:
-            pending.append(trip_to_review(t))
-    return {"items": pending, "total": len(pending)}
+from src.analytics.review import process_review_action
 
 
 @app.post("/trips/{trip_id}/review/action")
@@ -3795,106 +3265,6 @@ def get_override(override_id: str) -> dict:
 
 
 # =============================================================================
-# Single Review + Bulk Review Actions
-# =============================================================================
-
-@app.get("/analytics/reviews/{review_id}")
-def get_review(review_id: str, agency: Agency = Depends(get_current_agency)):
-    """Get a single review by trip ID."""
-    trip = TripStore.get_trip(review_id)
-    if not trip or trip.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail="Review not found")
-    
-    from src.analytics.review import trip_to_review
-    return trip_to_review(trip)
-
-
-@app.post("/analytics/reviews/bulk-action")
-def bulk_review_action(actions: List[dict]):
-    """Apply review actions in bulk."""
-    from src.analytics.review import process_review_action
-    
-    processed = 0
-    failed = 0
-    results = []
-    
-    for action in actions:
-        try:
-            trip_id = action.get("trip_id") or action.get("review_id")
-            if not trip_id:
-                failed += 1
-                continue
-            
-            process_review_action(
-                trip_id=trip_id,
-                action=action.get("action", "approve"),
-                notes=action.get("notes", ""),
-                user_id="owner",
-                reassign_to=action.get("reassign_to"),
-                error_category=action.get("error_category"),
-            )
-            processed += 1
-            results.append({"trip_id": trip_id, "status": "processed"})
-        except Exception as e:
-            logger.error(f"Bulk review action failed for {action}: {e}")
-            failed += 1
-            results.append({"trip_id": action.get("trip_id"), "status": "failed", "error": str(e)})
-    
-    return {"success": failed == 0, "processed": processed, "failed": failed, "results": results}
-
-
-# =============================================================================
-# Escalations + Funnel Insights
-# =============================================================================
-
-@app.get("/analytics/escalations")
-def get_escalation_heatmap(agency: Agency = Depends(get_current_agency)):
-    """Return escalation heatmap data."""
-    def analytics_payload(trip: dict) -> dict:
-        payload = trip.get("analytics")
-        return payload if isinstance(payload, dict) else {}
-
-    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
-    
-    heatmap = defaultdict(lambda: {"total": 0, "escalated": 0})
-    for trip in trips:
-        agent = trip.get("assigned_to") or trip.get("agent_id") or "unassigned"
-        heatmap[agent]["total"] += 1
-        if analytics_payload(trip).get("escalation_severity") in ("high", "critical"):
-            heatmap[agent]["escalated"] += 1
-    
-    return {
-        "items": [
-            {"agent_id": k, "total": v["total"], "escalated": v["escalated"]}
-            for k, v in heatmap.items()
-        ],
-        "total": len(heatmap),
-    }
-
-
-@app.get("/analytics/funnel")
-def get_conversion_funnel(agency: Agency = Depends(get_current_agency)):
-    """Return conversion funnel metrics."""
-    trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
-    
-    stages = ["new", "assigned", "in_progress", "review", "completed", "cancelled"]
-    funnel = {stage: 0 for stage in stages}
-    
-    for trip in trips:
-        status = trip.get("status", "new")
-        if status in funnel:
-            funnel[status] += 1
-    
-    return {
-        "items": [
-            {"stage": stage, "count": count}
-            for stage, count in funnel.items()
-        ],
-        "total": len(trips),
-    }
-
-
-# =============================================================================
 # Inbox Reassign + Bulk Actions
 # =============================================================================
 
@@ -3921,61 +3291,6 @@ def reassign_trip(
     TripStore.update_trip(trip_id, {"status": "assigned"})
     
     return {"success": True, "trip_id": trip_id, "reassigned_to": agent_id}
-
-
-@app.post("/inbox/bulk")
-def bulk_inbox_action(
-    request: dict,
-    agency: Agency = Depends(get_current_agency),
-):
-    """Apply bulk actions to inbox items."""
-    action = request.get("action")
-    trip_ids = request.get("trip_ids", [])
-    
-    # Verify all trips belong to this agency
-    agency_trips = TripStore.list_trips(agency_id=agency.id, limit=10000)
-    agency_trip_ids = {t["id"] for t in agency_trips if t.get("id")}
-    trip_ids = [tid for tid in trip_ids if tid in agency_trip_ids]
-    
-    if not action or not trip_ids:
-        raise HTTPException(status_code=400, detail="action and trip_ids are required")
-    
-    processed = 0
-    failed = 0
-    
-    for trip_id in trip_ids:
-        try:
-            if action == "assign":
-                agent_id = request.get("agent_id", "system")
-                AssignmentStore.assign_trip(trip_id, agent_id, agent_id, "bulk")
-                TripStore.update_trip(trip_id, {"status": "assigned"})
-            elif action == "unassign":
-                AssignmentStore.unassign_trip(trip_id, "bulk")
-            elif action == "archive":
-                TripStore.update_trip(trip_id, {"status": "archived"})
-            processed += 1
-        except Exception as e:
-            logger.error(f"Bulk action failed for {trip_id}: {e}")
-            failed += 1
-    
-    return {"success": failed == 0, "processed": processed, "failed": failed}
-
-
-# =============================================================================
-# Insights Export
-# =============================================================================
-
-@app.post("/analytics/export")
-def export_insights(request: ExportRequest):
-    """Export insights data. Returns a mock export URL for now."""
-    export_id = f"export_{uuid.uuid4().hex[:12]}"
-    expires = datetime.now(timezone.utc).isoformat()
-    
-    # In production this would generate a real file and return a signed URL
-    return ExportResponse(
-        download_url=f"/api/exports/{export_id}.{request.format}",
-        expires_at=expires,
-    )
 
 
 if __name__ == "__main__":

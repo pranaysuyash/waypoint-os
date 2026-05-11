@@ -42,6 +42,7 @@ Extend canonical surfaces first:
 
 Related decision note:
 - [CANONICAL_DOCUMENT_OPS_PATH_2026-05-11.md](./CANONICAL_DOCUMENT_OPS_PATH_2026-05-11.md)
+- [DOCUMENTS_MODULE_ENABLEMENT_CONTRACT_2026-05-11.md](./DOCUMENTS_MODULE_ENABLEMENT_CONTRACT_2026-05-11.md)
 
 ## Planning Rule
 
@@ -52,3 +53,36 @@ When a doc says "Complete", interpret it as one of:
 - `Research + Implementation Complete`
 
 If label type is missing, assume ambiguity and resolve via runtime evidence before planning.
+
+## Browser Runtime Drift Finding
+
+2026-05-11 live Chrome testing found a runtime-cache drift mode that plain HTTP checks did not catch:
+
+- `curl` returned valid HTML for `/login` and `/workbench?draft=new&tab=safety`.
+- Chrome initially showed a blank gray shell.
+- `.next/dev` still contained stale compiled references to the removed `IntegrityMonitorPanel` component even though source had moved to `components/system/SystemCheckPanel`.
+- Clearing the Next.js dev cache with `npm run dev:reset`, then restarting the frontend, restored the visible browser flow.
+
+Runtime truth rule:
+
+- For frontend acceptance, combine HTTP contract checks with a real rendered-browser check.
+- If source and browser disagree after a component supersession/removal, inspect `.next/dev` and `frontend/.next/dev/logs/next-development.log` before changing source.
+- Do not preserve stale components solely to satisfy dev-cache artifacts; reset the runtime cache and verify again.
+
+## Auth Redirect Copy Finding
+
+2026-05-11 live login testing also exposed a user-facing copy issue:
+
+- The login page previously rendered a raw redirect target such as `workbench?draft=new&tab=safety` as visible copy.
+- The correct runtime behavior is to preserve the exact redirect internally while showing an operator-facing destination label.
+
+Current contract:
+
+- `resolveSafeRedirect()` keeps the trusted redirect path and query string.
+- `formatAuthRedirectLabel()` converts that same safe target into human copy, for example `/workbench?draft=new&tab=safety` -> `New Inquiry - Risk Review`.
+- Full-page login and modal login both use the same formatter so labels do not drift.
+
+Verification:
+
+- `npm run -s test -- --run 'src/lib/__tests__/auth-redirect.test.ts' 'src/components/auth/__tests__/AuthProvider.test.tsx'`
+- Visible HTML text check for `/login?redirect=%2Fworkbench%3Fdraft%3Dnew%26tab%3Dsafety` includes `New Inquiry - Risk Review` and does not expose the raw workbench query string.

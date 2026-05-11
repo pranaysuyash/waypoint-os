@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import type { TimelineResponse } from "@/types/spine";
 import { STAGE_LABELS, STATUS_LABELS, labelOrTitle } from "@/lib/label-maps";
 import {
@@ -18,10 +18,38 @@ interface TimelineSummaryProps {
 
 const AVAILABLE_STAGES = ["intake", "packet", "decision", "strategy", "safety"];
 
+type TimelineFetchState =
+  | { status: "loading"; timeline: TimelineResponse | null; error: null }
+  | { status: "success"; timeline: TimelineResponse; error: null }
+  | { status: "error"; timeline: TimelineResponse | null; error: string };
+
+type TimelineFetchAction =
+  | { type: "loading" }
+  | { type: "loaded"; timeline: TimelineResponse }
+  | { type: "failed"; error: string };
+
+function timelineFetchReducer(
+  state: TimelineFetchState,
+  action: TimelineFetchAction,
+): TimelineFetchState {
+  switch (action.type) {
+    case "loading":
+      return { status: "loading", timeline: state.timeline, error: null };
+    case "loaded":
+      return { status: "success", timeline: action.timeline, error: null };
+    case "failed":
+      return { status: "error", timeline: state.timeline, error: action.error };
+    default:
+      return state;
+  }
+}
+
 export function TimelineSummary({ tripId, timeline: providedTimeline, loading: providedLoading, error: providedError }: TimelineSummaryProps) {
-  const [fetchedTimeline, setFetchedTimeline] = useState<TimelineResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [fetchState, dispatch] = useReducer(timelineFetchReducer, {
+    status: "loading",
+    timeline: null,
+    error: null,
+  });
   const shouldFetch = providedTimeline === undefined && providedLoading === undefined && providedError === undefined;
 
   useEffect(() => {
@@ -29,8 +57,7 @@ export function TimelineSummary({ tripId, timeline: providedTimeline, loading: p
     if (!tripId) return;
     const fetchTimeline = async () => {
       try {
-        setIsLoading(true);
-        setFetchError(null);
+        dispatch({ type: "loading" });
         // eslint-disable-next-line -- fallback fetch when parent doesn't provide timeline; auth via credentials
         const response = await fetch(`/api/trips/${tripId}/timeline`, {
           credentials: "include",
@@ -38,19 +65,17 @@ export function TimelineSummary({ tripId, timeline: providedTimeline, loading: p
         });
         if (!response.ok) throw new Error(`Failed to fetch timeline: ${response.statusText}`);
         const data = await response.json();
-        setFetchedTimeline(data);
+        dispatch({ type: "loaded", timeline: data });
       } catch (err) {
-        setFetchError(err instanceof Error ? err.message : "Failed to load timeline");
-      } finally {
-        setIsLoading(false);
+        dispatch({ type: "failed", error: err instanceof Error ? err.message : "Failed to load timeline" });
       }
     };
     fetchTimeline();
   }, [tripId, shouldFetch]);
 
-  const resolvedTimeline = shouldFetch ? fetchedTimeline : (providedTimeline ?? null);
-  const resolvedLoading = shouldFetch ? isLoading : Boolean(providedLoading);
-  const resolvedError = shouldFetch ? fetchError : (providedError ?? null);
+  const resolvedTimeline = shouldFetch ? fetchState.timeline : (providedTimeline ?? null);
+  const resolvedLoading = shouldFetch ? fetchState.status === "loading" : Boolean(providedLoading);
+  const resolvedError = shouldFetch ? fetchState.error : (providedError ?? null);
 
   if (resolvedLoading) {
     return (

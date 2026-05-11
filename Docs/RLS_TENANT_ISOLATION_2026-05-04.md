@@ -1,7 +1,7 @@
 # PostgreSQL RLS — Tenant Isolation (Task 5)
 
 **Date**: 2026-05-04  
-**Status**: Implemented, tested, migration written (pending DB run)
+**Status**: Implemented with mock/unit coverage; live PostgreSQL enforcement gap found 2026-05-11
 
 ---
 
@@ -20,6 +20,7 @@ enforces that queries only return rows belonging to the current request's agency
 | `spine_api/core/auth.py` | Modified: calls `set_rls_agency()` in `get_current_membership` |
 | `alembic/versions/add_rls_tenant_isolation.py` | Migration enabling RLS on trips, memberships, workspace_codes |
 | `tests/test_rls.py` | 9 tests: ContextVar isolation, SQL parameterization, dep wiring |
+| `tests/test_rls_live_postgres.py` | Live PostgreSQL catalog check plus rollback-only visibility probe |
 
 ---
 
@@ -116,8 +117,29 @@ CREATE POLICY waypoint_rls_all ON trips
 
 ### Superuser bypass
 
-`ENABLE ROW LEVEL SECURITY` without `FORCE` means superusers bypass RLS.
-Alembic, pg_dump, psql admin sessions all continue to work normally.
+`ENABLE ROW LEVEL SECURITY` without `FORCE` means table owners and superusers can bypass RLS.
+Alembic, pg_dump, psql admin sessions all continue to work normally, but the runtime app
+role must not own protected tables if RLS is expected to be an active defense-in-depth layer.
+
+### 2026-05-11 live database verification
+
+Live catalog inspection showed the local app role is `waypoint`, the protected tables are
+owned by `waypoint`, and `relforcerowsecurity=false`. A rollback-only probe inserted two
+temporary agency/trip pairs, set `app.current_agency_id` to agency A, and the runtime role
+still read agency B's trip. That proves the current local database configuration installs
+policies but does not enforce them against the actual app role.
+
+The new live test records this as a known `xfail` rather than turning insecure owner bypass
+into a passing assertion. The long-term fix should be one of:
+
+- use a separate non-owner runtime DB role while migrations/schema ownership stay with an
+  owner/admin role
+- or force RLS only after every SQL path touching protected tables sets `app.current_agency_id`
+
+`spine_api/core/rls.py` now exposes `inspect_rls_runtime_posture()` and the
+`RlsRuntimePosture` / `RlsTablePosture` contracts so tests, startup checks, and operator
+diagnostics can share one canonical definition of "RLS is enforced for the runtime role."
+This avoids duplicating ad-hoc catalog logic in each future guardrail.
 
 ---
 
@@ -134,6 +156,9 @@ Alembic, pg_dump, psql admin sessions all continue to work normally.
 | TestGetRlsDb | test_skips_apply_rls_when_no_agency | apply_rls NOT called for unauthenticated path |
 | TestAuthWiresRls | test_get_current_membership_sets_rls_agency | auth calls set_rls_agency as side-effect |
 | TestAuthWiresRls | test_...does_not_set_rls_on_missing_membership | 403 path does NOT set agency |
+| TestRlsRuntimePosture | test_non_owner_role_with_enabled_rls_has_no_risks | non-owner runtime posture is acceptable |
+| TestRlsRuntimePosture | test_owner_role_without_force_rls_is_reported_as_bypass_risk | owner bypass is flagged before production reliance |
+| TestRlsRuntimePosture | test_missing_or_disabled_tables_are_reported_as_risks | missing/disabled RLS tables are explicit risks |
 
 ---
 
@@ -148,5 +173,12 @@ Alembic, pg_dump, psql admin sessions all continue to work normally.
 
 ## Pending
 
-- Wire `get_rls_db` into the `trips` router and `assignments` router (currently use `get_db` directly). This is a mechanical swap — no logic change required.
-- Evaluate whether `booking_collection_tokens` table should be added (it has `agency_id`; lower risk because tokens are UUIDs).
+- Replace the single owner/runtime DB role with distinct owner/admin and runtime roles, or
+  prepare a complete `FORCE ROW LEVEL SECURITY` rollout.
+- Thread RLS context through every SQL trip read/write path before forcing RLS. The direct
+  `TripStore` / `SQLTripStore` paths still open their own sessions and depend mainly on
+  application-layer `agency_id` filters.
+- Wire `inspect_rls_runtime_posture()` into startup once the current `spine_api/server.py`
+  router extraction work settles, with fail-fast behavior in production/staging and warning
+  behavior in local development.
+- Keep `booking_collection_tokens` in the protected table set; the migration already covers it.

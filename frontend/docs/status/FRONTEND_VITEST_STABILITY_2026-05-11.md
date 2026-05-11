@@ -54,3 +54,45 @@ Suggested next hardening unit:
   - `src/app/(agency)/trips/[tripId]/__tests__/layout.test.tsx`
   - `src/components/workspace/panels/__tests__/MetricDrillDownDrawer.test.tsx`
 
+## Public Marketing Test Hardening Addendum
+
+Timestamp: Mon May 11 22:10:42 IST 2026
+
+### Fresh Failure Mode
+
+After later parallel-agent work, `src/app/__tests__/public_marketing_pages.test.tsx` became the active full-suite blocker:
+
+- Isolated run: timed out in the public marketing page tests and cleanup hook.
+- Full run: `src/app/__tests__/public_marketing_pages.test.tsx` failed and emitted `ReferenceError: requestAnimationFrame is not defined` from real `gsap/ScrollTrigger` runtime code.
+
+Root cause: the GSAP/ScrollTrigger mock lived only in the public marketing test file, while jsdom setup only polyfilled `matchMedia`. Under full-suite module pressure, real animation code could still enter the test runtime. The test environment also lacked a global `requestAnimationFrame`/`cancelAnimationFrame` browser API.
+
+### Change Applied
+
+Updated `frontend/vitest.setup.tsx`:
+
+- Added global `requestAnimationFrame` and `cancelAnimationFrame` jsdom polyfills.
+- Added shared Vitest mocks for `gsap` and `gsap/ScrollTrigger`.
+- Kept the mock boundary in test setup so production browser behavior still uses real GSAP.
+
+### Verification Evidence
+
+Commands run:
+
+1. `npx vitest run src/app/__tests__/public_marketing_pages.test.tsx`
+2. `npx vitest run`
+3. `npx next build`
+4. `npx tsc --noEmit`
+
+Results:
+
+- Public marketing target: `1 passed`, `9 tests passed`.
+- Full frontend suite: `106 passed`, `848 tests passed`.
+- `npx next build` was attempted after the fix but was blocked by the active local `next dev` server lock: `Another next build process is already running.`
+- `npx tsc --noEmit` was attempted as a non-disruptive compile check but failed because generated Next type files under `.next/types` and `.next/dev/types` were absent while the current `tsconfig.json` includes those paths.
+
+### Residual Risk / Follow-up
+
+- The public marketing target now passes, but it remains heavy compared with normal component tests. The latest isolated run took about 54 seconds, with the itinerary checker render test around 10 seconds.
+- Existing React `act(...)` warnings remain non-failing in async UI tests, especially booking collection, trip layout, capture call, followups, and extraction history suites.
+- A production build should be rerun after stopping or moving the active local `next dev` server, since Next currently prevents concurrent build/dev use of the same `.next` directory.

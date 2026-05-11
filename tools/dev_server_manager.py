@@ -21,7 +21,7 @@ from urllib.request import urlopen
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_DIR = REPO_ROOT / ".runtime" / "local"
-RUNTIME_DIR.mkdir(exist_ok=True)
+RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @dataclass(frozen=True)

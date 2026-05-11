@@ -38,3 +38,6 @@ Extend the existing Ops panel path first; enable `/documents` only when it is a 
 - [`src/app/(agency)/workbench/__tests__/OpsPanel.test.tsx`](../../src/app/(agency)/workbench/__tests__/OpsPanel.test.tsx)
   - Includes explicit assertion for canonical path hint.
 
+## Related
+
+- [DOCUMENTS_MODULE_ENABLEMENT_CONTRACT_2026-05-11.md](./DOCUMENTS_MODULE_ENABLEMENT_CONTRACT_2026-05-11.md)

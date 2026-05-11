@@ -282,6 +282,35 @@ def test_compute_kpis_exposes_observed_inferred_unknown_and_dark_funnel(isolated
     assert kpis["confidence_tiers"] == {"observed": 1, "inferred": 1, "unknown": 1}
 
 
+def test_compute_kpis_returns_formula_definitions_and_sample_rule(isolated_product_b_store):
+    store = isolated_product_b_store
+
+    kpis = store.compute_kpis(window_days=14, qualified_only=True)
+
+    definitions = kpis["definitions"]
+    assert definitions["qualified_sample_rule"] == {
+        "description": "Qualified inquiries require both intake_started and first_credible_finding_shown in the selected window.",
+        "required_events": ["intake_started", "first_credible_finding_shown"],
+        "exclusions": ["internal_test_traffic", "insufficient_input_quality", "missing_real_trip_intent"],
+        "current_enforcement": "event_presence_only",
+    }
+
+    assert definitions["kpis"]["time_to_first_credible_finding_ms"] == {
+        "description": "Latency from Product B intake start to first evidence-backed finding.",
+        "numerator": "first_credible_finding_shown.properties.time_from_intake_start_ms values",
+        "denominator": "qualified inquiries with first_credible_finding_shown",
+        "aggregation": "p50 and p90 percentile",
+        "window_days": 14,
+        "data_source": "data/product_b_events/events_normalized.jsonl",
+    }
+    assert definitions["kpis"]["forward_without_edit_rate"]["numerator"] == "action_packet_shared where properties.had_manual_edits=false"
+    assert definitions["kpis"]["forward_without_edit_rate"]["denominator"] == "all action_packet_shared events"
+    assert definitions["kpis"]["agency_revision_rate_observed_7d"]["numerator"] == "inquiries with agency_revision_reported revision_outcome=revised and confidence_tier=observed"
+    assert definitions["kpis"]["agency_revision_rate_observed_7d"]["denominator"] == "inquiries with at least one action_packet_shared event"
+    assert definitions["kpis"]["product_a_pull_through"]["numerator"] == "product_a_interest_signal events"
+    assert definitions["kpis"]["product_a_pull_through"]["denominator"] == "qualified inquiries"
+
+
 def test_public_checker_run_is_public_route(session_client, monkeypatch):
     import server
 

@@ -134,23 +134,19 @@ export default function BookingExecutionPanel({ tripId, stage }: BookingExecutio
 
   // ── Render ──────────────────────────────────────────────────────────────
 
-  if (loading) {
-    return (
-      <div className="bg-elevated border border-border-default rounded-xl p-4">
-        <div className="flex items-center gap-2 text-sm text-muted">
-          <Loader className="size-4 animate-spin" />
-          Loading booking tasks…
-        </div>
-      </div>
-    );
-  }
-
   const activeTasks = tasks.filter((t) => t.status !== "completed" && t.status !== "cancelled");
   const completedTasks = tasks.filter((t) => t.status === "completed");
   const blockedCount = tasks.filter((t) => t.status === "blocked").length;
   const readyCount = tasks.filter((t) => t.status === "ready").length;
 
-  return (
+  return loading ? (
+    <div className="bg-elevated border border-border-default rounded-xl p-4">
+      <div className="flex items-center gap-2 text-sm text-muted">
+        <Loader className="size-4 animate-spin" />
+        Loading booking tasks…
+      </div>
+    </div>
+  ) : (
     <div className="bg-elevated border border-border-default rounded-xl p-4 space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">

@@ -11,6 +11,43 @@ export interface NavSection {
   items: NavItem[];
 }
 
+export interface RolloutGate {
+  id: string;
+  description: string;
+  complete: boolean;
+}
+
+/**
+ * Explicit rollout gates for enabling /documents as a top-level module.
+ * Keep this as the single source of truth for nav enablement readiness.
+ */
+export const DOCUMENTS_MODULE_ROLLOUT_GATES: RolloutGate[] = [
+  {
+    id: 'ops-path-stable',
+    description: 'Ops panel canonical document workflow is stable and verified.',
+    complete: true,
+  },
+  {
+    id: 'privacy-redaction-enforced',
+    description: 'Redaction and secure-mode controls are enforced for debug/export surfaces.',
+    complete: false,
+  },
+  {
+    id: 'route-level-shell-ready',
+    description: '/documents route has product-ready shell UX backed by canonical contracts.',
+    complete: false,
+  },
+  {
+    id: 'contract-regression-suite',
+    description: 'Integration tests cover document upload/review/extract/apply across role paths.',
+    complete: false,
+  },
+];
+
+export function isDocumentsModuleEnabled(): boolean {
+  return DOCUMENTS_MODULE_ROLLOUT_GATES.every((gate) => gate.complete);
+}
+
 /**
  * Durable navigation model for the Agency OS.
  *
@@ -48,7 +85,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: 'OPERATIONS',
     items: [
-      { href: '/documents', label: 'Documents', icon: 'FileText', description: 'Passports, visas, vouchers, insurance', enabled: false },
+      { href: '/documents', label: 'Documents', icon: 'FileText', description: 'Passports, visas, vouchers, insurance', enabled: isDocumentsModuleEnabled() },
       { href: '/payments', label: 'Payments', icon: 'DollarSign', description: 'Collections, milestones, and payment risk', enabled: false },
       { href: '/suppliers', label: 'Suppliers', icon: 'Briefcase', description: 'Preferred suppliers, rates, and reliability notes', enabled: false },
     ],

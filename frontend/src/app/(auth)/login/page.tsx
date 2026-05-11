@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth';
 import { api, ApiException } from '@/lib/api-client';
-import { DEFAULT_AUTH_REDIRECT, resolveSafeRedirect } from '@/lib/auth-redirect';
+import { DEFAULT_AUTH_REDIRECT, formatAuthRedirectLabel, resolveSafeRedirect } from '@/lib/auth-redirect';
 
 type LoginFormState = { email: string; password: string; showPassword: boolean };
 type LoginFormAction = { type: 'SET_FIELD'; field: keyof LoginFormState; value: string | boolean };
@@ -28,7 +28,7 @@ function LoginPageInner() {
     getSearchParam('redirect') || getSearchParam('next'),
     DEFAULT_AUTH_REDIRECT,
   );
-  const redirectLabel = redirectPath.replace(/^\//, '') || 'overview';
+  const redirectLabel = formatAuthRedirectLabel(redirectPath);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

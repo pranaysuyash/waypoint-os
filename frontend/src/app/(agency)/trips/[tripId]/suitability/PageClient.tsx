@@ -7,18 +7,44 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useReducer, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { SuitabilityPanel, type SuitabilityFlag } from '@/components/workspace/panels/SuitabilityPanel';
+
+type SuitabilityPageState =
+  | { status: 'loading'; flags: SuitabilityFlag[]; error: null }
+  | { status: 'success'; flags: SuitabilityFlag[]; error: null }
+  | { status: 'error'; flags: SuitabilityFlag[]; error: string };
+
+type SuitabilityPageAction =
+  | { type: 'loaded'; flags: SuitabilityFlag[] }
+  | { type: 'failed'; error: string };
+
+function suitabilityPageReducer(
+  state: SuitabilityPageState,
+  action: SuitabilityPageAction,
+): SuitabilityPageState {
+  switch (action.type) {
+    case 'loaded':
+      return { status: 'success', flags: action.flags, error: null };
+    case 'failed':
+      return { status: 'error', flags: state.flags, error: action.error };
+    default:
+      return state;
+  }
+}
 
 export default function SuitabilityPage() {
   const { push } = useRouter();
   const params = useParams();
   const tripId = params.tripId as string;
 
-  const [flags, setFlags] = useState<SuitabilityFlag[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(suitabilityPageReducer, {
+    status: 'loading',
+    flags: [],
+    error: null,
+  });
+  const { flags, error } = state;
   const acknowledgedFlagsRef = useRef<string[]>([]);
   const setAcknowledgedFlags = (flagIds: string[]) => { acknowledgedFlagsRef.current = flagIds; };
 
@@ -50,13 +76,10 @@ export default function SuitabilityPage() {
           };
         });
 
-        setFlags(formattedFlags);
+        dispatch({ type: 'loaded', flags: formattedFlags });
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setLoading(false);
+        dispatch({ type: 'failed', error: err instanceof Error ? err.message : 'Unknown error' });
       }
-      // Multiple independent state updates — data and loading are unrelated state slices
     };
 
     fetchTrip();
@@ -79,11 +102,11 @@ export default function SuitabilityPage() {
       // Redirect to packet/decision stage
       push(`/trips/${tripId}/packet`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit acknowledgments');
+      dispatch({ type: 'failed', error: err instanceof Error ? err.message : 'Failed to submit acknowledgments' });
     }
   };
 
-  if (loading) {
+  if (state.status === 'loading') {
     return <div className="p-4">Loading suitability assessment…</div>;
   }
 

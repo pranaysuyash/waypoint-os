@@ -22,10 +22,14 @@ class _FakeConn:
     async def execute(self, statement, params=None):
         sql = str(statement)
         self.calls.append((sql, params))
+        if "set_config('lock_timeout'" in sql:
+            return _ScalarResult(True)
         if "information_schema.tables" in sql:
             return _ScalarResult(self.table_exists)
         if "FROM agencies WHERE id" in sql:
             return _ScalarResult(self.agency_exists)
+        if "ALTER TABLE agencies" in sql:
+            return _ScalarResult(True)
         raise AssertionError(f"Unexpected SQL in fake: {sql}")
 
 
@@ -62,6 +66,35 @@ def test_startup_invariant_tripstore_requires_sql_in_production(monkeypatch):
 
     with pytest.raises(RuntimeError, match="TRIPSTORE_BACKEND must be set explicitly in production/staging"):
         server._get_tripstore_backend()
+
+
+@pytest.mark.asyncio
+async def test_startup_db_timeouts_are_transaction_local_and_env_configurable(monkeypatch):
+    monkeypatch.setenv("SPINE_API_STARTUP_LOCK_TIMEOUT", "2s")
+    monkeypatch.setenv("SPINE_API_STARTUP_STATEMENT_TIMEOUT", "9s")
+
+    fake_conn = _FakeConn()
+
+    await server._apply_startup_db_timeouts(fake_conn)
+
+    timeout_call = fake_conn.calls[0]
+    assert "set_config('lock_timeout'" in timeout_call[0]
+    assert "set_config('statement_timeout'" in timeout_call[0]
+    assert timeout_call[1] == {
+        "lock_timeout": "2s",
+        "statement_timeout": "9s",
+    }
+
+
+@pytest.mark.asyncio
+async def test_agencies_schema_compatibility_applies_timeouts_before_schema_queries(monkeypatch):
+    fake_conn = _FakeConn(table_exists=True)
+    monkeypatch.setattr(server, "engine", _FakeEngine(fake_conn))
+
+    await server._ensure_agencies_schema_compatibility()
+
+    assert "set_config('lock_timeout'" in fake_conn.calls[0][0]
+    assert any("ALTER TABLE agencies" in sql for sql, _ in fake_conn.calls)
 
 
 @pytest.mark.asyncio

@@ -762,6 +762,42 @@ class TestPipelineHinglishRegression:
 
 
 # ---------------------------------------------------------------------------
+# Runtime inquiry regression coverage
+# ---------------------------------------------------------------------------
+
+class TestRuntimeInquiryRegressionCoverage:
+    """Covers issues found through live Chrome testing of the draft workbench."""
+
+    def test_family_of_four_with_word_counts_extracts_party_and_dates_without_false_origin(self):
+        text = (
+            "Family of four wants 6 nights in Bali in July. Two adults, two kids age 6 and 9. "
+            "Prefer beach resort with kids club, vegetarian food, and one villa or connecting rooms. "
+            "Budget around INR 4L excluding flights. They can travel any week after July 10. "
+            "Need something calm, safe, and not too far from the airport."
+        )
+
+        packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text, "runtime-regression")])
+
+        party = packet.facts.get("party_size")
+        composition = packet.facts.get("party_composition")
+        dates = packet.facts.get("date_window")
+        date_start = packet.facts.get("date_start")
+        trip_purpose = packet.facts.get("trip_purpose")
+
+        assert party is not None
+        assert party.value == 4
+        assert composition is not None
+        assert composition.value == {"adults": 2, "children": 2}
+        assert dates is not None
+        assert dates.value == "after july 10"
+        assert date_start is not None
+        assert date_start.value == f"{datetime.now().year}-07-10"
+        assert trip_purpose is not None
+        assert trip_purpose.value == "family leisure"
+        assert "origin_city" not in packet.facts
+
+
+# ---------------------------------------------------------------------------
 # Context-gated lowercase destination (structural fix for "Got" false positive)
 # ---------------------------------------------------------------------------
 

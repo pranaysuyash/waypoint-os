@@ -112,7 +112,8 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
   const [expandedDates, setExpandedDates] = useState<Set<string>>(
     new Set(activities.length > 0 ? [getDateFromTimestamp(activities[0]?.timestamp)] : [])
   );
-  const [currentSortOrder, setCurrentSortOrder] = useState<'newest' | 'oldest'>(sortOrder);
+  const [localSortOrder, setLocalSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const currentSortOrder = onSortChange ? sortOrder : localSortOrder;
 
   // Group and sort activities
   const grouped = useMemo(() => groupActivitiesByDate(activities), [activities]);
@@ -122,7 +123,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
   );
 
   const handleSortChange = (order: 'newest' | 'oldest') => {
-    setCurrentSortOrder(order);
+    setLocalSortOrder(order);
     onSortChange?.(order);
   };
 
@@ -248,4 +249,3 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
     </div>
   );
 };
-

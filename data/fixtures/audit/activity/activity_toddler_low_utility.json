@@ -13,7 +13,10 @@
       {
         "activity_id": "universal_studios",
         "canonical_name": "Universal Studios",
-        "cost_per_person": 5000
+        "tags": ["height_required"],
+        "intensity": "high",
+        "cost_per_person": 5000,
+        "min_age": 6
       }
     ]
   },

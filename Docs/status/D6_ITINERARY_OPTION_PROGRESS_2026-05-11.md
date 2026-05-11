@@ -91,10 +91,59 @@ python3 tools/feature_scan.py . --json
 # current_overall: 1.0 for the scoped progression catalog
 ```
 
+## Progression Update — 2026-05-11 21:34 IST
+
+### What Is Better
+
+- D6 now has a real activity-category rule runner instead of only accepting a lambda/stub.
+- The activity runner measures the canonical `ItineraryOption` artifact, so D6 and D4 are sharing the same suitability/waste economics instead of duplicating logic.
+- The seed corpus now has both a positive fixture and a clean false-positive fixture:
+  - `activity_toddler_low_utility`
+  - `activity_family_clean_culture`
+- Manifest gate evaluation now distinguishes:
+  - category status (`planned`, `shadow`, `gating`)
+  - threshold pass/fail
+  - CI-blocking readiness
+  - public-surface authority readiness
+
+### What Is Still Bad / Not Better Enough
+
+- D6 still measures only the activity category. Budget, pacing, logistics, and documents are manifest entries but do not yet have rule runners or fixture coverage.
+- `activity` is still `shadow`, so even if its current tiny fixture set passes, it is not authoritative for consumer-facing public checker claims.
+- The public checker is not yet consuming D6 gate decisions. The gate contract exists, but runtime public output still needs a deliberate integration pass.
+- The fixture corpus is too small for a real precision/recall claim. Current passing metrics prove the scaffold and rule path work; they do not prove product-grade accuracy.
+
+### Fresh Verification For This Update
+
+```bash
+uv run pytest -q tests/evals/test_d6_audit_scaffold.py tests/test_itinerary_option_model.py tests/test_feature_scan_tool.py
+# 10 passed in 15.34s
+
+uv run pytest -q tests/test_suitability.py tests/test_suitability_wave_12.py
+# 29 passed in 13.03s
+
+python3 tools/feature_scan.py . --json
+# scanned_at: 2026-05-11
+# current_overall: 1.0 for the scoped progression catalog, including M4 activity runner and M5 manifest gates
+
+python3 -m compileall -q src/evals src/suitability tools/feature_scan.py
+# exit 0
+```
+
+### Feature Progression Criteria From Here
+
+A healthy next progression should look like this:
+
+1. Add at least one clean and one broken fixture per category.
+2. Implement rule runners category by category, reusing runtime analyzers/contracts rather than writing eval-only logic.
+3. Keep categories in `shadow` until the fixture set is broad enough to justify thresholds.
+4. Wire public checker output to show only `gating + thresholds met` findings as authoritative; `planned` and `shadow` findings should be advisory/internal.
+5. Promote a category from `shadow` to `gating` only with documented precision/recall evidence.
+
 ## Remaining Work
 
-- Wire D6 runner to actual runtime audit/public-checker rules once those rules expose a stable rule-runner function.
-- Add category fixtures beyond the seed activity fixture: budget clean/broken, pacing broken, logistics broken, documents broken, and multi-issue cases.
+- Add category fixtures beyond the activity fixtures: budget clean/broken, pacing broken, logistics broken, documents broken, and multi-issue cases.
+- Implement non-activity D6 rule runners and avoid eval-only reimplementations when runtime analyzers already exist.
 - Add a public-checker gate that prevents consumer-visible findings from presenting as authoritative when category status is only `planned` or `shadow`.
 - Move utility/waste thresholds into policy once D6 has enough fixtures to calibrate false positives and false negatives.
 - Expand `tools/feature_catalog.json` from scoped progression catalog into the full baseline catalog after reviewing each evidence term for signal quality.

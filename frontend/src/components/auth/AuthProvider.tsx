@@ -15,6 +15,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AUTH_UNAUTHORIZED_EVENT, ApiException, api } from "@/lib/api-client";
+import { formatAuthRedirectLabel } from "@/lib/auth-redirect";
 import { useAuthStore } from "@/stores/auth";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/logout", "/"];
@@ -40,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof window === "undefined") return pathname;
     return `${pathname}${window.location.search}`;
   }, [pathname]);
+  const redirectLabel = useMemo(() => formatAuthRedirectLabel(redirectTarget), [redirectTarget]);
 
   // Hydrate once on mount
   useEffect(() => {
@@ -148,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           >
             <h2 id="auth-modal-title" className="text-xl font-semibold text-[#e6edf3]">Sign in required</h2>
             <p className="mt-1.5 text-sm text-[#8b949e]">
-              Continue to <span className="text-[#c9d1d9] font-medium">{redirectTarget}</span>
+              Continue to <span className="text-[#c9d1d9] font-medium">{redirectLabel}</span>
             </p>
 
             <form className="mt-5 space-y-3.5" onSubmit={handleLogin}>

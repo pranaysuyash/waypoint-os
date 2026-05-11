@@ -30,16 +30,73 @@ Migration:
 """
 
 from contextvars import ContextVar
-from typing import AsyncGenerator, Optional
+from dataclasses import dataclass
+from typing import AsyncGenerator, Optional, Sequence
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 
 from spine_api.core.database import get_db
 
 # Per-request agency_id — set once by get_current_membership, read by get_rls_db.
 _current_agency_id: ContextVar[Optional[str]] = ContextVar("_current_agency_id", default=None)
+
+RLS_TENANT_TABLES: tuple[str, ...] = (
+    "trips",
+    "memberships",
+    "workspace_codes",
+    "booking_collection_tokens",
+)
+
+
+@dataclass(frozen=True, slots=True)
+class RlsTablePosture:
+    """Live RLS posture for one tenant-scoped PostgreSQL table."""
+
+    table_name: str
+    owner: str
+    rls_enabled: bool
+    force_rls: bool
+
+
+@dataclass(frozen=True, slots=True)
+class RlsRuntimePosture:
+    """Runtime role posture for tenant RLS enforcement."""
+
+    current_user: str
+    is_superuser: bool
+    bypasses_rls: bool
+    tables: tuple[RlsTablePosture, ...]
+    expected_tables: tuple[str, ...] = RLS_TENANT_TABLES
+
+    @property
+    def risks(self) -> tuple[str, ...]:
+        """Return concrete reasons RLS is not enforceable for this runtime role."""
+        risks: list[str] = []
+        if self.is_superuser:
+            risks.append(f"runtime role {self.current_user} is a superuser")
+        if self.bypasses_rls:
+            risks.append(f"runtime role {self.current_user} has BYPASSRLS")
+
+        tables_by_name = {table.table_name: table for table in self.tables}
+        for table_name in sorted(set(self.expected_tables) - set(tables_by_name)):
+            risks.append(f"{table_name} is missing from the live database")
+
+        for table in sorted(self.tables, key=lambda item: item.table_name):
+            if not table.rls_enabled:
+                risks.append(f"{table.table_name} has row-level security disabled")
+            if table.owner == self.current_user and not table.force_rls:
+                risks.append(
+                    f"{table.table_name} is owned by runtime role "
+                    f"{self.current_user} and FORCE RLS is disabled"
+                )
+        return tuple(risks)
+
+    @property
+    def is_enforced_for_runtime_role(self) -> bool:
+        """True when the runtime role cannot bypass tenant RLS policies."""
+        return not self.risks
 
 
 def set_rls_agency(agency_id: str) -> None:
@@ -66,6 +123,61 @@ async def apply_rls(session: AsyncSession, agency_id: str) -> None:
     await session.execute(
         text("SELECT set_config('app.current_agency_id', :agency_id, true)"),
         {"agency_id": agency_id},
+    )
+
+
+async def inspect_rls_runtime_posture(
+    session: AsyncConnection | AsyncSession,
+    expected_tables: Sequence[str] = RLS_TENANT_TABLES,
+) -> RlsRuntimePosture:
+    """Inspect whether the current PostgreSQL role is subject to tenant RLS."""
+    role_row = (
+        await session.execute(
+            text(
+                """
+                SELECT current_user AS current_user,
+                       r.rolsuper AS is_superuser,
+                       r.rolbypassrls AS bypasses_rls
+                FROM pg_roles r
+                WHERE r.rolname = current_user
+                """
+            )
+        )
+    ).mappings().one()
+
+    table_rows = (
+        await session.execute(
+            text(
+                """
+                SELECT c.relname AS table_name,
+                       pg_get_userbyid(c.relowner) AS owner,
+                       c.relrowsecurity AS rls_enabled,
+                       c.relforcerowsecurity AS force_rls
+                FROM pg_class c
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+                WHERE n.nspname = 'public'
+                  AND c.relname = ANY(:tables)
+                ORDER BY c.relname
+                """
+            ),
+            {"tables": list(expected_tables)},
+        )
+    ).mappings().all()
+
+    return RlsRuntimePosture(
+        current_user=str(role_row["current_user"]),
+        is_superuser=bool(role_row["is_superuser"]),
+        bypasses_rls=bool(role_row["bypasses_rls"]),
+        tables=tuple(
+            RlsTablePosture(
+                table_name=str(row["table_name"]),
+                owner=str(row["owner"]),
+                rls_enabled=bool(row["rls_enabled"]),
+                force_rls=bool(row["force_rls"]),
+            )
+            for row in table_rows
+        ),
+        expected_tables=tuple(expected_tables),
     )
 
 

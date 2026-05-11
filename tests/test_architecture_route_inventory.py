@@ -19,7 +19,10 @@ def test_route_inventory_tracks_server_py_and_router_module_ownership():
     }
 
     assert owners["server.py"] > 0
+    assert owners["agent_runtime"] == 3
+    assert owners["analytics"] == 14
     assert owners["drafts"] == 10
+    assert owners["inbox"] == 4
     assert owners["run_status"] == 4
     assert owners["settings"] == 8
     assert owners["team"] == 6
