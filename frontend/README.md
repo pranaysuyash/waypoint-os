@@ -126,6 +126,13 @@ frontend/
 The sidebar brand/status now reads from `/api/version`, which is sourced from `package.json` and runtime env.
 This prevents stale-window ambiguity by showing what runtime you are actually connected to.
 
+Brand hierarchy in the app shell is now explicit and stable:
+- Product: `Waypoint OS`
+- Agency: `profile.agency_name`
+- Optional descriptors: `profile.sub_brand` and `profile.plan_label`
+
+This avoids accidental-looking renames by separating product identity from tenant branding.
+
 Optional env for richer traceability:
 
 ```bash
@@ -214,7 +221,7 @@ uv run uvicorn spine_api.server:app --port 8000
 ```bash
 # Verify spine_api is running
 curl http://127.0.0.1:8000/health
-# Should return: {"status":"ok","version":"1.0.0"}
+# Should return: {"status":"ok","version":"0.0.1"}
 
 # Or test a spine run directly
 curl -X POST http://127.0.0.1:8000/run \

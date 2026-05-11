@@ -20,9 +20,6 @@ const PROXY_TIMEOUT_MS = 10_000;
 
 export type CookieScope = "access_only" | "access_and_refresh";
 
-export interface BffFetchOptions extends RequestInit {
-  cookieScope?: CookieScope;
-}
 
 function buildAuthCookieHeader(
   request: NextRequest,

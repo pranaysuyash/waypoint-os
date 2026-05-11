@@ -1,4 +1,5 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MetricDrillDownDrawer } from '../MetricDrillDownDrawer';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -40,6 +41,7 @@ describe('MetricDrillDownDrawer', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    (global.fetch as any).mockReset();
     (global.fetch as any).mockResolvedValue({
       ok: true,
       json: async () => mockTripsResponse,
@@ -61,7 +63,7 @@ describe('MetricDrillDownDrawer', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders drawer when isOpen is true', () => {
+  it('renders drawer when isOpen is true', async () => {
     render(
       <MetricDrillDownDrawer
         isOpen={true}
@@ -73,7 +75,7 @@ describe('MetricDrillDownDrawer', () => {
       />
     );
 
-    expect(screen.getByText(/Conversion Rate Details/)).toBeInTheDocument();
+    expect(await screen.findByText(/Conversion Rate Details/)).toBeInTheDocument();
     // Verify the drawer is rendered with the overlay
     expect(screen.getByRole('button')).toBeInTheDocument(); // Close button
   });
@@ -99,19 +101,15 @@ describe('MetricDrillDownDrawer', () => {
   });
 
   it('displays loading state while fetching', () => {
+    let resolveFetch: ((value: unknown) => void) | null = null;
     (global.fetch as any).mockImplementation(
       () =>
         new Promise((resolve) => {
-          setTimeout(() => {
-            resolve({
-              ok: true,
-              json: async () => mockTripsResponse,
-            });
-          }, 100);
+          resolveFetch = resolve;
         })
     );
 
-    render(
+    const { unmount } = render(
       <MetricDrillDownDrawer
         isOpen={true}
         agentId="agent-1"
@@ -123,6 +121,11 @@ describe('MetricDrillDownDrawer', () => {
     );
 
     expect(screen.getByText('Loading trip data…')).toBeInTheDocument();
+    resolveFetch?.({
+      ok: true,
+      json: async () => mockTripsResponse,
+    });
+    unmount();
   });
 
   it('displays trips after loading', async () => {
@@ -183,6 +186,7 @@ describe('MetricDrillDownDrawer', () => {
 
   it('calls onTripSelect when trip is clicked', async () => {
     const mockTripSelect = vi.fn();
+    const user = userEvent.setup();
 
     render(
       <MetricDrillDownDrawer
@@ -200,13 +204,14 @@ describe('MetricDrillDownDrawer', () => {
     });
 
     const parisButton = screen.getByText('Paris').closest('button');
-    fireEvent.click(parisButton!);
+    await user.click(parisButton!);
 
     expect(mockTripSelect).toHaveBeenCalledWith('trip-1');
   });
 
   it('calls onClose when close button is clicked', async () => {
     const mockClose = vi.fn();
+    const user = userEvent.setup();
 
     render(
       <MetricDrillDownDrawer
@@ -219,8 +224,8 @@ describe('MetricDrillDownDrawer', () => {
       />
     );
 
-    const closeButton = screen.getByRole('button', { name: 'Close' });
-    fireEvent.click(closeButton);
+    const closeButton = await screen.findByRole('button', { name: 'Close' });
+    await user.click(closeButton);
 
     expect(mockClose).toHaveBeenCalled();
   });
@@ -276,6 +281,7 @@ describe('MetricDrillDownDrawer', () => {
 
   it('calls onClose when overlay is clicked', async () => {
     const mockClose = vi.fn();
+    const user = userEvent.setup();
 
     const { container } = render(
       <MetricDrillDownDrawer
@@ -289,7 +295,7 @@ describe('MetricDrillDownDrawer', () => {
     );
 
     const overlay = container.querySelector('[class*="bg-black"]');
-    fireEvent.click(overlay!);
+    await user.click(overlay!);
 
     expect(mockClose).toHaveBeenCalled();
   });

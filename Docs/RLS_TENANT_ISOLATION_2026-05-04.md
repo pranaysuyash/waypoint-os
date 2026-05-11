@@ -33,7 +33,7 @@ HTTP request
   → get_current_user (loads User from DB)
   → get_current_membership (loads Membership, calls set_rls_agency(agency_id))
                                  ↑ ContextVar now holds agency_id
-  → get_rls_db (calls SET LOCAL app.current_agency_id = :id)
+  → get_rls_db (sets transaction-local app.current_agency_id via set_config)
                     ↑ all subsequent DB queries in this transaction are RLS-filtered
   → Route handler
 ```
@@ -43,12 +43,12 @@ HTTP request
 asyncio tasks share a thread. Thread-locals would bleed between concurrent requests.
 `ContextVar` is per-asyncio-task — one per FastAPI request handler.
 
-### Why SET LOCAL (not SET)
+### Why transaction-local config (not plain SET)
 
 Connections are pooled. `SET` (without LOCAL) persists for the connection lifetime
 and would bleed into the next request reusing the same connection.
 
-`SET LOCAL` is transaction-scoped — expires when the transaction ends. Safe for pooled connections.
+`set_config('app.current_agency_id', :agency_id, true)` is transaction-scoped, equivalent in scope to `SET LOCAL`, and lets SQLAlchemy keep agency IDs as bound parameters. It expires when the transaction ends, so pooled connections are clean for the next request.
 
 ### Why policies use `current_setting('app.current_agency_id', TRUE)`
 
@@ -69,7 +69,7 @@ async def list_trips(
     membership = Depends(get_current_membership),
     db: AsyncSession = Depends(get_rls_db),
 ):
-    # db already has SET LOCAL in effect — RLS filters automatically
+    # db already has transaction-local tenant config in effect — RLS filters automatically
     result = await db.execute(select(Trip))
     ...
 ```
@@ -128,7 +128,7 @@ Alembic, pg_dump, psql admin sessions all continue to work normally.
 | TestRlsContextVar | test_set_and_get | ContextVar round-trip |
 | TestRlsContextVar | test_default_is_none | Default is None, not stale value |
 | TestRlsContextVar | test_context_isolated_between_tasks | Task A/B can't see each other's agency |
-| TestApplyRls | test_issues_set_local_statement | SET LOCAL + correct param name emitted |
+| TestApplyRls | test_issues_transaction_local_setting | transaction-local config + correct param name emitted |
 | TestApplyRls | test_uses_parameterized_query | Evil agency_id never interpolated into SQL |
 | TestGetRlsDb | test_calls_apply_rls_when_agency_set | apply_rls called when ContextVar is set |
 | TestGetRlsDb | test_skips_apply_rls_when_no_agency | apply_rls NOT called for unauthenticated path |
@@ -140,7 +140,7 @@ Alembic, pg_dump, psql admin sessions all continue to work normally.
 ## Security notes
 
 - **SQL injection**: `apply_rls` uses a bound parameter (`:agency_id`), never f-string interpolation. Verified by test.
-- **Cross-request bleed**: `SET LOCAL` expires on transaction end. Pooled connections are clean for the next request.
+- **Cross-request bleed**: transaction-local `set_config(..., true)` expires on transaction end. Pooled connections are clean for the next request.
 - **Concurrent request isolation**: ContextVar is per-asyncio-task. Verified by `test_context_isolated_between_tasks`.
 - **Defense-in-depth**: Application code still carries its own `WHERE agency_id = :id` clauses. RLS is a second line of defense, not a replacement.
 

@@ -61,6 +61,7 @@ export default function JoinPage() {
 
     async function validate() {
       try {
+        // eslint-disable-next-line -- dynamic code param, auth via credentials: "include"
         const res = await fetch(`/api/auth/validate-code/${encodeURIComponent(code)}`, {
           cache: 'no-store',
           credentials: 'include',

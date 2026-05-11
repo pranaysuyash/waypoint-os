@@ -41,9 +41,14 @@ describe("proxy.ts page guard", () => {
   });
 
   it("passes through public pages without redirect", async () => {
-    for (const page of ["/", "/v2", "/itinerary-checker", "/login", "/signup", "/forgot-password", "/reset-password"]) {
-      const req = mockRequest(page);
-      const res = await proxy(req);
+    const pages = ["/", "/v2", "/itinerary-checker", "/login", "/signup", "/forgot-password", "/reset-password"];
+    const results = await Promise.all(
+      pages.map(async (page) => {
+        const req = mockRequest(page);
+        return proxy(req);
+      })
+    );
+    for (const res of results) {
       expect(res.status).not.toBe(307);
     }
   });
@@ -59,9 +64,13 @@ describe("proxy.ts page guard", () => {
       "/images/logo.png",
       "/favicon.ico",
     ];
-    for (const path of paths) {
-      const req = mockRequest(path);
-      const res = await proxy(req);
+    const results = await Promise.all(
+      paths.map(async (path) => {
+        const req = mockRequest(path);
+        return proxy(req);
+      })
+    );
+    for (const res of results) {
       expect(res.status).not.toBe(307);
     }
   });

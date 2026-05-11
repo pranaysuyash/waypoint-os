@@ -19,6 +19,11 @@ from src.llm.openai_client import OpenAIClient, create_openai_client
 from src.llm.local_llm import LocalLLMClient, create_local_llm_client
 
 
+def _live_llm_tests_enabled() -> bool:
+    """Keep paid/network LLM calls out of the default suite unless explicitly opted in."""
+    return os.environ.get("RUN_LIVE_LLM_TESTS") == "1"
+
+
 class MockLLMClient(BaseLLMClient):
     """Mock LLM client for testing."""
 
@@ -277,8 +282,8 @@ class TestLLMDecide:
     """Integration tests for LLM decide method (require API keys)."""
 
     @pytest.mark.skipif(
-        not os.environ.get("GEMINI_API_KEY"),
-        reason="GEMINI_API_KEY not set"
+        not (_live_llm_tests_enabled() and os.environ.get("GEMINI_API_KEY")),
+        reason="RUN_LIVE_LLM_TESTS=1 and GEMINI_API_KEY required"
     )
     def test_gemini_decide(self):
         """Test actual Gemini API call."""
@@ -301,8 +306,8 @@ class TestLLMDecide:
         assert isinstance(result["suitable"], bool)
 
     @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY"),
-        reason="OPENAI_API_KEY not set"
+        not (_live_llm_tests_enabled() and os.environ.get("OPENAI_API_KEY")),
+        reason="RUN_LIVE_LLM_TESTS=1 and OPENAI_API_KEY required"
     )
     def test_openai_decide(self):
         """Test actual OpenAI API call."""

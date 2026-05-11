@@ -24,7 +24,3 @@ Performs a clean frontend runtime reset:
 Run:
 - `npm run dev:reset`
 - `npm run dev` (after reset)
-
-## Existing tool: `validate-contrast.ts`
-
-Color/accessibility helper script for contrast checks.

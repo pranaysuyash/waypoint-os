@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useId, useMemo } from 'react';
+import { useState, useReducer, useEffect, useCallback, useId, useMemo, useRef } from 'react';
 import {
   type BookingTraveler,
   type BookingData,
@@ -24,6 +24,20 @@ function emptyTraveler(): BookingTraveler {
   return { traveler_id: '', full_name: '', date_of_birth: '' };
 }
 
+type FormFieldsState = { travelers: BookingTraveler[]; payerName: string; payerEmail: string; payerPhone: string; specialReqs: string };
+type FormFieldsAction =
+  | { type: 'SET_TRAVELERS'; travelers: BookingTraveler[] }
+  | { type: 'SET_PAYER_FIELD'; field: 'payerName' | 'payerEmail' | 'payerPhone'; value: string }
+  | { type: 'SET_SPECIAL_REQS'; value: string };
+function formFieldsReducer(state: FormFieldsState, action: FormFieldsAction): FormFieldsState {
+  switch (action.type) {
+    case 'SET_TRAVELERS': return { ...state, travelers: action.travelers };
+    case 'SET_PAYER_FIELD': return { ...state, [action.field]: action.value };
+    case 'SET_SPECIAL_REQS': return { ...state, specialReqs: action.value };
+    default: return state;
+  }
+}
+
 export default function BookingCollectionPage({
   params,
 }: {
@@ -34,17 +48,14 @@ export default function BookingCollectionPage({
   const [invalidReason, setInvalidReason] = useState('');
   const [tripSummary, setTripSummary] = useState<TripSummary | null>(null);
   const [submitError, setSubmitError] = useState('');
-
-  const [travelers, setTravelers] = useState<BookingTraveler[]>([emptyTraveler()]);
-  const [payerName, setPayerName] = useState('');
-  const [payerEmail, setPayerEmail] = useState('');
-  const [payerPhone, setPayerPhone] = useState('');
-  const [specialReqs, setSpecialReqs] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const [fields, dispatch] = useReducer(formFieldsReducer, { travelers: [emptyTraveler()], payerName: '', payerEmail: '', payerPhone: '', specialReqs: '' });
+
   const travelerIdBase = useId();
   const travelerKeys = useMemo(
-    () => travelers.map((_, index) => `${travelerIdBase}-traveler-${index + 1}`),
-    [travelers.length, travelerIdBase],
+    () => fields.travelers.map((_, index) => `${travelerIdBase}-traveler-${index + 1}`),
+    [fields.travelers.length, travelerIdBase],
   );
   const payerNameId = useId();
   const payerEmailId = useId();
@@ -98,9 +109,9 @@ export default function BookingCollectionPage({
   const handleSubmit = useCallback(async () => {
     if (!token) return;
     const data: BookingData = {
-      travelers,
-      payer: payerName ? { name: payerName, email: payerEmail || null, phone: payerPhone || null } : null,
-      special_requirements: specialReqs || null,
+      travelers: fields.travelers,
+      payer: fields.payerName ? { name: fields.payerName, email: fields.payerEmail || null, phone: fields.payerPhone || null } : null,
+      special_requirements: fields.specialReqs || null,
     };
     setSubmitting(true);
     setSubmitError('');
@@ -112,7 +123,7 @@ export default function BookingCollectionPage({
     } finally {
       setSubmitting(false);
     }
-  }, [token, travelers, payerName, payerEmail, payerPhone, specialReqs]);
+  }, [token, fields.travelers, fields.payerName, fields.payerEmail, fields.payerPhone, fields.specialReqs]);
 
   const handleDocUpload = useCallback(async () => {
     if (!token) return;
@@ -213,7 +224,7 @@ export default function BookingCollectionPage({
 
         {/* Travelers */}
         <div className="space-y-4 mb-6">
-          {travelers.map((t, i) => (
+          {fields.travelers.map((t, i) => (
             <div key={travelerKeys[i]} data-testid={`collection-traveler-${i}`} className="border border-[#30363d] rounded-lg p-4 space-y-3">
               <div className="text-sm font-medium text-[#e6edf3]">Traveler {i + 1}</div>
               <div className="grid grid-cols-2 gap-3">
@@ -225,9 +236,9 @@ export default function BookingCollectionPage({
                     className="w-full bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-sm text-[#e6edf3]"
                     value={t.traveler_id}
                     onChange={(e) => {
-                      const next = [...travelers];
+                      const next = [...fields.travelers];
                       next[i] = { ...next[i], traveler_id: e.target.value };
-                      setTravelers(next);
+                      dispatch({ type: 'SET_TRAVELERS', travelers: next });
                     }}
                   />
                 </div>
@@ -238,9 +249,9 @@ export default function BookingCollectionPage({
                     className="w-full bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-sm text-[#e6edf3]"
                     value={t.full_name}
                     onChange={(e) => {
-                      const next = [...travelers];
+                      const next = [...fields.travelers];
                       next[i] = { ...next[i], full_name: e.target.value };
-                      setTravelers(next);
+                      dispatch({ type: 'SET_TRAVELERS', travelers: next });
                     }}
                   />
                 </div>
@@ -252,9 +263,9 @@ export default function BookingCollectionPage({
                     className="w-full bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-sm text-[#e6edf3]"
                     value={t.date_of_birth}
                     onChange={(e) => {
-                      const next = [...travelers];
+                      const next = [...fields.travelers];
                       next[i] = { ...next[i], date_of_birth: e.target.value };
-                      setTravelers(next);
+                      dispatch({ type: 'SET_TRAVELERS', travelers: next });
                     }}
                   />
                 </div>
@@ -265,26 +276,26 @@ export default function BookingCollectionPage({
                     className="w-full bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-sm text-[#e6edf3]"
                     value={t.passport_number ?? ''}
                     onChange={(e) => {
-                      const next = [...travelers];
+                      const next = [...fields.travelers];
                       next[i] = { ...next[i], passport_number: e.target.value || null };
-                      setTravelers(next);
+                      dispatch({ type: 'SET_TRAVELERS', travelers: next });
                     }}
                   />
                 </div>
               </div>
-              {travelers.length > 1 && (
+              {fields.travelers.length > 1 && (
                 <button
                   className="text-xs text-red-400 hover:underline"
-                  onClick={() => setTravelers(travelers.filter((_, j) => j !== i))}
-                >
-                  Remove traveler
-                </button>
-              )}
+                    onClick={() => dispatch({ type: 'SET_TRAVELERS', travelers: fields.travelers.filter((_, j) => j !== i) })}
+                  >
+                    Remove traveler
+                  </button>
+                )}
             </div>
-          ))}
+            ))}
           <button
             className="text-sm text-blue-300 hover:underline"
-            onClick={() => setTravelers([...travelers, emptyTraveler()])}
+            onClick={() => dispatch({ type: 'SET_TRAVELERS', travelers: [...fields.travelers, emptyTraveler()] })}
           >
             + Add traveler
           </button>
@@ -298,8 +309,8 @@ export default function BookingCollectionPage({
             <input
               id={payerNameId}
               className="w-full bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-sm text-[#e6edf3]"
-              value={payerName}
-              onChange={(e) => setPayerName(e.target.value)}
+               value={fields.payerName}
+               onChange={(e) => dispatch({ type: 'SET_PAYER_FIELD', field: 'payerName', value: e.target.value })}
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -309,8 +320,8 @@ export default function BookingCollectionPage({
                 id={payerEmailId}
                 type="email"
                 className="w-full bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-sm text-[#e6edf3]"
-                value={payerEmail}
-                onChange={(e) => setPayerEmail(e.target.value)}
+                value={fields.payerEmail}
+                onChange={(e) => dispatch({ type: 'SET_PAYER_FIELD', field: 'payerEmail', value: e.target.value })}
               />
             </div>
             <div>
@@ -318,8 +329,8 @@ export default function BookingCollectionPage({
               <input
                 id={payerPhoneId}
                 className="w-full bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-sm text-[#e6edf3]"
-                value={payerPhone}
-                onChange={(e) => setPayerPhone(e.target.value)}
+                value={fields.payerPhone}
+                onChange={(e) => dispatch({ type: 'SET_PAYER_FIELD', field: 'payerPhone', value: e.target.value })}
               />
             </div>
           </div>
@@ -331,8 +342,8 @@ export default function BookingCollectionPage({
           <textarea
             id={specialReqsId}
             className="w-full bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 text-sm text-[#e6edf3] h-20 resize-none"
-            value={specialReqs}
-            onChange={(e) => setSpecialReqs(e.target.value)}
+            value={fields.specialReqs}
+            onChange={(e) => dispatch({ type: 'SET_SPECIAL_REQS', value: e.target.value })}
           />
         </div>
 

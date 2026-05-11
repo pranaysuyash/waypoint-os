@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, use, useState, useCallback, ReactNode, useEffect } from 'react';
+import { createContext, use, useState, useCallback, ReactNode } from 'react';
 import type { SupportedCurrency } from '@/lib/currency';
 import { formatMoney } from '@/lib/currency';
 
@@ -14,24 +14,28 @@ const CurrencyContext = createContext<CurrencyContextValue | undefined>(undefine
 
 const STORAGE_KEY = 'preferred_currency';
 
+function readStoredCurrency(defaultCurrency: SupportedCurrency): SupportedCurrency {
+  if (typeof window === 'undefined') return defaultCurrency;
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY) as SupportedCurrency;
+    if (stored && ['INR', 'USD', 'EUR', 'GBP', 'AED', 'SGD', 'THB', 'AUD', 'CAD', 'JPY'].includes(stored)) {
+      return stored;
+    }
+  } catch {
+    // Ignore localStorage errors
+  }
+  return defaultCurrency;
+}
+
 interface CurrencyProviderProps {
   children: ReactNode;
   defaultCurrency?: SupportedCurrency;
 }
 
 export function CurrencyProvider({ children, defaultCurrency = 'INR' }: CurrencyProviderProps) {
-  const [preferredCurrency, setPreferredCurrencyState] = useState<SupportedCurrency>(defaultCurrency);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY) as SupportedCurrency;
-      if (stored && ['INR', 'USD', 'EUR', 'GBP', 'AED', 'SGD', 'THB', 'AUD', 'CAD', 'JPY'].includes(stored)) {
-        setPreferredCurrencyState(stored);
-      }
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, []);
+  const [preferredCurrency, setPreferredCurrencyState] = useState<SupportedCurrency>(
+    () => readStoredCurrency(defaultCurrency)
+  );
 
   const setPreferredCurrency = useCallback((currency: SupportedCurrency) => {
     setPreferredCurrencyState(currency);

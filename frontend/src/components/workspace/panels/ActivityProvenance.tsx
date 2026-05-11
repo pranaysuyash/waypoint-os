@@ -110,4 +110,3 @@ export const ActivityProvenanceGroup: React.FC<ActivityProvenanceGroupProps> = (
   );
 };
 
-export default ActivityProvenanceBadge;

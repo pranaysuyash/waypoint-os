@@ -2,6 +2,23 @@
 
 This directory stores reusable helper utilities for this project.
 
+
+## Frontend Contrast Validator: `frontend-validate-contrast.ts`
+
+Purpose:
+- Validate frontend design token text/background contrast combinations using `frontend/src/lib/contrast-utils.ts`.
+- Keep contrast diagnostics as a reusable repo-level tool instead of frontend runtime code.
+
+Usage:
+```bash
+cd frontend
+npx tsx ../tools/frontend-validate-contrast.ts
+```
+
+Notes:
+- The script is read-only and prints PASS/FAIL contrast ratios plus suggested token adjustments.
+- It intentionally lives in the repo-level `tools/` directory so React Doctor does not classify it as unused frontend application code.
+
 ## 1) `context_digest.py`
 
 Purpose:

@@ -8,7 +8,13 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.tsx'],
     include: ['**/__tests__/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     exclude: ['node_modules', 'dist', '.next', 'out', '.claude'],
-    testTimeout: 30000,
+    // Full-suite runs are heavy (React 19 + jsdom + async UI effects). A larger
+    // timeout budget plus conservative worker fan-out reduces Vitest RPC stalls.
+    testTimeout: 60000,
+    hookTimeout: 30000,
+    teardownTimeout: 30000,
+    pool: 'forks',
+    maxWorkers: 4,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

@@ -8,7 +8,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { FieldChange, AuditLog, TripFieldType, FieldChangeType } from '@/types/audit';
 
-const STORAGE_PREFIX = 'trip_audit_';
+const STORAGE_PREFIX = 'trip_audit:v1:';
 
 interface UseFieldAuditLogOptions {
   tripId: string;

@@ -7,6 +7,7 @@
 
 ## 1. Raw Ideas & Experimental Concepts
 
+- **[Architecture] BFF + Modular Monolith Topology**: Current system is neither a pure monolith nor microservices. It is a Next.js BFF plus FastAPI backend modular monolith, with future extraction candidates around workers, integrations, documents, analytics, and public traveler collection. See `Docs/exploration/ARCHITECTURE_TOPOLOGY_REVIEW_2026-05-11.md`.
 - **[Concept] Agent-Role Swapping**: Allow operators to "swap" the persona of an agent dynamically (e.g., "Take your current plan and explain it to a budget-conscious traveler instead of the current luxury profile").
 - **[Concept] Automatic 'Next-Action' Nudging**: AI detects when a trip has been idle in a stage for X hours and suggests an "Internal Note" to nudge the process forward.
 - **[Concept] Visual State Replay**: Rather than just logs, create a "Video-Game Style Replay" button that iterates through the `TimelinePanel` steps at 0.5s intervals, allowing the operator to see the AI's "thought" progression visually.
@@ -18,6 +19,7 @@
 
 | Idea | State | Discovery/Next Step |
 | :--- | :--- | :--- |
+| **BFF + Modular Monolith Topology** | Explored | Adopt as current architecture label; next step is route/service modularization, persistence consolidation, and worker-boundary design. |
 | **Agent-Role Swapping** | Raw | Analyze `SessionStrategy` requirements for persona-injection. |
 | **Next-Action Nudging** | Raw | Feasibility study: can this be a trigger in the `Orchestrator`? |
 | **Visual State Replay** | Experimental | Needs exploration of `PacketPanel` state rehydration (the "Time Travel" feature). |

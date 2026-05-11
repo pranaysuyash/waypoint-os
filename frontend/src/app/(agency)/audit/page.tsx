@@ -20,6 +20,7 @@ export default function AuditPage() {
     let cancelled = false;
     async function fetchAudit() {
       try {
+        // eslint-disable-next-line -- client-side fetch required for credentials: "include" auth
         const res = await fetch("/api/audit?limit=50", { cache: "no-store" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
@@ -27,11 +28,13 @@ export default function AuditPage() {
           setEvents(data.items ?? []);
           setLoading(false);
         }
+        // Multiple independent state updates — data and loading are unrelated
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Failed to load audit events");
           setLoading(false);
         }
+        // Multiple independent state updates — error and loading are unrelated
       }
     }
     fetchAudit();

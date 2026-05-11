@@ -461,3 +461,48 @@ class TestConfidenceScorecard:
         )
         overall = card.calculate_overall()
         assert overall == 1.0
+
+    def test_run_gap_and_decision_exposes_scorecard_contract(self):
+        """Decision output exposes confidence scorecard object and rationale subscores."""
+        packet = CanonicalPacket(packet_id="confidence_contract")
+        packet.facts["destination_candidates"] = Slot(
+            value=["Paris"],
+            confidence=0.9,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        packet.facts["origin_city"] = Slot(
+            value="London",
+            confidence=1.0,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        packet.facts["date_window"] = Slot(
+            value="June",
+            confidence=1.0,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        packet.facts["party_size"] = Slot(
+            value=2,
+            confidence=1.0,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        packet.facts["budget_raw_text"] = Slot(
+            value="low",
+            confidence=1.0,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+        packet.facts["trip_purpose"] = Slot(
+            value="leisure",
+            confidence=1.0,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+        )
+
+        result = run_gap_and_decision(packet)
+
+        assert isinstance(result.confidence, ConfidenceScorecard)
+        assert result.confidence.data_quality > 0.5
+        assert result.rationale["confidence_scorecard"] == {
+            "data": result.confidence.data_quality,
+            "judgment": result.confidence.judgment_confidence,
+            "commercial": result.confidence.commercial_confidence,
+        }
+        assert result.rationale["confidence"] == round(result.confidence.overall, 3)

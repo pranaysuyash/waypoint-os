@@ -31,6 +31,7 @@ export function TimelineSummary({ tripId, timeline: providedTimeline, loading: p
       try {
         setIsLoading(true);
         setFetchError(null);
+        // eslint-disable-next-line -- fallback fetch when parent doesn't provide timeline; auth via credentials
         const response = await fetch(`/api/trips/${tripId}/timeline`, {
           credentials: "include",
           cache: "no-store",

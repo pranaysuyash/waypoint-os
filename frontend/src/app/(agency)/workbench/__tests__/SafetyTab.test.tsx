@@ -78,7 +78,7 @@ const DECISION_WITHOUT_FRONTIER = {
   rationale: {},
 };
 
-describe('SafetyTab - Special Handling Checklist', () => {
+describe('SafetyTab - Special Handling Controls', () => {
   beforeEach(() => {
     mockStore.result_safety = null;
     mockStore.result_decision = null;
@@ -86,13 +86,13 @@ describe('SafetyTab - Special Handling Checklist', () => {
     mockStore.setDebugRawJson = vi.fn();
   });
 
-  it('renders Special Handling Checklist when specialty_knowledge exists', () => {
+  it('renders Special Handling Controls when specialty_knowledge exists', () => {
     mockStore.result_safety = SAFETY_RESULT;
     mockStore.result_decision = DECISION_WITH_SPECIALTY;
 
     render(<SafetyTab />);
 
-    expect(screen.getByText('Special Handling Checklist')).toBeDefined();
+    expect(screen.getByText('Special Handling Controls')).toBeDefined();
     expect(screen.getByText('Medical Tourism & Post-Op Recovery')).toBeDefined();
     expect(screen.getByText('Medical Records Transfer Protocol')).toBeDefined();
     expect(screen.getByText('HIPAA/GDPR Data Handling')).toBeDefined();
@@ -100,31 +100,31 @@ describe('SafetyTab - Special Handling Checklist', () => {
     expect(screen.getByText('HIGH')).toBeDefined();
   });
 
-  it('hides Special Handling Checklist when specialty_knowledge is empty', () => {
+  it('hides Special Handling Controls when specialty_knowledge is empty', () => {
     mockStore.result_safety = SAFETY_RESULT;
     mockStore.result_decision = DECISION_WITH_EMPTY_SPECIALTY;
 
     render(<SafetyTab />);
 
-    expect(screen.queryByText('Special Handling Checklist')).toBeNull();
+    expect(screen.queryByText('Special Handling Controls')).toBeNull();
   });
 
-  it('hides Special Handling Checklist when no frontier in rationale', () => {
+  it('hides Special Handling Controls when no frontier in rationale', () => {
     mockStore.result_safety = SAFETY_RESULT;
     mockStore.result_decision = DECISION_WITHOUT_FRONTIER;
 
     render(<SafetyTab />);
 
-    expect(screen.queryByText('Special Handling Checklist')).toBeNull();
+    expect(screen.queryByText('Special Handling Controls')).toBeNull();
   });
 
-  it('hides Special Handling Checklist when no decision exists', () => {
+  it('hides Special Handling Controls when no decision exists', () => {
     mockStore.result_safety = SAFETY_RESULT;
     mockStore.result_decision = null;
 
     render(<SafetyTab />);
 
-    expect(screen.queryByText('Special Handling Checklist')).toBeNull();
+    expect(screen.queryByText('Special Handling Controls')).toBeNull();
   });
 
   it('renders CRITICAL urgency badge', () => {
@@ -147,13 +147,13 @@ describe('SafetyTab - Special Handling Checklist', () => {
     expect(screen.getByText('HIPAA/GDPR Data Handling')).toBeDefined();
   });
 
-  it('renders Safety Notes when present', () => {
+  it('renders Risk Notes when present', () => {
     mockStore.result_safety = SAFETY_RESULT;
     mockStore.result_decision = DECISION_WITH_SPECIALTY;
 
     render(<SafetyTab />);
 
-    expect(screen.getByText('Safety Notes')).toBeDefined();
+    expect(screen.getByText('Risk Notes')).toBeDefined();
     expect(screen.getByText('Verify proximity to emergency care.')).toBeDefined();
   });
 });

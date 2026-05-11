@@ -43,6 +43,16 @@ def _update_draft_for_terminal_state(
         logger.debug("Draft state update skipped for run %s: %s", run_id, exc)
 
 
+def _serialize_traveler_bundle_for_persistence(bundle: Any, to_dict: Callable[[Any], Any]) -> Any:
+    """Persist only the public traveler projection when the bundle provides one."""
+    if not bundle:
+        return None
+    to_traveler_dict = getattr(bundle, "to_traveler_dict", None)
+    if callable(to_traveler_dict):
+        return to_traveler_dict()
+    return to_dict(bundle)
+
+
 def execute_spine_pipeline(
     run_id: str,
     request_dict: dict[str, Any],
@@ -281,7 +291,10 @@ def execute_spine_pipeline(
                     "decision": to_dict(result.decision) if hasattr(result, "decision") else None,
                     "strategy": to_dict(result.strategy) if hasattr(result, "strategy") else None,
                     "plan_candidate": to_dict(result.plan_candidate) if hasattr(result, "plan_candidate") and result.plan_candidate else None,
-                    "traveler_bundle": to_dict(result.traveler_bundle) if hasattr(result, "traveler_bundle") and result.traveler_bundle else None,
+                    "traveler_bundle": _serialize_traveler_bundle_for_persistence(
+                        result.traveler_bundle,
+                        to_dict,
+                    ) if hasattr(result, "traveler_bundle") else None,
                     "internal_bundle": to_dict(result.internal_bundle) if hasattr(result, "internal_bundle") and result.internal_bundle else None,
                     "safety": to_dict(result.safety) if hasattr(result, "safety") else None,
                     "fees": to_dict(result.fees) if hasattr(result, "fees") and result.fees else None,
@@ -351,7 +364,10 @@ def execute_spine_pipeline(
                 "decision": to_dict(result.decision) if hasattr(result, "decision") else None,
                 "strategy": to_dict(result.strategy) if hasattr(result, "strategy") else None,
                 "plan_candidate": to_dict(result.plan_candidate) if hasattr(result, "plan_candidate") and result.plan_candidate else None,
-                "traveler_bundle": to_dict(result.traveler_bundle) if hasattr(result, "traveler_bundle") and result.traveler_bundle else None,
+                "traveler_bundle": _serialize_traveler_bundle_for_persistence(
+                    result.traveler_bundle,
+                    to_dict,
+                ) if hasattr(result, "traveler_bundle") else None,
                 "internal_bundle": to_dict(result.internal_bundle) if hasattr(result, "internal_bundle") and result.internal_bundle else None,
                 "safety": to_dict(result.safety) if hasattr(result, "safety") else None,
                 "fees": to_dict(result.fees) if hasattr(result, "fees") and result.fees else None,

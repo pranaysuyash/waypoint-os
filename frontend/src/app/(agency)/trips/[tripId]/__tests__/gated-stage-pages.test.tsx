@@ -55,7 +55,7 @@ describe("gated planning stage pages", () => {
     ["Quote Assessment", DecisionPage],
     ["Options", StrategyPage],
     ["Output", OutputPage],
-    ["Safety Review", SafetyPage],
+    ["Risk Review", SafetyPage],
   ])("renders a gate state on %s when required planning fields are missing", (label, PageComponent) => {
     vi.mocked(useTripContext).mockReturnValue({
       tripId: "trip_4b9e0d894872",

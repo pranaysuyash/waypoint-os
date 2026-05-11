@@ -4,7 +4,7 @@ Tests for PostgreSQL RLS integration (spine_api/core/rls.py).
 What's tested:
   - set_rls_agency / get_rls_agency round-trip via ContextVar
   - ContextVar isolation between asyncio tasks (cross-request bleed prevention)
-  - apply_rls issues the correct SQL statement
+  - apply_rls issues the correct transaction-local SQL statement
   - get_rls_db calls apply_rls when agency_id is set
   - get_rls_db skips apply_rls when ContextVar is unset (unauthenticated path)
   - auth.get_current_membership calls set_rls_agency as a side-effect
@@ -91,10 +91,9 @@ class TestRlsContextVar:
 class TestApplyRls:
 
     @pytest.mark.asyncio
-    async def test_issues_set_local_statement(self):
-        """apply_rls must call session.execute with SET LOCAL app.current_agency_id."""
+    async def test_issues_transaction_local_setting(self):
+        """apply_rls must set app.current_agency_id transaction-locally with a bound param."""
         from spine_api.core.rls import apply_rls
-        from sqlalchemy import text
 
         session = AsyncMock()
         await apply_rls(session, "agy-test-123")
@@ -104,8 +103,9 @@ class TestApplyRls:
         # First positional arg is the text() clause
         sql_clause = call_args[0][0]
         sql_str = str(sql_clause)
-        assert "SET LOCAL" in sql_str
+        assert "set_config" in sql_str
         assert "app.current_agency_id" in sql_str
+        assert "true" in sql_str
 
         # Second arg is the parameter dict
         params = call_args[0][1] if len(call_args[0]) > 1 else call_args[1]

@@ -77,11 +77,11 @@ export function EmptyStateOnboarding() {
                 style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}
                 onMouseEnter={(e) => {
                   const el = e.currentTarget as HTMLAnchorElement;
-                  el.style.borderColor = 'var(--border-hover)'; el.style.background = 'var(--bg-elevated)';
+                  Object.assign(el.style, { borderColor: 'var(--border-hover)', background: 'var(--bg-elevated)' });
                 }}
                 onMouseLeave={(e) => {
                   const el = e.currentTarget as HTMLAnchorElement;
-                  el.style.borderColor = 'var(--border-default)'; el.style.background = 'var(--bg-surface)';
+                  Object.assign(el.style, { borderColor: 'var(--border-default)', background: 'var(--bg-surface)' });
                 }}
               >
                 <div
@@ -115,7 +115,7 @@ export function EmptyStateOnboarding() {
                 </div>
 
                 <ArrowRight
-                  className="size-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="size-4 shrink-0 opacity-[0.3] group-hover:opacity-100 transition-opacity"
                   style={{ color: 'var(--text-muted)' }}
                 />
               </Link>

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { PipelineFlow, PIPELINE_STAGES } from '../PipelineFlow';
+import { PipelineFlow, PIPELINE_STAGES, toPipelineStageId } from '../PipelineFlow';
 
 describe('PipelineFlow Component', () => {
   beforeEach(() => {
@@ -75,6 +75,11 @@ describe('PipelineFlow Component', () => {
   it('exports PIPELINE_STAGES constant', () => {
     expect(PIPELINE_STAGES).toBeDefined();
     expect(PIPELINE_STAGES.length).toBe(5);
+  });
+
+  it('normalizes external stage strings to supported pipeline stage ids', () => {
+    expect(toPipelineStageId('strategy')).toBe('strategy');
+    expect(toPipelineStageId('unknown')).toBeNull();
   });
 
   it('returns null and logs error for invalid stage (defensive guard)', () => {

@@ -333,6 +333,40 @@ class TestDataclassStructures:
             assert field in slot_fields, \
                 f"Slot should have field '{field}', got {slot_fields}"
 
+    def test_slot_to_dict_preserves_lineage(self):
+        """Slot serialization preserves provenance lineage."""
+        slot = Slot(
+            value="high urgency",
+            confidence=0.8,
+            authority_level=AuthorityLevel.DERIVED_SIGNAL,
+            extraction_mode="derived",
+            derived_from=["date_end", "envelope_1"],
+        )
+
+        assert slot.to_dict()["derived_from"] == ["date_end", "envelope_1"]
+
+    def test_packet_to_dict_preserves_slot_lineage(self):
+        """Packet serialization must not drop fact/derived/hypothesis lineage."""
+        pkt = CanonicalPacket(packet_id="lineage_contract")
+        pkt.facts["destination_candidates"] = Slot(
+            value=["Paris"],
+            confidence=0.9,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+            derived_from=["envelope_1"],
+        )
+        pkt.derived_signals["urgency"] = Slot(
+            value="medium",
+            confidence=0.7,
+            authority_level=AuthorityLevel.DERIVED_SIGNAL,
+            extraction_mode="derived",
+            derived_from=["date_window"],
+        )
+
+        data = pkt.to_dict()
+
+        assert data["facts"]["destination_candidates"]["derived_from"] == ["envelope_1"]
+        assert data["derived_signals"]["urgency"]["derived_from"] == ["date_window"]
+
     def test_ambiguity_is_dataclass(self):
         """Ambiguity is a dataclass."""
         assert is_dataclass(Ambiguity), \

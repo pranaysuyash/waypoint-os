@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, Mail, Phone, Globe, ImageIcon, Sparkles, BadgeCheck } from 'lucide-react';
+import { Building2, Mail, Phone, Globe, ImageIcon, Sparkles, BadgeCheck, Info } from 'lucide-react';
 import type { AgencySettings } from '@/hooks/useAgencySettings';
 
 interface ProfileTabProps {
@@ -49,6 +49,36 @@ export function ProfileTab({ draft, onChange }: ProfileTabProps) {
           This information appears on quotes, emails, and the traveler-facing portal.
         </p>
       </div>
+
+      <section className="rounded-lg border border-[#30363d] bg-[#161b22] p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <h3 className="text-ui-sm font-semibold text-[#e6edf3]">Brand & Plan Identity</h3>
+          <span
+            title="Use these fields to separate product identity from agency identity so naming stays consistent across internal and customer-facing surfaces."
+            className="inline-flex items-center justify-center text-[#8b949e] hover:text-[#c9d1d9] cursor-help"
+            aria-label="Brand and plan identity help"
+          >
+            <Info className="size-3.5" />
+          </span>
+        </div>
+        <p className="text-ui-xs text-[#8b949e]">
+          Waypoint OS stays the product name. Configure agency identity below so labels never feel random or inconsistent.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+          <div className="rounded-md border border-[#30363d] bg-[#0d1117] p-2.5">
+            <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Agency Name</p>
+            <p className="mt-1 text-ui-xs text-[#c9d1d9]">Primary workspace identity (sidebar, settings, internal ownership context).</p>
+          </div>
+          <div className="rounded-md border border-[#30363d] bg-[#0d1117] p-2.5">
+            <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Sub-brand (Optional)</p>
+            <p className="mt-1 text-ui-xs text-[#c9d1d9]">Commercial flavor or line of business (for example luxury, adventure, destination-specific unit).</p>
+          </div>
+          <div className="rounded-md border border-[#30363d] bg-[#0d1117] p-2.5">
+            <p className="text-[11px] uppercase tracking-wide text-[#8b949e]">Plan Label (Optional)</p>
+            <p className="mt-1 text-ui-xs text-[#c9d1d9]">Commercial package/tier naming (for example Growth, Pro, Enterprise service envelope).</p>
+          </div>
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Field
@@ -155,13 +185,11 @@ export function ProfileTab({ draft, onChange }: ProfileTabProps) {
           <p className="text-ui-xs font-medium text-[#8b949e] uppercase tracking-wide">Preview</p>
           <div className="flex items-center gap-3">
             {draft.profile.logo_url ? (
-              <img
-                src={draft.profile.logo_url}
-                alt={`${draft.profile.agency_name} logo`}
-                className="size-10 rounded-lg object-cover border border-[#30363d]"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
+              <div
+                aria-label={`${draft.profile.agency_name} logo`}
+                role="img"
+                className="size-10 rounded-lg border border-[#30363d] bg-gradient-to-br from-[#2563eb] to-[#39d0d8] bg-cover bg-center"
+                style={{ backgroundImage: `url("${draft.profile.logo_url}")` }}
               />
             ) : (
               <div className="size-10 rounded-lg bg-gradient-to-br from-[#2563eb] to-[#39d0d8] flex items-center justify-center text-white text-ui-xs font-bold">

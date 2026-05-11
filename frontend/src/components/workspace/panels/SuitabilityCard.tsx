@@ -121,4 +121,3 @@ function DimensionRow({ dimension }: { dimension: SuitabilityProfile["dimensions
   );
 }
 
-export default SuitabilityCard;

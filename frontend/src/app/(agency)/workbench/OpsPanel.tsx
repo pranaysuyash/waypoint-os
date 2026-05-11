@@ -735,7 +735,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
             ))}
             <button
               className="text-xs text-blue-300"
-              onClick={() => setEditTravelers([...editTravelers, emptyTraveler()])}
+              onClick={() => setEditTravelers((prev) => [...prev, emptyTraveler()])}
             >
               + Add traveler
             </button>
@@ -999,7 +999,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
                       )}
                     </div>
                     <div data-testid={`ops-extraction-fields-${doc.id}`} className="space-y-1">
-                      {extractions[doc.id].fields.flatMap(f => f.present ? [f] : []).map((f) => (
+                      {extractions[doc.id].fields.flatMap((f) => f.present ? [(
                         <div key={f.field_name} className="flex items-center gap-2 text-xs">
                           {extractions[doc.id].status === 'pending_review' && (
                             <input
@@ -1028,7 +1028,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
                             {Math.round(f.confidence * 100)}%
                           </span>
                         </div>
-                      ))}
+                      )] : [])}
                     </div>
                     {extractions[doc.id].status === 'pending_review' && (
                       <div className="space-y-2">

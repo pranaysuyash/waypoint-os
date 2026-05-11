@@ -266,7 +266,7 @@ function TeamMemberList() {
         return (
           <div
             key={member.id}
-            className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-[#161b22] transition-colors"
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#161b22] transition-colors"
           >
             <div className="size-8 rounded-full bg-[#1c2128] border border-[#30363d] flex items-center justify-center shrink-0">
               <span className="text-ui-xs font-semibold text-[#8b949e]">

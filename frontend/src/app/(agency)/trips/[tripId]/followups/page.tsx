@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Filter, AlertCircle, Loader2 } from 'lucide-react';
-import FollowUpCard from '@/components/workspace/cards/FollowUpCard';
+import { FollowUpCard } from '@/components/workspace/cards/FollowUpCard';
 
 interface FollowUp {
   trip_id: string;
@@ -145,7 +145,7 @@ export default function FollowupsPage() {
       {/* Header */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <h1 className="text-ui-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+	          <h1 className="text-ui-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
             Follow-up Reminders
           </h1>
           {followups.length > 0 && (

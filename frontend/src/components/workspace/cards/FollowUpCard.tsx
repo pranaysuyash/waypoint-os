@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useState } from 'react';
+import { memo, useState, useTransition } from 'react';
 import { Calendar, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
@@ -159,7 +159,7 @@ export const FollowUpCard = memo(function FollowUpCard({
 }: FollowUpCardProps) {
   const [isSnoozing, setIsSnoozing] = useState(false);
   const [isRescheduling, setIsRescheduling] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const statusStyle = STATUS_STYLES[status];
   const urgencyStyle = URGENCY_STYLES(daysUntilDue);
@@ -173,40 +173,34 @@ export const FollowUpCard = memo(function FollowUpCard({
     minute: '2-digit',
   });
 
-  const handleComplete = async () => {
+  const handleComplete = () => {
     if (onComplete) {
-      setIsLoading(true);
-      try {
+      startTransition(async () => {
         await onComplete(tripId);
-      } finally {
-        setIsLoading(false);
-      }
+      });
     }
   };
 
   const handleSnooze = async (days: number) => {
     if (onSnooze) {
-      setIsLoading(true);
-      try {
+      startTransition(async () => {
         await onSnooze(tripId, days);
         setIsSnoozing(false);
-      } finally {
-        setIsLoading(false);
-      }
+      });
     }
   };
 
   const handleReschedule = async (date: string) => {
     if (onReschedule) {
-      setIsLoading(true);
-      try {
+      startTransition(async () => {
         await onReschedule(tripId, date);
         setIsRescheduling(false);
-      } finally {
-        setIsLoading(false);
-      }
+      });
     }
   };
+
+  const handleCloseSnooze = () => setIsSnoozing(false);
+  const handleCloseReschedule = () => setIsRescheduling(false);
 
   return (
     <>
@@ -278,7 +272,7 @@ export const FollowUpCard = memo(function FollowUpCard({
             <>
               <button
                 onClick={handleComplete}
-                disabled={isLoading}
+                disabled={isPending}
                 className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded text-ui-xs font-medium transition-colors disabled:opacity-50"
                 style={{
                   background: 'var(--accent-green)',
@@ -290,7 +284,7 @@ export const FollowUpCard = memo(function FollowUpCard({
               </button>
               <button
                 onClick={() => setIsSnoozing(true)}
-                disabled={isLoading}
+                disabled={isPending}
                 className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded text-ui-xs font-medium transition-colors border disabled:opacity-50"
                 style={{
                   color: 'var(--text-secondary)',
@@ -302,7 +296,7 @@ export const FollowUpCard = memo(function FollowUpCard({
               </button>
               <button
                 onClick={() => setIsRescheduling(true)}
-                disabled={isLoading}
+                disabled={isPending}
                 className="flex-1 px-3 py-2 rounded text-ui-xs font-medium transition-colors border disabled:opacity-50"
                 style={{
                   color: 'var(--text-secondary)',
@@ -326,19 +320,18 @@ export const FollowUpCard = memo(function FollowUpCard({
 
       <SnoozeModal
         isOpen={isSnoozing}
-        onClose={() => setIsSnoozing(false)}
+        onClose={handleCloseSnooze}
         onSnooze={handleSnooze}
-        isLoading={isLoading}
+        isLoading={isPending}
       />
 
       <RescheduleModal
         isOpen={isRescheduling}
-        onClose={() => setIsRescheduling(false)}
+        onClose={handleCloseReschedule}
         onReschedule={handleReschedule}
-        isLoading={isLoading}
+        isLoading={isPending}
       />
     </>
   );
 });
 
-export default FollowUpCard;

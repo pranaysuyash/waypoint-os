@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, memo } from 'react';
+import { useEffect, useState, useMemo, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import { ClientDateTime } from '@/hooks/useClientDate';
 import {
@@ -97,7 +97,7 @@ const TimeRemaining = ({ deadline }: { deadline: string }) => {
   const [now, setNow] = useState(new Date());
   
   // Update every minute
-  useMemo(() => {
+  useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);

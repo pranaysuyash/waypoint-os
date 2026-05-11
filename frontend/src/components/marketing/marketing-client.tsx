@@ -2,8 +2,7 @@
 
 import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
-import { ArrowRight, Mail, ShieldCheck, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ArrowRight, Mail, ShieldCheck } from 'lucide-react';
 import styles from './marketing.module.css';
 
 export interface CtaBandProps {
@@ -106,13 +105,3 @@ export function CtaBand({
   );
 }
 
-export function DemoButton({ href, label }: { href: string; label: string }) {
-  return (
-    <Button asChild size='lg' className='rounded-full px-5'>
-      <Link href={href}>
-        {label}
-        <Sparkles className='size-4' />
-      </Link>
-    </Button>
-  );
-}

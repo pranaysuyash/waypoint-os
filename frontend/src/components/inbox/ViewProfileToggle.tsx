@@ -54,4 +54,3 @@ export const ViewProfileToggle = memo(function ViewProfileToggle({
   );
 });
 
-export default ViewProfileToggle;

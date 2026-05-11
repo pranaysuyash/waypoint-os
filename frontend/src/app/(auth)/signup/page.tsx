@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useReducer, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth';
@@ -8,43 +8,45 @@ import { api, ApiException } from '@/lib/api-client';
 import { DEFAULT_AUTH_REDIRECT, resolveSafeRedirect } from '@/lib/auth-redirect';
 import { getPasswordStrength } from '@/lib/password-strength';
 
+type SignupFormState = { name: string; email: string; password: string; confirmPassword: string; showPassword: boolean; showConfirmPassword: boolean; agencyName: string; showAgency: boolean };
+type SignupFormAction = { type: 'SET_FIELD'; field: keyof SignupFormState; value: string | boolean };
+function signupFormReducer(state: SignupFormState, action: SignupFormAction): SignupFormState {
+  switch (action.type) {
+    case 'SET_FIELD': return { ...state, [action.field]: action.value };
+    default: return state;
+  }
+}
+
 function SignupPageInner() {
   const { push } = useRouter();
   const searchParams = useSearchParams();
   const getSearchParam = searchParams.get.bind(searchParams);
   const hydrate = useAuthStore((s) => s.hydrate);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [agencyName, setAgencyName] = useState('');
+  const [formState, dispatch] = useReducer(signupFormReducer, { name: '', email: '', password: '', confirmPassword: '', showPassword: false, showConfirmPassword: false, agencyName: '', showAgency: false });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showAgency, setShowAgency] = useState(false);
   const redirectPath = resolveSafeRedirect(
     getSearchParam('redirect') || getSearchParam('next'),
     DEFAULT_AUTH_REDIRECT,
   );
-  const passwordStrength = getPasswordStrength(password);
-  const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
+  const passwordStrength = getPasswordStrength(formState.password);
+  const passwordsMatch = formState.confirmPassword.length > 0 && formState.password === formState.confirmPassword;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    if (password !== confirmPassword) {
+    if (formState.password !== formState.confirmPassword) {
       setError('Passwords do not match');
       setLoading(false);
       return;
     }
 
     try {
-      const body: Record<string, string> = { email, password };
-      if (name) body.name = name;
-      if (agencyName) body.agency_name = agencyName;
+      const body: Record<string, string> = { email: formState.email, password: formState.password };
+      if (formState.name) body.name = formState.name;
+      if (formState.agencyName) body.agency_name = formState.agencyName;
 
       const data = await api.post<{
         ok: boolean;
@@ -87,8 +89,8 @@ function SignupPageInner() {
           <input
             id='name'
             type='text'
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={formState.name}
+            onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'name', value: e.target.value })}
             placeholder='Jane Smith'
             autoComplete='name'
           />
@@ -99,8 +101,8 @@ function SignupPageInner() {
           <input
             id='email'
             type='email'
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={formState.email}
+            onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'email', value: e.target.value })}
             placeholder='you@agency.com'
             required
             autoComplete='email'
@@ -112,9 +114,9 @@ function SignupPageInner() {
           <div className='auth-password-wrap'>
             <input
               id='password'
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              type={formState.showPassword ? 'text' : 'password'}
+              value={formState.password}
+              onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'password', value: e.target.value })}
               placeholder='Minimum 8 characters'
               required
               minLength={8}
@@ -123,11 +125,11 @@ function SignupPageInner() {
             <button
               type='button'
               className='auth-password-toggle'
-              onClick={() => setShowPassword((prev) => !prev)}
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-              aria-pressed={showPassword}
+              onClick={() => dispatch({ type: 'SET_FIELD', field: 'showPassword', value: !formState.showPassword })}
+              aria-label={formState.showPassword ? 'Hide password' : 'Show password'}
+              aria-pressed={formState.showPassword}
             >
-              {showPassword ? 'Hide' : 'Show'}
+              {formState.showPassword ? 'Hide' : 'Show'}
             </button>
           </div>
           <div className='auth-password-meta'>
@@ -146,9 +148,9 @@ function SignupPageInner() {
           <div className='auth-password-wrap'>
             <input
               id='confirm-password'
-              type={showConfirmPassword ? 'text' : 'password'}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              type={formState.showConfirmPassword ? 'text' : 'password'}
+              value={formState.confirmPassword}
+              onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'confirmPassword', value: e.target.value })}
               placeholder='Re-enter password'
               required
               minLength={8}
@@ -157,26 +159,26 @@ function SignupPageInner() {
             <button
               type='button'
               className='auth-password-toggle'
-              onClick={() => setShowConfirmPassword((prev) => !prev)}
-              aria-label={showConfirmPassword ? 'Hide password confirmation' : 'Show password confirmation'}
-              aria-pressed={showConfirmPassword}
+              onClick={() => dispatch({ type: 'SET_FIELD', field: 'showConfirmPassword', value: !formState.showConfirmPassword })}
+              aria-label={formState.showConfirmPassword ? 'Hide password confirmation' : 'Show password confirmation'}
+              aria-pressed={formState.showConfirmPassword}
             >
-              {showConfirmPassword ? 'Hide' : 'Show'}
+              {formState.showConfirmPassword ? 'Hide' : 'Show'}
             </button>
           </div>
-          {confirmPassword.length > 0 && (
+          {formState.confirmPassword.length > 0 && (
             <div className={`auth-match-label ${passwordsMatch ? 'auth-match-label--ok' : 'auth-match-label--error'}`}>
               {passwordsMatch ? 'Passwords match' : 'Passwords do not match'}
             </div>
           )}
         </div>
 
-        {!showAgency ? (
+        {!formState.showAgency ? (
           <button
             type='button'
             className='auth-button'
             style={{ background: '#1c2128', color: '#8b949e' }}
-            onClick={() => setShowAgency(true)}
+            onClick={() => dispatch({ type: 'SET_FIELD', field: 'showAgency', value: true })}
           >
             Customize agency name (optional)
           </button>
@@ -186,10 +188,9 @@ function SignupPageInner() {
             <input
               id='agency'
               type='text'
-              value={agencyName}
-              onChange={(e) => setAgencyName(e.target.value)}
+              value={formState.agencyName}
+              onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'agencyName', value: e.target.value })}
               placeholder='My Travel Agency'
-              autoFocus
             />
           </div>
         )}

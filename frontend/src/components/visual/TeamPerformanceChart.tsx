@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 export interface TeamMember {
   name: string;
@@ -25,27 +25,13 @@ export function TeamPerformanceChart({
   data: TeamMember[];
   onDrillDown?: (agentId: string, metric: DrillDownMetric) => void;
 }) {
-  const [isMounted, setIsMounted] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   if (data.length === 0) {
     return (
       <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5'>
         <h2 className='text-base font-semibold text-[#e6edf3] mb-4'>Agent Performance Metrics</h2>
         <p className='text-sm text-[#8b949e]'>No team data available.</p>
-      </div>
-    );
-  }
-
-  if (!isMounted) {
-    return (
-      <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5'>
-        <h2 className='text-base font-semibold text-[#e6edf3] mb-4'>Agent Performance Metrics</h2>
-        <p className='text-sm text-[#8b949e]'>Loading metrics…</p>
       </div>
     );
   }

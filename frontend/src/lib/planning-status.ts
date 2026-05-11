@@ -57,8 +57,10 @@ function needsOriginCity(trip?: Trip | null): boolean {
 
 function formatPlanningFieldList(fields: string[]): string {
   const normalized = fields
-    .map((field) => field.charAt(0).toLowerCase() + field.slice(1))
-    .filter(Boolean);
+    .flatMap((field) => {
+      const result = field.charAt(0).toLowerCase() + field.slice(1);
+      return result ? [result] : [];
+    });
 
   if (normalized.length === 0) return "required trip details";
   if (normalized.length === 1) return normalized[0]!;
@@ -178,7 +180,7 @@ export function getPlanningLockedTabHint(trip?: Trip | null, stage?: string): st
 export function getPlanningUnlockHint(trip?: Trip | null): string | null {
   if (!trip || !hasPlanningBriefBlocker(trip)) return null;
   const requiredFields = getRequiredPlanningFields(trip);
-  return `Complete ${formatPlanningFieldListTitleCase(requiredFields)} to unlock quote, options, output, and safety review.`;
+  return `Complete ${formatPlanningFieldListTitleCase(requiredFields)} to unlock quote, options, output, and risk review.`;
 }
 
 export function getPlanningStatusTone(trip?: Trip | null): Trip["state"] {

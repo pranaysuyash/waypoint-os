@@ -51,4 +51,3 @@ export const InboxFilterBar = memo(function InboxFilterBar({
   );
 });
 
-export default InboxFilterBar;

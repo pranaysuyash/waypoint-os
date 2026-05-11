@@ -27,4 +27,3 @@ export function BackToOverviewLink({
   );
 }
 
-export default BackToOverviewLink;

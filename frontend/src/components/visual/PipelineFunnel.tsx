@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useSyncExternalStore, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 
 export interface PipelineStage {
   stageId: string;
@@ -15,12 +15,27 @@ interface ChartData {
   conversion: string;
 }
 
-export function PipelineFunnel({ data }: { data: PipelineStage[] }) {
-  const [isMounted, setIsMounted] = useState(false);
+const ResponsiveContainer = dynamic(() => import('recharts').then((mod) => mod.ResponsiveContainer), { ssr: false });
+const BarChart = dynamic(() => import('recharts').then((mod) => mod.BarChart), { ssr: false });
+const Bar = dynamic(() => import('recharts').then((mod) => mod.Bar), { ssr: false });
+const XAxis = dynamic(() => import('recharts').then((mod) => mod.XAxis), { ssr: false });
+const YAxis = dynamic(() => import('recharts').then((mod) => mod.YAxis), { ssr: false });
+const CartesianGrid = dynamic(() => import('recharts').then((mod) => mod.CartesianGrid), { ssr: false });
+const Tooltip = dynamic(() => import('recharts').then((mod) => mod.Tooltip), { ssr: false });
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+function useHydrated(): boolean {
+  return useSyncExternalStore(
+    useCallback((onStoreChange) => {
+      const timer = setTimeout(onStoreChange, 0);
+      return () => clearTimeout(timer);
+    }, []),
+    () => true,
+    () => false
+  );
+}
+
+export function PipelineFunnel({ data }: { data: PipelineStage[] }) {
+  const isMounted = useHydrated();
 
   if (data.length === 0) {
     return (
@@ -36,7 +51,7 @@ export function PipelineFunnel({ data }: { data: PipelineStage[] }) {
   const chartData: ChartData[] = data.map((stage, index) => ({
     name: stage.stageName,
     trips: stage.tripCount,
-    conversion: index > 0 
+    conversion: index > 0
       ? `${Math.round((stage.tripCount / data[index - 1].tripCount) * 100)}%`
       : '100%',
   }));

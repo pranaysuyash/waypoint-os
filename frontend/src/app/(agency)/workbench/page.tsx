@@ -70,7 +70,7 @@ function safeParseJson(raw: string): Record<string, unknown> | null {
 
 const workspaceTabs = [
   { id: 'intake', label: 'New Inquiry' },
-  { id: 'safety', label: 'Safety Review' },
+  { id: 'safety', label: 'Risk Review' },
   { id: 'ops', label: 'Ops' },
 ] as const;
 
@@ -165,7 +165,7 @@ function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
 function WorkbenchContent() {
   const searchParams = useSearchParams();
   const getSearchParam = searchParams.get.bind(searchParams);
-  const { push, replace } = useRouter();
+  const { push, refresh, replace } = useRouter();
   const pathname = usePathname();
   const tripId = getSearchParam('trip');
   const draftParam = getSearchParam('draft');
@@ -546,7 +546,7 @@ function WorkbenchContent() {
         setTimeout(() => setSaveError(null), 8000);
       }
     }
-  }, [store, searchParams, router, spineStage, currentMode, currentScenario]);
+  }, [store, searchParams, replace, spineStage, currentMode, currentScenario]);
 
   // ----- Auto-save (5s debounce, guarded) -----
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -680,7 +680,7 @@ function WorkbenchContent() {
     currentScenario,
     store.strict_leakage,
     searchParams,
-    router,
+    replace,
     buildContentKey,
   ]);
 
@@ -715,11 +715,11 @@ function WorkbenchContent() {
         'Recovery completed. Feedback addressed.',
       );
       // Refresh trip data to clear recovery state
-      router.refresh();
+      refresh();
     } catch (err) {
       console.error('Failed to resolve recovery:', err);
     }
-  }, [tripId, router]);
+  }, [tripId, refresh]);
 
   const isRecoveryMode =
     trip?.analytics?.feedback_reopen === true ||
@@ -798,7 +798,7 @@ function WorkbenchContent() {
         </div>
       )}
 
-      <div className='px-6 py-6'>
+      <div className='p-6'>
         {integrityOpen && <BackToOverviewLink className='mb-4' />}
         <header className='flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-6'>
           <div>
@@ -1135,7 +1135,7 @@ export default function WorkbenchPage() {
 
 function WorkbenchLoading() {
   return (
-    <div className='min-h-screen bg-[#080a0c] px-6 py-6'>
+    <div className='min-h-screen bg-[#080a0c] p-6'>
       <div className='h-8 bg-[#161b22] rounded animate-pulse mb-6 w-48' />
       <div className='h-12 bg-[#0f1115] rounded animate-pulse mb-4' />
       <div className='h-64 bg-[#0f1115] rounded animate-pulse' />

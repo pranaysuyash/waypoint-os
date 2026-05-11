@@ -14,13 +14,13 @@ describe('Input Component', () => {
   });
 
   it('calls onChange when value changes', () => {
-    const handleChange = vi.fn();
-    render(<Input onChange={handleChange} />);
+    const recordUsernameChange = vi.fn();
+    render(<Input onChange={recordUsernameChange} />);
 
     const input = screen.getByRole('textbox');
     fireEvent.change(input, { target: { value: 'test' } });
 
-    expect(handleChange).toHaveBeenCalledTimes(1);
+    expect(recordUsernameChange).toHaveBeenCalledTimes(1);
   });
 
   it('displays error message when error prop is provided', () => {

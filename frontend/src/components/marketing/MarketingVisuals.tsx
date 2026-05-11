@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
+import Image from 'next/image';
 import {
   ArrowRight,
   BookOpen,
@@ -280,7 +281,7 @@ export function NotebookAnalyzer() {
             <span className={styles.notebookLabel}>Minimal notebook mode</span>
             <h2>Give it a trip. Watch it think in a notebook.</h2>
           </div>
-          <img src='/brand/waypoint-logo-notebook.svg' alt='Waypoint notebook mark' />
+          <Image src='/brand/waypoint-logo-notebook.svg' alt='Waypoint notebook mark' width={62} height={62} />
         </div>
 
         <label className={styles.fileDrop}>

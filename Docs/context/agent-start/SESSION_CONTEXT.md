@@ -1,6 +1,6 @@
 # Session Context
 
-- Generated: 2026-05-10T18:03:08Z
+- Generated: 2026-05-11T11:55:40Z
 - Project: `travel_agency_agent`
 - Provider: `local`
 - Model: `BAAI/bge-m3`
@@ -9,30 +9,7 @@
 
 ## Project-Focused Retrieval
 
-### Architecture Decisions
-- Collection: `projects_proj_travel_agency_agent`
-- Query: `architecture decisions for travel_agency_agent`
-_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
-
-### Project Management Workflow
-- Collection: `projects_proj_travel_agency_agent`
-- Query: `project management workflow for travel_agency_agent`
-_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
-
-### Known Issues and Worklogs
-- Collection: `projects_proj_travel_agency_agent`
-- Query: `known issues and worklog for travel_agency_agent`
-_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
-
-### Prompts and Guidelines
-- Collection: `projects_proj_travel_agency_agent`
-- Query: `prompts and guidelines for travel_agency_agent`
-_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
-
-### System Learning Graph
-- Collection: `projects_proj_travel_agency_agent`
-- Query: `knowledge graph memory learning feedback loops autoresearch semantic taste graph for travel_agency_agent`
-_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
+> NOTE: Project collection check timed out; using shared workspace context for this run.
 
 ## Shared Cross-Project Retrieval
 

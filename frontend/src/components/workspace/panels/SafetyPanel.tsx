@@ -44,7 +44,10 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
   return (
     <div className="space-y-6">
       <section>
-        <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Content Review</h3>
+        <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Risk Gate</h3>
+        <p className="text-ui-xs text-text-muted mb-3">
+          Final send-readiness check for customer-safe language and compliance-sensitive terms.
+        </p>
         {safety.leakage_passed ? (
           <div className="border border-[#1c2128] rounded-lg p-4 bg-sidebar">
             <div className="flex items-center text-accent-green font-semibold mb-1">
@@ -97,7 +100,7 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
       )}
 
       <section>
-        <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Customer-Facing Message</h3>
+        <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Customer Message QA</h3>
         <div className="bg-sidebar rounded-lg border border-[#1c2128] p-4 space-y-4">
           {travelerBundle && !isStrictFail ? (
             <>
@@ -139,7 +142,7 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
         className="text-ui-xs text-accent-blue hover:text-accent-blue underline mt-2"
         onClick={() => setShowRaw(!effectiveShowRaw)}
       >
-        {effectiveShowRaw ? "Hide" : "Show"} Technical Data
+        {effectiveShowRaw ? "Hide" : "Show"} Diagnostic Data
       </button>
 
       {effectiveShowRaw && (

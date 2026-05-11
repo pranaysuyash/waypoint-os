@@ -3,14 +3,6 @@
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
 
-export type StatusFamily =
-  | 'trip_stage'
-  | 'review'
-  | 'follow_up'
-  | 'integrity'
-  | 'suitability'
-  | 'run';
-
 export interface StatusConfig {
   label: string;
   color: string;

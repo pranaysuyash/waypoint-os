@@ -326,11 +326,11 @@ export const TripCard = memo(function TripCard({
       }}
       onMouseEnter={(e) => {
         const el = e.currentTarget as HTMLDivElement;
-        el.style.borderColor = 'var(--border-hover)'; el.style.background = 'var(--bg-elevated)';
+        Object.assign(el.style, { borderColor: 'var(--border-hover)', background: 'var(--bg-elevated)' });
       }}
       onMouseLeave={(e) => {
         const el = e.currentTarget as HTMLDivElement;
-        el.style.borderColor = 'var(--border-default)'; el.style.background = 'var(--bg-surface)';
+        Object.assign(el.style, { borderColor: 'var(--border-default)', background: 'var(--bg-surface)' });
       }}
     >
 
@@ -421,5 +421,3 @@ export const TripCard = memo(function TripCard({
     </Card>
   );
 });
-
-export default TripCard;

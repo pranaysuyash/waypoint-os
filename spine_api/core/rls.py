@@ -8,15 +8,16 @@ Architecture:
   1. A ContextVar holds the current agency_id for the duration of each request.
   2. set_rls_agency() is called by get_current_membership() after the JWT is validated.
   3. get_rls_db() is a FastAPI dependency that reads the ContextVar and issues
-     SET LOCAL app.current_agency_id before yielding the session to the route handler.
+     transaction-local app.current_agency_id before yielding the session to the route handler.
   4. Routes that touch tenant-scoped tables use `db: AsyncSession = get_rls_db()`
      instead of `Depends(get_db)`.
 
-Why SET LOCAL (not SET):
-  - SET LOCAL is transaction-scoped. It expires when the transaction ends.
+Why transaction-local config (not plain SET):
+  - set_config(..., true) is transaction-scoped, equivalent in scope to SET LOCAL.
+    It expires when the transaction ends.
   - Connections are pooled and reused across requests. A plain SET would bleed
     the previous request's agency_id into the next request on the same connection.
-  - SET LOCAL is the safe default for connection-pool environments.
+  - A bound parameter keeps the agency_id out of interpolated SQL.
 
 Why ContextVar (not a thread-local):
   - asyncio tasks share a thread. Thread-locals would bleed between concurrent
@@ -53,11 +54,14 @@ def get_rls_agency() -> Optional[str]:
 
 async def apply_rls(session: AsyncSession, agency_id: str) -> None:
     """
-    Issue SET LOCAL app.current_agency_id within the current transaction.
+    Issue transaction-local app.current_agency_id within the current transaction.
 
     Must be called after a transaction has begun (i.e., after any DML or
     explicit BEGIN). SQLAlchemy's lazy-begin means this executes inside the
     same implicit transaction that the subsequent query will use.
+
+    Uses PostgreSQL set_config(..., true) instead of a literal SET LOCAL string
+    so the agency_id can remain a bound parameter.
     """
     await session.execute(
         text("SELECT set_config('app.current_agency_id', :agency_id, true)"),

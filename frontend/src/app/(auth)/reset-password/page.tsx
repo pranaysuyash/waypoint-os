@@ -1,19 +1,25 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useReducer, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { api, ApiException } from '@/lib/api-client';
+
+type ResetFormState = { password: string; confirmPassword: string; showPassword: boolean; showConfirmPassword: boolean };
+type ResetFormAction = { type: 'SET_FIELD'; field: keyof ResetFormState; value: string | boolean };
+function resetFormReducer(state: ResetFormState, action: ResetFormAction): ResetFormState {
+  switch (action.type) {
+    case 'SET_FIELD': return { ...state, [action.field]: action.value };
+    default: return state;
+  }
+}
 
 function ResetPasswordPageInner() {
   const searchParams = useSearchParams();
   const getSearchParam = searchParams.get.bind(searchParams);
   const token = getSearchParam('token') || '';
 
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [formState, dispatch] = useReducer(resetFormReducer, { password: '', confirmPassword: '', showPassword: false, showConfirmPassword: false });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -22,12 +28,12 @@ function ResetPasswordPageInner() {
     e.preventDefault();
     setError('');
 
-    if (password.length < 8) {
+    if (formState.password.length < 8) {
       setError('Password must be at least 8 characters');
       return;
     }
 
-    if (password !== confirmPassword) {
+    if (formState.password !== formState.confirmPassword) {
       setError('Passwords do not match');
       return;
     }
@@ -37,7 +43,7 @@ function ResetPasswordPageInner() {
     try {
       const data = await api.post<{ ok: boolean; message: string }>(
         '/api/auth/confirm-password-reset',
-        { token, new_password: password }
+        { token, new_password: formState.password }
       );
       setSuccess(true);
     } catch (err) {
@@ -90,9 +96,9 @@ function ResetPasswordPageInner() {
           <div className='auth-password-wrap'>
             <input
               id='password'
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              type={formState.showPassword ? 'text' : 'password'}
+              value={formState.password}
+              onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'password', value: e.target.value })}
               placeholder='At least 8 characters'
               required
               autoComplete='new-password'
@@ -101,11 +107,11 @@ function ResetPasswordPageInner() {
             <button
               type='button'
               className='auth-password-toggle'
-              onClick={() => setShowPassword((prev) => !prev)}
-              aria-label={showPassword ? 'Hide new password' : 'Show new password'}
-              aria-pressed={showPassword}
+              onClick={() => dispatch({ type: 'SET_FIELD', field: 'showPassword', value: !formState.showPassword })}
+              aria-label={formState.showPassword ? 'Hide new password' : 'Show new password'}
+              aria-pressed={formState.showPassword}
             >
-              {showPassword ? 'Hide' : 'Show'}
+              {formState.showPassword ? 'Hide' : 'Show'}
             </button>
           </div>
         </div>
@@ -115,9 +121,9 @@ function ResetPasswordPageInner() {
           <div className='auth-password-wrap'>
             <input
               id='confirm-password'
-              type={showConfirmPassword ? 'text' : 'password'}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              type={formState.showConfirmPassword ? 'text' : 'password'}
+              value={formState.confirmPassword}
+              onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'confirmPassword', value: e.target.value })}
               placeholder='Re-enter your password'
               required
               autoComplete='new-password'
@@ -125,11 +131,11 @@ function ResetPasswordPageInner() {
             <button
               type='button'
               className='auth-password-toggle'
-              onClick={() => setShowConfirmPassword((prev) => !prev)}
-              aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-              aria-pressed={showConfirmPassword}
+              onClick={() => dispatch({ type: 'SET_FIELD', field: 'showConfirmPassword', value: !formState.showConfirmPassword })}
+              aria-label={formState.showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+              aria-pressed={formState.showConfirmPassword}
             >
-              {showConfirmPassword ? 'Hide' : 'Show'}
+              {formState.showConfirmPassword ? 'Hide' : 'Show'}
             </button>
           </div>
         </div>

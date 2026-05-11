@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useDeferredValue, useEffect, useRef, useId } from 'react';
+import { Suspense, useState, useCallback, useMemo, useDeferredValue, useEffect, useRef, useId } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ChevronDown,
@@ -176,7 +176,7 @@ interface IntakePanelProps {
   trip?: Trip | null;
 }
 
-export function IntakePanel({ tripId, trip }: IntakePanelProps) {
+function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   const store = useWorkbenchStore();
   const currentUser = useAuthStore((state) => state.user);
   const {
@@ -215,7 +215,8 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [runSuccess, setRunSuccess] = useState(false);
-  const [runStartedAt, setRunStartedAt] = useState<number | null>(null);
+  const runStartedAtRef = useRef<number | null>(null);
+  const runElapsedTimerRef = useRef<number | null>(null);
   const [runElapsedSeconds, setRunElapsedSeconds] = useState(0);
   const { execute: executeSpineRun, isLoading: isSpineRunning } = useSpineRun();
 
@@ -267,20 +268,32 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
     flexibility: null,
   } as any);
 
-  useEffect(() => {
-    if (!runStartedAt) {
-      setRunElapsedSeconds(0);
-      return;
+  const clearRunTimer = useCallback(() => {
+    if (runElapsedTimerRef.current !== null) {
+      window.clearInterval(runElapsedTimerRef.current);
+      runElapsedTimerRef.current = null;
     }
+    runStartedAtRef.current = null;
+  }, []);
 
+  const stopRunTimer = useCallback(() => {
+    clearRunTimer();
+    setRunElapsedSeconds(0);
+  }, [clearRunTimer]);
+
+  const startRunTimer = useCallback(() => {
+    stopRunTimer();
+    const startedAt = Date.now();
+    runStartedAtRef.current = startedAt;
     const updateElapsed = () => {
-      setRunElapsedSeconds(Math.floor((Date.now() - runStartedAt) / 1000));
+      setRunElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
     };
 
     updateElapsed();
-    const timer = window.setInterval(updateElapsed, 1000);
-    return () => window.clearInterval(timer);
-  }, [runStartedAt]);
+    runElapsedTimerRef.current = window.setInterval(updateElapsed, 1000);
+  }, [stopRunTimer]);
+
+  useEffect(() => clearRunTimer, [clearRunTimer]);
 
   // Editable trip details state
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -406,10 +419,15 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
   const stageId = useId();
   const requestTypeId = useId();
 
+  // Reset notes expanded when trip changes; derive from planningPanelVisible
   useEffect(() => {
     setNotesExpanded(!planningPanelVisible);
+    // This reset pattern is required: planningPanelVisible drives the default state,
+    // and tripId forces re-initialization when navigating between trips
   }, [planningPanelVisible, tripId]);
 
+  // Sync follow-up draft template when missing details change (mirror-props pattern)
+  // Must be an effect because the user can edit the textarea independently
   useEffect(() => {
     setFollowUpDraft(buildFollowUpDraftFromRows(planningDetails));
   }, [planningDetails]);
@@ -419,7 +437,7 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
     setIsRunning(true);
     setRunError(null);
     setRunSuccess(false);
-    setRunStartedAt(Date.now());
+    startRunTimer();
 
     try {
       const request: SpineRunRequest = {
@@ -463,9 +481,9 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
       setTimeout(() => setRunError(null), 15000);
     } finally {
       setIsRunning(false);
-      setRunStartedAt(null);
+      stopRunTimer();
     }
-  }, [store, executeSpineRun, router, tripId]);
+  }, [store, executeSpineRun, push, tripId, startRunTimer, stopRunTimer]);
 
   const handlePrepareFollowUp = useCallback(() => {
     setOperatingMode('follow_up');
@@ -803,7 +821,6 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
               onChange={(e) => setBudgetAmount(e.target.value)}
               placeholder='Approximate budget'
               className='flex-1 rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2 text-[var(--ui-text-sm)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]'
-              autoFocus
             />
             <select
               value={budgetCurrency}
@@ -838,7 +855,6 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
           className='w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2 text-[var(--ui-text-sm)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none'
           placeholder={detailId === 'origin' ? 'Add the departure city' : detailId === 'destination' ? 'Add the destination city or country' : detailId === 'priorities' ? 'Add must-haves or trip priorities' : 'Add how flexible the dates are'}
           dir={detailId === 'origin' || detailId === 'destination' ? 'ltr' : undefined}
-          autoFocus
         />
         <div className='mt-3 flex flex-wrap gap-2'>
           <Button type='button' size='sm' onClick={() => detailId && void savePlanningEditor(detailId)}>
@@ -1494,5 +1510,13 @@ export function IntakePanel({ tripId, trip }: IntakePanelProps) {
         </div>
       )}
     </div>
+  );
+}
+
+export function IntakePanel(props: IntakePanelProps) {
+  return (
+    <Suspense fallback={<div className="p-4 text-ui-sm text-[#8b949e]">Loading intake panel…</div>}>
+      <IntakePanelInner {...props} />
+    </Suspense>
   );
 }

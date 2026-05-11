@@ -141,11 +141,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
             }}
             onMouseEnter={(e) => {
               const el = e.currentTarget as HTMLAnchorElement;
-              el.style.borderColor = 'var(--accent-blue)'; el.style.color = 'var(--accent-blue)';
+              Object.assign(el.style, { borderColor: 'var(--accent-blue)', color: 'var(--accent-blue)' });
             }}
             onMouseLeave={(e) => {
               const el = e.currentTarget as HTMLAnchorElement;
-              el.style.borderColor = 'var(--border-default)'; el.style.color = 'var(--text-primary)';
+              Object.assign(el.style, { borderColor: 'var(--border-default)', color: 'var(--text-primary)' });
             }}
           >
             <Send className='size-3.5 shrink-0' aria-hidden='true' />

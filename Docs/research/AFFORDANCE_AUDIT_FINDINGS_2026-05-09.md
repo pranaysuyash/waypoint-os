@@ -212,13 +212,37 @@ The amber gate card explains the reason, shows a "Go to missing details" link, a
 
 **6 of 14 issues** are variations of the same pattern: **`opacity-0 group-hover:opacity-100`** used to hide controls until hover. This is the single highest-leverage fix — replacing hover-reveal with always-visible controls (even at reduced opacity) would eliminate P0-01, P0-02, P0-03.
 
-### Quick Wins (1-2 hours to fix)
+### Fixes Applied (2026-05-09)
 
-1. **TripCard checkbox**: Add `!IS_TOUCH` guard to the hover class (1 line change)
-2. **TripCard QuickActions**: Show always at 40% opacity, full on hover (1 line change)
-3. **IntakeFieldComponents edit buttons**: Remove `opacity-0 group-hover`, show at 30% opacity always (1 line per button)
-4. **Disable nav click feedback**: Add `onClick` handler showing "Coming Soon" toast (add to `Shell.tsx`)
-5. **PlanningStageGate tab click**: Add `onClick` handler for locked tabs showing why
+All 5 quick wins implemented + 2 bonus fixes for remaining hover-reveal patterns:
+
+| # | File | Change | Status |
+|---|------|--------|--------|
+| 1 | `TripCard.tsx:344` | Checkbox shows at 60% opacity on touch, hover-reveal on desktop | ✅ |
+| 2 | `TripCard.tsx:237` | QuickActions show at 40% opacity (not hidden), full on hover | ✅ |
+| 3 | `IntakeFieldComponents.tsx:167,260` | Edit pencil opacity 0.3 always, full on hover (both EditableField + BudgetField) | ✅ |
+| 4 | `Shell.tsx:168` | Disabled nav items now `<button>` with `onClick` → toast "X is coming soon" | ✅ |
+| 5 | `trips/[tripId]/layout.tsx:286` | Locked tabs now `<button>` with `onClick` → toast with gate reason | ✅ |
+| 6 | `EmptyStateOnboarding.tsx:118` | Arrow icon opacity 0.3 always, full on hover | ✅ |
+| 7 | `overview/page.tsx:638` | Chevron icon opacity 0.3 always, full on hover | ✅ |
+
+**Verification**: Build succeeds. All 790 tests pass (87 test files, 0 failures).
+
+### Remaining Issues (not fixed)
+
+- P1-02: Empty states missing on some screens — needs per-screen audit to apply `EmptyState` component
+- P1-04: Disabled button explanation — needs tooltip pattern across all disabled buttons
+- P2-04: Keyboard shortcut affordance — larger feature, needs design
+- P3-02: "What's next" timeline prompt — needs UX design
+- P3-03: Filter pill active state uses only color — needs WCAG pass
+
+### Quick Wins (original — now ✅ completed)
+
+1. ~~TripCard checkbox: Add `!IS_TOUCH` guard to the hover class~~ ✅
+2. ~~TripCard QuickActions: Show always at 40% opacity, full on hover~~ ✅
+3. ~~IntakeFieldComponents edit buttons: Remove `opacity-0 group-hover`~~ ✅
+4. ~~Disable nav click feedback: Add `onClick` handler showing "Coming Soon" toast~~ ✅
+5. ~~PlanningStageGate tab click: Add `onClick` handler for locked tabs~~ ✅
 
 ### Methodology Used
 

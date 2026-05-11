@@ -9,11 +9,11 @@ describe('Button Component', () => {
   });
 
   it('calls onClick handler when clicked', () => {
-    const handleClick = vi.fn();
-    render(<Button onClick={handleClick}>Click me</Button>);
+    const recordButtonActivation = vi.fn();
+    render(<Button onClick={recordButtonActivation}>Click me</Button>);
 
     fireEvent.click(screen.getByRole('button'));
-    expect(handleClick).toHaveBeenCalledTimes(1);
+    expect(recordButtonActivation).toHaveBeenCalledTimes(1);
   });
 
   it('applies default variant styles', () => {
@@ -75,15 +75,15 @@ describe('Button Component', () => {
   });
 
   it('does not call onClick when disabled', () => {
-    const handleClick = vi.fn();
+    const recordDisabledActivation = vi.fn();
     render(
-      <Button onClick={handleClick} disabled>
+      <Button onClick={recordDisabledActivation} disabled>
         Click me
       </Button>
     );
 
     fireEvent.click(screen.getByRole('button'));
-    expect(handleClick).not.toHaveBeenCalled();
+    expect(recordDisabledActivation).not.toHaveBeenCalled();
   });
 
   it('applies custom className', () => {

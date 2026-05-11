@@ -138,7 +138,7 @@ describe("trips/[tripId]/layout", () => {
     expect(screen.queryByRole("link", { name: "Quote Assessment" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Options" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Output" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Safety Review" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Risk Review" })).not.toBeInTheDocument();
   });
 
   it("uses planning header copy for trips in planning that still need customer details", () => {
@@ -243,9 +243,9 @@ describe("trips/[tripId]/layout", () => {
     expect(screen.queryByRole("link", { name: "Quote Assessment" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Options" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Output" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Safety Review" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Risk Review" })).not.toBeInTheDocument();
     expect(
-      screen.getByText("Complete budget range and origin city to unlock quote, options, output, and safety review."),
+      screen.getByText("Complete budget range and origin city to unlock quote, options, output, and risk review."),
     ).toBeInTheDocument();
     expect(screen.getByText("Quote Assessment")).toBeInTheDocument();
     expect(screen.getAllByText("Options").length).toBeGreaterThan(0);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { AlertTriangle, ChevronLeft, Lock, PanelRightClose, PanelRightOpen } from "lucide-react";
@@ -38,7 +38,7 @@ const STAGE_TABS: { id: WorkspaceStage; label: string }[] = [
   { id: "strategy", label: "Options"         },
   { id: "decision", label: "Quote Assessment"},
   { id: "output",   label: "Output"          },
-  { id: "safety",   label: "Safety Review"   },
+  { id: "safety",   label: "Risk Review"     },
   { id: "timeline", label: "Timeline"        },
 ];
 
@@ -67,10 +67,10 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   const tripId = parseTripId(params?.tripId);
   const { data: trip, isLoading, error, refetch: refetchTrip, replaceTrip } = useTrip(tripId);
   const [isRailOpen, setIsRailOpen] = useState(false);
-  const [hasRailPreference, setHasRailPreference] = useState(false);
   const [timeline, setTimeline] = useState<TimelineResponse | null>(null);
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [timelineError, setTimelineError] = useState<string | null>(null);
+  const hasRailPreferenceRef = useRef(false);
   const { result_run_ts } = useWorkbenchStore();
 
   const activeStage = useMemo(() => getActiveStage(pathname), [pathname]);
@@ -88,8 +88,9 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   const timelineEvents = timeline?.events ?? [];
 
   useEffect(() => {
-    setHasRailPreference(false);
+    hasRailPreferenceRef.current = false;
     setIsRailOpen(false);
+    // Resets rail on trip change - ref + state are coupled and cannot be batched
   }, [tripId]);
 
   // Auto-close side rail when on Timeline tab (avoids duplicate activity views)
@@ -108,6 +109,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
       try {
         setTimelineLoading(true);
         setTimelineError(null);
+        // eslint-disable-next-line -- dynamic tripId param, auth via credentials: "include"
         const response = await fetch(`/api/trips/${tripId}/timeline`, {
           credentials: "include",
           cache: "no-store",
@@ -116,7 +118,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
         const data = (await response.json()) as TimelineResponse;
         if (cancelled) return;
         setTimeline(data);
-        if (!hasRailPreference) {
+        if (!hasRailPreferenceRef.current) {
           setIsRailOpen(hasImportantTimelineEvent(data.events ?? []));
         }
       } catch (err) {
@@ -132,7 +134,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
     return () => {
       cancelled = true;
     };
-  }, [tripId, hasRailPreference]);
+  }, [tripId]);
 
   if (isLoading && !trip) {
     return (
@@ -196,7 +198,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                 <button
                   type="button"
                   onClick={() => {
-                    setHasRailPreference(true);
+                    hasRailPreferenceRef.current = true;
                     setIsRailOpen((open) => !open);
                   }}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-ui-xs rounded-lg border border-[var(--border-default)] hover:bg-[#161b22] transition-colors text-[var(--text-muted)] hover:text-[#e6edf3]"
@@ -214,7 +216,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
               <div className="flex items-start justify-between gap-4 mb-3">
                 <div className="min-w-0">
                   <h1
-                    className="text-ui-2xl font-black tracking-tight leading-none mb-2 truncate"
+	                    className="text-ui-2xl font-semibold tracking-tight leading-none mb-2 truncate"
                     style={{ fontFamily: "'Outfit', system-ui, sans-serif", color: '#f0f6fc' }}
                   >
                     {planningTitle}

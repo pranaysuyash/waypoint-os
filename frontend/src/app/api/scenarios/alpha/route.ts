@@ -2,12 +2,22 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { NextResponse } from "next/server";
 
+const scenarioAlphaPath = join(process.cwd(), "..", "data", "fixtures", "scenario_alpha.json");
+let scenarioAlphaData: unknown;
+let scenarioAlphaLoadError: unknown;
+
+try {
+  scenarioAlphaData = JSON.parse(readFileSync(scenarioAlphaPath, "utf-8"));
+} catch (error) {
+  scenarioAlphaLoadError = error;
+}
+
 export async function GET() {
   try {
-    const filePath = join(process.cwd(), "..", "data", "fixtures", "scenario_alpha.json");
-    const content = readFileSync(filePath, "utf-8");
-    const data = JSON.parse(content);
-    return NextResponse.json(data);
+    if (scenarioAlphaLoadError) {
+      throw scenarioAlphaLoadError;
+    }
+    return NextResponse.json(scenarioAlphaData);
   } catch (error) {
     console.error("Failed to load scenario_alpha.json:", error);
     return NextResponse.json({ error: "Failed to load scenario" }, { status: 500 });

@@ -47,7 +47,7 @@ const DEFAULT_BUDGET_BREAKDOWN = {
   maturity: "heuristic",
 };
 
-export const WORKSPACE_STATUSES = new Set<TripLifecycleStatus>([
+const WORKSPACE_STATUSES = new Set<TripLifecycleStatus>([
   "assigned",
   "in_progress",
   "ready_to_quote",
@@ -55,7 +55,7 @@ export const WORKSPACE_STATUSES = new Set<TripLifecycleStatus>([
   "blocked",
 ]);
 
-export const INBOX_STATUSES = new Set<TripLifecycleStatus>([
+const INBOX_STATUSES = new Set<TripLifecycleStatus>([
   "new",
   "incomplete",
   "needs_followup",

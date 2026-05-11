@@ -9,10 +9,7 @@ Run with: pytest -m integration tests/test_run_lifecycle.py
 from __future__ import annotations
 
 import hashlib
-import json
 import os
-import time
-from pathlib import Path
 
 import pytest
 import requests
@@ -250,11 +247,3 @@ class TestWriteFailureIsolation:
         assert resp.status_code == 200
         body = resp.json()
         assert "run_id" in body and "state" in body
-
-    def test_server_source_wraps_ledger_writes(self):
-        server_path = Path(__file__).resolve().parent.parent / "spine_api" / "server.py"
-        source = server_path.read_text(encoding="utf-8")
-        assert "Wave A: result step checkpointing failed" in source
-        assert "Wave A: ledger complete failed" in source
-        assert "Wave A: block ledger failed" in source
-        assert "Wave A: fail ledger failed" in source

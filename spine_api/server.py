@@ -98,6 +98,7 @@ from spine_api.models.tenant import Agency, User
 from spine_api.core.logging_filter import install_sensitive_data_filter
 from spine_api.core.middleware import AuthMiddleware
 from spine_api.core.rate_limiter import limiter, RateLimitExceededHandler, SlowAPIMiddleware
+from spine_api.version import APP_VERSION
 from slowapi.errors import RateLimitExceeded
 
 from spine_api.contract import (
@@ -608,7 +609,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Spine API",
     description="Canonical HTTP wrapper around run_spine_once",
-    version="1.0.0",
+    version=APP_VERSION,
     lifespan=lifespan,
 )
 
@@ -1587,6 +1588,10 @@ def get_inbox_stats(
     agency: Agency = Depends(get_current_agency),
 ):
     """Return aggregate inbox statistics for Overview cards."""
+    def analytics_payload(trip: dict) -> dict:
+        payload = trip.get("analytics")
+        return payload if isinstance(payload, dict) else {}
+
     agency_id = agency.id
     total = TripStore.count_trips(status=_INBOX_STATUSES, agency_id=agency_id)
 
@@ -1597,11 +1602,11 @@ def get_inbox_stats(
     unassigned = sum(1 for t in trips if not t.get("assigned_to"))
     critical = sum(
         1 for t in trips
-        if t.get("analytics", {}).get("escalation_severity") in ("high", "critical")
+        if analytics_payload(t).get("escalation_severity") in ("high", "critical")
     )
     at_risk = sum(
         1 for t in trips
-        if t.get("analytics", {}).get("sla_status") == "at_risk"
+        if analytics_payload(t).get("sla_status") == "at_risk"
     )
 
     return {"total": total, "unassigned": unassigned, "critical": critical, "atRisk": at_risk}
@@ -3679,11 +3684,13 @@ def get_pending_reviews(agency: Agency = Depends(get_current_agency)):
     """List all trips currently flagged for owner review."""
     trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
     # Filter for trips requiring review (per engine.py / review.py logic)
-    pending = [
-        trip_to_review(t) 
-        for t in trips 
-        if t.get("analytics", {}).get("requires_review") is True
-    ]
+    pending = []
+    for t in trips:
+        analytics = t.get("analytics")
+        if not isinstance(analytics, dict):
+            continue
+        if analytics.get("requires_review") is True:
+            pending.append(trip_to_review(t))
     return {"items": pending, "total": len(pending)}
 
 
@@ -4325,13 +4332,17 @@ def bulk_review_action(actions: List[dict]):
 @app.get("/analytics/escalations")
 def get_escalation_heatmap(agency: Agency = Depends(get_current_agency)):
     """Return escalation heatmap data."""
+    def analytics_payload(trip: dict) -> dict:
+        payload = trip.get("analytics")
+        return payload if isinstance(payload, dict) else {}
+
     trips = TripStore.list_trips(limit=1000, agency_id=agency.id)
     
     heatmap = defaultdict(lambda: {"total": 0, "escalated": 0})
     for trip in trips:
         agent = trip.get("assigned_to") or trip.get("agent_id") or "unassigned"
         heatmap[agent]["total"] += 1
-        if trip.get("analytics", {}).get("escalation_severity") in ("high", "critical"):
+        if analytics_payload(trip).get("escalation_severity") in ("high", "critical"):
             heatmap[agent]["escalated"] += 1
     
     return {

@@ -1,16 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import {
-  ResponsiveContainer,
-  ComposedChart,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  Bar,
-  Line,
-} from 'recharts';
+import { useSyncExternalStore, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 
 type RevenuePoint = {
   month: string;
@@ -28,13 +19,24 @@ const CURRENCY_FORMATTER = new Intl.NumberFormat('en-US', {
   currency: 'USD',
   maximumFractionDigits: 0,
 });
+const ResponsiveContainer = dynamic(() => import('recharts').then((mod) => mod.ResponsiveContainer), { ssr: false });
+const ComposedChart = dynamic(() => import('recharts').then((mod) => mod.ComposedChart), { ssr: false });
+const XAxis = dynamic(() => import('recharts').then((mod) => mod.XAxis), { ssr: false });
+const YAxis = dynamic(() => import('recharts').then((mod) => mod.YAxis), { ssr: false });
+const Tooltip = dynamic(() => import('recharts').then((mod) => mod.Tooltip), { ssr: false });
+const CartesianGrid = dynamic(() => import('recharts').then((mod) => mod.CartesianGrid), { ssr: false });
+const Bar = dynamic(() => import('recharts').then((mod) => mod.Bar), { ssr: false });
+const Line = dynamic(() => import('recharts').then((mod) => mod.Line), { ssr: false });
 
 export function RevenueChart({ data }: RevenueChartProps) {
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useSyncExternalStore(
+    useCallback((onStoreChange) => {
+      const timer = setTimeout(onStoreChange, 0);
+      return () => clearTimeout(timer);
+    }, []),
+    () => true,
+    () => false
+  );
 
   return (
     <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5'>

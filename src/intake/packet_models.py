@@ -133,6 +133,7 @@ class Slot:
             "authority_level": self.authority_level,
             "extraction_mode": self.extraction_mode,
             "evidence_refs": [asdict(r) for r in self.evidence_refs],
+            "derived_from": list(self.derived_from),
             "updated_at": self.updated_at,
             "notes": self.notes,
         }

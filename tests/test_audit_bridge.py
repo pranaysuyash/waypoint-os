@@ -1,10 +1,34 @@
 """Tests for spine_api.core.audit_bridge — sync-compatible dual-write audit logging."""
 
-import os
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock
 
 from spine_api.core.audit_bridge import audit, _schedule_sql_write, _write_to_sql
+
+
+class FakeAsyncSessionContext:
+    def __init__(self, session):
+        self.session = session
+
+    async def __aenter__(self):
+        return self.session
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        return None
+
+
+class AsyncCallRecorder:
+    def __init__(self, side_effect=None):
+        self.side_effect = side_effect
+        self.call_count = 0
+
+    async def __call__(self, *args, **kwargs):
+        self.call_count += 1
+        if self.side_effect:
+            raise self.side_effect
+
+    def assert_awaited_once(self):
+        assert self.call_count == 1
 
 
 class TestAuditBridgeFunction:
@@ -83,10 +107,11 @@ class TestScheduleSQLWrite:
 
     def test_schedule_with_running_loop(self):
         """When an event loop is running, schedules via run_coroutine_threadsafe."""
-        with patch("spine_api.core.audit_bridge.asyncio") as mock_asyncio:
-            mock_loop = MagicMock()
-            mock_loop.is_running.return_value = True
-            mock_asyncio.get_running_loop.return_value = mock_loop
+        mock_loop = MagicMock()
+        mock_loop.is_running.return_value = True
+        with patch("spine_api.core.audit_bridge.asyncio.get_running_loop", return_value=mock_loop), \
+             patch("spine_api.core.audit_bridge.asyncio.run_coroutine_threadsafe") as mock_run_threadsafe, \
+             patch("spine_api.core.audit_bridge._write_to_sql", new=MagicMock(return_value=object())):
 
             _schedule_sql_write(
                 action="test",
@@ -99,12 +124,14 @@ class TestScheduleSQLWrite:
                 user_agent=None,
             )
 
-        mock_asyncio.run_coroutine_threadsafe.assert_called_once()
+        mock_run_threadsafe.assert_called_once()
+        scheduled_payload = mock_run_threadsafe.call_args[0][0]
+        assert scheduled_payload is not None
 
     def test_schedule_without_running_loop_in_dev(self):
         """In dev/test, missing event loop is silently skipped."""
-        with patch("spine_api.core.audit_bridge.asyncio") as mock_asyncio:
-            mock_asyncio.get_running_loop.side_effect = RuntimeError("no loop")
+        with patch("spine_api.core.audit_bridge.asyncio.get_running_loop", side_effect=RuntimeError("no loop")), \
+             patch("spine_api.core.audit_bridge.asyncio.run_coroutine_threadsafe") as mock_run_threadsafe:
             # _IS_DEV or _IS_TEST should be True in test env
             _schedule_sql_write(
                 action="test",
@@ -116,14 +143,14 @@ class TestScheduleSQLWrite:
                 ip_address=None,
                 user_agent=None,
             )
-        # Should not raise or call run_coroutine_threadsafe
+        mock_run_threadsafe.assert_not_called()
 
     def test_schedule_fallback_creates_loop(self, monkeypatch):
         """If no running loop and not dev/test, creates one via asyncio.run."""
         monkeypatch.setenv("ENVIRONMENT", "production")
-        import spine_api.core.audit_bridge as bridge
-        with patch("spine_api.core.audit_bridge.asyncio") as mock_asyncio:
-            mock_asyncio.get_running_loop.side_effect = RuntimeError("no loop")
+        with patch("spine_api.core.audit_bridge.asyncio.get_running_loop", side_effect=RuntimeError("no loop")), \
+             patch("spine_api.core.audit_bridge.asyncio.run") as mock_run, \
+             patch("spine_api.core.audit_bridge._write_to_sql", new=MagicMock(return_value=object())):
             _schedule_sql_write(
                 action="test",
                 user_id="u1",
@@ -134,7 +161,7 @@ class TestScheduleSQLWrite:
                 ip_address=None,
                 user_agent=None,
             )
-            mock_asyncio.run.assert_called_once()
+            mock_run.assert_called_once()
 
 
 class TestWriteToSQL:
@@ -144,9 +171,9 @@ class TestWriteToSQL:
     async def test_write_creates_audit_log_entry(self):
         """_write_to_sql should create and commit an AuditLog entry."""
         with patch("spine_api.core.database.async_session_maker") as mock_session_maker:
-            mock_session = AsyncMock()
-            mock_session_maker.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-            mock_session_maker.return_value.__aexit__ = AsyncMock(return_value=None)
+            mock_session = MagicMock()
+            mock_session.commit = AsyncCallRecorder()
+            mock_session_maker.return_value = FakeAsyncSessionContext(mock_session)
 
             await _write_to_sql(
                 action="draft_created",
@@ -160,16 +187,15 @@ class TestWriteToSQL:
             )
 
         mock_session.add.assert_called_once()
-        mock_session.commit.assert_called_once()
+        mock_session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_write_failure_is_non_fatal(self):
         """_write_to_sql should not raise if DB commit fails."""
         with patch("spine_api.core.database.async_session_maker") as mock_session_maker:
-            mock_session = AsyncMock()
-            mock_session.commit.side_effect = RuntimeError("DB down")
-            mock_session_maker.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-            mock_session_maker.return_value.__aexit__ = AsyncMock(return_value=None)
+            mock_session = MagicMock()
+            mock_session.commit = AsyncCallRecorder(side_effect=RuntimeError("DB down"))
+            mock_session_maker.return_value = FakeAsyncSessionContext(mock_session)
 
             # Should not raise
             await _write_to_sql(

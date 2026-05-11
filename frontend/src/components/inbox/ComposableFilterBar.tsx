@@ -353,9 +353,12 @@ export const ComposableFilterBar = memo(function ComposableFilterBar({
   const handlePreset = useCallback(
     (preset: Partial<InboxFilters>) => {
       onFiltersChange(preset as InboxFilters);
+      setOpenDropdown(null);
     },
     [onFiltersChange],
   );
+
+  const handleDropdownClose = useCallback(() => setOpenDropdown(null), []);
 
   return (
     <div className={className}>
@@ -374,21 +377,22 @@ export const ComposableFilterBar = memo(function ComposableFilterBar({
         </button>
 
         {/* Filter dropdowns - skip minValue/maxValue for now (input-based) */}
-        {FILTER_GROUPS.flatMap((g) => g.multi ? [g] : []).map((group) => {
-          const selected = filters[group.key] as readonly string[] | undefined;
+        {FILTER_GROUPS.flatMap((g) => {
+          if (!g.multi) return [];
+          const selected = filters[g.key] as readonly string[] | undefined;
           const count = selected?.length ?? 0;
-          return (
-            <div key={group.key} className="relative">
+          return [(
+            <div key={g.key} className="relative">
               <button
                 type="button"
-                onClick={() => setOpenDropdown(openDropdown === group.key ? null : group.key)}
+                onClick={() => setOpenDropdown(openDropdown === g.key ? null : g.key)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-ui-xs font-semibold transition-colors border ${
                   count > 0
                     ? 'bg-[rgba(88,166,255,0.10)] text-[#58a6ff] border-[rgba(88,166,255,0.28)]'
                     : 'text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#1c2128] border-[#30363d]'
                 }`}
               >
-                <span>{group.label}</span>
+                <span>{g.label}</span>
                 {count > 0 && (
                   <span className="tabular-nums px-1 py-0.5 rounded bg-[rgba(88,166,255,0.15)] text-[10px]">
                     {count}
@@ -396,16 +400,16 @@ export const ComposableFilterBar = memo(function ComposableFilterBar({
                 )}
                 <ChevronDown className="size-3" />
               </button>
-              {openDropdown === group.key && (
+              {openDropdown === g.key && (
                 <FilterDropdown
-                  group={group}
+                  group={g}
                   selected={selected}
                   onToggle={handleToggle}
-                  onClose={() => setOpenDropdown(null)}
+                  onClose={handleDropdownClose}
                 />
               )}
             </div>
-          );
+          )];
         })}
 
         {/* Quick presets */}
@@ -429,4 +433,3 @@ export const ComposableFilterBar = memo(function ComposableFilterBar({
   );
 });
 
-export default ComposableFilterBar;

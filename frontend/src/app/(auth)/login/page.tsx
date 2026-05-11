@@ -1,20 +1,27 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useReducer, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth';
 import { api, ApiException } from '@/lib/api-client';
 import { DEFAULT_AUTH_REDIRECT, resolveSafeRedirect } from '@/lib/auth-redirect';
 
+type LoginFormState = { email: string; password: string; showPassword: boolean };
+type LoginFormAction = { type: 'SET_FIELD'; field: keyof LoginFormState; value: string | boolean };
+function loginFormReducer(state: LoginFormState, action: LoginFormAction): LoginFormState {
+  switch (action.type) {
+    case 'SET_FIELD': return { ...state, [action.field]: action.value };
+    default: return state;
+  }
+}
+
 function LoginPageInner() {
   const { push } = useRouter();
   const searchParams = useSearchParams();
   const getSearchParam = searchParams.get.bind(searchParams);
   const hydrate = useAuthStore((s) => s.hydrate);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [formState, dispatch] = useReducer(loginFormReducer, { email: '', password: '', showPassword: false });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const redirectPath = resolveSafeRedirect(
@@ -36,7 +43,7 @@ function LoginPageInner() {
         user: { id: string; email: string; name?: string };
         agency: { id: string; name: string; slug: string; logo_url?: string };
         membership: { role: string; is_primary: boolean };
-      }>('/api/auth/login', { email, password });
+      }>('/api/auth/login', { email: formState.email, password: formState.password });
 
       if (!data.ok) {
         setError('Login failed');
@@ -69,15 +76,15 @@ function LoginPageInner() {
 
         <div className='auth-field'>
           <label htmlFor='email'>Email</label>
-          <input
-            id='email'
-            type='email'
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder='you@agency.com'
-            required
-            autoComplete='email'
-          />
+            <input
+              id='email'
+              type='email'
+              value={formState.email}
+              onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'email', value: e.target.value })}
+              placeholder='you@agency.com'
+              required
+              autoComplete='email'
+            />
         </div>
 
         <div className='auth-field'>
@@ -85,9 +92,9 @@ function LoginPageInner() {
           <div className='auth-password-wrap'>
             <input
               id='password'
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              type={formState.showPassword ? 'text' : 'password'}
+              value={formState.password}
+              onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'password', value: e.target.value })}
               placeholder='Enter your password'
               required
               autoComplete='current-password'
@@ -95,11 +102,11 @@ function LoginPageInner() {
             <button
               type='button'
               className='auth-password-toggle'
-              onClick={() => setShowPassword((prev) => !prev)}
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-              aria-pressed={showPassword}
+              onClick={() => dispatch({ type: 'SET_FIELD', field: 'showPassword', value: !formState.showPassword })}
+              aria-label={formState.showPassword ? 'Hide password' : 'Show password'}
+              aria-pressed={formState.showPassword}
             >
-              {showPassword ? 'Hide' : 'Show'}
+              {formState.showPassword ? 'Hide' : 'Show'}
             </button>
           </div>
         </div>

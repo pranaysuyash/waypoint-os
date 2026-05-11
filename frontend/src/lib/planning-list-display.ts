@@ -57,7 +57,7 @@ function formatMissingDetailBadge(field: string): string {
   }
 }
 
-export function getPlanningAssignmentLabel(trip?: Trip | null): string {
+function getPlanningAssignmentLabel(trip?: Trip | null): string {
   if (trip?.status === 'in_progress') return 'In progress';
   if (trip?.status === 'completed') return 'Completed';
   return 'In planning';
@@ -72,7 +72,7 @@ export function getPlanningStageLabel(trip?: Trip | null): string {
   return "Details";
 }
 
-export function getPlanningStageProgress(trip?: Trip | null): string[] {
+function getPlanningStageProgress(trip?: Trip | null): string[] {
   const allStages = ["Intake", "Details", "Options", "Quote Review", "Output"];
   const current = getPlanningStageLabel(trip);
   const currentIdx = allStages.indexOf(current);
@@ -124,7 +124,7 @@ export function getTripFreshnessLabel(trip?: Trip | null): { label: string; tone
   return { label: "In progress", tone: "neutral", detail: `Updated ${trip?.age || "recently"}` };
 }
 
-export function getPlanningListAction(trip?: Trip | null): { label: string; href: string } {
+function getPlanningListAction(trip?: Trip | null): { label: string; href: string } {
   const href = getTripRoute(trip?.id, 'intake');
 
   if (getPlanningBriefStatus(trip) === 'missing_required_details') {

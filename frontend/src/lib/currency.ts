@@ -50,6 +50,71 @@ export const CURRENCY_CONFIG: Record<SupportedCurrency, CurrencyConfig> = {
   JPY: { code: 'JPY', symbol: '¥', name: 'Japanese Yen', locale: 'ja-JP', decimals: 0, flag: '🇯🇵' },
 };
 
+const CURRENCY_CODES = Object.keys(CURRENCY_CONFIG) as SupportedCurrency[];
+const CURRENCY_CODE_PATTERN = new RegExp(`\\b(${CURRENCY_CODES.join('|')})\\b`);
+const CURRENCY_FORMATTERS: Record<SupportedCurrency, Intl.NumberFormat> = {
+  INR: new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }),
+  USD: new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }),
+  EUR: new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }),
+  GBP: new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }),
+  AED: new Intl.NumberFormat('ar-AE', {
+    style: 'currency',
+    currency: 'AED',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }),
+  SGD: new Intl.NumberFormat('en-SG', {
+    style: 'currency',
+    currency: 'SGD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }),
+  THB: new Intl.NumberFormat('th-TH', {
+    style: 'currency',
+    currency: 'THB',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }),
+  AUD: new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: 'AUD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }),
+  CAD: new Intl.NumberFormat('en-CA', {
+    style: 'currency',
+    currency: 'CAD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }),
+  JPY: new Intl.NumberFormat('ja-JP', {
+    style: 'currency',
+    currency: 'JPY',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }),
+};
+
 // ============================================================================
 // FORMATTING FUNCTIONS
 // ============================================================================
@@ -57,17 +122,8 @@ export const CURRENCY_CONFIG: Record<SupportedCurrency, CurrencyConfig> = {
 /**
  * Format a money value with currency symbol and locale-specific formatting.
  */
-const _CURRENCY_FMTS = new Map<string, Intl.NumberFormat>();
-const _getFmt = (locale: string, code: string, dec: number) => {
-  const k = locale + '|' + code + '|' + dec;
-  let f = _CURRENCY_FMTS.get(k);
-  if (!f) { f = new Intl.NumberFormat(locale, { style: 'currency', currency: code, minimumFractionDigits: dec, maximumFractionDigits: dec }); _CURRENCY_FMTS.set(k, f); }
-  return f;
-};
-
 export function formatMoney(amount: number, currency: SupportedCurrency = 'INR'): string {
-  const config = CURRENCY_CONFIG[currency];
-  return _getFmt(config.locale, config.code, config.decimals).format(amount);
+  return CURRENCY_FORMATTERS[currency].format(amount);
 }
 
 /**
@@ -109,13 +165,7 @@ export function parseBudgetString(input: string): Money | null {
 
   // Try to extract currency code
   let currency: SupportedCurrency = 'INR'; // Default
-  const CURRENCY_KEYS = CURRENCY_CODES;
-  for (const code of CURRENCY_KEYS) {
-    if (trimmed.includes(code)) {
-      currency = code;
-      break;
-    }
-  }
+  currency = (trimmed.match(CURRENCY_CODE_PATTERN)?.[1] as SupportedCurrency | undefined) ?? currency;
 
   // Extract number - handle formats like "2 lac", "200000", "10k", "2.5L"
   let amountStr = trimmed
@@ -156,8 +206,6 @@ export function formatBudgetWithCode(amount: number, currency: SupportedCurrency
 // ============================================================================
 // CURRENCY SELECTOR OPTIONS
 // ============================================================================
-
-const CURRENCY_CODES = Object.keys(CURRENCY_CONFIG) as SupportedCurrency[];
 
 export function getCurrencyOptions(): Array<{
   value: SupportedCurrency;

@@ -1,60 +1,69 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
+
+const subscribeToStaticSnapshot = () => () => {};
+const getEmptySnapshot = () => "";
+
+function formatDate(
+  dateInput: string | Date | null | undefined,
+  options?: Intl.DateTimeFormatOptions,
+): string {
+  if (!dateInput) return "";
+  return new Date(dateInput).toLocaleDateString("en-US", options);
+}
+
+function formatDateTime(dateInput: string | Date | null | undefined): string {
+  if (!dateInput) return "";
+  return new Date(dateInput).toLocaleString();
+}
+
+function formatTime(
+  dateInput: string | Date | null | undefined,
+  options?: Intl.DateTimeFormatOptions,
+): string {
+  if (!dateInput) return "";
+  return new Date(dateInput).toLocaleTimeString("en-US", options);
+}
 
 function useClientDate(
   dateInput: string | Date | null | undefined,
   options?: Intl.DateTimeFormatOptions,
 ): string {
-  const [formatted, setFormatted] = useState("");
-  useEffect(() => {
-    if (!dateInput) {
-      setFormatted("");
-      return;
-    }
-    const d = new Date(dateInput);
-    setFormatted(d.toLocaleDateString("en-US", options));
-  }, [dateInput]);
-  return formatted;
+  return useSyncExternalStore(
+    subscribeToStaticSnapshot,
+    () => formatDate(dateInput, options),
+    getEmptySnapshot,
+  );
 }
 
 function useClientDateTime(
   dateInput: string | Date | null | undefined,
 ): string {
-  const [formatted, setFormatted] = useState("");
-  useEffect(() => {
-    if (!dateInput) {
-      setFormatted("");
-      return;
-    }
-    const d = new Date(dateInput);
-    setFormatted(d.toLocaleString());
-  }, [dateInput]);
-  return formatted;
+  return useSyncExternalStore(
+    subscribeToStaticSnapshot,
+    () => formatDateTime(dateInput),
+    getEmptySnapshot,
+  );
 }
 
 function useClientTime(
   dateInput: string | Date | null | undefined,
   options?: Intl.DateTimeFormatOptions,
 ): string {
-  const [formatted, setFormatted] = useState("");
-  useEffect(() => {
-    if (!dateInput) {
-      setFormatted("");
-      return;
-    }
-    const d = new Date(dateInput);
-    setFormatted(d.toLocaleTimeString("en-US", options));
-  }, [dateInput]);
-  return formatted;
+  return useSyncExternalStore(
+    subscribeToStaticSnapshot,
+    () => formatTime(dateInput, options),
+    getEmptySnapshot,
+  );
 }
 
 function useClientNow(options?: Intl.DateTimeFormatOptions): string {
-  const [value, setValue] = useState("");
-  useEffect(() => {
-    setValue(new Date().toLocaleDateString("en-US", options));
-  }, []);
-  return value;
+  return useSyncExternalStore(
+    subscribeToStaticSnapshot,
+    () => new Date().toLocaleDateString("en-US", options),
+    getEmptySnapshot,
+  );
 }
 
 // ─── Component wrappers for use in JSX (avoids inline hook calls) ───

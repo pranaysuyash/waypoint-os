@@ -46,8 +46,10 @@ describe('E2E: Metric Drill-Down Flow', () => {
     });
 
     // Import components after mocks are set up
-    const { TeamPerformanceChart } = await import('@/components/visual/TeamPerformanceChart');
-    const { MetricDrillDownDrawer } = await import('@/components/workspace/panels/MetricDrillDownDrawer');
+    const [{ TeamPerformanceChart }, { MetricDrillDownDrawer }] = await Promise.all([
+      import('@/components/visual/TeamPerformanceChart'),
+      import('@/components/workspace/panels/MetricDrillDownDrawer'),
+    ]);
 
     const mockTeamData = [
       {

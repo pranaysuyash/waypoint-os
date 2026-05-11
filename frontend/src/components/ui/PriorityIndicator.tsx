@@ -114,4 +114,3 @@ export const PriorityIndicator = memo(function PriorityIndicator({
   );
 });
 
-export default PriorityIndicator;

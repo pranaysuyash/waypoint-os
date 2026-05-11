@@ -1,10 +1,12 @@
 # Notebook 04: Response Generation — Contract Definition
 
-**Status**: 🔵 Specification — Ready for Implementation  
+**Status**: 🟡 Historical specification — superseded for new implementation by `TRAVELER_PROPOSAL_BOUNDARY_CONTRACT_2026-05-11.md`  
 **Topic ID**: 17  
 **Parent**: [EXPLORATION_TOPICS.md](../EXPLORATION_TOPICS.md)  
 **Depends On**: NB01, NB02, NB03, INTERNAL_DATA_INTEGRATION  
 **Last Updated**: 2026-04-09
+
+> 2026-05-11 implementation note: new work must use the semantic stage `traveler_proposal`, semantic gate `proposal_quality`, and user label "Build Proposal". The examples below preserve historical notebook terminology, but must not be implemented literally. In particular, do not serialize combined traveler/internal proposal objects with raw `asdict()`. Use the explicit public/internal boundary in `Docs/research/TRAVELER_PROPOSAL_BOUNDARY_CONTRACT_2026-05-11.md` and `src/intake/traveler_proposal.py`.
 
 ---
 

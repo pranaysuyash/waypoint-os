@@ -68,7 +68,7 @@ function WedgeHeader() {
     <header style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '14px 32px', borderBottom: `1px solid ${T.b0}`,
-      background: 'rgba(10,13,17,0.9)', backdropFilter: 'blur(12px)',
+      background: 'rgba(10,13,17,0.9)', backdropFilter: 'blur(8px)',
       position: 'sticky', top: 0, zIndex: 50, flexShrink: 0,
     }}>
       <Link href='/' style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none' }}>
@@ -118,14 +118,15 @@ async function extractTextFromFile(file: File): Promise<string> {
 
     const data = await file.arrayBuffer();
     const doc = await pdfjs.getDocument({ data }).promise;
-    const pageTexts: string[] = [];
 
-    for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber += 1) {
-      const page = await doc.getPage(pageNumber);
-      const content = await page.getTextContent();
+    const pages = await Promise.all(
+      Array.from({ length: doc.numPages }, (_, i) => doc.getPage(i + 1))
+    );
+    const contents = await Promise.all(pages.map((p) => p.getTextContent()));
+    const pageTexts: string[] = [];
+    for (const content of contents) {
       const text = (content.items as Array<{ str?: string }>)
-        .map((item) => item.str ?? '')
-        .filter(Boolean)
+        .flatMap((item) => item.str ? [item.str] : [])
         .join(' ');
       if (text.trim()) {
         pageTexts.push(text.trim());
@@ -310,7 +311,7 @@ function UploadCard({
             placeholder={'Paste your day-by-day plan here…\n\nDay 1: Arrive LAX → London Heathrow (AA100, dep 10:30)\nDay 2: London - check-in The Connaught, walking tour\nDay 3: Paris Eurostar (07:55) - Musée d\'Orsay, Seine dinner\n…'}
             style={{
               width: '100%', minHeight: 180, padding: '16px 18px',
-              background: 'none', border: 'none', outline: 'none', resize: 'none',
+              background: 'none', border: 'none', resize: 'none',
               color: T.t1, fontSize: 13, fontFamily: T.fMono, lineHeight: 1.65,
               boxSizing: 'border-box',
             }}
@@ -505,7 +506,7 @@ function TravelPreviewCard() {
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 18 }}>
           <div style={{ maxWidth: 260 }}>
             <div style={{ fontSize: 12, color: T.t3, marginBottom: 4 }}>Sample scan</div>
-            <h3 style={{ fontSize: 22, lineHeight: 1.08, fontWeight: 900, color: T.t1, fontFamily: T.fDisplay, margin: 0 }}>
+	            <h3 style={{ fontSize: 22, lineHeight: 1.08, fontWeight: 600, color: T.t1, fontFamily: T.fDisplay, margin: 0 }}>
               Family trip to Singapore
             </h3>
           </div>
@@ -735,7 +736,7 @@ function UploadView({
           </span>
 
           <h1 style={{
-            fontSize: 'clamp(36px, 4vw, 54px)', fontWeight: 900,
+	            fontSize: 'clamp(36px, 4vw, 54px)', fontWeight: 600,
             lineHeight: 1.04, letterSpacing: '-0.04em',
             color: '#f5fbff', fontFamily: T.fDisplay, marginBottom: 20,
           }}>
@@ -860,7 +861,7 @@ function UploadView({
               <FileCheck size={13} /> Six trip checks
             </div>
             <h2 style={{
-              fontSize: 'clamp(28px, 3.5vw, 40px)', fontWeight: 800,
+	              fontSize: 'clamp(28px, 3.5vw, 40px)', fontWeight: 600,
               letterSpacing: '-0.03em', color: T.t1, fontFamily: T.fDisplay, marginBottom: 14,
             }}>
               What this checker catches
@@ -915,7 +916,7 @@ function UploadView({
                 Example upgrade report
               </div>
               <h2 style={{
-                fontSize: 'clamp(26px, 3vw, 38px)', fontWeight: 800,
+	                fontSize: 'clamp(26px, 3vw, 38px)', fontWeight: 600,
                 letterSpacing: '-0.03em', color: T.t1, fontFamily: T.fDisplay,
                 marginBottom: 18, lineHeight: 1.1,
               }}>
@@ -989,7 +990,7 @@ function UploadView({
               What you receive
             </div>
             <h2 style={{
-              fontSize: 'clamp(26px, 3vw, 38px)', fontWeight: 800,
+	              fontSize: 'clamp(26px, 3vw, 38px)', fontWeight: 600,
               letterSpacing: '-0.03em', color: T.t1, fontFamily: T.fDisplay, marginBottom: 14,
             }}>
               A structured brief your advisor can act on
@@ -1103,7 +1104,7 @@ function UploadView({
         <div style={{ maxWidth: 1140, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
             <h2 style={{
-              fontSize: 'clamp(24px, 3vw, 36px)', fontWeight: 800,
+	              fontSize: 'clamp(24px, 3vw, 36px)', fontWeight: 600,
               letterSpacing: '-0.03em', color: T.t1, fontFamily: T.fDisplay, marginBottom: 10,
             }}>
               What travelers say
@@ -1156,7 +1157,7 @@ function UploadView({
           </span>
 
           <h2 style={{
-            fontSize: 'clamp(28px, 4vw, 46px)', fontWeight: 900,
+	            fontSize: 'clamp(28px, 4vw, 46px)', fontWeight: 600,
             letterSpacing: '-0.04em', color: T.t1, fontFamily: T.fDisplay,
             marginBottom: 18, lineHeight: 1.05,
           }}>
@@ -1556,7 +1557,7 @@ function ResultsView({
                         onChange={e => setEmail(e.target.value)}
                         placeholder='your@email.com'
                         style={{
-                          flex: 1, background: 'none', border: 'none', outline: 'none',
+                          flex: 1, background: 'none', border: 'none',
                           color: T.t1, fontSize: 12, fontFamily: T.fBody,
                         }}
                       />

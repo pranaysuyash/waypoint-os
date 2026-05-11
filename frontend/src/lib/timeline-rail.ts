@@ -26,7 +26,7 @@ function normalizeTimelineText(event: TimelineEvent): string {
     .toLowerCase();
 }
 
-export function isTimelineStageUnset(stage?: string | null): boolean {
+function isTimelineStageUnset(stage?: string | null): boolean {
   const normalized = stage?.trim().toLowerCase();
   return !normalized || normalized === "unknown" || normalized === "unset" || normalized === "none" || normalized === "n/a";
 }
@@ -36,7 +36,7 @@ export function getTimelineStageLabel(stage?: string | null): string {
   return labelOrTitle(STAGE_LABELS, stage ?? "");
 }
 
-export function getTimelineTriggerLabel(eventCount?: number | null): string {
+function getTimelineTriggerLabel(eventCount?: number | null): string {
   if (!eventCount) return "Timeline";
   return `Timeline · ${eventCount} ${eventCount === 1 ? "event" : "events"}`;
 }

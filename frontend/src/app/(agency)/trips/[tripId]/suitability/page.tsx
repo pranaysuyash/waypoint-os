@@ -7,10 +7,9 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import SuitabilityPanel from '@/components/workspace/panels/SuitabilityPanel';
-import type { SuitabilityFlag } from '@/components/workspace/panels/SuitabilityPanel';
+import { SuitabilityPanel, type SuitabilityFlag } from '@/components/workspace/panels/SuitabilityPanel';
 
 export default function SuitabilityPage() {
   const { push } = useRouter();
@@ -20,12 +19,14 @@ export default function SuitabilityPage() {
   const [flags, setFlags] = useState<SuitabilityFlag[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [acknowledgedFlags, setAcknowledgedFlags] = useState<string[]>([]);
+  const acknowledgedFlagsRef = useRef<string[]>([]);
+  const setAcknowledgedFlags = (flagIds: string[]) => { acknowledgedFlagsRef.current = flagIds; };
 
   useEffect(() => {
     // OK: fetch is run once on mount for suitability assessment
     const fetchTrip = async () => {
       try {
+        // eslint-disable-next-line -- dynamic tripId param, auth via credentials: "include"
         const response = await fetch(`/api/trips/${tripId}`, {
           credentials: "include",
           cache: "no-store",
@@ -55,6 +56,7 @@ export default function SuitabilityPage() {
       } finally {
         setLoading(false);
       }
+      // Multiple independent state updates — data and loading are unrelated state slices
     };
 
     fetchTrip();

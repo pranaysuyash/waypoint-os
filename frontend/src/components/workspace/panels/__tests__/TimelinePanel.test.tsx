@@ -215,7 +215,7 @@ describe('TimelinePanel', () => {
       expect(screen.getByRole('button', { name: 'Trip Details' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Quote Assessment' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Options' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Safety Review' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Risk Review' })).toBeInTheDocument();
     });
   });
 

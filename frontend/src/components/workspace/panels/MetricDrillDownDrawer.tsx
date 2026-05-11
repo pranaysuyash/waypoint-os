@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useTransition } from 'react';
 import { ChevronRight, Loader, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { Drawer } from '@/components/ui/drawer';
 import { ClientDate } from '@/hooks/useClientDate';
@@ -35,26 +35,25 @@ export function MetricDrillDownDrawer({
   onTripSelect,
 }: MetricDrillDownDrawerProps) {
   const [trips, setTrips] = useState<Trip[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const fetchTripData = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/insights/agent-trips?agentId=${agentId}&metric=${metric.type}`, {
-        credentials: "include",
-        cache: "no-store",
-      });
-      if (!response.ok) throw new Error('Failed to fetch trip data');
-      const data = await response.json();
-      setTrips(data.trips || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load trip data');
-      setTrips([]);
-    } finally {
-      setIsLoading(false);
-    }
+  const fetchTripData = useCallback(() => {
+    startTransition(async () => {
+      setError(null);
+      try {
+        const response = await fetch(`/api/insights/agent-trips?agentId=${agentId}&metric=${metric.type}`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error('Failed to fetch trip data');
+        const data = await response.json();
+        setTrips(data.trips || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load trip data');
+        setTrips([]);
+      }
+    });
   }, [agentId, metric.type]);
 
   useEffect(() => {
@@ -92,7 +91,7 @@ export function MetricDrillDownDrawer({
       title={`${metric.label} Details`}
       description={`${agentName} • ${trips.length} trips`}
     >
-      {isLoading && (
+      {isPending && (
         <div className='flex items-center justify-center h-full'>
           <div className='flex flex-col items-center gap-2'>
             <Loader className='size-8 text-accent-blue animate-spin' />
@@ -110,7 +109,7 @@ export function MetricDrillDownDrawer({
         </div>
       )}
 
-      {!isLoading && !error && trips.length === 0 && (
+      {!isPending && !error && trips.length === 0 && (
         <div className='flex items-center justify-center h-full'>
           <div className='text-center'>
             <p className='text-text-muted mb-2'>No trips found for this metric</p>
@@ -121,7 +120,7 @@ export function MetricDrillDownDrawer({
         </div>
       )}
 
-      {!isLoading && !error && trips.length > 0 && (
+      {!isPending && !error && trips.length > 0 && (
         <div className='space-y-3 p-6'>
           {trips.map((trip) => (
             <button

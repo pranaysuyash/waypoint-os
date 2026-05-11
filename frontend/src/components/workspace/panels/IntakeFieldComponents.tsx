@@ -132,7 +132,6 @@ export function EditableField({
               value={value}
               onChange={(e) => onEditValueChange(field, e.target.value)}
               className='flex-1 px-2 py-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded text-[var(--ui-text-xs)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]'
-              autoFocus
             />
           )}
           <button
@@ -215,7 +214,6 @@ export function BudgetField({
             onChange={(e) => onAmountChange(e.target.value)}
             placeholder='Amount'
             className='flex-1 px-2 py-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded text-[var(--ui-text-xs)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]'
-            autoFocus
           />
           <select
             value={budgetCurrency}

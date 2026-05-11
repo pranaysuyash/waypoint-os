@@ -285,4 +285,3 @@ export const SuitabilityPanel: React.FC<SuitabilityPanelProps> = ({
   );
 };
 
-export default SuitabilityPanel;

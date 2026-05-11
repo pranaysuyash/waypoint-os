@@ -68,4 +68,3 @@ export const InboxEmptyState = memo(function InboxEmptyState({
   );
 });
 
-export default InboxEmptyState;

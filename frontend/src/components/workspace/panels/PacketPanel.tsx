@@ -105,7 +105,7 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
 
       {/* Facts Section */}
       <section>
-        <h3 className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-text-placeholder mb-3">Extracted Information</h3>
+	        <h3 className="text-[var(--ui-text-xs)] font-semibold uppercase tracking-widest text-text-placeholder mb-3">Extracted Information</h3>
         <div className="bg-[#0a0d11] rounded-lg border border-highlight overflow-hidden">
           <table className="w-full text-ui-sm text-left">
             <thead className="bg-elevated text-text-placeholder text-[var(--ui-text-xs)] uppercase tracking-widest">
@@ -136,7 +136,7 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
       {/* Derived Signals */}
       {Object.keys(derivedSignals).length > 0 && (
         <section>
-          <h3 className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-text-placeholder mb-3">Inferred Details</h3>
+	          <h3 className="text-[var(--ui-text-xs)] font-semibold uppercase tracking-widest text-text-placeholder mb-3">Inferred Details</h3>
           <div className="bg-[#0a0d11] rounded-lg border border-highlight p-4 divide-y divide-[#1c2128]">
             {Object.entries(derivedSignals).map((entry) => {
               const [signal, slot] = entry;

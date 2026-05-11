@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import {
   ChevronDown,
   FileText,
@@ -10,6 +11,7 @@ import {
   Wallet,
   Settings,
   Plane,
+  Lightbulb,
 } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useId } from 'react';
@@ -41,7 +43,7 @@ interface IntakeTabProps {
   trip?: Trip | null;
 }
 
-export default function IntakeTab({ trip }: IntakeTabProps) {
+function IntakeTabInner({ trip }: IntakeTabProps) {
   const searchParams = useSearchParams();
   const getSearchParam = searchParams.get.bind(searchParams);
   const { replace } = useRouter();
@@ -64,6 +66,22 @@ export default function IntakeTab({ trip }: IntakeTabProps) {
   const budget = trip?.budget || '-';
   const party = trip?.party || '-';
   const dateWindow = trip?.dateWindow || '-';
+  const stageHelp: Record<SpineStage, string> = {
+    discovery: 'Use this when you are still qualifying the inquiry and need missing essentials.',
+    shortlist: 'Use this when core details are known and you are preparing curated options.',
+    proposal: 'Use this when you are shaping commercial quote-ready recommendations.',
+    booking: 'Use this when plans are accepted and execution confirmations are underway.',
+  };
+  const modeHelp: Record<OperatingMode, string> = {
+    normal_intake: 'Default for most new traveler inquiries.',
+    audit: 'Use for quality review, correction, or historical cleanup.',
+    emergency: 'Use when there is urgent traveler impact or time-critical risk.',
+    follow_up: 'Use for inbound follow-ups after prior communication.',
+    cancellation: 'Use when intent shifts to cancellation, refund, or rescue planning.',
+    post_trip: 'Use for post-travel closure, feedback, and retention actions.',
+    coordinator_group: 'Use when coordinating multi-party/internal stakeholders.',
+    owner_review: 'Use when owner-level judgment is required before proceeding.',
+  };
 
   return (
     <div className='space-y-6'>
@@ -124,11 +142,15 @@ export default function IntakeTab({ trip }: IntakeTabProps) {
               Customer Message
             </label>
           </div>
+          <p className='mb-2 text-ui-xs text-[#8b949e]'>
+            Paste the exact traveler-facing request: destination ideas, travel window, party details, budget hints, constraints,
+            preferences, and any channel transcript (email/WhatsApp/call summary).
+          </p>
           <textarea
             id={id1}
             value={input_raw_note}
             onChange={(e) => setInputRawNote(e.target.value)}
-            placeholder='Paste the incoming traveler note here…'
+            placeholder='Example: Couple from Mumbai for 6N Bali in July, beach villa preference, INR 3-4L budget, vegetarian meals, anniversary trip.'
             rows={6}
             className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3] placeholder:text-[#8b949e] focus:outline-none focus:border-[#58a6ff] resize-none font-mono'
           />
@@ -141,11 +163,15 @@ export default function IntakeTab({ trip }: IntakeTabProps) {
               Agent Notes
             </label>
           </div>
+          <p className='mb-2 text-ui-xs text-[#8b949e]'>
+            Add internal context not meant for the traveler: qualification signals, risk flags, supplier constraints, margin targets,
+            urgency, and next-step instructions for the team.
+          </p>
           <textarea
             id={id2}
             value={input_owner_note}
             onChange={(e) => setInputOwnerNote(e.target.value)}
-            placeholder="Add owner's comments or clarifications…"
+            placeholder='Example: High-intent repeat client, prefers premium inventory, keep margin >=18%, verify visa timeline before quote.'
             rows={6}
             className='w-full px-3 py-2 bg-[#0f1115] border border-[#30363d] rounded-lg text-ui-sm text-[#e6edf3] placeholder:text-[#8b949e] focus:outline-none focus:border-[#58a6ff] resize-none'
           />
@@ -157,6 +183,16 @@ export default function IntakeTab({ trip }: IntakeTabProps) {
           <Settings className='size-4 text-[#8b949e]' />
           Advanced Configuration
         </summary>
+        <div className='px-4 pb-1'>
+          <div className='rounded-md border border-[#30363d] bg-[#0f1115] px-3 py-2 text-ui-xs text-[#8b949e] flex items-start gap-2'>
+            <Lightbulb className='size-3.5 mt-0.5 text-[#58a6ff]' />
+            <div>
+              <p className='text-[#c9d1d9] mb-1'>Context-aware recommendation</p>
+              <p>Stage: {stageHelp[stage]}</p>
+              <p>Request type: {modeHelp[operatingMode]}</p>
+            </div>
+          </div>
+        </div>
         <div className='px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-4'>
           <div>
             <label htmlFor={id3} className='block text-ui-sm font-medium text-[#8b949e] mb-2'>
@@ -216,5 +252,13 @@ export default function IntakeTab({ trip }: IntakeTabProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function IntakeTab(props: IntakeTabProps) {
+  return (
+    <Suspense fallback={<div className="p-4 text-ui-sm text-[#8b949e]">Loading intake…</div>}>
+      <IntakeTabInner {...props} />
+    </Suspense>
   );
 }

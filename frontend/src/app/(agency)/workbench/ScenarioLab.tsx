@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useId } from 'react';
+import { Suspense, useMemo, useState, useId } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FileCode2, Loader2, Search, Sparkles } from 'lucide-react';
 import { useWorkbenchStore } from '@/stores/workbench';
@@ -14,7 +14,7 @@ function formatScenarioLabel(item: ScenarioListItem) {
   return `${sourceLabel} · ${item.title}`;
 }
 
-export default function ScenarioLab() {
+function ScenarioLabInner() {
   const { replace } = useRouter();
   const searchParams = useSearchParams();
   const {
@@ -309,5 +309,13 @@ export default function ScenarioLab() {
         </div>
       </div>
     </section>
+  );
+}
+
+export default function ScenarioLab() {
+  return (
+    <Suspense fallback={<div className="p-4 text-ui-sm text-[#8b949e]">Loading scenario lab…</div>}>
+      <ScenarioLabInner />
+    </Suspense>
   );
 }

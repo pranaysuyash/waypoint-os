@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from spine_api.routers import health
+from spine_api.version import APP_VERSION
 
 
 def test_health_success_path_uses_health_check_dict(monkeypatch):
@@ -17,7 +18,7 @@ def test_health_success_path_uses_health_check_dict(monkeypatch):
     response = health.health()
 
     assert response.status == "ok"
-    assert response.version == "1.0.0"
+    assert response.version == APP_VERSION
     assert response.components == {"decision": {"status": "ok"}}
     assert response.issues == ["warning-1"]
 
@@ -31,6 +32,6 @@ def test_health_fallback_when_health_check_dict_raises(monkeypatch):
     response = health.health()
 
     assert response.status == "ok"
-    assert response.version == "1.0.0"
+    assert response.version == APP_VERSION
     assert response.components is None
     assert response.issues is None

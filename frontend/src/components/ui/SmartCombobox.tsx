@@ -61,10 +61,12 @@ export function SmartCombobox({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Update input when value changes externally
-  useEffect(() => {
+  // Sync inputValue when value prop changes externally and dropdown is closed
+  const prevValueRef = useRef(value);
+  if (prevValueRef.current !== value && !isOpen) {
+    prevValueRef.current = value;
     setInputValue(value);
-  }, [value]);
+  }
 
   // Group options into predefined and custom
   const { predefined, custom } = useMemo(
@@ -101,6 +103,17 @@ export function SmartCombobox({
     const normalized = toTitleCase(inputValue);
     return !options.some(opt => opt.value.toLowerCase() === normalized.toLowerCase());
   }, [inputValue, options]);
+
+  // Split filtered options into predefined and custom (replaces IIFE in render)
+  const splitFiltered = useMemo(() => {
+    const predefined: typeof filteredOptions = [];
+    const custom: typeof filteredOptions = [];
+    for (const opt of filteredOptions) {
+      if (opt.isCustom) custom.push(opt);
+      else predefined.push(opt);
+    }
+    return { predefined, custom };
+  }, [filteredOptions]);
 
   // Handle selection
   const handleSelect = useCallback((option: ComboboxOption) => {
@@ -266,12 +279,7 @@ export function SmartCombobox({
           ) : (
             <>
               {(() => {
-                const predefined: typeof filteredOptions = [];
-                const custom: typeof filteredOptions = [];
-                for (const opt of filteredOptions) {
-                  if (opt.isCustom) custom.push(opt);
-                  else predefined.push(opt);
-                }
+                const { predefined, custom } = splitFiltered;
                 return (
                   <>
                     {predefined.length > 0 && (

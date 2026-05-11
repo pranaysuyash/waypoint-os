@@ -36,7 +36,7 @@ export const VIEW_PROFILE_LABELS: Record<ViewProfile, string> = {
 };
 
 /** Canonical sort options */
-export const SORT_OPTIONS = [
+const SORT_OPTIONS = [
   { key: 'priority', label: 'Priority', defaultDirection: 'desc' as const },
   { key: 'urgency', label: 'Urgency', defaultDirection: 'desc' as const },
   { key: 'importance', label: 'Importance', defaultDirection: 'desc' as const },
@@ -352,7 +352,7 @@ export type MetricField =
   | 'priority'
   | 'stage';
 
-export const METRIC_ROW_CONFIG: Record<ViewProfile, MetricField[]> = {
+const METRIC_ROW_CONFIG: Record<ViewProfile, MetricField[]> = {
   operations: ['partySize', 'dateWindow', 'value', 'daysInCurrentStage'],
   teamLead: ['assignedToName', 'slaStatus', 'daysInCurrentStage', 'priority'],
   finance: ['value', 'stage', 'dateWindow', 'priority'],
@@ -400,7 +400,7 @@ export function shouldShowMicroLabels(): boolean {
 // BADGE LABELS (for progressive disclosure)
 // ============================================================================
 
-export const MICRO_LABELS: Record<string, string> = {
+const MICRO_LABELS: Record<string, string> = {
   // Priority
   critical: 'needs human review',
   high: 'high attention',

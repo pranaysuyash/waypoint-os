@@ -127,7 +127,7 @@ const StatCard = memo(function StatCard({
         style={{
           background: 'var(--bg-surface)',
           borderColor: 'var(--border-default)',
-          borderLeft: '3px solid var(--accent-red)',
+          boxShadow: 'inset 0 0 0 1px rgba(248, 81, 73, 0.24)',
         }}
       >
         <div className='flex items-center justify-between'>
@@ -187,11 +187,11 @@ const StatCard = memo(function StatCard({
         style={cardStyles}
         onMouseEnter={(e) => {
           const el = e.currentTarget as HTMLAnchorElement;
-          el.style.borderColor = 'var(--border-hover)'; el.style.background = 'var(--bg-elevated)';
+          Object.assign(el.style, { borderColor: 'var(--border-hover)', background: 'var(--bg-elevated)' });
         }}
         onMouseLeave={(e) => {
           const el = e.currentTarget as HTMLAnchorElement;
-          el.style.borderColor = 'var(--border-default)'; el.style.background = 'var(--bg-surface)';
+          Object.assign(el.style, { borderColor: 'var(--border-default)', background: 'var(--bg-surface)' });
         }}
       >
         {cardContent}
@@ -205,11 +205,11 @@ const StatCard = memo(function StatCard({
       style={cardStyles}
       onMouseEnter={(e) => {
         const el = e.currentTarget as HTMLDivElement;
-        el.style.borderColor = 'var(--border-hover)'; el.style.background = 'var(--bg-elevated)';
+        Object.assign(el.style, { borderColor: 'var(--border-hover)', background: 'var(--bg-elevated)' });
       }}
       onMouseLeave={(e) => {
         const el = e.currentTarget as HTMLDivElement;
-        el.style.borderColor = 'var(--border-default)'; el.style.background = 'var(--bg-surface)';
+        Object.assign(el.style, { borderColor: 'var(--border-default)', background: 'var(--bg-surface)' });
       }}
     >
       {cardContent}
@@ -224,22 +224,25 @@ const PipelineBar = memo(function PipelineBar({
   isLoading,
   error,
   leadInboxTotal,
+  planningTripsTotal,
 }: {
   data: Array<{ label: string; count: number }> | null;
   isLoading: boolean;
   error: Error | null;
   leadInboxTotal: number;
+  planningTripsTotal: number;
 }) {
   const safeData = data ?? [];
-  const total = useMemo(() => {
+  const stageTotal = useMemo(() => {
     return safeData.reduce((s, x) => s + (Number(x.count) || 0), 0);
   }, [safeData]);
+  const total = planningTripsTotal;
 
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (error) {
     return (
-      <div className='rounded-xl border p-4' style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)', borderLeft: '3px solid var(--accent-red)' }}>
+      <div className='rounded-xl border p-4' style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)', boxShadow: 'inset 0 0 0 1px rgba(248, 81, 73, 0.24)' }}>
         <InlineError message='Failed to load pipeline data' />
       </div>
     );
@@ -259,7 +262,7 @@ const PipelineBar = memo(function PipelineBar({
     );
   }
 
-  if (safeData.length === 0 || total === 0) {
+  if (safeData.length === 0 || stageTotal === 0 || total === 0) {
     const hasLeadsWaiting = leadInboxTotal > 0;
     return (
       <div className='rounded-xl border p-4' style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
@@ -309,7 +312,7 @@ const PipelineBar = memo(function PipelineBar({
                   key={stage.label || `stage-${i}`}
                   className='h-full transition-all'
                   style={{
-                    width: `${(stage.count / total) * 100}%`,
+                    width: `${(stage.count / stageTotal) * 100}%`,
                     background: ['#3fb950', '#58a6ff', '#d29922', '#f85149', '#a371f7'][i % 5],
                   }}
                 />
@@ -344,7 +347,7 @@ const PipelineBar = memo(function PipelineBar({
 
       <div className='space-y-2'>
         {safeData.map((stage, i) => {
-          const pct = total > 0 ? (stage.count / total) * 100 : 0;
+          const pct = stageTotal > 0 ? (stage.count / stageTotal) * 100 : 0;
           const color = ['#3fb950', '#58a6ff', '#d29922', '#f85149', '#a371f7'][i % 5];
           return (
             <div key={stage.label} className='group'>
@@ -439,11 +442,11 @@ function RecentTrips({
           }}
           onMouseEnter={(e) => {
             const el = e.currentTarget as HTMLAnchorElement;
-            el.style.borderColor = 'var(--border-hover)'; el.style.background = 'var(--bg-elevated)';
+            Object.assign(el.style, { borderColor: 'var(--border-hover)', background: 'var(--bg-elevated)' });
           }}
           onMouseLeave={(e) => {
             const el = e.currentTarget as HTMLAnchorElement;
-            el.style.borderColor = 'var(--border-default)'; el.style.background = 'transparent';
+            Object.assign(el.style, { borderColor: 'var(--border-default)', background: 'transparent' });
           }}
         >
           <Send className='size-4' style={{ color: 'var(--accent-blue)' }} />
@@ -513,12 +516,12 @@ export default function OverviewPage() {
             borderColor: 'var(--border-default)',
           }}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--accent-blue)';
-            (e.currentTarget as HTMLAnchorElement).style.color = 'var(--accent-blue)';
+            const el = e.currentTarget as HTMLAnchorElement;
+            Object.assign(el.style, { borderColor: 'var(--accent-blue)', color: 'var(--accent-blue)' });
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--border-default)';
-            (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-primary)';
+            const el = e.currentTarget as HTMLAnchorElement;
+            Object.assign(el.style, { borderColor: 'var(--border-default)', color: 'var(--text-primary)' });
           }}
         >
           Process New Inquiry
@@ -587,6 +590,7 @@ export default function OverviewPage() {
             isLoading={pipelineLoading}
             error={pipelineError}
             leadInboxTotal={leadInboxTotal}
+            planningTripsTotal={planningTripsTotal}
           />
 
           <nav
@@ -608,11 +612,11 @@ export default function OverviewPage() {
                       style={{ border: '1px solid transparent' }}
                       onMouseEnter={(e) => {
                         const el = e.currentTarget as HTMLAnchorElement;
-                        el.style.background = 'var(--bg-elevated)'; el.style.borderColor = 'var(--border-default)';
+                        Object.assign(el.style, { background: 'var(--bg-elevated)', borderColor: 'var(--border-default)' });
                       }}
                       onMouseLeave={(e) => {
                         const el = e.currentTarget as HTMLAnchorElement;
-                        el.style.background = 'transparent'; el.style.borderColor = 'transparent';
+                        Object.assign(el.style, { background: 'transparent', borderColor: 'transparent' });
                       }}
                     >
                       <div
@@ -635,7 +639,7 @@ export default function OverviewPage() {
                         </div>
                       </div>
                       <ChevronRight
-                        className='size-4 opacity-0 group-hover:opacity-100 transition-opacity'
+                        className='size-4 opacity-[0.3] group-hover:opacity-100 transition-opacity'
                         style={{ color: 'var(--text-muted)' }}
                         aria-hidden='true'
                       />

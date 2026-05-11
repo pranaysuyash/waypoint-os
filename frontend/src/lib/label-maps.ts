@@ -52,7 +52,7 @@ export const STAGE_LABELS: Record<string, string> = {
   validation: "Validation",
   decision: "Quote Assessment",
   strategy: "Options",
-  safety: "Safety Review",
+  safety: "Risk Review",
   output: "Output",
   blocked_result: "Blocked",
 };

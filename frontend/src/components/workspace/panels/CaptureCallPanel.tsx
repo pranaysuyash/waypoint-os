@@ -149,7 +149,7 @@ export default function CaptureCallPanel({
             onChange={(e) => {
               setRawNote(e.target.value);
               if (errors.rawNote) {
-                setErrors({ ...errors, rawNote: "" });
+                setErrors((prev) => ({ ...prev, rawNote: "" }));
               }
             }}
             placeholder="e.g., Family of 4 wants to explore Japan, late November…"

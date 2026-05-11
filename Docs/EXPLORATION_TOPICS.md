@@ -2,7 +2,7 @@
 
 **Purpose**: Living document tracking research areas for the Travel Agency AI Copilot  
 **Status**: Active - Continuously updated as project evolves  
-**Last Updated**: 2026-04-09
+**Last Updated**: 2026-05-11
 
 ---
 
@@ -61,6 +61,23 @@ Legend:
 ---
 
 ## INFRASTRUCTURE & CONNECTIVITY
+
+### 0. Architecture Topology 🟡 [EXPLORED]
+**Status**: Current architecture classified; migration direction proposed
+
+**Overview**: Clarifies whether Waypoint OS is a monolith, microservices, or another topology. Current verdict: **BFF + backend modular monolith in a monorepo**, with future worker/process boundaries for long-running jobs and integrations.
+
+**Key Questions**:
+- Which boundaries are real runtime boundaries today?
+- Which boundaries should stay module-level while the product evolves?
+- Which workloads justify a future worker or independent service?
+- What should be cleaned before any extraction?
+
+**Deliverable**: Architecture topology review with current-state evidence, topology options, target architecture, migration phases, and guardrails.
+
+**Detailed Research**: [exploration/ARCHITECTURE_TOPOLOGY_REVIEW_2026-05-11.md](exploration/ARCHITECTURE_TOPOLOGY_REVIEW_2026-05-11.md)
+
+**Related Topics**: Integration Architecture, Data Strategy & Persistence, Security & Compliance
 
 ### 1. Integration Architecture 🔴 [IN PROGRESS]
 **Status**: High Priority - Research started

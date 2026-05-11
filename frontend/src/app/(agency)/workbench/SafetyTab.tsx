@@ -48,7 +48,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
   if (!activeSafety) {
     return (
       <div className={styles.emptyState}>
-        <p>No review data. Process a trip from the "New Inquiry" section first.</p>
+        <p>No risk review data yet. Process a trip from the "New Inquiry" section first.</p>
       </div>
     );
   }
@@ -63,7 +63,10 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
   return (
     <div>
       <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Content Review</h3>
+        <h3 className={styles.sectionTitle}>Risk Gate</h3>
+        <p style={{ fontSize: "12px", color: "var(--color-text-muted)", margin: "0 0 10px 0" }}>
+          Final send-readiness check for customer-safe language and compliance-sensitive terms.
+        </p>
         {safety.leakage_passed ? (
           <div className={styles.leakagePass}>
             <div className={styles.leakageTitle}>
@@ -116,7 +119,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
 
       {specialtyHits.length > 0 && (
         <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Special Handling Checklist</h3>
+          <h3 className={styles.sectionTitle}>Special Handling Controls</h3>
           {specialtyHits.map((hit, i) => (
             <div key={`sk-${hit.niche}`} className={styles.card} style={{ marginBottom: "12px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
@@ -147,7 +150,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
               )}
               {hit.safety_notes && (
                 <div>
-                  <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Safety Notes</strong>
+                  <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Risk Notes</strong>
                   <p style={{ fontSize: "13px", margin: "4px 0 0 0", whiteSpace: "pre-wrap" }}>{hit.safety_notes}</p>
                 </div>
               )}
@@ -157,18 +160,18 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
       )}
 
       <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>Customer-Facing Message</h3>
+        <h3 className={styles.sectionTitle}>Customer Message QA</h3>
         <div className={styles.card}>
           {travelerBundle && !isStrictFail ? (
             <div>
               <div style={{ marginBottom: "12px" }}>
-                <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>System Context</strong>
+                <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Generation Context</strong>
                   <p style={{ fontSize: "13px", whiteSpace: "pre-wrap", marginTop: "4px" }}>
                     {travelerBundle?.system_context || "-"}
                 </p>
               </div>
               <div style={{ marginBottom: "12px" }}>
-                <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>User Message</strong>
+                <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Message Preview</strong>
                 <p style={{ fontSize: "13px", whiteSpace: "pre-wrap", marginTop: "4px" }}>
                   {travelerBundle.user_message || "-"}
                 </p>
@@ -220,7 +223,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
         className={styles.jsonToggle}
         onClick={() => setDebugRawJson(!debug_raw_json)}
       >
-        {debug_raw_json ? "Hide" : "Show"} Technical Data
+        {debug_raw_json ? "Hide" : "Show"} Diagnostic Data
       </button>
 
       {debug_raw_json && (
