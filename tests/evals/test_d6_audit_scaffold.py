@@ -86,3 +86,12 @@ def test_d6_runner_can_execute_fixture_directory(tmp_path: Path):
     assert report.total_fixtures == 1
     assert report.category_metrics["activity"].precision == 1.0
     assert report.category_metrics["activity"].recall == 1.0
+
+
+def test_d6_seed_fixture_corpus_loads():
+    fixture_root = Path(__file__).resolve().parents[2] / "data" / "fixtures" / "audit"
+
+    fixtures = load_fixtures(fixture_root)
+
+    assert {fixture.fixture_id for fixture in fixtures} >= {"activity_toddler_low_utility"}
+    assert fixtures[0].expected_findings

@@ -1,0 +1,42 @@
+{
+  "fixture_id": "activity_toddler_low_utility",
+  "category": "activity",
+  "subject": {
+    "subject_id": "fixture_activity_toddler_low_utility",
+    "subject_type": "itinerary",
+    "destination_keys": ["singapore"],
+    "party_composition": {
+      "adults": 2,
+      "toddlers": 1
+    },
+    "activities": [
+      {
+        "activity_id": "universal_studios",
+        "canonical_name": "Universal Studios",
+        "cost_per_person": 5000
+      }
+    ]
+  },
+  "expected_findings": [
+    {
+      "category": "activity",
+      "flag": "low_utility_activity",
+      "severity": "high",
+      "affected_refs": ["toddler_1"]
+    },
+    {
+      "category": "activity",
+      "flag": "wasted_spend",
+      "severity": "medium",
+      "affected_refs": ["toddler_1"]
+    }
+  ],
+  "expected_absent_findings": [
+    {
+      "category": "documents",
+      "flag": "passport_missing",
+      "reason": "This fixture isolates activity suitability and should not assert document readiness."
+    }
+  ],
+  "notes": "Seed D6 activity fixture proving the public checker should not surface low-utility/waste claims without measured precision."
+}

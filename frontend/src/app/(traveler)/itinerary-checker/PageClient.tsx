@@ -172,6 +172,174 @@ const S = {
     textTransform: 'uppercase',
     letterSpacing: '0.08em',
   },
+  pageBackdrop: {
+    position: 'fixed',
+    inset: 0,
+    pointerEvents: 'none',
+    backgroundImage: `
+      radial-gradient(circle at 50% 20%, rgba(255,193,122,0.18) 0%, transparent 36%),
+      radial-gradient(circle at 16% 14%, rgba(57,208,216,0.10) 0%, transparent 24%),
+      radial-gradient(circle at 88% 16%, rgba(163,113,247,0.12) 0%, transparent 22%),
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)
+    `,
+    backgroundSize: 'auto, auto, 52px 52px, 52px 52px',
+    backgroundPosition: 'center top, center top, center center, center center',
+    zIndex: 0,
+  },
+  heroSection: {
+    position: 'relative',
+    zIndex: 1,
+    maxWidth: 1140,
+    margin: '0 auto',
+    padding: '72px 40px 80px',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+    gap: 64,
+    alignItems: 'center',
+  },
+  amberKicker: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 7,
+    padding: '5px 12px',
+    borderRadius: 999,
+    marginBottom: 24,
+    color: '#ffd6a6',
+    fontSize: 12,
+    letterSpacing: '0.13em',
+    textTransform: 'uppercase',
+    fontFamily: T.fBody,
+    fontWeight: 600,
+    border: '1px solid rgba(255,193,122,0.24)',
+    background: 'rgba(25,18,10,0.74)',
+  },
+  heroOrbBlue: {
+    position: 'absolute',
+    inset: '-18px -20px auto auto',
+    width: 220,
+    height: 220,
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, rgba(122,185,255,0.12) 0%, rgba(57,208,216,0.08) 28%, rgba(163,113,247,0.06) 44%, transparent 70%)',
+    filter: 'blur(6px)',
+    pointerEvents: 'none',
+  },
+  heroOrbGreen: {
+    position: 'absolute',
+    left: -18,
+    bottom: 120,
+    width: 120,
+    height: 120,
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, rgba(63,185,80,0.12) 0%, rgba(63,185,80,0.05) 34%, transparent 72%)',
+    filter: 'blur(4px)',
+    pointerEvents: 'none',
+  },
+  travelMomentsSection: {
+    position: 'relative',
+    zIndex: 1,
+    borderTop: `1px solid ${T.b0}`,
+    borderBottom: `1px solid ${T.b0}`,
+    padding: '28px 40px',
+    background: 'linear-gradient(180deg, rgba(8,12,16,0.92), rgba(9,13,19,0.98))',
+  },
+  travelMomentIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    background: 'linear-gradient(135deg, rgba(122,185,255,0.18), rgba(57,208,216,0.12))',
+    border: '1px solid rgba(57,208,216,0.18)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: T.cyan,
+    flexShrink: 0,
+  },
+  sectionKicker: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    fontSize: 12,
+    fontWeight: 700,
+    letterSpacing: '0.14em',
+    textTransform: 'uppercase',
+    color: T.cyan,
+    marginBottom: 14,
+  },
+  resultsRoot: {
+    background: 'radial-gradient(circle at 15% 10%, rgba(122,185,255,0.07) 0%, transparent 28%), radial-gradient(circle at 85% 0%, rgba(163,113,247,0.06) 0%, transparent 24%), radial-gradient(circle at 50% 100%, rgba(57,208,216,0.05) 0%, transparent 26%), #07090b',
+    minHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    fontFamily: T.fBody,
+    color: T.t1,
+  },
+  backButton: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: 12,
+    color: T.t3,
+    fontFamily: T.fBody,
+    marginBottom: 20,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    padding: 0,
+  },
+  emailInputFrame: {
+    flex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '8px 11px',
+    borderRadius: 8,
+    background: T.input,
+    border: `1px solid ${T.b1}`,
+  },
+  conversionCard: {
+    padding: '20px 24px',
+    borderRadius: 16,
+    background: 'rgba(13,17,23,0.9)',
+    border: `1px solid ${T.b0}`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 24,
+    flexWrap: 'wrap',
+  },
+  shareReportButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 7,
+    height: 34,
+    padding: '0 14px',
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 600,
+    fontFamily: T.fBody,
+    background: 'linear-gradient(180deg, rgba(13,23,33,0.8), rgba(10,18,26,0.8))',
+    color: T.t1,
+    border: '1px solid rgba(88,166,255,0.22)',
+    cursor: 'pointer',
+  },
+  advisorLinkButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 7,
+    height: 34,
+    padding: '0 14px',
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 600,
+    fontFamily: T.fBody,
+    background: 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, #39d0d8 100%)',
+    color: '#071018',
+    border: 'none',
+    cursor: 'pointer',
+    textDecoration: 'none',
+    boxShadow: '0 4px 14px rgba(57,208,216,0.25)',
+  },
 } satisfies Record<string, CSSProperties>;
 
 const tabButtonStyle = (isActive: boolean): CSSProperties => ({
@@ -228,6 +396,72 @@ const colorIconStyle = (color: string, size = 24, radius = 8): CSSProperties => 
   alignItems: 'center',
   justifyContent: 'center',
   color,
+});
+
+const sectionButtonStyle = (variant: 'primary' | 'secondary' = 'primary'): CSSProperties => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  height: 32,
+  padding: '0 14px',
+  borderRadius: 999,
+  fontSize: 12,
+  fontWeight: 600,
+  fontFamily: T.fBody,
+  background: variant === 'primary' ? 'linear-gradient(135deg, #7ab9ff 0%, #39d0d8 100%)' : 'transparent',
+  color: variant === 'primary' ? '#071018' : T.t2,
+  border: variant === 'primary' ? 'none' : `1px solid ${T.b1}`,
+  cursor: 'pointer',
+});
+
+const severityCardStyle = (background: string, border: string): CSSProperties => ({
+  padding: '14px 16px',
+  borderRadius: 12,
+  background,
+  border: `1px solid ${border}`,
+  display: 'grid',
+  gridTemplateColumns: 'auto 1fr',
+  gap: 12,
+  alignItems: 'flex-start',
+});
+
+const severityBadgeStyle = (
+  severity: keyof typeof sevBadgeTxt,
+  compact = false,
+): CSSProperties => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: compact ? 4 : undefined,
+  padding: '2px 7px',
+  borderRadius: 5,
+  marginTop: 1,
+  fontSize: 12,
+  fontWeight: 700,
+  fontFamily: T.fMono,
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+  color: sevBadgeTxt[severity],
+  background: sevBadgeBg[severity],
+  border: `1px solid ${sevBadgeBdr[severity]}`,
+  flexShrink: 0,
+  whiteSpace: compact ? undefined : 'nowrap',
+});
+
+const revisionButtonStyle = (
+  color: string,
+  background: string,
+  border: string,
+): CSSProperties => ({
+  height: 30,
+  padding: '0 12px',
+  borderRadius: 999,
+  fontSize: 12,
+  fontWeight: 600,
+  fontFamily: T.fBody,
+  background,
+  color,
+  border,
+  cursor: 'pointer',
 });
 
 const TRAVEL_MOMENTS = [
@@ -836,38 +1070,14 @@ function UploadView({
       <WedgeHeader />
 
       {/* Background radial glow */}
-      <div style={{
-        position: 'fixed', inset: 0, pointerEvents: 'none',
-        backgroundImage: `
-          radial-gradient(circle at 50% 20%, rgba(255,193,122,0.18) 0%, transparent 36%),
-          radial-gradient(circle at 16% 14%, rgba(57,208,216,0.10) 0%, transparent 24%),
-          radial-gradient(circle at 88% 16%, rgba(163,113,247,0.12) 0%, transparent 22%),
-          linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)
-        `,
-        backgroundSize: 'auto, auto, 52px 52px, 52px 52px',
-        backgroundPosition: 'center top, center top, center center, center center',
-        zIndex: 0,
-      }} />
+      <div style={S.pageBackdrop} />
 
       {/* ── HERO: split 2-col ── */}
-      <section style={{
-        position: 'relative', zIndex: 1,
-        maxWidth: 1140, margin: '0 auto',
-        padding: '72px 40px 80px',
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 64,
-        alignItems: 'center',
-      }}>
+      <section style={S.heroSection}>
         {/* Left: headline + context */}
         <div>
           {/* Kicker */}
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            padding: '5px 12px', borderRadius: 999, marginBottom: 24,
-            color: '#ffd6a6', fontSize: 12, letterSpacing: '0.13em',
-            textTransform: 'uppercase', fontFamily: T.fBody, fontWeight: 600,
-            border: '1px solid rgba(255,193,122,0.24)', background: 'rgba(25,18,10,0.74)',
-          }}>
+          <span style={S.amberKicker}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#39d0d8', boxShadow: '0 0 5px #39d0d8', flexShrink: 0 }} />
             Free travel plan check
           </span>
@@ -920,20 +1130,8 @@ function UploadView({
 
         {/* Right: upload card */}
         <div className='itinerary-reveal' style={{ position: 'relative' }}>
-          <div aria-hidden className='itinerary-orb' style={{
-            position: 'absolute', inset: '-18px -20px auto auto', width: 220, height: 220,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(122,185,255,0.12) 0%, rgba(57,208,216,0.08) 28%, rgba(163,113,247,0.06) 44%, transparent 70%)',
-            filter: 'blur(6px)',
-            pointerEvents: 'none',
-          }} />
-          <div aria-hidden className='itinerary-orb' style={{
-            position: 'absolute', left: -18, bottom: 120, width: 120, height: 120,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(63,185,80,0.12) 0%, rgba(63,185,80,0.05) 34%, transparent 72%)',
-            filter: 'blur(4px)',
-            pointerEvents: 'none',
-          }} />
+          <div aria-hidden className='itinerary-orb' style={S.heroOrbBlue} />
+          <div aria-hidden className='itinerary-orb' style={S.heroOrbGreen} />
 
           <TravelPreviewCard />
 
@@ -948,12 +1146,7 @@ function UploadView({
       </section>
 
       {/* ── TRAVEL MOMENTS ── */}
-      <section style={{
-        position: 'relative', zIndex: 1,
-        borderTop: `1px solid ${T.b0}`, borderBottom: `1px solid ${T.b0}`,
-        padding: '28px 40px',
-        background: 'linear-gradient(180deg, rgba(8,12,16,0.92), rgba(9,13,19,0.98))',
-      }}>
+      <section style={S.travelMomentsSection}>
         <div style={{
           maxWidth: 1140, margin: '0 auto',
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14,
@@ -967,13 +1160,7 @@ function UploadView({
                 background: 'rgba(255,255,255,0.03)',
                 border: '1px solid rgba(168,179,193,0.12)',
               }}>
-                <div style={{
-                  width: 38, height: 38, borderRadius: 12,
-                  background: 'linear-gradient(135deg, rgba(122,185,255,0.18), rgba(57,208,216,0.12))',
-                  border: '1px solid rgba(57,208,216,0.18)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: T.cyan, flexShrink: 0,
-                }}>
+                <div style={S.travelMomentIcon}>
                   <Icon size={18} strokeWidth={1.8} />
                 </div>
                 <div>
@@ -990,11 +1177,7 @@ function UploadView({
       <section style={{ position: 'relative', zIndex: 1, padding: '88px 40px' }}>
         <div style={{ maxWidth: 1140, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 52 }}>
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
-              color: T.cyan, marginBottom: 14,
-            }}>
+            <div style={S.sectionKicker}>
               <FileCheck size={13} /> Six trip checks
             </div>
             <h2 style={{
@@ -1019,11 +1202,7 @@ function UploadView({
                   background: T.surface, border: `1px solid ${T.b0}`,
                   transition: 'border-color 200ms',
                 }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 10, marginBottom: 16,
-                    background: `${c.color}18`, border: `1px solid ${c.color}30`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.color,
-                  }}>
+                  <div style={{ ...colorIconStyle(c.color, 40, 10), marginBottom: 16 }}>
                     <Icon size={18} strokeWidth={1.8} />
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: T.t1, marginBottom: 8 }}>{c.label}</div>
@@ -1084,19 +1263,8 @@ function UploadView({
               {SAMPLE_FINDINGS.map(f => {
                 const sev = f.sev as keyof typeof sevBadgeTxt;
                 return (
-                  <div key={f.label} style={{
-                    padding: '14px 16px', borderRadius: 12,
-                    background: f.bg, border: `1px solid ${f.border}`,
-                    display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 12, alignItems: 'flex-start',
-                  }}>
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center',
-                      padding: '2px 7px', borderRadius: 5, marginTop: 1,
-                      fontSize: 12, fontWeight: 700, fontFamily: T.fMono,
-                      textTransform: 'uppercase', letterSpacing: '0.04em',
-                      color: sevBadgeTxt[sev], background: sevBadgeBg[sev], border: `1px solid ${sevBadgeBdr[sev]}`,
-                      flexShrink: 0, whiteSpace: 'nowrap',
-                    }}>
+                  <div key={f.label} style={severityCardStyle(f.bg, f.border)}>
+                    <span style={severityBadgeStyle(sev)}>
                       {f.sev}
                     </span>
                     <div>
@@ -1151,10 +1319,12 @@ function UploadView({
               {['#f85149', '#d29922', '#3fb950'].map(c => (
                 <div key={c} style={{ width: 10, height: 10, borderRadius: '50%', background: c }} />
               ))}
-              <div style={{
-                flex: 1, height: 22, borderRadius: 4, background: T.surface,
-                margin: '0 12px', display: 'flex', alignItems: 'center', paddingLeft: 10,
-              }}>
+                  <div style={{
+                    ...S.emailInputFrame,
+                    height: 22,
+                    margin: '0 12px',
+                    padding: '0 0 0 10px',
+                  }}>
                 <span style={{ fontSize: 12, color: T.t4, fontFamily: T.fMono }}>waypoint.travel/report/trip-a8k2f</span>
               </div>
             </div>
@@ -1211,22 +1381,10 @@ function UploadView({
                 ))}
 
                 <div style={{ marginTop: 18, display: 'flex', gap: 8 }}>
-                  <button style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    height: 32, padding: '0 14px', borderRadius: 999,
-                    fontSize: 12, fontWeight: 600, fontFamily: T.fBody,
-                    background: 'linear-gradient(135deg, #7ab9ff 0%, #39d0d8 100%)',
-                    color: '#071018', border: 'none', cursor: 'pointer',
-                  }}>
+                  <button style={sectionButtonStyle('primary')}>
                     Download PDF
                   </button>
-                  <button style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    height: 32, padding: '0 14px', borderRadius: 999,
-                    fontSize: 12, fontWeight: 600, fontFamily: T.fBody,
-                    background: 'transparent', color: T.t2,
-                    border: `1px solid ${T.b1}`, cursor: 'pointer',
-                  }}>
+                  <button style={sectionButtonStyle('secondary')}>
                     Share with advisor →
                   </button>
                 </div>
@@ -1283,11 +1441,10 @@ function UploadView({
       }}>
         <div style={{ maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
           <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            padding: '5px 12px', borderRadius: 999, marginBottom: 24,
-            color: '#d8eef0', fontSize: 12, letterSpacing: '0.13em',
-            textTransform: 'uppercase', fontFamily: T.fBody, fontWeight: 600,
-            border: '1px solid rgba(57,208,216,0.22)', background: 'rgba(7,22,26,0.8)',
+            ...S.amberKicker,
+            color: '#d8eef0',
+            border: '1px solid rgba(57,208,216,0.22)',
+            background: 'rgba(7,22,26,0.8)',
           }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: T.cyan, boxShadow: `0 0 5px ${T.cyan}`, flexShrink: 0 }} />
             Free · 60 seconds · No account
@@ -1309,11 +1466,10 @@ function UploadView({
             <button
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                height: 52, padding: '0 28px', borderRadius: 999,
-                fontSize: 15, fontWeight: 700, fontFamily: T.fBody,
-                background: 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, #39d0d8 100%)',
-                color: '#071018', border: 'none', cursor: 'pointer',
+                ...primaryButtonStyle(true, 52, '0 28px'),
+                gap: 8,
+                fontSize: 15,
+                fontWeight: 700,
                 boxShadow: '0 12px 32px rgba(57,208,216,0.35), inset 0 1px 0 rgba(255,255,255,0.38)',
               }}
             >
@@ -1617,19 +1773,11 @@ function ResultsView({
   };
 
   return (
-    <div ref={rootRef} style={{
-      background: 'radial-gradient(circle at 15% 10%, rgba(122,185,255,0.07) 0%, transparent 28%), radial-gradient(circle at 85% 0%, rgba(163,113,247,0.06) 0%, transparent 24%), radial-gradient(circle at 50% 100%, rgba(57,208,216,0.05) 0%, transparent 26%), #07090b',
-      minHeight: '100vh', display: 'flex', flexDirection: 'column',
-      fontFamily: T.fBody, color: T.t1,
-    }}>
+    <div ref={rootRef} style={S.resultsRoot}>
       <WedgeHeader />
       <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', maxWidth: 860, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
 
-        <button onClick={onReset} style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          fontSize: 12, color: T.t3, fontFamily: T.fBody, marginBottom: 20,
-          display: 'flex', alignItems: 'center', gap: 5, padding: 0,
-        }}>
+        <button onClick={onReset} style={S.backButton}>
           ← Analyze another itinerary
         </button>
 
@@ -1751,11 +1899,7 @@ function ResultsView({
                   <div style={{ fontSize: 13, fontWeight: 600, color: T.t1, marginBottom: 3 }}>Get your full report</div>
                   <div style={{ fontSize: 12, color: T.t2, marginBottom: 10 }}>Detailed findings + advisor-ready brief sent to your inbox.</div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <div style={{
-                      flex: 1, display: 'flex', alignItems: 'center', gap: 8,
-                      padding: '8px 11px', borderRadius: 8,
-                      background: T.input, border: `1px solid ${T.b1}`,
-                    }}>
+                    <div style={S.emailInputFrame}>
                       <Mail size={14} color={T.t4} />
                       <input
                         value={email}
@@ -1769,14 +1913,7 @@ function ResultsView({
                     </div>
                     <button
                       onClick={() => email.includes('@') && setSent(true)}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 6,
-                        height: 34, padding: '0 14px', borderRadius: 999,
-                        fontSize: 12, fontWeight: 600, fontFamily: T.fBody,
-                        background: 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, #39d0d8 100%)',
-                        color: '#071018', border: 'none', cursor: 'pointer',
-                        boxShadow: '0 4px 14px rgba(57,208,216,0.25)',
-                      }}
+                      style={{ ...primaryButtonStyle(true), boxShadow: '0 4px 14px rgba(57,208,216,0.25)' }}
                     >
                       Send →
                     </button>
@@ -1798,14 +1935,7 @@ function ResultsView({
                 <button
                   onClick={handleExport}
                   disabled={!tripId || manageBusy !== null}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    height: 34, padding: '0 14px', borderRadius: 999,
-                    fontSize: 12, fontWeight: 600, fontFamily: T.fBody,
-                    background: tripId && manageBusy === null ? 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, #39d0d8 100%)' : T.elevated,
-                    color: tripId && manageBusy === null ? '#071018' : T.t3,
-                    border: 'none', cursor: tripId && manageBusy === null ? 'pointer' : 'not-allowed',
-                  }}
+                  style={primaryButtonStyle(Boolean(tripId && manageBusy === null))}
                 >
                   {manageBusy === 'export' ? 'Exporting…' : 'Export JSON'}
                 </button>
@@ -1813,11 +1943,11 @@ function ResultsView({
                   onClick={handleDelete}
                   disabled={!tripId || manageBusy !== null}
                   style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    height: 34, padding: '0 14px', borderRadius: 999,
-                    fontSize: 12, fontWeight: 600, fontFamily: T.fBody,
-                    background: 'transparent', color: T.red,
-                    border: `1px solid rgba(248,81,73,0.24)`, cursor: tripId && manageBusy === null ? 'pointer' : 'not-allowed',
+                    ...sectionButtonStyle('secondary'),
+                    height: 34,
+                    color: T.red,
+                    border: '1px solid rgba(248,81,73,0.24)',
+                    cursor: tripId && manageBusy === null ? 'pointer' : 'not-allowed',
                   }}
                 >
                   {manageBusy === 'delete' ? 'Deleting…' : 'Delete saved data'}
@@ -1829,52 +1959,19 @@ function ResultsView({
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
                 <button
                   onClick={() => void handleReportRevision('revised')}
-                  style={{
-                    height: 30,
-                    padding: '0 12px',
-                    borderRadius: 999,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    fontFamily: T.fBody,
-                    background: 'rgba(63,185,80,0.12)',
-                    color: T.green,
-                    border: '1px solid rgba(63,185,80,0.24)',
-                    cursor: 'pointer',
-                  }}
+                  style={revisionButtonStyle(T.green, 'rgba(63,185,80,0.12)', '1px solid rgba(63,185,80,0.24)')}
                 >
                   Yes, revised
                 </button>
                 <button
                   onClick={() => void handleReportRevision('no_change')}
-                  style={{
-                    height: 30,
-                    padding: '0 12px',
-                    borderRadius: 999,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    fontFamily: T.fBody,
-                    background: 'rgba(210,153,34,0.12)',
-                    color: T.amber,
-                    border: '1px solid rgba(210,153,34,0.24)',
-                    cursor: 'pointer',
-                  }}
+                  style={revisionButtonStyle(T.amber, 'rgba(210,153,34,0.12)', '1px solid rgba(210,153,34,0.24)')}
                 >
                   No change
                 </button>
                 <button
                   onClick={() => void handleReportRevision('rejected')}
-                  style={{
-                    height: 30,
-                    padding: '0 12px',
-                    borderRadius: 999,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    fontFamily: T.fBody,
-                    background: 'rgba(248,81,73,0.12)',
-                    color: T.red,
-                    border: '1px solid rgba(248,81,73,0.24)',
-                    cursor: 'pointer',
-                  }}
+                  style={revisionButtonStyle(T.red, 'rgba(248,81,73,0.12)', '1px solid rgba(248,81,73,0.24)')}
                 >
                   Rejected
                 </button>
@@ -1896,18 +1993,17 @@ function ResultsView({
                 const c = rSevColor(severity) as keyof typeof rSevBadgeTxt;
                 return (
                   <div key={`${severity}-${item.slice(0, 30)}`} style={{
-                    padding: '14px 16px', borderRadius: 12,
-                    background: severity === 'Critical' ? 'rgba(248,81,73,0.06)' : 'rgba(210,153,34,0.06)',
-                    border: severity === 'Critical' ? '1px solid rgba(248,81,73,0.2)' : '1px solid rgba(210,153,34,0.2)',
-                    display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 14, alignItems: 'flex-start',
+                    ...severityCardStyle(
+                      severity === 'Critical' ? 'rgba(248,81,73,0.06)' : 'rgba(210,153,34,0.06)',
+                      severity === 'Critical' ? 'rgba(248,81,73,0.2)' : 'rgba(210,153,34,0.2)',
+                    ),
+                    gap: 14,
                   }}>
                     <span style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                      padding: '2px 7px', borderRadius: 5, marginTop: 1,
-                      fontSize: 12, fontWeight: 700, fontFamily: T.fMono,
-                      textTransform: 'uppercase', letterSpacing: '0.04em',
-                      color: rSevBadgeTxt[c], background: rSevBadgeBg[c], border: `1px solid ${rSevBadgeBdr[c]}`,
-                      flexShrink: 0,
+                      ...severityBadgeStyle(c, true),
+                      color: rSevBadgeTxt[c],
+                      background: rSevBadgeBg[c],
+                      border: `1px solid ${rSevBadgeBdr[c]}`,
                     }}>
                       {severity}
                     </span>
@@ -1930,12 +2026,7 @@ function ResultsView({
         </div>
 
         {/* Soft agency conversion */}
-        <div className='itinerary-reveal' style={{
-          padding: '20px 24px', borderRadius: 16,
-          background: 'rgba(13,17,23,0.9)', border: `1px solid ${T.b0}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24,
-          flexWrap: 'wrap',
-        }}>
+        <div className='itinerary-reveal' style={S.conversionCard}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 600, color: T.t1, marginBottom: 4 }}>Working with a travel advisor?</div>
             <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.55, maxWidth: '50ch' }}>
@@ -1945,23 +2036,10 @@ function ResultsView({
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             <button
               onClick={handleShareReport}
-              style={{
-              display: 'inline-flex', alignItems: 'center', gap: 7,
-              height: 34, padding: '0 14px', borderRadius: 999,
-              fontSize: 12, fontWeight: 600, fontFamily: T.fBody,
-              background: 'linear-gradient(180deg, rgba(13,23,33,0.8), rgba(10,18,26,0.8))',
-              color: T.t1, border: '1px solid rgba(88,166,255,0.22)', cursor: 'pointer',
-            }}>
+              style={S.shareReportButton}>
               Share report
             </button>
-            <Link href='/signup' style={{
-              display: 'inline-flex', alignItems: 'center', gap: 7,
-              height: 34, padding: '0 14px', borderRadius: 999,
-              fontSize: 12, fontWeight: 600, fontFamily: T.fBody,
-              background: 'linear-gradient(135deg, #7ab9ff 0%, #57e0ef 50%, #39d0d8 100%)',
-              color: '#071018', border: 'none', cursor: 'pointer', textDecoration: 'none',
-              boxShadow: '0 4px 14px rgba(57,208,216,0.25)',
-            }}>
+            <Link href='/signup' style={S.advisorLinkButton}>
               Find an advisor →
             </Link>
           </div>

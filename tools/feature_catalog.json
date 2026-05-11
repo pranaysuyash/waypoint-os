@@ -1,0 +1,108 @@
+{
+  "version": "2026-05-11",
+  "source": "Docs/FEATURE_PROGRESSION_REVIEW_2026-05-11.md",
+  "project": "travel_agency_agent",
+  "baseline_score": 49,
+  "baseline_max": 200,
+  "features": [
+    {
+      "id": "B",
+      "name": "Draft Itinerary Creation",
+      "priority": "P0",
+      "baseline_score": 1,
+      "baseline_max": 10,
+      "sub_features": [
+        {
+          "id": "B1",
+          "name": "Canonical itinerary option model",
+          "evidence": {
+            "files": ["src/suitability/models.py", "src/suitability/options.py"],
+            "min_search_terms": ["class ItineraryOption", "build_itinerary_option"]
+          }
+        },
+        {
+          "id": "B2",
+          "name": "Per-person suitability in itinerary artifact",
+          "evidence": {
+            "files": ["src/suitability/models.py", "src/suitability/options.py"],
+            "min_search_terms": ["class PersonUtility", "utility_by_person", "activity_scores"]
+          }
+        },
+        {
+          "id": "B3",
+          "name": "Wasted-spend calculation in itinerary artifact",
+          "evidence": {
+            "files": ["src/suitability/models.py", "src/suitability/options.py"],
+            "min_search_terms": ["class WastedSpendSummary", "wasted_spend_amount", "wasted_spend"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "I",
+      "name": "Per-Person Suitability",
+      "priority": "P0",
+      "baseline_score": 5,
+      "baseline_max": 10,
+      "sub_features": [
+        {
+          "id": "I1",
+          "name": "Activity catalog",
+          "evidence": {
+            "files": ["src/suitability/catalog.py"],
+            "min_search_terms": ["STATIC_ACTIVITIES", "ActivityDefinition"]
+          }
+        },
+        {
+          "id": "I2",
+          "name": "Tier 1 deterministic scoring",
+          "evidence": {
+            "files": ["src/suitability/scoring.py"],
+            "min_search_terms": ["TAG_RULES", "evaluate_activity", "TIER_SCORE"]
+          }
+        },
+        {
+          "id": "I3",
+          "name": "Itinerary-level utility aggregation",
+          "evidence": {
+            "files": ["src/suitability/options.py"],
+            "min_search_terms": ["build_suitability_bundle", "LOW_UTILITY_THRESHOLD", "HIGH_UTILITY_THRESHOLD"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "M",
+      "name": "Evaluation & Quality (D6)",
+      "priority": "P0",
+      "baseline_score": 2,
+      "baseline_max": 10,
+      "sub_features": [
+        {
+          "id": "M1",
+          "name": "D6 eval package",
+          "evidence": {
+            "files": ["src/evals/audit/*.py", "src/evals/audit/manifest.yaml"],
+            "min_search_terms": ["AuditFixture", "EvalManifest", "run_eval_suite"]
+          }
+        },
+        {
+          "id": "M2",
+          "name": "Manifest-driven category progression",
+          "evidence": {
+            "files": ["src/evals/audit/manifest.yaml", "src/evals/audit/manifest.py"],
+            "min_search_terms": ["planned", "shadow", "gating", "min_precision"]
+          }
+        },
+        {
+          "id": "M3",
+          "name": "Precision/recall metrics",
+          "evidence": {
+            "files": ["src/evals/audit/metrics.py", "tests/evals/test_d6_audit_scaffold.py"],
+            "min_search_terms": ["compute_category_metrics", "precision", "recall", "severity_accuracy"]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -212,7 +212,34 @@ Notes:
 - Fixes applied: migrated packet_fixtures.py and raw_fixtures.py to v0.2 API.
 - Fixed decision.py to handle string-format party_composition values.
 
-## 4) `singapore_scenario_regression.py`
+## 4) `feature_scan.py`
+
+Purpose:
+- Run the repo-local feature progression scanner against `tools/feature_catalog.json`.
+- Emit fresh `scanned_at` metadata instead of the stale external-skill date.
+- Require each declared evidence term to be found across all configured file globs before marking a sub-feature done.
+
+Use cases:
+- Produce a less manual progression review input after feature work lands.
+- Check whether D6, itinerary-option, and per-person utility/waste artifacts are visible to the catalog.
+- Debug noisy feature scores by inspecting `matched_terms`, `missing_terms`, and line-level evidence.
+
+Usage:
+```bash
+cd /Users/pranay/Projects/travel_agency_agent
+python3 tools/feature_scan.py . --json
+python3 tools/feature_scan.py . --priority P0 --delta
+```
+
+Inputs:
+- Default catalog: `tools/feature_catalog.json`
+- Optional catalog override: `--catalog /path/to/catalog.json`
+
+Outputs:
+- Human-readable console report by default.
+- JSON report with `--json`, including current scan date, matched terms, missing terms, and evidence snippets.
+
+## 5) `singapore_scenario_regression.py`
 
 Purpose:
 - Run the canonical Ravi/Singapore messy-call scenario through both live async paths:
@@ -237,7 +264,7 @@ Notes:
 - Scenario fixture source: `data/fixtures/scenarios/SC-901_ravi_singapore_messy_call.json`.
 - Ensure backend and frontend dev servers are running before execution.
 
-## 5) `generate_dummy_singapore_itinerary_pdf.py`
+## 6) `generate_dummy_singapore_itinerary_pdf.py`
 
 Purpose:
 - Generate a realistic sample Singapore family itinerary PDF for checker upload testing.
@@ -260,7 +287,7 @@ Notes:
 - The file is a sample only and does not represent a real booking.
 - Uses `reportlab` and the existing project venv / uv environment.
 
-## 6) `run_multi_agent_runtime_scenarios.py`
+## 7) `run_multi_agent_runtime_scenarios.py`
 
 Purpose:
 - Run deterministic backend multi-agent runtime drills without touching the
@@ -282,7 +309,7 @@ Notes:
 - Uses an in-memory trip repository and audit sink.
 - Does not require backend or frontend servers.
 
-## 7) `build_agent_intelligence_graph.py`
+## 8) `build_agent_intelligence_graph.py`
 
 Purpose:
 - Turn the repo's autoresearch, feedback-loop, graph-memory, and live-intelligence docs into a living navigation graph.
@@ -307,7 +334,7 @@ Notes:
 - Heuristic and additive, not a source-of-truth database.
 - Uses only the repository's existing docs and standard library.
 
-## 8) `recovery_guard_report.py`
+## 9) `recovery_guard_report.py`
 
 Purpose:
 - Provide a read-only starting point when an agent suspects unsafe stash/reset/worktree activity.
