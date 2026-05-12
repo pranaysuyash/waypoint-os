@@ -152,17 +152,9 @@ describe("ExtractionHistoryPanel", () => {
     });
 
     // No emoji characters in the document
-    const { container } = render(
-      <ExtractionHistoryPanel
-        tripId={tripId}
-        documentId={documentId}
-        extraction={makeExtraction({ current_attempt_id: "attempt-2" })}
-        onRetryComplete={onRetryComplete}
-      />,
-    );
-    // Star emoji should NOT appear
-    expect(container.textContent).not.toContain("★");
-    expect(container.textContent).not.toContain("⭐");
+    const pageText = document.body.textContent ?? "";
+    expect(pageText).not.toContain("★");
+    expect(pageText).not.toContain("⭐");
   });
 
   it("hides retry button when extraction is not failed", async () => {

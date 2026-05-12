@@ -24,6 +24,19 @@ class Check:
     expected_status: int = 200
 
 
+@dataclass(frozen=True)
+class HealthCheck:
+    name: str
+    url: str
+    expected_status: int = 200
+
+
+LOCAL_STACK_HEALTH_CHECKS = (
+    HealthCheck("backend health", "http://127.0.0.1:8000/health"),
+    HealthCheck("frontend health", "http://127.0.0.1:3000/overview"),
+)
+
+
 def build_opener() -> urllib.request.OpenerDirector:
     jar = http.cookiejar.CookieJar()
     return urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
@@ -51,12 +64,34 @@ def request_status(opener: urllib.request.OpenerDirector, url: str) -> tuple[int
         return 0, str(e)
 
 
+def run_local_stack_preflight() -> bool:
+    ok = True
+    opener = build_opener()
+    for check in LOCAL_STACK_HEALTH_CHECKS:
+        status, body = request_status(opener, check.url)
+        passed = status == check.expected_status
+        print(f"{check.name}: {status} {'OK' if passed else 'FAIL'}")
+        if not passed:
+            ok = False
+            if body:
+                print(f"  body: {body[:500]}")
+    return ok
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run authenticated runtime smoke checks")
     parser.add_argument("--base", default="http://localhost:3000", help="frontend base URL")
     parser.add_argument("--email", default="newuser@test.com")
     parser.add_argument("--password", default="testpass123")
+    parser.add_argument(
+        "--preflight-local-stack",
+        action="store_true",
+        help="verify local backend/frontend health before the authenticated smoke matrix",
+    )
     args = parser.parse_args()
+
+    if args.preflight_local_stack and not run_local_stack_preflight():
+        return 1
 
     opener = build_opener()
     login_url = urllib.parse.urljoin(args.base, "/api/auth/login")

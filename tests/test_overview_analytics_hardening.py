@@ -8,7 +8,7 @@ def test_inbox_stats_handles_non_dict_analytics(monkeypatch):
     monkeypatch.setattr(inbox.TripStore, "count_trips", lambda **kwargs: 4)
     monkeypatch.setattr(
         inbox.TripStore,
-        "list_trips",
+        "list_trip_summaries",
         lambda **kwargs: [
             {"assigned_to": None, "analytics": None},
             {"assigned_to": "agent-1", "analytics": "bad"},

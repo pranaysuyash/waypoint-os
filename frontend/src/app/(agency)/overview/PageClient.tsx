@@ -234,7 +234,7 @@ const PipelineBar = memo(function PipelineBar({
   leadInboxTotal: number;
   planningTripsTotal: number;
 }) {
-  const safeData = data ?? [];
+  const safeData = useMemo(() => data ?? [], [data]);
   const stageTotal = useMemo(() => {
     return safeData.reduce((s, x) => s + (Number(x.count) || 0), 0);
   }, [safeData]);

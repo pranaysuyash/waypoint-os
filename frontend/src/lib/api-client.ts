@@ -810,11 +810,50 @@ export interface BookingPayer {
   phone?: string | null;
 }
 
+export type PaymentStatus =
+  | 'not_started'
+  | 'deposit_paid'
+  | 'partially_paid'
+  | 'paid'
+  | 'overdue'
+  | 'waived'
+  | 'refunded'
+  | 'unknown';
+
+export type RefundStatus =
+  | 'not_applicable'
+  | 'not_requested'
+  | 'pending_review'
+  | 'approved'
+  | 'processing'
+  | 'paid'
+  | 'rejected'
+  | 'cancelled';
+
+export interface PaymentTracking {
+  agreed_amount?: number | null;
+  currency?: string | null;
+  amount_paid?: number | null;
+  balance_due?: number | null;
+  payment_status?: PaymentStatus;
+  payment_method?: string | null;
+  payment_reference?: string | null;
+  payment_proof_url?: string | null;
+  refund_status?: RefundStatus;
+  refund_amount_agreed?: number | null;
+  refund_method?: string | null;
+  refund_reference?: string | null;
+  refund_paid_by_agency?: boolean;
+  notes?: string | null;
+  tracking_only?: boolean;
+}
+
 export interface BookingData {
   travelers: BookingTraveler[];
   payer?: BookingPayer | null;
   special_requirements?: string | null;
   booking_notes?: string | null;
+  payment_tracking?: PaymentTracking | null;
 }
 
 export interface BookingDataResponse {

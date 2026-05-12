@@ -1,6 +1,6 @@
 # Session Context
 
-- Generated: 2026-05-12T03:48:17Z
+- Generated: 2026-05-12T04:12:28Z
 - Project: `travel_agency_agent`
 - Provider: `local`
 - Model: `BAAI/bge-m3`
@@ -9,7 +9,30 @@
 
 ## Project-Focused Retrieval
 
-> NOTE: Project collection is temporarily locked by another index/search process; using shared workspace context for this run.
+### Architecture Decisions
+- Collection: `projects_proj_travel_agency_agent`
+- Query: `architecture decisions for travel_agency_agent`
+_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
+
+### Project Management Workflow
+- Collection: `projects_proj_travel_agency_agent`
+- Query: `project management workflow for travel_agency_agent`
+_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
+
+### Known Issues and Worklogs
+- Collection: `projects_proj_travel_agency_agent`
+- Query: `known issues and worklog for travel_agency_agent`
+_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
+
+### Prompts and Guidelines
+- Collection: `projects_proj_travel_agency_agent`
+- Query: `prompts and guidelines for travel_agency_agent`
+_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
+
+### System Learning Graph
+- Collection: `projects_proj_travel_agency_agent`
+- Query: `knowledge graph memory learning feedback loops autoresearch semantic taste graph for travel_agency_agent`
+_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
 
 ## Shared Cross-Project Retrieval
 

@@ -34,15 +34,12 @@ export function Modal({
     lg: 'max-w-2xl',
   };
 
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onCloseRef.current();
+        onClose();
         return;
       }
 
@@ -87,7 +84,7 @@ export function Modal({
         previousActiveElement.current.focus();
       }
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 

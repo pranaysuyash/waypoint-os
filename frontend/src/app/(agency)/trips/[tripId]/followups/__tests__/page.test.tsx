@@ -189,10 +189,13 @@ describe('FollowupsPage', () => {
   });
 
   test('can sort by days until due', async () => {
+    const user = userEvent.setup();
     render(<FollowupsPage />);
+    await screen.findByText('Ravi Singh');
+
     const daysSortButton = screen.getAllByRole('button').find(b => b.textContent === 'Days Until Due');
     if (daysSortButton) {
-      fireEvent.click(daysSortButton);
+      await user.click(daysSortButton);
       // Verify button is still in the document after click (sort applied)
       expect(daysSortButton).toBeInTheDocument();
     }

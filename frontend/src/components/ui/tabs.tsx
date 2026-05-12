@@ -22,7 +22,10 @@ export function getTabPanelId(tabId: string): string {
 }
 
 export function Tabs({ tabs, activeTab, onTabChange, ariaLabel = 'Tab navigation' }: TabsProps) {
-  const getTabLabel = (tabId: string) => tabs.find(t => t.id === tabId)?.label || tabId;
+  const getTabLabel = useCallback(
+    (tabId: string) => tabs.find(t => t.id === tabId)?.label || tabId,
+    [tabs],
+  );
 
   const [announcement, setAnnouncement] = useState(() => `${getTabLabel(activeTab)} tab selected`);
   const prevTabRef = useRef(activeTab);

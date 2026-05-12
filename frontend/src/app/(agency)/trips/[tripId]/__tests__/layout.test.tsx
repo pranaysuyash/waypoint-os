@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import { WorkspaceTripLayoutShell } from "../layout";
 import type { Trip } from "@/lib/api-client";
 import * as navigation from "next/navigation";
@@ -32,11 +32,43 @@ const baseTrip: Trip = {
   updatedAt: "2026-04-18T00:00:00.000Z",
 };
 
+function mockTimelineFetch(events: TimelineEventFixture[] = []) {
+  global.fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      trip_id: "TRIP-123",
+      events,
+    }),
+  });
+}
+
+type TimelineEventFixture = {
+  trip_id: string;
+  timestamp: string;
+  stage: string;
+  status: string;
+  reason?: string;
+  state_snapshot: Record<string, unknown>;
+};
+
+async function waitForTimelineFetch() {
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/trips/TRIP-123/timeline",
+      expect.objectContaining({
+        credentials: "include",
+        cache: "no-store",
+      }),
+    );
+  });
+}
+
 describe("trips/[tripId]/layout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(navigation.useParams).mockReturnValue({ tripId: "TRIP-123" });
     vi.mocked(navigation.usePathname).mockReturnValue("/trips/TRIP-123/intake");
+    mockTimelineFetch();
   });
 
   it("renders loading state while trip is pending", () => {
@@ -59,7 +91,7 @@ describe("trips/[tripId]/layout", () => {
     expect(screen.getByText("Loading workspace…")).toBeInTheDocument();
   });
 
-  it("renders trip header and stage tabs", () => {
+  it("renders trip header and stage tabs", async () => {
     vi.mocked(tripsHook.useTrip).mockReturnValue({
       data: {
         ...baseTrip,
@@ -104,9 +136,10 @@ describe("trips/[tripId]/layout", () => {
     );
     expect(screen.getByRole("link", { name: "Quote Assessment" })).toBeInTheDocument();
     expect(screen.getByText("Stage content")).toBeInTheDocument();
+    await waitForTimelineFetch();
   });
 
-  it("uses lead-review header copy for incomplete leads", () => {
+  it("uses lead-review header copy for incomplete leads", async () => {
     vi.mocked(tripsHook.useTrip).mockReturnValue({
       data: {
         ...baseTrip,
@@ -139,9 +172,10 @@ describe("trips/[tripId]/layout", () => {
     expect(screen.queryByRole("link", { name: "Options" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Output" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Risk Review" })).not.toBeInTheDocument();
+    await waitForTimelineFetch();
   });
 
-  it("uses planning header copy for trips in planning that still need customer details", () => {
+  it("uses planning header copy for trips in planning that still need customer details", async () => {
     vi.mocked(tripsHook.useTrip).mockReturnValue({
       data: {
         ...baseTrip,
@@ -189,9 +223,10 @@ describe("trips/[tripId]/layout", () => {
     expect(screen.getByText(/In planning · Inquiry Ref: 4B9E/i)).toBeInTheDocument();
     expect(screen.queryByText("trip_4b9e0d894872")).not.toBeInTheDocument();
     expect(screen.queryByText("In Progress")).not.toBeInTheDocument();
+    await waitForTimelineFetch();
   });
 
-  it("keeps blocked planning stages visible but gated while required fields are missing", () => {
+  it("keeps blocked planning stages visible but gated while required fields are missing", async () => {
     vi.mocked(tripsHook.useTrip).mockReturnValue({
       data: {
         ...baseTrip,
@@ -250,6 +285,7 @@ describe("trips/[tripId]/layout", () => {
     expect(screen.getByText("Quote Assessment")).toBeInTheDocument();
     expect(screen.getAllByText("Options").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Budget + origin needed").length).toBeGreaterThan(0);
+    await waitForTimelineFetch();
   });
 
   it("shows a compact collapsed timeline trigger for low-signal history and toggles open on demand", async () => {

@@ -137,3 +137,61 @@ Primary remaining categories:
 4. `react-hooks/exhaustive-deps`
 
 These require behavior-aware refactoring and should be handled as Batch B, component-by-component.
+
+## Batch B Slice 1 Execution Update (2026-05-12)
+
+### Objective
+
+Close the lowest-risk hook-rule violations in isolated page components:
+
+1. `react-hooks/purity` in the owner reviews page.
+2. `react-hooks/set-state-in-effect` in the agency settings page.
+3. `react-hooks/set-state-in-effect` in the documents route shell.
+4. `react-hooks/refs` render-time ref writes in shared drawer/modal primitives.
+
+### Files Updated
+
+- `src/app/(agency)/reviews/PageClient.tsx`
+- `src/app/(agency)/settings/page.tsx`
+- `src/app/(agency)/documents/PageClient.tsx`
+- `src/components/ui/drawer.tsx`
+- `src/components/ui/modal.tsx`
+
+### Implementation Notes
+
+- Reviews now captures one stable `referenceNow` value per page mount and passes it into review cards/sorting. This removes `Date.now()` from render-time calculations while preserving stable urgency ordering during a page session.
+- Settings now derives a cloned base draft from loaded settings and keeps local draft state only after user edits or reset. This removes the synchronous state sync effect and keeps reset/save behavior explicit.
+- Documents now derives the effective selected trip from the fetched trip list instead of syncing the first trip into state with an effect.
+- Drawer and modal now depend on `onClose` directly in their effects instead of assigning callback refs during render.
+
+### Verification
+
+Commands run:
+
+```bash
+cd frontend
+npm run typecheck
+npm run lint
+npm run lint -- --format stylish 2>&1 | rg "reviews/PageClient|settings/page|✖|problems"
+npx eslint 'src/app/(agency)/documents/PageClient.tsx' 'src/app/(agency)/reviews/PageClient.tsx' 'src/app/(agency)/settings/page.tsx' 'src/components/ui/drawer.tsx' 'src/components/ui/modal.tsx'
+```
+
+Results after Batch B Slice 1:
+
+- `typecheck`: PASS
+- `lint`: FAIL (remaining lint debt is outside the two files changed in this slice)
+- First full lint after this slice reported `59` problems (`45` errors, `14` warnings)
+- A follow-up filtered lint summary reported `61` problems (`46` errors, `15` warnings), consistent with the currently active dirty tree changing while parallel work is ongoing.
+- Re-check for this slice returned no `reviews/PageClient` or `settings/page` lint hits.
+- Targeted ESLint for the five files touched in this slice: PASS.
+- Latest full lint after documents/drawer/modal cleanup: FAIL with `56` problems (`42` errors, `14` warnings).
+
+### Remaining Lint Debt (Next Unit)
+
+Continue Batch B in small behavior-aware slices. Current highest-signal remaining areas:
+
+1. `src/app/(agency)/trips/[tripId]/layout.tsx` - trip/stage rail reset state.
+2. `src/app/(agency)/trips/[tripId]/followups/PageClient.tsx` - fetch state owned by effect callback.
+3. `src/app/(agency)/workbench/OpsPanel.tsx` - several fetch/action callbacks need dependency and effect ownership review.
+4. `src/app/(agency)/workbench/PageClient.tsx` - store/effect dependency and manual memoization review.
+5. `src/components/workspace/panels/IntakePanel.tsx`, `TimelinePanel.tsx`, and `src/hooks/useFieldAuditLog.ts` - larger hook/state ownership cleanup.

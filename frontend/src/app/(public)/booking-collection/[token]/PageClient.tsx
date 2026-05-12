@@ -465,7 +465,7 @@ export default function BookingCollectionPage({
   const travelerIdBase = useId();
   const travelerKeys = useMemo(
     () => fields.travelers.map((_, index) => `${travelerIdBase}-traveler-${index + 1}`),
-    [fields.travelers.length, travelerIdBase],
+    [fields.travelers, travelerIdBase],
   );
   const payerNameId = useId();
   const payerEmailId = useId();

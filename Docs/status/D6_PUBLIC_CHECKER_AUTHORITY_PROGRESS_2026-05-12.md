@@ -9,6 +9,7 @@
 - Added runtime D6 authority resolver that prefers eval-gate snapshot evidence when available and falls back to manifest status.
 - Added endpoint-level public-checker contract tests for advisory vs authoritative blocker behavior.
 - Added canonical D6 gate snapshot generator and runtime artifact path for CI/ops.
+- Added deterministic D6 snapshot verifier and CI guard wiring.
 - Added/updated tests for metadata + merge behavior.
 
 ## What is better now
@@ -32,6 +33,10 @@
    - Builder module: `src/evals/audit/snapshot.py`
    - CLI entrypoint: `scripts/generate_d6_gate_snapshot.py`
    - Default runtime artifact: `data/evals/d6_audit_gate_snapshot.json`
+8. Snapshot drift can now be enforced in CI without timestamp noise:
+   - Verifier: `scripts/verify_d6_gate_snapshot.py`
+   - Stable comparison ignores volatile `generated_at`
+   - CI workflow includes a dedicated D6 snapshot guard step
 
 ## What is still bad / incomplete
 
@@ -52,6 +57,8 @@
 - `/Users/pranay/Projects/travel_agency_agent/scripts/generate_d6_gate_snapshot.py`
 - `/Users/pranay/Projects/travel_agency_agent/tests/evals/test_d6_gate_snapshot.py`
 - `/Users/pranay/Projects/travel_agency_agent/data/evals/d6_audit_gate_snapshot.json`
+- `/Users/pranay/Projects/travel_agency_agent/scripts/verify_d6_gate_snapshot.py`
+- `/Users/pranay/Projects/travel_agency_agent/.github/workflows/run-contract-guard.yml`
 
 ## Verification
 
@@ -63,9 +70,11 @@
 - Result: `20 passed`
 - `uv run python scripts/generate_d6_gate_snapshot.py`
 - Result: wrote `data/evals/d6_audit_gate_snapshot.json`
+- `uv run python scripts/verify_d6_gate_snapshot.py`
+- Result: `{"ok": true, ...}`
 
 ## Recommended next implementation order (updated)
 
-1. Add CI job wiring to regenerate `data/evals/d6_audit_gate_snapshot.json` and fail on unexpected drift.
+1. Decide operational policy for snapshot updates (manual commit workflow vs auto-regenerated PRs) and document ownership.
 2. Update frontend itinerary checker UI to distinguish authoritative vs advisory findings explicitly.
 3. Build D6 fixtures/rules for weather+safety and promote categories from `shadow` to `gating` only after thresholds are proven.

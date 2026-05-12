@@ -53,7 +53,7 @@ def get_analytics_summary(
     range: str = "30d",
     agency: Agency = Depends(get_current_agency),
 ):
-    trips = TripStore.list_trips(limit=10000, agency_id=agency.id)
+    trips = TripStore.list_trip_summaries(limit=10000, agency_id=agency.id)
     canonical_trips = [t for t in trips if t.get("id")]
     return aggregate_insights(canonical_trips)
 
@@ -63,7 +63,7 @@ def get_analytics_pipeline(
     range: str = "30d",
     agency: Agency = Depends(get_current_agency),
 ):
-    trips = TripStore.list_trips(limit=10000, agency_id=agency.id)
+    trips = TripStore.list_trip_summaries(limit=10000, agency_id=agency.id)
     canonical_trips = [t for t in trips if t.get("id")]
     return compute_pipeline_metrics(canonical_trips)
 

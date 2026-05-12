@@ -361,7 +361,23 @@ class ProductBEventStore:
     def _is_qualified_inquiry(cls, inquiry_events: List[Dict[str, Any]]) -> bool:
         has_intake = any(evt.get("event_name") == "intake_started" for evt in inquiry_events)
         has_credible = any(evt.get("event_name") == "first_credible_finding_shown" for evt in inquiry_events)
-        return has_intake and has_credible
+        return has_intake and has_credible and not cls._qualified_exclusion_reasons(inquiry_events)
+
+    @classmethod
+    def _qualified_exclusion_reasons(cls, inquiry_events: List[Dict[str, Any]]) -> List[str]:
+        intake = next((evt for evt in inquiry_events if evt.get("event_name") == "intake_started"), None)
+        if not intake:
+            return []
+
+        props = intake.get("properties") or {}
+        reasons: List[str] = []
+        if props.get("internal_test_traffic") is True:
+            reasons.append("internal_test_traffic")
+        if props.get("sufficient_input_quality") is False:
+            reasons.append("insufficient_input_quality")
+        if props.get("real_trip_intent") is False:
+            reasons.append("missing_real_trip_intent")
+        return reasons
 
     @classmethod
     def _kpi_definitions(cls, *, window_days: int) -> Dict[str, Any]:
@@ -378,7 +394,7 @@ class ProductBEventStore:
                     "insufficient_input_quality",
                     "missing_real_trip_intent",
                 ],
-                "current_enforcement": "event_presence_only",
+                "current_enforcement": "event_presence_plus_explicit_exclusions",
             },
             "kpis": {
                 "time_to_first_credible_finding_ms": {
@@ -452,6 +468,11 @@ class ProductBEventStore:
         unknown_outcomes = 0
         product_a_signals = 0
         qualified_inquiries = 0
+        excluded_inquiries = {
+            "internal_test_traffic": 0,
+            "insufficient_input_quality": 0,
+            "missing_real_trip_intent": 0,
+        }
 
         confidence_breakdown = {"observed": 0, "inferred": 0, "unknown": 0}
 
@@ -460,6 +481,10 @@ class ProductBEventStore:
             is_qualified = cls._is_qualified_inquiry(inquiry_events)
             if is_qualified:
                 qualified_inquiries += 1
+            else:
+                for reason in cls._qualified_exclusion_reasons(inquiry_events):
+                    if reason in excluded_inquiries:
+                        excluded_inquiries[reason] += 1
             if qualified_only and not is_qualified:
                 continue
 
@@ -518,6 +543,7 @@ class ProductBEventStore:
                 "events": len(events),
                 "inquiries_total": len(grouped),
                 "qualified_inquiries": qualified_inquiries,
+                "excluded_inquiries": excluded_inquiries,
             },
             "kpis": {
                 "time_to_first_credible_finding_ms": {

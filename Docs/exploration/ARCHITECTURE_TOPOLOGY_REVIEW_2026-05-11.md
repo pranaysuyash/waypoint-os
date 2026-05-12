@@ -484,6 +484,11 @@ Browser
   - `GET /trips/{trip_id}/agent-events`
   - `GET /api/trips/{trip_id}/timeline`
 - This extraction is documented in [Docs/status/TRIP_OBSERVABILITY_ROUTER_EXTRACTION_2026-05-12.md](../status/TRIP_OBSERVABILITY_ROUTER_EXTRACTION_2026-05-12.md).
+- Trip lifecycle routes moved into `spine_api/routers/trip_lifecycle.py`:
+  - `POST /trips/{trip_id}/reassess`
+  - `PATCH /trips/{trip_id}/stage`
+- Shared lifecycle behavior now lives in `spine_api/services/trip_lifecycle_service.py`, so explicit reassess, stage transition, and `PATCH /trips/{trip_id}` auto-reassess use one implementation path.
+- This extraction is documented in [Docs/status/TRIP_LIFECYCLE_ROUTER_EXTRACTION_2026-05-12.md](../status/TRIP_LIFECYCLE_ROUTER_EXTRACTION_2026-05-12.md).
 
 ### What is still left (next actionable slice)
 

@@ -307,6 +307,53 @@ If the project keeps one database role for now, the safer sequence is:
 - Prefer behavior or canonical-location assertions over source-string assertions. The ledger test was kept as a narrow source guard only because that was the existing test's purpose; the stronger long-term path is expanding `tests/test_pipeline_execution_service_boundaries.py` with behavioral fake-ledger failure cases.
 - RLS tenant scoping should continue to prioritize bound parameters and transaction-local behavior over matching a specific SQL spelling.
 
+## 2026-05-12 Startup RLS Posture Guard Follow-Up
+
+**Status:** Implemented and targeted-verified.
+
+What changed:
+
+- `spine_api/server.py` now imports the canonical `inspect_rls_runtime_posture()` contract and checks SQL RLS posture during FastAPI lifespan startup.
+- `tests/test_server_startup_invariants.py` now covers file-backend skip, local/development warning, production fail-fast, and clean non-owner runtime posture.
+- `Docs/RLS_TENANT_ISOLATION_2026-05-04.md` now reflects that startup wiring is complete and records the remaining long-term database role work.
+
+Behavior:
+
+- `TRIPSTORE_BACKEND=file`: startup skips the SQL posture check.
+- `TRIPSTORE_BACKEND=sql` with `ENVIRONMENT=production` or `staging`: startup raises if the runtime role can bypass tenant RLS.
+- local/development SQL startup logs a warning and continues so current local work is not blocked while the DB role split is pending.
+
+Verification:
+
+- Baseline targeted RLS/startup suite before implementation: `uv run pytest tests/test_server_startup_invariants.py tests/test_rls.py tests/test_rls_live_postgres.py -q` -> `22 passed, 1 xfailed`.
+- Red test proof before implementation: four new startup RLS posture tests failed because `_validate_rls_runtime_posture_configuration()` and the server-level posture inspector import did not exist.
+- New focused tests: `uv run pytest tests/test_server_startup_invariants.py::test_rls_posture_invariant_file_backend_skips_sql_check tests/test_server_startup_invariants.py::test_rls_posture_invariant_warns_in_development tests/test_server_startup_invariants.py::test_rls_posture_invariant_fails_in_production tests/test_server_startup_invariants.py::test_rls_posture_invariant_passes_when_runtime_role_is_enforced -q` -> `4 passed`.
+- Targeted RLS/startup suite after implementation: `uv run pytest tests/test_server_startup_invariants.py tests/test_rls.py tests/test_rls_live_postgres.py -q` -> `26 passed, 1 xfailed`.
+- Adjacent trip API/RLS suite: `uv run pytest tests/test_api_trips_post.py tests/test_rls_live_postgres.py -q` -> `9 passed, 1 xfailed`.
+- Static name checks: `uv run ruff check --select F821,F822,F823 spine_api/server.py tests/test_server_startup_invariants.py` -> `All checks passed`.
+- Broad ruff check on `spine_api/server.py` remains blocked by pre-existing import-order and unused-import findings; those were present before this change and were not widened in this RLS unit.
+- Live dev posture probe: `TRIPSTORE_BACKEND=sql ENVIRONMENT=development uv run python -c "import asyncio; import spine_api.server as server; asyncio.run(server._validate_rls_runtime_posture_configuration()); print('dev_rls_startup_check_completed')"` -> warning emitted, then completed.
+- Live production posture probe: `TRIPSTORE_BACKEND=sql ENVIRONMENT=production uv run python -c "import asyncio; import spine_api.server as server; asyncio.run(server._validate_rls_runtime_posture_configuration())"` -> expected `RuntimeError` naming owner-bypass risk on protected tables.
+
+Remaining work:
+
+- Split database roles so the app uses a non-owner runtime role, with migrations/admin work held by an owner role.
+- Before using `FORCE ROW LEVEL SECURITY` as a fallback, thread `app.current_agency_id` through every SQL trip read/write path and cover list, count, save, update, batch/import, seed, and public-checker paths with live PostgreSQL tests.
+
+Full-suite follow-up:
+
+- First full-suite rerun after the RLS startup guard exposed five deterministic current-tree failures outside the RLS slice:
+  - `tests/test_agent_events_api.py::test_get_agent_runtime_returns_registry_and_health`
+  - `tests/test_agent_events_api.py::test_run_agent_runtime_once_returns_results`
+  - `tests/test_analytics_router_contract.py::test_analytics_router_owns_non_product_b_analytics_paths`
+  - `tests/test_followups_router_behavior.py::test_followups_dashboard_agency_filter_and_sort`
+  - `tests/test_overview_analytics_hardening.py::test_inbox_stats_handles_non_dict_analytics`
+- Root cause: the app served canonical `spine_api.routers.*` modules while legacy test imports used `routers.*`, creating duplicate module objects and ineffective monkeypatches. Separately, the inbox stats test patched `list_trips` even though the current canonical stats path calls `list_trip_summaries`.
+- Fix: `spine_api/server.py` now registers legacy `routers.*` aliases for the canonical app router modules used by tests and compatibility imports; `tests/test_overview_analytics_hardening.py` patches `list_trip_summaries`.
+- Focused rerun of those five failures: `5 passed`.
+- Combined RLS/startup plus failure-regression subset: `uv run pytest tests/test_server_startup_invariants.py tests/test_rls.py tests/test_rls_live_postgres.py tests/test_api_trips_post.py tests/test_agent_events_api.py::test_get_agent_runtime_returns_registry_and_health tests/test_agent_events_api.py::test_run_agent_runtime_once_returns_results tests/test_analytics_router_contract.py::test_analytics_router_owns_non_product_b_analytics_paths tests/test_followups_router_behavior.py::test_followups_dashboard_agency_filter_and_sort tests/test_overview_analytics_hardening.py::test_inbox_stats_handles_non_dict_analytics -q` -> `39 passed, 1 xfailed`.
+- Final backend full suite: `uv run pytest -q` -> `2113 passed, 7 skipped, 1 xfailed in 42.32s`.
+
 ---
 
 # Audit Bridge Warning Cleanup Addendum
@@ -753,6 +800,28 @@ Before claiming frontend/backend stability in local QA:
 1. `python tools/dev_server_manager.py status --service all`
 2. `python tools/runtime_smoke_matrix.py`
 Only claim stable when both pass.
+
+### Runtime Gate Hardening (2026-05-12)
+
+The smoke matrix now has a single-command local-stack gate:
+
+```bash
+python tools/runtime_smoke_matrix.py --preflight-local-stack
+```
+
+What changed:
+- `tools/runtime_smoke_matrix.py` adds `--preflight-local-stack`.
+- The preflight verifies backend `/health` and frontend `/overview` before login/session smoke checks.
+- `tests/test_runtime_smoke_matrix.py` guards both success and fail-closed behavior.
+- `tools/README.md` documents the standard local gate.
+
+Updated operational rule:
+- Before claiming local frontend/backend runtime stability, run `python tools/runtime_smoke_matrix.py --preflight-local-stack`.
+- Use `python tools/dev_server_manager.py status --service all` when diagnosing process ownership, PID drift, or logs; the smoke matrix is now the canonical stability gate.
+
+Rationale:
+- This keeps runtime truth in one reusable command instead of requiring agents to remember a two-step checklist.
+- The implementation extends the existing tool instead of adding another parallel verifier.
 
 ## Frontend Dev Cache Runtime Drift (2026-05-11, Session 6)
 

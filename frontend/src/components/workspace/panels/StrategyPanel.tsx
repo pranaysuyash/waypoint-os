@@ -3,6 +3,7 @@
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { StrategyOutput } from "@/types/spine";
 import Link from "next/link";
+import { isDebugJsonAllowed } from "@/lib/privacy-controls";
 
 interface StrategyPanelProps {
   tripId: string;
@@ -10,6 +11,7 @@ interface StrategyPanelProps {
 
 export function StrategyPanel({ tripId }: StrategyPanelProps) {
   const { result_strategy, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
+  const debugJsonAllowed = isDebugJsonAllowed();
   const strategy = result_strategy as StrategyOutput | null;
 
   if (!strategy) {
@@ -88,15 +90,22 @@ export function StrategyPanel({ tripId }: StrategyPanelProps) {
         </section>
       )}
 
+      {!debugJsonAllowed && (
+        <div className="rounded border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-ui-xs text-amber-200">
+          Technical Data is hidden by privacy policy. Set <code>NEXT_PUBLIC_ALLOW_DEBUG_JSON=true</code> in a secure environment to enable.
+        </div>
+      )}
+
       <button
         type="button"
-        className="text-ui-xs text-accent-blue hover:text-accent-blue underline"
+        className="text-ui-xs text-accent-blue hover:text-accent-blue underline disabled:opacity-50"
+        disabled={!debugJsonAllowed}
         onClick={() => setDebugRawJson(!debug_raw_json)}
       >
         {debug_raw_json ? "Hide" : "Show"} Technical Data
       </button>
 
-      {debug_raw_json && (
+      {debug_raw_json && debugJsonAllowed && (
         <pre className="bg-sidebar p-4 rounded text-ui-xs font-mono text-text-muted overflow-x-auto">
           {JSON.stringify({ strategy }, null, 2)}
         </pre>

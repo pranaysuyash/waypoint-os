@@ -1,6 +1,6 @@
 # Frontend Runtime Truth Matrix
 
-Date: 2026-05-11  
+Date: 2026-05-12
 Scope: `frontend` runtime modules vs research/spec documentation claims
 
 ## Purpose
@@ -28,7 +28,7 @@ Use this matrix before planning new implementation work to avoid building from s
 | Output Panel (bundle display/debug) | Partially implemented in workbench surfaces | Research complete | `OutputPanel.tsx` exists; deep dive docs `OUTPUT_*` are extensive | Label as `partially implemented; research complete` |
 | Template engine (compile/render pipeline) | Not implemented in runtime | Research/spec complete only | `DOCUMENT_GEN_01_TEMPLATES.md` lists open next steps; `OUTPUT_12_TEMPLATE_REFERENCE_COMPLETE.md` defines architecture but no runtime engine path in `src/lib` | Keep as planned architecture; do not present as shipped |
 | Quotes module (`/quotes`) | Disabled in nav | Research complete | `src/lib/nav-modules.ts` line with `href: '/quotes', enabled: false` | Mark as planned runtime module |
-| Documents module (`/documents`) | Disabled in nav | Research complete | `src/lib/nav-modules.ts` line with `href: '/documents', enabled: false` | Mark as planned runtime module |
+| Documents module (`/documents`) | Enabled in nav with rollout gates complete | Research complete | `src/lib/nav-modules.ts` + `isDocumentsModuleEnabled()` + `/app/(agency)/documents/page.tsx` | Treat as active route-level module over canonical contracts |
 | Document ingestion/extraction operations | Implemented in workbench ops path | Research partially aligned | `api-client.ts` has `uploadDocument`, `getDocuments`, `extractDocument`, `applyExtraction`; `OpsPanel.tsx` calls these | Treat as canonical current path; extend this path, do not create parallel flow |
 
 ## Architecture Guardrail

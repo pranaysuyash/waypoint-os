@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import OpsPanel from '@/app/(agency)/workbench/OpsPanel';
 import { useTrip, useTrips } from '@/hooks/useTrips';
@@ -9,18 +9,14 @@ import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 export default function DocumentsPage() {
   const { data: trips, isLoading } = useTrips({ view: 'workspace', limit: 100 });
   const [selectedTripId, setSelectedTripId] = useState<string>('');
-  const { data: selectedTrip } = useTrip(selectedTripId || null);
-
-  useEffect(() => {
-    if (!selectedTripId && trips.length > 0) {
-      setSelectedTripId(trips[0].id);
-    }
-  }, [selectedTripId, trips]);
 
   const tripOptions = useMemo(
     () => trips.map((trip) => ({ id: trip.id, label: `${trip.destination} (${trip.type})` })),
     [trips],
   );
+  const selectedTripExists = trips.some((trip) => trip.id === selectedTripId);
+  const effectiveSelectedTripId = selectedTripExists ? selectedTripId : trips[0]?.id ?? '';
+  const { data: selectedTrip } = useTrip(effectiveSelectedTripId || null);
 
   return (
     <div className='p-6 space-y-6'>
@@ -39,7 +35,7 @@ export default function DocumentsPage() {
         <select
           id='documents-trip-select'
           data-testid='documents-trip-select'
-          value={selectedTripId}
+          value={effectiveSelectedTripId}
           onChange={(e) => setSelectedTripId(e.target.value)}
           className='w-full md:w-[420px] bg-[#0d1117] border border-[#30363d] rounded p-2 text-sm text-[#e6edf3]'
           disabled={isLoading || tripOptions.length === 0}
@@ -55,10 +51,10 @@ export default function DocumentsPage() {
           )}
         </select>
 
-        {selectedTripId && (
+        {effectiveSelectedTripId && (
           <div className='mt-3 text-xs text-[#8b949e]'>
             Need full context?{' '}
-            <Link className='text-[#58a6ff] hover:text-[#79b8ff]' href={`/trips/${selectedTripId}/intake`}>
+            <Link className='text-[#58a6ff] hover:text-[#79b8ff]' href={`/trips/${effectiveSelectedTripId}/intake`}>
               Open trip workspace
             </Link>
           </div>

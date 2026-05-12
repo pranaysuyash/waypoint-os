@@ -11,6 +11,7 @@ import { SuitabilityCard } from "./SuitabilityCard";
 import { StageAdvanceButton } from "./StageAdvanceButton";
 import { STATE_COLORS } from "@/lib/tokens";
 import Link from "next/link";
+import { isDebugJsonAllowed } from "@/lib/privacy-controls";
 
 interface DecisionPanelProps {
   trip?: Trip | null;
@@ -44,6 +45,7 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
   const tripId = propTripId || trip?.id || context?.tripId || "";
 
   const { result_decision, result_validation, debug_raw_json, setDebugRawJson, acknowledged_suitability_flags, acknowledgeFlag } = useWorkbenchStore();
+  const debugJsonAllowed = isDebugJsonAllowed();
   const decision: DecisionOutput | null = result_decision || trip?.decision || null;
   const validation = result_validation || trip?.validation || null;
 
@@ -229,9 +231,16 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
         />
       ) : null}
 
+      {!debugJsonAllowed && (
+        <div className="rounded border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-ui-xs text-amber-200">
+          Technical Data is hidden by privacy policy. Set <code>NEXT_PUBLIC_ALLOW_DEBUG_JSON=true</code> in a secure environment to enable.
+        </div>
+      )}
+
       <button
         type="button"
-        className="text-[var(--ui-text-xs)] text-text-placeholder hover:text-text-muted transition-colors underline underline-offset-2"
+        className="text-[var(--ui-text-xs)] text-text-placeholder hover:text-text-muted transition-colors underline underline-offset-2 disabled:opacity-50"
+        disabled={!debugJsonAllowed}
         onClick={() => setDebugRawJson(!debug_raw_json)}
       >
         {debug_raw_json ? "Hide" : "Show"} raw JSON

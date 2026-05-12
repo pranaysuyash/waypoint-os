@@ -4,7 +4,7 @@ import hashlib
 from typing import List, Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 from starlette.requests import Request
 from starlette.responses import Response
 from spine_api.core.rate_limiter import limiter
@@ -55,6 +55,8 @@ class BookingPayerModel(BaseModel):
 
 
 class BookingDataModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     travelers: List[BookingTravelerModel]
     payer: Optional[BookingPayerModel] = None
     special_requirements: Optional[str] = None

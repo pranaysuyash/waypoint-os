@@ -1,7 +1,7 @@
 # PostgreSQL RLS — Tenant Isolation (Task 5)
 
 **Date**: 2026-05-04  
-**Status**: Implemented with mock/unit coverage; live PostgreSQL enforcement gap found 2026-05-11
+**Status**: Implemented with mock/unit coverage; live PostgreSQL enforcement gap found 2026-05-11; startup posture guard added 2026-05-12
 
 ---
 
@@ -17,9 +17,11 @@ enforces that queries only return rows belonging to the current request's agency
 | File | Purpose |
 |------|---------|
 | `spine_api/core/rls.py` | ContextVar, `set_rls_agency()`, `apply_rls()`, `get_rls_db()` |
+| `spine_api/server.py` | Startup RLS runtime posture guard for SQL mode |
 | `spine_api/core/auth.py` | Modified: calls `set_rls_agency()` in `get_current_membership` |
 | `alembic/versions/add_rls_tenant_isolation.py` | Migration enabling RLS on trips, memberships, workspace_codes |
-| `tests/test_rls.py` | 9 tests: ContextVar isolation, SQL parameterization, dep wiring |
+| `tests/test_server_startup_invariants.py` | Startup invariant tests, including production fail-fast/local warning RLS posture |
+| `tests/test_rls.py` | ContextVar isolation, SQL parameterization, dependency wiring, runtime posture contract |
 | `tests/test_rls_live_postgres.py` | Live PostgreSQL catalog check plus rollback-only visibility probe |
 
 ---
@@ -141,6 +143,18 @@ into a passing assertion. The long-term fix should be one of:
 diagnostics can share one canonical definition of "RLS is enforced for the runtime role."
 This avoids duplicating ad-hoc catalog logic in each future guardrail.
 
+### 2026-05-12 startup posture guard
+
+`spine_api/server.py` now calls `inspect_rls_runtime_posture()` during FastAPI lifespan startup when `TRIPSTORE_BACKEND=sql`.
+
+Behavior:
+
+- `ENVIRONMENT=production` or `ENVIRONMENT=staging`: fail fast if the runtime role can bypass tenant RLS.
+- local/development/test environments: log a warning and continue, because the current local database still uses the owner role for app access.
+- `TRIPSTORE_BACKEND=file`: skip the SQL posture check.
+
+Live local verification on 2026-05-12 showed the guard warning/failing on all protected tables currently owned by `waypoint` without `FORCE ROW LEVEL SECURITY`: `booking_collection_tokens`, `memberships`, `trips`, and `workspace_codes`.
+
 ---
 
 ## Tests (9 total, all passing)
@@ -178,7 +192,6 @@ This avoids duplicating ad-hoc catalog logic in each future guardrail.
 - Thread RLS context through every SQL trip read/write path before forcing RLS. The direct
   `TripStore` / `SQLTripStore` paths still open their own sessions and depend mainly on
   application-layer `agency_id` filters.
-- Wire `inspect_rls_runtime_posture()` into startup once the current `spine_api/server.py`
-  router extraction work settles, with fail-fast behavior in production/staging and warning
-  behavior in local development.
 - Keep `booking_collection_tokens` in the protected table set; the migration already covers it.
+- Keep the startup guard in place until the runtime DB role is non-owner or every SQL path is
+  safe for `FORCE ROW LEVEL SECURITY`.

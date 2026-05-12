@@ -5,6 +5,7 @@ import { useWorkbenchStore } from "@/stores/workbench";
 import type { SafetyResult, PromptBundle } from "@/types/spine";
 import { AlertCircle, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import Link from "next/link";
+import { isDebugJsonAllowed } from "@/lib/privacy-controls";
 
 interface SafetyPanelProps {
   tripId: string;
@@ -18,7 +19,8 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
     debug_raw_json,
   } = useWorkbenchStore();
   const [showRaw, setShowRaw] = useState(false);
-  const effectiveShowRaw = debug_raw_json || showRaw;
+  const debugJsonAllowed = isDebugJsonAllowed();
+  const effectiveShowRaw = debugJsonAllowed && (debug_raw_json || showRaw);
 
   if (!result_safety) {
     return (
@@ -137,10 +139,17 @@ export function SafetyPanel({ tripId }: SafetyPanelProps) {
         </div>
       </section>
 
+      {!debugJsonAllowed && (
+        <div className="rounded border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-ui-xs text-amber-200">
+          Technical Data is hidden by privacy policy. Set <code>NEXT_PUBLIC_ALLOW_DEBUG_JSON=true</code> in a secure environment to enable.
+        </div>
+      )}
+
       <button
         type="button"
-        className="text-ui-xs text-accent-blue hover:text-accent-blue underline mt-2"
-        onClick={() => setShowRaw(!effectiveShowRaw)}
+        className="text-ui-xs text-accent-blue hover:text-accent-blue underline mt-2 disabled:opacity-50"
+        disabled={!debugJsonAllowed}
+        onClick={() => setShowRaw((prev) => !prev)}
       >
         {effectiveShowRaw ? "Hide" : "Show"} Diagnostic Data
       </button>

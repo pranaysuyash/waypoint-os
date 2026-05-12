@@ -96,3 +96,52 @@ Results:
 - The public marketing target now passes, but it remains heavy compared with normal component tests. The latest isolated run took about 54 seconds, with the itinerary checker render test around 10 seconds.
 - Existing React `act(...)` warnings remain non-failing in async UI tests, especially booking collection, trip layout, capture call, followups, and extraction history suites.
 - A production build should be rerun after stopping or moving the active local `next dev` server, since Next currently prevents concurrent build/dev use of the same `.next` directory.
+
+## Async UI Warning Cleanup Addendum
+
+Timestamp: Tue May 12 09:08:08 IST 2026
+
+### Fresh Baseline
+
+The warning-hardening slice was rechecked after parallel-agent changes. The targeted baseline command was:
+
+`npx vitest run 'src/app/(public)/booking-collection/__tests__/page.test.tsx' 'src/app/(agency)/trips/[tripId]/__tests__/layout.test.tsx' 'src/components/workspace/panels/__tests__/CaptureCallPanel.test.tsx' 'src/app/(agency)/trips/[tripId]/followups/__tests__/page.test.tsx' 'src/components/workspace/panels/__tests__/ExtractionHistoryPanel.test.tsx'`
+
+Baseline result: all 71 tests passed, but React `act(...)` warnings still appeared in:
+
+- `booking-collection/__tests__/page.test.tsx`
+- `trips/[tripId]/__tests__/layout.test.tsx`
+- `CaptureCallPanel.test.tsx`
+- `followups/__tests__/page.test.tsx`
+- `ExtractionHistoryPanel.test.tsx`
+
+### Changes Applied
+
+- `BookingCollectionPage` now cancels the async `params.then(...)` dispatch on unmount.
+- `WorkspaceTripLayoutShell` now waits for a loaded trip before fetching timeline rail data.
+- Booking collection loading-state test uses a pending params promise so it only asserts the initial loading contract.
+- Trip layout tests mock and await the timeline rail fetch where the rail is part of the rendered contract.
+- Capture call loading test resolves its controlled request inside `act(...)` and waits for `onSave`.
+- Followups sort test uses awaited `userEvent` after initial data load.
+- Extraction history test no longer mounts a second component instance only to assert the same text content.
+
+### Verification Evidence
+
+Commands run:
+
+1. `npx vitest run 'src/app/(public)/booking-collection/__tests__/page.test.tsx' 'src/app/(agency)/trips/[tripId]/__tests__/layout.test.tsx' 'src/components/workspace/panels/__tests__/CaptureCallPanel.test.tsx' 'src/app/(agency)/trips/[tripId]/followups/__tests__/page.test.tsx' 'src/components/workspace/panels/__tests__/ExtractionHistoryPanel.test.tsx'`
+2. `npx vitest run 'src/app/(agency)/workbench/__tests__/OpsPanel.test.tsx' -t 'payment'`
+3. `npx vitest run 'src/app/(agency)/workbench/__tests__/OpsPanel.test.tsx'`
+4. `npx vitest run`
+5. `npx next build`
+
+Results:
+
+- Targeted warning suites: `5 passed`, `71 tests passed`, with no React `act(...)` warning output.
+- Full frontend suite clean rerun: `112 passed`, `869 tests passed`.
+- Production build: compiled successfully, TypeScript completed, and all 43 static pages generated.
+
+### Notes
+
+- One first full-suite run exposed two transient `OpsPanel` payment tests, but both payment-targeted and whole-file isolated runs passed, and the subsequent full-suite rerun passed. This was treated as suite-pressure noise, not a deterministic payment-tracking regression.
+- The `/api/trips` invalid-JSON route test still logs its intentional `SyntaxError` to stderr while passing. That is not part of the React async warning cleanup.

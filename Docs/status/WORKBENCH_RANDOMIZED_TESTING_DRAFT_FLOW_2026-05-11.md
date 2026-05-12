@@ -317,3 +317,30 @@ Results:
 - Targeted frontend suites: 44 passed.
 - Frontend typecheck: passed.
 - Dev servers: backend/frontend healthy (`200`).
+
+## Update: 2026-05-12 09:26 IST
+
+### Scope
+- Eliminated remaining Packet UI drift between Workbench `PacketTab` and shared `PacketPanel` by aligning rendering and issue surfacing behavior.
+
+### Changes
+- Updated `frontend/src/components/workspace/panels/PacketPanel.tsx`:
+  - Summary cards now use `_formatValue(...)` instead of raw `String(...)` coercion.
+  - Added explicit sections for:
+    - `Ambiguities` (field + raw value + ambiguity type)
+    - `Missing Details` (unknown reason + traveler-facing prompt)
+    - `Contradictions` (values + sources)
+  - Wired unknown-field prompts to shared contract: `getTravelerPromptForUnknownField(...)`.
+  - Kept type-safety aligned with canonical packet contracts (`Ambiguity.raw_value`, `PacketContradiction.values/sources`).
+- Stabilized unrelated typecheck regression introduced in parallel edits:
+  - Updated `frontend/src/components/workspace/panels/__tests__/ExtractionHistoryPanel.test.tsx` to assert page text without relying on a block-scoped `container` binding in that test case.
+
+### Verification
+- `cd frontend && npm run -s test -- --run 'src/components/workspace/panels/__tests__/ExtractionHistoryPanel.test.tsx' 'src/app/(agency)/workbench/__tests__/PacketTab.test.tsx' 'src/components/workspace/panels/__tests__/IntakeFieldComponents.test.tsx' 'src/components/workspace/panels/__tests__/IntakePanel.test.tsx' 'src/lib/__tests__/traveler-prompts.test.ts'`
+  - Result: **5 files, 53 tests passed**.
+- `cd frontend && npm run -s typecheck -- --pretty false`
+  - Result: **pass**.
+
+### Outcome
+- Packet surfaces are now contract-consistent and traveler-prompt-consistent.
+- Workbench packet diagnostics expose operator-useful unknown/ambiguity/contradiction context in both tab and panel paths.

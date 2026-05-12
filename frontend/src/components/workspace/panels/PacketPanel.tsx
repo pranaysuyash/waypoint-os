@@ -7,7 +7,8 @@ import { AlertTriangle, CheckCircle2, CloudSun, DollarSign, FileText, Plane, Shi
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { AgentOperationsMetadata, Trip } from "@/lib/api-client";
 import type { SlotValue, Ambiguity, PacketUnknown, PacketContradiction, ValidationReport } from "@/types/spine";
-import { FIELD_LABELS, SIGNAL_LABELS, labelOrTitle } from "@/lib/label-maps";
+import { FIELD_LABELS, SIGNAL_LABELS, AMBIGUITY_TYPE_LABELS, labelOrTitle } from "@/lib/label-maps";
+import { getTravelerPromptForUnknownField } from "@/lib/traveler-prompts";
 import {
   formatBudgetDisplay,
   formatCustomerDisplay,
@@ -19,6 +20,7 @@ import {
   readCustomerName,
 } from "@/lib/lead-display";
 import { getRequiredPlanningFields } from "@/lib/planning-status";
+import { isDebugJsonAllowed } from "@/lib/privacy-controls";
 
 const _PACKET_DT_FMT = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -38,6 +40,7 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
   const [isRefreshingAgents, setIsRefreshingAgents] = useState(false);
   const [agentRefreshMessage, setAgentRefreshMessage] = useState<string | null>(null);
   const { result_packet, result_validation, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
+  const debugJsonAllowed = isDebugJsonAllowed();
   const activePacket = result_packet || trip?.packet;
   const activeValidation = result_validation || (trip?.validation as ValidationReport | null);
 
@@ -79,6 +82,7 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
     Budget: _getFactValue(facts, "budget_raw_text") || "-",
     Party: _getFactValue(facts, "party_size") || "-",
   };
+  const summaryCards = Object.entries(summaryData).map(([label, value]) => ({ label, value: _formatValue(value) }));
 
   return (
     <div className="space-y-8">
@@ -92,12 +96,11 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {Object.entries(summaryData).map((entry) => {
-          const [label, value] = entry;
+        {summaryCards.map((card) => {
           return (
-            <div key={label} className="bg-elevated p-3 rounded-xl border border-[var(--border-default)]">
-              <div className="text-[var(--ui-text-xs)] font-bold text-text-placeholder uppercase tracking-widest mb-1">{label}</div>
-              <div className="text-ui-sm font-semibold text-text-primary font-mono">{String(value)}</div>
+            <div key={card.label} className="bg-elevated p-3 rounded-xl border border-[var(--border-default)]">
+              <div className="text-[var(--ui-text-xs)] font-bold text-text-placeholder uppercase tracking-widest mb-1">{card.label}</div>
+              <div className="text-ui-sm font-semibold text-text-primary font-mono">{card.value}</div>
             </div>
           );
         })}
@@ -151,17 +154,86 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
         </section>
       )}
 
-      {/* Validation/Ambiguities/Unknowns/Contradictions would follow the same pattern… */}
+      {ambiguities.length > 0 && (
+        <section>
+          <h3 className="text-[var(--ui-text-xs)] font-semibold uppercase tracking-widest text-text-placeholder mb-3">Ambiguities</h3>
+          <div className="bg-[#0a0d11] rounded-lg border border-highlight p-4">
+            <ul className="space-y-2">
+              {ambiguities.map((ambiguity) => (
+                <li key={`${ambiguity.field_name}-${ambiguity.raw_value}-${ambiguity.ambiguity_type}`} className="rounded-lg border border-[rgba(210,153,34,0.3)] bg-[rgba(210,153,34,0.08)] px-3 py-2 text-ui-sm text-text-rationale">
+                  <div className="font-medium text-text-primary">{labelOrTitle(FIELD_LABELS, ambiguity.field_name)}</div>
+                  <div className="text-ui-xs text-text-muted">{ambiguity.raw_value}</div>
+                  <div className="mt-1 text-ui-xs text-text-placeholder">{labelOrTitle(AMBIGUITY_TYPE_LABELS, ambiguity.ambiguity_type)}</div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      {unknowns.length > 0 && (
+        <section>
+          <h3 className="text-[var(--ui-text-xs)] font-semibold uppercase tracking-widest text-text-placeholder mb-3">Missing Details</h3>
+          <div className="bg-[#0a0d11] rounded-lg border border-highlight p-4">
+            <ul className="space-y-2">
+              {unknowns.map((unknown) => (
+                <li key={unknown.field_name} className="rounded-lg border border-[rgba(88,166,255,0.3)] bg-[rgba(88,166,255,0.08)] px-3 py-2 text-ui-sm text-text-rationale">
+                  <div className="font-medium text-text-primary">{labelOrTitle(FIELD_LABELS, unknown.field_name)}</div>
+                  <div className="text-ui-xs text-text-muted">{unknown.reason.replace(/_/g, " ")}</div>
+                  {getTravelerPromptForUnknownField(unknown.field_name) && (
+                    <div className="mt-1 text-ui-xs text-text-placeholder">
+                      Prompt: {getTravelerPromptForUnknownField(unknown.field_name)}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      {contradictions.length > 0 && (
+        <section>
+          <h3 className="text-[var(--ui-text-xs)] font-semibold uppercase tracking-widest text-text-placeholder mb-3">Contradictions</h3>
+          <div className="bg-[#0a0d11] rounded-lg border border-highlight p-4">
+            <ul className="space-y-2">
+              {contradictions.map((contradiction) => (
+                <li key={`${contradiction.field_name}-${contradiction.values.join("|")}-${contradiction.sources.join("|")}`} className="rounded-lg border border-[rgba(248,81,73,0.3)] bg-[rgba(248,81,73,0.08)] px-3 py-2 text-ui-sm text-text-rationale">
+                  <div className="font-medium text-text-primary">{labelOrTitle(FIELD_LABELS, contradiction.field_name)}</div>
+                  <div className="text-ui-xs text-text-muted">Conflicting values detected across sources.</div>
+                  {contradiction.values.length > 0 && (
+                    <div className="mt-1 text-ui-xs text-text-placeholder">
+                      Values: {contradiction.values.map((value) => _formatValue(value)).join(", ")}
+                    </div>
+                  )}
+                  {contradiction.sources.length > 0 && (
+                    <div className="mt-1 text-ui-xs text-text-placeholder">
+                      Sources: {contradiction.sources.join(", ")}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      {!debugJsonAllowed && (
+        <div className="rounded border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-ui-xs text-amber-200">
+          Technical Data is hidden by privacy policy. Set <code>NEXT_PUBLIC_ALLOW_DEBUG_JSON=true</code> in a secure environment to enable.
+        </div>
+      )}
 
       <button
         type="button"
-        className="text-ui-xs text-text-placeholder hover:text-text-muted underline"
+        className="text-ui-xs text-text-placeholder hover:text-text-muted underline disabled:opacity-50"
+        disabled={!debugJsonAllowed}
         onClick={() => setDebugRawJson(!debug_raw_json)}
       >
         {debug_raw_json ? "Hide" : "Show"} Technical Data
       </button>
 
-      {debug_raw_json && (
+      {debug_raw_json && debugJsonAllowed && (
         <pre className="bg-rationale border border-[var(--border-default)] p-4 rounded-xl text-[var(--ui-text-xs)] font-mono text-text-muted overflow-x-auto leading-relaxed">
           {JSON.stringify(bookingRequest, null, 2)}
         </pre>

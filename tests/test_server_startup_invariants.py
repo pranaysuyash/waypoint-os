@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import pytest
 
+from spine_api.core.rls import RlsRuntimePosture, RlsTablePosture
+
 import server
 
 
@@ -50,6 +52,40 @@ class _FakeEngine:
 
     def begin(self):
         return _FakeBegin(self.conn)
+
+
+def _rls_posture_with_owner_bypass() -> RlsRuntimePosture:
+    return RlsRuntimePosture(
+        current_user="waypoint",
+        is_superuser=False,
+        bypasses_rls=False,
+        tables=(
+            RlsTablePosture(
+                table_name="trips",
+                owner="waypoint",
+                rls_enabled=True,
+                force_rls=False,
+            ),
+        ),
+        expected_tables=("trips",),
+    )
+
+
+def _rls_posture_enforced() -> RlsRuntimePosture:
+    return RlsRuntimePosture(
+        current_user="waypoint_app",
+        is_superuser=False,
+        bypasses_rls=False,
+        tables=(
+            RlsTablePosture(
+                table_name="trips",
+                owner="waypoint_owner",
+                rls_enabled=True,
+                force_rls=False,
+            ),
+        ),
+        expected_tables=("trips",),
+    )
 
 
 def test_startup_invariant_tripstore_rejects_unknown_backend(monkeypatch):
@@ -161,3 +197,63 @@ async def test_startup_invariant_sql_wraps_unexpected_exception(monkeypatch):
 
     with pytest.raises(RuntimeError, match="Failed public checker agency validation"):
         await server._validate_public_checker_agency_configuration()
+
+
+@pytest.mark.asyncio
+async def test_rls_posture_invariant_file_backend_skips_sql_check(monkeypatch):
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
+
+    class _BombEngine:
+        def begin(self):
+            raise AssertionError("engine.begin() should not run in file mode")
+
+    monkeypatch.setattr(server, "engine", _BombEngine())
+
+    await server._validate_rls_runtime_posture_configuration()
+
+
+@pytest.mark.asyncio
+async def test_rls_posture_invariant_warns_in_development(monkeypatch, caplog):
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "sql")
+    monkeypatch.setenv("ENVIRONMENT", "development")
+
+    async def _fake_inspect(_conn):
+        return _rls_posture_with_owner_bypass()
+
+    monkeypatch.setattr(server, "engine", _FakeEngine(_FakeConn()))
+    monkeypatch.setattr(server, "inspect_rls_runtime_posture", _fake_inspect)
+
+    with caplog.at_level("WARNING"):
+        await server._validate_rls_runtime_posture_configuration()
+
+    assert "RLS runtime posture invariant failed" in caplog.text
+    assert "Local/development startup will continue" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_rls_posture_invariant_fails_in_production(monkeypatch):
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "sql")
+    monkeypatch.setenv("ENVIRONMENT", "production")
+
+    async def _fake_inspect(_conn):
+        return _rls_posture_with_owner_bypass()
+
+    monkeypatch.setattr(server, "engine", _FakeEngine(_FakeConn()))
+    monkeypatch.setattr(server, "inspect_rls_runtime_posture", _fake_inspect)
+
+    with pytest.raises(RuntimeError, match="RLS runtime posture invariant failed"):
+        await server._validate_rls_runtime_posture_configuration()
+
+
+@pytest.mark.asyncio
+async def test_rls_posture_invariant_passes_when_runtime_role_is_enforced(monkeypatch):
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "sql")
+    monkeypatch.setenv("ENVIRONMENT", "production")
+
+    async def _fake_inspect(_conn):
+        return _rls_posture_enforced()
+
+    monkeypatch.setattr(server, "engine", _FakeEngine(_FakeConn()))
+    monkeypatch.setattr(server, "inspect_rls_runtime_posture", _fake_inspect)
+
+    await server._validate_rls_runtime_posture_configuration()

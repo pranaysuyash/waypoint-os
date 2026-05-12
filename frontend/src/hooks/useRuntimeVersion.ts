@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 interface RuntimeVersionResponse {
   app: string;
@@ -22,47 +23,43 @@ function shortSha(sha: string | null): string {
 }
 
 export function useRuntimeVersion(): RuntimeVersionState {
-  const [state, setState] = useState<RuntimeVersionState>({
-    versionLabel: FALLBACK_VERSION_LABEL,
-    detailsLabel: FALLBACK_DETAILS_LABEL,
-  });
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const run = async () => {
+  const query = useQuery({
+    queryKey: ["runtime-version"],
+    queryFn: async (): Promise<RuntimeVersionResponse | null> => {
       try {
         const response = await fetch("/api/version", {
           cache: "no-store",
           credentials: "include",
         });
-        if (!response.ok) return;
-
-        const payload = (await response.json()) as RuntimeVersionResponse;
-        const sha = shortSha(payload.gitSha);
-        const details = sha
-          ? `runtime · ${payload.environment} · ${sha}`
-          : `runtime · ${payload.environment}`;
-
-        if (isMounted) {
-          setState({
-            versionLabel: payload.version
-              ? `v${payload.version}`
-              : FALLBACK_VERSION_LABEL,
-            detailsLabel: details,
-          });
-        }
+        if (!response.ok) return null;
+        return (await response.json()) as RuntimeVersionResponse;
       } catch {
-        // Keep fallback labels for resilience in local/offline/dev-error states.
+        return null;
       }
+    },
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+
+  return useMemo(() => {
+    const payload = query.data;
+    if (!payload) {
+      return {
+        versionLabel: FALLBACK_VERSION_LABEL,
+        detailsLabel: FALLBACK_DETAILS_LABEL,
+      };
+    }
+
+    const sha = shortSha(payload.gitSha);
+    return {
+      versionLabel: payload.version
+        ? `v${payload.version}`
+        : FALLBACK_VERSION_LABEL,
+      detailsLabel: sha
+        ? `runtime · ${payload.environment} · ${sha}`
+        : `runtime · ${payload.environment}`,
     };
-
-    void run();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  return state;
+  }, [query.data]);
 }

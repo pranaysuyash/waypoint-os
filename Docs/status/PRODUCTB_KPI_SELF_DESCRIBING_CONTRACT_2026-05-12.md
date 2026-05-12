@@ -139,3 +139,31 @@ uv run pytest -q \
   tests/test_public_checker_contract_authority.py
 # 38 passed in 19.00s
 ```
+
+## Additional Same-Day Hardening (Qualified Sample Enforcement)
+
+Task 0.3 from `Docs/NEXT_STEPS_PRODUCTB_WEDGE_EXECUTION_2026-05-07.md` requires kill tests to use qualified samples only. Before this pass, the backend only required event presence (`intake_started` plus `first_credible_finding_shown`) and did not enforce the documented exclusions.
+
+Changes:
+
+- `spine_api/product_b_events.py`
+  - Added explicit exclusion handling for `intake_started.properties.internal_test_traffic=true`.
+  - Added explicit exclusion handling for `intake_started.properties.sufficient_input_quality=false`.
+  - Added explicit exclusion handling for `intake_started.properties.real_trip_intent=false`.
+  - Added `sample.excluded_inquiries` counters to KPI output.
+  - Updated KPI definitions to report `current_enforcement=event_presence_plus_explicit_exclusions`.
+- `tests/test_product_b_events.py`
+  - Added coverage proving qualified-only KPIs exclude internal test traffic, insufficient input quality, and missing real trip intent while preserving backwards compatibility for events without those optional signals.
+
+Verification:
+
+```bash
+uv run pytest -q \
+  tests/test_product_b_events.py \
+  tests/test_product_b_analytics_router_behavior.py \
+  tests/test_public_checker_agency_config.py \
+  tests/test_public_checker_path_safety.py \
+  tests/test_live_checker_service.py \
+  tests/test_public_checker_contract_authority.py
+# 39 passed in 15.87s
+```

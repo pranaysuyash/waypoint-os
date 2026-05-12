@@ -521,3 +521,69 @@ Remaining categories:
 1 rendering-usetransition-loading
 1 design-no-redundant-padding-axes
 ```
+
+## 2026-05-12 React Doctor Batch 18 Update
+
+Current verified React Doctor baseline:
+
+```text
+score 96 Great total 34 errors 0 warnings 34
+```
+
+Changes in this batch:
+
+- Cleared `rendering-usetransition-loading` in `useSpineRun` by using status-mode state with derived `isLoading`.
+- Cleared `design-no-redundant-padding-axes` in documents page (`px-2 py-2` -> `p-2`).
+
+Verification:
+
+```text
+api-client contract + p1 happy path + intake panel tests: 3 files passed, 19 tests passed
+react-doctor: score 96, warnings 34, errors 0
+```
+
+Remaining categories:
+
+```text
+13 no-giant-component
+10 prefer-useReducer
+6 no-fetch-in-effect
+3 no-cascading-set-state
+2 nextjs-no-client-fetch-for-server-data
+```
+
+## 2026-05-12 React Doctor Batch 19 Update
+
+Current verified React Doctor baseline:
+
+```text
+score 96 Great total 33 errors 0 warnings 33
+```
+
+Changes in this batch:
+
+- Migrated `useRuntimeVersion` to TanStack Query, removing one `no-fetch-in-effect` finding.
+- Replaced array-index list keys in `PacketPanel` with stable composite keys.
+
+Verification:
+
+```text
+runtime version + packet tab tests: 2 files passed, 4 tests passed
+react-doctor: score 96, warnings 33, errors 0
+```
+
+Parallel-drift context:
+
+```text
+React Doctor source-file count changed from 342 to 344 during this window (parallel agents).
+```
+
+Remaining categories:
+
+```text
+13 no-giant-component
+10 prefer-useReducer
+5 no-fetch-in-effect
+3 no-cascading-set-state
+2 nextjs-no-client-fetch-for-server-data
+```

@@ -175,6 +175,98 @@ def test_compute_kpis_respects_qualified_filter(isolated_product_b_store):
     assert qualified_kpis["sample"]["qualified_inquiries"] == 1
 
 
+def test_compute_kpis_excludes_explicit_non_qualified_inquiries(isolated_product_b_store):
+    store = isolated_product_b_store
+
+    def add_inquiry(inquiry_id: str, suffix: str, intake_overrides: dict):
+        intake_props = {
+            "input_mode": "freeform_text",
+            "has_destination": True,
+            "has_dates": True,
+            "has_budget_band": True,
+            "has_traveler_profile": True,
+            **intake_overrides,
+        }
+        store.log_event(
+            store.build_event(
+                event_name="intake_started",
+                session_id=f"sess_{suffix}",
+                inquiry_id=inquiry_id,
+                trip_id=f"trip_{suffix}",
+                actor_type="traveler",
+                actor_id=None,
+                workspace_id="waypoint-hq",
+                channel="web",
+                locale="en-US",
+                currency="USD",
+                event_id=f"evt_{suffix}_1",
+                occurred_at="2026-05-07T10:00:00+00:00",
+                properties=intake_props,
+            )
+        )
+        store.log_event(
+            store.build_event(
+                event_name="first_credible_finding_shown",
+                session_id=f"sess_{suffix}",
+                inquiry_id=inquiry_id,
+                trip_id=f"trip_{suffix}",
+                actor_type="system",
+                actor_id=None,
+                workspace_id="waypoint-hq",
+                channel="api",
+                locale="en-US",
+                currency="USD",
+                event_id=f"evt_{suffix}_2",
+                occurred_at="2026-05-07T10:00:01+00:00",
+                properties={
+                    "time_from_intake_start_ms": 900,
+                    "finding_id": f"fnd_{suffix}",
+                    "finding_category": "policy",
+                    "severity": "must_fix",
+                    "confidence_score": 0.88,
+                    "evidence_present": True,
+                },
+            )
+        )
+        store.log_event(
+            store.build_event(
+                event_name="product_a_interest_signal",
+                session_id=f"sess_{suffix}",
+                inquiry_id=inquiry_id,
+                trip_id=f"trip_{suffix}",
+                actor_type="traveler",
+                actor_id=None,
+                workspace_id="waypoint-hq",
+                channel="web",
+                locale="en-US",
+                currency="USD",
+                event_id=f"evt_{suffix}_3",
+                occurred_at="2026-05-07T10:00:02+00:00",
+                properties={
+                    "signal_type": "demo_request",
+                    "attribution_mode": "direct",
+                    "source_inquiry_id": inquiry_id,
+                },
+            )
+        )
+
+    add_inquiry("inq_real", "real", {})
+    add_inquiry("inq_internal", "internal", {"internal_test_traffic": True})
+    add_inquiry("inq_low_quality", "low_quality", {"sufficient_input_quality": False})
+    add_inquiry("inq_no_intent", "no_intent", {"real_trip_intent": False})
+
+    qualified_kpis = store.compute_kpis(window_days=365, qualified_only=True)
+
+    assert qualified_kpis["sample"]["qualified_inquiries"] == 1
+    assert qualified_kpis["sample"]["excluded_inquiries"] == {
+        "internal_test_traffic": 1,
+        "insufficient_input_quality": 1,
+        "missing_real_trip_intent": 1,
+    }
+    assert qualified_kpis["counts"]["product_a_interest_signal"] == 1
+    assert qualified_kpis["kpis"]["product_a_pull_through"] == pytest.approx(1.0)
+
+
 def test_compute_kpis_exposes_observed_inferred_unknown_and_dark_funnel(isolated_product_b_store):
     store = isolated_product_b_store
 
@@ -294,7 +386,7 @@ def test_compute_kpis_returns_formula_definitions_and_sample_rule(isolated_produ
         "description": "Qualified inquiries require both intake_started and first_credible_finding_shown in the selected window.",
         "required_events": ["intake_started", "first_credible_finding_shown"],
         "exclusions": ["internal_test_traffic", "insufficient_input_quality", "missing_real_trip_intent"],
-        "current_enforcement": "event_presence_only",
+        "current_enforcement": "event_presence_plus_explicit_exclusions",
     }
 
     assert definitions["kpis"]["time_to_first_credible_finding_ms"] == {

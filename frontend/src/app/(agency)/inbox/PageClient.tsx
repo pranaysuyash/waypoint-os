@@ -274,7 +274,10 @@ function InboxPageWithSearchParams() {
   }, [assignTrips]);
 
   const handleBulkAssign = useCallback((agentId: string) => {
-      const tripIds = [...selectedTrips];
+    const tripIds = [...selectedTrips];
+    if (tripIds.length > 0) {
+      assignTrips({ tripIds, assignTo: agentId, notifyAssignee: true });
+    }
     handleClearSelection();
   }, [selectedTrips, handleClearSelection, assignTrips]);
 

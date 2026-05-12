@@ -49,7 +49,7 @@ from contextlib import asynccontextmanager
 from dataclasses import is_dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -61,7 +61,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Upl
 from starlette.requests import Request
 from starlette.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import text, select
 
 # --- OpenTelemetry instrumentation ---
@@ -72,14 +72,40 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.resources import Resource
 
-otel_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
+def _int_env(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        value = int(raw)
+        return value if value > 0 else default
+    except ValueError:
+        return default
+
+
+# Backend uses OTLP gRPC exporter. Keep an explicit backend endpoint variable to
+# avoid frontend/backend format conflicts (frontend needs OTLP HTTP URL).
+otel_endpoint = (
+    os.environ.get("SPINE_OTEL_EXPORTER_OTLP_GRPC_ENDPOINT")
+    or os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
+)
 otel_service_name = os.environ.get("OTEL_SERVICE_NAME", "spine_api")
 if otel_endpoint:
     try:
         resource = Resource.create({"service.name": otel_service_name})
         provider = TracerProvider(resource=resource)
+        otel_export_timeout_ms = _int_env("SPINE_OTEL_BSP_EXPORT_TIMEOUT_MS", 3000)
+        otel_schedule_delay_ms = _int_env("SPINE_OTEL_BSP_SCHEDULE_DELAY_MS", 1500)
+        otel_max_queue_size = _int_env("SPINE_OTEL_BSP_MAX_QUEUE_SIZE", 512)
+        otel_max_export_batch_size = _int_env("SPINE_OTEL_BSP_MAX_EXPORT_BATCH_SIZE", 128)
         provider.add_span_processor(
-            BatchSpanProcessor(OTLPSpanExporter(endpoint=otel_endpoint))
+            BatchSpanProcessor(
+                OTLPSpanExporter(endpoint=otel_endpoint, timeout=otel_export_timeout_ms / 1000.0),
+                schedule_delay_millis=otel_schedule_delay_ms,
+                max_queue_size=otel_max_queue_size,
+                max_export_batch_size=otel_max_export_batch_size,
+                export_timeout_millis=otel_export_timeout_ms,
+            )
         )
         trace.set_tracer_provider(provider)
     except Exception as e:
@@ -93,6 +119,7 @@ load_project_env()
 
 from spine_api.core.auth import get_current_user, get_current_agency_id, get_current_agency, _auth_or_skip, require_permission
 from spine_api.core.database import engine, get_db
+from spine_api.core.rls import inspect_rls_runtime_posture
 from spine_api.models.tenant import Agency, User
 from spine_api.core.logging_filter import install_sensitive_data_filter
 from spine_api.core.middleware import AuthMiddleware
@@ -489,6 +516,27 @@ except (ImportError, ValueError):
     _trip_lifecycle_spec.loader.exec_module(_trip_lifecycle_mod)
     trip_lifecycle_router = _trip_lifecycle_mod
 
+
+def _register_router_module_aliases() -> None:
+    """Keep legacy `routers.*` imports pointed at canonical router modules."""
+    routers_pkg = sys.modules.get("spine_api.routers") or sys.modules.get("routers")
+    if routers_pkg is not None:
+        sys.modules["routers"] = routers_pkg
+
+    modules = {
+        "agent_runtime": agent_runtime_router,
+        "analytics": analytics_router,
+        "followups": followups_router,
+        "inbox": inbox_router,
+    }
+    for name, module in modules.items():
+        sys.modules[f"routers.{name}"] = module
+        if routers_pkg is not None:
+            setattr(routers_pkg, name, module)
+
+
+_register_router_module_aliases()
+
 logger = logging.getLogger("spine_api")
 
 if TimelineEventMapper is None:
@@ -657,6 +705,54 @@ async def _validate_public_checker_agency_configuration() -> None:
         raise RuntimeError(f"Failed public checker agency validation: {exc}") from exc
 
 
+def _is_strict_startup_environment() -> bool:
+    env = os.environ.get("ENVIRONMENT", os.environ.get("NODE_ENV", "development"))
+    return env.strip().lower() in {"production", "staging"}
+
+
+async def _validate_rls_runtime_posture_configuration() -> None:
+    """
+    Enforce that production-like SQL startup cannot silently run with bypassable tenant RLS.
+
+    Local development keeps running with a warning because the current dev database
+    uses the owner role for app access while the long-term fix moves runtime access
+    to a distinct non-owner database role.
+    """
+    if not _is_sql_tripstore_backend():
+        logger.info("RLS runtime posture validation skipped (TRIPSTORE_BACKEND!=sql)")
+        return
+
+    try:
+        async with engine.begin() as conn:
+            await _apply_startup_db_timeouts(conn)
+            posture = await inspect_rls_runtime_posture(conn)
+    except Exception as exc:
+        raise RuntimeError(f"Failed RLS runtime posture validation: {exc}") from exc
+
+    if posture.is_enforced_for_runtime_role:
+        logger.info(
+            "RLS runtime posture validation passed for current_user=%s",
+            posture.current_user,
+        )
+        return
+
+    risk_summary = "; ".join(posture.risks)
+    message = (
+        "RLS runtime posture invariant failed: "
+        f"{risk_summary}. Use a non-owner application runtime DB role, or enable "
+        "FORCE ROW LEVEL SECURITY only after every SQL trip read/write path sets "
+        "app.current_agency_id transaction-locally."
+    )
+    if _is_strict_startup_environment():
+        raise RuntimeError(message)
+
+    logger.warning(
+        "%s Local/development startup will continue, but tenant RLS is not an "
+        "active defense-in-depth layer.",
+        message,
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan context manager (replaces deprecated on_event)."""
@@ -672,6 +768,7 @@ async def lifespan(app: FastAPI):
     await _ensure_agencies_schema_compatibility()
     await _ensure_memberships_schema_compatibility()
     await _validate_public_checker_agency_configuration()
+    await _validate_rls_runtime_posture_configuration()
     install_sensitive_data_filter()
     app.state.limiter = limiter
     watchdog.start()
@@ -1541,11 +1638,77 @@ class BookingPayerModel(BaseModel):
         return v
 
 
+class PaymentTrackingModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    agreed_amount: Optional[float] = None
+    currency: Optional[str] = "INR"
+    amount_paid: Optional[float] = None
+    balance_due: Optional[float] = None
+    payment_status: Literal[
+        "not_started",
+        "deposit_paid",
+        "partially_paid",
+        "paid",
+        "overdue",
+        "waived",
+        "refunded",
+        "unknown",
+    ] = "unknown"
+    payment_method: Optional[str] = None
+    payment_reference: Optional[str] = None
+    payment_proof_url: Optional[str] = None
+    refund_status: Literal[
+        "not_applicable",
+        "not_requested",
+        "pending_review",
+        "approved",
+        "processing",
+        "paid",
+        "rejected",
+        "cancelled",
+    ] = "not_applicable"
+    refund_amount_agreed: Optional[float] = None
+    refund_method: Optional[str] = None
+    refund_reference: Optional[str] = None
+    refund_paid_by_agency: bool = False
+    notes: Optional[str] = None
+    tracking_only: bool = True
+
+    @field_validator("agreed_amount", "amount_paid", "balance_due", "refund_amount_agreed")
+    @classmethod
+    def non_negative_amount(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and v < 0:
+            raise ValueError("must be non-negative")
+        return v
+
+    @field_validator("currency")
+    @classmethod
+    def normalize_currency(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return "INR"
+        stripped = v.strip().upper()
+        if not stripped:
+            return "INR"
+        if len(stripped) != 3:
+            raise ValueError("must be a 3-letter currency code")
+        return stripped
+
+    @model_validator(mode="after")
+    def compute_balance_due(self) -> "PaymentTrackingModel":
+        agreed = self.agreed_amount or 0.0
+        paid = self.amount_paid or 0.0
+        self.balance_due = round(max(agreed - paid, 0.0), 2)
+        self.tracking_only = True
+        return self
+
+
 class BookingDataModel(BaseModel):
     travelers: List[BookingTravelerModel]
     payer: Optional[BookingPayerModel] = None
     special_requirements: Optional[str] = None
     booking_notes: Optional[str] = None
+    payment_tracking: Optional[PaymentTrackingModel] = None
 
     @field_validator("travelers")
     @classmethod
@@ -1631,10 +1794,17 @@ def update_booking_data(
             "payer" if request.booking_data.payer else None,
             "special_requirements" if request.booking_data.special_requirements else None,
             "booking_notes" if request.booking_data.booking_notes else None,
+            "payment_tracking" if request.booking_data.payment_tracking else None,
         ],
         "traveler_count": len(request.booking_data.travelers),
         "has_passport_data": any(t.passport_number for t in request.booking_data.travelers),
         "has_payer": request.booking_data.payer is not None,
+        "has_payment_tracking": request.booking_data.payment_tracking is not None,
+        "payment_status": request.booking_data.payment_tracking.payment_status if request.booking_data.payment_tracking else None,
+        "refund_status": request.booking_data.payment_tracking.refund_status if request.booking_data.payment_tracking else None,
+        "has_payment_reference": bool(request.booking_data.payment_tracking and request.booking_data.payment_tracking.payment_reference),
+        "has_payment_proof_url": bool(request.booking_data.payment_tracking and request.booking_data.payment_tracking.payment_proof_url),
+        "has_refund_reference": bool(request.booking_data.payment_tracking and request.booking_data.payment_tracking.refund_reference),
         "actor": "operator",
     })
 
@@ -1873,6 +2043,11 @@ async def accept_pending_booking_data(trip_id: str, request: Optional[PendingBoo
     pending = await _ts(TripStore.get_pending_booking_data, trip_id)
     if not pending:
         raise HTTPException(status_code=404, detail="No pending booking data to accept")
+    if isinstance(pending, dict) and pending.get("payment_tracking") is not None:
+        raise HTTPException(
+            status_code=422,
+            detail="Customer-submitted booking data cannot include payment tracking",
+        )
 
     # Re-validate through Pydantic (defensive)
     validated = BookingDataModel(**pending)

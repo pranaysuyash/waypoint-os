@@ -7,6 +7,9 @@ import {
   type Trip,
   type BookingData,
   type BookingTraveler,
+  type PaymentStatus,
+  type PaymentTracking,
+  type RefundStatus,
   type CollectionLinkInfo,
   type CollectionLinkStatus,
   type PendingBookingDataResponse,
@@ -46,6 +49,131 @@ function emptyTraveler(): BookingTraveler {
   return { traveler_id: '', full_name: '', date_of_birth: '' };
 }
 
+type PaymentTrackingDraft = {
+  agreed_amount: string;
+  currency: string;
+  amount_paid: string;
+  payment_status: PaymentStatus;
+  payment_method: string;
+  payment_reference: string;
+  payment_proof_url: string;
+  refund_status: RefundStatus;
+  refund_amount_agreed: string;
+  refund_method: string;
+  refund_reference: string;
+  refund_paid_by_agency: boolean;
+  notes: string;
+};
+
+const EMPTY_PAYMENT_DRAFT: PaymentTrackingDraft = {
+  agreed_amount: '',
+  currency: 'INR',
+  amount_paid: '',
+  payment_status: 'unknown',
+  payment_method: '',
+  payment_reference: '',
+  payment_proof_url: '',
+  refund_status: 'not_applicable',
+  refund_amount_agreed: '',
+  refund_method: '',
+  refund_reference: '',
+  refund_paid_by_agency: false,
+  notes: '',
+};
+
+const PAYMENT_STATUSES: PaymentStatus[] = [
+  'unknown',
+  'not_started',
+  'deposit_paid',
+  'partially_paid',
+  'paid',
+  'overdue',
+  'waived',
+  'refunded',
+];
+
+const REFUND_STATUSES: RefundStatus[] = [
+  'not_applicable',
+  'not_requested',
+  'pending_review',
+  'approved',
+  'processing',
+  'paid',
+  'rejected',
+  'cancelled',
+];
+
+function formatLabel(value: string): string {
+  return value.replaceAll('_', ' ');
+}
+
+function formatMoney(amount?: number | null, currency = 'INR'): string {
+  if (amount == null || Number.isNaN(amount)) return '-';
+  return `${currency} ${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+}
+
+function paymentTrackingToDraft(payment?: PaymentTracking | null): PaymentTrackingDraft {
+  if (!payment) return { ...EMPTY_PAYMENT_DRAFT };
+  return {
+    agreed_amount: payment.agreed_amount == null ? '' : String(payment.agreed_amount),
+    currency: payment.currency || 'INR',
+    amount_paid: payment.amount_paid == null ? '' : String(payment.amount_paid),
+    payment_status: payment.payment_status || 'unknown',
+    payment_method: payment.payment_method || '',
+    payment_reference: payment.payment_reference || '',
+    payment_proof_url: payment.payment_proof_url || '',
+    refund_status: payment.refund_status || 'not_applicable',
+    refund_amount_agreed: payment.refund_amount_agreed == null ? '' : String(payment.refund_amount_agreed),
+    refund_method: payment.refund_method || '',
+    refund_reference: payment.refund_reference || '',
+    refund_paid_by_agency: Boolean(payment.refund_paid_by_agency),
+    notes: payment.notes || '',
+  };
+}
+
+function parseAmount(value: string): number | null {
+  if (!value.trim()) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function hasPaymentDraft(draft: PaymentTrackingDraft): boolean {
+  return Boolean(
+    draft.agreed_amount.trim() ||
+    draft.amount_paid.trim() ||
+    draft.payment_status !== 'unknown' ||
+    draft.payment_method.trim() ||
+    draft.payment_reference.trim() ||
+    draft.payment_proof_url.trim() ||
+    draft.refund_status !== 'not_applicable' ||
+    draft.refund_amount_agreed.trim() ||
+    draft.refund_method.trim() ||
+    draft.refund_reference.trim() ||
+    draft.refund_paid_by_agency ||
+    draft.notes.trim(),
+  );
+}
+
+function paymentDraftToTracking(draft: PaymentTrackingDraft): PaymentTracking | null {
+  if (!hasPaymentDraft(draft)) return null;
+  return {
+    agreed_amount: parseAmount(draft.agreed_amount),
+    currency: draft.currency.trim().toUpperCase() || 'INR',
+    amount_paid: parseAmount(draft.amount_paid),
+    payment_status: draft.payment_status,
+    payment_method: draft.payment_method.trim() || null,
+    payment_reference: draft.payment_reference.trim() || null,
+    payment_proof_url: draft.payment_proof_url.trim() || null,
+    refund_status: draft.refund_status,
+    refund_amount_agreed: parseAmount(draft.refund_amount_agreed),
+    refund_method: draft.refund_method.trim() || null,
+    refund_reference: draft.refund_reference.trim() || null,
+    refund_paid_by_agency: draft.refund_paid_by_agency,
+    notes: draft.notes.trim() || null,
+    tracking_only: true,
+  };
+}
+
 export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
   const documentsOnly = mode === 'documents';
   const { result_validation } = useWorkbenchStore();
@@ -65,6 +193,7 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
   const [editing, setEditing] = useState(false);
   const [editTravelers, setEditTravelers] = useState<BookingTraveler[]>([emptyTraveler()]);
   const [editPayerName, setEditPayerName] = useState('');
+  const [editPaymentTracking, setEditPaymentTracking] = useState<PaymentTrackingDraft>(EMPTY_PAYMENT_DRAFT);
 
   // Collection link state
   const [linkStatus, setLinkStatus] = useState<CollectionLinkStatus | null>(null);
@@ -187,9 +316,11 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
     if (bookingData) {
       setEditTravelers(bookingData.travelers.map((t) => ({ ...t })));
       setEditPayerName(bookingData.payer?.name ?? '');
+      setEditPaymentTracking(paymentTrackingToDraft(bookingData.payment_tracking));
     } else {
       setEditTravelers([emptyTraveler()]);
       setEditPayerName('');
+      setEditPaymentTracking({ ...EMPTY_PAYMENT_DRAFT });
     }
     setEditing(true);
     setConflict(false);
@@ -202,6 +333,9 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
     const data: BookingData = {
       travelers: editTravelers,
       payer: editPayerName ? { name: editPayerName } : null,
+      special_requirements: bookingData?.special_requirements ?? null,
+      booking_notes: bookingData?.booking_notes ?? null,
+      payment_tracking: paymentDraftToTracking(editPaymentTracking),
     };
     setSaving(true);
     setError(null);
@@ -221,7 +355,7 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
     } finally {
       setSaving(false);
     }
-  }, [trip?.id, editTravelers, editPayerName, updatedAt]);
+  }, [trip?.id, editTravelers, editPayerName, bookingData, editPaymentTracking, updatedAt]);
 
   // Generate collection link (always creates new, revokes old active)
   const handleGenerateLink = useCallback(async () => {
@@ -662,6 +796,44 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
                 Payer: <span className="text-[#e6edf3]">{bookingData.payer.name}</span>
               </div>
             )}
+            {bookingData.payment_tracking && (
+              <div
+                data-testid="ops-payment-tracking"
+                className="mt-3 border border-[#30363d] rounded p-3 text-xs"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-[#e6edf3]">Payment & refund tracking</span>
+                  <span className="rounded bg-blue-950/40 px-2 py-0.5 text-blue-300">Status-only tracking</span>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-[#8b949e] sm:grid-cols-4">
+                  <div>
+                    <div>Agreed</div>
+                    <div className="text-[#e6edf3]">
+                      {formatMoney(bookingData.payment_tracking.agreed_amount, bookingData.payment_tracking.currency || 'INR')}
+                    </div>
+                  </div>
+                  <div>
+                    <div>Paid</div>
+                    <div className="text-[#e6edf3]">
+                      {formatMoney(bookingData.payment_tracking.amount_paid, bookingData.payment_tracking.currency || 'INR')}
+                    </div>
+                  </div>
+                  <div>
+                    <div>Balance due</div>
+                    <div className="text-[#e6edf3]">
+                      {formatMoney(bookingData.payment_tracking.balance_due, bookingData.payment_tracking.currency || 'INR')}
+                    </div>
+                  </div>
+                  <div>
+                    <div>Status</div>
+                    <div className="text-[#e6edf3]">{formatLabel(bookingData.payment_tracking.payment_status || 'unknown')}</div>
+                  </div>
+                </div>
+                <div className="mt-2 text-[#8b949e]">
+                  Refund: <span className="text-[#e6edf3]">{formatLabel(bookingData.payment_tracking.refund_status || 'not_applicable')}</span>
+                </div>
+              </div>
+            )}
             <button
               data-testid="ops-edit-btn"
               className="mt-3 text-xs px-3 py-1 rounded bg-[#30363d] text-[#e6edf3] hover:bg-[#484f58]"
@@ -754,6 +926,81 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
               value={editPayerName}
               onChange={(e) => setEditPayerName(e.target.value)}
             />
+            <div className="border border-[#30363d] rounded p-3 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs font-medium text-[#e6edf3]">Payment & refund tracking</div>
+                <div className="text-xs text-blue-300">Status-only tracking</div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  data-testid="ops-payment-agreed-amount"
+                  inputMode="decimal"
+                  placeholder="Agreed amount"
+                  className="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-[#e6edf3]"
+                  value={editPaymentTracking.agreed_amount}
+                  onChange={(e) => setEditPaymentTracking((prev) => ({ ...prev, agreed_amount: e.target.value }))}
+                />
+                <input
+                  data-testid="ops-payment-amount-paid"
+                  inputMode="decimal"
+                  placeholder="Amount paid"
+                  className="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-[#e6edf3]"
+                  value={editPaymentTracking.amount_paid}
+                  onChange={(e) => setEditPaymentTracking((prev) => ({ ...prev, amount_paid: e.target.value }))}
+                />
+                <input
+                  data-testid="ops-payment-currency"
+                  placeholder="Currency"
+                  className="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-[#e6edf3]"
+                  value={editPaymentTracking.currency}
+                  onChange={(e) => setEditPaymentTracking((prev) => ({ ...prev, currency: e.target.value }))}
+                />
+                <select
+                  data-testid="ops-payment-status"
+                  className="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-[#e6edf3]"
+                  value={editPaymentTracking.payment_status}
+                  onChange={(e) => setEditPaymentTracking((prev) => ({ ...prev, payment_status: e.target.value as PaymentStatus }))}
+                >
+                  {PAYMENT_STATUSES.map((status) => (
+                    <option key={status} value={status}>{formatLabel(status)}</option>
+                  ))}
+                </select>
+                <input
+                  placeholder="Payment method"
+                  className="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-[#e6edf3]"
+                  value={editPaymentTracking.payment_method}
+                  onChange={(e) => setEditPaymentTracking((prev) => ({ ...prev, payment_method: e.target.value }))}
+                />
+                <input
+                  placeholder="Payment reference"
+                  className="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-[#e6edf3]"
+                  value={editPaymentTracking.payment_reference}
+                  onChange={(e) => setEditPaymentTracking((prev) => ({ ...prev, payment_reference: e.target.value }))}
+                />
+                <select
+                  className="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-[#e6edf3]"
+                  value={editPaymentTracking.refund_status}
+                  onChange={(e) => setEditPaymentTracking((prev) => ({ ...prev, refund_status: e.target.value as RefundStatus }))}
+                >
+                  {REFUND_STATUSES.map((status) => (
+                    <option key={status} value={status}>{formatLabel(status)}</option>
+                  ))}
+                </select>
+                <input
+                  placeholder="Refund amount agreed"
+                  inputMode="decimal"
+                  className="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-[#e6edf3]"
+                  value={editPaymentTracking.refund_amount_agreed}
+                  onChange={(e) => setEditPaymentTracking((prev) => ({ ...prev, refund_amount_agreed: e.target.value }))}
+                />
+              </div>
+              <textarea
+                placeholder="Internal payment/refund notes"
+                className="w-full bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-[#e6edf3]"
+                value={editPaymentTracking.notes}
+                onChange={(e) => setEditPaymentTracking((prev) => ({ ...prev, notes: e.target.value }))}
+              />
+            </div>
             <div className="flex gap-2">
               <button
                 data-testid="ops-save-btn"

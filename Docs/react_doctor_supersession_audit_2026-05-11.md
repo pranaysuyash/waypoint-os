@@ -1005,3 +1005,43 @@ Remaining categories:
 3 no-cascading-set-state
 2 nextjs-no-client-fetch-for-server-data
 ```
+
+## Supersession Batch 19: Query Alignment + Stable List Keys (2026-05-12)
+
+Verdict: ACCEPT (with parallel-drift note). React Doctor baseline moved to `96/100` with `33` findings.
+
+What changed:
+
+- Migrated `useRuntimeVersion` from `useEffect + fetch` to TanStack Query (`useQuery`) with fallback-safe behavior and explicit query policy.
+- Updated `useRuntimeVersion` hook tests to use `QueryClientProvider` harness and validate runtime metadata rendering.
+- Replaced array-index keys in `PacketPanel` ambiguity/contradiction lists with stable composite keys.
+
+Why this matters:
+
+- Removes one client fetch-effect anti-pattern in a reusable, project-standard pattern.
+- Eliminates key instability risks when list ordering or filtering changes.
+
+Verification:
+
+```text
+cd frontend && npm test -- --run 'src/hooks/__tests__/useRuntimeVersion.test.tsx' 'src/app/(agency)/workbench/__tests__/PacketTab.test.tsx'
+  2 files passed, 4 tests passed
+
+cd frontend && react-doctor .
+  score 96, warnings 33, errors 0
+```
+
+Parallel drift note:
+
+- During this batch, source file count changed (`342 -> 344`) due concurrent work in the same tree.
+- Findings were re-baselined after edits; current categories are authoritative for this snapshot.
+
+Remaining categories:
+
+```text
+13 no-giant-component
+10 prefer-useReducer
+5 no-fetch-in-effect
+3 no-cascading-set-state
+2 nextjs-no-client-fetch-for-server-data
+```

@@ -27,7 +27,6 @@ import re
 
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import NullPool
 
 from spine_api.core.database import DATABASE_URL
 from spine_api.models.trips import Trip
@@ -44,7 +43,8 @@ def _create_tripstore_session_maker() -> async_sessionmaker[AsyncSession]:
         DATABASE_URL,
         echo=False,
         future=True,
-        poolclass=NullPool,
+        pool_size=10,
+        max_overflow=5,
         pool_pre_ping=True,
     )
     return async_sessionmaker(
@@ -549,6 +549,33 @@ class SQLTripStore:
         }
 
     @staticmethod
+    def _to_summary_dict(row: Any) -> dict:
+        """Return the summary fields needed by list/projection views."""
+        return {
+            "id": row.id,
+            "run_id": row.run_id,
+            "agency_id": row.agency_id,
+            "user_id": row.user_id,
+            "assigned_to_id": row.assigned_to_id,
+            "source": row.source,
+            "status": row.status,
+            "stage": row.stage,
+            "follow_up_due_date": row.follow_up_due_date.isoformat() if row.follow_up_due_date else None,
+            "party_composition": row.party_composition,
+            "pace_preference": row.pace_preference,
+            "date_year_confidence": row.date_year_confidence,
+            "lead_source": row.lead_source,
+            "activity_provenance": row.activity_provenance,
+            "extracted": SQLTripStore._decrypt_field_from_storage("extracted", row.extracted or {}),
+            "validation": row.validation or {},
+            "decision": row.decision or {},
+            "raw_input": SQLTripStore._decrypt_field_from_storage("raw_input", row.raw_input or {}),
+            "analytics": row.analytics,
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+            "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+        }
+
+    @staticmethod
     async def save_trip(trip_data: dict, agency_id: Optional[str] = None) -> str:
         trip_id = trip_data.get("id") or f"trip_{uuid4().hex[:12]}"
 
@@ -626,6 +653,45 @@ class SQLTripStore:
             query = query.offset(offset).limit(limit)
             result = await session.execute(query)
             return [SQLTripStore._to_dict(trip) for trip in result.scalars().all()]
+
+    @staticmethod
+    async def list_trip_summaries(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
+        """List trips with only fields needed by dashboard/inbox projections."""
+        async with tripstore_session_maker() as session:
+            query = select(
+                Trip.id,
+                Trip.run_id,
+                Trip.agency_id,
+                Trip.user_id,
+                Trip.assigned_to_id,
+                Trip.source,
+                Trip.status,
+                Trip.stage,
+                Trip.follow_up_due_date,
+                Trip.party_composition,
+                Trip.pace_preference,
+                Trip.date_year_confidence,
+                Trip.lead_source,
+                Trip.activity_provenance,
+                Trip.extracted,
+                Trip.validation,
+                Trip.decision,
+                Trip.raw_input,
+                Trip.analytics,
+                Trip.created_at,
+                Trip.updated_at,
+            ).order_by(Trip.created_at.desc())
+            if status:
+                statuses = [s.strip() for s in status.split(",") if s.strip()]
+                if len(statuses) == 1:
+                    query = query.where(Trip.status == statuses[0])
+                else:
+                    query = query.where(Trip.status.in_(statuses))
+            if agency_id:
+                query = query.where(Trip.agency_id == agency_id)
+            query = query.offset(offset).limit(limit)
+            result = await session.execute(query)
+            return [SQLTripStore._to_summary_dict(row) for row in result.all()]
 
     @staticmethod
     async def count_trips(status: Optional[str] = None, agency_id: Optional[str] = None) -> int:
@@ -824,6 +890,13 @@ class TripStore:
             # callers that need DB-level pagination should use SQL backend.
             return FileTripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
         return _run_async_blocking(SQLTripStore.list_trips(status=status, limit=limit, agency_id=agency_id, offset=offset))
+
+    @staticmethod
+    def list_trip_summaries(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
+        return _run_async_blocking(SQLTripStore.list_trip_summaries(status=status, limit=limit, agency_id=agency_id, offset=offset))
 
     @staticmethod
     async def alist_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:

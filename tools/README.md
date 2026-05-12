@@ -38,11 +38,20 @@ Purpose:
 Usage:
 ```bash
 python tools/runtime_smoke_matrix.py
+python tools/runtime_smoke_matrix.py --preflight-local-stack
 python tools/runtime_smoke_matrix.py --base http://localhost:3000 \
   --email newuser@test.com --password testpass123
 ```
 
+Standard local gate:
+```bash
+python tools/runtime_smoke_matrix.py --preflight-local-stack
+```
+
 Checks:
+- With `--preflight-local-stack`, first verifies:
+  - backend health: `http://127.0.0.1:8000/health`
+  - frontend health: `http://127.0.0.1:3000/overview`
 - `/api/auth/me`
 - `/overview`
 - `/workbench?draft=new&tab=safety`
@@ -55,6 +64,9 @@ Checks:
 Exit behavior:
 - Returns `0` when all checks match expected status.
 - Returns `1` and prints failing status/body snippets when any check fails.
+
+Operational rule:
+- Before claiming local frontend/backend runtime stability, run the standard local gate above. It proves both local services are healthy before the authenticated BFF/page matrix starts.
 
 ## Architecture Route Inventory: `architecture_route_inventory.py`
 
@@ -270,11 +282,13 @@ Runtime snapshot generation:
 ```bash
 cd /Users/pranay/Projects/travel_agency_agent
 uv run python scripts/generate_d6_gate_snapshot.py
+uv run python scripts/verify_d6_gate_snapshot.py
 ```
 
 - Default output: `data/evals/d6_audit_gate_snapshot.json`
 - Runtime authority resolver consumes this via `D6_AUDIT_GATE_SNAPSHOT_PATH` when set.
 - If snapshot is missing/invalid, runtime falls back to manifest status.
+- `verify_d6_gate_snapshot.py` enforces deterministic drift checks (ignores `generated_at` timestamp noise).
 
 ## 6) `singapore_scenario_regression.py`
 

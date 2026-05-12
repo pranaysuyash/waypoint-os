@@ -66,7 +66,7 @@ def get_inbox(
     """
     agency_id = agency.id
 
-    raw_trips = TripStore.list_trips(
+    raw_trips = TripStore.list_trip_summaries(
         status=_INBOX_STATUSES,
         limit=5000,
         agency_id=agency_id,
@@ -126,7 +126,7 @@ def get_inbox_stats(
     agency_id = agency.id
     total = TripStore.count_trips(status=_INBOX_STATUSES, agency_id=agency_id)
 
-    trips = TripStore.list_trips(status=_INBOX_STATUSES, limit=500, agency_id=agency_id)
+    trips = TripStore.list_trip_summaries(status=_INBOX_STATUSES, limit=500, agency_id=agency_id)
 
     unassigned = sum(1 for t in trips if not t.get("assigned_to"))
     critical = sum(
