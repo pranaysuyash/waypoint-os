@@ -1,6 +1,6 @@
 # Session Context
 
-- Generated: 2026-05-12T03:46:34Z
+- Generated: 2026-05-12T03:48:17Z
 - Project: `travel_agency_agent`
 - Provider: `local`
 - Model: `BAAI/bge-m3`
@@ -9,7 +9,7 @@
 
 ## Project-Focused Retrieval
 
-> NOTE: Project collection check timed out; using shared workspace context for this run.
+> NOTE: Project collection is temporarily locked by another index/search process; using shared workspace context for this run.
 
 ## Shared Cross-Project Retrieval
 

@@ -25,6 +25,10 @@ function makeParams(token: string) {
   return Promise.resolve({ token });
 }
 
+function makePendingParams(): Promise<{ token: string }> {
+  return new Promise(() => {});
+}
+
 describe('BookingCollectionPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -32,7 +36,7 @@ describe('BookingCollectionPage', () => {
 
   it('shows loading state initially', () => {
     mockGetForm.mockReturnValue(new Promise(() => {}));
-    render(<BookingCollectionPage params={makeParams('abc123')} />);
+    render(<BookingCollectionPage params={makePendingParams()} />);
     expect(screen.getByTestId('collection-loading')).toBeInTheDocument();
   });
 

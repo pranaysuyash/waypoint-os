@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
 import CaptureCallPanel from "../CaptureCallPanel";
@@ -404,7 +404,14 @@ describe("CaptureCallPanel", () => {
       expect(cancelButton).toBeDisabled();
     });
 
-    resolveRequest!(mockTrip);
+    await act(async () => {
+      resolveRequest!(mockTrip);
+      await requestPromise;
+    });
+
+    await waitFor(() => {
+      expect(defaultProps.onSave).toHaveBeenCalledWith(mockTrip);
+    });
   });
 
   // ============================================================================

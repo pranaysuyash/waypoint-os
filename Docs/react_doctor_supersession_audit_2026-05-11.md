@@ -971,3 +971,37 @@ Remaining categories:
 1 rendering-usetransition-loading
 1 design-no-redundant-padding-axes
 ```
+
+## Supersession Batch 18: Singleton Rule Cleanup (2026-05-12)
+
+Verdict: ACCEPT. React Doctor baseline moved from `94/100` (36 findings) to `96/100` (34 findings).
+
+What changed:
+
+- Cleared `rendering-usetransition-loading` in `useSpineRun` by replacing boolean loading atom with status-mode state and a derived `isLoading` boolean.
+- Cleared `design-no-redundant-padding-axes` in `documents/PageClient` by replacing `px-2 py-2` with `p-2`.
+
+Why this matters:
+
+- Keeps `useSpineRun` external contract stable while reducing state-shape fragility.
+- Removes low-value style noise and keeps class utility usage canonical.
+
+Verification:
+
+```text
+cd frontend && npm test -- --run 'src/lib/__tests__/api-client-contract-surface.test.ts' 'src/app/__tests__/p1_happy_path_journey.test.tsx' 'src/components/workspace/panels/__tests__/IntakePanel.test.tsx'
+  3 files passed, 19 tests passed
+
+cd frontend && react-doctor .
+  score 96, warnings 34, errors 0
+```
+
+Remaining categories:
+
+```text
+13 no-giant-component
+10 prefer-useReducer
+6 no-fetch-in-effect
+3 no-cascading-set-state
+2 nextjs-no-client-fetch-for-server-data
+```

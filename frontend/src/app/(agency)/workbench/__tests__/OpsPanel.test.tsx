@@ -312,6 +312,86 @@ describe('OpsPanel', () => {
     expect(screen.getByText('Customer (verified)')).toBeInTheDocument();
   });
 
+  it('shows payment tracking without exposing a payment collection workflow', async () => {
+    mockStore.result_validation = { readiness: READINESS };
+    mockApi.getBookingData.mockResolvedValue({
+      trip_id: 'trip_1',
+      booking_data: {
+        travelers: [
+          { traveler_id: 'adult_1', full_name: 'Jane Doe', date_of_birth: '1990-01-01' },
+        ],
+        payer: { name: 'Jane Doe' },
+        payment_tracking: {
+          agreed_amount: 120000,
+          currency: 'INR',
+          amount_paid: 50000,
+          balance_due: 70000,
+          payment_status: 'partially_paid',
+          refund_status: 'not_applicable',
+          tracking_only: true,
+        },
+      },
+      updated_at: '2026-05-12T00:00:00Z',
+      stage: 'proposal',
+      readiness: {},
+    });
+
+    render(<OpsPanel trip={tripAtStage('proposal')} />);
+
+    expect(await screen.findByTestId('ops-payment-tracking')).toBeInTheDocument();
+    expect(screen.getByText('Status-only tracking')).toBeInTheDocument();
+    expect(screen.getByText('INR 70,000')).toBeInTheDocument();
+    expect(screen.queryByText(/wallet/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/pay now/i)).not.toBeInTheDocument();
+  });
+
+  it('saves payment tracking through the booking data endpoint', async () => {
+    const user = userEvent.setup();
+    mockStore.result_validation = { readiness: READINESS };
+    mockApi.getBookingData.mockResolvedValue({
+      trip_id: 'trip_1',
+      booking_data: {
+        travelers: [
+          { traveler_id: 'adult_1', full_name: 'Jane Doe', date_of_birth: '1990-01-01' },
+        ],
+        payer: { name: 'Jane Doe' },
+      },
+      updated_at: '2026-05-12T00:00:00Z',
+      stage: 'proposal',
+      readiness: {},
+    });
+    mockApi.updateBookingData.mockResolvedValue({
+      trip_id: 'trip_1',
+      booking_data: null,
+      updated_at: '2026-05-12T00:01:00Z',
+      stage: 'proposal',
+      readiness: {},
+    });
+
+    render(<OpsPanel trip={tripAtStage('proposal')} />);
+
+    await user.click(await screen.findByTestId('ops-edit-btn'));
+    await user.clear(screen.getByTestId('ops-payment-agreed-amount'));
+    await user.type(screen.getByTestId('ops-payment-agreed-amount'), '120000');
+    await user.clear(screen.getByTestId('ops-payment-amount-paid'));
+    await user.type(screen.getByTestId('ops-payment-amount-paid'), '50000');
+    await user.selectOptions(screen.getByTestId('ops-payment-status'), 'partially_paid');
+    await user.click(screen.getByTestId('ops-save-btn'));
+
+    await waitFor(() => {
+      expect(mockApi.updateBookingData).toHaveBeenCalled();
+    });
+    const [, payload] = mockApi.updateBookingData.mock.calls[0];
+    expect(payload.payment_tracking).toMatchObject({
+      agreed_amount: 120000,
+      amount_paid: 50000,
+      payment_status: 'partially_paid',
+      tracking_only: true,
+    });
+    expect(payload.payment_tracking).not.toHaveProperty('wallet_id');
+    expect(payload.payment_tracking).not.toHaveProperty('gateway_charge_id');
+  });
+
   it('shows visa/passport concern when signal is present', () => {
     mockStore.result_validation = {
       readiness: {
