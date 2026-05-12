@@ -124,7 +124,8 @@ class NB01CompletionGate:
 
         # 1. Structural validity
         if not validation.is_valid:
-            reasons.append(f"Structural validation failed ({validation.error_count} errors)")
+            error_label = "error" if validation.error_count == 1 else "errors"
+            reasons.append(f"Structural validation failed ({validation.error_count} {error_label})")
             return GateResult(verdict=GateVerdict.ESCALATE, score=0.0, reasons=reasons)
 
         # 2. Check for QUOTE_READY_INCOMPLETE warnings — these are warnings that

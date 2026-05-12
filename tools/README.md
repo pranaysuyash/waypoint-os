@@ -266,6 +266,16 @@ Notes:
 - `activity` is currently a shadow category, not a consumer-authoritative gate.
 - Promote categories to `gating` only after enough fixtures prove precision/recall.
 
+Runtime snapshot generation:
+```bash
+cd /Users/pranay/Projects/travel_agency_agent
+uv run python scripts/generate_d6_gate_snapshot.py
+```
+
+- Default output: `data/evals/d6_audit_gate_snapshot.json`
+- Runtime authority resolver consumes this via `D6_AUDIT_GATE_SNAPSHOT_PATH` when set.
+- If snapshot is missing/invalid, runtime falls back to manifest status.
+
 ## 6) `singapore_scenario_regression.py`
 
 Purpose:

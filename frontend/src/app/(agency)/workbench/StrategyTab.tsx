@@ -38,7 +38,7 @@ export default function StrategyTab({ trip }: StrategyTabProps) {
       <div className={styles.section}>
         <h3 className={styles.sectionTitle}>Suggested Opening</h3>
         <div className={styles.card}>
-          <p>"{strategy.suggested_opening || "-"}"</p>
+          <p>&ldquo;{strategy.suggested_opening || "-"}&rdquo;</p>
         </div>
       </div>
 

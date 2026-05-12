@@ -14,12 +14,12 @@ describe('NAV_SECTIONS', () => {
     expect(planning?.items.map((item) => item.label)).not.toContain('Trips');
   });
 
-  it('keeps Documents module gated until rollout gates are complete', () => {
-    expect(isDocumentsModuleEnabled()).toBe(false);
-    expect(DOCUMENTS_MODULE_ROLLOUT_GATES.some((gate) => gate.complete === false)).toBe(true);
+  it('enables Documents module when all rollout gates are complete', () => {
+    expect(isDocumentsModuleEnabled()).toBe(true);
+    expect(DOCUMENTS_MODULE_ROLLOUT_GATES.every((gate) => gate.complete === true)).toBe(true);
 
     const operations = NAV_SECTIONS.find((section) => section.label === 'OPERATIONS');
     const documents = operations?.items.find((item) => item.href === '/documents');
-    expect(documents?.enabled).toBe(false);
+    expect(documents?.enabled).toBe(true);
   });
 });

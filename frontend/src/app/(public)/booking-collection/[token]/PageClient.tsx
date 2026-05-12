@@ -473,7 +473,17 @@ export default function BookingCollectionPage({
   const specialReqsId = useId();
 
   useEffect(() => {
-    params.then((p) => dispatchCollection({ type: 'TOKEN_LOADED', token: p.token }));
+    let cancelled = false;
+
+    params.then((p) => {
+      if (!cancelled) {
+        dispatchCollection({ type: 'TOKEN_LOADED', token: p.token });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [params]);
 
   useEffect(() => {

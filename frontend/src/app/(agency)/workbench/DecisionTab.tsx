@@ -109,7 +109,7 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
   if (!activeDecision) {
     return (
       <div className={styles.emptyState}>
-        <p>No quote status data. Process a trip from the "New Inquiry" section first.</p>
+        <p>No quote status data. Process a trip from the &ldquo;New Inquiry&rdquo; section first.</p>
       </div>
     );
   }

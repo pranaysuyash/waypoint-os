@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useId } from "react";
+import { useReducer, useId } from "react";
 import { AlertCircle, CheckCircle2, ChevronDown } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 
@@ -30,6 +30,59 @@ interface OverrideModalProps {
 
 const SEVERITY_LEVELS = ["critical", "high", "medium", "low"];
 
+type OverrideFormState = {
+  action: OverrideRequest["action"];
+  newSeverity: string;
+  reason: string;
+  scope: OverrideRequest["scope"];
+  status: "idle" | "submitting";
+  error: string | null;
+};
+
+type OverrideFormAction =
+  | { type: "SET_ACTION"; action: OverrideRequest["action"] }
+  | { type: "SET_NEW_SEVERITY"; newSeverity: string }
+  | { type: "SET_REASON"; reason: string }
+  | { type: "SET_SCOPE"; scope: OverrideRequest["scope"] }
+  | { type: "SET_STATUS"; status: OverrideFormState["status"] }
+  | { type: "SET_ERROR"; error: string | null }
+  | { type: "RESET_FORM" };
+
+function createInitialOverrideState(): OverrideFormState {
+  return {
+    action: "suppress",
+    newSeverity: "",
+    reason: "",
+    scope: "this_trip",
+    status: "idle",
+    error: null,
+  };
+}
+
+function overrideFormReducer(
+  state: OverrideFormState,
+  action: OverrideFormAction
+): OverrideFormState {
+  switch (action.type) {
+    case "SET_ACTION":
+      return { ...state, action: action.action };
+    case "SET_NEW_SEVERITY":
+      return { ...state, newSeverity: action.newSeverity };
+    case "SET_REASON":
+      return { ...state, reason: action.reason };
+    case "SET_SCOPE":
+      return { ...state, scope: action.scope };
+    case "SET_STATUS":
+      return { ...state, status: action.status };
+    case "SET_ERROR":
+      return { ...state, error: action.error };
+    case "RESET_FORM":
+      return createInitialOverrideState();
+    default:
+      return state;
+  }
+}
+
 export function OverrideModal({
   isOpen,
   flag,
@@ -38,12 +91,9 @@ export function OverrideModal({
   onClose,
   onSubmit,
 }: OverrideModalProps) {
-  const [action, setAction] = useState<"suppress" | "downgrade" | "acknowledge">("suppress");
-  const [newSeverity, setNewSeverity] = useState<string>("");
-  const [reason, setReason] = useState<string>("");
-  const [scope, setScope] = useState<"this_trip" | "pattern">("this_trip");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(overrideFormReducer, undefined, createInitialOverrideState);
+  const { action, newSeverity, reason, scope, status, error } = state;
+  const isSubmitting = status === "submitting";
   const actionId = useId();
   const downgradeId = useId();
   const scopeId = useId();
@@ -55,33 +105,33 @@ export function OverrideModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    dispatch({ type: "SET_ERROR", error: null });
 
     if (!reason.trim()) {
-      setError("Reason is required");
+      dispatch({ type: "SET_ERROR", error: "Reason is required" });
       return;
     }
 
     if (reasonLength < 10) {
-      setError("Reason must be at least 10 characters");
+      dispatch({ type: "SET_ERROR", error: "Reason must be at least 10 characters" });
       return;
     }
 
     if (action === "downgrade" && !newSeverity) {
-      setError("New severity is required for downgrade");
+      dispatch({ type: "SET_ERROR", error: "New severity is required for downgrade" });
       return;
     }
 
     if (action === "downgrade" && newSeverity) {
       const newIndex = SEVERITY_LEVELS.indexOf(newSeverity);
       if (newIndex >= currentSeverityIndex) {
-        setError("New severity must be lower than current severity");
+        dispatch({ type: "SET_ERROR", error: "New severity must be lower than current severity" });
         return;
       }
     }
 
     try {
-      setIsLoading(true);
+      dispatch({ type: "SET_STATUS", status: "submitting" });
       const request: OverrideRequest = {
         flag: flag.flag,
         decision_type: flag.flag,
@@ -94,16 +144,15 @@ export function OverrideModal({
       };
 
       await onSubmit(request);
-
-      setAction("suppress");
-      setNewSeverity("");
-      setReason("");
-      setScope("this_trip");
+      dispatch({ type: "RESET_FORM" });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit override");
+      dispatch({
+        type: "SET_ERROR",
+        error: err instanceof Error ? err.message : "Failed to submit override",
+      });
     } finally {
-      setIsLoading(false);
+      dispatch({ type: "SET_STATUS", status: "idle" });
     }
   };
 
@@ -154,7 +203,9 @@ export function OverrideModal({
                   value={opt.value}
                   aria-label={opt.label}
                   checked={action === opt.value}
-                  onChange={(e) => setAction(e.target.value as typeof action)}
+                  onChange={(e) =>
+                    dispatch({ type: "SET_ACTION", action: e.target.value as OverrideRequest["action"] })
+                  }
                   className="mt-1"
                 />
                 <div>
@@ -172,10 +223,10 @@ export function OverrideModal({
               Downgrade to
             </label>
             <div className="relative">
-              <select
-                id={downgradeId}
-                value={newSeverity}
-                onChange={(e) => setNewSeverity(e.target.value)}
+                <select
+                  id={downgradeId}
+                  value={newSeverity}
+                  onChange={(e) => dispatch({ type: "SET_NEW_SEVERITY", newSeverity: e.target.value })}
                 className="w-full px-4 py-2.5 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#e6edf3] text-ui-sm focus:outline-none focus:border-[#58a6ff] appearance-none cursor-pointer"
               >
                 <option value="">Select severity…</option>
@@ -210,7 +261,9 @@ export function OverrideModal({
                   value={opt.value}
                   aria-label={opt.label}
                   checked={scope === opt.value}
-                  onChange={(e) => setScope(e.target.value as typeof scope)}
+                  onChange={(e) =>
+                    dispatch({ type: "SET_SCOPE", scope: e.target.value as OverrideRequest["scope"] })
+                  }
                   className="mt-1"
                 />
                 <div>
@@ -229,7 +282,7 @@ export function OverrideModal({
           <textarea
             id={reasonId}
             value={reason}
-            onChange={(e) => setReason(e.target.value)}
+            onChange={(e) => dispatch({ type: "SET_REASON", reason: e.target.value })}
             placeholder="Explain why you're overriding this flag (minimum 10 characters)..."
             className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#e6edf3] text-ui-sm placeholder-[#6e7681] focus:outline-none focus:border-[#58a6ff] resize-none"
             rows={4}
@@ -253,17 +306,17 @@ export function OverrideModal({
           <button
             type="button"
             onClick={onClose}
-            disabled={isLoading}
+            disabled={isSubmitting}
             className="flex-1 px-4 py-2.5 border border-[#30363d] rounded-lg text-[#e6edf3] font-medium hover:bg-[#161b22] disabled:opacity-50 transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={isLoading || !reasonValid || (action === "downgrade" && !newSeverity)}
+            disabled={isSubmitting || !reasonValid || (action === "downgrade" && !newSeverity)}
             className="flex-1 px-4 py-2.5 bg-[#238636] text-white rounded-lg font-medium hover:bg-[#2ea043] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {isLoading ? "Submitting…" : "Submit Override"}
+            {isSubmitting ? "Submitting…" : "Submit Override"}
           </button>
         </div>
       </form>

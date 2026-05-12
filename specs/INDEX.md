@@ -1,9 +1,10 @@
 - [Sourcing and Decision Policy](Sourcing_And_Decision_Policy.md) — Sourcing hierarchy and "Proceed/Ask" gating logic.
 - [Discussion Log](DISCUSSION_LOG.md) — Audit trail of pivots and agent feedback.
 - [First Mile Implementation](FIRST_MILE_IMPLEMENTATION.md) — Roadmap for the Agency Context deconstruction.
-- [Source Envelope Schema](source_envelope.schema.json) — Raw intake contract.
-- [Canonical Packet Schema](canonical_packet.schema.json) — The "Truth" model.
+- [Source Envelope Schema](source_envelope.schema.json) — Runtime raw intake envelope contract (`SourceEnvelope`).
+- [Canonical Packet Schema](canonical_packet.schema.json) — Runtime packet serialization contract (`CanonicalPacket` v0.3).
 - [Field Authority and Provenance](field_authority_and_provenance.md) — Trust and traceability rules.
 - [Decision Policy](decision_policy.md) — The state-machine logic for next actions.
 - [Event Log and Snapshot Model](event_log_and_snapshot_model.md) — Auditability and state management.
 - [MVB by Stage](mvb_by_stage.md) — Data sufficiency gates for each stage.
+- [Runtime Contract Version Matrix](runtime_contract_version_matrix_2026-05-12.md) — Current source-of-truth map for code, specs, notebooks, and legacy compatibility notes.

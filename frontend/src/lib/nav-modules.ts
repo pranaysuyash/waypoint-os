@@ -30,17 +30,17 @@ export const DOCUMENTS_MODULE_ROLLOUT_GATES: RolloutGate[] = [
   {
     id: 'privacy-redaction-enforced',
     description: 'Redaction and secure-mode controls are enforced for debug/export surfaces.',
-    complete: false,
+    complete: true,
   },
   {
     id: 'route-level-shell-ready',
     description: '/documents route has product-ready shell UX backed by canonical contracts.',
-    complete: false,
+    complete: true,
   },
   {
     id: 'contract-regression-suite',
     description: 'Integration tests cover document upload/review/extract/apply across role paths.',
-    complete: false,
+    complete: true,
   },
 ];
 

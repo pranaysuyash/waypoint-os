@@ -101,8 +101,7 @@ class ApiClient {
     const url = `${this.baseUrl}${endpoint}`;
     let lastError: Error | null = null;
 
-    // Retry loop
-    for (let attempt = 0; attempt <= retry; attempt++) {
+    const requestAttempt = async (attempt: number): Promise<T> => {
       try {
         // Create abort controller for timeout
         const controller = new AbortController();
@@ -160,18 +159,24 @@ class ApiClient {
           throw error;
         }
 
-        // Don't retry if this was the last attempt
         if (attempt < retry) {
-          // Wait before retrying (with exponential backoff)
+          // Exponential backoff before the next retry attempt.
           await new Promise((resolve) =>
             setTimeout(resolve, retryDelay * Math.pow(2, attempt))
           );
+          return requestAttempt(attempt + 1);
         }
-      }
-    }
 
-    // All retries exhausted
-    throw lastError || new Error("Request failed");
+        throw error;
+      }
+    };
+
+    return requestAttempt(0).catch((error) => {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw lastError || new Error("Request failed");
+    });
   }
 
   private normalizeErrorPayload(

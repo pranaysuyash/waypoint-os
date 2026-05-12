@@ -374,3 +374,150 @@ Remaining categories:
 2 no-render-in-render
 2 nextjs-no-client-fetch-for-server-data
 ```
+
+## 2026-05-12 React Doctor Batch 14 Update
+
+Current verified React Doctor baseline:
+
+```text
+score 94 Great total 43 errors 0 warnings 43
+```
+
+Changes in this batch:
+
+- Removed the two intake-flow `no-render-in-render` findings by moving render-function patterns to explicit component/content props.
+- `PlanningDetailSection` now consumes `activeEditorId` and `editorContent` instead of `renderEditor` callback.
+- `IntakePanel` now uses `PlanningDetailEditor` component for planning detail editor rendering.
+
+Verification:
+
+```text
+npx tsc --noEmit --incremental false: passed
+IntakeFieldComponents tests: 1 file passed, 24 tests passed
+react-doctor: score 94, warnings 43, errors 0
+```
+
+Remaining categories:
+
+```text
+13 no-giant-component
+12 prefer-useReducer
+6 no-fetch-in-effect
+3 rendering-usetransition-loading
+3 no-cascading-set-state
+2 async-await-in-loop
+2 nextjs-no-client-fetch-for-server-data
+2 no-derived-state-effect
+```
+
+## 2026-05-12 React Doctor Batch 15 Update
+
+Current verified React Doctor baseline:
+
+```text
+score 95 Great total 41 errors 0 warnings 41
+```
+
+Changes in this batch:
+
+- Removed the two `no-derived-state-effect` findings in `IntakePanel` by replacing effect-based mirror state with per-trip keyed local UI state and render-derived defaults.
+- Follow-up draft and notes expanded/collapsed behavior are now explicit, trip-scoped state without synchronization effects.
+
+Verification:
+
+```text
+react-doctor: score 95, warnings 41, errors 0
+workbench + intake panel tests: 2 files passed, 27 tests passed
+```
+
+Typecheck status:
+
+```text
+Full frontend typecheck currently blocked by unrelated parallel-agent drift:
+- missing documents page client import
+- AppRoutes validator mismatch for /documents
+- strict null checks in OpsPanel readiness usage
+```
+
+Remaining categories:
+
+```text
+13 no-giant-component
+12 prefer-useReducer
+6 no-fetch-in-effect
+3 no-cascading-set-state
+3 rendering-usetransition-loading
+2 nextjs-no-client-fetch-for-server-data
+2 async-await-in-loop
+```
+
+## 2026-05-12 React Doctor Batch 16 Update
+
+Current verified React Doctor baseline:
+
+```text
+score 94 Great total 38 errors 0 warnings 38
+```
+
+Changes in this batch:
+
+- Converted `CaptureCallPanel` and `OverrideModal` to reducer-backed state transitions.
+- Removed target findings in these components for `prefer-useReducer` and `rendering-usetransition-loading`.
+
+Verification:
+
+```text
+capture/override targeted tests: 3 files passed, 45 tests passed
+react-doctor: score 94, warnings 38, errors 0
+```
+
+Known limitations:
+
+- Existing test warning noise (`act(...)`) remains in a capture panel loading-state path.
+- Full frontend typecheck is currently impacted by parallel in-flight changes outside this batch; treat route/type errors as a separate stabilization stream.
+
+Remaining categories:
+
+```text
+13 no-giant-component
+10 prefer-useReducer
+6 no-fetch-in-effect
+3 no-cascading-set-state
+2 async-await-in-loop
+2 nextjs-no-client-fetch-for-server-data
+1 rendering-usetransition-loading
+1 design-no-redundant-padding-axes
+```
+
+## 2026-05-12 React Doctor Batch 17 Update
+
+Current verified React Doctor baseline:
+
+```text
+score 94 Great total 36 errors 0 warnings 36
+```
+
+Changes in this batch:
+
+- Removed both `async-await-in-loop` findings by converting:
+  - `useSpineRun` polling loop to recursive polling with explicit timeout checks.
+  - `api-client` retry/backoff loop to recursive retries with the same exponential backoff semantics.
+
+Verification:
+
+```text
+api-client contract + p1 happy path + intake panel tests: 3 files passed, 19 tests passed
+react-doctor: score 94, warnings 36, errors 0
+```
+
+Remaining categories:
+
+```text
+13 no-giant-component
+10 prefer-useReducer
+6 no-fetch-in-effect
+3 no-cascading-set-state
+2 nextjs-no-client-fetch-for-server-data
+1 rendering-usetransition-loading
+1 design-no-redundant-padding-axes
+```

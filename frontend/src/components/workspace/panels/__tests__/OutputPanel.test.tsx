@@ -26,6 +26,7 @@ describe('OutputPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
     (useWorkbenchStore as any).mockReturnValue(mockStore);
   });
 
@@ -57,6 +58,7 @@ describe('OutputPanel', () => {
   });
 
   it('toggles debug representation', () => {
+    vi.stubEnv('NEXT_PUBLIC_ALLOW_DEBUG_JSON', 'true');
     const setDebugRawJsonMock = vi.fn();
     (useWorkbenchStore as any).mockReturnValue({
       ...mockStore,
@@ -73,6 +75,7 @@ describe('OutputPanel', () => {
   });
 
   it('shows JSON data when debug_raw_json is true', () => {
+    vi.stubEnv('NEXT_PUBLIC_ALLOW_DEBUG_JSON', 'true');
     (useWorkbenchStore as any).mockReturnValue({
       ...mockStore,
       debug_raw_json: true,
@@ -108,5 +111,11 @@ describe('OutputPanel', () => {
     const sendButton = screen.getByRole('button', { name: /Send to Customer/i });
     expect(sendButton).toBeDisabled();
     expect(sendButton).toHaveAttribute('title', expect.stringContaining('Confidence below threshold'));
+  });
+
+  it('keeps Technical Data blocked by default policy', () => {
+    render(<OutputPanel tripId="TRIP-123" />);
+    expect(screen.getByText(/hidden by privacy policy/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Show Technical Data/i })).toBeDisabled();
   });
 });

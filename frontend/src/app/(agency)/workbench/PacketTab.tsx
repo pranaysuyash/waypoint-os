@@ -3,6 +3,7 @@ import type { SlotValue, Ambiguity, PacketUnknown, PacketContradiction, Validati
 import { validationLabelFor } from "@/types/spine";
 import type { Trip } from "@/lib/api-client";
 import { FIELD_LABELS, SIGNAL_LABELS, AMBIGUITY_TYPE_LABELS, labelOrTitle } from "@/lib/label-maps";
+import { getTravelerPromptForUnknownField } from "@/lib/traveler-prompts";
 import { AlertTriangle, CheckCircle, XCircle, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 
@@ -20,7 +21,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
   if (!activePacket) {
     return (
       <div className="text-center py-10 text-[#8b949e]">
-        <p>No booking request data. Process a trip from the "New Inquiry" section first.</p>
+        <p>No booking request data. Process a trip from the &ldquo;New Inquiry&rdquo; section first.</p>
       </div>
     );
   }
@@ -46,7 +47,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
     const [label, value] = entry;
     return {
       label,
-      value: String(value),
+      value: _formatValue(value),
     };
   });
 
@@ -128,6 +129,11 @@ export default function PacketTab({ trip }: PacketTabProps) {
                         </span>
                         <span className="text-[#8b949e] ml-1 font-mono">({unk.field_name})</span>
                         <span className="text-[#a8b3c1] ml-1">- {unk.reason.replace(/_/g, " ")}</span>
+                        {getTravelerPromptForUnknownField(unk.field_name) && (
+                          <p className="text-[#8b949e] mt-1">
+                            Prompt: {getTravelerPromptForUnknownField(unk.field_name)}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -237,7 +243,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
               >
                 <span className="text-ui-sm text-[#e6edf3]">{labelOrTitle(SIGNAL_LABELS, signal)}</span>
                 <span className="text-ui-xs text-[#8b949e]">
-                  {String(slot.value)} ({_formatConfidence(slot.confidence)})
+                  {_formatValue(slot.value)} ({_formatConfidence(slot.confidence)})
                 </span>
               </div>
             )})}
@@ -289,6 +295,11 @@ export default function PacketTab({ trip }: PacketTabProps) {
                     {unk.notes && (
                       <p className="text-ui-xs text-[#8b949e] mt-0.5">{unk.notes}</p>
                     )}
+                    {getTravelerPromptForUnknownField(unk.field_name) && (
+                      <p className="text-ui-xs text-[#8b949e] mt-0.5">
+                        Prompt: {getTravelerPromptForUnknownField(unk.field_name)}
+                      </p>
+                    )}
                   </div>
                 </li>
               ))}
@@ -311,7 +322,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
                       {labelOrTitle(FIELD_LABELS, con.field_name)}
                     </span>
                     <p className="text-ui-xs text-[#8b949e] mt-0.5">
-                      Values: {con.values.join(" vs ")}
+                      Values: {con.values.map(_formatValue).join(" vs ")}
                     </p>
                   </div>
                 </li>
@@ -350,8 +361,26 @@ function _getFactValue(facts: Record<string, SlotValue>, field: string): unknown
 
 function _formatValue(value: unknown): string {
   if (value === null || value === undefined) return "-";
-  if (Array.isArray(value)) return value.join(", ");
-  if (typeof value === "object") return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "-";
+    return value.map(_formatValue).join(", ");
+  }
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (typeof record.text === "string") {
+      const visibility = typeof record.visibility === "string"
+        ? ` (${record.visibility.replace(/_/g, " ")})`
+        : "";
+      return `${record.text}${visibility}`;
+    }
+
+    const entries = Object.entries(record).filter(([, entryValue]) => entryValue !== undefined && entryValue !== null);
+    if (entries.length === 0) return "-";
+
+    return entries
+      .map(([key, entryValue]) => `${labelOrTitle(FIELD_LABELS, key)}: ${_formatValue(entryValue)}`)
+      .join("; ");
+  }
   return String(value);
 }
 

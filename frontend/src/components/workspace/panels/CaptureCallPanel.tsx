@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useReducer, useEffect } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Trip, createTrip } from "@/lib/api-client";
 
@@ -10,37 +10,130 @@ export interface CaptureCallPanelProps {
   defaultFollowUpHours?: number;
 }
 
+type CaptureCallFields = {
+  rawNote: string;
+  ownerNote: string;
+  followUpDueDate: string;
+  partyComposition: string;
+  pacePreference: string;
+  dateYearConfidence: string;
+  leadSource: string;
+  activityProvenance: string;
+};
+
+type CaptureCallState = {
+  fields: CaptureCallFields;
+  errors: Record<string, string>;
+  apiError: string | null;
+  status: "idle" | "submitting";
+};
+
+type CaptureCallAction =
+  | { type: "SET_FIELD"; field: keyof CaptureCallFields; value: string }
+  | { type: "SET_ERROR"; error: string | null }
+  | { type: "SET_FIELD_ERRORS"; errors: Record<string, string> }
+  | { type: "SET_STATUS"; status: CaptureCallState["status"] }
+  | { type: "CLEAR_RAW_NOTE_ERROR" }
+  | { type: "RESET_FORM" };
+
+function getDefaultFollowUpDate(defaultFollowUpHours: number): string {
+  const now = new Date();
+  now.setHours(now.getHours() + defaultFollowUpHours);
+
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function createInitialCaptureCallState(defaultFollowUpHours: number): CaptureCallState {
+  return {
+    fields: {
+      rawNote: "",
+      ownerNote: "",
+      followUpDueDate: getDefaultFollowUpDate(defaultFollowUpHours),
+      partyComposition: "",
+      pacePreference: "",
+      dateYearConfidence: "",
+      leadSource: "",
+      activityProvenance: "",
+    },
+    errors: {},
+    apiError: null,
+    status: "idle",
+  };
+}
+
+function captureCallReducer(state: CaptureCallState, action: CaptureCallAction): CaptureCallState {
+  switch (action.type) {
+    case "SET_FIELD":
+      return {
+        ...state,
+        fields: { ...state.fields, [action.field]: action.value },
+      };
+    case "SET_ERROR":
+      return { ...state, apiError: action.error };
+    case "SET_FIELD_ERRORS":
+      return { ...state, errors: action.errors };
+    case "SET_STATUS":
+      return { ...state, status: action.status };
+    case "CLEAR_RAW_NOTE_ERROR":
+      if (!state.errors.rawNote) return state;
+      return { ...state, errors: { ...state.errors, rawNote: "" } };
+    case "RESET_FORM":
+      return {
+        ...state,
+        fields: {
+          rawNote: "",
+          ownerNote: "",
+          followUpDueDate: "",
+          partyComposition: "",
+          pacePreference: "",
+          dateYearConfidence: "",
+          leadSource: "",
+          activityProvenance: "",
+        },
+        errors: {},
+        apiError: null,
+        status: "idle",
+      };
+    default:
+      return state;
+  }
+}
+
 export default function CaptureCallPanel({
   onSave,
   onCancel,
   defaultFollowUpHours = 48,
 }: CaptureCallPanelProps) {
-  const [rawNote, setRawNote] = useState("");
-  const [ownerNote, setOwnerNote] = useState("");
-  const [followUpDueDate, setFollowUpDueDate] = useState("");
-  const [partyComposition, setPartyComposition] = useState("");
-  const [pacePreference, setPacePreference] = useState("");
-  const [dateYearConfidence, setDateYearConfidence] = useState("");
-  const [leadSource, setLeadSource] = useState("");
-  const [activityProvenance, setActivityProvenance] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [apiError, setApiError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(
+    captureCallReducer,
+    defaultFollowUpHours,
+    createInitialCaptureCallState
+  );
+  const { fields, errors, apiError, status } = state;
+  const isSubmitting = status === "submitting";
+  const {
+    rawNote,
+    ownerNote,
+    followUpDueDate,
+    partyComposition,
+    pacePreference,
+    dateYearConfidence,
+    leadSource,
+    activityProvenance,
+  } = fields;
 
   useEffect(() => {
-    // Compute default follow-up date (now + defaultFollowUpHours)
-    // Format as YYYY-MM-DDTHH:mm for datetime-local input (local time, not UTC)
-    const now = new Date();
-    now.setHours(now.getHours() + defaultFollowUpHours);
-    
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
-    
-    const localIso = `${year}-${month}-${day}T${hours}:${minutes}`;
-    setFollowUpDueDate(localIso);
+    dispatch({
+      type: "SET_FIELD",
+      field: "followUpDueDate",
+      value: getDefaultFollowUpDate(defaultFollowUpHours),
+    });
   }, [defaultFollowUpHours]);
 
   const validate = (): boolean => {
@@ -50,19 +143,19 @@ export default function CaptureCallPanel({
       newErrors.rawNote = "What did the customer tell you? This is required.";
     }
 
-    setErrors(newErrors);
+    dispatch({ type: "SET_FIELD_ERRORS", errors: newErrors });
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setApiError(null);
+    dispatch({ type: "SET_ERROR", error: null });
 
     if (!validate()) {
       return;
     }
 
-    setIsLoading(true);
+    dispatch({ type: "SET_STATUS", status: "submitting" });
 
     try {
       const trip = await createTrip({
@@ -76,35 +169,18 @@ export default function CaptureCallPanel({
         activity_provenance: activityProvenance.trim() || undefined,
       });
 
-      setRawNote("");
-      setOwnerNote("");
-      setFollowUpDueDate("");
-      setPartyComposition("");
-      setPacePreference("");
-      setDateYearConfidence("");
-      setLeadSource("");
-      setActivityProvenance("");
-      setErrors({});
+      dispatch({ type: "RESET_FORM" });
       onSave(trip);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to save call";
-      setApiError(errorMessage);
+      dispatch({ type: "SET_ERROR", error: errorMessage });
     } finally {
-      setIsLoading(false);
+      dispatch({ type: "SET_STATUS", status: "idle" });
     }
   };
 
   const handleCancel = () => {
-    setRawNote("");
-    setOwnerNote("");
-    setFollowUpDueDate("");
-    setPartyComposition("");
-    setPacePreference("");
-    setDateYearConfidence("");
-    setLeadSource("");
-    setActivityProvenance("");
-    setErrors({});
-    setApiError(null);
+    dispatch({ type: "RESET_FORM" });
     onCancel();
   };
 
@@ -116,7 +192,7 @@ export default function CaptureCallPanel({
           Capture Call
         </h2>
         <p className="text-ui-sm text-text-secondary dark:text-text-muted mt-1">
-          Record the customer's travel intent and next steps
+          Record the customer&apos;s travel intent and next steps
         </p>
       </div>
 
@@ -147,9 +223,9 @@ export default function CaptureCallPanel({
             id="rawNote"
             value={rawNote}
             onChange={(e) => {
-              setRawNote(e.target.value);
+              dispatch({ type: "SET_FIELD", field: "rawNote", value: e.target.value });
               if (errors.rawNote) {
-                setErrors((prev) => ({ ...prev, rawNote: "" }));
+                dispatch({ type: "CLEAR_RAW_NOTE_ERROR" });
               }
             }}
             placeholder="e.g., Family of 4 wants to explore Japan, late November…"
@@ -176,7 +252,7 @@ export default function CaptureCallPanel({
           <textarea
             id="ownerNote"
             value={ownerNote}
-            onChange={(e) => setOwnerNote(e.target.value)}
+            onChange={(e) => dispatch({ type: "SET_FIELD", field: "ownerNote", value: e.target.value })}
             placeholder="e.g., Mentioned budget concerns, needs early morning flights…"
             rows={3}
             className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
@@ -195,7 +271,7 @@ export default function CaptureCallPanel({
             id="followUpDueDate"
             type="datetime-local"
             value={followUpDueDate}
-            onChange={(e) => setFollowUpDueDate(e.target.value)}
+            onChange={(e) => dispatch({ type: "SET_FIELD", field: "followUpDueDate", value: e.target.value })}
             className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           />
           <p className="text-ui-xs text-text-muted dark:text-text-muted mt-1">
@@ -209,12 +285,12 @@ export default function CaptureCallPanel({
             htmlFor="partyComposition"
             className="block text-ui-sm font-medium text-text-primary dark:text-text-primary mb-2"
           >
-            Who's traveling?
+            Who&apos;s traveling?
           </label>
           <textarea
             id="partyComposition"
             value={partyComposition}
-            onChange={(e) => setPartyComposition(e.target.value)}
+            onChange={(e) => dispatch({ type: "SET_FIELD", field: "partyComposition", value: e.target.value })}
             placeholder="e.g., 2 adults, 1 toddler (age 3), 1 infant"
             rows={2}
             className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
@@ -235,7 +311,7 @@ export default function CaptureCallPanel({
           <select
             id="pacePreference"
             value={pacePreference}
-            onChange={(e) => setPacePreference(e.target.value)}
+            onChange={(e) => dispatch({ type: "SET_FIELD", field: "pacePreference", value: e.target.value })}
             className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           >
             <option value="">Select pace preference…</option>
@@ -259,7 +335,7 @@ export default function CaptureCallPanel({
           <select
             id="dateYearConfidence"
             value={dateYearConfidence}
-            onChange={(e) => setDateYearConfidence(e.target.value)}
+            onChange={(e) => dispatch({ type: "SET_FIELD", field: "dateYearConfidence", value: e.target.value })}
             className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           >
             <option value="">Select confidence level…</option>
@@ -283,7 +359,7 @@ export default function CaptureCallPanel({
           <select
             id="leadSource"
             value={leadSource}
-            onChange={(e) => setLeadSource(e.target.value)}
+            onChange={(e) => dispatch({ type: "SET_FIELD", field: "leadSource", value: e.target.value })}
             className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
           >
             <option value="">Select lead source…</option>
@@ -308,7 +384,7 @@ export default function CaptureCallPanel({
           <textarea
             id="activityProvenance"
             value={activityProvenance}
-            onChange={(e) => setActivityProvenance(e.target.value)}
+            onChange={(e) => dispatch({ type: "SET_FIELD", field: "activityProvenance", value: e.target.value })}
             placeholder="e.g., hiking, museums, fine dining, adventure sports"
             rows={2}
             className="w-full px-3 py-2 border border-border-default dark:border-border-default rounded-lg bg-white dark:bg-canvas text-text-primary dark:text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-blue dark:focus:ring-accent-blue transition-colors"
@@ -321,21 +397,21 @@ export default function CaptureCallPanel({
 
       {/* Footer with Buttons */}
       <div className="px-6 py-4 border-t border-border-default dark:border-border-default flex gap-3">
-        <button
-          onClick={handleCancel}
-          disabled={isLoading}
+          <button
+            onClick={handleCancel}
+            disabled={isSubmitting}
           className="flex-1 px-4 py-2 text-ui-sm font-medium text-text-secondary dark:text-text-secondary bg-elevated dark:bg-surface hover:bg-elevated dark:hover:bg-elevated rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancel
         </button>
-        <button
-          onClick={handleSubmit}
-          disabled={isLoading || !rawNote.trim()}
-          className="flex-1 px-4 py-2 text-ui-sm font-medium text-white bg-[rgba(var(--accent-blue-rgb)/0.30)] hover:bg-[rgba(var(--accent-blue-rgb)/0.26)] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {isLoading && <Loader2 className="size-4 animate-spin" />}
-          {isLoading ? "Saving…" : "Save"}
-        </button>
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting || !rawNote.trim()}
+            className="flex-1 px-4 py-2 text-ui-sm font-medium text-white bg-[rgba(var(--accent-blue-rgb)/0.30)] hover:bg-[rgba(var(--accent-blue-rgb)/0.26)] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isSubmitting && <Loader2 className="size-4 animate-spin" />}
+            {isSubmitting ? "Saving…" : "Save"}
+          </button>
       </div>
     </div>
   );

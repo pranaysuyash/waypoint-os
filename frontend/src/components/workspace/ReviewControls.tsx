@@ -102,7 +102,7 @@ export function ReviewControls({ trip, onActionComplete }: ReviewControlsProps) 
         </div>
         {trip?.reviewNotes && (
           <div className={styles.reviewNotes}>
-            <em>"{trip.reviewNotes}"</em>
+            <em>&ldquo;{trip.reviewNotes}&rdquo;</em>
           </div>
         )}
       </div>

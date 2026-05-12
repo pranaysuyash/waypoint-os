@@ -39,13 +39,15 @@ import type { ReadinessAssessment } from '@/types/spine';
 
 interface OpsPanelProps {
   trip?: Trip | null;
+  mode?: 'full' | 'documents';
 }
 
 function emptyTraveler(): BookingTraveler {
   return { traveler_id: '', full_name: '', date_of_birth: '' };
 }
 
-export default function OpsPanel({ trip }: OpsPanelProps) {
+export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
+  const documentsOnly = mode === 'documents';
   const { result_validation } = useWorkbenchStore();
 
   const readiness: ReadinessAssessment | undefined =
@@ -426,7 +428,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
     }
   }, [trip?.id]);
 
-  if (!readiness) {
+  if (!documentsOnly && !readiness) {
     return (
       <div data-testid="ops-panel-empty" className="text-sm text-[#8b949e]">
         No readiness data available. Run the pipeline to generate a readiness assessment.
@@ -434,25 +436,31 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
     );
   }
 
-  const tiers = readiness.tiers ?? {};
+  const tiers = readiness?.tiers ?? {};
   const tierEntries = Object.entries(tiers);
-  const signals = readiness.signals;
+  const signals = readiness?.signals;
+  const signalRecord =
+    signals && typeof signals === "object" && !Array.isArray(signals)
+      ? (signals as Record<string, unknown>)
+      : null;
 
   return (
     <div data-testid="ops-panel" className="space-y-6">
       {/* Highest tier summary */}
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-[#8b949e]">Highest ready tier:</span>
-        <span
-          data-testid="ops-highest-tier"
-          className="text-sm font-medium text-[#e6edf3]"
-        >
-          {readiness.highest_ready_tier ?? 'none'}
-        </span>
-      </div>
+      {!documentsOnly && (
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-[#8b949e]">Highest ready tier:</span>
+          <span
+            data-testid="ops-highest-tier"
+            className="text-sm font-medium text-[#e6edf3]"
+          >
+            {readiness?.highest_ready_tier ?? 'none'}
+          </span>
+        </div>
+      )}
 
       {/* Tier details */}
-      {tierEntries.length > 0 && (
+      {!documentsOnly && tierEntries.length > 0 && (
         <div data-testid="ops-tiers" className="space-y-4">
           <h3 className="text-sm font-medium text-[#e6edf3]">Booking Readiness Tiers</h3>
           {tierEntries.map((entry) => {
@@ -496,7 +504,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
       )}
 
       {/* Missing for next stage */}
-      {readiness.missing_for_next.length > 0 && (
+      {!documentsOnly && readiness?.missing_for_next.length && readiness.missing_for_next.length > 0 && (
         <div data-testid="ops-missing" className="border border-[#30363d] rounded-lg p-4">
           <span className="text-xs text-[#8b949e]">Fields blocking next tier: </span>
           <span className="text-xs text-amber-400">
@@ -506,10 +514,10 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
       )}
 
       {/* Auxiliary signals */}
-      {signals && Object.keys(signals).length > 0 && (
+      {!documentsOnly && signalRecord && Object.keys(signalRecord).length > 0 && (
         <div data-testid="ops-signals" className="border border-[#30363d] rounded-lg p-4">
           <h4 className="text-sm font-medium text-[#e6edf3] mb-2">Signals</h4>
-          {signals.visa_concerns_present === true && (
+          {signalRecord.visa_concerns_present === true && (
             <div
               data-testid="ops-signal-visa-concern"
               className="flex items-center gap-2 text-sm"
@@ -524,13 +532,13 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
       )}
 
       {/* Pending submission review - shown when customer has submitted data */}
-      {pendingLoading && (
+      {!documentsOnly && pendingLoading && (
         <div data-testid="ops-pending-loading" className="border border-[#30363d] rounded-lg p-4">
           <span className="text-xs text-[#8b949e]">Checking for customer submissions…</span>
         </div>
       )}
 
-      {!pendingLoading && pendingData && (
+      {!documentsOnly && !pendingLoading && pendingData && (
         <div data-testid="ops-pending-review" className="border border-amber-800/50 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-3">
             <h4 className="text-sm font-medium text-[#e6edf3]">Customer Submission</h4>
@@ -591,6 +599,7 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
       )}
 
       {/* Booking data section */}
+      {!documentsOnly && (
       <div data-testid="ops-booking-data" className="border border-[#30363d] rounded-lg p-4">
         <div className="flex items-center gap-2 mb-3">
           <h4 className="text-sm font-medium text-[#e6edf3]">Booking Details</h4>
@@ -764,9 +773,10 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
           </div>
         )}
       </div>
+      )}
 
       {/* Collection link generator - only at proposal/booking stage */}
-      {canGenerateLink && (
+      {!documentsOnly && canGenerateLink && (
         <div data-testid="ops-collection-link" className="border border-[#30363d] rounded-lg p-4">
           <h4 className="text-sm font-medium text-[#e6edf3] mb-3">Customer Collection Link</h4>
 
@@ -1137,9 +1147,9 @@ export default function OpsPanel({ trip }: OpsPanelProps) {
       </div>
 
       {/* Booking execution tasks (Phase 5A) */}
-      {trip?.id && <BookingExecutionPanel tripId={trip.id} stage={stage ?? undefined} />}
-      {trip?.id && <ConfirmationPanel tripId={trip.id} />}
-      {trip?.id && <ExecutionTimelinePanel tripId={trip.id} />}
+      {!documentsOnly && trip?.id && <BookingExecutionPanel tripId={trip.id} stage={stage ?? undefined} />}
+      {!documentsOnly && trip?.id && <ConfirmationPanel tripId={trip.id} />}
+      {!documentsOnly && trip?.id && <ExecutionTimelinePanel tripId={trip.id} />}
     </div>
   );
 }

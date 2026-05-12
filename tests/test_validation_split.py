@@ -182,12 +182,14 @@ class TestNB01Gate:
         gr = gate.evaluate(pkt, report)
         assert gr.verdict == GateVerdict.ESCALATE
         assert gr.score == 0.0
+        assert gr.reasons == ["Structural validation failed (1 error)"]
 
     def test_empty_packet_escalate(self):
         pkt = CanonicalPacket(packet_id="empty")
         report = validate_packet(pkt, stage="discovery")
         gr = gate.evaluate(pkt, report)
         assert gr.verdict == GateVerdict.ESCALATE
+        assert gr.reasons == ["Structural validation failed (2 errors)"]
 
     def test_shortlist_stage_intake_only_escalate(self):
         pkt = _make_packet(INTAKE_ONLY_FACTS)

@@ -10,6 +10,7 @@ import type {
   FeeCalculationResult,
   ValidationReport,
 } from "@/types/spine";
+import { isDebugJsonAllowed } from "@/lib/privacy-controls";
 
 // ============================================================================
 // TYPES
@@ -190,7 +191,7 @@ export const useWorkbenchStore = create<WorkbenchStore>((set) => ({
   setStage: (value) => set({ stage: value }),
   setScenarioId: (value) => set({ scenario_id: value }),
   setStrictLeakage: (value) => set({ strict_leakage: value }),
-  setDebugRawJson: (value) => set({ debug_raw_json: value }),
+  setDebugRawJson: (value) => set({ debug_raw_json: isDebugJsonAllowed() ? value : false }),
   setEnableGhostConcierge: (value) => set({ enable_ghost_concierge: value }),
   setEnableSentimentAnalysis: (value) => set({ enable_sentiment_analysis: value }),
   setFederatedIntelligenceOptIn: (value) => set({ federated_intelligence_opt_in: value }),

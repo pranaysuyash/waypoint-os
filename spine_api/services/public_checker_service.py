@@ -253,6 +253,8 @@ def run_public_checker_submission(
 
         now_iso = datetime.now(timezone.utc).isoformat()
 
+        decision_state_value = decision_payload.get("decision_state")
+
         return RunStatusResponse(
             run_id=run_id,
             state=result_state,
@@ -272,7 +274,7 @@ def run_public_checker_submission(
             block_reason=block_reason,
             validation=validation_payload if validation_payload else None,
             packet=packet_payload if packet_payload else None,
-            decision_state=str(decision_payload.get("decision_state") or None),
+            decision_state=str(decision_state_value) if decision_state_value else None,
             follow_up_questions=list(result.follow_up_questions) if hasattr(result, "follow_up_questions") else [],
             hard_blockers=list(decision_payload.get("hard_blockers") or []),
             soft_blockers=list(decision_payload.get("soft_blockers") or []),

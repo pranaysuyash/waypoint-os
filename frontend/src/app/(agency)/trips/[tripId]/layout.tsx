@@ -132,14 +132,13 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   }, [activeStage]);
 
   useEffect(() => {
-    if (!tripId) return;
+    if (!tripId || isLoading || !trip) return;
 
     let cancelled = false;
 
     const fetchTimeline = async () => {
       try {
         dispatchTimeline({ type: "loading" });
-        // eslint-disable-next-line -- dynamic tripId param, auth via credentials: "include"
         const response = await fetch(`/api/trips/${tripId}/timeline`, {
           credentials: "include",
           cache: "no-store",
@@ -162,7 +161,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
     return () => {
       cancelled = true;
     };
-  }, [tripId]);
+  }, [tripId, isLoading, trip?.id]);
 
   if (isLoading && !trip) {
     return (

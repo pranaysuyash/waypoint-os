@@ -43,7 +43,6 @@ export default function AuditPage() {
     let cancelled = false;
     async function fetchAudit() {
       try {
-        // eslint-disable-next-line -- client-side fetch required for credentials: "include" auth
         const res = await fetch("/api/audit?limit=50", { cache: "no-store" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();

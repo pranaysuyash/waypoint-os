@@ -24,13 +24,14 @@ const MAX_WAIT_MS = 180_000;
 
 export function useSpineRun() {
   const [state, setState] = useState<RunStatusResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [status, setStatus] = useState<"idle" | "running">("idle");
   const [error, setError] = useState<Error | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const abortRef = useRef(false);
+  const isLoading = status === "running";
 
   const execute = useCallback(async (payload: SpineRunRequest) => {
-    setIsLoading(true);
+    setStatus("running");
     setError(null);
     setState(null);
     setRunId(null);
@@ -51,16 +52,16 @@ export function useSpineRun() {
 
       const start = Date.now();
 
-      while (Date.now() - start < MAX_WAIT_MS) {
+      const pollStatus = async (): Promise<RunStatusResponse | null> => {
         if (abortRef.current) {
-          setIsLoading(false);
+          setStatus("idle");
           return null;
         }
 
         await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
 
         if (abortRef.current) {
-          setIsLoading(false);
+          setStatus("idle");
           return null;
         }
 
@@ -70,28 +71,34 @@ export function useSpineRun() {
 
         setState(status);
 
-          if (STATUS_TERMINAL.has(status.state)) {
-            setIsLoading(false);
+        if (STATUS_TERMINAL.has(status.state)) {
+          setStatus("idle");
 
-            if (status.state !== "completed") {
-              const msg =
-                status.error_message ||
-                status.block_reason ||
-                `Run ended in ${status.state}`;
-              const err = new ApiException(msg, 500, status.state);
-              setError(err);
-              throw err;
-            }
-
-            return status;
+          if (status.state !== "completed") {
+            const msg =
+              status.error_message ||
+              status.block_reason ||
+              `Run ended in ${status.state}`;
+            const err = new ApiException(msg, 500, status.state);
+            setError(err);
+            throw err;
           }
-      }
 
-      throw new ApiException("Run timed out", 504, "RUN_TIMEOUT");
+          return status;
+        }
+
+        if (Date.now() - start >= MAX_WAIT_MS) {
+          throw new ApiException("Run timed out", 504, "RUN_TIMEOUT");
+        }
+
+        return pollStatus();
+      };
+
+      return await pollStatus();
     } catch (err) {
       if (!abortRef.current) {
         setError(err as Error);
-        setIsLoading(false);
+        setStatus("idle");
       }
       throw err;
     }
@@ -99,7 +106,7 @@ export function useSpineRun() {
 
   const cancel = useCallback(() => {
     abortRef.current = true;
-    setIsLoading(false);
+    setStatus("idle");
     setRunId(null);
   }, []);
 
@@ -107,7 +114,7 @@ export function useSpineRun() {
     abortRef.current = false;
     setState(null);
     setError(null);
-    setIsLoading(false);
+    setStatus("idle");
     setRunId(null);
   }, []);
 

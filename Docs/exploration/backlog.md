@@ -238,6 +238,54 @@ A living document of areas to explore, ideas to investigate, and potential impro
 - [ ] Security audit checklist
 - [ ] penetration testing procedures
 - [ ] SOC2 compliance preparation
+
+## External Research Additions (2026-05-12)
+
+- [ ] Travel-document precheck integration (Timatic-class verification)
+  - Why: move document/visa/passport checks from manual review toward deterministic precheck before booking commitments.
+  - Exploration acceptance checks:
+  - decide provider strategy (direct Timatic AutoCheck integration vs partner channel) and fallback mode when provider unavailable
+  - map `passport/visa/transit` outcomes into current `decision_state` + `hard_blockers` contract
+  - define evidence attachment model so every precheck result is auditable per trip and per traveler
+  - Sources:
+  - https://www.iata.org/en/services/compliance/timatic/autocheck/
+  - https://api.developer.iata.org/organization/iata
+
+- [ ] Regulated refund-rights rules engine (US market baseline first)
+  - Why: cancellation/refund guidance is currently workflow-heavy; policy-aware automation reduces legal/commercial risk during disruption handling.
+  - Exploration acceptance checks:
+  - codify rule scopes (carrier-initiated cancellation/significant change vs voluntary cancellation)
+  - generate operator prompts + customer-facing explanation templates from rule outcomes
+  - version legal rules by jurisdiction and effective date with explicit provenance
+  - Sources:
+  - https://www.transportation.gov/airconsumer/ticket-refunds
+  - https://www.transportation.gov/sites/dot.gov/files/2024-04/Final%20Rule%20Refunds%20and%20Other%20Consumer%20Protections%20%282105-AF04%29.pdf
+
+- [ ] EU package-travel obligations module (organizer liability + refund/insolvency logic)
+  - Why: if EU-facing packages are in scope, organizer obligations should be first-class policy objects, not ad-hoc notes.
+  - Exploration acceptance checks:
+  - model package classification decision tree as a machine-readable contract
+  - attach mandatory pre-sale disclosures and post-sale obligations to workflow stages
+  - add compliance evidence log for each package trip (what was disclosed, when, to whom)
+  - Sources:
+  - https://commission.europa.eu/law/law-topic/consumer-protection-law/travel-and-timeshare-law/package-travel-directive_en
+  - https://www.consilium.europa.eu/en/press/press-releases/2026/03/30/consumer-protection-council-gives-final-sign-off-to-additional-safeguards-for-package-travel-users/pdf/
+
+- [ ] Agency credential trust layer (IATA code / agent identity verification)
+  - Why: supplier integrations and cross-agency workflows need identity trust and provenance, especially before automated high-value actions.
+  - Exploration acceptance checks:
+  - determine where credential verification is required in the action graph
+  - store verification evidence and expiry data with secure access controls
+  - define soft-fail/hard-fail behavior for missing or stale credentials
+  - Sources:
+  - https://www.iata.org/globalassets/iata/services/tids/checkacode_web-service_technical_specifications.pdf
+
+- [ ] Traveler-rights policy engine architecture (multi-jurisdiction, versioned)
+  - Why: legal/compliance features should be a reusable policy substrate powering cancellation, refund, disclosure, and audit workflows.
+  - Exploration acceptance checks:
+  - policy-as-data format (jurisdiction, trigger, obligation, deadline, evidence requirements)
+  - conflict resolution strategy when jurisdictions overlap on a single itinerary
+  - test harness for policy regressions across historical rule snapshots
 - [ ] GDPR/DPDP compliance
 - [ ] Data encryption at rest and in transit
 - [ ] Security headers and CSP

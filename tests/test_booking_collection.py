@@ -296,6 +296,24 @@ class TestPublicCustomerEndpoints:
         )
         assert resp.status_code == 422
 
+    def test_customer_submit_payment_tracking_returns_422(self, session_client, created_trip_id):
+        token = self._generate_link(session_client, created_trip_id)
+        payload = {
+            **MINIMAL_BOOKING_DATA,
+            "payment_tracking": {
+                "agreed_amount": 1000.0,
+                "amount_paid": 1000.0,
+                "payment_status": "paid",
+            },
+        }
+
+        resp = session_client.post(
+            f"/api/public/booking-collection/{token}/submit",
+            json=_submit_payload(payload),
+        )
+
+        assert resp.status_code == 422
+
     def test_customer_submit_invalid_token_returns_410(self, session_client):
         resp = session_client.post(
             "/api/public/booking-collection/invalid-token/submit",
@@ -348,6 +366,25 @@ class TestAgentReview:
         booking = TripStore.get_booking_data(created_trip_id)
         assert booking is not None
         assert booking["travelers"][0]["full_name"] == "Alice Smith"
+
+    def test_accept_rejects_tampered_pending_payment_tracking(self, session_client, created_trip_id):
+        from spine_api.persistence import TripStore
+
+        TripStore.update_trip(created_trip_id, {
+            "pending_booking_data": {
+                **MINIMAL_BOOKING_DATA,
+                "payment_tracking": {
+                    "agreed_amount": 1000.0,
+                    "amount_paid": 1000.0,
+                    "payment_status": "paid",
+                },
+            },
+        })
+
+        resp = session_client.post(f"/trips/{created_trip_id}/pending-booking-data/accept")
+
+        assert resp.status_code == 422
+        assert TripStore.get_booking_data(created_trip_id) is None
 
     def test_accept_sets_source(self, session_client, created_trip_id):
         from spine_api.persistence import TripStore

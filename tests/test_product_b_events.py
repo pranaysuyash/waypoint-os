@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -349,6 +351,52 @@ def test_public_checker_run_rejects_unknown_fields(session_client):
     assert resp.status_code == 422
 
 
+def test_public_checker_run_rejects_non_object_payload(session_client):
+    resp = session_client.post(
+        "/api/public-checker/run",
+        json=["raw_note", "test note"],
+    )
+
+    assert resp.status_code == 422
+
+
+def test_public_checker_run_rejects_invalid_structured_json_shape(session_client):
+    resp = session_client.post(
+        "/api/public-checker/run",
+        json={
+            "raw_note": "test note",
+            "retention_consent": True,
+            "structured_json": "not-an-object",
+        },
+    )
+
+    assert resp.status_code == 422
+
+
+def test_public_checker_run_rejects_non_string_raw_note(session_client):
+    resp = session_client.post(
+        "/api/public-checker/run",
+        json={
+            "raw_note": {"nested": "object-not-string"},
+            "retention_consent": True,
+        },
+    )
+
+    assert resp.status_code == 422
+
+
+def test_public_checker_run_rejects_non_boolean_retention_consent(session_client):
+    resp = session_client.post(
+        "/api/public-checker/run",
+        json={
+            "raw_note": "test note",
+            "retention_consent": ["not", "a", "bool"],
+        },
+    )
+
+    assert resp.status_code == 422
+
+
 def test_public_checker_event_api_validation_error(session_client, monkeypatch):
     import server
 
@@ -464,6 +512,79 @@ def test_public_checker_run_masks_internal_errors(monkeypatch):
     assert exc.value.status_code == 500
     assert "sensitive internal failure details" not in str(exc.value.detail)
     assert "Public checker submission failed" in str(exc.value.detail)
+
+
+def test_public_checker_run_endpoint_masks_internal_errors(session_client, monkeypatch):
+    import spine_api.services.public_checker_service as public_checker_service
+
+    def _raise_internal(*_args, **_kwargs):
+        raise RuntimeError("sensitive endpoint failure details")
+
+    monkeypatch.setattr(public_checker_service.ProductBEventStore, "log_event", lambda _payload: {"status": "accepted"})
+    monkeypatch.setattr(public_checker_service, "run_spine_once", _raise_internal)
+
+    resp = session_client.post(
+        "/api/public-checker/run",
+        json={"raw_note": "test note", "retention_consent": True},
+    )
+
+    assert resp.status_code == 500
+    assert resp.json()["detail"] == "Public checker submission failed"
+    assert "sensitive endpoint failure details" not in resp.text
+
+
+def test_public_checker_run_redacts_raw_submission_fields_without_consent(monkeypatch):
+    import spine_api.services.public_checker_service as public_checker_service
+
+    captured: dict[str, object] = {}
+
+    def _fake_run_spine_once(**_kwargs):
+        return SimpleNamespace(
+            packet={"score": 82},
+            validation={"overall_score": 82},
+            decision={"hard_blockers": [], "soft_blockers": []},
+            strategy={},
+            follow_up_questions=[],
+        )
+
+    def _fake_save_processed_trip(payload, **kwargs):
+        captured["payload"] = payload
+        captured["kwargs"] = kwargs
+        return "trip_public_1"
+
+    monkeypatch.setattr(public_checker_service.ProductBEventStore, "log_event", lambda _payload: {"status": "accepted"})
+    monkeypatch.setattr(public_checker_service, "run_spine_once", _fake_run_spine_once)
+
+    response = public_checker_service.run_public_checker_submission(
+        {
+            "raw_note": "private note",
+            "owner_note": "private owner note",
+            "itinerary_text": "private itinerary text",
+            "structured_json": {
+                "source_payload": {
+                    "kind": "file_upload",
+                    "uploaded_file": {"extracted_text": "private file text"},
+                }
+            },
+            "retention_consent": False,
+        },
+        build_envelopes=lambda _request: ["envelope"],
+        load_fixture_expectations=lambda _scenario_id: None,
+        to_dict=lambda value: value,
+        save_processed_trip=_fake_save_processed_trip,
+        get_public_checker_agency_id=lambda: "agency_public_checker",
+        logger=logging.getLogger("test.public_checker"),
+    )
+
+    assert response.trip_id == "trip_public_1"
+    payload = captured["payload"]
+    assert isinstance(payload, dict)
+    submission = payload["meta"]["submission"]
+    assert submission["retention_consent"] is False
+    assert "raw_note" not in submission
+    assert "owner_note" not in submission
+    assert "itinerary_text" not in submission
+    assert "structured_json" not in submission
 
 
 def test_public_checker_export_delete_require_auth(session_client):

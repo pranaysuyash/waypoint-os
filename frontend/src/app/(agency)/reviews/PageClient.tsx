@@ -29,6 +29,12 @@ const REVIEW_STATUS_MAP = {
   escalated:       { label: 'Escalated',        color: '#a371f7', icon: AlertTriangle },
 };
 
+const DAY_MS = 1000 * 60 * 60 * 24;
+
+function getDaysWaiting(submittedAt: string, referenceNow: number) {
+  return Math.floor((referenceNow - new Date(submittedAt).getTime()) / DAY_MS);
+}
+
 const RiskFlagBadge = memo(function RiskFlagBadge({ flag }: { flag: RiskFlag }) {
   /* one colour per flag so identical flags are identical and distinct flags are distinct */
   const config: Record<RiskFlag, { label: string; color: string; bg: string }> = {
@@ -52,20 +58,19 @@ const RiskFlagBadge = memo(function RiskFlagBadge({ flag }: { flag: RiskFlag }) 
 
 const ReviewCard = memo(function ReviewCard({
   review,
+  referenceNow,
   onApprove,
   onReject,
   onRequestChanges,
 }: {
   review: TripReview;
+  referenceNow: number;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   onRequestChanges: (id: string) => void;
 }) {
   const [showActions, setShowActions] = useState(false);
-  
-  const daysWaiting = Math.floor(
-    (Date.now() - new Date(review.submittedAt).getTime()) / (1000 * 60 * 60 * 24)
-  );
+  const daysWaiting = getDaysWaiting(review.submittedAt, referenceNow);
   
   const isUrgent = daysWaiting > 2 || review.riskFlags.includes('high_value');
   
@@ -109,7 +114,7 @@ const ReviewCard = memo(function ReviewCard({
           
           {review.agentNotes && (
             <blockquote className='text-ui-sm text-[#8b949e] border-l-2 border-[#30363d] pl-3 italic'>
-              "{review.agentNotes}"
+              &ldquo;{review.agentNotes}&rdquo;
               <span className='text-ui-xs text-[#484f58] not-italic ml-2'>- {review.agentName}</span>
             </blockquote>
           )}
@@ -193,6 +198,7 @@ const ReviewCard = memo(function ReviewCard({
 
 export default function OwnerReviewsPage() {
   const [statusFilter, setStatusFilter] = useState<ReviewStatus | 'all'>('all');
+  const [referenceNow] = useState(() => Date.now());
   const { data: reviews, isLoading, error, refetch, submitAction } = useReviews();
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -204,8 +210,8 @@ export default function OwnerReviewsPage() {
 
   // Sort by urgency (days waiting desc, then value desc)
   const sortedReviews = filteredReviews.toSorted((a, b) => {
-    const daysA = Math.floor((Date.now() - new Date(a.submittedAt).getTime()) / (1000 * 60 * 60 * 24));
-    const daysB = Math.floor((Date.now() - new Date(b.submittedAt).getTime()) / (1000 * 60 * 60 * 24));
+    const daysA = getDaysWaiting(a.submittedAt, referenceNow);
+    const daysB = getDaysWaiting(b.submittedAt, referenceNow);
     if (daysA !== daysB) return daysB - daysA;
     return b.value - a.value;
   });
@@ -348,6 +354,7 @@ export default function OwnerReviewsPage() {
             <ReviewCard
               key={review.id || `review-${index}`}
               review={review}
+              referenceNow={referenceNow}
               onApprove={handleApprove}
               onReject={handleReject}
               onRequestChanges={handleRequestChanges}

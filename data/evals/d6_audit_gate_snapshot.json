@@ -1,0 +1,93 @@
+{
+  "categories": {
+    "activity": {
+      "authoritative_for_public_surface": false,
+      "blocks_ci": false,
+      "meets_thresholds": true,
+      "metrics": {
+        "category": "activity",
+        "false_negatives": 0,
+        "false_positives": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "severity_accuracy": 1.0,
+        "severity_matches": 2,
+        "severity_total": 2,
+        "true_positives": 2
+      },
+      "reasons": [
+        "category_status_shadow"
+      ],
+      "status": "shadow"
+    },
+    "budget": {
+      "authoritative_for_public_surface": false,
+      "blocks_ci": true,
+      "meets_thresholds": false,
+      "metrics": null,
+      "reasons": [
+        "no_metrics_for_category"
+      ],
+      "status": "gating"
+    },
+    "documents": {
+      "authoritative_for_public_surface": false,
+      "blocks_ci": false,
+      "meets_thresholds": false,
+      "metrics": null,
+      "reasons": [
+        "no_metrics_for_category",
+        "category_status_planned"
+      ],
+      "status": "planned"
+    },
+    "logistics": {
+      "authoritative_for_public_surface": false,
+      "blocks_ci": false,
+      "meets_thresholds": false,
+      "metrics": null,
+      "reasons": [
+        "no_metrics_for_category",
+        "category_status_planned"
+      ],
+      "status": "planned"
+    },
+    "pacing": {
+      "authoritative_for_public_surface": false,
+      "blocks_ci": false,
+      "meets_thresholds": false,
+      "metrics": null,
+      "reasons": [
+        "no_metrics_for_category",
+        "category_status_planned"
+      ],
+      "status": "planned"
+    },
+    "safety": {
+      "authoritative_for_public_surface": false,
+      "blocks_ci": false,
+      "meets_thresholds": false,
+      "metrics": null,
+      "reasons": [
+        "no_metrics_for_category",
+        "category_status_shadow"
+      ],
+      "status": "shadow"
+    },
+    "weather": {
+      "authoritative_for_public_surface": false,
+      "blocks_ci": false,
+      "meets_thresholds": false,
+      "metrics": null,
+      "reasons": [
+        "no_metrics_for_category",
+        "category_status_shadow"
+      ],
+      "status": "shadow"
+    }
+  },
+  "fixture_root": "data/fixtures/audit",
+  "generated_at": "2026-05-12T03:40:53.650228+00:00",
+  "manifest_version": 1,
+  "total_fixtures": 2
+}

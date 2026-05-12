@@ -40,7 +40,7 @@ export default function ForgotPasswordPage() {
       <div className='auth-card'>
         <h1 className='auth-title'>Check your email</h1>
         <p className='auth-subtitle'>
-          If an account with that email exists, we've sent password reset instructions.
+          If an account with that email exists, we&apos;ve sent password reset instructions.
         </p>
         <Link href='/login' className='auth-button auth-button--outline'>
           Back to sign in
@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
   ) : (
     <div className='auth-card'>
       <h1 className='auth-title'>Reset your password</h1>
-      <p className='auth-subtitle'>Enter your email and we'll send you a reset link.</p>
+      <p className='auth-subtitle'>Enter your email and we&apos;ll send you a reset link.</p>
 
       <form onSubmit={handleSubmit}>
         {error && <div className='auth-error'>{error}</div>}

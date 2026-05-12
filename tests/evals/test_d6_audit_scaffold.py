@@ -16,6 +16,8 @@ def test_d6_manifest_loads_category_progression():
 
     assert manifest.categories["activity"].status == "shadow"
     assert manifest.categories["budget"].status == "gating"
+    assert manifest.categories["weather"].status == "shadow"
+    assert manifest.categories["safety"].status == "shadow"
     assert manifest.categories["activity"].min_precision > 0
 
 

@@ -463,6 +463,27 @@ Browser
   - `POST /api/public/booking-collection/{token}/submit`
   - `POST /api/public/booking-collection/{token}/documents`
 - These are documented in [Docs/status/PUBLIC_ROUTES_ROUTER_EXTRACTION_2026-05-11.md](../status/PUBLIC_ROUTES_ROUTER_EXTRACTION_2026-05-11.md).
+- Legacy assignment/audit/override action routes moved into `spine_api/routers/legacy_ops.py`:
+  - `POST /trips/{trip_id}/assign`
+  - `POST /trips/{trip_id}/unassign`
+  - `POST /trips/{trip_id}/snooze`
+  - `POST /trips/{trip_id}/suitability/acknowledge`
+  - `GET /assignments`
+  - `GET /audit`
+  - `POST /trips/{trip_id}/override`
+  - `GET /trips/{trip_id}/overrides`
+  - `GET /overrides/{override_id}`
+  - `POST /trips/{trip_id}/reassign`
+- This extraction is documented in [Docs/status/LEGACY_OPS_ROUTER_EXTRACTION_2026-05-12.md](../status/LEGACY_OPS_ROUTER_EXTRACTION_2026-05-12.md).
+- Trip action routes moved into `spine_api/routers/trip_actions.py`:
+  - `POST /trips/{trip_id}/review/action`
+  - `GET /trips/{trip_id}/activities/provenance`
+- This extraction is documented in [Docs/status/TRIP_ACTIONS_ROUTER_EXTRACTION_2026-05-12.md](../status/TRIP_ACTIONS_ROUTER_EXTRACTION_2026-05-12.md).
+- During this slice we also removed a request-model shadowing hazard in `server.py` by renaming the pending-booking local model from `ReviewActionRequest` to `PendingBookingReviewActionRequest`, preserving canonical contract usage for `review/action`.
+- Trip observability routes moved into `spine_api/routers/trip_observability.py`:
+  - `GET /trips/{trip_id}/agent-events`
+  - `GET /api/trips/{trip_id}/timeline`
+- This extraction is documented in [Docs/status/TRIP_OBSERVABILITY_ROUTER_EXTRACTION_2026-05-12.md](../status/TRIP_OBSERVABILITY_ROUTER_EXTRACTION_2026-05-12.md).
 
 ### What is still left (next actionable slice)
 

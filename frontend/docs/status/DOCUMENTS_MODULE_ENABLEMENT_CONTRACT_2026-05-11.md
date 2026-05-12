@@ -29,9 +29,14 @@ Defined in code:
 Current gates:
 
 1. `ops-path-stable` (complete)
-2. `privacy-redaction-enforced` (pending)
-3. `route-level-shell-ready` (pending)
-4. `contract-regression-suite` (pending)
+2. `privacy-redaction-enforced` (complete)
+3. `route-level-shell-ready` (complete)
+4. `contract-regression-suite` (complete)
+
+Latest evidence:
+- [PRIVACY_REDACTION_GATE_2026-05-12.md](./PRIVACY_REDACTION_GATE_2026-05-12.md)
+- [ROUTE_SHELL_READY_GATE_2026-05-12.md](./ROUTE_SHELL_READY_GATE_2026-05-12.md)
+- [CONTRACT_REGRESSION_SUITE_GATE_2026-05-12.md](./CONTRACT_REGRESSION_SUITE_GATE_2026-05-12.md)
 
 ## Enablement Mechanism
 
@@ -42,10 +47,10 @@ Current gates:
 
 1. `npm test -- "src/lib/__tests__/nav-modules.test.ts" --reporter=dot`
 2. `npm test -- "src/app/(agency)/workbench/__tests__/OpsPanel.test.tsx" --reporter=dot`
+3. `npm test -- "src/lib/__tests__/api-client-contract-surface.test.ts" --reporter=dot`
 
 ## Non-Goals
 
 - No duplicate document APIs.
 - No temporary parallel document workflow.
 - No nav enablement based on docs-only readiness.
-

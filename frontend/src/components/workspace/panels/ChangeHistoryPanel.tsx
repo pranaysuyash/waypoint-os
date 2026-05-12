@@ -90,6 +90,7 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
         <button
           onClick={handleExport}
           className='text-ui-xs text-accent-blue hover:text-[#79b8ff]'
+          title='Export uses privacy redaction by default'
         >
           Export
         </button>

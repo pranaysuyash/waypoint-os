@@ -1,3 +1,24 @@
+# DEPRECATION NOTICE (2026-05-12)
+
+This file is retained for history only. It contains legacy contract language and legacy field names (`destination_city`, `travel_dates`, `budget_range`, `traveler_count`) that are NOT canonical in current runtime.
+
+## Canonical sources (current)
+- `/Users/pranay/Projects/travel_agency_agent/src/intake/decision.py`
+- `/Users/pranay/Projects/travel_agency_agent/specs/decision_policy.md`
+- `/Users/pranay/Projects/travel_agency_agent/notebooks/NB02_V02_SPEC.md`
+- `/Users/pranay/Projects/travel_agency_agent/src/intake/packet_models.py`
+
+## Current contract notes
+- Runtime packet model in code is `CanonicalPacket` v0.3 (`packet_models.py`), while some specs still reference v0.2.
+- Decision states are constrained to:
+  - `ASK_FOLLOWUP`
+  - `PROCEED_INTERNAL_DRAFT`
+  - `PROCEED_TRAVELER_SAFE`
+  - `BRANCH_OPTIONS`
+  - `STOP_NEEDS_REVIEW`
+
+---
+
 # Notebook 02: Gap and Decision - Contract Definition
 
 ## Environment

@@ -271,8 +271,9 @@ interface PlanningDetailSectionProps {
   tone: 'required' | 'recommended';
   rows: PlanningDetailRow[];
   onOpenEditor: (id: PlanningDetailId) => void;
-  onAskTraveler: () => void;
-  renderEditor: (id: PlanningDetailId | null) => React.ReactNode;
+  onAskTraveler: (detail: PlanningDetailRow) => void;
+  activeEditorId: PlanningDetailId | null;
+  editorContent: React.ReactNode;
 }
 
 export function PlanningDetailSection({
@@ -281,7 +282,8 @@ export function PlanningDetailSection({
   rows,
   onOpenEditor,
   onAskTraveler,
-  renderEditor,
+  activeEditorId,
+  editorContent,
 }: PlanningDetailSectionProps) {
   if (rows.length === 0) return null;
 
@@ -315,17 +317,20 @@ export function PlanningDetailSection({
                     ? 'Needed before the planner can build confident options.'
                     : 'Useful for improving option quality without blocking the next step.'}
                 </p>
+                <p className='mt-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)]'>
+                  Ask: {detail.travelerPrompt}
+                </p>
               </div>
               <div className='flex flex-wrap gap-2'>
                 <Button type='button' variant='secondary' size='sm' onClick={() => onOpenEditor(detail.id)}>
                   {detail.addLabel}
                 </Button>
-                <Button type='button' variant='outline' size='sm' onClick={onAskTraveler}>
+                <Button type='button' variant='outline' size='sm' onClick={() => onAskTraveler(detail)}>
                   {detail.askLabel}
                 </Button>
               </div>
             </div>
-            {renderEditor(detail.id)}
+            {activeEditorId === detail.id ? editorContent : null}
           </div>
         ))}
       </div>

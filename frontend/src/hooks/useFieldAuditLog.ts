@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useEffect, useReducer } from 'react';
 import type { FieldChange, AuditLog, TripFieldType, FieldChangeType } from '@/types/audit';
+import { redactAuditLog, shouldRedactAuditExport } from '@/lib/privacy-controls';
 
 const STORAGE_PREFIX = 'trip_audit:v1:';
 
@@ -200,7 +201,8 @@ export function useFieldAuditLog({
    */
   const exportChanges = useCallback((): string => {
     if (!auditLog) return '{}';
-    return JSON.stringify(auditLog, null, 2);
+    const payload = shouldRedactAuditExport() ? redactAuditLog(auditLog) : auditLog;
+    return JSON.stringify(payload, null, 2);
   }, [auditLog]);
 
   return {

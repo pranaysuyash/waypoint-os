@@ -7,7 +7,7 @@
     "dev:doctor": "node ./tools/dev-doctor.mjs",
     "dev:reset": "node ./tools/dev-reset.mjs",
     "build": "next build",
-    "lint": "next lint",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "start": "next start",
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -40,6 +40,8 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "eslint": "^9.39.1",
+    "eslint-config-next": "^16.2.4",
     "@next/bundle-analyzer": "^16.2.4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",

@@ -48,7 +48,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
   if (!activeSafety) {
     return (
       <div className={styles.emptyState}>
-        <p>No risk review data yet. Process a trip from the "New Inquiry" section first.</p>
+        <p>No risk review data yet. Process a trip from the &ldquo;New Inquiry&rdquo; section first.</p>
       </div>
     );
   }

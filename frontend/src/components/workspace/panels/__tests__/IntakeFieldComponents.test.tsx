@@ -189,6 +189,7 @@ describe('PlanningDetailSection', () => {
       requirement: 'Required' as const,
       addLabel: 'Add budget',
       askLabel: 'Ask traveler',
+      travelerPrompt: 'What budget range should we plan within?',
       value: null,
     },
     {
@@ -197,6 +198,7 @@ describe('PlanningDetailSection', () => {
       requirement: 'Recommended' as const,
       addLabel: 'Add origin',
       askLabel: 'Ask traveler',
+      travelerPrompt: 'Which city will the travelers depart from?',
       value: null,
     },
   ];
@@ -207,7 +209,8 @@ describe('PlanningDetailSection', () => {
     rows: mockRows,
     onOpenEditor: vi.fn(),
     onAskTraveler: vi.fn(),
-    renderEditor: vi.fn(() => null),
+    activeEditorId: null as PlanningDetailId | null,
+    editorContent: null as React.ReactNode,
   };
 
   beforeEach(() => {
@@ -245,7 +248,7 @@ describe('PlanningDetailSection', () => {
     render(<PlanningDetailSection {...baseProps} />);
     const askButtons = screen.getAllByRole('button', { name: 'Ask traveler' });
     fireEvent.click(askButtons[0]);
-    expect(baseProps.onAskTraveler).toHaveBeenCalled();
+    expect(baseProps.onAskTraveler).toHaveBeenCalledWith(expect.objectContaining({ id: 'budget' }));
   });
 
   it('renders singular "1 field" for single row', () => {
@@ -258,13 +261,13 @@ describe('PlanningDetailSection', () => {
     expect(screen.getByText('1 field')).toBeInTheDocument();
   });
 
-  it('renders editor via renderEditor callback', () => {
-    const renderEditor = vi.fn((id) => {
-      if (id === 'budget') return <div data-testid="budget-editor">Budget Editor</div>;
-      return null;
-    });
+  it('renders editor content for active row', () => {
     render(
-      <PlanningDetailSection {...baseProps} renderEditor={renderEditor} />
+      <PlanningDetailSection
+        {...baseProps}
+        activeEditorId='budget'
+        editorContent={<div data-testid="budget-editor">Budget Editor</div>}
+      />
     );
     expect(screen.getByTestId('budget-editor')).toBeInTheDocument();
     expect(screen.getByText('Budget Editor')).toBeInTheDocument();

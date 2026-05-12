@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "canonical_packet.schema.json",
   "title": "CanonicalPacket",
-  "description": "Agency-OS Packet v0.2 \u2014 single source of truth for all intake data. Produced by NB01, consumed by NB02/NB03.",
+  "description": "Agency-OS Packet v0.3 runtime serialization contract. Source of truth: src/intake/packet_models.py CanonicalPacket.to_dict().",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -10,25 +10,26 @@
     "schema_version",
     "stage",
     "operating_mode",
+    "decision_state",
     "facts",
     "derived_signals",
-    "ambiguities",
     "hypotheses",
+    "lifecycle",
+    "ambiguities",
     "unknowns",
     "contradictions",
     "source_envelope_ids",
     "revision_count",
-    "event_cursor"
+    "event_cursor",
+    "events"
   ],
   "properties": {
     "packet_id": {
-      "type": "string",
-      "description": "Unique packet identifier"
+      "type": "string"
     },
     "schema_version": {
       "type": "string",
-      "const": "0.2",
-      "description": "Schema version \u2014 migration guard"
+      "const": "0.3"
     },
     "stage": {
       "type": "string",
@@ -37,8 +38,7 @@
         "shortlist",
         "proposal",
         "booking"
-      ],
-      "default": "discovery"
+      ]
     },
     "operating_mode": {
       "type": "string",
@@ -51,9 +51,7 @@
         "post_trip",
         "coordinator_group",
         "owner_review"
-      ],
-      "default": "normal_intake",
-      "description": "System routing classification \u2014 NOT a traveler fact"
+      ]
     },
     "decision_state": {
       "type": [
@@ -67,25 +65,28 @@
         "BRANCH_OPTIONS",
         "STOP_NEEDS_REVIEW",
         null
-      ],
-      "default": null,
-      "description": "Set by NB02, not NB01"
+      ]
     },
     "facts": {
-      "$ref": "#/$defs/FactsMap"
+      "$ref": "#/$defs/SlotMap"
     },
     "derived_signals": {
-      "$ref": "#/$defs/SignalsMap"
+      "$ref": "#/$defs/SlotMap"
+    },
+    "hypotheses": {
+      "$ref": "#/$defs/SlotMap"
+    },
+    "lifecycle": {
+      "oneOf": [
+        { "$ref": "#/$defs/LifecycleInfo" },
+        { "type": "null" }
+      ]
     },
     "ambiguities": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/Ambiguity"
-      },
-      "description": "First-class ambiguity markers \u2014 not hidden under unknowns"
-    },
-    "hypotheses": {
-      "$ref": "#/$defs/SignalsMap"
+      }
     },
     "unknowns": {
       "type": "array",
@@ -107,14 +108,11 @@
     },
     "revision_count": {
       "type": "integer",
-      "minimum": 0,
-      "default": 0,
-      "description": "How many times requirements changed"
+      "minimum": 0
     },
     "event_cursor": {
       "type": "integer",
-      "minimum": 0,
-      "default": 0
+      "minimum": 0
     },
     "events": {
       "type": "array",
@@ -124,18 +122,26 @@
     }
   },
   "$defs": {
+    "SlotMap": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/FieldSlot"
+      }
+    },
     "EvidenceRef": {
       "type": "object",
       "additionalProperties": false,
       "required": [
         "envelope_id",
         "evidence_type",
-        "excerpt"
+        "excerpt",
+        "ref_id",
+        "field_path",
+        "offset",
+        "confidence",
+        "metadata"
       ],
       "properties": {
-        "ref_id": {
-          "type": "string"
-        },
         "envelope_id": {
           "type": "string"
         },
@@ -152,6 +158,9 @@
         "excerpt": {
           "type": "string"
         },
+        "ref_id": {
+          "type": "string"
+        },
         "field_path": {
           "type": [
             "string",
@@ -159,25 +168,26 @@
           ]
         },
         "offset": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "start": {
-              "type": "integer"
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "start": { "type": "integer" },
+                "end": { "type": "integer" }
+              }
             },
-            "end": {
-              "type": "integer"
-            }
-          }
+            { "type": "null" }
+          ]
         },
         "confidence": {
           "type": "number",
           "minimum": 0,
-          "maximum": 1,
-          "default": 1.0
+          "maximum": 1
         },
         "metadata": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": true
         }
       }
     },
@@ -189,7 +199,10 @@
         "confidence",
         "authority_level",
         "extraction_mode",
-        "evidence_refs"
+        "evidence_refs",
+        "derived_from",
+        "updated_at",
+        "notes"
       ],
       "properties": {
         "value": {},
@@ -211,14 +224,7 @@
           ]
         },
         "extraction_mode": {
-          "type": "string",
-          "enum": [
-            "direct_extract",
-            "imported",
-            "normalized",
-            "derived",
-            "manual_entry"
-          ]
+          "type": "string"
         },
         "evidence_refs": {
           "type": "array",
@@ -226,8 +232,15 @@
             "$ref": "#/$defs/EvidenceRef"
           }
         },
+        "derived_from": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "updated_at": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "notes": {
           "type": [
@@ -245,201 +258,7 @@
             "heuristic",
             "verified",
             null
-          ],
-          "description": "Signal maturity: stub (placeholder), heuristic (rule-based), verified (data-backed). Only for derived signals."
-        }
-      }
-    },
-    "FactsMap": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "Explicit or imported truths only. No derived/computed values. Includes later-stage fields for shortlist/proposal/booking.",
-      "properties": {
-        "party_size": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "party_composition": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "child_ages": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "mobility_constraints": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "medical_constraints": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "destination_candidates": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "destination_status": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "origin_city": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "date_window": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "date_start": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "date_end": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "date_confidence": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "duration_nights": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "budget_raw_text": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "budget_min": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "budget_max": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "budget_currency": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "budget_flexibility": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "budget_scope": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "trip_purpose": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "trip_style": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "hotel_preferences": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "meal_preferences": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "hard_constraints": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "soft_preferences": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "agency_notes": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "owner_constraints": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "owner_priority_signals": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "customer_id": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "past_trips": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "passport_status": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "visa_status": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "existing_itinerary": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "traveler_plan": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "sub_groups": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "coordinator_id": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "resolved_destination": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "selected_itinerary": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "payment_method": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "traveler_details": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "special_requests": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "dietary_restrictions": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "activity_preferences": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "accommodation_type": {
-          "$ref": "#/$defs/FieldSlot"
-        }
-      }
-    },
-    "SignalsMap": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "Computed routing/judgment values. NOT explicit facts.",
-      "properties": {
-        "domestic_or_international": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "is_repeat_customer": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "sourcing_path": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "preferred_supplier_available": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "estimated_minimum_cost": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "budget_feasibility": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "composition_risk": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "document_risk": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "operational_complexity": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "urgency": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "value_gap": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "internal_data_present": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "booking_readiness": {
-          "$ref": "#/$defs/FieldSlot"
-        },
-        "budget_breakdown": {
-          "$ref": "#/$defs/FieldSlot",
-          "description": "Decomposed budget estimate per cost bucket (flights, stay, food, local_transport, activities, visa_insurance, shopping, buffer)"
-        },
-        "budget_verdict": {
-          "$ref": "#/$defs/FieldSlot",
-          "description": "Per-bucket feasibility verdict: realistic | borderline | not_realistic"
+          ]
         }
       }
     },
@@ -449,145 +268,23 @@
       "required": [
         "field_name",
         "ambiguity_type",
-        "raw_value"
+        "raw_value",
+        "normalized_value",
+        "confidence",
+        "evidence_refs",
+        "notes"
       ],
       "properties": {
-        "field_name": {
-          "type": "string"
-        },
-        "ambiguity_type": {
-          "type": "string",
-          "enum": [
-            "unresolved_alternatives",
-            "value_vague",
-            "date_window_only",
-            "budget_unclear_scope",
-            "budget_stretch_present",
-            "composition_unclear",
-            "destination_open"
-          ]
-        },
-        "raw_value": {
-          "type": "string"
-        },
-        "normalized_value": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "confidence": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1,
-          "default": 0.0
-        },
+        "field_name": { "type": "string" },
+        "ambiguity_type": { "type": "string" },
+        "raw_value": { "type": "string" },
+        "normalized_value": { "type": [ "string", "null" ] },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
         "evidence_refs": {
           "type": "array",
-          "items": {
-            "$ref": "#/$defs/EvidenceRef"
-          }
+          "items": { "$ref": "#/$defs/EvidenceRef" }
         },
-        "notes": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      }
-    },
-    "OwnerConstraint": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "text",
-        "visibility"
-      ],
-      "properties": {
-        "text": {
-          "type": "string"
-        },
-        "visibility": {
-          "type": "string",
-          "enum": [
-            "internal_only",
-            "traveler_safe_transformable"
-          ],
-          "description": "internal_only: never shown to traveler. traveler_safe_transformable: can be rephrased neutrally."
-        },
-        "evidence_refs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/EvidenceRef"
-          }
-        }
-      }
-    },
-    "SubGroup": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "group_id",
-        "label",
-        "size"
-      ],
-      "properties": {
-        "group_id": {
-          "type": "string"
-        },
-        "label": {
-          "type": "string"
-        },
-        "size": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "composition": {
-          "type": "object"
-        },
-        "budget_share": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "payment_status": {
-          "type": "string",
-          "enum": [
-            "not_started",
-            "partial",
-            "paid",
-            "emi_pending"
-          ],
-          "default": "not_started"
-        },
-        "document_status": {
-          "type": "string",
-          "enum": [
-            "not_submitted",
-            "partial",
-            "complete"
-          ],
-          "default": "not_submitted"
-        },
-        "constraints": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "contact": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "notes": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
+        "notes": { "type": [ "string", "null" ] }
       }
     },
     "UnknownField": {
@@ -595,12 +292,12 @@
       "additionalProperties": false,
       "required": [
         "field_name",
-        "reason"
+        "reason",
+        "attempted_at",
+        "notes"
       ],
       "properties": {
-        "field_name": {
-          "type": "string"
-        },
+        "field_name": { "type": "string" },
         "reason": {
           "type": "string",
           "enum": [
@@ -610,66 +307,88 @@
             "intentionally_unknown"
           ]
         },
-        "attempted_at": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "notes": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
+        "attempted_at": { "type": [ "string", "null" ] },
+        "notes": { "type": [ "string", "null" ] }
+      }
+    },
+    "ContradictionValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "source",
+        "authority",
+        "timestamp"
+      ],
+      "properties": {
+        "value": {},
+        "source": { "type": "string" },
+        "authority": { "type": "string" },
+        "timestamp": { "type": [ "string", "null" ] }
       }
     },
     "Contradiction": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "field_name",
         "values",
-        "sources"
+        "sources",
+        "detected_at",
+        "state",
+        "resolved_at",
+        "resolution",
+        "resolved_by"
       ],
       "properties": {
-        "field_name": {
-          "type": "string"
-        },
+        "field_name": { "type": "string" },
         "values": {
           "type": "array",
-          "items": {}
+          "items": {
+            "$ref": "#/$defs/ContradictionValue"
+          }
+        },
+        "values_legacy": {
+          "type": "array"
         },
         "sources": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "items": { "type": "string" }
         },
-        "detected_at": {
-          "type": "string"
-        }
+        "detected_at": { "type": "string" },
+        "state": {
+          "type": "string",
+          "enum": [
+            "detected",
+            "open",
+            "resolved"
+          ]
+        },
+        "resolved_at": { "type": [ "string", "null" ] },
+        "resolution": { "type": [ "string", "null" ] },
+        "resolved_by": { "type": [ "string", "null" ] }
       }
+    },
+    "LifecycleInfo": {
+      "type": "object",
+      "additionalProperties": true
     },
     "Event": {
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "event_id",
         "event_type",
+        "timestamp",
         "details"
       ],
       "properties": {
-        "event_id": {
-          "type": "integer"
-        },
-        "event_type": {
-          "type": "string"
-        },
-        "timestamp": {
-          "type": "string"
-        },
+        "event_id": { "type": "integer" },
+        "event_type": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
         "details": {
-          "type": "object"
+          "type": "object",
+          "additionalProperties": true
         }
       }
     }

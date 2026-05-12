@@ -113,9 +113,9 @@ export function DataTransformationHero() {
                 <span>UNSTRUCTURED INTAKE</span>
               </div>
               <div className={styles.rawText}>
-                "Hey Alex, looking at Italy again for the summer. Maybe Amalfi? 2 weeks in June. 
+                &ldquo;Hey Alex, looking at Italy again for the summer. Maybe Amalfi? 2 weeks in June. 
                 Same group as last time. Need big rooms for the kids. One of the passports might be 
-                expiring soon though, can we check that? Budget is around what we spent in Japan…"
+                expiring soon though, can we check that? Budget is around what we spent in Japan…&rdquo;
               </div>
               <div className={styles.scanLine} />
             </div>

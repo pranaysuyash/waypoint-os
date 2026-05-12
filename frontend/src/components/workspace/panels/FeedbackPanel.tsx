@@ -19,7 +19,7 @@ export default function FeedbackPanel({ trip }: FeedbackPanelProps) {
           <MessageSquare className="size-12 text-border-default mb-4" />
           <h3 className="text-ui-lg font-medium text-text-rationale mb-2">Awaiting Feedback</h3>
           <p className="text-ui-sm text-text-muted max-w-xs">
-            We've reached out to the customer for their thoughts. Feedback will appear here once received.
+            We&apos;ve reached out to the customer for their thoughts. Feedback will appear here once received.
           </p>
         </div>
       </div>
@@ -65,7 +65,7 @@ export default function FeedbackPanel({ trip }: FeedbackPanelProps) {
         <div className="relative">
           <MessageSquare className="size-4 text-border-default absolute -top-4 -left-4" />
           <p className="text-ui-lg text-text-primary italic leading-relaxed font-light text-center">
-            "{feedback.notes}"
+            &ldquo;{feedback.notes}&rdquo;
           </p>
           <MessageSquare className="size-4 text-border-default absolute -bottom-4 -right-4 rotate-180" />
         </div>

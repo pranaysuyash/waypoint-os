@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTrip } from '@/hooks/useTrips';
@@ -31,6 +32,8 @@ import { toast } from '@/lib/toast-store';
 import { useUnifiedState } from '@/hooks/useUnifiedState';
 import { useAgencySettings } from '@/hooks/useAgencySettings';
 import { NAV_SECTIONS } from '@/lib/nav-modules';
+import { getPlanningListSummary } from '@/lib/planning-list-display';
+import type { Trip } from '@/lib/api-client';
 import { UserMenu } from './UserMenu';
 
 const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
@@ -50,6 +53,83 @@ const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
   Settings,
 };
 
+const SIDEBAR_CONTEXT_TONE: Record<Trip['state'] | 'neutral', { color: string; bg: string; border: string }> = {
+  green: {
+    color: 'var(--accent-green)',
+    bg: 'rgba(63, 185, 80, 0.08)',
+    border: 'rgba(63, 185, 80, 0.24)',
+  },
+  amber: {
+    color: 'var(--accent-amber)',
+    bg: 'rgba(210, 153, 34, 0.08)',
+    border: 'rgba(210, 153, 34, 0.24)',
+  },
+  red: {
+    color: 'var(--accent-red)',
+    bg: 'rgba(248, 81, 73, 0.08)',
+    border: 'rgba(248, 81, 73, 0.26)',
+  },
+  blue: {
+    color: 'var(--accent-blue)',
+    bg: 'rgba(88, 166, 255, 0.08)',
+    border: 'rgba(88, 166, 255, 0.24)',
+  },
+  neutral: {
+    color: 'var(--text-muted)',
+    bg: 'rgba(139, 148, 158, 0.08)',
+    border: 'rgba(139, 148, 158, 0.18)',
+  },
+};
+
+export function SidebarTripContext({ trip }: { trip: Trip | null }) {
+  const summary = useMemo(() => (trip ? getPlanningListSummary(trip) : null), [trip]);
+
+  if (!trip || !summary) return null;
+
+  const tone = SIDEBAR_CONTEXT_TONE[summary.statusTone] ?? SIDEBAR_CONTEXT_TONE.neutral;
+
+  return (
+    <section
+      className='hidden md:block mx-4 mb-3 rounded-lg border p-3'
+      style={{
+        background: tone.bg,
+        borderColor: tone.border,
+      }}
+      aria-label='Current trip context'
+    >
+      <div className='flex items-center justify-between gap-2'>
+        <span className='text-[10px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-muted)' }}>
+          Current trip
+        </span>
+        <span
+          className='inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold'
+          style={{ color: tone.color, background: 'rgba(255, 255, 255, 0.04)' }}
+        >
+          <span className='size-1.5 rounded-full' style={{ background: tone.color }} aria-hidden='true' />
+          {summary.statusLabel}
+        </span>
+      </div>
+      <div className='mt-2 truncate text-[13px] font-semibold' style={{ color: 'var(--text-primary)' }}>
+        {summary.title}
+      </div>
+      {summary.subtitle ? (
+        <div className='mt-0.5 truncate text-[11px]' style={{ color: 'var(--text-muted)' }}>
+          {summary.subtitle}
+        </div>
+      ) : null}
+      <p className='mt-2 line-clamp-2 text-[11px] leading-snug' style={{ color: 'var(--text-secondary)' }}>
+        {summary.nextAction}
+      </p>
+      <Link
+        href={summary.action.href}
+        className='mt-2 inline-flex text-[11px] font-medium transition-colors hover:opacity-80'
+        style={{ color: tone.color }}
+      >
+        {summary.action.label}
+      </Link>
+    </section>
+  );
+}
 
 function parseTripIdFromPathname(pathname: string): string | null {
   const match = pathname.match(/^\/trips\/([^/]+)/);
@@ -232,6 +312,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </div>
           ))}
         </nav>
+
+        <SidebarTripContext trip={shellTrip} />
 
         {/* Status footer */}
         <div

@@ -1,10 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  acceptDocument,
+  applyExtraction,
   createBookingTask,
+  deleteDocument,
+  extractDocument,
+  getDocumentDownloadUrl,
+  getDocuments,
   getOverride,
   getOverrides,
   listDrafts,
+  rejectDocument,
+  rejectExtraction,
   reassessTrip,
+  uploadDocument,
   type AnalyticsPipelineStage,
   type ApiError,
   type ApplyConflict,
@@ -59,6 +68,86 @@ describe('api-client public contract surface', () => {
       method: 'POST',
       body: JSON.stringify(taskRequest),
     }));
+  });
+
+  it('keeps document upload/review/extract/apply endpoints wired to canonical BFF paths', async () => {
+    const fetchMock = vi.mocked(fetch);
+    const file = new File(['passport-image'], 'passport.jpg', { type: 'image/jpeg' });
+
+    await uploadDocument('trip-1', file, 'passport', 'adult_1');
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/trips/trip-1/documents',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'include',
+        body: expect.any(FormData),
+      }),
+    );
+
+    await getDocuments('trip-1');
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/trips/trip-1/documents',
+      expect.objectContaining({ method: 'GET', credentials: 'include' }),
+    );
+
+    await getDocumentDownloadUrl('trip-1', 'doc-1');
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/trips/trip-1/documents/doc-1/download-url',
+      expect.objectContaining({ method: 'GET', credentials: 'include' }),
+    );
+
+    await acceptDocument('trip-1', 'doc-1', true);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/trips/trip-1/documents/doc-1/accept',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ notes_present: true }),
+      }),
+    );
+
+    await rejectDocument('trip-1', 'doc-1', false);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/trips/trip-1/documents/doc-1/reject',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ notes_present: false }),
+      }),
+    );
+
+    await deleteDocument('trip-1', 'doc-1');
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/trips/trip-1/documents/doc-1',
+      expect.objectContaining({ method: 'DELETE', credentials: 'include' }),
+    );
+
+    await extractDocument('trip-1', 'doc-1');
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/trips/trip-1/documents/doc-1/extract',
+      expect.objectContaining({ method: 'POST' }),
+    );
+
+    await applyExtraction('trip-1', 'doc-1', {
+      traveler_id: 'adult_1',
+      fields_to_apply: ['passport_number'],
+      allow_overwrite: false,
+    });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/trips/trip-1/documents/doc-1/extraction/apply',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          traveler_id: 'adult_1',
+          fields_to_apply: ['passport_number'],
+          allow_overwrite: false,
+        }),
+      }),
+    );
+
+    await rejectExtraction('trip-1', 'doc-1');
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/trips/trip-1/documents/doc-1/extraction/reject',
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 
   it('keeps type-only API contracts importable for integration consumers', () => {

@@ -46,6 +46,7 @@ import {
 } from '@/lib/planning-status';
 import { Button } from '@/components/ui/button';
 import { useFieldAuditLog } from '@/hooks/useFieldAuditLog';
+import { getTravelerPromptForPlanningDetail } from '@/lib/traveler-prompts';
 import CaptureCallPanel from './CaptureCallPanel';
 import { EditableField, BudgetField, PlanningDetailSection } from './IntakeFieldComponents';
 
@@ -99,7 +100,96 @@ export interface PlanningDetailRow {
   requirement: 'Required' | 'Recommended';
   addLabel: string;
   askLabel: string;
+  travelerPrompt: string;
   value: string | null;
+}
+
+interface PlanningDetailEditorProps {
+  detailId: PlanningDetailId | null;
+  activePlanningEditor: PlanningDetailId | null;
+  budgetAmount: string;
+  budgetCurrency: SupportedCurrency;
+  currencyOptions: Array<{ value: SupportedCurrency; label: string; symbol: string; flag: string }>;
+  setBudgetAmount: (value: string) => void;
+  setBudgetCurrency: (value: SupportedCurrency) => void;
+  planningEditorRefs: React.MutableRefObject<Record<PlanningDetailId, HTMLTextAreaElement | null>>;
+  planningEditorDrafts: Record<PlanningDetailId, string>;
+  savePlanningEditor: (detailId: PlanningDetailId) => Promise<void>;
+  closePlanningEditor: () => void;
+}
+
+function PlanningDetailEditor({
+  detailId,
+  activePlanningEditor,
+  budgetAmount,
+  budgetCurrency,
+  currencyOptions,
+  setBudgetAmount,
+  setBudgetCurrency,
+  planningEditorRefs,
+  planningEditorDrafts,
+  savePlanningEditor,
+  closePlanningEditor,
+}: PlanningDetailEditorProps) {
+  if (!detailId || activePlanningEditor !== detailId) {
+    return null;
+  }
+
+  if (detailId === 'budget') {
+    return (
+      <div className='mt-3 rounded-lg border border-[var(--accent-blue)]/35 bg-[var(--bg-surface)] p-3'>
+        <div className='flex flex-col gap-3 sm:flex-row'>
+          <input
+            type='number'
+            value={budgetAmount}
+            onChange={(e) => setBudgetAmount(e.target.value)}
+            placeholder='Approximate budget'
+            className='flex-1 rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2 text-[var(--ui-text-sm)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]'
+          />
+          <select
+            value={budgetCurrency}
+            onChange={(e) => setBudgetCurrency(e.target.value as SupportedCurrency)}
+            className='rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2 text-[var(--ui-text-sm)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]'
+          >
+            {currencyOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>
+                {opt.flag} {opt.value}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className='mt-3 flex flex-wrap gap-2'>
+          <Button type='button' size='sm' onClick={() => void savePlanningEditor(detailId)}>
+            Save budget
+          </Button>
+          <Button type='button' variant='ghost' size='sm' onClick={closePlanningEditor}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className='mt-3 rounded-lg border border-[var(--accent-blue)]/35 bg-[var(--bg-surface)] p-3'>
+      <textarea
+        ref={(el) => { planningEditorRefs.current[detailId] = el; }}
+        defaultValue={planningEditorDrafts[detailId] ?? ''}
+        rows={3}
+        className='w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2 text-[var(--ui-text-sm)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none'
+        placeholder={detailId === 'origin' ? 'Add the departure city' : detailId === 'destination' ? 'Add the destination city or country' : detailId === 'priorities' ? 'Add must-haves or trip priorities' : 'Add how flexible the dates are'}
+        dir={detailId === 'origin' || detailId === 'destination' ? 'ltr' : undefined}
+      />
+      <div className='mt-3 flex flex-wrap gap-2'>
+        <Button type='button' size='sm' onClick={() => void savePlanningEditor(detailId)}>
+          Save {detailId === 'origin' ? 'origin' : detailId === 'destination' ? 'destination' : detailId === 'priorities' ? 'priorities' : 'flexibility'}
+        </Button>
+        <Button type='button' variant='ghost' size='sm' onClick={closePlanningEditor}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 const NOTE_DETAIL_PREFIX: Record<string, string> = {
@@ -245,7 +335,8 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   // Budget state with currency
   const [budgetAmount, setBudgetAmount] = useState('');
   const [budgetCurrency, setBudgetCurrency] = useState<SupportedCurrency>('INR');
-  const [followUpDraft, setFollowUpDraft] = useState('');
+  const [followUpDraftByTrip, setFollowUpDraftByTrip] = useState<Record<string, string>>({});
+  const [notesExpandedByTrip, setNotesExpandedByTrip] = useState<Record<string, boolean>>({});
   const [activePlanningEditor, setActivePlanningEditor] = useState<PlanningDetailId | null>(null);
   const [planningEditorDrafts, setPlanningEditorDrafts] = useState<Record<PlanningDetailId, string>>({
     budget: '',
@@ -340,6 +431,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
         requirement: 'Required',
         addLabel: 'Add budget',
         askLabel: 'Ask traveler',
+        travelerPrompt: getTravelerPromptForPlanningDetail('budget') ?? 'What budget range should we plan within?',
         value: null,
       });
     }
@@ -351,6 +443,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
         requirement: 'Required',
         addLabel: 'Add destination',
         askLabel: 'Ask traveler',
+        travelerPrompt: getTravelerPromptForPlanningDetail('destination') ?? 'Which destination(s) are you considering?',
         value: null,
       });
     }
@@ -362,6 +455,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
         requirement: 'Required',
         addLabel: 'Add origin',
         askLabel: 'Ask traveler',
+        travelerPrompt: getTravelerPromptForPlanningDetail('origin') ?? 'Which city will the travelers depart from?',
         value: null,
       });
     }
@@ -373,6 +467,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
         requirement: 'Required',
         addLabel: 'Add dates',
         askLabel: 'Ask traveler',
+        travelerPrompt: getTravelerPromptForPlanningDetail('dates') ?? 'What are your exact travel dates or preferred date range?',
         value: null,
       });
     }
@@ -384,6 +479,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
         requirement: 'Recommended',
         addLabel: 'Add priorities',
         askLabel: 'Ask traveler',
+        travelerPrompt: getTravelerPromptForPlanningDetail('priorities') ?? 'What are your must-haves for this trip (hotel style, pace, activities, room setup)?',
         value: null,
       });
     }
@@ -395,6 +491,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
         requirement: 'Recommended',
         addLabel: 'Add flexibility',
         askLabel: 'Ask traveler',
+        travelerPrompt: getTravelerPromptForPlanningDetail('flexibility') ?? 'How flexible are your dates if pricing or availability changes?',
         value: null,
       });
     }
@@ -413,24 +510,27 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
       : trip?.status === 'in_progress'
         ? 'Build trip options'
         : 'Continue to options';
-  const [notesExpanded, setNotesExpanded] = useState(!planningPanelVisible);
+  const tripUiKey = tripId || '__new_trip__';
+  const followUpDraftTemplate = useMemo(
+    () => buildFollowUpDraftFromRows(planningDetails),
+    [planningDetails]
+  );
+  const followUpDraft = followUpDraftByTrip[tripUiKey] ?? followUpDraftTemplate;
+  const setFollowUpDraft = useCallback((next: string) => {
+    setFollowUpDraftByTrip((prev) => ({ ...prev, [tripUiKey]: next }));
+  }, [tripUiKey]);
+  const notesExpanded = notesExpandedByTrip[tripUiKey] ?? !planningPanelVisible;
+  const setNotesExpanded = useCallback((next: boolean | ((current: boolean) => boolean)) => {
+    setNotesExpandedByTrip((prev) => {
+      const current = prev[tripUiKey] ?? !planningPanelVisible;
+      const resolved = typeof next === 'function' ? next(current) : next;
+      return { ...prev, [tripUiKey]: resolved };
+    });
+  }, [tripUiKey, planningPanelVisible]);
   const notesId = useId();
   const agentNotesId = useId();
   const stageId = useId();
   const requestTypeId = useId();
-
-  // Reset notes expanded when trip changes; derive from planningPanelVisible
-  useEffect(() => {
-    setNotesExpanded(!planningPanelVisible);
-    // This reset pattern is required: planningPanelVisible drives the default state,
-    // and tripId forces re-initialization when navigating between trips
-  }, [planningPanelVisible, tripId]);
-
-  // Sync follow-up draft template when missing details change (mirror-props pattern)
-  // Must be an effect because the user can edit the textarea independently
-  useEffect(() => {
-    setFollowUpDraft(buildFollowUpDraftFromRows(planningDetails));
-  }, [planningDetails]);
 
   const handleProcessTrip = useCallback(async () => {
     if (!store.input_raw_note && !store.input_owner_note) return;
@@ -734,13 +834,19 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     setActivePlanningEditor(null);
   }, [activePlanningEditor, getPlanningEditorInitialValue, setPlanningEditorDraft]);
 
-  const handleAskTravelerForDetail = useCallback(() => {
+  const handleAskTravelerForDetail = useCallback((detail: PlanningDetailRow) => {
     setOperatingMode('follow_up');
     setNotesExpanded(true);
+    if (!followUpDraft.includes(detail.travelerPrompt)) {
+      const nextDraft = followUpDraft.trim().length > 0
+        ? `${followUpDraft.trim()}\n\nSpecific question: ${detail.travelerPrompt}`
+        : detail.travelerPrompt;
+      setFollowUpDraft(nextDraft);
+    }
     window.requestAnimationFrame(() => {
       followUpTextareaRef.current?.focus();
     });
-  }, [setOperatingMode]);
+  }, [followUpDraft, setFollowUpDraft, setOperatingMode]);
 
   const savePlanningEditor = useCallback(async (detailId: PlanningDetailId) => {
     if (!tripId) return;
@@ -808,65 +914,21 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     tripId,
   ]);
 
-  const renderPlanningDetailEditor = (detailId: PlanningDetailId | null) => {
-    if (activePlanningEditor !== detailId) return null;
-
-    if (detailId === 'budget') {
-      return (
-        <div className='mt-3 rounded-lg border border-[var(--accent-blue)]/35 bg-[var(--bg-surface)] p-3'>
-          <div className='flex flex-col gap-3 sm:flex-row'>
-            <input
-              type='number'
-              value={budgetAmount}
-              onChange={(e) => setBudgetAmount(e.target.value)}
-              placeholder='Approximate budget'
-              className='flex-1 rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2 text-[var(--ui-text-sm)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]'
-            />
-            <select
-              value={budgetCurrency}
-              onChange={(e) => setBudgetCurrency(e.target.value as SupportedCurrency)}
-              className='rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2 text-[var(--ui-text-sm)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]'
-            >
-              {currencyOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.flag} {opt.value}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className='mt-3 flex flex-wrap gap-2'>
-            <Button type='button' size='sm' onClick={() => void savePlanningEditor(detailId)}>
-              Save budget
-            </Button>
-            <Button type='button' variant='ghost' size='sm' onClick={closePlanningEditor}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className='mt-3 rounded-lg border border-[var(--accent-blue)]/35 bg-[var(--bg-surface)] p-3'>
-        <textarea
-          ref={(el) => { if (detailId) planningEditorRefs.current[detailId] = el; }}
-          defaultValue={(detailId && planningEditorDrafts[detailId]) ?? ''}
-          rows={3}
-          className='w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2 text-[var(--ui-text-sm)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)] resize-none'
-          placeholder={detailId === 'origin' ? 'Add the departure city' : detailId === 'destination' ? 'Add the destination city or country' : detailId === 'priorities' ? 'Add must-haves or trip priorities' : 'Add how flexible the dates are'}
-          dir={detailId === 'origin' || detailId === 'destination' ? 'ltr' : undefined}
-        />
-        <div className='mt-3 flex flex-wrap gap-2'>
-          <Button type='button' size='sm' onClick={() => detailId && void savePlanningEditor(detailId)}>
-            Save {detailId === 'origin' ? 'origin' : detailId === 'destination' ? 'destination' : detailId === 'priorities' ? 'priorities' : 'flexibility'}
-          </Button>
-          <Button type='button' variant='ghost' size='sm' onClick={closePlanningEditor}>
-            Cancel
-          </Button>
-        </div>
-      </div>
-    );
-  };
+  const planningDetailEditor = (
+    <PlanningDetailEditor
+      detailId={activePlanningEditor}
+      activePlanningEditor={activePlanningEditor}
+      budgetAmount={budgetAmount}
+      budgetCurrency={budgetCurrency}
+      currencyOptions={currencyOptions}
+      setBudgetAmount={setBudgetAmount}
+      setBudgetCurrency={setBudgetCurrency}
+      planningEditorRefs={planningEditorRefs}
+      planningEditorDrafts={planningEditorDrafts}
+      savePlanningEditor={savePlanningEditor}
+      closePlanningEditor={closePlanningEditor}
+    />
+  );
 
   // AI context cards derived from trip decision (if already processed)
   const decision = trip?.decision ?? null;
@@ -942,7 +1004,10 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
                 if (requiredPlanningDetails.length > 0) {
                   openPlanningEditor(requiredPlanningDetails[0]!.id);
                 } else {
-                  handleAskTravelerForDetail();
+                  const detailForFollowUp = planningDetails[0];
+                  if (detailForFollowUp) {
+                    handleAskTravelerForDetail(detailForFollowUp);
+                  }
                 }
               }}
               className='mt-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[var(--border-default)] text-[12px] font-medium text-[var(--text-primary)] hover:bg-elevated transition-colors'
@@ -1033,8 +1098,8 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
               </p>
             </div>
             <div className='space-y-3'>
-              <PlanningDetailSection title='Required missing fields' tone='required' rows={requiredPlanningDetails} onOpenEditor={(id) => { if (id === 'dates') { setEditingField('dateWindow'); } else { openPlanningEditor(id); } }} onAskTraveler={handleAskTravelerForDetail} renderEditor={renderPlanningDetailEditor} />
-              <PlanningDetailSection title='Recommended details' tone='recommended' rows={recommendedPlanningDetails} onOpenEditor={(id) => { if (id === 'dates') { setEditingField('dateWindow'); } else { openPlanningEditor(id); } }} onAskTraveler={handleAskTravelerForDetail} renderEditor={renderPlanningDetailEditor} />
+              <PlanningDetailSection title='Required missing fields' tone='required' rows={requiredPlanningDetails} onOpenEditor={(id) => { if (id === 'dates') { setEditingField('dateWindow'); } else { openPlanningEditor(id); } }} onAskTraveler={handleAskTravelerForDetail} activeEditorId={activePlanningEditor} editorContent={planningDetailEditor} />
+              <PlanningDetailSection title='Recommended details' tone='recommended' rows={recommendedPlanningDetails} onOpenEditor={(id) => { if (id === 'dates') { setEditingField('dateWindow'); } else { openPlanningEditor(id); } }} onAskTraveler={handleAskTravelerForDetail} activeEditorId={activePlanningEditor} editorContent={planningDetailEditor} />
             </div>
           </div>
 
@@ -1190,7 +1255,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
             </div>
             {(activePlanningEditor === 'priorities' || activePlanningEditor === 'flexibility') && (
               <div className='rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3'>
-                {renderPlanningDetailEditor(activePlanningEditor)}
+                {planningDetailEditor}
               </div>
             )}
           </div>

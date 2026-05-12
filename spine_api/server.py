@@ -131,6 +131,7 @@ from spine_api.services.live_checker_service import (
 )
 from spine_api.services.public_checker_service import run_public_checker_submission
 from spine_api.services.pipeline_execution_service import execute_spine_pipeline
+from spine_api.services import trip_lifecycle_service
 from spine_api.product_b_events import ProductBEventStore  # noqa: F401  # Legacy re-export for tests/compatibility
 
 from src.intake.orchestration import run_spine_once
@@ -346,6 +347,10 @@ try:
     from spine_api.routers import confirmations as confirmations_router
     from spine_api.routers import public_checker as public_checker_router
     from spine_api.routers import public_collection as public_collection_router
+    from spine_api.routers import legacy_ops as legacy_ops_router
+    from spine_api.routers import trip_actions as trip_actions_router
+    from spine_api.routers import trip_observability as trip_observability_router
+    from spine_api.routers import trip_lifecycle as trip_lifecycle_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -451,6 +456,38 @@ except (ImportError, ValueError):
     _public_collection_mod = importlib.util.module_from_spec(_public_collection_spec)
     _public_collection_spec.loader.exec_module(_public_collection_mod)
     public_collection_router = _public_collection_mod
+
+    _legacy_ops_spec = importlib.util.spec_from_file_location(
+        "routers.legacy_ops",
+        _base / "routers" / "legacy_ops.py",
+    )
+    _legacy_ops_mod = importlib.util.module_from_spec(_legacy_ops_spec)
+    _legacy_ops_spec.loader.exec_module(_legacy_ops_mod)
+    legacy_ops_router = _legacy_ops_mod
+
+    _trip_actions_spec = importlib.util.spec_from_file_location(
+        "routers.trip_actions",
+        _base / "routers" / "trip_actions.py",
+    )
+    _trip_actions_mod = importlib.util.module_from_spec(_trip_actions_spec)
+    _trip_actions_spec.loader.exec_module(_trip_actions_mod)
+    trip_actions_router = _trip_actions_mod
+
+    _trip_observability_spec = importlib.util.spec_from_file_location(
+        "routers.trip_observability",
+        _base / "routers" / "trip_observability.py",
+    )
+    _trip_observability_mod = importlib.util.module_from_spec(_trip_observability_spec)
+    _trip_observability_spec.loader.exec_module(_trip_observability_mod)
+    trip_observability_router = _trip_observability_mod
+
+    _trip_lifecycle_spec = importlib.util.spec_from_file_location(
+        "routers.trip_lifecycle",
+        _base / "routers" / "trip_lifecycle.py",
+    )
+    _trip_lifecycle_mod = importlib.util.module_from_spec(_trip_lifecycle_spec)
+    _trip_lifecycle_spec.loader.exec_module(_trip_lifecycle_mod)
+    trip_lifecycle_router = _trip_lifecycle_mod
 
 logger = logging.getLogger("spine_api")
 
@@ -714,6 +751,10 @@ app.include_router(booking_tasks_router.router, dependencies=[Depends(_auth_or_s
 app.include_router(confirmations_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(public_checker_router.router)
 app.include_router(public_collection_router.router)
+app.include_router(legacy_ops_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(trip_actions_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(trip_observability_router.router)
+app.include_router(trip_lifecycle_router.router, dependencies=[Depends(_auth_or_skip)])
 
 
 def _seed_scenario(agency_id: Optional[str] = None):
@@ -1106,6 +1147,9 @@ def _execute_spine_pipeline(
     )
 
 
+trip_lifecycle_router.configure(execute_pipeline_fn=_execute_spine_pipeline)
+
+
 def _run_public_checker_submission(request_dict: dict[str, Any]) -> RunStatusResponse:
     return run_public_checker_submission(
         request_dict=request_dict,
@@ -1269,121 +1313,6 @@ def get_trip_suitability(
         trip_id=trip_id,
         suitability_flags=suitability_flags,
     )
-
-
-@app.get("/trips/{trip_id}/agent-events")
-def get_trip_agent_events(
-    trip_id: str,
-    limit: int = Query(default=100, ge=1, le=1000),
-    agency: Agency = Depends(get_current_agency),
-):
-    """
-    Return product-agent observability events for a single trip.
-
-    Includes only canonical `agent_event` records emitted by backend product
-    agents. Trip and agency access controls are enforced.
-    """
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail="Trip not found")
-
-    events = AuditStore.get_agent_events_for_trip(trip_id=trip_id, limit=limit)
-    return {"trip_id": trip_id, "events": events, "total": len(events)}
-
-
-REASSESS_EDIT_TRIGGER_FIELDS = {
-    "origin",
-    "destination",
-    "budget",
-    "party_composition",
-    "pace_preference",
-    "date_year_confidence",
-    "lead_source",
-    "activity_provenance",
-    "trip_priorities",
-    "date_flexibility",
-    "follow_up_due_date",
-    "owner_note",
-    "raw_note",
-    "structured_json",
-    "itinerary_text",
-}
-
-
-def _build_reassessment_request_from_trip(
-    trip: Dict[str, Any],
-    *,
-    stage_override: Optional[str] = None,
-    operating_mode_override: Optional[str] = None,
-    strict_leakage_override: Optional[bool] = None,
-) -> dict[str, Any]:
-    raw_input = trip.get("raw_input") if isinstance(trip.get("raw_input"), dict) else {}
-    submission = raw_input.get("submission") if isinstance(raw_input.get("submission"), dict) else {}
-    extracted = trip.get("extracted") if isinstance(trip.get("extracted"), dict) else {}
-
-    request_dict: dict[str, Any] = {
-        "raw_note": submission.get("raw_note"),
-        "owner_note": submission.get("owner_note"),
-        "structured_json": submission.get("structured_json"),
-        "itinerary_text": submission.get("itinerary_text"),
-        "retention_consent": bool(raw_input.get("retention_consent", False)),
-        "stage": stage_override or trip.get("stage") or raw_input.get("stage") or "discovery",
-        "operating_mode": operating_mode_override or raw_input.get("operating_mode") or "normal_intake",
-        "strict_leakage": bool(strict_leakage_override if strict_leakage_override is not None else raw_input.get("strict_leakage", False)),
-        "scenario_id": raw_input.get("fixture_id"),
-        "follow_up_due_date": trip.get("follow_up_due_date"),
-        "pace_preference": trip.get("pace_preference"),
-        "lead_source": trip.get("lead_source"),
-        "activity_provenance": trip.get("activity_provenance"),
-        "date_year_confidence": trip.get("date_year_confidence"),
-    }
-
-    if not any(request_dict.get(k) for k in ("raw_note", "owner_note", "structured_json", "itinerary_text")):
-        # Fallback to structured replay of extracted facts so reassess can still run.
-        request_dict["structured_json"] = {"extracted_snapshot": extracted}
-
-    return request_dict
-
-
-def _queue_trip_reassessment(
-    trip: Dict[str, Any],
-    *,
-    agency_id: str,
-    user_id: str,
-    request_dict: dict[str, Any],
-    trigger: str,
-    reason: Optional[str] = None,
-) -> str:
-    run_id = str(uuid.uuid4())
-    RunLedger.create(
-        run_id=run_id,
-        trip_id=trip.get("id"),
-        stage=request_dict.get("stage", trip.get("stage") or "discovery"),
-        operating_mode=request_dict.get("operating_mode", "normal_intake"),
-        agency_id=agency_id,
-        draft_id=None,
-    )
-    thread = threading.Thread(
-        target=_execute_spine_pipeline,
-        args=(run_id, request_dict, agency_id, user_id, trip.get("id"), "trip_reassessed", trip.get("status")),
-        daemon=True,
-        name=f"reassess-{run_id[:8]}",
-    )
-    thread.start()
-
-    AuditStore.log_event(
-        "trip_reassess_queued",
-        user_id,
-        {
-            "trip_id": trip.get("id"),
-            "run_id": run_id,
-            "trigger": trigger,
-            "reason": reason,
-            "stage": request_dict.get("stage"),
-            "operating_mode": request_dict.get("operating_mode"),
-        },
-    )
-    return run_id
 
 
 @app.patch("/trips/{trip_id}")
@@ -1556,17 +1485,18 @@ def patch_trip(
         bool(updated_trip)
         and policy.auto_reprocess_on_edit
         and policy.auto_reprocess_stages.get(current_stage, False)
-        and bool(edited_fields & REASSESS_EDIT_TRIGGER_FIELDS)
+        and bool(edited_fields & trip_lifecycle_service.REASSESS_EDIT_TRIGGER_FIELDS)
     )
     if should_auto_reassess and updated_trip:
-        request_dict = _build_reassessment_request_from_trip(updated_trip)
-        run_id = _queue_trip_reassessment(
+        request_dict = trip_lifecycle_service.build_reassessment_request_from_trip(updated_trip)
+        run_id = trip_lifecycle_service.queue_trip_reassessment(
             updated_trip,
             agency_id=agency.id,
             user_id=user.id,
             request_dict=request_dict,
             trigger="auto_edit",
-            reason=f"fields_changed:{','.join(sorted(edited_fields & REASSESS_EDIT_TRIGGER_FIELDS))}",
+            reason=f"fields_changed:{','.join(sorted(edited_fields & trip_lifecycle_service.REASSESS_EDIT_TRIGGER_FIELDS))}",
+            execute_pipeline_fn=_execute_spine_pipeline,
         )
         updated_trip["reassess"] = {
             "queued": True,
@@ -1575,118 +1505,6 @@ def patch_trip(
         }
 
     return updated_trip
-
-
-@app.post("/trips/{trip_id}/reassess")
-def reassess_trip(
-    trip_id: str,
-    request: ExplicitReassessRequest,
-    agency: Agency = Depends(get_current_agency),
-    user: User = Depends(get_current_user),
-):
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail="Trip not found")
-
-    settings = AgencySettingsStore.load(agency.id)
-    policy = settings.autonomy
-    if not policy.allow_explicit_reassess:
-        raise HTTPException(status_code=403, detail="Explicit reassessment is disabled by policy")
-
-    if request.stage and request.stage not in VALID_STAGES:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Invalid stage '{request.stage}'. Must be one of {sorted(VALID_STAGES)}",
-        )
-
-    request_dict = _build_reassessment_request_from_trip(
-        trip,
-        stage_override=request.stage,
-        operating_mode_override=request.operating_mode,
-        strict_leakage_override=request.strict_leakage,
-    )
-    run_id = _queue_trip_reassessment(
-        trip,
-        agency_id=agency.id,
-        user_id=user.id,
-        request_dict=request_dict,
-        trigger="explicit",
-        reason=request.reason,
-    )
-    return {
-        "ok": True,
-        "trip_id": trip_id,
-        "run_id": run_id,
-        "state": "queued",
-        "trigger": "explicit",
-    }
-
-
-VALID_STAGES = {"discovery", "shortlist", "proposal", "booking"}
-
-
-class StageTransitionRequest(BaseModel):
-    target_stage: str
-    reason: Optional[str] = None
-    expected_current_stage: Optional[str] = None
-
-
-@app.patch("/trips/{trip_id}/stage")
-def transition_trip_stage(
-    trip_id: str,
-    request: StageTransitionRequest,
-    agency: Agency = Depends(get_current_agency),
-):
-    """Durable manual stage transition with optimistic concurrency and audit."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail="Trip not found")
-
-    if request.target_stage not in VALID_STAGES:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Invalid target_stage '{request.target_stage}'. Must be one of {sorted(VALID_STAGES)}",
-        )
-
-    current_stage = trip.get("stage", "discovery")
-
-    if request.expected_current_stage is not None and request.expected_current_stage != current_stage:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "message": "Stage conflict",
-                "expected": request.expected_current_stage,
-                "actual": current_stage,
-            },
-        )
-
-    if request.target_stage == current_stage:
-        return {
-            "trip_id": trip_id,
-            "old_stage": current_stage,
-            "new_stage": current_stage,
-            "changed": False,
-            "readiness": trip.get("validation", {}).get("readiness"),
-        }
-
-    TripStore.update_trip(trip_id, {"stage": request.target_stage})
-
-    AuditStore.log_event("stage_transition", agency.id, {
-        "trip_id": trip_id,
-        "from": current_stage,
-        "to": request.target_stage,
-        "trigger": "manual",
-        "reason": request.reason,
-        "actor": "operator",
-    })
-
-    return {
-        "trip_id": trip_id,
-        "old_stage": current_stage,
-        "new_stage": request.target_stage,
-        "changed": True,
-        "readiness": trip.get("validation", {}).get("readiness"),
-    }
 
 
 # ---------------------------------------------------------------------------
@@ -1876,7 +1694,7 @@ class PendingBookingDataResponse(BaseModel):
     submitted_at: Optional[str] = None
 
 
-class ReviewActionRequest(BaseModel):
+class PendingBookingReviewActionRequest(BaseModel):
     reason: Optional[str] = None
 
 
@@ -2043,7 +1861,7 @@ async def get_pending_booking_data(trip_id: str, agency: Agency = Depends(get_cu
 
 
 @app.post("/trips/{trip_id}/pending-booking-data/accept")
-async def accept_pending_booking_data(trip_id: str, request: Optional[ReviewActionRequest] = None, agency: Agency = Depends(get_current_agency)):
+async def accept_pending_booking_data(trip_id: str, request: Optional[PendingBookingReviewActionRequest] = None, agency: Agency = Depends(get_current_agency)):
     """Accept pending customer submission into trusted booking_data."""
     trip = await _ts(TripStore.get_trip, trip_id)
     if not trip or trip.get("agency_id") != agency.id:
@@ -2100,7 +1918,7 @@ async def accept_pending_booking_data(trip_id: str, request: Optional[ReviewActi
 
 
 @app.post("/trips/{trip_id}/pending-booking-data/reject")
-async def reject_pending_booking_data(trip_id: str, request: Optional[ReviewActionRequest] = None, agency: Agency = Depends(get_current_agency)):
+async def reject_pending_booking_data(trip_id: str, request: Optional[PendingBookingReviewActionRequest] = None, agency: Agency = Depends(get_current_agency)):
     """Reject pending customer submission. Clears pending data."""
     trip = await _ts(TripStore.get_trip, trip_id)
     if not trip or trip.get("agency_id") != agency.id:
@@ -2782,515 +2600,10 @@ async def reject_extraction(
     return _extraction_to_response(extraction)
 
 
-@app.post("/trips/{trip_id}/assign")
-def assign_trip(
-    trip_id: str,
-    agent_id: str,
-    agent_name: str,
-    assigned_by: str = "system",
-    agency: Agency = Depends(get_current_agency),
-):
-    """Assign a trip to an agent."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail="Trip not found")
-    
-    AssignmentStore.assign_trip(trip_id, agent_id, agent_name, assigned_by)
-    
-    # Update trip status
-    TripStore.update_trip(trip_id, {"status": "assigned"})
-    
-    return {"success": True, "trip_id": trip_id, "assigned_to": agent_id}
-
-
-@app.post("/trips/{trip_id}/unassign")
-def unassign_trip(
-    trip_id: str,
-    unassigned_by: str = "system",
-    agency: Agency = Depends(get_current_agency),
-):
-    """Remove assignment from a trip."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail="Trip not found")
-    
-    AssignmentStore.unassign_trip(trip_id, unassigned_by)
-    
-    return {"success": True, "trip_id": trip_id}
-
-
-@app.post("/trips/{trip_id}/snooze")
-def snooze_trip(
-    trip_id: str,
-    request: SnoozeRequest,
-    agency: Agency = Depends(get_current_agency),
-):
-    """Snooze a trip until a specified time."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail="Trip not found")
-    
-    analytics = trip.get("analytics") or {}
-    analytics["snooze_until"] = request.snooze_until
-    TripStore.update_trip(trip_id, {"analytics": analytics})
-    
-    AuditStore.log_event("trip_snoozed", "owner", {
-        "trip_id": trip_id,
-        "snooze_until": request.snooze_until,
-    })
-    
-    return {"success": True, "trip_id": trip_id, "snooze_until": request.snooze_until}
-
-
-@app.post("/trips/{trip_id}/suitability/acknowledge")
-def acknowledge_suitability_flags(
-    trip_id: str,
-    request: SuitabilityAcknowledgeRequest,
-    agency: Agency = Depends(get_current_agency),
-):
-    """Acknowledge suitability flags for a trip, allowing it to proceed."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail="Trip not found")
-    
-    analytics = trip.get("analytics") or {}
-    existing = analytics.get("acknowledged_flags", [])
-    updated = list(set(existing + request.acknowledged_flags))
-    analytics["acknowledged_flags"] = updated
-    analytics["suitability_acknowledged_at"] = datetime.now(timezone.utc).isoformat()
-    TripStore.update_trip(trip_id, {"analytics": analytics})
-    
-    AuditStore.log_event("suitability_acknowledged", "owner", {
-        "trip_id": trip_id,
-        "acknowledged_flags": request.acknowledged_flags,
-    })
-    
-    return {"success": True, "trip_id": trip_id, "acknowledged_flags": updated}
-
-
-@app.get("/assignments")
-def list_assignments(
-    agent_id: Optional[str] = None,
-    agency: Agency = Depends(get_current_agency),
-):
-    """List assignments for trips in the current agency."""
-    # Get all trips for this agency first
-    agency_trips = TripStore.list_trips(agency_id=agency.id, limit=10000)
-    agency_trip_ids = {t["id"] for t in agency_trips if t.get("id")}
-    
-    if agent_id:
-        assignments = AssignmentStore.get_trips_for_agent(agent_id)
-    else:
-        assignments = list(AssignmentStore._load_assignments().values())
-    
-    # Filter to only assignments for trips in this agency
-    filtered = [a for a in assignments if a.get("trip_id") in agency_trip_ids]
-    
-    return {"items": filtered, "total": len(filtered)}
-
-
-@app.get("/audit")
-def get_audit_events(
-    limit: int = 100,
-    agency: Agency = Depends(get_current_agency),
-):
-    """Get recent audit events for the current agency."""
-    events = AuditStore.get_events(limit=limit)
-    # Get agency trip IDs to filter events
-    agency_trips = TripStore.list_trips(agency_id=agency.id, limit=10000)
-    agency_trip_ids = {t["id"] for t in agency_trips if t.get("id")}
-    
-    # Filter events to only those related to this agency's trips
-    filtered = [
-        e for e in events
-        if e.get("details", {}).get("trip_id") in agency_trip_ids
-        or e.get("details", {}).get("agency_id") == agency.id
-    ]
-    return {"items": filtered, "total": len(filtered)}
-
-
-# =============================================================================
-# Review Management Endpoints (Wave 4)
-# =============================================================================
-
-from src.analytics.review import process_review_action
-
-
-@app.post("/trips/{trip_id}/review/action")
-def post_review_action(
-    trip_id: str,
-    request: ReviewActionRequest,
-    agency: Agency = Depends(get_current_agency),
-    user: User = Depends(get_current_user),
-    _perm=require_permission("trips:write"),
-):
-    """Apply a review action (approve/reject/request_changes/escalate) to a trip."""
-    try:
-        updated_trip = process_review_action(
-            trip_id=trip_id,
-            action=request.action,
-            notes=request.notes,
-            user_id=user.id,
-            reassign_to=request.reassign_to,
-            error_category=request.error_category,
-        )
-        return {"success": True, "trip": updated_trip}
-    except KeyError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error("Review action failed: %s", e)
-        raise HTTPException(status_code=500, detail="Internal server error during review action")
-
-
-@app.get("/api/trips/{trip_id}/timeline", response_model=TimelineResponse)
-def get_trip_timeline(
-    trip_id: str,
-    stage: Optional[str] = None,
-) -> TimelineResponse:
-    """
-    Retrieve the unified timeline for a trip from AuditStore.
-    
-    Returns all audit events related to the trip, transformed to presentation-ready format.
-    Events are sorted by timestamp (ascending).
-    
-    Args:
-        trip_id: Unique trip identifier
-        stage: Optional filter by stage (intake, packet, decision, strategy, safety)
-    
-    Returns:
-        TimelineResponse with mapped events, or empty events list if no events exist
-    
-    Raises:
-        HTTPException 400: If stage parameter is invalid
-        HTTPException 500: If timeline retrieval fails
-    """
-    # Validate stage parameter if provided
-    if stage:
-        valid_stages = {"intake", "packet", "decision", "strategy", "safety"}
-        if stage.lower() not in valid_stages:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid stage parameter. Must be one of: {', '.join(valid_stages)}"
-            )
-    
-    try:
-        # Fetch all audit events for this trip
-        audit_events = AuditStore.get_events_for_trip(trip_id)
-        
-        # Use mapper to transform raw audit events to presentation format
-        if TimelineEventMapper:
-            mapped_events = TimelineEventMapper.map_events_for_trip(
-                audit_events,
-                stage_filter=stage
-            )
-            # Convert mapped TimelineEvent objects (from logger) to dicts for server.py's TimelineEvent validation
-            events: List[TimelineEvent] = []
-            for mapped_event in mapped_events:
-                # Clamp confidence score to 0-100 if present
-                confidence = mapped_event.confidence
-                if confidence is not None:
-                    if isinstance(confidence, (int, float)):
-                        # Clamp to valid range
-                        confidence = max(0, min(100, float(confidence)))
-                    else:
-                        logger.error(f"Invalid confidence type {type(confidence)} for trip {trip_id}, using None")
-                        confidence = None
-                
-                # The mapper returns logger.TimelineEvent objects, convert to dict then to server.py TimelineEvent
-                event_dict = {
-                    "trip_id": mapped_event.trip_id,
-                    "timestamp": mapped_event.timestamp,
-                    "stage": mapped_event.stage,
-                    "status": mapped_event.status,
-                    "state_snapshot": mapped_event.state_snapshot,
-                }
-                if mapped_event.decision is not None:
-                    event_dict["decision"] = mapped_event.decision
-                if confidence is not None:
-                    event_dict["confidence"] = confidence
-                if mapped_event.reason is not None:
-                    event_dict["reason"] = mapped_event.reason
-                if mapped_event.actor is not None:
-                    event_dict["actor"] = mapped_event.actor
-                if mapped_event.pre_state is not None:
-                    event_dict["pre_state"] = mapped_event.pre_state
-                if mapped_event.post_state is not None:
-                    event_dict["post_state"] = mapped_event.post_state
-                
-                events.append(TimelineEvent(**event_dict))
-        else:
-            # Fallback: use old schema if mapper unavailable
-            events: List[TimelineEvent] = []
-            for audit_event in audit_events:
-                details = audit_event.get("details", {})
-                
-                if details.get("trip_id") != trip_id:
-                    continue
-                
-                resolved_state = details.get("state")
-                if not resolved_state and isinstance(details.get("post_state"), dict):
-                    resolved_state = details.get("post_state", {}).get("state")
-                
-                event_dict = {
-                    "trip_id": trip_id,
-                    "timestamp": audit_event.get("timestamp", ""),
-                    "stage": details.get("stage", "unknown"),
-                    "status": resolved_state or "unknown",
-                    "state_snapshot": {"stage": details.get("stage", "unknown")},
-                }
-                actor = audit_event.get("user_id")
-                if actor is not None:
-                    event_dict["actor"] = actor
-                
-                if details.get("decision_type"):
-                    event_dict["decision"] = details.get("decision_type")
-                
-                if details.get("reason"):
-                    event_dict["reason"] = details.get("reason")
-                
-                # Defensive clamping: if confidence is ever extracted from audit events,
-                # ensure it's within valid range (0-100)
-                if details.get("confidence") is not None:
-                    try:
-                        confidence = float(details.get("confidence"))
-                        event_dict["confidence"] = max(0, min(100, confidence))
-                    except (ValueError, TypeError):
-                        logger.error(f"Invalid confidence value in fallback: {details.get('confidence')}")
-                
-                if stage and event_dict.get("stage") != stage:
-                    continue
-                
-                events.append(TimelineEvent(**event_dict))
-        
-        return TimelineResponse(trip_id=trip_id, events=events)
-        
-    except HTTPException:
-        # Re-raise HTTP exceptions
-        raise
-    except Exception as e:
-        logger.error(f"Failed to retrieve timeline for trip {trip_id}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to retrieve trip timeline"
-        )
-
-
-# Activity Provenance Endpoint
-@app.get("/trips/{trip_id}/activities/provenance")
-def get_activities_provenance(
-    trip_id: str,
-    agency: Agency = Depends(get_current_agency),
-):
-    """
-    Retrieve activity provenance for a trip.
-    
-    Returns all activities with their source (suggested by AI or requested by traveler)
-    and confidence scores for suggested activities.
-    
-    Response format:
-    {
-        "trip_id": "trip_xyz",
-        "activities": [
-            {"name": "Hiking", "source": "suggested", "confidence": 95},
-            {"name": "Dining", "source": "requested", "confidence": null}
-        ]
-    }
-    """
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail=f"Trip not found: {trip_id}")
-    
-    # Extract activity provenance from trip
-    # Currently using activity_provenance field which stores comma-separated activities
-    # In Phase 6, we enhance this to track source and confidence
-    activities = []
-    
-    activity_provenance = trip.get("activity_provenance", "")
-    if activity_provenance:
-        # Parse comma-separated activities
-        activity_names = [a.strip() for a in activity_provenance.split(",")]
-        
-        # For now, assume all activities from activity_provenance are suggested by AI
-        # This can be enhanced in future phases to track actual source in database
-        for activity_name in activity_names:
-            if activity_name:
-                activities.append({
-                    "name": activity_name,
-                    "source": "suggested",
-                    "confidence": 85,  # Default confidence for suggested activities
-                })
-    
-    return {
-        "trip_id": trip_id,
-        "activities": activities,
-    }
-
-
-# =============================================================================
-# Override API endpoints
-# =============================================================================
-
-@app.post("/trips/{trip_id}/override", response_model=OverrideResponse)
-def create_override(
-    trip_id: str,
-    request: OverrideRequest,
-    agency: Agency = Depends(get_current_agency),
-) -> OverrideResponse:
-    """
-    Record an operator override of a risk flag for a trip.
-    
-    Validation:
-    - If action="downgrade", new_severity must be provided and < original_severity
-    - reason field is mandatory and must be non-empty
-    - original_severity must match actual flag severity or reject with 409 Conflict
-    
-    Returns updated state and audit event ID.
-    """
-    # Validate trip exists and belongs to agency
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail=f"Trip not found: {trip_id}")
-    
-    # Validate request fields
-    if not request.reason or len(request.reason.strip()) < 1:
-        raise HTTPException(
-            status_code=400,
-            detail="reason field is mandatory and must be non-empty"
-        )
-    
-    if request.action == "downgrade":
-        if not request.new_severity:
-            raise HTTPException(
-                status_code=400,
-                detail="new_severity required for downgrade action"
-            )
-    
-    # Get current suitability flags from trip decision
-    current_flags = trip.get("decision", {}).get("suitability_flags", [])
-    flag_info = None
-    for flag in current_flags:
-        if flag.get("flag") == request.flag:
-            flag_info = flag
-            break
-    
-    # Validate original_severity if provided
-    if request.original_severity and flag_info:
-        actual_severity = flag_info.get("severity")
-        if actual_severity != request.original_severity:
-            raise HTTPException(
-                status_code=409,
-                detail=f"Stale override: flag '{request.flag}' severity is '{actual_severity}', not '{request.original_severity}'"
-            )
-    
-    # Save override to persistence
-    override_data = {
-        "flag": request.flag,
-        "decision_type": request.decision_type or request.flag,
-        "action": request.action,
-        "new_severity": request.new_severity,
-        "overridden_by": request.overridden_by,
-        "reason": request.reason,
-        "scope": request.scope,
-        "original_severity": request.original_severity or (flag_info.get("severity") if flag_info else None),
-        "rescinded": False,
-    }
-    
-    override_id = OverrideStore.save_override(trip_id, override_data)
-    
-    # Create audit event
-    audit_event_id = f"evt_{uuid.uuid4().hex[:12]}"
-    AuditStore.log_event("override_created", request.overridden_by, {
-        "trip_id": trip_id,
-        "override_id": override_id,
-        "flag": request.flag,
-        "action": request.action,
-        "reason": request.reason,
-    })
-    
-    logger.info(
-        "Override created: override_id=%s trip_id=%s flag=%s action=%s by=%s",
-        override_id, trip_id, request.flag, request.action, request.overridden_by
-    )
-    
-    return OverrideResponse(
-        ok=True,
-        override_id=override_id,
-        trip_id=trip_id,
-        flag=request.flag,
-        action=request.action,
-        new_severity=request.new_severity,
-        cache_invalidated=False,
-        rule_graduated=False,
-        pattern_learning_queued=request.scope == "pattern",
-        warnings=[],
-        audit_event_id=audit_event_id,
-    )
-
-
-@app.get("/trips/{trip_id}/overrides")
-def list_overrides(trip_id: str, agency: Agency = Depends(get_current_agency)) -> dict:
-    """List all overrides for a trip."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail=f"Trip not found: {trip_id}")
-    
-    overrides = OverrideStore.get_overrides_for_trip(trip_id)
-    
-    return {
-        "ok": True,
-        "trip_id": trip_id,
-        "overrides": overrides,
-        "total": len(overrides),
-    }
-
-
-@app.get("/overrides/{override_id}")
-def get_override(override_id: str) -> dict:
-    """Get a specific override by ID."""
-    override = OverrideStore.get_override(override_id)
-    if not override:
-        raise HTTPException(status_code=404, detail=f"Override not found: {override_id}")
-    
-    return {
-        "ok": True,
-        "override": override,
-    }
-
 
 # =============================================================================
 # Dev entrypoint
 # =============================================================================
-
-
-# =============================================================================
-# Inbox Reassign + Bulk Actions
-# =============================================================================
-
-@app.post("/trips/{trip_id}/reassign")
-def reassign_trip(
-    trip_id: str,
-    agent_id: str,
-    agent_name: str,
-    reassigned_by: str = "owner",
-    agency: Agency = Depends(get_current_agency),
-    _perm=require_permission("trips:reassign"),
-):
-    """Reassign a trip to a different agent."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
-        raise HTTPException(status_code=404, detail="Trip not found")
-    
-    # Unassign first if already assigned
-    existing = AssignmentStore.get_assignment(trip_id)
-    if existing:
-        AssignmentStore.unassign_trip(trip_id, reassigned_by)
-    
-    AssignmentStore.assign_trip(trip_id, agent_id, agent_name, reassigned_by)
-    TripStore.update_trip(trip_id, {"status": "assigned"})
-    
-    return {"success": True, "trip_id": trip_id, "reassigned_to": agent_id}
 
 
 if __name__ == "__main__":

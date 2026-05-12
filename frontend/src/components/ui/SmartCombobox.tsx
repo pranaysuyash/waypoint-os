@@ -251,7 +251,7 @@ export function SmartCombobox({
         <div className='mt-1 flex items-center gap-2 text-[var(--ui-text-xs)] text-[var(--accent-amber)]'>
           <AlertCircle className='size-3 flex-shrink-0' />
           <span>
-            Similar to existing option "{duplicateOption.value}". Use that instead?
+            Similar to existing option &ldquo;{duplicateOption.value}&rdquo;. Use that instead?
           </span>
           <button
             type='button'
@@ -277,7 +277,7 @@ export function SmartCombobox({
                     className='flex items-center justify-center gap-2 w-full px-3 py-2 bg-[var(--accent-blue)] text-[var(--text-on-accent)] rounded-lg text-[var(--ui-text-sm)] font-medium hover:bg-[var(--accent-blue-hover)] transition-colors'
                   >
                     <Plus className='size-4' />
-                    Add "{toTitleCase(displayValue)}"
+                    Add &ldquo;{toTitleCase(displayValue)}&rdquo;
                   </button>
                 </div>
               )}
@@ -339,7 +339,7 @@ export function SmartCombobox({
                     className='flex items-center justify-center gap-2 w-full px-3 py-2 bg-[var(--bg-count-badge)] text-[var(--accent-blue)] border border-[var(--border-default)] border-dashed rounded-lg text-[var(--ui-text-sm)] hover:bg-[var(--accent-blue)/0.1] transition-colors'
                   >
                     <Plus className='size-4' />
-                    Add new option: "{toTitleCase(displayValue)}"
+                    Add new option: &ldquo;{toTitleCase(displayValue)}&rdquo;
                   </button>
                 </div>
               )}

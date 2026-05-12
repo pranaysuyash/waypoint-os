@@ -2,114 +2,77 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "source_envelope.schema.json",
   "title": "SourceEnvelope",
+  "description": "Runtime SourceEnvelope contract used by src/intake/packet_models.py. This supersedes the earlier v0.1 raw-intake envelope shape.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "envelope_id",
-    "schema_version",
-    "source_type",
-    "received_at"
+    "source_system",
+    "actor_type",
+    "received_at",
+    "content",
+    "content_type"
   ],
   "properties": {
     "envelope_id": {
       "type": "string",
       "description": "Unique ID for this raw intake unit."
     },
-    "schema_version": {
-      "type": "string",
-      "const": "0.1"
-    },
-    "source_type": {
+    "source_system": {
       "type": "string",
       "enum": [
-        "freeform_notes",
-        "structured_form",
-        "partner_api",
-        "whatsapp_transcript",
-        "voice_transcript",
-        "crm_import",
-        "manual_entry",
+        "agency_notes",
+        "traveler_form",
         "email_thread",
-        "attachment_extract",
-        "hybrid"
-      ]
-    },
-    "source_system": {
-      "type": ["string", "null"],
-      "description": "Origin system, e.g. makemytrip, whatsapp, internal_crm."
+        "chat_history",
+        "structured_import"
+      ],
+      "description": "Runtime source bucket. More detailed upstream origin can live in metadata."
     },
     "actor_type": {
-      "type": ["string", "null"],
+      "type": "string",
       "enum": [
+        "agent",
         "traveler",
-        "agency_owner",
-        "agent_operator",
-        "system",
-        null
+        "owner",
+        "system"
       ]
-    },
-    "actor_id": {
-      "type": ["string", "null"]
     },
     "received_at": {
       "type": "string",
       "format": "date-time"
     },
-    "raw_text": {
-      "type": ["string", "null"]
+    "content": {
+      "description": "Raw source content. Usually freeform text or structured JSON.",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "object", "additionalProperties": true },
+        { "type": "array" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" }
+      ]
     },
-    "structured_fields": {
-      "type": "object",
-      "default": {},
-      "additionalProperties": true
-    },
-    "metadata": {
-      "type": "object",
-      "default": {},
-      "additionalProperties": true
+    "content_type": {
+      "type": "string",
+      "enum": [
+        "freeform_text",
+        "structured_json",
+        "hybrid"
+      ]
     },
     "attachments": {
       "type": "array",
       "default": [],
       "items": {
         "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "attachment_id",
-          "attachment_type"
-        ],
-        "properties": {
-          "attachment_id": {
-            "type": "string"
-          },
-          "attachment_type": {
-            "type": "string",
-            "enum": [
-              "image",
-              "pdf",
-              "doc",
-              "audio",
-              "video",
-              "screenshot",
-              "other"
-            ]
-          },
-          "mime_type": {
-            "type": ["string", "null"]
-          },
-          "uri": {
-            "type": ["string", "null"]
-          },
-          "extracted_text": {
-            "type": ["string", "null"]
-          },
-          "metadata": {
-            "type": "object",
-            "default": {},
-            "additionalProperties": true
-          }
-        }
+        "additionalProperties": true
       }
+    },
+    "metadata": {
+      "type": "object",
+      "default": {},
+      "additionalProperties": true
     }
   }
 }

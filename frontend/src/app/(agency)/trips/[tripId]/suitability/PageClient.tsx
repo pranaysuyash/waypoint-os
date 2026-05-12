@@ -52,7 +52,6 @@ export default function SuitabilityPage() {
     // OK: fetch is run once on mount for suitability assessment
     const fetchTrip = async () => {
       try {
-        // eslint-disable-next-line -- dynamic tripId param, auth via credentials: "include"
         const response = await fetch(`/api/trips/${tripId}`, {
           credentials: "include",
           cache: "no-store",

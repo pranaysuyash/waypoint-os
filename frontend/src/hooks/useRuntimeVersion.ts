@@ -32,7 +32,6 @@ export function useRuntimeVersion(): RuntimeVersionState {
 
     const run = async () => {
       try {
-        // eslint-disable-next-line -- must fetch on client; backend session-based auth
         const response = await fetch("/api/version", {
           cache: "no-store",
           credentials: "include",

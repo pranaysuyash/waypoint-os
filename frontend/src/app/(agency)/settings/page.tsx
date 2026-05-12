@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, Suspense } from 'react';
+import { useState, useCallback, useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import {
   Building2,
@@ -32,6 +32,10 @@ function isValidTab(tab: string | null): tab is TabId {
   return TABS.some((t) => t.id === tab);
 }
 
+function cloneSettings(settings: AgencySettings): AgencySettings {
+  return JSON.parse(JSON.stringify(settings)) as AgencySettings;
+}
+
 function SettingsPageInner() {
   const searchParams = useSearchParams();
   const { push } = useRouter();
@@ -49,13 +53,8 @@ function SettingsPageInner() {
   const [draft, setDraft] = useState<AgencySettings | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-
-  // Sync draft when settings load
-  useEffect(() => {
-    if (settings && !draft) {
-      setDraft(JSON.parse(JSON.stringify(settings)));
-    }
-  }, [settings, draft]);
+  const baseDraft = useMemo(() => (settings ? cloneSettings(settings) : null), [settings]);
+  const activeDraft = draft ?? baseDraft;
 
   const handleTabChange = useCallback(
     (tabId: TabId) => {
@@ -69,38 +68,39 @@ function SettingsPageInner() {
   const updateDraft = useCallback(
     (updater: (prev: AgencySettings) => AgencySettings) => {
       setDraft((prev) => {
-        if (!prev) return prev;
-        const next = updater(JSON.parse(JSON.stringify(prev)));
+        const source = prev ?? baseDraft;
+        if (!source) return prev;
+        const next = updater(cloneSettings(source));
         setIsDirty(true);
         setSaveStatus('idle');
         return next;
       });
     },
-    []
+    [baseDraft]
   );
 
   const handleSave = useCallback(async () => {
-    if (!draft || !settings) return;
+    if (!activeDraft || !settings) return;
     setSaveStatus('saving');
 
     const promises: Promise<unknown>[] = [];
 
     // Detect profile/operational changes
     const opPayload: UpdateOperationalPayload = {};
-    if (draft.profile.agency_name !== settings.profile.agency_name) opPayload.agency_name = draft.profile.agency_name;
-    if (draft.profile.sub_brand !== settings.profile.sub_brand) opPayload.sub_brand = draft.profile.sub_brand;
-    if (draft.profile.plan_label !== settings.profile.plan_label) opPayload.plan_label = draft.profile.plan_label;
-    if (draft.profile.contact_email !== settings.profile.contact_email) opPayload.contact_email = draft.profile.contact_email;
-    if (draft.profile.contact_phone !== settings.profile.contact_phone) opPayload.contact_phone = draft.profile.contact_phone;
-    if (draft.profile.logo_url !== settings.profile.logo_url) opPayload.logo_url = draft.profile.logo_url;
-    if (draft.profile.website !== settings.profile.website) opPayload.website = draft.profile.website;
-    if (draft.operational.target_margin_pct !== settings.operational.target_margin_pct) opPayload.target_margin_pct = draft.operational.target_margin_pct;
-    if (draft.operational.default_currency !== settings.operational.default_currency) opPayload.default_currency = draft.operational.default_currency;
-    if (draft.operational.operating_hours.start !== settings.operational.operating_hours.start) opPayload.operating_hours_start = draft.operational.operating_hours.start;
-    if (draft.operational.operating_hours.end !== settings.operational.operating_hours.end) opPayload.operating_hours_end = draft.operational.operating_hours.end;
-    if (JSON.stringify(draft.operational.operating_days) !== JSON.stringify(settings.operational.operating_days)) opPayload.operating_days = draft.operational.operating_days;
-    if (JSON.stringify(draft.operational.preferred_channels) !== JSON.stringify(settings.operational.preferred_channels)) opPayload.preferred_channels = draft.operational.preferred_channels;
-    if (draft.operational.brand_tone !== settings.operational.brand_tone) opPayload.brand_tone = draft.operational.brand_tone;
+    if (activeDraft.profile.agency_name !== settings.profile.agency_name) opPayload.agency_name = activeDraft.profile.agency_name;
+    if (activeDraft.profile.sub_brand !== settings.profile.sub_brand) opPayload.sub_brand = activeDraft.profile.sub_brand;
+    if (activeDraft.profile.plan_label !== settings.profile.plan_label) opPayload.plan_label = activeDraft.profile.plan_label;
+    if (activeDraft.profile.contact_email !== settings.profile.contact_email) opPayload.contact_email = activeDraft.profile.contact_email;
+    if (activeDraft.profile.contact_phone !== settings.profile.contact_phone) opPayload.contact_phone = activeDraft.profile.contact_phone;
+    if (activeDraft.profile.logo_url !== settings.profile.logo_url) opPayload.logo_url = activeDraft.profile.logo_url;
+    if (activeDraft.profile.website !== settings.profile.website) opPayload.website = activeDraft.profile.website;
+    if (activeDraft.operational.target_margin_pct !== settings.operational.target_margin_pct) opPayload.target_margin_pct = activeDraft.operational.target_margin_pct;
+    if (activeDraft.operational.default_currency !== settings.operational.default_currency) opPayload.default_currency = activeDraft.operational.default_currency;
+    if (activeDraft.operational.operating_hours.start !== settings.operational.operating_hours.start) opPayload.operating_hours_start = activeDraft.operational.operating_hours.start;
+    if (activeDraft.operational.operating_hours.end !== settings.operational.operating_hours.end) opPayload.operating_hours_end = activeDraft.operational.operating_hours.end;
+    if (JSON.stringify(activeDraft.operational.operating_days) !== JSON.stringify(settings.operational.operating_days)) opPayload.operating_days = activeDraft.operational.operating_days;
+    if (JSON.stringify(activeDraft.operational.preferred_channels) !== JSON.stringify(settings.operational.preferred_channels)) opPayload.preferred_channels = activeDraft.operational.preferred_channels;
+    if (activeDraft.operational.brand_tone !== settings.operational.brand_tone) opPayload.brand_tone = activeDraft.operational.brand_tone;
 
     if (Object.keys(opPayload).length > 0) {
       promises.push(updateOperational(opPayload));
@@ -108,26 +108,26 @@ function SettingsPageInner() {
 
     // Detect autonomy changes
     const autonomyPayload: UpdateAutonomyPayload = {};
-    if (JSON.stringify(draft.autonomy.approval_gates) !== JSON.stringify(settings.autonomy.approval_gates)) {
-      autonomyPayload.approval_gates = draft.autonomy.approval_gates;
+    if (JSON.stringify(activeDraft.autonomy.approval_gates) !== JSON.stringify(settings.autonomy.approval_gates)) {
+      autonomyPayload.approval_gates = activeDraft.autonomy.approval_gates;
     }
-    if (JSON.stringify(draft.autonomy.mode_overrides) !== JSON.stringify(settings.autonomy.mode_overrides)) {
-      autonomyPayload.mode_overrides = draft.autonomy.mode_overrides;
+    if (JSON.stringify(activeDraft.autonomy.mode_overrides) !== JSON.stringify(settings.autonomy.mode_overrides)) {
+      autonomyPayload.mode_overrides = activeDraft.autonomy.mode_overrides;
     }
-    if (draft.autonomy.auto_proceed_with_warnings !== settings.autonomy.auto_proceed_with_warnings) {
-      autonomyPayload.auto_proceed_with_warnings = draft.autonomy.auto_proceed_with_warnings;
+    if (activeDraft.autonomy.auto_proceed_with_warnings !== settings.autonomy.auto_proceed_with_warnings) {
+      autonomyPayload.auto_proceed_with_warnings = activeDraft.autonomy.auto_proceed_with_warnings;
     }
-    if (draft.autonomy.learn_from_overrides !== settings.autonomy.learn_from_overrides) {
-      autonomyPayload.learn_from_overrides = draft.autonomy.learn_from_overrides;
+    if (activeDraft.autonomy.learn_from_overrides !== settings.autonomy.learn_from_overrides) {
+      autonomyPayload.learn_from_overrides = activeDraft.autonomy.learn_from_overrides;
     }
-    if (draft.autonomy.auto_reprocess_on_edit !== settings.autonomy.auto_reprocess_on_edit) {
-      autonomyPayload.auto_reprocess_on_edit = draft.autonomy.auto_reprocess_on_edit;
+    if (activeDraft.autonomy.auto_reprocess_on_edit !== settings.autonomy.auto_reprocess_on_edit) {
+      autonomyPayload.auto_reprocess_on_edit = activeDraft.autonomy.auto_reprocess_on_edit;
     }
-    if (draft.autonomy.allow_explicit_reassess !== settings.autonomy.allow_explicit_reassess) {
-      autonomyPayload.allow_explicit_reassess = draft.autonomy.allow_explicit_reassess;
+    if (activeDraft.autonomy.allow_explicit_reassess !== settings.autonomy.allow_explicit_reassess) {
+      autonomyPayload.allow_explicit_reassess = activeDraft.autonomy.allow_explicit_reassess;
     }
-    if (JSON.stringify(draft.autonomy.auto_reprocess_stages) !== JSON.stringify(settings.autonomy.auto_reprocess_stages)) {
-      autonomyPayload.auto_reprocess_stages = draft.autonomy.auto_reprocess_stages;
+    if (JSON.stringify(activeDraft.autonomy.auto_reprocess_stages) !== JSON.stringify(settings.autonomy.auto_reprocess_stages)) {
+      autonomyPayload.auto_reprocess_stages = activeDraft.autonomy.auto_reprocess_stages;
     }
 
     if (Object.keys(autonomyPayload).length > 0) {
@@ -145,17 +145,17 @@ function SettingsPageInner() {
       refetch();
       setTimeout(() => setSaveStatus('idle'), 3000);
     }
-  }, [draft, settings, updateOperational, updateAutonomy, refetch]);
+  }, [activeDraft, settings, updateOperational, updateAutonomy, refetch]);
 
   const handleReset = useCallback(() => {
     if (settings) {
-      setDraft(JSON.parse(JSON.stringify(settings)));
+      setDraft(cloneSettings(settings));
       setIsDirty(false);
       setSaveStatus('idle');
     }
   }, [settings]);
 
-  if (isLoading && !draft) {
+  if (isLoading && !activeDraft) {
     return (
       <div className="p-6 flex items-center justify-center">
         <div className="text-[#8b949e] text-ui-sm animate-pulse">Loading settings…</div>
@@ -163,7 +163,7 @@ function SettingsPageInner() {
     );
   }
 
-  if (error || !draft) {
+  if (error || !activeDraft) {
     return (
       <div className="p-6">
         <div className="max-w-[900px] mx-auto rounded-xl border border-[#f85149]/30 bg-[#f85149]/10 p-6">
@@ -261,13 +261,13 @@ function SettingsPageInner() {
         {/* Tab Content */}
         <div className="rounded-xl border border-[#1c2128] bg-[#0f1115] p-6">
           {activeTab === 'profile' && (
-            <ProfileTab draft={draft} onChange={updateDraft} />
+            <ProfileTab draft={activeDraft} onChange={updateDraft} />
           )}
           {activeTab === 'operations' && (
-            <OperationalTab draft={draft} onChange={updateDraft} />
+            <OperationalTab draft={activeDraft} onChange={updateDraft} />
           )}
           {activeTab === 'autonomy' && (
-            <AutonomyTab draft={draft} onChange={updateDraft} />
+            <AutonomyTab draft={activeDraft} onChange={updateDraft} />
           )}
           {activeTab === 'people' && (
             <PeopleTab />

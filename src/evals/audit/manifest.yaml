@@ -25,3 +25,13 @@ categories:
     min_precision: 0.90
     min_recall: 0.85
     min_severity_accuracy: 0.85
+  weather:
+    status: shadow
+    min_precision: 0.90
+    min_recall: 0.85
+    min_severity_accuracy: 0.85
+  safety:
+    status: shadow
+    min_precision: 0.90
+    min_recall: 0.85
+    min_severity_accuracy: 0.85

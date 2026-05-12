@@ -43,7 +43,7 @@ export function StrategyPanel({ tripId }: StrategyPanelProps) {
       <section>
         <h3 className="text-ui-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Suggested Opening</h3>
         <div className="bg-sidebar rounded-lg border border-highlight p-4 text-ui-sm text-text-secondary italic">
-          "{strategy.suggested_opening || "-"}"
+          &ldquo;{strategy.suggested_opening || "-"}&rdquo;
         </div>
       </section>
 

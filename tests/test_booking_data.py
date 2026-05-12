@@ -37,6 +37,21 @@ VALID_BOOKING_DATA = {
     "booking_notes": "Window seat preferred",
 }
 
+VALID_PAYMENT_TRACKING = {
+    **VALID_BOOKING_DATA,
+    "payment_tracking": {
+        "agreed_amount": 120000.0,
+        "currency": "INR",
+        "amount_paid": 50000.0,
+        "payment_status": "partially_paid",
+        "payment_method": "bank_transfer",
+        "payment_reference": "UTR-123456",
+        "payment_proof_url": "https://example.test/proof.pdf",
+        "refund_status": "not_applicable",
+        "notes": "Deposit received from payer.",
+    },
+}
+
 BOOKING_DATA_NO_TRAVELERS = {
     "travelers": [],
     "payer": {"name": "Payer"},
@@ -207,6 +222,47 @@ class TestBookingDataEndpoints:
         assert resp.status_code == 200
         assert resp.json()["booking_data"]["special_requirements"] == "Vegan meals"
 
+    def test_patch_accepts_payment_tracking_and_computes_balance(self, session_client, created_trip_id):
+        resp = session_client.patch(
+            f"/trips/{created_trip_id}/booking-data",
+            json={"booking_data": VALID_PAYMENT_TRACKING},
+        )
+        assert resp.status_code == 200
+        tracking = resp.json()["booking_data"]["payment_tracking"]
+        assert tracking["tracking_only"] is True
+        assert tracking["payment_status"] == "partially_paid"
+        assert tracking["refund_status"] == "not_applicable"
+        assert tracking["balance_due"] == 70000.0
+
+    def test_patch_recomputes_client_supplied_balance(self, session_client, created_trip_id):
+        payload = {
+            **VALID_PAYMENT_TRACKING,
+            "payment_tracking": {
+                **VALID_PAYMENT_TRACKING["payment_tracking"],
+                "balance_due": 1.0,
+            },
+        }
+        resp = session_client.patch(
+            f"/trips/{created_trip_id}/booking-data",
+            json={"booking_data": payload},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["booking_data"]["payment_tracking"]["balance_due"] == 70000.0
+
+    def test_patch_rejects_negative_payment_tracking_amounts(self, session_client, created_trip_id):
+        payload = {
+            **VALID_PAYMENT_TRACKING,
+            "payment_tracking": {
+                **VALID_PAYMENT_TRACKING["payment_tracking"],
+                "amount_paid": -1.0,
+            },
+        }
+        resp = session_client.patch(
+            f"/trips/{created_trip_id}/booking-data",
+            json={"booking_data": payload},
+        )
+        assert resp.status_code == 422
+
     def test_patch_discovery_stage_returns_403(self, session_client, created_trip_id):
         from spine_api.persistence import TripStore
         TripStore.update_trip(created_trip_id, {"stage": "discovery"})
@@ -306,6 +362,23 @@ class TestBookingDataAudit:
         assert "X1234567" not in details_str
         assert "john@example.com" not in details_str
         assert "+91-9999999999" not in details_str
+
+    def test_payment_tracking_audit_uses_metadata_only(self, session_client, created_trip_id):
+        from spine_api.persistence import AuditStore
+        session_client.patch(
+            f"/trips/{created_trip_id}/booking-data",
+            json={"booking_data": VALID_PAYMENT_TRACKING},
+        )
+        latest = AuditStore.get_events_for_trip(created_trip_id)[-1]
+        details = latest["details"]
+        assert "payment_tracking" in details["fields_changed"]
+        assert details["has_payment_tracking"] is True
+        assert details["payment_status"] == "partially_paid"
+        assert details["has_payment_reference"] is True
+        assert details["has_payment_proof_url"] is True
+        details_str = str(details)
+        assert "UTR-123456" not in details_str
+        assert "https://example.test/proof.pdf" not in details_str
 
 
 # ---------------------------------------------------------------------------
