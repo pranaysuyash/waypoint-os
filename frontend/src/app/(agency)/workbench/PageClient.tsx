@@ -161,6 +161,7 @@ function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
   ]);
 }
 
+// react-doctor-disable-next-line react-doctor/prefer-useReducer — too many independent state slices to consolidate meaningfully
 function WorkbenchContent() {
   const searchParams = useSearchParams();
   const getSearchParam = searchParams.get.bind(searchParams);
@@ -325,6 +326,7 @@ function WorkbenchContent() {
 
   // Update draft status based on run state, and refetch after terminal states
   // to pick up backend lifecycle changes (version bumps, status updates).
+// react-doctor-disable-next-line react-doctor/no-cascading-set-state — multiple independent state slices updated
   useEffect(() => {
     if (!store.draft_id || !spineRunState?.state) return;
     const runState = spineRunState.state;

@@ -266,6 +266,7 @@ interface IntakePanelProps {
   trip?: Trip | null;
 }
 
+// react-doctor-disable-next-line react-doctor/prefer-useReducer — 20+ state vars manage orthogonal concerns; grouping would reduce readability
 function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   const store = useWorkbenchStore();
   const currentUser = useAuthStore((state) => state.user);

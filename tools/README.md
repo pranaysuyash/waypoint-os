@@ -68,6 +68,43 @@ Exit behavior:
 Operational rule:
 - Before claiming local frontend/backend runtime stability, run the standard local gate above. It proves both local services are healthy before the authenticated BFF/page matrix starts.
 
+## Performance Benchmark Matrix: `performance_benchmark_matrix.py`
+
+Purpose:
+- Run repeatable latency benchmarks across local OTel runtime scenarios.
+- Measure endpoint latency distribution (`avg`, `p50`, `p95`, `p99`, `max`) with authenticated requests.
+- Emit JSON + Markdown artifacts under `Docs/reports/` for before/after comparison.
+
+Scenarios:
+- `otel_off`: tracing disabled.
+- `otel_unreachable`: tracing enabled with unreachable collector endpoints (resilience check).
+- `otel_configured`: tracing enabled with caller-provided collector endpoints.
+
+Usage:
+```bash
+python tools/performance_benchmark_matrix.py
+python tools/performance_benchmark_matrix.py --iterations 8
+python tools/performance_benchmark_matrix.py --scenarios otel_off,otel_unreachable
+python tools/performance_benchmark_matrix.py \
+  --scenarios otel_configured \
+  --iterations 6
+```
+
+For `otel_configured`, set both endpoints before running:
+```bash
+export SPINE_OTEL_EXPORTER_OTLP_GRPC_ENDPOINT=http://otel-collector:4317
+export OTEL_EXPORTER_OTLP_HTTP_TRACES_ENDPOINT=http://otel-collector:4318/v1/traces
+python tools/performance_benchmark_matrix.py --scenarios otel_configured
+```
+
+Outputs:
+- `Docs/reports/performance_benchmark_matrix_<YYYY-MM-DD>.json`
+- `Docs/reports/performance_benchmark_matrix_<YYYY-MM-DD>.md`
+
+Notes:
+- The script restarts local backend/frontend for each scenario using `tools/dev_server_manager.py`.
+- Keep this as the canonical local benchmark harness for performance regressions.
+
 ## Architecture Route Inventory: `architecture_route_inventory.py`
 
 Purpose:

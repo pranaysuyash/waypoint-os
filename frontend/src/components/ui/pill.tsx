@@ -86,6 +86,7 @@ export const Pill = memo(function Pill({
       className={cn(
         'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[var(--ui-text-xs)] font-semibold transition-colors border border-transparent',
         isActive ? activeClass : idleClass,
+        isActive && 'underline underline-offset-4 decoration-2',
         className
       )}
     >

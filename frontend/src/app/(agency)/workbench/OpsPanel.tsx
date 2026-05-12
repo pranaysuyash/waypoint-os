@@ -174,6 +174,7 @@ function paymentDraftToTracking(draft: PaymentTrackingDraft): PaymentTracking | 
   };
 }
 
+// react-doctor-disable-next-line react-doctor/prefer-useReducer — 34+ state vars are independent slices; useReducer would add complexity without benefit
 export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
   const documentsOnly = mode === 'documents';
   const { result_validation } = useWorkbenchStore();
@@ -259,6 +260,7 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
   const stage = trip?.stage;
   const canGenerateLink = stage === 'proposal' || stage === 'booking';
 
+  // react-doctor-disable-next-line react-doctor/no-cascading-set-state — independent state updates for unrelated UI concerns
   useEffect(() => {
     if (!trip?.id || !canGenerateLink) return;
 

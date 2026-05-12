@@ -107,4 +107,35 @@ describe('Button Component', () => {
     const button = screen.getByRole('button');
     expect(button).toHaveClass('transition-all');
   });
+
+  it('shows tooltip with disabledReason when disabled', () => {
+    render(<Button disabled disabledReason="Complete the form first">Save changes</Button>);
+    const button = screen.getByRole('button');
+    expect(button).toBeDisabled();
+    const tooltip = document.querySelector('[role="tooltip"]');
+    expect(tooltip).toBeInTheDocument();
+    expect(tooltip).toHaveTextContent('Complete the form first');
+  });
+
+  it('applies aria-describedby when disabledReason is set', () => {
+    render(<Button disabled disabledReason="Missing required fields">Save</Button>);
+    const button = screen.getByRole('button');
+    const describedBy = button.getAttribute('aria-describedby');
+    expect(describedBy).toBeTruthy();
+    const tooltip = document.getElementById(describedBy!);
+    expect(tooltip).toBeInTheDocument();
+    expect(tooltip).toHaveTextContent('Missing required fields');
+  });
+
+  it('does not render tooltip when disabledReason is not set', () => {
+    render(<Button disabled>Disabled</Button>);
+    const tooltip = document.querySelector('[role="tooltip"]');
+    expect(tooltip).not.toBeInTheDocument();
+  });
+
+  it('renders without wrapper when not disabled', () => {
+    const { container } = render(<Button>Normal</Button>);
+    expect(container.querySelector('span')).toBeNull();
+    expect(screen.getByRole('button')).toBeInTheDocument();
+  });
 });

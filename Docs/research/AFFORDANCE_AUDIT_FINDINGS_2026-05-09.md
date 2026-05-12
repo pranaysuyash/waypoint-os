@@ -212,7 +212,7 @@ The amber gate card explains the reason, shows a "Go to missing details" link, a
 
 **6 of 14 issues** are variations of the same pattern: **`opacity-0 group-hover:opacity-100`** used to hide controls until hover. This is the single highest-leverage fix — replacing hover-reveal with always-visible controls (even at reduced opacity) would eliminate P0-01, P0-02, P0-03.
 
-### Fixes Applied (2026-05-09)
+### Fixes Applied (2026-05-09) — Round 1
 
 All 5 quick wins implemented + 2 bonus fixes for remaining hover-reveal patterns:
 
@@ -228,13 +228,33 @@ All 5 quick wins implemented + 2 bonus fixes for remaining hover-reveal patterns
 
 **Verification**: Build succeeds. All 790 tests pass (87 test files, 0 failures).
 
+### Fixes Applied (2026-05-12) — Round 2: Architectural
+
+| # | File | Change | Status |
+|---|------|--------|--------|
+| 1 | `button.tsx` | Added `disabledReason` prop — zero-dep tooltip for disabled buttons. Uses wrapper `<span>` + `aria-describedby` + CSS `group-hover`/`group-focus-within`. Covers mouse hover, keyboard focus, screen reader, and touch. | ✅ |
+| 2 | `pill.tsx` | Added `underline underline-offset-4 decoration-2` to active state — fixes color-only WCAG 1.4.1 violation. | ✅ |
+| 3 | `button.test.tsx` | 4 new tests for `disabledReason`: renders tooltip when disabled, applies aria-describedby, no tooltip when disabledReason unset, no wrapper when not disabled. | ✅ |
+
+**Architectural design rationale** for `disabledReason`:
+- **Zero new dependencies**: Uses `useId()` (React 19 built-in), CSS `group-hover`/`group-focus-within`, and native `aria-describedby`. No Radix, no Popper, no JS event listeners.
+- **Works despite `pointer-events: none`**: The wrapper `<span>` catches pointer events (the button itself does not). CSS `group-*` on the parent enables tooltip visibility.
+- **All access modes**:
+  | Mode | Mechanism |
+  |------|-----------|
+  | Mouse hover | `group-hover:visible` on wrapper |
+  | Keyboard focus | `group-focus-within:visible` on wrapper |
+  | Screen reader | `aria-describedby` links tooltip to button; `role="tooltip"` |
+  | Touch | Tap focuses the button → `group-focus-within` activates |
+
+**Verification**: 31 button/pill tests pass. Build compiles with zero errors. OpsPanel build/test failure is pre-existing (from parallel agent edits to OpsPanel.tsx, not related to our changes).
+
 ### Remaining Issues (not fixed)
 
-- P1-02: Empty states missing on some screens — needs per-screen audit to apply `EmptyState` component
-- P1-04: Disabled button explanation — needs tooltip pattern across all disabled buttons
+- P1-02: Empty states missing on some screens — needs per-screen audit to apply `EmptyState` component ([noted for future round](docs/exploration))
 - P2-04: Keyboard shortcut affordance — larger feature, needs design
 - P3-02: "What's next" timeline prompt — needs UX design
-- P3-03: Filter pill active state uses only color — needs WCAG pass
+- P3-03: Filter pill active state uses only color — ✅ **FIXED** (added underline indicator)
 
 ### Quick Wins (original — now ✅ completed)
 

@@ -52,6 +52,7 @@ export function TimelineSummary({ tripId, timeline: providedTimeline, loading: p
   });
   const shouldFetch = providedTimeline === undefined && providedLoading === undefined && providedError === undefined;
 
+// react-doctor-disable-next-line react-doctor/no-fetch-in-effect — fallback fetch when parent doesn't provide timeline; auth via credentials
   useEffect(() => {
     if (!shouldFetch) return;
     if (!tripId) return;

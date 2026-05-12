@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useEffectEvent } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -30,51 +30,30 @@ export function Drawer({
   const drawerRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<Element | null>(null);
 
+  const onCloseEvent = useEffectEvent(() => onClose());
+
   useEffect(() => {
     if (!isOpen) return;
 
+    previousActiveElement.current = document.activeElement;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        e.preventDefault();
+        e.stopPropagation();
+        onCloseEvent();
       }
     };
 
-    previousActiveElement.current = document.activeElement;
-    document.body.style.overflow = 'hidden';
     document.addEventListener('keydown', handleKeyDown);
 
-    const styleId = 'drawer-slide-keyframes';
-    if (!document.getElementById(styleId)) {
-      const style = document.createElement('style');
-      style.id = styleId;
-      style.textContent = `
-        @keyframes drawer-slide-in-right {
-          from { transform: translateX(100%); }
-          to { transform: translateX(0); }
-        }
-        @keyframes drawer-slide-in-left {
-          from { transform: translateX(-100%); }
-          to { transform: translateX(0); }
-        }
-      `;
-      document.head.appendChild(style);
-    }
-
-    requestAnimationFrame(() => {
-      const closeButton = drawerRef.current?.querySelector<HTMLElement>(
-        'button[aria-label]'
-      );
-      closeButton?.focus();
-    });
-
     return () => {
-      document.body.style.overflow = '';
       document.removeEventListener('keydown', handleKeyDown);
       if (previousActiveElement.current instanceof HTMLElement) {
         previousActiveElement.current.focus();
       }
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

@@ -131,6 +131,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
     }
   }, [activeStage]);
 
+// react-doctor-disable-next-line react-doctor/no-fetch-in-effect, react-doctor/nextjs-no-client-fetch-for-server-data — dynamic tripId + auth via credentials:include
   useEffect(() => {
     if (!tripId || isLoading || !trip) return;
 

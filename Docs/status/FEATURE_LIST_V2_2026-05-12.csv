@@ -1,0 +1,61 @@
+feature_id,feature_name,status,priority,domain,value_summary,dependency,build_path,evidence
+F001,Auth signup/login/logout/refresh/me,LIVE,P0,platform,Secure session lifecycle,JWT cookies and auth router,Harden abuse controls and auth telemetry,spine_api/routers/auth.py
+F002,Password reset and code validation,LIVE,P1,platform,Account recovery trust,Email token flow,Improve expiry UX and anti-abuse checks,spine_api/routers/auth.py
+F003,Join invite flow,LIVE,P1,platform,Team onboarding at scale,Team plus auth membership,Add role templates and invite analytics,frontend/src/app/(auth)/join/[code]/page.tsx
+F004,Multi tenant isolation,PARTIAL,P0,platform,Compliance and data segregation,RLS and membership model,Expand RLS invariants and tests,spine_api/core/rls.py
+F005,Rate limiting and security envelopes,PARTIAL,P0,platform,Abuse resistance and reliability,Middleware and auth stack,Tighten endpoint specific policies,tests/test_rate_limiter.py
+F006,Overview command center,LIVE,P0,agency_ops,Daily operational entrypoint,Summary services,Expand owner KPI panels,frontend/src/app/(agency)/overview/page.tsx
+F007,Lead inbox,LIVE,P0,agency_ops,Lead triage and routing,Inbox API and assignment actions,Optimize for high-volume queues,spine_api/routers/inbox.py
+F008,Quote review surface,LIVE,P0,agency_ops,Human gate before outbound output,Review endpoints and risk flags,Add rationale and diff experience,frontend/src/app/(agency)/reviews/page.tsx
+F009,Trips in planning,LIVE,P0,agency_ops,Lifecycle progression visibility,Trips API and stage model,Add bulk progression operations,frontend/src/app/(agency)/trips/page.tsx
+F010,Workbench shell,LIVE,P0,agency_ops,End to end operator workflow,Run pipeline and stage tabs,Harden stage specific contracts,frontend/src/app/(agency)/workbench/page.tsx
+F011,Audit workspace,LIVE,P1,agency_ops,Fit waste and compliance analysis,Audit router and report UI,Add report templates and export policy,frontend/src/app/(agency)/audit/page.tsx
+F012,Insights workspace,LIVE,P1,analytics,Operational intelligence,Analytics router and chart models,Add anomaly detection and actions,frontend/src/app/(agency)/insights/page.tsx
+F013,Settings workspace,LIVE,P0,agency_ops,Governance and policy controls,Settings and team APIs,Unify policy as data model,frontend/src/app/(agency)/settings/page.tsx
+F014,Async run orchestration,LIVE,P0,pipeline,Non blocking execution,Run ledger and event store,Optimize retries throughput and timeout policy,spine_api/server.py
+F015,Stage checkpoint ledger,LIVE,P0,pipeline,Recoverability and explainability,Run ledger persistence,Add replay diagnostics and integrity audit,spine_api/run_ledger.py
+F016,Pipeline stage events,LIVE,P0,pipeline,Timeline observability trace,Run event emitter,Link event quality to SLA checks,spine_api/run_events.py
+F017,Decision state generation,LIVE,P0,pipeline,Ready review block outcomes,Intake validation and decision logic,Tighten decision rationale contract tests,src/decision
+F018,Suitability flags endpoint,LIVE,P0,pipeline,Risk fit visibility,Suitability module and trip payload,Expand per person utility calibration,spine_api/server.py
+F019,Suitability acknowledge gate,LIVE,P0,pipeline,Block unsafe approvals,Critical flag gating,Make policy configurable per agency,spine_api/routers/legacy_ops.py
+F020,Trip reassessment,LIVE,P1,pipeline,Recompute on changed facts,Pipeline rerun and run history,Add diff aware reassessment UX,spine_api/server.py
+F021,Live checker enrichment,PARTIAL,P1,pipeline,External risk enrichment,Live checker service and manifest,Expand providers and confidence scoring,spine_api/services/live_checker_service.py
+F022,Assignment state actions,LIVE,P0,ops,Clear ownership and escalation,Assignment router and audit,Add policy-driven auto-routing,spine_api/routers/assignments.py
+F023,Follow-up dashboard,LIVE,P1,ops,SLA and response management,Followups router and inbox projection,Add predictive follow-up prioritization,spine_api/routers/followups.py
+F024,Follow-up actions,LIVE,P1,ops,Queue hygiene and customer cadence,Timeline audit notifications,Add bulk follow-up actions,spine_api/routers/followups.py
+F025,Team members and workload,LIVE,P1,ops,Staffing and balancing,Team router and membership model,Add staffing recommendations,spine_api/routers/team.py
+F026,Draft CRUD lifecycle,LIVE,P1,drafts,Preserve in-progress work,Draft store and draft APIs,Migrate to SQL canonical backend,spine_api/routers/drafts.py
+F027,Draft events and run linkage,LIVE,P1,drafts,Traceability draft to trip,Pipeline execution service and audit,Add merge conflict semantics,spine_api/services/pipeline_execution_service.py
+F028,Draft promote to trip,LIVE,P1,drafts,Convert pre-work to trip,Draft and trip contracts,Harden promotion preconditions and rollback,spine_api/routers/drafts.py
+F029,Booking collection link lifecycle,LIVE,P0,documents,Secure traveler data intake,Token model and public endpoints,Add fraud and expiration analytics,spine_api/server.py
+F030,Pending booking data accept reject,LIVE,P0,documents,Human verification before mutation,Pending booking state model,Add policy templates by trip archetype,spine_api/server.py
+F031,Public booking-collection surface,LIVE,P0,documents,Traveler self-service input,Token validation and public API,Improve accessibility and mobile conversion,frontend/src/app/(public)/booking-collection/[token]/page.tsx
+F032,Public booking document upload,LIVE,P0,documents,Collect proof artifacts,Document storage and token scope,Add upload validation UX,spine_api/routers/public_collection.py
+F033,Document upload review delete download,LIVE,P0,documents,Structured document operations,Document models and signed URL service,Add retention and quarantine policy,spine_api/services/document_storage.py
+F034,Document extraction run and retry,LIVE,P1,documents,Faster structured capture,Extraction service and attempts ledger,Add provider quality benchmarking,spine_api/server.py
+F035,Extraction apply reject and attempts,LIVE,P1,documents,Controlled data mutation with audit trail,Extraction model and events,Add field level confidence UX,spine_api/models/tenant.py
+F036,Documents top-level module enablement,GATED,P0,documents,Dedicated operations UX,Rollout gates and regression suite,Complete contract regression suite gate,frontend/src/lib/nav-modules.ts
+F037,Booking tasks API,LIVE,P1,booking_ops,Execution checklist management,Booking task model and router,Add archetype templates,spine_api/routers/booking_tasks.py
+F038,Booking confirmations API,LIVE,P1,booking_ops,Durable supplier confirmation tracking,Confirmation service and encrypted private fields,Add reconciliation automation,spine_api/routers/confirmations.py
+F039,Execution timeline ledger,LIVE,P1,booking_ops,Operational chronology and accountability,Execution event service and timeline endpoint,Expand full cross-module provenance,spine_api/services/execution_event_service.py
+F040,Analytics summary pipeline team revenue,LIVE,P1,analytics,Performance intelligence,Analytics models and aggregation,Add metric ownership and alert contracts,spine_api/routers/analytics.py
+F041,Alerts funnel escalations,LIVE,P1,analytics,Risk and conversion control,Analytics events and review integration,Add action playbooks and automation,spine_api/routers/analytics.py
+F042,Agent drill-down analytics,LIVE,P1,analytics,Operator performance diagnosis,Analytics plus assignment context,Add coaching recommendations,spine_api/routers/analytics.py
+F043,Product-B KPI endpoint,LIVE,P2,analytics,Track product B funnel,Product-b analytics route,Define authoritative KPI dictionary,spine_api/routers/product_b_analytics.py
+F044,Analytics export,LIVE,P1,analytics,External reporting governance,Serializer and access control,Add row-level security export checks,spine_api/routers/analytics.py
+F045,System health endpoint,LIVE,P0,platform_obs,Basic liveness and readiness,Health router and dependencies,Add deep readiness subchecks,spine_api/routers/health.py
+F046,Unified state and integrity issues,LIVE,P1,platform_obs,Platform health for operators,System dashboard router,Add ownership and incident hooks,spine_api/routers/system_dashboard.py
+F047,Agent runtime endpoints,LIVE,P1,platform_obs,Runtime governance for agent loops,Runtime coordinator and event stream,Add permission tiers and runbook links,spine_api/routers/agent_runtime.py
+F048,Frontier endpoints,PARTIAL,P2,platform_obs,Experimental intelligence surfaces,Frontier router and models,Define production boundary and SLA,spine_api/routers/frontier.py
+F049,Deny by default BFF catch-all,LIVE,P0,frontend_contract,Prevents backend surface drift,Explicit route map contracts,Maintain strict contract route tests,frontend/src/app/api/[...path]/route.ts
+F050,Route timeout policy registry,LIVE,P1,frontend_contract,Stabilize long-running proxy flows,Route-map config,Expand per-endpoint timeout policies,frontend/src/lib/route-map.ts
+F051,Navigation taxonomy model,LIVE,P1,frontend_contract,Durable module-first IA,Nav model and shell UI,Protect IA with nav contract tests,frontend/src/lib/nav-modules.ts
+F052,Planned disabled nav modules,SPEC,P1,frontend_contract,Signals operating model roadmap,Module shell and backend contracts,Implement canonical modules before enabling,frontend/src/lib/nav-modules.ts
+F053,Itinerary checker public wedge,PARTIAL,P1,traveler,Consumer lead-gen and audit wedge,Public checker run and events,Harden agency handoff conversion loop,frontend/src/app/(traveler)/itinerary-checker/page.tsx
+F054,Marketing route variants,PARTIAL,P2,traveler,Messaging experimentation,Analytics and CTA instrumentation,Converge into canonical funnel,frontend/src/app/v2/page.tsx
+F055,Quote output template system,SPEC,P1,spec_family,Customer-ready output governance,Template contracts and versioning,Implement canonical render contract not parallel system,frontend/docs/OUTPUT_12_TEMPLATE_REFERENCE_COMPLETE.md
+F056,Payments and settlement operations,SPEC,P1,spec_family,Revenue assurance and closure,Booking_data and task confirmation lifecycle,Build from booking execution canonical path,frontend/docs/PAYMENT_PROCESSING_DEEP_DIVE_MASTER_INDEX.md
+F057,Supplier reliability intelligence,SPEC,P1,spec_family,Execution quality and margin protection,Confirmations plus risk events plus sourcing,Integrate reliability signals into decision and review gates,frontend/docs/SUPPLIER_INTEGRATION_DEEP_DIVE_MASTER_INDEX.md
+F058,Knowledge base agency memory,SPEC,P2,spec_family,Institutional learning and consistency,Trip outcomes overrides and rationale,Implement searchable memory with policy controls,frontend/docs/KNOWLEDGE_BASE_MASTER_INDEX.md
+F059,Traveler portal end-to-end,SPEC,P2,spec_family,Customer transparency and self-service,Public booking collection and checker surfaces,Evolve to full traveler lifecycle portal,frontend/docs/TRAVELER_APP_MASTER_INDEX.md
+F060,Policy as data compliance engine,EXPLORE,P1,exploration,Reusable legal and compliance substrate,Workflow checkpoints and jurisdiction rule packs,Create versioned policy contract and test harness,Docs/exploration/backlog.md

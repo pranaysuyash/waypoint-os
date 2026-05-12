@@ -109,6 +109,7 @@ interface ExecutionTimelinePanelProps {
   tripId: string;
 }
 
+// react-doctor-disable-next-line react-doctor/prefer-useReducer — 5 state vars manage distinct filtering/sorting concerns
 export default function ExecutionTimelinePanel({ tripId }: ExecutionTimelinePanelProps) {
   const [events, setEvents] = useState<ExecutionTimelineEvent[]>([]);
   const [summary, setSummary] = useState<Record<string, number>>({});

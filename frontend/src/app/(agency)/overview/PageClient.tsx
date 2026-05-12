@@ -11,20 +11,10 @@ import {
   Send,
   MapPin,
 } from 'lucide-react';
-import { getTripRoute } from '@/lib/routes';
 import { InlineError } from '@/components/error-boundary';
 import { PlanningTripCard } from '@/components/workspace/PlanningTripCard';
 import type { Trip } from '@/lib/api-client';
 import {
-  formatBudgetDisplay,
-  formatInquiryReference,
-} from '@/lib/lead-display';
-import {
-  getPlanningHeaderTitle,
-  getPlanningIdentityLine,
-  getPlanningNextAction,
-  getPlanningRecencyLabel,
-  getPlanningStatusLabel,
   getPlanningSummaryText,
   getPlanningStatusTone,
 } from '@/lib/planning-status';

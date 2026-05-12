@@ -48,6 +48,7 @@ export default function SuitabilityPage() {
   const acknowledgedFlagsRef = useRef<string[]>([]);
   const setAcknowledgedFlags = (flagIds: string[]) => { acknowledgedFlagsRef.current = flagIds; };
 
+// react-doctor-disable-next-line react-doctor/no-fetch-in-effect — dynamic tripId + auth via credentials:include
   useEffect(() => {
     // OK: fetch is run once on mount for suitability assessment
     const fetchTrip = async () => {

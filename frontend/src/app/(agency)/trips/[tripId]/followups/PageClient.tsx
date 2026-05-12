@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useReducer } from 'react';
 import { useParams } from 'next/navigation';
 import { Filter, AlertCircle, Loader2 } from 'lucide-react';
 import { FollowUpCard } from '@/components/workspace/cards/FollowUpCard';
@@ -18,26 +18,35 @@ interface FollowUp {
 type FilterType = 'all' | 'due_today' | 'overdue' | 'upcoming';
 type StatusType = 'all' | 'pending' | 'completed' | 'snoozed';
 
+type FetchState = { followups: FollowUp[]; loading: boolean; error: string | null };
+type FetchAction = { type: 'loading' } | { type: 'success'; followups: FollowUp[] } | { type: 'error'; error: string };
+
+function fetchReducer(state: FetchState, action: FetchAction): FetchState {
+  switch (action.type) {
+    case 'loading': return { ...state, loading: true, error: null };
+    case 'success': return { followups: action.followups, loading: false, error: null };
+    case 'error': return { ...state, loading: false, error: action.error };
+  }
+}
+
+type FilterState = { filterType: FilterType; statusFilter: StatusType; sortBy: 'due_date' | 'days_until_due' };
+
 export default function FollowupsPage() {
   const params = useParams();
   const tripId = params?.tripId as string;
 
-  const [followups, setFollowups] = useState<FollowUp[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filterType, setFilterType] = useState<FilterType>('all');
-  const [statusFilter, setStatusFilter] = useState<StatusType>('all');
-  const [sortBy, setSortBy] = useState<'due_date' | 'days_until_due'>('due_date');
+  const [{ followups, loading, error }, dispatch] = useReducer(fetchReducer, { followups: [], loading: true, error: null });
+  const [filters, setFilters] = useState<FilterState>({ filterType: 'all', statusFilter: 'all', sortBy: 'due_date' });
+  const { filterType, statusFilter, sortBy } = filters;
 
   // Fetch followups from backend
   const fetchFollowups = useCallback(async () => {
+    dispatch({ type: 'loading' });
+
+    const filterParam = filterType === 'all' ? '' : `&filter=${filterType}`;
+    const statusParam = statusFilter === 'all' ? '' : `&status=${statusFilter}`;
+
     try {
-      setLoading(true);
-      setError(null);
-
-      const filterParam = filterType === 'all' ? '' : `&filter=${filterType}`;
-      const statusParam = statusFilter === 'all' ? '' : `&status=${statusFilter}`;
-
       const response = await fetch(
         `/api/followups/dashboard?${filterParam}${statusParam}`,
         {
@@ -51,11 +60,9 @@ export default function FollowupsPage() {
       }
 
       const data = await response.json();
-      setFollowups(data.items || []);
+      dispatch({ type: 'success', followups: data.items || [] });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
+      dispatch({ type: 'error', error: err instanceof Error ? err.message : 'Unknown error' });
     }
   }, [filterType, statusFilter]);
 
@@ -176,7 +183,7 @@ export default function FollowupsPage() {
           {(['all', 'due_today', 'overdue', 'upcoming'] as const).map((filter) => (
             <button
               key={filter}
-              onClick={() => setFilterType(filter)}
+              onClick={() => setFilters((prev) => ({ ...prev, filterType: filter }))}
               className="px-3 py-2 rounded text-ui-xs font-medium transition-colors border"
               style={{
                 color: filterType === filter ? '#fff' : 'var(--text-secondary)',
@@ -210,7 +217,7 @@ export default function FollowupsPage() {
             {(['all', 'pending', 'completed', 'snoozed'] as const).map((status) => (
               <button
                 key={status}
-                onClick={() => setStatusFilter(status)}
+                onClick={() => setFilters((prev) => ({ ...prev, statusFilter: status }))}
                 className="px-3 py-1 rounded text-ui-xs font-medium transition-colors border"
                 style={{
                   color:
@@ -244,7 +251,7 @@ export default function FollowupsPage() {
             {(['due_date', 'days_until_due'] as const).map((sort) => (
               <button
                 key={sort}
-                onClick={() => setSortBy(sort)}
+                onClick={() => setFilters((prev) => ({ ...prev, sortBy: sort }))}
                 className="px-3 py-1 rounded text-ui-xs font-medium transition-colors border"
                 style={{
                   color:

@@ -9,8 +9,17 @@ type TripLifecycleStatus = NonNullable<Trip["status"]>;
 
 const STATUS_TO_STATE: Record<string, TripState> = {
   new: "blue",
+  incomplete: "blue",
+  needs_followup: "blue",
+  awaiting_customer_details: "blue",
+  snoozed: "blue",
+
   assigned: "amber",
   in_progress: "amber",
+  ready_to_quote: "red",
+  ready_to_book: "green",
+  blocked: "red",
+
   completed: "green",
   cancelled: "red",
 };
@@ -376,7 +385,7 @@ export function transformSpineTripToTrip(
     destination: asString(destinationValue(trip), "Unknown"),
     contactName: asString(getNestedValue(trip, "contactName", "") as string, ""),
     type: asString(tripTypeValue(trip), "leisure"),
-    state: STATUS_TO_STATE[status] || (status as TripState) || "blue",
+    state: STATUS_TO_STATE[status] ?? "blue",
     age: calculateAge(createdAt, now),
     createdAt,
     updatedAt: asString(firstPresent(trip.updated_at, trip.created_at), createdAt),

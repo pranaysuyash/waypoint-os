@@ -127,6 +127,7 @@ function TimelineEventCard({
 
 const AVAILABLE_STAGES = ["intake", "packet", "decision", "strategy", "safety"];
 
+// react-doctor-disable-next-line react-doctor/prefer-useReducer — 6 useState calls manage distinct UI state slices
 export function TimelinePanel({ trip: propTrip, tripId: propTripId, onStageFilter }: TimelinePanelProps) {
   // Derive tripId directly from props so the effect re-runs when the trip changes
   const tripId = propTripId || propTrip?.id;

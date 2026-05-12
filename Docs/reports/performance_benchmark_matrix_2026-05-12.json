@@ -1,0 +1,446 @@
+{
+  "generated_at_utc": "2026-05-12T04:21:07.799223Z",
+  "base_url": "http://127.0.0.1:3000",
+  "iterations": 2,
+  "scenarios": [
+    {
+      "name": "otel_off",
+      "description": "Tracing disabled for frontend + backend.",
+      "env": {
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "",
+        "SPINE_OTEL_EXPORTER_OTLP_GRPC_ENDPOINT": "",
+        "OTEL_EXPORTER_OTLP_HTTP_TRACES_ENDPOINT": ""
+      },
+      "smoke_passed": true,
+      "endpoint_stats": {
+        "/api/auth/me": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 207.16,
+          "p50_ms": 207.16,
+          "p95_ms": 188.5,
+          "p99_ms": 188.5,
+          "max_ms": 225.83,
+          "min_ms": 188.5,
+          "samples_ms": [
+            188.5,
+            225.83
+          ]
+        },
+        "/overview": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 185.55,
+          "p50_ms": 185.55,
+          "p95_ms": 105.5,
+          "p99_ms": 105.5,
+          "max_ms": 265.6,
+          "min_ms": 105.5,
+          "samples_ms": [
+            265.6,
+            105.5
+          ]
+        },
+        "/trips": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 85.15,
+          "p50_ms": 85.15,
+          "p95_ms": 50.2,
+          "p99_ms": 50.2,
+          "max_ms": 120.09,
+          "min_ms": 50.2,
+          "samples_ms": [
+            120.09,
+            50.2
+          ]
+        },
+        "/workbench?draft=new&tab=safety": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 49.72,
+          "p50_ms": 49.72,
+          "p95_ms": 48.24,
+          "p99_ms": 48.24,
+          "max_ms": 51.21,
+          "min_ms": 48.24,
+          "samples_ms": [
+            51.21,
+            48.24
+          ]
+        },
+        "/api/inbox?page=1&limit=1": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 351.71,
+          "p50_ms": 351.71,
+          "p95_ms": 284.05,
+          "p99_ms": 284.05,
+          "max_ms": 419.37,
+          "min_ms": 284.05,
+          "samples_ms": [
+            284.05,
+            419.37
+          ]
+        },
+        "/api/trips?view=workspace&limit=5": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 81.02,
+          "p50_ms": 81.02,
+          "p95_ms": 79.2,
+          "p99_ms": 79.2,
+          "max_ms": 82.85,
+          "min_ms": 79.2,
+          "samples_ms": [
+            79.2,
+            82.85
+          ]
+        },
+        "/api/trips?view=workspace&limit=100": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 111.55,
+          "p50_ms": 111.55,
+          "p95_ms": 98.11,
+          "p99_ms": 98.11,
+          "max_ms": 124.99,
+          "min_ms": 98.11,
+          "samples_ms": [
+            124.99,
+            98.11
+          ]
+        },
+        "/api/reviews?status=pending": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 201.61,
+          "p50_ms": 201.61,
+          "p95_ms": 170.93,
+          "p99_ms": 170.93,
+          "max_ms": 232.3,
+          "min_ms": 170.93,
+          "samples_ms": [
+            170.93,
+            232.3
+          ]
+        },
+        "/api/inbox/stats": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 178.42,
+          "p50_ms": 178.42,
+          "p95_ms": 134.11,
+          "p99_ms": 134.11,
+          "max_ms": 222.73,
+          "min_ms": 134.11,
+          "samples_ms": [
+            222.73,
+            134.11
+          ]
+        },
+        "/api/pipeline": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 364.35,
+          "p50_ms": 364.35,
+          "p95_ms": 259.83,
+          "p99_ms": 259.83,
+          "max_ms": 468.87,
+          "min_ms": 259.83,
+          "samples_ms": [
+            468.87,
+            259.83
+          ]
+        },
+        "/settings": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 96.62,
+          "p50_ms": 96.62,
+          "p95_ms": 76.67,
+          "p99_ms": 76.67,
+          "max_ms": 116.56,
+          "min_ms": 76.67,
+          "samples_ms": [
+            116.56,
+            76.67
+          ]
+        },
+        "/documents": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 215.54,
+          "p50_ms": 215.54,
+          "p95_ms": 182.92,
+          "p99_ms": 182.92,
+          "max_ms": 248.15,
+          "min_ms": 182.92,
+          "samples_ms": [
+            248.15,
+            182.92
+          ]
+        }
+      }
+    },
+    {
+      "name": "otel_unreachable",
+      "description": "Tracing enabled but collector endpoints unreachable.",
+      "env": {
+        "SPINE_OTEL_EXPORTER_OTLP_GRPC_ENDPOINT": "http://127.0.0.1:4317",
+        "OTEL_EXPORTER_OTLP_HTTP_TRACES_ENDPOINT": "http://127.0.0.1:4318/v1/traces",
+        "SPINE_OTEL_BSP_EXPORT_TIMEOUT_MS": "2000",
+        "SPINE_OTEL_BSP_SCHEDULE_DELAY_MS": "1000",
+        "SPINE_OTEL_BSP_MAX_QUEUE_SIZE": "256",
+        "SPINE_OTEL_BSP_MAX_EXPORT_BATCH_SIZE": "64",
+        "FRONTEND_OTEL_BSP_EXPORT_TIMEOUT_MS": "2000",
+        "FRONTEND_OTEL_BSP_SCHEDULE_DELAY_MS": "1000",
+        "FRONTEND_OTEL_BSP_MAX_QUEUE_SIZE": "256",
+        "FRONTEND_OTEL_BSP_MAX_EXPORT_BATCH_SIZE": "64"
+      },
+      "smoke_passed": true,
+      "endpoint_stats": {
+        "/api/auth/me": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 22.98,
+          "p50_ms": 22.98,
+          "p95_ms": 21.21,
+          "p99_ms": 21.21,
+          "max_ms": 24.75,
+          "min_ms": 21.21,
+          "samples_ms": [
+            21.21,
+            24.75
+          ]
+        },
+        "/overview": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 59.56,
+          "p50_ms": 59.56,
+          "p95_ms": 58.55,
+          "p99_ms": 58.55,
+          "max_ms": 60.56,
+          "min_ms": 58.55,
+          "samples_ms": [
+            60.56,
+            58.55
+          ]
+        },
+        "/trips": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 84.24,
+          "p50_ms": 84.24,
+          "p95_ms": 57.43,
+          "p99_ms": 57.43,
+          "max_ms": 111.04,
+          "min_ms": 57.43,
+          "samples_ms": [
+            111.04,
+            57.43
+          ]
+        },
+        "/workbench?draft=new&tab=safety": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 299.56,
+          "p50_ms": 299.56,
+          "p95_ms": 66.74,
+          "p99_ms": 66.74,
+          "max_ms": 532.38,
+          "min_ms": 66.74,
+          "samples_ms": [
+            66.74,
+            532.38
+          ]
+        },
+        "/api/inbox?page=1&limit=1": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 661.28,
+          "p50_ms": 661.28,
+          "p95_ms": 352.28,
+          "p99_ms": 352.28,
+          "max_ms": 970.28,
+          "min_ms": 352.28,
+          "samples_ms": [
+            970.28,
+            352.28
+          ]
+        },
+        "/api/trips?view=workspace&limit=5": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 44.77,
+          "p50_ms": 44.77,
+          "p95_ms": 41.34,
+          "p99_ms": 41.34,
+          "max_ms": 48.19,
+          "min_ms": 41.34,
+          "samples_ms": [
+            41.34,
+            48.19
+          ]
+        },
+        "/api/trips?view=workspace&limit=100": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 85.49,
+          "p50_ms": 85.49,
+          "p95_ms": 84.17,
+          "p99_ms": 84.17,
+          "max_ms": 86.81,
+          "min_ms": 84.17,
+          "samples_ms": [
+            84.17,
+            86.81
+          ]
+        },
+        "/api/reviews?status=pending": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 143.32,
+          "p50_ms": 143.32,
+          "p95_ms": 114.53,
+          "p99_ms": 114.53,
+          "max_ms": 172.11,
+          "min_ms": 114.53,
+          "samples_ms": [
+            172.11,
+            114.53
+          ]
+        },
+        "/api/inbox/stats": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 84.55,
+          "p50_ms": 84.55,
+          "p95_ms": 81.1,
+          "p99_ms": 81.1,
+          "max_ms": 87.99,
+          "min_ms": 81.1,
+          "samples_ms": [
+            81.1,
+            87.99
+          ]
+        },
+        "/api/pipeline": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 290.03,
+          "p50_ms": 290.03,
+          "p95_ms": 210.87,
+          "p99_ms": 210.87,
+          "max_ms": 369.19,
+          "min_ms": 210.87,
+          "samples_ms": [
+            369.19,
+            210.87
+          ]
+        },
+        "/settings": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 71.69,
+          "p50_ms": 71.69,
+          "p95_ms": 51.58,
+          "p99_ms": 51.58,
+          "max_ms": 91.79,
+          "min_ms": 51.58,
+          "samples_ms": [
+            91.79,
+            51.58
+          ]
+        },
+        "/documents": {
+          "ok": true,
+          "statuses": [
+            200,
+            200
+          ],
+          "avg_ms": 71.27,
+          "p50_ms": 71.27,
+          "p95_ms": 47.45,
+          "p99_ms": 47.45,
+          "max_ms": 95.08,
+          "min_ms": 47.45,
+          "samples_ms": [
+            95.08,
+            47.45
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import http.cookiejar
+import http.client
 import json
 import sys
 import urllib.error
@@ -61,6 +62,8 @@ def request_status(opener: urllib.request.OpenerDirector, url: str) -> tuple[int
     except urllib.error.HTTPError as e:
         return int(e.code), e.read().decode("utf-8", errors="replace")
     except urllib.error.URLError as e:
+        return 0, str(e)
+    except http.client.RemoteDisconnected as e:
         return 0, str(e)
 
 

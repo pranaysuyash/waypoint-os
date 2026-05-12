@@ -38,16 +38,40 @@ export interface ButtonProps
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   ref?: React.Ref<HTMLButtonElement>;
+  disabledReason?: string;
 }
 
-function Button({ className, variant, size, asChild = false, ref, ...props }: ButtonProps) {
+function Button({ className, variant, size, asChild = false, ref, disabledReason, disabled, children, ...props }: ButtonProps) {
   const Comp = asChild ? Slot : "button";
-  return (
+  const tooltipId = React.useId();
+
+  const button = (
     <Comp
       className={cn(buttonVariants({ variant, size, className }))}
       ref={ref}
+      disabled={disabled}
+      aria-describedby={disabled && disabledReason ? tooltipId : undefined}
       {...props}
-    />
+    >
+      {children}
+    </Comp>
+  );
+
+  if (!disabled || !disabledReason) {
+    return button;
+  }
+
+  return (
+    <span className="relative inline-flex group">
+      {button}
+      <span
+        id={tooltipId}
+        role="tooltip"
+        className="invisible group-hover:visible group-focus-within:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-max max-w-[240px] rounded-md bg-[#1c2128] px-2.5 py-1.5 text-xs leading-tight text-[#e6edf3] shadow-lg pointer-events-none"
+      >
+        {disabledReason}
+      </span>
+    </span>
   );
 }
 

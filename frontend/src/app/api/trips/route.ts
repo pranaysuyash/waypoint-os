@@ -15,10 +15,21 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const view = searchParams.get("view");
 
-    // Build a clean query string, filtering out frontend-only params
-    const query = Array.from(searchParams.entries())
-      .flatMap(entry => entry[0] !== "view" ? [`${encodeURIComponent(entry[0])}=${encodeURIComponent(entry[1])}`] : [])
-      .join("&");
+    const requestedLimit = Number(searchParams.get("limit") ?? "100");
+    const requestedOffset = Number(searchParams.get("offset") ?? "0");
+
+    // Build upstream query: strip frontend-only params, and for workspace view
+    // fetch a broad set so the local filter can return real totals.
+    const upstreamParams = new URLSearchParams(searchParams);
+    upstreamParams.delete("view");
+
+    if (view === "workspace") {
+      upstreamParams.delete("limit");
+      upstreamParams.delete("offset");
+      upstreamParams.set("limit", "10000");
+    }
+
+    const query = upstreamParams.toString();
     const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/trips${query ? `?${query}` : ""}`;
 
     const response = await fetch(spineApiUrl, { ...bffFetchOptions(request, "GET"), cache: "no-store" });
@@ -35,12 +46,16 @@ export async function GET(request: NextRequest) {
 
     // Server-side view filter - canonical definitions live here
     if (view === "workspace") {
-      transformedItems = transformedItems.filter(isWorkspaceTrip);
+      const filtered = transformedItems.filter(isWorkspaceTrip);
+      return bffJson({
+        items: filtered.slice(requestedOffset, requestedOffset + requestedLimit),
+        total: filtered.length,
+      });
     }
 
     return bffJson({
       items: transformedItems,
-      total: transformedItems.length,
+      total: spineApiData.total ?? transformedItems.length,
     });
   } catch (error) {
     console.error("Error fetching trips from spine_api:", error);

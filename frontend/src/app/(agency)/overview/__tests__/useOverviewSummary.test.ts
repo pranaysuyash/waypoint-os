@@ -4,6 +4,7 @@ import { useOverviewSummary } from '../useOverviewSummary';
 
 vi.mock('@/hooks/useTrips', () => ({
   useTrips: vi.fn(),
+  usePipeline: vi.fn(),
 }));
 
 vi.mock('@/hooks/useGovernance', () => ({
@@ -19,7 +20,7 @@ vi.mock('@/hooks/useIntegrityIssues', () => ({
   useIntegrityIssues: vi.fn(),
 }));
 
-import { useTrips } from '@/hooks/useTrips';
+import { useTrips, usePipeline } from '@/hooks/useTrips';
 import { useInboxTrips, useReviews } from '@/hooks/useGovernance';
 import { useUnifiedState } from '@/hooks/useUnifiedState';
 import { useIntegrityIssues } from '@/hooks/useIntegrityIssues';
@@ -31,6 +32,16 @@ describe('useOverviewSummary', () => {
     vi.mocked(useTrips).mockReturnValue({
       data: [],
       total: 2,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    vi.mocked(usePipeline).mockReturnValue({
+      data: [
+        { label: 'assigned', count: 1 },
+        { label: 'in_progress', count: 1 },
+      ],
       isLoading: false,
       error: null,
       refetch: vi.fn(),

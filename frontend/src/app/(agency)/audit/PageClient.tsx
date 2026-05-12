@@ -39,6 +39,7 @@ export default function AuditPage() {
   });
   const { events, error } = state;
 
+// react-doctor-disable-next-line react-doctor/no-fetch-in-effect — audit page requires credentials:include for auth session
   useEffect(() => {
     let cancelled = false;
     async function fetchAudit() {

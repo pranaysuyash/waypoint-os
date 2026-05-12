@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "name": "FEATURE_LIST_V2",
+    "date": "2026-05-12",
+    "source_doc": "Docs/status/FEATURE_LIST_V2_2026-05-12.md",
+    "notes": "Runtime-first inventory with spec and exploration overlays."
+  },
+  "counts": {
+    "total_features": 60,
+    "live": 46,
+    "partial": 7,
+    "gated": 1,
+    "spec": 5,
+    "explore": 1
+  },
+  "p0": [
+    "F001","F004","F005","F006","F007","F008","F009","F010","F013","F014","F015","F016","F017","F018","F019","F022","F029","F030","F031","F032","F033","F036","F045","F049"
+  ],
+  "p1": [
+    "F002","F003","F011","F012","F020","F021","F023","F024","F025","F026","F027","F028","F034","F035","F037","F038","F039","F040","F041","F042","F044","F046","F047","F050","F051","F052","F053","F055","F056","F057","F060"
+  ],
+  "records_ref": "Docs/status/FEATURE_LIST_V2_2026-05-12.csv"
+}

@@ -53,6 +53,7 @@ interface BookingExecutionPanelProps {
 
 const GENERATE_ALLOWED_STAGES = new Set(["proposal", "booking"]);
 
+// react-doctor-disable-next-line react-doctor/prefer-useReducer — 7 state vars are independent form/UI concerns
 export default function BookingExecutionPanel({ tripId, stage }: BookingExecutionPanelProps) {
   const [tasks, setTasks] = useState<BookingTask[]>([]);
   const [summary, setSummary] = useState<BookingTaskSummary | null>(null);

@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useMemo, useState, useId } from 'react';
+import { Suspense, useMemo, useState, useId, useReducer } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FileCode2, Loader2, Search, Sparkles } from 'lucide-react';
 import { useWorkbenchStore } from '@/stores/workbench';
@@ -29,20 +29,47 @@ function ScenarioLabInner() {
   } = useWorkbenchStore();
   const { data: scenarios, isLoading: scenariosLoading, error: scenariosError, refetch } = useScenarios();
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoadingScenario, setIsLoadingScenario] = useState(false);
   const [scenarioSourceMode, setScenarioSourceMode] = useState<ScenarioSourceMode>('docs');
-  const [isGeneratingScenario, setIsGeneratingScenario] = useState(false);
-  const [scenarioLabStatus, setScenarioLabStatus] = useState<string | null>(null);
   const scenarioCatalogId = useId();
   const generateModeId = useId();
-  const [generatedScenario, setGeneratedScenario] = useState<{
-    title: string;
-    source: string;
-    scenarioId: string;
-    fileName: string;
-    rawNote: string;
-    ownerNote: string;
-  } | null>(null);
+
+  type ScenarioOpState = {
+    isLoadingScenario: boolean;
+    isGeneratingScenario: boolean;
+    scenarioLabStatus: string | null;
+    generatedScenario: {
+      title: string;
+      source: string;
+      scenarioId: string;
+      fileName: string;
+      rawNote: string;
+      ownerNote: string;
+    } | null;
+  };
+  type ScenarioOpAction =
+    | { type: 'load-start' }
+    | { type: 'load-end' }
+    | { type: 'generate-start' }
+    | { type: 'generate-end'; generated: ScenarioOpState['generatedScenario']; status: string }
+    | { type: 'set-status'; status: string | null }
+    | { type: 'reset' };
+  function scenarioOpReducer(state: ScenarioOpState, action: ScenarioOpAction): ScenarioOpState {
+    switch (action.type) {
+      case 'load-start': return { ...state, isLoadingScenario: true, scenarioLabStatus: null };
+      case 'load-end': return { ...state, isLoadingScenario: false };
+      case 'generate-start': return { ...state, isGeneratingScenario: true, scenarioLabStatus: null, generatedScenario: null };
+      case 'generate-end': return { ...state, isGeneratingScenario: false, generatedScenario: action.generated, scenarioLabStatus: action.status };
+      case 'set-status': return { ...state, scenarioLabStatus: action.status };
+      case 'reset': return { isLoadingScenario: false, isGeneratingScenario: false, scenarioLabStatus: null, generatedScenario: null };
+    }
+  }
+  const [opState, dispatchOp] = useReducer(scenarioOpReducer, {
+    isLoadingScenario: false,
+    isGeneratingScenario: false,
+    scenarioLabStatus: null,
+    generatedScenario: null,
+  });
+  const { isLoadingScenario, isGeneratingScenario, scenarioLabStatus, generatedScenario } = opState;
 
   const filteredScenarios = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -83,27 +110,24 @@ function ScenarioLabInner() {
 
   const handleLoadScenario = async () => {
     if (!scenario_id) {
-      setScenarioLabStatus('Pick a scenario first');
+      dispatchOp({ type: 'set-status', status: 'Pick a scenario first' });
       return;
     }
 
-    setIsLoadingScenario(true);
-    setScenarioLabStatus(null);
+    dispatchOp({ type: 'load-start' });
     try {
       const detail = await getScenario(scenario_id);
       applyScenarioDetail(detail, selectedScenario?.title);
     } catch (error) {
       console.error('Failed to load scenario:', error);
-      setScenarioLabStatus('Failed to load selected scenario');
+      dispatchOp({ type: 'set-status', status: 'Failed to load selected scenario' });
     } finally {
-      setIsLoadingScenario(false);
+      dispatchOp({ type: 'load-end' });
     }
   };
 
   const handleGenerateDevScenario = async () => {
-    setIsGeneratingScenario(true);
-    setScenarioLabStatus(null);
-    setGeneratedScenario(null);
+    dispatchOp({ type: 'generate-start' });
     try {
       const response = await fetch('/api/scenarios/dev/generate', {
         method: 'POST',
@@ -116,7 +140,7 @@ function ScenarioLabInner() {
       });
 
       if (!response.ok) {
-        setScenarioLabStatus('Failed to generate scenario');
+        dispatchOp({ type: 'set-status', status: 'Failed to generate scenario' });
         return;
       }
 
@@ -125,7 +149,7 @@ function ScenarioLabInner() {
       const persisted = payload?.persisted_fixture;
 
       if (!input?.raw_note) {
-        setScenarioLabStatus('Scenario generator returned invalid payload');
+        dispatchOp({ type: 'set-status', status: 'Scenario generator returned invalid payload' });
         return;
       }
 
@@ -134,26 +158,22 @@ function ScenarioLabInner() {
       setInputStructuredJson(input.structured_json ? JSON.stringify(input.structured_json, null, 2) : '');
       setInputItineraryText(input.itinerary_text ?? '');
       updateConfigParams(input.stage ?? 'discovery', input.operating_mode ?? 'normal_intake', persisted?.scenario_id ?? '');
-      setGeneratedScenario({
+      const generated = {
         title: payload?.title ?? 'Generated scenario',
         source: payload?.source ?? 'generated',
         scenarioId: persisted?.scenario_id ?? '',
         fileName: persisted?.file_name ?? '',
         rawNote: String(input.raw_note ?? ''),
         ownerNote: String(input.owner_note ?? ''),
-      });
-      setScenarioLabStatus(
-        `Loaded ${payload?.source ?? 'generated'} scenario and saved fixture ${persisted?.file_name ?? ''}`.trim()
-      );
+      };
+      dispatchOp({ type: 'generate-end', generated, status: `Loaded ${payload?.source ?? 'generated'} scenario and saved fixture ${persisted?.file_name ?? ''}`.trim() });
       await refetch();
       if (persisted?.scenario_id) {
         setScenarioId(persisted.scenario_id);
       }
     } catch (error) {
       console.error('Scenario generation failed:', error);
-      setScenarioLabStatus('Failed to generate scenario');
-    } finally {
-      setIsGeneratingScenario(false);
+      dispatchOp({ type: 'set-status', status: 'Failed to generate scenario' });
     }
   };
 

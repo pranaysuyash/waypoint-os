@@ -51,6 +51,7 @@ export default function JoinPage() {
   const [password, setPassword] = useState('');
 
   // Step 1: validate code on mount
+// react-doctor-disable-next-line react-doctor/no-fetch-in-effect, react-doctor/no-cascading-set-state, react-doctor/nextjs-no-client-fetch-for-server-data — dynamic code param + auth via credentials:include; server component can't handle
   useEffect(() => {
     if (!code) {
       setState({ phase: 'invalid', reason: 'No invitation code provided.' });

@@ -30,11 +30,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { push } = useRouter();
   const needsLogin = !isLoading && !isAuthenticated && !isPublic(pathname);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+
+  type LoginFormState = { email: string; password: string; showPassword: boolean; submitting: boolean; error: string };
+  const [loginForm, setLoginForm] = useState<LoginFormState>({ email: "", password: "", showPassword: false, submitting: false, error: "" });
+  const { email, password, showPassword, submitting, error } = loginForm;
+  const patchLoginForm = (p: Partial<LoginFormState>) => setLoginForm((s) => ({ ...s, ...p }));
+
   const modalRef = useRef<HTMLDivElement | null>(null);
 
   const redirectTarget = useMemo(() => {
@@ -121,19 +122,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   if (needsLogin) {
     async function handleLogin(e: React.FormEvent) {
       e.preventDefault();
-      setSubmitting(true);
-      setError("");
+      patchLoginForm({ submitting: true, error: "" });
       try {
         await api.post("/api/auth/login", { email, password });
         await hydrate();
       } catch (err) {
         if (err instanceof ApiException) {
-          setError(err.message || "Invalid email or password");
+          patchLoginForm({ error: err.message || "Invalid email or password" });
         } else {
-          setError("Network error. Please try again.");
+          patchLoginForm({ error: "Network error. Please try again." });
         }
       } finally {
-        setSubmitting(false);
+        patchLoginForm({ submitting: false });
       }
     }
 
@@ -167,7 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   id="modal-email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => patchLoginForm({ email: e.target.value })}
                   autoComplete="email"
                   required
                   className="w-full rounded-lg bg-[#080a0c] border border-[#1f2630] text-[#e6edf3] px-3 py-2 text-sm outline-none focus:border-[#58a6ff] focus:ring-2 focus:ring-[#58a6ff]/20"

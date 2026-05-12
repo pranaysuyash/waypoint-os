@@ -49,6 +49,7 @@ interface ConfirmationPanelProps {
   tripId: string;
 }
 
+// react-doctor-disable-next-line react-doctor/prefer-useReducer — 14 state vars are independent UI concerns
 export default function ConfirmationPanel({ tripId }: ConfirmationPanelProps) {
   const [confirmations, setConfirmations] = useState<ConfirmationSummary[]>([]);
   const [detail, setDetail] = useState<ConfirmationDetail | null>(null);
