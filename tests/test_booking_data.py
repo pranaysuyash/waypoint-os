@@ -425,7 +425,9 @@ class TestAtomicBookingUpdate:
         monkeypatch.setattr("spine_api.persistence.TRIPS_DIR", trips_dir)
         monkeypatch.setattr("spine_api.persistence.DATA_DIR", data_dir)
 
-        trip_id = FileTripStore.save_trip({"id": "t1", "raw_note": "hello", "agency_id": "agency_a"}, agency_id="agency_a")
+        import datetime as _dt
+        now = _dt.datetime.now(_dt.timezone.utc).isoformat()
+        trip_id = FileTripStore.save_trip({"id": "t1", "raw_note": "hello", "agency_id": "agency_a", "updated_at": now}, agency_id="agency_a")
         trip = FileTripStore.get_trip(trip_id)
         original_updated_at = trip["updated_at"]
 
@@ -447,7 +449,9 @@ class TestAtomicBookingUpdate:
         monkeypatch.setattr("spine_api.persistence.TRIPS_DIR", trips_dir)
         monkeypatch.setattr("spine_api.persistence.DATA_DIR", data_dir)
 
-        trip_id = FileTripStore.save_trip({"id": "t2", "raw_note": "hello", "agency_id": "agency_a"}, agency_id="agency_a")
+        import datetime as _dt
+        now = _dt.datetime.now(_dt.timezone.utc).isoformat()
+        trip_id = FileTripStore.save_trip({"id": "t2", "raw_note": "hello", "agency_id": "agency_a", "updated_at": now}, agency_id="agency_a")
 
         result = FileTripStore.update_trip_if_version(
             trip_id,
@@ -466,7 +470,9 @@ class TestAtomicBookingUpdate:
         monkeypatch.setattr("spine_api.persistence.TRIPS_DIR", trips_dir)
         monkeypatch.setattr("spine_api.persistence.DATA_DIR", data_dir)
 
-        trip_id = FileTripStore.save_trip({"id": "t3", "raw_note": "original", "agency_id": "agency_a"}, agency_id="agency_a")
+        import datetime as _dt
+        now = _dt.datetime.now(_dt.timezone.utc).isoformat()
+        trip_id = FileTripStore.save_trip({"id": "t3", "raw_note": "original", "agency_id": "agency_a", "updated_at": now}, agency_id="agency_a")
         trip_before = FileTripStore.get_trip(trip_id)
 
         FileTripStore.update_trip_if_version(
@@ -523,6 +529,7 @@ class TestTenantScopedTripLookup:
 class TestFixtureSeedingNoReassignment:
     def test_seed_does_not_reassign_existing_trip(self, tmp_path, monkeypatch):
         """_seed_scenario_for_agency must never rewrite agency_id on existing trips."""
+        monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
         from pathlib import Path
         from spine_api.persistence import FileTripStore, TRIPS_DIR, DATA_DIR
         from spine_api.server import _seed_scenario_for_agency

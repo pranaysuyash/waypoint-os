@@ -1845,8 +1845,8 @@ def patch_trip(
 
     edited_fields = set(updates.keys())
 
-    # Perform update
-    updated_trip = TripStore.update_trip(trip_id, updates)
+    # Perform update (tenant-scoped)
+    updated_trip = TripStore.update_trip_for_agency(trip_id, agency.id, updates)
     
     # Handle status-specific side effects
     if new_status and new_status != old_status:
@@ -2031,7 +2031,7 @@ def get_booking_data(
     trip = TripStore.get_trip_for_agency(trip_id, agency.id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
-    booking_data = TripStore.get_booking_data(trip_id)
+    booking_data = TripStore.get_booking_data_for_agency(trip_id, agency.id)
     return _booking_data_envelope(trip, booking_data)
 
 
@@ -2079,10 +2079,11 @@ def update_booking_data(
     validation = dict(trip.get("validation") or {})
     validation["readiness"] = readiness.to_dict()
 
-    # Atomic write: booking_data + readiness together, with compare-and-set
+    # Atomic write: booking_data + readiness together, with compare-and-set and tenant scoping
     expected = request.expected_updated_at
-    updated = TripStore.update_trip_if_version(
+    updated = TripStore.update_trip_if_version_for_agency(
         trip_id,
+        agency.id,
         {"booking_data": bd_dict, "validation": validation},
         expected_updated_at=expected,
     )
@@ -2125,7 +2126,7 @@ def update_booking_data(
         "actor": "operator",
     })
 
-    booking_data = TripStore.get_booking_data(trip_id)
+    booking_data = TripStore.get_booking_data_for_agency(trip_id, agency.id)
     return _booking_data_envelope(updated, booking_data)
 
 
@@ -2238,83 +2239,7 @@ async def create_collection_link(
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    current_stage = trip.get("stage", "discovery")
-    if current_stage not in ("proposal", "booking"):
-        raise HTTPException(status_code=403, detail=f"Collection links only available at proposal/booking, current: {current_stage}")
-
-    async with rls_session(agency.id) as db:
-        plain_token, record = await generate_token(
-            db, trip_id, agency.id, agency.id, request.expires_in_hours,
-        )
-
-    host = os.getenv("FRONTEND_URL", "http://localhost:3000")
-    collection_url = f"{host}/booking-collection/{agency.id}/{plain_token}"
-
-    AuditStore.log_event("booking_collection_link_created", agency.id, {
-        "trip_id": trip_id,
-        "token_id": record.id,
-        "expires_at": record.expires_at.isoformat(),
-    })
-
-    return CollectionLinkResponse(
-        token_id=record.id,
-        collection_url=collection_url,
-        expires_at=record.expires_at.isoformat(),
-        trip_id=trip_id,
-        status=record.status,
-    )
-
-
-@app.get("/trips/{trip_id}/collection-link", response_model=CollectionLinkStatusResponse)
-async def get_collection_link_status(trip_id: str, agency: Agency = Depends(get_current_agency)):
-    """Check collection link status and pending submission."""
-    from spine_api.services.collection_service import get_active_token_for_trip
-
-    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
-    if not trip:
-        raise HTTPException(status_code=404, detail="Trip not found")
-
-    async with rls_session(agency.id) as db:
-        token = await get_active_token_for_trip(db, trip_id)
-    pending = await _ts(TripStore.get_pending_booking_data, trip_id)
-
-    return CollectionLinkStatusResponse(
-        has_active_token=token is not None,
-        token_id=token.id if token else None,
-        expires_at=token.expires_at.isoformat() if token else None,
-        status=token.status if token else None,
-        has_pending_submission=pending is not None,
-    )
-
-
-@app.delete("/trips/{trip_id}/collection-link")
-async def revoke_collection_link(trip_id: str, agency: Agency = Depends(get_current_agency)):
-    """Revoke the active collection link."""
-    from spine_api.services.collection_service import revoke_token
-
-    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
-    if not trip:
-        raise HTTPException(status_code=404, detail="Trip not found")
-
-    async with rls_session(agency.id) as db:
-        revoked = await revoke_token(db, trip_id, agency.id)
-    if not revoked:
-        raise HTTPException(status_code=404, detail="No active collection link found")
-
-    AuditStore.log_event("booking_collection_link_revoked", agency.id, {
-        "trip_id": trip_id,
-    })
-    return {"ok": True}
-
-
-@app.get("/trips/{trip_id}/pending-booking-data", response_model=PendingBookingDataResponse)
-async def get_pending_booking_data(trip_id: str, agency: Agency = Depends(get_current_agency)):
-    """View pending customer submission. Agent-only."""
-    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
-    if not trip:
-        raise HTTPException(status_code=404, detail="Trip not found")
-
-    pending = await _ts(TripStore.get_pending_booking_data, trip_id)
+    pending = await _ts(TripStore.get_pending_booking_data_for_agency, trip_id, agency.id)
     if not pending:
         raise HTTPException(status_code=404, detail="No pending booking data")
 
@@ -2335,7 +2260,7 @@ async def accept_pending_booking_data(trip_id: str, request: Optional[PendingBoo
     if trip.get("stage", "discovery") not in ("proposal", "booking"):
         raise HTTPException(status_code=403, detail="Accept only allowed at proposal/booking stage")
 
-    pending = await _ts(TripStore.get_pending_booking_data, trip_id)
+    pending = await _ts(TripStore.get_pending_booking_data_for_agency, trip_id, agency.id)
     if not pending:
         raise HTTPException(status_code=404, detail="No pending booking data to accept")
     if isinstance(pending, dict) and pending.get("payment_tracking") is not None:
@@ -2348,8 +2273,8 @@ async def accept_pending_booking_data(trip_id: str, request: Optional[PendingBoo
     validated = BookingDataModel(**pending)
     bd_dict = validated.model_dump()
 
-    # Promote to trusted booking_data
-    await _ts(TripStore.update_trip, trip_id, {
+    # Promote to trusted booking_data (tenant-scoped)
+    await _ts(TripStore.update_trip_for_agency, trip_id, agency.id, {
         "booking_data": bd_dict,
         "pending_booking_data": None,
         "booking_data_source": "customer_accepted",

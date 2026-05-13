@@ -114,12 +114,21 @@ def _make_json_serializable(obj: Any) -> Any:
 
 
 _SAFE_TRIP_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
+_SAFE_DECISION_TYPE_RE = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
 
 
 def _safe_filename(name: str) -> str:
-    """Return a filesystem-safe filename while preserving the base name."""
-    base = Path(name).name or "upload.bin"
-    return re.sub(r"[^A-Za-z0-9._-]+", "_", base)
+    """Return a filesystem-safe filename with a generated prefix to prevent path traversal.
+
+    Rejects path-control names (., ..) and generates a storage key prefix
+    so that the returned name cannot escape the intended directory.
+    """
+    base = Path(str(name or "")).name
+    base = re.sub(r"[^A-Za-z0-9._-]+", "_", base).strip()
+    if base in {"", ".", ".."}:
+        base = "upload.bin"
+    base = base.lstrip(".") or "upload.bin"
+    return f"{uuid4().hex[:8]}_{base[:120]}"
 
 
 def _validate_trip_id(trip_id: str) -> str:
@@ -268,6 +277,16 @@ class FileTripStore:
         filepath = TRIPS_DIR / f"{trip_id}.json"
         with FileTripStore._lock:
             with file_lock(filepath):
+                # Cross-agency overwrite protection: reject if existing trip
+                # belongs to a different agency.
+                if filepath.exists():
+                    existing_data = json.loads(filepath.read_text())
+                    existing_agency = existing_data.get("agency_id")
+                    if existing_agency and agency_id and existing_agency != agency_id:
+                        raise ValueError(
+                            f"Trip {trip_id} belongs to agency {existing_agency}, "
+                            f"cannot save with agency {agency_id}"
+                        )
                 with open(filepath, "w") as f:
                     json.dump(serializable_data, f, indent=2)
         
@@ -416,6 +435,34 @@ class FileTripStore:
         return False
 
     @staticmethod
+    def update_trip_if_version_for_agency(trip_id: str, agency_id: str, updates: dict, expected_updated_at: Optional[str] = None) -> Optional[dict]:
+        """Update a trip only if it belongs to the given agency and its updated_at matches."""
+        from src.security.privacy_guard import check_trip_data
+        check_trip_data(updates)
+        try:
+            safe_trip_id = _validate_trip_id(trip_id)
+        except ValueError:
+            return None
+
+        filepath = TRIPS_DIR / f"{safe_trip_id}.json"
+
+        with FileTripStore._lock:
+            with file_lock(filepath):
+                trip = FileTripStore.get_trip(safe_trip_id)
+                if not trip:
+                    return None
+                if trip.get("agency_id") != agency_id:
+                    return None
+                if expected_updated_at is not None and trip.get("updated_at") != expected_updated_at:
+                    return None
+                trip.update(updates)
+                trip["updated_at"] = datetime.now(timezone.utc).isoformat()
+                serializable_trip = _make_json_serializable(trip)
+                with open(filepath, "w") as f:
+                    json.dump(serializable_trip, f, indent=2)
+                return trip
+
+    @staticmethod
     def get_booking_data(trip_id: str) -> Optional[dict]:
         """Get booking_data from file store. Returns None if trip missing."""
         trip = FileTripStore.get_trip(trip_id)
@@ -425,6 +472,35 @@ class FileTripStore:
     def get_pending_booking_data(trip_id: str) -> Optional[dict]:
         """Get pending_booking_data from file store. Returns None if trip missing."""
         trip = FileTripStore.get_trip(trip_id)
+        return trip.get("pending_booking_data") if trip else None
+
+    @staticmethod
+    def update_trip_for_agency(trip_id: str, agency_id: str, updates: dict) -> Optional[dict]:
+        """Update a trip only if it belongs to the given agency."""
+        trip = FileTripStore.get_trip(trip_id)
+        if not trip:
+            return None
+        if trip.get("agency_id") != agency_id:
+            return None
+        return FileTripStore.update_trip(trip_id, updates)
+
+    @staticmethod
+    def delete_trip_for_agency(trip_id: str, agency_id: str) -> bool:
+        """Delete a trip only if it belongs to the given agency."""
+        if not FileTripStore.get_trip_for_agency(trip_id, agency_id):
+            return False
+        return FileTripStore.delete_trip(trip_id)
+
+    @staticmethod
+    def get_booking_data_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
+        """Get booking_data only if the trip belongs to the given agency."""
+        trip = FileTripStore.get_trip_for_agency(trip_id, agency_id)
+        return trip.get("booking_data") if trip else None
+
+    @staticmethod
+    def get_pending_booking_data_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
+        """Get pending_booking_data only if the trip belongs to the given agency."""
+        trip = FileTripStore.get_trip_for_agency(trip_id, agency_id)
         return trip.get("pending_booking_data") if trip else None
 
 
@@ -624,6 +700,22 @@ class SQLTripStore:
             yield session
 
     @staticmethod
+    @asynccontextmanager
+    async def _rls_session_for_agency(agency_id: str):
+        """Yield a session with RLS context explicitly set from the agency_id argument.
+
+        This ensures RLS is fully operational even when the ContextVar is not set
+        (e.g. background tasks, tests that bypass auth). Should be used by every
+        tenant-scoped method instead of _rls_session().
+        """
+        async with tripstore_session_maker() as session:
+            await session.execute(
+                sa_text("SELECT set_config('app.current_agency_id', :agency_id, true)"),
+                {"agency_id": agency_id},
+            )
+            yield session
+
+    @staticmethod
     async def save_trip(trip_data: dict, agency_id: Optional[str] = None) -> str:
         trip_id = trip_data.get("id") or f"trip_{uuid4().hex[:12]}"
 
@@ -672,6 +764,14 @@ class SQLTripStore:
             )
             existing = await session.get(Trip, trip_id)
             if existing:
+                # Cross-agency overwrite protection: reject if existing trip
+                # belongs to a different agency.
+                save_agency = model_data.get("agency_id")
+                if save_agency and existing.agency_id and existing.agency_id != save_agency:
+                    raise ValueError(
+                        f"Trip {trip_id} belongs to agency {existing.agency_id}, "
+                        f"cannot save with agency {save_agency}"
+                    )
                 for key, value in model_data.items():
                     setattr(existing, key, value)
                 existing.updated_at = datetime.now(timezone.utc)
@@ -860,6 +960,45 @@ class SQLTripStore:
             return True
 
     @staticmethod
+    async def update_trip_if_version_for_agency(trip_id: str, agency_id: str, updates: dict, expected_updated_at: Optional[str] = None) -> Optional[dict]:
+        """Update a trip only if it belongs to the given agency and its updated_at matches.
+
+        Combines agency scoping and optimistic concurrency in one atomic operation.
+        """
+        _pii_sensitive_keys = {"raw_input", "raw_note", "extracted", "extracted_facts"}
+        if set(updates.keys()) & _pii_sensitive_keys:
+            from src.security.privacy_guard import check_trip_data
+            check_trip_data(updates)
+
+        _encrypted_fields = SQLTripStore._PRIVATE_BLOB_FIELDS | SQLTripStore._PII_KEY_FIELDS
+        async with SQLTripStore._rls_session_for_agency(agency_id) as session:
+            from sqlalchemy import select
+            result = await session.execute(
+                select(Trip).where(Trip.id == trip_id, Trip.agency_id == agency_id)
+            )
+            trip_obj = result.scalar_one_or_none()
+            if not trip_obj:
+                return None
+            if expected_updated_at is not None:
+                from datetime import datetime
+                try:
+                    expected_dt = datetime.fromisoformat(expected_updated_at)
+                except (ValueError, TypeError):
+                    return None
+                if trip_obj.updated_at and trip_obj.updated_at != expected_dt:
+                    return None
+            for key, value in updates.items():
+                if key in _encrypted_fields:
+                    value = SQLTripStore._encrypt_field_for_storage(key, value)
+                elif key == "follow_up_due_date":
+                    value = SQLTripStore._parse_datetime(value)
+                if hasattr(trip_obj, key):
+                    setattr(trip_obj, key, value)
+            trip_obj.updated_at = datetime.now(timezone.utc)
+            await session.commit()
+            return SQLTripStore._to_dict(trip_obj)
+
+    @staticmethod
     async def get_booking_data(trip_id: str) -> Optional[dict]:
         """Get decrypted booking_data only. Returns None if trip missing or no data."""
         async with SQLTripStore._rls_session() as session:
@@ -873,6 +1012,75 @@ class SQLTripStore:
         """Get decrypted pending_booking_data only. Returns None if trip missing."""
         async with SQLTripStore._rls_session() as session:
             trip_obj = await session.get(Trip, trip_id)
+            if not trip_obj:
+                return None
+            return SQLTripStore._decrypt_field_from_storage("pending_booking_data", trip_obj.pending_booking_data)
+
+    @staticmethod
+    async def update_trip_for_agency(trip_id: str, agency_id: str, updates: dict) -> Optional[dict]:
+        """Update a trip only if it belongs to the given agency. Sets RLS explicitly."""
+        _pii_sensitive_keys = {"raw_input", "raw_note", "extracted", "extracted_facts"}
+        if set(updates.keys()) & _pii_sensitive_keys:
+            from src.security.privacy_guard import check_trip_data
+            check_trip_data(updates)
+
+        _encrypted_fields = SQLTripStore._PRIVATE_BLOB_FIELDS | SQLTripStore._PII_KEY_FIELDS
+        async with SQLTripStore._rls_session_for_agency(agency_id) as session:
+            from sqlalchemy import select
+            result = await session.execute(
+                select(Trip).where(Trip.id == trip_id, Trip.agency_id == agency_id)
+            )
+            trip_obj = result.scalar_one_or_none()
+            if not trip_obj:
+                return None
+            for key, value in updates.items():
+                if key in _encrypted_fields:
+                    value = SQLTripStore._encrypt_field_for_storage(key, value)
+                elif key == "follow_up_due_date":
+                    value = SQLTripStore._parse_datetime(value)
+                if hasattr(trip_obj, key):
+                    setattr(trip_obj, key, value)
+            trip_obj.updated_at = datetime.now(timezone.utc)
+            await session.commit()
+            return SQLTripStore._to_dict(trip_obj)
+
+    @staticmethod
+    async def delete_trip_for_agency(trip_id: str, agency_id: str) -> bool:
+        """Delete a trip only if it belongs to the given agency."""
+        async with SQLTripStore._rls_session_for_agency(agency_id) as session:
+            from sqlalchemy import select
+            result = await session.execute(
+                select(Trip).where(Trip.id == trip_id, Trip.agency_id == agency_id)
+            )
+            trip_obj = result.scalar_one_or_none()
+            if not trip_obj:
+                return False
+            await session.delete(trip_obj)
+            await session.commit()
+            return True
+
+    @staticmethod
+    async def get_booking_data_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
+        """Get booking_data only if the trip belongs to the given agency."""
+        async with SQLTripStore._rls_session_for_agency(agency_id) as session:
+            from sqlalchemy import select
+            result = await session.execute(
+                select(Trip).where(Trip.id == trip_id, Trip.agency_id == agency_id)
+            )
+            trip_obj = result.scalar_one_or_none()
+            if not trip_obj:
+                return None
+            return SQLTripStore._decrypt_field_from_storage("booking_data", trip_obj.booking_data)
+
+    @staticmethod
+    async def get_pending_booking_data_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
+        """Get pending_booking_data only if the trip belongs to the given agency."""
+        async with SQLTripStore._rls_session_for_agency(agency_id) as session:
+            from sqlalchemy import select
+            result = await session.execute(
+                select(Trip).where(Trip.id == trip_id, Trip.agency_id == agency_id)
+            )
+            trip_obj = result.scalar_one_or_none()
             if not trip_obj:
                 return None
             return SQLTripStore._decrypt_field_from_storage("pending_booking_data", trip_obj.pending_booking_data)
@@ -1060,6 +1268,20 @@ class TripStore:
         )
 
     @staticmethod
+    def update_trip_if_version_for_agency(trip_id: str, agency_id: str, updates: dict, expected_updated_at: Optional[str] = None) -> Optional[dict]:
+        """Update a trip only if it belongs to the given agency and version matches.
+
+        Combines tenant isolation and optimistic concurrency in one atomic operation.
+        This is the canonical path for production booking data updates.
+        """
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.update_trip_if_version_for_agency(trip_id, agency_id, updates, expected_updated_at)
+        return _run_async_blocking(
+            SQLTripStore.update_trip_if_version_for_agency(trip_id, agency_id, updates, expected_updated_at)
+        )
+
+    @staticmethod
     async def aupdate_trip(trip_id: str, updates: dict) -> Optional[dict]:
         backend = TripStore._backend()
         if backend is FileTripStore:
@@ -1095,6 +1317,67 @@ class TripStore:
         if backend is FileTripStore:
             return FileTripStore.get_pending_booking_data(trip_id)
         return _run_async_blocking(SQLTripStore.get_pending_booking_data(trip_id))
+
+    @staticmethod
+    def update_trip_for_agency(trip_id: str, agency_id: str, updates: dict) -> Optional[dict]:
+        """Update a trip only if it belongs to the given agency.
+
+        This is the canonical tenant-scoped update path. Prefer over update_trip
+        in all production endpoints.
+        """
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.update_trip_for_agency(trip_id, agency_id, updates)
+        return _run_async_blocking(SQLTripStore.update_trip_for_agency(trip_id, agency_id, updates))
+
+    @staticmethod
+    async def aupdate_trip_for_agency(trip_id: str, agency_id: str, updates: dict) -> Optional[dict]:
+        """Async variant of update_trip_for_agency."""
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.update_trip_for_agency(trip_id, agency_id, updates)
+        return await SQLTripStore.update_trip_for_agency(trip_id, agency_id, updates)
+
+    @staticmethod
+    def delete_trip_for_agency(trip_id: str, agency_id: str) -> bool:
+        """Delete a trip only if it belongs to the given agency.
+
+        This is the canonical tenant-scoped delete path.
+        """
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.delete_trip_for_agency(trip_id, agency_id)
+        return _run_async_blocking(SQLTripStore.delete_trip_for_agency(trip_id, agency_id))
+
+    @staticmethod
+    async def adelete_trip_for_agency(trip_id: str, agency_id: str) -> bool:
+        """Async variant of delete_trip_for_agency."""
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.delete_trip_for_agency(trip_id, agency_id)
+        return await SQLTripStore.delete_trip_for_agency(trip_id, agency_id)
+
+    @staticmethod
+    def get_booking_data_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
+        """Get booking_data only if the trip belongs to the given agency.
+
+        This is the canonical tenant-scoped booking data read path.
+        """
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.get_booking_data_for_agency(trip_id, agency_id)
+        return _run_async_blocking(SQLTripStore.get_booking_data_for_agency(trip_id, agency_id))
+
+    @staticmethod
+    def get_pending_booking_data_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
+        """Get pending_booking_data only if the trip belongs to the given agency.
+
+        This is the canonical tenant-scoped pending booking data read path.
+        """
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.get_pending_booking_data_for_agency(trip_id, agency_id)
+        return _run_async_blocking(SQLTripStore.get_pending_booking_data_for_agency(trip_id, agency_id))
 
 
 def _build_processed_trip(
@@ -1220,14 +1503,16 @@ class AssignmentStore:
     @staticmethod
     def unassign_trip(trip_id: str, unassigned_by: str):
         """Remove assignment from a trip."""
+        agent_name: Optional[str] = None
         with AssignmentStore._lock:
             assignments = AssignmentStore._load_assignments()
 
             if trip_id in assignments:
-                agent_name = assignments[trip_id]["agent_name"]
+                agent_name = assignments[trip_id].get("agent_name")
                 del assignments[trip_id]
                 AssignmentStore._save_assignments(assignments)
-            
+
+        if agent_name is not None:
             AuditStore.log_event("trip_unassigned", unassigned_by, {
                 "trip_id": trip_id,
                 "previous_agent": agent_name,
@@ -1332,28 +1617,30 @@ class AuditStore:
         """Periodically compact the file to MAX_EVENTS lines.
         
         Uses atomic rename (write to temp, then replace) so a crash during
-        trim leaves the original file intact.
+        trim leaves the original file intact. Runs under the same cross-process
+        file_lock used by _append_event so concurrent appends are not lost.
         """
         if AuditStore._write_count % AuditStore._WRITE_COUNT_BEFORE_TRIM != 0:
             return
         if not AuditStore.AUDIT_FILE.exists():
             return
         with AuditStore._lock:
-            events = AuditStore._read_events()
-            if len(events) <= AuditStore.MAX_EVENTS:
-                return
-            events = events[-AuditStore.MAX_EVENTS:]
-            tmp = AuditStore.AUDIT_FILE.with_suffix(".trim")
-            try:
-                with open(tmp, "w") as out:
-                    for e in events:
-                        out.write(json.dumps(e) + "\n")
-                os.replace(tmp, AuditStore.AUDIT_FILE)
-            except OSError:
+            with file_lock(AuditStore.AUDIT_FILE):
+                events = AuditStore._read_events()
+                if len(events) <= AuditStore.MAX_EVENTS:
+                    return
+                events = events[-AuditStore.MAX_EVENTS:]
+                tmp = AuditStore.AUDIT_FILE.with_suffix(".trim")
                 try:
-                    tmp.unlink(missing_ok=True)
+                    with open(tmp, "w") as out:
+                        for e in events:
+                            out.write(json.dumps(e) + "\n")
+                    os.replace(tmp, AuditStore.AUDIT_FILE)
                 except OSError:
-                    pass
+                    try:
+                        tmp.unlink(missing_ok=True)
+                    except OSError:
+                        pass
 
     # ------------------------------------------------------------------
     # Public API (unchanged signatures)
@@ -1485,7 +1772,9 @@ class PublicCheckerArtifactStore:
         trip_dir = PublicCheckerArtifactStore._trip_dir(safe_trip_id)
         trip_dir.mkdir(parents=True, exist_ok=True)
 
-        archive_path = trip_dir / file_name
+        archive_path = (trip_dir / file_name).resolve()
+        if not str(archive_path).startswith(str(trip_dir.resolve())):
+            raise ValueError(f"Invalid archive path: {archive_path} resolves outside {trip_dir}")
         with open(archive_path, "wb") as handle:
             handle.write(raw_bytes)
 
@@ -1597,10 +1886,11 @@ class OverrideStore:
         OVERRIDES_PER_TRIP_DIR.mkdir(parents=True, exist_ok=True)
         trip_overrides_file = OVERRIDES_PER_TRIP_DIR / f"{safe_trip_id}.jsonl"
         
-        # Append to JSONL (immutable log)
-        with open(trip_overrides_file, "a") as f:
-            json.dump(override_data, f)
-            f.write("\n")
+        # Append to JSONL (immutable log) under cross-process lock
+        with file_lock(trip_overrides_file):
+            with open(trip_overrides_file, "a") as f:
+                json.dump(override_data, f)
+                f.write("\n")
         
         # Verify the file was actually created (robustness check)
         if not trip_overrides_file.exists():
@@ -1609,8 +1899,8 @@ class OverrideStore:
                 f"OVERRIDES_PER_TRIP_DIR={OVERRIDES_PER_TRIP_DIR}"
             )
         
-        # Update index
-        OverrideStore._update_index(override_id, safe_trip_id, str(trip_overrides_file))
+        # Update index under cross-process lock
+        OverrideStore._update_index(override_id, safe_trip_id)
         
         # If scope is "pattern", also add to pattern file
         if override_data.get("scope") == "pattern" and override_data.get("decision_type"):
@@ -1649,13 +1939,23 @@ class OverrideStore:
     
     @staticmethod
     def get_override(override_id: str) -> Optional[dict]:
-        """Get a specific override by ID using the index."""
+        """Get a specific override by ID using the index.
+        
+        Reconstructs the file path from the stored trip_id rather than trusting
+        a stored absolute path, preventing path traversal from a corrupted index.
+        """
         try:
             index = OverrideStore._load_index()
             if override_id not in index:
                 return None
             
-            file_path = index[override_id]["file_path"]
+            trip_id = index[override_id].get("trip_id", "")
+            try:
+                _validate_trip_id(trip_id)
+            except ValueError:
+                return None
+
+            file_path = OVERRIDES_PER_TRIP_DIR / f"{trip_id}.jsonl"
             
             with open(file_path) as f:
                 for line in f:
@@ -1684,6 +1984,11 @@ class OverrideStore:
     @staticmethod
     def get_pattern_overrides(decision_type: str) -> list:
         """Get all pattern-scope overrides for a decision type."""
+        decision_type = str(decision_type or "").strip()
+        if not decision_type or not _SAFE_DECISION_TYPE_RE.fullmatch(decision_type):
+            logger.warning("Invalid decision_type for pattern override lookup: %s", decision_type)
+            return []
+
         pattern_file = OVERRIDES_PATTERNS_DIR / f"{decision_type}.jsonl"
         
         if not pattern_file.exists():
@@ -1708,15 +2013,19 @@ class OverrideStore:
     @staticmethod
     def _add_pattern_override(override_data: dict) -> None:
         """Add an override to the pattern file for its decision type."""
-        decision_type = override_data.get("decision_type")
+        decision_type = str(override_data.get("decision_type") or "").strip()
         if not decision_type:
             return
-        
+        if not _SAFE_DECISION_TYPE_RE.fullmatch(decision_type):
+            logger.warning("Rejecting pattern override with unsafe decision_type: %s", decision_type)
+            return
+
         pattern_file = OVERRIDES_PATTERNS_DIR / f"{decision_type}.jsonl"
         
-        with open(pattern_file, "a") as f:
-            json.dump(override_data, f)
-            f.write("\n")
+        with file_lock(pattern_file):
+            with open(pattern_file, "a") as f:
+                json.dump(override_data, f)
+                f.write("\n")
     
     @staticmethod
     def _load_index() -> dict:
@@ -1738,17 +2047,21 @@ class OverrideStore:
             return {}
     
     @staticmethod
-    def _update_index(override_id: str, trip_id: str, file_path: str) -> None:
-        """Update the override index."""
-        index = OverrideStore._load_index()
-        index[override_id] = {
-            "trip_id": trip_id,
-            "file_path": file_path,
-            "indexed_at": datetime.now(timezone.utc).isoformat(),
-        }
+    def _update_index(override_id: str, trip_id: str) -> None:
+        """Update the override index under cross-process file lock.
         
-        with open(OVERRIDES_INDEX_FILE, "w") as f:
-            json.dump(index, f, indent=2)
+        Stores trip_id and kind instead of an absolute file_path so the
+        index is always correct regardless of filesystem layout changes.
+        """
+        with file_lock(OVERRIDES_INDEX_FILE):
+            index = OverrideStore._load_index()
+            index[override_id] = {
+                "trip_id": trip_id,
+                "kind": "per_trip",
+                "indexed_at": datetime.now(timezone.utc).isoformat(),
+            }
+            with open(OVERRIDES_INDEX_FILE, "w") as f:
+                json.dump(index, f, indent=2)
 
 
 # =============================================================================
