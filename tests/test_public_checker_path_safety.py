@@ -34,7 +34,7 @@ def test_file_trip_store_discards_unsafe_trip_id(tmp_path, monkeypatch):
         "decision": {"decision_type": "accept"},
     }
 
-    trip_id = persistence.FileTripStore.save_trip(trip_payload, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+    trip_id = persistence.FileTripStore.save_trip(trip_payload, agency_id=persistence.TEST_AGENCY_ID)
 
     assert trip_id.startswith("trip_")
     assert ".." not in trip_id
@@ -86,3 +86,37 @@ def test_public_checker_artifact_store_rejects_oversized_upload(tmp_path, monkey
 
     assert manifest is None
     assert (persistence.PUBLIC_CHECKER_UPLOADS_DIR / "trip_safe123").exists() is False
+
+
+def test_public_checker_rejects_malformed_content_length(tmp_path, monkeypatch):
+    """Malformed Content-Length header produces 400, not 500."""
+    _wire_tmp_dirs(tmp_path, monkeypatch)
+    from starlette.testclient import TestClient
+    import spine_api.server as srv
+    monkeypatch.setenv("SPINE_API_DISABLE_AUTH", "1")
+    monkeypatch.setenv("RUNNING_TESTS", "1")
+    app = srv.app
+    client = TestClient(app)
+    resp = client.post(
+        "/api/public-checker/run",
+        json={"raw_note": "test"},
+        headers={"content-length": "not-a-number"},
+    )
+    assert resp.status_code == 400
+
+
+def test_public_checker_rejects_oversized_body(tmp_path, monkeypatch):
+    """Oversized request body produces 413."""
+    _wire_tmp_dirs(tmp_path, monkeypatch)
+    from starlette.testclient import TestClient
+    import spine_api.server as srv
+    monkeypatch.setenv("SPINE_API_DISABLE_AUTH", "1")
+    monkeypatch.setenv("RUNNING_TESTS", "1")
+    app = srv.app
+    client = TestClient(app)
+    oversized_note = "x" * 300_000  # Exceeds both body-size middleware and max_length
+    resp = client.post(
+        "/api/public-checker/run",
+        json={"raw_note": oversized_note},
+    )
+    assert resp.status_code in (413, 422)  # Middleware or Pydantic validation rejects

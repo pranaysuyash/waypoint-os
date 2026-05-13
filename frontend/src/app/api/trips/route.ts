@@ -10,23 +10,20 @@ import type { SpineRunRequest } from "@/types/generated/spine-api";
 // Set DISABLE_CALL_CAPTURE=true to disable POST /api/trips
 // Read at call time (not module level) so env changes are picked up at runtime
 
+const WORKSPACE_STATUSES = "assigned,in_progress,ready_to_quote,ready_to_book,blocked";
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const view = searchParams.get("view");
 
-    const requestedLimit = Number(searchParams.get("limit") ?? "100");
-    const requestedOffset = Number(searchParams.get("offset") ?? "0");
-
-    // Build upstream query: strip frontend-only params, and for workspace view
-    // fetch a broad set so the local filter can return real totals.
     const upstreamParams = new URLSearchParams(searchParams);
     upstreamParams.delete("view");
 
+    // workspace view: pass workspace statuses to backend so filtering,
+    // pagination, and total are all server-side.
     if (view === "workspace") {
-      upstreamParams.delete("limit");
-      upstreamParams.delete("offset");
-      upstreamParams.set("limit", "10000");
+      upstreamParams.set("status", WORKSPACE_STATUSES);
     }
 
     const query = upstreamParams.toString();
@@ -42,16 +39,7 @@ export async function GET(request: NextRequest) {
     }
 
     const spineApiData = await response.json();
-    let transformedItems = transformSpineTripsResponseToTrips(spineApiData);
-
-    // Server-side view filter - canonical definitions live here
-    if (view === "workspace") {
-      const filtered = transformedItems.filter(isWorkspaceTrip);
-      return bffJson({
-        items: filtered.slice(requestedOffset, requestedOffset + requestedLimit),
-        total: filtered.length,
-      });
-    }
+    const transformedItems = transformSpineTripsResponseToTrips(spineApiData);
 
     return bffJson({
       items: transformedItems,

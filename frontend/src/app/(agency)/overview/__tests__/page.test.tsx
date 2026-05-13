@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, fireEvent } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import OverviewPage from '../page';
 
@@ -127,7 +127,11 @@ const baseSummary = {
   recentTripsLoading: false,
   recentTripsError: null,
   planningTripsTotal: 2,
+  planningTripsLoading: false,
+  planningTripsError: null,
   leadInboxTotal: 5,
+  leadInboxLoading: false,
+  leadInboxError: null,
 };
 
 const mockUseOverviewSummary = vi.fn(() => baseSummary);
@@ -199,7 +203,11 @@ describe('OverviewPage', () => {
       pipeline: [],
       recentTrips: [],
       planningTripsTotal: 0,
+      planningTripsLoading: false,
+      planningTripsError: null,
       leadInboxTotal: 1,
+      leadInboxLoading: false,
+      leadInboxError: null,
     });
 
     render(<OverviewPage />);
@@ -214,7 +222,11 @@ describe('OverviewPage', () => {
       ...baseSummary,
       recentTrips: [],
       planningTripsTotal: 0,
+      planningTripsLoading: false,
+      planningTripsError: null,
       leadInboxTotal: 0,
+      leadInboxLoading: false,
+      leadInboxError: null,
     });
 
     render(<OverviewPage />);
@@ -248,6 +260,70 @@ describe('OverviewPage', () => {
     expect(within(planningCard as HTMLElement).queryByText('Need Trip Options')).not.toBeInTheDocument();
     expect(screen.queryByText('trip_4b9e0d894872')).not.toBeInTheDocument();
     expect(screen.queryByText(/Most in Assigned/i)).not.toBeInTheDocument();
-    expect(screen.getByText('Planning Status · 2 planning')).toBeInTheDocument();
+    expect(screen.getByText('Latest Trips Status · showing 1 of 2')).toBeInTheDocument();
+  });
+
+  it('shows single-stage collapsed pipeline with stage name in copy', () => {
+    mockUseOverviewSummary.mockReturnValue({
+      ...baseSummary,
+      pipeline: [{ label: 'assigned', count: 2 }],
+    });
+
+    render(<OverviewPage />);
+
+    expect(screen.getByText('2 trips in planning · all Waiting for options')).toBeInTheDocument();
+    expect(screen.queryByText('Expand')).not.toBeInTheDocument();
+  });
+
+  it('shows multi-stage collapsed pipeline with legend and Expand button', () => {
+    mockUseOverviewSummary.mockReturnValue({
+      ...baseSummary,
+      pipeline: [
+        { label: 'assigned', count: 3 },
+        { label: 'ready_to_book', count: 1 },
+      ],
+      recentTrips: [],
+      planningTripsTotal: 4,
+    });
+
+    render(<OverviewPage />);
+
+    expect(screen.getByText('Waiting for options · 3')).toBeInTheDocument();
+    expect(screen.getByText('Ready for booking · 1')).toBeInTheDocument();
+    expect(screen.getByText('Expand')).toBeInTheDocument();
+  });
+
+  it('shows expanded pipeline with stage labels after clicking Expand', () => {
+    mockUseOverviewSummary.mockReturnValue({
+      ...baseSummary,
+      pipeline: [
+        { label: 'assigned', count: 1 },
+        { label: 'ready_to_quote', count: 1 },
+      ],
+      recentTrips: [],
+      planningTripsTotal: 2,
+    });
+
+    render(<OverviewPage />);
+
+    expect(screen.getByText('Waiting for options · 1')).toBeInTheDocument();
+    expect(screen.getByText('Ready for quote review · 1')).toBeInTheDocument();
+
+    const expandButton = screen.getByText('Expand');
+    fireEvent.click(expandButton);
+
+    expect(screen.getByText('Collapse')).toBeInTheDocument();
+    expect(screen.getByText('2 total')).toBeInTheDocument();
+  });
+
+  it('does not render actively being built text', () => {
+    mockUseOverviewSummary.mockReturnValue({
+      ...baseSummary,
+      pipeline: [{ label: 'in_progress', count: 5 }],
+    });
+
+    render(<OverviewPage />);
+
+    expect(screen.queryByText(/actively being built/i)).not.toBeInTheDocument();
   });
 });

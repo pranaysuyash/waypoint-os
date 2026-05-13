@@ -15,6 +15,8 @@ import os
 import json
 import pytest
 
+from spine_api.persistence import TEST_AGENCY_ID
+
 from src.security.privacy_guard import (
     check_trip_data,
     PrivacyGuardError,
@@ -283,7 +285,7 @@ class TestGuardOnTripStore:
         trip = {
             "raw_input": {"fixture_id": "test_fixture", "execution_ms": 100},
             "source": "test",
-            "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "agency_id": TEST_AGENCY_ID,
         }
         trip_id = TripStore.save_trip(trip)
         assert trip_id.startswith("trip_")
@@ -305,7 +307,7 @@ class TestGuardOnTripStore:
         fixture_trip = {
             "raw_input": {"fixture_id": "update_test_fixture"},
             "source": "test",
-            "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "agency_id": TEST_AGENCY_ID,
         }
         trip_id = TripStore.save_trip(fixture_trip)
 

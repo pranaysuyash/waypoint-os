@@ -276,15 +276,17 @@ class TestDocumentBestEffort:
 
     @pytest.mark.asyncio
     async def test_accept_succeeds_when_event_emission_fails(self):
-        from spine_api.services import execution_event_service
+        from sqlalchemy.exc import OperationalError
 
-        # Mock begin_nested to simulate savepoint that fails
+        # Mock begin_nested to simulate savepoint that fails with a DB error
         mock_savepoint = AsyncMock()
-        mock_savepoint.__aenter__ = AsyncMock(side_effect=Exception("execution_events table does not exist"))
+        mock_savepoint.__aenter__ = AsyncMock(side_effect=OperationalError("stmt", "params", "table missing"))
         mock_savepoint.__aexit__ = AsyncMock(return_value=False)
 
         db = AsyncMock()
         db.begin_nested = MagicMock(return_value=mock_savepoint)
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
 
         doc = MagicMock()
         doc.id = "doc-1"
@@ -294,16 +296,15 @@ class TestDocumentBestEffort:
         doc.document_type = "passport"
 
         with patch("spine_api.services.document_service.execution_event_service") as mock_ee:
-            # Use the real emit_event_best_effort
+            # Use the real emit_event_best_effort so DB error is caught
+            from spine_api.services import execution_event_service
             mock_ee.emit_event_best_effort = execution_event_service.emit_event_best_effort
-            # Patch emit_event to ensure it would fail if called
-            with patch.object(execution_event_service, "emit_event", new_callable=AsyncMock, side_effect=Exception("table missing")):
-                with patch("spine_api.services.document_service.get_document_by_id", return_value=doc):
-                    from spine_api.services.document_service import accept_document
+            with patch("spine_api.services.document_service.get_document_by_id", return_value=doc):
+                from spine_api.services.document_service import accept_document
 
-                    result = await accept_document(
-                        db, "doc-1", "agency-1", reviewed_by="user-1",
-                    )
+                result = await accept_document(
+                    db, "doc-1", "agency-1", reviewed_by="user-1",
+                )
 
                 # Document operation succeeds despite event failure
                 assert result is doc

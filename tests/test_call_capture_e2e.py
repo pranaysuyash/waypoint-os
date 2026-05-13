@@ -27,6 +27,7 @@ from typing import Optional, Dict, Any
 import pytest
 import uuid
 
+from spine_api.persistence import TEST_AGENCY_ID
 
 class TestCallCaptureFollowUpDueDate:
     """End-to-end tests for call-capture follow_up_due_date feature."""
@@ -66,7 +67,7 @@ class TestCallCaptureFollowUpDueDate:
         trip_id = save_processed_trip(
             spine_output,
             source="intake_panel",
-            agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            agency_id=TEST_AGENCY_ID,
             follow_up_due_date=follow_up_due_date,
             trip_status="new"
         )
@@ -244,7 +245,7 @@ class TestCallCaptureFollowUpDueDate:
                     "meta": {"fixture_id": "async_save_fixture"},
                 },
                 source="test",
-                agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+                agency_id=TEST_AGENCY_ID,
                 trip_status="new",
             )
 
@@ -310,7 +311,7 @@ class TestCallCaptureFollowUpDueDate:
                 },
             },
             source="test_fixture",
-            agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            agency_id=TEST_AGENCY_ID,
             trip_status="new",
         )
 
@@ -374,7 +375,7 @@ class TestCallCaptureFollowUpDueDate:
                 },
             },
             source="test_fixture",
-            agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            agency_id=TEST_AGENCY_ID,
             trip_status="new",
         )
 

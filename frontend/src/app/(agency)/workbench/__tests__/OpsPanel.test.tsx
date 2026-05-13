@@ -145,7 +145,7 @@ describe('OpsPanel', () => {
     mockStore.result_validation = { readiness: READINESS };
     mockApi.generateCollectionLink.mockResolvedValue({
       token_id: 'tok_1',
-      collection_url: 'https://example.com/booking-collection/abc123',
+      collection_url: 'https://example.com/booking-collection/d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b/abc123',
       expires_at: '2026-05-11T00:00:00Z',
       trip_id: 'trip_1',
       status: 'active',
@@ -159,7 +159,7 @@ describe('OpsPanel', () => {
     await waitFor(() => {
       expect(screen.getByTestId('ops-link-info')).toBeInTheDocument();
     });
-    expect(screen.getByTestId('ops-link-url')).toHaveValue('https://example.com/booking-collection/abc123');
+    expect(screen.getByTestId('ops-link-url')).toHaveValue('https://example.com/booking-collection/d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b/abc123');
     expect(screen.getByTestId('ops-copy-link-btn')).toBeInTheDocument();
     expect(screen.getByTestId('ops-revoke-link-btn')).toBeInTheDocument();
     expect(screen.getByTestId('ops-regenerate-link-btn')).toBeInTheDocument();
@@ -170,7 +170,7 @@ describe('OpsPanel', () => {
     mockStore.result_validation = { readiness: READINESS };
     mockApi.generateCollectionLink.mockResolvedValue({
       token_id: 'tok_1',
-      collection_url: 'https://example.com/booking-collection/abc123',
+      collection_url: 'https://example.com/booking-collection/d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b/abc123',
       expires_at: '2026-05-11T00:00:00Z',
       trip_id: 'trip_1',
       status: 'active',

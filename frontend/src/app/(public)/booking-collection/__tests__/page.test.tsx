@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import BookingCollectionPage from '../[token]/page';
+import BookingCollectionPage from '../[agencyId]/[token]/PageClient';
 
 const mockGetForm = vi.fn();
 const mockSubmit = vi.fn();
@@ -21,11 +21,13 @@ const VALID_CONTEXT = {
   },
 };
 
+const TEST_AGENCY_ID = 'd1e3b2b6-5509-4c27-b123-4b1e02b0bf5b';
+
 function makeParams(token: string) {
-  return Promise.resolve({ token });
+  return Promise.resolve({ agencyId: TEST_AGENCY_ID, token });
 }
 
-function makePendingParams(): Promise<{ token: string }> {
+function makePendingParams(): Promise<{ agencyId: string; token: string }> {
   return new Promise(() => {});
 }
 
@@ -107,7 +109,7 @@ describe('BookingCollectionPage', () => {
     await user.click(screen.getByTestId('collection-submit-btn'));
 
     await waitFor(() => {
-      expect(mockSubmit).toHaveBeenCalledWith('valid123', expect.objectContaining({
+      expect(mockSubmit).toHaveBeenCalledWith(TEST_AGENCY_ID, 'valid123', expect.objectContaining({
         travelers: expect.arrayContaining([
           expect.objectContaining({ traveler_id: 'adult_1' }),
         ]),
@@ -158,5 +160,14 @@ describe('BookingCollectionPage', () => {
       expect(screen.getByTestId('collection-invalid')).toBeInTheDocument();
     });
     expect(screen.getByText('Failed to load form. Please try again later.')).toBeInTheDocument();
+  });
+
+  it('passes agency_id to getPublicCollectionForm', async () => {
+    mockGetForm.mockResolvedValue(VALID_CONTEXT);
+    render(<BookingCollectionPage params={makeParams('valid123')} />);
+
+    await waitFor(() => {
+      expect(mockGetForm).toHaveBeenCalledWith(TEST_AGENCY_ID, 'valid123');
+    });
   });
 });

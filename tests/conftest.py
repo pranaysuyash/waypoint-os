@@ -273,11 +273,37 @@ def reset_global_singletons():
 
     yield
 
+# ---------------------------------------------------------------------------
+# Async database session fixture for tests that need real PostgreSQL
+# ---------------------------------------------------------------------------
+
+
+import pytest_asyncio
+
+
+@pytest_asyncio.fixture
+async def db_session():
+    """Yield a fresh AsyncSession tied to the app engine.
+
+    Rolls back on exit to keep the database clean.
+    Mark tests with @pytest.mark.require_postgres if they need
+    a running PostgreSQL instance.
+    """
+    from spine_api.core.database import async_session_maker
+
+    session = async_session_maker()
+    try:
+        yield session
+    finally:
+        await session.rollback()
+        await session.close()
+
 
 # ---------------------------------------------------------------------------
 # Postgres availability check
 # Auto-skips tests requiring a running PostgreSQL when unavailable.
 # ---------------------------------------------------------------------------
+
 
 def _is_postgres_available() -> bool:
     import socket

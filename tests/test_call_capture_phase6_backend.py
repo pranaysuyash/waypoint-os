@@ -13,7 +13,7 @@ Test coverage for GET /trips/{trip_id}/activities/provenance endpoint:
 
 import pytest
 from fastapi.testclient import TestClient
-from spine_api.persistence import TripStore
+from spine_api.persistence import TripStore, TEST_AGENCY_ID
 from datetime import datetime, timezone
 
 
@@ -26,9 +26,9 @@ def test_trip_id():
         "destination": "Singapore",
         "status": "in_progress",
         "activity_provenance": "Hiking, Marina Bay Sands, Hawker Food Tour",
-        "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "agency_id": TEST_AGENCY_ID,
     }
-    trip_id = TripStore.save_trip(trip_data, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+    trip_id = TripStore.save_trip(trip_data, agency_id=TEST_AGENCY_ID)
     yield trip_id
     # Cleanup
     import os
@@ -47,9 +47,9 @@ def test_trip_empty():
         "traveler_name": "Empty Trip",
         "destination": "Paris",
         "status": "in_progress",
-        "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "agency_id": TEST_AGENCY_ID,
     }
-    trip_id = TripStore.save_trip(trip_data, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+    trip_id = TripStore.save_trip(trip_data, agency_id=TEST_AGENCY_ID)
     yield trip_id
     # Cleanup
     import os
@@ -159,9 +159,9 @@ def test_get_activities_provenance_whitespace_handling(session_client):
         "destination": "Tokyo",
         "status": "in_progress",
         "activity_provenance": "  Sumo Wrestling  ,  Temple Visit  ,  Karaoke  ",
-        "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "agency_id": TEST_AGENCY_ID,
     }
-    trip_id = TripStore.save_trip(trip_data, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+    trip_id = TripStore.save_trip(trip_data, agency_id=TEST_AGENCY_ID)
     
     try:
         response = session_client.get(f"/trips/{trip_id}/activities/provenance")
@@ -197,9 +197,9 @@ def test_get_activities_provenance_single_activity(session_client):
         "destination": "Barcelona",
         "status": "in_progress",
         "activity_provenance": "Beach Day",
-        "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "agency_id": TEST_AGENCY_ID,
     }
-    trip_id = TripStore.save_trip(trip_data, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+    trip_id = TripStore.save_trip(trip_data, agency_id=TEST_AGENCY_ID)
     
     try:
         response = session_client.get(f"/trips/{trip_id}/activities/provenance")

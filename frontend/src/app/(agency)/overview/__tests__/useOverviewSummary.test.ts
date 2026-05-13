@@ -12,17 +12,12 @@ vi.mock('@/hooks/useGovernance', () => ({
   useReviews: vi.fn(),
 }));
 
-vi.mock('@/hooks/useUnifiedState', () => ({
-  useUnifiedState: vi.fn(),
-}));
-
 vi.mock('@/hooks/useIntegrityIssues', () => ({
   useIntegrityIssues: vi.fn(),
 }));
 
 import { useTrips, usePipeline } from '@/hooks/useTrips';
 import { useInboxTrips, useReviews } from '@/hooks/useGovernance';
-import { useUnifiedState } from '@/hooks/useUnifiedState';
 import { useIntegrityIssues } from '@/hooks/useIntegrityIssues';
 
 describe('useOverviewSummary', () => {
@@ -58,30 +53,6 @@ describe('useOverviewSummary', () => {
       assignTrips: vi.fn(),
       bulkAction: vi.fn(),
       snoozeTrip: vi.fn(),
-    });
-
-    vi.mocked(useUnifiedState).mockReturnValue({
-      state: {
-        canonical_total: 7,
-        stages: {
-          new: 2,
-          assigned: 3,
-          in_progress: 2,
-          completed: 0,
-          cancelled: 0,
-        },
-        sla_breached: 0,
-        orphans: [{ id: 'orphan-1' }],
-        integrity_meta: {
-          sum_stages: 7,
-          orphan_count: 1,
-          consistent: true,
-        },
-      },
-      loading: false,
-      error: null,
-      refresh: vi.fn(),
-      isConsistent: true,
     });
 
     vi.mocked(useIntegrityIssues).mockReturnValue({

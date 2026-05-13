@@ -183,7 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     id="modal-password"
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => patchLoginForm({ password: e.target.value })}
                     autoComplete="current-password"
                     required
                     className="w-full rounded-lg bg-[#080a0c] border border-[#1f2630] text-[#e6edf3] px-3 py-2 pr-16 text-sm outline-none focus:border-[#58a6ff] focus:ring-2 focus:ring-[#58a6ff]/20"
@@ -191,7 +191,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword((v) => !v)}
+                    onClick={() => patchLoginForm({ showPassword: !showPassword })}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#58a6ff] hover:text-[#79b8ff]"
                   >
                     {showPassword ? "Hide" : "Show"}

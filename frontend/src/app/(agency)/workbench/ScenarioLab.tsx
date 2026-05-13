@@ -105,7 +105,7 @@ function ScenarioLabInner() {
     setInputItineraryText(detail.input.itinerary_text ?? '');
     setScenarioId(detail.id);
     updateConfigParams(detail.input.stage, detail.input.mode, detail.id);
-    setScenarioLabStatus(`Loaded ${title ?? detail.id} into intake`);
+    dispatchOp({ type: 'set-status', status: `Loaded ${title ?? detail.id} into intake` });
   };
 
   const handleLoadScenario = async () => {

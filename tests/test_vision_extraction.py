@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 
+from spine_api.persistence import TEST_AGENCY_ID
 from spine_api.services.extraction_service import (
     ExtractionResult,
     NoopExtractor,
@@ -248,7 +249,7 @@ class TestFailedExtraction:
 
         trip_data = {
             "source": "test_vision_failed",
-            "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "agency_id": TEST_AGENCY_ID,
             "status": "assigned",
             "stage": "proposal",
             "extracted": {},
@@ -257,7 +258,7 @@ class TestFailedExtraction:
             "raw_input": {},
             "booking_data": {"travelers": []},
         }
-        trip_id = TripStore.save_trip(trip_data, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+        trip_id = TripStore.save_trip(trip_data, agency_id=TEST_AGENCY_ID)
 
         # Upload and accept a document
         resp = session_client.post(
@@ -302,7 +303,7 @@ class TestFailedExtraction:
 
         trip_data = {
             "source": "test_vision_retry_block",
-            "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "agency_id": TEST_AGENCY_ID,
             "status": "assigned",
             "stage": "proposal",
             "extracted": {},
@@ -311,7 +312,7 @@ class TestFailedExtraction:
             "raw_input": {},
             "booking_data": {"travelers": []},
         }
-        trip_id = TripStore.save_trip(trip_data, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+        trip_id = TripStore.save_trip(trip_data, agency_id=TEST_AGENCY_ID)
 
         # Upload and accept a document
         resp = session_client.post(
@@ -359,7 +360,7 @@ class TestMIMEPrevalidation:
 
         trip_data = {
             "source": "test_mime_pdf_4e",
-            "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "agency_id": TEST_AGENCY_ID,
             "status": "assigned",
             "stage": "proposal",
             "extracted": {},
@@ -368,7 +369,7 @@ class TestMIMEPrevalidation:
             "raw_input": {},
             "booking_data": {"travelers": []},
         }
-        trip_id = TripStore.save_trip(trip_data, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+        trip_id = TripStore.save_trip(trip_data, agency_id=TEST_AGENCY_ID)
 
         # Upload a PDF document and accept it
         pdf_bytes = b"%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\n%%EOF\n"
@@ -411,7 +412,7 @@ class TestMIMEPrevalidation:
 
         trip_data = {
             "source": "test_mime_jpeg",
-            "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "agency_id": TEST_AGENCY_ID,
             "status": "assigned",
             "stage": "proposal",
             "extracted": {},
@@ -420,7 +421,7 @@ class TestMIMEPrevalidation:
             "raw_input": {},
             "booking_data": {"travelers": []},
         }
-        trip_id = TripStore.save_trip(trip_data, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+        trip_id = TripStore.save_trip(trip_data, agency_id=TEST_AGENCY_ID)
 
         # Upload a JPEG and accept
         jpeg_bytes = b"\xff\xd8\xff\xe0" + b"\x00" * 100
@@ -578,7 +579,7 @@ class TestSchemaValidationProof:
 
         trip_data = {
             "source": "test_schema_validation_proof",
-            "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "agency_id": TEST_AGENCY_ID,
             "status": "assigned",
             "stage": "proposal",
             "extracted": {},
@@ -587,7 +588,7 @@ class TestSchemaValidationProof:
             "raw_input": {},
             "booking_data": {"travelers": [{"traveler_id": "t1", "full_name": "Original"}]},
         }
-        trip_id = TripStore.save_trip(trip_data, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+        trip_id = TripStore.save_trip(trip_data, agency_id=TEST_AGENCY_ID)
 
         # Upload and accept a JPEG passport
         resp = session_client.post(

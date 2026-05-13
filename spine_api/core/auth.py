@@ -9,12 +9,13 @@ Provides:
 """
 
 import os
+from contextvars import ContextVar
 from typing import Optional
 
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from spine_api.core.database import get_db
 from spine_api.core.security import decode_token_safe
@@ -23,6 +24,11 @@ from spine_api.core.rls import set_rls_agency
 
 # Security scheme for Swagger docs
 security_bearer = HTTPBearer(auto_error=False)
+
+# JWT-provisional agency_id: set by get_current_user from the JWT payload,
+# used by get_current_membership to set app.current_agency_id before querying
+# the memberships table (which is FORCE RLS protected).
+_jwt_agency_id: ContextVar[Optional[str]] = ContextVar("_jwt_agency_id", default=None)
 
 
 async def get_current_user(
@@ -66,6 +72,9 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Store JWT's agency_id for get_current_membership to set RLS context
+    _jwt_agency_id.set(payload.get("agency_id"))
+
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 
@@ -102,6 +111,14 @@ async def get_current_membership(
     Get the user's primary membership (the agency they're currently operating in).
     If user has multiple memberships, returns the one marked is_primary=True.
     """
+    # Set RLS context from JWT before querying memberships (FORCE RLS requires it)
+    jwt_agency_id = _jwt_agency_id.get()
+    if jwt_agency_id:
+        await db.execute(
+            text("SELECT set_config('app.current_agency_id', :agency_id, true)"),
+            {"agency_id": jwt_agency_id},
+        )
+
     result = await db.execute(
         select(Membership)
         .where(Membership.user_id == user.id)
@@ -141,16 +158,16 @@ async def get_current_agency(
 ) -> "Agency":
     """Return the current agency object for the authenticated user."""
     from spine_api.models.tenant import Agency
-    
+
     result = await db.execute(select(Agency).where(Agency.id == agency_id))
     agency = result.scalar_one_or_none()
-    
+
     if not agency:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Agency not found",
         )
-    
+
     return agency
 
 

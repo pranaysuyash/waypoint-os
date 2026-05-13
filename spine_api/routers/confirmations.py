@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from spine_api.core.rls import get_rls_db
 from spine_api.core.auth import get_current_agency_id, require_permission, get_current_membership
-from spine_api.models.tenant import Membership
+from spine_api.models.tenant import EVENT_CATEGORIES, Membership
 from spine_api.services import confirmation_service, execution_event_service
 
 logger = logging.getLogger("spine_api.confirmations")
@@ -281,11 +281,18 @@ async def void_confirmation(
 async def get_execution_timeline(
     trip_id: str,
     category: Optional[str] = None,
+    actor_type: Optional[str] = None,
     agency_id: str = Depends(get_current_agency_id),
     membership=require_permission("trips:read"),
     db: AsyncSession = Depends(get_rls_db),
 ):
-    result = await execution_event_service.get_timeline(db, trip_id, agency_id, category)
+    if actor_type is not None and actor_type not in ("agent", "system"):
+        raise HTTPException(status_code=422, detail=f"Invalid actor_type: {actor_type}")
+    if category is not None and category not in EVENT_CATEGORIES:
+        raise HTTPException(status_code=422, detail=f"Invalid category: {category}")
+    result = await execution_event_service.get_timeline(
+        db, trip_id, agency_id, category=category, actor_type=actor_type,
+    )
     return {
         "ok": True,
         "events": [_timeline_event_to_dict(e) for e in result.events],

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ClientTime } from '@/hooks/useClientDate';
 import {
   CheckCircle,
@@ -17,6 +17,8 @@ import {
   Layers,
   XCircle,
   RotateCcw,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   getExecutionTimeline,
@@ -32,6 +34,12 @@ const CATEGORY_LABELS: Record<string, string> = {
   document: "Documents",
   extraction: "Extractions",
 };
+
+const ACTOR_FILTERS = [
+  { key: "all", label: "All actors" },
+  { key: "agent", label: "Agent actions" },
+  { key: "system", label: "System events" },
+] as const;
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   task_created: "Created",
@@ -103,6 +111,54 @@ const STATUS_COLOR: Record<string, string> = {
   success: "text-emerald-400",
 };
 
+// ── Metadata display allowlist (defense-in-depth) ────────────────────────────
+
+const METADATA_LABELS: Record<string, string> = {
+  task_type: "Task type",
+  confirmation_type: "Confirmation type",
+  document_type: "Document type",
+  provider: "Provider",
+  model: "Model",
+  blocker_code: "Blocker",
+  evidence_ref_count: "Evidence refs",
+  size_bytes: "File size",
+  mime_type: "MIME type",
+  uploaded_by_type: "Uploaded by",
+  scan_status: "Scan status",
+  review_notes_present: "Has notes",
+  storage_delete_status: "Storage status",
+  run_count: "Run count",
+  attempt_count: "Attempt count",
+  overall_confidence: "Confidence",
+  field_count: "Fields found",
+  latency_ms: "Latency",
+  cost_estimate_usd: "Cost",
+  error_code: "Error code",
+  attempt_number: "Attempt #",
+  fallback_rank: "Fallback rank",
+  fields_applied_count: "Fields applied",
+  allow_overwrite: "Overwrite allowed",
+};
+
+const SAFE_METADATA_KEYS = new Set(Object.keys(METADATA_LABELS));
+
+function formatMetadataValue(key: string, value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  if (key === "size_bytes") return `${(Number(value) / 1024).toFixed(1)} KB`;
+  if (key === "latency_ms") return `${value}ms`;
+  if (key === "cost_estimate_usd" && value != null) return `$${Number(value).toFixed(4)}`;
+  if (key === "overall_confidence" && value != null) return `${Math.round(Number(value) * 100)}%`;
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return String(value);
+}
+
+// ── Date grouping helper ─────────────────────────────────────────────────────
+
+function formatDateHeader(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 interface ExecutionTimelinePanelProps {
@@ -115,12 +171,14 @@ export default function ExecutionTimelinePanel({ tripId }: ExecutionTimelinePane
   const [summary, setSummary] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("all");
+  const [activeActor, setActiveActor] = useState("all");
   const [error, setError] = useState<string | null>(null);
 
   const fetchTimeline = useCallback(async () => {
     try {
       const cat = activeCategory === "all" ? undefined : activeCategory;
-      const res = await getExecutionTimeline(tripId, cat);
+      const actor = activeActor === "all" ? undefined : activeActor;
+      const res = await getExecutionTimeline(tripId, cat, actor);
       setEvents(res.events);
       setSummary(res.summary);
     } catch {
@@ -128,11 +186,21 @@ export default function ExecutionTimelinePanel({ tripId }: ExecutionTimelinePane
     } finally {
       setLoading(false);
     }
-  }, [tripId, activeCategory]);
+  }, [tripId, activeCategory, activeActor]);
 
   useEffect(() => {
     fetchTimeline();
   }, [fetchTimeline]);
+
+  const groupedEvents = useMemo(() => {
+    const groups: Record<string, ExecutionTimelineEvent[]> = {};
+    for (const event of events) {
+      const date = event.timestamp.split("T")[0];
+      if (!groups[date]) groups[date] = [];
+      groups[date].push(event);
+    }
+    return groups;
+  }, [events]);
 
   return loading ? (
       <div className="bg-elevated border border-border-default rounded-xl p-4">
@@ -176,20 +244,42 @@ export default function ExecutionTimelinePanel({ tripId }: ExecutionTimelinePane
         })}
       </div>
 
+      {/* Actor filter chips */}
+      <div className="flex gap-1 flex-wrap">
+        {ACTOR_FILTERS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setActiveActor(key)}
+            className={`text-[10px] px-2 py-0.5 rounded ${
+              activeActor === key
+                ? "bg-zinc-700 text-zinc-200"
+                : "bg-zinc-800/50 text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Error */}
       {error && (
         <div className="text-xs text-red-400 bg-red-900/20 rounded p-2">{error}</div>
       )}
 
-      {/* Events */}
+      {/* Events grouped by date */}
       {events.length === 0 ? (
         <div className="text-xs text-zinc-500 py-2">
           No execution events yet. Generate tasks or add confirmations to see timeline activity.
         </div>
       ) : (
-        <div className="space-y-0.5 max-h-64 overflow-y-auto">
-          {events.map((event) => (
-            <TimelineRow key={`evt-${event.subject_id}-${event.timestamp}`} event={event} />
+        <div className="space-y-1 max-h-72 overflow-y-auto">
+          {Object.entries(groupedEvents).map(([date, dateEvents]) => (
+            <div key={date}>
+              <div className="text-[10px] text-zinc-500 px-2 py-1">{formatDateHeader(date)}</div>
+              {dateEvents.map((event) => (
+                <TimelineRow key={`evt-${event.subject_id}-${event.timestamp}`} event={event} />
+              ))}
+            </div>
           ))}
         </div>
       )}
@@ -200,6 +290,7 @@ export default function ExecutionTimelinePanel({ tripId }: ExecutionTimelinePane
 // ── Timeline row ─────────────────────────────────────────────────────────────
 
 function TimelineRow({ event }: { event: ExecutionTimelineEvent }) {
+  const [expanded, setExpanded] = useState(false);
   const statusTo = event.status_to;
   const Icon = STATUS_ICON[statusTo] ?? Circle;
   const color = STATUS_COLOR[statusTo] ?? "text-zinc-400";
@@ -216,14 +307,39 @@ function TimelineRow({ event }: { event: ExecutionTimelineEvent }) {
     ? <ClientTime value={event.timestamp} options={{ hour: "2-digit", minute: "2-digit" }} />
     : "";
 
+  const hasMetadata = event.event_metadata && Object.keys(event.event_metadata).length > 0;
+
   return (
-    <div className="flex items-center gap-2 px-2 py-1 rounded text-xs">
-      <Icon className={`size-3 shrink-0 ${color}`} />
-      <span className="text-zinc-200 flex-1 truncate">
-        {subjectLabel} {typeLabel.toLowerCase()}
-      </span>
-      <span className="text-[10px] text-zinc-500">{actor}</span>
-      <span className="text-[10px] text-zinc-600">{ts}</span>
+    <div>
+      <div
+        className={`flex items-center gap-2 px-2 py-1 rounded text-xs ${hasMetadata ? "cursor-pointer hover:bg-zinc-800/50" : ""}`}
+        onClick={() => hasMetadata && setExpanded(!expanded)}
+      >
+        {hasMetadata && (
+          expanded
+            ? <ChevronDown className="size-3 shrink-0 text-zinc-600" />
+            : <ChevronRight className="size-3 shrink-0 text-zinc-600" />
+        )}
+        {!hasMetadata && <span className="w-3" />}
+        <Icon className={`size-3 shrink-0 ${color}`} />
+        <span className="text-zinc-200 flex-1 truncate">
+          {subjectLabel} {typeLabel.toLowerCase()}
+        </span>
+        <span className="text-[10px] text-zinc-500">{actor}</span>
+        <span className="text-[10px] text-zinc-600">{ts}</span>
+      </div>
+      {expanded && event.event_metadata && (
+        <div className="ml-6 mt-1 space-y-0.5">
+          {Object.entries(event.event_metadata)
+            .filter(([key]) => SAFE_METADATA_KEYS.has(key))
+            .map(([key, value]) => (
+              <div key={key} className="flex gap-2 text-[10px]">
+                <span className="text-zinc-500">{METADATA_LABELS[key]}</span>
+                <span className="text-zinc-300">{formatMetadataValue(key, value)}</span>
+              </div>
+            ))}
+        </div>
+      )}
     </div>
   );
 }

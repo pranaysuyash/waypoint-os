@@ -4,15 +4,17 @@ FastAPI middleware for Waypoint OS.
 Provides:
 - AuthMiddleware: Enforces authentication on all routes except public paths.
   Uses a pure-ASGI approach to avoid BaseHTTPMiddleware body-consumption issues.
+- RequestBodySizeMiddleware: Enforces maximum request body size at the ASGI
+  level by counting received bytes before they reach the application.
 """
 
 import logging
 from typing import Awaitable, Callable
 
-from fastapi import Request, status
+from fastapi import HTTPException, Request, status
 from sqlalchemy import select
 from starlette.responses import JSONResponse
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from spine_api.core.database import async_session_maker
 from spine_api.core.security import decode_token_safe
@@ -114,3 +116,58 @@ class AuthMiddleware:
             scope["state"]["user"] = user
 
         await self.app(scope, receive, send)
+
+
+class RequestBodySizeMiddleware:
+    """
+    ASGI middleware that enforces a maximum request body size.
+
+    Counts bytes as they arrive via receive(), rejecting oversized bodies
+    before the application can parse them. This is more robust than checking
+    Content-Length alone (which can be omitted, duplicated, or spoofed).
+
+    Public checker paths get a tighter limit; all other paths use a larger limit.
+    """
+
+    _PUBLIC_CHECKER_PREFIX = "/api/public-checker"
+    _DEFAULT_MAX_BYTES = 5 * 1024 * 1024  # 5 MB
+    _PUBLIC_CHECKER_MAX_BYTES = 512 * 1024  # 512 KB
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path", "")
+        max_bytes = (
+            self._PUBLIC_CHECKER_MAX_BYTES
+            if path.startswith(self._PUBLIC_CHECKER_PREFIX)
+            else self._DEFAULT_MAX_BYTES
+        )
+
+        bytes_read = 0
+
+        async def sized_receive() -> Message:
+            nonlocal bytes_read
+            message = await receive()
+            if message["type"] == "http.request":
+                chunk = message.get("body", b"")
+                bytes_read += len(chunk)
+                if bytes_read > max_bytes:
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail="Request body too large",
+                    )
+            return message
+
+        try:
+            await self.app(scope, sized_receive, send)
+        except HTTPException as exc:
+            response = JSONResponse(
+                status_code=exc.status_code,
+                content={"detail": exc.detail},
+            )
+            await response(scope, receive, send)

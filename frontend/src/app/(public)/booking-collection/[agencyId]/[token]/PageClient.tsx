@@ -39,6 +39,7 @@ function formFieldsReducer(state: FormFieldsState, action: FormFieldsAction): Fo
 }
 
 type CollectionState = {
+  agencyId: string | null;
   token: string | null;
   formState: FormState;
   invalidReason: string;
@@ -52,7 +53,7 @@ type CollectionState = {
 };
 
 type CollectionAction =
-  | { type: 'TOKEN_LOADED'; token: string }
+  | { type: 'PARAMS_LOADED'; agencyId: string; token: string }
   | { type: 'FORM_INVALID'; reason: string }
   | { type: 'FORM_ALREADY_SUBMITTED' }
   | { type: 'FORM_ACTIVE'; tripSummary: TripSummary }
@@ -65,6 +66,7 @@ type CollectionAction =
   | { type: 'SET_DOC_TYPE'; docType: string };
 
 const initialCollectionState: CollectionState = {
+  agencyId: null,
   token: null,
   formState: 'loading',
   invalidReason: '',
@@ -79,8 +81,8 @@ const initialCollectionState: CollectionState = {
 
 function collectionReducer(state: CollectionState, action: CollectionAction): CollectionState {
   switch (action.type) {
-    case 'TOKEN_LOADED':
-      return { ...state, token: action.token };
+    case 'PARAMS_LOADED':
+      return { ...state, agencyId: action.agencyId, token: action.token };
     case 'FORM_INVALID':
       return { ...state, formState: 'invalid', invalidReason: action.reason };
     case 'FORM_ALREADY_SUBMITTED':
@@ -444,10 +446,11 @@ function ActiveCollectionForm({
 export default function BookingCollectionPage({
   params,
 }: {
-  params: Promise<{ token: string }>;
+  params: Promise<{ agencyId: string; token: string }>;
 }) {
   const [state, dispatchCollection] = useReducer(collectionReducer, initialCollectionState);
   const {
+    agencyId,
     token,
     formState,
     invalidReason,
@@ -477,7 +480,7 @@ export default function BookingCollectionPage({
 
     params.then((p) => {
       if (!cancelled) {
-        dispatchCollection({ type: 'TOKEN_LOADED', token: p.token });
+        dispatchCollection({ type: 'PARAMS_LOADED', agencyId: p.agencyId, token: p.token });
       }
     });
 
@@ -487,9 +490,9 @@ export default function BookingCollectionPage({
   }, [params]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !agencyId) return;
     let cancelled = false;
-    getPublicCollectionForm(token)
+    getPublicCollectionForm(agencyId, token)
       .then((ctx) => {
         if (cancelled) return;
         if (!ctx.valid) {
@@ -518,10 +521,10 @@ export default function BookingCollectionPage({
         }
       });
     return () => { cancelled = true; };
-  }, [token]);
+  }, [agencyId, token]);
 
   const handleSubmit = useCallback(async () => {
-    if (!token) return;
+    if (!token || !agencyId) return;
     const data: BookingData = {
       travelers: fields.travelers,
       payer: fields.payerName ? { name: fields.payerName, email: fields.payerEmail || null, phone: fields.payerPhone || null } : null,
@@ -529,15 +532,15 @@ export default function BookingCollectionPage({
     };
     dispatchCollection({ type: 'SUBMIT_STARTED' });
     try {
-      await submitPublicBookingData(token, data);
+      await submitPublicBookingData(agencyId, token, data);
       dispatchCollection({ type: 'SUBMIT_SUCCEEDED' });
     } catch (e) {
       dispatchCollection({ type: 'SUBMIT_FAILED', error: e instanceof Error ? e.message : 'Submission failed' });
     }
-  }, [token, fields.travelers, fields.payerName, fields.payerEmail, fields.payerPhone, fields.specialReqs]);
+  }, [agencyId, token, fields.travelers, fields.payerName, fields.payerEmail, fields.payerPhone, fields.specialReqs]);
 
   const handleDocUpload = useCallback(async () => {
-    if (!token) return;
+    if (!token || !agencyId) return;
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.pdf,.jpg,.jpeg,.png';
@@ -546,14 +549,14 @@ export default function BookingCollectionPage({
       if (!file) return;
       dispatchCollection({ type: 'DOC_UPLOAD_STARTED' });
       try {
-        const resp = await uploadPublicDocument(token, file, docType);
+        const resp = await uploadPublicDocument(agencyId, token, file, docType);
         dispatchCollection({ type: 'DOC_UPLOAD_SUCCEEDED', document: resp });
       } catch (e) {
         dispatchCollection({ type: 'DOC_UPLOAD_FAILED', error: e instanceof Error ? e.message : 'Upload failed' });
       }
     };
     input.click();
-  }, [token, docType]);
+  }, [agencyId, token, docType]);
 
   if (formState === 'loading') {
     return (

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from spine_api.persistence import TEST_AGENCY_ID
+
 
 def test_get_trip_agent_events_filters_and_returns_payload(session_client, monkeypatch):
     import server
 
     trip_id = "trip_agent_evt_1"
-    agency_id = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+    agency_id = TEST_AGENCY_ID
 
     def _fake_get_trip(_trip_id: str):
         return {"id": trip_id, "agency_id": agency_id}

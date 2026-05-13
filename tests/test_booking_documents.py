@@ -16,7 +16,10 @@ from pathlib import Path
 from unittest.mock import MagicMock, AsyncMock, patch
 
 
-AGENCY_ID = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+from spine_api.persistence import TEST_AGENCY_ID
+
+
+AGENCY_ID = TEST_AGENCY_ID
 TRIP_ID = "test-doc-trip-001"
 
 
@@ -269,6 +272,13 @@ class TestDocumentService:
         mock_db = MagicMock()
         mock_db.commit = AsyncMock(return_value=None)
         mock_db.refresh = AsyncMock(return_value=None)
+        mock_db.flush = AsyncMock(return_value=None)
+        mock_db.add = MagicMock(return_value=None)
+        # Mock begin_nested for emit_event_best_effort savepoint
+        mock_savepoint = AsyncMock()
+        mock_savepoint.__aenter__ = AsyncMock(return_value=None)
+        mock_savepoint.__aexit__ = AsyncMock(return_value=False)
+        mock_db.begin_nested = MagicMock(return_value=mock_savepoint)
 
         with patch("spine_api.services.document_service.get_document_storage") as mock_storage_fn:
             mock_storage = MagicMock()

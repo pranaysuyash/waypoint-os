@@ -14,7 +14,7 @@ from spine_api.services.document_service import (
     upload_document,
     validate_file_upload,
 )
-from spine_api.core.database import async_session_maker
+from spine_api.core.rls import rls_session
 
 try:
     from spine_api import persistence
@@ -104,11 +104,11 @@ async def _ts(fn, *args, **kwargs):
     return await asyncio.to_thread(fn, *args, **kwargs)
 
 
-@router.get("/api/public/booking-collection/{token}", response_model=PublicCollectionContext)
+@router.get("/api/public/booking-collection/{agency_id}/{token}", response_model=PublicCollectionContext)
 @limiter.limit("20/minute")
-async def get_public_collection_form(request: Request, response: Response, token: str):
+async def get_public_collection_form(request: Request, response: Response, agency_id: str, token: str):
     """Customer loads form context. No auth required. Shows safe trip summary only."""
-    async with async_session_maker() as db:
+    async with rls_session(agency_id) as db:
         record = await validate_token(db, token)
 
     if not record:
@@ -143,11 +143,11 @@ async def get_public_collection_form(request: Request, response: Response, token
     )
 
 
-@router.post("/api/public/booking-collection/{token}/submit", response_model=PublicSubmissionResponse)
+@router.post("/api/public/booking-collection/{agency_id}/{token}/submit", response_model=PublicSubmissionResponse)
 @limiter.limit("5/minute")
-async def submit_public_booking_data(request: Request, response: Response, token: str, payload: PublicBookingDataSubmitRequest):
+async def submit_public_booking_data(request: Request, response: Response, agency_id: str, token: str, payload: PublicBookingDataSubmitRequest):
     """Customer submits booking data. No auth. Writes to pending_booking_data."""
-    async with async_session_maker() as db:
+    async with rls_session(agency_id) as db:
         record = await validate_token(db, token)
     if not record:
         raise HTTPException(status_code=410, detail="invalid")
@@ -165,7 +165,7 @@ async def submit_public_booking_data(request: Request, response: Response, token
 
     await _ts(persistence.TripStore.update_trip, record.trip_id, {"pending_booking_data": bd_dict})
 
-    async with async_session_maker() as db:
+    async with rls_session(agency_id) as db:
         await mark_token_used(db, record.id)
 
     persistence.AuditStore.log_event("customer_booking_data_submitted", record.agency_id, {
@@ -184,11 +184,12 @@ async def submit_public_booking_data(request: Request, response: Response, token
     )
 
 
-@router.post("/api/public/booking-collection/{token}/documents", response_model=CustomerDocumentResponse)
+@router.post("/api/public/booking-collection/{agency_id}/{token}/documents", response_model=CustomerDocumentResponse)
 @limiter.limit("10/minute")
 async def upload_public_document(
     request: Request,
     response: Response,
+    agency_id: str,
     token: str,
     document_type: str = Form(...),
     file: UploadFile = File(...),
@@ -197,7 +198,7 @@ async def upload_public_document(
 
     Token is NOT consumed — stays active for booking-data submit.
     """
-    async with async_session_maker() as db:
+    async with rls_session(agency_id) as db:
         record = await validate_token(db, token)
     if not record:
         raise HTTPException(status_code=410, detail="invalid")
@@ -210,7 +211,7 @@ async def upload_public_document(
     ext = sanitize_extension(file.filename)
     filename_hash = hashlib.sha256((file.filename or "").encode()).hexdigest()
 
-    async with async_session_maker() as db:
+    async with rls_session(agency_id) as db:
         doc = await upload_document(
             db,
             trip_id=record.trip_id,

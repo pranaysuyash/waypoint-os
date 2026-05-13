@@ -235,6 +235,7 @@ function tripTypeValue(spineTrip: unknown): unknown {
     getNestedValue(spineTrip, "extracted.facts.trip_purpose.value.0", undefined),
     extractedValue(spineTrip, "primary_intent", undefined),
     extractedValue(spineTrip, "trip_purpose", undefined),
+    getNestedValue(spineTrip, "type", undefined),
     "leisure"
   );
 }
@@ -246,6 +247,7 @@ function partySizeValue(spineTrip: unknown): unknown {
     getNestedValue(spineTrip, "extracted.trip_metadata.party_profile.size", undefined),
     extractedValue(spineTrip, "party_size", undefined),
     getNestedValue(spineTrip, "extracted.party_profile.size", undefined),
+    getNestedValue(spineTrip, "party", undefined),
     1
   );
 }

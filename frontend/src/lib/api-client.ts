@@ -960,18 +960,19 @@ export async function rejectPendingBookingData(
 }
 
 // Public endpoints (direct to backend, no auth)
-export async function getPublicCollectionForm(token: string): Promise<PublicCollectionContext> {
-  const url = `${SPINE_API_URL}/api/public/booking-collection/${encodeURIComponent(token)}`;
+export async function getPublicCollectionForm(agencyId: string, token: string): Promise<PublicCollectionContext> {
+  const url = `${SPINE_API_URL}/api/public/booking-collection/${encodeURIComponent(agencyId)}/${encodeURIComponent(token)}`;
   const res = await fetch(url, { credentials: 'omit' });
   if (!res.ok) throw new Error(`Failed to load collection form (${res.status})`);
   return res.json();
 }
 
 export async function submitPublicBookingData(
+  agencyId: string,
   token: string,
   data: BookingData,
 ): Promise<{ ok: boolean; message: string }> {
-  const url = `${SPINE_API_URL}/api/public/booking-collection/${encodeURIComponent(token)}/submit`;
+  const url = `${SPINE_API_URL}/api/public/booking-collection/${encodeURIComponent(agencyId)}/${encodeURIComponent(token)}/submit`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1218,6 +1219,7 @@ export async function retryExtraction(
 // Public customer document upload (direct to backend, no auth)
 
 export async function uploadPublicDocument(
+  agencyId: string,
   token: string,
   file: File,
   documentType: string,
@@ -1226,7 +1228,7 @@ export async function uploadPublicDocument(
   formData.append('file', file);
   formData.append('document_type', documentType);
 
-  const url = `${SPINE_API_URL}/api/public/booking-collection/${encodeURIComponent(token)}/documents`;
+  const url = `${SPINE_API_URL}/api/public/booking-collection/${encodeURIComponent(agencyId)}/${encodeURIComponent(token)}/documents`;
   const res = await fetch(url, {
     method: 'POST',
     credentials: 'omit',
@@ -1469,11 +1471,16 @@ export async function voidConfirmation(
 export async function getExecutionTimeline(
   tripId: string,
   category?: string,
+  actorType?: string,
 ): Promise<{
   ok: boolean;
   events: ExecutionTimelineEvent[];
   summary: Record<string, number>;
 }> {
-  const params = category ? `?category=${category}` : "";
+  const sp = new URLSearchParams();
+  if (category) sp.set("category", category);
+  if (actorType) sp.set("actor_type", actorType);
+  const qs = sp.toString();
+  const params = qs ? `?${qs}` : "";
   return api.get(`/api/trips/${tripId}/execution-timeline${params}`);
 }

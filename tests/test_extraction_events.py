@@ -232,17 +232,18 @@ class TestExtractionBestEffort:
 
     @pytest.mark.asyncio
     async def test_best_effort_catches_exceptions_isolated(self):
+        from sqlalchemy.exc import OperationalError
         from spine_api.services.execution_event_service import emit_event_best_effort
 
-        # Mock begin_nested to simulate savepoint that fails
+        # Mock begin_nested to simulate savepoint that fails with a DB error
         mock_savepoint = AsyncMock()
-        mock_savepoint.__aenter__ = AsyncMock(side_effect=Exception("execution_events table does not exist"))
+        mock_savepoint.__aenter__ = AsyncMock(side_effect=OperationalError("stmt", "params", "execution_events table does not exist"))
         mock_savepoint.__aexit__ = AsyncMock(return_value=False)
 
         db = AsyncMock()
         db.begin_nested = MagicMock(return_value=mock_savepoint)
 
-        # Should not raise — failure is caught and logged
+        # Should not raise — DB failure is caught and logged
         await emit_event_best_effort(
             db,
             agency_id="a1", trip_id="t1",

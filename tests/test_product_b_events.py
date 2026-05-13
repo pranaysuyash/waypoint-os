@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from spine_api.persistence import TEST_AGENCY_ID
 from spine_api.product_b_events import ProductBEventStore
 
 
@@ -415,7 +416,7 @@ def test_public_checker_run_is_public_route(session_client, monkeypatch):
             "run_id": "pc-run-1",
             "state": "completed",
             "trip_id": "trip_1",
-            "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "agency_id": TEST_AGENCY_ID,
             "steps_completed": [],
             "events": [],
             "follow_up_questions": [],

@@ -16,11 +16,9 @@ sys.path.insert(0, str(PROJECT_ROOT / "spine_api"))
 # Must set env before importing persistence
 os.environ.setdefault("TRIPSTORE_BACKEND", "sql")
 
-from spine_api.persistence import TripStore
-
+from spine_api.persistence import TripStore, TEST_AGENCY_ID
 
 FIXTURE_PATH = PROJECT_ROOT / "data" / "fixtures" / "scenario_alpha.json"
-TEST_AGENCY_ID = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
 
 
 async def seed_scenario_for_agency(agency_id: str, fixture_path: Path) -> int:

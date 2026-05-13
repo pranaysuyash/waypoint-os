@@ -15,12 +15,12 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 import pytest
 
-from spine_api.persistence import TripStore
+from spine_api.persistence import TripStore, TEST_AGENCY_ID
 
 pytestmark = pytest.mark.require_postgres
 
 
-AGENCY_ID = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+AGENCY_ID = TEST_AGENCY_ID
 
 
 @pytest.fixture

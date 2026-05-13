@@ -241,6 +241,8 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
 
             attempt = DocumentExtractionAttempt(
                 extraction_id=extraction.id,
+                agency_id=agency_id,
+                trip_id=document.trip_id,
                 run_number=run_number,
                 attempt_number=attempt_number,
                 fallback_rank=rank,

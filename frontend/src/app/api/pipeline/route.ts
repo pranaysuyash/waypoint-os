@@ -7,6 +7,8 @@ import {
 
 const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 
+const WORKSPACE_STATUSES = "assigned,in_progress,ready_to_quote,ready_to_book,blocked";
+
 const PIPELINE_ORDER = [
   "assigned",
   "in_progress",
@@ -17,10 +19,13 @@ const PIPELINE_ORDER = [
 
 export async function GET(request: NextRequest) {
   try {
-    const response = await fetch(`${SPINE_API_URL}/trips?limit=10000`, {
-      ...bffFetchOptions(request, "GET"),
-      cache: "no-store",
-    });
+    const response = await fetch(
+      `${SPINE_API_URL}/trips?status=${WORKSPACE_STATUSES}&limit=10000`,
+      {
+        ...bffFetchOptions(request, "GET"),
+        cache: "no-store",
+      },
+    );
 
     if (!response.ok) {
       if (isAuthStatus(response.status)) {

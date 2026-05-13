@@ -451,6 +451,8 @@ Before removing **any** code (function, type, component, export), apply this wor
 The default test agency ID is `d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b` (user: `newuser@test.com`).
 This agency contains persistent trip data representing the developer's working environment.
 
+**Important: Dashboard numbers vary between sessions. See `Docs/KNOWN_TEST_DATA_ACCUMULATION.md` for why.** The test agency accumulates records from test runs, seed scripts, pipeline execution, and manual testing — nothing cleans them up. A count change is not a counting bug. Confirm with the SQL diagnostic in that document.
+
 **What this means in practice:**
 
 1. **`TRIPSTORE_BACKEND=sql` must remain in `.env`** — do not revert to file store, which would silently lose all SQL trips.
@@ -467,12 +469,13 @@ This agency contains persistent trip data representing the developer's working e
 
 **Resolution:** `TRIPSTORE_BACKEND=sql` is pinned in `.env`. Future agents must never remove this or trips will silently evaporate from the UI.
 
-**Long-term:** Migrate to PostgreSQL as the sole persistence layer to eliminate dual-store risk.
+**File-store backend parity (resolved 2026-05-12):** Both backends now support:
+- Comma-separated multi-status filtering with whitespace trimming (`status=assigned,in_progress`)
+- `offset`/`limit` pagination through the `TripStore` facade
+- Accurate `count_trips` independent of pagination caps
+See `spine_api/persistence.py` for the `FileTripStore` implementation of each.
 
-**If you ever need to create a clean test DB:**
-- Clone the existing test DB (`createdb waypoint_os_copy --template waypoint_os`) first
-- Operate on the copy, never the original
-- Document the change in `Archive/` with datestamp
+**Long-term:** Migrate to PostgreSQL as the sole persistence layer to eliminate dual-store risk.
 
 ## Development Discipline & Comprehensive Quality Framework
 

@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travel Agency Agent — Workflow & Component Map</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --bg2: #1e293b;
+    --bg3: #334155;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --accent: #818cf8;
+    --accent2: #38bdf8;
+    --border: #475569;
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --surface: rgba(30,41,59,0.85);
+    --glow: 0 0 20px rgba(129,140,248,0.3);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+  #app { display:flex; height:100vh; width:100vw; }
+
+  /* === LEFT SIDEBAR === */
+  .sidebar {
+    width: 340px; min-width: 340px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    z-index: 10;
+  }
+  .sidebar-header {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .sidebar-header h1 {
+    font-size: 16px; font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .sidebar-header p {
+    font-size: 11px; color: var(--text-muted); margin-top: 4px;
+  }
+  .sidebar-search {
+    padding: 12px 20px; flex-shrink: 0;
+  }
+  .sidebar-search input {
+    width: 100%; padding: 8px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text); font-size: 13px; outline: none;
+  }
+  .sidebar-search input:focus { border-color: var(--accent); }
+  .sidebar-search input::placeholder { color: var(--text-muted); }
+  .sidebar-nav {
+    flex: 1; overflow-y: auto; padding: 8px 12px;
+  }
+  .sidebar-nav::-webkit-scrollbar { width: 4px; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .nav-section { margin-bottom: 16px; }
+  .nav-section-title {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px;
+    color: var(--text-muted); padding: 8px 8px 4px; font-weight: 600;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 6px; cursor: pointer;
+    transition: all 0.15s; margin-bottom: 2px;
+    font-size: 13px; color: var(--text-muted);
+  }
+  .nav-item:hover { background: rgba(129,140,248,0.08); color: var(--text); }
+  .nav-item.active { background: rgba(129,140,248,0.15); color: var(--accent); border-left: 3px solid var(--accent); }
+  .nav-item .dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    border: 2px solid var(--border);
+  }
+  .nav-item:hover .dot, .nav-item.active .dot { border-color: currentColor; }
+  .nav-item .badge {
+    font-size: 10px; background: var(--bg3); padding: 1px 6px;
+    border-radius: 10px; color: var(--text-muted); margin-left: auto;
+  }
+
+  /* === MAIN CANVAS === */
+  .canvas-container {
+    flex: 1; position: relative; overflow: hidden;
+    background:
+      radial-gradient(circle at 20% 50%, rgba(129,140,248,0.04) 0%, transparent 50%),
+      radial-gradient(circle at 80% 50%, rgba(56,189,248,0.04) 0%, transparent 50%),
+      var(--bg);
+  }
+  svg#graph { width: 100%; height: 100%; }
+
+  /* === NODE STYLES === */
+  .node { cursor: pointer; }
+  .node rect {
+    rx: 6; ry: 6;
+    stroke-width: 1.5;
+    transition: all 0.2s;
+  }
+  .node:hover rect { filter: brightness(1.2); stroke-width: 2; }
+  .node.selected rect { filter: brightness(1.35); stroke: var(--accent); stroke-width: 2.5; }
+  .node text {
+    fill: var(--text); font-size: 11px; font-weight: 500;
+    pointer-events: none;
+  }
+  .node .title { font-weight: 600; font-size: 12px; }
+  .node .desc { font-size: 10px; fill: var(--text-muted); }
+  .pkg-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; fill: var(--text-muted);
+  }
+
+  /* === EDGE STYLES === */
+  .edge { fill: none; stroke-width: 1.5; opacity: 0.4; }
+  .edge.highlighted { opacity: 1; stroke-width: 3; filter: url(#glow); }
+  .edge.dimmed { opacity: 0.08; }
+  .edge-label {
+    font-size: 9px; fill: var(--text-muted);
+    pointer-events: none;
+  }
+  .edge-label.highlighted { fill: var(--accent); font-weight: 600; }
+
+  /* === TOOLTIP === */
+  .tooltip {
+    position: fixed; pointer-events: none;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 18px;
+    max-width: 360px; min-width: 240px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    z-index: 100; display: none;
+    backdrop-filter: blur(12px);
+  }
+  .tooltip.visible { display: block; }
+  .tooltip h3 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .tooltip p { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+  .tooltip .data-flow {
+    margin-top: 8px; padding: 8px 10px;
+    background: rgba(129,140,248,0.08); border-radius: 6px;
+    font-size: 11px; color: var(--accent2);
+    border-left: 3px solid var(--accent);
+  }
+  .tooltip .data-flow strong { color: var(--text); }
+
+  /* === DETAIL PANEL === */
+  .detail-panel {
+    position: fixed; right: 0; top: 0; bottom: 0;
+    width: 380px; background: var(--bg2);
+    border-left: 1px solid var(--border);
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    z-index: 50; overflow-y: auto;
+    padding: 24px;
+  }
+  .detail-panel.open { transform: translateX(0); }
+  .detail-panel .close-btn {
+    position: absolute; top: 16px; right: 16px;
+    background: none; border: none; color: var(--text-muted);
+    font-size: 20px; cursor: pointer; padding: 4px;
+  }
+  .detail-panel .close-btn:hover { color: var(--text); }
+  .detail-panel h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .detail-panel .meta { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; }
+  .detail-panel .section {
+    margin-bottom: 20px; padding: 16px;
+    background: var(--bg); border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .detail-panel .section h4 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--text-muted); margin-bottom: 10px;
+  }
+  .detail-panel .section p, .detail-panel .section li {
+    font-size: 13px; line-height: 1.6; color: var(--text);
+  }
+  .detail-panel .section ul { list-style: none; padding: 0; }
+  .detail-panel .section li { padding: 4px 0; border-bottom: 1px solid rgba(71,85,105,0.3); }
+  .detail-panel .section li:last-child { border-bottom: none; }
+  .detail-panel .flow-step {
+    display: flex; gap: 12px; padding: 10px 0;
+    border-bottom: 1px solid rgba(71,85,105,0.2);
+  }
+  .detail-panel .flow-step:last-child { border-bottom: none; }
+  .detail-panel .step-num {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 2px;
+  }
+  .detail-panel .step-content { flex: 1; }
+  .detail-panel .step-content h5 { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .detail-panel .step-content p { font-size: 12px; color: var(--text-muted); margin: 0; }
+  .detail-panel .step-content .data {
+    font-size: 11px; color: var(--accent2);
+    background: rgba(56,189,248,0.08); padding: 4px 8px;
+    border-radius: 4px; display: inline-block; margin-top: 4px;
+  }
+  .tag {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; margin: 2px;
+  }
+  .tag-input { background: rgba(74,222,128,0.15); color: var(--success); }
+  .tag-output { background: rgba(129,140,248,0.15); color: var(--accent); }
+  .tag-process { background: rgba(251,191,36,0.15); color: var(--warning); }
+
+  /* === BUTTONS & CONTROLS === */
+  .controls {
+    position: absolute; top: 16px; left: 16px;
+    display: flex; gap: 8px; z-index: 20;
+  }
+  .ctrl-btn {
+    padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 12px;
+    cursor: pointer; transition: all 0.15s; backdrop-filter: blur(8px);
+  }
+  .ctrl-btn:hover { background: var(--bg3); border-color: var(--accent); }
+  .ctrl-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* === WORKFLOW SELECTOR === */
+  .workflow-selector {
+    position: absolute; top: 16px; right: 16px;
+    z-index: 20;
+  }
+  .workflow-selector select {
+    padding: 8px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text); font-size: 12px; outline: none;
+    cursor: pointer; min-width: 260px;
+    backdrop-filter: blur(8px);
+  }
+
+  /* === LEGEND === */
+  .legend {
+    position: absolute; bottom: 16px; left: 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 16px; z-index: 20;
+    backdrop-filter: blur(8px);
+  }
+  .legend h4 { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; margin-bottom: 4px; color: var(--text-muted); }
+  .legend-swatch { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+
+  /* === STATS BAR === */
+  .stats-bar {
+    position: absolute; bottom: 16px; right: 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 16px; z-index: 20;
+    backdrop-filter: blur(8px); font-size: 11px;
+  }
+  .stats-bar .stat { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 2px; color: var(--text-muted); }
+  .stats-bar .stat-val { color: var(--text); font-weight: 600; }
+
+  /* === SEARCH OVERLAY === */
+  .search-overlay {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15,23,42,0.95); z-index: 200;
+    display: none; align-items: center; justify-content: center;
+  }
+  .search-overlay.visible { display: flex; }
+  .search-box {
+    width: 500px; max-width: 90vw;
+  }
+  .search-box input {
+    width: 100%; padding: 14px 18px; font-size: 18px;
+    border: 2px solid var(--accent); border-radius: 12px;
+    background: var(--bg2); color: var(--text); outline: none;
+  }
+  .search-results {
+    margin-top: 8px; background: var(--bg2); border-radius: 8px;
+    border: 1px solid var(--border); max-height: 300px; overflow-y: auto;
+  }
+  .search-result-item {
+    padding: 10px 16px; cursor: pointer; font-size: 13px;
+    border-bottom: 1px solid var(--border); transition: background 0.1s;
+  }
+  .search-result-item:hover { background: rgba(129,140,248,0.1); }
+  .search-result-item .pkg-name { font-size: 11px; color: var(--accent); margin-bottom: 2px; }
+
+  /* === ANIMATIONS === */
+  @keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+  .pulsing { animation: pulse 2s infinite; }
+
+  @keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  .detail-panel.open { animation: slideIn 0.3s ease; }
+
+  /* scrollbar styling */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h1>⛅ Workflow Map</h1>
+      <p>Travel Agency Agent Architecture</p>
+    </div>
+    <div class="sidebar-search">
+      <input type="text" id="searchInput" placeholder="Search components & flows…" oninput="handleSearch()" />
+    </div>
+    <div class="sidebar-nav" id="sidebarNav">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-container" id="canvas">
+    <svg id="graph">
+      <defs>
+        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="4" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.3" />
+        </filter>
+      </defs>
+    </svg>
+
+    <!-- CONTROLS -->
+    <div class="controls">
+      <button class="ctrl-btn" onclick="zoomIn()">+ Zoom</button>
+      <button class="ctrl-btn" onclick="zoomOut()">− Zoom</button>
+      <button class="ctrl-btn" onclick="resetView()">↺ Reset</button>
+      <button class="ctrl-btn" id="toggleLabels" onclick="toggleLabels()">Labels</button>
+      <button class="ctrl-btn" onclick="document.getElementById('searchOverlay').classList.toggle('visible')">⌕ Search</button>
+    </div>
+
+    <!-- WORKFLOW SELECTOR -->
+    <div class="workflow-selector">
+      <select id="workflowSelect" onchange="selectWorkflow()">
+        <option value="all">All Workflows</option>
+      </select>
+    </div>
+
+    <!-- LEGEND -->
+    <div class="legend">
+      <h4>Legend</h4>
+      <div class="legend-item"><div class="legend-swatch" style="background:#4f46e5"></div> Intake Pipeline</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#059669"></div> Agent Runtime</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#d97706"></div> Suitability</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#7c3aed"></div> Decision Engine</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#0891b2"></div> Fees & Pricing</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#be185d"></div> Analytics</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#dc2626"></div> Security</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#0d9488"></div> LLM Extraction</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#9333ea"></div> LLM Core</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#ea580c"></div> Services</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#6366f1"></div> Schemas</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#db2777"></div> Evals</div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-bar" id="statsBar">
+      <div class="stat"><span>Components</span><span class="stat-val" id="statComponents">0</span></div>
+      <div class="stat"><span>Workflows</span><span class="stat-val" id="statWorkflows">0</span></div>
+      <div class="stat"><span>Data Edges</span><span class="stat-val" id="statEdges">0</span></div>
+      <div class="stat"><span>Selected Flow</span><span class="stat-val" id="statFlow">—</span></div>
+    </div>
+
+    <!-- SEARCH OVERLAY -->
+    <div class="search-overlay" id="searchOverlay">
+      <div class="search-box">
+        <input type="text" id="globalSearch" placeholder="Search components, workflows…" oninput="filterSearch()" />
+        <div class="search-results" id="searchResults"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DETAIL PANEL -->
+  <div class="detail-panel" id="detailPanel">
+    <button class="close-btn" onclick="closeDetail()">✕</button>
+    <div id="detailContent"></div>
+  </div>
+
+  <!-- TOOLTIP -->
+  <div class="tooltip" id="tooltip">
+    <h3 id="tooltipTitle"></h3>
+    <p id="tooltipDesc"></p>
+    <div class="data-flow" id="tooltipData"></div>
+  </div>
+</div>
+
+<script>
+const DATA = {"meta":{"title":"Travel Agency Agent \u2014 Workflow & Component Map","version":"2.0.0","lastUpdated":"2026-05-12"},"packages":{"intake":{"label":"Intake Pipeline","color":"#4f46e5","description":"Main request processing pipeline \u2014 extraction, validation, decision, strategy, output","components":[{"id":"orchestration","label":"orchestration.py","desc":"Single spine entrypoint (run_spine_once). Chains all shared modules in order."},{"id":"extractors","label":"extractors.py","desc":"ExtractionPipeline v0.2 \u2014 regex-based extraction of 30+ trip fields from freeform text."},{"id":"validation","label":"validation.py","desc":"Schema validation for CanonicalPacket v0.2. Produces PacketValidationReport."},{"id":"decision","label":"decision.py","desc":"NB02 gap-and-decision engine. Produces DecisionResult with blockers & confidence."},{"id":"gates","label":"gates.py","desc":"Quality gates: NB01CompletionGate (extraction quality) and NB02JudgmentGate (autonomy policy)."},{"id":"strategy","label":"strategy.py","desc":"NB03 session strategy builder. Produces SessionStrategy and PromptBundles."},{"id":"safety","label":"safety.py","desc":"Structural traveler-safe sanitization and leakage detection."},{"id":"packet_models","label":"packet_models.py","desc":"CanonicalPacket v0.3 \u2014 the single source of truth for all intake data."},{"id":"constants","label":"constants.py","desc":"PipelineStage, GateIdentifier, DecisionState enums \u2014 shared across NB01-NB03."},{"id":"plan_candidate","label":"plan_candidate.py","desc":"Builds PlanCandidate from packet + decision + strategy."},{"id":"readiness","label":"readiness.py","desc":"Computes trip readiness score from all pipeline inputs."},{"id":"frontier","label":"frontier_orchestrator.py","desc":"Ghost Concierge & Sentiment orchestration layer."},{"id":"negotiation","label":"negotiation_engine.py","desc":"Multi-agent negotiation engine for plan refinement."},{"id":"federated","label":"federated_intelligence.py","desc":"Federated intelligence aggregation module."},{"id":"normalizer","label":"normalizer.py","desc":"Budget and text normalization utilities."},{"id":"checker_agent","label":"checker_agent.py","desc":"Standalone checker agent for reprocessing/revalidation."},{"id":"scenario_policy","label":"scenario_policy.py","desc":"Scenario-based routing and policy enforcement."},{"id":"sourcing_path","label":"sourcing_path.py","desc":"Determines optimal sourcing path for trip components."},{"id":"specialty_knowledge","label":"specialty_knowledge.py","desc":"Domain-specific knowledge injection for specialty trips."},{"id":"telemetry","label":"telemetry.py","desc":"Pipeline telemetry and event emission."},{"id":"config_agency","label":"config/agency_settings.py","desc":"Agency-level configuration (margin %, operating mode, policy overrides)."},{"id":"geography","label":"geography.py","desc":"City/destination validation against 590k+ GeoNames database."},{"id":"readiness_mod","label":"readiness.py","desc":"Readiness computation \u2014 aggregates all signals into a single score."},{"id":"route_analysis","label":"route_analysis.py","desc":"Travel route and itinerary analysis \u2014 multi-destination optimization, transit logic."},{"id":"regional_risk","label":"regional_risk.py","desc":"Regional risk assessment \u2014 health advisories, political stability, natural disaster risk."},{"id":"risk_action_policy","label":"risk_action_policy.py","desc":"Risk-triggered action policies \u2014 automated responses to detected risks."},{"id":"traveler_proposal","label":"traveler_proposal.py","desc":"Traveler-facing proposal builder \u2014 formatted itinerary, pricing, and terms."}]},"agents":{"label":"Agent Runtime","color":"#059669","description":"Canonical backend product-agent runtime and supervision layer","components":[{"id":"runtime","label":"runtime.py","desc":"Static agent runtime \u2014 registers, supervises, and executes agents deterministically."},{"id":"live_tools","label":"live_tools.py","desc":"Live tool implementations: FlightStatus, PriceWatch, SafetyAlert, Weather."},{"id":"tool_contracts","label":"tool_contracts.py","desc":"Tool contract definitions \u2014 freshness policies, result schemas."},{"id":"risk_contracts","label":"risk_contracts.py","desc":"Risk contract primitives for feasibility constraints."},{"id":"recovery_agent","label":"recovery_agent.py","desc":"Recovery agent for failed/stalled pipeline runs."},{"id":"agent_events","label":"events.py","desc":"Canonical AgentEvent envelope for agent observability."}]},"suitability":{"label":"Suitability & Scoring","color":"#d97706","description":"Activity suitability assessment and scoring engine","components":[{"id":"suit_integration","label":"integration.py","desc":"Integration point \u2014 extracts participants and invokes scoring."},{"id":"suit_scoring","label":"scoring.py","desc":"Core suitability scoring engine for activities and destinations."},{"id":"suit_catalog","label":"catalog.py","desc":"Static activity catalog with intensity, cost, accessibility metadata."},{"id":"suit_models","label":"models.py","desc":"ParticipantRef, ActivityDefinition, StructuredRisk data models."},{"id":"suit_options","label":"options.py","desc":"Suitability filter and sort options."},{"id":"suit_context","label":"context_rules.py","desc":"Context-aware rules (seasonality, timing, group constraints)."},{"id":"suit_confidence","label":"confidence.py","desc":"Confidence scoring for suitability assessments."}]},"decision_engine":{"label":"Decision Engine","color":"#7c3aed","description":"Hybrid decision engine \u2014 rules + LLM + cache","components":[{"id":"hybrid_engine","label":"hybrid_engine.py","desc":"Unified rules+LLM+cache decision engine. Feature-flagged via USE_HYBRID_DECISION_ENGINE."},{"id":"cache_key","label":"cache_key.py","desc":"Deterministic cache key generation for decision results."},{"id":"cache_schema","label":"cache_schema.py","desc":"Cache schema and migration definitions."},{"id":"cache_storage","label":"cache_storage.py","desc":"Cache read/write/storage layer."},{"id":"health","label":"health.py","desc":"Decision engine health and readiness checks."},{"id":"rule_budget","label":"rules/budget_feasibility.py","desc":"Budget feasibility rules and thresholds."},{"id":"rule_composition","label":"rules/composition_risk.py","desc":"Multi-party composition risk scoring."},{"id":"rule_elderly","label":"rules/elderly_mobility.py","desc":"Elderly mobility and accessibility risk rules."},{"id":"rule_toddler","label":"rules/toddler_pacing.py","desc":"Toddler pacing and child-friendly itinerary rules."},{"id":"rule_visa","label":"rules/visa_timeline.py","desc":"Visa timeline and document readiness rules."},{"id":"rule_additional","label":"rules/additional_rules.py","desc":"Additional heuristic decision rules."},{"id":"whatsapp","label":"whatsapp_formatter.py","desc":"WhatsApp-ready message formatting for traveler communication."},{"id":"rule_not_applicable","label":"rules/not_applicable.py","desc":"N/A rule detection \u2014 identifies rules that don't apply to a given scenario."}]},"fees":{"label":"Fees & Pricing","color":"#0891b2","description":"Trip fee calculation and budget decomposition","components":[{"id":"fee_calc","label":"calculation.py","desc":"Trip fee calculator \u2014 cost buckets, margin application, multi-currency."}]},"analytics":{"label":"Analytics & Observability","color":"#be185d","description":"Analytics pipeline, audit logging, and timeline event generation","components":[{"id":"analytics_engine","label":"engine.py","desc":"Analytics engine for aggregations and reporting."},{"id":"analytics_logger","label":"logger.py","desc":"TripEventLogger \u2014 unified audit trail. TimelineEventMapper for frontend."},{"id":"analytics_metrics","label":"metrics.py","desc":"Metric definitions and counters."},{"id":"analytics_models","label":"models.py","desc":"Analytics data models."},{"id":"analytics_policy","label":"policy_rules.py","desc":"Analytics policy rules."},{"id":"analytics_review","label":"review.py","desc":"Review and approval workflow logic."}]},"security":{"label":"Security & Compliance","color":"#dc2626","description":"Encryption, privacy, jurisdiction policy enforcement","components":[{"id":"encryption","label":"encryption.py","desc":"Field-level and at-rest encryption."},{"id":"privacy_guard","label":"privacy_guard.py","desc":"PII detection and redaction."},{"id":"jurisdiction","label":"jurisdiction_policy.py","desc":"Jurisdiction-aware data residency and policy."}]},"extraction":{"label":"LLM Extraction","color":"#0d9488","description":"LLM-powered vision and document extraction","components":[{"id":"gemini_vision","label":"gemini_vision_extractor.py","desc":"Gemini Vision API extraction for images and PDFs."},{"id":"openai_vision","label":"openai_vision_extractor.py","desc":"OpenAI Vision extraction for images and PDFs."},{"id":"model_chain","label":"model_chain.py","desc":"Chain-of-model orchestration for multi-step extraction."},{"id":"pricing_ext","label":"pricing.py","desc":"Pricing extraction and normalization from documents."},{"id":"pdf_utils","label":"pdf_utils.py","desc":"PDF processing utilities (text extraction, OCR)."},{"id":"vision_client","label":"vision_client.py","desc":"Abstract vision client interface for multi-provider support."},{"id":"gemini_client","label":"gemini_client.py","desc":"Gemini API client wrapper."},{"id":"openai_client","label":"openai_client.py","desc":"OpenAI API client wrapper."},{"id":"local_llm","label":"local_llm.py","desc":"Local LLM fallback for air-gapped environments."},{"id":"schemas_ext","label":"schemas.py","desc":"Structured output schemas for extraction results."},{"id":"smoke_test","label":"smoke_test.py","desc":"Extraction smoke tests and validation."},{"id":"exceptions","label":"exceptions.py","desc":"Extraction-specific exception classes and error handling utilities."},{"id":"gemini_vision_client","label":"gemini_vision_client.py","desc":"Low-level Gemini Vision API client wrapper with retry and auth."}]},"public_checker":{"label":"Public Data Checker","color":"#78716c","description":"Public data verification and live checks","components":[{"id":"live_checks","label":"live_checks.py","desc":"Real-time public data verification (flight status, visa rules, etc.)."}]},"llm":{"label":"LLM Core","color":"#9333ea","description":"LLM client management, usage tracking, and guardrails","components":[{"id":"llm_base","label":"base.py","desc":"Base LLM client abstraction."},{"id":"openai_client_llm","label":"openai_client.py","desc":"OpenAI client with streaming and structured output."},{"id":"gemini_client_llm","label":"gemini_client.py","desc":"Gemini client with streaming and structured output."},{"id":"local_llm","label":"local_llm.py","desc":"Local LLM runner (Ollama/llama.cpp)."},{"id":"usage_guard","label":"usage_guard.py","desc":"Token usage guardrails and rate limiting."},{"id":"usage_store","label":"usage_store.py","desc":"Persistent token usage tracking and reporting."},{"id":"agents_llm","label":"agents/__init__.py","desc":"Agent definitions and LLM-powered agent registry."}]},"adapters":{"label":"Adapters","color":"#64748b","description":"External integrations, API adapters, and data connectors","components":[{"id":"adapters_init","label":"__init__.py","desc":"Adapter registry and factory patterns."}]},"services":{"label":"Services","color":"#ea580c","description":"Business service layer","components":[{"id":"dashboard_aggregator","label":"dashboard_aggregator.py","desc":"Aggregates trip and agent data for dashboard views."},{"id":"integrity_service","label":"integrity_service.py","desc":"Data integrity checks and repair utilities."},{"id":"payment_gateway","label":"payment_gateway.py","desc":"Payment processing for bookings, refunds, and add-on purchases."},{"id":"booking_engine","label":"booking_engine.py","desc":"Booking record creation, inventory management, and reservation lifecycle."},{"id":"notification_service","label":"notification_service.py","desc":"Multi-channel notification dispatcher (email, SMS, WhatsApp, in-app)."},{"id":"ticketing","label":"ticketing.py","desc":"E-ticket and voucher generation with QR/barcode support."},{"id":"cancellation_trigger","label":"cancellation_trigger.py","desc":"Cancellation request intake and severity classification."},{"id":"cancellation_policy","label":"cancellation_policy.py","desc":"Refund eligibility evaluation against fare rules and timing windows."},{"id":"rebooking_engine","label":"rebooking_engine.py","desc":"Alternative itinerary generation after cancellation or changes."},{"id":"frontend","label":"frontend/ (Next.js)","desc":"Next.js frontend \u2014 workflow visualization, Streamlit wrapper, UI components."},{"id":"todesktop","label":"todesktop (config)","desc":"ToDesktop wrapper configuration and native build pipeline."}]},"schemas":{"label":"Schemas","color":"#6366f1","description":"Shared canonical schema definitions across services","components":[{"id":"schemas_init","label":"__init__.py","desc":"Canonical schema registry and versioning."}]},"evals":{"label":"Evals Framework","color":"#db2777","description":"Evaluation, audit, and regression testing framework","components":[{"id":"audit_metrics","label":"audit/metrics.py","desc":"Audit metric definitions and computations."},{"id":"audit_runner","label":"audit/runner.py","desc":"Audit test runner and orchestrator."},{"id":"audit_manifest","label":"audit/manifest.py","desc":"Test manifest and expected result definitions."},{"id":"audit_public_authority","label":"audit/public_authority.py","desc":"Public authority data validation (visa rules, regulations)."},{"id":"audit_gates","label":"audit/gates.py","desc":"Audit gates for regression and quality checks."},{"id":"audit_snapshot","label":"audit/snapshot.py","desc":"Snapshot-based comparison for regression detection."},{"id":"audit_fixtures","label":"audit/fixtures.py","desc":"Test fixtures and golden master data."},{"id":"activity_rules","label":"audit/rules/activity.py","desc":"Activity-level audit rules."}]}},"workflows":[{"id":"full_spine_pipeline","label":"Full Spine Pipeline \u2014 Discovery to Output","description":"The complete end-to-end intake pipeline from raw traveler input through extraction, validation, decision, strategy, and safety checks to final output bundles.","icon":"\u26a1","steps":[{"step":1,"component":"extractors","module":"extractors.py","label":"Extraction Pipeline","input":"Raw traveler text (email/form/chat)","output":"CanonicalPacket with facts, derived signals, hypotheses","description":"Regex-based extraction engine parses freeform text into structured fields: destination, dates, budget, party composition, trip purpose, hotel preferences, constraints, passport/visa status. Outputs a CanonicalPacket v0.3 with full provenance tracking via _EventTrackingDict.","data_passed":"SourceEnvelope \u2192 CanonicalPacket (packet_id, facts, derived_signals, hypotheses, ambiguities, contradictions, events)"},{"step":2,"component":"validation","module":"validation.py","label":"Packet Validation","input":"CanonicalPacket from extraction","output":"PacketValidationReport","description":"Validates packet against v0.2 schema. Checks: required fields (MVB), numeric budget for audit mode, derived-only field placement, authority levels (fact vs derived_signal), maturity tags, legacy field migration. Returns errors (block) and warnings (advisory).","data_passed":"CanonicalPacket \u2192 PacketValidationReport (is_valid, errors, warnings, ambiguity_report, evidence_coverage)"},{"step":3,"component":"gates","module":"gates.py","label":"NB01 Completion Gate","input":"CanonicalPacket + PacketValidationReport","output":"GateVerdict (PROCEED / RETRY / ESCALATE / DEGRADE)","description":"Assesses extraction quality. ESCALATE if structurally broken (stops pipeline). DEGRADE if minimum is met but quote-ready fields missing (saves for later). PROCEED if extraction is good.","data_passed":"CanonicalPacket, PacketValidationReport \u2192 GateResult (verdict, score, reasons)"},{"step":4,"component":"decision","module":"decision.py","label":"Gap & Decision Engine (NB02)","input":"CanonicalPacket + feasibility table + AgencySettings","output":"DecisionResult","description":"Determines if the trip is actionable. Checks hard/soft blockers per stage (discovery/shortlist/proposal/booking). Runs budget feasibility, composition risk, visa timeline checks. Produces decision_state: ASK_FOLLOWUP, PROCEED_INTERNAL_DRAFT, PROCEED_TRAVELER_SAFE, BRANCH_OPTIONS, or STOP_NEEDS_REVIEW.","data_passed":"CanonicalPacket \u2192 DecisionResult (decision_state, hard_blockers, soft_blockers, ambiguities, contradictions, confidence, rationale, commercial_decision, budget_breakdown)"},{"step":5,"component":"gates","module":"gates.py","label":"NB02 Judgment Gate (Autonomy)","input":"DecisionResult + AgencySettings","output":"AutonomyOutcome","description":"Applies agency autonomy policy. Determines if decision can auto-execute, needs review, or must be blocked. Produces effective_action (auto/review/block) and flags safety invariants.","data_passed":"DecisionResult, AgencySettings \u2192 AutonomyOutcome (raw_verdict, effective_action, approval_required, safety_invariant_applied, reasons)"},{"step":6,"component":"suit_integration","module":"suitability/integration.py","label":"Suitability Assessment","input":"CanonicalPacket","output":"List<SuitabilityFlag>","description":"Assesses activity suitability for the trip. Scores each proposed activity against participant profiles (age, mobility, composition). Flags critical issues that require operator review before traveler-facing output.","data_passed":"CanonicalPacket (facts, composition, destination) \u2192 List<SuitabilityFlag> (flag_type, severity, confidence, affected_travelers)"},{"step":7,"component":"frontier","module":"frontier_orchestrator.py","label":"Frontier Orchestration","input":"CanonicalPacket + DecisionResult","output":"FrontierOrchestrationResult","description":"Ghost Concierge & Sentiment analysis layer. Triggers ghost workflows for at-risk trips. Analyzes traveler sentiment. Enriches decision with specialty knowledge.","data_passed":"CanonicalPacket, DecisionResult \u2192 FrontierOrchestrationResult (ghost_triggered, sentiment_score, anxiety_alert, intelligence_hits, specialty_knowledge)"},{"step":8,"component":"strategy","module":"strategy.py","label":"Session Strategy Builder","input":"DecisionResult + CanonicalPacket","output":"SessionStrategy + PromptBundle (internal + traveler)","description":"Constructs the conversation strategy. Generates session goals, priority sequences, tonal guardrails, and exit criteria. Builds separate internal and traveler-safe prompt bundles.","data_passed":"DecisionResult, CanonicalPacket \u2192 SessionStrategy (goal, priorities, guardrails), PromptBundle (internal_bundle, traveler_bundle)"},{"step":9,"component":"fee_calc","module":"fees/calculation.py","label":"Fee Calculation","input":"CanonicalPacket + DecisionResult","output":"Dict<String, Any> (fee breakdown)","description":"Calculates trip fees per cost bucket (flights, stay, food, transport, activities, visa/insurance, shopping, buffer). Applies margin % and multi-destination penalties.","data_passed":"CanonicalPacket, DecisionResult \u2192 fee breakdown (flights, stay, food, local_transport, activities, visa_insurance, shopping, buffer totals)"},{"step":10,"component":"plan_candidate","module":"plan_candidate.py","label":"Plan Candidate Builder","input":"CanonicalPacket + DecisionResult + SessionStrategy + fees","output":"PlanCandidate","description":"Assembles the complete plan candidate combining destination, itinerary, budget breakdown, strategy, and readiness into a single structured proposal.","data_passed":"Packet, Decision, Strategy, Fees \u2192 PlanCandidate (destination_plan, itinerary, budget, strategy_summary, readiness)"},{"step":11,"component":"safety","module":"safety.py","label":"Safety & Leakage Check","input":"CanonicalPacket + traveler_bundle","output":"SanitizedPacketView + leakage_result","description":"Structural sanitization \u2014 strips all internal-only data before traveler view. Scans for leakage of internal concepts (hypotheses, contradictions, confidence scores, decision states). Produces traveler-safe SanitizedPacketView.","data_passed":"CanonicalPacket, PromptBundle \u2192 SanitizedPacketView (facts, derived_signals), leakage_result (leaks, is_safe)"},{"step":12,"component":"readiness","module":"readiness.py","label":"Readiness Computation","input":"All pipeline outputs","output":"ReadinessResult","description":"Aggregates all pipeline signals (packet state, validation, decision, bundles, safety, fees) into a single readiness score and determines next best action.","data_passed":"Packet + Validation + Decision + Bundles + Safety + Fees \u2192 ReadinessResult (score, next_action, blockers, recommendations)"},{"step":13,"component":"analytics_logger","module":"analytics/logger.py","label":"Audit Trail & Timeline","input":"All stage transitions","output":"TimelineEvents","description":"Every stage transition is logged to AuditStore via TripEventLogger. Analytics layer maps raw events to TimelineEvents for the frontend timeline view.","data_passed":"Stage transitions \u2192 AuditEvents \u2192 TimelineEvents (trip_id, stage, status, state_snapshot, decision, confidence, reason)"}],"edges":[{"from":"extractors","to":"validation","data":"CanonicalPacket"},{"from":"validation","to":"gates","data":"CanonicalPacket + PacketValidationReport"},{"from":"gates","to":"decision","data":"GateVerdict (proceed/degrade/escalate)"},{"from":"decision","to":"gates","data":"DecisionResult"},{"from":"gates","to":"suit_integration","data":"CanonicalPacket"},{"from":"suit_integration","to":"frontier","data":"SuitabilityFlags"},{"from":"frontier","to":"decision","data":"FrontierOrchestrationResult"},{"from":"decision","to":"strategy","data":"DecisionResult"},{"from":"strategy","to":"fee_calc","data":"SessionStrategy"},{"from":"fee_calc","to":"plan_candidate","data":"fee breakdown"},{"from":"plan_candidate","to":"safety","data":"PlanCandidate"},{"from":"safety","to":"readiness","data":"SanitizedPacketView + leakage_result"},{"from":"readiness","to":"analytics_logger","data":"ReadinessResult"},{"from":"analytics_logger","to":"extractors","data":"AuditEvents (logged per stage)"},{"from":"config_agency","to":"gates","data":"AgencySettings (autonomy thresholds)"},{"from":"config_agency","to":"decision","data":"AgencySettings (feasibility params)"},{"from":"config_agency","to":"fee_calc","data":"Margin %, operating mode"},{"from":"telemetry","to":"analytics_logger","data":"Pipeline telemetry events"},{"from":"scenario_policy","to":"gates","data":"Scenario-specific rule overrides"},{"from":"specialty_knowledge","to":"frontier","data":"Domain enrichment data"},{"from":"negotiation","to":"strategy","data":"Negotiated adjustments"},{"from":"federated","to":"negotiation","data":"Aggregated intelligence"},{"from":"agent_events","to":"analytics_logger","data":"AgentEvent \u2192 AuditTrail"},{"from":"live_tools","to":"agent_events","data":"Tool results \u2192 events"},{"from":"normalizer","to":"packet_models","data":"Normalized budget values"},{"from":"checker_agent","to":"validation","data":"Revalidation requests"},{"from":"sourcing_path","to":"plan_candidate","data":"Optimized sourcing decisions"},{"from":"llm_base","to":"model_chain","data":"Client selection & response"},{"from":"model_chain","to":"extractors","data":"Extracted fields \u2192 CanonicalPacket"},{"from":"adapters_init","to":"notification_service","data":"Adapter-resolved channels"},{"from":"schemas_init","to":"validation","data":"Schema definitions"},{"from":"integrity_service","to":"analytics_logger","data":"Integrity check results"},{"from":"dashboard_aggregator","to":"analytics_engine","data":"Aggregated trip metrics"},{"from":"live_checks","to":"analytics_logger","data":"Public data verification results"},{"from":"audit_metrics","to":"analytics_logger","data":"Audit metric results"},{"from":"usage_guard","to":"llm_base","data":"Rate limits & quotas"},{"from":"usage_store","to":"analytics_engine","data":"Token usage metrics"},{"from":"risk_contracts","to":"decision","data":"Feasibility constraints"},{"from":"route_analysis","to":"plan_candidate","data":"Optimized route and multi-destination itinerary"},{"from":"regional_risk","to":"safety","data":"Risk assessment flags for destination"},{"from":"risk_action_policy","to":"decision","data":"Automated risk response triggers"},{"from":"traveler_proposal","to":"readiness","data":"Traveler-facing proposal (for readiness scoring)"},{"from":"rule_not_applicable","to":"hybrid_engine","data":"N/A rule exclusion signals"},{"from":"exceptions","to":"analytics_logger","data":"Extraction error events"},{"from":"gemini_vision_client","to":"gemini_vision","data":"API responses for vision extraction"}]},{"id":"invite_new_user","label":"Invite New Team Member","description":"Platform-level flow for inviting new operators/users to the travel agency system with role-based access control.","icon":"\ud83d\udc64","steps":[{"step":1,"component":"adapters_init","module":"adapters/__init__.py","label":"Adapter Registry","input":"User invitation request (email, role, permissions)","output":"Normalized user profile","description":"The adapter layer normalizes the invitation across identity providers (Auth0, AWS Cognito, custom). Validates the invitee email and determines role mapping.","data_passed":"InvitationRequest (email, role, agency_id) \u2192 NormalizedUserProfile"},{"step":2,"component":"encryption","module":"encryption.py","label":"Encryption & Privacy","input":"NormalizedUserProfile","output":"Encrypted user credentials + PII redacted profile","description":"Encrypts sensitive user data at rest. The privacy guard scans for PII in the profile and applies appropriate redaction policies based on jurisdiction.","data_passed":"NormalizedUserProfile \u2192 EncryptedCredentials, PII-free profile snapshot"},{"step":3,"component":"jurisdiction","module":"jurisdiction_policy.py","label":"Jurisdiction Policy Check","input":"User profile + agency settings","output":"Compliance verdict","description":"Checks data residency requirements based on the user's location and agency jurisdiction. Determines which data the user can access and under what regulatory framework.","data_passed":"UserProfile, AgencySettings \u2192 JurisdictionVerdict (allowed_regions, data_access_level)"},{"step":4,"component":"config_agency","module":"config/agency_settings.py","label":"Agency Configuration","input":"Agency ID + compliance verdict","output":"AgencySettings with role bindings","description":"Applies agency-level configuration: role mappings, margin percentages, operating mode, and feature flags. Binds the new user to the correct agency context.","data_passed":"AgencyID, Role, ComplianceVerdict \u2192 AgencySettings (role_permissions, feature_flags, margin_config)"},{"step":5,"component":"analytics_logger","module":"analytics/logger.py","label":"Audit Trail","input":"Complete invitation event","output":"TimelineEvent","description":"Logs the invitation event to the audit store for compliance. Creates a timeline event tracking the user's onboarding state.","data_passed":"InvitationEvent \u2192 AuditEvent + TimelineEvent"}],"edges":[{"from":"adapters_init","to":"encryption","data":"NormalizedUserProfile"},{"from":"encryption","to":"jurisdiction","data":"EncryptedCredentials + PII-free profile"},{"from":"jurisdiction","to":"config_agency","data":"JurisdictionVerdict"},{"from":"config_agency","to":"analytics_logger","data":"AgencySettings + InvitationEvent"},{"from":"analytics_logger","to":"adapters_init","data":"AuditTrail complete"}]},{"id":"run_extraction","label":"Run Extraction Pipeline","description":"Standalone extraction run \u2014 takes raw text input and produces a fully populated CanonicalPacket.","icon":"\ud83d\udd0d","steps":[{"step":1,"component":"extractors","module":"extractors.py","label":"Destination Extraction","input":"Raw traveler text","output":"Destination candidates + status","description":"Applies regex patterns for destination detection: travel-verb contexts, Hinglish/Odia postpositions, 'or' patterns, 'maybe' hedging, and 'somewhere' open-ended patterns. Validates against 590k+ city database.","data_passed":"RawText \u2192 {candidates, status, raw_match}"},{"step":2,"component":"extractors","module":"extractors.py","label":"Date Extraction","input":"Raw traveler text","output":"Date window (start, end, confidence)","description":"Extracts dates via regex patterns: ISO ranges, day ranges, 'this weekend', month windows, 'after' expressions, single months, and fuzzy expressions. Returns confidence level.","data_passed":"RawText \u2192 {window, start_iso, end_iso, confidence}"},{"step":3,"component":"extractors","module":"extractors.py","label":"Budget Extraction","input":"Raw traveler text","output":"Structured budget dict","description":"Parses budget patterns with currency detection (L/lac/k/thousand). Handles ranges, single values, flexible budgets, and stretch maximums. Normalizes via Normalizer module.","data_passed":"RawText \u2192 {raw_text, min, max, currency}"},{"step":4,"component":"extractors","module":"extractors.py","label":"Party Extraction","input":"Raw traveler text","output":"{party_size, party_composition, child_ages}","description":"Detects adults, children, toddlers, elderly from natural language. Handles Hinglish terms (bachhe, baccha). Extracts specific ages and computes total party size.","data_passed":"RawText \u2192 {party_size, composition: {adults, children, elderly}, child_ages}"},{"step":5,"component":"extractors","module":"extractors.py","label":"Trip Intent Extraction","input":"Raw traveler text","output":"{trip_purpose, trip_style, preferences, constraints}","description":"Classifies trip purpose (pilgrimage, honeymoon, business, etc.) and style (luxury, backpacking, cultural). Extracts hotel preferences, meal requirements, hard/soft constraints, and trip priorities.","data_passed":"RawText \u2192 {trip_purpose, trip_style, hotel_preferences, meal_preferences, hard_constraints, soft_preferences, priorities}"},{"step":6,"component":"extractors","module":"extractors.py","label":"Passport & Visa Extraction","input":"Raw traveler text","output":"{passport_status, visa_status}","description":"Extracts per-traveler passport status (valid/expired/renewal) and visa requirements. Handles Hinglish date formats for expiry dates.","data_passed":"RawText \u2192 {passport_status: {traveler: {status, expires}}, visa_status: {requirement, status}}"},{"step":7,"component":"extractors","module":"extractors.py","label":"Operating Mode Classifier","input":"Raw traveler text","output":"Operating mode string","description":"Classifies the input as normal_intake, emergency, cancellation, audit, follow_up, post_trip, owner_review, or coordinator_group based on keyword patterns.","data_passed":"RawText \u2192 operating_mode (normal_intake|audit|emergency|...)"},{"step":8,"component":"geography","module":"geography.py","label":"Geography Validation","input":"Extracted destination candidates","output":"Validated cities with country data","description":"Validates extracted destinations against a 590k+ city database (GeoNames + world-cities). Distinguishes origin vs destination contextually.","data_passed":"candidates[] \u2192 {validated_cities, countries, is_known_destination}"},{"step":9,"component":"normalizer","module":"normalizer.py","label":"Budget Normalization","input":"Raw budget strings","output":"Normalized budget values","description":"Normalizes budget amounts across currencies and shorthand notations (L/lac/k/thousand) into a standard numeric format.","data_passed":"Raw budget strings \u2192 {normalized_amount, currency_code}"},{"step":10,"component":"packet_models","module":"packet_models.py","label":"CanonicalPacket Assembly","input":"All extracted fields + validated geography","output":"CanonicalPacket v0.3","description":"Assembles all extracted data into a CanonicalPacket with _EventTrackingDict for audit trail. Assigns authority levels (explicit_user, derived, etc.) and creates EvidenceRef provenance links.","data_passed":"All fields \u2192 CanonicalPacket (facts{}, derived_signals{}, hypotheses{}, ambiguities[], contradictions[], events[])"}],"edges":[{"from":"extractors","to":"extractors","data":"Raw text (parallel extraction)"},{"from":"extractors","to":"geography","data":"Destination candidates (raw strings)"},{"from":"extractors","to":"normalizer","data":"Raw budget strings for normalization"},{"from":"geography","to":"packet_models","data":"Validated cities + countries"},{"from":"normalizer","to":"packet_models","data":"Normalized budget values"},{"from":"packet_models","to":"validation","data":"CanonicalPacket (next pipeline stage)"}]},{"id":"decision_flow","label":"Decision & Risk Assessment","description":"Deep dive into the NB02 decision engine and all risk flag generation paths.","icon":"\ud83c\udfaf","steps":[{"step":1,"component":"decision","module":"decision.py","label":"Blocker Resolution","input":"CanonicalPacket (facts, derived_signals)","output":"{hard_blockers, soft_blockers, follow_up_questions}","description":"Checks MVB fields against stage-specific requirements. Discovery needs: destination_candidates, origin_city, date_window, party_size. Booking adds: passport_status, visa_status, payment_method.","data_passed":"CanonicalPacket.facts \u2192 {hard_blockers[], soft_blockers[]}"},{"step":2,"component":"decision","module":"decision.py","label":"Budget Feasibility","input":"CanonicalPacket + feasibility_table","output":"BudgetBreakdownResult","description":"Looks up destination-specific cost tables. Scales by party size, composition modifiers (toddler/elderly surcharges), and multi-destination penalties. Compares against stated budget.","data_passed":"Packet (budget_min, destination, party_size) \u2192 BudgetBreakdownResult (verdict, buckets[], gap, risks[])"},{"step":3,"component":"decision","module":"decision.py","label":"Ambiguity Classification","input":"CanonicalPacket.ambiguities","output":"List<AmbiguityRef> with severity","description":"Classifies each ambiguity as blocking or advisory based on field name, ambiguity type, and current stage. Unresolved destination alternatives are blocking at shortlist+.","data_passed":"Packet.ambiguities \u2192 AmbiguityRef[]{field, type, severity}"},{"step":4,"component":"hybrid_engine","module":"hybrid_engine.py","label":"Hybrid Engine (Rules + LLM)","input":"CanonicalPacket + DecisionResult (intermediate)","output":"Enriched DecisionResult with LLM reasoning","description":"Feature-flagged engine that uses deterministic rules for common cases and LLM for edge cases. Runs on composition_risk, elderly_mobility, toddler_pacing, visa_timeline, and budget_feasibility.","data_passed":"Packet, intermediate DecisionResult \u2192 enriched risk_flags[] with reasoning"},{"step":5,"component":"rule_elderly","module":"rules/elderly_mobility.py","label":"Elderly Mobility Risk","input":"Packet.composition (elderly count) + destination","output":"Risk flag if applicable","description":"Flags destinations with poor medical access or difficult terrain when elderly travelers are present. Checks against risky destinations list.","data_passed":"{elderly_count, destination} \u2192 risk_flag (elderly_mobility_risk)"},{"step":6,"component":"rule_composition","module":"rules/composition_risk.py","label":"Composition Risk","input":"Packet.composition + destination","output":"Risk flags if applicable","description":"Analyzes multi-generational group dynamics, infant feasibility, and group-size constraints for the chosen destination.","data_passed":"{composition, destination} \u2192 risk_flags[]"},{"step":7,"component":"rule_visa","module":"rules/visa_timeline.py","label":"Visa Timeline Risk","input":"Packet.visa_status + urgency + travel_dates","output":"Risk flag if timeline insufficient","description":"Checks if visa processing time fits within the travel window. Cross-references urgency signals.","data_passed":"{visa_status, urgency, dates} \u2192 risk_flag (visa_timeline_risk)"},{"step":8,"component":"rule_budget","module":"rules/budget_feasibility.py","label":"Budget Feasibility (Rule-based)","input":"Packet.budget + Packet.destination","output":"margin_risk flag if infeasible","description":"Fallback rule-based budget check when hybrid engine is disabled. Compares stated budget against minimum viable cost for the destination.","data_passed":"{budget_min, destination, party_size} \u2192 margin_risk flag"},{"step":9,"component":"decision","module":"decision.py","label":"Decision Synthesis","input":"All risk flags + blockers + ambiguities","output":"Final DecisionResult","description":"Aggregates all signals into final decision_state. Determines COMMERCIAL_DECISION (send follow-up, request token, close lost, etc.) and next_best_action.","data_passed":"{blockers, risks, ambiguities, confidence} \u2192 DecisionResult (decision_state, commercial_decision, next_best_action)"}],"edges":[{"from":"decision","to":"decision","data":"Blocker check (self-contained)"},{"from":"decision","to":"decision","data":"Budget feasibility analysis"},{"from":"decision","to":"decision","data":"Ambiguity classification"},{"from":"decision","to":"hybrid_engine","data":"Packet for LLM-assisted decisions"},{"from":"hybrid_engine","to":"rule_elderly","data":"Elderly mobility check"},{"from":"hybrid_engine","to":"rule_composition","data":"Composition risk check"},{"from":"hybrid_engine","to":"rule_visa","data":"Visa timeline check"},{"from":"hybrid_engine","to":"rule_budget","data":"Budget feasibility check"},{"from":"hybrid_engine","to":"decision","data":"Enriched risk flags back"},{"from":"decision","to":"gates","data":"Final DecisionResult for autonomy gate"}]},{"id":"safety_flow","label":"Safety, Sanitization & Leakage","description":"The entire traveler-safety pipeline \u2014 from structural sanitization to leakage detection.","icon":"\ud83d\udee1\ufe0f","steps":[{"step":1,"component":"safety","module":"safety.py","label":"Internal Field Identification","input":"CanonicalPacket","output":"List of internal-only fields","description":"Scans packet for INTERNAL_ONLY_FIELDS (agency_notes, hypotheses, contradictions, confidence_scores, etc.) and owner_constraints with internal_only visibility. These must never reach the traveler.","data_passed":"Packet \u2192 internal_fields_list"},{"step":2,"component":"safety","module":"safety.py","label":"Packet Sanitization","input":"CanonicalPacket + internal fields list","output":"SanitizedPacketView","description":"Creates a structurally sanitized view \u2014 strips internal fields, applies traveler-safe transforms to owner_constraints, removes forbidden concepts. Uses FORBIDDEN_TRAVELER_CONCEPTS set.","data_passed":"Packet \u2192 SanitizedPacketView {facts{}, derived_signals{}} (internal fields removed)"},{"step":3,"component":"safety","module":"safety.py","label":"Traveler Bundle Leakage Check","input":"traveler_bundle (PromptBundle)","output":"List of leak strings","description":"Scans the traveler-facing prompt bundle for forbidden terms: hypothesis, contradiction, blocker, confidence_score, internal_only, etc. Regex-based detection with variant expansion.","data_passed":"PromptBundle \u2192 leaks[]"},{"step":4,"component":"safety","module":"safety.py","label":"Sanitized View Leakage Check","input":"SanitizedPacketView","output":"List of leak strings","description":"Second-pass leakage detection on the sanitized packet view itself. Scans all text values in facts and derived_signals for any remaining forbidden concepts.","data_passed":"SanitizedPacketView \u2192 leaks[]"},{"step":5,"component":"safety","module":"safety.py","label":"Leakage Result Aggregation","input":"All leak checks","output":"leakage_result {leaks, is_safe}","description":"Combines all leakage findings into a single result. If is_safe=false, the pipeline HALTS \u2014 no traveler-facing content is produced.","data_passed":"traveler_leaks + sanitized_leaks \u2192 {leaks[], is_safe: bool}"}],"edges":[{"from":"safety","to":"safety","data":"Internal fields identified"},{"from":"safety","to":"safety","data":"Packet sanitized \u2192 SanitizedPacketView"},{"from":"strategy","to":"safety","data":"traveler_bundle for leakage scan"},{"from":"safety","to":"safety","data":"Sanitized view scanned for leaks"},{"from":"safety","to":"readiness","data":"leakage_result (is_safe boolean)"}]},{"id":"strategy_output_flow","label":"Strategy & Prompt Bundle Generation","description":"How session strategy is built and how internal/traveler prompt bundles are separately constructed.","icon":"\ud83e\udde0","steps":[{"step":1,"component":"strategy","module":"strategy.py","label":"Session Strategy Construction","input":"DecisionResult + CanonicalPacket","output":"SessionStrategy","description":"Builds the conversation strategy from the decision. Generates session_goal, priority_sequence (questions to ask), tonal_guardrails, suggested_opening, exit_criteria, and next_action.","data_passed":"DecisionResult + Packet \u2192 SessionStrategy {goal, priorities, guardrails, opening, exit_criteria, next_action}"},{"step":2,"component":"strategy","module":"strategy.py","label":"Internal Bundle Builder","input":"SessionStrategy + DecisionResult + CanonicalPacket (FULL packet)","output":"PromptBundle (internal)","description":"Constructs the internal prompt bundle with full access to packet data including hypotheses, contradictions, and confidence scores. Used by the LLM for operator-facing reasoning.","data_passed":"Strategy + Decision + FULL Packet \u2192 PromptBundle {system_context, user_message, follow_up_sequence, internal_notes, constraints}"},{"step":3,"component":"strategy","module":"strategy.py","label":"Traveler-Safe Bundle Builder","input":"SessionStrategy + DecisionResult (limited data)","output":"PromptBundle (traveler)","description":"Constructs the traveler-facing prompt bundle using ONLY sanitized data. Never receives the raw packet \u2014 enforces structural data separation at the code level.","data_passed":"Strategy + Decision (sanitized) \u2192 PromptBundle {system_context, user_message, follow_up_sequence} (NO internal data)"},{"step":4,"component":"plan_candidate","module":"plan_candidate.py","label":"Plan Candidate Assembly","input":"Packet + Decision + Strategy + Fees","output":"PlanCandidate","description":"Combines destination plan, itinerary options, budget breakdown, and strategy into a single structured proposal ready for operator review or traveler presentation.","data_passed":"Packet + Decision + Strategy + Fees \u2192 PlanCandidate {destination_plan, itinerary[], budget, summary}"}],"edges":[{"from":"decision","to":"strategy","data":"DecisionResult (decision_state, blockers, rationale)"},{"from":"strategy","to":"fee_calc","data":"SessionStrategy (for context)"},{"from":"strategy","to":"plan_candidate","data":"SessionStrategy"},{"from":"fee_calc","to":"plan_candidate","data":"Fee breakdown"},{"from":"plan_candidate","to":"safety","data":"PlanCandidate for traveler presentation"}]},{"id":"suitability_flow","label":"Suitability Assessment Flow","description":"How activity suitability is scored and how critical flags stop the pipeline.","icon":"\ud83c\udfd4\ufe0f","steps":[{"step":1,"component":"suit_integration","module":"suitability/integration.py","label":"Participant Extraction","input":"CanonicalPacket","output":"SuitabilityContext + List<ParticipantRef>","description":"Extracts participant information from the packet: group/subgroup structure, ages, mobility needs, and creates typed ParticipantRef objects.","data_passed":"Packet.facts \u2192 SuitabilityContext {participants[], destination, trip_style}"},{"step":2,"component":"suit_catalog","module":"suitability/catalog.py","label":"Activity Catalog Lookup","input":"Destination + trip purpose","output":"List<ActivityDefinition>","description":"Retrieves candidate activities from the static catalog filtered by destination, intensity, accessibility tags, and group constraints.","data_passed":"{destination, purpose} \u2192 ActivityDefinition[]{activity_id, name, intensity, duration, accessibility_tags}"},{"step":3,"component":"suit_scoring","module":"suitability/scoring.py","label":"Activity Scoring","input":"ActivityDefinition + ParticipantRef + Context","output":"List<StructuredRisk>","description":"Scores each activity against participant profiles. Evaluates age limits, physical demands, accessibility, seasonal factors, and group suitability.","data_passed":"{activity, participants, context} \u2192 StructuredRisk[]{flag, severity, category, message}"},{"step":4,"component":"suit_confidence","module":"suitability/confidence.py","label":"Confidence Scoring","input":"Scoring results + data quality signals","output":"Confidence scores per activity","description":"Assigns confidence levels to each suitability assessment based on data completeness, authority levels, and corroboration signals.","data_passed":"Risk scores + data quality \u2192 confidence scores [0-100]"},{"step":5,"component":"suit_context","module":"suitability/context_rules.py","label":"Context Rule Application","input":"Scored activities + trip context","output":"Filtered/sorted activity options","description":"Applies context-sensitive rules: seasonal closures, timing constraints, group-size limits, and ordering preferences.","data_passed":"Scored activities + {season, timing, group_size} \u2192 ranked activities[]"},{"step":6,"component":"orchestration","module":"orchestration.py","label":"Critical Flag Enforcement","input":"SuitabilityFlags from integration.py","output":"Updated DecisionResult (potentially STOP_NEEDS_REVIEW)","description":"If any suitability flag has severity='critical', the decision_state is forced to STOP_NEEDS_REVIEW and the trip is blocked from proceeding until operator review.","data_passed":"SuitabilityFlag(critical) \u2192 DecisionResult.decision_state = STOP_NEEDS_REVIEW + hard_blocker added"}],"edges":[{"from":"orchestration","to":"suit_integration","data":"CanonicalPacket"},{"from":"suit_integration","to":"suit_catalog","data":"SuitabilityContext"},{"from":"suit_catalog","to":"suit_scoring","data":"ActivityDefinition[]"},{"from":"suit_scoring","to":"suit_confidence","data":"StructuredRisk[]"},{"from":"suit_confidence","to":"suit_context","data":"Scored risks + confidence"},{"from":"suit_context","to":"orchestration","data":"SuitabilityFlags \u2192 feeds back into DecisionResult"}]},{"id":"readiness_flow","label":"Readiness & Go/No-Go Decision","description":"How all pipeline signals are aggregated into a single readiness score.","icon":"\ud83d\udcca","steps":[{"step":1,"component":"readiness","module":"readiness.py","label":"Signal Aggregation","input":"All pipeline outputs","output":"ReadinessResult","description":"Collects packet state, validation results, decision outcomes, bundle quality, safety verdict, and fee data into a unified assessment.","data_passed":"{packet, validation, decision, bundles, safety, fees} \u2192 ReadinessInput"},{"step":2,"component":"readiness","module":"readiness.py","label":"Completeness Check","input":"ReadinessInput","output":"Completeness score [0-100]","description":"Evaluates how many required fields are present vs missing. Considers both intake minimum and quote-ready field requirements.","data_passed":"ReadinessInput \u2192 completeness_score"},{"step":3,"component":"readiness","module":"readiness.py","label":"Quality Assessment","input":"Validation + Decision quality signals","output":"Quality score [0-100]","description":"Assesses data quality based on confidence scores, evidence coverage, ambiguity counts, and decision confidence.","data_passed":"{confidence, evidence_coverage, ambiguity_count} \u2192 quality_score"},{"step":4,"component":"readiness","module":"readiness.py","label":"Safety Gate","input":"Leakage result","output":"Safety boolean + violations list","description":"Checks if leakage check passed. Any violation blocks readiness approval.","data_passed":"leakage_result.is_safe \u2192 safety_passed: bool"},{"step":5,"component":"readiness","module":"readiness.py","label":"Go/No-Go Verdict","input":"All scores and gates","output":"ReadinessVerdict (GO / CONDITIONAL / NO-GO)","description":"Final verdict combining completeness, quality, and safety. GO = proceed to booking. CONDITIONAL = needs enrichment. NO-GO = save for later.","data_passed":"{completeness, quality, safety} \u2192 ReadinessVerdict + next_action"}],"edges":[{"from":"readiness","to":"readiness","data":"Signal aggregation"},{"from":"readiness","to":"readiness","data":"Completeness + Quality + Safety"},{"from":"readiness","to":"analytics_logger","data":"ReadinessVerdict logged"}]},{"id":"agent_operations","label":"Agent Runtime & Live Tools","description":"How agents are managed and how live tools (flight status, weather, pricing) operate.","icon":"\ud83e\udd16","steps":[{"step":1,"component":"runtime","module":"agents/runtime.py","label":"Agent Registration & Discovery","input":"Agent definitions (code-level)","output":"Registered agent pool","description":"Agents are registered by code (not dynamically). The runtime performs deterministic scans and assigns work items based on agent capabilities and trigger contracts.","data_passed":"AgentDefinition(name, trigger_contract, input/output contracts, retry_policy) \u2192 Agent pool"},{"step":2,"component":"runtime","module":"agents/runtime.py","label":"Work Item Dispatch","input":"WorkItem {agent_name, trip_id, action, payload}","output":"Execution result","description":"Dispatches work to registered agents with idempotency keys. Supports retry with exponential backoff and poison pill detection.","data_passed":"WorkItem \u2192 WorkResult or WorkStatus (pending/running/completed/retrying/poisoned)"},{"step":3,"component":"live_tools","module":"agents/live_tools.py","label":"Flight Status Tool","input":"Flight number + date","output":"Real-time flight status","description":"Checks live flight status for schedule disruptions, delays, and cancellations. Used for proactive traveler alerts.","data_passed":"{flight_number, date} \u2192 {status, delay_minutes, gate, terminal}"},{"step":4,"component":"live_tools","module":"agents/live_tools.py","label":"Price Watch Tool","input":"Route + date range","output":"Price trends and alerts","description":"Monitors flight/hotel prices over time. Triggers alerts when prices drop below thresholds or when deals are detected.","data_passed":"{route, dates} \u2192 PriceTrend {current, history[], alerts[]}"},{"step":5,"component":"live_tools","module":"agents/live_tools.py","label":"Safety Alert Tool","input":"Destination + traveler profile","output":"Safety advisories","description":"Monitors geopolitical events, natural disasters, health advisories, and travel warnings for active trips.","data_passed":"{destination, dates} \u2192 SafetyAlert[]{type, severity, description}"},{"step":6,"component":"live_tools","module":"agents/live_tools.py","label":"Weather Tool","input":"Destination + date range","output":"Weather forecast","description":"Provides weather forecasts for trip dates to inform packing and activity recommendations.","data_passed":"{destination, dates} \u2192 WeatherForecast{daily[]}"},{"step":7,"component":"agent_events","module":"agents/events.py","label":"Event Emission","input":"Agent actions and state changes","output":"AgentEvent envelopes","description":"Every agent action emits structured events for observability: started, stopped, decision, action, failed, retry, escalated.","data_passed":"AgentAction \u2192 AgentEvent{agent_name, event_type, trip_id, payload}"},{"step":8,"component":"recovery_agent","module":"agents/recovery_agent.py","label":"Failure Recovery","input":"Failed work items","output":"Recovery actions","description":"Handles failed agent executions. Applies retry policies, escalates persistent failures, and triggers compensating actions.","data_passed":"FailedWorkItem \u2192 {retry_count, escalation, compensating_action}"}],"edges":[{"from":"runtime","to":"live_tools","data":"WorkItem dispatch"},{"from":"live_tools","to":"agent_events","data":"Tool results \u2192 events"},{"from":"runtime","to":"recovery_agent","data":"Failed work items"},{"from":"recovery_agent","to":"runtime","data":"Retry/escalate"},{"from":"agent_events","to":"analytics_logger","data":"AgentEvent \u2192 AuditTrail"}]},{"id":"llm_extraction_flow","label":"LLM-Powered Extraction","description":"How LLM-based vision and document extraction works alongside the regex pipeline.","icon":"\ud83e\udde9","steps":[{"step":1,"component":"model_chain","module":"extraction/model_chain.py","label":"Model Chain Orchestration","input":"Document (PDF/image) + extraction schema","output":"Extraction result from best model","description":"Orchestrates multi-model extraction chains. Tries primary model first, falls back to alternatives. Handles retry and schema validation.","data_passed":"Document + SchemaSpec \u2192 ExtractionResult"},{"step":2,"component":"gemini_vision","module":"extraction/gemini_vision_extractor.py","label":"Gemini Vision Extraction","input":"Image/PDF document","output":"Structured data per schema","description":"Uses Google Gemini Vision API for OCR and structured data extraction from travel documents, receipts, and itineraries.","data_passed":"Image/PDF \u2192 {text, structured_fields}"},{"step":3,"component":"openai_vision","module":"extraction/openai_vision_extractor.py","label":"OpenAI Vision Extraction","input":"Image/PDF document","output":"Structured data per schema","description":"Uses OpenAI GPT-4 Vision for document understanding. Handles complex multi-page documents and tables.","data_passed":"Image/PDF \u2192 {text, structured_fields}"},{"step":4,"component":"pricing_ext","module":"extraction/pricing.py","label":"Pricing Extraction","input":"Extracted text with prices","output":"Normalized pricing data","description":"Parses and normalizes pricing from various formats and currencies. Handles ranges, per-person vs total pricing.","data_passed":"Raw text \u2192 {amount, currency, type, confidence}"},{"step":5,"component":"llm_base","module":"llm/base.py","label":"LLM Client Management","input":"API request + model selection","output":"LLM response (streaming or structured)","description":"Manages LLM clients (OpenAI, Gemini, local). Feature-flagged fallback chain, usage tracking, and structured output parsing.","data_passed":"Request \u2192 LLMResponse {content, tokens, model, latency}"}],"edges":[{"from":"model_chain","to":"gemini_vision","data":"Document for extraction"},{"from":"model_chain","to":"openai_vision","data":"Fallback document"},{"from":"gemini_vision","to":"pricing_ext","data":"Raw extracted text"},{"from":"openai_vision","to":"pricing_ext","data":"Raw extracted text"},{"from":"llm_base","to":"model_chain","data":"Client selection & response"},{"from":"model_chain","to":"extractors","data":"Extracted fields \u2192 CanonicalPacket"}]},{"id":"tododesktop_build","label":"ToDesktop Build Pipeline","description":"How the ToDesktop wrapper builds and packages the application for desktop distribution.","icon":"\ud83d\udcbb","steps":[{"step":1,"component":"frontend","module":"frontend/","label":"Frontend Build (Next.js)","input":"Source code + dependencies","output":"Static build artifacts","description":"Next.js frontend is built. Includes the workflow visualization page, Streamlit wrapper, and all UI components. Outputs optimized static assets.","data_passed":"src/** \u2192 build/ (static HTML/JS/CSS)"},{"step":2,"component":"todesktop","module":"todesktop config","label":"ToDesktop Configuration","input":"Build artifacts + todesk.json config","output":"Desktop package","description":"ToDesktop wraps the web app into a native desktop shell. Configures window behavior, system tray, auto-updates, and native APIs.","data_passed":"build/ + todesk.json \u2192 Desktop package (.dmg, .exe, .AppImage)"},{"step":3,"component":"todesktop","module":"todesktop build","label":"Native Package Generation","input":"Configured web wrapper","output":"Platform-specific installers","description":"Generates platform-specific builds for macOS, Windows, and Linux. Includes code signing, notarization for macOS, and auto-update infrastructure.","data_passed":"Web wrapper \u2192 Native installers per platform"}],"edges":[{"from":"frontend","to":"todesktop","data":"Static build artifacts"},{"from":"todesktop","to":"todesktop","data":"Native package output"}]},{"id":"booking_flow","label":"Booking & Confirmation","description":"How a finalized plan candidate becomes a confirmed booking with payment, itinerary lock, and traveler notification.","icon":"\u2705","steps":[{"step":1,"component":"plan_candidate","module":"plan_candidate.py","label":"Plan Finalization","input":"PlanCandidate (validated, safety-cleared)","output":"FinalizedPlan","description":"Locks the itinerary, applies last-availability checks, and confirms pricing. Creates a stable booking reference.","data_passed":"PlanCandidate \u2192 FinalizedPlan {booking_ref, locked_itinerary, final_pricing}"},{"step":2,"component":"payment_gateway","module":"services/payment_gateway.py","label":"Payment Processing","input":"FinalizedPlan + payment method","output":"PaymentConfirmation","description":"Processes payment via integrated gateway. Handles card, wallet, and bank transfer. Returns transaction ID and confirmation status.","data_passed":"FinalizedPlan + PaymentMethod \u2192 PaymentConfirmation {txn_id, status, amount}"},{"step":3,"component":"booking_engine","module":"services/booking_engine.py","label":"Booking Record Creation","input":"FinalizedPlan + PaymentConfirmation","output":"BookingRecord","description":"Creates the persistent booking record in the database. Links traveler profile, itinerary, payments, and documents.","data_passed":"FinalizedPlan + PaymentConfirmation \u2192 BookingRecord {booking_id, traveler_id, itinerary, payment_ref}"},{"step":4,"component":"notification_service","module":"services/notification_service.py","label":"Traveler Notification","input":"BookingRecord + traveler preferences","output":"NotificationDispatch","description":"Sends booking confirmation via email, SMS, WhatsApp, and in-app. Includes itinerary PDF attachment and next-steps summary.","data_passed":"BookingRecord \u2192 NotificationDispatch {channels[], confirmation_payload}"},{"step":5,"component":"ticketing","module":"services/ticketing.py","label":"Ticket/Voucher Generation","input":"BookingRecord","output":"TicketPDF","description":"Generates e-tickets or vouchers for flights, hotels, and activities. Attaches barcodes/QR codes for check-in.","data_passed":"BookingRecord \u2192 TicketPDF {tickets[], vouchers[], qr_codes[]}"},{"step":6,"component":"analytics_logger","module":"analytics/logger.py","label":"Booking Audit Log","input":"BookingRecord + timeline events","output":"TimelineEvents","description":"Logs the booking event chain for compliance and audit. Records payment, confirmation, and ticket generation events.","data_passed":"BookingRecord \u2192 AuditEvents \u2192 TimelineEvents"}],"edges":[{"from":"plan_candidate","to":"payment_gateway","data":"FinalizedPlan"},{"from":"payment_gateway","to":"booking_engine","data":"PaymentConfirmation"},{"from":"booking_engine","to":"notification_service","data":"BookingRecord (new)"},{"from":"booking_engine","to":"ticketing","data":"BookingRecord"},{"from":"booking_engine","to":"analytics_logger","data":"Booking audit event"},{"from":"notification_service","to":"analytics_logger","data":"Notification dispatch logged"},{"from":"ticketing","to":"analytics_logger","data":"Ticket generation logged"},{"from":"analytics_logger","to":"readiness","data":"AuditEvents (feedback loop)"}]},{"id":"cancellation_flow","label":"Cancellation & Refund","description":"How a confirmed booking is cancelled, refund eligibility is determined, and rebooking options are offered.","icon":"\u274c","steps":[{"step":1,"component":"cancellation_trigger","module":"services/cancellation_trigger.py","label":"Cancellation Request","input":"BookingRecord + cancellation reason","output":"CancellationRequest","description":"Receives cancellation trigger from traveler or operator. Captures reason, timing relative to departure, and refund eligibility context.","data_passed":"BookingRecord + reason \u2192 CancellationRequest {request_id, reason, timing}"},{"step":2,"component":"cancellation_policy","module":"services/cancellation_policy.py","label":"Cancellation Policy Evaluation","input":"CancellationRequest + booking terms","output":"RefundEligibility","description":"Evaluates against fare rules, timing windows, and agency policy. Determines refund amount, credits, or penalties. Handles force majeure exceptions.","data_passed":"CancellationRequest \u2192 RefundEligibility {refund_amount, penalty, credit_balance, policy_applied}"},{"step":3,"component":"payment_gateway","module":"services/payment_gateway.py","label":"Refund Processing","input":"RefundEligibility","output":"RefundConfirmation","description":"Routes refund to original payment method. Handles partial refunds, travel credits, and multi-payment splits. Returns transaction confirmation.","data_passed":"RefundEligibility \u2192 RefundConfirmation {txn_id, amount, method, status}"},{"step":4,"component":"booking_engine","module":"services/booking_engine.py","label":"Booking Status Update","input":"CancellationRequest + RefundConfirmation","output":"UpdatedBookingRecord","description":"Marks booking as cancelled in the database. Preserves record for audit. Releases inventory if applicable.","data_passed":"CancellationRequest + RefundConfirmation \u2192 UpdatedBookingRecord {status: cancelled, released_inventory}"},{"step":5,"component":"rebooking_engine","module":"services/rebooking_engine.py","label":"Rebooking Options (Optional)","input":"CancellationRequest + traveller preferences","output":"AlternativeOptions","description":"If the traveler wants to rebook, generates alternative itinerary options based on original preferences and current availability.","data_passed":"CancellationRequest \u2192 AlternativeOptions {alternatives[], price_diffs[]}"},{"step":6,"component":"notification_service","module":"services/notification_service.py","label":"Cancellation Notification","input":"CancellationRequest + RefundConfirmation","output":"NotificationDispatch","description":"Sends cancellation confirmation and refund details via email, SMS, and WhatsApp. Includes refund timeline and rebooking link if applicable.","data_passed":"CancellationRequest + RefundConfirmation \u2192 NotificationDispatch"},{"step":7,"component":"analytics_logger","module":"analytics/logger.py","label":"Cancellation Audit Log","input":"All cancellation events","output":"TimelineEvents","description":"Logs the entire cancellation chain for compliance, refund audit, and policy enforcement.","data_passed":"Cancellation events \u2192 AuditEvents \u2192 TimelineEvents"}],"edges":[{"from":"cancellation_trigger","to":"cancellation_policy","data":"CancellationRequest"},{"from":"cancellation_policy","to":"payment_gateway","data":"RefundEligibility"},{"from":"cancellation_policy","to":"notification_service","data":"RefundEligibility (notify traveler)"},{"from":"payment_gateway","to":"booking_engine","data":"RefundConfirmation"},{"from":"booking_engine","to":"notification_service","data":"UpdatedBookingRecord"},{"from":"booking_engine","to":"analytics_logger","data":"Cancellation audit event"},{"from":"notification_service","to":"analytics_logger","data":"Notification logged"},{"from":"cancellation_trigger","to":"rebooking_engine","data":"Rebooking request (optional)"}]},{"id":"whatsapp_messaging","label":"WhatsApp Communication","description":"How traveler-facing WhatsApp messages are formatted, sent, and tracked through the communication pipeline.","icon":"\ud83d\udcac","steps":[{"step":1,"component":"whatsapp","module":"whatsapp_formatter.py","label":"Message Formatting","input":"Trip data + message type","output":"FormattedWhatsAppMessage","description":"Formats trip details, confirmations, alerts, and follow-ups into WhatsApp-ready messages with proper structure, emojis, and localization.","data_passed":"TripData + MessageType \u2192 FormattedWhatsAppMessage {body, media[], buttons[]}"},{"step":2,"component":"notification_service","module":"services/notification_service.py","label":"WhatsApp Dispatch","input":"FormattedWhatsAppMessage + traveler phone","output":"WhatsAppDeliveryStatus","description":"Sends formatted message via WhatsApp Business API. Handles delivery receipts, read receipts, and retry on failure.","data_passed":"FormattedWhatsAppMessage \u2192 WhatsAppDeliveryStatus {sent_at, delivered, read}"},{"step":3,"component":"agent_events","module":"agents/events.py","label":"Communication Event Logging","input":"WhatsApp delivery status","output":"AgentEvent","description":"Emits structured event for each WhatsApp interaction. Tracks delivery, read status, and response for conversation continuity.","data_passed":"WhatsAppDeliveryStatus \u2192 AgentEvent {event_type: whatsapp, payload: delivery_info}"},{"step":4,"component":"analytics_logger","module":"analytics/logger.py","label":"Communication Audit Log","input":"WhatsApp AgentEvents","output":"TimelineEvents","description":"Logs all WhatsApp communications to the audit trail for compliance and conversation history.","data_passed":"AgentEvent \u2192 AuditEvent \u2192 TimelineEvents"}],"edges":[{"from":"whatsapp","to":"notification_service","data":"FormattedWhatsAppMessage"},{"from":"notification_service","to":"agent_events","data":"WhatsAppDeliveryStatus"},{"from":"agent_events","to":"analytics_logger","data":"WhatsApp event logged"},{"from":"analytics_logger","to":"whatsapp","data":"AuditEvents (loopback for tracking)"}]},{"id":"emergency_escalation","label":"Emergency Escalation","description":"How emergency situations are detected, escalated, and handled through the recovery and agent systems.","icon":"\ud83d\udea8","steps":[{"step":1,"component":"extractors","module":"extractors.py","label":"Emergency Detection","input":"Raw traveler text","output":"EmergencyFlag","description":"Detects emergency keywords and patterns in traveler input. Classifies severity level (medical, security, natural disaster, travel disruption).","data_passed":"RawText \u2192 EmergencyFlag {severity, type, details}"},{"step":2,"component":"runtime","module":"agents/runtime.py","label":"Emergency Dispatch","input":"EmergencyFlag","output":"WorkItem","description":"Creates high-priority work item and dispatches to emergency response agent. Bypasses normal queue priority.","data_passed":"EmergencyFlag \u2192 WorkItem {priority: critical, agent: emergency_handler}"},{"step":3,"component":"recovery_agent","module":"agents/recovery_agent.py","label":"Emergency Recovery","input":"WorkItem (emergency)","output":"RecoveryAction","description":"Handles emergency case. Coordinates with live tools for real-time data. May trigger rebooking, medical assistance, or evacuation protocols.","data_passed":"WorkItem \u2192 RecoveryAction {action_type, coordination_status, affected_bookings}"},{"step":4,"component":"live_tools","module":"agents/live_tools.py","label":"Emergency Tool Activation","input":"RecoveryAction","output":"LiveDataResponse","description":"Activates relevant live tools: flight status for rebooking, safety alerts for destination, weather for evacuation routing.","data_passed":"RecoveryAction \u2192 LiveDataResponse {flight_status, safety_alerts, weather}"},{"step":5,"component":"notification_service","module":"services/notification_service.py","label":"Emergency Notification","input":"RecoveryAction + LiveDataResponse","output":"NotificationDispatch","description":"Sends emergency notifications to traveler, emergency contacts, and operations team via all channels including WhatsApp.","data_passed":"RecoveryAction + LiveDataResponse \u2192 NotificationDispatch"},{"step":6,"component":"agent_events","module":"agents/events.py","label":"Escalation Event Log","input":"All emergency actions","output":"AgentEvent","description":"Emits structured events for every emergency action taken. Creates full audit trail for post-incident review.","data_passed":"RecoveryAction \u2192 AgentEvent {event_type: emergency, payload: full_context}"},{"step":7,"component":"analytics_logger","module":"analytics/logger.py","label":"Incident Audit Trail","input":"Emergency AgentEvents","output":"TimelineEvents","description":"Logs complete emergency timeline for compliance, insurance, and post-incident analysis.","data_passed":"AgentEvent \u2192 AuditEvent \u2192 TimelineEvents"}],"edges":[{"from":"extractors","to":"runtime","data":"EmergencyFlag"},{"from":"runtime","to":"recovery_agent","data":"WorkItem (critical)"},{"from":"recovery_agent","to":"live_tools","data":"RecoveryAction"},{"from":"live_tools","to":"notification_service","data":"LiveDataResponse"},{"from":"recovery_agent","to":"notification_service","data":"RecoveryAction"},{"from":"notification_service","to":"agent_events","data":"Emergency notification status"},{"from":"agent_events","to":"analytics_logger","data":"Emergency events logged"},{"from":"agent_events","to":"runtime","data":"Escalation feedback"}]},{"id":"post_trip_feedback","label":"Post-Trip Feedback & Review","description":"How completed trips generate feedback, ratings, and data for future trip improvements.","icon":"\u2b50","steps":[{"step":1,"component":"readiness","module":"readiness.py","label":"Trip Completion Detection","input":"BookingRecord + trip end date","output":"CompletionSignal","description":"Detects when a trip is complete based on booking end date and status. Triggers post-trip workflow.","data_passed":"BookingRecord \u2192 CompletionSignal {trip_id, completion_date, status}"},{"step":2,"component":"notification_service","module":"services/notification_service.py","label":"Feedback Request","input":"CompletionSignal","output":"NotificationDispatch","description":"Sends feedback request to traveler via email, WhatsApp, and in-app. Includes rating forms and review prompts.","data_passed":"CompletionSignal \u2192 NotificationDispatch {channels[], feedback_form_url}"},{"step":3,"component":"analytics_engine","module":"analytics/engine.py","label":"Feedback Aggregation","input":"Feedback responses","output":"AggregatedRatings","description":"Collects and aggregates traveler feedback. Computes satisfaction scores, NPS, and identifies improvement areas.","data_passed":"FeedbackResponses \u2192 AggregatedRatings {satisfaction_score, nps, themes[]}"},{"step":4,"component":"analytics_logger","module":"analytics/logger.py","label":"Feedback Audit Log","input":"AggregatedRatings + feedback raw data","output":"TimelineEvents","description":"Logs feedback data to audit trail. Preserves individual responses for compliance and trend analysis.","data_passed":"AggregatedRatings \u2192 AuditEvents \u2192 TimelineEvents"},{"step":5,"component":"fee_calc","module":"fees/calculation.py","label":"Post-Trip Cost Reconciliation","input":"BookingRecord + actual expenses","output":"ReconciliationReport","description":"Compares estimated vs actual costs. Flags overruns and generates final cost report for traveler and agency.","data_passed":"BookingRecord + ActualExpenses \u2192 ReconciliationReport {estimated, actual, variance, flags[]}"},{"step":6,"component":"strategy","module":"strategy.py","label":"Learning Integration","input":"AggregatedRatings + ReconciliationReport","output":"StrategyUpdate","description":"Feeds post-trip data back into strategy. Updates preference models, improves future recommendations, and adjusts pricing estimates.","data_passed":"AggregatedRatings + ReconciliationReport \u2192 StrategyUpdate {model_updates, preference_adjustments, pricing_tuning}"},{"step":7,"component":"dashboard_aggregator","module":"services/dashboard_aggregator.py","label":"Dashboard Update","input":"All post-trip data","output":"DashboardMetrics","description":"Updates the operations dashboard with trip outcomes, satisfaction metrics, and financial summaries for management visibility.","data_passed":"AggregatedRatings + ReconciliationReport \u2192 DashboardMetrics"}],"edges":[{"from":"readiness","to":"notification_service","data":"CompletionSignal"},{"from":"notification_service","to":"analytics_engine","data":"Feedback responses (collected)"},{"from":"analytics_engine","to":"analytics_logger","data":"AggregatedRatings"},{"from":"analytics_logger","to":"fee_calc","data":"Trip audit data"},{"from":"fee_calc","to":"strategy","data":"ReconciliationReport"},{"from":"analytics_engine","to":"dashboard_aggregator","data":"AggregatedRatings"},{"from":"fee_calc","to":"dashboard_aggregator","data":"ReconciliationReport"},{"from":"strategy","to":"dashboard_aggregator","data":"StrategyUpdate (improvements)"}]},{"id":"federated_intelligence_flow","label":"Federated Intelligence & Negotiation","description":"How multi-agent negotiation and federated intelligence aggregation work together for complex trip planning.","icon":"\ud83c\udf10","steps":[{"step":1,"component":"federated","module":"federated_intelligence.py","label":"Intelligence Aggregation","input":"CanonicalPacket + AgentEvents","output":"FederatedIntelligence","description":"Aggregates intelligence from multiple agent sources. Correlates signals from live tools, historical data, and agent observations into unified situational awareness.","data_passed":"CanonicalPacket + AgentEvents[] \u2192 FederatedIntelligence {signals[], confidence, sources[]}"},{"step":2,"component":"negotiation","module":"negotiation_engine.py","label":"Multi-Agent Negotiation","input":"FederatedIntelligence + Strategy","output":"NegotiationResult","description":"Orchestrates multi-agent negotiation for conflicting preferences. Balances budget vs comfort, safety vs adventure, and group member trade-offs.","data_passed":"FederatedIntelligence + SessionStrategy \u2192 NegotiationResult {agreements[], conflicts[], compromises[]}"},{"step":3,"component":"strategy","module":"strategy.py","label":"Strategy Refinement","input":"NegotiationResult","output":"RefinedSessionStrategy","description":"Incorporates negotiation outcomes back into session strategy. Adjusts priorities, updates prompt bundles, and refines recommendations.","data_passed":"NegotiationResult \u2192 RefinedSessionStrategy {updated_goals, adjusted_priorities}"},{"step":4,"component":"plan_candidate","module":"plan_candidate.py","label":"Plan Update","input":"RefinedSessionStrategy + CanonicalPacket","output":"UpdatedPlanCandidate","description":"Rebuilds plan candidate with negotiated adjustments. Reflects compromises and trade-offs in final proposal.","data_passed":"RefinedSessionStrategy + Packet \u2192 UpdatedPlanCandidate"},{"step":5,"component":"readiness","module":"readiness.py","label":"Re-readiness Check","input":"UpdatedPlanCandidate","output":"UpdatedReadinessResult","description":"Re-evaluates readiness after negotiation changes. Ensures all constraints still satisfied.","data_passed":"UpdatedPlanCandidate \u2192 UpdatedReadinessResult"}],"edges":[{"from":"federated","to":"negotiation","data":"FederatedIntelligence"},{"from":"negotiation","to":"strategy","data":"NegotiationResult"},{"from":"strategy","to":"plan_candidate","data":"RefinedSessionStrategy"},{"from":"plan_candidate","to":"readiness","data":"UpdatedPlanCandidate"},{"from":"readiness","to":"federated","data":"UpdatedReadinessResult (feedback loop)"},{"from":"agent_events","to":"federated","data":"Agent observations"},{"from":"analytics_logger","to":"federated","data":"Historical intelligence"}]}]};
+
+
+let currentWorkflow = 'all';
+let showLabels = true;
+let transform = { x: 0, y: 0, k: 1 };
+let selectedNode = null;
+let highlightedEdges = new Set();
+let hoveredNode = null;
+let lastW = 0, lastH = 0;
+
+const PACKAGE_COLORS = {
+  intake: '#4f46e5', agents: '#059669', suitability: '#d97706',
+  decision_engine: '#7c3aed', fees: '#0891b2', analytics: '#be185d',
+  security: '#dc2626', extraction: '#0d9488', public_checker: '#78716c',
+  llm: '#9333ea', adapters: '#64748b', services: '#ea580c',
+  schemas: '#6366f1', evals: '#db2777'
+};
+
+const EDGE_COLORS = {
+  'full_spine_pipeline': '#818cf8', 'invite_new_user': '#34d399',
+  'run_extraction': '#fbbf24', 'decision_flow': '#f87171',
+  'safety_flow': '#fb923c', 'strategy_output_flow': '#a78bfa',
+  'suitability_flow': '#f472b6', 'readiness_flow': '#2dd4bf',
+  'agent_operations': '#38bdf8', 'llm_extraction_flow': '#c084fc',
+  'tododesktop_build': '#94a3b8', 'booking_flow': '#4ade80',
+  'cancellation_flow': '#f87171', 'whatsapp_messaging': '#25d366',
+  'emergency_escalation': '#ef4444', 'post_trip_feedback': '#fbbf24',
+  'federated_intelligence_flow': '#06b6d4'
+};
+
+function computeLayout() {
+  const packages = Object.entries(DATA.packages);
+  const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+  const radius = Math.min(cx, cy) * 0.65;
+  const pkgPositions = {};
+  packages.forEach(([pkgId, pkg], i) => {
+    const angle = (i / packages.length) * Math.PI * 2 - Math.PI / 2;
+    pkgPositions[pkgId] = { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius };
+  });
+  const nodes = [], edges = [], componentMap = {};
+  packages.forEach(([pkgId, pkg]) => {
+    const pc = pkgPositions[pkgId];
+    const comps = pkg.components || [];
+    const cr = Math.min(180, 60 + comps.length * 12);
+    comps.forEach((comp, i) => {
+      const angle = comps.length === 1 ? 0 : (i / comps.length) * Math.PI * 2;
+      nodes.push({
+        id: comp.id, label: comp.label, desc: comp.desc,
+        package: pkgId, pkgLabel: pkg.label,
+        x: pc.x + Math.cos(angle) * cr, y: pc.y + Math.sin(angle) * cr,
+        color: PACKAGE_COLORS[pkgId] || '#6366f1',
+        width: Math.max(120, comp.label.length * 6.5 + 20), height: 44
+      });
+      componentMap[comp.id] = nodes[nodes.length - 1];
+    });
+  });
+  DATA.workflows.forEach(wf => {
+    wf.edges.forEach(e => {
+      edges.push({ id: wf.id + '-' + e.from + '-' + e.to, from: e.from, to: e.to, data: e.data, workflow: wf.id, workflowLabel: wf.label });
+    });
+  });
+  return { nodes, edges, pkgPositions, componentMap };
+}
+
+function computeWorkflowLayout(wfId) {
+  const wf = DATA.workflows.find(w => w.id === wfId);
+  if (!wf) return null;
+  const stepComps = wf.steps.map(s => s.component);
+  const edgeComps = new Set();
+  wf.edges.forEach(e => { edgeComps.add(e.from); edgeComps.add(e.to); });
+  const allIds = new Set([...stepComps, ...edgeComps]);
+  const fullLayout = computeLayout();
+  const relevantNodes = [], relevantEdges = [], wComponentMap = {};
+  fullLayout.nodes.forEach(n => {
+    if (allIds.has(n.id)) { relevantNodes.push({...n}); wComponentMap[n.id] = relevantNodes[relevantNodes.length - 1]; }
+  });
+  fullLayout.edges.forEach(e => { if (e.workflow === wfId) relevantEdges.push({...e}); });
+  const stepOrder = {};
+  wf.steps.forEach((s, i) => { if (!(s.component in stepOrder)) stepOrder[s.component] = i; });
+  const columns = {};
+  wf.steps.forEach((s, i) => { if (!columns[i]) columns[i] = new Set(); columns[i].add(s.component); });
+  const colCount = Object.keys(columns).length || 1;
+  const viewW = Math.max(window.innerWidth - 400, 800);
+  const viewH = Math.max(window.innerHeight - 100, 600);
+  const colSpacing = viewW / (colCount + 1);
+  const startY = 80;
+  Object.keys(columns).forEach(col => {
+    const colIdx = parseInt(col);
+    const nodeIds = [...columns[col]];
+    const x = (colIdx + 1) * colSpacing + 200;
+    nodeIds.forEach((nid, rowIdx) => {
+      const node = wComponentMap[nid];
+      if (node) {
+        const yOffset = (rowIdx - (nodeIds.length - 1) / 2) * 70;
+        node.x = x;
+        node.y = startY + viewH / 2 + yOffset;
+      }
+    });
+  });
+  relevantNodes.forEach(node => {
+    if (node.id in stepOrder) return;
+    const inEdges = relevantEdges.filter(e => e.to === node.id);
+    const outEdges = relevantEdges.filter(e => e.from === node.id);
+    if (inEdges.length > 0) {
+      const fromNode = wComponentMap[inEdges[0].from];
+      if (fromNode && fromNode.x !== undefined) { node.x = fromNode.x + colSpacing * 0.5; node.y = fromNode.y + 40; }
+    } else if (outEdges.length > 0) {
+      const toNode = wComponentMap[outEdges[0].to];
+      if (toNode && toNode.x !== undefined) { node.x = toNode.x - colSpacing * 0.5; node.y = toNode.y - 40; }
+    }
+  });
+  const positioned = relevantNodes.filter(n => n.x !== undefined && n.y !== undefined);
+  return { nodes: positioned, edges: relevantEdges, pkgPositions: fullLayout.pkgPositions, componentMap: wComponentMap };
+}
+
+let layout;
+const svg = document.getElementById('graph');
+const NS = 'http://www.w3.org/2000/svg';
+function createSVGElement(tag, attrs) {
+  const el = document.createElementNS(NS, tag);
+  Object.entries(attrs || {}).forEach(([k, v]) => el.setAttribute(k, v));
+  return el;
+}
+
+function renderAll() {
+  svg.innerHTML = '';
+  const defs = createSVGElement('defs', {});
+  defs.innerHTML = '<filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter><marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="currentColor" opacity="0.5"/></marker>';
+  svg.appendChild(defs);
+  const isWorkflowView = currentWorkflow !== 'all';
+  const activeLayout = isWorkflowView ? (computeWorkflowLayout(currentWorkflow) || layout) : layout;
+  activeLayout.edges.forEach(edge => {
+    const fromNode = activeLayout.componentMap[edge.from];
+    const toNode = activeLayout.componentMap[edge.to];
+    if (!fromNode || !toNode) return;
+    if (isWorkflowView && edge.workflow !== currentWorkflow) return;
+    const x1 = fromNode.x + fromNode.width / 2, y1 = fromNode.y + fromNode.height / 2;
+    const x2 = toNode.x - toNode.width / 2, y2 = toNode.y + toNode.height / 2;
+    const color = EDGE_COLORS[edge.workflow] || '#475569';
+    const isHighlighted = highlightedEdges.has(edge.id);
+    const line = createSVGElement('line', { x1, y1, x2, y2, class: 'edge' + (isHighlighted ? ' highlighted' : ''), stroke: color, 'data-workflow': edge.workflow, 'marker-end': 'url(#arrowhead)' });
+    svg.appendChild(line);
+    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+    const label = createSVGElement('text', { x: mx, y: my - 6, class: 'edge-label' + (isHighlighted ? ' highlighted' : ''), 'text-anchor': 'middle' });
+    label.textContent = edge.data;
+    svg.appendChild(label);
+  });
+  activeLayout.nodes.forEach(node => {
+    if (isWorkflowView && !activeLayout.componentMap[node.id]) return;
+    const g = createSVGElement('g', { class: 'node' + (selectedNode === node.id ? ' selected' : ''), transform: 'translate(' + (node.x - node.width/2) + ',' + (node.y - node.height/2) + ')', 'data-id': node.id, 'data-package': node.package });
+    g.appendChild(createSVGElement('rect', { x: 0, y: 0, width: node.width, height: node.height, fill: node.color, 'fill-opacity': 0.15, stroke: node.color, 'stroke-opacity': 0.6, rx: 6, ry: 6 }));
+    const title = createSVGElement('text', { x: node.width / 2, y: 18, class: 'title', 'text-anchor': 'middle', fill: node.color });
+    title.textContent = truncate(node.label, 20);
+    g.appendChild(title);
+    const desc = createSVGElement('text', { x: node.width / 2, y: 34, class: 'desc', 'text-anchor': 'middle' });
+    desc.textContent = truncate(node.desc, 35);
+    g.appendChild(desc);
+    g.addEventListener('mouseenter', (e) => onNodeHover(node, e));
+    g.addEventListener('mouseleave', () => onNodeLeave());
+    g.addEventListener('click', (e) => onNodeClick(node, e));
+    svg.appendChild(g);
+  });
+  if (showLabels && !isWorkflowView) {
+    Object.entries(DATA.packages).forEach(([pkgId, pkg]) => {
+      const pos = layout.pkgPositions[pkgId];
+      const label = createSVGElement('text', { x: pos.x, y: pos.y - 110, class: 'pkg-label', 'text-anchor': 'middle', fill: PACKAGE_COLORS[pkgId] || '#6366f1' });
+      label.textContent = pkg.label;
+      svg.appendChild(label);
+    });
+  }
+  if (isWorkflowView) {
+    const wf = DATA.workflows.find(w => w.id === currentWorkflow);
+    if (wf) {
+      const t = createSVGElement('text', { x: window.innerWidth / 2 - 170, y: 35, class: 'pkg-label', 'text-anchor': 'middle', fill: EDGE_COLORS[wf.id] || '#818cf8', 'font-size': '14px' });
+      t.textContent = wf.icon + ' ' + wf.label;
+      svg.appendChild(t);
+    }
+  }
+}
+
+function truncate(str, len) { return str.length > len ? str.substring(0, len - 3) + '\u2026' : str; }
+
+function onNodeHover(node, e) {
+  hoveredNode = node;
+  document.getElementById('tooltipTitle').textContent = node.label;
+  document.getElementById('tooltipDesc').textContent = node.desc;
+  const connected = layout.edges.filter(ed => ed.from === node.id || ed.to === node.id).map(ed => ed.workflowLabel).filter((v, i, a) => a.indexOf(v) === i);
+  document.getElementById('tooltipData').innerHTML = '<strong>Package:</strong> ' + node.pkgLabel + '<br/><strong>Workflows:</strong> ' + (connected.join(', ') || 'None');
+  const tooltip = document.getElementById('tooltip');
+  tooltip.classList.add('visible');
+  tooltip.style.left = (e.clientX + 16) + 'px';
+  tooltip.style.top = (e.clientY + 16) + 'px';
+}
+
+function onNodeLeave() { hoveredNode = null; document.getElementById('tooltip').classList.remove('visible'); }
+
+function onNodeClick(node, e) {
+  e.stopPropagation();
+  selectedNode = selectedNode === node.id ? null : node.id;
+  openDetail(node);
+  highlightNodeConnections(node.id);
+  renderAll();
+}
+
+function highlightNodeConnections(nodeId) {
+  highlightedEdges.clear();
+  layout.edges.forEach(edge => { if (edge.from === nodeId || edge.to === nodeId) highlightedEdges.add(edge.id); });
+}
+
+function openDetail(node) {
+  const panel = document.getElementById('detailPanel');
+  const content = document.getElementById('detailContent');
+  const relatedWorkflows = [...new Set(layout.edges.filter(ed => ed.from === node.id || ed.to === node.id).map(ed => ed.workflow))];
+  const relatedFlowDetails = relatedWorkflows.map(wfId => DATA.workflows.find(w => w.id === wfId)).filter(Boolean);
+  let html = '<h2>' + node.label + '</h2><div class="meta">' + node.pkgLabel + ' package</div><div class="section"><h4>Description</h4><p>' + node.desc + '</p></div>';
+  if (relatedFlowDetails.length > 0) {
+    html += '<div class="section"><h4>Connected Workflows</h4><ul>';
+    relatedFlowDetails.forEach(wf => { html += '<li><strong style="color:' + (EDGE_COLORS[wf.id] || '#818cf8') + '">' + wf.icon + ' ' + wf.label + '</strong><br/><span style="font-size:11px;color:var(--text-muted)">' + wf.description + '</span></li>'; });
+    html += '</ul></div>';
+  }
+  const connectedEdges = layout.edges.filter(ed => ed.from === node.id || ed.to === node.id);
+  if (connectedEdges.length > 0) {
+    html += '<div class="section"><h4>Data Handoffs</h4>';
+    connectedEdges.forEach(ed => {
+      const dir = ed.from === node.id ? '\u2192 Out' : '\u2190 In';
+      const otherId = ed.from === node.id ? ed.to : ed.from;
+      const other = layout.componentMap[otherId];
+      html += '<div style="margin-bottom:8px;"><span style="font-size:11px;color:' + (EDGE_COLORS[ed.workflow] || '#818cf8') + ';font-weight:600">' + ed.workflowLabel + '</span><br/><span style="font-size:11px;color:var(--text-muted)">' + dir + ': <strong>' + (other ? other.label : otherId) + '</strong> \u2014 ' + ed.data + '</span></div>';
+    });
+    html += '</div>';
+  }
+  content.innerHTML = html;
+  panel.classList.add('open');
+}
+
+function closeDetail() { document.getElementById('detailPanel').classList.remove('open'); selectedNode = null; highlightedEdges.clear(); renderAll(); }
+
+function selectWorkflow() {
+  currentWorkflow = document.getElementById('workflowSelect').value;
+  const wf = DATA.workflows.find(w => w.id === currentWorkflow);
+  document.getElementById('statFlow').textContent = wf ? wf.label : '\u2014';
+  if (currentWorkflow !== 'all') {
+    const wLayout = computeWorkflowLayout(currentWorkflow);
+    if (wLayout && wLayout.nodes.length > 0) {
+      const xs = wLayout.nodes.map(n => n.x), ys = wLayout.nodes.map(n => n.y);
+      const minX = Math.min(...xs) - 100, maxX = Math.max(...xs) + 200;
+      const minY = Math.min(...ys) - 80, maxY = Math.max(...ys) + 80;
+      const contentW = maxX - minX, contentH = maxY - minY;
+      const viewW = window.innerWidth - 380, viewH = window.innerHeight;
+      const scale = Math.min(viewW / contentW, viewH / contentH, 1.5);
+      const centerX = (minX + maxX) / 2, centerY = (minY + maxY) / 2;
+      transform.k = scale;
+      transform.x = viewW / 2 + 170 - centerX * scale;
+      transform.y = viewH / 2 - centerY * scale;
+      applyTransform();
+    }
+  } else {
+    transform = { x: 0, y: 0, k: 1 };
+    applyTransform();
+  }
+  renderAll();
+}
+
+function zoomIn() { transform.k = Math.min(3, transform.k * 1.2); applyTransform(); }
+function zoomOut() { transform.k = Math.max(0.3, transform.k / 1.2); applyTransform(); }
+function resetView() { transform = { x: 0, y: 0, k: 1 }; applyTransform(); }
+function applyTransform() { svg.style.transform = 'translate(' + transform.x + 'px,' + transform.y + 'px) scale(' + transform.k + ')'; svg.style.transformOrigin = '0 0'; }
+function toggleLabels() { showLabels = !showLabels; document.getElementById('toggleLabels').classList.toggle('active', showLabels); renderAll(); }
+
+let isPanning = false, panStart = { x: 0, y: 0 };
+const canvas = document.getElementById('canvas');
+canvas.addEventListener('mousedown', e => { if (e.target === canvas || e.target === svg || e.target.tagName === 'svg') { isPanning = true; panStart = { x: e.clientX - transform.x, y: e.clientY - transform.y }; canvas.style.cursor = 'grabbing'; } });
+canvas.addEventListener('mousemove', e => { if (isPanning) { transform.x = e.clientX - panStart.x; transform.y = e.clientY - panStart.y; applyTransform(); } });
+canvas.addEventListener('mouseup', () => { isPanning = false; canvas.style.cursor = 'grab'; });
+canvas.addEventListener('wheel', e => { e.preventDefault(); transform.k = Math.min(3, Math.max(0.3, transform.k * (e.deltaY > 0 ? 0.9 : 1.1))); applyTransform(); }, { passive: false });
+
+function handleSearch() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('.nav-item').forEach(item => { item.style.display = item.textContent.toLowerCase().includes(q) ? '' : 'none'; });
+}
+
+function filterSearch() {
+  const q = document.getElementById('globalSearch').value.toLowerCase();
+  const resultsEl = document.getElementById('searchResults');
+  resultsEl.innerHTML = '';
+  if (q.length < 2) return;
+  Object.entries(DATA.packages).forEach(([pkgId, pkg]) => {
+    (pkg.components || []).forEach(comp => {
+      if (comp.label.toLowerCase().includes(q) || comp.desc.toLowerCase().includes(q)) {
+        const div = document.createElement('div');
+        div.className = 'search-result-item';
+        div.innerHTML = '<div class="pkg-name">' + pkg.label + '</div><div>' + comp.label + '</div>';
+        div.onclick = () => { document.getElementById('searchOverlay').classList.remove('visible'); document.getElementById('globalSearch').value = ''; const node = layout.componentMap[comp.id]; if (node) { transform.x = window.innerWidth / 2 - node.x * transform.k; transform.y = window.innerHeight / 2 - node.y * transform.k; applyTransform(); onNodeClick(node, {}); } };
+        resultsEl.appendChild(div);
+      }
+    });
+  });
+  DATA.workflows.forEach(wf => {
+    if (wf.label.toLowerCase().includes(q) || wf.description.toLowerCase().includes(q)) {
+      const div = document.createElement('div');
+      div.className = 'search-result-item';
+      div.innerHTML = '<div class="pkg-name">Workflow</div><div>' + wf.label + '</div>';
+      div.onclick = () => { document.getElementById('searchOverlay').classList.remove('visible'); document.getElementById('globalSearch').value = ''; document.getElementById('workflowSelect').value = wf.id; currentWorkflow = wf.id; document.getElementById('statFlow').textContent = wf.label; selectWorkflow(); };
+      resultsEl.appendChild(div);
+    }
+  });
+}
+
+function buildSidebar() {
+  const nav = document.getElementById('sidebarNav');
+  nav.innerHTML = '';
+  const wfSection = document.createElement('div');
+  wfSection.className = 'nav-section';
+  wfSection.innerHTML = '<div class="nav-section-title">Workflows</div>';
+  const allWfItem = document.createElement('div');
+  allWfItem.className = 'nav-item active';
+  allWfItem.innerHTML = '<div class="dot" style="background:var(--accent)"></div> All Workflows <span class="badge">' + DATA.workflows.length + '</span>';
+  allWfItem.onclick = () => { currentWorkflow = 'all'; document.getElementById('workflowSelect').value = 'all'; document.getElementById('statFlow').textContent = '\u2014'; document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active')); allWfItem.classList.add('active'); transform = { x: 0, y: 0, k: 1 }; applyTransform(); renderAll(); };
+  wfSection.appendChild(allWfItem);
+  DATA.workflows.forEach(wf => {
+    const item = document.createElement('div');
+    item.className = 'nav-item';
+    const color = EDGE_COLORS[wf.id] || '#818cf8';
+    item.innerHTML = '<div class="dot" style="background:' + color + '"></div> ' + wf.icon + ' ' + wf.label + ' <span class="badge">' + wf.steps.length + ' steps</span>';
+    item.onclick = () => { currentWorkflow = wf.id; document.getElementById('workflowSelect').value = wf.id; document.getElementById('statFlow').textContent = wf.label; document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active')); item.classList.add('active'); selectWorkflow(); };
+    wfSection.appendChild(item);
+  });
+  nav.appendChild(wfSection);
+  const pkgSection = document.createElement('div');
+  pkgSection.className = 'nav-section';
+  pkgSection.innerHTML = '<div class="nav-section-title">Packages</div>';
+  Object.entries(DATA.packages).forEach(([pkgId, pkg]) => {
+    const item = document.createElement('div');
+    item.className = 'nav-item';
+    const color = PACKAGE_COLORS[pkgId] || '#6366f1';
+    item.innerHTML = '<div class="dot" style="background:' + color + '"></div> ' + pkg.label + ' <span class="badge">' + (pkg.components || []).length + '</span>';
+    pkgSection.appendChild(item);
+  });
+  nav.appendChild(pkgSection);
+}
+
+function init() {
+  layout = computeLayout();
+  buildSidebar();
+  renderAll();
+  document.getElementById('statComponents').textContent = layout.nodes.length;
+  document.getElementById('statWorkflows').textContent = DATA.workflows.length;
+  document.getElementById('statEdges').textContent = layout.edges.length;
+  canvas.addEventListener('click', e => { if (e.target === canvas || e.target === svg) closeDetail(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); if (e.key === '/' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); document.getElementById('searchOverlay').classList.toggle('visible'); document.getElementById('globalSearch').focus(); } });
+  lastW = window.innerWidth; lastH = window.innerHeight;
+}
+
+init();
+window.addEventListener('resize', () => {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (Math.abs(w - lastW) < 5 && Math.abs(h - lastH) < 5) return;
+  lastW = w; lastH = h;
+  layout = computeLayout();
+  renderAll();
+});
+</script>
+</body>
+</html>

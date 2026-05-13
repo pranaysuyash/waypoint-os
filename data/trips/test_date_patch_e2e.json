@@ -1,0 +1,13 @@
+{
+  "id": "test_date_patch_e2e",
+  "source": "test",
+  "status": "assigned",
+  "extracted": {},
+  "validation": {},
+  "decision": {
+    "decision_state": "PENDING"
+  },
+  "raw_input": {},
+  "saved_at": "2026-05-13T11:15:18.774891+00:00",
+  "agency_id": "5f8fca52-419d-41ea-a063-481268f3f902"
+}

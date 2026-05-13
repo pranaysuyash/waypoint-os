@@ -28,8 +28,73 @@ from spine_api.core.security import (
     decode_token,
 )
 from spine_api.models.tenant import Agency, User, Membership, WorkspaceCode, PasswordResetToken
+from spine_api.core.rls import apply_rls
 
 logger = logging.getLogger("spine_api.auth_service")
+
+
+async def _ensure_user_membership(db: AsyncSession, user: User) -> Membership:
+    """
+    Ensure the user has at least one agency membership.
+    If the user is an orphan (no memberships), create a default agency and
+    an owner membership on the fly so the user can log in.
+
+    Idempotent: if memberships already exist, returns the primary one.
+    """
+    # Try primary first
+    result = await db.execute(
+        select(Membership)
+        .where(Membership.user_id == user.id)
+        .where(Membership.is_primary == True)
+    )
+    membership = result.scalar_one_or_none()
+    if membership:
+        return membership
+
+    # Fallback to any membership
+    result = await db.execute(
+        select(Membership).where(Membership.user_id == user.id)
+    )
+    membership = result.scalar_one_or_none()
+    if membership:
+        return membership
+
+    # Orphan user: create default agency + owner membership
+    agency_name = f"{user.name or user.email}'s Agency"
+    slug_base = agency_name.lower().replace("'s agency", "").replace(" ", "-")
+    slug = f"{slug_base[:40]}-{secrets.token_hex(4)}"
+
+    # Ensure slug uniqueness
+    slug_result = await db.execute(select(Agency).where(Agency.slug == slug))
+    if slug_result.scalar_one_or_none():
+        slug = f"{slug_base[:40]}-{secrets.token_hex(6)}"
+
+    agency = Agency(
+        name=agency_name,
+        slug=slug,
+        email=user.email,
+    )
+    db.add(agency)
+    await db.flush()  # get agency.id
+
+    # Apply RLS so the membership insert passes tenant policy
+    await apply_rls(db, agency.id)
+
+    membership = Membership(
+        user_id=user.id,
+        agency_id=agency.id,
+        role="owner",
+        is_primary=True,
+        status="active",
+    )
+    db.add(membership)
+    await db.flush()
+
+    logger.info(
+        "Runtime backfill: created agency=%s + membership for orphan user=%s",
+        agency.id, user.id,
+    )
+    return membership
 
 
 def _slug_from_name(name: str) -> str:
@@ -98,7 +163,10 @@ async def signup(
     )
     db.add(agency)
     await db.flush()
-    
+
+    # Apply RLS context so the membership insert passes tenant policy
+    await apply_rls(db, agency.id)
+
     membership = Membership(
         user_id=user.id,
         agency_id=agency.id,
@@ -116,10 +184,13 @@ async def signup(
     )
     db.add(code)
     await db.commit()
-    await db.refresh(user)
-    await db.refresh(agency)
-    await db.refresh(membership)
-    
+
+    # NOTE: db.refresh() omitted here because RLS resets after commit.
+    # The in-memory membership already has all fields we need (user_id,
+    # agency_id, role, is_primary).  Downstream code (access-token creation)
+    # uses only those fields, so refresh is unnecessary and would fail under
+    # FORCE RLS when the new transaction lacks app.current_agency_id.
+
     access_token = create_access_token(
         user_id=user.id,
         agency_id=agency.id,
@@ -171,21 +242,7 @@ async def login(
     if not user.is_active:
         raise ValueError("Account is deactivated")
 
-    result = await db.execute(
-        select(Membership)
-        .where(Membership.user_id == user.id)
-        .where(Membership.is_primary == True)
-    )
-    membership = result.scalar_one_or_none()
-
-    if not membership:
-        result = await db.execute(
-            select(Membership).where(Membership.user_id == user.id)
-        )
-        membership = result.scalar_one_or_none()
-
-    if not membership:
-        raise ValueError("User has no agency membership")
+    membership = await _ensure_user_membership(db, user)
 
     result = await db.execute(select(Agency).where(Agency.id == membership.agency_id))
     agency = result.scalar_one_or_none()
@@ -251,15 +308,8 @@ async def refresh_access_token(
     if not user or not user.is_active:
         raise ValueError("User not found or inactive")
 
-    result = await db.execute(
-        select(Membership)
-        .where(Membership.user_id == user.id)
-        .where(Membership.is_primary == True)
-    )
-    membership = result.scalar_one_or_none()
-
-    if not membership:
-        raise ValueError("No active membership")
+    membership = await _ensure_user_membership(db, user)
+    await db.commit()
 
     new_access = create_access_token(
         user_id=user.id,
@@ -495,6 +545,10 @@ async def join_with_code(
     await db.flush()  # get user.id before membership
 
     role = _CODE_TYPE_ROLE.get(workspace_code.code_type, "junior_agent")
+
+    # Set RLS context before inserting into memberships (FORCE RLS protected)
+    await apply_rls(db, agency.id)
+
     membership = Membership(
         user_id=user.id,
         agency_id=agency.id,
@@ -503,8 +557,9 @@ async def join_with_code(
     )
     db.add(membership)
     await db.commit()
-    await db.refresh(user)
-    await db.refresh(membership)
+
+    # NOTE: db.refresh() omitted after commit because RLS resets. The in-memory
+    # user and membership objects already contain all fields needed downstream.
 
     access_token = create_access_token(
         user_id=user.id,

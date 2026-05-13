@@ -14,6 +14,7 @@ from unittest.mock import MagicMock
 from datetime import datetime, timedelta, timezone
 
 from intake.readiness import compute_readiness, _check_booking_ready
+from spine_api.persistence import TEST_AGENCY_ID
 
 
 # ---------------------------------------------------------------------------
@@ -58,7 +59,7 @@ def created_trip_id(session_client):
 
     trip_data = {
         "source": "test_collection_fixture",
-        "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "agency_id": TEST_AGENCY_ID,
         "status": "assigned",
         "stage": "proposal",
         "extracted": {},
@@ -66,7 +67,7 @@ def created_trip_id(session_client):
         "decision": {},
         "raw_input": {},
     }
-    trip_id = TripStore.save_trip(trip_data, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+    trip_id = TripStore.save_trip(trip_data, agency_id=TEST_AGENCY_ID)
     yield trip_id
     try:
         TripStore.delete_trip(trip_id)
@@ -81,7 +82,7 @@ def discovery_trip_id():
 
     trip_data = {
         "source": "test_collection_discovery",
-        "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "agency_id": TEST_AGENCY_ID,
         "status": "assigned",
         "stage": "discovery",
         "extracted": {},
@@ -89,7 +90,7 @@ def discovery_trip_id():
         "decision": {},
         "raw_input": {},
     }
-    trip_id = TripStore.save_trip(trip_data, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+    trip_id = TripStore.save_trip(trip_data, agency_id=TEST_AGENCY_ID)
     yield trip_id
     try:
         TripStore.delete_trip(trip_id)

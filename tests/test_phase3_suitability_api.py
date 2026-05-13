@@ -18,7 +18,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 from uuid import uuid4
 
-from spine_api.persistence import TripStore
+from spine_api.persistence import TripStore, TEST_AGENCY_ID
 
 
 @pytest.fixture(autouse=True)
@@ -57,7 +57,7 @@ class TestGetTripSuitabilityEndpoint:
     def test_get_suitability_returns_empty_flags_for_new_trip(self, session_client):
         """Test fetching suitability flags for a trip with no decision output."""
         trip_id = f"trip_{uuid4().hex[:12]}"
-        agency_id = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"  # From conftest
+        agency_id = TEST_AGENCY_ID  # From conftest
         
         # Create a trip with no decision output
         trip_data = make_trip_data(trip_id, agency_id)
@@ -82,7 +82,7 @@ class TestGetTripSuitabilityEndpoint:
     def test_get_suitability_returns_single_flag(self, session_client):
         """Test fetching suitability flags with a single flag."""
         trip_id = f"trip_{uuid4().hex[:12]}"
-        agency_id = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+        agency_id = TEST_AGENCY_ID
         
         # Create a trip with decision output containing a suitability flag
         trip_data = make_trip_data(
@@ -118,7 +118,7 @@ class TestGetTripSuitabilityEndpoint:
     def test_get_suitability_converts_confidence_to_percentage(self, session_client):
         """Test that confidence is converted from 0-1 to 0-100."""
         trip_id = f"trip_{uuid4().hex[:12]}"
-        agency_id = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+        agency_id = TEST_AGENCY_ID
         
         trip_data = make_trip_data(
             trip_id,
@@ -147,7 +147,7 @@ class TestGetTripSuitabilityEndpoint:
     def test_get_suitability_returns_multiple_flags(self, session_client):
         """Test fetching multiple suitability flags."""
         trip_id = f"trip_{uuid4().hex[:12]}"
-        agency_id = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+        agency_id = TEST_AGENCY_ID
         
         trip_data = make_trip_data(
             trip_id,
@@ -196,7 +196,7 @@ class TestGetTripSuitabilityEndpoint:
     def test_get_suitability_tier_classification(self, session_client):
         """Test that tier is correctly set from severity."""
         trip_id = f"trip_{uuid4().hex[:12]}"
-        agency_id = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+        agency_id = TEST_AGENCY_ID
         
         trip_data = make_trip_data(
             trip_id,
@@ -247,7 +247,7 @@ class TestGetTripSuitabilityEndpoint:
     def test_get_suitability_includes_trip_id_in_each_flag(self, session_client):
         """Test that each flag includes the trip_id."""
         trip_id = f"trip_{uuid4().hex[:12]}"
-        agency_id = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+        agency_id = TEST_AGENCY_ID
         
         trip_data = make_trip_data(
             trip_id,
@@ -276,7 +276,7 @@ class TestGetTripSuitabilityEndpoint:
     def test_get_suitability_includes_created_at_timestamp(self, session_client):
         """Test that suitability flags include created_at timestamp."""
         trip_id = f"trip_{uuid4().hex[:12]}"
-        agency_id = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+        agency_id = TEST_AGENCY_ID
         created_at = "2026-04-23T10:00:00Z"
         
         trip_data = make_trip_data(

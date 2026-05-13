@@ -13,10 +13,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from spine_api.persistence import TEST_AGENCY_ID
 from spine_api.services.extraction_service import ExtractionResult
 
 
-AGENCY_ID = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+AGENCY_ID = TEST_AGENCY_ID
 
 
 def _upload_and_accept(client, trip_id, doc_type="passport", mime="image/jpeg", content=None):

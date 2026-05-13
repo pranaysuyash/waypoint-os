@@ -30,6 +30,7 @@ Migration:
 """
 
 from contextvars import ContextVar
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import AsyncGenerator, Optional, Sequence
 
@@ -43,11 +44,28 @@ from spine_api.core.database import get_db
 _current_agency_id: ContextVar[Optional[str]] = ContextVar("_current_agency_id", default=None)
 
 RLS_TENANT_TABLES: tuple[str, ...] = (
+    # Phase 5A: original RLS tables
     "trips",
     "memberships",
     "workspace_codes",
     "booking_collection_tokens",
+    # Phase 5A migration (had RLS but was missing from registry)
+    "trip_routing_states",
+    # Phase 4-5 tables (previously unprotected)
+    "booking_documents",
+    "document_extractions",
+    "document_extraction_attempts",
+    "booking_tasks",
+    "booking_confirmations",
+    "execution_events",
 )
+
+RLS_EXCLUDED_AGENCY_TABLES: dict[str, str] = {
+    "audit_logs": "admin/audit surface; query-scoped; separate hardening task",
+    "emotional_state_logs": "frontier/experimental feature; not in Phase 5E scope",
+    "ghost_workflows": "frontier/experimental feature; not in Phase 5E scope",
+    "legacy_aspirations": "frontier/experimental feature; not in Phase 5E scope",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -200,3 +218,33 @@ async def get_rls_db(
     if agency_id:
         await apply_rls(db, agency_id)
     yield db
+
+
+@asynccontextmanager
+async def rls_session(agency_id: str):
+    """
+    Context manager: yields a DB session with RLS applied for the given agency.
+
+    Use this when an endpoint needs direct session control (e.g., document upload)
+    but still requires tenant isolation. Prefer get_rls_db() for standard routes;
+    use this for async_session_maker() replacements.
+
+    Uses set_config(..., false) (session-level, not transaction-level) so the
+    RLS context survives commits/rollbacks within the same session. Resets the
+    value to empty on exit to prevent cross-request bleeding through the pool.
+    """
+    from spine_api.core.database import async_session_maker
+
+    async with async_session_maker() as session:
+        # Session-level so it survives commits within this session
+        await session.execute(
+            text("SELECT set_config('app.current_agency_id', :agency_id, false)"),
+            {"agency_id": agency_id},
+        )
+        try:
+            yield session
+        finally:
+            # Clear the session-level setting to prevent pool bleeding
+            await session.execute(
+                text("SELECT set_config('app.current_agency_id', '', false)"),
+            )

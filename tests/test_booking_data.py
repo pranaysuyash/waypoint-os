@@ -11,6 +11,7 @@ import os
 import pytest
 from unittest.mock import MagicMock
 
+from spine_api.persistence import TEST_AGENCY_ID
 from intake.readiness import compute_readiness, _check_booking_ready
 
 
@@ -79,7 +80,7 @@ def created_trip_id(session_client):
 
     trip_data = {
         "source": "test_booking_fixture",
-        "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "agency_id": TEST_AGENCY_ID,
         "status": "assigned",
         "stage": "proposal",
         "extracted": {},
@@ -87,7 +88,7 @@ def created_trip_id(session_client):
         "decision": {},
         "raw_input": {},
     }
-    trip_id = TripStore.save_trip(trip_data, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+    trip_id = TripStore.save_trip(trip_data, agency_id=TEST_AGENCY_ID)
     yield trip_id
     try:
         TripStore.delete_trip(trip_id)
@@ -407,3 +408,150 @@ class TestBookingDataValidation:
         )
         assert bd.travelers[0].full_name == "Alice"
         assert bd.payer is None
+
+
+# ---------------------------------------------------------------------------
+# 6. Atomic booking update (update_trip_if_version)
+# ---------------------------------------------------------------------------
+
+class TestAtomicBookingUpdate:
+    def test_update_trip_if_version_success_file_backend(self, tmp_path, monkeypatch):
+        """update_trip_if_version succeeds when version matches."""
+        from spine_api.persistence import FileTripStore, TRIPS_DIR
+        from pathlib import Path
+        data_dir = tmp_path / "data"
+        trips_dir = data_dir / "trips"
+        trips_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr("spine_api.persistence.TRIPS_DIR", trips_dir)
+        monkeypatch.setattr("spine_api.persistence.DATA_DIR", data_dir)
+
+        trip_id = FileTripStore.save_trip({"id": "t1", "raw_note": "hello", "agency_id": "agency_a"}, agency_id="agency_a")
+        trip = FileTripStore.get_trip(trip_id)
+        original_updated_at = trip["updated_at"]
+
+        result = FileTripStore.update_trip_if_version(
+            trip_id,
+            {"status": "completed"},
+            expected_updated_at=original_updated_at,
+        )
+        assert result is not None
+        assert result["status"] == "completed"
+
+    def test_update_trip_if_version_fails_on_mismatch_file_backend(self, tmp_path, monkeypatch):
+        """update_trip_if_version returns None when version does not match (no 409 to client)."""
+        from spine_api.persistence import FileTripStore, TRIPS_DIR
+        from pathlib import Path
+        data_dir = tmp_path / "data"
+        trips_dir = data_dir / "trips"
+        trips_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr("spine_api.persistence.TRIPS_DIR", trips_dir)
+        monkeypatch.setattr("spine_api.persistence.DATA_DIR", data_dir)
+
+        trip_id = FileTripStore.save_trip({"id": "t2", "raw_note": "hello", "agency_id": "agency_a"}, agency_id="agency_a")
+
+        result = FileTripStore.update_trip_if_version(
+            trip_id,
+            {"status": "completed"},
+            expected_updated_at="2099-01-01T00:00:00",
+        )
+        assert result is None
+
+    def test_update_trip_if_version_preserves_old_data_on_failure(self, tmp_path, monkeypatch):
+        """When update_trip_if_version returns None, the trip data is unchanged."""
+        from spine_api.persistence import FileTripStore, TRIPS_DIR
+        from pathlib import Path
+        data_dir = tmp_path / "data"
+        trips_dir = data_dir / "trips"
+        trips_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr("spine_api.persistence.TRIPS_DIR", trips_dir)
+        monkeypatch.setattr("spine_api.persistence.DATA_DIR", data_dir)
+
+        trip_id = FileTripStore.save_trip({"id": "t3", "raw_note": "original", "agency_id": "agency_a"}, agency_id="agency_a")
+        trip_before = FileTripStore.get_trip(trip_id)
+
+        FileTripStore.update_trip_if_version(
+            trip_id,
+            {"raw_note": "overwritten"},
+            expected_updated_at="2099-01-01T00:00:00",
+        )
+        trip_after = FileTripStore.get_trip(trip_id)
+        assert trip_after["raw_note"] == "original"
+        assert trip_after["updated_at"] == trip_before["updated_at"]
+
+
+# ---------------------------------------------------------------------------
+# 7. Tenant-scoped trip lookups (get_trip_for_agency)
+# ---------------------------------------------------------------------------
+
+class TestTenantScopedTripLookup:
+    def test_get_trip_for_agency_returns_trip_for_correct_agency(self, tmp_path, monkeypatch):
+        from spine_api.persistence import FileTripStore, TRIPS_DIR
+        from pathlib import Path
+        data_dir = tmp_path / "data"
+        trips_dir = data_dir / "trips"
+        trips_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr("spine_api.persistence.TRIPS_DIR", trips_dir)
+        monkeypatch.setattr("spine_api.persistence.DATA_DIR", data_dir)
+
+        FileTripStore.save_trip({"id": "t1", "agency_id": "agency_a"}, agency_id="agency_a")
+        FileTripStore.save_trip({"id": "t2", "agency_id": "agency_b"}, agency_id="agency_b")
+
+        trip_a = FileTripStore.get_trip_for_agency("t1", "agency_a")
+        assert trip_a is not None
+        assert trip_a["id"] == "t1"
+
+        trip_wrong = FileTripStore.get_trip_for_agency("t1", "agency_b")
+        assert trip_wrong is None
+
+    def test_get_trip_for_agency_returns_none_for_missing_trip(self, tmp_path, monkeypatch):
+        from spine_api.persistence import FileTripStore, TRIPS_DIR
+        from pathlib import Path
+        data_dir = tmp_path / "data"
+        trips_dir = data_dir / "trips"
+        trips_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr("spine_api.persistence.TRIPS_DIR", trips_dir)
+        monkeypatch.setattr("spine_api.persistence.DATA_DIR", data_dir)
+
+        result = FileTripStore.get_trip_for_agency("nonexistent", "agency_a")
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# 8. Fixture seeding — no agency_id reassignment
+# ---------------------------------------------------------------------------
+
+class TestFixtureSeedingNoReassignment:
+    def test_seed_does_not_reassign_existing_trip(self, tmp_path, monkeypatch):
+        """_seed_scenario_for_agency must never rewrite agency_id on existing trips."""
+        from pathlib import Path
+        from spine_api.persistence import FileTripStore, TRIPS_DIR, DATA_DIR
+        from spine_api.server import _seed_scenario_for_agency
+
+        data_dir = tmp_path / "data"
+        trips_dir = data_dir / "trips"
+        fixtures_dir = data_dir / "fixtures"
+        fixtures_dir.mkdir(parents=True, exist_ok=True)
+        trips_dir.mkdir(parents=True, exist_ok=True)
+
+        monkeypatch.setattr("spine_api.persistence.TRIPS_DIR", trips_dir)
+        monkeypatch.setattr("spine_api.persistence.DATA_DIR", data_dir)
+        monkeypatch.setattr("spine_api.server.PROJECT_ROOT", tmp_path)
+
+        # Create a fixture file
+        import json
+        fixture = [{"id": "trip_f1", "status": "new", "created_at": "2026-01-01T00:00:00"}]
+        fixture_path = fixtures_dir / "test_fixture.json"
+        fixture_path.write_text(json.dumps(fixture))
+
+        # Seed for agency_a
+        monkeypatch.setenv("SEED_SCENARIO", "test_fixture")
+        count_a = _seed_scenario_for_agency("agency_a")
+        assert count_a == 1
+        trip = FileTripStore.get_trip("trip_f1")
+        assert trip["agency_id"] == "agency_a"
+
+        # Seed again for agency_b — must NOT reassign
+        count_b = _seed_scenario_for_agency("agency_b")
+        assert count_b == 0  # Skipped, not reassigned
+        trip_after = FileTripStore.get_trip("trip_f1")
+        assert trip_after["agency_id"] == "agency_a"  # Unchanged

@@ -343,6 +343,14 @@ class DocumentExtractionAttempt(Base):
         ForeignKey("document_extractions.id", ondelete="CASCADE"),
         nullable=False, index=True,
     )
+    agency_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("agencies.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    trip_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("trips.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
     run_number: Mapped[int] = mapped_column(Integer, nullable=False)
     attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
     fallback_rank: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -539,6 +547,8 @@ ALLOWED_SUBJECT_TYPES = (
     "document_extraction",
     "document_extraction_attempt",
 )
+
+ALLOWED_ACTOR_TYPES = ("agent", "system")
 
 ALLOWED_EVENT_SOURCES = (
     "agent_action",

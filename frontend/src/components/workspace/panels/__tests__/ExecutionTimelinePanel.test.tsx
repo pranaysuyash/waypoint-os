@@ -102,7 +102,7 @@ describe("ExecutionTimelinePanel", () => {
     const tasksChip = screen.getByText(/Tasks \(1\)/);
     await user.click(tasksChip);
 
-    expect(api.getExecutionTimeline).toHaveBeenCalledWith("trip-1", "task");
+    expect(api.getExecutionTimeline).toHaveBeenCalledWith("trip-1", "task", undefined);
   });
 
   it("no PII in rendered output - no supplier_name or confirmation_number", async () => {

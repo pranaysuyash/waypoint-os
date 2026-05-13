@@ -96,23 +96,23 @@ class RunMeta(BaseModel):
 # =============================================================================
 
 class SpineRunRequest(BaseModel):
-    raw_note: Optional[str] = None
-    owner_note: Optional[str] = None
+    raw_note: Optional[str] = Field(default=None, max_length=100_000)
+    owner_note: Optional[str] = Field(default=None, max_length=50_000)
     structured_json: Optional[Dict[str, Any]] = None
-    itinerary_text: Optional[str] = None
+    itinerary_text: Optional[str] = Field(default=None, max_length=200_000)
     retention_consent: bool = False
     stage: str = "discovery"
     operating_mode: str = "normal_intake"
     strict_leakage: bool = False
-    scenario_id: Optional[str] = None
-    follow_up_due_date: Optional[str] = None
-    pace_preference: Optional[str] = None
-    lead_source: Optional[str] = None
-    activity_provenance: Optional[str] = None
-    trip_priorities: Optional[str] = None
-    date_flexibility: Optional[str] = None
-    date_year_confidence: Optional[str] = None
-    draft_id: Optional[str] = None  # Links run to a pre-trip draft
+    scenario_id: Optional[str] = Field(default=None, max_length=100)
+    follow_up_due_date: Optional[str] = Field(default=None, max_length=50)
+    pace_preference: Optional[str] = Field(default=None, max_length=100)
+    lead_source: Optional[str] = Field(default=None, max_length=200)
+    activity_provenance: Optional[str] = Field(default=None, max_length=500)
+    trip_priorities: Optional[str] = Field(default=None, max_length=1000)
+    date_flexibility: Optional[str] = Field(default=None, max_length=500)
+    date_year_confidence: Optional[str] = Field(default=None, max_length=50)
+    draft_id: Optional[str] = Field(default=None, max_length=100)
 
     model_config = {"extra": "forbid"}
 

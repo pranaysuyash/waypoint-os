@@ -57,6 +57,19 @@ function displaySub(
   return readyLabel;
 }
 
+function displayNavSub(
+  total: number,
+  isLoading: boolean,
+  error: Error | null | undefined,
+  readyLabel: string,
+  errorLabel = 'Unavailable',
+  loadingLabel = 'Loading…',
+): string {
+  if (error) return errorLabel;
+  if (isLoading) return loadingLabel;
+  return readyLabel;
+}
+
 function opsHealthSummary(
   total: number,
   isLoading: boolean,
@@ -173,21 +186,36 @@ export function useOverviewSummary() {
       {
         href: '/inbox',
         label: 'Lead Inbox',
-        sub: `${pluralize(inbox.total, 'new lead', 'new leads')} to review`,
+        sub: displayNavSub(
+          inbox.total,
+          inbox.isLoading,
+          inbox.error,
+          `${pluralize(inbox.total, 'new lead', 'new leads')} to review`,
+        ),
         subColor: 'var(--accent-amber)',
         icon: Inbox,
       },
       {
         href: '/trips',
         label: 'Trips in Planning',
-        sub: `${pluralize(workspace.total, 'trip', 'trips')} being planned`,
+        sub: displayNavSub(
+          workspace.total,
+          workspace.isLoading,
+          workspace.error,
+          `${pluralize(workspace.total, 'trip', 'trips')} being planned`,
+        ),
         subColor: 'var(--accent-blue)',
         icon: Briefcase,
       },
       {
         href: '/reviews',
         label: 'Quote Review',
-        sub: `${pluralize(pendingApprovalCount, 'quote', 'quotes')} to review`,
+        sub: displayNavSub(
+          pendingApprovalCount,
+          pendingReviews.isLoading,
+          pendingReviews.error,
+          `${pluralize(pendingApprovalCount, 'quote', 'quotes')} to review`,
+        ),
         subColor: 'var(--accent-green)',
         icon: CheckCircle2,
       },
@@ -199,7 +227,7 @@ export function useOverviewSummary() {
         icon: AlertTriangle,
       },
     ],
-    [inbox.total, opsHealth.sub, pendingApprovalCount, workspace.total]
+    [inbox.total, inbox.isLoading, inbox.error, opsHealth.sub, pendingApprovalCount, pendingReviews.isLoading, pendingReviews.error, workspace.total, workspace.isLoading, workspace.error]
   );
 
   const pipeline = useMemo(() => {
@@ -244,6 +272,10 @@ export function useOverviewSummary() {
     recentTripsLoading: workspace.isLoading,
     recentTripsError: workspace.error,
     planningTripsTotal: workspace.total,
+    planningTripsLoading: workspace.isLoading,
+    planningTripsError: workspace.error,
     leadInboxTotal: inbox.total,
+    leadInboxLoading: inbox.isLoading,
+    leadInboxError: inbox.error,
   };
 }

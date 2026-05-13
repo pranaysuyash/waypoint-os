@@ -22,10 +22,10 @@ from uuid import uuid4
 from dataclasses import asdict, is_dataclass
 import logging
 import threading
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, contextmanager
 import re
 
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, text as sa_text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from spine_api.core.database import DATABASE_URL
@@ -33,6 +33,8 @@ from spine_api.models.trips import Trip
 from src.security.encryption import decrypt, encrypt
 
 logger = logging.getLogger(__name__)
+
+TEST_AGENCY_ID = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
 
 _tripstore_session_makers: dict[int, async_sessionmaker[AsyncSession]] = {}
 _tripstore_session_makers_lock = threading.Lock()
@@ -285,7 +287,15 @@ class FileTripStore:
 
         with open(filepath) as f:
             return json.load(f)
-    
+
+    @staticmethod
+    def get_trip_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
+        """Get a trip by ID if it belongs to the given agency."""
+        trip = FileTripStore.get_trip(trip_id)
+        if trip and trip.get("agency_id") == agency_id:
+            return trip
+        return None
+
     @staticmethod
     def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None) -> list:
         """List trips, optionally filtered by status and/or agency.
@@ -355,6 +365,36 @@ class FileTripStore:
                 with open(filepath, "w") as f:
                     json.dump(serializable_trip, f, indent=2)
                 
+                return trip
+
+    @staticmethod
+    def update_trip_if_version(trip_id: str, updates: dict, expected_updated_at: Optional[str] = None) -> Optional[dict]:
+        """Update a trip only if its updated_at still matches expected_updated_at.
+
+        Uses the file store lock to perform an atomic read-compare-write.
+        Returns the updated trip on success, None if version mismatch or trip missing.
+        """
+        from src.security.privacy_guard import check_trip_data
+        check_trip_data(updates)
+        try:
+            safe_trip_id = _validate_trip_id(trip_id)
+        except ValueError:
+            return None
+
+        filepath = TRIPS_DIR / f"{safe_trip_id}.json"
+
+        with FileTripStore._lock:
+            with file_lock(filepath):
+                trip = FileTripStore.get_trip(safe_trip_id)
+                if not trip:
+                    return None
+                if expected_updated_at is not None and trip.get("updated_at") != expected_updated_at:
+                    return None
+                trip.update(updates)
+                trip["updated_at"] = datetime.now(timezone.utc).isoformat()
+                serializable_trip = _make_json_serializable(trip)
+                with open(filepath, "w") as f:
+                    json.dump(serializable_trip, f, indent=2)
                 return trip
 
     @staticmethod
@@ -576,6 +616,14 @@ class SQLTripStore:
         }
 
     @staticmethod
+    @asynccontextmanager
+    async def _rls_session():
+        """Yield a session with RLS context set from the ContextVar."""
+        async with tripstore_session_maker() as session:
+            await SQLTripStore._set_rls_context(session)
+            yield session
+
+    @staticmethod
     async def save_trip(trip_data: dict, agency_id: Optional[str] = None) -> str:
         trip_id = trip_data.get("id") or f"trip_{uuid4().hex[:12]}"
 
@@ -618,6 +666,10 @@ class SQLTripStore:
             raise ValueError("SQLTripStore requires agency_id")
 
         async with tripstore_session_maker() as session:
+            await session.execute(
+                sa_text("SELECT set_config('app.current_agency_id', :agency_id, true)"),
+                {"agency_id": model_data["agency_id"]},
+            )
             existing = await session.get(Trip, trip_id)
             if existing:
                 for key, value in model_data.items():
@@ -629,18 +681,40 @@ class SQLTripStore:
         return trip_id
 
     @staticmethod
+    async def _set_rls_context(session) -> None:
+        """Set app.current_agency_id on the session from the RLS ContextVar."""
+        from spine_api.core.rls import get_rls_agency
+        agency_id = get_rls_agency()
+        if agency_id:
+            await session.execute(
+                sa_text("SELECT set_config('app.current_agency_id', :agency_id, true)"),
+                {"agency_id": agency_id},
+            )
+
+    @staticmethod
     async def get_trip(trip_id: str) -> Optional[dict]:
-        async with tripstore_session_maker() as session:
+        async with SQLTripStore._rls_session() as session:
             trip_obj = await session.get(Trip, trip_id)
+            return SQLTripStore._to_dict(trip_obj) if trip_obj else None
+
+    @staticmethod
+    async def get_trip_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
+        """Get a trip by ID if it belongs to the given agency. SQL-level tenant filter."""
+        async with SQLTripStore._rls_session() as session:
+            from sqlalchemy import select
+            result = await session.execute(
+                select(Trip).where(Trip.id == trip_id, Trip.agency_id == agency_id)
+            )
+            trip_obj = result.scalar_one_or_none()
             return SQLTripStore._to_dict(trip_obj) if trip_obj else None
 
     @staticmethod
     async def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
         """List trips, optionally filtered by status and/or agency.
-        
+
         status accepts single status or comma-separated statuses (e.g., 'new,incomplete').
         """
-        async with tripstore_session_maker() as session:
+        async with SQLTripStore._rls_session() as session:
             query = select(Trip).order_by(Trip.created_at.desc())
             if status:
                 statuses = [s.strip() for s in status.split(",") if s.strip()]
@@ -657,7 +731,7 @@ class SQLTripStore:
     @staticmethod
     async def list_trip_summaries(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
         """List trips with only fields needed by dashboard/inbox projections."""
-        async with tripstore_session_maker() as session:
+        async with SQLTripStore._rls_session() as session:
             query = select(
                 Trip.id,
                 Trip.run_id,
@@ -696,7 +770,7 @@ class SQLTripStore:
     @staticmethod
     async def count_trips(status: Optional[str] = None, agency_id: Optional[str] = None) -> int:
         """Count trips matching filter (without limit)."""
-        async with tripstore_session_maker() as session:
+        async with SQLTripStore._rls_session() as session:
             from sqlalchemy import func
             query = select(func.count()).select_from(Trip)
             if status:
@@ -724,7 +798,7 @@ class SQLTripStore:
             check_trip_data(updates)
 
         _encrypted_fields = SQLTripStore._PRIVATE_BLOB_FIELDS | SQLTripStore._PII_KEY_FIELDS
-        async with tripstore_session_maker() as session:
+        async with SQLTripStore._rls_session() as session:
             trip_obj = await session.get(Trip, trip_id)
             if not trip_obj:
                 return None
@@ -740,8 +814,44 @@ class SQLTripStore:
             return SQLTripStore._to_dict(trip_obj)
 
     @staticmethod
+    async def update_trip_if_version(trip_id: str, updates: dict, expected_updated_at: Optional[str] = None) -> Optional[dict]:
+        """Update a trip only if its updated_at still matches expected_updated_at.
+
+        Uses SQL WHERE updated_at = :expected_updated_at for atomic compare-and-set.
+        Returns the updated trip on success, None if version mismatch or trip missing.
+        """
+        _pii_sensitive_keys = {"raw_input", "raw_note", "extracted", "extracted_facts"}
+        if set(updates.keys()) & _pii_sensitive_keys:
+            from src.security.privacy_guard import check_trip_data
+            check_trip_data(updates)
+
+        _encrypted_fields = SQLTripStore._PRIVATE_BLOB_FIELDS | SQLTripStore._PII_KEY_FIELDS
+        async with SQLTripStore._rls_session() as session:
+            trip_obj = await session.get(Trip, trip_id)
+            if not trip_obj:
+                return None
+            if expected_updated_at is not None:
+                from datetime import datetime
+                try:
+                    expected_dt = datetime.fromisoformat(expected_updated_at)
+                except (ValueError, TypeError):
+                    return None
+                if trip_obj.updated_at and trip_obj.updated_at != expected_dt:
+                    return None
+            for key, value in updates.items():
+                if key in _encrypted_fields:
+                    value = SQLTripStore._encrypt_field_for_storage(key, value)
+                elif key == "follow_up_due_date":
+                    value = SQLTripStore._parse_datetime(value)
+                if hasattr(trip_obj, key):
+                    setattr(trip_obj, key, value)
+            trip_obj.updated_at = datetime.now(timezone.utc)
+            await session.commit()
+            return SQLTripStore._to_dict(trip_obj)
+
+    @staticmethod
     async def delete_trip(trip_id: str) -> bool:
-        async with tripstore_session_maker() as session:
+        async with SQLTripStore._rls_session() as session:
             trip_obj = await session.get(Trip, trip_id)
             if not trip_obj:
                 return False
@@ -752,7 +862,7 @@ class SQLTripStore:
     @staticmethod
     async def get_booking_data(trip_id: str) -> Optional[dict]:
         """Get decrypted booking_data only. Returns None if trip missing or no data."""
-        async with tripstore_session_maker() as session:
+        async with SQLTripStore._rls_session() as session:
             trip_obj = await session.get(Trip, trip_id)
             if not trip_obj:
                 return None
@@ -761,7 +871,7 @@ class SQLTripStore:
     @staticmethod
     async def get_pending_booking_data(trip_id: str) -> Optional[dict]:
         """Get decrypted pending_booking_data only. Returns None if trip missing."""
-        async with tripstore_session_maker() as session:
+        async with SQLTripStore._rls_session() as session:
             trip_obj = await session.get(Trip, trip_id)
             if not trip_obj:
                 return None
@@ -876,6 +986,18 @@ class TripStore:
         return _run_async_blocking(SQLTripStore.get_trip(trip_id))
 
     @staticmethod
+    def get_trip_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
+        """Get a trip by ID, returning None if it does not belong to the given agency.
+
+        This enforces tenant isolation at the storage layer rather than relying
+        on every caller to check trip.agency_id after fetching.
+        """
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.get_trip_for_agency(trip_id, agency_id)
+        return _run_async_blocking(SQLTripStore.get_trip_for_agency(trip_id, agency_id))
+
+    @staticmethod
     async def aget_trip(trip_id: str) -> Optional[dict]:
         backend = TripStore._backend()
         if backend is FileTripStore:
@@ -921,6 +1043,21 @@ class TripStore:
         if backend is FileTripStore:
             return FileTripStore.update_trip(trip_id, updates)
         return _run_async_blocking(SQLTripStore.update_trip(trip_id, updates))
+
+    @staticmethod
+    def update_trip_if_version(trip_id: str, updates: dict, expected_updated_at: Optional[str] = None) -> Optional[dict]:
+        """Update a trip only if it still matches the expected version.
+
+        For file store: uses the existing file lock to perform a read-compare-write.
+        For SQL store: uses WHERE updated_at = :expected_updated_at.
+        Returns the updated trip on success, or None if the version did not match.
+        """
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.update_trip_if_version(trip_id, updates, expected_updated_at)
+        return _run_async_blocking(
+            SQLTripStore.update_trip_if_version(trip_id, updates, expected_updated_at)
+        )
 
     @staticmethod
     async def aupdate_trip(trip_id: str, updates: dict) -> Optional[dict]:

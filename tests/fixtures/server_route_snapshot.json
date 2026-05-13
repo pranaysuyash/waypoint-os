@@ -466,7 +466,7 @@
       "operation_id": null
     },
     {
-      "path": "/api/public/booking-collection/{token}",
+      "path": "/api/public/booking-collection/{agency_id}/{token}",
       "name": "get_public_collection_form",
       "methods": [
         "GET"
@@ -474,7 +474,7 @@
       "operation_id": null
     },
     {
-      "path": "/api/public/booking-collection/{token}/documents",
+      "path": "/api/public/booking-collection/{agency_id}/{token}/documents",
       "name": "upload_public_document",
       "methods": [
         "POST"
@@ -482,7 +482,7 @@
       "operation_id": null
     },
     {
-      "path": "/api/public/booking-collection/{token}/submit",
+      "path": "/api/public/booking-collection/{agency_id}/{token}/submit",
       "name": "submit_public_booking_data",
       "methods": [
         "POST"

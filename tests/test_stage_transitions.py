@@ -10,6 +10,7 @@ on pre-existing trips or pytest.skip when the DB is empty.
 import pytest
 from unittest.mock import MagicMock
 
+from spine_api.persistence import TEST_AGENCY_ID
 from intake.packet_models import CanonicalPacket, Slot
 from intake.readiness import compute_readiness
 
@@ -59,7 +60,7 @@ def created_trip_id(session_client):
 
     trip_data = {
         "source": "test_stage_fixture",
-        "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+        "agency_id": TEST_AGENCY_ID,
         "status": "assigned",
         "stage": "discovery",
         "extracted": {},
@@ -67,7 +68,7 @@ def created_trip_id(session_client):
         "decision": {},
         "raw_input": {},
     }
-    trip_id = TripStore.save_trip(trip_data, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+    trip_id = TripStore.save_trip(trip_data, agency_id=TEST_AGENCY_ID)
     yield trip_id
     # Cleanup
     try:

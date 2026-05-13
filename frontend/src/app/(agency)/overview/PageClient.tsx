@@ -15,7 +15,6 @@ import { InlineError } from '@/components/error-boundary';
 import { PlanningTripCard } from '@/components/workspace/PlanningTripCard';
 import type { Trip } from '@/lib/api-client';
 import {
-  getPlanningSummaryText,
   getPlanningStatusTone,
 } from '@/lib/planning-status';
 import { useOverviewSummary } from './useOverviewSummary';
@@ -61,25 +60,6 @@ const STATE_META: Record<StateKey, StateMeta> = {
 };
 
 const INTAKE_HREF = '/workbench?draft=new&tab=intake';
-
-function formatPlanningStageLabel(label: string): string {
-  const normalized = label.trim().toLowerCase().replace(/\s+/g, '_');
-
-  switch (normalized) {
-    case 'assigned':
-      return 'Waiting for options';
-    case 'in_progress':
-      return 'Planning in progress';
-    case 'ready_to_quote':
-      return 'Ready for quote review';
-    case 'ready_to_book':
-      return 'Ready for booking';
-    case 'blocked':
-      return 'Needs attention';
-    default:
-      return label;
-  }
-}
 
 function getAssignmentLabel(trip: Trip): string {
   if (trip.status === 'completed') return 'Completed';
@@ -211,6 +191,36 @@ const StatCard = memo(function StatCard({
 
 // ── PipelineBar: compact operational progress module ──────────────────────
 
+const STAGE_COLORS: Record<string, string> = {
+  assigned: '#58a6ff',
+  in_progress: '#d29922',
+  ready_to_quote: '#a371f7',
+  ready_to_book: '#3fb950',
+  blocked: '#f85149',
+};
+
+function stageColor(label: string): string {
+  return STAGE_COLORS[label] ?? '#58a6ff';
+}
+
+function getStageLabel(label: string): string {
+  const normalized = label.trim().toLowerCase().replace(/\s+/g, '_');
+  switch (normalized) {
+    case 'assigned':
+      return 'Waiting for options';
+    case 'in_progress':
+      return 'Planning in progress';
+    case 'ready_to_quote':
+      return 'Ready for quote review';
+    case 'ready_to_book':
+      return 'Ready for booking';
+    case 'blocked':
+      return 'Needs attention';
+    default:
+      return label;
+  }
+}
+
 const PipelineBar = memo(function PipelineBar({
   data,
   isLoading,
@@ -280,32 +290,32 @@ const PipelineBar = memo(function PipelineBar({
 
   // Collapsed: summary bar
   if (!isExpanded) {
-    const topStage = safeData.reduce((maxStage, stage) =>
-      stage.count > maxStage.count ? stage : maxStage
-    );
+    const hasMultipleStages = safeData.filter(s => s.count > 0).length > 1;
 
     return (
       <div className='rounded-xl border p-4' style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
         <div className='flex items-center justify-between mb-2'>
           <h2 className='text-[12px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>Planning Progress</h2>
-          <button
-            onClick={() => setIsExpanded(true)}
-            className='text-[12px] font-medium transition-colors'
-            style={{ color: 'var(--accent-blue)' }}
-          >
-            Expand
-          </button>
+          {hasMultipleStages && (
+            <button
+              onClick={() => setIsExpanded(true)}
+              className='text-[12px] font-medium transition-colors'
+              style={{ color: 'var(--accent-blue)' }}
+            >
+              Expand
+            </button>
+          )}
         </div>
         <div className='flex items-center gap-3'>
           <div className='flex-1'>
             <div className='h-2 rounded-full overflow-hidden flex' style={{ background: 'var(--bg-elevated)' }}>
-              {safeData.map((stage, i) => (
+              {safeData.filter(s => s.count > 0).map((stage, i) => (
                 <div
                   key={stage.label || `stage-${i}`}
                   className='h-full transition-all'
                   style={{
                     width: `${(stage.count / stageTotal) * 100}%`,
-                    background: ['#3fb950', '#58a6ff', '#d29922', '#f85149', '#a371f7'][i % 5],
+                    background: stageColor(stage.label),
                   }}
                 />
               ))}
@@ -313,9 +323,25 @@ const PipelineBar = memo(function PipelineBar({
           </div>
           <span className='text-[13px] font-semibold tabular-nums' style={{ color: 'var(--text-primary)' }}>{total}</span>
         </div>
-        <p className='text-[12px] mt-1.5' style={{ color: 'var(--text-muted)' }}>
-          {getPlanningSummaryText(topStage.label, total)}
-        </p>
+        {hasMultipleStages ? (
+          <div className='flex flex-wrap gap-x-3 gap-y-0.5 mt-2'>
+            {safeData.filter(s => s.count > 0).map((stage) => (
+              <div key={stage.label} className='flex items-center gap-1.5 text-[11px]' style={{ color: 'var(--text-muted)' }}>
+                <span
+                  className='size-1.5 rounded-full shrink-0'
+                  style={{
+                    background: stageColor(stage.label),
+                  }}
+                />
+                {getStageLabel(stage.label)} · {stage.count}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className='text-[12px] mt-1.5' style={{ color: 'var(--text-muted)' }}>
+            {total} {total === 1 ? 'trip' : 'trips'} in planning · all {getStageLabel(safeData.find(s => s.count > 0)?.label ?? '')}
+          </p>
+        )}
       </div>
     );
   }
@@ -340,12 +366,12 @@ const PipelineBar = memo(function PipelineBar({
       <div className='space-y-2'>
         {safeData.map((stage, i) => {
           const pct = stageTotal > 0 ? (stage.count / stageTotal) * 100 : 0;
-          const color = ['#3fb950', '#58a6ff', '#d29922', '#f85149', '#a371f7'][i % 5];
+          const color = stageColor(stage.label);
           return (
             <div key={stage.label} className='group'>
               <div className='flex items-center justify-between mb-1'>
                 <span className='text-[12px] font-medium' style={{ color: 'var(--text-primary)' }}>
-                  {formatPlanningStageLabel(stage.label)}
+                  {getStageLabel(stage.label)}
                 </span>
                 <span className='text-[12px] font-mono tabular-nums' style={{ color: 'var(--text-tertiary)' }}>{stage.count}</span>
               </div>
@@ -373,12 +399,16 @@ function RecentTrips({
   error,
   planningTripsTotal,
   leadInboxTotal,
+  leadInboxLoading,
+  leadInboxError,
 }: {
   trips: Trip[];
   isLoading: boolean;
   error: Error | null;
   planningTripsTotal: number;
   leadInboxTotal: number;
+  leadInboxLoading: boolean;
+  leadInboxError: Error | null;
 }) {
   const hasLeadsWaiting = planningTripsTotal === 0 && leadInboxTotal > 0;
 
@@ -401,8 +431,19 @@ function RecentTrips({
   }
 
   if (trips.length === 0) {
+    // If we can't determine lead count, don't show onboarding
+    if (leadInboxError) {
+      return (
+        <div className='p-8 text-center'>
+          <p className='text-[13px]' style={{ color: 'var(--text-muted)' }}>
+            Lead inbox status is unavailable.
+          </p>
+        </div>
+      );
+    }
+
     // First-run: no trips and no leads → full onboarding checklist
-    if (!hasLeadsWaiting && planningTripsTotal === 0) {
+    if (!hasLeadsWaiting && planningTripsTotal === 0 && !leadInboxLoading) {
       return <EmptyStateOnboarding />;
     }
 
@@ -476,7 +517,11 @@ function OverviewPageContent() {
     recentTripsLoading,
     recentTripsError,
     planningTripsTotal,
+    planningTripsLoading,
+    planningTripsError,
     leadInboxTotal,
+    leadInboxLoading,
+    leadInboxError,
   } = useOverviewSummary();
 
   const stateEntries = useMemo(
@@ -583,6 +628,8 @@ function OverviewPageContent() {
             error={recentTripsError}
             planningTripsTotal={planningTripsTotal}
             leadInboxTotal={leadInboxTotal}
+            leadInboxLoading={leadInboxLoading}
+            leadInboxError={leadInboxError}
           />
         </section>
 
@@ -658,7 +705,11 @@ function OverviewPageContent() {
             style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}
           >
             <h2 className='text-[12px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-tertiary)' }}>
-              Planning Status · {planningTripsTotal} planning
+              {planningTripsLoading
+                ? 'Latest Trips Status · loading…'
+                : planningTripsError
+                  ? 'Latest Trips Status · unavailable'
+                  : `Latest Trips Status · showing ${recentTrips?.length ?? 0} of ${planningTripsTotal}`}
             </h2>
             <div className='mt-3 space-y-2'>
               {stateEntries.map((entry) => {

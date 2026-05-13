@@ -119,10 +119,10 @@ load_project_env()
 
 from spine_api.core.auth import get_current_user, get_current_agency_id, get_current_agency, _auth_or_skip, require_permission
 from spine_api.core.database import engine, get_db
-from spine_api.core.rls import inspect_rls_runtime_posture
+from spine_api.core.rls import inspect_rls_runtime_posture, rls_session
 from spine_api.models.tenant import Agency, User
 from spine_api.core.logging_filter import install_sensitive_data_filter
-from spine_api.core.middleware import AuthMiddleware
+from spine_api.core.middleware import AuthMiddleware, RequestBodySizeMiddleware
 from spine_api.core.rate_limiter import limiter, RateLimitExceededHandler, SlowAPIMiddleware
 from spine_api.version import APP_VERSION
 from slowapi.errors import RateLimitExceeded
@@ -647,6 +647,221 @@ async def _ensure_memberships_schema_compatibility() -> None:
         raise
 
 
+async def _ensure_users_have_memberships() -> None:
+    """
+    Backfill default agencies + memberships for orphan users.
+
+    When the membership table was added without a backfill for existing users,
+    every user without a membership row became unable to log in. This guard
+    ensures every existing user has at least one agency and membership.
+
+    Idempotent: safe to run on every startup. Skips users that already
+    have memberships.
+    """
+    try:
+        async with engine.begin() as conn:
+            await _apply_startup_db_timeouts(conn)
+            # Guard: ensure both tables exist (fresh migrations or partial deploy)
+            for table_name in ("users", "memberships", "agencies"):
+                exists_result = await conn.execute(text(f"""
+                    SELECT EXISTS (
+                        SELECT 1 FROM information_schema.tables
+                        WHERE table_schema = 'public' AND table_name = :table_name
+                    )
+                """), {"table_name": table_name})
+                if not bool(exists_result.scalar()):
+                    logger.warning(
+                        "Users membership backfill skipped: '%s' table missing", table_name
+                    )
+                    return
+
+            # Find all orphan users
+            orphan_result = await conn.execute(text("""
+                SELECT u.id, u.email, u.name
+                FROM users u
+                LEFT JOIN memberships m ON m.user_id = u.id
+                WHERE m.id IS NULL
+            """))
+            orphan_rows = [dict(r) for r in orphan_result.mappings().fetchall()]
+            if not orphan_rows:
+                logger.info("Users membership backfill: all users have memberships")
+                return
+
+            logger.info(
+                "Users membership backfill: %d orphan users found", len(orphan_rows)
+            )
+
+            for row in orphan_rows:
+                user_id = row["id"]
+                email = row["email"]
+                name = row["name"]
+                agency_name = f"{name or email}'s Agency"
+                slug_base = agency_name.lower().replace("'s agency", "").replace(" ", "-")
+                slug = f"{slug_base[:40]}-{uuid.uuid4().hex[:8]}"
+
+                agency_id = str(uuid.uuid4())
+                now = datetime.now(timezone.utc)
+
+                # Insert agency
+                await conn.execute(
+                    text("""
+                        INSERT INTO agencies (
+                            id, name, slug, plan, settings, created_at, jurisdiction, is_test
+                        ) VALUES (
+                            :id, :name, :slug, :plan, CAST(:settings AS JSONB),
+                            :created_at, :jurisdiction, :is_test
+                        )
+                    """),
+                    {
+                        "id": agency_id,
+                        "name": agency_name,
+                        "slug": slug,
+                        "plan": "free",
+                        "settings": "{}",
+                        "created_at": now,
+                        "jurisdiction": "other",
+                        "is_test": False,
+                    },
+                )
+
+                # Set RLS context so the membership insert passes tenant policy
+                await conn.execute(
+                    text("SELECT set_config('app.current_agency_id', :agency_id, true)"),
+                    {"agency_id": agency_id},
+                )
+
+                # Insert membership
+                await conn.execute(
+                    text("""
+                        INSERT INTO memberships (
+                            id, user_id, agency_id, role, is_primary, status, created_at
+                        ) VALUES (
+                            :id, :user_id, :agency_id, :role, :is_primary,
+                            :status, :created_at
+                        )
+                    """),
+                    {
+                        "id": str(uuid.uuid4()),
+                        "user_id": user_id,
+                        "agency_id": agency_id,
+                        "role": "owner",
+                        "is_primary": True,
+                        "status": "active",
+                        "created_at": now,
+                    },
+                )
+
+                logger.info(
+                    "Backfilled agency + membership for user=%s email=%s agency=%s",
+                    user_id, email, agency_id,
+                )
+
+            logger.info("Users membership backfill complete")
+    except Exception as e:
+        logger.error("Failed users membership backfill: %s", e)
+        raise
+
+
+async def _ensure_rls_no_force_on_auth_tables() -> None:
+    """
+    Remove FORCE ROW LEVEL SECURITY from auth-critical tables.
+
+    The memberships and workspace_codes tables must be queryable during the
+    login/auth flow without a prior `app.current_agency_id` context, because
+    the auth layer needs to discover the user's workspace before it knows
+    which agency to scope to.
+
+    With FORCE RLS, the table owner is also subject to the policy, which
+    means any SELECT on these tables returns zero rows until
+    `app.current_agency_id` is set — a chicken-and-egg problem for login.
+
+    Regular RLS (without FORCE) still protects against non-owner roles.
+    This is a pragmatic concession: RLS hardening of the auth path is paused
+    until the login flow can reliably bypass or set the agency context before
+    querying these tables.
+
+    Idempotent: ALTER TABLE ... NO FORCE ROW LEVEL SECURITY is a no-op if
+    FORCE is not already set.
+    """
+    _AUTH_TABLES = ("memberships", "workspace_codes")
+    for table in _AUTH_TABLES:
+        try:
+            async with engine.begin() as conn:
+                await _apply_startup_db_timeouts(conn)
+                exists = await conn.execute(text(f"""
+                    SELECT EXISTS (
+                        SELECT 1 FROM information_schema.tables
+                        WHERE table_schema = 'public' AND table_name = :t
+                    )
+                """), {"t": table})
+                if not bool(exists.scalar()):
+                    continue
+                await conn.execute(text(f"ALTER TABLE {table} NO FORCE ROW LEVEL SECURITY"))
+                logger.info("Removed FORCE RLS from %s (auth tables)", table)
+        except Exception as e:
+            logger.error("Failed to remove FORCE RLS from %s: %s", table, e)
+
+
+async def _deduplicate_memberships_and_agencies() -> None:
+    """
+    Clean up duplicate memberships and orphan agencies.
+
+    Each time login() could not discover existing memberships (because FORCE
+    RLS blocked the SELECT), it created a new agency + membership for the
+    same user, producing N memberships per user and orphan agencies.
+
+    Single-pass SQL: no per-user iteration.
+
+    Rules:
+    - Keep exactly one membership per user (is_primary first, else most recent).
+    - Delete agencies that have zero memberships.
+    - Preserve the public-checker agency (no memberships expected).
+
+    Idempotent: safe to re-run.
+    """
+    try:
+        async with engine.begin() as conn:
+            await _apply_startup_db_timeouts(conn)
+
+            # Step 1: Deduplicate memberships — keep one per user (primary wins, then most recent).
+            del_result = await conn.execute(text("""
+                WITH kept AS (
+                    SELECT DISTINCT ON (user_id) id
+                    FROM memberships
+                    ORDER BY user_id, is_primary DESC, created_at DESC
+                ),
+                removed AS (
+                    DELETE FROM memberships m
+                    WHERE m.id NOT IN (SELECT id FROM kept)
+                    RETURNING 1
+                )
+                SELECT COUNT(*) AS deleted FROM removed
+            """))
+            deleted = del_result.scalar() or 0
+            if deleted:
+                logger.info("Deduplicated %d duplicate memberships", deleted)
+            else:
+                logger.info("No duplicate memberships found")
+
+            # Step 2: Delete orphan agencies (no associated memberships).
+            del_agency = await conn.execute(text("""
+                WITH removed AS (
+                    DELETE FROM agencies a
+                    WHERE NOT EXISTS (SELECT 1 FROM memberships m WHERE m.agency_id = a.id)
+                      AND a.id != :checker_id
+                    RETURNING 1
+                )
+                SELECT COUNT(*) AS deleted FROM removed
+            """), {"checker_id": _get_public_checker_agency_id()})
+            deleted_agencies = del_agency.scalar() or 0
+            if deleted_agencies:
+                logger.info("Deleted %d orphan agencies (no memberships)", deleted_agencies)
+
+            logger.info("Membership and agency cleanup complete")
+    except Exception as e:
+        logger.error("Failed membership/agency cleanup: %s", e)
+
+
 async def _validate_public_checker_agency_configuration() -> None:
     """
     Enforce public-checker agency invariants before serving traffic.
@@ -710,10 +925,24 @@ def _is_strict_startup_environment() -> bool:
     return env.strip().lower() in {"production", "staging"}
 
 
+def _should_run_startup_mutations() -> bool:
+    """Whether startup schema/data mutations are permitted.
+
+    In production/staging, mutations are skipped by default unless
+    explicitly opted in via SPINE_API_ENABLE_STARTUP_MUTATIONS.
+    Migrations and maintenance commands are the canonical path.
+    """
+    if os.environ.get("SPINE_API_ENABLE_STARTUP_MUTATIONS", "").lower() in ("1", "true", "yes"):
+        return True
+    env = os.environ.get("ENVIRONMENT", os.environ.get("NODE_ENV", "development"))
+    return env.strip().lower() not in ("production", "staging")
+
+
 async def _validate_rls_runtime_posture_configuration() -> None:
     """
     Enforce that production-like SQL startup cannot silently run with bypassable tenant RLS.
 
+    Validates all 11 tables in RLS_TENANT_TABLES have RLS enabled and FORCE RLS.
     Local development keeps running with a warning because the current dev database
     uses the owner role for app access while the long-term fix moves runtime access
     to a distinct non-owner database role.
@@ -765,8 +994,20 @@ async def lifespan(app: FastAPI):
     if os.environ.get("SPINE_API_DISABLE_AUTH"):
         logger.warning("⚠️  AUTH DISABLED — local/test only. Do not use in production.")
     _validate_tripstore_backend_configuration()
-    await _ensure_agencies_schema_compatibility()
-    await _ensure_memberships_schema_compatibility()
+
+    if _should_run_startup_mutations():
+        await _ensure_agencies_schema_compatibility()
+        await _ensure_memberships_schema_compatibility()
+        await _ensure_rls_no_force_on_auth_tables()
+        await _deduplicate_memberships_and_agencies()
+        await _ensure_users_have_memberships()
+    else:
+        logger.info(
+            "Skipping startup schema/data mutations (ENVIRONMENT=%s). "
+            "Set SPINE_API_ENABLE_STARTUP_MUTATIONS=1 to override.",
+            env,
+        )
+
     await _validate_public_checker_agency_configuration()
     await _validate_rls_runtime_posture_configuration()
     install_sensitive_data_filter()
@@ -814,6 +1055,7 @@ app.add_middleware(
 )
 
 app.add_middleware(AuthMiddleware)
+app.add_middleware(RequestBodySizeMiddleware)
 
 app.add_middleware(SlowAPIMiddleware)
 app.add_exception_handler(RateLimitExceeded, RateLimitExceededHandler.handler)
@@ -967,10 +1209,12 @@ def _seed_scenario_for_agency(agency_id: str, seed_name: Optional[str] = None) -
             
             existing = TripStore.get_trip(trip_id)
             if existing:
-                # Update existing trip with agency_id
                 if existing.get("agency_id") != agency_id:
-                    existing["agency_id"] = agency_id
-                    TripStore.update_trip(trip_id, {"agency_id": agency_id})
+                    logger.warning(
+                        "Seed fixture trip %s already exists with agency_id=%s; "
+                        "not reassigning to agency_id=%s. Skipping.",
+                        trip_id, existing.get("agency_id"), agency_id,
+                    )
                 continue
             
             trip_record = {
@@ -1259,6 +1503,9 @@ def _run_public_checker_submission(request_dict: dict[str, Any]) -> RunStatusRes
     )
 
 
+PUBLIC_CHECKER_MAX_CONTENT_LENGTH = int(os.environ.get("PUBLIC_CHECKER_MAX_CONTENT_LENGTH", "262144"))  # 256 KB
+
+
 @app.post("/api/public-checker/run", response_model=RunStatusResponse)
 @limiter.limit("12/minute")
 def run_public_checker(
@@ -1267,6 +1514,13 @@ def run_public_checker(
     payload: SpineRunRequest,
 ) -> RunStatusResponse:
     """Submit a public itinerary checker run without agency auth."""
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > PUBLIC_CHECKER_MAX_CONTENT_LENGTH:
+                raise HTTPException(status_code=413, detail="Request body too large")
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="Invalid content-length header")
     _ = (request, response)
     return _run_public_checker_submission(payload.model_dump(exclude_none=True))
 
@@ -1332,16 +1586,16 @@ async def list_trips(
     
     # Auto-seed for test agencies if no trips exist
     if agency.is_test:
-        existing_trips = TripStore.list_trips(agency_id=agency_id)
+        existing_trips = await _ts(TripStore.list_trips, agency_id=agency_id)
         if not existing_trips:
             try:
-                seed_count = await _seed_scenario_for_agency(agency_id)
+                seed_count = await _ts(_seed_scenario_for_agency, agency_id)
                 logger.info("Auto-seeded %d mock trips for test agency %s", seed_count, agency_id)
             except Exception as e:
                 logger.warning("Failed to auto-seed for test agency: %s", e)
     
-    trips = TripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
-    total = TripStore.count_trips(status=status, agency_id=agency_id)
+    trips = await _ts(TripStore.list_trips, status=status, limit=limit, agency_id=agency_id)
+    total = await _ts(TripStore.count_trips, status=status, agency_id=agency_id)
     return {"items": trips, "total": total}
 
 
@@ -1351,8 +1605,8 @@ def get_trip(
     agency: Agency = Depends(get_current_agency),
 ):
     """Get a specific trip by ID."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
     
     # Include assignment info
@@ -1377,8 +1631,8 @@ def get_trip_suitability(
     Tier 2 (medium/low): Warnings for operator review
     """
     # Verify trip exists and belongs to the agency
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
     
     # Fetch suitability flags from the trip's decision output
@@ -1426,8 +1680,8 @@ def patch_trip(
     - status: Trip status (new, in_progress, completed, etc.)
     - follow_up_due_date: ISO-8601 datetime string for promised follow-up
     """
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     if "stage" in updates:
@@ -1541,6 +1795,40 @@ def patch_trip(
                     "authority_level": "explicit_user",
                 }
                 fields_to_clear.add("date_flexibility")
+
+        if "dateWindow" in incoming_updates:
+            dw_value = _trimmed_string(incoming_updates.get("dateWindow"))
+            if dw_value:
+                facts["date_window"] = {
+                    "value": dw_value,
+                    "confidence": 1.0,
+                    "authority_level": "explicit_user",
+                }
+                fields_to_clear.add("date_window")
+
+        if "party" in incoming_updates:
+            party_value = incoming_updates.get("party")
+            if party_value is not None:
+                try:
+                    party_number = int(party_value)
+                    facts["party_size"] = {
+                        "value": party_number,
+                        "confidence": 1.0,
+                        "authority_level": "explicit_user",
+                    }
+                    fields_to_clear.add("party_size")
+                except (ValueError, TypeError):
+                    pass
+
+        if "destination" in incoming_updates:
+            dest_value = _trimmed_string(incoming_updates.get("destination"))
+            if dest_value:
+                facts["destination_candidates"] = {
+                    "value": [dest_value],
+                    "confidence": 1.0,
+                    "authority_level": "explicit_user",
+                }
+                fields_to_clear.add("destination_candidates")
 
         if fields_to_clear:
             validation["warnings"] = [
@@ -1740,8 +2028,8 @@ def get_booking_data(
     agency: Agency = Depends(get_current_agency),
 ):
     """Lazy-load booking data for a trip. Not included in generic GET /trips."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
     booking_data = TripStore.get_booking_data(trip_id)
     return _booking_data_envelope(trip, booking_data)
@@ -1753,9 +2041,13 @@ def update_booking_data(
     request: BookingDataUpdateRequest,
     agency: Agency = Depends(get_current_agency),
 ):
-    """Update booking data with stage gate, optimistic lock, audit, readiness recompute."""
-    trip = TripStore.get_trip(trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    """Update booking data with stage gate, optimistic lock, audit, readiness recompute.
+
+    Booking data and readiness are written in a single atomic update_trip_if_version
+    call to prevent partial updates (booking data written but readiness stale).
+    """
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     # Stage gate: only proposal/booking
@@ -1766,49 +2058,10 @@ def update_booking_data(
             detail=f"Booking data can only be updated at proposal/booking stage, current: {current_stage}",
         )
 
-    # Optimistic lock
-    if request.expected_updated_at is not None:
-        actual = trip.get("updated_at")
-        if actual and request.expected_updated_at != actual:
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "message": "Booking data conflict",
-                    "expected_updated_at": request.expected_updated_at,
-                    "actual_updated_at": actual,
-                },
-            )
-
     bd_dict = request.booking_data.model_dump()
 
-    # Save booking_data
-    updated = TripStore.update_trip(trip_id, {"booking_data": bd_dict})
-
-    # Audit: metadata only, no raw PII
-    AuditStore.log_event("booking_data_updated", agency.id, {
-        "trip_id": trip_id,
-        "stage": current_stage,
-        "reason": request.reason,
-        "fields_changed": [
-            "travelers",
-            "payer" if request.booking_data.payer else None,
-            "special_requirements" if request.booking_data.special_requirements else None,
-            "booking_notes" if request.booking_data.booking_notes else None,
-            "payment_tracking" if request.booking_data.payment_tracking else None,
-        ],
-        "traveler_count": len(request.booking_data.travelers),
-        "has_passport_data": any(t.passport_number for t in request.booking_data.travelers),
-        "has_payer": request.booking_data.payer is not None,
-        "has_payment_tracking": request.booking_data.payment_tracking is not None,
-        "payment_status": request.booking_data.payment_tracking.payment_status if request.booking_data.payment_tracking else None,
-        "refund_status": request.booking_data.payment_tracking.refund_status if request.booking_data.payment_tracking else None,
-        "has_payment_reference": bool(request.booking_data.payment_tracking and request.booking_data.payment_tracking.payment_reference),
-        "has_payment_proof_url": bool(request.booking_data.payment_tracking and request.booking_data.payment_tracking.payment_proof_url),
-        "has_refund_reference": bool(request.booking_data.payment_tracking and request.booking_data.payment_tracking.refund_reference),
-        "actor": "operator",
-    })
-
-    # Readiness recompute: reload trip data and persist updated validation.readiness
+    # Compute readiness BEFORE writing so both booking_data and validation
+    # can be persisted in a single atomic update.
     from intake.readiness import compute_readiness
     from intake.packet_models import CanonicalPacket
     packet = CanonicalPacket(packet_id=trip_id)
@@ -1825,7 +2078,52 @@ def update_booking_data(
     )
     validation = dict(trip.get("validation") or {})
     validation["readiness"] = readiness.to_dict()
-    updated = TripStore.update_trip(trip_id, {"validation": validation})
+
+    # Atomic write: booking_data + readiness together, with compare-and-set
+    expected = request.expected_updated_at
+    updated = TripStore.update_trip_if_version(
+        trip_id,
+        {"booking_data": bd_dict, "validation": validation},
+        expected_updated_at=expected,
+    )
+    if not updated:
+        actual = trip.get("updated_at")
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Booking data conflict",
+                "expected_updated_at": expected,
+                "actual_updated_at": actual,
+            },
+        )
+
+    # Audit: metadata only, no raw PII
+    AuditStore.log_event("booking_data_updated", agency.id, {
+        "trip_id": trip_id,
+        "stage": current_stage,
+        "reason_present": bool(request.reason),
+        "reason_length": len(request.reason or ""),
+        "fields_changed": [
+            f for f in [
+                "travelers",
+                "payer" if request.booking_data.payer else None,
+                "special_requirements" if request.booking_data.special_requirements else None,
+                "booking_notes" if request.booking_data.booking_notes else None,
+                "payment_tracking" if request.booking_data.payment_tracking else None,
+            ]
+            if f is not None
+        ],
+        "traveler_count": len(request.booking_data.travelers),
+        "has_passport_data": any(t.passport_number for t in request.booking_data.travelers),
+        "has_payer": request.booking_data.payer is not None,
+        "has_payment_tracking": request.booking_data.payment_tracking is not None,
+        "payment_status": request.booking_data.payment_tracking.payment_status if request.booking_data.payment_tracking else None,
+        "refund_status": request.booking_data.payment_tracking.refund_status if request.booking_data.payment_tracking else None,
+        "has_payment_reference": bool(request.booking_data.payment_tracking and request.booking_data.payment_tracking.payment_reference),
+        "has_payment_proof_url": bool(request.booking_data.payment_tracking and request.booking_data.payment_tracking.payment_proof_url),
+        "has_refund_reference": bool(request.booking_data.payment_tracking and request.booking_data.payment_tracking.refund_reference),
+        "actor": "operator",
+    })
 
     booking_data = TripStore.get_booking_data(trip_id)
     return _booking_data_envelope(updated, booking_data)
@@ -1935,23 +2233,22 @@ async def create_collection_link(
 ):
     """Generate a customer collection link for this trip."""
     from spine_api.services.collection_service import generate_token
-    from spine_api.core.database import async_session_maker
 
-    trip = await _ts(TripStore.get_trip, trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     current_stage = trip.get("stage", "discovery")
     if current_stage not in ("proposal", "booking"):
         raise HTTPException(status_code=403, detail=f"Collection links only available at proposal/booking, current: {current_stage}")
 
-    async with async_session_maker() as db:
+    async with rls_session(agency.id) as db:
         plain_token, record = await generate_token(
             db, trip_id, agency.id, agency.id, request.expires_in_hours,
         )
 
     host = os.getenv("FRONTEND_URL", "http://localhost:3000")
-    collection_url = f"{host}/booking-collection/{plain_token}"
+    collection_url = f"{host}/booking-collection/{agency.id}/{plain_token}"
 
     AuditStore.log_event("booking_collection_link_created", agency.id, {
         "trip_id": trip_id,
@@ -1972,13 +2269,12 @@ async def create_collection_link(
 async def get_collection_link_status(trip_id: str, agency: Agency = Depends(get_current_agency)):
     """Check collection link status and pending submission."""
     from spine_api.services.collection_service import get_active_token_for_trip
-    from spine_api.core.database import async_session_maker
 
-    trip = await _ts(TripStore.get_trip, trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    async with async_session_maker() as db:
+    async with rls_session(agency.id) as db:
         token = await get_active_token_for_trip(db, trip_id)
     pending = await _ts(TripStore.get_pending_booking_data, trip_id)
 
@@ -1995,13 +2291,12 @@ async def get_collection_link_status(trip_id: str, agency: Agency = Depends(get_
 async def revoke_collection_link(trip_id: str, agency: Agency = Depends(get_current_agency)):
     """Revoke the active collection link."""
     from spine_api.services.collection_service import revoke_token
-    from spine_api.core.database import async_session_maker
 
-    trip = await _ts(TripStore.get_trip, trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    async with async_session_maker() as db:
+    async with rls_session(agency.id) as db:
         revoked = await revoke_token(db, trip_id, agency.id)
     if not revoked:
         raise HTTPException(status_code=404, detail="No active collection link found")
@@ -2015,8 +2310,8 @@ async def revoke_collection_link(trip_id: str, agency: Agency = Depends(get_curr
 @app.get("/trips/{trip_id}/pending-booking-data", response_model=PendingBookingDataResponse)
 async def get_pending_booking_data(trip_id: str, agency: Agency = Depends(get_current_agency)):
     """View pending customer submission. Agent-only."""
-    trip = await _ts(TripStore.get_trip, trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     pending = await _ts(TripStore.get_pending_booking_data, trip_id)
@@ -2033,8 +2328,8 @@ async def get_pending_booking_data(trip_id: str, agency: Agency = Depends(get_cu
 @app.post("/trips/{trip_id}/pending-booking-data/accept")
 async def accept_pending_booking_data(trip_id: str, request: Optional[PendingBookingReviewActionRequest] = None, agency: Agency = Depends(get_current_agency)):
     """Accept pending customer submission into trusted booking_data."""
-    trip = await _ts(TripStore.get_trip, trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     if trip.get("stage", "discovery") not in ("proposal", "booking"):
@@ -2095,8 +2390,8 @@ async def accept_pending_booking_data(trip_id: str, request: Optional[PendingBoo
 @app.post("/trips/{trip_id}/pending-booking-data/reject")
 async def reject_pending_booking_data(trip_id: str, request: Optional[PendingBookingReviewActionRequest] = None, agency: Agency = Depends(get_current_agency)):
     """Reject pending customer submission. Clears pending data."""
-    trip = await _ts(TripStore.get_trip, trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     pending = await _ts(TripStore.get_pending_booking_data, trip_id)
@@ -2142,7 +2437,7 @@ def _doc_to_response(doc) -> DocumentResponse:
 @app.post("/trips/{trip_id}/documents", response_model=DocumentResponse)
 async def upload_trip_document(
     trip_id: str,
-    document_type: str = Form(...),
+    document_type: DocumentTypeEnum = Form(...),
     traveler_id: Optional[str] = Form(None),
     file: UploadFile = File(...),
     agency: Agency = Depends(get_current_agency),
@@ -2151,11 +2446,10 @@ async def upload_trip_document(
     from spine_api.services.document_service import (
         validate_file_upload, sanitize_extension, upload_document,
     )
-    from spine_api.core.database import async_session_maker
     import hashlib
 
-    trip = await _ts(TripStore.get_trip, trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     if trip.get("stage", "discovery") not in ("proposal", "booking"):
@@ -2164,8 +2458,9 @@ async def upload_trip_document(
     file_data, mime_type = await validate_file_upload(file)
     ext = sanitize_extension(file.filename)
     filename_hash = hashlib.sha256((file.filename or "").encode()).hexdigest()
+    doc_type_value = document_type.value
 
-    async with async_session_maker() as db:
+    async with rls_session(agency.id) as db:
         doc = await upload_document(
             db,
             trip_id=trip_id,
@@ -2174,7 +2469,7 @@ async def upload_trip_document(
             mime_type=mime_type,
             filename_hash=filename_hash,
             filename_ext=ext,
-            document_type=document_type,
+            document_type=doc_type_value,
             uploaded_by_type="agent",
             uploaded_by_id=agency.id,
             traveler_id=traveler_id,
@@ -2183,7 +2478,7 @@ async def upload_trip_document(
     AuditStore.log_event("document_uploaded", agency.id, {
         "trip_id": trip_id,
         "document_id": doc.id,
-        "document_type": document_type,
+        "document_type": doc_type_value,
         "uploaded_by_type": "agent",
         "size_bytes": doc.size_bytes,
         "mime_type": mime_type,
@@ -2200,13 +2495,12 @@ async def upload_trip_document(
 async def list_trip_documents(trip_id: str, agency: Agency = Depends(get_current_agency)):
     """List all non-deleted documents for a trip."""
     from spine_api.services.document_service import get_documents_for_trip
-    from spine_api.core.database import async_session_maker
 
-    trip = await _ts(TripStore.get_trip, trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    async with async_session_maker() as db:
+    async with rls_session(agency.id) as db:
         docs = await get_documents_for_trip(db, trip_id, agency.id)
 
     return DocumentListResponse(
@@ -2220,13 +2514,12 @@ async def get_document_download_url(trip_id: str, document_id: str, agency: Agen
     """Get a short-lived signed URL for downloading a document."""
     from spine_api.services.document_service import get_document_by_id
     from spine_api.services.document_storage import get_document_storage
-    from spine_api.core.database import async_session_maker
 
-    trip = await _ts(TripStore.get_trip, trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    async with async_session_maker() as db:
+    async with rls_session(agency.id) as db:
         doc = await get_document_by_id(db, document_id, agency.id)
     if not doc or doc.trip_id != trip_id:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -2246,16 +2539,15 @@ async def accept_trip_document(
 ):
     """Accept a pending document. Only allowed from pending_review status."""
     from spine_api.services.document_service import accept_document
-    from spine_api.core.database import async_session_maker
 
-    trip = await _ts(TripStore.get_trip, trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     if trip.get("stage", "discovery") not in ("proposal", "booking"):
         raise HTTPException(status_code=403, detail="Accept only allowed at proposal/booking stage")
 
-    async with async_session_maker() as db:
+    async with rls_session(agency.id) as db:
         doc = await accept_document(
             db, document_id, agency.id, reviewed_by=agency.id,
             notes_present=request.notes_present if request else False,
@@ -2280,13 +2572,15 @@ async def reject_trip_document(
 ):
     """Reject a pending document. Only allowed from pending_review status."""
     from spine_api.services.document_service import reject_document
-    from spine_api.core.database import async_session_maker
 
-    trip = await _ts(TripStore.get_trip, trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    async with async_session_maker() as db:
+    if trip.get("stage", "discovery") not in ("proposal", "booking"):
+        raise HTTPException(status_code=403, detail="Reject only allowed at proposal/booking stage")
+
+    async with rls_session(agency.id) as db:
         doc = await reject_document(
             db, document_id, agency.id, reviewed_by=agency.id,
             notes_present=request.notes_present if request else False,
@@ -2306,13 +2600,15 @@ async def reject_trip_document(
 async def delete_trip_document(trip_id: str, document_id: str, agency: Agency = Depends(get_current_agency)):
     """Soft-delete a document. Only allowed from accepted/rejected status."""
     from spine_api.services.document_service import soft_delete_document
-    from spine_api.core.database import async_session_maker
 
-    trip = await _ts(TripStore.get_trip, trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    async with async_session_maker() as db:
+    if trip.get("stage", "discovery") not in ("proposal", "booking"):
+        raise HTTPException(status_code=403, detail="Delete only allowed at proposal/booking stage")
+
+    async with rls_session(agency.id) as db:
         doc = await soft_delete_document(db, document_id, agency.id, deleted_by=agency.id)
 
     AuditStore.log_event("document_deleted", agency.id, {
@@ -2334,20 +2630,26 @@ async def internal_document_download(
     """Internal signed URL endpoint for document download.
 
     Validates HMAC claim keyed by document_id. Returns file content.
+    Uses a plain session because auth is HMAC-based (not agency-scoped JWT),
+    and the document_id is validated by the signed URL before this endpoint runs.
     """
     from spine_api.services.document_storage import verify_signed_url, get_document_storage
     from spine_api.core.database import async_session_maker
     from spine_api.models.tenant import BookingDocument
     from fastapi.responses import Response as FastAPIResponse
+    from spine_api.core.rls import apply_rls
 
     if not verify_signed_url(document_id, "download", token, expires):
         raise HTTPException(status_code=403, detail="Invalid or expired download URL")
 
     async with async_session_maker() as db:
+        # Two-step lookup: first get the doc to learn its agency_id, then apply RLS
         result = await db.execute(
             select(BookingDocument).where(BookingDocument.id == document_id)
         )
         doc = result.scalar_one_or_none()
+        if doc:
+            await apply_rls(db, doc.agency_id)
 
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -2437,7 +2739,7 @@ class ApplyConflict(BaseModel):
 
 class ApplyExtractionResponse(BaseModel):
     applied: bool
-    conflicts: list[ApplyConflict] = []
+    conflicts: list[ApplyConflict] = Field(default_factory=list)
     extraction: Optional[ExtractionResponse] = None
 
 
@@ -2496,16 +2798,15 @@ async def extract_document(
     from spine_api.services.extraction_service import run_extraction, get_extractor, ExtractionValidationError
     from spine_api.services.document_service import get_document_by_id
     from spine_api.services.document_storage import get_document_storage
-    from spine_api.core.database import async_session_maker
 
-    trip = await _ts(TripStore.get_trip, trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     if trip.get("stage", "discovery") not in ("proposal", "booking"):
         raise HTTPException(status_code=403, detail="Extraction requires proposal or booking stage")
 
-    async with async_session_maker() as db:
+    async with rls_session(agency.id) as db:
         doc = await get_document_by_id(db, document_id, agency.id)
         if not doc or doc.trip_id != trip_id:
             raise HTTPException(status_code=404, detail="Document not found")
@@ -2572,13 +2873,12 @@ async def get_extraction(
 ):
     """Get extraction results for a document."""
     from spine_api.services.extraction_service import get_extraction_for_document
-    from spine_api.core.database import async_session_maker
 
-    trip = await _ts(TripStore.get_trip, trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    async with async_session_maker() as db:
+    async with rls_session(agency.id) as db:
         extraction = await get_extraction_for_document(db, document_id, agency.id)
     if not extraction:
         raise HTTPException(status_code=404, detail="No extraction found for this document")
@@ -2596,16 +2896,15 @@ async def retry_extraction(
     from spine_api.services.extraction_service import run_extraction, ExtractionValidationError
     from spine_api.services.document_service import get_document_by_id
     from spine_api.services.document_storage import get_document_storage
-    from spine_api.core.database import async_session_maker
 
-    trip = await _ts(TripStore.get_trip, trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     if trip.get("stage", "discovery") not in ("proposal", "booking"):
         raise HTTPException(status_code=403, detail="Retry requires proposal or booking stage")
 
-    async with async_session_maker() as db:
+    async with rls_session(agency.id) as db:
         doc = await get_document_by_id(db, document_id, agency.id)
         if not doc or doc.trip_id != trip_id:
             raise HTTPException(status_code=404, detail="Document not found")
@@ -2637,15 +2936,14 @@ async def list_extraction_attempts(
 ):
     """List all extraction attempts for a document (audit trail). No PII."""
     from spine_api.services.extraction_service import get_extraction_for_document
-    from spine_api.core.database import async_session_maker
     from spine_api.models.tenant import DocumentExtractionAttempt
     from sqlalchemy import select
 
-    trip = await _ts(TripStore.get_trip, trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    async with async_session_maker() as db:
+    async with rls_session(agency.id) as db:
         extraction = await get_extraction_for_document(db, document_id, agency.id)
         if not extraction:
             raise HTTPException(status_code=404, detail="No extraction found")
@@ -2686,19 +2984,21 @@ async def apply_extraction(
         ExtractionValidationError,
     )
     from spine_api.services.document_service import get_document_by_id
-    from spine_api.core.database import async_session_maker
 
-    trip = await _ts(TripStore.get_trip, trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
     if trip.get("stage", "discovery") not in ("proposal", "booking"):
         raise HTTPException(status_code=403, detail="Apply requires proposal or booking stage")
 
-    async with async_session_maker() as db:
+    async with rls_session(agency.id) as db:
         doc = await get_document_by_id(db, document_id, agency.id)
         if not doc or doc.trip_id != trip_id:
             raise HTTPException(status_code=404, detail="Document not found")
+
+        if doc.status != "accepted":
+            raise HTTPException(status_code=409, detail="Document must be accepted before applying extraction")
 
         extraction = await get_extraction_for_document(db, document_id, agency.id)
         if not extraction:
@@ -2749,13 +3049,12 @@ async def reject_extraction(
 ):
     """Reject extraction results. Does not modify booking_data. Allowed at any stage."""
     from spine_api.services.extraction_service import get_extraction_for_document, reject_extraction as do_reject
-    from spine_api.core.database import async_session_maker
 
-    trip = await _ts(TripStore.get_trip, trip_id)
-    if not trip or trip.get("agency_id") != agency.id:
+    trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
+    if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    async with async_session_maker() as db:
+    async with rls_session(agency.id) as db:
         extraction = await get_extraction_for_document(db, document_id, agency.id)
         if not extraction:
             raise HTTPException(status_code=404, detail="No extraction found")

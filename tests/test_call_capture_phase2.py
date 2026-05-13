@@ -15,6 +15,8 @@ from datetime import datetime, timezone
 from uuid import uuid4
 import pytest
 
+from spine_api.persistence import TEST_AGENCY_ID
+
 
 @pytest.fixture(autouse=True)
 def _phase2_uses_tmp_trips_dir(monkeypatch, tmp_path):
@@ -33,10 +35,10 @@ def _phase2_uses_tmp_trips_dir(monkeypatch, tmp_path):
 class TestPhase2StructuredFields:
     """Tests for 5 new structured fields in Phase 2 call-capture."""
 
-    AGENCY_ID = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+    AGENCY_ID = TEST_AGENCY_ID
 
     def _seed_patchable_trip(self) -> str:
-        from spine_api.persistence import TripStore
+        from spine_api.persistence import TripStore, TEST_AGENCY_ID
 
         trip_id = f"trip_p2_{uuid4().hex[:28]}"
         TripStore.save_trip(
@@ -361,10 +363,10 @@ class TestPhase2StructuredFields:
 # =============================================================================
 
 class TestPrioritiesFlexibilityPatchSync:
-    AGENCY_ID = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+    AGENCY_ID = TEST_AGENCY_ID
 
     def _seed_trip(self) -> str:
-        from spine_api.persistence import TripStore
+        from spine_api.persistence import TripStore, TEST_AGENCY_ID
         trip_id = "trip_patch_priorities_flex"
         TripStore.save_trip(
             {
@@ -427,7 +429,7 @@ class TestPrioritiesFlexibilityPatchSync:
 
     def test_patch_clears_validation_warnings(self, session_client):
         """PATCH clears stale validation warnings for synced fields."""
-        from spine_api.persistence import TripStore
+        from spine_api.persistence import TripStore, TEST_AGENCY_ID
         trip_id = "trip_patch_clear_warnings"
         TripStore.save_trip(
             {
@@ -461,3 +463,109 @@ class TestPrioritiesFlexibilityPatchSync:
         warning_fields = [w.get("field") for w in warnings]
         assert "trip_priorities" not in warning_fields
         assert "date_flexibility" not in warning_fields
+
+
+# =============================================================================
+# PATCH sync — dateWindow, party, destination
+# =============================================================================
+
+class TestDatePartyDestinationPatchSync:
+    AGENCY_ID = TEST_AGENCY_ID
+
+    def _seed_trip(self) -> str:
+        from spine_api.persistence import TripStore
+        trip_id = "trip_patch_date_party_dest"
+        TripStore.save_trip(
+            {
+                "id": trip_id,
+                "source": "pytest",
+                "status": "assigned",
+                "extracted": {"facts": {}},
+                "validation": {"is_valid": True, "errors": [], "warnings": [
+                    {"field": "date_window", "message": "Missing travel dates"},
+                    {"field": "destination_candidates", "message": "Missing destination"},
+                ]},
+                "decision": {"decision_state": "ASK_FOLLOWUP", "hard_blockers": [], "soft_blockers": []},
+                "raw_input": {"fixture_id": "SC-902"},
+            },
+            agency_id=self.AGENCY_ID,
+        )
+        return trip_id
+
+    def test_patch_syncs_dateWindow_to_facts(self, session_client):
+        """PATCH with dateWindow writes to extracted.facts.date_window."""
+        trip_id = self._seed_trip()
+        response = session_client.patch(
+            f"/trips/{trip_id}",
+            json={"dateWindow": "March 15-20, 2026"},
+        )
+        assert response.status_code == 200, response.text
+        trip = response.json()
+        dw_fact = trip.get("extracted", {}).get("facts", {}).get("date_window")
+        assert dw_fact is not None, f"date_window not in facts: {trip.get('extracted', {}).get('facts', {})}"
+        assert dw_fact["value"] == "March 15-20, 2026"
+        assert dw_fact["confidence"] == 1.0
+        assert dw_fact["authority_level"] == "explicit_user"
+
+    def test_patch_syncs_party_to_facts(self, session_client):
+        """PATCH with party writes to extracted.facts.party_size."""
+        trip_id = self._seed_trip()
+        response = session_client.patch(
+            f"/trips/{trip_id}",
+            json={"party": 4},
+        )
+        assert response.status_code == 200, response.text
+        trip = response.json()
+        ps_fact = trip.get("extracted", {}).get("facts", {}).get("party_size")
+        assert ps_fact is not None, f"party_size not in facts: {trip.get('extracted', {}).get('facts', {})}"
+        assert ps_fact["value"] == 4
+        assert ps_fact["confidence"] == 1.0
+        assert ps_fact["authority_level"] == "explicit_user"
+
+    def test_patch_syncs_destination_to_facts(self, session_client):
+        """PATCH with destination writes to extracted.facts.destination_candidates."""
+        trip_id = self._seed_trip()
+        response = session_client.patch(
+            f"/trips/{trip_id}",
+            json={"destination": "Paris"},
+        )
+        assert response.status_code == 200, response.text
+        trip = response.json()
+        dc_fact = trip.get("extracted", {}).get("facts", {}).get("destination_candidates")
+        assert dc_fact is not None, f"destination_candidates not in facts: {trip.get('extracted', {}).get('facts', {})}"
+        assert dc_fact["value"] == ["Paris"]
+        assert dc_fact["confidence"] == 1.0
+        assert dc_fact["authority_level"] == "explicit_user"
+
+    def test_patch_syncs_all_three_together(self, session_client):
+        """PATCH with all three fields writes all three to facts."""
+        trip_id = self._seed_trip()
+        response = session_client.patch(
+            f"/trips/{trip_id}",
+            json={
+                "dateWindow": "July 4-11, 2026",
+                "party": 2,
+                "destination": "Tokyo",
+            },
+        )
+        assert response.status_code == 200, response.text
+        trip = response.json()
+        facts = trip.get("extracted", {}).get("facts", {})
+        assert facts.get("date_window", {}).get("value") == "July 4-11, 2026"
+        assert facts.get("party_size", {}).get("value") == 2
+        assert facts.get("destination_candidates", {}).get("value") == ["Tokyo"]
+
+    def test_patch_clears_date_window_validation_warning(self, session_client):
+        """PATCH with dateWindow clears only the date_window warning (not unrelated warnings)."""
+        trip_id = self._seed_trip()
+        response = session_client.patch(
+            f"/trips/{trip_id}",
+            json={"dateWindow": "August 10-17, 2026"},
+        )
+        assert response.status_code == 200, response.text
+        trip = response.json()
+        warnings = trip.get("validation", {}).get("warnings", [])
+        warning_fields = [w.get("field") for w in warnings]
+        assert "date_window" not in warning_fields, f"Expected date_window warning cleared, got: {warning_fields}"
+        # destination_candidates warning should remain — only dateWindow was edited
+        assert "destination_candidates" in warning_fields, "Unrelated warning should persist"

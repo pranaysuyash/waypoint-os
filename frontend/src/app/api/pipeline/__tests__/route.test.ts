@@ -11,6 +11,12 @@ vi.mock("@/lib/bff-auth", async (importOriginal) => {
       headers: { "Content-Type": "application/json" },
       cache: "no-store" as RequestCache,
     })),
+    bffJson: vi.fn((data: unknown, status = 200) =>
+      new Response(JSON.stringify(data), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      }),
+    ),
   };
 });
 
@@ -20,24 +26,23 @@ vi.mock("@/lib/bff-trip-adapters", () => ({
 }));
 
 import { transformSpineTripsResponseToTrips, isWorkspaceTrip } from "@/lib/bff-trip-adapters";
+import { bffJson } from "@/lib/bff-auth";
 
 function asNextRequest(request: Request): NextRequest {
   return request as unknown as NextRequest;
 }
 
-const WORKSPACE_TRIP = { id: "t1", status: "assigned", state: "amber" };
-const IN_PROGRESS_TRIP = { id: "t2", status: "in_progress", state: "amber" };
-const QUOTE_TRIP = { id: "t3", status: "ready_to_quote", state: "red" };
-const BOOK_TRIP = { id: "t4", status: "ready_to_book", state: "green" };
-const BLOCKED_TRIP = { id: "t5", status: "blocked", state: "red" };
-const NEW_TRIP = { id: "t6", status: "new", state: "blue" };
-const COMPLETED_TRIP = { id: "t7", status: "completed", state: "green" };
-const CANCELLED_TRIP = { id: "t8", status: "cancelled", state: "red" };
+const WORKSPACE_TRIP = { id: "t1", destination: "Tokyo", type: "leisure", state: "amber" as const, age: "2d", createdAt: "2026-05-01", updatedAt: "2026-05-03", status: "assigned" };
+const BOOK_TRIP = { id: "t4", destination: "Paris", type: "leisure", state: "green" as const, age: "1d", createdAt: "2026-05-02", updatedAt: "2026-05-03", status: "ready_to_book" };
+const BLOCKED_TRIP = { id: "t5", destination: "London", type: "business", state: "red" as const, age: "5d", createdAt: "2026-04-28", updatedAt: "2026-05-03", status: "blocked" };
+const NEW_TRIP = { id: "t6", destination: "Berlin", type: "leisure", state: "blue" as const, age: "0d", createdAt: "2026-05-03", updatedAt: "2026-05-03", status: "new" };
+const COMPLETED_TRIP = { id: "t7", destination: "Rome", type: "leisure", state: "green" as const, age: "14d", createdAt: "2026-04-19", updatedAt: "2026-05-03", status: "completed" };
+const CANCELLED_TRIP = { id: "t8", destination: "Madrid", type: "business", state: "red" as const, age: "7d", createdAt: "2026-04-26", updatedAt: "2026-05-03", status: "cancelled" };
 
-function mockBackendResponse(data: unknown) {
+function mockBackend(data: unknown[], status = 200) {
   vi.spyOn(global, "fetch").mockResolvedValueOnce(
     new Response(JSON.stringify({ items: data }), {
-      status: 200,
+      status,
       headers: { "Content-Type": "application/json" },
     }),
   );
@@ -60,11 +65,10 @@ describe("/api/pipeline GET - Operational Pipeline", () => {
       WORKSPACE_TRIP,
       BLOCKED_TRIP,
     ]);
-    mockBackendResponse([WORKSPACE_TRIP, BLOCKED_TRIP]);
+    mockBackend([WORKSPACE_TRIP, BLOCKED_TRIP]);
 
-    const request = asNextRequest(new Request("http://localhost:3000/api/pipeline"));
-    const response = await GET(request);
-    const data = await response.json();
+    const res = await GET(asNextRequest(new Request("http://localhost:3000/api/pipeline")));
+    const data = await res.json();
 
     expect(data).toEqual([
       { label: "assigned", count: 1 },
@@ -77,19 +81,18 @@ describe("/api/pipeline GET - Operational Pipeline", () => {
 
   it("includes zero-count stages", async () => {
     vi.mocked(transformSpineTripsResponseToTrips).mockReturnValue([BOOK_TRIP]);
-    mockBackendResponse([BOOK_TRIP]);
+    mockBackend([BOOK_TRIP]);
 
-    const request = asNextRequest(new Request("http://localhost:3000/api/pipeline"));
-    const response = await GET(request);
-    const data = await response.json();
+    const res = await GET(asNextRequest(new Request("http://localhost:3000/api/pipeline")));
+    const data = (await res.json()) as Array<{ label: string; count: number }>;
 
     expect(data).toHaveLength(5);
-    data.forEach((stage: { label: string; count: number }) => {
-      expect(stage).toHaveProperty("label");
-      expect(stage).toHaveProperty("count");
+    data.forEach((s) => {
+      expect(s).toHaveProperty("label");
+      expect(s).toHaveProperty("count");
     });
-    expect(data.find((s: { label: string }) => s.label === "in_progress")?.count).toBe(0);
-    expect(data.find((s: { label: string }) => s.label === "ready_to_quote")?.count).toBe(0);
+    expect(data.find((s) => s.label === "in_progress")?.count).toBe(0);
+    expect(data.find((s) => s.label === "ready_to_quote")?.count).toBe(0);
   });
 
   it("excludes new, completed, and cancelled from counts", async () => {
@@ -99,24 +102,21 @@ describe("/api/pipeline GET - Operational Pipeline", () => {
       COMPLETED_TRIP,
       CANCELLED_TRIP,
     ]);
-    mockBackendResponse([WORKSPACE_TRIP, NEW_TRIP, COMPLETED_TRIP, CANCELLED_TRIP]);
+    mockBackend([WORKSPACE_TRIP, NEW_TRIP, COMPLETED_TRIP, CANCELLED_TRIP]);
 
-    const request = asNextRequest(new Request("http://localhost:3000/api/pipeline"));
-    const response = await GET(request);
-    const data = await response.json();
+    const res = await GET(asNextRequest(new Request("http://localhost:3000/api/pipeline")));
+    const data = (await res.json()) as Array<{ label: string; count: number }>;
 
-    const assigned = data.find((s: { label: string }) => s.label === "assigned");
-    expect(assigned.count).toBe(1);
-    expect(data.find((s: { label: string }) => s.label === "ready_to_book")?.count).toBe(0);
+    expect(data.find((s) => s.label === "assigned")?.count).toBe(1);
+    expect(data.find((s) => s.label === "ready_to_book")?.count).toBe(0);
   });
 
   it("does not return analytics fields", async () => {
     vi.mocked(transformSpineTripsResponseToTrips).mockReturnValue([WORKSPACE_TRIP]);
-    mockBackendResponse([WORKSPACE_TRIP]);
+    mockBackend([WORKSPACE_TRIP]);
 
-    const request = asNextRequest(new Request("http://localhost:3000/api/pipeline"));
-    const response = await GET(request);
-    const data = await response.json();
+    const res = await GET(asNextRequest(new Request("http://localhost:3000/api/pipeline")));
+    const data = (await res.json()) as Array<Record<string, unknown>>;
 
     expect(data[0]).not.toHaveProperty("stageId");
     expect(data[0]).not.toHaveProperty("stageName");
@@ -126,33 +126,28 @@ describe("/api/pipeline GET - Operational Pipeline", () => {
     expect(data[0]).not.toHaveProperty("avgTimeToExit");
   });
 
-  it("preserves auth errors from the backend", async () => {
+  it("preserves auth status from backend", async () => {
     vi.spyOn(global, "fetch").mockResolvedValueOnce(
-      new Response(JSON.stringify({ error: "Not authenticated" }), {
+      new Response(JSON.stringify({ error: "unauthenticated" }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
       }),
     );
 
-    const request = asNextRequest(new Request("http://localhost:3000/api/pipeline"));
-    const response = await GET(request);
-
-    expect(response.status).toBe(401);
-    const data = await response.json();
+    const res = await GET(asNextRequest(new Request("http://localhost:3000/api/pipeline")));
+    expect(res.status).toBe(401);
+    const data = await res.json();
     expect(data).toHaveProperty("error");
   });
 
-  it("returns all five stages in the correct order", async () => {
+  it("returns all five stages in correct order even when empty", async () => {
     vi.mocked(transformSpineTripsResponseToTrips).mockReturnValue([]);
-    mockBackendResponse([]);
+    mockBackend([]);
 
-    const request = asNextRequest(new Request("http://localhost:3000/api/pipeline"));
-    const response = await GET(request);
-    const data = await response.json();
+    const res = await GET(asNextRequest(new Request("http://localhost:3000/api/pipeline")));
+    const data = (await res.json()) as Array<{ label: string }>;
 
-    expect(data).toBeInstanceOf(Array);
-    const labels = (data as Array<{ label: string }>).map((s) => s.label);
-    expect(labels).toEqual([
+    expect(data.map((s) => s.label)).toEqual([
       "assigned",
       "in_progress",
       "ready_to_quote",
@@ -161,16 +156,30 @@ describe("/api/pipeline GET - Operational Pipeline", () => {
     ]);
   });
 
-  it("handles backend errors gracefully", async () => {
+  it("handles backend server error gracefully", async () => {
     vi.spyOn(global, "fetch").mockResolvedValueOnce(
       new Response(null, { status: 500 }),
     );
-
-    const request = asNextRequest(new Request("http://localhost:3000/api/pipeline"));
-    const response = await GET(request);
-
-    expect(response.status).toBe(500);
-    const data = await response.json();
+    const res = await GET(asNextRequest(new Request("http://localhost:3000/api/pipeline")));
+    expect(res.status).toBe(500);
+    const data = await res.json();
     expect(data).toHaveProperty("error");
+  });
+
+  it("counts trips with multiple statuses correctly", async () => {
+    vi.mocked(transformSpineTripsResponseToTrips).mockReturnValue([
+      WORKSPACE_TRIP,
+      WORKSPACE_TRIP,
+      BOOK_TRIP,
+      BLOCKED_TRIP,
+    ]);
+    mockBackend([WORKSPACE_TRIP, WORKSPACE_TRIP, BOOK_TRIP, BLOCKED_TRIP]);
+
+    const res = await GET(asNextRequest(new Request("http://localhost:3000/api/pipeline")));
+    const data = (await res.json()) as Array<{ label: string; count: number }>;
+
+    expect(data.find((s) => s.label === "assigned")?.count).toBe(2);
+    expect(data.find((s) => s.label === "ready_to_book")?.count).toBe(1);
+    expect(data.find((s) => s.label === "blocked")?.count).toBe(1);
   });
 });
