@@ -70,7 +70,7 @@ def created_trip_id(session_client):
     trip_id = TripStore.save_trip(trip_data, agency_id=TEST_AGENCY_ID)
     yield trip_id
     try:
-        TripStore.delete_trip(trip_id)
+        TripStore.delete_trip_for_agency(trip_id, TEST_AGENCY_ID)
     except Exception:
         pass
 
@@ -93,7 +93,7 @@ def discovery_trip_id():
     trip_id = TripStore.save_trip(trip_data, agency_id=TEST_AGENCY_ID)
     yield trip_id
     try:
-        TripStore.delete_trip(trip_id)
+        TripStore.delete_trip_for_agency(trip_id, TEST_AGENCY_ID)
     except Exception:
         pass
 
@@ -104,8 +104,9 @@ def allow_beta_privacy(monkeypatch):
 
 
 def _extract_token_from_url(url: str) -> str:
-    """Extract the plain token from a collection URL like /booking-collection/{token}."""
-    return url.rstrip("/").split("/booking-collection/")[-1]
+    """Extract the plain token from a collection URL like /booking-collection/{agency_id}/{token}."""
+    segment = url.rstrip("/").split("/booking-collection/")[-1]
+    return segment.split("/")[-1]
 
 
 # ---------------------------------------------------------------------------
@@ -239,7 +240,7 @@ class TestPublicCustomerEndpoints:
 
     def test_public_form_valid_token(self, session_client, created_trip_id):
         token = self._generate_link(session_client, created_trip_id)
-        resp = session_client.get(f"/api/public/booking-collection/{token}")
+        resp = session_client.get(f"/api/public/booking-collection/{TEST_AGENCY_ID}/{token}")
         if resp.status_code != 200:
             pytest.fail(f"Expected 200, got {resp.status_code}: {resp.json()}")
         data = resp.json()
@@ -248,7 +249,7 @@ class TestPublicCustomerEndpoints:
         assert data["already_submitted"] is False
 
     def test_public_form_invalid_token(self, session_client):
-        resp = session_client.get("/api/public/booking-collection/invalid-token-value")
+        resp = session_client.get(f"/api/public/booking-collection/{TEST_AGENCY_ID}/invalid-token-value")
         assert resp.status_code == 200
         data = resp.json()
         assert data["valid"] is False
@@ -256,7 +257,7 @@ class TestPublicCustomerEndpoints:
     def test_public_form_no_pii_in_summary(self, session_client, created_trip_id):
         """Trip summary must not contain PII or internal fields."""
         token = self._generate_link(session_client, created_trip_id)
-        resp = session_client.get(f"/api/public/booking-collection/{token}")
+        resp = session_client.get(f"/api/public/booking-collection/{TEST_AGENCY_ID}/{token}")
         data = resp.json()
         summary = data.get("trip_summary", {})
         # Must NOT contain these internal fields
@@ -274,25 +275,25 @@ class TestPublicCustomerEndpoints:
         token = self._generate_link(session_client, created_trip_id)
 
         resp = session_client.post(
-            f"/api/public/booking-collection/{token}/submit",
+            f"/api/public/booking-collection/{TEST_AGENCY_ID}/{token}/submit",
             json=_submit_payload(MINIMAL_BOOKING_DATA),
         )
         assert resp.status_code == 200
         assert resp.json()["ok"] is True
 
         # Verify pending exists but booking_data does NOT
-        pending = TripStore.get_pending_booking_data(created_trip_id)
+        pending = TripStore.get_pending_booking_data_for_agency(created_trip_id, TEST_AGENCY_ID)
         assert pending is not None
         assert pending["travelers"][0]["full_name"] == "Alice Smith"
 
-        booking = TripStore.get_booking_data(created_trip_id)
+        booking = TripStore.get_booking_data_for_agency(created_trip_id, TEST_AGENCY_ID)
         assert booking is None
 
     def test_customer_submit_invalid_data_returns_422(self, session_client, created_trip_id):
         token = self._generate_link(session_client, created_trip_id)
 
         resp = session_client.post(
-            f"/api/public/booking-collection/{token}/submit",
+            f"/api/public/booking-collection/{TEST_AGENCY_ID}/{token}/submit",
             json=_submit_payload({"travelers": [], "payer": {"name": ""}}),
         )
         assert resp.status_code == 422
@@ -309,7 +310,7 @@ class TestPublicCustomerEndpoints:
         }
 
         resp = session_client.post(
-            f"/api/public/booking-collection/{token}/submit",
+            f"/api/public/booking-collection/{TEST_AGENCY_ID}/{token}/submit",
             json=_submit_payload(payload),
         )
 
@@ -317,7 +318,7 @@ class TestPublicCustomerEndpoints:
 
     def test_customer_submit_invalid_token_returns_410(self, session_client):
         resp = session_client.post(
-            "/api/public/booking-collection/invalid-token/submit",
+            f"/api/public/booking-collection/{TEST_AGENCY_ID}/invalid-token/submit",
             json=_submit_payload(MINIMAL_BOOKING_DATA),
         )
         assert resp.status_code == 410
@@ -327,14 +328,14 @@ class TestPublicCustomerEndpoints:
 
         # First submit
         resp1 = session_client.post(
-            f"/api/public/booking-collection/{token}/submit",
+            f"/api/public/booking-collection/{TEST_AGENCY_ID}/{token}/submit",
             json=_submit_payload(MINIMAL_BOOKING_DATA),
         )
         assert resp1.status_code == 200
 
         # Second submit (token already used — validate_token returns None)
         resp2 = session_client.post(
-            f"/api/public/booking-collection/{token}/submit",
+            f"/api/public/booking-collection/{TEST_AGENCY_ID}/{token}/submit",
             json=_submit_payload(MINIMAL_BOOKING_DATA),
         )
         assert resp2.status_code == 410  # Token no longer valid after first use
@@ -350,7 +351,7 @@ class TestAgentReview:
         gen = session_client.post(f"/trips/{trip_id}/collection-link")
         token = _extract_token_from_url(gen.json()["collection_url"])
         session_client.post(
-            f"/api/public/booking-collection/{token}/submit",
+            f"/api/public/booking-collection/{TEST_AGENCY_ID}/{token}/submit",
             json=_submit_payload(MINIMAL_BOOKING_DATA),
         )
         return token
@@ -364,14 +365,14 @@ class TestAgentReview:
         assert resp.status_code == 200
 
         # booking_data should now exist
-        booking = TripStore.get_booking_data(created_trip_id)
+        booking = TripStore.get_booking_data_for_agency(created_trip_id, TEST_AGENCY_ID)
         assert booking is not None
         assert booking["travelers"][0]["full_name"] == "Alice Smith"
 
     def test_accept_rejects_tampered_pending_payment_tracking(self, session_client, created_trip_id):
         from spine_api.persistence import TripStore
 
-        TripStore.update_trip(created_trip_id, {
+        TripStore.update_trip_for_agency(created_trip_id, TEST_AGENCY_ID, {
             "pending_booking_data": {
                 **MINIMAL_BOOKING_DATA,
                 "payment_tracking": {
@@ -385,7 +386,7 @@ class TestAgentReview:
         resp = session_client.post(f"/trips/{created_trip_id}/pending-booking-data/accept")
 
         assert resp.status_code == 422
-        assert TripStore.get_booking_data(created_trip_id) is None
+        assert TripStore.get_booking_data_for_agency(created_trip_id, TEST_AGENCY_ID) is None
 
     def test_accept_sets_source(self, session_client, created_trip_id):
         from spine_api.persistence import TripStore
@@ -393,7 +394,7 @@ class TestAgentReview:
         self._setup_pending(session_client, created_trip_id)
         session_client.post(f"/trips/{created_trip_id}/pending-booking-data/accept")
 
-        trip = TripStore.get_trip(created_trip_id)
+        trip = TripStore.get_trip_for_agency(created_trip_id, TEST_AGENCY_ID)
         assert trip["booking_data_source"] == "customer_accepted"
 
     def test_accept_clears_pending(self, session_client, created_trip_id):
@@ -402,7 +403,7 @@ class TestAgentReview:
         self._setup_pending(session_client, created_trip_id)
         session_client.post(f"/trips/{created_trip_id}/pending-booking-data/accept")
 
-        pending = TripStore.get_pending_booking_data(created_trip_id)
+        pending = TripStore.get_pending_booking_data_for_agency(created_trip_id, TEST_AGENCY_ID)
         assert pending is None
 
     def test_accept_recomputes_readiness(self, session_client, created_trip_id):
@@ -412,7 +413,7 @@ class TestAgentReview:
         self._setup_pending(session_client, created_trip_id)
         session_client.post(f"/trips/{created_trip_id}/pending-booking-data/accept")
 
-        trip = TripStore.get_trip(created_trip_id)
+        trip = TripStore.get_trip_for_agency(created_trip_id, TEST_AGENCY_ID)
         validation = trip.get("validation") or {}
         assert "readiness" in validation, f"readiness not recomputed after accept, validation keys: {list(validation.keys())}"
 
@@ -431,11 +432,11 @@ class TestAgentReview:
         )
         assert resp.status_code == 200
 
-        pending = TripStore.get_pending_booking_data(created_trip_id)
+        pending = TripStore.get_pending_booking_data_for_agency(created_trip_id, TEST_AGENCY_ID)
         assert pending is None
 
         # booking_data must NOT exist after reject
-        booking = TripStore.get_booking_data(created_trip_id)
+        booking = TripStore.get_booking_data_for_agency(created_trip_id, TEST_AGENCY_ID)
         assert booking is None
 
     def test_reject_with_reason(self, session_client, created_trip_id):
@@ -475,7 +476,7 @@ class TestPrivacyBoundaries:
         from spine_api.persistence import TripStore
 
         # Write pending data directly
-        TripStore.update_trip(created_trip_id, {"pending_booking_data": MINIMAL_BOOKING_DATA})
+        TripStore.update_trip_for_agency(created_trip_id, TEST_AGENCY_ID, {"pending_booking_data": MINIMAL_BOOKING_DATA})
 
         resp = session_client.get(f"/trips/{created_trip_id}")
         assert resp.status_code == 200
@@ -511,7 +512,7 @@ class TestAuditPrivacy:
         gen = session_client.post(f"/trips/{created_trip_id}/collection-link")
         token = _extract_token_from_url(gen.json()["collection_url"])
         session_client.post(
-            f"/api/public/booking-collection/{token}/submit",
+            f"/api/public/booking-collection/{TEST_AGENCY_ID}/{token}/submit",
             json=_submit_payload(VALID_BOOKING_DATA),
         )
         session_client.post(f"/trips/{created_trip_id}/pending-booking-data/accept")
@@ -557,7 +558,7 @@ class TestAuditPrivacy:
         gen = session_client.post(f"/trips/{trip_id}/collection-link")
         token = _extract_token_from_url(gen.json()["collection_url"])
         session_client.post(
-            f"/api/public/booking-collection/{token}/submit",
+            f"/api/public/booking-collection/{TEST_AGENCY_ID}/{token}/submit",
             json=_submit_payload(MINIMAL_BOOKING_DATA),
         )
 
@@ -579,14 +580,14 @@ class TestStageGateBypass:
         token = _extract_token_from_url(gen.json()["collection_url"])
 
         # Move trip to discovery (not eligible for collection)
-        TripStore.update_trip(trip_id, {"stage": "discovery"})
+        TripStore.update_trip_for_agency(trip_id, TEST_AGENCY_ID, {"stage": "discovery"})
         return token
 
     def test_public_get_returns_invalid_after_stage_change(
         self, session_client, created_trip_id
     ):
         token = self._make_link_and_move_to_discovery(session_client, created_trip_id)
-        resp = session_client.get(f"/api/public/booking-collection/{token}")
+        resp = session_client.get(f"/api/public/booking-collection/{TEST_AGENCY_ID}/{token}")
         assert resp.status_code == 200
         data = resp.json()
         assert data["valid"] is False
@@ -596,7 +597,7 @@ class TestStageGateBypass:
     ):
         token = self._make_link_and_move_to_discovery(session_client, created_trip_id)
         resp = session_client.post(
-            f"/api/public/booking-collection/{token}/submit",
+            f"/api/public/booking-collection/{TEST_AGENCY_ID}/{token}/submit",
             json=_submit_payload(MINIMAL_BOOKING_DATA),
         )
         assert resp.status_code == 410
@@ -610,12 +611,12 @@ class TestStageGateBypass:
         gen = session_client.post(f"/trips/{created_trip_id}/collection-link")
         token = _extract_token_from_url(gen.json()["collection_url"])
         session_client.post(
-            f"/api/public/booking-collection/{token}/submit",
+            f"/api/public/booking-collection/{TEST_AGENCY_ID}/{token}/submit",
             json=_submit_payload(MINIMAL_BOOKING_DATA),
         )
 
         # Move to discovery
-        TripStore.update_trip(created_trip_id, {"stage": "discovery"})
+        TripStore.update_trip_for_agency(created_trip_id, TEST_AGENCY_ID, {"stage": "discovery"})
 
         # Accept must be blocked
         resp = session_client.post(f"/trips/{created_trip_id}/pending-booking-data/accept")
@@ -627,12 +628,12 @@ class TestStageGateBypass:
         gen = session_client.post(f"/trips/{created_trip_id}/collection-link")
         token = _extract_token_from_url(gen.json()["collection_url"])
         session_client.post(
-            f"/api/public/booking-collection/{token}/submit",
+            f"/api/public/booking-collection/{TEST_AGENCY_ID}/{token}/submit",
             json=_submit_payload(MINIMAL_BOOKING_DATA),
         )
 
         # Move to discovery
-        TripStore.update_trip(created_trip_id, {"stage": "discovery"})
+        TripStore.update_trip_for_agency(created_trip_id, TEST_AGENCY_ID, {"stage": "discovery"})
 
         # Reject should still work
         resp = session_client.post(
@@ -648,7 +649,7 @@ class TestStageGateBypass:
     def test_public_get_valid_at_proposal(self, session_client, created_trip_id):
         gen = session_client.post(f"/trips/{created_trip_id}/collection-link")
         token = _extract_token_from_url(gen.json()["collection_url"])
-        resp = session_client.get(f"/api/public/booking-collection/{token}")
+        resp = session_client.get(f"/api/public/booking-collection/{TEST_AGENCY_ID}/{token}")
         assert resp.status_code == 200
         assert resp.json()["valid"] is True
 
@@ -664,7 +665,7 @@ class TestFactSlotLeak:
         from spine_api.persistence import TripStore
 
         # Set extracted.facts with dict-shaped values carrying metadata
-        TripStore.update_trip(created_trip_id, {
+        TripStore.update_trip_for_agency(created_trip_id, TEST_AGENCY_ID, {
             "extracted": {
                 "facts": {
                     "destination_candidates": {
@@ -684,7 +685,7 @@ class TestFactSlotLeak:
 
         gen = session_client.post(f"/trips/{created_trip_id}/collection-link")
         token = _extract_token_from_url(gen.json()["collection_url"])
-        resp = session_client.get(f"/api/public/booking-collection/{token}")
+        resp = session_client.get(f"/api/public/booking-collection/{TEST_AGENCY_ID}/{token}")
         assert resp.status_code == 200
         data = resp.json()
         assert data["valid"] is True

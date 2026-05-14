@@ -799,8 +799,13 @@ class SQLTripStore:
 
     @staticmethod
     async def get_trip_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
-        """Get a trip by ID if it belongs to the given agency. SQL-level tenant filter."""
-        async with SQLTripStore._rls_session() as session:
+        """Get a trip by ID if it belongs to the given agency. SQL-level tenant filter.
+
+        Uses _rls_session_for_agency to explicitly set RLS context from the agency argument,
+        ensuring RLS is fully operational even when the ContextVar is not set (e.g. background
+        tasks, tests that bypass auth).
+        """
+        async with SQLTripStore._rls_session_for_agency(agency_id) as session:
             from sqlalchemy import select
             result = await session.execute(
                 select(Trip).where(Trip.id == trip_id, Trip.agency_id == agency_id)
@@ -914,10 +919,52 @@ class SQLTripStore:
             return SQLTripStore._to_dict(trip_obj)
 
     @staticmethod
+    def _row_to_dict(row) -> dict:
+        """Convert a raw SQL result row (from RETURNING *) to a dict, decrypting fields as needed.
+
+        Mirrors _to_dict but works on raw SQLAlchemy Row objects instead of ORM Trip instances.
+        """
+        return {
+            "id": row.id,
+            "run_id": row.run_id,
+            "agency_id": row.agency_id,
+            "user_id": row.user_id,
+            "assigned_to_id": row.assigned_to_id,
+            "source": row.source,
+            "status": row.status,
+            "stage": row.stage,
+            "follow_up_due_date": row.follow_up_due_date.isoformat() if row.follow_up_due_date else None,
+            "party_composition": row.party_composition,
+            "pace_preference": row.pace_preference,
+            "date_year_confidence": row.date_year_confidence,
+            "lead_source": row.lead_source,
+            "activity_provenance": row.activity_provenance,
+            "extracted": SQLTripStore._decrypt_field_from_storage("extracted", row.extracted or {}),
+            "validation": row.validation or {},
+            "decision": row.decision or {},
+            "strategy": row.strategy,
+            "traveler_bundle": SQLTripStore._decrypt_field_from_storage("traveler_bundle", row.traveler_bundle),
+            "internal_bundle": SQLTripStore._decrypt_field_from_storage("internal_bundle", row.internal_bundle),
+            "safety": SQLTripStore._decrypt_field_from_storage("safety", row.safety) if row.safety else {},
+            "frontier_result": SQLTripStore._decrypt_field_from_storage("frontier_result", row.frontier_result),
+            "fees": SQLTripStore._decrypt_field_from_storage("fees", row.fees),
+            "raw_input": SQLTripStore._decrypt_field_from_storage("raw_input", row.raw_input or {}),
+            "analytics": row.analytics,
+            "booking_data_source": row.booking_data_source,
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+            "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+        }
+
+    @staticmethod
     async def update_trip_if_version(trip_id: str, updates: dict, expected_updated_at: Optional[str] = None) -> Optional[dict]:
         """Update a trip only if its updated_at still matches expected_updated_at.
 
-        Uses SQL WHERE updated_at = :expected_updated_at for atomic compare-and-set.
+        Uses a single SQL UPDATE with WHERE updated_at = :expected_updated_at and
+        RETURNING * for an atomic compare-and-set at the database level. Unlike the
+        previous ORM-based approach, two concurrent requests cannot both read the
+        same timestamp and both win — the database atomically checks the condition
+        and applies the update in one operation.
+
         Returns the updated trip on success, None if version mismatch or trip missing.
         """
         _pii_sensitive_keys = {"raw_input", "raw_note", "extracted", "extracted_facts"}
@@ -926,28 +973,47 @@ class SQLTripStore:
             check_trip_data(updates)
 
         _encrypted_fields = SQLTripStore._PRIVATE_BLOB_FIELDS | SQLTripStore._PII_KEY_FIELDS
-        async with SQLTripStore._rls_session() as session:
-            trip_obj = await session.get(Trip, trip_id)
-            if not trip_obj:
+
+        now = datetime.now(timezone.utc)
+
+        set_clauses = []
+        params: dict[str, object] = {}
+
+        for key, value in updates.items():
+            if not hasattr(Trip, key):
+                continue
+            if key in _encrypted_fields:
+                value = SQLTripStore._encrypt_field_for_storage(key, value)
+            elif key == "follow_up_due_date":
+                value = SQLTripStore._parse_datetime(value)
+            # Raw SQL with asyncpg requires JSON columns to be serialized
+            if isinstance(value, (dict, list)):
+                value = json.dumps(value, default=str)
+            set_clauses.append(f"{key} = :set_{key}")
+            params[f"set_{key}"] = value
+
+        set_clauses.append("updated_at = :new_updated_at")
+        params["new_updated_at"] = now
+        params["trip_id"] = trip_id
+
+        where_clauses = ["id = :trip_id"]
+        if expected_updated_at is not None:
+            try:
+                expected_dt = datetime.fromisoformat(expected_updated_at)
+            except (ValueError, TypeError):
                 return None
-            if expected_updated_at is not None:
-                from datetime import datetime
-                try:
-                    expected_dt = datetime.fromisoformat(expected_updated_at)
-                except (ValueError, TypeError):
-                    return None
-                if trip_obj.updated_at and trip_obj.updated_at != expected_dt:
-                    return None
-            for key, value in updates.items():
-                if key in _encrypted_fields:
-                    value = SQLTripStore._encrypt_field_for_storage(key, value)
-                elif key == "follow_up_due_date":
-                    value = SQLTripStore._parse_datetime(value)
-                if hasattr(trip_obj, key):
-                    setattr(trip_obj, key, value)
-            trip_obj.updated_at = datetime.now(timezone.utc)
+            where_clauses.append("updated_at = :expected_updated_at")
+            params["expected_updated_at"] = expected_dt
+
+        sql = f"UPDATE trips SET {', '.join(set_clauses)} WHERE {' AND '.join(where_clauses)} RETURNING *"
+
+        async with SQLTripStore._rls_session() as session:
+            result = await session.execute(sa_text(sql), params)
             await session.commit()
-            return SQLTripStore._to_dict(trip_obj)
+            row = result.fetchone()
+            if not row:
+                return None
+            return SQLTripStore._row_to_dict(row)
 
     @staticmethod
     async def delete_trip(trip_id: str) -> bool:
@@ -963,7 +1029,9 @@ class SQLTripStore:
     async def update_trip_if_version_for_agency(trip_id: str, agency_id: str, updates: dict, expected_updated_at: Optional[str] = None) -> Optional[dict]:
         """Update a trip only if it belongs to the given agency and its updated_at matches.
 
-        Combines agency scoping and optimistic concurrency in one atomic operation.
+        Single SQL UPDATE with WHERE id, agency_id, and updated_at conditions plus
+        RETURNING *. This is fully atomic at the database level — two concurrent
+        requests with the same expected_updated_at cannot both succeed.
         """
         _pii_sensitive_keys = {"raw_input", "raw_note", "extracted", "extracted_facts"}
         if set(updates.keys()) & _pii_sensitive_keys:
@@ -971,32 +1039,47 @@ class SQLTripStore:
             check_trip_data(updates)
 
         _encrypted_fields = SQLTripStore._PRIVATE_BLOB_FIELDS | SQLTripStore._PII_KEY_FIELDS
-        async with SQLTripStore._rls_session_for_agency(agency_id) as session:
-            from sqlalchemy import select
-            result = await session.execute(
-                select(Trip).where(Trip.id == trip_id, Trip.agency_id == agency_id)
-            )
-            trip_obj = result.scalar_one_or_none()
-            if not trip_obj:
+
+        now = datetime.now(timezone.utc)
+
+        set_clauses = []
+        params: dict[str, object] = {}
+
+        for key, value in updates.items():
+            if not hasattr(Trip, key):
+                continue
+            if key in _encrypted_fields:
+                value = SQLTripStore._encrypt_field_for_storage(key, value)
+            elif key == "follow_up_due_date":
+                value = SQLTripStore._parse_datetime(value)
+            if isinstance(value, (dict, list)):
+                value = json.dumps(value, default=str)
+            set_clauses.append(f"{key} = :set_{key}")
+            params[f"set_{key}"] = value
+
+        set_clauses.append("updated_at = :new_updated_at")
+        params["new_updated_at"] = now
+        params["trip_id"] = trip_id
+        params["agency_id"] = agency_id
+
+        where_clauses = ["id = :trip_id", "agency_id = :agency_id"]
+        if expected_updated_at is not None:
+            try:
+                expected_dt = datetime.fromisoformat(expected_updated_at)
+            except (ValueError, TypeError):
                 return None
-            if expected_updated_at is not None:
-                from datetime import datetime
-                try:
-                    expected_dt = datetime.fromisoformat(expected_updated_at)
-                except (ValueError, TypeError):
-                    return None
-                if trip_obj.updated_at and trip_obj.updated_at != expected_dt:
-                    return None
-            for key, value in updates.items():
-                if key in _encrypted_fields:
-                    value = SQLTripStore._encrypt_field_for_storage(key, value)
-                elif key == "follow_up_due_date":
-                    value = SQLTripStore._parse_datetime(value)
-                if hasattr(trip_obj, key):
-                    setattr(trip_obj, key, value)
-            trip_obj.updated_at = datetime.now(timezone.utc)
+            where_clauses.append("updated_at = :expected_updated_at")
+            params["expected_updated_at"] = expected_dt
+
+        sql = f"UPDATE trips SET {', '.join(set_clauses)} WHERE {' AND '.join(where_clauses)} RETURNING *"
+
+        async with SQLTripStore._rls_session_for_agency(agency_id) as session:
+            result = await session.execute(sa_text(sql), params)
             await session.commit()
-            return SQLTripStore._to_dict(trip_obj)
+            row = result.fetchone()
+            if not row:
+                return None
+            return SQLTripStore._row_to_dict(row)
 
     @staticmethod
     async def get_booking_data(trip_id: str) -> Optional[dict]:

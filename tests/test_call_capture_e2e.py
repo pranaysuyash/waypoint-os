@@ -78,13 +78,13 @@ class TestCallCaptureFollowUpDueDate:
     def _get_trip_from_disk(trip_id: str) -> Optional[Dict[str, Any]]:
         """Helper to retrieve a trip from disk."""
         from spine_api.persistence import TripStore
-        return TripStore.get_trip(trip_id)
+        return TripStore.get_trip_for_agency(trip_id, TEST_AGENCY_ID)
 
     @staticmethod
     def _update_trip_on_disk(trip_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Helper to update a trip on disk."""
         from spine_api.persistence import TripStore
-        return TripStore.update_trip(trip_id, updates)
+        return TripStore.update_trip_for_agency(trip_id, TEST_AGENCY_ID, updates)
 
     def test_capture_call_creates_trip_with_follow_up_due_date(self, disable_audit_logging):
         """Test: Create trip with follow_up_due_date via call capture."""
@@ -251,7 +251,7 @@ class TestCallCaptureFollowUpDueDate:
 
         trip_id = asyncio.run(save_from_async_context())
 
-        saved = TripStore.get_trip(trip_id)
+        saved = TripStore.get_trip_for_agency(trip_id, TEST_AGENCY_ID)
         assert saved is not None
         assert saved["id"] == trip_id
 
@@ -315,7 +315,7 @@ class TestCallCaptureFollowUpDueDate:
             trip_status="new",
         )
 
-        saved = persistence.TripStore.get_trip(trip_id)
+        saved = persistence.TripStore.get_trip_for_agency(trip_id, TEST_AGENCY_ID)
         assert saved is not None
         artifacts = saved.get("public_checker_artifacts")
         assert artifacts is not None
@@ -383,7 +383,7 @@ class TestCallCaptureFollowUpDueDate:
         assert export_resp.status_code == 200
         export_json = export_resp.json()
         assert export_json["trip_id"] == trip_id
-        assert export_json["artifact_manifest"]["uploaded_file"]["file_name"] == "route.txt"
+        assert export_json["artifact_manifest"]["uploaded_file"]["file_name"].endswith("route.txt")
 
         delete_resp = session_client.delete(f"/api/public-checker/{trip_id}")
         assert delete_resp.status_code == 200

@@ -8,7 +8,6 @@ import { ErrorBoundary, InlineError } from "@/components/error-boundary";
 import { InlineLoading } from "@/components/ui/loading";
 import { toast } from "@/lib/toast-store";
 import { useTrip } from "@/hooks/useTrips";
-import { ClientTime } from "@/hooks/useClientDate";
 import {
   canAccessPlanningStage,
   getPlanningBlockerBody,
@@ -27,7 +26,6 @@ import {
 import { getPlanningStageProgressItems } from "@/lib/planning-list-display";
 import { getTripRoute, type WorkspaceStage } from "@/lib/routes";
 import { TripContextProvider } from "@/contexts/TripContext";
-import { useWorkbenchStore } from "@/stores/workbench";
 import { TimelineSummary } from "@/components/workspace/panels/TimelineSummary";
 import { hasImportantTimelineEvent } from "@/lib/timeline-rail";
 import type { TimelineResponse } from "@/types/spine";
@@ -39,6 +37,7 @@ const STAGE_TABS: { id: WorkspaceStage; label: string }[] = [
   { id: "decision", label: "Quote Assessment"},
   { id: "output",   label: "Output"          },
   { id: "safety",   label: "Risk Review"     },
+  { id: "ops",      label: "Ops"             },
   { id: "timeline", label: "Timeline"        },
 ];
 
@@ -100,8 +99,6 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
     error: null,
   });
   const hasRailPreferenceRef = useRef(false);
-  const { result_run_ts } = useWorkbenchStore();
-
   const activeStage = useMemo(() => getActiveStage(pathname), [pathname]);
   const isLeadReview = trip?.status === "new" || trip?.status === "incomplete";
   const planningTone = getPlanningStatusTone(trip);
@@ -112,7 +109,10 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   const planningIdentity = getPlanningIdentityLine(trip);
   const planningQueueLine = getPlanningQueueLine(trip);
   const planningUnlockHint = getPlanningUnlockHint(trip);
-  const visibleTabs = STAGE_TABS;
+  const visibleTabs = STAGE_TABS.filter((tab) => {
+    if (tab.id === 'ops') return trip?.stage === 'proposal' || trip?.stage === 'booking';
+    return true;
+  });
   const stageProgressItems = useMemo(() => getPlanningStageProgressItems(trip), [trip]);
   const timelineEvents = timelineState.timeline?.events ?? [];
   const timelineLoading = timelineState.status === "loading";
@@ -269,11 +269,6 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                     <span className="text-[var(--ui-text-xs)] text-[var(--border-default)]">
                       {planningQueueLine}
                     </span>
-                    {result_run_ts && (
-                      <span className="text-[var(--ui-text-xs)] text-[var(--border-default)]">
-                        processed <ClientTime value={result_run_ts} />
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>

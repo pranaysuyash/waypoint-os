@@ -151,8 +151,9 @@ class TestJoinWithCode:
         wc = _make_workspace_code(code="WP-ok", agency_id="agy-1", code_type="internal")
         agency = _make_agency(agency_id="agy-1", name="Best Travels")
         existing_user = None  # no duplicate email
+        rls_result = MagicMock()  # apply_rls does a db.execute for set_config
 
-        db = _mock_db_with_returns(wc, agency, existing_user)
+        db = _mock_db_with_returns(wc, agency, existing_user, rls_result)
 
         # db.refresh sets attrs on the SQLAlchemy objects created inside the function.
         # We intercept db.add to grab the User and Membership objects, then set ids.
@@ -239,8 +240,9 @@ class TestJoinWithCode:
 
         wc = _make_workspace_code()
         agency = _make_agency()
+        rls_result = MagicMock()  # apply_rls does a db.execute for set_config
 
-        db = _mock_db_with_returns(wc, agency, None)
+        db = _mock_db_with_returns(wc, agency, None, rls_result)
 
         async def inject_ids(obj):
             if hasattr(obj, "email") and hasattr(obj, "password_hash"):

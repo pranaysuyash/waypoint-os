@@ -180,7 +180,7 @@ class TestExtractEndpoint:
         trip_id = TripStore.save_trip(trip_data, agency_id=AGENCY_ID)
         try:
             doc_id = _upload_and_accept(session_client, trip_id)
-            TripStore.update_trip(trip_id, {"stage": "discovery"})
+            TripStore.update_trip_for_agency(trip_id, AGENCY_ID, {"stage": "discovery"})
 
             resp = session_client.post(
                 f"/trips/{trip_id}/documents/{doc_id}/extract"
@@ -247,7 +247,7 @@ class TestApplyExtraction:
         assert data["applied"] is True
         assert data["extraction"]["status"] == "applied"
 
-        booking = TripStore.get_booking_data(created_trip_id)
+        booking = TripStore.get_booking_data_for_agency(created_trip_id, AGENCY_ID)
         traveler = booking["travelers"][0]
         assert traveler.get("passport_number") is not None
 
@@ -324,7 +324,7 @@ class TestApplyExtraction:
             f"/trips/{created_trip_id}/documents/{doc_id}/extraction/apply",
             json={"traveler_id": "t1", "fields_to_apply": ["passport_number"]},
         )
-        trip = TripStore.get_trip(created_trip_id)
+        trip = TripStore.get_trip_for_agency(created_trip_id, AGENCY_ID)
         readiness = trip.get("validation", {}).get("readiness", {})
         assert isinstance(readiness, dict)
 
@@ -344,7 +344,7 @@ class TestApplyExtraction:
         try:
             doc_id = _upload_and_accept(session_client, trip_id)
             session_client.post(f"/trips/{trip_id}/documents/{doc_id}/extract")
-            TripStore.update_trip(trip_id, {"stage": "discovery"})
+            TripStore.update_trip_for_agency(trip_id, AGENCY_ID, {"stage": "discovery"})
 
             resp = session_client.post(
                 f"/trips/{trip_id}/documents/{doc_id}/extraction/apply",
@@ -435,6 +435,11 @@ class TestExtractionEncryptionProof:
             from spine_api.persistence import tripstore_session_maker
             from sqlalchemy import text
             async with tripstore_session_maker() as db:
+                # Set RLS context so the document_extractions row is visible
+                await db.execute(
+                    text("SELECT set_config('app.current_agency_id', :agency_id, true)"),
+                    {"agency_id": AGENCY_ID},
+                )
                 row = (await db.execute(
                     text("SELECT extracted_fields_encrypted FROM document_extractions WHERE id = :eid"),
                     {"eid": extraction_id},
@@ -479,7 +484,7 @@ class TestRejectExtraction:
         assert resp.status_code == 200
         assert resp.json()["status"] == "rejected"
 
-        booking = TripStore.get_booking_data(created_trip_id)
+        booking = TripStore.get_booking_data_for_agency(created_trip_id, AGENCY_ID)
         traveler = booking["travelers"][0]
         assert traveler.get("full_name") == "Manual Entry"
 
@@ -510,7 +515,7 @@ class TestRejectExtraction:
         try:
             doc_id = _upload_and_accept(session_client, trip_id)
             session_client.post(f"/trips/{trip_id}/documents/{doc_id}/extract")
-            TripStore.update_trip(trip_id, {"stage": "discovery"})
+            TripStore.update_trip_for_agency(trip_id, AGENCY_ID, {"stage": "discovery"})
 
             resp = session_client.post(
                 f"/trips/{trip_id}/documents/{doc_id}/extraction/reject"

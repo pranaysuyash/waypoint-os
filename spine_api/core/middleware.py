@@ -9,6 +9,7 @@ Provides:
 """
 
 import logging
+import os
 from typing import Awaitable, Callable
 
 from fastapi import HTTPException, Request, status
@@ -118,6 +119,9 @@ class AuthMiddleware:
         await self.app(scope, receive, send)
 
 
+PUBLIC_CHECKER_MAX_BYTES = int(os.environ.get("PUBLIC_CHECKER_MAX_CONTENT_LENGTH", str(256 * 1024)))
+
+
 class RequestBodySizeMiddleware:
     """
     ASGI middleware that enforces a maximum request body size.
@@ -127,11 +131,13 @@ class RequestBodySizeMiddleware:
     Content-Length alone (which can be omitted, duplicated, or spoofed).
 
     Public checker paths get a tighter limit; all other paths use a larger limit.
+    Both limits are enforced at the ASGI level, before the application sees the body.
+    The public checker limit matches PUBLIC_CHECKER_MAX_CONTENT_LENGTH (256 KB by default)
+    used by the /api/public-checker/run endpoint.
     """
 
     _PUBLIC_CHECKER_PREFIX = "/api/public-checker"
     _DEFAULT_MAX_BYTES = 5 * 1024 * 1024  # 5 MB
-    _PUBLIC_CHECKER_MAX_BYTES = 512 * 1024  # 512 KB
 
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
@@ -143,7 +149,7 @@ class RequestBodySizeMiddleware:
 
         path = scope.get("path", "")
         max_bytes = (
-            self._PUBLIC_CHECKER_MAX_BYTES
+            PUBLIC_CHECKER_MAX_BYTES
             if path.startswith(self._PUBLIC_CHECKER_PREFIX)
             else self._DEFAULT_MAX_BYTES
         )
@@ -158,7 +164,7 @@ class RequestBodySizeMiddleware:
                 bytes_read += len(chunk)
                 if bytes_read > max_bytes:
                     raise HTTPException(
-                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                         detail="Request body too large",
                     )
             return message

@@ -342,7 +342,7 @@ class TestReadinessStageIntegration:
 
         # Set validation with readiness
         from spine_api.persistence import TripStore
-        trip = TripStore.get_trip(trip_id)
+        trip = TripStore.get_trip_for_agency(trip_id, TEST_AGENCY_ID)
         trip["validation"] = {
             "is_valid": True,
             "errors": [],
@@ -352,7 +352,7 @@ class TestReadinessStageIntegration:
                 "suggested_next_stage": "shortlist",
             },
         }
-        TripStore.update_trip(trip_id, {"validation": trip["validation"]})
+        TripStore.update_trip_for_agency(trip_id, TEST_AGENCY_ID, {"validation": trip["validation"]})
 
         resp = session_client.patch(
             f"/trips/{trip_id}/stage",

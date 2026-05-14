@@ -209,6 +209,9 @@ async def get_rls_db(
     Falls through to a plain session if no agency_id is set (e.g. in test fixtures
     that bypass auth, or public endpoints).
 
+    Uses session-level set_config so the RLS context survives commits within
+    the request. Resets the value on exit to prevent pool bleeding.
+
     Usage in routes:
         @router.get("/items")
         async def list_items(db: AsyncSession = Depends(get_rls_db)):
@@ -216,8 +219,20 @@ async def get_rls_db(
     """
     agency_id = _current_agency_id.get()
     if agency_id:
-        await apply_rls(db, agency_id)
-    yield db
+        await db.execute(
+            text("SELECT set_config('app.current_agency_id', :agency_id, false)"),
+            {"agency_id": agency_id},
+        )
+    try:
+        yield db
+    finally:
+        if agency_id:
+            try:
+                await db.execute(
+                    text("SELECT set_config('app.current_agency_id', '', false)"),
+                )
+            except Exception:
+                pass
 
 
 @asynccontextmanager

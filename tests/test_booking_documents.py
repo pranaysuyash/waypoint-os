@@ -514,7 +514,7 @@ class TestTokenSessionUpload:
         gen = session_client.post(f"/trips/{created_trip_id}/collection-link")
         token = _extract_token_from_url(gen.json()["collection_url"])
 
-        TripStore.update_trip(created_trip_id, {"stage": "discovery"})
+        TripStore.update_trip_for_agency(created_trip_id, AGENCY_ID, {"stage": "discovery"})
 
         pdf_data = _make_pdf_bytes()
         resp = session_client.post(

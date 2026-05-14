@@ -33,7 +33,12 @@ for _p in (_spine_api_dir, _src_dir):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from spine_api.persistence import SQLTripStore, FileTripStore, _build_processed_trip
+from spine_api.persistence import (
+    SQLTripStore,
+    FileTripStore,
+    _build_processed_trip,
+    _safe_filename,
+)
 from src.security.encryption import encrypt, decrypt
 
 
@@ -693,6 +698,222 @@ class TestSQLRawRowSentinel:
             assert decrypted == original, (
                 f"Round-trip failed for '{field}': {decrypted} != {original}"
             )
+
+
+# =============================================================================
+# Tenant-scoped operations — _for_agency methods
+# =============================================================================
+
+
+class TestTenantScopedFileTripStore:
+    """FileTripStore _for_agency methods enforce tenant isolation."""
+
+    def test_update_trip_for_agency_returns_none_for_other_agency(self, tmp_path, monkeypatch):
+        from spine_api import persistence
+        data_dir = tmp_path / "data"
+        monkeypatch.setattr(persistence, "DATA_DIR", data_dir, raising=False)
+        monkeypatch.setattr(persistence, "TRIPS_DIR", data_dir / "trips", raising=False)
+        (data_dir / "trips").mkdir(parents=True, exist_ok=True)
+
+        trip_id = FileTripStore.save_trip(
+            {"source": "test", "extracted": {}, "validation": {}, "decision": {}},
+            agency_id="agency_a",
+        )
+        result = FileTripStore.update_trip_for_agency(trip_id, "agency_b", {"status": "updated"})
+        assert result is None
+
+        result = FileTripStore.update_trip_for_agency(trip_id, "agency_a", {"status": "updated"})
+        assert result is not None
+        assert result["status"] == "updated"
+
+    def test_delete_trip_for_agency_returns_false_for_other_agency(self, tmp_path, monkeypatch):
+        from spine_api import persistence
+        data_dir = tmp_path / "data"
+        monkeypatch.setattr(persistence, "DATA_DIR", data_dir, raising=False)
+        monkeypatch.setattr(persistence, "TRIPS_DIR", data_dir / "trips", raising=False)
+        (data_dir / "trips").mkdir(parents=True, exist_ok=True)
+
+        trip_id = FileTripStore.save_trip(
+            {"source": "test", "extracted": {}, "validation": {}, "decision": {}},
+            agency_id="agency_a",
+        )
+        assert FileTripStore.delete_trip_for_agency(trip_id, "agency_b") is False
+        assert FileTripStore.delete_trip_for_agency(trip_id, "agency_a") is True
+
+    def test_get_booking_data_for_agency_returns_none_for_other_agency(self, tmp_path, monkeypatch):
+        from spine_api import persistence
+        data_dir = tmp_path / "data"
+        monkeypatch.setattr(persistence, "DATA_DIR", data_dir, raising=False)
+        monkeypatch.setattr(persistence, "TRIPS_DIR", data_dir / "trips", raising=False)
+        (data_dir / "trips").mkdir(parents=True, exist_ok=True)
+
+        trip_id = FileTripStore.save_trip(
+            {"source": "test", "booking_data": {"travelers": [{"name": "Test"}]}, "extracted": {}, "validation": {}, "decision": {}},
+            agency_id="agency_a",
+        )
+        assert FileTripStore.get_booking_data_for_agency(trip_id, "agency_b") is None
+        assert FileTripStore.get_booking_data_for_agency(trip_id, "agency_a") is not None
+
+    def test_get_pending_booking_data_for_agency_returns_none_for_other_agency(self, tmp_path, monkeypatch):
+        from spine_api import persistence
+        data_dir = tmp_path / "data"
+        monkeypatch.setattr(persistence, "DATA_DIR", data_dir, raising=False)
+        monkeypatch.setattr(persistence, "TRIPS_DIR", data_dir / "trips", raising=False)
+        (data_dir / "trips").mkdir(parents=True, exist_ok=True)
+
+        trip_id = FileTripStore.save_trip(
+            {"source": "test", "pending_booking_data": {"travelers": [{"name": "Test"}]}, "extracted": {}, "validation": {}, "decision": {}},
+            agency_id="agency_a",
+        )
+        assert FileTripStore.get_pending_booking_data_for_agency(trip_id, "agency_b") is None
+        assert FileTripStore.get_pending_booking_data_for_agency(trip_id, "agency_a") is not None
+
+    def test_update_trip_if_version_for_agency_checks_agency(self, tmp_path, monkeypatch):
+        from spine_api import persistence
+        data_dir = tmp_path / "data"
+        monkeypatch.setattr(persistence, "DATA_DIR", data_dir, raising=False)
+        monkeypatch.setattr(persistence, "TRIPS_DIR", data_dir / "trips", raising=False)
+        (data_dir / "trips").mkdir(parents=True, exist_ok=True)
+
+        trip_id = FileTripStore.save_trip(
+            {"source": "test", "extracted": {}, "validation": {}, "decision": {}},
+            agency_id="agency_a",
+        )
+        # First update establishes updated_at
+        FileTripStore.update_trip(trip_id, {"status": "new"})
+        trip = FileTripStore.get_trip(trip_id)
+        updated_at = trip.get("updated_at")
+        assert updated_at is not None
+
+        # Other agency should fail
+        assert FileTripStore.update_trip_if_version_for_agency(
+            trip_id, "agency_b", {"status": "updated"}, expected_updated_at=updated_at
+        ) is None
+
+        # Same agency with matching version should succeed
+        result = FileTripStore.update_trip_if_version_for_agency(
+            trip_id, "agency_a", {"status": "updated"}, expected_updated_at=updated_at
+        )
+        assert result is not None
+        assert result["status"] == "updated"
+
+
+class TestCrossAgencySaveTrip:
+    """Verify save_trip prevents cross-agency overwrite."""
+
+    def test_file_store_rejects_cross_agency_save(self, tmp_path, monkeypatch):
+        from spine_api import persistence
+        data_dir = tmp_path / "data"
+        monkeypatch.setattr(persistence, "DATA_DIR", data_dir, raising=False)
+        monkeypatch.setattr(persistence, "TRIPS_DIR", data_dir / "trips", raising=False)
+        (data_dir / "trips").mkdir(parents=True, exist_ok=True)
+
+        monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
+
+        trip_id = FileTripStore.save_trip(
+            {"source": "test", "extracted": {}, "validation": {}, "decision": {}},
+            agency_id="agency_a",
+        )
+        import pytest
+        with pytest.raises(ValueError, match="belongs to agency agency_a"):
+            FileTripStore.save_trip(
+                {"id": trip_id, "source": "test", "extracted": {}, "validation": {}, "decision": {}},
+                agency_id="agency_b",
+            )
+        # Confirm original untouched
+        trip = FileTripStore.get_trip(trip_id)
+        assert trip.get("agency_id") == "agency_a"
+
+    def test_save_trip_same_agency_allowed(self, tmp_path, monkeypatch):
+        from spine_api import persistence
+        data_dir = tmp_path / "data"
+        monkeypatch.setattr(persistence, "DATA_DIR", data_dir, raising=False)
+        monkeypatch.setattr(persistence, "TRIPS_DIR", data_dir / "trips", raising=False)
+        (data_dir / "trips").mkdir(parents=True, exist_ok=True)
+
+        monkeypatch.setenv("DATA_PRIVACY_MODE", "beta")
+
+        trip_id = FileTripStore.save_trip(
+            {"source": "test", "extracted": {}, "validation": {}, "decision": {}},
+            agency_id="agency_a",
+        )
+        # Same agency update should work
+        new_id = FileTripStore.save_trip(
+            {"id": trip_id, "source": "test", "status": "updated", "extracted": {}, "validation": {}, "decision": {}},
+            agency_id="agency_a",
+        )
+        assert new_id == trip_id
+        trip = FileTripStore.get_trip(trip_id)
+        assert trip.get("status") == "updated"
+
+
+class TestSafeFilename:
+    """Verify _safe_filename rejects path traversal attempts."""
+
+    def test_dot_is_rejected(self):
+        name = _safe_filename(".")
+        assert ".." not in name
+        assert name.startswith("upload.bin") is False  # has hex prefix
+        assert len(name) > 8
+
+    def test_double_dot_is_rejected(self):
+        name = _safe_filename("..")
+        assert ".." not in name
+        assert name.endswith("upload.bin")
+
+    def test_abs_path_sanitized(self):
+        name = _safe_filename("/tmp/x")
+        assert "/" not in name
+        assert name.endswith("x")
+
+    def test_traversal_sanitized(self):
+        name = _safe_filename("../../etc/passwd")
+        assert ".." not in name
+        assert "/" not in name
+
+    def test_long_name_truncated(self):
+        long_name = "a" * 300 + ".txt"
+        name = _safe_filename(long_name)
+        assert len(name) <= 129  # prefix (8) + "_" (1) + max 120
+
+
+class TestAssignmentStoreSafety:
+    """AssignmentStore edge cases."""
+
+    def test_unassign_unassigned_trip_does_not_crash(self):
+        from spine_api.persistence import AssignmentStore
+        # Should not raise UnboundLocalError
+        AssignmentStore.unassign_trip("nonexistent_trip_id", "tester")
+        # Cleanup: remove any created files
+        import os
+        for f in AssignmentStore.ASSIGNMENTS_FILE.parent.glob("*"):
+            try:
+                f.unlink()
+            except OSError:
+                pass
+
+
+class TestOverrideStoreSafety:
+    """OverrideStore path validation."""
+
+    def test_traversal_decision_type_is_rejected(self, tmp_path, monkeypatch):
+        from spine_api import persistence
+        monkeypatch.setattr(persistence, "OVERRIDES_DIR", tmp_path / "overrides", raising=False)
+        monkeypatch.setattr(persistence, "OVERRIDES_PER_TRIP_DIR", tmp_path / "overrides" / "per_trip", raising=False)
+        monkeypatch.setattr(persistence, "OVERRIDES_PATTERNS_DIR", tmp_path / "overrides" / "patterns", raising=False)
+        monkeypatch.setattr(persistence, "OVERRIDES_INDEX_FILE", tmp_path / "overrides" / "index.json", raising=False)
+        (tmp_path / "overrides" / "per_trip").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "overrides" / "patterns").mkdir(parents=True, exist_ok=True)
+
+        override_data = {
+            "scope": "pattern",
+            "decision_type": "../../etc/passwd",
+            "flag": "test_flag",
+        }
+        # Should not write to the traversal path
+        persistence.OverrideStore._add_pattern_override(override_data)
+        traversal_file = tmp_path / "overrides" / "patterns" / ".." / ".." / "etc" / "passwd.jsonl"
+        assert not traversal_file.exists()
 
 
 if __name__ == "__main__":

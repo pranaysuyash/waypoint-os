@@ -287,7 +287,7 @@ class TestFailedExtraction:
         assert body["detail"]["error_code"] == "api_timeout"
 
         # Verify no booking_data mutation
-        trip = TripStore.get_trip(trip_id)
+        trip = TripStore.get_trip_for_agency(trip_id, TEST_AGENCY_ID)
         travelers = (trip.get("booking_data") or {}).get("travelers", [])
         assert travelers == []
 
@@ -617,7 +617,7 @@ class TestSchemaValidationProof:
 
         # booking_data unchanged — use get_booking_data for decrypted view
         from spine_api.persistence import TripStore as TS
-        bd = TS.get_booking_data(trip_id)
+        bd = TS.get_booking_data_for_agency(trip_id, TEST_AGENCY_ID)
         travelers = (bd or {}).get("travelers", [])
         assert len(travelers) == 1
         assert travelers[0]["full_name"] == "Original"

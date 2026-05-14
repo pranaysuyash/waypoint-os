@@ -114,7 +114,7 @@ async def get_public_collection_form(request: Request, response: Response, agenc
     if not record:
         return PublicCollectionContext(valid=False, reason="invalid")
 
-    trip = await _ts(persistence.TripStore.get_trip, record.trip_id)
+    trip = await _ts(persistence.TripStore.get_trip_for_agency, record.trip_id, agency_id)
     if not trip:
         return PublicCollectionContext(valid=False, reason="invalid")
 
@@ -126,7 +126,7 @@ async def get_public_collection_form(request: Request, response: Response, agenc
 
     dest_val = _safe_fact_value(facts.get("destination_candidates"))
     date_val = _safe_fact_value(facts.get("date_window"))
-    pending = await _ts(persistence.TripStore.get_pending_booking_data, record.trip_id)
+    pending = await _ts(persistence.TripStore.get_pending_booking_data_for_agency, record.trip_id, agency_id)
 
     _ = (request, response)
 
@@ -152,18 +152,18 @@ async def submit_public_booking_data(request: Request, response: Response, agenc
     if not record:
         raise HTTPException(status_code=410, detail="invalid")
 
-    trip = await _ts(persistence.TripStore.get_trip, record.trip_id)
+    trip = await _ts(persistence.TripStore.get_trip_for_agency, record.trip_id, agency_id)
     if not trip or trip.get("stage", "discovery") not in ("proposal", "booking"):
         raise HTTPException(status_code=410, detail="invalid")
 
-    pending = await _ts(persistence.TripStore.get_pending_booking_data, record.trip_id)
+    pending = await _ts(persistence.TripStore.get_pending_booking_data_for_agency, record.trip_id, agency_id)
     if pending:
         raise HTTPException(status_code=409, detail="already_submitted")
 
     booking_data = payload.booking_data
     bd_dict = booking_data.model_dump()
 
-    await _ts(persistence.TripStore.update_trip, record.trip_id, {"pending_booking_data": bd_dict})
+    await _ts(persistence.TripStore.update_trip_for_agency, record.trip_id, agency_id, {"pending_booking_data": bd_dict})
 
     async with rls_session(agency_id) as db:
         await mark_token_used(db, record.id)
@@ -203,7 +203,7 @@ async def upload_public_document(
     if not record:
         raise HTTPException(status_code=410, detail="invalid")
 
-    trip = await _ts(persistence.TripStore.get_trip, record.trip_id)
+    trip = await _ts(persistence.TripStore.get_trip_for_agency, record.trip_id, agency_id)
     if not trip or trip.get("stage", "discovery") not in ("proposal", "booking"):
         raise HTTPException(status_code=410, detail="invalid")
 

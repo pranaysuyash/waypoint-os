@@ -3,13 +3,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import OpsPanel from '../OpsPanel';
 
-const mockStore = {
-  result_validation: null as unknown,
-};
-
-vi.mock('@/stores/workbench', () => ({
-  useWorkbenchStore: () => mockStore,
-}));
+// OpsPanel no longer reads from the Workbench store — readiness comes from trip.validation only.
+// No useWorkbenchStore mock needed here.
 
 const mockApi = {
   getBookingData: vi.fn(),
@@ -75,7 +70,6 @@ function tripAtStage(stage: string) {
 describe('OpsPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockStore.result_validation = null;
     mockApi.getBookingData.mockResolvedValue({
       trip_id: 'trip_1',
       booking_data: null,
@@ -88,13 +82,28 @@ describe('OpsPanel', () => {
     mockApi.getDocuments.mockResolvedValue({ documents: [] });
   });
 
-  it('shows empty state when no readiness data', () => {
-    render(<OpsPanel trip={null} />);
-    expect(screen.getByTestId('ops-panel-empty')).toBeInTheDocument();
+  it('shows readiness notice (not a hard gate) when trip has no readiness data', () => {
+    render(<OpsPanel trip={{ id: 'trip_1', stage: 'proposal' } as never} />);
+    expect(screen.getByTestId('ops-readiness-empty')).toBeInTheDocument();
+    // The full panel still renders — readiness is a section, not a global gate
+    expect(screen.getByTestId('ops-panel')).toBeInTheDocument();
+  });
+
+  it('renders booking data section when readiness is missing', async () => {
+    render(<OpsPanel trip={{ id: 'trip_1', stage: 'proposal' } as never} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ops-booking-data')).toBeInTheDocument();
+    });
+  });
+
+  it('renders document section when readiness is missing', async () => {
+    render(<OpsPanel trip={{ id: 'trip_1', stage: 'proposal' } as never} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ops-documents')).toBeInTheDocument();
+    });
   });
 
   it('shows collection link section at proposal stage', async () => {
-    mockStore.result_validation = { readiness: READINESS };
     render(<OpsPanel trip={tripAtStage('proposal')} />);
 
     await waitFor(() => {
@@ -104,7 +113,7 @@ describe('OpsPanel', () => {
   });
 
   it('shows collection link section at booking stage', async () => {
-    mockStore.result_validation = { readiness: READINESS };
+
     render(<OpsPanel trip={tripAtStage('booking')} />);
 
     await waitFor(() => {
@@ -113,7 +122,7 @@ describe('OpsPanel', () => {
   });
 
   it('hides collection link at discovery stage', async () => {
-    mockStore.result_validation = { readiness: READINESS };
+
     render(<OpsPanel trip={tripAtStage('discovery')} />);
 
     await waitFor(() => {
@@ -123,7 +132,7 @@ describe('OpsPanel', () => {
   });
 
   it('shows active link hint when GET returns has_active_token', async () => {
-    mockStore.result_validation = { readiness: READINESS };
+
     mockApi.getCollectionLink.mockResolvedValue({
       has_active_token: true,
       token_id: 'tok_1',
@@ -142,7 +151,7 @@ describe('OpsPanel', () => {
 
   it('generates collection link and shows URL', async () => {
     const user = userEvent.setup();
-    mockStore.result_validation = { readiness: READINESS };
+
     mockApi.generateCollectionLink.mockResolvedValue({
       token_id: 'tok_1',
       collection_url: 'https://example.com/booking-collection/d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b/abc123',
@@ -167,7 +176,7 @@ describe('OpsPanel', () => {
 
   it('revokes collection link', async () => {
     const user = userEvent.setup();
-    mockStore.result_validation = { readiness: READINESS };
+
     mockApi.generateCollectionLink.mockResolvedValue({
       token_id: 'tok_1',
       collection_url: 'https://example.com/booking-collection/d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b/abc123',
@@ -193,7 +202,7 @@ describe('OpsPanel', () => {
   });
 
   it('shows pending review section when customer data exists', async () => {
-    mockStore.result_validation = { readiness: READINESS };
+
     mockApi.getPendingBookingData.mockResolvedValue({
       trip_id: 'trip_1',
       pending_booking_data: {
@@ -217,7 +226,7 @@ describe('OpsPanel', () => {
 
   it('accepts pending booking data', async () => {
     const user = userEvent.setup();
-    mockStore.result_validation = { readiness: READINESS };
+
     mockApi.getPendingBookingData.mockResolvedValue({
       trip_id: 'trip_1',
       pending_booking_data: {
@@ -255,7 +264,7 @@ describe('OpsPanel', () => {
 
   it('rejects pending booking data', async () => {
     const user = userEvent.setup();
-    mockStore.result_validation = { readiness: READINESS };
+
     mockApi.getPendingBookingData.mockResolvedValue({
       trip_id: 'trip_1',
       pending_booking_data: {
@@ -281,7 +290,7 @@ describe('OpsPanel', () => {
   });
 
   it('shows source badge when booking data was entered by agent', async () => {
-    mockStore.result_validation = { readiness: READINESS };
+
     mockApi.getPendingBookingData.mockResolvedValue({
       trip_id: 'trip_1',
       pending_booking_data: null,
@@ -297,7 +306,7 @@ describe('OpsPanel', () => {
   });
 
   it('shows source badge when booking data was accepted from customer', async () => {
-    mockStore.result_validation = { readiness: READINESS };
+
     mockApi.getPendingBookingData.mockResolvedValue({
       trip_id: 'trip_1',
       pending_booking_data: null,
@@ -313,7 +322,7 @@ describe('OpsPanel', () => {
   });
 
   it('shows payment tracking without exposing a payment collection workflow', async () => {
-    mockStore.result_validation = { readiness: READINESS };
+
     mockApi.getBookingData.mockResolvedValue({
       trip_id: 'trip_1',
       booking_data: {
@@ -347,7 +356,7 @@ describe('OpsPanel', () => {
 
   it('saves payment tracking through the booking data endpoint', async () => {
     const user = userEvent.setup();
-    mockStore.result_validation = { readiness: READINESS };
+
     mockApi.getBookingData.mockResolvedValue({
       trip_id: 'trip_1',
       booking_data: {
@@ -392,14 +401,18 @@ describe('OpsPanel', () => {
     expect(payload.payment_tracking).not.toHaveProperty('gateway_charge_id');
   });
 
-  it('shows visa/passport concern when signal is present', () => {
-    mockStore.result_validation = {
-      readiness: {
-        ...READINESS,
-        signals: { visa_concerns_present: true },
+  it('shows visa/passport concern when signal is present in trip.validation', () => {
+    const tripWithVisa = {
+      id: 'trip_1',
+      stage: 'proposal',
+      validation: {
+        readiness: {
+          ...READINESS,
+          signals: { visa_concerns_present: true },
+        },
       },
-    };
-    render(<OpsPanel trip={null} />);
+    } as never;
+    render(<OpsPanel trip={tripWithVisa} />);
     expect(screen.getByTestId('ops-signal-visa-concern')).toBeInTheDocument();
   });
 });
@@ -413,7 +426,7 @@ describe('OpsPanel extraction apply flow', () => {
 
   /** Setup a trip with booking data, an accepted document, and an extraction. */
   function setupExtractionScene() {
-    mockStore.result_validation = { readiness: READINESS };
+
     mockApi.getBookingData.mockResolvedValue({
       trip_id: 'trip_1',
       booking_data: {

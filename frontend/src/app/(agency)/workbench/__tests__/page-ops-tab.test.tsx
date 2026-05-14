@@ -149,24 +149,24 @@ describe('Workbench ops tab visibility', () => {
     expect(tabIds).not.toContain('ops');
   });
 
-  it('shows ops tab at proposal stage', () => {
+  it('does not show ops tab at proposal stage (ops moved to Trip Workspace)', () => {
     vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as never);
     mockTripData = { id: 't1', stage: 'proposal' };
 
     render(<WorkbenchPage />);
 
     const tabIds = renderedTabs.map((t) => t.id);
-    expect(tabIds).toContain('ops');
+    expect(tabIds).not.toContain('ops');
   });
 
-  it('shows ops tab at booking stage', () => {
+  it('does not show ops tab at booking stage (ops moved to Trip Workspace)', () => {
     vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as never);
     mockTripData = { id: 't1', stage: 'booking' };
 
     render(<WorkbenchPage />);
 
     const tabIds = renderedTabs.map((t) => t.id);
-    expect(tabIds).toContain('ops');
+    expect(tabIds).not.toContain('ops');
   });
 
   it('does not render OpsPanel when URL requests ?tab=ops at discovery stage', () => {
@@ -177,11 +177,87 @@ describe('Workbench ops tab visibility', () => {
 
     render(<WorkbenchPage />);
 
-    // Ops tab should not be in visible tabs
     const tabIds = renderedTabs.map((t) => t.id);
     expect(tabIds).not.toContain('ops');
-    // OpsPanel should not render (no ops-panel or ops-panel-empty testid)
     expect(screen.queryByTestId('ops-panel')).not.toBeInTheDocument();
     expect(screen.queryByTestId('ops-panel-empty')).not.toBeInTheDocument();
+  });
+
+  it('does not show ops tab at any stage — ops lives in Trip Workspace', () => {
+    for (const stage of ['discovery', 'shortlist', 'proposal', 'booking']) {
+      vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as never);
+      mockTripData = { id: 't1', stage };
+      renderedTabs = [];
+      render(<WorkbenchPage />);
+      expect(renderedTabs.map((t) => t.id)).not.toContain('ops');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getPostRunTripRoute priority — tested directly via the exported helper in routes.ts
+// ---------------------------------------------------------------------------
+// Priority: BLOCKED/ESCALATED → packet; proposal/booking (clean) → ops; else → intake.
+
+import { getPostRunTripRoute } from '@/lib/routes';
+
+describe('getPostRunTripRoute routing priority', () => {
+  it('proposal + BLOCKED → /packet (blocked wins over stage)', () => {
+    expect(getPostRunTripRoute({ tripId: 'trip_123', tripStage: 'proposal', validationStatus: 'BLOCKED' }))
+      .toBe('/trips/trip_123/packet');
+  });
+
+  it('booking + ESCALATED → /packet', () => {
+    expect(getPostRunTripRoute({ tripId: 'trip_123', tripStage: 'booking', validationStatus: 'ESCALATED' }))
+      .toBe('/trips/trip_123/packet');
+  });
+
+  it('proposal + clean → /ops', () => {
+    expect(getPostRunTripRoute({ tripId: 'trip_123', tripStage: 'proposal', validationStatus: null }))
+      .toBe('/trips/trip_123/ops');
+  });
+
+  it('booking + clean → /ops', () => {
+    expect(getPostRunTripRoute({ tripId: 'trip_123', tripStage: 'booking' }))
+      .toBe('/trips/trip_123/ops');
+  });
+
+  it('intake stage → /intake', () => {
+    expect(getPostRunTripRoute({ tripId: 'trip_123', tripStage: 'intake' }))
+      .toBe('/trips/trip_123/intake');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Workbench tab=ops compatibility alias
+// ---------------------------------------------------------------------------
+
+describe('Workbench ?tab=ops compatibility redirect', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    renderedTabs = [];
+    mockTripData = null;
+  });
+
+  it('replaces history (not pushes) when redirecting ?tab=ops with a trip ID', () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('tab=ops&trip=trip_123') as never);
+    mockTripData = { id: 'trip_123', stage: 'proposal' };
+
+    render(<WorkbenchPage />);
+
+    expect(mockRouterReplace).toHaveBeenCalledWith('/trips/trip_123/ops');
+    // push should NOT be called for this alias redirect
+    expect(mockRouterReplace).toHaveBeenCalledTimes(1);
+  });
+
+  it('adds notice=ops-requires-trip when ?tab=ops is opened without a trip', () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('tab=ops') as never);
+    mockTripData = null;
+
+    render(<WorkbenchPage />);
+
+    expect(mockRouterReplace).toHaveBeenCalledWith(
+      expect.stringContaining('notice=ops-requires-trip'),
+    );
   });
 });

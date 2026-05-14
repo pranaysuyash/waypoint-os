@@ -1,19 +1,13 @@
 /**
  * Centralized trip route generation.
  *
- * All code that navigates to a trip-inbox cards, overview rows,
- * owner reviews, etc.-must use these helpers instead of inline strings.
- * This prevents route drift as the workspace surface matures (Wave 2+).
+ * All code that navigates to trip-inbox cards, overview rows,
+ * owner reviews, etc. must use these helpers instead of inline strings.
+ * This prevents route drift as the workspace surface matures.
  *
- * Migration notes
- * ---------------
- * Phase 1L (current): getTripRoute() returns the canonical trips URL.
- *   Trip stage pages temporarily redirect to the workbench compat layer.
- *   This preserves functionality while the URL surface is finalized.
- *
- * Phase 2+ (after trips layout + panels land):
- *   Remove the redirects in /trips/[tripId]/<stage>/page.tsx.
- *   getTripRoute() continues to work unchanged.
+ * Ops lives in Trip Workspace (/trips/{id}/ops) — not in Workbench.
+ * Post-Spine navigation uses getPostRunTripRoute() to route based on
+ * validation status and trip stage.
  */
 
 /** Trip stage identifiers (matches /trips/[tripId]/ folder names). */
@@ -25,7 +19,8 @@ export type WorkspaceStage =
   | 'output'
   | 'safety'
   | 'suitability'
-  | 'timeline';
+  | 'timeline'
+  | 'ops';
 
 /** Workbench tab identifiers (matches tab search-param values in /workbench). */
 export type WorkbenchTab = 'intake' | 'packet' | 'decision' | 'strategy' | 'safety';
@@ -46,4 +41,26 @@ export function getTripRoute(
     return '/trips';
   }
   return `/trips/${tripId}/${stage}`;
+}
+
+/**
+ * Determines where "View Trip" should navigate after a Spine run completes.
+ *
+ * Priority order:
+ * 1. BLOCKED/ESCALATED validation → /packet (operator must see reasons first)
+ * 2. proposal/booking stage → /ops (durable booking operations home)
+ * 3. Fallback → /intake
+ */
+export function getPostRunTripRoute(params: {
+  tripId: string;
+  tripStage?: string | null;
+  validationStatus?: string | null;
+}): string {
+  if (params.validationStatus === 'BLOCKED' || params.validationStatus === 'ESCALATED') {
+    return getTripRoute(params.tripId, 'packet');
+  }
+  if (params.tripStage === 'proposal' || params.tripStage === 'booking') {
+    return getTripRoute(params.tripId, 'ops');
+  }
+  return getTripRoute(params.tripId, 'intake');
 }

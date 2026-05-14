@@ -73,14 +73,72 @@ BOOKING_DATA_NO_PAYER = {
 }
 
 
+
+
+
+def _resolve_agency_id():
+    """Resolve the session_client user's actual agency_id via a subprocess query.
+
+    Uses subprocess + asyncpg in an isolated process to avoid event-loop
+    conflicts with pytest-asyncio's STRICT mode. Cached globally.
+    """
+    global _RESOLVED_AGENCY_ID
+    if _RESOLVED_AGENCY_ID is not None:
+        return _RESOLVED_AGENCY_ID
+
+    import subprocess, sys, json
+
+    code = (
+        "import asyncio, asyncpg; import json\n"
+        "async def run():\n"
+        "  conn = await asyncpg.connect(host='localhost', port=5432, "
+        "user='waypoint', password='waypoint_dev_password', database='waypoint_os')\n"
+        "  row = await conn.fetchrow(\n"
+        "    \"SELECT agency_id FROM memberships WHERE user_id = $1 AND is_primary = TRUE\",\n"
+        "    '323468de-ba3d-437b-aa10-35b281a0c6a6')\n"
+        "  if row:\n"
+        "    print(json.dumps({'agency_id': row['agency_id']}))\n"
+        "  else:\n"
+        "    row2 = await conn.fetchrow(\n"
+        "      \"SELECT agency_id FROM memberships WHERE user_id = $1\",\n"
+        "      '323468de-ba3d-437b-aa10-35b281a0c6a6')\n"
+        "    if row2:\n"
+        "      print(json.dumps({'agency_id': row2['agency_id']}))\n"
+        "    else:\n"
+        "      print(json.dumps({'agency_id': None}))\n"
+        "  await conn.close()\n"
+        "asyncio.run(run())\n"
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True, text=True, timeout=15,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"Agency resolution failed: {result.stderr.strip()}"
+        )
+    data = json.loads(result.stdout.strip())
+    _RESOLVED_AGENCY_ID = data["agency_id"] or TEST_AGENCY_ID
+    return _RESOLVED_AGENCY_ID
+
+
+_RESOLVED_AGENCY_ID: str | None = None
+
+
 @pytest.fixture()
 def created_trip_id(session_client):
-    """Create a trip directly via TripStore and return its ID."""
+    """Create a trip directly via TripStore and return its ID.
+
+    Uses the dynamically resolved agency_id that matches the session_client's
+    actual auth context, not the literal TEST_AGENCY_ID constant.
+    """
     from spine_api.persistence import TripStore
 
+    agency_id = _resolve_agency_id()
     trip_data = {
         "source": "test_booking_fixture",
-        "agency_id": TEST_AGENCY_ID,
+        "agency_id": agency_id,
         "status": "assigned",
         "stage": "proposal",
         "extracted": {},
@@ -88,7 +146,7 @@ def created_trip_id(session_client):
         "decision": {},
         "raw_input": {},
     }
-    trip_id = TripStore.save_trip(trip_data, agency_id=TEST_AGENCY_ID)
+    trip_id = TripStore.save_trip(trip_data, agency_id=agency_id)
     yield trip_id
     try:
         TripStore.delete_trip(trip_id)
@@ -266,7 +324,11 @@ class TestBookingDataEndpoints:
 
     def test_patch_discovery_stage_returns_403(self, session_client, created_trip_id):
         from spine_api.persistence import TripStore
-        TripStore.update_trip(created_trip_id, {"stage": "discovery"})
+        # Read trip to discover its agency_id (needed because SQL backend
+        # has FORCE RLS enabled — generic get_trip/update_trip won't work).
+        me = session_client.get("/api/auth/me")
+        agency_id = me.json()["agency"]["id"]
+        TripStore.update_trip_for_agency(created_trip_id, agency_id, {"stage": "discovery"})
         resp = session_client.patch(
             f"/trips/{created_trip_id}/booking-data",
             json={"booking_data": VALID_BOOKING_DATA},
@@ -305,22 +367,27 @@ class TestBookingDataEndpoints:
 
     def test_patch_does_not_mutate_stage(self, session_client, created_trip_id):
         from spine_api.persistence import TripStore
-        TripStore.update_trip(created_trip_id, {"stage": "proposal"})
+        me = session_client.get("/api/auth/me")
+        agency_id = me.json()["agency"]["id"]
+        TripStore.update_trip_for_agency(created_trip_id, agency_id, {"stage": "proposal"})
         session_client.patch(
             f"/trips/{created_trip_id}/booking-data",
             json={"booking_data": VALID_BOOKING_DATA},
         )
-        trip = TripStore.get_trip(created_trip_id)
+        trip = TripStore.get_trip_for_agency(created_trip_id, agency_id)
+        assert trip is not None, f"Trip disappeared after PATCH"
         assert trip["stage"] == "proposal"
 
     def test_patch_does_not_mutate_packet(self, session_client, created_trip_id):
         from spine_api.persistence import TripStore
-        original_extracted = TripStore.get_trip(created_trip_id).get("extracted")
+        me = session_client.get("/api/auth/me")
+        agency_id = me.json()["agency"]["id"]
+        original_extracted = TripStore.get_trip_for_agency(created_trip_id, agency_id).get("extracted")
         session_client.patch(
             f"/trips/{created_trip_id}/booking-data",
             json={"booking_data": VALID_BOOKING_DATA},
         )
-        after = TripStore.get_trip(created_trip_id)
+        after = TripStore.get_trip_for_agency(created_trip_id, agency_id)
         assert after["extracted"] == original_extracted
 
     def test_generic_get_excludes_booking_data(self, session_client, created_trip_id):
@@ -483,6 +550,270 @@ class TestAtomicBookingUpdate:
         trip_after = FileTripStore.get_trip(trip_id)
         assert trip_after["raw_note"] == "original"
         assert trip_after["updated_at"] == trip_before["updated_at"]
+
+    @pytest.mark.require_postgres
+    @pytest.mark.asyncio
+    async def test_sql_update_trip_if_version_single_atomic_update(self, db_session):
+        """SQL update_trip_if_version uses a single UPDATE + RETURNING, so
+        the row-lock window is only the duration of the database write —
+        not the duration of Python read + compare + write."""
+        from spine_api.core.rls import set_rls_agency
+        set_rls_agency("d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+        from datetime import datetime, timezone
+
+        from spine_api.persistence import SQLTripStore
+
+        now = datetime.now(timezone.utc)
+        trip_id = await SQLTripStore.save_trip({
+            "source": "test_concurrency",
+            "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "status": "assigned",
+            "stage": "booking",
+            "extracted": {},
+            "validation": {},
+            "decision": {},
+            "raw_input": {},
+            "updated_at": now.isoformat(),
+        }, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+
+        trip = await SQLTripStore.get_trip_for_agency(trip_id, "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+        assert trip is not None, "Trip must be saved successfully"
+        expected_updated_at = trip["updated_at"]
+
+        import asyncio
+        results = await asyncio.gather(
+            SQLTripStore.update_trip_if_version(
+                trip_id, {"status": "completed"}, expected_updated_at=expected_updated_at,
+            ),
+            SQLTripStore.update_trip_if_version(
+                trip_id, {"status": "cancelled"}, expected_updated_at=expected_updated_at,
+            ),
+            return_exceptions=True,
+        )
+
+        wins = [r for r in results if r is not None]
+        losses = [r for r in results if r is None]
+        errors = [r for r in results if isinstance(r, Exception)]
+
+        assert len(wins) == 1, (
+            f"Expected exactly 1 win, got {len(wins)}. "
+            f"Losses: {len(losses)}, Errors: {errors}"
+        )
+        assert len(losses) == 1, (
+            f"Expected exactly 1 loss, got {len(losses)}"
+        )
+
+        final = await SQLTripStore.get_trip_for_agency(trip_id, "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+        assert final["status"] in ("completed", "cancelled")
+        assert final["status"] == wins[0]["status"]
+
+        await SQLTripStore.delete_trip(trip_id)
+
+    @pytest.mark.require_postgres
+    @pytest.mark.asyncio
+    async def test_sql_update_trip_if_version_for_agency_atomic(self, db_session):
+        """Same atomicity test for the agency-scoped variant."""
+        from spine_api.core.rls import set_rls_agency
+        set_rls_agency("d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+        from datetime import datetime, timezone
+
+        from spine_api.persistence import SQLTripStore
+
+        now = datetime.now(timezone.utc)
+        trip_id = await SQLTripStore.save_trip({
+            "source": "test_concurrency",
+            "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "status": "assigned",
+            "stage": "booking",
+            "extracted": {},
+            "validation": {},
+            "decision": {},
+            "raw_input": {},
+            "updated_at": now.isoformat(),
+        }, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+
+        trip = await SQLTripStore.get_trip_for_agency(trip_id, "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+        assert trip is not None, "Trip must be saved successfully"
+        expected_updated_at = trip["updated_at"]
+
+        import asyncio
+        results = await asyncio.gather(
+            SQLTripStore.update_trip_if_version_for_agency(
+                trip_id, "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+                {"stage": "closed"}, expected_updated_at=expected_updated_at,
+            ),
+            SQLTripStore.update_trip_if_version_for_agency(
+                trip_id, "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+                {"stage": "cancelled"}, expected_updated_at=expected_updated_at,
+            ),
+            return_exceptions=True,
+        )
+
+        wins = [r for r in results if r is not None]
+        losses = [r for r in results if r is None]
+        errors = [r for r in results if isinstance(r, Exception)]
+
+        assert len(wins) == 1, (
+            f"Expected exactly 1 win, got {len(wins)}. "
+            f"Losses: {len(losses)}, Errors: {errors}"
+        )
+        assert len(losses) == 1, (
+            f"Expected exactly 1 loss, got {len(losses)}"
+        )
+
+        final = await SQLTripStore.get_trip_for_agency(trip_id, "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+        assert final["stage"] in ("closed", "cancelled")
+        assert final["stage"] == wins[0]["stage"]
+
+        await SQLTripStore.delete_trip(trip_id)
+
+    @pytest.mark.require_postgres
+    @pytest.mark.asyncio
+    async def test_sql_update_trip_if_version_returns_none_on_mismatch(self, db_session):
+        """When expected_updated_at does not match, the SQL UPDATE affects
+        zero rows and RETURNS NULL, so the method returns None."""
+        from spine_api.core.rls import set_rls_agency
+        set_rls_agency("d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+        from datetime import datetime, timezone
+
+        from spine_api.persistence import SQLTripStore
+
+        now = datetime.now(timezone.utc)
+        trip_id = await SQLTripStore.save_trip({
+            "source": "test_mismatch",
+            "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "status": "assigned",
+            "stage": "booking",
+            "extracted": {},
+            "validation": {},
+            "decision": {},
+            "raw_input": {},
+            "updated_at": now.isoformat(),
+        }, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+
+        trip = await SQLTripStore.get_trip_for_agency(trip_id, "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+        expected_updated_at = trip["updated_at"]
+
+        # Run two concurrent updates with the same expected_updated_at
+        import asyncio
+        results = await asyncio.gather(
+            SQLTripStore.update_trip_if_version(
+                trip_id, {"status": "completed"}, expected_updated_at=expected_updated_at,
+            ),
+            SQLTripStore.update_trip_if_version(
+                trip_id, {"status": "cancelled"}, expected_updated_at=expected_updated_at,
+            ),
+            return_exceptions=True,
+        )
+
+        wins = [r for r in results if r is not None]
+        losses = [r for r in results if r is None]
+        errors = [r for r in results if isinstance(r, Exception)]
+
+        assert len(wins) == 1, (
+            f"Expected exactly 1 win, got {len(wins)}. "
+            f"Losses: {len(losses)}, Errors: {errors}"
+        )
+        assert len(losses) == 1, (
+            f"Expected exactly 1 loss, got {len(losses)}"
+        )
+
+        # The winning update's status must be the actual final value
+        final = await SQLTripStore.get_trip(trip_id)
+        assert final["status"] in ("completed", "cancelled")
+        assert final["status"] == wins[0]["status"]
+
+        # Clean up
+        await SQLTripStore.delete_trip(trip_id)
+
+    @pytest.mark.require_postgres
+    @pytest.mark.asyncio
+    async def test_sql_update_trip_if_version_for_agency_atomic(self, db_session):
+        """Same atomicity test for the agency-scoped variant."""
+        from spine_api.core.rls import set_rls_agency
+        set_rls_agency("d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+        from datetime import datetime, timezone
+
+        from spine_api.persistence import SQLTripStore
+
+        now = datetime.now(timezone.utc)
+        trip_id = await SQLTripStore.save_trip({
+            "source": "test_concurrency",
+            "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "status": "assigned",
+            "stage": "booking",
+            "extracted": {},
+            "validation": {},
+            "decision": {},
+            "raw_input": {},
+            "updated_at": now.isoformat(),
+        }, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+
+        trip = await SQLTripStore.get_trip_for_agency(trip_id, "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+        assert trip is not None, "Trip must be saved successfully"
+        expected_updated_at = trip["updated_at"]
+
+        import asyncio
+        results = await asyncio.gather(
+            SQLTripStore.update_trip_if_version_for_agency(
+                trip_id, "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+                {"stage": "closed"}, expected_updated_at=expected_updated_at,
+            ),
+            SQLTripStore.update_trip_if_version_for_agency(
+                trip_id, "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+                {"stage": "cancelled"}, expected_updated_at=expected_updated_at,
+            ),
+            return_exceptions=True,
+        )
+
+        wins = [r for r in results if r is not None]
+        losses = [r for r in results if r is None]
+        errors = [r for r in results if isinstance(r, Exception)]
+
+        assert len(wins) == 1, (
+            f"Expected exactly 1 win, got {len(wins)}. "
+            f"Losses: {len(losses)}, Errors: {errors}"
+        )
+        assert len(losses) == 1, (
+            f"Expected exactly 1 loss, got {len(losses)}"
+        )
+
+        final = await SQLTripStore.get_trip_for_agency(trip_id, "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+        assert final is not None, "Final trip must be found"
+        assert final["stage"] in ("closed", "cancelled")
+        assert final["stage"] == wins[0]["stage"]
+
+        await SQLTripStore.delete_trip(trip_id)
+
+    @pytest.mark.require_postgres
+    @pytest.mark.asyncio
+    async def test_sql_update_trip_if_version_returns_none_on_mismatch(self, db_session):
+        """When expected_updated_at does not match, the SQL UPDATE affects
+        zero rows and RETURNS NULL, so the method returns None."""
+        from spine_api.persistence import SQLTripStore
+
+        trip_id = await SQLTripStore.save_trip({
+            "source": "test_mismatch",
+            "agency_id": "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b",
+            "status": "assigned",
+            "stage": "booking",
+            "extracted": {},
+            "validation": {},
+            "decision": {},
+            "raw_input": {},
+        }, agency_id="d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+
+        result = await SQLTripStore.update_trip_if_version(
+            trip_id, {"status": "completed"},
+            expected_updated_at="2099-01-01T00:00:00",
+        )
+        assert result is None
+
+        # Trip data must be unchanged
+        trip = await SQLTripStore.get_trip_for_agency(trip_id, "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b")
+        assert trip["status"] == "assigned"
+
+        await SQLTripStore.delete_trip(trip_id)
 
 
 # ---------------------------------------------------------------------------

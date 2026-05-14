@@ -36,6 +36,7 @@ import type {
 } from '@/types/spine';
 import type { Trip } from '@/lib/api-client';
 import { submitTripReviewAction, createDraft, getDraft, patchDraft, discardDraft, promoteDraft } from '@/lib/api-client';
+import { getTripRoute, getPostRunTripRoute } from '@/lib/routes';
 import type { WorkbenchStore, DraftStatus, SaveState } from '@/stores/workbench';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { RunProgressPanel } from './RunProgressPanel';
@@ -43,10 +44,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 const IntakeTab = dynamic(() => import('./IntakeTab'));
 const PacketTab = dynamic(() => import('./PacketTab'));
-const DecisionTab = dynamic(() => import('./DecisionTab'));
-const StrategyTab = dynamic(() => import('./StrategyTab'));
 const SafetyTab = dynamic(() => import('./SafetyTab'));
-const OpsPanel = dynamic(() => import('./OpsPanel'));
 const SettingsPanel = dynamic(() => import('./SettingsPanel'));
 const ScenarioLab = dynamic(() => import('./ScenarioLab'));
 const OutputPanel = dynamic(
@@ -66,11 +64,11 @@ function safeParseJson(raw: string): Record<string, unknown> | null {
   }
 }
 
+
 const workspaceTabs = [
   { id: 'intake', label: 'New Inquiry' },
   { id: 'packet', label: 'Trip Details' },
   { id: 'safety', label: 'Risk Review' },
-  { id: 'ops', label: 'Ops' },
 ] as const;
 
 type WorkspaceTabId = (typeof workspaceTabs)[number]['id'];
@@ -194,11 +192,8 @@ function WorkbenchContent() {
     store.draft_status === 'blocked' ||
     store.draft_status === 'failed';
 
-  // Ops tab visible only at proposal/booking stage
-  const showOps = trip?.stage === 'proposal' || trip?.stage === 'booking';
   const visibleTabs = workspaceTabs.filter((tab) => {
     if (tab.id === 'packet') return showPacket;
-    if (tab.id === 'ops') return showOps;
     return true;
   });
 
@@ -206,6 +201,23 @@ function WorkbenchContent() {
   const effectiveTab = visibleTabs.some((t) => t.id === activeTab)
     ? activeTab
     : 'intake';
+
+  // Compatibility redirect: old Workbench Ops deep links → Trip Workspace Ops.
+  // Uses replace() so the obsolete ?tab=ops URL is not kept in browser history.
+  useEffect(() => {
+    const tabParam = getSearchParam('tab');
+    if (tabParam !== 'ops') return;
+    if (tripId) {
+      replace(getTripRoute(tripId, 'ops'));
+    } else {
+      // No trip context — ops requires a specific trip. Show notice and fall back to intake.
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('tab', 'intake');
+      params.set('notice', 'ops-requires-trip');
+      replace(`${pathname}?${params.toString()}`);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount — handles stale bookmarks / SOP links
 
   // Draft hydration - load draft from backend and populate store
   const prevDraftRef = useRef<string | null>(null);
@@ -271,15 +283,10 @@ function WorkbenchContent() {
     [searchParams, replace, visibleTabs],
   );
 
-  // Auto-switch away from ops tab if stage changes out of proposal/booking
+  // Auto-switch away from packet tab if trip/results disappear
   const prevStageRef = useRef<string | null>(null);
   useEffect(() => {
     const currentStage = trip?.stage ?? null;
-    if (prevStageRef.current !== null && prevStageRef.current !== currentStage) {
-      if (activeTab === 'ops' && currentStage !== 'proposal' && currentStage !== 'booking') {
-        handleTabChange('intake');
-      }
-    }
     prevStageRef.current = currentStage;
   }, [trip?.stage, activeTab, handleTabChange]);
 
@@ -761,6 +768,15 @@ function WorkbenchContent() {
         </p>
       </div>
 
+      {/* Notice: ops-requires-trip — shown when /workbench?tab=ops is opened without a trip */}
+      {getSearchParam('notice') === 'ops-requires-trip' && (
+        <div data-testid="ops-requires-trip-notice" className="mx-6 mt-4 rounded-xl border border-[#30363d] bg-[#0f1115] px-5 py-3">
+          <p className="text-sm text-[#8b949e]">
+            Booking operations are available after a trip reaches proposal or booking stage. Select a trip to continue.
+          </p>
+        </div>
+      )}
+
       {/* Persistent blocked-state banner */}
       {store.result_validation && (
         store.result_validation.is_valid === false ||
@@ -948,7 +964,11 @@ function WorkbenchContent() {
               <>
                 <button
                   type='button'
-                  onClick={() => push(`/trips/${completedTripId}/intake`)}
+                  onClick={() => push(getPostRunTripRoute({
+                    tripId: completedTripId,
+                    tripStage: spineRunState?.stage ?? trip?.stage,
+                    validationStatus: spineRunState?.validation?.status,
+                  }))}
                   className='flex items-center gap-2 px-4 py-2 bg-[#3fb950] text-[#0d1117] rounded-lg font-medium hover:bg-[#4cc764] transition-colors'
                 >
                   <CheckCircle className='size-4' />
@@ -968,7 +988,11 @@ function WorkbenchContent() {
                         setTimeout(() => setRunError(null), 8000);
                         return;
                       }
-                      push(`/trips/${completedTripId}/intake`);
+                      push(getPostRunTripRoute({
+                        tripId: completedTripId,
+                        tripStage: spineRunState?.stage ?? trip?.stage,
+                        validationStatus: spineRunState?.validation?.status,
+                      }));
                     }}
                     className='flex items-center gap-2 px-4 py-2 bg-[#58a6ff] text-[#0d1117] rounded-lg font-medium hover:bg-[#6eb5ff] transition-colors'
                   >
@@ -992,7 +1016,11 @@ function WorkbenchContent() {
                   resetSpine();
                   handleTabChange(showPacket ? 'packet' : 'intake');
                 }}
-                onViewTrip={completedTripId ? () => push(`/trips/${completedTripId}/intake`) : undefined}
+                onViewTrip={completedTripId ? () => push(getPostRunTripRoute({
+                  tripId: completedTripId,
+                  tripStage: spineRunState?.stage ?? trip?.stage,
+                  validationStatus: spineRunState?.validation?.status,
+                })) : undefined}
               />
             )}
             <button
@@ -1092,9 +1120,7 @@ function WorkbenchContent() {
         >
           <div className='p-6'>
             <Suspense fallback={<InlineLoading message='Loading…' />}>
-              {effectiveTab === 'ops' && showOps ? (
-                <OpsPanel trip={trip} />
-              ) : effectiveTab === 'safety' ? (
+              {effectiveTab === 'safety' ? (
                 <SafetyTab trip={trip} />
               ) : effectiveTab === 'packet' ? (
                 <PacketTab trip={trip} />

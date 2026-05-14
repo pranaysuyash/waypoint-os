@@ -137,17 +137,12 @@ class TestGetRlsDb:
 
     @pytest.mark.asyncio
     async def test_calls_apply_rls_when_agency_set(self):
-        """get_rls_db must call apply_rls when ContextVar holds an agency_id."""
+        """get_rls_db must set app.current_agency_id when ContextVar holds an agency_id."""
         from spine_api.core import rls
 
         mock_session = AsyncMock()
 
-        async def fake_get_db():
-            yield mock_session
-
-        with patch.object(rls, "_current_agency_id") as mock_cv, \
-             patch.object(rls, "apply_rls", new_callable=AsyncMock) as mock_apply:
-
+        with patch.object(rls, "_current_agency_id") as mock_cv:
             mock_cv.get.return_value = "agy-test-001"
 
             # Drain the async generator
@@ -158,19 +153,20 @@ class TestGetRlsDb:
             except StopAsyncIteration:
                 pass
 
-            mock_apply.assert_awaited_once_with(mock_session, "agy-test-001")
+            # Should have called session.execute with set_config and agency_id
+            assert mock_session.execute.await_count >= 1
+            first_call_params = mock_session.execute.call_args_list[0]
+            assert first_call_params[0][1] == {"agency_id": "agy-test-001"}
             assert session is mock_session
 
     @pytest.mark.asyncio
     async def test_skips_apply_rls_when_no_agency(self):
-        """get_rls_db must NOT call apply_rls when ContextVar is unset."""
+        """get_rls_db must NOT set agency_id when ContextVar is unset."""
         from spine_api.core import rls
 
         mock_session = AsyncMock()
 
-        with patch.object(rls, "_current_agency_id") as mock_cv, \
-             patch.object(rls, "apply_rls", new_callable=AsyncMock) as mock_apply:
-
+        with patch.object(rls, "_current_agency_id") as mock_cv:
             mock_cv.get.return_value = None
 
             gen = rls.get_rls_db(db=mock_session)
@@ -180,7 +176,7 @@ class TestGetRlsDb:
             except StopAsyncIteration:
                 pass
 
-            mock_apply.assert_not_awaited()
+            mock_session.execute.assert_not_awaited()
             assert session is mock_session
 
 

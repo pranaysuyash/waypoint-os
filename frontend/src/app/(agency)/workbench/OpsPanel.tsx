@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useWorkbenchStore } from '@/stores/workbench';
 import { ClientDateTime } from '@/hooks/useClientDate';
 import {
   type Trip,
@@ -177,10 +176,7 @@ function paymentDraftToTracking(draft: PaymentTrackingDraft): PaymentTracking | 
 // react-doctor-disable-next-line react-doctor/prefer-useReducer — 34+ state vars are independent slices; useReducer would add complexity without benefit
 export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
   const documentsOnly = mode === 'documents';
-  const { result_validation } = useWorkbenchStore();
-
   const readiness: ReadinessAssessment | undefined =
-    (result_validation as { readiness?: ReadinessAssessment } | null)?.readiness ??
     (trip?.validation as { readiness?: ReadinessAssessment } | null)?.readiness;
 
   // Booking data - local state only, not in global store
@@ -564,14 +560,6 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
     }
   }, [trip?.id]);
 
-  if (!documentsOnly && !readiness) {
-    return (
-      <div data-testid="ops-panel-empty" className="text-sm text-[#8b949e]">
-        No readiness data available. Run the pipeline to generate a readiness assessment.
-      </div>
-    );
-  }
-
   const tiers = readiness?.tiers ?? {};
   const tierEntries = Object.entries(tiers);
   const signals = readiness?.signals;
@@ -582,8 +570,15 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
 
   return (
     <div data-testid="ops-panel" className="space-y-6">
+      {/* No readiness — show informational notice but keep all Ops sections available */}
+      {!documentsOnly && !readiness && (
+        <div data-testid="ops-readiness-empty" className="rounded-lg border border-[#30363d] bg-[#0f1115] px-4 py-3 text-sm text-[#8b949e]">
+          No readiness assessment available yet. Booking operations are still available below.
+        </div>
+      )}
+
       {/* Highest tier summary */}
-      {!documentsOnly && (
+      {!documentsOnly && readiness && (
         <div className="flex items-center gap-3">
           <span className="text-sm text-[#8b949e]">Highest ready tier:</span>
           <span

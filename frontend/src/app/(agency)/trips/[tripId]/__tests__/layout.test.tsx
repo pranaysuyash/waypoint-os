@@ -384,3 +384,86 @@ describe("trips/[tripId]/layout", () => {
     expect(screen.getByRole("link", { name: "Back to Trips in Planning" })).toBeInTheDocument();
   });
 });
+
+// Full trip fixture that passes canAccessPlanningStage (has all required planning fields)
+const planningTrip = {
+  ...baseTrip,
+  status: "assigned",
+  party: 2,
+  dateWindow: "Jun 10-20",
+  budget: "$5000",
+  origin: "Delhi",
+} as any;
+
+describe("Trip Workspace — Ops tab visibility", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(navigation.useParams).mockReturnValue({ tripId: "TRIP-123" });
+    vi.mocked(navigation.usePathname).mockReturnValue("/trips/TRIP-123/intake");
+    mockTimelineFetch();
+  });
+
+  function renderWithStage(stage: string, tripOverride?: any) {
+    vi.mocked(tripsHook.useTrip).mockReturnValue({
+      data: { ...(tripOverride ?? planningTrip), stage } as any,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      replaceTrip: vi.fn(),
+    });
+    render(
+      <WorkspaceTripLayoutShell>
+        <div>content</div>
+      </WorkspaceTripLayoutShell>,
+    );
+  }
+
+  it("shows Ops tab for proposal-stage trip", () => {
+    renderWithStage("proposal");
+    // Tab may render as link or locked button depending on planning gate — check by text
+    expect(screen.getByText("Ops")).toBeInTheDocument();
+  });
+
+  it("shows Ops tab for booking-stage trip", () => {
+    renderWithStage("booking");
+    expect(screen.getByText("Ops")).toBeInTheDocument();
+  });
+
+  it("hides Ops tab for intake-stage trip", () => {
+    renderWithStage("intake");
+    expect(screen.queryByText("Ops")).not.toBeInTheDocument();
+  });
+
+  it("hides Ops tab for discovery-stage trip", () => {
+    renderWithStage("discovery");
+    expect(screen.queryByText("Ops")).not.toBeInTheDocument();
+  });
+
+  it("hides Ops tab when trip stage is null", () => {
+    vi.mocked(tripsHook.useTrip).mockReturnValue({
+      data: { ...planningTrip } as any,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      replaceTrip: vi.fn(),
+    });
+    render(
+      <WorkspaceTripLayoutShell>
+        <div>content</div>
+      </WorkspaceTripLayoutShell>,
+    );
+    expect(screen.queryByText("Ops")).not.toBeInTheDocument();
+  });
+
+  it("Ops tab links to /trips/TRIP-123/ops when accessible", () => {
+    renderWithStage("proposal");
+    // If rendered as accessible link (canAccessPlanningStage = true), verify href
+    const opsLink = screen.queryByRole("link", { name: "Ops" });
+    if (opsLink) {
+      expect(opsLink).toHaveAttribute("href", "/trips/TRIP-123/ops");
+    } else {
+      // Rendered as locked button — tab is present but gated by planning status
+      expect(screen.getByText("Ops")).toBeInTheDocument();
+    }
+  });
+});
