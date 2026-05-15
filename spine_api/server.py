@@ -767,29 +767,21 @@ async def _ensure_rls_no_force_on_auth_tables() -> None:
     """
     Remove FORCE ROW LEVEL SECURITY from auth-critical tables.
 
-    The memberships and workspace_codes tables must be queryable during the
-    login/auth flow without a prior `app.current_agency_id` context, because
-    the auth layer needs to discover the user's workspace before it knows
-    which agency to scope to.
-
-    With FORCE RLS, the table owner is also subject to the policy, which
-    means any SELECT on these tables returns zero rows until
-    `app.current_agency_id` is set — a chicken-and-egg problem for login.
-
-    Regular RLS (without FORCE) still protects against non-owner roles.
-    This is a pragmatic concession: RLS hardening of the auth path is paused
-    until the login flow can reliably bypass or set the agency context before
-    querying these tables.
+    memberships and workspace_codes (RLS_FORCE_EXEMPT_TABLES) are queried
+    during login/join before app.current_agency_id is known — a chicken-and-
+    egg problem. ENABLE RLS is kept (protects against non-owner roles) but
+    FORCE is removed so the table owner can query without agency context.
 
     Idempotent: ALTER TABLE ... NO FORCE ROW LEVEL SECURITY is a no-op if
     FORCE is not already set.
     """
-    _AUTH_TABLES = ("memberships", "workspace_codes")
-    for table in _AUTH_TABLES:
+    from spine_api.core.rls import RLS_FORCE_EXEMPT_TABLES
+
+    for table in RLS_FORCE_EXEMPT_TABLES:
         try:
             async with engine.begin() as conn:
                 await _apply_startup_db_timeouts(conn)
-                exists = await conn.execute(text(f"""
+                exists = await conn.execute(text("""
                     SELECT EXISTS (
                         SELECT 1 FROM information_schema.tables
                         WHERE table_schema = 'public' AND table_name = :t
@@ -798,7 +790,7 @@ async def _ensure_rls_no_force_on_auth_tables() -> None:
                 if not bool(exists.scalar()):
                     continue
                 await conn.execute(text(f"ALTER TABLE {table} NO FORCE ROW LEVEL SECURITY"))
-                logger.info("Removed FORCE RLS from %s (auth tables)", table)
+                logger.info("Removed FORCE RLS from %s (auth exempt)", table)
         except Exception as e:
             logger.error("Failed to remove FORCE RLS from %s: %s", table, e)
 

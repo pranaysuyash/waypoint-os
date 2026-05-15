@@ -10,8 +10,8 @@
 | Code | Meaning |
 |------|---------|
 | **MIGRATE** | Capability moves into Trip Workspace as canonical durable location |
-| **ALIAS** | Old route/path becomes a permanent redirect to the new canonical location |
-| **REMOVE** | Removed from Workbench UI after verified parity in Trip Workspace |
+| **ALIAS** | Old route/path becomes a **permanent** redirect to the new canonical location — old URLs must keep working indefinitely |
+| **REMOVE (UI duplicate)** | The duplicate editable Workbench UI is removed after verified parity in Trip Workspace — the capability itself is not removed, only the Workbench-side copy |
 | **RETAIN** | Kept in Workbench; not part of this migration |
 | **DEFERRED** | Not handled in this slice; tracked for follow-up |
 
@@ -21,9 +21,9 @@
 
 | Item | Current Location | New Canonical | Disposition | Reason | User Impact | Approval Required | Implementation Status |
 |------|-----------------|---------------|-------------|--------|-------------|-------------------|-----------------------|
-| Ops / booking execution UI | `/workbench?tab=ops` | `/trips/{id}/ops` | MIGRATE + REMOVE | Ops is durable trip execution state, not ephemeral processing | Operators must use Trip Workspace Ops; old Workbench Ops removed after parity | No — decision already made | ✅ Done (Phase 3 + 9) |
-| `/workbench?tab=ops&trip={id}` deep link | Workbench URL pattern | `/trips/{id}/ops` | ALIAS | Permanent redirect preserves old links/SOPs pointing to Workbench Ops | Old links still work | No | ✅ Done (Phase 9) |
-| `/workbench?tab=ops` (no trip) | Workbench | `/workbench?tab=intake` | ALIAS | No trip context means operator is starting, not executing | Redirected to intake with message | No | ✅ Done (Phase 9) |
+| Ops / booking execution UI | `/workbench?tab=ops` | `/trips/{id}/ops` | MIGRATE + REMOVE (UI duplicate) | Ops is durable trip execution state, not ephemeral processing. All capabilities migrated. Old Workbench editable UI removed; Trip Workspace is now the canonical location. | Operators use Trip Workspace Ops; the capability itself is fully preserved | No — decision already made | ✅ Done (Phase 3 + 9) |
+| `/workbench?tab=ops&trip={id}` deep link | Workbench URL pattern | `/trips/{id}/ops` | ALIAS (permanent) | Old links in SOPs, bookmarks, and integrations must continue working indefinitely | Old links redirect silently to Trip Workspace Ops; no operator action needed | No | ✅ Done (Phase 9) |
+| `/workbench?tab=ops` (no trip) | Workbench | `/workbench?tab=intake&notice=ops-requires-trip` | ALIAS (with notice) | No trip context means operator is starting new work, not executing booking ops | Redirected to intake; notice explains Ops requires a proposal/booking-stage trip | No | ✅ Done (Phase 9) |
 | Post-Spine "View Trip" navigation | → `/trips/{id}/intake` | → `/trips/{id}/ops` for proposal/booking | MIGRATE | Operators land at the actionable tab, not intake | Better handoff after AI processing | No | ✅ Done (Phase 5) |
 | `processed <timestamp>` in Trip Workspace header | `useWorkbenchStore().result_run_ts` | Nothing (removed) | REMOVE | No trip-level `last_ai_run_at` field exists; `updated_at` is misleading; transient session state is wrong source | Minor — display was inaccurate from fresh sessions anyway | No | ✅ Done (Phase 7) |
 

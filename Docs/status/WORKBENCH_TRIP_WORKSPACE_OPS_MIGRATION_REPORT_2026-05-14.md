@@ -1,6 +1,6 @@
 # Workbench → Trip Workspace Ops Migration: Implementation Report
 **Date:** 2026-05-14  
-**Status:** Complete — awaiting QA sign-off  
+**Status:** Code-level review: ✅ Pass — awaiting manual QA sign-off  
 **Branch:** master  
 **Related docs:**
 - `Docs/status/WORKBENCH_TRIP_WORKSPACE_DISPOSITION_REGISTER_2026-05-14.md`
@@ -97,12 +97,27 @@
 
 ## Test Results
 
+### Initial implementation (Phase 1–10)
 ```
 TypeScript: ✅ Clean (0 errors)
-Test suite: 917 tests across 116 files (pending full run confirmation)
-  - New tests added: 20 (routes, layout ops visibility, ops page, migration banner, 
+Test suite: 917 tests across 116 files
+  - New tests added: 20 (routes, layout ops visibility, ops page, migration banner,
                         post-Spine navigation, Workbench no-ops assertions)
   - Tests updated: 3 (OpsPanel visa signal, page-ops-tab proposal/booking)
+```
+
+### Fix pass (post code-level review)
+```
+TypeScript: ✅ Clean (0 source errors)
+Tests: 54/54 passing across migration files (targeted run)
+  - Fix 1: getPostRunTripRoute moved to routes.ts; BLOCKED/ESCALATED priority corrected
+  - Fix 2: Workbench ?tab=ops alias uses replace() + notice=ops-requires-trip param
+  - Fix 3: ops-requires-trip notice banner added to Workbench
+  - Fix 4: Direct /trips/{id}/ops stage gate added in Ops PageClient
+  - Fix 5: OpsPanel early-return removed; readiness is inline notice, not a gate
+  - Fix 6: Stale useWorkbenchStore mock removed from OpsPanel tests
+  - New tests: 6 (getPostRunTripRoute priority, Workbench alias replace/notice,
+               stage-gate direct route, no-readiness booking data + docs sections)
 ```
 
 ---
@@ -121,8 +136,14 @@ Test suite: 917 tests across 116 files (pending full run confirmation)
 
 ## Manual QA Checklist
 
-- [ ] **QA 1** — Direct Ops load: `/trips/{proposalTripId}/ops` in fresh browser session → OpsPanel loads, readiness/blocked visible, no Workbench visit required
-- [ ] **QA 2** — Stage gate: non-proposal/booking trip → Ops tab hidden; direct `/ops` URL → safe fallback
-- [ ] **QA 3** — Post-Spine handoff: run Spine on proposal-stage trip → click "View Trip" → lands on `/trips/{id}/ops`
-- [ ] **QA 4** — Workbench no Ops: open `/workbench` with a proposal-stage trip → no Ops tab; URL with `?tab=ops&trip={id}` → redirected to Trip Workspace Ops
-- [ ] **QA 5** — Migration banner: first visit → banner visible → dismiss → refresh → banner still dismissed
+- [ ] **QA 1** — Direct Ops load: `/trips/{proposalTripId}/ops` in fresh browser session → OpsPanel loads (readiness, booking data, documents visible); no Workbench visit required
+- [ ] **QA 2** — Stage gate: open `/trips/{intakeTripId}/ops` directly → `ops-stage-gate` fallback with "Return to Intake" link; OpsPanel does not render
+- [ ] **QA 3** — No-readiness Ops: open a proposal/booking trip that has no `validation.readiness` → `ops-readiness-empty` notice appears; booking data, documents, payment sections still render
+- [ ] **QA 4** — Post-Spine handoff (clean run): run Spine on a proposal-stage trip → click "View Trip" → lands on `/trips/{id}/ops`
+- [ ] **QA 5** — Post-Spine handoff (BLOCKED): run Spine that returns BLOCKED/ESCALATED on a proposal trip → click "View Trip" → lands on `/trips/{id}/packet`
+- [ ] **QA 6** — Workbench no Ops: open `/workbench?trip={proposalTripId}` → no Ops tab visible
+- [ ] **QA 7** — Workbench alias with trip: open `/workbench?tab=ops&trip={proposalTripId}` → browser history not pushed; redirected to `/trips/{id}/ops`
+- [ ] **QA 8** — Workbench alias without trip: open `/workbench?tab=ops` → stays on Workbench at intake tab; `ops-requires-trip-notice` banner visible
+- [ ] **QA 9** — Migration banner: first visit to `/trips/{id}/ops` → banner visible → dismiss → refresh → banner stays dismissed
+
+**Manual QA status:** Pending

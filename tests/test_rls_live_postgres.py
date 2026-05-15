@@ -200,13 +200,20 @@ async def test_all_tenant_tables_have_rls_enabled():
 
 @pytest.mark.asyncio
 async def test_all_tenant_tables_have_force_rls():
-    """Every table in RLS_TENANT_TABLES must have FORCE ROW LEVEL SECURITY."""
+    """Every table in RLS_TENANT_TABLES must have FORCE ROW LEVEL SECURITY,
+    except tables in RLS_FORCE_EXEMPT_TABLES (queried during auth before
+    agency context is known)."""
+    from spine_api.core.rls import RLS_FORCE_EXEMPT_TABLES
+
     test_engine = _make_test_engine()
     try:
         async with test_engine.connect() as conn:
             posture = await inspect_rls_runtime_posture(conn)
 
         for table in posture.tables:
+            if table.table_name in RLS_FORCE_EXEMPT_TABLES:
+                assert table.rls_enabled, f"{table.table_name} must still have RLS enabled"
+                continue
             assert table.force_rls, f"{table.table_name} does not have FORCE RLS"
     finally:
         await test_engine.dispose()

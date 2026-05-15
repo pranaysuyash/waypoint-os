@@ -67,6 +67,13 @@ RLS_EXCLUDED_AGENCY_TABLES: dict[str, str] = {
     "legacy_aspirations": "frontier/experimental feature; not in Phase 5E scope",
 }
 
+# Tables with ENABLE RLS but intentionally WITHOUT FORCE RLS.
+# These are queried during login/join before app.current_agency_id is known
+# (chicken-and-egg: the auth flow needs memberships/workspace_codes to discover
+# the agency, but FORCE RLS requires the agency to be set first).
+# The table owner still bypasses ENABLE RLS; only non-owner roles are restricted.
+RLS_FORCE_EXEMPT_TABLES: frozenset[str] = frozenset({"memberships", "workspace_codes"})
+
 
 @dataclass(frozen=True, slots=True)
 class RlsTablePosture:
@@ -105,9 +112,12 @@ class RlsRuntimePosture:
             if not table.rls_enabled:
                 risks.append(f"{table.table_name} has row-level security disabled")
             if table.owner == self.current_user and not table.force_rls:
-                risks.append(
-                    f"{table.table_name} is owned by runtime role "
-                    f"{self.current_user} and FORCE RLS is disabled"
+                # Auth-exempt tables intentionally skip FORCE RLS (chicken-and-egg
+                # during login/join). ENABLE RLS still protects against non-owners.
+                if table.table_name not in RLS_FORCE_EXEMPT_TABLES:
+                    risks.append(
+                        f"{table.table_name} is owned by runtime role "
+                        f"{self.current_user} and FORCE RLS is disabled"
                 )
         return tuple(risks)
 
