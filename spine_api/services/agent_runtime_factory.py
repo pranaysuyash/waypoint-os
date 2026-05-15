@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from src.agents.recovery_agent import RecoveryAgent
+from src.agents.requeue import build_requeue_port
 from src.agents.runtime import AgentSupervisor, build_default_registry
 from spine_api.services.agent_runtime_adapters import TripStoreAdapter, AuditStoreAdapter
 from spine_api.services.agent_work_coordinator import SQLWorkCoordinator
@@ -174,12 +175,16 @@ def build_agent_runtime_from_config(
     _trip_repo: Any = None,
     _audit_sink: Any = None,
     _spine_runner: Any = None,
+    _run_spine_fn: Any = None,
 ) -> AgentRuntimeBundle:
     """Construct runtime objects from a validated config.
 
-    Accepts optional overrides for trip_repo, audit_sink, and spine_runner so
-    that the caller (server.py or tests) can inject adapters without the factory
-    knowing about server internals.
+    Accepts optional overrides for trip_repo, audit_sink, spine_runner, and
+    run_spine_fn so that the caller (server.py or tests) can inject adapters
+    without the factory knowing about server internals.
+
+    _spine_runner is deprecated — use _run_spine_fn for the inline requeue
+    port, or pass a pre-built requeue_port to RecoveryAgent directly.
     """
     _validate_config(config)
 
@@ -199,10 +204,15 @@ def build_agent_runtime_from_config(
     elif config.coordinator_backend == "memory":
         coordinator = None  # AgentSupervisor uses InMemoryWorkCoordinator by default
 
+    requeue_port = build_requeue_port(
+        config.recovery_requeue_mode,
+        spine_runner=_spine_runner,
+        run_spine=_run_spine_fn,
+    )
     recovery_agent = RecoveryAgent(
         audit_store=audit_sink,
         trip_repo=trip_repo,
-        spine_runner=_spine_runner,
+        requeue_port=requeue_port,
     )
 
     supervisor = AgentSupervisor(
@@ -226,6 +236,7 @@ def build_agent_runtime(
     _trip_repo: Any = None,
     _audit_sink: Any = None,
     _spine_runner: Any = None,
+    _run_spine_fn: Any = None,
 ) -> AgentRuntimeBundle:
     """Convenience: read env, build config, construct runtime, return bundle.
 
@@ -237,4 +248,5 @@ def build_agent_runtime(
         _trip_repo=_trip_repo,
         _audit_sink=_audit_sink,
         _spine_runner=_spine_runner,
+        _run_spine_fn=_run_spine_fn,
     )

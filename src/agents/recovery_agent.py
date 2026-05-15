@@ -31,9 +31,15 @@ import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Any, Callable, Optional
 
 from src.agents.events import AgentEvent, AgentEventType
+from src.agents.requeue import (
+    DisabledSpineRequeuePort,
+    RequeueResult,
+    SpineRequeuePort,
+    build_requeue_port,
+)
 
 logger = logging.getLogger("recovery_agent")
 AGENT_NAME = "recovery_agent"
@@ -96,12 +102,21 @@ class RecoveryAgent:
         interval_seconds: Optional[int] = None,
         audit_store=None,         # AuditStore instance (injected)
         trip_repo=None,           # Trip repository for querying/updating trips
-        spine_runner=None,        # callable(trip_id) → triggers re-processing
+        requeue_port: Optional[SpineRequeuePort] = None,
+        spine_runner: Optional[Callable[[str], Any]] = None,  # deprecated — use requeue_port
     ):
         self._interval = interval_seconds if interval_seconds is not None else _get_recovery_interval()
         self._audit = audit_store
         self._trip_repo = trip_repo
-        self._spine_runner = spine_runner
+        if requeue_port is not None:
+            self._requeue_port = requeue_port
+            self._requeue_enabled = not isinstance(requeue_port, DisabledSpineRequeuePort)
+        elif spine_runner is not None:
+            self._requeue_port = build_requeue_port(spine_runner=spine_runner)
+            self._requeue_enabled = True
+        else:
+            self._requeue_port = DisabledSpineRequeuePort()
+            self._requeue_enabled = False
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
         # In-memory tracking of requeue attempts per trip (cleared on restart)
@@ -226,18 +241,40 @@ class RecoveryAgent:
         Choose and execute a recovery action for a stuck trip.
 
         Escalation ladder:
-          attempts < MAX_REQUEUE_ATTEMPTS → re_queue
-          attempts >= MAX_REQUEUE_ATTEMPTS → escalate (human review)
+          attempts < MAX_REQUEUE_ATTEMPTS and requeue enabled → try requeue via port
+          otherwise → escalate (human review)
         """
-        if trip.requeue_attempts < _get_max_requeue_attempts() and self._spine_runner is not None:
+        if trip.requeue_attempts < _get_max_requeue_attempts() and self._requeue_enabled:
             return self._action_requeue(trip)
-        else:
-            return self._action_escalate(trip)
+        return self._action_escalate(trip)
+
+    def _lookup_trip_record(self, trip_id: str) -> Optional[dict[str, Any]]:
+        """Find the full trip record from the repo."""
+        if self._trip_repo is None:
+            return None
+        try:
+            for t in self._trip_repo.list_active():
+                if isinstance(t, dict):
+                    tid = t.get("id", "")
+                else:
+                    tid = getattr(t, "id", "")
+                if str(tid) == trip_id:
+                    return t if isinstance(t, dict) else {"id": tid}
+            return None
+        except Exception:
+            logger.exception("Failed to look up trip record for %s", trip_id)
+            return None
 
     def _action_requeue(self, trip: StuckTrip) -> RecoveryResult:
-        """Re-submit the trip through the intake pipeline."""
-        try:
-            self._spine_runner(trip.trip_id)
+        """Re-submit the trip through the intake pipeline via the requeue port."""
+        trip_record = self._lookup_trip_record(trip.trip_id) or {}
+        result = self._requeue_port.requeue_trip(
+            trip_id=trip.trip_id,
+            trip_record=trip_record,
+            reason=f"Stuck {trip.hours_stuck:.0f}h in {trip.stage}",
+            attempt=trip.requeue_attempts + 1,
+        )
+        if result.accepted:
             self._requeue_counts[trip.trip_id] = trip.requeue_attempts + 1
             logger.info(
                 "RecoveryAgent: re-queued trip %s (attempt %d, stuck %.1fh in %s)",
@@ -247,16 +284,18 @@ class RecoveryAgent:
                 trip_id=trip.trip_id,
                 action="re_queue",
                 success=True,
-                reason=f"Stuck {trip.hours_stuck:.0f}h in {trip.stage}; re-queued (attempt {trip.requeue_attempts + 1})",
+                reason=result.reason,
             )
-        except Exception as exc:
-            logger.exception("RecoveryAgent: re_queue failed for trip %s", trip.trip_id)
-            return RecoveryResult(
-                trip_id=trip.trip_id,
-                action="re_queue",
-                success=False,
-                reason=f"Re-queue failed: {exc}",
-            )
+        logger.warning(
+            "RecoveryAgent: requeue not accepted for trip %s (attempt %d): %s",
+            trip.trip_id, trip.requeue_attempts + 1, result.reason,
+        )
+        return RecoveryResult(
+            trip_id=trip.trip_id,
+            action="re_queue",
+            success=False,
+            reason=result.reason,
+        )
 
     def _action_escalate(self, trip: StuckTrip) -> RecoveryResult:
         """Flag the trip for human review via the trip repository."""

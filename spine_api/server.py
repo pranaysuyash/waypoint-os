@@ -299,8 +299,6 @@ from src.analytics.policy_rules import ready_gate_failures
 from src.agents.recovery_agent import RecoveryAgent
 from src.agents.runtime import AgentSupervisor, build_default_registry
 from spine_api.services.agent_work_coordinator import SQLWorkCoordinator
-from spine_api.services.agent_runtime_factory import build_agent_runtime
-
 from spine_api.services.agent_runtime_adapters import TripStoreAdapter, AuditStoreAdapter
 from spine_api.services.agent_runtime_factory import build_agent_runtime
 
