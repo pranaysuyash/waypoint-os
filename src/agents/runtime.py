@@ -499,6 +499,21 @@ def _stringify(value: Any) -> str:
     return str(value)
 
 
+def _normalize_list(value: Any) -> list[str]:
+    values: list[str] = []
+    for item in _flatten_values(value):
+        if isinstance(item, dict) and "value" in item:
+            values.extend(_normalize_list(item.get("value")))
+            continue
+        text = _stringify(item).strip()
+        if text:
+            for part in text.replace(" + ", ",").replace(" and ", ",").split(","):
+                normalized = part.strip().lower()
+                if normalized and normalized not in values:
+                    values.append(normalized)
+    return values
+
+
 class FrontDoorAgent:
     definition = AgentDefinition(
         name="front_door_agent",
@@ -941,9 +956,9 @@ class DocumentReadinessAgent:
             _slot_value(facts.get("destination")),
             get_field(trip, "destination", "destinations"),
         )
-        destinations = self._normalize_list(destination_values)
-        transits = self._normalize_list(first_non_empty(get_field(trip, "transit_points", "transits"), _slot_value(facts.get("transit_points"))))
-        nationalities = self._normalize_list(
+        destinations = _normalize_list(destination_values)
+        transits = _normalize_list(first_non_empty(get_field(trip, "transit_points", "transits"), _slot_value(facts.get("transit_points"))))
+        nationalities = _normalize_list(
             first_non_empty(
                 get_field(trip, "traveler_nationalities", "nationalities", "passport_country"),
                 _slot_value(facts.get("nationality")),
@@ -963,21 +978,6 @@ class DocumentReadinessAgent:
             "date_window": first_non_empty(_slot_value(facts.get("date_window")), get_field(trip, "date_window", "dateWindow")),
             "raw_note": first_non_empty(get_nested(trip, "raw_input.raw_note"), get_field(trip, "raw_note"), ""),
         }
-
-    def _normalize_list(self, value: Any) -> list[str]:
-        values: list[str] = []
-        for item in _flatten_values(value):
-            if isinstance(item, dict) and "value" in item:
-                nested = item.get("value")
-                values.extend(self._normalize_list(nested))
-                continue
-            text = _stringify(item).strip()
-            if text:
-                for part in text.replace(" + ", ",").replace(" and ", ",").split(","):
-                    normalized = part.strip().lower()
-                    if normalized and normalized not in values:
-                        values.append(normalized)
-        return values
 
     def _build_checklist(self, context: dict[str, Any]) -> dict[str, Any]:
         destinations = context.get("destinations", [])
@@ -1171,26 +1171,12 @@ class DestinationIntelligenceAgent:
             _slot_value(facts.get("destination")),
             get_field(trip, "destination", "destinations"),
         )
-        destinations = self._normalize_list(destination_values)
+        destinations = _normalize_list(destination_values)
         return {
             "stage": str(first_non_empty(get_field(trip, "stage"), get_field(trip, "status"), "")).lower(),
             "destinations": destinations,
             "date_window": first_non_empty(_slot_value(facts.get("date_window")), get_field(trip, "date_window", "dateWindow")),
         }
-
-    def _normalize_list(self, value: Any) -> list[str]:
-        values: list[str] = []
-        for item in _flatten_values(value):
-            if isinstance(item, dict) and "value" in item:
-                values.extend(self._normalize_list(item.get("value")))
-                continue
-            text = _stringify(item).strip()
-            if text:
-                for part in text.replace(" + ", ",").replace(" and ", ",").split(","):
-                    normalized = part.strip().lower()
-                    if normalized and normalized not in values:
-                        values.append(normalized)
-        return values
 
     def _call_weather(self, destination: str) -> ToolResult:
         try:
@@ -1548,7 +1534,7 @@ class ConstraintFeasibilityAgent:
             _slot_value(facts.get("destination")),
             get_field(trip, "destination", "destinations"),
         )
-        destinations = self._normalize_list(destination_values)
+        destinations = _normalize_list(destination_values)
         date_window = first_non_empty(_slot_value(facts.get("date_window")), get_field(trip, "date_window", "dateWindow"))
         budget_value = first_non_empty(_slot_value(facts.get("budget")), get_field(trip, "budget", "budget_amount", "budgetAmount"))
         travelers_value = first_non_empty(
@@ -1757,20 +1743,6 @@ class ConstraintFeasibilityAgent:
             if text:
                 titles.append(text)
         return titles
-
-    def _normalize_list(self, value: Any) -> list[str]:
-        values: list[str] = []
-        for item in _flatten_values(value):
-            if isinstance(item, dict) and "value" in item:
-                values.extend(self._normalize_list(item.get("value")))
-                continue
-            text = _stringify(item).strip()
-            if text:
-                for part in text.replace(" + ", ",").replace(" and ", ",").split(","):
-                    normalized = part.strip().lower()
-                    if normalized and normalized not in values:
-                        values.append(normalized)
-        return values
 
     def _traveler_count(self, value: Any) -> Optional[int]:
         if isinstance(value, int):

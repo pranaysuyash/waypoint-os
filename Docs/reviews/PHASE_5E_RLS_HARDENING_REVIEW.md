@@ -1,8 +1,8 @@
 # Phase 5E: Tenant Isolation + RLS Hardening — Review
 
 **Date**: 2026-05-15
-**Status**: Under review — closure pending
-**Test suite**: 2170 passed, 0 failed, 7 skipped, 4 pre-existing errors (async fixture compat)
+**Status**: Closed — 9 FORCE RLS + 2 auth-bootstrap FORCE exemptions. Phase 5F removes exemptions.
+**Test suite**: Backend 2233 passed, 0 failed, 0 errors. Frontend 957 passed. TypeScript 0 errors.
 
 ---
 
@@ -196,7 +196,7 @@ The `SQLTripStore` has dual APIs: `get_trip()` (reads ContextVar) and `get_trip_
 - [x] `pytest tests/test_rls.py tests/test_rls_live_postgres.py -v` — 19 pass
 - [x] `pytest tests/test_booking_collection.py -v` — 43 pass
 - [x] `pytest tests/test_partial_intake_lifecycle.py -v` — 7 pass
-- [x] Full suite: 2170 passed, 0 failed
+- [x] Full suite: 2233 passed, 0 failed, 0 errors
 - [x] Runtime posture: non-superuser, no BYPASSRLS, 9/11 tables have FORCE RLS
 - [x] Cross-tenant isolation: verified via `test_trips_rls_hides_cross_tenant_rows_for_runtime_role`
 - [x] Pipeline INSERT: verified via `test_partial_data_saves_incomplete_trip` (save_trip sets RLS context)
@@ -206,8 +206,8 @@ The `SQLTripStore` has dual APIs: `get_trip()` (reads ContextVar) and `get_trip_
 
 ## Open items
 
-1. **Auth-exempt tables hardening**: Future work could redesign the login/join flow to set RLS context before querying `memberships` and `workspace_codes`. Options include passing agency_id in the join request or using a dedicated auth-role database session.
+1. **Auth-exempt tables hardening (Phase 5F)**: Eliminate FORCE exemptions on `memberships` and `workspace_codes` by adding `users.primary_agency_id`, backfilling from existing memberships, and having login read the user's primary agency before querying the memberships table. After Phase 5F, all 11 tables will have FORCE RLS with zero exemptions.
 
-2. **`test_auth_membership_regression.py` errors (4)**: Pre-existing async fixture compatibility issue with pytest-asyncio. These tests use sync test functions requesting async fixtures. Fix requires converting to async tests or adjusting fixture scope. Not related to RLS work.
+2. **`test_auth_membership_regression.py` fixture fix**: Previously failed with 4 errors due to `@pytest.fixture()` on an async fixture. Fixed by switching to `@pytest_asyncio.fixture()`. All 4 tests now pass: orphan login backfill, orphan refresh backfill, existing user unchanged, backfill idempotency.
 
 3. **Non-owner application role**: The current architecture uses the table owner (`waypoint`) as the application runtime user. A stronger posture would use a separate non-owner role (e.g., `waypoint_app`) for runtime queries, so FORCE RLS is enforced even without the FORCE flag. This is a future infrastructure change.

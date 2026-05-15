@@ -1,7 +1,7 @@
 # Phase 5E Closure — Tenant Isolation + RLS Hardening
 
 **Date**: 2026-05-15
-**Status**: Pending final review
+**Status**: Closed — 9 FORCE RLS + 2 auth-bootstrap FORCE exemptions. Phase 5F removes exemptions.
 
 ---
 
@@ -84,7 +84,9 @@ The Phase 5E commit bundled workflow visualization, UX changes, and fixture refr
 ## Test results
 
 ```text
-2170 passed, 0 failed, 7 skipped, 4 pre-existing errors (async fixture compat)
+Backend:  2233 passed, 0 failed, 0 errors
+Frontend: 957 passed (119 test files)
+TypeScript: 0 errors
 ```
 
 Key test files:
@@ -95,7 +97,7 @@ Key test files:
 | `test_rls_live_postgres.py` | 7 | Live DB: ENABLE RLS on all 11, FORCE on 9, cross-tenant isolation |
 | `test_booking_collection.py` | 43 | Public collection under FORCE RLS with agency-scoped routes |
 | `test_partial_intake_lifecycle.py` | 7 | Pipeline INSERT under FORCE RLS |
-| `test_auth_membership_regression.py` | 4 errors | Pre-existing async fixture compat (not RLS-related) |
+| `test_auth_membership_regression.py` | 4 passed | Login/refresh/backfill idempotency under current RLS posture |
 
 ---
 

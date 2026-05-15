@@ -110,3 +110,21 @@ def test_live_tool_builders_keep_deterministic_fallbacks_without_provider_env(mo
     assert isinstance(build_flight_status_tool_from_env(), MockFlightStatusTool)
     assert isinstance(build_price_watch_tool_from_env(), MockPriceWatchTool)
     assert isinstance(build_safety_alert_tool_from_env(), MockSafetyAlertTool)
+
+
+def test_safety_builder_returns_state_dept_when_provider_env_is_set(monkeypatch):
+    monkeypatch.delenv("TRAVEL_AGENT_SAFETY_ALERT_URL_TEMPLATE", raising=False)
+    monkeypatch.setenv("TRAVEL_AGENT_SAFETY_PROVIDER", "state_dept")
+
+    tool = build_safety_alert_tool_from_env()
+
+    assert isinstance(tool, StateDeptTravelAdvisoryTool)
+
+
+def test_safety_builder_url_template_takes_precedence_over_state_dept(monkeypatch):
+    monkeypatch.setenv("TRAVEL_AGENT_SAFETY_ALERT_URL_TEMPLATE", "https://safety.example/{destination}")
+    monkeypatch.setenv("TRAVEL_AGENT_SAFETY_PROVIDER", "state_dept")
+
+    tool = build_safety_alert_tool_from_env()
+
+    assert isinstance(tool, HTTPSafetyAlertTool)
