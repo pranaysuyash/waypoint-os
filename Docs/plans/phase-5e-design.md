@@ -1,5 +1,7 @@
 # Phase 5E: Tenant Isolation + RLS Hardening
 
+> **Post-implementation note (2026-05-15):** This design doc was written before the login regression forced FORCE RLS exemptions on `memberships` and `workspace_codes`. The implementation differs from this design in one respect: 9 of 11 tables have FORCE RLS; the 2 auth-bootstrap tables have ENABLE RLS only. See `Docs/PHASE5E_CLOSURE.md` for the final posture.
+
 ## Context
 
 Phase 5D closed with a clean baseline except one xfail: `test_trips_rls_hides_cross_tenant_rows_for_runtime_role`. The test marks xfail when the runtime DB role (`waypoint`) owns the protected tables and `FORCE ROW LEVEL SECURITY` is not enabled — PostgreSQL bypasses RLS for table owners.

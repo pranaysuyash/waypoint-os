@@ -1,6 +1,6 @@
 # Migrations and RLS
 
-Phase 5E enabled FORCE ROW LEVEL SECURITY on all 11 tenant-scoped tables. After this change, all DML (INSERT, UPDATE, DELETE) on these tables is subject to the RLS policy:
+Phase 5E enabled Row Level Security on all 11 tenant-scoped tables, with FORCE ROW LEVEL SECURITY on 9 of them (memberships and workspace_codes are FORCE-exempt for auth bootstrap). After this change, DML (INSERT, UPDATE, DELETE) on non-exempt tables is subject to the RLS policy:
 
 ```sql
 agency_id = current_setting('app.current_agency_id', TRUE)
@@ -25,6 +25,21 @@ execution_events               — audit event ledger
 ```
 
 ## Exempted tables (have agency_id but no RLS)
+
+```text
+audit_logs — admin/audit surface; separate hardening task
+```
+
+## FORCE-exempt tables (ENABLE RLS, no FORCE)
+
+These tables are queried during login/join before `app.current_agency_id` is known. ENABLE RLS still protects against non-owner roles; the table owner bypasses without FORCE.
+
+```text
+memberships    — queried by login/refresh to discover user's agency
+workspace_codes — queried by join flow to validate invitation codes
+```
+
+See `RLS_FORCE_EXEMPT_TABLES` in `spine_api/core/rls.py` for the canonical list.
 
 ```text
 audit_logs — admin/audit surface; separate hardening task

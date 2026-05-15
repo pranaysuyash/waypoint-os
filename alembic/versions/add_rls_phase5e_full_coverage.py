@@ -6,7 +6,13 @@ Create Date: 2026-05-13 00:00:00.000000
 
 Adds agency_id + trip_id to document_extraction_attempts (backfilled from
 document_extractions), enables RLS on 6 new tenant tables, creates policies,
-and enables FORCE ROW LEVEL SECURITY on all 11 protected tables.
+and applies FORCE ROW LEVEL SECURITY on all 11 tenant tables.
+
+NOTE: Application startup removes FORCE RLS from memberships and workspace_codes
+(RLS_FORCE_EXEMPT_TABLES) because login/join query these tables before agency
+context is known. These tables keep ENABLE RLS (protecting non-owner roles) but
+the owner bypasses without FORCE. This is enforced by
+_ensure_rls_no_force_on_auth_tables() on every startup.
 
 Also creates trip_routing_states if it was never materialized by the original
 RLS migration (the DDL ran but the table was later dropped or the migration
@@ -22,7 +28,7 @@ Migration order (DO NOT reorder):
   7. Enable RLS + create policies on 6 new tables + trip_routing_states
   8. FORCE RLS on all tenant tables that exist
 
-IMPORTANT: After this migration, all DML on tenant tables is subject to
+IMPORTANT: After this migration, DML on tenant tables is subject to
 app.current_agency_id RLS. Future migrations doing tenant-table DML must
 follow the rules in Docs/MIGRATIONS_AND_RLS.md.
 """

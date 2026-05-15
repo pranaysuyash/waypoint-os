@@ -35,7 +35,7 @@ Two migrations interacted to produce this bug:
 - The owner role (`waypoint`) bypassed RLS — auth queries worked
 
 **Migration 2: `add_rls_phase5e_full_coverage.py` (2026-05-13)**
-- Applied `FORCE ROW LEVEL SECURITY` to all 11 tenant tables including `memberships` and `workspace_codes`
+- Applied `FORCE ROW LEVEL SECURITY` to all 11 tenant tables including `memberships` and `workspace_codes` (subsequently exempted — see Phase 5E closure doc)
 - FORCE RLS makes even the **table owner** subject to RLS policies
 - The login path queries `memberships` **before** it knows the user's `agency_id` (it needs to discover it)
 - After this migration, every membership query returned zero rows — the chicken-and-egg problem

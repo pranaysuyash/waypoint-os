@@ -1,14 +1,14 @@
 # Phase 5E: Tenant Isolation + RLS Hardening — Review
 
 **Date**: 2026-05-15
-**Status**: Complete, all tests green
+**Status**: Under review — closure pending
 **Test suite**: 2170 passed, 0 failed, 7 skipped, 4 pre-existing errors (async fixture compat)
 
 ---
 
 ## What changed
 
-PostgreSQL Row Level Security is now enforced as a defense-in-depth layer across all 11 tenant-scoped tables. Even if application code omits a `WHERE agency_id = ...` clause, the database restricts queries to the current agency's rows.
+PostgreSQL Row Level Security is now enforced as a defense-in-depth layer across all 11 tenant-scoped tables. 9 tables have FORCE ROW LEVEL SECURITY (even the table owner is subject to RLS policies). 2 tables (memberships, workspace_codes) have ENABLE RLS only — they are queried during login/join before agency context is known, making FORCE RLS a chicken-and-egg blocker. These are tracked in `RLS_FORCE_EXEMPT_TABLES` as the canonical exemption list.
 
 ### Tables covered (11 total)
 
@@ -92,7 +92,7 @@ ENABLE RLS (without FORCE) protects against non-owner database roles. The table 
 | `spine_api/routers/public_collection.py` | All endpoints use `rls_session(agency_id)` and `_for_agency` TripStore methods |
 | `spine_api/services/auth_service.py` | `join_with_code()` calls `apply_rls()` before membership INSERT; `_ensure_user_membership()` handles orphan users |
 | `spine_api/server.py` | Startup posture validation, `_ensure_rls_no_force_on_auth_tables()` reads from `RLS_FORCE_EXEMPT_TABLES`, re-added missing collection-link endpoints |
-| `alembic/versions/add_rls_phase5e_full_coverage.py` | Migration: adds `agency_id`/`trip_id` to `document_extraction_attempts`, enables RLS + policies on 6 new tables, FORCE RLS on all 11 |
+| `alembic/versions/add_rls_phase5e_full_coverage.py` | Migration: adds `agency_id`/`trip_id` to `document_extraction_attempts`, enables RLS + policies on 6 new tables, FORCE RLS on all 11 (startup removes FORCE from 2 auth tables) |
 
 ### Tests
 
@@ -102,6 +102,54 @@ ENABLE RLS (without FORCE) protects against non-owner database roles. The table 
 | `tests/test_rls_live_postgres.py` | 7 | Live DB: catalog checks, FORCE RLS, cross-tenant isolation, policy existence |
 | `tests/test_booking_collection.py` | 43 | Public collection flow with agency-scoped URLs, RLS-safe queries |
 | `tests/test_partial_intake_lifecycle.py` | 7 | Pipeline INSERT under FORCE RLS, partial/full/blocked intake |
+
+---
+
+## Public booking collection: RLS proof
+
+`booking_collection_tokens` has FORCE RLS. The public collection flow must set RLS context before any token lookup. The route shape and RLS wiring:
+
+**Route shape**: `/api/public/booking-collection/{agency_id}/{token}`
+- GET (form context), POST (submit data), POST (upload document)
+- `agency_id` comes from the URL path, not from auth
+
+**RLS wiring per endpoint**:
+- `get_public_collection_form` (line 109): `async with rls_session(agency_id) as db:` → `validate_token(db, token)` → `TripStore.get_trip_for_agency(record.trip_id, agency_id)` → `TripStore.get_pending_booking_data_for_agency(record.trip_id, agency_id)`
+- `submit_public_booking_data` (line 148): `async with rls_session(agency_id) as db:` → `validate_token(db, token)` → `TripStore.get_trip_for_agency(...)` → `TripStore.update_trip_for_agency(...)` → `mark_token_used(db, record.id)` (within `rls_session`)
+- `upload_public_document` (line 189): `async with rls_session(agency_id) as db:` → `validate_token(db, token)` → `TripStore.get_trip_for_agency(...)` → `rls_session(agency_id)` for `upload_document`
+
+Every database operation on `booking_collection_tokens` or `trips` happens inside `rls_session(agency_id)` which sets `app.current_agency_id` before the query. No bare `async_session_maker()` or `get_db()` usage.
+
+**Test coverage**: 43 tests in `test_booking_collection.py` exercise all three public endpoints with the agency-scoped URL format, including token validation, submission, document upload, and stage-gate enforcement.
+
+## Startup dedup behavior
+
+`_deduplicate_memberships_and_agencies()` and `_ensure_users_have_memberships()` are data repair functions that run on startup. They are gated behind `_should_run_startup_mutations()`:
+
+```python
+def _should_run_startup_mutations() -> bool:
+    if os.environ.get("SPINE_API_ENABLE_STARTUP_MUTATIONS", "").lower() in ("1", "true", "yes"):
+        return True
+    env = os.environ.get("ENVIRONMENT", os.environ.get("NODE_ENV", "development"))
+    return env.strip().lower() not in ("production", "staging")
+```
+
+- **Development**: mutations run by default (ENVIRONMENT defaults to "development")
+- **Production/Staging**: mutations are SKIPPED unless `SPINE_API_ENABLE_STARTUP_MUTATIONS=1` is explicitly set
+- The canonical path for production data repair is migrations or maintenance commands, not app startup
+
+This means production does NOT run dedup on every startup. The reviewer's concern is already addressed by the gate.
+
+## Login/refresh idempotency
+
+`_ensure_user_membership()` (called by both `login()` and `refresh_access_token()`):
+1. First queries for primary membership by `user_id`
+2. Falls back to any membership by `user_id`
+3. Only if both queries return None does it create a new agency + membership
+
+With the current posture (ENABLE RLS, no FORCE on `memberships`), the table owner (`waypoint`) bypasses RLS, so existing memberships are always visible. No duplicate creation occurs for users who already have memberships.
+
+Tests verify: `test_existing_user_with_membership_unchanged` and `test_backfill_idempotent`.
 
 ---
 

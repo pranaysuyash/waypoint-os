@@ -1,6 +1,6 @@
 # Session Context
 
-- Generated: 2026-05-14T22:49:51Z
+- Generated: 2026-05-15T05:12:25Z
 - Project: `travel_agency_agent`
 - Provider: `local`
 - Model: `BAAI/bge-m3`
@@ -16,20 +16,20 @@
 ### Reusable Patterns
 - Collection: `projects_workspace_shared`
 - Query: `similar architecture patterns for travel_agency_agent`
-_Search timed out. Retry when the retrieval store is less busy._
+_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
 
 ### Process Templates
 - Collection: `projects_workspace_shared`
 - Query: `project management templates and workflows`
-_Project retrieval store is busy. Try again in a minute._
+_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
 
 ### Common Failure Modes
 - Collection: `projects_workspace_shared`
 - Query: `lessons learned mistakes retrospectives postmortems`
-_Search timed out. Retry when the retrieval store is less busy._
+_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
 
 ### System Learning Graph
 - Collection: `projects_workspace_shared`
 - Query: `knowledge graph memory learning feedback loops autoresearch semantic taste graph`
-_Search timed out. Retry when the retrieval store is less busy._
+_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
 

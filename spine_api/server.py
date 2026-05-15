@@ -897,10 +897,10 @@ async def _validate_rls_runtime_posture_configuration() -> None:
     """
     Enforce that production-like SQL startup cannot silently run with bypassable tenant RLS.
 
-    Validates all 11 tables in RLS_TENANT_TABLES have RLS enabled and FORCE RLS.
-    Local development keeps running with a warning because the current dev database
-    uses the owner role for app access while the long-term fix moves runtime access
-    to a distinct non-owner database role.
+    Validates all 11 tables in RLS_TENANT_TABLES have RLS enabled, and that all
+    non-exempt tables have FORCE ROW LEVEL SECURITY. memberships and workspace_codes
+    (RLS_FORCE_EXEMPT_TABLES) keep ENABLE RLS only — they are queried during
+    login/join before agency context is known.
     """
     if not _is_sql_tripstore_backend():
         logger.info("RLS runtime posture validation skipped (TRIPSTORE_BACKEND!=sql)")
