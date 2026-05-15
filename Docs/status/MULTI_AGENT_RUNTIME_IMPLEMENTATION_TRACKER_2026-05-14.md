@@ -19,7 +19,7 @@ Source: Random Document Audit (Multi-Agent Runtime concept)
 |---|---|---|---|
 | 001 | SQLWorkCoordinator Has Zero Direct Tests | P1 | Complete |
 | 002 | Recovery Agent Re-queue Path Disabled | P1 | Complete (port abstracted + tested) |
-| 003 | Multi-Agent Infrastructure Summary Docs Are Stale | P3 | Pending (Unit 5) |
+| 003 | Multi-Agent Infrastructure Summary Docs Are Stale | P3 | Complete |
 | 004 | TRIPSTORE_BACKEND Coupling in Coordinator Selection | P3 | Complete |
 | 005 | `build_safety_alert_tool_from_env()` StateDept Path Untested | P3 | Complete |
 
@@ -46,7 +46,10 @@ Extracted `_normalize_list` from 3 copy-pasted class methods to module-level fun
 2 new tests for `build_safety_alert_tool_from_env()`: `TRAVEL_AGENT_SAFETY_PROVIDER=state_dept` path and URL template precedence. 8/8 live tool tests passing.
 
 ### Unit 5 — Roadmap Doc + ADR Corrections
-**Status:** Pending
+**Status:** Complete
+- `Docs/architecture/MULTI_AGENT_RUNTIME_ROADMAP.md` created — valid aspirations preserved, superseded assumptions marked
+- `Docs/architecture/adr/ADR-006-MULTI-AGENT-RUNTIME_2026-05-04.md` corrected — 16 agents, SQL coordinator, config factory, requeue port, roadmap pointer
+- `MULTI_AGENT_INFRASTRUCTURE_SUMMARY.txt` rewritten — supersession notice, current implementation, valid roadmap, superseded assumptions
 
 ## Test Summary
 

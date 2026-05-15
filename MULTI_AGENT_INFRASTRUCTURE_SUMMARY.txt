@@ -1,225 +1,58 @@
-MULTI-AGENT INFRASTRUCTURE FOR TRAVEL_AGENCY_AGENT PRODUCT
-==========================================================
+MULTI-AGENT INFRASTRUCTURE — WAYPOINT OS
+=========================================
 
-YOU ARE BUILDING: 
-A travel agency application THAT IS itself a multi-agent agentic AI system
-→ Your product will CONTAIN and RUN AI agents as core functionality
-→ End users will INTERACT with these product agents
+This document was originally written before ADR-006 was accepted.  It captures
+the long-term product vision.  See `Docs/architecture/MULTI_AGENT_RUNTIME_ROADMAP.md`
+for the current roadmap and `Docs/status/MULTI_AGENT_RUNTIME_IMPLEMENTATION_TRACKER_2026-05-14.md`
+for what has been built.
 
-THIS IS NOT:
-Putting Hermes (your development agent) inside your product
-Using Hermes as an AI feature for your end users
+─────────────
+PRODUCT THESIS (still valid)
+─────────────
 
-✅ YOUR EXISTING STRONG FOUNDATION (Ready to Leverage):
-- Deterministic spine pipeline: NB01→NB02→NB03 (orchestration.py)
-- Hybrid decision engine: rules + LLM (decision.py) 
-- Suitability scoring: Tier 1/2 system (18 activities, suitability/)
-- Packet models: CanonicalPacket with source tracking (packet_models.py)
-- Gates/autonomy system: NB01/NB02 gates with verdicts (gates.py)
-- Fee calculation: integrated trip calculator (fees/calculation.py)
-- Frontend workbench: 5-screen React/TypeScript workflow
+Waypoint OS should become a multi-agent travel operating system where
+specialized product agents (Scout, Communicator, QA, Committee, Operator
+Copilot) use the deterministic spine as a pure judgment tool.  End users
+interact with these agents through the workbench.
 
-❌ WHAT'S MISSING (Multi-Agent Infrastructure to Build):
-You need the infrastructure to let your application RUN as a multi-agent system:
+─────────────
+CURRENT IMPLEMENTATION (ADR-006)
+─────────────
 
-1. **AGENT ORCHESTRATION LAYER** (src/agents/orchestrator.py)
-   - Agent Registry: Discover/instantiate agents by role/capability
-   - Message Bus: Inter-agent communication (pub-sub, direct, request-reply)
-   - Context Manager: Maintain agent state/memory between invocations
-   - Lifecycle Manager: Spawn, monitor, terminate, restart agents
-   - Supervision Tree: Hierarchical orchestration (orchestrators → leaves)
-   - Timeout/Retries: Configurable failure handling per agent
-   - Resource Isolation: Limit CPU/memory/API calls per agent for safety
+The repo now has (instead of orchestrator.py + base_agent.py):
 
-2. **BASE AGENT CLASSES** (src/agents/base_agent.py)
-   - Abstract Base Agent: Standard interface forall product agents
-   - Typed I/O Schemas: Pydantic/dataclass contracts foragent invocations
-   - Tool Access Pattern: Standard way for agents to request/use tools
-   - State Persistence: How agents save/load context between invocations
-   - Error Handling: Standardized exception handling/reporting
-   - Observability Hooks: Built-in logging/metrics/tracing integration
+- 16 static in-repo agents registered via build_default_registry()
+- AgentSupervisor with scan/execute passes and audit events
+- InMemoryWorkCoordinator and SQLWorkCoordinator (both tested)
+- SpineRequeuePort with Disabled and Inline implementations
+- RecoveryAgent using the port abstraction
+- Config factory with env-var validation
+- Runtime endpoint exposing health and config
+- 117 agent-related tests
 
-3. **SPECIALIZED PRODUCT AGENTS** (Implement your WAVE_B concepts):
-   - **Scout Agent** (src/agents/scout_agent.py): Proactive info retrieval
-     * Trigger: NB02 flags missing info (visa, requirements, etc.)
-     * Action: Spawn to gather real-time data from external APIs
-     * Output: Enrich CanonicalPacket with current verified information
-     * Tools: web (APIs), terminal (scripts), file (caching)
-   
-   - **Communicator Agent** (src/agents/communicator_agent.py): Clarification drafting
-     * Trigger: Pipeline hits blocked state (contradiction/ambiguity)  
-     * Action: Spawn to draft 1-3 empathetic, conversion-optimized messages
-     * Output: Message drafts for operator one-click selection via WhatsApp/email
-     * Tools: web (tone research), file (templates), terminal (LLM if local)
-   
-   - **QA Agent** (src/agents/qa_agent.py): Self-healing evaluation loop
-     * Trigger: Background process scanning failed/blocked audit trail
-     * Action: Spawn to analyze failures, sanitize PII, generate test fixtures
-     * Output: New test cases in data/fixtures/, optional PRs for improvements
-     * Tools: file (fixtures), git (terminal), web (research if needed)
-   
-   - **COMMITTEE SYSTEM** (Multi-Agent Debate):
-     * Budget Optimizer Agent (src/agents/budget_optimizer_agent.py): Cost-focused
-       - Mandate: Minimize cost while meeting constraints
-     * Experience Maximizer Agent (src/agents/experience_maximizer_agent.py): Comfort-focused  
-       - Mandate: Maximize comfort, minimize layovers, premium selection
-     * Trip Architect Agent (src/agents/trip_architect_agent.py): Synthesis
-       - Action: Review optimizer/maximizer proposals → present High/Med/Low tiers
-     * Coordination: Orchestrator spawns optimizers concurrently → Trip Architect synthesizes
-   
-   - **OPERATOR COPILOT AGENT** (src/agents/operator_copilot_agent.py): Conversational intervention
-     * Trigger: Operator natural language in workbench ("Actually this is a honeymoon...")
-     * Action: Parse intent, safely mutate CanonicalPacket, re-trigger pipeline
-     * Output: Updated pipeline state reflecting operator's correction/direction
-     * Tools: file (packet validation), optionally terminal/web for validation/research
+See `Docs/status/MULTI_AGENT_RUNTIME_IMPLEMENTATION_TRACKER_2026-05-14.md`.
 
-4. **AGENT COMMUNICATION PATTERNS** (In orchestrator):
-   - Direct Messaging: A → B (request/response)
-   - Publish-Subscribe: Events agents can subscribe to
-   - Blackboard/Tuple Space: Shared state space for coordination
-   - Request-Reply: Synchronous invocations for immediate collaboration
-   - Event Streaming: Asynchronous feeds for workflow progress
-   - Dead Letter Queues: Failed message handling for reliability
+─────────────
+VALID ROADMAP AGENTS (not yet implemented)
+─────────────
 
-5. **AGENT STATE & PERSISTENCE** (Per agent):
-   - Short-Term Context: Per invocation (in-memory during execution)
-   - Long-Term Memory: Across invocations (learned prefs/patterns - file/db storage)
-   - Persistent State: Agent definition/config/version (config files or app DB)
+These remain valid product direction:
 
-6. **AGENT OBSERVABILITY** (Build into agents/orchestrator):
-   - Structured Logging: JSON/logfmt per agent with trace/span IDs
-   - Metrics Collection: Latency, success rates, error rates, resource usage
-   - Distributed Tracing: Causality chains across agent interactions
-   - Health Checks: Liveness/readiness endpoints per agent type
-   - Debug Capabilities: Verbose logging, state snapshots, replay mechanisms
-   - Alerting Rules: High latency, errors, resource exhaustion, stuck workflows
+- Communicator Agent: blocked state → clarification drafts
+- Scout Agent: proactive info retrieval (visa, weather, safety)
+- QA Agent: analyze failures, propose fixtures and tests
+- Committee System: Budget Optimizer + Experience Maximizer + Trip Architect
+- Operator Copilot: natural-language intervention on canonical packet
 
-7. **INTEGRATION WITH EXISTING SPINE** (Critical Principle):
-   ```python
-   # AGENT WORKFLOW PATTERN: USE SPINE AS DETERMINISTIC TOOL
-   def handle_missing_info(self, packet: CanonicalPacket, flag: str) -> CanonicalPacket:
-       missing_context = self.extract_required_context(packet, flag) 
-       
-       # USE EXISTING SPINE AS-IS FOR ITS JUDGMENT (don't modify it!)
-       enriched_packet = self.spine_orchestrator.run_spine_with_context(
-           base_packet=packet,
-           additional_context=missing_context,
-           operating_mode="domain_specific_enrichment"  # e.g., "visa_requirements"
-       )
-       
-       return enriched_packet  # Return for further processing
-   ```
-   → **KEEP SPINE PURE**: Rules-first, LLM-for-judgment backbone unchanged
-   → **AGENTS USE SPINE AS TOOL**: Invoke it when they need deterministic judgment
-   → **AGENT STATE LIVES ELSEWHERE**: In orchestration layer, not in spine
+─────────────
+SUPERSEDED IMPLEMENTATION ASSUMPTIONS
+─────────────
 
-8. **CONFIGURATION & DEPLOYMENT**:
-   - Agent Registry Config: YAML/JSON defining agents, roles, capabilities, tool access
-   - Environment-Based Config: Dev/staging/prod variations + feature flags
-   - Deployment Units: Independent agent scaling + blue/green/canary updates
-   - Versioning Strategy: Semantic versioning + backward compat + deprecation paths
+These were described as "Phase 1 Foundation" but are no longer the approach:
 
-🎯 **IMMEDIATE NEXT STEPS**:
-
-**PHASE 1 - FOUNDATION** (Weeks 1-2):
-Build orchestrator layer + base agent classes
-- src/agents/orchestrator.py (Registry, Bus, Context, Lifecycle, Health)
-- src/agents/base_agent.py (Abstract base, contracts, tool access, persistence, observability)
-- Identify integration points with existing spine
-
-**PHASE 2 - HIGHEST VALUE AGENT** (Week 3):
-Build Communicator Agent (plugs into existing blocked state)
-- src/agents/communicator_agent.py (Input: blocked state → Output: message drafts)
-- Update frontend workbench for operator conversational input
-- Integrate: when NB02 blocked → spawn Communicator → enrich state → operator selects message
-
-**PHASE 3 - REMAINING AGENTS** (Weeks 4-6):
-Build Scout, QA, Committee, Operator Copilot agents + full integration
-- Scout Agent: Real-time data gathering for missing info triggers
-- QA Agent: Background audit trail analysis → test fixture generation  
-- Committee System: Budget Optimizer + Experience Maximizer + Trip Architect → tiered tiers
-- Full Orchestration Integration: Wire all agents, add observability, configuration mgmt
-
-🔑 **KEY PRINCIPLES TO MAINTAIN**:
-
-**1. SPINE PURITY PRINCIPLE**:
-→ Never modify your deterministic spine (NB01→NB02→NB03) to add agent state/logic  
-→ Always USE the existing spine AS A DETERMINISTIC TOOL when agents need judgment  
-→ Agent state/lifecycle/communication LIVE OUTSIDE THE SPINE in orchestration layer
-
-**2. YOUR SPINE IS THE JUDGMENT CORE**:
-→ Your excellent NB01→NB02→NB03 provides rules-first + LLM judgment  
-→ This is EXACTLY what agents need as their core processing tool  
-→ DON'T REPLACE IT — USE IT as trusted "judge" that agents rely on  
-→ Your spine becomes the foundation that agent workflows build upon
-
-**3. ADDITIVE IMPLEMENTATION**:
-→ Build alongside, don't break what works  
-→ Use feature flags for gradual rollout  
-→ Wrap existing functionality rather than replacing when possible  
-→ Maintain backward compatibility with existing API contracts  
-→ Only refactor when absolutely necessary for correctness  
-
-**4. CONTRACT-FIRST DESIGN**:
-→ Define clear interfaces BEFORE writing implementation  
-→ Typed I/O schemas (Pydantic/dataclass) for all agent interactions  
-→ Well-defined message formats for communication patterns  
-→ Clear lifecycle methods: initialize, execute, shutdown, health_check  
-→ Standardized error types and handling patterns  
-→ Explicit tool access declarations and permission models  
-
-**5. OBSERVABILITY FROM DAY ONE**:
-→ Build monitoring into agents/orchestrator from the start  
-→ Structured JSON/logfmt logging with trace/span correlations  
-→ Key metrics: latency, success/failure rates, error categorization, resource usage  
-→ Distributed Tracing: causality chains across agent interactions  
-→ Health Check Endpoints: liveness/readiness per agent type  
-→ Alerting Rules: production issue detection (high latency, errors, resource exhaustion)  
-
-**6. TEST-DRIVEN WITH VERIFICATION**:
-→ Use rigorous testing practices throughout  
-→ TDD: write failing test first for all new functionality  
-→ Property-Based Testing: for state machines and complex logic  
-→ Integration Tests: for agent communication patterns  
-→ End-to-End Tests: for complete agent workflows (Scout→Enrichment→Decision, etc.)  
-→ VERIFICATION-BEFORE-COMPLETION: checklists before considering features done  
-→ Test Observability: verify logs, metrics, traces are being generated correctly  
-
-**7. PROGRESSIVE DOCUMENTATION**:
-→ Keep documentation synchronized with implementation  
-→ Update module docstrings as you implement functions/classes  
-→ Add clear comments explaining WHY decisions were made (not just what)  
-→ Maintain ADRs (Architecture Decision Records) for significant choices  
-→ Update user-facing documentation as new agent capabilities become available  
-→ Document configuration options, deployment procedures, operational guides  
-
-📂 WHERE THIS CODE LIVES:
-All multi-agent infrastructure code belongs in:
-/Users/pranay/Projects/travel_agency_agent/src/agents/
-
-Specifically:
-- src/agents/orchestrator.py      (Main orchestration layer)
-- src/agents/base_agent.py        (Abstract base for all product agents)  
-- src/agents/communicator_agent.py (First high-value agent - plugs into blocked state)
-- src/agents/scout_agent.py       (Proactive information retrieval agent)
-- src/agents/qa_agent.py          (Self-healing evaluation loop agent)
-- src/agents/budget_optimizer_agent.py (Cost-focused agent for Committee)
-- src/agents/experience_maximizer_agent.py (Comfort-focused agent for Committee)
-- src/agents/trip_architect_agent.py (Synthesis agent for Committee)
-- src/agents/messages.py          (Message types, schemas if needed)
-- src/agents/config/              (YAML/JSON configuration files)
-
-Updates to existing code MINIMAL and FOCUSED:
-- spine-api/ or src/intake/        (Potential hook points for agent triggers)
-- frontend/                        (Operator interfaces for agent interventions)
-
-✅ **SUMMARY: WHAT YOU ARE BUILDING**:
-You are building the **multi-agent infrastructure layer** that enables your travel_agency_agent application to FUNCTION as a multi-agent agentic AI system — where specialized product agents (Scout, Communicator, QA, Committee, Operator Copilot) can spawn, communicate, collaborate, and make decisions together using your excellent deterministic spine as their pure judgment/core tool.
-
-All of this gets built using correct agent-oriented design patterns, rigorous TDD/verification practices, observability from day one, and additive, non-breaking implementation strategies.
-
-Files created:
-- Full Assessment: Docs/MULTI_AGENT_INFRASTRUCTURE_ASSESSMENT_2026-04-22.md
-- This Summary: MULTI_AGENT_INFRASTRUCTURE_SUMMARY.txt
-
-Ready to begin? Which component shall we start with first?
+- src/agents/orchestrator.py as mandatory first file
+- src/agents/base_agent.py as mandatory first file
+- Dynamic discovery as near-term registry mechanism
+- Message bus before durable work coordination exists
+- Agent memory before clear state model exists
+- Resource isolation before job execution model exists

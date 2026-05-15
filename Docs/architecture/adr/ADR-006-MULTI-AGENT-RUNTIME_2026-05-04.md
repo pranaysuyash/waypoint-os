@@ -1,7 +1,7 @@
 # ADR-006: Canonical Backend Multi-Agent Runtime
 
 - Date: 2026-05-04
-- Status: Accepted
+- Status: Accepted (revised 2026-05-14)
 
 ## Context
 
@@ -16,8 +16,10 @@ The runtime consists of:
 - `AgentDefinition` contracts for trigger, input, output, idempotency, retry, and failure behavior.
 - `AgentRegistry` with explicit in-repo registration only.
 - `AgentSupervisor` for startup/shutdown, scan/execute passes, health, and event emission.
-- `InMemoryWorkCoordinator` for single-owner leases, idempotent completion, retry, and poison/fail-closed behavior.
-- Two executable product agents beyond `RecoveryAgent`: `follow_up_agent` and `quality_escalation_agent`.
+- `InMemoryWorkCoordinator` and `SQLWorkCoordinator` for single-owner leases, idempotent completion, retry, and poison/fail-closed behavior. `SQLWorkCoordinator` is the production-recommended coordinator for multi-worker deployments.
+- **16 registered agents** in `build_default_registry()` (`src/agents/runtime.py`), including `front_door_agent`, `sales_activation_agent`, `follow_up_agent`, `quality_escalation_agent`, and 12 additional pipeline-support agents.
+- A `RecoveryAgent` that detects stuck trips and attempts autonomous recovery via a `SpineRequeuePort` abstraction.
+- A config factory (`spine_api/services/agent_runtime_factory.py`) that reads env vars at call time and constructs validated runtime bundles.
 
 ## Rationale
 
@@ -30,6 +32,8 @@ The lifecycle wiring follows FastAPI's documented lifespan pattern for startup/s
 - Operators and tests can inspect runtime health through `/agents/runtime`.
 - Product-agent audit history is queryable through `/agents/runtime/events` and `/trips/{trip_id}/agent-events`.
 - The current coordinator is correct for single-process backend runtime but is not a distributed lock. Production multi-worker deployment needs SQL-backed leases or a queue.
+- The runtime endpoint now exposes config (`deployment_mode`, `coordinator_backend`, `recovery_requeue_mode`, `lease_seconds`).
+- Long-term product agent vision is documented separately in `Docs/architecture/MULTI_AGENT_RUNTIME_ROADMAP.md`.
 
 ## Supersession / Route Safety
 
