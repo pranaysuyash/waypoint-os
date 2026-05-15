@@ -16,10 +16,10 @@ Audit report: `Docs/random_document_audit_v3_2026-05-04.md` (concept audit)
 
 | ID | Title | Priority | Status |
 |----|-------|----------|--------|
-| 001 | SQLWorkCoordinator Has Zero Direct Tests | P1 | Pending |
+| 001 | SQLWorkCoordinator Has Zero Direct Tests | P1 | Complete |
 | 002 | Recovery Agent Re-queue Path Disabled | P1 | Pending |
 | 003 | Multi-Agent Infrastructure Summary Docs Are Stale | P3 | Pending |
-| 004 | TRIPSTORE_BACKEND Coupling in Coordinator Selection | P3 | Pending |
+| 004 | TRIPSTORE_BACKEND Coupling in Coordinator Selection | P3 | Complete |
 | 005 | build_safety_alert_tool_from_env() StateDept Path Untested | P3 | Pending |
 
 ## Valid Roadmap Aspirations (not implemented, not stale)
@@ -47,35 +47,51 @@ These were described as "Phase 1 Foundation" but are no longer the planned appro
 
 ### Unit 1: SQLWorkCoordinator Tests
 
-**Status:** In Progress
+**Status:** Complete (19 tests, all passing)
 **Owner:** Current Agent
 **Files:**
-- `tests/test_agent_work_coordinator.py` (new)
+- `tests/test_agent_work_coordinator.py` (new, 19 tests)
+- `Docs/status/MULTI_AGENT_RUNTIME_IMPLEMENTATION_TRACKER_2026-05-14.md` (updated)
 **Tests:**
-- [ ] ensure_schema creates schema and is idempotent
-- [ ] acquire fresh work returns acquired and attempt=1
-- [ ] completed work returns idempotent_reentry_completed
-- [ ] poisoned work returns poisoned_fail_closed
-- [ ] active running lease blocks another owner
-- [ ] expired running lease can be reacquired
-- [ ] retry exhaustion poisons the work item
-- [ ] complete marks terminal completed state
-- [ ] fail marks terminal failed/poisoned state
-- [ ] snapshot returns backend=sql and correct counts
+- [x] ensure_schema creates schema and is idempotent
+- [x] acquire fresh work returns acquired and attempt=1
+- [x] completed work returns idempotent_reentry_completed
+- [x] poisoned work returns poisoned_fail_closed
+- [x] active running lease blocks another owner
+- [x] expired running lease can be reacquired
+- [x] retry exhaustion poisons the work item
+- [x] complete marks terminal completed state
+- [x] fail marks terminal failed/poisoned state
+- [x] snapshot returns backend=sql and correct counts
 
 ### Unit 2A: Runtime Config Factory
 
-**Status:** Pending
+**Status:** Complete
 **Files:**
 - `spine_api/services/agent_runtime_factory.py` (new)
-- `spine_api/server.py` (modify)
-- `tests/test_agent_runtime_factory.py` (new)
-**Scope:**
-- Decouple TRIPSTORE_BACKEND from AGENT_WORK_COORDINATOR
-- Add DEPLOYMENT_MODE env var
-- Add AGENT_RECOVERY_REQUEUE_MODE env var
-- Move runtime construction from server.py module-level globals into factory
-- Unit 2A only: no helper consolidation mixed in
+- `tests/test_agent_runtime_factory.py` (new, 17 tests)
+- `spine_api/server.py` (modified — replaced module-level construction with factory call)
+- `spine_api/routers/agent_runtime.py` (modified — runtime endpoint exposes config)
+
+**Behavior changes:**
+- `TRIPSTORE_BACKEND=sql` no longer forces `AGENT_WORK_COORDINATOR=sql`
+- `DEPLOYMENT_MODE` env var added (local | test | dogfood | beta | production)
+- `AGENT_RECOVERY_REQUEUE_MODE` env var added (disabled | inline) — config only, no behavior yet
+- `AGENT_WORK_COORDINATOR` defaults to `memory` instead of `None`
+- All invalid env values fail fast with ValueError
+- Runtime `/agents/runtime` endpoint exposes config
+- Backward compatible: `configure_runtime()`, `_agent_supervisor`, `_recovery_agent` module globals preserved for tests
+
+**Tests passed:** 91/91 across all 7 agent-related test files
+
+**Guardrails:**
+- [x] No InlineSpineRequeuePort in Unit 2A (config-only)
+- [x] No helper consolidation mixed in
+- [x] Backward compat with tests that monkeypatch globals
+- [x] Env vars read at call time, never at import time
+- [x] Coordinator selection explicit (no TRIPSTORE_BACKEND coupling)
+- [x] Fail-fast on invalid env values
+- [x] Runtime endpoint exposes config
 
 ### Unit 2B: Helper Consolidation (separate patch)
 

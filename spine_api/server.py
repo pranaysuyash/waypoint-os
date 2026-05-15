@@ -299,6 +299,7 @@ from src.analytics.policy_rules import ready_gate_failures
 from src.agents.recovery_agent import RecoveryAgent
 from src.agents.runtime import AgentSupervisor, build_default_registry
 from spine_api.services.agent_work_coordinator import SQLWorkCoordinator
+from spine_api.services.agent_runtime_factory import build_agent_runtime
 
 
 class _TripStoreAdapter:
@@ -335,23 +336,13 @@ class _AuditStoreAdapter:
 
 _agent_trip_repo = _TripStoreAdapter()
 _agent_audit_sink = _AuditStoreAdapter()
-_agent_work_coordinator = (
-    SQLWorkCoordinator(lease_seconds=int(os.environ.get("AGENT_WORK_LEASE_SECONDS", "60")))
-    if os.environ.get("AGENT_WORK_COORDINATOR", "").lower() == "sql" or os.environ.get("TRIPSTORE_BACKEND", "").lower() == "sql"
-    else None
+_agent_runtime_bundle = build_agent_runtime(
+    _trip_repo=_agent_trip_repo,
+    _audit_sink=_agent_audit_sink,
 )
-_recovery_agent = RecoveryAgent(
-    audit_store=_agent_audit_sink,
-    trip_repo=_agent_trip_repo,
-    # spine_runner left None — re-queue not wired until async job queue is added
-)
-_agent_supervisor = AgentSupervisor(
-    registry=build_default_registry(),
-    trip_repo=_agent_trip_repo,
-    audit=_agent_audit_sink,
-    interval_seconds=int(os.environ.get("AGENT_SUPERVISOR_INTERVAL_S", "300")),
-    coordinator=_agent_work_coordinator,
-)
+_agent_work_coordinator = _agent_runtime_bundle.coordinator
+_recovery_agent = _agent_runtime_bundle.recovery_agent
+_agent_supervisor = _agent_runtime_bundle.supervisor
 
 # Auth — Phase 1
 try:
@@ -1075,6 +1066,7 @@ app.include_router(inbox_router.router, dependencies=[Depends(_auth_or_skip)])
 agent_runtime_router.configure_runtime(
     agent_supervisor=_agent_supervisor,
     recovery_agent=_recovery_agent,
+    runtime_config=_agent_runtime_bundle.config.to_dict(),
 )
 app.include_router(agent_runtime_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(analytics_router.router)

@@ -37,6 +37,7 @@ import { ExtractionHistoryPanel } from '@/components/workspace/panels/Extraction
 import BookingExecutionPanel from '@/components/workspace/panels/BookingExecutionPanel';
 import ConfirmationPanel from '@/components/workspace/panels/ConfirmationPanel';
 import ExecutionTimelinePanel from '@/components/workspace/panels/ExecutionTimelinePanel';
+import NextActionBanner from '@/components/workspace/panels/NextActionBanner';
 import type { ReadinessAssessment } from '@/types/spine';
 
 interface OpsPanelProps {
@@ -499,6 +500,9 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
     try {
       await deleteDocument(trip.id, docId);
       await fetchDocuments();
+      setExtractions((prev) => { const n = { ...prev }; delete n[docId]; return n; });
+      setExtractionSelections((prev) => { const n = { ...prev }; delete n[docId]; return n; });
+      setExtractionConflicts((prev) => { const n = { ...prev }; delete n[docId]; return n; });
     } catch (e) {
       setDocError(e instanceof Error ? e.message : 'Delete failed');
     } finally {
@@ -570,6 +574,15 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
 
   return (
     <div data-testid="ops-panel" className="space-y-6">
+      {/* Next action banner — derived from already-loaded state, no new API calls */}
+      {!documentsOnly && (
+        <NextActionBanner
+          pendingData={pendingData}
+          documents={documents}
+          readiness={readiness}
+        />
+      )}
+
       {/* No readiness — show informational notice but keep all Ops sections available */}
       {!documentsOnly && !readiness && (
         <div data-testid="ops-readiness-empty" className="rounded-lg border border-[#30363d] bg-[#0f1115] px-4 py-3 text-sm text-[#8b949e]">
@@ -1125,14 +1138,6 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
             </div>
           )}
         </div>
-        <div
-          data-testid="ops-documents-canonical-path-hint"
-          className="mb-3 rounded border border-blue-900/40 bg-blue-950/20 px-3 py-2 text-xs text-blue-200"
-        >
-          Canonical workflow: use this Ops panel for document upload, review, extraction, and apply.
-          The dedicated <code>/documents</code> module remains staged and disabled until rollout readiness.
-        </div>
-
         {docError && (
           <div className="mb-3 text-xs text-red-400">{docError}</div>
         )}

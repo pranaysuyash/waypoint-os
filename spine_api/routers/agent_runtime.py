@@ -25,13 +25,15 @@ router = APIRouter()
 
 _agent_supervisor: Any = None
 _recovery_agent: Any = None
+_runtime_config: dict[str, Any] | None = None
 
 
-def configure_runtime(*, agent_supervisor: Any, recovery_agent: Any) -> None:
+def configure_runtime(*, agent_supervisor: Any, recovery_agent: Any, runtime_config: dict[str, Any] | None = None) -> None:
     """Wire runtime singletons created by the FastAPI application shell."""
-    global _agent_supervisor, _recovery_agent
+    global _agent_supervisor, _recovery_agent, _runtime_config
     _agent_supervisor = agent_supervisor
     _recovery_agent = recovery_agent
+    _runtime_config = runtime_config
 
 
 def _supervisor() -> Any:
@@ -60,7 +62,7 @@ def get_agent_runtime(
     _ = agency
     supervisor = _supervisor()
     recovery = _recovery()
-    return {
+    result = {
         "registry": supervisor.registry.definitions(),
         "supervisor": supervisor.health(),
         "recovery_agent": {
@@ -73,6 +75,9 @@ def get_agent_runtime(
             "failure_contract": "Fail closed by emitting agent_failed audit events.",
         },
     }
+    if _runtime_config:
+        result["config"] = _runtime_config
+    return result
 
 
 @router.post("/agents/runtime/run-once")
