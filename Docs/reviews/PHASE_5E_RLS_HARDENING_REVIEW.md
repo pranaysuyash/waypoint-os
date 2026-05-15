@@ -183,7 +183,7 @@ The `SQLTripStore` has dual APIs: `get_trip()` (reads ContextVar) and `get_trip_
 
 | Risk | Mitigation |
 |---|---|
-| New developer adds endpoint with `Depends(get_db)` instead of `Depends(get_rls_db)` | `scripts/check_rls_coverage.py` CI guard scans for bare `get_db` usage on tenant-table-touching endpoints |
+| New developer adds endpoint with `Depends(get_db)` instead of `Depends(get_rls_db)` | `scripts/check_rls_coverage.py` checks that all SQLAlchemy models with `agency_id` are in `RLS_TENANT_TABLES` or `RLS_EXCLUDED_AGENCY_TABLES`. Endpoint-level session misuse is not yet machine-enforced — relies on code review and the `get_rls_db` / `rls_session` patterns being well-established. |
 | Migration drops FORCE RLS during upgrade/downgrade cycle | Phase 5E migration is idempotent; startup `_validate_rls_runtime_posture_configuration()` warns (dev) or fails (prod) |
 | `tripstore_session_maker()` creates separate engine per event loop | Each loop gets its own engine, but `set_config` is per-transaction, so no cross-loop bleed |
 | DB restart loses manually-applied FORCE RLS | Alembic migration re-applies on `alembic upgrade head`; startup posture validation catches drift |

@@ -100,6 +100,10 @@ class InlineSpineRequeuePort:
     Requires the trip record to have enough source/request data to rebuild a
     valid pipeline execution.  Returns unsupported/not-accepted if context
     is insufficient.
+
+    The injected run_spine callable must accept at minimum:
+        envelopes (list[SourceEnvelope]), stage (str)
+    Additional keyword arguments may be accepted but are not required.
     """
 
     def __init__(self, run_spine: Callable[..., Any]):
@@ -115,9 +119,7 @@ class InlineSpineRequeuePort:
             )
         stage = str(trip_record.get("stage") or trip_record.get("status") or "discovery")
         try:
-            from src.intake.orchestration import run_spine_once as _default_run
-            runner = self._run_spine
-            runner(
+            self._run_spine(
                 envelopes=[raw_input],
                 stage=stage,
             )

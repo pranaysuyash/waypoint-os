@@ -15,13 +15,14 @@ import uuid as uuid_mod
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
 
 spine_api_dir = Path(__file__).parent.parent / "spine_api"
 if str(spine_api_dir) not in sys.path:
     sys.path.insert(0, str(spine_api_dir))
 
 
-@pytest.fixture()
+@pytest_asyncio.fixture()
 async def _test_db():
     """Create a fresh async DB session on the test's own event loop.
 
