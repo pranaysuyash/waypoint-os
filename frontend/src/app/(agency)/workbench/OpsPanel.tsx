@@ -5,6 +5,7 @@ import { ClientDateTime } from '@/hooks/useClientDate';
 import {
   type Trip,
   type BookingData,
+  type BookingDocument,
   type BookingTraveler,
   type PaymentStatus,
   type PaymentTracking,
@@ -12,7 +13,6 @@ import {
   type CollectionLinkInfo,
   type CollectionLinkStatus,
   type PendingBookingDataResponse,
-  type BookingDocument,
   getBookingData,
   updateBookingData,
   generateCollectionLink,
@@ -21,23 +21,13 @@ import {
   getPendingBookingData,
   acceptPendingBookingData,
   rejectPendingBookingData,
-  getDocuments,
-  uploadDocument,
-  acceptDocument,
-  rejectDocument,
-  deleteDocument,
-  getDocumentDownloadUrl,
-  type ExtractionResponse,
-  extractDocument,
-  getExtraction,
-  applyExtraction,
-  rejectExtraction,
 } from '@/lib/api-client';
-import { ExtractionHistoryPanel } from '@/components/workspace/panels/ExtractionHistoryPanel';
 import BookingExecutionPanel from '@/components/workspace/panels/BookingExecutionPanel';
 import ConfirmationPanel from '@/components/workspace/panels/ConfirmationPanel';
 import ExecutionTimelinePanel from '@/components/workspace/panels/ExecutionTimelinePanel';
 import NextActionBanner from '@/components/workspace/panels/NextActionBanner';
+import DocumentsZone from '@/components/workspace/panels/DocumentsZone';
+import PaymentTrackingCard from '@/components/workspace/panels/PaymentTrackingCard';
 import type { ReadinessAssessment } from '@/types/spine';
 
 interface OpsPanelProps {
@@ -205,33 +195,12 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
   const [pendingData, setPendingData] = useState<BookingData | null>(null);
   const [pendingLoading, setPendingLoading] = useState(false);
   const [accepting, setAccepting] = useState(false);
+
+  // Mirror of DocumentsZone's document list for NextActionBanner (no new API call)
+  const [opsDocs, setOpsDocs] = useState<BookingDocument[]>([]);
   const [rejecting, setRejecting] = useState(false);
   const [pendingError, setPendingError] = useState<string | null>(null);
 
-  // Document state (Phase 4B)
-  const [documents, setDocuments] = useState<BookingDocument[]>([]);
-  const [docsLoading, setDocsLoading] = useState(false);
-  const [docUploading, setDocUploading] = useState(false);
-  const [docError, setDocError] = useState<string | null>(null);
-  const [uploadDocType, setUploadDocType] = useState<string>('passport');
-  const [docActionLoading, setDocActionLoading] = useState<string | null>(null);
-
-  // Extraction state (Phase 4C)
-  const [extractions, setExtractions] = useState<Record<string, ExtractionResponse>>({});
-  const [extractingDocId, setExtractingDocId] = useState<string | null>(null);
-  const [extractionAction, setExtractionAction] = useState<string | null>(null);
-  const [extractionError, setExtractionError] = useState<string | null>(null);
-  // Per-extraction apply selections
-  const [extractionSelections, setExtractionSelections] = useState<Record<string, {
-    travelerId: string;
-    selectedFields: string[];
-  }>>({});
-  // Conflict state - shown until user confirms overwrite
-  const [extractionConflicts, setExtractionConflicts] = useState<Record<string, Array<{
-    field_name: string;
-    existing_value: string;
-    extracted_value: string;
-  }>>>({});
 
   // Lazy fetch booking data
   const fetchBookingData = useCallback(async () => {
@@ -291,24 +260,6 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
 
     return () => { cancelled = true; };
   }, [trip?.id, canGenerateLink]);
-
-  // Fetch documents
-  const fetchDocuments = useCallback(async () => {
-    if (!trip?.id) return;
-    setDocsLoading(true);
-    try {
-      const resp = await getDocuments(trip.id);
-      setDocuments(resp.documents);
-    } catch {
-      // No documents is fine
-    } finally {
-      setDocsLoading(false);
-    }
-  }, [trip?.id]);
-
-  useEffect(() => {
-    if (trip?.id) fetchDocuments();
-  }, [trip?.id, fetchDocuments]);
 
   // Start editing
   const startEdit = useCallback(() => {
@@ -432,138 +383,6 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
     }
   }, [trip?.id]);
 
-  // Document upload handler
-  const handleDocUpload = useCallback(async () => {
-    if (!trip?.id) return;
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.pdf,.jpg,.jpeg,.png';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      setDocUploading(true);
-      setDocError(null);
-      try {
-        await uploadDocument(trip.id, file, uploadDocType);
-        await fetchDocuments();
-      } catch (e) {
-        setDocError(e instanceof Error ? e.message : 'Upload failed');
-      } finally {
-        setDocUploading(false);
-      }
-    };
-    input.click();
-  }, [trip?.id, uploadDocType, fetchDocuments]);
-
-  // Document download handler
-  const handleDocDownload = useCallback(async (docId: string) => {
-    if (!trip?.id) return;
-    try {
-      const { url } = await getDocumentDownloadUrl(trip.id, docId);
-      const fullUrl = url.startsWith('/') ? `${window.location.origin}${url}` : url;
-      window.open(fullUrl, '_blank');
-    } catch {
-      setDocError('Failed to get download URL');
-    }
-  }, [trip?.id]);
-
-  // Document accept/reject/delete handlers
-  const handleDocAccept = useCallback(async (docId: string) => {
-    if (!trip?.id) return;
-    setDocActionLoading(docId);
-    try {
-      await acceptDocument(trip.id, docId);
-      await fetchDocuments();
-    } catch (e) {
-      setDocError(e instanceof Error ? e.message : 'Accept failed');
-    } finally {
-      setDocActionLoading(null);
-    }
-  }, [trip?.id, fetchDocuments]);
-
-  const handleDocReject = useCallback(async (docId: string) => {
-    if (!trip?.id) return;
-    setDocActionLoading(docId);
-    try {
-      await rejectDocument(trip.id, docId);
-      await fetchDocuments();
-    } catch (e) {
-      setDocError(e instanceof Error ? e.message : 'Reject failed');
-    } finally {
-      setDocActionLoading(null);
-    }
-  }, [trip?.id, fetchDocuments]);
-
-  const handleDocDelete = useCallback(async (docId: string) => {
-    if (!trip?.id) return;
-    setDocActionLoading(docId);
-    try {
-      await deleteDocument(trip.id, docId);
-      await fetchDocuments();
-      setExtractions((prev) => { const n = { ...prev }; delete n[docId]; return n; });
-      setExtractionSelections((prev) => { const n = { ...prev }; delete n[docId]; return n; });
-      setExtractionConflicts((prev) => { const n = { ...prev }; delete n[docId]; return n; });
-    } catch (e) {
-      setDocError(e instanceof Error ? e.message : 'Delete failed');
-    } finally {
-      setDocActionLoading(null);
-    }
-  }, [trip?.id, fetchDocuments]);
-
-  // Phase 4C: Extraction handlers
-  const handleExtract = useCallback(async (docId: string) => {
-    if (!trip?.id) return;
-    setExtractingDocId(docId);
-    setExtractionError(null);
-    try {
-      const resp = await extractDocument(trip.id, docId);
-      setExtractions((prev) => ({ ...prev, [docId]: resp }));
-    } catch (e) {
-      setExtractionError(e instanceof Error ? e.message : 'Extraction failed');
-    } finally {
-      setExtractingDocId(null);
-    }
-  }, [trip?.id]);
-
-  const handleApplyExtraction = useCallback(async (docId: string, travelerId: string, fields: string[], allowOverwrite = false) => {
-    if (!trip?.id) return;
-    setExtractionAction(docId);
-    setExtractionError(null);
-    try {
-      const resp = await applyExtraction(trip.id, docId, {
-        traveler_id: travelerId,
-        fields_to_apply: fields,
-        allow_overwrite: allowOverwrite,
-      });
-      if (resp.applied) {
-        if (resp.extraction) {
-          setExtractions((prev) => ({ ...prev, [docId]: resp.extraction! }));
-        }
-        setExtractionConflicts((prev) => { const n = { ...prev }; delete n[docId]; return n; });
-      } else if (resp.conflicts.length > 0) {
-        setExtractionConflicts((prev) => ({ ...prev, [docId]: resp.conflicts }));
-      }
-    } catch (e) {
-      setExtractionError(e instanceof Error ? e.message : 'Apply failed');
-    } finally {
-      setExtractionAction(null);
-    }
-  }, [trip?.id]);
-
-  const handleRejectExtraction = useCallback(async (docId: string) => {
-    if (!trip?.id) return;
-    setExtractionAction(docId);
-    setExtractionError(null);
-    try {
-      const resp = await rejectExtraction(trip.id, docId);
-      setExtractions((prev) => ({ ...prev, [docId]: resp }));
-    } catch (e) {
-      setExtractionError(e instanceof Error ? e.message : 'Reject failed');
-    } finally {
-      setExtractionAction(null);
-    }
-  }, [trip?.id]);
-
   const tiers = readiness?.tiers ?? {};
   const tierEntries = Object.entries(tiers);
   const signals = readiness?.signals;
@@ -578,7 +397,7 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
       {!documentsOnly && (
         <NextActionBanner
           pendingData={pendingData}
-          documents={documents}
+          documents={opsDocs}
           readiness={readiness}
         />
       )}
@@ -807,42 +626,7 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
               </div>
             )}
             {bookingData.payment_tracking && (
-              <div
-                data-testid="ops-payment-tracking"
-                className="mt-3 border border-[#30363d] rounded p-3 text-xs"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium text-[#e6edf3]">Payment & refund tracking</span>
-                  <span className="rounded bg-blue-950/40 px-2 py-0.5 text-blue-300">Status-only tracking</span>
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-[#8b949e] sm:grid-cols-4">
-                  <div>
-                    <div>Agreed</div>
-                    <div className="text-[#e6edf3]">
-                      {formatMoney(bookingData.payment_tracking.agreed_amount, bookingData.payment_tracking.currency || 'INR')}
-                    </div>
-                  </div>
-                  <div>
-                    <div>Paid</div>
-                    <div className="text-[#e6edf3]">
-                      {formatMoney(bookingData.payment_tracking.amount_paid, bookingData.payment_tracking.currency || 'INR')}
-                    </div>
-                  </div>
-                  <div>
-                    <div>Balance due</div>
-                    <div className="text-[#e6edf3]">
-                      {formatMoney(bookingData.payment_tracking.balance_due, bookingData.payment_tracking.currency || 'INR')}
-                    </div>
-                  </div>
-                  <div>
-                    <div>Status</div>
-                    <div className="text-[#e6edf3]">{formatLabel(bookingData.payment_tracking.payment_status || 'unknown')}</div>
-                  </div>
-                </div>
-                <div className="mt-2 text-[#8b949e]">
-                  Refund: <span className="text-[#e6edf3]">{formatLabel(bookingData.payment_tracking.refund_status || 'not_applicable')}</span>
-                </div>
-              </div>
+              <PaymentTrackingCard paymentTracking={bookingData.payment_tracking} />
             )}
             <button
               data-testid="ops-edit-btn"
@@ -1109,291 +893,15 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
         </div>
       )}
 
-      {/* Documents section (Phase 4B) */}
-      <div data-testid="ops-documents" className="border border-[#30363d] rounded-lg p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-sm font-medium text-[#e6edf3]">Documents</h4>
-          {canGenerateLink && (
-            <div className="flex items-center gap-2">
-              <select
-                value={uploadDocType}
-                onChange={(e) => setUploadDocType(e.target.value)}
-                className="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-[#e6edf3]"
-              >
-                <option value="passport">Passport</option>
-                <option value="visa">Visa</option>
-                <option value="insurance">Insurance</option>
-                <option value="flight_ticket">Flight Ticket</option>
-                <option value="hotel_confirmation">Hotel Confirmation</option>
-                <option value="other">Other</option>
-              </select>
-              <button
-                data-testid="ops-document-upload-btn"
-                className="text-xs px-3 py-1 rounded bg-blue-900/50 text-blue-300 hover:bg-blue-800/50 disabled:opacity-50"
-                onClick={handleDocUpload}
-                disabled={docUploading}
-              >
-                {docUploading ? 'Uploading…' : 'Upload'}
-              </button>
-            </div>
-          )}
-        </div>
-        {docError && (
-          <div className="mb-3 text-xs text-red-400">{docError}</div>
-        )}
-
-        {docsLoading && (
-          <span className="text-xs text-[#8b949e]">Loading documents…</span>
-        )}
-
-        {!docsLoading && documents.length === 0 && (
-          <span className="text-xs text-[#8b949e]">No documents uploaded yet.</span>
-        )}
-
-        {!docsLoading && documents.length > 0 && (
-          <div data-testid="ops-document-list" className="space-y-2">
-            {documents.map((doc) => (
-              <div
-                key={doc.id}
-                data-testid={`ops-document-${doc.id}`}
-                className="flex items-center justify-between py-2 px-3 rounded border border-[#30363d]"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-medium text-[#e6edf3]">
-                    {doc.document_type.replace('_', ' ')}
-                  </span>
-                  <span className="text-xs text-[#8b949e]">
-                    {doc.filename_ext} · {(doc.size_bytes / 1024).toFixed(0)}KB
-                  </span>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded ${
-                      doc.status === 'pending_review'
-                        ? 'bg-amber-900/50 text-amber-300'
-                        : doc.status === 'accepted'
-                          ? 'bg-emerald-900/50 text-emerald-300'
-                          : doc.status === 'rejected'
-                            ? 'bg-red-900/50 text-red-300'
-                            : 'bg-[#30363d] text-[#8b949e]'
-                    }`}
-                  >
-                    {doc.status.replace('_', ' ')}
-                  </span>
-                  {doc.uploaded_by_type === 'customer' && (
-                    <span className="text-xs px-2 py-0.5 rounded bg-blue-900/50 text-blue-300">
-                      Customer
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1">
-                  {doc.status === 'pending_review' && (
-                    <>
-                      <button
-                        data-testid={`ops-document-${doc.id}-accept-btn`}
-                        className="text-xs px-2 py-1 rounded bg-emerald-900/50 text-emerald-300 hover:bg-emerald-800/50 disabled:opacity-50"
-                        onClick={() => handleDocAccept(doc.id)}
-                        disabled={docActionLoading === doc.id}
-                      >
-                        Accept
-                      </button>
-                      <button
-                        data-testid={`ops-document-${doc.id}-reject-btn`}
-                        className="text-xs px-2 py-1 rounded bg-red-900/50 text-red-300 hover:bg-red-800/50 disabled:opacity-50"
-                        onClick={() => handleDocReject(doc.id)}
-                        disabled={docActionLoading === doc.id}
-                      >
-                        Reject
-                      </button>
-                    </>
-                  )}
-                  {doc.status === 'accepted' && (
-                    <>
-                      <button
-                        data-testid={`ops-document-${doc.id}-download-btn`}
-                        className="text-xs px-2 py-1 rounded bg-[#30363d] text-[#e6edf3] hover:bg-[#484f58]"
-                        onClick={() => handleDocDownload(doc.id)}
-                      >
-                        Download
-                      </button>
-                      <button
-                        data-testid={`ops-document-${doc.id}-delete-btn`}
-                        className="text-xs px-2 py-1 rounded bg-red-900/50 text-red-300 hover:bg-red-800/50 disabled:opacity-50"
-                        onClick={() => handleDocDelete(doc.id)}
-                        disabled={docActionLoading === doc.id}
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
-                  {doc.status === 'rejected' && (
-                    <button
-                      data-testid={`ops-document-${doc.id}-delete-btn`}
-                      className="text-xs px-2 py-1 rounded bg-red-900/50 text-red-300 hover:bg-red-800/50 disabled:opacity-50"
-                      onClick={() => handleDocDelete(doc.id)}
-                      disabled={docActionLoading === doc.id}
-                    >
-                      Delete
-                    </button>
-                  )}
-                  {/* Phase 4C: Extract button (pending_review or accepted) */}
-                  {(doc.status === 'pending_review' || doc.status === 'accepted') && !extractions[doc.id] && (
-                    <button
-                      data-testid={`ops-doc-extract-btn-${doc.id}`}
-                      className="text-xs px-2 py-1 rounded bg-purple-900/50 text-purple-300 hover:bg-purple-800/50 disabled:opacity-50"
-                      onClick={() => handleExtract(doc.id)}
-                      disabled={extractingDocId === doc.id}
-                    >
-                      {extractingDocId === doc.id ? 'Extracting…' : 'Extract'}
-                    </button>
-                  )}
-                </div>
-                {/* Phase 4C: Extraction results */}
-                {extractions[doc.id] && trip && (
-                  <div data-testid={`ops-extraction-${doc.id}`} className="mt-2 border-t border-[#30363d] pt-2 space-y-2">
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="text-[#8b949e]">Extraction:</span>
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                        extractions[doc.id].status === 'applied' ? 'bg-emerald-900/50 text-emerald-300' :
-                        extractions[doc.id].status === 'rejected' ? 'bg-red-900/50 text-red-300' :
-                        'bg-yellow-900/50 text-yellow-300'
-                      }`}>
-                        {extractions[doc.id].status.replace('_', ' ')}
-                      </span>
-                      {extractions[doc.id].overall_confidence !== null && (
-                        <span className="text-[#8b949e]">
-                          confidence: {Math.round(extractions[doc.id].overall_confidence! * 100)}%
-                        </span>
-                      )}
-                    </div>
-                    <div data-testid={`ops-extraction-fields-${doc.id}`} className="space-y-1">
-                      {extractions[doc.id].fields.flatMap((f) => f.present ? [(
-                        <div key={f.field_name} className="flex items-center gap-2 text-xs">
-                          {extractions[doc.id].status === 'pending_review' && (
-                            <input
-                              type="checkbox"
-                              data-testid={`ops-extraction-field-cb-${doc.id}-${f.field_name}`}
-                              checked={extractionSelections[doc.id]?.selectedFields.includes(f.field_name) ?? false}
-                              onChange={(e) => {
-                              setExtractionSelections((prev) => {
-                                const cur = prev[doc.id] ?? { travelerId: '', selectedFields: [] };
-                                const fields = e.target.checked
-                                  ? [...cur.selectedFields, f.field_name]
-                                  : cur.selectedFields.filter((s) => s !== f.field_name);
-                                return { ...prev, [doc.id]: { ...cur, selectedFields: fields } };
-                              });
-                            }}
-                            className="accent-purple-400"
-                          />
-                          )}
-                          <span className="text-[#8b949e] w-32">{f.field_name.replace(/_/g, ' ')}:</span>
-                          <span className="text-[#e6edf3]">{f.value ?? '-'}</span>
-                          <span className={`text-[10px] px-1 rounded ${
-                            f.confidence >= 0.9 ? 'text-emerald-400' :
-                            f.confidence >= 0.7 ? 'text-yellow-400' :
-                            'text-red-400'
-                          }`}>
-                            {Math.round(f.confidence * 100)}%
-                          </span>
-                        </div>
-                      )] : [])}
-                    </div>
-                    {extractions[doc.id].status === 'pending_review' && (
-                      <div className="space-y-2">
-                        {/* Traveler selector */}
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="text-[#8b949e]">Apply to:</span>
-                          <select
-                            data-testid={`ops-extraction-traveler-select-${doc.id}`}
-                            value={extractionSelections[doc.id]?.travelerId ?? ''}
-                            onChange={(e) => {
-                              setExtractionSelections((prev) => {
-                                const cur = prev[doc.id] ?? { travelerId: '', selectedFields: [] };
-                                return { ...prev, [doc.id]: { ...cur, travelerId: e.target.value } };
-                              });
-                            }}
-                            className="bg-[#0d1117] border border-[#30363d] rounded text-[#e6edf3] px-2 py-1 text-xs"
-                          >
-                            <option value="">Select traveler</option>
-                            {(bookingData?.travelers ?? []).map((t) => (
-                              <option key={t.traveler_id} value={t.traveler_id}>
-                                {t.traveler_id}{t.full_name ? ` - ${t.full_name}` : ''}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        {/* Conflict display */}
-                        {extractionConflicts[doc.id] && extractionConflicts[doc.id].length > 0 && (
-                          <div data-testid={`ops-extraction-conflicts-${doc.id}`} className="text-xs space-y-1 bg-yellow-900/20 border border-yellow-800/30 rounded p-2">
-                            <div className="text-yellow-300 font-medium">Conflicts detected:</div>
-                            {extractionConflicts[doc.id].map((c) => (
-                              <div key={c.field_name} className="text-yellow-200">
-                                {c.field_name.replace(/_/g, ' ')}: {c.existing_value} → {c.extracted_value}
-                              </div>
-                            ))}
-                            <button
-                              data-testid={`ops-extraction-overwrite-btn-${doc.id}`}
-                              className="text-xs px-2 py-1 rounded bg-yellow-900/50 text-yellow-300 hover:bg-yellow-800/50 mt-1"
-                              onClick={() => {
-                                const sel = extractionSelections[doc.id];
-                                if (sel && sel.travelerId && sel.selectedFields.length > 0) {
-                                  handleApplyExtraction(doc.id, sel.travelerId, sel.selectedFields, true);
-                                }
-                              }}
-                              disabled={extractionAction === doc.id}
-                            >
-                              {extractionAction === doc.id ? 'Overwriting…' : 'Apply with overwrite'}
-                            </button>
-                          </div>
-                        )}
-                        {/* Apply / Reject buttons */}
-                        <div className="flex items-center gap-2">
-                          <button
-                            data-testid={`ops-extraction-apply-btn-${doc.id}`}
-                            className="text-xs px-2 py-1 rounded bg-emerald-900/50 text-emerald-300 hover:bg-emerald-800/50 disabled:opacity-50"
-                            onClick={() => {
-                              const sel = extractionSelections[doc.id];
-                              if (sel?.travelerId && sel.selectedFields.length > 0) {
-                                handleApplyExtraction(doc.id, sel.travelerId, sel.selectedFields, false);
-                              }
-                            }}
-                            disabled={
-                              extractionAction === doc.id ||
-                              !extractionSelections[doc.id]?.travelerId ||
-                              !(extractionSelections[doc.id]?.selectedFields.length > 0)
-                            }
-                          >
-                            {extractionAction === doc.id ? 'Applying…' : 'Apply selected'}
-                          </button>
-                          <button
-                            data-testid={`ops-extraction-reject-btn-${doc.id}`}
-                            className="text-xs px-2 py-1 rounded bg-red-900/50 text-red-300 hover:bg-red-800/50 disabled:opacity-50"
-                            onClick={() => handleRejectExtraction(doc.id)}
-                            disabled={extractionAction === doc.id}
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    {extractionError && extractionAction === doc.id && (
-                      <div className="text-xs text-red-400">{extractionError}</div>
-                    )}
-                  </div>
-                )}
-                {extractions[doc.id] && (
-                  <ExtractionHistoryPanel
-                    tripId={trip!.id}
-                    documentId={doc.id}
-                    extraction={extractions[doc.id]}
-                    onRetryComplete={(updated) => {
-                      setExtractions((prev) => ({ ...prev, [doc.id]: updated }));
-                    }}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Documents */}
+      {trip?.id && (
+        <DocumentsZone
+          tripId={trip.id}
+          canUpload={canGenerateLink}
+          travelers={bookingData?.travelers ?? []}
+          onDocumentsChange={setOpsDocs}
+        />
+      )}
 
       {/* Booking execution tasks (Phase 5A) */}
       {!documentsOnly && trip?.id && <BookingExecutionPanel tripId={trip.id} stage={stage ?? undefined} />}

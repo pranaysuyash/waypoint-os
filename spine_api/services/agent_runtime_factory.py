@@ -15,6 +15,7 @@ from typing import Any, Optional
 
 from src.agents.recovery_agent import RecoveryAgent
 from src.agents.runtime import AgentSupervisor, build_default_registry
+from spine_api.services.agent_runtime_adapters import TripStoreAdapter, AuditStoreAdapter
 from spine_api.services.agent_work_coordinator import SQLWorkCoordinator
 
 logger = logging.getLogger("agent_runtime_factory")
@@ -148,6 +149,25 @@ def build_agent_runtime_config() -> AgentRuntimeConfig:
     )
 
 
+def _validate_config(config: AgentRuntimeConfig) -> None:
+    """Reject direct construction with invalid values (bypasses env validation)."""
+    if config.coordinator_backend not in VALID_COORDINATORS:
+        raise ValueError(
+            f"Invalid coordinator_backend={config.coordinator_backend!r}. "
+            f"Must be one of: {', '.join(sorted(VALID_COORDINATORS))}"
+        )
+    if config.deployment_mode not in VALID_DEPLOYMENT_MODES:
+        raise ValueError(
+            f"Invalid deployment_mode={config.deployment_mode!r}. "
+            f"Must be one of: {', '.join(sorted(VALID_DEPLOYMENT_MODES))}"
+        )
+    if config.recovery_requeue_mode not in VALID_REQUEUE_MODES:
+        raise ValueError(
+            f"Invalid recovery_requeue_mode={config.recovery_requeue_mode!r}. "
+            f"Must be one of: {', '.join(sorted(VALID_REQUEUE_MODES))}"
+        )
+
+
 def build_agent_runtime_from_config(
     config: AgentRuntimeConfig,
     *,
@@ -161,17 +181,17 @@ def build_agent_runtime_from_config(
     that the caller (server.py or tests) can inject adapters without the factory
     knowing about server internals.
     """
+    _validate_config(config)
+
     if _trip_repo is not None:
         trip_repo = _trip_repo
     else:
-        from spine_api.server import _TripStoreAdapter
-        trip_repo = _TripStoreAdapter()
+        trip_repo = TripStoreAdapter()
 
     if _audit_sink is not None:
         audit_sink = _audit_sink
     else:
-        from spine_api.server import _AuditStoreAdapter
-        audit_sink = _AuditStoreAdapter()
+        audit_sink = AuditStoreAdapter()
 
     coordinator = None
     if config.coordinator_backend == "sql":

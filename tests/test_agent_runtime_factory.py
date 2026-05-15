@@ -178,3 +178,37 @@ class TestBuildAgentRuntimeFromConfig:
         assert "coordinator_backend" in d
         assert "lease_seconds" in d
         assert "recovery_requeue_mode" in d
+
+
+class TestBuildAgentRuntimeFromConfigValidation:
+    """Direct config construction is validated too."""
+
+    def test_invalid_coordinator_backend_raises(self):
+        from spine_api.services.agent_runtime_factory import (
+            AgentRuntimeConfig,
+            build_agent_runtime_from_config,
+        )
+
+        config = AgentRuntimeConfig(coordinator_backend="bad")
+        with pytest.raises(ValueError, match="coordinator_backend"):
+            build_agent_runtime_from_config(config)
+
+    def test_invalid_deployment_mode_raises(self):
+        from spine_api.services.agent_runtime_factory import (
+            AgentRuntimeConfig,
+            build_agent_runtime_from_config,
+        )
+
+        config = AgentRuntimeConfig(deployment_mode="staging")
+        with pytest.raises(ValueError, match="deployment_mode"):
+            build_agent_runtime_from_config(config)
+
+    def test_invalid_recovery_requeue_mode_raises(self):
+        from spine_api.services.agent_runtime_factory import (
+            AgentRuntimeConfig,
+            build_agent_runtime_from_config,
+        )
+
+        config = AgentRuntimeConfig(recovery_requeue_mode="sql_queue")
+        with pytest.raises(ValueError, match="recovery_requeue_mode"):
+            build_agent_runtime_from_config(config)

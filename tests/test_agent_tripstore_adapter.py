@@ -2,6 +2,7 @@ from __future__ import annotations
 
 
 def test_tripstore_adapter_resolves_async_list_and_update(monkeypatch):
+    from spine_api.services.agent_runtime_adapters import TripStoreAdapter
     import server
 
     async def _list_trips(limit=500):
@@ -17,7 +18,7 @@ def test_tripstore_adapter_resolves_async_list_and_update(monkeypatch):
     monkeypatch.setattr(server.TripStore, "list_trips", _list_trips)
     monkeypatch.setattr(server.TripStore, "update_trip", _update_trip)
 
-    adapter = server._TripStoreAdapter()
+    adapter = TripStoreAdapter()
 
     assert adapter.list_active() == [{"id": "active", "stage": "proposal"}]
     assert adapter.update_trip("active", {"status": "review"}) == {"id": "active", "status": "review"}

@@ -92,6 +92,11 @@ These were described as "Phase 1 Foundation" but are no longer the planned appro
 - [x] Coordinator selection explicit (no TRIPSTORE_BACKEND coupling)
 - [x] Fail-fast on invalid env values
 - [x] Runtime endpoint exposes config
+- [x] Factory no longer imports spine_api.server (moved adapters to neutral module)
+- [x] Direct AgentRuntimeConfig construction validated
+- [x] build_agent_runtime_from_config() validates config values
+
+**Remaining:** `server.py` still calls `build_agent_runtime()` at module import time (not lifespan). Full startup-time construction move remains pending — tracked as Unit 2A follow-up.
 
 ### Unit 2B: Helper Consolidation (separate patch)
 
