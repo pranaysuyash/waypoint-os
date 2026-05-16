@@ -51,6 +51,9 @@ def test_get_agent_runtime_returns_registry_and_health(session_client, monkeypat
         def definitions(self):
             return [{"name": "follow_up_agent", "trigger_contract": "due follow-up"}]
 
+    class _Recovery:
+        is_running = True
+
     class _Supervisor:
         registry = _Registry()
 
@@ -58,6 +61,7 @@ def test_get_agent_runtime_returns_registry_and_health(session_client, monkeypat
             return {"running": True, "registered_agents": ["follow_up_agent"]}
 
     monkeypatch.setattr(agent_runtime, "_agent_supervisor", _Supervisor())
+    monkeypatch.setattr(agent_runtime, "_recovery_agent", _Recovery())
 
     resp = session_client.get("/agents/runtime")
 

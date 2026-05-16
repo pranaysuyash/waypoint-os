@@ -305,13 +305,32 @@ from spine_api.services.agent_runtime_factory import build_agent_runtime
 
 _agent_trip_repo = TripStoreAdapter()
 _agent_audit_sink = AuditStoreAdapter()
-_agent_runtime_bundle = build_agent_runtime(
-    _trip_repo=_agent_trip_repo,
-    _audit_sink=_agent_audit_sink,
-)
-_agent_work_coordinator = _agent_runtime_bundle.coordinator
-_recovery_agent = _agent_runtime_bundle.recovery_agent
-_agent_supervisor = _agent_runtime_bundle.supervisor
+_agent_runtime_bundle = None
+_agent_work_coordinator = None
+_recovery_agent = None
+_agent_supervisor = None
+
+
+def _build_agent_runtime_bundle():
+    """Construct and wire the agent runtime bundle during lifespan startup."""
+    global _agent_runtime_bundle, _agent_work_coordinator, _recovery_agent, _agent_supervisor
+
+    from spine_api.routers import agent_runtime as agent_runtime_router
+
+    bundle = build_agent_runtime(
+        _trip_repo=_agent_trip_repo,
+        _audit_sink=_agent_audit_sink,
+    )
+    _agent_runtime_bundle = bundle
+    _agent_work_coordinator = bundle.coordinator
+    _recovery_agent = bundle.recovery_agent
+    _agent_supervisor = bundle.supervisor
+    agent_runtime_router.configure_runtime(
+        agent_supervisor=_agent_supervisor,
+        recovery_agent=_recovery_agent,
+        runtime_config=bundle.config.to_dict(),
+    )
+    return bundle
 
 # Auth — Phase 1
 try:
@@ -967,11 +986,13 @@ async def lifespan(app: FastAPI):
     app.state.limiter = limiter
     watchdog.start()
 
-    # Skip background agents during test runs so they don't create the
-    # TripStore SQL bridge (agent_work_coordinator always uses
-    # _run_async_blocking, bypassing TRIPSTORE_BACKEND=file), which can
-    # leave the bridge's event loop in a broken state after teardown.
+    # Build agent runtime bundle at startup (not import time) so env vars
+    # are read fresh and router wiring happens after app construction.
+    # Skip during test runs to avoid creating the TripStore SQL bridge
+    # (agent_work_coordinator uses _run_async_blocking which can leave
+    # the bridge's event loop in a broken state after teardown).
     if not os.environ.get("RUNNING_TESTS"):
+        _build_agent_runtime_bundle()
         _recovery_agent.start()
         _agent_supervisor.start()
         _zombie_reaper_start()
@@ -1032,11 +1053,6 @@ app.include_router(team_router.router)
 app.include_router(settings_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(drafts_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(inbox_router.router, dependencies=[Depends(_auth_or_skip)])
-agent_runtime_router.configure_runtime(
-    agent_supervisor=_agent_supervisor,
-    recovery_agent=_recovery_agent,
-    runtime_config=_agent_runtime_bundle.config.to_dict(),
-)
 app.include_router(agent_runtime_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(analytics_router.router)
 app.include_router(product_b_analytics_router.router)
