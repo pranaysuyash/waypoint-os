@@ -12,6 +12,7 @@ Source: Random Document Audit (Multi-Agent Runtime concept)
 - **3 requeue port impls**: `DisabledSpineRequeuePort`, `InlineSpineRequeuePort`, `_RawCallableRequeuePort`
 - **Config factory**: `spine_api/services/agent_runtime_factory.py`
 - **Runtime adapters**: `spine_api/services/agent_runtime_adapters.py`
+- **Startup construction**: Runtime bundle built during lifespan startup (`_build_agent_runtime_bundle()`), not at import time
 
 ## Issues
 
@@ -31,7 +32,7 @@ Source: Random Document Audit (Multi-Agent Runtime concept)
 
 ### Unit 2A — Runtime Config Factory
 **Status:** Complete
-`spine_api/services/agent_runtime_factory.py` + `spine_api/services/agent_runtime_adapters.py` + tests. Decoupled `TRIPSTORE_BACKEND` from `AGENT_WORK_COORDINATOR`. Added `DEPLOYMENT_MODE` and `AGENT_RECOVERY_REQUEUE_MODE`. Remaining: `server.py` still constructs at import time.
+`spine_api/services/agent_runtime_factory.py` + `spine_api/services/agent_runtime_adapters.py` + tests. Decoupled `TRIPSTORE_BACKEND` from `AGENT_WORK_COORDINATOR`. Added `DEPLOYMENT_MODE` and `AGENT_RECOVERY_REQUEUE_MODE`.
 
 ### Unit 2B — Helper Consolidation
 **Status:** Complete
@@ -53,5 +54,5 @@ Extracted `_normalize_list` from 3 copy-pasted class methods to module-level fun
 
 ## Test Summary
 
-All agent-related tests: **117 passing** across 9 test files.
+All agent-related tests: **118 passing** across 10 test files.
 Commands: `.venv/bin/python -m pytest tests/test_agent_requeue.py tests/test_recovery_agent.py tests/test_agent_runtime_factory.py tests/test_agent_runtime.py tests/test_agent_events_api.py tests/test_live_tools.py tests/test_risk_contracts.py tests/test_agent_work_coordinator.py tests/test_agent_tripstore_adapter.py -v --tb=short`
