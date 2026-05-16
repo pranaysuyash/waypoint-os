@@ -1,7 +1,7 @@
 # Trip Workspace Ops — Slice C: Payment Correctness
 **Date:** 2026-05-15  
-**Status:** DESIGN — awaiting approval before implementation  
-**Branch:** master  
+**Status:** Implemented / verified — merged to master 2026-05-16  
+**Branch:** master (commits `2c4d104`, `05c8538`)  
 **Context:** Follows S1–S4 + S9 (NextActionBanner, doc cleanup, extraction leak fix, full decomposition arc)  
 **Prior art:** `Docs/status/TRIP_WORKSPACE_OPS_NEXT_SLICE_PLAN_2026-05-14.md` (S5–S6 section)  
 **Prior art:** `Docs/status/PAYMENT_REFUND_TRACKING_STATUS_2026-05-12.md` (current payment implementation)
@@ -277,3 +277,26 @@ Payment status is **not** a readiness criterion today (`_check_booking_ready` ch
 3. **Should the `final_payment_due` field name use `_due` or `_date`?** Existing fields use `_at` for datetimes. Payment deadlines are dates only (not times). `final_payment_due` (date-only string `YYYY-MM-DD`) is the clearest. Confirm naming is consistent with any existing follow-up date fields (`follow_up_due_date` in server.py).
 
 4. **Concurrency: should `PATCH /booking-data/payment` read-merge-write or expect the full current `payment_tracking` in the request?** Read-merge-write (backend fetches current, replaces only `payment_tracking`) is safer. This means the endpoint only needs the new `payment_tracking` sub-object + `expected_updated_at`.
+
+---
+
+## 8. Implementation Record (added 2026-05-16)
+
+### Decisions confirmed as implemented
+
+| Decision | Outcome |
+|---|---|
+| Traveler endpoint preserves/ignores `payment_tracking` | Backend reads existing `payment_tracking` from storage and forces it back into the write — client-supplied value discarded |
+| Payment endpoint owns `payment_tracking` | `PATCH /booking-data/payment` is the only write path for payment fields |
+| `final_payment_due` field added | ISO `YYYY-MM-DD` string, validated via `date.fromisoformat`, optional, `None` by default |
+| Terminal statuses suppress due alerts | `paid`, `waived`, `refunded` — `NextActionBanner` emits no payment alert for any of these |
+| `balance_due` and `tracking_only` server-authoritative | `compute_balance_due` model_validator always overwrites client-supplied values |
+| Conflict Reload fetches fresh data | `onReload` prop wired to `fetchBookingData`; `handleReload` clears state then awaits callback |
+
+### Test coverage shipped
+- 998 frontend tests passing (121 test files)
+- 47 backend `test_booking_data.py` tests passing
+- 8 new `TestPaymentTrackingEndpoint` tests
+- 4 new `PaymentTrackingModel` Pydantic validation unit tests
+- 20 `PaymentTrackingCard` component tests (view mode, edit mode, save, 409 conflict, reload)
+- 9 `NextActionBanner` payment rule tests (overdue urgent, due-soon attention, terminal no-op)
