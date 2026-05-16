@@ -53,5 +53,5 @@ Extracted `_normalize_list` from 3 copy-pasted class methods to module-level fun
 
 ## Test Summary
 
-All agent-related tests: **115 passing** across 9 test files.
+All agent-related tests: **117 passing** across 9 test files.
 Commands: `.venv/bin/python -m pytest tests/test_agent_requeue.py tests/test_recovery_agent.py tests/test_agent_runtime_factory.py tests/test_agent_runtime.py tests/test_agent_events_api.py tests/test_live_tools.py tests/test_risk_contracts.py tests/test_agent_work_coordinator.py tests/test_agent_tripstore_adapter.py -v --tb=short`
