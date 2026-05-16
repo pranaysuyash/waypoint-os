@@ -379,6 +379,7 @@ export default function DataIntakeZone({
                 tripId={tripId}
                 updatedAt={updatedAt}
                 onPaymentSaved={handlePaymentSaved}
+                onReload={fetchBookingData}
               />
             )}
             <button

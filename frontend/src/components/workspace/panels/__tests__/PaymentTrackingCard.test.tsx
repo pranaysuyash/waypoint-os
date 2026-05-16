@@ -187,7 +187,29 @@ describe('PaymentTrackingCard — edit mode', () => {
     expect(screen.getByTestId('ops-payment-conflict-reload')).toBeInTheDocument();
   });
 
-  it('conflict reload button returns to view mode', async () => {
+  it('conflict Reload button calls onReload callback', async () => {
+    const user = userEvent.setup();
+    const onReload = vi.fn().mockResolvedValue(undefined);
+    mockApi.updatePaymentTracking.mockRejectedValue({ status: 409 });
+
+    render(
+      <PaymentTrackingCard
+        paymentTracking={BASE_TRACKING}
+        tripId="trip_1"
+        updatedAt="2026-05-15T00:00:00Z"
+        onReload={onReload}
+      />,
+    );
+    await user.click(screen.getByTestId('ops-payment-edit-btn'));
+    await user.click(screen.getByTestId('ops-payment-save-btn'));
+
+    const reloadBtn = await screen.findByTestId('ops-payment-conflict-reload');
+    await user.click(reloadBtn);
+
+    expect(onReload).toHaveBeenCalledTimes(1);
+  });
+
+  it('conflict Reload exits conflict state and returns to view mode', async () => {
     const user = userEvent.setup();
     mockApi.updatePaymentTracking.mockRejectedValue({ status: 409 });
 

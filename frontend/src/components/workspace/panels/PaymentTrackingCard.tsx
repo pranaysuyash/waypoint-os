@@ -141,6 +141,7 @@ interface PaymentTrackingCardProps {
   tripId: string;
   updatedAt: string | null;
   onPaymentSaved?: (tracking: PaymentTracking, newUpdatedAt: string | null) => void;
+  onReload?: () => Promise<void> | void;
 }
 
 export default function PaymentTrackingCard({
@@ -148,6 +149,7 @@ export default function PaymentTrackingCard({
   tripId,
   updatedAt,
   onPaymentSaved,
+  onReload,
 }: PaymentTrackingCardProps) {
   const currency = paymentTracking.currency || 'INR';
   const [editing, setEditing] = useState(false);
@@ -167,6 +169,13 @@ export default function PaymentTrackingCard({
     setEditing(false);
     setConflict(false);
     setError(null);
+  }
+
+  async function handleReload() {
+    setConflict(false);
+    setError(null);
+    setEditing(false);
+    await onReload?.();
   }
 
   async function handleSave() {
@@ -304,7 +313,7 @@ export default function PaymentTrackingCard({
             <button
               data-testid="ops-payment-conflict-reload"
               className="underline"
-              onClick={handleCancel}
+              onClick={handleReload}
             >
               Reload
             </button>
