@@ -259,6 +259,31 @@ await db.commit()
 
 ---
 
+### 2.7 RLS coverage gap: `membership_service.py` and `team.py` router
+
+**Discovery**: `membership_service.py` (invite_member, list_members, get_member, update_member, deactivate_member) all receive `agency_id` as a parameter but use `get_db` instead of `get_rls_db`. The `team.py` router uses `Depends(get_db)` on all 6 endpoints.
+
+**Current state**: Works because `memberships` lacks FORCE RLS (Phase 5E exemption). Table owner bypasses ENABLE RLS.
+
+**After Migration B (FORCE RLS)**: All 6 team endpoints will fail. The service functions have `agency_id` — this is NOT a chicken-and-egg problem. Fix: switch to `get_rls_db` in the router, or call `apply_rls(db, agency_id)` at the top of each service function.
+
+**Classification**: Not a Phase 5F design concern (no chicken-and-egg), but a required change before Migration B. Track as part of Step 2 code deploy.
+
+### 2.8 RLS coverage gap: `validate-code` endpoint
+
+**Discovery**: `GET /api/auth/validate-code/{code}` (auth.py:367) is an unauthenticated public endpoint that calls `validate_workspace_code(db, code)` using `Depends(get_db)`. The join page (`/join/[code]/page.tsx`) calls this endpoint with just the code, no agency_id.
+
+**Current URL**: `/join/[code]` — code only, no agency parameter.
+
+**Phase 5F change**: This endpoint must accept `agency_id` (query param). The join page URL must change from `/join/[code]` to `/join/[code]?agency=uuid`. The endpoint switches to `rls_session(agency_id)` or accepts agency_id and sets RLS context before calling the service function.
+
+**Frontend impact**: The join page must be updated to:
+1. Accept `agency` query param from URL
+2. Pass it to the validate-code API call
+3. Pass it to the join API call
+
+---
+
 ## 3. Audit context change
 
 ### `_get_audit_context` (core/audit.py:122-167)
@@ -551,9 +576,11 @@ The `primary_agency_id` is a denormalized pointer. The source of truth is the `m
 | `spine_api/core/rls.py` | Remove `RLS_FORCE_EXEMPT_TABLES`; update `RlsRuntimePosture.risks()` |
 | `spine_api/core/audit.py` | Update `_get_audit_context` to use `primary_agency_id` |
 | `spine_api/server.py` | Remove `_ensure_rls_no_force_on_auth_tables`, `_deduplicate_memberships_and_agencies`; simplify `_ensure_users_have_memberships` to set `primary_agency_id`; update posture validation |
+| `spine_api/routers/team.py` | Switch all 6 endpoints from `Depends(get_db)` to `Depends(get_rls_db)` |
+| `spine_api/routers/auth.py` | Update `validate-code` endpoint to accept `agency_id` param and use `rls_session` |
 | `tests/test_rls_live_postgres.py` | Remove exempt branch from FORCE RLS assertion |
 | `frontend/src/lib/api-client.ts` | Add `agencyId` parameter to join functions |
-| `frontend/src/app/(auth)/join/page.tsx` | Extract and pass `agency` from URL |
+| `frontend/src/app/(auth)/join/[code]/page.tsx` | Extract `agency` from URL query params, pass to validate-code and join calls |
 
 ---
 

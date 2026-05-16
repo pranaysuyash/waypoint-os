@@ -162,6 +162,30 @@ The join URL changes from `/join?code=WP-abc123` to `/join?code=WP-abc123&agency
 
 ---
 
+## Coverage gap discovered during audit
+
+During codebase verification, two additional RLS coverage gaps were found that the initial design missed. These are NOT chicken-and-egg problems (they have `agency_id` available) but they WILL break after Migration B applies FORCE RLS.
+
+### Gap 1: `membership_service.py` / `team.py` router — `get_db` instead of `get_rls_db`
+
+All 6 endpoints in `team.py` use `Depends(get_db)` while querying `memberships`. The service functions in `membership_service.py` receive `agency_id` as a parameter but never call `apply_rls`. Currently works because memberships lacks FORCE RLS. After Migration B: all team management endpoints fail.
+
+**Fix**: Switch `team.py` router from `Depends(get_db)` to `Depends(get_rls_db)`. No service-layer changes needed.
+
+**Files**: `spine_api/routers/team.py` (6 lines)
+
+### Gap 2: `validate-code` endpoint — public, uses `get_db`, no `agency_id`
+
+`GET /api/auth/validate-code/{code}` (auth.py:367) is unauthenticated and calls `validate_workspace_code(db, code)` with `Depends(get_db)`. The frontend join page at `/join/[code]/page.tsx` calls this with just the code, no agency parameter.
+
+**Fix**: Accept `agency_id` as query param, switch to `rls_session(agency_id)`. Frontend join page must extract `agency` from URL query params.
+
+**Files**: `spine_api/routers/auth.py` (1 endpoint), `frontend/src/app/(auth)/join/[code]/page.tsx`
+
+Both gaps are now documented in the design doc (sections 2.7, 2.8) and added to the files-to-modify table.
+
+---
+
 ## Files to change (summary)
 
 ### Create
@@ -175,9 +199,11 @@ The join URL changes from `/join?code=WP-abc123` to `/join?code=WP-abc123&agency
 - `spine_api/core/rls.py` — remove `RLS_FORCE_EXEMPT_TABLES`
 - `spine_api/core/audit.py` — direct `primary_agency_id` read
 - `spine_api/server.py` — remove 2 startup guards, update 2 others
+- `spine_api/routers/team.py` — switch 6 endpoints to `get_rls_db` (coverage gap)
+- `spine_api/routers/auth.py` — `validate-code` endpoint accept `agency_id` (coverage gap)
 - `tests/test_rls_live_postgres.py` — remove exempt branch
 - `frontend/src/lib/api-client.ts` — agency_id on join functions
-- `frontend/src/app/(auth)/join/page.tsx` — extract agency from URL
+- `frontend/src/app/(auth)/join/[code]/page.tsx` — extract agency from URL query params
 
 ---
 
@@ -186,8 +212,11 @@ The join URL changes from `/join?code=WP-abc123` to `/join?code=WP-abc123&agency
 ```text
 Direction: approved
 Design v2: addresses all 8 reviewer concerns
+Coverage audit: found 2 additional RLS gaps not in original design (team.py router, validate-code endpoint)
 Risk level: medium (schema change + auth rewrite, but two-step migration limits blast radius)
 Ready for: implementation pending final approval
 ```
 
 The 8 fixes address the real danger zones: stale-pointer duplicate creation, inactive membership bootstrap, brute-force fallback, single-migration deploy risk, and fake audit RLS context. The two-step migration strategy means there's never a window where the database is locked but the code can't unlock it.
+
+The coverage audit found 2 additional files (`team.py` router with `get_db` instead of `get_rls_db`, and `validate-code` public endpoint) that would break under FORCE RLS. These are not chicken-and-egg problems (they have agency_id available) but must be fixed before Migration B.

@@ -1,6 +1,6 @@
 # Exploration Backlog
 
-**Last Updated:** 2026-04-18
+**Last Updated:** 2026-05-15
 
 A living document of areas to explore, ideas to investigate, and potential improvements. Add items freely — this is a brainstorming space, not a commitment queue.
 
@@ -2449,6 +2449,78 @@ A living document of areas to explore, ideas to investigate, and potential impro
 - [ ] Changelog maintenance
 - [ ] Contributor recognition
 - [ ] Documentation as code
+
+## Research Expansion Additions (2026-05-15)
+
+- [ ] Deterministic supplier-offer evidence graph (quote provenance and re-pricing drift)
+  - Why: operators need to trust that each proposal line item is grounded in a verifiable supplier offer snapshot and that reprice drift is surfaced before commitment.
+  - Exploration acceptance checks:
+  - define canonical offer-evidence schema (`source`, `captured_at`, `fare_basis`, `cancellation_terms`, `ttl`, `confidence`)
+  - trace each proposal row back to evidence in timeline and packet views
+  - add drift detector for stale or changed supplier responses before send/approval
+
+- [ ] Margin guardrails and downside simulator (pre-send commercial safety)
+  - Why: many revenue leaks happen at quote time through hidden markups, missed commissions, and unfavorable FX assumptions.
+  - Exploration acceptance checks:
+  - model per-quote floor margin constraints and override policy with explicit reason capture
+  - simulate downside scenarios (supplier repricing, cancellation, FX shift) before proposal finalization
+  - emit operator warnings tied to configurable commercial policy rules
+
+- [ ] Time-zone and DST correctness map across itinerary lifecycle
+  - Why: cross-border trips break quietly when segment times, cutoffs, and reminder windows use inconsistent timezone handling.
+  - Exploration acceptance checks:
+  - map all current time-bearing fields and their timezone semantics end-to-end
+  - define canonical conversion/storage/rendering contract for itinerary, reminders, payments, and deadlines
+  - build DST edge-case scenario set for runtime regression coverage
+
+- [ ] Cross-channel conversation identity resolution (WhatsApp/email/calls)
+  - Why: the same traveler often appears through multiple channels and fragments continuity, handoff quality, and automation context.
+  - Exploration acceptance checks:
+  - design identity graph combining consented phone/email/profile keys with confidence scoring
+  - define merge/split safeguards to avoid false merges across households/groups
+  - specify operator-facing conflict resolution UX and audit trail
+
+- [ ] Offer-to-booking conversion intelligence with controllable interventions
+  - Why: current conversion analysis is descriptive; the map should include testable intervention loops that improve closure rate.
+  - Exploration acceptance checks:
+  - define stage-level conversion breakpoints and drop-off reasons from existing timeline data
+  - design intervention catalog (message nudge, alternate option, urgency framing) with policy-safe templates
+  - measure uplift via cohort experiments with guardrails against spammy behavior
+
+- [ ] Multi-currency treasury and FX risk handling for long sales cycles
+  - Why: agencies quoting in one currency and settling in another absorb avoidable FX loss and reconciliation complexity.
+  - Exploration acceptance checks:
+  - map where currency conversion happens today and where FX exposure is created
+  - define quote lock-window policy and revalidation triggers tied to FX thresholds
+  - specify ledger fields for quoted currency vs supplier settlement currency vs realized margin
+
+- [ ] Disruption operations playbook engine (IRROPS automation backbone)
+  - Why: flight cancellations, visa delays, and local disruptions require repeatable crisis workflows, not ad-hoc operator heroics.
+  - Exploration acceptance checks:
+  - define disruption taxonomy and trigger signals (carrier updates, weather alerts, policy events)
+  - map auto-generated task trees by disruption type with owner/SLA/escalation paths
+  - ensure traveler communications, refunds, and internal approvals remain policy-consistent
+
+- [ ] Human-in-the-loop confidence contract for high-impact AI actions
+  - Why: autonomy should grow safely by action class, with explicit confidence and approval boundaries.
+  - Exploration acceptance checks:
+  - classify action risk tiers and required approval mode (auto, suggest, approve-required)
+  - calibrate confidence thresholds from observed false-positive/false-negative behavior
+  - define reversible execution and post-action audit snapshots for every high-risk step
+
+- [ ] Knowledge freshness SLA and stale-intel detection framework
+  - Why: travel recommendations decay quickly (prices, rules, schedules), and stale outputs erode operator trust.
+  - Exploration acceptance checks:
+  - define freshness metadata for each external intel type (price, visa, weather, advisories)
+  - set per-source TTL and stale-behavior policy (warn, re-fetch, block)
+  - expose freshness indicators in operator UI and proposal exports
+
+- [ ] Workflow latency budget and critical-path decomposition
+  - Why: without explicit latency budgets, local optimizations miss the true end-to-end bottlenecks felt by operators.
+  - Exploration acceptance checks:
+  - define budget per workflow stage from inquiry ingest to proposal send
+  - attribute latency to intake parsing, decision runtime, external calls, and manual queue delay
+  - produce budget breach playbook with priority-ranked remediation candidates
 
 ---
 
