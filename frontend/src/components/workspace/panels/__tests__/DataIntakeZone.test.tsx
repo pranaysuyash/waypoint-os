@@ -6,6 +6,7 @@ import DataIntakeZone from '../DataIntakeZone';
 const mockApi = {
   getBookingData: vi.fn(),
   updateBookingData: vi.fn(),
+  updatePaymentTracking: vi.fn(),
   getCollectionLink: vi.fn(),
   generateCollectionLink: vi.fn(),
   revokeCollectionLink: vi.fn(),
@@ -17,6 +18,7 @@ const mockApi = {
 vi.mock('@/lib/api-client', () => ({
   getBookingData: (...args: unknown[]) => mockApi.getBookingData(...args),
   updateBookingData: (...args: unknown[]) => mockApi.updateBookingData(...args),
+  updatePaymentTracking: (...args: unknown[]) => mockApi.updatePaymentTracking(...args),
   getCollectionLink: (...args: unknown[]) => mockApi.getCollectionLink(...args),
   generateCollectionLink: (...args: unknown[]) => mockApi.generateCollectionLink(...args),
   revokeCollectionLink: (...args: unknown[]) => mockApi.revokeCollectionLink(...args),
@@ -257,7 +259,7 @@ describe('DataIntakeZone', () => {
     expect(screen.queryByText(/pay now/i)).not.toBeInTheDocument();
   });
 
-  it('saves payment tracking through the booking data endpoint', async () => {
+  it('traveler save does not include payment_tracking in payload', async () => {
     const user = userEvent.setup();
     mockApi.getBookingData.mockResolvedValue({
       trip_id: 'trip_1',
@@ -269,32 +271,20 @@ describe('DataIntakeZone', () => {
     });
     mockApi.updateBookingData.mockResolvedValue({
       trip_id: 'trip_1',
-      booking_data: null,
+      booking_data: { travelers: [{ traveler_id: 'adult_1', full_name: 'Jane Doe', date_of_birth: '1990-01-01' }] },
       updated_at: '2026-05-12T00:01:00Z',
     });
 
     render(<DataIntakeZone tripId="trip_1" canGenerateLink={false} />);
 
     await user.click(await screen.findByTestId('ops-edit-btn'));
-    await user.clear(screen.getByTestId('ops-payment-agreed-amount'));
-    await user.type(screen.getByTestId('ops-payment-agreed-amount'), '120000');
-    await user.clear(screen.getByTestId('ops-payment-amount-paid'));
-    await user.type(screen.getByTestId('ops-payment-amount-paid'), '50000');
-    await user.selectOptions(screen.getByTestId('ops-payment-status'), 'partially_paid');
     await user.click(screen.getByTestId('ops-save-btn'));
 
     await waitFor(() => {
       expect(mockApi.updateBookingData).toHaveBeenCalled();
     });
     const [, payload] = mockApi.updateBookingData.mock.calls[0];
-    expect(payload.payment_tracking).toMatchObject({
-      agreed_amount: 120000,
-      amount_paid: 50000,
-      payment_status: 'partially_paid',
-      tracking_only: true,
-    });
-    expect(payload.payment_tracking).not.toHaveProperty('wallet_id');
-    expect(payload.payment_tracking).not.toHaveProperty('gateway_charge_id');
+    expect(payload).not.toHaveProperty('payment_tracking');
   });
 
   it('calls onPendingDataChange when pending data loads', async () => {
@@ -331,6 +321,39 @@ describe('DataIntakeZone', () => {
     await waitFor(() => {
       expect(onTravelersChange).toHaveBeenCalledWith(
         expect.arrayContaining([expect.objectContaining({ traveler_id: 'adult_1' })]),
+      );
+    });
+  });
+
+  it('calls onPaymentTrackingChange when booking data loads with payment tracking', async () => {
+    const onPaymentTrackingChange = vi.fn();
+    mockApi.getBookingData.mockResolvedValue({
+      trip_id: 'trip_1',
+      booking_data: {
+        travelers: [{ traveler_id: 'adult_1', full_name: 'Jane Doe', date_of_birth: '1990-01-01' }],
+        payment_tracking: {
+          agreed_amount: 120000,
+          amount_paid: 50000,
+          balance_due: 70000,
+          payment_status: 'partially_paid',
+          refund_status: 'not_applicable',
+          tracking_only: true,
+        },
+      },
+      updated_at: '2026-05-12T00:00:00Z',
+    });
+
+    render(
+      <DataIntakeZone
+        tripId="trip_1"
+        canGenerateLink={false}
+        onPaymentTrackingChange={onPaymentTrackingChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(onPaymentTrackingChange).toHaveBeenCalledWith(
+        expect.objectContaining({ payment_status: 'partially_paid' }),
       );
     });
   });

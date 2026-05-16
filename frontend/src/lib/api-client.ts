@@ -846,6 +846,7 @@ export interface PaymentTracking {
   refund_paid_by_agency?: boolean;
   notes?: string | null;
   tracking_only?: boolean;
+  final_payment_due?: string | null;
 }
 
 export interface BookingData {
@@ -877,6 +878,17 @@ export async function updateBookingData(
   return api.patch<BookingDataResponse>(`/api/trips/${tripId}/booking-data`, {
     booking_data: data,
     reason: reason || undefined,
+    expected_updated_at: expectedUpdatedAt || undefined,
+  });
+}
+
+export async function updatePaymentTracking(
+  tripId: string,
+  paymentTracking: PaymentTracking,
+  expectedUpdatedAt?: string,
+): Promise<BookingDataResponse> {
+  return api.patch<BookingDataResponse>(`/api/trips/${tripId}/booking-data/payment`, {
+    payment_tracking: paymentTracking,
     expected_updated_at: expectedUpdatedAt || undefined,
   });
 }

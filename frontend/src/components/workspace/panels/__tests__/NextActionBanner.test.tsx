@@ -105,6 +105,85 @@ describe('computeNextAction', () => {
   it('returns null when missing_for_next is empty array', () => {
     expect(computeNextAction(null, NO_DOCS, readinessClean)).toBeNull();
   });
+
+  // Payment tracking rules
+  it('returns urgent when final_payment_due is overdue and not paid', () => {
+    const result = computeNextAction(null, NO_DOCS, readinessClean, {
+      final_payment_due: '2020-01-01',
+      payment_status: 'partially_paid',
+    });
+    expect(result?.priority).toBe('urgent');
+    expect(result?.message).toMatch(/overdue/);
+  });
+
+  it('returns attention when final_payment_due is within 3 days and not paid', () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const inTwo = new Date(today);
+    inTwo.setDate(inTwo.getDate() + 2);
+    const dateStr = inTwo.toISOString().slice(0, 10);
+    const result = computeNextAction(null, NO_DOCS, readinessClean, {
+      final_payment_due: dateStr,
+      payment_status: 'deposit_paid',
+    });
+    expect(result?.priority).toBe('attention');
+    expect(result?.message).toMatch(/due in/i);
+  });
+
+  it('no payment banner when payment_status is paid', () => {
+    const result = computeNextAction(null, NO_DOCS, readinessClean, {
+      final_payment_due: '2020-01-01',
+      payment_status: 'paid',
+    });
+    expect(result).toBeNull();
+  });
+
+  it('no payment banner when payment_status is waived', () => {
+    const result = computeNextAction(null, NO_DOCS, readinessClean, {
+      final_payment_due: '2020-01-01',
+      payment_status: 'waived',
+    });
+    expect(result).toBeNull();
+  });
+
+  it('no payment banner when payment_status is refunded', () => {
+    const result = computeNextAction(null, NO_DOCS, readinessClean, {
+      final_payment_due: '2020-01-01',
+      payment_status: 'refunded',
+    });
+    expect(result).toBeNull();
+  });
+
+  it('no payment banner when final_payment_due is more than 3 days away', () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const inTen = new Date(today);
+    inTen.setDate(inTen.getDate() + 10);
+    const dateStr = inTen.toISOString().slice(0, 10);
+    const result = computeNextAction(null, NO_DOCS, readinessClean, {
+      final_payment_due: dateStr,
+      payment_status: 'partially_paid',
+    });
+    expect(result).toBeNull();
+  });
+
+  it('pending_review documents take priority over payment overdue', () => {
+    const result = computeNextAction(null, [doc('pending_review')], readinessClean, {
+      final_payment_due: '2020-01-01',
+      payment_status: 'partially_paid',
+    });
+    expect(result?.priority).toBe('attention');
+    expect(result?.message).toContain('document');
+  });
+
+  it('payment overdue takes priority over missing_for_next', () => {
+    const result = computeNextAction(null, NO_DOCS, readinessWithMissing, {
+      final_payment_due: '2020-01-01',
+      payment_status: 'partially_paid',
+    });
+    expect(result?.priority).toBe('urgent');
+    expect(result?.message).toMatch(/overdue/);
+  });
 });
 
 // ── NextActionBanner render tests ─────────────────────────────────────────────

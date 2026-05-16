@@ -1913,6 +1913,7 @@ class PaymentTrackingModel(BaseModel):
     refund_paid_by_agency: bool = False
     notes: Optional[str] = None
     tracking_only: bool = True
+    final_payment_due: Optional[str] = None
 
     @field_validator("agreed_amount", "amount_paid", "balance_due", "refund_amount_agreed")
     @classmethod
@@ -1932,6 +1933,18 @@ class PaymentTrackingModel(BaseModel):
         if len(stripped) != 3:
             raise ValueError("must be a 3-letter currency code")
         return stripped
+
+    @field_validator("final_payment_due")
+    @classmethod
+    def validate_date(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        from datetime import date
+        try:
+            date.fromisoformat(v)
+        except ValueError:
+            raise ValueError("must be a valid ISO date (YYYY-MM-DD)")
+        return v
 
     @model_validator(mode="after")
     def compute_balance_due(self) -> "PaymentTrackingModel":
@@ -2011,6 +2024,12 @@ def update_booking_data(
 
     bd_dict = request.booking_data.model_dump()
 
+    # Backend split: traveler endpoint owns travelers/payer/notes only.
+    # Preserve existing payment_tracking from storage so payment edits
+    # via the dedicated /booking-data/payment endpoint are never overwritten.
+    existing_bd = TripStore.get_booking_data_for_agency(trip_id, agency.id) or {}
+    bd_dict["payment_tracking"] = existing_bd.get("payment_tracking")
+
     # Compute readiness BEFORE writing so both booking_data and validation
     # can be persisted in a single atomic update.
     from intake.readiness import compute_readiness
@@ -2061,19 +2080,94 @@ def update_booking_data(
                 "payer" if request.booking_data.payer else None,
                 "special_requirements" if request.booking_data.special_requirements else None,
                 "booking_notes" if request.booking_data.booking_notes else None,
-                "payment_tracking" if request.booking_data.payment_tracking else None,
             ]
             if f is not None
         ],
         "traveler_count": len(request.booking_data.travelers),
         "has_passport_data": any(t.passport_number for t in request.booking_data.travelers),
         "has_payer": request.booking_data.payer is not None,
-        "has_payment_tracking": request.booking_data.payment_tracking is not None,
-        "payment_status": request.booking_data.payment_tracking.payment_status if request.booking_data.payment_tracking else None,
-        "refund_status": request.booking_data.payment_tracking.refund_status if request.booking_data.payment_tracking else None,
-        "has_payment_reference": bool(request.booking_data.payment_tracking and request.booking_data.payment_tracking.payment_reference),
-        "has_payment_proof_url": bool(request.booking_data.payment_tracking and request.booking_data.payment_tracking.payment_proof_url),
-        "has_refund_reference": bool(request.booking_data.payment_tracking and request.booking_data.payment_tracking.refund_reference),
+        "actor": "operator",
+    })
+
+    booking_data = TripStore.get_booking_data_for_agency(trip_id, agency.id)
+    return _booking_data_envelope(updated, booking_data)
+
+
+class PaymentTrackingUpdateRequest(BaseModel):
+    payment_tracking: PaymentTrackingModel
+    expected_updated_at: Optional[str] = None
+
+
+@app.patch("/trips/{trip_id}/booking-data/payment")
+def update_payment_tracking(
+    trip_id: str,
+    request: PaymentTrackingUpdateRequest,
+    agency: Agency = Depends(get_current_agency),
+):
+    """Update payment tracking only. Preserves travelers/payer/notes unchanged.
+
+    Read-merge-write: fetches current booking data, replaces only payment_tracking,
+    writes back atomically with the same trip-level optimistic lock.
+    """
+    trip = TripStore.get_trip_for_agency(trip_id, agency.id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    current_stage = trip.get("stage", "discovery")
+    if current_stage not in ("proposal", "booking"):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Booking data can only be updated at proposal/booking stage, current: {current_stage}",
+        )
+
+    # Read-merge-write: preserve all non-payment fields from current storage
+    existing_bd = TripStore.get_booking_data_for_agency(trip_id, agency.id) or {}
+    bd_dict = dict(existing_bd)
+    bd_dict["payment_tracking"] = request.payment_tracking.model_dump()
+
+    from intake.readiness import compute_readiness
+    from intake.packet_models import CanonicalPacket
+    packet = CanonicalPacket(packet_id=trip_id)
+    packet.facts.update((trip.get("extracted") or {}).get("facts", {}))
+    readiness = compute_readiness(
+        packet,
+        validation=trip.get("validation"),
+        decision=trip.get("decision"),
+        traveler_bundle=trip.get("traveler_bundle"),
+        internal_bundle=trip.get("internal_bundle"),
+        safety=trip.get("safety"),
+        fees=trip.get("fees"),
+        booking_data=bd_dict,
+    )
+    validation = dict(trip.get("validation") or {})
+    validation["readiness"] = readiness.to_dict()
+
+    expected = request.expected_updated_at
+    updated = TripStore.update_trip_if_version_for_agency(
+        trip_id,
+        agency.id,
+        {"booking_data": bd_dict, "validation": validation},
+        expected_updated_at=expected,
+    )
+    if not updated:
+        actual = trip.get("updated_at")
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Payment tracking conflict",
+                "expected_updated_at": expected,
+                "actual_updated_at": actual,
+            },
+        )
+
+    AuditStore.log_event("payment_tracking_updated", agency.id, {
+        "trip_id": trip_id,
+        "stage": current_stage,
+        "payment_status": request.payment_tracking.payment_status,
+        "refund_status": request.payment_tracking.refund_status,
+        "has_payment_reference": bool(request.payment_tracking.payment_reference),
+        "has_payment_proof_url": bool(request.payment_tracking.payment_proof_url),
+        "has_final_payment_due": request.payment_tracking.final_payment_due is not None,
         "actor": "operator",
     })
 

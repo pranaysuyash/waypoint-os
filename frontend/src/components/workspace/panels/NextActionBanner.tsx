@@ -1,6 +1,6 @@
 'use client';
 
-import type { BookingDocument } from '@/lib/api-client';
+import type { BookingDocument, PaymentTracking } from '@/lib/api-client';
 import type { ReadinessAssessment } from '@/types/spine';
 
 export interface NextAction {
@@ -8,10 +8,18 @@ export interface NextAction {
   message: string;
 }
 
+function daysUntilPayment(dateStr: string): number {
+  const due = new Date(dateStr + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((due.getTime() - today.getTime()) / 86400000);
+}
+
 export function computeNextAction(
   pendingData: unknown,
   documents: BookingDocument[],
   readiness: ReadinessAssessment | null | undefined,
+  paymentTracking?: PaymentTracking | null,
 ): NextAction | null {
   if (pendingData) {
     return {
@@ -29,6 +37,27 @@ export function computeNextAction(
     };
   }
 
+  const terminalPaymentStatuses = ['paid', 'waived', 'refunded'];
+  if (
+    paymentTracking?.final_payment_due &&
+    !terminalPaymentStatuses.includes(paymentTracking?.payment_status ?? '')
+  ) {
+    const days = daysUntilPayment(paymentTracking.final_payment_due);
+    if (days < 0) {
+      const n = Math.abs(days);
+      return {
+        priority: 'urgent',
+        message: `Final payment is overdue by ${n} day${n !== 1 ? 's' : ''}.`,
+      };
+    }
+    if (days <= 3) {
+      return {
+        priority: 'attention',
+        message: `Final payment due in ${days} day${days !== 1 ? 's' : ''}.`,
+      };
+    }
+  }
+
   const missing = readiness?.missing_for_next ?? [];
   if (missing.length > 0) {
     return {
@@ -44,6 +73,7 @@ interface NextActionBannerProps {
   pendingData: unknown;
   documents: BookingDocument[];
   readiness: ReadinessAssessment | null | undefined;
+  paymentTracking?: PaymentTracking | null;
 }
 
 const PRIORITY_STYLES: Record<NonNullable<NextAction['priority']>, string> = {
@@ -52,8 +82,8 @@ const PRIORITY_STYLES: Record<NonNullable<NextAction['priority']>, string> = {
   info: 'border-[#30363d] bg-[#0d1117] text-[#8b949e]',
 };
 
-export default function NextActionBanner({ pendingData, documents, readiness }: NextActionBannerProps) {
-  const action = computeNextAction(pendingData, documents, readiness);
+export default function NextActionBanner({ pendingData, documents, readiness, paymentTracking }: NextActionBannerProps) {
+  const action = computeNextAction(pendingData, documents, readiness, paymentTracking);
 
   if (!action) {
     return (

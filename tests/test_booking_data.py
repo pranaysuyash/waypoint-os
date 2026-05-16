@@ -281,46 +281,26 @@ class TestBookingDataEndpoints:
         assert resp.status_code == 200
         assert resp.json()["booking_data"]["special_requirements"] == "Vegan meals"
 
-    def test_patch_accepts_payment_tracking_and_computes_balance(self, session_client, created_trip_id):
+    def test_patch_preserves_existing_payment_tracking(self, session_client, created_trip_id):
+        # First, write payment tracking via the dedicated endpoint
+        session_client.patch(
+            f"/trips/{created_trip_id}/booking-data",
+            json={"booking_data": VALID_BOOKING_DATA},
+        )
+        session_client.patch(
+            f"/trips/{created_trip_id}/booking-data/payment",
+            json={"payment_tracking": VALID_PAYMENT_TRACKING["payment_tracking"]},
+        )
+        # Then update traveler data — payment_tracking must be preserved
         resp = session_client.patch(
             f"/trips/{created_trip_id}/booking-data",
-            json={"booking_data": VALID_PAYMENT_TRACKING},
+            json={"booking_data": {**VALID_BOOKING_DATA, "special_requirements": "Vegan meals"}},
         )
         assert resp.status_code == 200
         tracking = resp.json()["booking_data"]["payment_tracking"]
-        assert tracking["tracking_only"] is True
+        assert tracking is not None
         assert tracking["payment_status"] == "partially_paid"
-        assert tracking["refund_status"] == "not_applicable"
         assert tracking["balance_due"] == 70000.0
-
-    def test_patch_recomputes_client_supplied_balance(self, session_client, created_trip_id):
-        payload = {
-            **VALID_PAYMENT_TRACKING,
-            "payment_tracking": {
-                **VALID_PAYMENT_TRACKING["payment_tracking"],
-                "balance_due": 1.0,
-            },
-        }
-        resp = session_client.patch(
-            f"/trips/{created_trip_id}/booking-data",
-            json={"booking_data": payload},
-        )
-        assert resp.status_code == 200
-        assert resp.json()["booking_data"]["payment_tracking"]["balance_due"] == 70000.0
-
-    def test_patch_rejects_negative_payment_tracking_amounts(self, session_client, created_trip_id):
-        payload = {
-            **VALID_PAYMENT_TRACKING,
-            "payment_tracking": {
-                **VALID_PAYMENT_TRACKING["payment_tracking"],
-                "amount_paid": -1.0,
-            },
-        }
-        resp = session_client.patch(
-            f"/trips/{created_trip_id}/booking-data",
-            json={"booking_data": payload},
-        )
-        assert resp.status_code == 422
 
     def test_patch_discovery_stage_returns_403(self, session_client, created_trip_id):
         from spine_api.persistence import TripStore
@@ -433,20 +413,135 @@ class TestBookingDataAudit:
 
     def test_payment_tracking_audit_uses_metadata_only(self, session_client, created_trip_id):
         from spine_api.persistence import AuditStore
+        # Payment tracking is now written via the dedicated /payment endpoint
         session_client.patch(
             f"/trips/{created_trip_id}/booking-data",
-            json={"booking_data": VALID_PAYMENT_TRACKING},
+            json={"booking_data": VALID_BOOKING_DATA},
         )
-        latest = AuditStore.get_events_for_trip(created_trip_id)[-1]
-        details = latest["details"]
-        assert "payment_tracking" in details["fields_changed"]
-        assert details["has_payment_tracking"] is True
+        resp = session_client.patch(
+            f"/trips/{created_trip_id}/booking-data/payment",
+            json={"payment_tracking": VALID_PAYMENT_TRACKING["payment_tracking"]},
+        )
+        assert resp.status_code == 200
+        events = AuditStore.get_events_for_trip(created_trip_id)
+        payment_events = [e for e in events if e["type"] == "payment_tracking_updated"]
+        assert payment_events, "Expected a payment_tracking_updated audit event"
+        details = payment_events[-1]["details"]
         assert details["payment_status"] == "partially_paid"
         assert details["has_payment_reference"] is True
         assert details["has_payment_proof_url"] is True
         details_str = str(details)
         assert "UTR-123456" not in details_str
         assert "https://example.test/proof.pdf" not in details_str
+
+
+# ---------------------------------------------------------------------------
+# 4b. Payment tracking endpoint
+# ---------------------------------------------------------------------------
+
+class TestPaymentTrackingEndpoint:
+    def _setup_trip(self, session_client, trip_id):
+        """Write initial traveler data so the trip has booking_data."""
+        session_client.patch(
+            f"/trips/{trip_id}/booking-data",
+            json={"booking_data": VALID_BOOKING_DATA},
+        )
+
+    def test_patch_payment_stores_and_computes_balance(self, session_client, created_trip_id):
+        self._setup_trip(session_client, created_trip_id)
+        resp = session_client.patch(
+            f"/trips/{created_trip_id}/booking-data/payment",
+            json={"payment_tracking": VALID_PAYMENT_TRACKING["payment_tracking"]},
+        )
+        assert resp.status_code == 200
+        tracking = resp.json()["booking_data"]["payment_tracking"]
+        assert tracking["tracking_only"] is True
+        assert tracking["payment_status"] == "partially_paid"
+        assert tracking["refund_status"] == "not_applicable"
+        assert tracking["balance_due"] == 70000.0
+
+    def test_patch_payment_recomputes_client_supplied_balance(self, session_client, created_trip_id):
+        self._setup_trip(session_client, created_trip_id)
+        payload = {**VALID_PAYMENT_TRACKING["payment_tracking"], "balance_due": 1.0}
+        resp = session_client.patch(
+            f"/trips/{created_trip_id}/booking-data/payment",
+            json={"payment_tracking": payload},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["booking_data"]["payment_tracking"]["balance_due"] == 70000.0
+
+    def test_patch_payment_rejects_negative_amounts(self, session_client, created_trip_id):
+        self._setup_trip(session_client, created_trip_id)
+        payload = {**VALID_PAYMENT_TRACKING["payment_tracking"], "amount_paid": -1.0}
+        resp = session_client.patch(
+            f"/trips/{created_trip_id}/booking-data/payment",
+            json={"payment_tracking": payload},
+        )
+        assert resp.status_code == 422
+
+    def test_patch_payment_accepts_final_payment_due(self, session_client, created_trip_id):
+        self._setup_trip(session_client, created_trip_id)
+        payload = {**VALID_PAYMENT_TRACKING["payment_tracking"], "final_payment_due": "2026-06-15"}
+        resp = session_client.patch(
+            f"/trips/{created_trip_id}/booking-data/payment",
+            json={"payment_tracking": payload},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["booking_data"]["payment_tracking"]["final_payment_due"] == "2026-06-15"
+
+    def test_patch_payment_rejects_invalid_final_payment_due(self, session_client, created_trip_id):
+        self._setup_trip(session_client, created_trip_id)
+        payload = {**VALID_PAYMENT_TRACKING["payment_tracking"], "final_payment_due": "not-a-date"}
+        resp = session_client.patch(
+            f"/trips/{created_trip_id}/booking-data/payment",
+            json={"payment_tracking": payload},
+        )
+        assert resp.status_code == 422
+
+    def test_patch_payment_preserves_travelers(self, session_client, created_trip_id):
+        self._setup_trip(session_client, created_trip_id)
+        resp = session_client.patch(
+            f"/trips/{created_trip_id}/booking-data/payment",
+            json={"payment_tracking": VALID_PAYMENT_TRACKING["payment_tracking"]},
+        )
+        assert resp.status_code == 200
+        travelers = resp.json()["booking_data"]["travelers"]
+        assert len(travelers) == 2
+        assert travelers[0]["full_name"] == "John Doe"
+
+    def test_patch_payment_stage_gate(self, session_client, created_trip_id):
+        from spine_api.persistence import TripStore
+        me = session_client.get("/api/auth/me")
+        agency_id = me.json()["agency"]["id"]
+        self._setup_trip(session_client, created_trip_id)
+        TripStore.update_trip_for_agency(created_trip_id, agency_id, {"stage": "discovery"})
+        resp = session_client.patch(
+            f"/trips/{created_trip_id}/booking-data/payment",
+            json={"payment_tracking": VALID_PAYMENT_TRACKING["payment_tracking"]},
+        )
+        assert resp.status_code == 403
+
+    def test_patch_payment_optimistic_lock_conflict(self, session_client, created_trip_id):
+        self._setup_trip(session_client, created_trip_id)
+        r1 = session_client.patch(
+            f"/trips/{created_trip_id}/booking-data/payment",
+            json={"payment_tracking": VALID_PAYMENT_TRACKING["payment_tracking"]},
+        )
+        old_updated_at = r1.json()["updated_at"]
+        # Update again to advance updated_at
+        session_client.patch(
+            f"/trips/{created_trip_id}/booking-data/payment",
+            json={"payment_tracking": VALID_PAYMENT_TRACKING["payment_tracking"]},
+        )
+        resp = session_client.patch(
+            f"/trips/{created_trip_id}/booking-data/payment",
+            json={
+                "payment_tracking": VALID_PAYMENT_TRACKING["payment_tracking"],
+                "expected_updated_at": old_updated_at,
+            },
+        )
+        assert resp.status_code == 409
+        assert resp.json()["detail"]["message"] == "Payment tracking conflict"
 
 
 # ---------------------------------------------------------------------------
@@ -475,6 +570,28 @@ class TestBookingDataValidation:
         )
         assert bd.travelers[0].full_name == "Alice"
         assert bd.payer is None
+
+    def test_payment_tracking_final_payment_due_valid(self):
+        from spine_api.server import PaymentTrackingModel
+        pt = PaymentTrackingModel(final_payment_due="2026-06-15")
+        assert pt.final_payment_due == "2026-06-15"
+
+    def test_payment_tracking_final_payment_due_none(self):
+        from spine_api.server import PaymentTrackingModel
+        pt = PaymentTrackingModel()
+        assert pt.final_payment_due is None
+
+    def test_payment_tracking_final_payment_due_invalid(self):
+        from pydantic import ValidationError
+        from spine_api.server import PaymentTrackingModel
+        with pytest.raises(ValidationError):
+            PaymentTrackingModel(final_payment_due="not-a-date")
+
+    def test_payment_tracking_final_payment_due_wrong_format(self):
+        from pydantic import ValidationError
+        from spine_api.server import PaymentTrackingModel
+        with pytest.raises(ValidationError):
+            PaymentTrackingModel(final_payment_due="15/06/2026")
 
 
 # ---------------------------------------------------------------------------

@@ -9,6 +9,7 @@ import OpsPanel from '../OpsPanel';
 const mockApi = {
   getBookingData: vi.fn(),
   updateBookingData: vi.fn(),
+  updatePaymentTracking: vi.fn(),
   getCollectionLink: vi.fn(),
   generateCollectionLink: vi.fn(),
   revokeCollectionLink: vi.fn(),
@@ -30,6 +31,7 @@ const mockApi = {
 vi.mock('@/lib/api-client', () => ({
   getBookingData: (...args: unknown[]) => mockApi.getBookingData(...args),
   updateBookingData: (...args: unknown[]) => mockApi.updateBookingData(...args),
+  updatePaymentTracking: (...args: unknown[]) => mockApi.updatePaymentTracking(...args),
   getCollectionLink: (...args: unknown[]) => mockApi.getCollectionLink(...args),
   generateCollectionLink: (...args: unknown[]) => mockApi.generateCollectionLink(...args),
   revokeCollectionLink: (...args: unknown[]) => mockApi.revokeCollectionLink(...args),

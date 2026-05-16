@@ -6,6 +6,7 @@ import {
   type BookingData,
   type BookingDocument,
   type BookingTraveler,
+  type PaymentTracking,
 } from '@/lib/api-client';
 import BookingExecutionPanel from '@/components/workspace/panels/BookingExecutionPanel';
 import ConfirmationPanel from '@/components/workspace/panels/ConfirmationPanel';
@@ -30,6 +31,7 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
   const [opsDocs, setOpsDocs] = useState<BookingDocument[]>([]);
   const [opsPendingData, setOpsPendingData] = useState<BookingData | null>(null);
   const [opsTravelers, setOpsTravelers] = useState<BookingTraveler[]>([]);
+  const [opsPaymentTracking, setOpsPaymentTracking] = useState<PaymentTracking | null>(null);
 
   const stage = trip?.stage;
   const canGenerateLink = stage === 'proposal' || stage === 'booking';
@@ -41,6 +43,7 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
           pendingData={opsPendingData}
           documents={opsDocs}
           readiness={readiness}
+          paymentTracking={opsPaymentTracking}
         />
       )}
 
@@ -52,6 +55,7 @@ export default function OpsPanel({ trip, mode = 'full' }: OpsPanelProps) {
           canGenerateLink={canGenerateLink}
           onPendingDataChange={setOpsPendingData}
           onTravelersChange={setOpsTravelers}
+          onPaymentTrackingChange={setOpsPaymentTracking}
         />
       )}
 
