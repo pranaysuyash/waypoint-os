@@ -266,18 +266,42 @@ def _get_nested_value(data: Dict[str, Any], path: str) -> Any:
 def _is_likely_real_user_data(data: Dict[str, Any]) -> Optional[str]:
     """
     Return a human-readable reason string if data appears to be real user PII.
-    Return None if clean (or if from a known fixture).
+    Return None if clean (or if from a known fixture without PII in raw input).
+
+    Check order:
+    1. Email and phone in raw user-input fields (raw_input, raw_note) are always
+       blocked — even inside known fixtures — because a fixture's raw input may
+       be accidentally updated with real contact info. Structured output fields
+       (traveler_bundle, extracted, analytics) are excluded from this pre-check
+       since they are processed results, not raw user text.
+    2. Known fixtures bypass all remaining checks (freeform text and medical
+       keywords are expected in synthetic scenario data).
+    3. Non-fixtures get a full scan for email, phone, freeform, and medical.
     """
-    # Known fixtures are always allowed
+    # Always check raw user-input fields for email/phone — even for known fixtures.
+    raw_input_scope: Dict[str, Any] = {}
+    for field in ("raw_input", "raw_note"):
+        if field in data:
+            raw_input_scope[field] = data[field]
+
+    if raw_input_scope:
+        email_str = _has_email(raw_input_scope)
+        if email_str:
+            return f"Detected email address: '{email_str[:50]}...'"
+        phone_str = _has_phone(raw_input_scope)
+        if phone_str:
+            return f"Detected phone number: '{phone_str[:50]}...'"
+
+    # Known fixtures are allowed to contain freeform text and medical content
+    # (synthetic/scenario data) in structured output fields.
     if _is_known_fixture(data):
         return None
 
-    # Check for email
+    # Full scan for non-fixture trips.
     email_str = _has_email(data)
     if email_str:
         return f"Detected email address: '{email_str[:50]}...'"
 
-    # Check for phone
     phone_str = _has_phone(data)
     if phone_str:
         return f"Detected phone number: '{phone_str[:50]}...'"

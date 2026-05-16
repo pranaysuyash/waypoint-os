@@ -238,6 +238,7 @@ A living document of areas to explore, ideas to investigate, and potential impro
 - [ ] Security audit checklist
 - [ ] penetration testing procedures
 - [ ] SOC2 compliance preparation
+- [ ] **RunLedger terminal-transition idempotency** — Verify watchdog and recovery_agent never call `complete()`/`fail()`/`block()` on a run already in a terminal state. Prior to commit `964ae82`, `run_ledger.py` had idempotent early-returns ("no-op if already terminal — watchdog safety"). These were removed when strict `assert_can_transition` was introduced. If watchdog retries a terminal call (e.g. after process restart), it will now raise. Options: add `try/except InvalidTransitionError` at call sites in `watchdog.py` and `recovery_agent.py`, or restore idempotent guard in `run_ledger.py`. See `Docs/status/STASH_PRESERVATION_AUDIT_2026-05-16.md`.
 
 ## External Research Additions (2026-05-12)
 

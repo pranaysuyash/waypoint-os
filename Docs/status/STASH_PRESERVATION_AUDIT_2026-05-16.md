@@ -64,21 +64,31 @@
 
 ---
 
-## Items to preserve before dropping stash@{0}
+## Resolution
 
-### 1. Privacy guard ordering regression (SECURITY)
+### 1. Privacy guard ordering regression — FIXED (2026-05-16)
 
-**File to note:** `src/security/privacy_guard.py` line 272  
-**Issue:** Master checks `_is_known_fixture(data)` first and returns `None` immediately, bypassing all PII checks. Stash version checked email/phone first, then allowed fixture bypass.  
-**Risk:** A known fixture containing a real email address would pass the privacy guard in master without being flagged.  
-**Stash comment (preserved):** "Always check for unambiguous PII patterns (email, phone) — these should be blocked even if the trip is a known fixture, because someone may be updating a fixture with real contact info."  
-**Recommended fix:** Move email/phone checks above the `_is_known_fixture` early-return.
+**Status:** Fixed in `src/security/privacy_guard.py`  
+**Commit:** see fix commit below  
+**What changed:** Email/phone in `raw_input` and `raw_note` fields are now checked unconditionally before the known-fixture bypass. Structured output fields (`traveler_bundle`, `extracted`, `analytics`) are excluded from the pre-check — they are processed results, not raw user input. Full scan applies to non-fixture trips as before.  
+**Security guarantee:** A known fixture whose `raw_input` or `raw_note` contains a real email or phone number will now be blocked, even if `_is_known_fixture()` returns True.  
+**Tests added:** `TestKnownFixtureWithPII` (4 tests) covering: fixture with real email blocked, fixture with real phone blocked, fixture without PII passes, seed_scenario with real email blocked.  
+**Test suite after fix:** 2248 passed, 7 skipped. Only 2 pre-existing snapshot failures (route/openapi parity — unrelated).
 
-### 2. RunLedger idempotency removal (WATCHDOG RISK)
+### 2. RunLedger idempotency removal — LOGGED AS BACKLOG ITEM
 
-**File:** `spine_api/run_ledger.py`  
-**Issue:** Stash had idempotent terminal transitions: `complete()` on an already-COMPLETED run was a no-op. Master removed early-return guards; `assert_can_transition` now raises if the source state has no allowed transitions (COMPLETED/FAILED/BLOCKED → empty set).  
-**Risk:** If the watchdog or recovery agent retries a `complete()`/`fail()` call on a run already in terminal state, master will raise an exception instead of silently succeeding.  
-**Stash docstring (preserved):** "Idempotent — no-op if already terminal (watchdog safety)."  
-**Recommended check:** Verify watchdog and recovery agent never retry terminal-transition calls. If they can, add `try/except` at the call site or restore idempotent guard.
+**Status:** Not changed in code. Documented below for follow-up.  
+**Risk:** `RunLedger.complete()`, `.fail()`, `.block()` on an already-terminal run now raise via `assert_can_transition` (empty transition set for terminal states). Stash had idempotent early-returns with docstring "idempotent for watchdog safety."  
+**Action required:** Verify that `watchdog.py` and `recovery_agent.py` never call `complete()`/`fail()` on a run that may already be in a terminal state. If they can (e.g., after a process restart that replays incomplete work), either:
+- Add `try/except InvalidTransitionError` at the call sites, or
+- Restore idempotent guard in `run_ledger.py` terminal methods.
+
+**Backlog entry added to:** `Docs/exploration/backlog.md`
+
+---
+
+## Stash drop decision
+
+**stash@{1}** — safe to drop immediately. Fully superseded.  
+**stash@{0}** — safe to drop after this audit doc is committed. Both items extracted: privacy fix implemented, RunLedger risk documented.
 

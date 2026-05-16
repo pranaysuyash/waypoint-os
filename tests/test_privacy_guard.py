@@ -414,3 +414,69 @@ class TestAgentNotesBlocking:
             "source": "user_input",
         }
         check_trip_data(trip)
+
+
+# =============================================================================
+# Regression: known fixtures with real PII must still be blocked
+# =============================================================================
+
+
+class TestKnownFixtureWithPII:
+    """
+    A known fixture containing real email or phone must be blocked.
+    Fixtures are synthetic data — if email/phone appears, it signals that real
+    contact info was accidentally mixed into fixture data.
+    """
+
+    def test_known_fixture_with_real_email_is_blocked(self):
+        """Known fixture with email address must be rejected — email bypasses fixture allowance."""
+        trip = {
+            "raw_input": {
+                "fixture_id": "clean_family_booking",
+                "text": "Contact the lead traveler at john.doe@example.com",
+            },
+            "source": "test_fixture",
+        }
+        with pytest.raises(PrivacyGuardError) as exc:
+            check_trip_data(trip)
+        assert "email" in str(exc.value).lower()
+
+    def test_known_fixture_with_real_phone_is_blocked(self):
+        """Known fixture with phone number must be rejected — phone bypasses fixture allowance."""
+        trip = {
+            "raw_input": {
+                "fixture_id": "clean_family_booking",
+                "contact": "+91 98765 43210",
+            },
+            "source": "test_fixture",
+        }
+        with pytest.raises(PrivacyGuardError) as exc:
+            check_trip_data(trip)
+        assert "phone" in str(exc.value).lower()
+
+    def test_known_fixture_without_pii_is_allowed(self):
+        """Known fixture with no PII — freeform text and medical content still pass."""
+        trip = {
+            "raw_input": {
+                "fixture_id": "clean_family_booking",
+                "stage": "discovery",
+                "notes": "Party requires wheelchair access and vegetarian meals",
+            },
+            "source": "test_fixture",
+        }
+        # Freeform/medical content inside a known fixture is allowed
+        check_trip_data(trip)
+
+    def test_seed_scenario_with_real_email_is_blocked(self):
+        """seed_scenario source is a known fixture pattern but email still blocks."""
+        trip = {
+            "raw_input": {
+                "fixture_id": None,
+                "stage": "discovery",
+            },
+            "source": "seed_scenario",
+            "raw_note": "Reply to traveler@real-email.com for confirmation",
+        }
+        with pytest.raises(PrivacyGuardError) as exc:
+            check_trip_data(trip)
+        assert "email" in str(exc.value).lower()
