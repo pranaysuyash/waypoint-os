@@ -154,6 +154,7 @@ from spine_api.contract import (
     UnifiedStateResponse,
     DashboardStatsResponse,
     SuitabilityFlagsResponse,
+    TripResponse,
 )
 from spine_api.services.live_checker_service import (
     apply_live_checker_adjustments,
@@ -1569,7 +1570,7 @@ async def list_trips(
     return {"items": trips, "total": total}
 
 
-@app.get("/trips/{trip_id}")
+@app.get("/trips/{trip_id}", response_model=TripResponse)
 def get_trip(
     trip_id: str,
     agency: Agency = Depends(get_current_agency),
@@ -1578,14 +1579,14 @@ def get_trip(
     trip = TripStore.get_trip_for_agency(trip_id, agency.id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
-    
+
     # Include assignment info
     assignment = AssignmentStore.get_assignment(trip_id)
     if assignment:
         trip["assigned_to"] = assignment["agent_id"]
         trip["assigned_to_name"] = assignment["agent_name"]
-    
-    return trip
+
+    return TripResponse.from_dict(trip)
 
 
 @app.get("/trips/{trip_id}/suitability", response_model=SuitabilityFlagsResponse)
@@ -1636,7 +1637,7 @@ def get_trip_suitability(
     )
 
 
-@app.patch("/trips/{trip_id}")
+@app.patch("/trips/{trip_id}", response_model=TripResponse)
 def patch_trip(
     trip_id: str,
     updates: Dict[str, Any],
@@ -1743,6 +1744,15 @@ def patch_trip(
                         "value": parsed_budget,
                         "confidence": 1.0,
                         "authority_level": "explicit_user",
+                    }
+                else:
+                    # Store raw text so extracted.facts.budget is always populated after PATCH.
+                    # Downstream resolution via resolve_trip_field() will read this value;
+                    # legacy top-level fallbacks exist for pre-fix trips until Phase 5.
+                    facts["budget"] = {
+                        "value": budget_text,
+                        "confidence": 0.5,
+                        "authority_level": "explicit_user_raw",
                     }
                 fields_to_clear.add("budget_raw_text")
 
@@ -1859,7 +1869,7 @@ def patch_trip(
             "trigger": "auto_edit",
         }
 
-    return updated_trip
+    return TripResponse.from_dict(updated_trip)
 
 
 # ---------------------------------------------------------------------------
@@ -2215,9 +2225,32 @@ class CollectionLinkResponse(BaseModel):
 class CollectionLinkStatusResponse(BaseModel):
     has_active_token: bool
     token_id: Optional[str] = None
+    collection_url: Optional[str] = None  # Only set for active, non-expired tokens
     expires_at: Optional[str] = None
     status: Optional[str] = None
     has_pending_submission: bool
+
+
+def _safe_collection_plain_token(blob: Optional[dict]) -> Optional[str]:
+    """Decrypt and validate a plain_token_encrypted blob.
+
+    Returns the plain token string only if it looks like a valid token_urlsafe(32)
+    value. Rejects garbage, ciphertext blobs, empty strings, and tokens that would
+    produce a malformed collection URL path component.
+    """
+    if not blob:
+        return None
+    try:
+        from spine_api.services.private_fields import decrypt_field
+        token = decrypt_field(blob)
+    except Exception:
+        return None
+    if not token or not isinstance(token, str):
+        return None
+    # token_urlsafe(32) produces ~43 URL-safe base64 chars; reject anything suspicious
+    if len(token) < 32 or "/" in token or "\\" in token or " " in token or "\n" in token:
+        return None
+    return token
 
 
 class PendingBookingDataResponse(BaseModel):
@@ -2339,7 +2372,15 @@ async def create_collection_link(
 
 @app.get("/trips/{trip_id}/collection-link", response_model=CollectionLinkStatusResponse)
 async def get_collection_link_status(trip_id: str, agency: Agency = Depends(get_current_agency)):
-    """Check collection link status and pending submission."""
+    """Check collection link status, pending submission, and re-expose active URL.
+
+    Returns collection_url for authenticated agency operators when a valid active
+    token exists. The plain token is decrypted from plain_token_encrypted and the
+    URL is assembled from the current PUBLIC_COLLECTION_BASE_URL at read time.
+
+    collection_url is None when: no active token, token is expired/revoked/used,
+    plain_token_encrypted is null (pre-migration rows), or decryption fails.
+    """
     from spine_api.services.collection_service import get_active_token_for_trip
 
     trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
@@ -2350,9 +2391,20 @@ async def get_collection_link_status(trip_id: str, agency: Agency = Depends(get_
         token = await get_active_token_for_trip(db, trip_id)
     pending = await _ts(TripStore.get_pending_booking_data_for_agency, trip_id, agency.id)
 
+    # Assemble collection_url from encrypted plain token (authenticated only).
+    # Never logged; never returned from public endpoints.
+    collection_url = None
+    if token:
+        plain = _safe_collection_plain_token(token.plain_token_encrypted)
+        if plain:
+            base_url = os.getenv("PUBLIC_COLLECTION_BASE_URL", "")
+            path = f"/api/public/booking-collection/{agency.id}/{plain}"
+            collection_url = f"{base_url}{path}" if base_url else path
+
     return CollectionLinkStatusResponse(
         has_active_token=token is not None,
         token_id=token.id if token else None,
+        collection_url=collection_url,
         expires_at=token.expires_at.isoformat() if token else None,
         status=token.status if token else None,
         has_pending_submission=pending is not None,

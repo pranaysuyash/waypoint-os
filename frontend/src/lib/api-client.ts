@@ -908,6 +908,9 @@ export interface CollectionLinkInfo {
 export interface CollectionLinkStatus {
   has_active_token: boolean;
   token_id: string | null;
+  /** Populated by authenticated GET when an active, non-expired token exists.
+   *  null for absent/revoked/used/expired tokens and pre-migration rows. */
+  collection_url?: string | null;
   expires_at: string | null;
   status: string | null;
   has_pending_submission: boolean;

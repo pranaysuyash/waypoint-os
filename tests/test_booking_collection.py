@@ -227,6 +227,144 @@ class TestCollectionLinkCRUD:
         # URLs should differ (different tokens)
         assert url1 != url2
 
+    # ------------------------------------------------------------------
+    # collection_url re-expose tests (Option D implementation)
+    # ------------------------------------------------------------------
+
+    def test_get_status_includes_collection_url_when_active(self, session_client, created_trip_id):
+        """GET status returns collection_url after generate — operator can re-copy after reload."""
+        gen = session_client.post(f"/trips/{created_trip_id}/collection-link")
+        assert gen.status_code == 200
+        generated_url = gen.json()["collection_url"]
+
+        status = session_client.get(f"/trips/{created_trip_id}/collection-link")
+        assert status.status_code == 200
+        data = status.json()
+
+        assert data["has_active_token"] is True
+        assert data["collection_url"] is not None
+        # URL must contain the agency path segment (proves it was assembled properly)
+        assert "/booking-collection/" in data["collection_url"]
+        # Must match what was generated
+        assert data["collection_url"] == generated_url
+
+    def test_get_status_collection_url_null_when_no_token(self, session_client, created_trip_id):
+        """GET status with no active token returns collection_url=null."""
+        status = session_client.get(f"/trips/{created_trip_id}/collection-link")
+        assert status.status_code == 200
+        data = status.json()
+        assert data["has_active_token"] is False
+        assert data.get("collection_url") is None
+
+    def test_get_status_collection_url_null_after_revoke(self, session_client, created_trip_id):
+        """After revoking, GET status returns collection_url=null."""
+        session_client.post(f"/trips/{created_trip_id}/collection-link")
+        session_client.delete(f"/trips/{created_trip_id}/collection-link")
+
+        status = session_client.get(f"/trips/{created_trip_id}/collection-link")
+        data = status.json()
+        assert data["has_active_token"] is False
+        assert data.get("collection_url") is None
+
+    def test_get_status_collection_url_null_after_use(self, session_client, created_trip_id):
+        """After customer submission (token used), GET status returns collection_url=null."""
+        gen = session_client.post(f"/trips/{created_trip_id}/collection-link")
+        token = _extract_token_from_url(gen.json()["collection_url"])
+
+        session_client.post(
+            f"/api/public/booking-collection/{TEST_AGENCY_ID}/{token}/submit",
+            json=_submit_payload(MINIMAL_BOOKING_DATA),
+        )
+
+        status = session_client.get(f"/trips/{created_trip_id}/collection-link")
+        data = status.json()
+        # Token is now "used" — get_active_token_for_trip returns None
+        assert data["has_active_token"] is False
+        assert data.get("collection_url") is None
+
+    def test_get_status_collection_url_null_when_plain_token_missing(self, session_client, created_trip_id):
+        """Pre-migration rows (plain_token_encrypted=null) return collection_url=null.
+
+        Simulates the backwards-compat case where the DB row was created before the
+        encrypted-token column was added. Uses a fresh standalone asyncpg connection
+        (not the SQLAlchemy pool) to avoid event-loop conflicts in the sync test body.
+        """
+        import asyncio
+        import asyncpg
+        import os
+
+        session_client.post(f"/trips/{created_trip_id}/collection-link")
+
+        async def _null_encrypted():
+            dsn = os.getenv(
+                "DATABASE_URL",
+                "postgresql+asyncpg://waypoint:waypoint_dev_password@localhost:5432/waypoint_os",
+            ).replace("postgresql+asyncpg://", "postgresql://")
+            conn = await asyncpg.connect(dsn)
+            try:
+                await conn.execute(f"SET app.current_agency_id = '{TEST_AGENCY_ID}'")
+                await conn.execute(
+                    "UPDATE booking_collection_tokens SET plain_token_encrypted = NULL "
+                    "WHERE trip_id = $1 AND status = 'active'",
+                    created_trip_id,
+                )
+            finally:
+                await conn.close()
+
+        asyncio.run(_null_encrypted())
+
+        status = session_client.get(f"/trips/{created_trip_id}/collection-link")
+        data = status.json()
+        assert data["has_active_token"] is True
+        assert data.get("collection_url") is None
+
+    def test_get_status_does_not_return_url_for_expired_active_record(self, session_client, created_trip_id):
+        """Token with status=active but expires_at < now returns has_active_token=False.
+
+        get_active_token_for_trip detects expiry and returns None, so collection_url=null.
+        Uses a fresh standalone asyncpg connection to backdate expires_at.
+        """
+        import asyncio
+        import asyncpg
+        import os
+
+        session_client.post(f"/trips/{created_trip_id}/collection-link")
+
+        async def _expire_token():
+            dsn = os.getenv(
+                "DATABASE_URL",
+                "postgresql+asyncpg://waypoint:waypoint_dev_password@localhost:5432/waypoint_os",
+            ).replace("postgresql+asyncpg://", "postgresql://")
+            conn = await asyncpg.connect(dsn)
+            try:
+                await conn.execute(f"SET app.current_agency_id = '{TEST_AGENCY_ID}'")
+                await conn.execute(
+                    "UPDATE booking_collection_tokens "
+                    "SET expires_at = NOW() - INTERVAL '1 hour', status = 'active' "
+                    "WHERE trip_id = $1 AND status = 'active'",
+                    created_trip_id,
+                )
+            finally:
+                await conn.close()
+
+        asyncio.run(_expire_token())
+
+        status = session_client.get(f"/trips/{created_trip_id}/collection-link")
+        data = status.json()
+        assert data["has_active_token"] is False
+        assert data.get("collection_url") is None
+
+    def test_collection_url_not_exposed_from_public_endpoint(self, session_client, created_trip_id):
+        """Public collection GET must never return collection_url."""
+        gen = session_client.post(f"/trips/{created_trip_id}/collection-link")
+        token = _extract_token_from_url(gen.json()["collection_url"])
+
+        resp = session_client.get(f"/api/public/booking-collection/{TEST_AGENCY_ID}/{token}")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "collection_url" not in data
+        assert data["valid"] is True
+
 
 # ---------------------------------------------------------------------------
 # 4. Public endpoints: customer form + submit

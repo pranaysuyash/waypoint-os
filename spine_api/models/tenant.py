@@ -186,6 +186,11 @@ class BookingCollectionToken(Base):
         ForeignKey("agencies.id", ondelete="CASCADE"), nullable=False
     )
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    # Encrypted plain token for authenticated operator re-display.
+    # Stores encrypt_field(plain_token) — the assembled collection_url is
+    # reconstructed at read time so PUBLIC_COLLECTION_BASE_URL stays flexible.
+    # Nullable for backwards compat with pre-migration rows.
+    plain_token_encrypted: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="active")
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

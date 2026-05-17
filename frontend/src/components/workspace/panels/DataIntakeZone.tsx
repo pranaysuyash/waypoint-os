@@ -202,13 +202,18 @@ export default function DataIntakeZone({
     }
   }, [tripId]);
 
+  // Prefer freshly-generated URL (linkInfo) over server-loaded URL (linkStatus).
+  // Falls back to linkStatus.collection_url so the operator can re-copy after
+  // page reload or another session without regenerating the link.
+  const displayUrl = linkInfo?.collection_url ?? linkStatus?.collection_url ?? null;
+
   const handleCopyLink = useCallback(() => {
-    if (!linkInfo?.collection_url) return;
-    navigator.clipboard.writeText(linkInfo.collection_url).then(() => {
+    if (!displayUrl) return;
+    navigator.clipboard.writeText(displayUrl).then(() => {
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
     });
-  }, [linkInfo?.collection_url]);
+  }, [displayUrl]);
 
   const handleAccept = useCallback(async () => {
     setAccepting(true);
@@ -507,7 +512,7 @@ export default function DataIntakeZone({
             <span className="text-xs text-[#8b949e]">Loading…</span>
           )}
 
-          {!linkLoading && !linkInfo && (
+          {!linkLoading && !displayUrl && (
             <div>
               {linkStatus?.has_active_token && (
                 <div data-testid="ops-link-active-hint" className="mb-3 text-xs text-[#8b949e]">
@@ -526,14 +531,14 @@ export default function DataIntakeZone({
             </div>
           )}
 
-          {!linkLoading && linkInfo && (
+          {!linkLoading && displayUrl && (
             <div data-testid="ops-link-info">
               <div className="flex items-center gap-2 mb-2">
                 <input
                   readOnly
                   data-testid="ops-link-url"
                   className="flex-1 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs text-[#e6edf3] font-mono"
-                  value={linkInfo.collection_url}
+                  value={displayUrl}
                   onClick={(e) => (e.target as HTMLInputElement).select()}
                 />
                 <button
@@ -545,7 +550,7 @@ export default function DataIntakeZone({
                 </button>
               </div>
               <div className="text-xs text-[#8b949e] mb-3">
-                Expires: <ClientDateTime value={linkInfo.expires_at} />
+                Expires: <ClientDateTime value={(linkInfo ?? linkStatus)?.expires_at ?? ''} />
               </div>
               <div className="flex gap-2">
                 <button

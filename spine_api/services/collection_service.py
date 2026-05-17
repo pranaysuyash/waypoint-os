@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spine_api.models.tenant import BookingCollectionToken
+from spine_api.services.private_fields import encrypt_field, decrypt_field
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ async def generate_token(
         trip_id=trip_id,
         agency_id=agency_id,
         token_hash=token_hash,
+        plain_token_encrypted=encrypt_field(plain_token),
         status="active",
         expires_at=datetime.now(timezone.utc) + timedelta(hours=ttl_hours),
         created_by=created_by,

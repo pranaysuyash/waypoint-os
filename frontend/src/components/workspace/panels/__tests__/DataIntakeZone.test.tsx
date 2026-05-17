@@ -61,10 +61,12 @@ describe('DataIntakeZone', () => {
     expect(screen.queryByTestId('ops-collection-link')).not.toBeInTheDocument();
   });
 
-  it('shows active link hint when GET returns has_active_token', async () => {
+  it('shows active link hint when GET returns has_active_token but no collection_url', async () => {
+    // Pre-migration / null encrypted blob case: token exists but URL cannot be re-shown
     mockApi.getCollectionLink.mockResolvedValue({
       has_active_token: true,
       token_id: 'tok_1',
+      collection_url: null,
       expires_at: '2026-05-11T00:00:00Z',
       status: 'active',
       has_pending_submission: false,
@@ -76,6 +78,63 @@ describe('DataIntakeZone', () => {
       expect(screen.getByTestId('ops-link-active-hint')).toBeInTheDocument();
     });
     expect(screen.getByTestId('ops-generate-link-btn')).toBeInTheDocument();
+    // No URL affordance — hint only
+    expect(screen.queryByTestId('ops-link-url')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('ops-copy-link-btn')).not.toBeInTheDocument();
+  });
+
+  it('shows URL and copy button from linkStatus collection_url without generating', async () => {
+    // Core re-expose test: operator reloads page, GET returns active token with URL
+    // generateCollectionLink must NOT be called
+    const STATUS_URL = 'https://example.com/booking-collection/d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b/tok_status';
+    mockApi.getCollectionLink.mockResolvedValue({
+      has_active_token: true,
+      token_id: 'tok_1',
+      collection_url: STATUS_URL,
+      expires_at: '2026-05-11T00:00:00Z',
+      status: 'active',
+      has_pending_submission: false,
+    });
+
+    render(<DataIntakeZone tripId="trip_1" canGenerateLink={true} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ops-link-info')).toBeInTheDocument();
+    });
+
+    // URL from status is displayed without any generate call
+    expect(mockApi.generateCollectionLink).not.toHaveBeenCalled();
+    expect(screen.getByTestId('ops-link-url')).toHaveValue(STATUS_URL);
+    expect(screen.getByTestId('ops-copy-link-btn')).toBeInTheDocument();
+    // Regenerate is still available as a secondary action
+    expect(screen.getByTestId('ops-regenerate-link-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('ops-revoke-link-btn')).toBeInTheDocument();
+  });
+
+  it('copy button uses collection_url from linkStatus when linkInfo is null', async () => {
+    const STATUS_URL = 'https://example.com/booking-collection/agency_1/tok_from_status';
+    mockApi.getCollectionLink.mockResolvedValue({
+      has_active_token: true,
+      token_id: 'tok_1',
+      collection_url: STATUS_URL,
+      expires_at: '2026-05-11T00:00:00Z',
+      status: 'active',
+      has_pending_submission: false,
+    });
+
+    const user = userEvent.setup();
+    const clipboardSpy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
+
+    render(<DataIntakeZone tripId="trip_1" canGenerateLink={true} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ops-copy-link-btn')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('ops-copy-link-btn'));
+
+    expect(clipboardSpy).toHaveBeenCalledWith(STATUS_URL);
+    clipboardSpy.mockRestore();
   });
 
   it('generates collection link and shows URL', async () => {
@@ -102,7 +161,7 @@ describe('DataIntakeZone', () => {
     expect(screen.getByTestId('ops-regenerate-link-btn')).toBeInTheDocument();
   });
 
-  it('revokes collection link', async () => {
+  it('revokes collection link generated this session', async () => {
     const user = userEvent.setup();
     mockApi.generateCollectionLink.mockResolvedValue({
       token_id: 'tok_1',
@@ -122,6 +181,34 @@ describe('DataIntakeZone', () => {
     await waitFor(() => {
       expect(mockApi.revokeCollectionLink).toHaveBeenCalledWith('trip_1');
     });
+    expect(screen.queryByTestId('ops-link-info')).not.toBeInTheDocument();
+    expect(screen.getByTestId('ops-generate-link-btn')).toBeInTheDocument();
+  });
+
+  it('revoke clears URL that came from linkStatus (re-exposed after reload)', async () => {
+    // Operator is in a reload session — URL came from linkStatus, not linkInfo
+    const user = userEvent.setup();
+    mockApi.getCollectionLink.mockResolvedValue({
+      has_active_token: true,
+      token_id: 'tok_1',
+      collection_url: 'https://example.com/booking-collection/agency_1/tok_status',
+      expires_at: '2026-05-11T00:00:00Z',
+      status: 'active',
+      has_pending_submission: false,
+    });
+    mockApi.revokeCollectionLink.mockResolvedValue({ ok: true });
+
+    render(<DataIntakeZone tripId="trip_1" canGenerateLink={true} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ops-revoke-link-btn')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('ops-revoke-link-btn'));
+
+    await waitFor(() => {
+      expect(mockApi.revokeCollectionLink).toHaveBeenCalledWith('trip_1');
+    });
+    // URL is cleared after revoke
     expect(screen.queryByTestId('ops-link-info')).not.toBeInTheDocument();
     expect(screen.getByTestId('ops-generate-link-btn')).toBeInTheDocument();
   });
