@@ -1,6 +1,6 @@
 # Collection Link Re-expose — Design Plan
 **Date:** 2026-05-17 (revised 2026-05-18)
-**Status:** Design approved — ready to implement
+**Status:** Implemented on `review/collection-link-reexpose-encrypted-token` — awaiting review sign-off before merge to master
 **Scope:** Trip Workspace → Ops → Customer Collection Link
 **Not in scope:** payment collection, public itinerary checker, document upload portal
 

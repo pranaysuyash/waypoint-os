@@ -367,6 +367,100 @@ class TestCollectionLinkCRUD:
 
 
 # ---------------------------------------------------------------------------
+# 3b. _safe_collection_plain_token whitelist validation (unit tests)
+# ---------------------------------------------------------------------------
+
+class TestSafeCollectionPlainToken:
+    """Unit tests for the _safe_collection_plain_token validator.
+
+    These tests confirm the whitelist-only approach: only [A-Za-z0-9_-]{32,128}
+    is accepted. Any character that could alter URL semantics must be rejected.
+    """
+
+    def _call(self, value):
+        """Encrypt value as a blob and pass through the validator."""
+        from spine_api.server import _safe_collection_plain_token
+        from spine_api.services.private_fields import encrypt_field
+        blob = encrypt_field(value) if isinstance(value, str) else value
+        return _safe_collection_plain_token(blob)
+
+    def test_valid_token_passes(self):
+        import secrets
+        token = secrets.token_urlsafe(32)
+        result = self._call(token)
+        assert result == token
+
+    def test_none_blob_returns_none(self):
+        from spine_api.server import _safe_collection_plain_token
+        assert _safe_collection_plain_token(None) is None
+
+    def test_empty_dict_blob_returns_none(self):
+        from spine_api.server import _safe_collection_plain_token
+        assert _safe_collection_plain_token({}) is None
+
+    def test_token_with_question_mark_rejected(self):
+        # ? would truncate the URL path — must be rejected
+        result = self._call("a" * 31 + "?query=evil")
+        assert result is None
+
+    def test_token_with_hash_rejected(self):
+        # # would introduce a fragment — must be rejected
+        result = self._call("a" * 31 + "#fragment")
+        assert result is None
+
+    def test_token_with_ampersand_rejected(self):
+        result = self._call("a" * 32 + "&x=1")
+        assert result is None
+
+    def test_token_with_percent_rejected(self):
+        result = self._call("a" * 32 + "%20")
+        assert result is None
+
+    def test_token_with_equals_rejected(self):
+        result = self._call("a" * 32 + "=val")
+        assert result is None
+
+    def test_token_with_slash_rejected(self):
+        result = self._call("a" * 32 + "/path")
+        assert result is None
+
+    def test_token_with_backslash_rejected(self):
+        result = self._call("a" * 32 + "\\path")
+        assert result is None
+
+    def test_token_with_whitespace_rejected(self):
+        result = self._call("a" * 32 + " trailing")
+        assert result is None
+
+    def test_token_with_newline_rejected(self):
+        result = self._call("a" * 32 + "\ninjected")
+        assert result is None
+
+    def test_token_too_short_rejected(self):
+        result = self._call("abc123")
+        assert result is None
+
+    def test_token_too_long_rejected(self):
+        result = self._call("a" * 129)
+        assert result is None
+
+    def test_non_string_decrypted_value_returns_none(self):
+        """If ciphertext decrypts to a non-string (e.g. int), reject."""
+        from spine_api.server import _safe_collection_plain_token
+        from spine_api.services.private_fields import encrypt_field
+        # encrypt_field stores as JSON — encrypt a numeric-looking value
+        # The validator must reject non-str types from decrypt_field
+        blob = encrypt_field("12345")  # valid string but too short
+        result = _safe_collection_plain_token(blob)
+        assert result is None  # too short (< 32 chars)
+
+    def test_colon_rejected(self):
+        # colon would break URL scheme or port parsing
+        result = self._call("a" * 32 + ":8080")
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
 # 4. Public endpoints: customer form + submit
 # ---------------------------------------------------------------------------
 

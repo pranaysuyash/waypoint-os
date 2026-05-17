@@ -2231,12 +2231,19 @@ class CollectionLinkStatusResponse(BaseModel):
     has_pending_submission: bool
 
 
+# secrets.token_urlsafe(32) produces URL-safe base64 characters: letters, digits,
+# hyphen, underscore. Nothing else. Whitelist-validate to prevent garbage ciphertext
+# or injected path characters from reaching URL assembly.
+_COLLECTION_TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{32,128}$")
+
+
 def _safe_collection_plain_token(blob: Optional[dict]) -> Optional[str]:
     """Decrypt and validate a plain_token_encrypted blob.
 
-    Returns the plain token string only if it looks like a valid token_urlsafe(32)
-    value. Rejects garbage, ciphertext blobs, empty strings, and tokens that would
-    produce a malformed collection URL path component.
+    Returns the plain token string only if it matches the expected token_urlsafe
+    character set and length. Rejects on any decryption failure, wrong type,
+    or characters outside [A-Za-z0-9_-] (which rules out ?, #, &, %, =, :,
+    slashes, whitespace, and everything else that could alter URL semantics).
     """
     if not blob:
         return None
@@ -2245,10 +2252,9 @@ def _safe_collection_plain_token(blob: Optional[dict]) -> Optional[str]:
         token = decrypt_field(blob)
     except Exception:
         return None
-    if not token or not isinstance(token, str):
+    if not isinstance(token, str):
         return None
-    # token_urlsafe(32) produces ~43 URL-safe base64 chars; reject anything suspicious
-    if len(token) < 32 or "/" in token or "\\" in token or " " in token or "\n" in token:
+    if not _COLLECTION_TOKEN_RE.fullmatch(token):
         return None
     return token
 

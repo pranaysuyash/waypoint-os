@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spine_api.models.tenant import BookingCollectionToken
-from spine_api.services.private_fields import encrypt_field, decrypt_field
+from spine_api.services.private_fields import encrypt_field
 
 logger = logging.getLogger(__name__)
 
