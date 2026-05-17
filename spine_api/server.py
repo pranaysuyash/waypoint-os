@@ -53,9 +53,12 @@ from typing import Any, Dict, List, Literal, Optional
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-# Add project root to Python path so we can import from src
+# Add project root and src/ to Python path so intake, agents, etc. are importable
+_SRC_ROOT = PROJECT_ROOT / "src"
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+if str(_SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SRC_ROOT))
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, UploadFile, Form, File
 from starlette.requests import Request
