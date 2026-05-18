@@ -326,6 +326,8 @@ describe("trips/[tripId]/layout", () => {
     fireEvent.click(screen.getByRole("button", { name: "Show activity" }));
 
     expect(screen.getByLabelText("Trip timeline")).toBeInTheDocument();
+    expect(screen.getByLabelText("Trip timeline").className).toContain("sticky");
+    expect(screen.getByLabelText("Trip timeline").className).toContain("top-5");
     expect(await screen.findByRole("heading", { name: "Timeline Summary" })).toBeInTheDocument();
   });
 

@@ -369,7 +369,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
           )}
 
           {/* ── Main content + optional rail ── */}
-          <div className={isRailOpen ? "grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4" : "grid grid-cols-1 gap-4"}>
+          <div className={isRailOpen ? "grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4 items-start" : "grid grid-cols-1 gap-4"}>
             <main className="rounded-xl border border-[#1c2128] bg-[#0f1115] min-h-[440px]">
               {children}
             </main>
@@ -377,7 +377,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
             {isRailOpen && (
               <aside
                 id="workspace-right-rail"
-                className="rounded-xl border border-[#1c2128] bg-[#0f1115] h-[calc(100vh-140px)] overflow-hidden flex flex-col"
+                className="rounded-xl border border-[#1c2128] bg-[#0f1115] sticky top-5 self-start max-h-[calc(100vh-140px)] overflow-hidden flex flex-col"
                 aria-label="Trip timeline"
               >
                 <div className="border-b border-[#1c2128] p-3 space-y-2">
