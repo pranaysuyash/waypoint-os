@@ -122,6 +122,8 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
 
   // ── Booking collection (Phase 4A) ──────────────────────────────
   ["trips/{id}/collection-link", { backendPath: "trips/{id}/collection-link" }],
+  ["trips/{id}/booking-data", { backendPath: "trips/{id}/booking-data" }],
+  ["trips/{id}/booking-data/payment", { backendPath: "trips/{id}/booking-data/payment" }],
   ["trips/{id}/pending-booking-data", { backendPath: "trips/{id}/pending-booking-data" }],
   ["trips/{id}/pending-booking-data/accept", { backendPath: "trips/{id}/pending-booking-data/accept" }],
   ["trips/{id}/pending-booking-data/reject", { backendPath: "trips/{id}/pending-booking-data/reject" }],

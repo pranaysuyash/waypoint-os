@@ -86,4 +86,13 @@ describe("resolveBackendPath", () => {
       "api/system/integrity/issues"
     );
   });
+
+  it("maps booking-data read/write paths through the proxy", () => {
+    expect(resolveBackendPath(["trips", "abc123", "booking-data"])).toBe(
+      "trips/abc123/booking-data"
+    );
+    expect(resolveBackendPath(["trips", "abc123", "booking-data", "payment"])).toBe(
+      "trips/abc123/booking-data/payment"
+    );
+  });
 });
