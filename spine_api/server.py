@@ -164,6 +164,7 @@ from spine_api.services.live_checker_service import (
 from spine_api.services.public_checker_service import run_public_checker_submission
 from spine_api.services.pipeline_execution_service import execute_spine_pipeline
 from spine_api.services import trip_lifecycle_service
+from spine_api.services.payment_queue_service import build_payment_queue_response
 from spine_api.product_b_events import ProductBEventStore  # noqa: F401  # Legacy re-export for tests/compatibility
 
 from src.intake.orchestration import run_spine_once
@@ -1876,6 +1877,135 @@ def patch_trip(
 # ---------------------------------------------------------------------------
 # Booking Data Models & Endpoints
 # ---------------------------------------------------------------------------
+
+
+class PaymentQueueItemModel(BaseModel):
+    trip_id: str
+    trip_name: str
+    destination: Optional[str] = None
+    start_date: Optional[str] = None
+    status: Optional[str] = None
+    queue_status: Literal[
+        "not_configured",
+        "unknown",
+        "overdue",
+        "due_soon",
+        "due_later",
+        "paid_complete",
+        "refund_in_progress",
+    ]
+    payment_status: Literal[
+        "not_started",
+        "deposit_paid",
+        "partially_paid",
+        "paid",
+        "overdue",
+        "waived",
+        "refunded",
+        "unknown",
+    ]
+    refund_status: Literal[
+        "not_applicable",
+        "not_requested",
+        "pending_review",
+        "approved",
+        "processing",
+        "paid",
+        "rejected",
+        "cancelled",
+    ]
+    agreed_amount: Optional[float] = None
+    amount_paid: Optional[float] = None
+    balance_due: Optional[float] = None
+    currency: str = "INR"
+    final_payment_due: Optional[str] = None
+    payment_reference_present: bool = False
+    payment_proof_url_present: bool = False
+    refund_paid_by_agency: bool = False
+    updated_at: Optional[str] = None
+
+
+class PaymentQueueSummaryModel(BaseModel):
+    total: int
+    by_queue_status: dict[str, int]
+    overdue_count: int
+    due_soon_count: int
+    not_configured_count: int
+    paid_complete_count: int
+    refund_in_progress_count: int
+    due_within_7_days_count: int
+
+
+class PaymentQueuePaginationModel(BaseModel):
+    limit: int
+    offset: int
+    returned: int
+    total: int
+    has_more: bool
+
+
+class PaymentQueueResponseModel(BaseModel):
+    summary: PaymentQueueSummaryModel
+    pagination: PaymentQueuePaginationModel
+    items: list[PaymentQueueItemModel]
+
+
+@app.get("/payments", response_model=PaymentQueueResponseModel)
+def get_payments_queue(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    queue_status: Optional[Literal[
+        "not_configured",
+        "unknown",
+        "overdue",
+        "due_soon",
+        "due_later",
+        "paid_complete",
+        "refund_in_progress",
+    ]] = Query(None),
+    payment_status: Optional[Literal[
+        "not_started",
+        "deposit_paid",
+        "partially_paid",
+        "paid",
+        "overdue",
+        "waived",
+        "refunded",
+        "unknown",
+    ]] = Query(None),
+    refund_status: Optional[Literal[
+        "not_applicable",
+        "not_requested",
+        "pending_review",
+        "approved",
+        "processing",
+        "paid",
+        "rejected",
+        "cancelled",
+    ]] = Query(None),
+    due_bucket: Optional[Literal["none", "overdue", "due_0_3", "due_4_7", "due_8_14"]] = Query(None),
+    agency: Agency = Depends(get_current_agency),
+):
+    trips = TripStore.list_trip_summaries_for_agency(agency_id=agency.id, limit=5000)
+
+    booking_data_by_trip_id: dict[str, Optional[dict[str, Any]]] = {}
+    for trip in trips:
+        trip_id = str(trip.get("id") or "")
+        if not trip_id:
+            continue
+        booking_data_by_trip_id[trip_id] = TripStore.get_booking_data_for_agency(trip_id, agency.id)
+
+    return build_payment_queue_response(
+        trips=trips,
+        booking_data_by_trip_id=booking_data_by_trip_id,
+        limit=limit,
+        offset=offset,
+        queue_status=queue_status,
+        payment_status=payment_status,
+        refund_status=refund_status,
+        due_bucket=due_bucket,
+    )
+
 
 class BookingTravelerModel(BaseModel):
     traveler_id: str

@@ -814,6 +814,47 @@ class SQLTripStore:
             return SQLTripStore._to_dict(trip_obj) if trip_obj else None
 
     @staticmethod
+    async def list_trip_summaries_for_agency(agency_id: str, status: Optional[str] = None, limit: int = 100, offset: int = 0) -> list:
+        """List trip summaries under an explicit agency RLS context.
+
+        Use this when caller identity is known but ContextVar-based RLS context may not be set
+        (e.g., sync facade calls in tests/background).
+        """
+        async with SQLTripStore._rls_session_for_agency(agency_id) as session:
+            query = select(
+                Trip.id,
+                Trip.run_id,
+                Trip.agency_id,
+                Trip.user_id,
+                Trip.assigned_to_id,
+                Trip.source,
+                Trip.status,
+                Trip.stage,
+                Trip.follow_up_due_date,
+                Trip.party_composition,
+                Trip.pace_preference,
+                Trip.date_year_confidence,
+                Trip.lead_source,
+                Trip.activity_provenance,
+                Trip.extracted,
+                Trip.validation,
+                Trip.decision,
+                Trip.raw_input,
+                Trip.analytics,
+                Trip.created_at,
+                Trip.updated_at,
+            ).where(Trip.agency_id == agency_id).order_by(Trip.created_at.desc())
+            if status:
+                statuses = [s.strip() for s in status.split(",") if s.strip()]
+                if len(statuses) == 1:
+                    query = query.where(Trip.status == statuses[0])
+                else:
+                    query = query.where(Trip.status.in_(statuses))
+            query = query.offset(offset).limit(limit)
+            result = await session.execute(query)
+            return [SQLTripStore._to_summary_dict(row) for row in result.all()]
+
+    @staticmethod
     async def list_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
         """List trips, optionally filtered by status and/or agency.
 
@@ -1310,6 +1351,20 @@ class TripStore:
         if backend is FileTripStore:
             return FileTripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
         return _run_async_blocking(SQLTripStore.list_trip_summaries(status=status, limit=limit, agency_id=agency_id, offset=offset))
+
+    @staticmethod
+    def list_trip_summaries_for_agency(agency_id: str, status: Optional[str] = None, limit: int = 100, offset: int = 0) -> list:
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
+        return _run_async_blocking(
+            SQLTripStore.list_trip_summaries_for_agency(
+                agency_id=agency_id,
+                status=status,
+                limit=limit,
+                offset=offset,
+            )
+        )
 
     @staticmethod
     async def alist_trips(status: Optional[str] = None, limit: int = 100, agency_id: Optional[str] = None, offset: int = 0) -> list:
