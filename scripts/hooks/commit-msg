@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Enforce motto_v2.md Section 20: no AI agent co-author trailers.
+# This is a hard enforcement rule, not a style preference.
+
+COMMIT_MSG_FILE="$1"
+
+if grep -qiE '^Co-Authored-By:.*(claude|anthropic|chatgpt|codex|openai|copilot|qwen|gemini)' "$COMMIT_MSG_FILE"; then
+  echo ""
+  echo "ERROR: AI agent co-author trailer detected in commit message."
+  echo "  motto_v2.md Section 20 prohibits Co-Authored-By trailers from AI agents."
+  echo ""
+  grep -iE '^Co-Authored-By:.*' "$COMMIT_MSG_FILE" | sed 's/^/  Found: /'
+  echo ""
+  echo "Remove the trailer and try again."
+  exit 1
+fi

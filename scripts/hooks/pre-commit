@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Enforce motto_v2.md Section 20 integrity before every commit.
+#
+# Why check the working tree (not only the staged version):
+# The recurring failure mode is a parallel agent deleting Section 20 from
+# the working tree file, then committing unrelated files without ever staging
+# the motto edit. Checking the working tree catches this: any commit attempt
+# while Section 20 is absent is rejected, regardless of what is actually staged.
+#
+# To fix: git restore -- motto_v2.md
+
+MOTTO_FILE="motto_v2.md"
+
+if [ ! -f "$MOTTO_FILE" ]; then
+  # File absent entirely is a different problem; don't block unrelated commits.
+  exit 0
+fi
+
+if ! grep -qF "## 20. Commit Attribution Rule — No Agent Co-Author Trailers" "$MOTTO_FILE"; then
+  echo ""
+  echo "ERROR: motto_v2.md Section 20 heading is missing."
+  echo "  A parallel agent has likely deleted the 'No Agent Co-Author Trailers' rule."
+  echo ""
+  echo "  Restore it with: git restore -- motto_v2.md"
+  echo "  Then verify:     grep '## 20' motto_v2.md"
+  echo ""
+  exit 1
+fi
+
+if ! grep -qF "Do not add AI-agent co-author trailers to commits." "$MOTTO_FILE"; then
+  echo ""
+  echo "ERROR: motto_v2.md Section 20 body text is missing or corrupted."
+  echo ""
+  echo "  Restore it with: git restore -- motto_v2.md"
+  echo "  Then verify:     grep 'Do not add AI-agent' motto_v2.md"
+  echo ""
+  exit 1
+fi
