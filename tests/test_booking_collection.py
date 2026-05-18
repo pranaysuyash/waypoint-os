@@ -601,6 +601,40 @@ class TestAgentReview:
         assert booking is not None
         assert booking["travelers"][0]["full_name"] == "Alice Smith"
 
+    def test_accept_preserves_existing_payment_tracking(self, session_client, created_trip_id):
+        from spine_api.persistence import TripStore
+
+        existing_payment_tracking = {
+            "agreed_amount": 120000.0,
+            "currency": "INR",
+            "amount_paid": 50000.0,
+            "balance_due": 70000.0,
+            "payment_status": "partially_paid",
+            "payment_method": "bank_transfer",
+            "payment_reference": "UTR-KEEP",
+            "payment_proof_url": "https://example.test/proof.pdf",
+            "refund_status": "not_applicable",
+            "notes": "Preserve trusted operator payment state.",
+            "tracking_only": True,
+        }
+        TripStore.update_trip_for_agency(created_trip_id, TEST_AGENCY_ID, {
+            "booking_data": {
+                **VALID_BOOKING_DATA,
+                "payment_tracking": existing_payment_tracking,
+            },
+        })
+        self._setup_pending(session_client, created_trip_id)
+
+        resp = session_client.post(f"/trips/{created_trip_id}/pending-booking-data/accept")
+
+        assert resp.status_code == 200
+        booking = TripStore.get_booking_data_for_agency(created_trip_id, TEST_AGENCY_ID)
+        assert booking is not None
+        assert booking["travelers"][0]["full_name"] == "Alice Smith"
+        assert booking["payment_tracking"]["payment_status"] == "partially_paid"
+        assert booking["payment_tracking"]["payment_reference"] == "UTR-KEEP"
+        assert booking["payment_tracking"]["balance_due"] == 70000.0
+
     def test_accept_rejects_tampered_pending_payment_tracking(self, session_client, created_trip_id):
         from spine_api.persistence import TripStore
 

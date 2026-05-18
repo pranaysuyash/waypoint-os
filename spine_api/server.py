@@ -2484,6 +2484,10 @@ async def accept_pending_booking_data(trip_id: str, request: Optional[PendingBoo
     # Re-validate through Pydantic (defensive)
     validated = BookingDataModel(**pending)
     bd_dict = validated.model_dump()
+    existing_bd = await _ts(TripStore.get_booking_data_for_agency, trip_id, agency.id) or {}
+    existing_payment_tracking = existing_bd.get("payment_tracking")
+    if existing_payment_tracking is not None:
+        bd_dict["payment_tracking"] = existing_payment_tracking
 
     # Compute readiness BEFORE writing
     from intake.readiness import compute_readiness
