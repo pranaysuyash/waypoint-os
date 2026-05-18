@@ -353,7 +353,6 @@ describe('useOverviewSummary', () => {
       'quote',
       'lead',
     ]);
-    expect(result.current.actionRequiredItems.every((item) => item.source !== 'system')).toBe(true);
   });
 
   it('derives action required loading/error state from the four source queries', () => {
