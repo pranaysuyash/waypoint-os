@@ -133,3 +133,6 @@ data/trips/*.lock
 
 # pnpm store (do not commit)
 .pnpm-store/
+
+# Local/generated agent session context
+**/agent-start/SESSION_CONTEXT.md
