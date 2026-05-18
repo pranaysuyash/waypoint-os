@@ -894,6 +894,85 @@ export async function updatePaymentTracking(
 }
 
 // ---------------------------------------------------------------------------
+// Payments Queue (v1 read-model, queue/read-only)
+// ---------------------------------------------------------------------------
+
+export type QueueStatus =
+  | 'not_configured'
+  | 'unknown'
+  | 'due_later'
+  | 'due_soon'
+  | 'overdue'
+  | 'paid_complete'
+  | 'refund_in_progress';
+
+export interface PaymentQueueItem {
+  trip_id: string;
+  trip_name: string;
+  destination?: string | null;
+  start_date?: string | null;
+  status?: string | null;
+  queue_status: QueueStatus;
+  payment_status: PaymentStatus;
+  refund_status: RefundStatus;
+  agreed_amount?: number | null;
+  amount_paid?: number | null;
+  balance_due?: number | null;
+  currency: string;
+  final_payment_due?: string | null;
+  payment_reference_present: boolean;
+  payment_proof_url_present: boolean;
+  refund_paid_by_agency: boolean;
+  updated_at?: string | null;
+}
+
+export interface PaymentQueueSummary {
+  total: number;
+  by_queue_status: Record<string, number>;
+  overdue_count: number;
+  due_soon_count: number;
+  not_configured_count: number;
+  paid_complete_count: number;
+  refund_in_progress_count: number;
+  due_within_7_days_count: number;
+}
+
+export interface PaymentQueuePagination {
+  limit: number;
+  offset: number;
+  returned: number;
+  total: number;
+  has_more: boolean;
+}
+
+export interface PaymentQueueResponse {
+  summary: PaymentQueueSummary;
+  pagination: PaymentQueuePagination;
+  items: PaymentQueueItem[];
+}
+
+export interface PaymentQueueParams {
+  limit?: number;
+  offset?: number;
+  queue_status?: QueueStatus;
+  payment_status?: PaymentStatus;
+  refund_status?: RefundStatus;
+  due_bucket?: 'none' | 'overdue' | 'due_0_3' | 'due_4_7' | 'due_8_14';
+}
+
+export async function getPaymentsQueue(params?: PaymentQueueParams): Promise<PaymentQueueResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit != null) searchParams.set('limit', String(params.limit));
+  if (params?.offset != null) searchParams.set('offset', String(params.offset));
+  if (params?.queue_status) searchParams.set('queue_status', params.queue_status);
+  if (params?.payment_status) searchParams.set('payment_status', params.payment_status);
+  if (params?.refund_status) searchParams.set('refund_status', params.refund_status);
+  if (params?.due_bucket) searchParams.set('due_bucket', params.due_bucket);
+  const qs = searchParams.toString();
+  return api.get<PaymentQueueResponse>(`/api/payments${qs ? `?${qs}` : ''}`);
+}
+
+// ---------------------------------------------------------------------------
 // Booking Collection Link (Phase 4A) - agent + public endpoints
 // ---------------------------------------------------------------------------
 

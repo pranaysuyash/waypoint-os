@@ -120,6 +120,9 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["trips/{id}/override", { backendPath: "trips/{id}/override" }],
   ["trips/{id}/overrides", { backendPath: "trips/{id}/overrides" }],
 
+  // ── Payments read-model (v1 queue/read-only) ─────────────────────
+  ["payments", { backendPath: "payments" }],
+
   // ── Booking collection (Phase 4A) ──────────────────────────────
   ["trips/{id}/collection-link", { backendPath: "trips/{id}/collection-link" }],
   ["trips/{id}/booking-data", { backendPath: "trips/{id}/booking-data" }],

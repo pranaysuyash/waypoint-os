@@ -95,4 +95,8 @@ describe("resolveBackendPath", () => {
       "trips/abc123/booking-data/payment"
     );
   });
+
+  it("maps the payments read-model queue endpoint through the proxy", () => {
+    expect(resolveBackendPath(["payments"])).toBe("payments");
+  });
 });
