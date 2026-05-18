@@ -38,7 +38,7 @@ ENV_RECOVERY_INTERVAL = "RECOVERY_INTERVAL_S"
 
 VALID_COORDINATORS = {"memory", "sql"}
 VALID_DEPLOYMENT_MODES = {"local", "test", "dogfood", "beta", "production"}
-VALID_REQUEUE_MODES = {"disabled", "inline"}
+VALID_REQUEUE_MODES = {"disabled", "inline", "sql_queue"}
 
 # ---------------------------------------------------------------------------
 # Config snapshot
@@ -204,10 +204,17 @@ def build_agent_runtime_from_config(
     elif config.coordinator_backend == "memory":
         coordinator = None  # AgentSupervisor uses InMemoryWorkCoordinator by default
 
+    _job_store = None
+    if config.recovery_requeue_mode == "sql_queue":
+        from spine_api.services.agent_requeue_jobs import RequeueJobStore
+        _job_store = RequeueJobStore(lease_seconds=config.lease_seconds)
+        _job_store.ensure_schema()
+
     requeue_port = build_requeue_port(
         config.recovery_requeue_mode,
         spine_runner=_spine_runner,
         run_spine=_run_spine_fn,
+        job_store=_job_store,
     )
     recovery_agent = RecoveryAgent(
         audit_store=audit_sink,

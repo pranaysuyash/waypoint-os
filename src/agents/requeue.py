@@ -144,12 +144,52 @@ class InlineSpineRequeuePort:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# SQL Queue implementation
+# ---------------------------------------------------------------------------
+
+
+class SQLSpineJobQueueRequeuePort:
+    """Enqueues a durable recovery job for later execution by RequeueWorker.
+
+    The recovery agent only enqueues.  The worker processes the job outside
+    the recovery loop, keeping recovery scans fast and decoupled from spine
+    execution.
+    """
+
+    def __init__(self, job_store: Any):
+        self._job_store = job_store
+
+    def requeue_trip(self, trip_id: str, trip_record: dict[str, Any], reason: str, attempt: int) -> RequeueResult:
+        # Attempt count comes from RecoveryAgent's in-memory counter; use it
+        # along with trip info to build a stable idempotency key
+        idempotency_key = f"requeue:{trip_id}:{reason[:80]}"
+        accepted, job_id = self._job_store.enqueue(
+            trip_id=trip_id,
+            idempotency_key=idempotency_key,
+            reason=reason,
+            payload={"trip_record_keys": list(trip_record.keys())},
+            max_attempts=3,
+        )
+        if accepted:
+            return RequeueResult(accepted=True, mode="sql_queue", job_id=job_id, reason=reason, retryable=False)
+        return RequeueResult(accepted=False, mode="sql_queue", job_id=job_id, reason="Duplicate requeue already enqueued")
+
+
+# ---------------------------------------------------------------------------
+# Builder
+# ---------------------------------------------------------------------------
+
+
 def build_requeue_port(
     mode: str = "disabled",
     *,
     spine_runner: Optional[Callable[[str], Any]] = None,
     run_spine: Optional[Callable[..., Any]] = None,
+    job_store: Any = None,
 ) -> SpineRequeuePort:
+    if mode == "sql_queue" and job_store is not None:
+        return SQLSpineJobQueueRequeuePort(job_store=job_store)
     if mode == "inline" and run_spine is not None:
         return InlineSpineRequeuePort(run_spine=run_spine)
     if spine_runner is not None:
