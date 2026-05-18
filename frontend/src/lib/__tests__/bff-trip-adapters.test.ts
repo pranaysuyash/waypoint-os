@@ -377,4 +377,86 @@ describe("BFF trip adapters", () => {
     // manual/top-level → extracted → raw inference; manual edit must win
     expect(trip.origin).toBe("User-Entered Origin");
   });
+
+  // ── Canonical field priority: remaining four resolver functions ────────
+
+  const baseTrip = {
+    id: "trip-canon-base",
+    status: "assigned",
+    created_at: "2026-05-01T12:00:00.000Z",
+    updated_at: "2026-05-16T12:00:00.000Z",
+    validation: { is_valid: true, errors: [], warnings: [] },
+    decision: { action: "QUOTE", confidence_score: 0.8, hard_blockers: [] },
+  };
+
+  it("top-level destination beats extracted destination", () => {
+    const trip = transformSpineTripToTrip({
+      ...baseTrip,
+      destination: "Manual Destination",
+      extracted: {
+        facts: {
+          destination_candidates: { value: ["AI Destination"] },
+        },
+      },
+    }, now);
+    expect(trip.destination).toBe("Manual Destination");
+  });
+
+  it("top-level dateWindow beats extracted date window", () => {
+    const trip = transformSpineTripToTrip({
+      ...baseTrip,
+      dateWindow: "July 1-7, 2026",
+      extracted: {
+        facts: {
+          date_window: { value: "AI Date Window" },
+        },
+      },
+    }, now);
+    expect(trip.dateWindow).toBe("July 1-7, 2026");
+  });
+
+  it("top-level tripType beats extracted trip type", () => {
+    const trip = transformSpineTripToTrip({
+      ...baseTrip,
+      tripType: "adventure",
+      extracted: {
+        facts: {
+          primary_intent: { value: ["luxury"] },
+        },
+      },
+    }, now);
+    expect(trip.type).toBe("adventure");
+  });
+
+  it("top-level party beats extracted party size", () => {
+    const trip = transformSpineTripToTrip({
+      ...baseTrip,
+      party: 4,
+      extracted: {
+        facts: {
+          party_profile: { value: 9 },
+        },
+      },
+    }, now);
+    expect(trip.party).toBe(4);
+  });
+
+  it("extracted fact wins over raw inference when no top-level canonical value present", () => {
+    const trip = transformSpineTripToTrip({
+      ...baseTrip,
+      // No top-level destination, dateWindow, party, or tripType
+      extracted: {
+        facts: {
+          destination_candidates: { value: ["AI-Only Destination"] },
+          date_window: { value: "AI-Only DateWindow" },
+          party_profile: { value: 3 },
+          primary_intent: { value: ["honeymoon"] },
+        },
+      },
+    }, now);
+    expect(trip.destination).toBe("AI-Only Destination");
+    expect(trip.dateWindow).toBe("AI-Only DateWindow");
+    expect(trip.party).toBe(3);
+    expect(trip.type).toBe("honeymoon");
+  });
 });

@@ -221,33 +221,48 @@ function extractedValue(spineTrip: unknown, field: string, fallback: unknown): u
 }
 
 function destinationValue(spineTrip: unknown): unknown {
+  // Top-level `destination` is the canonical field from TripResponse / manual PATCH edits.
+  // It takes precedence over AI extraction — same priority order as origin/budget.
+  const topLevel = getNestedValue(spineTrip, "destination", undefined);
+  if (topLevel !== undefined && topLevel !== null && topLevel !== "") {
+    return topLevel;
+  }
   return firstPresent(
     getNestedValue(spineTrip, "extracted.facts.destination_candidates.value.0", undefined),
     extractedValue(spineTrip, "destination", undefined),
-    getNestedValue(spineTrip, "destination", undefined),
     "Unknown"
   );
 }
 
 function tripTypeValue(spineTrip: unknown): unknown {
+  // Top-level `tripType` (TripResponse) or `type` (legacy) is the canonical field.
+  // Check both names — TripResponse uses camelCase `tripType`, older records use `type`.
+  const topLevel = getNestedValue(spineTrip, "tripType", undefined)
+    ?? getNestedValue(spineTrip, "type", undefined);
+  if (topLevel !== undefined && topLevel !== null && topLevel !== "") {
+    return topLevel;
+  }
   return firstPresent(
     getNestedValue(spineTrip, "extracted.facts.primary_intent.value.0", undefined),
     getNestedValue(spineTrip, "extracted.facts.trip_purpose.value.0", undefined),
     extractedValue(spineTrip, "primary_intent", undefined),
     extractedValue(spineTrip, "trip_purpose", undefined),
-    getNestedValue(spineTrip, "type", undefined),
     "leisure"
   );
 }
 
 function partySizeValue(spineTrip: unknown): unknown {
+  // Top-level `party` is the canonical field from TripResponse / manual PATCH edits.
+  const topLevel = getNestedValue(spineTrip, "party", undefined);
+  if (topLevel !== undefined && topLevel !== null) {
+    return topLevel;
+  }
   return firstPresent(
     getNestedValue(spineTrip, "extracted.facts.party_profile.value", undefined),
     getNestedValue(spineTrip, "extracted.facts.party_size.value", undefined),
     getNestedValue(spineTrip, "extracted.trip_metadata.party_profile.size", undefined),
     extractedValue(spineTrip, "party_size", undefined),
     getNestedValue(spineTrip, "extracted.party_profile.size", undefined),
-    getNestedValue(spineTrip, "party", undefined),
     1
   );
 }
@@ -267,10 +282,14 @@ function budgetValue(spineTrip: unknown): number {
 }
 
 function dateWindowValue(spineTrip: unknown): unknown {
+  // Top-level `dateWindow` is the canonical field from TripResponse / manual PATCH edits.
+  const topLevel = getNestedValue(spineTrip, "dateWindow", undefined);
+  if (topLevel !== undefined && topLevel !== null && topLevel !== "") {
+    return topLevel;
+  }
   return firstPresent(
     getNestedValue(spineTrip, "extracted.facts.date_window.value", undefined),
     extractedValue(spineTrip, "date_window", undefined),
-    getNestedValue(spineTrip, "dateWindow", undefined),
     "TBD"
   );
 }
