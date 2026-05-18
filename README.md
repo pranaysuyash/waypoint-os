@@ -93,6 +93,19 @@ uv run pytest
 cd frontend && npm install && npm run dev
 ```
 
+### Local Dev Account
+
+A seeded test account exists for local browser testing. Do not use it in production.
+
+| Field    | Value                                    |
+| -------- | ---------------------------------------- |
+| Email    | `newuser@test.com`                       |
+| Password | `testpass123`                            |
+| Agency   | `d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b` (name: Test) |
+| Role     | owner                                    |
+
+The smoke-test trip `trip_ops_smoke_001` (Amalfi Coast, proposal stage) lives in this agency and is used for Ops panel verification.
+
 ### Key Commands
 
 | Command                      | Purpose                   |
