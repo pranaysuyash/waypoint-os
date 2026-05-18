@@ -8,6 +8,18 @@ describe('ActionRequiredList', () => {
     expect(screen.getByText('No urgent action detected from available data.')).toBeInTheDocument();
   });
 
+  it('shows loading state and does not show empty state copy', () => {
+    render(<ActionRequiredList items={[]} isLoading />);
+    expect(screen.getByText('Checking for action required…')).toBeInTheDocument();
+    expect(screen.queryByText('No urgent action detected from available data.')).not.toBeInTheDocument();
+  });
+
+  it('shows unavailable state on error and does not show empty state copy', () => {
+    render(<ActionRequiredList items={[]} error={new Error('network')} />);
+    expect(screen.getByText('Action required is unavailable right now.')).toBeInTheDocument();
+    expect(screen.queryByText('No urgent action detected from available data.')).not.toBeInTheDocument();
+  });
+
   it('renders quote review item', () => {
     render(
       <ActionRequiredList
@@ -18,19 +30,21 @@ describe('ActionRequiredList', () => {
             source: 'quote',
             title: 'Quote needs review',
             subtitle: 'Italy Honeymoon',
+            meta: 'Submitted 15 May 2026',
             reason: '2 quotes are waiting for approval before sending.',
             href: '/reviews',
-            ctaLabel: 'Review quotes',
+            ctaLabel: 'Review quote',
           },
         ]}
       />
     );
 
     expect(screen.getByText('Quote needs review')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /review quotes/i })).toHaveAttribute('href', '/reviews');
+    expect(screen.getByText('Submitted 15 May 2026')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /review quote/i })).toHaveAttribute('href', '/reviews');
   });
 
-  it('renders lead, trip, and system items', () => {
+  it('renders lead and trip items in compact queue rows', () => {
     render(
       <ActionRequiredList
         items={[
@@ -38,11 +52,12 @@ describe('ActionRequiredList', () => {
             id: 'lead',
             priority: 'high',
             source: 'lead',
-            title: 'New enquiries waiting',
-            subtitle: 'Lead inbox',
-            reason: '3 new enquiries need qualification or assignment.',
+            title: 'New enquiry waiting',
+            subtitle: 'Neha Kapoor · Dubai family trip',
+            meta: 'Received 17 May 2026',
+            reason: 'Needs qualification or assignment.',
             href: '/inbox',
-            ctaLabel: 'Open enquiries',
+            ctaLabel: 'Open enquiry',
           },
           {
             id: 'trip-1',
@@ -50,26 +65,18 @@ describe('ActionRequiredList', () => {
             source: 'trip',
             title: 'Trip needs review',
             subtitle: 'Maldives Honeymoon',
+            meta: 'Travel Jun 2026',
             reason: 'This trip is marked for attention in planning.',
             href: '/trips/trip-1',
             ctaLabel: 'Open trip',
-          },
-          {
-            id: 'system',
-            priority: 'low',
-            source: 'system',
-            title: 'Agency health check',
-            subtitle: 'System check',
-            reason: '2 items need review.',
-            href: '/overview?panel=system-check',
-            ctaLabel: 'Check status',
           },
         ]}
       />
     );
 
-    expect(screen.getByText('New enquiries waiting')).toBeInTheDocument();
+    expect(screen.getByText('New enquiry waiting')).toBeInTheDocument();
     expect(screen.getByText('Trip needs review')).toBeInTheDocument();
-    expect(screen.getByText('Agency health check')).toBeInTheDocument();
+    expect(screen.getByText('Received 17 May 2026')).toBeInTheDocument();
+    expect(screen.queryByText('Agency health check')).not.toBeInTheDocument();
   });
 });

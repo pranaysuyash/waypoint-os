@@ -13,16 +13,19 @@ const ROUTES = {
 
 const baseSummary = {
   headerSubtitle: '2 trips in planning · 5 leads · 1 quote to review',
+  actionRequiredLoading: false,
+  actionRequiredError: null,
   actionRequiredItems: [
     {
-      id: 'quote-review',
-      priority: 'urgent',
-      source: 'quote',
-      title: 'Quote needs review',
-      subtitle: 'Italy Honeymoon',
-      reason: '1 quote is waiting for approval before sending.',
-      href: '/reviews',
-      ctaLabel: 'Review quotes',
+      id: 'trip-1',
+      priority: 'high',
+      source: 'trip',
+      title: 'Trip is overdue',
+      subtitle: 'Japan family trip',
+      meta: 'Travel 24 May 2026',
+      reason: 'Customer details are still missing.',
+      href: '/trips/trip_1',
+      ctaLabel: 'Open trip',
     },
   ],
   metrics: [
@@ -190,7 +193,8 @@ describe('OverviewPage', () => {
 
     expect(screen.getByText('2 trips in planning · 5 leads · 1 quote to review')).toBeInTheDocument();
     expect(screen.getByText('Action Required')).toBeInTheDocument();
-    expect(screen.getByText('Quote needs review')).toBeInTheDocument();
+    expect(screen.getByText('Trip is overdue')).toBeInTheDocument();
+    expect(screen.getByText('Customer details are still missing.')).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: /trips in planning/i })[0]).toHaveAttribute('href', ROUTES.workspaces);
     expect(screen.getAllByRole('link', { name: /lead inbox/i })[0]).toHaveAttribute('href', ROUTES.inbox);
     expect(screen.getAllByRole('link', { name: /quote review/i })[0]).toHaveAttribute('href', ROUTES.approvals);
@@ -208,6 +212,25 @@ describe('OverviewPage', () => {
     const pos = actionHeading.compareDocumentPosition(metricTitle);
 
     expect(pos & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('does not show totals-only lead or system rows in Action Required', () => {
+    render(<OverviewPage />);
+
+    expect(screen.queryByText('New enquiries waiting')).not.toBeInTheDocument();
+    expect(screen.queryByText('Agency health check')).not.toBeInTheDocument();
+  });
+
+  it('shows loading message in Action Required when summary marks action list loading', () => {
+    mockUseOverviewSummary.mockReturnValue({
+      ...baseSummary,
+      actionRequiredLoading: true,
+      actionRequiredItems: [],
+    });
+
+    render(<OverviewPage />);
+    expect(screen.getByText('Checking for action required…')).toBeInTheDocument();
+    expect(screen.queryByText('No urgent action detected from available data.')).not.toBeInTheDocument();
   });
 
   it('routes overview actions to the specific intake destinations', () => {

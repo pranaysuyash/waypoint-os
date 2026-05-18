@@ -92,7 +92,7 @@ function opsHealthSummary(
 
 export function useOverviewSummary() {
   const workspace = useTrips({ view: 'workspace', limit: 5 });
-  const inbox = useInboxTrips(undefined, 1, 1);
+  const inbox = useInboxTrips(undefined, 1, 5);
   const pendingReviews = useReviews({ status: 'pending' });
   const integrityIssues = useIntegrityIssues();
   const pipelineQuery = usePipeline();
@@ -267,22 +267,44 @@ export function useOverviewSummary() {
       buildActionRequiredItems({
         workspaceTrips: workspace.data,
         pendingReviews: pendingReviews.data,
-        pendingReviewTotal: pendingApprovalCount,
-        inboxTotal: inbox.total,
-        integrityIssuesTotal: integrityIssues.total,
+        inboxTrips: inbox.data,
       }),
     [
-      inbox.total,
-      integrityIssues.total,
-      pendingApprovalCount,
+      inbox.data,
       pendingReviews.data,
       workspace.data,
     ]
   );
 
+  const actionRequiredLoading = useMemo(
+    () =>
+      workspace.isLoading ||
+      pendingReviews.isLoading ||
+      inbox.isLoading ||
+      integrityIssues.isLoading,
+    [
+      inbox.isLoading,
+      integrityIssues.isLoading,
+      pendingReviews.isLoading,
+      workspace.isLoading,
+    ]
+  );
+
+  const actionRequiredError = useMemo<Error | null>(() => {
+    return (
+      workspace.error ||
+      pendingReviews.error ||
+      inbox.error ||
+      integrityIssues.error ||
+      null
+    );
+  }, [inbox.error, integrityIssues.error, pendingReviews.error, workspace.error]);
+
   return {
     headerSubtitle,
     actionRequiredItems,
+    actionRequiredLoading,
+    actionRequiredError,
     metrics,
     navItems,
     pipeline,

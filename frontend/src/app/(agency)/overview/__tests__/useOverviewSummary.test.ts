@@ -85,6 +85,7 @@ describe('useOverviewSummary', () => {
     );
 
     expect(vi.mocked(useReviews)).toHaveBeenCalledWith({ status: 'pending' });
+    expect(vi.mocked(useInboxTrips)).toHaveBeenCalledWith(undefined, 1, 5);
     expect(approvalMetric?.value).toBe(7);
     expect(result.current.headerSubtitle).toContain('7 quotes to review');
   });
@@ -276,7 +277,29 @@ describe('useOverviewSummary', () => {
     });
 
     vi.mocked(useInboxTrips).mockReturnValue({
-      data: [],
+      data: [
+        {
+          id: 'lead_1',
+          reference: 'REF-1',
+          destination: 'Singapore',
+          tripType: 'family',
+          partySize: 4,
+          dateWindow: 'July 2026',
+          value: 0,
+          priority: 'medium',
+          priorityScore: 60,
+          urgency: 55,
+          importance: 60,
+          stage: 'new',
+          stageNumber: 1,
+          submittedAt: '2026-05-17T00:00:00Z',
+          lastUpdated: '2026-05-17T00:00:00Z',
+          daysInCurrentStage: 2,
+          slaStatus: 'on_track',
+          customerName: 'Amit Shah',
+          flags: [],
+        },
+      ] as any,
       total: 2,
       hasMore: true,
       filterCounts: {},
@@ -326,10 +349,52 @@ describe('useOverviewSummary', () => {
 
     const { result } = renderHook(() => useOverviewSummary());
     expect(result.current.actionRequiredItems.map((item) => item.source)).toEqual([
-      'quote',
       'trip',
+      'quote',
       'lead',
-      'system',
     ]);
+    expect(result.current.actionRequiredItems.every((item) => item.source !== 'system')).toBe(true);
+  });
+
+  it('derives action required loading/error state from the four source queries', () => {
+    vi.mocked(useTrips).mockReturnValue({
+      data: [],
+      total: 0,
+      isLoading: true,
+      error: null,
+      refetch: vi.fn(),
+    });
+    vi.mocked(useInboxTrips).mockReturnValue({
+      data: [],
+      total: 0,
+      hasMore: false,
+      filterCounts: {},
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      assignTrips: vi.fn(),
+      bulkAction: vi.fn(),
+      snoozeTrip: vi.fn(),
+    });
+    vi.mocked(useReviews).mockReturnValue({
+      data: [] as any,
+      total: 0,
+      isLoading: false,
+      error: new Error('reviews down'),
+      refetch: vi.fn(),
+      submitAction: vi.fn(),
+      bulkAction: vi.fn(),
+    });
+    vi.mocked(useIntegrityIssues).mockReturnValue({
+      data: [],
+      total: 0,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    const { result } = renderHook(() => useOverviewSummary());
+    expect(result.current.actionRequiredLoading).toBe(true);
+    expect(result.current.actionRequiredError).toBeInstanceOf(Error);
   });
 });
