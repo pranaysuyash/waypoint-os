@@ -320,4 +320,61 @@ describe("BFF trip adapters", () => {
       lastAgentActionAt: "2026-05-04T01:00:00.000Z",
     });
   });
+
+  it("handles manual field edits stored at top-level (three-tier fallback)", () => {
+    const tripWithManualEdits = {
+      id: "trip-manual-123",
+      status: "incomplete",
+      created_at: "2026-05-01T12:00:00.000Z",
+      updated_at: "2026-05-16T12:00:00.000Z",
+      // Top-level fields set by user via PATCH
+      dateWindow: "June 15-22, 2026",
+      destination: "Paris",
+      budget: 15000,
+      origin: "New York",
+      extracted: {
+        facts: {
+          // No AI extractions; only top-level manual edits exist
+        },
+      },
+      validation: { is_valid: true, errors: [], warnings: [] },
+      decision: { action: "QUOTE", confidence_score: 0.8, hard_blockers: [] },
+    };
+
+    const trip = transformSpineTripToTrip(tripWithManualEdits, now);
+
+    // Verify adapters fall back to top-level fields when extraction missing
+    expect(trip.dateWindow).toBe("June 15-22, 2026");
+    expect(trip.destination).toBe("Paris");
+    expect(trip.budget).toBe("15000");
+    expect(trip.origin).toBe("New York");
+  });
+
+  it("top-level canonical field wins over AI extraction when both present", () => {
+    const tripWithBoth = {
+      id: "trip-priority-123",
+      status: "assigned",
+      created_at: "2026-05-01T12:00:00.000Z",
+      updated_at: "2026-05-16T12:00:00.000Z",
+      // Top-level origin: set by user PATCH or TripResponse canonical field
+      origin: "User-Entered Origin",
+      extracted: {
+        facts: {
+          // AI also has a value, but manual edit takes priority
+          origin_city: {
+            value: "AI-Extracted Origin",
+            confidence: 0.9,
+            authority_level: "ai_extraction",
+          },
+        },
+      },
+      validation: { is_valid: true, errors: [], warnings: [] },
+      decision: { action: "QUOTE", confidence_score: 0.8, hard_blockers: [] },
+    };
+
+    const trip = transformSpineTripToTrip(tripWithBoth, now);
+
+    // manual/top-level → extracted → raw inference; manual edit must win
+    expect(trip.origin).toBe("User-Entered Origin");
+  });
 });

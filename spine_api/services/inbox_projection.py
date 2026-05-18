@@ -249,6 +249,47 @@ def _date_window_value(source: Dict[str, Any]) -> str:
     return "TBD"
 
 
+def _origin_value(source: Dict[str, Any]) -> str:
+    # Primary: extracted.facts.origin_city (written by _sync_manual_trip_fields since Phase 2).
+    # Legacy fallbacks kept for pre-fix trips; removable after archive/reprocessing window.
+    candidates = [
+        _get_nested(source, "extracted.facts.origin_city.value", None),
+        _get_nested(source, "extracted.trip_metadata.origin_city.value", None),
+        _get_nested(source, "extracted.origin_city.value", None),
+        _get_nested(source, "extracted.origin_city", None),
+        source.get("origin"),
+    ]
+    for cand in candidates:
+        if isinstance(cand, str) and cand.strip():
+            return cand.strip()
+    return "TBD"
+
+
+def resolve_trip_field(source: Dict[str, Any], field: str) -> Any:
+    """Single source of truth for trip field resolution priority order.
+
+    All callsites (inbox projection, scoring, server PATCH response) must use
+    this function instead of ad-hoc path hunting.  The private _*_value()
+    functions below are implementation details of this function.
+
+    Supported fields:
+        destination, trip_type, party_size, budget, date_window, origin
+    """
+    if field == "destination":
+        return _destination_value(source)
+    if field == "trip_type":
+        return _trip_type_value(source)
+    if field == "party_size":
+        return _party_size_value(source)
+    if field == "budget":
+        return _budget_value(source)
+    if field == "date_window":
+        return _date_window_value(source)
+    if field == "origin":
+        return _origin_value(source)
+    return None
+
+
 def _derive_customer_name(source: Dict[str, Any], trip_id: str) -> str:
     """Best-effort customer name from nested blobs."""
     candidates = [
@@ -316,7 +357,7 @@ def _extract_flags(source: Dict[str, Any]) -> List[str]:
         flags.add("unassigned")
 
     # High value
-    budget = _budget_value(source)
+    budget = resolve_trip_field(source, "budget")
     if budget >= 10000:
         flags.add("high_value")
 
@@ -403,11 +444,12 @@ class InboxProjectionService:
         return {
             "id": trip_id,
             "reference": _derive_reference(source, trip_id),
-            "destination": _destination_value(source),
-            "tripType": _trip_type_value(source),
-            "partySize": _party_size_value(source),
-            "dateWindow": _date_window_value(source),
-            "value": _budget_value(source),
+            "destination": resolve_trip_field(source, "destination"),
+            "tripType": resolve_trip_field(source, "trip_type"),
+            "partySize": resolve_trip_field(source, "party_size"),
+            "dateWindow": resolve_trip_field(source, "date_window"),
+            "origin": resolve_trip_field(source, "origin"),
+            "value": resolve_trip_field(source, "budget"),
             "priority": priority,
             "priorityScore": priority_score,
             "urgency": pr.urgency,

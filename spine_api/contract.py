@@ -16,7 +16,7 @@ Analytics domain models live in src/analytics/models.py and are re-exported here
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Union
 from pydantic import BaseModel, Field
 
 from src.intake.constants import DecisionState
@@ -469,6 +469,71 @@ class SuitabilityFlagsResponse(BaseModel):
 # Trip list + inbox response envelopes
 # =============================================================================
 
+# =============================================================================
+# Trip Response — canonical API contract for GET /trips/{id} and PATCH /trips/{id}
+# =============================================================================
+
+class TripResponse(BaseModel):
+    """Canonical response shape for individual trip endpoints.
+
+    Uses resolve_trip_field() as the single source of truth for field resolution —
+    no ad-hoc path hunting here. Any field not in this model is invisible to the
+    frontend; add fields here and regenerate TypeScript types via openapi-typescript.
+
+    `extracted` is passed through opaquely so backend integration tests that
+    verify fact-sync side effects can still inspect raw extracted data.
+    Frontend consumers should use the resolved canonical fields above.
+    """
+    id: str
+    status: str
+    dateWindow: Optional[str] = None
+    destination: Optional[str] = None
+    origin: Optional[str] = None
+    budget: Optional[Union[float, str]] = None
+    party: Optional[int] = None
+    tripType: Optional[str] = None
+    customerName: Optional[str] = None
+    follow_up_due_date: Optional[str] = None
+    extracted: Optional[Dict[str, Any]] = None
+
+    @classmethod
+    def from_dict(cls, trip: Dict[str, Any]) -> "TripResponse":
+        from spine_api.services.inbox_projection import (
+            resolve_trip_field, _derive_customer_name, _get_nested,
+        )
+        trip_id = trip.get("id", "")
+
+        # Budget: prefer numeric value; surface raw text for display when numeric unavailable.
+        # This matches the frontend's existing rawText ?? budgetVal ?? budgetValue() chain.
+        budget_numeric = resolve_trip_field(trip, "budget")  # returns int (0 if unknown)
+        budget_raw = _get_nested(trip, "extracted.facts.budget_raw_text.value", None)
+        if budget_raw and not budget_raw.strip():
+            budget_raw = None
+        budget: Optional[Union[float, str]] = (
+            float(budget_numeric) if budget_numeric else (budget_raw or None)
+        )
+
+        # Normalize sentinel strings to None for clean Optional contract.
+        def _clean_str(v: Optional[str]) -> Optional[str]:
+            if not v or v in ("Unknown", "TBD", ""):
+                return None
+            return v
+
+        return cls(
+            id=trip_id,
+            status=trip.get("status", "new"),
+            dateWindow=_clean_str(resolve_trip_field(trip, "date_window")),
+            destination=_clean_str(resolve_trip_field(trip, "destination")),
+            origin=_clean_str(resolve_trip_field(trip, "origin")),
+            budget=budget,
+            party=resolve_trip_field(trip, "party_size") or None,
+            tripType=resolve_trip_field(trip, "trip_type") or None,
+            customerName=_derive_customer_name(trip, trip_id) or None,
+            follow_up_due_date=trip.get("follow_up_due_date") or None,
+            extracted=trip.get("extracted") or None,
+        )
+
+
 class TripListResponse(BaseModel):
     items: List[Dict[str, Any]]
     total: int
@@ -592,6 +657,7 @@ __all__ = [
     "DashboardStatsResponse",
     "SuitabilitySignal",
     "TripListResponse",
+    "TripResponse",
     "SuitabilityFlagsResponse",
     "MonthlyRevenue",
     "RevenueMetrics",

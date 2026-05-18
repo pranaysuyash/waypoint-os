@@ -259,6 +259,7 @@ function budgetValue(spineTrip: unknown): number {
       getNestedValue(spineTrip, "extracted.trip_metadata.budget.value", undefined),
       getNestedValue(spineTrip, "extracted.budget.value", undefined),
       getNestedValue(spineTrip, "extracted.budget", undefined),
+      getNestedValue(spineTrip, "budget", undefined),
       0
     ),
     0
@@ -275,6 +276,12 @@ function dateWindowValue(spineTrip: unknown): unknown {
 }
 
 function originCityValue(spineTrip: unknown): unknown {
+  // Top-level `origin` is the canonical field from TripResponse / manual PATCH edits.
+  // It takes precedence over AI extraction — same priority as budget and destination.
+  const topLevel = getNestedValue(spineTrip, "origin", undefined);
+  if (topLevel !== undefined && topLevel !== null && topLevel !== "") {
+    return topLevel;
+  }
   return firstPresent(
     getNestedValue(spineTrip, "extracted.facts.origin_city.value", undefined),
     extractedValue(spineTrip, "origin_city", undefined),
@@ -384,8 +391,12 @@ export function transformSpineTripToTrip(
 
   return {
     id: asString(firstPresent(trip.id, trip.trip_id), ""),
+    // Canonical top-level fields (from TripResponse or inbox projection) take precedence
+    // for fields where the backend's resolve_trip_field() guarantees correctness.
+    // For extracted fields, hunting functions preserve the correct AI-first priority order
+    // for trips that may not have gone through the canonical pipeline (e.g. workspace lists).
     destination: asString(destinationValue(trip), "Unknown"),
-    contactName: asString(getNestedValue(trip, "contactName", "") as string, ""),
+    contactName: asString(firstPresent(trip.customerName, getNestedValue(trip, "contactName", "")), ""),
     type: asString(tripTypeValue(trip), "leisure"),
     state: STATUS_TO_STATE[status] ?? "blue",
     age: calculateAge(createdAt, now),
@@ -395,6 +406,13 @@ export function transformSpineTripToTrip(
     dateWindow: asString(dateWindowValue(trip), "TBD"),
     origin: asString(originCityValue(trip), "TBD"),
     budget: (() => {
+      // TripResponse.budget is a canonical top-level field (new in Phase 4).
+      // It resolves both numeric and raw-text budgets on the backend.
+      // Falls back to extracted-path hunting for trips not served via TripResponse.
+      const canonicalBudget = trip.budget;
+      if (canonicalBudget !== undefined && canonicalBudget !== null) {
+        return asString(canonicalBudget, "Budget missing");
+      }
       const rawText = getNestedValue(spineTrip, "extracted.facts.budget_raw_text.value", undefined);
       const budgetVal = getNestedValue(spineTrip, "extracted.facts.budget.value", undefined);
       return asString(rawText ?? budgetVal ?? budgetValue(spineTrip), "Budget missing");
@@ -562,10 +580,20 @@ export function transformSpineTripToInboxTrip(
   else if (daysInCurrentStage > 7) urgency = 60;
 
   // Importance: value/priority signal
+  // Prefer canonical `source.value` (inbox projection) or `source.budget` (TripResponse).
+  const canonicalBudgetNumeric = (() => {
+    const sv = source.value;
+    if (typeof sv === "number") return sv;
+    const sb = source.budget;
+    if (typeof sb === "number") return sb;
+    if (typeof sb === "string") return asNumber(sb, 0);
+    return budgetValue(source);
+  })();
+
   let importance = 50;
   if (priority === "critical") importance = 90;
   else if (priority === "high") importance = 70;
-  if (budgetValue(source) > 100000) importance = Math.min(importance + 10, 100);
+  if (canonicalBudgetNumeric > 100000) importance = Math.min(importance + 10, 100);
 
   return {
     id: trip.id,
@@ -574,7 +602,7 @@ export function transformSpineTripToInboxTrip(
     tripType: trip.type,
     partySize: trip.party ?? 1,
     dateWindow: trip.dateWindow ?? "TBD",
-    value: budgetValue(source),
+    value: canonicalBudgetNumeric,
     priority,
     priorityScore,
     urgency,
