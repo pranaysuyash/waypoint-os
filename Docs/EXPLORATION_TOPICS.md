@@ -251,6 +251,95 @@ Legend:
 
 ---
 
+### 6b. Knowledge Discovery from Data (KDD) 🟡 [EXPLORATION OPEN]
+**Status**: Exploration drafted 2026-05-18. Not yet implemented. Worth pursuing because the data streams already exist (override audit, gate outcomes, trip events, validation reasons) and the highest-leverage application (override mining) directly feeds the known AI-override launch blocker.
+
+**Overview**: Apply the Fayyad KDD pipeline (Selection → Preprocessing → Transformation → Data Mining → Interpretation) to the corpus of operator overrides, gate decisions, validation outcomes, and lifecycle events the app already persists. Goal is a continuous learning loop, not a vanity dashboard.
+
+**Key Questions**:
+- Can clustering the override corpus identify systematic failure modes the AI should learn from?
+- Can association-rule mining on gate failures (e.g., NB01/NB02) discover intake → escalation patterns that drive extractor/validator improvements?
+- Can mining successful trips surface the suitability signals the renderer is currently blocked on?
+- What KDD applications are premature given current N per agency, and which work even at low N?
+- How does the override corpus get versioned, labeled, and fed back into prompts/models without duplicating evaluation infrastructure?
+
+**Highest-leverage applications** (ranked):
+1. Override-mining → continuous-improvement loop (closes operator override blocker).
+2. Escalation cause discovery via association rules on `Validation.gate/reasons`.
+3. Suitability signal mining from successful trip outcomes.
+4. Process mining on workflow timelines (time-to-stage, bottlenecks).
+5. Cross-agency anomaly detection (defer until N is large enough).
+
+**Non-goals**: a generic KDD dashboard; mining anything where N per agency is too small to be honest; duplicating the Evaluation Framework (this complements it by producing the patterns the evaluator measures against).
+
+**Deliverable**: KDD pipeline design + override-corpus schema + first-pattern prototype (override clusters or gate-failure association rules) wired into a weekly digest.
+
+**Detailed Research**: [exploration/KDD_KNOWLEDGE_DISCOVERY_EXPLORATION_2026-05-18.md](exploration/KDD_KNOWLEDGE_DISCOVERY_EXPLORATION_2026-05-18.md)
+
+**v0 Implementation Scope** (handoff-ready): [exploration/KDD_V0_OVERRIDE_MINING_SCOPE_2026-05-18.md](exploration/KDD_V0_OVERRIDE_MINING_SCOPE_2026-05-18.md)
+
+**Related Topics**: Evaluation Framework (#6, complementary), LLM Strategy (#4, override mining feeds prompt versioning), Advanced: Learning & Optimization (#15), Multi-Dimensional Priority Scoring (#20), Suitability renderer (cross-link to AI override controls launch blocker in `AGENTS.md`).
+
+---
+
+### 6c. Suitability Signal Mining 🟡 [EXPLORATION OPEN]
+**Status**: Exploration drafted 2026-05-18. Recommended to defer one cycle behind KDD v0 (reuses same pipeline). Directly addresses the suitability-renderer launch blocker.
+
+**Overview**: Mine successful trips (booked-and-stuck) for repeatable (destination × season × traveler-shape × budget-band) tuples. Each surviving pattern is a candidate suitability signal carrying sample size and lift.
+
+**Key Questions**: see exploration doc.
+
+**Deliverable**: per-agency suitability signal store + counter-signal surfacing at intake + renderer feed.
+
+**Detailed Research**: [exploration/SUITABILITY_SIGNAL_MINING_EXPLORATION_2026-05-18.md](exploration/SUITABILITY_SIGNAL_MINING_EXPLORATION_2026-05-18.md)
+
+**Related Topics**: KDD (#6b, sibling), AI override controls launch blocker, Real-World Validation (#7).
+
+---
+
+### 6d. Process Mining on Workflow Timelines 🟡 [EXPLORATION OPEN]
+**Status**: Exploration drafted 2026-05-18. Recommended to ship **in parallel** with KDD v0 (lowest N requirement, smallest blast radius, fastest operational ROI).
+
+**Overview**: Apply process-mining techniques (timing, bottleneck, stuck-trip detection) to trip event timelines. Use DuckDB + SQL for v0 (no new dependency); promote to pm4py only if model-inference questions become real consumers.
+
+**Key Questions**: see exploration doc.
+
+**Deliverable**: read-only ops surface with per-stage timing, gate-firing rate, and stuck-trip alerts per agency.
+
+**Detailed Research**: [exploration/PROCESS_MINING_WORKFLOW_TIMELINES_EXPLORATION_2026-05-18.md](exploration/PROCESS_MINING_WORKFLOW_TIMELINES_EXPLORATION_2026-05-18.md)
+
+**Related Topics**: Priority Scoring (#20, complementary signal source), Evaluation Framework (#6), KDD (#6b).
+
+---
+
+### 6f. Open Exploration Ideation (rolling) [ITERATION 1: 2026-05-18]
+**Status**: Rolling ideation rounds spanning categories the map under-covers — trust/governance, customer-facing surfaces, domain depth (supplier intelligence, operational risk), owner-persona surfaces, agency people/process, compliance, multi-modality, business-model shape. Iteration 1 surfaces 19 candidates ranked HIGH/MED/LOW with paired-workstream recommendations.
+
+**Iteration 1 HIGH picks**: AI Agent Autonomy Levels Framework (A1), Customer-Facing Surfaces (B1), Supplier-Side Intelligence (C1), Voice/WhatsApp Multi-Modal Intake (B2).
+
+**Recommended paired workstreams**: A1+A2 (governance), C2+C3+E4 (owner persona), C1+E2+C4 (institutional memory).
+
+**Detailed Ideation**: [exploration/OPEN_EXPLORATION_IDEATION_2026-05-18.md](exploration/OPEN_EXPLORATION_IDEATION_2026-05-18.md)
+
+**Iteration 2 (2026-05-18) — Messaging by ICP/Persona**: opinionated 8-ICP × 12-angle matrix mapping which messaging frame (derisking / automation / CRM / AI-leverage / margin / quality / speed-to-quote / knowledge-retention / compliance / white-glove / anti-OTA / visibility) leads, supports, or backfires for each ICP. Per-ICP one-line headlines and value props. Owner-vs-user persona split rules. Hardened stance (rev 2026-05-18): AI is the engine, not the marquee — never in headlines for ICPs 4/5/7; only limited "AI-augmented" use for ICPs 3/6. → [exploration/MESSAGING_BY_ICP_PERSONA_2026-05-18.md](exploration/MESSAGING_BY_ICP_PERSONA_2026-05-18.md)
+
+**Iteration 3 (2026-05-18) — ML Strategy (distinct from LLM Strategy #4 and KDD #6b)**: layered approach (rules → classical ML → embeddings → LLMs → fine-tuning). Identifies underused classical-ML opportunities (message/document classification, will-book prediction, supplier reliability scoring, routing, churn, anomaly). Cost/latency analysis showing 6-orders-of-magnitude gap between rules and frontier LLMs. ML infrastructure staging (don't build platform before 5+ models). Anti-patterns and explicit "do not" list. → [exploration/ML_STRATEGY_2026-05-18.md](exploration/ML_STRATEGY_2026-05-18.md)
+
+---
+
+### 6e. Off-Map Exploration Candidates [PROPOSAL]
+**Status**: Proposal doc drafted 2026-05-18. Ranks ten topics not currently on the map with honest rationale and promotion recommendations. Awaiting your call on which to promote.
+
+**Recommended promotions** (HIGH): Explainability Layer for AI Decisions, Embeddings "Similar Past Trip" Retrieval, Concept Drift Detection.
+
+**Recommended gated additions** (MEDIUM): Active Learning sampling, Adversarial Intake Red-Teaming.
+
+**Recommended documented defers** (LOW): Knowledge Graph, Bandit Variant Selection, Causal Inference, Federated Learning, Time-Series Forecasting.
+
+**Detailed Proposal**: [exploration/OFF_MAP_CANDIDATES_2026-05-18.md](exploration/OFF_MAP_CANDIDATES_2026-05-18.md)
+
+---
+
 ## PRODUCT & USER EXPERIENCE
 
 ### 7. Real-World Validation 🟡
@@ -626,7 +715,9 @@ Legend:
 
 **Detailed Research:** [Docs/DESIGN_2D_PRIORITY_MODEL_2026-05-08.md](Docs/DESIGN_2D_PRIORITY_MODEL_2026-05-08.md) *[DESIGN COMPLETE]*
 
-**Related Topics:** Real-World Validation (operator testing), Evaluation Framework (scoring accuracy), Future Roadmap (learning from operator behavior)
+**Learning-Layer Extension** (additive, deferred until #20 ships + 4 weeks of behavior data): [exploration/PRIORITY_SCORING_LEARNING_LAYER_EXPLORATION_2026-05-18.md](exploration/PRIORITY_SCORING_LEARNING_LAYER_EXPLORATION_2026-05-18.md)
+
+**Related Topics:** Real-World Validation (operator testing), Evaluation Framework (scoring accuracy), Future Roadmap (learning from operator behavior), KDD (#6b — override signals could become priority residuals), Process Mining (#6d — stuck-trip signal could be a priority input)
 
 ---
 
