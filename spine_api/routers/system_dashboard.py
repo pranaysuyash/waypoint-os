@@ -9,6 +9,7 @@ Scope: move only:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -28,9 +29,15 @@ router = APIRouter()
 async def get_unified_state(agency: Agency = Depends(get_current_agency)):
     """
     Return unified state. Scoped to the current user's agency.
+
+    DashboardAggregator.get_unified_state is synchronous (uses the sync/async
+    bridge to SQLTripStore). Run it in a thread pool so we don't block the
+    uvicorn event loop while waiting for DB I/O.
     """
     try:
-        return DashboardAggregator.get_unified_state(agency_id=agency.id)
+        return await asyncio.to_thread(
+            DashboardAggregator.get_unified_state, agency_id=agency.id
+        )
     except Exception as e:
         logger.error(f"Failed to aggregate unified state: {e}", exc_info=True)
         raise HTTPException(
@@ -45,7 +52,9 @@ async def get_integrity_issues(agency: Agency = Depends(get_current_agency)):
     Return typed integrity issues. Scoped to the current user's agency.
     """
     try:
-        return IntegrityService.list_integrity_issues(agency_id=agency.id)
+        return await asyncio.to_thread(
+            IntegrityService.list_integrity_issues, agency_id=agency.id
+        )
     except Exception as e:
         logger.error(f"Failed to aggregate integrity issues: {e}", exc_info=True)
         raise HTTPException(
@@ -61,7 +70,9 @@ async def get_dashboard_stats(agency: Agency = Depends(get_current_agency)):
     Scopes all metrics to the current user's agency.
     """
     try:
-        return DashboardAggregator.get_dashboard_stats(agency_id=agency.id)
+        return await asyncio.to_thread(
+            DashboardAggregator.get_dashboard_stats, agency_id=agency.id
+        )
     except Exception as e:
         logger.error(f"Failed to compute dashboard stats: {e}", exc_info=True)
         raise HTTPException(

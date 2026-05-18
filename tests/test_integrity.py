@@ -272,7 +272,7 @@ class TestIntegrityClassification:
             }
         ]
 
-        with patch("src.services.dashboard_aggregator.TripStore.list_trips", return_value=trips):
+        with patch("src.services.dashboard_aggregator.TripStore.list_trip_summaries", return_value=trips):
             state = DashboardAggregator.get_unified_state(agency_id="agency_123")
 
         assert state["canonical_total"] == 1
@@ -289,7 +289,7 @@ class TestIntegrityClassification:
             }
         ]
 
-        with patch("src.services.dashboard_aggregator.TripStore.list_trips", return_value=trips):
+        with patch("src.services.dashboard_aggregator.TripStore.list_trip_summaries", return_value=trips):
             response = IntegrityService.list_integrity_issues(agency_id="agency_123")
 
         assert response["items"] == []
@@ -403,7 +403,7 @@ class TestIntegrityIssues:
         ]
 
         with patch(
-            "src.services.integrity_service.TripStore.list_trips",
+            "src.services.dashboard_aggregator.TripStore.list_trip_summaries",
             return_value=trips,
         ):
             result = IntegrityService.list_integrity_issues(agency_id="agency-123")
@@ -470,6 +470,108 @@ class TestIntegrityIssues:
 
         assert get_route is not None
         assert repair_route is None
+
+
+# =============================================================================
+# 5. Dashboard cache isolation
+# ChatGPT review requirement: same agency hits cache, different agency_id
+# does not share cache entry, clear_dashboard_cache() resets between tests.
+# =============================================================================
+
+class TestDashboardCache:
+    """Verify TTL cache correctness: tenant isolation, hit/miss, and eviction."""
+
+    _AGENCY_A = "agency-cache-aaa"
+    _AGENCY_B = "agency-cache-bbb"
+
+    _TRIPS_A = [
+        {"id": "trip-a-1", "status": "new", "created_at": "2026-05-01T10:00:00+00:00"},
+        {"id": "trip-a-2", "status": "assigned", "created_at": "2026-05-01T11:00:00+00:00"},
+    ]
+    _TRIPS_B = [
+        {"id": "trip-b-1", "status": "completed", "created_at": "2026-05-01T09:00:00+00:00"},
+        {"id": "trip-b-2", "status": "completed", "created_at": "2026-05-01T08:00:00+00:00"},
+        {"id": "trip-b-3", "status": "completed", "created_at": "2026-05-01T07:00:00+00:00"},
+    ]
+
+    def test_same_agency_second_call_uses_cached_result(self):
+        """Calling get_unified_state twice for the same agency should only hit
+        list_trip_summaries once; the second call returns the cached value."""
+        from src.services.dashboard_aggregator import clear_dashboard_cache
+
+        clear_dashboard_cache()
+
+        with patch(
+            "src.services.dashboard_aggregator.TripStore.list_trip_summaries",
+            return_value=self._TRIPS_A,
+        ) as mock_list:
+            first = DashboardAggregator.get_unified_state(agency_id=self._AGENCY_A)
+            second = DashboardAggregator.get_unified_state(agency_id=self._AGENCY_A)
+
+        # DB was only hit once — second call was served from cache
+        assert mock_list.call_count == 1
+        assert first == second
+        assert first["canonical_total"] == 2
+
+    def test_different_agency_ids_do_not_share_cache_entry(self):
+        """Agency A and Agency B must NEVER see each other's cached data."""
+        from src.services.dashboard_aggregator import clear_dashboard_cache
+
+        clear_dashboard_cache()
+
+        def side_effect(limit, agency_id):
+            if agency_id == self._AGENCY_A:
+                return self._TRIPS_A
+            if agency_id == self._AGENCY_B:
+                return self._TRIPS_B
+            return []
+
+        with patch(
+            "src.services.dashboard_aggregator.TripStore.list_trip_summaries",
+            side_effect=side_effect,
+        ):
+            result_a = DashboardAggregator.get_unified_state(agency_id=self._AGENCY_A)
+            result_b = DashboardAggregator.get_unified_state(agency_id=self._AGENCY_B)
+
+        # Each agency sees only its own trips
+        assert result_a["canonical_total"] == 2
+        assert result_b["canonical_total"] == 3
+
+        # Sanity: agency A has no completed trips; agency B has only completed
+        assert result_a["stages"]["completed"] == 0
+        assert result_b["stages"]["completed"] == 3
+        assert result_b["stages"]["new"] == 0
+
+    def test_clear_dashboard_cache_evicts_all_entries(self):
+        """After clear_dashboard_cache(), the next call must re-query the DB."""
+        from src.services.dashboard_aggregator import clear_dashboard_cache
+
+        clear_dashboard_cache()
+
+        trips_v1 = [{"id": "trip-v1", "status": "new", "created_at": "2026-05-01T10:00:00+00:00"}]
+        trips_v2 = [
+            {"id": "trip-v1", "status": "new", "created_at": "2026-05-01T10:00:00+00:00"},
+            {"id": "trip-v2", "status": "assigned", "created_at": "2026-05-01T11:00:00+00:00"},
+        ]
+
+        with patch(
+            "src.services.dashboard_aggregator.TripStore.list_trip_summaries",
+            return_value=trips_v1,
+        ):
+            before = DashboardAggregator.get_unified_state(agency_id=self._AGENCY_A)
+
+        assert before["canonical_total"] == 1
+
+        clear_dashboard_cache()
+
+        with patch(
+            "src.services.dashboard_aggregator.TripStore.list_trip_summaries",
+            return_value=trips_v2,
+        ):
+            after = DashboardAggregator.get_unified_state(agency_id=self._AGENCY_A)
+
+        # Cache was evicted — should see the updated trip list
+        assert after["canonical_total"] == 2
 
 
 if __name__ == "__main__":

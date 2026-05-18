@@ -1,6 +1,8 @@
 import json
+import time
+import threading
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional, Tuple
 import logging
 from datetime import datetime, timezone, timedelta
 
@@ -15,6 +17,23 @@ SLA_THRESHOLDS = {
     "assigned": timedelta(hours=24),
 }
 
+# ---------------------------------------------------------------------------
+# Simple in-memory TTL cache for unified-state and dashboard-stats.
+# Keyed by agency_id (None = global). Avoids redundant DB round-trips on
+# every page navigation — staleTime on the frontend is already 30s.
+# ---------------------------------------------------------------------------
+_CACHE_TTL_SECONDS = 30
+_cache_lock = threading.Lock()
+_unified_state_cache: Dict[Optional[str], Tuple[float, Dict]] = {}
+_dashboard_stats_cache: Dict[Optional[str], Tuple[float, Dict]] = {}
+
+
+def clear_dashboard_cache() -> None:
+    """Evict all cached dashboard results. Use in tests or after bulk mutations."""
+    with _cache_lock:
+        _unified_state_cache.clear()
+        _dashboard_stats_cache.clear()
+
 
 class DashboardAggregator:
     """
@@ -25,7 +44,25 @@ class DashboardAggregator:
 
     @staticmethod
     def get_unified_state(agency_id: str = None) -> Dict[str, Any]:
-        all_trips = TripStore.list_trips(limit=10000, agency_id=agency_id)
+        # --- TTL cache check ---
+        with _cache_lock:
+            cached = _unified_state_cache.get(agency_id)
+            if cached is not None:
+                cached_at, cached_value = cached
+                if time.monotonic() - cached_at < _CACHE_TTL_SECONDS:
+                    return cached_value
+
+        t0 = time.perf_counter()
+
+        # Use list_trip_summaries: avoids fetching heavy JSONB blobs (itinerary,
+        # notes, messages) — we only need status, id, created_at for this aggregation.
+        all_trips = TripStore.list_trip_summaries(limit=10000, agency_id=agency_id)
+        t1 = time.perf_counter()
+        logger.warning(
+            "[perf] unified-state list_trip_summaries agency=%s trips=%d elapsed=%.3fs",
+            agency_id, len(all_trips), t1 - t0
+        )
+
         trips = [t for t in all_trips if t.get("id")]
         canonical_total = len(trips)
         stages = {stage: 0 for stage in VALID_STAGES}
@@ -50,12 +87,16 @@ class DashboardAggregator:
             created_at_str = trip.get("created_at")
             if created_at_str:
                 try:
-                    if created_at_str.endswith('Z'):
-                        created_at_str = created_at_str.replace('Z', '+00:00')
-                    created_at = datetime.fromisoformat(created_at_str)
-
-                    if created_at.tzinfo is None:
-                        created_at = created_at.replace(tzinfo=timezone.utc)
+                    if isinstance(created_at_str, datetime):
+                        created_at = created_at_str
+                        if created_at.tzinfo is None:
+                            created_at = created_at.replace(tzinfo=timezone.utc)
+                    else:
+                        if created_at_str.endswith('Z'):
+                            created_at_str = created_at_str.replace('Z', '+00:00')
+                        created_at = datetime.fromisoformat(created_at_str)
+                        if created_at.tzinfo is None:
+                            created_at = created_at.replace(tzinfo=timezone.utc)
 
                     age = now - created_at
 
@@ -71,7 +112,15 @@ class DashboardAggregator:
         if sum_stages + len(orphans) != canonical_total:
             logger.error(f"Critical Integrity Failure: total={canonical_total}, stages={sum_stages}, orphans={len(orphans)}")
 
-        return {
+        t2 = time.perf_counter()
+        systemic_errors = DashboardAggregator._get_top_errors(AuditStore)
+        t3 = time.perf_counter()
+        logger.warning(
+            "[perf] unified-state _get_top_errors elapsed=%.3fs | total=%.3fs",
+            t3 - t2, t3 - t0
+        )
+
+        result = {
             "canonical_total": canonical_total,
             "stages": stages,
             "sla_breached": sla_breached,
@@ -82,15 +131,35 @@ class DashboardAggregator:
                 "consistent": (sum_stages + len(orphans) == canonical_total),
                 "last_sync": now.isoformat()
             },
-            "systemic_errors": DashboardAggregator._get_top_errors(AuditStore)
+            "systemic_errors": systemic_errors,
         }
+
+        # Store in cache
+        with _cache_lock:
+            _unified_state_cache[agency_id] = (time.monotonic(), result)
+
+        return result
 
     @staticmethod
     def get_dashboard_stats(agency_id: str = None) -> Dict[str, Any]:
         """
         Compute dashboard stat cards scoped by agency.
         """
-        all_trips = TripStore.list_trips(limit=10000, agency_id=agency_id)
+        # --- TTL cache check ---
+        with _cache_lock:
+            cached = _dashboard_stats_cache.get(agency_id)
+            if cached is not None:
+                cached_at, cached_value = cached
+                if time.monotonic() - cached_at < _CACHE_TTL_SECONDS:
+                    return cached_value
+
+        t0 = time.perf_counter()
+        all_trips = TripStore.list_trip_summaries(limit=10000, agency_id=agency_id)
+        t1 = time.perf_counter()
+        logger.warning(
+            "[perf] dashboard-stats list_trip_summaries agency=%s trips=%d elapsed=%.3fs",
+            agency_id, len(all_trips), t1 - t0
+        )
         trips = [t for t in all_trips if t.get("id")]
 
         now = datetime.now(timezone.utc)
@@ -101,8 +170,9 @@ class DashboardAggregator:
 
         for trip in trips:
             status = trip.get("status", "")
-            meta = trip.get("meta", {})
-            stage = meta.get("stage", "")
+            # stage is a top-level field in SQL-backed summaries; fall back to
+            # meta.stage for any legacy file-store trips that still nest it.
+            stage = trip.get("stage") or trip.get("meta", {}).get("stage", "")
             analytics = trip.get("analytics", {})
             quality_score = analytics.get("quality_score", 100)
 
@@ -112,14 +182,20 @@ class DashboardAggregator:
             if stage in ("strategy", "output"):
                 ready_to_book += 1
 
-            created_at_str = trip.get("created_at")
-            if created_at_str:
+            created_at_raw = trip.get("created_at")
+            if created_at_raw:
                 try:
-                    if created_at_str.endswith('Z'):
-                        created_at_str = created_at_str.replace('Z', '+00:00')
-                    created_at = datetime.fromisoformat(created_at_str)
-                    if created_at.tzinfo is None:
-                        created_at = created_at.replace(tzinfo=timezone.utc)
+                    if isinstance(created_at_raw, datetime):
+                        created_at = created_at_raw
+                        if created_at.tzinfo is None:
+                            created_at = created_at.replace(tzinfo=timezone.utc)
+                    else:
+                        created_at_str = created_at_raw
+                        if created_at_str.endswith('Z'):
+                            created_at_str = created_at_str.replace('Z', '+00:00')
+                        created_at = datetime.fromisoformat(created_at_str)
+                        if created_at.tzinfo is None:
+                            created_at = created_at.replace(tzinfo=timezone.utc)
 
                     age_hours = (now - created_at).total_seconds() / 3600
 
@@ -134,12 +210,17 @@ class DashboardAggregator:
 
         pending_review = len(trips) - completed
 
-        return {
+        result = {
             "active": completed,
             "pending_review": max(0, pending_review),
             "ready_to_book": ready_to_book,
             "needs_attention": min(needs_attention, max(0, pending_review)),
         }
+
+        with _cache_lock:
+            _dashboard_stats_cache[agency_id] = (time.monotonic(), result)
+
+        return result
 
     @staticmethod
     def get_trip_sla_status(trip: Dict[str, Any]) -> str:

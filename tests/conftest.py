@@ -271,6 +271,13 @@ def reset_global_singletons():
     except Exception:
         pass
 
+    # Clear dashboard aggregator TTL cache so each test sees fresh data
+    try:
+        from src.services.dashboard_aggregator import clear_dashboard_cache
+        clear_dashboard_cache()
+    except Exception:
+        pass
+
     yield
 
 # ---------------------------------------------------------------------------
