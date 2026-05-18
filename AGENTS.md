@@ -4,7 +4,8 @@
 
 1. Repo-local `AGENTS.md` (this file)
 2. Workspace-level `/Users/pranay/Projects/AGENTS.md`
-3. `Docs/context/agent-start/AGENT_KICKOFF_PROMPT.txt` and `Docs/context/agent-start/SESSION_CONTEXT.md`
+3. Project-root `motto_v2.md` when present
+4. `Docs/context/agent-start/AGENT_KICKOFF_PROMPT.txt` and `Docs/context/agent-start/SESSION_CONTEXT.md`
 
 If instructions conflict, follow the stricter rule and cite concrete file paths.
 
