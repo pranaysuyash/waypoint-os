@@ -3,7 +3,7 @@
 **Status**: 🔴 High Priority - Blocking implementation phase  
 **Topic ID**: 1  
 **Parent**: [EXPLORATION_TOPICS.md](../EXPLORATION_TOPICS.md)  
-**Last Updated**: 2026-04-09
+**Last Updated**: 2026-05-19
 
 ---
 
@@ -11,8 +11,73 @@
 
 **What**: How the AI pipeline connects to real-world systems  
 **Why**: Core AI is solid, but it needs to actually *do* things  
-**Scope**: WhatsApp, booking APIs, CRMs, payments, documents  
+**Scope**: Integration enablement foundation first, then WhatsApp, booking APIs, CRMs, payments, documents
 **Status**: Initial research phase
+
+---
+
+## 0. Integration Enablement Foundation Comes First
+
+Before implementing WhatsApp, Gmail, Google Calendar, SMS, Telegram, backup providers, or provider-specific continuity automation, the app needs a canonical integration enablement layer.
+
+The first question is not "which provider do we add?" The first question is:
+
+```text
+How does waypoint-os represent, configure, authorize, test, audit, and surface integrations per agency?
+```
+
+Provider work should wait until a repo audit answers:
+
+- Is there an integration model/table/config today?
+- Is there per-agency integration state?
+- Is there any UI surface for integration settings?
+- Is there any backend API for enable/disable/test/rotate/health?
+- Where do credentials/tokens live?
+- Is encryption already available for secrets?
+- Is there a health/status model for integrations?
+- Is there an event/audit trail for integration changes?
+- Are channels modeled separately from providers?
+- Are current docs aspirational or implemented?
+
+Minimal conceptual model to validate against current code:
+
+```text
+Integration Provider
+  WhatsApp | Gmail | Google Calendar | Google Drive | SMS | Telegram | Email | Payment Gateway
+
+Integration Instance
+  agency-specific enabled/configured account or provider connection
+
+Channel Capability
+  inbound_messages | outbound_messages | calendar_read | calendar_write | file_backup | alerts
+
+Credential Reference
+  encrypted secret reference, never raw secret in normal tables/logs/frontend payloads
+
+Health Status
+  connected | degraded | disabled | auth_expired | misconfigured
+
+Audit Trail
+  who enabled, disabled, tested, rotated credentials, or changed config
+
+Runtime Adapter
+  provider-specific implementation behind a stable internal interface
+```
+
+Recommended sequence:
+
+```text
+1. Integration enablement audit/design
+2. Integration registry + per-agency status model
+3. Settings/API surface for listing and enabling integrations
+4. Secret storage/encryption strategy
+5. First provider adapter
+6. Health checks + audit trail
+7. WhatsApp continuity/fallback model
+8. Backup/export/restore model
+```
+
+This sequencing prevents premature Telegram/SMS/WhatsApp-specific work from becoming the de facto architecture.
 
 ---
 

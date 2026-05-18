@@ -2,7 +2,7 @@
 
 **Purpose**: Living document tracking research areas for the Travel Agency AI Copilot  
 **Status**: Active - Continuously updated as project evolves  
-**Last Updated**: 2026-05-11
+**Last Updated**: 2026-05-19
 
 ---
 
@@ -84,7 +84,13 @@ Legend:
 
 **Overview**: How the AI pipeline connects to real-world systems. The core AI is getting solid, but it needs to actually *do* things.
 
+**Current Sequencing Note (2026-05-19)**: Provider-specific work should not start with WhatsApp/SMS/Telegram/Gmail implementation or continuity automation. First audit and design the integration enablement foundation: supported provider catalog, per-agency integration state, credential references, capability model, health/status, audit trail, and runtime adapter boundaries.
+
 **Key Questions**:
+- Is there an integration enablement layer today, or only provider-specific aspirations?
+- Which agency has enabled which integration, who configured it, and what state is it in?
+- Where do credentials/tokens live, and are they encrypted/referenced rather than exposed?
+- How are integration health, auth expiry, degraded status, and disabled behavior surfaced?
 - How does the system send/receive WhatsApp messages?
 - Which hotel/flight booking APIs are accessible?
 - What CRMs do travel agencies actually use?
@@ -92,6 +98,11 @@ Legend:
 - Where are documents stored?
 
 **Research Areas**:
+- Integration registry and per-agency integration instances
+- Credential references and secret rotation policy
+- Capability model: inbound messages, outbound messages, calendar read/write, file backup, alerts
+- Health checks, safe error codes, and integration status UI/API
+- Audit trail for enable/disable/test/rotate operations
 - WhatsApp Business API vs WhatsApp Cloud API
 - Hotel booking APIs (Booking.com, Expedia, direct hoteliers)
 - Flight APIs (Amadeus, Sabre, Skyscanner)

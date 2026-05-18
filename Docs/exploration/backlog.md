@@ -1,6 +1,6 @@
 # Exploration Backlog
 
-**Last Updated:** 2026-05-15
+**Last Updated:** 2026-05-19
 
 A living document of areas to explore, ideas to investigate, and potential improvements. Add items freely — this is a brainstorming space, not a commitment queue.
 
@@ -218,6 +218,14 @@ A living document of areas to explore, ideas to investigate, and potential impro
 
 ## Integrations
 
+- [ ] **Integration enablement foundation before provider work**
+  - Why: WhatsApp/Gmail/Calendar/SMS/Telegram/provider continuity should not be built before the app has a canonical way to represent supported providers, per-agency enabled integrations, credential references, capabilities, health/status, audits, and disabled/degraded behavior.
+  - Exploration acceptance checks:
+  - audit current repo for integration/provider/channel/settings/OAuth/credential/webhook/health concepts before implementation
+  - distinguish provider catalog, agency-specific integration instance, channel capability, credential reference, health status, runtime adapter, and audit trail
+  - define where encrypted credentials live without exposing raw secrets in normal tables, logs, docs, or frontend payloads
+  - define minimal API/UI surface for listing, enabling/disabling, testing, rotating credentials, and surfacing degraded/expired/misconfigured states
+  - sequence primary integrations before fallback/continuity/backup work unless continuity has an immediate manual runbook need
 - [ ] Email service provider (SendGrid/Postmark/SES)
 - [ ] WhatsApp Business API
 - [ ] Payment gateway (Razorpay, Stripe)

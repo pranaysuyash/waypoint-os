@@ -114,6 +114,65 @@ def _payment_tracking(*, payment_status: str, refund_status: str = "not_applicab
 
 
 class TestPaymentsQueueApi:
+    def test_full_tenant_scope_not_limited_to_initial_5000(self, session_client, monkeypatch, agency_id):
+        total_trips = 5002
+
+        def _trip_row(idx: int) -> dict:
+            return {
+                "id": f"trip_{idx}",
+                "trip_name": f"Trip {idx}",
+                "status": "assigned",
+                "start_date": None,
+                "updated_at": None,
+            }
+
+        call_offsets: list[int] = []
+
+        def fake_list_trip_summaries_for_agency(*, agency_id: str, status=None, limit: int = 100, offset: int = 0):
+            assert agency_id
+            call_offsets.append(offset)
+            if offset >= total_trips:
+                return []
+            end = min(offset + limit, total_trips)
+            return [_trip_row(i) for i in range(offset, end)]
+
+        def fake_get_booking_data_for_agency(trip_id: str, agency_id: str):
+            idx = int(trip_id.split("_")[1])
+            if idx >= 5000:
+                return {
+                    "payment_tracking": {
+                        "payment_status": "partially_paid",
+                        "refund_status": "not_applicable",
+                        "agreed_amount": 1000,
+                        "amount_paid": 200,
+                        "final_payment_due": (date.today() + timedelta(days=2)).isoformat(),
+                    }
+                }
+            return {
+                "payment_tracking": {
+                    "payment_status": "paid",
+                    "refund_status": "not_applicable",
+                    "agreed_amount": 1000,
+                    "amount_paid": 1000,
+                }
+            }
+
+        monkeypatch.setattr(server.TripStore, "list_trip_summaries_for_agency", fake_list_trip_summaries_for_agency)
+        monkeypatch.setattr(server.TripStore, "get_booking_data_for_agency", fake_get_booking_data_for_agency)
+
+        resp = session_client.get("/payments?queue_status=due_soon&limit=10&offset=0")
+        assert resp.status_code == 200
+        body = resp.json()
+
+        assert body["pagination"]["total"] == 2
+        assert body["summary"]["total"] == 2
+        assert body["summary"]["by_queue_status"]["due_soon"] == 2
+        assert body["pagination"]["returned"] == 2
+        assert [item["trip_id"] for item in body["items"]] == ["trip_5000", "trip_5001"]
+
+        # Ensure backend iterated beyond the initial 5000 records.
+        assert any(offset >= 5000 for offset in call_offsets)
+
     def test_tenant_isolation(self, session_client, agency_id, agency_ids, trip_factory):
         trip_id = trip_factory("payments_queue_tenant")
         _set_booking_data(

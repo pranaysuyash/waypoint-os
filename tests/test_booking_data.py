@@ -76,6 +76,9 @@ BOOKING_DATA_NO_PAYER = {
 
 
 
+TEST_AUTH_USER_ID = "323468de-ba3d-437b-aa10-35b281a0c6a6"
+
+
 def _resolve_agency_id():
     """Resolve the session_client user's actual agency_id via a subprocess query.
 
@@ -399,10 +402,13 @@ class TestBookingDataAudit:
         assert len(events) > events_before
         latest = events[-1]
         assert latest["type"] == "booking_data_updated"
+        assert latest["user_id"] == TEST_AUTH_USER_ID
         details = latest["details"]
         assert details["traveler_count"] == 2
         assert details["has_payer"] is True
         assert details["has_passport_data"] is True
+        assert details["actor"] == "operator"
+        assert details["actor_user_id"] == TEST_AUTH_USER_ID
         # No raw PII
         details_str = str(details)
         assert "John Doe" not in details_str
@@ -410,6 +416,8 @@ class TestBookingDataAudit:
         assert "X1234567" not in details_str
         assert "john@example.com" not in details_str
         assert "+91-9999999999" not in details_str
+        assert "Vegetarian meals" not in details_str
+        assert "Window seat preferred" not in details_str
 
     def test_payment_tracking_audit_uses_metadata_only(self, session_client, created_trip_id):
         from spine_api.persistence import AuditStore
@@ -426,13 +434,18 @@ class TestBookingDataAudit:
         events = AuditStore.get_events_for_trip(created_trip_id)
         payment_events = [e for e in events if e["type"] == "payment_tracking_updated"]
         assert payment_events, "Expected a payment_tracking_updated audit event"
-        details = payment_events[-1]["details"]
+        latest = payment_events[-1]
+        assert latest["user_id"] == TEST_AUTH_USER_ID
+        details = latest["details"]
         assert details["payment_status"] == "partially_paid"
         assert details["has_payment_reference"] is True
         assert details["has_payment_proof_url"] is True
+        assert details["actor"] == "operator"
+        assert details["actor_user_id"] == TEST_AUTH_USER_ID
         details_str = str(details)
         assert "UTR-123456" not in details_str
         assert "https://example.test/proof.pdf" not in details_str
+        assert "Deposit received from payer." not in details_str
 
 
 # ---------------------------------------------------------------------------

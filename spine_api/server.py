@@ -164,7 +164,7 @@ from spine_api.services.live_checker_service import (
 from spine_api.services.public_checker_service import run_public_checker_submission
 from spine_api.services.pipeline_execution_service import execute_spine_pipeline
 from spine_api.services import trip_lifecycle_service
-from spine_api.services.payment_queue_service import build_payment_queue_response
+from spine_api.services.payment_queue_service import build_payment_queue_response_for_agency
 from spine_api.product_b_events import ProductBEventStore  # noqa: F401  # Legacy re-export for tests/compatibility
 
 from src.intake.orchestration import run_spine_once
@@ -1986,18 +1986,8 @@ def get_payments_queue(
     due_bucket: Optional[Literal["none", "overdue", "due_0_3", "due_4_7", "due_8_14"]] = Query(None),
     agency: Agency = Depends(get_current_agency),
 ):
-    trips = TripStore.list_trip_summaries_for_agency(agency_id=agency.id, limit=5000)
-
-    booking_data_by_trip_id: dict[str, Optional[dict[str, Any]]] = {}
-    for trip in trips:
-        trip_id = str(trip.get("id") or "")
-        if not trip_id:
-            continue
-        booking_data_by_trip_id[trip_id] = TripStore.get_booking_data_for_agency(trip_id, agency.id)
-
-    return build_payment_queue_response(
-        trips=trips,
-        booking_data_by_trip_id=booking_data_by_trip_id,
+    return build_payment_queue_response_for_agency(
+        agency_id=agency.id,
         limit=limit,
         offset=offset,
         queue_status=queue_status,
@@ -2164,6 +2154,7 @@ def update_booking_data(
     trip_id: str,
     request: BookingDataUpdateRequest,
     agency: Agency = Depends(get_current_agency),
+    user: User = Depends(get_current_user),
 ):
     """Update booking data with stage gate, optimistic lock, audit, readiness recompute.
 
@@ -2229,7 +2220,7 @@ def update_booking_data(
         )
 
     # Audit: metadata only, no raw PII
-    AuditStore.log_event("booking_data_updated", agency.id, {
+    AuditStore.log_event("booking_data_updated", user.id, {
         "trip_id": trip_id,
         "stage": current_stage,
         "reason_present": bool(request.reason),
@@ -2247,6 +2238,7 @@ def update_booking_data(
         "has_passport_data": any(t.passport_number for t in request.booking_data.travelers),
         "has_payer": request.booking_data.payer is not None,
         "actor": "operator",
+        "actor_user_id": user.id,
     })
 
     booking_data = TripStore.get_booking_data_for_agency(trip_id, agency.id)
@@ -2263,6 +2255,7 @@ def update_payment_tracking(
     trip_id: str,
     request: PaymentTrackingUpdateRequest,
     agency: Agency = Depends(get_current_agency),
+    user: User = Depends(get_current_user),
 ):
     """Update payment tracking only. Preserves travelers/payer/notes unchanged.
 
@@ -2320,7 +2313,7 @@ def update_payment_tracking(
             },
         )
 
-    AuditStore.log_event("payment_tracking_updated", agency.id, {
+    AuditStore.log_event("payment_tracking_updated", user.id, {
         "trip_id": trip_id,
         "stage": current_stage,
         "payment_status": request.payment_tracking.payment_status,
@@ -2329,6 +2322,7 @@ def update_payment_tracking(
         "has_payment_proof_url": bool(request.payment_tracking.payment_proof_url),
         "has_final_payment_due": request.payment_tracking.final_payment_due is not None,
         "actor": "operator",
+        "actor_user_id": user.id,
     })
 
     booking_data = TripStore.get_booking_data_for_agency(trip_id, agency.id)

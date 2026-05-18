@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Optional, Sequence
 
+from spine_api.persistence import TripStore
+
 PAYMENT_QUEUE_STATUSES = (
     "not_configured",
     "unknown",
@@ -183,6 +185,31 @@ def _build_item(
     }
 
 
+def _matches_filters(
+    item: dict[str, Any],
+    *,
+    queue_status: Optional[str] = None,
+    payment_status: Optional[str] = None,
+    refund_status: Optional[str] = None,
+    due_bucket: Optional[str] = None,
+) -> bool:
+    if queue_status and item["queue_status"] != queue_status:
+        return False
+    if payment_status and item["payment_status"] != payment_status:
+        return False
+    if refund_status and item["refund_status"] != refund_status:
+        return False
+    if due_bucket and item["due_bucket"] != due_bucket:
+        return False
+    return True
+
+
+def _strip_internal_fields(item: dict[str, Any]) -> dict[str, Any]:
+    item_copy = dict(item)
+    item_copy.pop("due_bucket", None)
+    return item_copy
+
+
 def build_payment_queue_response(
     *,
     trips: Sequence[dict[str, Any]],
@@ -204,13 +231,13 @@ def build_payment_queue_response(
             continue
         item = _build_item(trip, booking_data_by_trip_id.get(trip_id), today)
 
-        if queue_status and item["queue_status"] != queue_status:
-            continue
-        if payment_status and item["payment_status"] != payment_status:
-            continue
-        if refund_status and item["refund_status"] != refund_status:
-            continue
-        if due_bucket and item["due_bucket"] != due_bucket:
+        if not _matches_filters(
+            item,
+            queue_status=queue_status,
+            payment_status=payment_status,
+            refund_status=refund_status,
+            due_bucket=due_bucket,
+        ):
             continue
 
         projected.append(item)
@@ -257,14 +284,108 @@ def build_payment_queue_response(
         "has_more": has_more,
     }
 
-    items = []
-    for item in paginated:
-        item_copy = dict(item)
-        item_copy.pop("due_bucket", None)
-        items.append(item_copy)
+    items = [_strip_internal_fields(item) for item in paginated]
 
     return {
         "summary": summary,
         "pagination": pagination,
         "items": items,
+    }
+
+
+def build_payment_queue_response_for_agency(
+    *,
+    agency_id: str,
+    limit: int,
+    offset: int,
+    queue_status: Optional[str] = None,
+    payment_status: Optional[str] = None,
+    refund_status: Optional[str] = None,
+    due_bucket: Optional[str] = None,
+    today: Optional[date] = None,
+    batch_size: int = 1000,
+) -> dict[str, Any]:
+    """Build payments queue response across full tenant scope.
+
+    Iterates all agency-scoped trip summaries in bounded batches and computes
+    filtered totals, summary stats, and requested page over the full tenant set.
+    """
+    today = today or datetime.now().date()
+
+    by_queue_status = {status: 0 for status in PAYMENT_QUEUE_STATUSES}
+    due_within_7_days = 0
+    filtered_total = 0
+    paginated_items: list[dict[str, Any]] = []
+
+    raw_offset = 0
+    while True:
+        trips = TripStore.list_trip_summaries_for_agency(
+            agency_id=agency_id,
+            limit=batch_size,
+            offset=raw_offset,
+        )
+        if not trips:
+            break
+
+        for trip in trips:
+            trip_id = str(trip.get("id") or "")
+            if not trip_id:
+                continue
+
+            booking_data = TripStore.get_booking_data_for_agency(trip_id, agency_id)
+            item = _build_item(trip, booking_data, today)
+
+            if not _matches_filters(
+                item,
+                queue_status=queue_status,
+                payment_status=payment_status,
+                refund_status=refund_status,
+                due_bucket=due_bucket,
+            ):
+                continue
+
+            filtered_total += 1
+            by_queue_status[item["queue_status"]] = by_queue_status.get(item["queue_status"], 0) + 1
+
+            if item["final_payment_due"] is not None:
+                due_date = _parse_iso_date(item["final_payment_due"])
+                if due_date is not None:
+                    balance_due = _safe_float(item.get("balance_due"))
+                    if balance_due is None or balance_due > 0:
+                        days = (due_date - today).days
+                        if 0 <= days <= 7:
+                            due_within_7_days += 1
+
+            if filtered_total > offset and len(paginated_items) < limit:
+                paginated_items.append(_strip_internal_fields(item))
+
+        raw_offset += len(trips)
+        if len(trips) < batch_size:
+            break
+
+    has_more = offset + len(paginated_items) < filtered_total
+
+    summary = {
+        "total": filtered_total,
+        "by_queue_status": by_queue_status,
+        "overdue_count": by_queue_status.get("overdue", 0),
+        "due_soon_count": by_queue_status.get("due_soon", 0),
+        "not_configured_count": by_queue_status.get("not_configured", 0),
+        "paid_complete_count": by_queue_status.get("paid_complete", 0),
+        "refund_in_progress_count": by_queue_status.get("refund_in_progress", 0),
+        "due_within_7_days_count": due_within_7_days,
+    }
+
+    pagination = {
+        "limit": limit,
+        "offset": offset,
+        "returned": len(paginated_items),
+        "total": filtered_total,
+        "has_more": has_more,
+    }
+
+    return {
+        "summary": summary,
+        "pagination": pagination,
+        "items": paginated_items,
     }
