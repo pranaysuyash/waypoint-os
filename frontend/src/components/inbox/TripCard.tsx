@@ -1,12 +1,13 @@
 'use client';
 
-import { memo, useState, useCallback, useRef, useEffect } from 'react';
+import { memo, useState, useCallback, useRef, useEffect, type KeyboardEvent } from 'react';
 import Link from 'next/link';
 import { CheckSquare, Square, ChevronRight, Flag, UserX, UserPlus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { PriorityIndicator } from '@/components/ui/PriorityIndicator';
 import type { InboxTrip } from '@/types/governance';
 import type { ViewProfile, MetricField } from '@/lib/inbox-helpers';
+import { focusNextOutside } from '@/lib/accessibility';
 import {
   formatContextualSLA,
   getMicroLabel,
@@ -215,22 +216,134 @@ function AssignAction({
   onAssign: (tripId: string, agentId: string) => void;
 }) {
   const [showDropdown, setShowDropdown] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const menuId = `assign-dropdown-${trip.id}`;
+  const moveActiveIndex = useCallback((nextIndex: number) => {
+    if (agents.length === 0) return;
+    if (nextIndex < 0) {
+      setActiveIndex(agents.length - 1);
+      return;
+    }
+    if (nextIndex >= agents.length) {
+      setActiveIndex(0);
+      return;
+    }
+    setActiveIndex(nextIndex);
+  }, [agents.length]);
+
+  const close = useCallback((moveFocusOut = false) => {
+    setShowDropdown(false);
+    const active = document.activeElement;
+    if (!dropdownRef.current) return;
+
+    if (moveFocusOut) {
+      focusNextOutside(dropdownRef.current, {
+        from: active instanceof HTMLElement ? active : null,
+        fallbackFrom: active instanceof HTMLElement ? active : null,
+      });
+      return;
+    }
+
+    triggerRef.current?.focus();
+  }, []);
+
+  const assignAndClose = useCallback((agentId: string) => {
+    onAssign(trip.id, agentId);
+    close();
+  }, [close, onAssign, trip.id]);
 
   useEffect(() => {
     const handler = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
+        triggerRef.current?.focus();
       }
     };
     if (showDropdown) document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showDropdown]);
 
+  useEffect(() => {
+    if (!showDropdown) return;
+    setActiveIndex(0);
+    itemRefs.current[0]?.focus();
+  }, [showDropdown]);
+
+  useEffect(() => {
+    if (!showDropdown) return;
+    itemRefs.current[activeIndex]?.focus();
+  }, [activeIndex, showDropdown]);
+
+  const handleTriggerKeyDown = useCallback((event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      setShowDropdown(true);
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      close();
+    }
+  }, [close]);
+
+  const handleMenuKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
+    if (agents.length === 0) {
+      if (event.key === 'Escape' || event.key === 'Tab') {
+        event.preventDefault();
+        close(event.key === 'Tab');
+      }
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        moveActiveIndex(activeIndex + 1);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        moveActiveIndex(activeIndex - 1);
+        break;
+      case 'Home':
+        event.preventDefault();
+        moveActiveIndex(0);
+        break;
+      case 'End':
+        event.preventDefault();
+        moveActiveIndex(agents.length - 1);
+        break;
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        if (agents[activeIndex]) {
+          assignAndClose(agents[activeIndex].id);
+        }
+        break;
+      case 'Escape':
+        event.preventDefault();
+        close();
+        break;
+      case 'Tab':
+        event.preventDefault();
+        close(true);
+        break;
+      default:
+        break;
+    }
+  }, [activeIndex, agents, close, moveActiveIndex, assignAndClose]);
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         type="button"
+        ref={triggerRef}
+        aria-haspopup="menu"
+        aria-expanded={showDropdown}
+        aria-controls={menuId}
+        onKeyDown={handleTriggerKeyDown}
         onClick={(event) => {
           event.stopPropagation();
           setShowDropdown((isOpen) => !isOpen);
@@ -242,15 +355,25 @@ function AssignAction({
         Assign
       </button>
       {showDropdown && (
-        <div className="absolute bottom-full left-0 mb-1 w-44 bg-[#0f1115] border border-[#30363d] rounded-lg shadow-xl z-20 py-1">
-          {agents.map((agent) => (
+        <div
+          id={menuId}
+          role="menu"
+          onKeyDown={handleMenuKeyDown}
+          className="absolute bottom-full left-0 mb-1 w-44 bg-[#0f1115] border border-[#30363d] rounded-lg shadow-xl z-20 py-1"
+        >
+          {agents.map((agent, agentIndex) => (
             <button
               key={agent.id}
               type="button"
+              ref={(element) => {
+                itemRefs.current[agentIndex] = element;
+              }}
+              role="menuitem"
+              tabIndex={agentIndex === activeIndex ? 0 : -1}
+              onMouseEnter={() => setActiveIndex(agentIndex)}
               onClick={(event) => {
                 event.stopPropagation();
-                onAssign(trip.id, agent.id);
-                setShowDropdown(false);
+                assignAndClose(agent.id);
               }}
               className="w-full flex items-center gap-2 px-3 py-2 text-left text-ui-xs text-[#e6edf3] hover:bg-[#1c2128] transition-colors"
             >

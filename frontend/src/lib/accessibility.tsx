@@ -289,22 +289,33 @@ export function moveFocus(direction: "next" | "previous", container?: HTMLElemen
  * Move focus to the next focusable element outside a container.
  */
 export function focusNextOutside(
-  container: ParentNode,
+  container: ParentNode | null,
   options: {
     from?: Element | null;
     fallbackFrom?: Element | null;
   } = {}
 ): void {
+  if (!container) return;
+
   const focusable = getFocusableElements(document);
 
-  const preferred =
-    options.from instanceof HTMLElement
-      ? options.from
-      : options.fallbackFrom instanceof HTMLElement
-        ? options.fallbackFrom
-        : null;
+  const preferred = options.from instanceof HTMLElement
+    ? options.from
+    : options.fallbackFrom instanceof HTMLElement
+      ? options.fallbackFrom
+      : null;
 
-  const startIndex = preferred ? focusable.indexOf(preferred) : -1;
+  let startIndex = preferred ? focusable.indexOf(preferred) : -1;
+
+  if (startIndex === -1) {
+    const inContainerIndexes = focusable
+      .map((element, index) => ({ element, index }))
+      .filter(({ element }) => container.contains(element))
+      .map(({ index }) => index);
+    if (inContainerIndexes.length > 0) {
+      startIndex = Math.max(...inContainerIndexes);
+    }
+  }
 
   if (startIndex >= 0) {
     for (let i = startIndex + 1; i < focusable.length; i += 1) {
@@ -317,7 +328,12 @@ export function focusNextOutside(
   }
 
   const firstOutside = focusable.find((element) => !container.contains(element));
-  firstOutside?.focus();
+  if (firstOutside) {
+    firstOutside.focus();
+    return;
+  }
+
+  preferred?.blur();
 }
 
 // ============================================================================

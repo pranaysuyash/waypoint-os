@@ -176,3 +176,81 @@ describe('TripCard v2 - footer', () => {
     expect(onSelect).toHaveBeenCalledWith('TRIP-123', true);
   });
 });
+
+describe('TripCard v2 - assignment menu', () => {
+  const agents = [
+    { id: 'agent-1', name: 'Alex Agent' },
+    { id: 'agent-2', name: 'Priya Agent' },
+    { id: 'agent-3', name: 'Zara Agent' },
+  ];
+
+  it('opens assignment menu with keyboard and assigns focused agent', () => {
+    const onAssign = vi.fn();
+    render(
+      <TripCard
+        trip={{ ...mockTrip, assignedTo: undefined, assignedToName: undefined }}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onAssign={onAssign}
+        agents={agents}
+      />,
+    );
+
+    const assignButton = screen.getByRole('button', { name: /assign/i });
+    fireEvent.keyDown(assignButton, { key: 'Enter', code: 'Enter' });
+    expect(assignButton).toHaveAttribute('aria-expanded', 'true');
+
+    const menu = screen.getByRole('menu');
+    expect(menu).toHaveAttribute('id', expect.stringContaining('assign-dropdown-'));
+
+    fireEvent.keyDown(menu, { key: 'ArrowDown', code: 'ArrowDown' });
+    fireEvent.keyDown(menu, { key: 'Enter', code: 'Enter' });
+    expect(onAssign).toHaveBeenCalledWith('TRIP-123', 'agent-2');
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('closes assignment menu on Escape and returns focus to trigger', () => {
+    const onAssign = vi.fn();
+    render(
+      <TripCard
+        trip={{ ...mockTrip, assignedTo: undefined, assignedToName: undefined }}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onAssign={onAssign}
+        agents={agents}
+      />,
+    );
+
+    const assignButton = screen.getByRole('button', { name: /assign/i });
+    fireEvent.click(assignButton);
+    expect(assignButton).toHaveAttribute('aria-expanded', 'true');
+
+    const menu = screen.getByRole('menu');
+    fireEvent.keyDown(menu, { key: 'Escape', code: 'Escape' });
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(assignButton).toHaveFocus();
+  });
+
+  it('closes assignment menu on Tab and moves focus outside menu surface', () => {
+    const onAssign = vi.fn();
+    render(
+      <TripCard
+        trip={{ ...mockTrip, assignedTo: undefined, assignedToName: undefined }}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onAssign={onAssign}
+        agents={agents}
+      />,
+    );
+
+    const assignButton = screen.getByRole('button', { name: /assign/i });
+    fireEvent.click(assignButton);
+
+    const menu = screen.getByRole('menu');
+    const viewLink = screen.getByRole('link', { name: /view/i });
+    fireEvent.keyDown(menu, { key: 'Tab', code: 'Tab' });
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(viewLink).toHaveFocus();
+  });
+});
