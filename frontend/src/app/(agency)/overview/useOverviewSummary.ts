@@ -11,6 +11,7 @@ import {
 import { useTrips, usePipeline } from '@/hooks/useTrips';
 import { useInboxTrips, useReviews } from '@/hooks/useGovernance';
 import { useIntegrityIssues } from '@/hooks/useIntegrityIssues';
+import { buildActionRequiredItems } from './buildActionRequiredItems';
 
 export type OverviewStateKey = 'green' | 'amber' | 'red' | 'blue';
 
@@ -261,8 +262,27 @@ export function useOverviewSummary() {
     workspace.total,
   ]);
 
+  const actionRequiredItems = useMemo(
+    () =>
+      buildActionRequiredItems({
+        workspaceTrips: workspace.data,
+        pendingReviews: pendingReviews.data,
+        pendingReviewTotal: pendingApprovalCount,
+        inboxTotal: inbox.total,
+        integrityIssuesTotal: integrityIssues.total,
+      }),
+    [
+      inbox.total,
+      integrityIssues.total,
+      pendingApprovalCount,
+      pendingReviews.data,
+      workspace.data,
+    ]
+  );
+
   return {
     headerSubtitle,
+    actionRequiredItems,
     metrics,
     navItems,
     pipeline,

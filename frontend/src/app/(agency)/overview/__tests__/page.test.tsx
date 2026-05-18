@@ -13,6 +13,18 @@ const ROUTES = {
 
 const baseSummary = {
   headerSubtitle: '2 trips in planning · 5 leads · 1 quote to review',
+  actionRequiredItems: [
+    {
+      id: 'quote-review',
+      priority: 'urgent',
+      source: 'quote',
+      title: 'Quote needs review',
+      subtitle: 'Italy Honeymoon',
+      reason: '1 quote is waiting for approval before sending.',
+      href: '/reviews',
+      ctaLabel: 'Review quotes',
+    },
+  ],
   metrics: [
       {
         title: 'Trips in Planning',
@@ -177,6 +189,8 @@ describe('OverviewPage', () => {
     render(<OverviewPage />);
 
     expect(screen.getByText('2 trips in planning · 5 leads · 1 quote to review')).toBeInTheDocument();
+    expect(screen.getByText('Action Required')).toBeInTheDocument();
+    expect(screen.getByText('Quote needs review')).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: /trips in planning/i })[0]).toHaveAttribute('href', ROUTES.workspaces);
     expect(screen.getAllByRole('link', { name: /lead inbox/i })[0]).toHaveAttribute('href', ROUTES.inbox);
     expect(screen.getAllByRole('link', { name: /quote review/i })[0]).toHaveAttribute('href', ROUTES.approvals);
@@ -184,6 +198,16 @@ describe('OverviewPage', () => {
     const integrityLink = screen.getAllByRole('link', { name: /system check/i })[0];
     expect(integrityLink).not.toHaveAttribute('href', ROUTES.approvals);
     expect(integrityLink).toHaveAttribute('href', ROUTES.integrity);
+  });
+
+  it('renders Action Required above metric cards', () => {
+    render(<OverviewPage />);
+
+    const actionHeading = screen.getByText('Action Required');
+    const metricTitle = screen.getAllByText('Trips in Planning')[0] as HTMLElement;
+    const pos = actionHeading.compareDocumentPosition(metricTitle);
+
+    expect(pos & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('routes overview actions to the specific intake destinations', () => {

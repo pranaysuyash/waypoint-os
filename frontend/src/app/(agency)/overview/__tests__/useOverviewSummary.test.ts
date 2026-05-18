@@ -255,4 +255,81 @@ describe('useOverviewSummary', () => {
     expect(result.current.planningTripsTotal).toBe(0);
     expect(result.current.leadInboxTotal).toBe(4);
   });
+
+  it('derives action required items from existing overview data sources', () => {
+    vi.mocked(useTrips).mockReturnValue({
+      data: [
+        {
+          id: 'trip_1',
+          destination: 'Maldives',
+          type: 'honeymoon',
+          state: 'red',
+          age: 'Today',
+          createdAt: '2026-05-18T00:00:00Z',
+          updatedAt: '2026-05-18T00:00:00Z',
+        },
+      ] as any,
+      total: 1,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    vi.mocked(useInboxTrips).mockReturnValue({
+      data: [],
+      total: 2,
+      hasMore: true,
+      filterCounts: {},
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      assignTrips: vi.fn(),
+      bulkAction: vi.fn(),
+      snoozeTrip: vi.fn(),
+    });
+
+    vi.mocked(useReviews).mockReturnValue({
+      data: [
+        {
+          id: 'review_1',
+          tripId: 'trip_1',
+          tripReference: 'TRIP-1',
+          destination: 'Italy',
+          tripType: 'honeymoon',
+          partySize: 2,
+          dateWindow: 'June',
+          value: 3000,
+          currency: 'USD',
+          agentId: 'agent_1',
+          agentName: 'Agent',
+          submittedAt: '2026-05-18T00:00:00Z',
+          status: 'pending',
+          reason: 'Needs owner approval',
+          riskFlags: [],
+        },
+      ] as any,
+      total: 1,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      submitAction: vi.fn(),
+      bulkAction: vi.fn(),
+    });
+
+    vi.mocked(useIntegrityIssues).mockReturnValue({
+      data: [],
+      total: 1,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    const { result } = renderHook(() => useOverviewSummary());
+    expect(result.current.actionRequiredItems.map((item) => item.source)).toEqual([
+      'quote',
+      'trip',
+      'lead',
+      'system',
+    ]);
+  });
 });

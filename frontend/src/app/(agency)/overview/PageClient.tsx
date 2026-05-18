@@ -19,6 +19,7 @@ import {
 } from '@/lib/planning-status';
 import { useOverviewSummary } from './useOverviewSummary';
 import { EmptyStateOnboarding } from '@/components/overview/EmptyStateOnboarding';
+import { ActionRequiredList } from '@/components/overview/ActionRequiredList';
 import SystemCheckPanel from '@/components/system/SystemCheckPanel';
 
 // ── Severity grammar: color encodes state, not decoration ──────────────────
@@ -508,6 +509,7 @@ function OverviewPageContent() {
   const { replace } = useRouter();
   const {
     headerSubtitle,
+    actionRequiredItems,
     metrics,
     navItems,
     pipeline,
@@ -576,6 +578,8 @@ function OverviewPageContent() {
           <ArrowRight className='size-3.5' aria-hidden='true' />
         </Link>
       </header>
+
+      <ActionRequiredList items={actionRequiredItems} />
 
       {/* Stat cards: metric-first instruments */}
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>
