@@ -35,6 +35,8 @@ The goal is not to make the smallest patch. The goal is to protect the project, 
 
 ## 3. Git Safety Rules
 
+Commit messages must represent the human/project authoring policy. AI agents are tools, not co-authors, unless the user explicitly says otherwise.
+
 Read-only git commands are allowed.
 
 Allowed examples:
@@ -534,3 +536,92 @@ Never silently discard context.
 Never let local-only project work disappear.
 Never use “pre-existing” as an excuse to skip a real problem.
 Never trade long-term correctness for short-term neatness without explicit approval.
+
+---
+
+## 20. Commit Attribution Rule — No Agent Co-Author Trailers
+
+Do not add AI-agent co-author trailers to commits.
+
+This applies to all agents and tools, including but not limited to:
+
+- Claude
+- Codex
+- ChatGPT
+- Copilot
+- Qwen
+- Gemini
+- Cursor
+- Any agent wrapper, commit helper, automation tool, or generated commit script
+
+Commits must not include trailers like:
+
+```text
+Co-Authored-By: Claude <...>
+Co-Authored-By: Claude Sonnet <...>
+Co-Authored-By: Anthropic <...>
+Co-Authored-By: ChatGPT <...>
+Co-Authored-By: Codex <...>
+Co-Authored-By: OpenAI <...>
+Co-Authored-By: Copilot <...>
+Co-Authored-By: Qwen <...>
+Co-Authored-By: Gemini <...>
+```
+
+This is a hard check, not a style preference.
+
+Before every commit, verify that no agent/tool will append attribution automatically.
+
+Check:
+
+```bash
+git config --get commit.template || true
+git config --get commit.cleanup || true
+git config --get-all trailer.coAuthoredBy.key || true
+git config --get-all trailer.coAuthoredBy.where || true
+git config --get user.name
+git config --get user.email
+```
+
+Also inspect any repo-local commit machinery:
+
+```text
+.git/hooks/
+.husky/
+package.json scripts
+scripts/
+tools/
+lint-staged config
+commitlint config
+prepare-commit-msg hooks
+commit-msg hooks
+agent wrappers
+repo instruction files
+```
+
+Search for:
+
+```text
+Co-Authored-By
+coauthor
+co-author
+Claude
+Anthropic
+ChatGPT
+Codex
+OpenAI
+Copilot
+Qwen
+Gemini
+trailer
+commit-msg
+prepare-commit-msg
+```
+
+If any hook, script, template, wrapper, or tool would add an AI-agent co-author trailer, stop and report before committing.
+
+If a commit has already been created with an AI-agent co-author trailer, do not rewrite history without explicit approval. Report the commit SHA and wait for instructions.
+
+For every repo, check whether a pre-commit / commit-msg / pre-push guard already exists to block AI co-author trailers. If it exists, use it. If it does not exist, propose adding one.
+
+No agent should dismiss this by saying "I did not find it in instructions." Search the actual hooks, scripts, configs, and commit tooling.
