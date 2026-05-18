@@ -94,9 +94,22 @@ async def test_validate_public_checker_agency_configuration_skips_when_not_sql(m
     await server._validate_public_checker_agency_configuration()
 
 
+@pytest.mark.asyncio
+async def test_validate_public_checker_agency_configuration_raises_when_unset_sentinel(monkeypatch):
+    """__UNSET__ sentinel must fail loudly in SQL mode, not silently route to a phantom agency."""
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "sql")
+    monkeypatch.delenv("PUBLIC_CHECKER_AGENCY_ID", raising=False)
+
+    fake_conn = _FakeConn(table_exists=True, agency_exists=True)
+    monkeypatch.setattr(server, "engine", _FakeEngine(fake_conn))
+
+    with pytest.raises(RuntimeError, match="PUBLIC_CHECKER_AGENCY_ID is not configured"):
+        await server._validate_public_checker_agency_configuration()
+
+
 def test_get_public_checker_agency_id_uses_default_and_strips(monkeypatch):
     monkeypatch.delenv("PUBLIC_CHECKER_AGENCY_ID", raising=False)
-    assert server._get_public_checker_agency_id() == "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+    assert server._get_public_checker_agency_id() == "__UNSET__"
 
     monkeypatch.setenv("PUBLIC_CHECKER_AGENCY_ID", "  custom-agency  ")
     assert server._get_public_checker_agency_id() == "custom-agency"

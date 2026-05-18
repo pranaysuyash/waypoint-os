@@ -188,7 +188,7 @@ TeamStore = persistence.TeamStore
 save_processed_trip = persistence.save_processed_trip
 save_processed_trip_async = persistence.save_processed_trip_async
 
-DEFAULT_PUBLIC_CHECKER_AGENCY_ID = "d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b"
+DEFAULT_PUBLIC_CHECKER_AGENCY_ID = "__UNSET__"
 
 
 def _get_public_checker_agency_id() -> str:
@@ -846,10 +846,11 @@ async def _validate_public_checker_agency_configuration() -> None:
     must be explicitly configured (or use default) and must exist in agencies.
     """
     agency_id = _get_public_checker_agency_id()
-    if not agency_id:
+    if not agency_id or agency_id == "__UNSET__":
         raise RuntimeError(
-            "PUBLIC_CHECKER_AGENCY_ID resolved to empty string. "
-            "Set PUBLIC_CHECKER_AGENCY_ID to a valid agencies.id."
+            "PUBLIC_CHECKER_AGENCY_ID is not configured. "
+            "Set PUBLIC_CHECKER_AGENCY_ID to a real agencies.id in your environment. "
+            "The old default UUID has been removed to prevent silent misconfiguration."
         )
 
     if not _is_sql_tripstore_backend():
