@@ -78,9 +78,9 @@ def test_promote(draft_id: str):
     print(f"  Promoted draft to trip_abc123")
 
 
-def test_update_run_state(draft_id: str):
+def test_update_run_state(draft_id: str) -> str:
     print("=== test_update_run_state ===")
-    # Create a fresh draft for this test
+    # Create a fresh draft for this test (returns ID for cleanup)
     draft = DraftStore.create(
         agency_id="agency_001",
         created_by="user_001",
@@ -97,6 +97,7 @@ def test_update_run_state(draft_id: str):
     assert updated.last_run_id == "run_xyz789"
     assert len(updated.run_snapshots) == 1
     print(f"  Run state updated to blocked, snapshots={len(updated.run_snapshots)}")
+    return draft.id
 
 
 def test_rebuild_index():
@@ -108,7 +109,7 @@ def test_rebuild_index():
     print(f"  Index rebuilt: agencies={len(index['by_agency'])}, statuses={list(index['by_status'].keys())}")
 
 
-def test_auto_name_generation():
+def test_auto_name_generation() -> list[str]:
     print("=== test_auto_name_generation ===")
     # Auto-name generation happens at API layer, but we can test store with explicit names
     draft1 = DraftStore.create(
@@ -128,30 +129,71 @@ def test_auto_name_generation():
     )
     assert "Rahul" in draft2.name
     print(f"  Draft name: '{draft2.name}'")
+    return [draft1.id, draft2.id]
 
 
-def cleanup():
-    print("=== cleanup ===")
-    import shutil
+def cleanup_created(created_ids: list[str]) -> None:
+    """Delete only the drafts created by this test run.
+
+    Uses a targeted ID list rather than a glob so committed seed fixtures in
+    data/drafts/ are never touched.  The old broad cleanup() would nuke the
+    entire directory — including intentional fixtures — and was never called
+    after tests, leaving orphan files behind.
+
+    Index entries are removed surgically (not via rebuild_index) to avoid
+    reordering the committed fixture list on every test run.
+    """
+    import json
     from spine_api.draft_store import DRAFTS_DIR, INDEX_FILE
-    if DRAFTS_DIR.exists():
-        for f in DRAFTS_DIR.glob("draft_*.json"):
-            f.unlink()
-        if INDEX_FILE.exists():
-            INDEX_FILE.unlink()
-    print("  Cleaned up draft files")
+
+    id_set = set(created_ids)
+
+    # Remove draft files.
+    removed = 0
+    for draft_id in created_ids:
+        path = DRAFTS_DIR / f"{draft_id}.json"
+        if path.exists():
+            path.unlink()
+            removed += 1
+
+    # Surgically remove test IDs from every list in the index so we don't
+    # reorder the committed fixture entries.
+    if removed and INDEX_FILE.exists():
+        with open(INDEX_FILE) as f:
+            index = json.load(f)
+        for section in index.values():
+            if isinstance(section, dict):
+                for key in list(section.keys()):
+                    if isinstance(section[key], list):
+                        section[key] = [v for v in section[key] if v not in id_set]
+                        if not section[key]:
+                            del section[key]
+        with open(INDEX_FILE, "w") as f:
+            json.dump(index, f, indent=2)
+            f.write("\n")
+
+    print(f"=== cleanup: removed {removed} test draft(s), index updated surgically ===")
 
 
 if __name__ == "__main__":
-    cleanup()
-    
+    _created: list[str] = []
+
     draft_id = test_create_and_get()
+    _created.append(draft_id)
     test_patch(draft_id)
     test_list_by_agency(draft_id)
     test_discard_and_restore(draft_id)
     test_promote(draft_id)
-    test_update_run_state(draft_id)
+
+    run_state_draft = test_update_run_state(draft_id)
+    if run_state_draft:
+        _created.append(run_state_draft)
+
     test_rebuild_index()
-    test_auto_name_generation()
-    
+
+    auto_name_ids = test_auto_name_generation()
+    if auto_name_ids:
+        _created.extend(auto_name_ids)
+
     print("\n✅ All tests passed!")
+    cleanup_created(_created)
