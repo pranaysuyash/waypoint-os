@@ -768,6 +768,31 @@ class TestTenantScopedFileTripStore:
         assert FileTripStore.get_pending_booking_data_for_agency(trip_id, "agency_b") is None
         assert FileTripStore.get_pending_booking_data_for_agency(trip_id, "agency_a") is not None
 
+    def test_tripstore_file_summaries_for_agency_filters_and_offsets(self, tmp_path, monkeypatch):
+        from spine_api import persistence
+        data_dir = tmp_path / "data"
+        monkeypatch.setattr(persistence, "DATA_DIR", data_dir, raising=False)
+        monkeypatch.setattr(persistence, "TRIPS_DIR", data_dir / "trips", raising=False)
+        monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
+        (data_dir / "trips").mkdir(parents=True, exist_ok=True)
+
+        for idx in range(3):
+            FileTripStore.save_trip(
+                {"source": f"agency_a_{idx}", "status": "assigned", "extracted": {}, "validation": {}, "decision": {}},
+                agency_id="agency_a",
+            )
+        FileTripStore.save_trip(
+            {"source": "agency_b", "status": "assigned", "extracted": {}, "validation": {}, "decision": {}},
+            agency_id="agency_b",
+        )
+
+        first_page = persistence.TripStore.list_trip_summaries_for_agency("agency_a", limit=2, offset=0)
+        second_page = persistence.TripStore.list_trip_summaries_for_agency("agency_a", limit=2, offset=2)
+
+        assert len(first_page) == 2
+        assert len(second_page) == 1
+        assert all(trip["agency_id"] == "agency_a" for trip in first_page + second_page)
+
     def test_update_trip_if_version_for_agency_checks_agency(self, tmp_path, monkeypatch):
         from spine_api import persistence
         data_dir = tmp_path / "data"

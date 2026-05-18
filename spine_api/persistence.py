@@ -1356,7 +1356,8 @@ class TripStore:
     def list_trip_summaries_for_agency(agency_id: str, status: Optional[str] = None, limit: int = 100, offset: int = 0) -> list:
         backend = TripStore._backend()
         if backend is FileTripStore:
-            return FileTripStore.list_trips(status=status, limit=limit, agency_id=agency_id)
+            trips = FileTripStore.list_trips(status=status, limit=limit + offset, agency_id=agency_id)
+            return trips[offset : offset + limit]
         return _run_async_blocking(
             SQLTripStore.list_trip_summaries_for_agency(
                 agency_id=agency_id,

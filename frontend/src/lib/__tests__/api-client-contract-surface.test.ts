@@ -9,6 +9,7 @@ import {
   getDocuments,
   getOverride,
   getOverrides,
+  getPaymentsQueue,
   listDrafts,
   rejectDocument,
   rejectExtraction,
@@ -68,6 +69,12 @@ describe('api-client public contract surface', () => {
       method: 'POST',
       body: JSON.stringify(taskRequest),
     }));
+
+    await getPaymentsQueue({ limit: 25, offset: 10, queue_status: 'due_soon', payment_status: 'partially_paid', refund_status: 'not_applicable', due_bucket: 'due_4_7' });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/payments?limit=25&offset=10&queue_status=due_soon&payment_status=partially_paid&refund_status=not_applicable&due_bucket=due_4_7',
+      expect.objectContaining({ method: 'GET', credentials: 'include' }),
+    );
   });
 
   it('keeps document upload/review/extract/apply endpoints wired to canonical BFF paths', async () => {
