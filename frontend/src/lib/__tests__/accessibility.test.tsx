@@ -9,6 +9,7 @@ import {
   tabProps,
   tabPanelProps,
   statusProps,
+  focusNextOutside,
   handleListNavigation,
   handleActivation,
   handleEscape,
@@ -106,6 +107,69 @@ describe('accessibility utilities', () => {
     expect(document.activeElement).toBe(document.getElementById('first'));
 
     cleanup();
+  });
+
+  it('moves focus to the next outside control using a provided active anchor', () => {
+    const beforeOutside = document.createElement('button');
+    beforeOutside.textContent = 'Before outside';
+    beforeOutside.id = 'outside-before';
+
+    const container = document.createElement('div');
+    container.id = 'surface';
+    const firstInside = document.createElement('button');
+    firstInside.textContent = 'Inside first';
+    firstInside.id = 'inside-first';
+    const secondInside = document.createElement('button');
+    secondInside.textContent = 'Inside second';
+    secondInside.id = 'inside-second';
+
+    const afterOutside = document.createElement('button');
+    afterOutside.textContent = 'After outside';
+    afterOutside.id = 'outside-after';
+
+    container.append(firstInside, secondInside);
+    document.body.append(beforeOutside, container, afterOutside);
+
+    secondInside.focus();
+    focusNextOutside(container, { from: secondInside });
+
+    expect(document.activeElement).toBe(afterOutside);
+  });
+
+  it('falls back to container-local scan when anchor is not directly usable', () => {
+    const container = document.createElement('div');
+    container.id = 'surface-fallback';
+    const insideA = document.createElement('button');
+    insideA.textContent = 'Inside A';
+    const insideB = document.createElement('button');
+    insideB.textContent = 'Inside B';
+    const outside = document.createElement('button');
+    outside.textContent = 'Outside';
+
+    const externalAnchor = document.createElement('button');
+    externalAnchor.textContent = 'External anchor';
+
+    container.append(insideA, insideB);
+    document.body.append(externalAnchor, container, outside);
+
+    focusNextOutside(container, { from: externalAnchor });
+
+    expect(document.activeElement).toBe(outside);
+  });
+
+  it('blurs the preferred anchor when no outside focusable target exists', () => {
+    const container = document.createElement('div');
+    container.id = 'surface-only';
+    const insideOnly = document.createElement('button');
+    insideOnly.textContent = 'Only focusable';
+
+    container.append(insideOnly);
+    document.body.append(container);
+
+    const blurSpy = vi.spyOn(insideOnly, 'blur');
+    focusNextOutside(container, { from: insideOnly, fallbackFrom: insideOnly });
+
+    expect(blurSpy).toHaveBeenCalledOnce();
   });
 
   it('generates linked ids and announces messages through live regions', () => {

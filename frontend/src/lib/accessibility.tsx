@@ -286,7 +286,18 @@ export function moveFocus(direction: "next" | "previous", container?: HTMLElemen
 }
 
 /**
- * Move focus to the next focusable element outside a container.
+ * Canonical focus-escape helper for overlays/popup surfaces.
+ *
+ * Use this anywhere keyboard focus exits a controlled surface (dropdown, popover,
+ * menu, combobox, modal content section) and should land on the next focusable
+ * control outside the surface.
+ *
+ * Contract:
+ * - `container` is the interactive surface that should be escaped.
+ * - `from` should point at the current focus anchor when known.
+ * - `fallbackFrom` is used if `from` is not available/unreliable (e.g. portal
+ *   focus transitions, synthetic handlers, detached anchors).
+ * - if no outside focusable node exists, the helper gracefully blurs the anchor.
  */
 export function focusNextOutside(
   container: ParentNode | null,
