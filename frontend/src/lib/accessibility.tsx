@@ -39,6 +39,12 @@ export const ARIA_ROLES = {
   menuitem: "menuitem",
 } as const;
 
+const FOCUSABLE_ELEMENT_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+let bodyScrollLockCount = 0;
+let previousBodyOverflow = '';
+
 // ============================================================================
 // ARIA PROPERTIES
 // ============================================================================
@@ -180,36 +186,79 @@ export function handleEscape(event: React.KeyboardEvent, callback: () => void) {
 // ============================================================================
 
 /**
+ * Shared focus conventions:
+ * - Use explicit role/labeling + keyboard handlers on the trigger/menu root.
+ * - On Tab from popups/overlays, close then move to next focusable control
+ *   outside the current surface to avoid traps.
+ * - Use `getFocusableElements(document)` to discover candidates and keep
+ *   ordering stable with DOM source order.
+ */
+
+/**
+ * Get focusable elements within a container (excluding hidden/disabled controls).
+ */
+export function getFocusableElements(container: ParentNode | null): HTMLElement[] {
+  if (!container) return [];
+
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_ELEMENT_SELECTOR)).filter(
+    (focusable) => !focusable.hasAttribute("disabled") && focusable.tabIndex !== -1
+  );
+}
+
+/**
+ * Toggle body overflow lock for modal-like surfaces.
+ */
+export function lockBodyScroll(): () => void {
+  if (typeof document === "undefined") return () => {};
+
+  if (bodyScrollLockCount === 0) {
+    previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+  }
+
+  bodyScrollLockCount += 1;
+
+  return () => {
+    bodyScrollLockCount = Math.max(0, bodyScrollLockCount - 1);
+    if (bodyScrollLockCount === 0) {
+      document.body.style.overflow = previousBodyOverflow;
+    }
+  };
+}
+
+/**
  * Trap focus within an element (for modals/dialogs)
  */
-export function trapFocus(element: HTMLElement): () => void {
-  const focusableElements = element.querySelectorAll(
-    'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
-  );
-
-  const firstFocusable = focusableElements[0] as HTMLElement;
-  const lastFocusable = focusableElements[focusableElements.length - 1] as HTMLElement;
-
+export function trapFocus(
+  element: HTMLElement,
+  options: { initialFocus?: HTMLElement | null } = {}
+): () => void {
   const handleTabKey = (e: KeyboardEvent) => {
     if (e.key !== "Tab") return;
+
+    const focusableElements = getFocusableElements(element);
+    if (focusableElements.length === 0) return;
+
+    const firstFocusable = focusableElements[0] as HTMLElement;
+    const lastFocusable = focusableElements[focusableElements.length - 1] as HTMLElement;
 
     if (e.shiftKey) {
       if (document.activeElement === firstFocusable) {
         e.preventDefault();
         lastFocusable.focus();
       }
-    } else {
-      if (document.activeElement === lastFocusable) {
-        e.preventDefault();
-        firstFocusable.focus();
-      }
+    } else if (document.activeElement === lastFocusable) {
+      e.preventDefault();
+      firstFocusable.focus();
     }
   };
 
-  element.addEventListener("keydown", handleTabKey);
+  const initialFocus = options.initialFocus && getFocusableElements(element).includes(options.initialFocus)
+    ? options.initialFocus
+    : getFocusableElements(element)[0];
 
-  // Focus first element
-  firstFocusable?.focus();
+  initialFocus?.focus();
+  element.addEventListener("keydown", handleTabKey);
 
   // Return cleanup function
   return () => {
@@ -221,12 +270,7 @@ export function trapFocus(element: HTMLElement): () => void {
  * Move focus to next/previous element
  */
 export function moveFocus(direction: "next" | "previous", container?: HTMLElement) {
-  const focusable = Array.from(
-    document.querySelectorAll<HTMLElement>(
-      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
-    )
-  );
-
+  const focusable = getFocusableElements(document);
   const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
   const scoped = container
     ? focusable.filter((el) => container.contains(el))
@@ -239,6 +283,41 @@ export function moveFocus(direction: "next" | "previous", container?: HTMLElemen
     const prevEl = scoped[currentIndex - 1] || scoped[scoped.length - 1];
     prevEl?.focus();
   }
+}
+
+/**
+ * Move focus to the next focusable element outside a container.
+ */
+export function focusNextOutside(
+  container: ParentNode,
+  options: {
+    from?: Element | null;
+    fallbackFrom?: Element | null;
+  } = {}
+): void {
+  const focusable = getFocusableElements(document);
+
+  const preferred =
+    options.from instanceof HTMLElement
+      ? options.from
+      : options.fallbackFrom instanceof HTMLElement
+        ? options.fallbackFrom
+        : null;
+
+  const startIndex = preferred ? focusable.indexOf(preferred) : -1;
+
+  if (startIndex >= 0) {
+    for (let i = startIndex + 1; i < focusable.length; i += 1) {
+      const candidate = focusable[i];
+      if (!container.contains(candidate)) {
+        candidate.focus();
+        return;
+      }
+    }
+  }
+
+  const firstOutside = focusable.find((element) => !container.contains(element));
+  firstOutside?.focus();
 }
 
 // ============================================================================
@@ -263,6 +342,59 @@ export function generateLinkedIds(prefix: string) {
     label: `${base}-label`,
     description: `${base}-description`,
     error: `${base}-error`,
+  };
+}
+
+/**
+ * Generate linked IDs for dialog-like surfaces.
+ */
+export function surfaceIds(prefix: string) {
+  const base = generateId(prefix);
+  return {
+    panel: `${base}-panel`,
+    title: `${base}-title`,
+    description: `${base}-description`,
+    menu: `${base}-menu`,
+  };
+}
+
+/**
+ * Toggle aria-hidden/inert on siblings to keep non-active surfaces out of accessibility tree.
+ */
+export function withInertSiblings(layer: HTMLElement, active: boolean): () => void {
+  if (typeof document === "undefined") return () => {};
+
+  const parent = layer.parentElement;
+  if (!parent) return () => {};
+
+  const siblings = Array.from(parent.children)
+    .filter((child) => child !== layer)
+    .map((sibling) => {
+      const previousAriaHidden = sibling.getAttribute("aria-hidden");
+      const previousInert = (sibling as HTMLElement).inert;
+
+      if (active) {
+        sibling.setAttribute("aria-hidden", "true");
+        (sibling as HTMLElement).inert = true;
+      }
+
+      return {
+        sibling: sibling as HTMLElement,
+        previousAriaHidden,
+        previousInert,
+      };
+    });
+
+  return () => {
+    for (const { sibling, previousAriaHidden, previousInert } of siblings) {
+      if (previousAriaHidden === null) {
+        sibling.removeAttribute("aria-hidden");
+      } else {
+        sibling.setAttribute("aria-hidden", previousAriaHidden);
+      }
+
+      sibling.inert = previousInert;
+    }
   };
 }
 

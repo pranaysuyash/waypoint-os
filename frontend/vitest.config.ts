@@ -32,8 +32,4 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  // Essential for JSX transformation in tests
-  esbuild: {
-    jsx: 'automatic',
-  },
 });

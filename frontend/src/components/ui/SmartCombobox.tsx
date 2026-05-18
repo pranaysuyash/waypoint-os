@@ -21,16 +21,16 @@
 
 'use client';
 
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useId, useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { ChevronDown, X, Plus, AlertCircle } from 'lucide-react';
 import {
   ComboboxOption,
   toTitleCase,
   findFuzzyMatches,
   findNearDuplicate,
-  addCustomOption,
   getGroupedOptions,
 } from '@/lib/combobox';
+import { getFocusableElements } from '@/lib/accessibility';
 
 interface SmartComboboxProps {
   value: string;
@@ -60,131 +60,242 @@ export function SmartCombobox({
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const ids = {
+    input: useId(),
+    listbox: `${useId()}-listbox`,
+    status: `${useId()}-status`,
+  } as const;
+
   const displayValue = isOpen ? inputValue : value;
+  const normalizedDisplayValue = displayValue.trim().toLowerCase();
+  const { predefined, custom } = useMemo(() => getGroupedOptions(options), [options]);
 
-  const openDropdown = useCallback(() => {
-    if (disabled) return;
-    setInputValue(value);
-    setIsOpen(true);
-  }, [disabled, value]);
-
-  // Group options into predefined and custom
-  const { predefined, custom } = useMemo(
-    () => getGroupedOptions(options),
-    [options]
-  );
-
-  // Filter options based on input
   const filteredOptions = useMemo(() => {
     if (!displayValue || displayValue.trim().length === 0) {
       return [...predefined, ...custom];
     }
 
-    // First check for near duplicate (exact match after normalization)
     const nearDuplicate = findNearDuplicate(displayValue, options, duplicateThreshold);
     if (nearDuplicate) {
       return [nearDuplicate];
     }
 
-    // Otherwise, fuzzy match
     const matches = findFuzzyMatches(displayValue, options, fuzzyThreshold);
-    return matches.map(m => m.option);
+    return matches.map((m) => m.option);
   }, [displayValue, options, predefined, custom, duplicateThreshold, fuzzyThreshold]);
 
-  // Check if current input would be a duplicate
   const duplicateOption = useMemo(() => {
-    if (!displayValue || displayValue.trim().length === 0) return null;
+    if (!displayValue || normalizedDisplayValue.length === 0) return null;
     return findNearDuplicate(displayValue, options, duplicateThreshold);
-  }, [displayValue, options, duplicateThreshold]);
+  }, [displayValue, options, duplicateThreshold, normalizedDisplayValue]);
 
-  // Check if input is a new custom value
   const isCustomValue = useMemo(() => {
     if (!displayValue || displayValue.trim().length === 0) return false;
     const normalized = toTitleCase(displayValue);
-    return !options.some(opt => opt.value.toLowerCase() === normalized.toLowerCase());
+    return !options.some((opt) => opt.value.toLowerCase() === normalized.toLowerCase());
   }, [displayValue, options]);
 
-  // Split filtered options into predefined and custom (replaces IIFE in render)
   const splitFiltered = useMemo(() => {
-    const predefined: typeof filteredOptions = [];
-    const custom: typeof filteredOptions = [];
-    for (const opt of filteredOptions) {
-      if (opt.isCustom) custom.push(opt);
-      else predefined.push(opt);
+    const groupedPredefined: ComboboxOption[] = [];
+    const groupedCustom: ComboboxOption[] = [];
+    for (const option of filteredOptions) {
+      if (option.isCustom) {
+        groupedCustom.push(option);
+      } else {
+        groupedPredefined.push(option);
+      }
     }
-    return { predefined, custom };
+    return { predefined: groupedPredefined, custom: groupedCustom };
   }, [filteredOptions]);
 
-  // Handle selection
-  const handleSelect = useCallback((option: ComboboxOption) => {
-    setInputValue(option.value);
-    onChange(option.value);
+  const visibleOptions = useMemo(() => {
+    if (splitFiltered.predefined.length === 0 && splitFiltered.custom.length === 0) {
+      return [];
+    }
+    return [
+      ...splitFiltered.predefined.map((option) => ({ ...option, section: 'predefined' as const })),
+      ...splitFiltered.custom.map((option) => ({ ...option, section: 'custom' as const })),
+    ];
+  }, [splitFiltered]);
+
+  const normalizedHighlightedIndex = useMemo(() => {
+    if (!isOpen || visibleOptions.length === 0) {
+      return -1;
+    }
+
+    if (highlightedIndex < 0) {
+      return 0;
+    }
+
+    if (highlightedIndex >= visibleOptions.length) {
+      return visibleOptions.length - 1;
+    }
+
+    return highlightedIndex;
+  }, [isOpen, visibleOptions, highlightedIndex]);
+
+  const optionAtIndex = useMemo(
+    () => (index: number) => visibleOptions[index] ?? null,
+    [visibleOptions]
+  );
+
+  const optionId = useCallback((index: number) => `${ids.listbox}-option-${index}`, [ids.listbox]);
+
+  const openDropdown = useCallback(() => {
+    if (disabled) return;
+    setInputValue(value);
+    setHighlightedIndex(filteredOptions.length > 0 ? 0 : -1);
+    setIsOpen(true);
+
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [disabled, value, filteredOptions.length]);
+
+  const closeDropdown = useCallback(() => {
     setIsOpen(false);
     setHighlightedIndex(-1);
-  }, [onChange]);
+  }, []);
 
-  // Handle custom value entry
+  const focusNextOutsideCombobox = useCallback(() => {
+    const focusables = getFocusableElements(document);
+    const currentIndex = inputRef.current ? focusables.indexOf(inputRef.current) : -1;
+
+    if (currentIndex === -1) {
+      return;
+    }
+
+    for (let i = currentIndex + 1; i < focusables.length; i += 1) {
+      const candidate = focusables[i];
+      if (!containerRef.current?.contains(candidate)) {
+        candidate.focus();
+        return;
+      }
+    }
+
+    inputRef.current?.blur();
+  }, [inputRef, containerRef]);
+
+  const selectOption = useCallback((option: ComboboxOption) => {
+    setInputValue(option.value);
+    onChange(option.value);
+    closeDropdown();
+  }, [onChange, closeDropdown]);
+
   const handleCustomEntry = useCallback(() => {
     if (!displayValue || displayValue.trim().length === 0) return;
     if (duplicateOption) {
-      // Use the existing option instead
-      handleSelect(duplicateOption);
+      selectOption(duplicateOption);
       return;
     }
 
     const normalized = toTitleCase(displayValue);
     setInputValue(normalized);
     onChange(normalized);
-    setIsOpen(false);
-  }, [displayValue, duplicateOption, onChange, handleSelect]);
+    closeDropdown();
+  }, [displayValue, duplicateOption, onChange, selectOption, closeDropdown]);
 
-  // Handle keyboard navigation
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+  const moveHighlight = useCallback((nextIndex: number) => {
+    if (visibleOptions.length === 0) {
+      setHighlightedIndex(-1);
+      return;
+    }
+
+    if (nextIndex < 0) {
+      setHighlightedIndex(visibleOptions.length - 1);
+      return;
+    }
+
+    if (nextIndex >= visibleOptions.length) {
+      setHighlightedIndex(0);
+      return;
+    }
+
+    setHighlightedIndex(nextIndex);
+  }, [visibleOptions]);
+
+  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen && event.key === 'ArrowDown') {
+      event.preventDefault();
+      openDropdown();
+      return;
+    }
+
     if (!isOpen) {
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
+      if (event.key === 'ArrowUp' || event.key === 'Enter') {
+        event.preventDefault();
         openDropdown();
       }
       return;
     }
 
-    switch (e.key) {
+    switch (event.key) {
       case 'ArrowDown':
-        e.preventDefault();
-        setHighlightedIndex(prev =>
-          prev < filteredOptions.length - 1 ? prev + 1 : prev
-        );
+        event.preventDefault();
+        moveHighlight(highlightedIndex + 1);
         break;
       case 'ArrowUp':
-        e.preventDefault();
-        setHighlightedIndex(prev => (prev > 0 ? prev - 1 : 0));
+        event.preventDefault();
+        moveHighlight(highlightedIndex - 1);
+        break;
+      case 'Home':
+        event.preventDefault();
+        moveHighlight(0);
+        break;
+      case 'End':
+        event.preventDefault();
+        moveHighlight(visibleOptions.length - 1);
         break;
       case 'Enter':
-        e.preventDefault();
-        if (highlightedIndex >= 0 && filteredOptions[highlightedIndex]) {
-          handleSelect(filteredOptions[highlightedIndex]);
-        } else if (allowCustom && isCustomValue) {
-          handleCustomEntry();
-        } else {
-          setIsOpen(false);
+        event.preventDefault();
+        if (normalizedHighlightedIndex >= 0) {
+          const option = optionAtIndex(normalizedHighlightedIndex);
+          if (option) {
+            selectOption(option);
+            break;
+          }
         }
+
+        if (allowCustom && isCustomValue) {
+          handleCustomEntry();
+          break;
+        }
+
+        closeDropdown();
         break;
       case 'Escape':
-        setIsOpen(false);
-        setHighlightedIndex(-1);
+        event.preventDefault();
+        closeDropdown();
+        inputRef.current?.focus();
         break;
       case 'Tab':
-        if (isOpen) {
-          setIsOpen(false);
-        }
+        event.preventDefault();
+        closeDropdown();
+        focusNextOutsideCombobox();
+        break;
+      default:
         break;
     }
-  }, [isOpen, filteredOptions, highlightedIndex, handleSelect, allowCustom, isCustomValue, handleCustomEntry, openDropdown]);
+  }, [
+    isOpen,
+    openDropdown,
+    closeDropdown,
+    highlightedIndex,
+    moveHighlight,
+    optionAtIndex,
+    selectOption,
+    allowCustom,
+    isCustomValue,
+    handleCustomEntry,
+    focusNextOutsideCombobox,
+    visibleOptions,
+    normalizedHighlightedIndex,
+  ]);
 
-  // Click outside to close
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        closeDropdown();
       }
     };
 
@@ -192,18 +303,21 @@ export function SmartCombobox({
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [isOpen]);
+
+    return undefined;
+  }, [isOpen, closeDropdown]);
 
   return (
     <div ref={containerRef} className='relative'>
       {label && (
-        <label className='block text-[var(--ui-text-sm)] font-medium text-[var(--text-secondary)] mb-2'>
+        <label htmlFor={ids.input} className='block text-[var(--ui-text-sm)] font-medium text-[var(--text-secondary)] mb-2'>
           {label}
         </label>
       )}
 
       <div className='relative'>
         <input
+          id={ids.input}
           ref={inputRef}
           type='text'
           value={displayValue}
@@ -212,10 +326,15 @@ export function SmartCombobox({
           onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder={placeholder}
+          role='combobox'
+          aria-expanded={isOpen}
+          aria-haspopup='listbox'
+          aria-controls={ids.listbox}
+          aria-autocomplete='list'
+          aria-activedescendant={normalizedHighlightedIndex >= 0 ? optionId(normalizedHighlightedIndex) : undefined}
           className='w-full px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-[var(--ui-text-sm)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[#58a6ff] disabled:opacity-50 disabled:cursor-not-allowed pr-20'
         />
 
-        {/* Right side controls */}
         <div className='absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1'>
           {value && (
             <button
@@ -223,9 +342,11 @@ export function SmartCombobox({
               onClick={() => {
                 setInputValue('');
                 onChange('');
+                closeDropdown();
               }}
               className='p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors'
               title='Clear'
+              aria-label='Clear selection'
             >
               <X className='size-4' />
             </button>
@@ -234,28 +355,36 @@ export function SmartCombobox({
             type='button'
             onClick={() => {
               if (isOpen) {
-                setIsOpen(false);
+                closeDropdown();
               } else {
                 openDropdown();
               }
             }}
             className='p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors'
+            aria-label='Toggle options'
           >
             <ChevronDown className={`size-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </button>
         </div>
       </div>
 
-      {/* Duplicate warning */}
+      <div id={ids.status} className='sr-only' role='status' aria-live='polite'>
+        {isOpen
+          ? filteredOptions.length === 0
+            ? 'No matching options'
+            : `${filteredOptions.length} option${filteredOptions.length === 1 ? '' : 's'} available`
+          : null}
+      </div>
+
       {duplicateOption && displayValue !== duplicateOption.value && (
         <div className='mt-1 flex items-center gap-2 text-[var(--ui-text-xs)] text-[var(--accent-amber)]'>
           <AlertCircle className='size-3 flex-shrink-0' />
           <span>
-            Similar to existing option &ldquo;{duplicateOption.value}&rdquo;. Use that instead?
+            Similar to existing option “{duplicateOption.value}”. Use that instead?
           </span>
           <button
             type='button'
-            onClick={() => handleSelect(duplicateOption)}
+            onClick={() => selectOption(duplicateOption)}
             className='text-[var(--accent-blue)] hover:underline'
           >
             Yes, use existing
@@ -263,11 +392,16 @@ export function SmartCombobox({
         </div>
       )}
 
-      {/* Dropdown */}
       {isOpen && !disabled && (
-        <div className='absolute z-10 w-full mt-1 bg-[#161b22] border border-[var(--border-default)] rounded-lg shadow-xl max-h-60 overflow-y-auto'>
+        <ul
+          role='listbox'
+          id={ids.listbox}
+          className='absolute z-10 w-full mt-1 bg-[#161b22] border border-[var(--border-default)] rounded-lg shadow-xl max-h-60 overflow-y-auto'
+          aria-label={label ?? 'Options'}
+          aria-describedby={ids.status}
+        >
           {filteredOptions.length === 0 ? (
-            <div className='p-3 text-[var(--ui-text-sm)] text-[var(--text-secondary)] text-center'>
+            <li className='p-3 text-[var(--ui-text-sm)] text-[var(--text-secondary)] text-center'>
               No matching options
               {allowCustom && displayValue && (
                 <div className='mt-2'>
@@ -277,23 +411,69 @@ export function SmartCombobox({
                     className='flex items-center justify-center gap-2 w-full px-3 py-2 bg-[var(--accent-blue)] text-[var(--text-on-accent)] rounded-lg text-[var(--ui-text-sm)] font-medium hover:bg-[var(--accent-blue-hover)] transition-colors'
                   >
                     <Plus className='size-4' />
-                    Add &ldquo;{toTitleCase(displayValue)}&rdquo;
+                    Add “{toTitleCase(displayValue)}”
                   </button>
                 </div>
               )}
-            </div>
+            </li>
           ) : (
             <>
-              <>
-                    {splitFiltered.predefined.length > 0 && (
-                      <div className='p-1'>
-                        {splitFiltered.predefined.map((option, idx) => (
+              {splitFiltered.predefined.length > 0 && (
+                <li role='presentation'>
+                  <div className='p-1'>
+                    {splitFiltered.predefined.map((option, idx) => {
+                      const optionIndex = idx;
+                      const optionIsActive = normalizedHighlightedIndex === optionIndex;
+                      return (
+                        <button
+                          key={`predefined-${option.value}`}
+                          id={optionId(optionIndex)}
+                          role='option'
+                          type='button'
+                          aria-selected={value === option.value}
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            selectOption(option);
+                          }}
+                          className={`w-full text-left px-3 py-2 text-[var(--ui-text-sm)] rounded-md transition-colors ${
+                            optionIsActive
+                              ? 'bg-[var(--accent-blue)] text-[var(--text-on-accent)]'
+                              : option.value === value
+                              ? 'bg-[var(--accent-blue)]/20 text-[var(--accent-blue)]'
+                              : 'text-[var(--text-primary)] hover:bg-[#161b22]'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </li>
+              )}
+
+              {splitFiltered.custom.length > 0 && (
+                <li role='presentation'>
+                  <div className='border-t border-[var(--border-default)]'>
+                    <div className='px-3 py-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)] uppercase tracking-wide'>
+                      Custom
+                    </div>
+                    <div className='p-1'>
+                      {splitFiltered.custom.map((option, idx) => {
+                        const optionIndex = splitFiltered.predefined.length + idx;
+                        const optionIsActive = normalizedHighlightedIndex === optionIndex;
+                        return (
                           <button
-                            key={option.value}
+                            key={`custom-${option.value}`}
+                            id={optionId(optionIndex)}
+                            role='option'
                             type='button'
-                            onClick={() => handleSelect(option)}
+                            aria-selected={value === option.value}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              selectOption(option);
+                            }}
                             className={`w-full text-left px-3 py-2 text-[var(--ui-text-sm)] rounded-md transition-colors ${
-                              highlightedIndex === idx
+                              optionIsActive
                                 ? 'bg-[var(--accent-blue)] text-[var(--text-on-accent)]'
                                 : option.value === value
                                 ? 'bg-[var(--accent-blue)]/20 text-[var(--accent-blue)]'
@@ -302,50 +482,33 @@ export function SmartCombobox({
                           >
                             {option.label}
                           </button>
-                        ))}
-                      </div>
-                    )}
-                    {splitFiltered.custom.length > 0 && (
-                      <div className='border-t border-[var(--border-default)]'>
-                        <div className='px-3 py-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)] uppercase tracking-wide'>
-                          Custom
-                        </div>
-                        <div className='p-1'>
-                          {splitFiltered.custom.map((option) => (
-                            <button
-                              key={option.value}
-                              type='button'
-                              onClick={() => handleSelect(option)}
-                              className={`w-full text-left px-3 py-2 text-[var(--ui-text-sm)] rounded-md transition-colors ${
-                                option.value === value
-                                  ? 'bg-[var(--accent-blue)]/20 text-[var(--accent-blue)]'
-                                  : 'text-[var(--text-primary)] hover:bg-[#161b22]'
-                              }`}
-                            >
-                              {option.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-              </>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </li>
+              )}
 
-              {/* Add new custom option */}
               {allowCustom && isCustomValue && displayValue && !duplicateOption && (
-                <div className='border-t border-[var(--border-default)] p-2'>
-                  <button
-                    type='button'
-                    onClick={handleCustomEntry}
-                    className='flex items-center justify-center gap-2 w-full px-3 py-2 bg-[var(--bg-count-badge)] text-[var(--accent-blue)] border border-[var(--border-default)] border-dashed rounded-lg text-[var(--ui-text-sm)] hover:bg-[var(--accent-blue)/0.1] transition-colors'
-                  >
-                    <Plus className='size-4' />
-                    Add new option: &ldquo;{toTitleCase(displayValue)}&rdquo;
-                  </button>
-                </div>
+                <li role='presentation'>
+                  <div className='border-t border-[var(--border-default)] p-2'>
+                    <button
+                      type='button'
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        handleCustomEntry();
+                      }}
+                      className='flex items-center justify-center gap-2 w-full px-3 py-2 bg-[var(--bg-count-badge)] text-[var(--accent-blue)] border border-[var(--border-default)] border-dashed rounded-lg text-[var(--ui-text-sm)] hover:bg-[var(--accent-blue)/0.1] transition-colors'
+                    >
+                      <Plus className='size-4' />
+                      Add new option: “{toTitleCase(displayValue)}”
+                    </button>
+                  </div>
+                </li>
               )}
             </>
           )}
-        </div>
+        </ul>
       )}
     </div>
   );
