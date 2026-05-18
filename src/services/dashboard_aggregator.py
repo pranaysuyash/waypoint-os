@@ -173,7 +173,7 @@ class DashboardAggregator:
             # stage is a top-level field in SQL-backed summaries; fall back to
             # meta.stage for any legacy file-store trips that still nest it.
             stage = trip.get("stage") or trip.get("meta", {}).get("stage", "")
-            analytics = trip.get("analytics", {})
+            analytics = trip.get("analytics") or {}
             quality_score = analytics.get("quality_score", 100)
 
             if status == "completed":
@@ -278,8 +278,8 @@ class DashboardAggregator:
         All severity classification happens here — frontend just displays.
         """
         signals = []
-        decision = trip.get("decision", {})
-        analytics = trip.get("analytics", {})
+        decision = trip.get("decision") or {}
+        analytics = trip.get("analytics") or {}
 
         flags = decision.get("suitability_flags", [])
         for flag in flags:
