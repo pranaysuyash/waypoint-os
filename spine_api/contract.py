@@ -486,6 +486,7 @@ class TripResponse(BaseModel):
     """
     id: str
     status: str
+    stage: Optional[str] = None
     dateWindow: Optional[str] = None
     destination: Optional[str] = None
     origin: Optional[str] = None
@@ -522,6 +523,7 @@ class TripResponse(BaseModel):
         return cls(
             id=trip_id,
             status=trip.get("status", "new"),
+            stage=trip.get("stage") or None,
             dateWindow=_clean_str(resolve_trip_field(trip, "date_window")),
             destination=_clean_str(resolve_trip_field(trip, "destination")),
             origin=_clean_str(resolve_trip_field(trip, "origin")),
