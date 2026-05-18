@@ -99,7 +99,7 @@ describe('AuthProvider', () => {
       </AuthProvider>
     );
 
-    expect(screen.getByText('Trips in Planning')).toBeInTheDocument();
+    expect(screen.getByText(/continue to trips in planning/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /open full sign-in page/i })).toHaveAttribute(
       'href',
       '/login?redirect=%2Ftrips%2F123%3Ftab%3Dreviews%26mode%3Dfull'
