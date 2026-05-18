@@ -197,6 +197,12 @@
       "weight": 1
     },
     {
+      "relation": "references",
+      "source": "doc:Docs/INDEX.md",
+      "target": "doc:issue_review.md",
+      "weight": 1
+    },
+    {
       "relation": "supports",
       "source": "doc:Docs/ROUTING_STRATEGY.md",
       "target": "concept:autoresearch",
@@ -401,6 +407,13 @@
       "kind": "doc",
       "label": "Flow Spec: Agentic Feedback-Learning (FLW-003)",
       "path": "Docs/research/FLW_SPEC_FEEDBACK_LEARNING.md",
+      "score": 0
+    },
+    {
+      "id": "doc:issue_review.md",
+      "kind": "doc",
+      "label": "Issue Review: \"Add Dates\" Button Not Functional",
+      "path": "issue_review.md",
       "score": 0
     },
     {

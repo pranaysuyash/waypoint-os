@@ -43,6 +43,7 @@ This graph turns the repo's research, feedback, graph, and learning docs into a 
   - supports -> `concept:live`
 - `Docs/research/FLW_SPEC_FEEDBACK_LEARNING.md` - Flow Spec: Agentic Feedback-Learning (FLW-003) | themes: feedback_learning
   - supports -> `concept:feedback`
+- `issue_review.md` - Issue Review: "Add Dates" Button Not Functional | themes: none
 - `Docs/research/LIVE_INTEL_TOOLCALLING_EXPLORATION_2026-05-05.md` - Live Intel Toolcalling Exploration — 2026-05-05 | themes: live_intelligence, agent_governance
   - supports -> `concept:governance`
   - anchors -> `concept:live`
@@ -64,6 +65,7 @@ This graph turns the repo's research, feedback, graph, and learning docs into a 
   - supports -> `concept:governance`
   - supports -> `concept:graph`
   - supports -> `concept:live`
+  - references -> `doc:issue_review.md`
 
 ## Operating Model
 - Live path stays deterministic and bounded.

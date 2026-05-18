@@ -29,6 +29,21 @@ If instructions conflict, follow the stricter rule and cite concrete file paths.
 - **Master catalog**: `/Users/pranay/Projects/SKILLS_CATALOG.md`
 - **Workspace rules**: `/Users/pranay/Projects/AGENTS.md`
 
+### `clawpatch` Evaluation
+
+- `clawpatch` is being evaluated as a repo-level automated review tool.
+- The current root config/state location is `.clawpatch/` at the project root.
+- Validation so far:
+  - `clawpatch init --force --root .`
+  - `clawpatch status --root . --plain`
+  - `clawpatch map --root . --plain`
+  - `clawpatch doctor --root . --plain`
+  - `clawpatch review --root . --feature feat_config_7528cb5b98 --plain --debug`
+- The upstream bug was fixed and closed in `openclaw/clawpatch#30`.
+- Review execution now succeeds on the repository with the existing package configuration.
+- Note: default `clawpatch review` only targets features in `pending` or `error` status; explicit `--feature` is required to re-run review on an existing `needs-fix` feature.
+- Continue holding off on broader CI/tooling documentation until full adoption is complete.
+
 ### Common Task → Right Skill
 
 | Task                 | Use This Skill                   | Location           |
