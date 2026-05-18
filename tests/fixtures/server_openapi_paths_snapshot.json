@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 128,
+  "openapi_path_count": 129,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -92,6 +92,7 @@
     "/inbox/bulk",
     "/inbox/stats",
     "/overrides/{override_id}",
+    "/payments",
     "/run",
     "/runs",
     "/runs/{run_id}",

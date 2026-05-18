@@ -1,5 +1,5 @@
 {
-  "route_count": 147,
+  "route_count": 148,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -836,6 +836,14 @@
     {
       "path": "/overrides/{override_id}",
       "name": "get_override",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/payments",
+      "name": "get_payments_queue",
       "methods": [
         "GET"
       ],
