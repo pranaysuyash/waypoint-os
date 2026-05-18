@@ -86,7 +86,7 @@ export const NAV_SECTIONS: NavSection[] = [
     label: 'OPERATIONS',
     items: [
       { href: '/documents', label: 'Documents', icon: 'FileText', description: 'Passports, visas, vouchers, insurance', enabled: isDocumentsModuleEnabled() },
-      { href: '/payments', label: 'Payments', icon: 'DollarSign', description: 'Collections, milestones, and payment risk', enabled: false },
+      { href: '/payments', label: 'Payments', icon: 'DollarSign', description: 'Collections, milestones, and payment risk', enabled: true },
       { href: '/suppliers', label: 'Suppliers', icon: 'Briefcase', description: 'Preferred suppliers, rates, and reliability notes', enabled: false },
     ],
   },

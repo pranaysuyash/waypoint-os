@@ -20,6 +20,8 @@ describe('NAV_SECTIONS', () => {
 
     const operations = NAV_SECTIONS.find((section) => section.label === 'OPERATIONS');
     const documents = operations?.items.find((item) => item.href === '/documents');
+    const payments = operations?.items.find((item) => item.href === '/payments');
     expect(documents?.enabled).toBe(true);
+    expect(payments?.enabled).toBe(true);
   });
 });
