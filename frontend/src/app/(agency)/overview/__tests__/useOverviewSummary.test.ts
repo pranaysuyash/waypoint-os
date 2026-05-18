@@ -138,7 +138,7 @@ describe('useOverviewSummary', () => {
     expect(integrityNav?.href).toBe('/overview?panel=system-check');
     expect(result.current.metrics.map((metric) => metric.title)).toEqual([
       'Trips in Planning',
-      'Lead Inbox',
+      'New enquiries',
       'Quote Review',
       'System Check',
     ]);

@@ -12,7 +12,7 @@ const ROUTES = {
 } as const;
 
 const baseSummary = {
-  headerSubtitle: '2 trips in planning · 5 leads · 1 quote to review',
+  headerSubtitle: '2 trips in planning · 5 enquiries · 1 quote to review',
   actionRequiredLoading: false,
   actionRequiredError: null,
   actionRequiredItems: [
@@ -41,10 +41,10 @@ const baseSummary = {
       error: null,
     },
       {
-        title: 'Lead Inbox',
+        title: 'New enquiries',
         value: 5,
-        sub: '5 new leads to review',
-        ctaLabel: 'Review leads',
+        sub: '5 new enquiries to review',
+        ctaLabel: 'Review enquiries',
         href: '/inbox',
       state: 'amber',
       icon: () => null,
@@ -77,8 +77,8 @@ const baseSummary = {
   navItems: [
     {
       href: '/inbox',
-      label: 'Lead Inbox',
-        sub: '5 new leads to review',
+      label: 'New enquiries',
+        sub: '5 new enquiries to review',
       subColor: 'var(--accent-amber)',
       icon: () => null,
     },
@@ -191,12 +191,12 @@ describe('OverviewPage', () => {
   it('renders queue cards against their configured destination routes', () => {
     render(<OverviewPage />);
 
-    expect(screen.getByText('2 trips in planning · 5 leads · 1 quote to review')).toBeInTheDocument();
+    expect(screen.getByText('2 trips in planning · 5 enquiries · 1 quote to review')).toBeInTheDocument();
     expect(screen.getByText('Action Required')).toBeInTheDocument();
     expect(screen.getByText('Trip is overdue')).toBeInTheDocument();
     expect(screen.getByText('Customer details are still missing.')).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: /trips in planning/i })[0]).toHaveAttribute('href', ROUTES.workspaces);
-    expect(screen.getAllByRole('link', { name: /lead inbox/i })[0]).toHaveAttribute('href', ROUTES.inbox);
+    expect(screen.getAllByRole('link', { name: /new enquiries/i })[0]).toHaveAttribute('href', ROUTES.inbox);
     expect(screen.getAllByRole('link', { name: /quote review/i })[0]).toHaveAttribute('href', ROUTES.approvals);
 
     const integrityLink = screen.getAllByRole('link', { name: /system check/i })[0];
@@ -260,8 +260,8 @@ describe('OverviewPage', () => {
     render(<OverviewPage />);
 
     expect(screen.getByText('No trips in planning yet')).toBeInTheDocument();
-    expect(screen.getAllByText(/A lead is waiting in Lead Inbox/i).length).toBeGreaterThan(0);
-    expect(screen.getByRole('link', { name: /review leads/i })).toHaveAttribute('href', ROUTES.inbox);
+    expect(screen.getAllByText(/A new enquiry is waiting/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole('link', { name: /review enquiries/i })).toHaveAttribute('href', ROUTES.inbox);
   });
 
   it('shows a true empty-account state when there are no leads or trips', () => {

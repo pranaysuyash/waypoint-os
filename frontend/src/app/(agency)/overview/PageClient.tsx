@@ -275,7 +275,7 @@ const PipelineBar = memo(function PipelineBar({
         </div>
         <p className='text-[12px]' style={{ color: 'var(--text-muted)' }}>
           {hasLeadsWaiting
-            ? 'A lead is waiting in Lead Inbox and needs review before planning can begin.'
+            ? 'A new enquiry is waiting and needs review before planning can begin.'
             : 'No trips are being planned yet.'}
         </p>
         <Link
@@ -283,7 +283,7 @@ const PipelineBar = memo(function PipelineBar({
           className='inline-flex items-center gap-1.5 mt-3 text-[12px] font-medium transition-colors'
           style={{ color: 'var(--accent-blue)' }}
         >
-          {hasLeadsWaiting ? 'Review Lead' : 'Process New Inquiry'} <ArrowRight className='size-3.5' />
+          {hasLeadsWaiting ? 'Review enquiry' : 'Process New Inquiry'} <ArrowRight className='size-3.5' />
         </Link>
       </div>
     );
@@ -464,7 +464,7 @@ function RecentTrips({
           No trips in planning yet
         </p>
         <p className='text-[12px] leading-relaxed max-w-[280px] mx-auto' style={{ color: 'var(--text-secondary)' }}>
-          A lead is waiting in Lead Inbox. Review it to start planning, and the trip will appear here.
+          A new enquiry is waiting. Review it to start planning, and the trip will appear here.
         </p>
         <Link
           href='/inbox'
@@ -484,7 +484,7 @@ function RecentTrips({
           }}
         >
           <Send className='size-4' style={{ color: 'var(--accent-blue)' }} />
-          Review Lead
+          Review enquiry
           <ArrowRight className='size-3.5' style={{ color: 'var(--text-muted)' }} />
         </Link>
       </div>

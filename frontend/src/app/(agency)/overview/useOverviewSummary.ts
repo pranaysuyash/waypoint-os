@@ -123,15 +123,15 @@ export function useOverviewSummary() {
         error: workspace.error,
       },
       {
-        title: 'Lead Inbox',
+        title: 'New enquiries',
         value: displayCount(inbox.total, inbox.isLoading, inbox.error),
         sub: displaySub(
           inbox.isLoading,
           inbox.error,
-          `${pluralize(inbox.total, 'new lead', 'new leads')} to review`,
-          'Leads unavailable',
+          `${pluralize(inbox.total, 'new enquiry', 'new enquiries')} to review`,
+          'Enquiries unavailable',
         ),
-        ctaLabel: inbox.total > 0 ? 'Review leads' : 'Open inbox',
+        ctaLabel: inbox.total > 0 ? 'Review enquiries' : 'Open enquiries',
         href: '/inbox',
         state: 'amber',
         icon: Inbox,
@@ -186,12 +186,12 @@ export function useOverviewSummary() {
     () => [
       {
         href: '/inbox',
-        label: 'Lead Inbox',
+        label: 'New enquiries',
         sub: displayNavSub(
           inbox.total,
           inbox.isLoading,
           inbox.error,
-          `${pluralize(inbox.total, 'new lead', 'new leads')} to review`,
+          `${pluralize(inbox.total, 'new enquiry', 'new enquiries')} to review`,
         ),
         subColor: 'var(--accent-amber)',
         icon: Inbox,
@@ -249,7 +249,7 @@ export function useOverviewSummary() {
       return 'Loading overview counts…';
     }
 
-    return `${pluralize(workspace.total, 'trip', 'trips')} in planning · ${pluralize(inbox.total, 'lead', 'leads')} · ${pluralize(pendingApprovalCount, 'quote', 'quotes')} to review`;
+    return `${pluralize(workspace.total, 'trip', 'trips')} in planning · ${pluralize(inbox.total, 'enquiry', 'enquiries')} · ${pluralize(pendingApprovalCount, 'quote', 'quotes')} to review`;
   }, [
     inbox.error,
     inbox.isLoading,
