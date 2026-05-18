@@ -1,7 +1,7 @@
 # Agent Requeue Schema Ownership Decision
 
 **Date:** 2026-05-18  
-**Status:** Decision pending  
+**Status:** Option B implemented — `alembic/versions/add_agent_requeue_jobs.py` (commit `86331ff`)  
 **Scope:** `agent_requeue_jobs` table — schema ownership, migration posture, RLS
 
 ---
