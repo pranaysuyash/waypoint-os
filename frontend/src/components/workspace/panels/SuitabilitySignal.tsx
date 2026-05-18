@@ -122,6 +122,7 @@ function FlagItem({ flag, onDrill, onAcknowledge, isAcknowledged = false, drilla
   const severityClass = getSeverityClass(flag.severity);
   const badgeClass = getBadgeClass(flag.severity);
   const label = deriveFlagLabel(flag);
+  const isInteractive = drillable && !isAcknowledged;
 
   const handleDrill = useCallback(() => {
     if (onDrill && drillable) onDrill(flag.flag_type);
@@ -139,64 +140,85 @@ function FlagItem({ flag, onDrill, onAcknowledge, isAcknowledged = false, drilla
     ? flag.affected_travelers.join(", ")
     : "Multiple travelers";
 
+  const content = (
+    <div className="flex items-start gap-3">
+      <div className={`flex-shrink-0 mt-0.5 ${severityClass.icon}`}>
+        {isAcknowledged
+          ? <CheckCircle2 size={18} />
+          : tier === "tier1"
+          ? <AlertTriangle size={18} />
+          : <AlertCircle size={18} />}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h4 className="font-semibold text-ui-sm text-text-primary">
+              {label}
+              {isAcknowledged && (
+                <span className="ml-2 text-ui-xs font-normal text-text-muted">
+                  (acknowledged)
+                </span>
+              )}
+            </h4>
+            <p className="text-ui-xs text-text-muted mt-1">{flag.reason}</p>
+          </div>
+          {isInteractive && <ChevronRight size={16} className="flex-shrink-0 text-text-muted" />}
+        </div>
+
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          <span className={`text-ui-xs px-2 py-1 rounded ${badgeClass}`}>
+            {flag.severity.toUpperCase()}
+          </span>
+          <span className="text-ui-xs text-text-muted">
+            {Math.round(flag.confidence * 100)}% confidence
+          </span>
+          <span className="text-ui-xs text-text-muted">{travelersDisplay}</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!isInteractive) {
+    return (
+      <div
+        className={`${severityClass.bg} p-3 rounded-md transition-all ${
+          isAcknowledged ? "opacity-60" : ""
+        }`}
+        data-testid={`suitability-flag-${flag.flag_type}`}
+      >
+        {content}
+      </div>
+    );
+  }
+
   return (
     <div
       className={`${severityClass.bg} p-3 rounded-md transition-all ${
-        isAcknowledged ? "opacity-60" : ""
-      } ${drillable && !isAcknowledged ? "cursor-pointer hover:shadow-sm" : ""}`}
-      onClick={drillable && !isAcknowledged ? handleDrill : undefined}
-      onKeyDown={drillable && !isAcknowledged ? (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleDrill(); } } : undefined}
-      role="button"
-      aria-disabled={!drillable || isAcknowledged}
-      tabIndex={drillable && !isAcknowledged ? 0 : undefined}
+        isAcknowledged ? "opacity-60" : "cursor-pointer hover:shadow-sm"
+      }`}
       data-testid={`suitability-flag-${flag.flag_type}`}
     >
       <div className="flex items-start gap-3">
-        <div className={`flex-shrink-0 mt-0.5 ${severityClass.icon}`}>
-          {isAcknowledged
-            ? <CheckCircle2 size={18} />
-            : tier === "tier1"
-            ? <AlertTriangle size={18} />
-            : <AlertCircle size={18} />}
-        </div>
+        <button
+          type="button"
+          onClick={handleDrill}
+          className="flex-1 rounded-md py-3 px-3 -ml-3 -mt-3 text-left -mr-3 min-w-0"
+          data-testid={`drill-button-${flag.flag_type}`}
+        >
+          {content}
+        </button>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <h4 className="font-semibold text-ui-sm text-text-primary">
-                {label}
-                {isAcknowledged && (
-                  <span className="ml-2 text-ui-xs font-normal text-text-muted">
-                    (acknowledged)
-                  </span>
-                )}
-              </h4>
-              <p className="text-ui-xs text-text-muted mt-1">{flag.reason}</p>
-            </div>
-            {drillable && !isAcknowledged && <ChevronRight size={16} className="flex-shrink-0 text-text-muted" />}
-          </div>
-
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <span className={`text-ui-xs px-2 py-1 rounded ${badgeClass}`}>
-              {flag.severity.toUpperCase()}
-            </span>
-            <span className="text-ui-xs text-text-muted">
-              {Math.round(flag.confidence * 100)}% confidence
-            </span>
-            <span className="text-ui-xs text-text-muted">{travelersDisplay}</span>
-
-            {tier === "tier1" && onAcknowledge && !isAcknowledged && (
-              <button
-                type="button"
-                onClick={handleAcknowledge}
-                className="ml-auto text-ui-xs px-2 py-1 rounded border border-[rgba(var(--accent-red-rgb)/0.4)] text-accent-red hover:bg-[rgba(var(--accent-red-rgb)/0.08)] transition-colors"
-                data-testid={`acknowledge-flag-${flag.flag_type}`}
-              >
-                Acknowledge Risk
-              </button>
-            )}
-          </div>
-        </div>
+        {tier === "tier1" && onAcknowledge && !isAcknowledged && (
+          <button
+            type="button"
+            onClick={handleAcknowledge}
+            className="ml-auto text-ui-xs px-2 py-1 rounded border border-[rgba(var(--accent-red-rgb)/0.4)] text-accent-red hover:bg-[rgba(var(--accent-red-rgb)/0.08)] transition-colors shrink-0"
+            data-testid={`acknowledge-flag-${flag.flag_type}`}
+          >
+            Acknowledge Risk
+          </button>
+        )}
       </div>
     </div>
   );

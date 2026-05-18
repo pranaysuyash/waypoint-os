@@ -765,14 +765,13 @@ function UploadCard({
           </div>
         </div>
       ) : (
-        <div
+        <>
+        <button
+          type='button'
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileRef.current?.click()}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileRef.current?.click(); } }}
-          role="button"
-          tabIndex={0}
           aria-label={activeTab === 'screenshot' ? 'Upload itinerary screenshot' : 'Upload itinerary document'}
           style={uploadDropZoneStyle(dragging)}
         >
@@ -803,38 +802,33 @@ function UploadCard({
             </div>
           </div>
           <div style={{ position: 'relative', display: 'inline-flex' }}>
-            <button
-              type='button'
-              disabled={isBusy || isProcessingFile}
+            <span
               style={primaryButtonStyle(!(isBusy || isProcessingFile), 42, '0 20px')}
+              aria-hidden='true'
             >
               {isProcessingFile ? 'Reading file…' : 'Choose file to score'}
-            </button>
-            <input
-              ref={fileRef}
-              type='file'
-              accept='.pdf,.jpg,.jpeg,.png,.txt,.webp'
-              aria-label='Upload itinerary file'
-              style={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                opacity: 0.01,
-                cursor: 'pointer',
-              }}
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) {
-                  return;
-                }
-                const input = e.currentTarget;
-                await handleFile(file);
-                input.value = '';
-              }}
-            />
+            </span>
           </div>
-        </div>
+        </button>
+        <input
+          ref={fileRef}
+          type='file'
+          accept='.pdf,.jpg,.jpeg,.png,.txt,.webp'
+          aria-label='Upload itinerary file'
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) {
+              return;
+            }
+            const input = e.currentTarget;
+            await handleFile(file);
+            input.value = '';
+          }}
+          style={{
+            display: 'none',
+          }}
+        />
+        </>
       )}
 
       {fileError ? (

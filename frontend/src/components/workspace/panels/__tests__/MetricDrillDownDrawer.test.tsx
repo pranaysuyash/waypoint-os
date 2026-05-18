@@ -77,7 +77,7 @@ describe('MetricDrillDownDrawer', () => {
 
     expect(await screen.findByText(/Conversion Rate Details/)).toBeInTheDocument();
     // Verify the drawer close control is accessible by name.
-    expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Close drawer' })).toBeInTheDocument();
   });
 
   it('fetches trip data when opened', async () => {
@@ -226,7 +226,7 @@ describe('MetricDrillDownDrawer', () => {
       />
     );
 
-    const closeButton = await screen.findByRole('button', { name: 'Close' });
+    const closeButton = await screen.findByRole('button', { name: 'Close drawer' });
     await user.click(closeButton);
 
     expect(mockClose).toHaveBeenCalled();
@@ -285,7 +285,7 @@ describe('MetricDrillDownDrawer', () => {
     const mockClose = vi.fn();
     const user = userEvent.setup();
 
-    const { container } = render(
+    render(
       <MetricDrillDownDrawer
         isOpen={true}
         agentId="agent-1"
@@ -296,7 +296,8 @@ describe('MetricDrillDownDrawer', () => {
       />
     );
 
-    const overlay = container.querySelector('[class*="bg-black"]');
+    // Drawer renders in a portal; use document.querySelector to find the overlay.
+    const overlay = document.querySelector('[aria-hidden="true"][class*="bg-black"]');
     await user.click(overlay!);
 
     expect(mockClose).toHaveBeenCalled();

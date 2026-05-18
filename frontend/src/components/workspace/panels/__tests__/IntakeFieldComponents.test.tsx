@@ -112,6 +112,36 @@ describe('EditableField', () => {
     expect(screen.getByLabelText('Cancel editing')).toBeInTheDocument();
   });
 
+  it('supports keyboard selection in intake type SmartCombobox path', async () => {
+    const onChange = vi.fn();
+    const onSave = vi.fn();
+    const typeProps = {
+      ...baseProps,
+      field: 'type',
+      label: 'Trip Type',
+      isEditing: true,
+      value: '',
+      onEditValueChange: (field: string, value: string) => onChange(field, value),
+      onSaveEdit: onSave,
+    };
+
+    render(<EditableField {...typeProps} />);
+
+    const combobox = screen.getByRole('combobox');
+    await userEvent.clear(combobox);
+    await userEvent.type(combobox, 'Honeymoon');
+
+    await userEvent.keyboard('{ArrowDown}');
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
+
+    const option = await screen.findByRole('option', { name: 'Honeymoon' });
+    await userEvent.click(option);
+    expect(onChange).toHaveBeenCalledWith('type', 'Honeymoon');
+
+    await userEvent.click(screen.getByLabelText('Save trip type'));
+    expect(onSave).toHaveBeenCalledWith('type');
+  });
+
   it('shows displayValue when provided', () => {
     render(
       <EditableField

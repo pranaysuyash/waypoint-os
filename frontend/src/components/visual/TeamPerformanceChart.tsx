@@ -117,7 +117,8 @@ export function TeamPerformanceChart({
             {/* Metrics Grid */}
             <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
               {/* Conversion Rate */}
-              <div
+              <button
+                type='button'
                 onClick={() =>
                   handleMetricClick(agent.userId, {
                     type: 'conversion',
@@ -125,11 +126,8 @@ export function TeamPerformanceChart({
                     label: 'Conversion Rate',
                   })
                 }
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMetricClick(agent.userId, { type: 'conversion', value: agent.conversionRate, label: 'Conversion Rate' }); } }}
-                className={`rounded p-2 transition-colors ${onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : ''} ${onDrillDown ? '' : ''}`}
-                role='button'
-                aria-disabled={!onDrillDown}
-                tabIndex={onDrillDown ? 0 : undefined}
+                disabled={!onDrillDown}
+                className={`w-full rounded p-2 text-left transition-colors ${onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : 'opacity-60'}`}
               >
                 <div className='flex items-center justify-between mb-1'>
                   <span className='text-xs text-[#8b949e]'>Conversion</span>
@@ -149,10 +147,11 @@ export function TeamPerformanceChart({
                     }}
                   />
                 </div>
-              </div>
+              </button>
 
               {/* Response Time */}
-              <div
+              <button
+                type='button'
                 onClick={() =>
                   handleMetricClick(agent.userId, {
                     type: 'response_time',
@@ -160,11 +159,8 @@ export function TeamPerformanceChart({
                     label: 'Response Time',
                   })
                 }
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMetricClick(agent.userId, { type: 'response_time', value: agent.avgResponseTime ?? 0, label: 'Response Time' }); } }}
-                className={`rounded p-2 transition-colors ${onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : ''} ${onDrillDown ? '' : ''}`}
-                role='button'
-                aria-disabled={!onDrillDown}
-                tabIndex={onDrillDown ? 0 : undefined}
+                disabled={!onDrillDown}
+                className={`w-full rounded p-2 text-left transition-colors ${onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : 'opacity-60'}`}
               >
                 <div className='flex items-center justify-between mb-1'>
                   <span className='text-xs text-[#8b949e]'>Response</span>
@@ -184,10 +180,11 @@ export function TeamPerformanceChart({
                     }}
                   />
                 </div>
-              </div>
+              </button>
 
               {/* Customer Satisfaction */}
-              <div
+              <button
+                type='button'
                 onClick={() =>
                   handleMetricClick(agent.userId, {
                     type: 'csat',
@@ -195,11 +192,8 @@ export function TeamPerformanceChart({
                     label: 'Customer Satisfaction',
                   })
                 }
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMetricClick(agent.userId, { type: 'csat', value: agent.customerSatisfaction, label: 'Customer Satisfaction' }); } }}
-                className={`rounded p-2 transition-colors ${onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : ''} ${onDrillDown ? '' : ''}`}
-                role='button'
-                aria-disabled={!onDrillDown}
-                tabIndex={onDrillDown ? 0 : undefined}
+                disabled={!onDrillDown}
+                className={`w-full rounded p-2 text-left transition-colors ${onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : 'opacity-60'}`}
               >
                 <div className='flex items-center justify-between mb-1'>
                   <span className='text-xs text-[#8b949e]'>CSAT</span>
@@ -219,10 +213,11 @@ export function TeamPerformanceChart({
                     }}
                   />
                 </div>
-              </div>
+              </button>
 
               {/* Workload */}
-              <div
+              <button
+                type='button'
                 onClick={() =>
                   handleMetricClick(agent.userId, {
                     type: 'workload',
@@ -230,11 +225,8 @@ export function TeamPerformanceChart({
                     label: 'Workload',
                   })
                 }
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMetricClick(agent.userId, { type: 'workload', value: agent.workloadScore, label: 'Workload' }); } }}
-                className={`rounded p-2 transition-colors ${onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : ''} ${onDrillDown ? '' : ''}`}
-                role='button'
-                aria-disabled={!onDrillDown}
-                tabIndex={onDrillDown ? 0 : undefined}
+                disabled={!onDrillDown}
+                className={`w-full rounded p-2 text-left transition-colors ${onDrillDown ? 'cursor-pointer hover:bg-[#0f1115]' : 'opacity-60'}`}
               >
                 <div className='flex items-center justify-between mb-1'>
                   <span className='text-xs text-[#8b949e]'>Workload</span>
@@ -254,7 +246,7 @@ export function TeamPerformanceChart({
                     }}
                   />
                 </div>
-              </div>
+              </button>
             </div>
           </div>
         ))}

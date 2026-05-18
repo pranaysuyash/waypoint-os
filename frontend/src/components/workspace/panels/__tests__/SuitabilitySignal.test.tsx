@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { SuitabilitySignal, type SuitabilityFlagData } from "../SuitabilitySignal";
 
@@ -330,11 +331,9 @@ describe("SuitabilitySignal Component", () => {
         />
       );
 
-      const flagElement = screen.getByText("Water Activity Not Safe for Toddlers").closest("div[role='button']");
-      if (flagElement) {
-        fireEvent.click(flagElement);
-        expect(mockDrill).toHaveBeenCalledWith("toddler_water_unsafe");
-      }
+      const flagElement = screen.getByTestId("drill-button-toddler_water_unsafe");
+      fireEvent.click(flagElement);
+      expect(mockDrill).toHaveBeenCalledWith("toddler_water_unsafe");
     });
 
     it("should not call onDrill when tripId not provided", () => {
@@ -356,11 +355,42 @@ describe("SuitabilitySignal Component", () => {
       );
 
       const labelEl = screen.getByText("Water Activity Not Safe for Toddlers");
-      const flagDiv = labelEl.closest("div");
-      if (flagDiv) {
-        fireEvent.click(flagDiv);
+      const card = labelEl.closest("[data-testid='suitability-flag-toddler_water_unsafe']");
+      if (card) {
+        fireEvent.click(card);
       }
       expect(mockDrill).not.toHaveBeenCalled();
+    });
+
+    it("should activate drill action via Enter and Space keys", async () => {
+      const user = userEvent.setup();
+      const mockDrill = vi.fn();
+      const flags: SuitabilityFlagData[] = [
+        {
+          flag_type: "toddler_water_unsafe",
+          severity: "critical",
+          reason: "Water unsafe",
+          confidence: 0.95,
+          affected_travelers: ["Child"],
+        },
+      ];
+      render(
+        <SuitabilitySignal
+          flags={flags}
+          tripId="trip-123"
+          onDrill={mockDrill}
+        />
+      );
+
+      const rowButton = screen.getByTestId("drill-button-toddler_water_unsafe");
+      await user.click(rowButton);
+      expect(mockDrill).toHaveBeenCalledWith("toddler_water_unsafe");
+
+      await user.keyboard("{Enter}");
+      expect(mockDrill).toHaveBeenCalledTimes(2);
+
+      await user.keyboard(" ");
+      expect(mockDrill).toHaveBeenCalledTimes(3);
     });
 
     it("should be drillable when tripId provided", () => {
@@ -373,15 +403,16 @@ describe("SuitabilitySignal Component", () => {
           affected_travelers: ["Child"],
         },
       ];
-      const { container } = render(
+      render(
         <SuitabilitySignal
           flags={flags}
           tripId="trip-123"
+          onAcknowledge={() => {}}
         />
       );
 
-      const flagItem = container.querySelector('[role="button"]');
-      expect(flagItem).toBeInTheDocument();
+      expect(screen.getByTestId("drill-button-toddler_water_unsafe")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Acknowledge Risk" })).toBeInTheDocument();
     });
   });
 
