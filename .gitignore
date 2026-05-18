@@ -127,3 +127,9 @@ Docs/responsive-audit/
 *.sqlite3
 # Trip processing lock files (should not be tracked)
 data/trips/*.lock
+
+# Local tool-run cache
+.clawpatch/
+
+# pnpm store (do not commit)
+.pnpm-store/
