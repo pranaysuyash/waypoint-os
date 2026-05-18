@@ -163,8 +163,10 @@ describe('public marketing pages', () => {
     expect(screen.getByRole('button', { name: /Paste itinerary/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Screenshot/i })).toBeInTheDocument();
 
-    // Real upload button (not a link to a separate notebook section)
-    expect(screen.getByRole('button', { name: /Choose file to score/i })).toBeInTheDocument();
+    // Real upload drop zone button — aria-label is the accessible name; the
+    // visible "Choose file to score" text is in an aria-hidden span inside the
+    // button (design decision: decorative label, not the accessible name).
+    expect(screen.getByRole('button', { name: /Upload itinerary/i })).toBeInTheDocument();
   });
 
   it('itinerary checker upload zone is a real interactive tool, not a sample preview', () => {

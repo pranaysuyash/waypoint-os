@@ -40,6 +40,9 @@ Ranking:
 Empty state copy:
 - `No urgent action detected from available data.`
 
+Follow-up note (wording consistency):
+- Consider renaming `Lead Inbox` to `New enquiries` in Overview metric/nav user-facing copy in a separate slice to avoid mixed terminology.
+
 ## Verification
 
 Executed:

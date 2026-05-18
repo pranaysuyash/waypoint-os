@@ -41,13 +41,15 @@ export function buildActionRequiredItems({
   integrityIssuesTotal,
 }: BuildActionRequiredItemsInput): ActionRequiredItem[] {
   const items: ActionRequiredItem[] = [];
+  // v1 ranking is intentionally source-order based:
+  // quotes -> trips -> enquiries -> agency health.
 
   if (pendingReviewTotal > 0) {
     items.push({
       id: 'quote-review',
       priority: pendingReviewTotal > 1 ? 'urgent' : 'high',
       source: 'quote',
-      title: 'Quote needs review',
+      title: pendingReviewTotal > 1 ? 'Quotes need review' : 'Quote needs review',
       subtitle: pendingReviews[0]?.destination?.trim() || 'Quotes to review',
       reason: `${pluralize(pendingReviewTotal, 'quote is', 'quotes are')} waiting for approval before sending.`,
       href: '/reviews',
@@ -63,7 +65,7 @@ export function buildActionRequiredItems({
     const isOverdue = trip.overdue === true;
     items.push({
       id: `trip-${trip.id}`,
-      priority: isOverdue ? 'high' : 'normal',
+      priority: 'high',
       source: 'trip',
       title: 'Trip needs review',
       subtitle: tripSubtitle(trip),
