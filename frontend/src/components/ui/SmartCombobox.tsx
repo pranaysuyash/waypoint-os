@@ -30,7 +30,7 @@ import {
   findNearDuplicate,
   getGroupedOptions,
 } from '@/lib/combobox';
-import { getFocusableElements } from '@/lib/accessibility';
+import { focusNextOutside } from '@/lib/accessibility';
 
 interface SmartComboboxProps {
   value: string;
@@ -157,25 +157,6 @@ export function SmartCombobox({
     setHighlightedIndex(-1);
   }, []);
 
-  const focusNextOutsideCombobox = useCallback(() => {
-    const focusables = getFocusableElements(document);
-    const currentIndex = inputRef.current ? focusables.indexOf(inputRef.current) : -1;
-
-    if (currentIndex === -1) {
-      return;
-    }
-
-    for (let i = currentIndex + 1; i < focusables.length; i += 1) {
-      const candidate = focusables[i];
-      if (!containerRef.current?.contains(candidate)) {
-        candidate.focus();
-        return;
-      }
-    }
-
-    inputRef.current?.blur();
-  }, [inputRef, containerRef]);
-
   const selectOption = useCallback((option: ComboboxOption) => {
     setInputValue(option.value);
     onChange(option.value);
@@ -271,7 +252,10 @@ export function SmartCombobox({
       case 'Tab':
         event.preventDefault();
         closeDropdown();
-        focusNextOutsideCombobox();
+        focusNextOutside(containerRef.current, {
+          from: document.activeElement instanceof HTMLElement ? document.activeElement : null,
+          fallbackFrom: inputRef.current,
+        });
         break;
       default:
         break;
@@ -287,7 +271,6 @@ export function SmartCombobox({
     allowCustom,
     isCustomValue,
     handleCustomEntry,
-    focusNextOutsideCombobox,
     visibleOptions,
     normalizedHighlightedIndex,
   ]);
