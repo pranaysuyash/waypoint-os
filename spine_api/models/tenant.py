@@ -12,7 +12,19 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional, List
 
-from sqlalchemy import String, ForeignKey, DateTime, Boolean, Integer, Float, Text, JSON, Index
+from sqlalchemy import (
+    String,
+    ForeignKey,
+    DateTime,
+    Boolean,
+    Integer,
+    Float,
+    Text,
+    JSON,
+    Index,
+    UniqueConstraint,
+    CheckConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from spine_api.core.database import Base
@@ -688,4 +700,81 @@ class ExecutionEvent(Base):
         Index("ix_ee_subject", "subject_type", "subject_id"),
         Index("ix_ee_category", "event_category"),
         Index("ix_ee_trip_created", "trip_id", "created_at"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Integration enablement
+# ---------------------------------------------------------------------------
+
+INTEGRATION_STATUSES = (
+    "disabled",
+    "connected",
+    "degraded",
+    "auth_expired",
+    "misconfigured",
+)
+
+
+class AgencyIntegration(Base):
+    """
+    Agency-scoped integration instance.
+
+    Records which providers are enabled per agency and their live status.
+    Raw credentials are NEVER stored here — use credential_ref to reference
+    encrypted secret material in a separate store.
+
+    Response helpers must never include credential_ref or config_json.
+    """
+    __tablename__ = "agency_integrations"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    agency_id: Mapped[str] = mapped_column(
+        ForeignKey("agencies.id", ondelete="CASCADE"), nullable=False
+    )
+    provider: Mapped[str] = mapped_column(String(50), nullable=False)
+
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    status: Mapped[str] = mapped_column(
+        String(30), nullable=False, server_default="disabled"
+    )
+
+    # Safe non-secret config only — no tokens, no webhook secrets
+    config_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    # Reference to encrypted credential material — NOT the raw credential
+    credential_ref: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+
+    last_health_check_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_success_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_error_code: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    last_error_message_safe: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
+    created_by_user_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    updated_by_user_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        UniqueConstraint("agency_id", "provider", name="uq_agency_integrations_agency_provider"),
+        CheckConstraint(
+            "status IN ('disabled', 'connected', 'degraded', 'auth_expired', 'misconfigured')",
+            name="ck_agency_integrations_status",
+        ),
+        Index("ix_ai_agency_id", "agency_id"),
+        Index("ix_ai_provider", "provider"),
+        Index("ix_ai_agency_provider", "agency_id", "provider"),
     )

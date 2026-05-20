@@ -41,5 +41,28 @@ def test_inbox_router_returns_overview_stats_shape(session_client):
     assert response.status_code == 200
     payload = response.json()
 
-    assert set(payload) == {"total", "unassigned", "critical", "atRisk"}
-    assert all(isinstance(payload[key], int) for key in payload)
+    assert set(payload) >= {
+        "total",
+        "unassigned",
+        "critical",
+        "atRisk",
+        "breached",
+        "incomplete",
+        "missingCustomer",
+        "missingTripBasics",
+        "oldestWaitingDays",
+        "oldestUnassignedWaitingDays",
+        "statsCoverage",
+    }
+    for key in (
+        "total",
+        "unassigned",
+        "critical",
+        "atRisk",
+        "breached",
+        "incomplete",
+        "missingCustomer",
+        "missingTripBasics",
+        "statsCoverage",
+    ):
+        assert isinstance(payload[key], int)

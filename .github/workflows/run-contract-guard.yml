@@ -7,6 +7,27 @@ on:
   pull_request:
 
 jobs:
+  docs-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Markdown lint
+        uses: DavidAnson/markdownlint-cli2-action@v17
+        with:
+          globs: |
+            **/*.md
+      - name: Link check
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --no-progress
+            --exclude-mail
+            --glob
+            --exclude "^http://127\\.0\\.0\\.1"
+            --exclude "^http://localhost"
+            --exclude "^/Users/"
+            "**/*.md"
+
   backend-contract-guard:
     runs-on: ubuntu-latest
     steps:

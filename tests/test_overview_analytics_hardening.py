@@ -23,6 +23,7 @@ def test_inbox_stats_handles_non_dict_analytics(monkeypatch):
     assert stats["unassigned"] == 1
     assert stats["critical"] == 1
     assert stats["atRisk"] == 1
+    assert stats["statsCoverage"] == 4
 
 
 def test_escalation_heatmap_handles_non_dict_analytics(monkeypatch):

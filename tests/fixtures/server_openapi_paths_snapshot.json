@@ -1,5 +1,5 @@
 {
-  "openapi_path_count": 129,
+  "openapi_path_count": 131,
   "paths": [
     "/agents/runtime",
     "/agents/runtime/events",
@@ -48,6 +48,8 @@
     "/api/drafts/{draft_id}/promote",
     "/api/drafts/{draft_id}/restore",
     "/api/drafts/{draft_id}/runs",
+    "/api/integrations",
+    "/api/integrations/{provider}",
     "/api/internal/documents/{document_id}/download",
     "/api/public-checker/events",
     "/api/public-checker/run",

@@ -9,7 +9,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useTrips, usePipeline } from '@/hooks/useTrips';
-import { useInboxTrips, useReviews } from '@/hooks/useGovernance';
+import { useInboxStats, useInboxTrips, useReviews } from '@/hooks/useGovernance';
 import { useIntegrityIssues } from '@/hooks/useIntegrityIssues';
 import { buildActionRequiredItems } from './buildActionRequiredItems';
 
@@ -93,6 +93,7 @@ function opsHealthSummary(
 export function useOverviewSummary() {
   const workspace = useTrips({ view: 'workspace', limit: 5 });
   const inbox = useInboxTrips(undefined, 1, 5);
+  const inboxStats = useInboxStats();
   const pendingReviews = useReviews({ status: 'pending' });
   const integrityIssues = useIntegrityIssues();
   const pipelineQuery = usePipeline();
@@ -268,9 +269,13 @@ export function useOverviewSummary() {
         workspaceTrips: workspace.data,
         pendingReviews: pendingReviews.data,
         inboxTrips: inbox.data,
+        inboxTotal: inbox.total,
+        inboxStats: inboxStats.data ?? undefined,
       }),
     [
       inbox.data,
+      inboxStats.data,
+      inbox.total,
       pendingReviews.data,
       workspace.data,
     ]
@@ -281,9 +286,11 @@ export function useOverviewSummary() {
       workspace.isLoading ||
       pendingReviews.isLoading ||
       inbox.isLoading ||
+      inboxStats.isLoading ||
       integrityIssues.isLoading,
     [
       inbox.isLoading,
+      inboxStats.isLoading,
       integrityIssues.isLoading,
       pendingReviews.isLoading,
       workspace.isLoading,
@@ -295,10 +302,11 @@ export function useOverviewSummary() {
       workspace.error ||
       pendingReviews.error ||
       inbox.error ||
+      inboxStats.error ||
       integrityIssues.error ||
       null
     );
-  }, [inbox.error, integrityIssues.error, pendingReviews.error, workspace.error]);
+  }, [inbox.error, inboxStats.error, integrityIssues.error, pendingReviews.error, workspace.error]);
 
   return {
     headerSubtitle,

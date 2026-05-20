@@ -7,6 +7,8 @@ import {
   extractDocument,
   getDocumentDownloadUrl,
   getDocuments,
+  getIntegration,
+  getIntegrations,
   getOverride,
   getOverrides,
   getPaymentsQueue,
@@ -75,6 +77,12 @@ describe('api-client public contract surface', () => {
       '/api/payments?limit=25&offset=10&queue_status=due_soon&payment_status=partially_paid&refund_status=not_applicable&due_bucket=due_4_7',
       expect.objectContaining({ method: 'GET', credentials: 'include' }),
     );
+
+    await getIntegrations();
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/integrations', expect.objectContaining({ method: 'GET', credentials: 'include' }));
+
+    await getIntegration('google_calendar');
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/integrations/google_calendar', expect.objectContaining({ method: 'GET', credentials: 'include' }));
   });
 
   it('keeps document upload/review/extract/apply endpoints wired to canonical BFF paths', async () => {

@@ -113,6 +113,9 @@ def _get_nested(data: Any, path: str, default: Any = None) -> Any:
             current = current.get(part, default)
             if current is None:
                 return default
+        elif isinstance(current, list) and part.isdigit():
+            idx = int(part)
+            current = current[idx] if idx < len(current) else default
         else:
             return default
     return current if current is not None else default

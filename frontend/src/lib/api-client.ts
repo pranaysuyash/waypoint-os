@@ -973,6 +973,44 @@ export async function getPaymentsQueue(params?: PaymentQueueParams): Promise<Pay
 }
 
 // ---------------------------------------------------------------------------
+// Integrations — agency-scoped provider status (read-only v1)
+// ---------------------------------------------------------------------------
+
+export type IntegrationStatus =
+  | 'disabled'
+  | 'connected'
+  | 'degraded'
+  | 'auth_expired'
+  | 'misconfigured';
+
+export interface Integration {
+  provider: string;
+  display_name: string;
+  enabled: boolean;
+  status: IntegrationStatus;
+  capabilities: string[];
+  category: string;
+  last_health_check_at: string | null;
+  last_success_at: string | null;
+  last_error_code: string | null;
+  last_error_message_safe: string | null;
+  updated_at: string | null;
+}
+
+export interface IntegrationListResponse {
+  integrations: Integration[];
+  total: number;
+}
+
+export async function getIntegrations(): Promise<IntegrationListResponse> {
+  return api.get<IntegrationListResponse>('/api/integrations');
+}
+
+export async function getIntegration(provider: string): Promise<Integration> {
+  return api.get<Integration>(`/api/integrations/${encodeURIComponent(provider)}`);
+}
+
+// ---------------------------------------------------------------------------
 // Booking Collection Link (Phase 4A) - agent + public endpoints
 // ---------------------------------------------------------------------------
 

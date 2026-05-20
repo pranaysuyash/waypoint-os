@@ -60,8 +60,25 @@ A living document of areas to explore, ideas to investigate, and potential impro
 - [ ] Approval workflow configuration
 - [ ] SLA tracking and alerts
 - [ ] Task assignment and routing
+- [ ] **Assisted enquiry assignment and routing** — Highlight long-unassigned enquiries now, then research suggested-owner and policy-based assignment using load, speed, availability, quality, specialization, fairness, and continuity signals.
+  - Exploration note: `Docs/exploration/ASSISTED_ENQUIRY_ASSIGNMENT_ROUTING_RESEARCH_2026-05-19.md`
+  - Near-term UI rule: unassigned overdue work should show age, for example `Assign owner (25d waiting)` rather than a generic assignment task.
+  - Long-term product path: manual visibility -> suggested owner -> assisted bulk assignment -> policy-based auto assignment.
+  - Routing must remain auditable, overrideable, and agency-configurable.
 - [ ] Bulk operations (bulk update, bulk quote)
 - [ ] Workflow analytics and bottlenecks
+- [ ] **Waypoint Agent assisted enquiry review** — Prepare enquiry summaries, missing-detail lists, and suggested replies for operator review without making "AI" the user-facing product promise.
+  - Exploration note: `Docs/exploration/WAYPOINT_AGENT_ENQUIRY_REVIEW_RESEARCH_2026-05-19.md`
+  - Product language: Waypoint Agent, suggested summary, suggested reply, missing details, prepared draft, review before saving.
+  - Avoid user-facing labels like AI-generated, LLM, autonomous, auto-send, or auto-decide unless compliance requires a specific disclosure.
+  - Exploration acceptance checks:
+  - define explicit-button first slice, then background preparation, then batch/backlog processing
+  - design app-level suggestion cache with prompt/model/provider/config versioning and invalidation rules
+  - keep provider caching/batching as optional cost optimization, not canonical product state
+  - route all provider calls through the server with privacy guard/redaction before transmission
+  - attribute prepared drafts as system/Waypoint Agent or operator-triggered in audit/history
+  - enforce per-agency cost/rate limits and graceful no-key/provider-unavailable fallback
+  - preserve the trust rule: Prepared by Waypoint, accepted by the operator
 
 ## A/B Testing & Experimentation
 

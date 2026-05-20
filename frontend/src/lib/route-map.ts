@@ -123,6 +123,25 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   // ── Payments read-model (v1 queue/read-only) ─────────────────────
   ["payments", { backendPath: "payments" }],
 
+  // ── Integrations (agency-scoped provider status) ─────────────────
+  ["integrations", { backendPath: "api/integrations" }],
+  ["integrations/{provider}", { backendPath: "api/integrations/{provider}" }],
+
+  // ── Booking execution (ops panel) ────────────────────────────────
+  ["booking-tasks/{id}", { backendPath: "api/booking-tasks/{id}" }],
+  ["booking-tasks/{id}/generate", { backendPath: "api/booking-tasks/{id}/generate" }],
+  ["booking-tasks/{id}/{taskId}", { backendPath: "api/booking-tasks/{id}/{taskId}" }],
+  ["booking-tasks/{id}/{taskId}/complete", { backendPath: "api/booking-tasks/{id}/{taskId}/complete" }],
+  ["booking-tasks/{id}/{taskId}/cancel", { backendPath: "api/booking-tasks/{id}/{taskId}/cancel" }],
+
+  // ── Confirmations + execution timeline (ops panel) ────────────────
+  ["trips/{id}/confirmations", { backendPath: "api/trips/{id}/confirmations" }],
+  ["trips/{id}/confirmations/{confirmationId}", { backendPath: "api/trips/{id}/confirmations/{confirmationId}" }],
+  ["trips/{id}/confirmations/{confirmationId}/record", { backendPath: "api/trips/{id}/confirmations/{confirmationId}/record" }],
+  ["trips/{id}/confirmations/{confirmationId}/verify", { backendPath: "api/trips/{id}/confirmations/{confirmationId}/verify" }],
+  ["trips/{id}/confirmations/{confirmationId}/void", { backendPath: "api/trips/{id}/confirmations/{confirmationId}/void" }],
+  ["trips/{id}/execution-timeline", { backendPath: "api/trips/{id}/execution-timeline" }],
+
   // ── Booking collection (Phase 4A) ──────────────────────────────
   ["trips/{id}/collection-link", { backendPath: "trips/{id}/collection-link" }],
   ["trips/{id}/booking-data", { backendPath: "trips/{id}/booking-data" }],

@@ -35,10 +35,19 @@ pytest-of-pranay/
 pytest-of-pranay*/
 .mypy_cache/
 .ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.pyre/
 
 # Notebook and Python caches
 **/__pycache__/
 **/*.pyc
+__pypackages__/
 
 # IDE and tool state
 .agent/

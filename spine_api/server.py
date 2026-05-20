@@ -357,6 +357,7 @@ try:
     from spine_api.routers import product_b_analytics as product_b_analytics_router
     from spine_api.routers import booking_tasks as booking_tasks_router
     from spine_api.routers import confirmations as confirmations_router
+    from spine_api.routers import integrations as integrations_router
     from spine_api.routers import public_checker as public_checker_router
     from spine_api.routers import public_collection as public_collection_router
     from spine_api.routers import legacy_ops as legacy_ops_router
@@ -1064,6 +1065,7 @@ app.include_router(analytics_router.router)
 app.include_router(product_b_analytics_router.router)
 app.include_router(booking_tasks_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(confirmations_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(integrations_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(public_checker_router.router)
 app.include_router(public_collection_router.router)
 app.include_router(legacy_ops_router.router, dependencies=[Depends(_auth_or_skip)])

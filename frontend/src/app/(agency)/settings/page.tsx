@@ -7,6 +7,7 @@ import {
   SlidersHorizontal,
   ShieldCheck,
   Users,
+  PlugZap,
   Save,
   RotateCcw,
   AlertCircle,
@@ -18,11 +19,13 @@ import { ProfileTab } from './components/ProfileTab';
 import { OperationalTab } from './components/OperationalTab';
 import { AutonomyTab } from './components/AutonomyTab';
 import { PeopleTab } from './components/PeopleTab';
+import { IntegrationsTab } from './components/IntegrationsTab';
 
 const TABS = [
   { id: 'profile', label: 'Profile', icon: Building2 },
   { id: 'operations', label: 'Operations', icon: SlidersHorizontal },
   { id: 'autonomy', label: 'Approval Rules', icon: ShieldCheck },
+  { id: 'integrations', label: 'Integrations', icon: PlugZap },
   { id: 'people', label: 'People', icon: Users },
 ] as const;
 
@@ -268,6 +271,9 @@ function SettingsPageInner() {
           )}
           {activeTab === 'autonomy' && (
             <AutonomyTab draft={activeDraft} onChange={updateDraft} />
+          )}
+          {activeTab === 'integrations' && (
+            <IntegrationsTab />
           )}
           {activeTab === 'people' && (
             <PeopleTab />

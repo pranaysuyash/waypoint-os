@@ -1,150 +1,404 @@
-# Waypoint OS
+# Waypoint OS (travel_agency_agent)
 
-**B2B Revenue and Operations Copilot for Boutique Travel Agencies.**
+Waypoint OS is an operations and revenue co-pilot for boutique travel agencies.
 
-Waypoint OS is an AI-powered operations platform that helps boutique travel agencies manage inbound inquiries, make intelligent booking decisions, generate strategy prompts, and maintain revenue pipeline health — all through a structured two-loop system.
+It ingests messy inbound travel notes, structures them into canonical trip packets, runs decision logic, and produces both operator-facing and traveler-safe outputs.
 
-## What It Does
+---
 
-- **Intake & Normalization**: Parse vague, contradictory, or under-specified travel inquiries from agency inboxes and normalize them into structured trip packets
-- **Gap Analysis & Decision**: Identify missing information, infer traveler preferences, classify trips (domestic/international), and score decision confidence
-- **Session Strategy & Prompt Bundle**: Build traveler-safe output bundles and internal operator packets with strategy context
-- **Workbench UI**: Next.js frontend for operators to review, validate, and execute the full pipeline
+## Start here (by role)
 
-## Architecture
+- **Operator / product reviewer**
+  - `Quick start`
+  - `API sanity checks`
+  - `Common failure modes`
+- **Backend engineer**
+  - `Architecture at a glance`
+  - `API surface`
+  - `Pre-PR verification checklist`
+- **Frontend engineer**
+  - `Developer workflows`
+  - `First 30 minutes in this repo`
+  - `Pre-PR verification checklist`
+- **Coding agent**
+  - `For coding agents (important)`
+  - `First 30 minutes in this repo`
+  - `Contract-change rules`
 
-### Two-Loop System
+---
 
-| Loop             | Purpose                                                        |
-| ---------------- | -------------------------------------------------------------- |
-| **Online Loop**  | Source → Normalize → Validate → Infer → Decide → Execute → Log |
-| **Offline Loop** | Eval Harness → Mutation → Score → Persist (if improved)        |
-
-### Pipeline Stages
-
-```
-Inquiry → NB01 Intake → NB02 Gap & Decision → NB03 Strategy & Prompt → Output
-```
-
-| Stage               | Responsibility                               | Key Outputs                           |
-| ------------------- | -------------------------------------------- | ------------------------------------- |
-| **NB01 — Intake**   | Parse, normalize, classify                   | SanitizedPacket, geography extraction |
-| **NB02 — Decision** | Gap detection, confidence scoring, inference | DecisionState, gap_report, confidence |
-| **NB03 — Strategy** | Traveler-safe bundle + internal prompt       | StrategyBundle, follow-up questions   |
-
-### Safety Model
-
-- **Traveler-safe output**: Structurally excludes raw packet data, internal confidence scores, and decision_state
-- **Internal bundle**: Full access to raw packet, confidence, and strategy context
-- **Leakage detection**: Production code path enforces separation (validated by 38+ tests)
-
-## Project Structure
-
-```
-├── src/intake/              # Core pipeline implementation
-│   ├── geography.py         # GeoNames + world cities destination filtering
-│   ├── extractors.py        # Trip detail extraction from natural language
-│   ├── decision.py          # Gap detection, confidence scoring, inference
-│   ├── strategy.py          # Traveler-safe + internal bundle builders
-│   ├── safety.py            # SanitizedPacketView and leakage detection
-│   ├── validation.py        # Input validation rules
-│   └── orchestration.py     # Pipeline coordination
-├── src/suitability/         # Activity suitability scoring
-│   ├── models.py            # Data models (ActivityDefinition, ParticipantRef, etc.)
-│   ├── scoring.py           # Tier 1 deterministic scoring
-│   ├── context_rules.py     # Tier 2 day/trip coherence rules
-│   ├── confidence.py        # Confidence calculation
-│   ├── catalog.py           # Static activity catalog
-│   └── integration.py       # Decision pipeline integration
-├── frontend/                # Next.js operator workbench
-│   ├── src/app/             # Routes (inbox, workbench, owner views)
-│   ├── src/components/      # UI components + design system
-│   └── src/lib/             # API clients, stores, types
-├── notebooks/               # Prototype & evaluation notebooks
-├── tests/                   # Unit, integration, and E2E tests
-├── data/fixtures/           # Scenario fixtures and test data
-├── specs/                   # JSON schemas and contracts
-├── prompts/                 # LLM prompt templates
-├── Docs/                    # Product specs, decision logs, strategy docs
-├── logs/                    # Runtime and test logs
-└── memory/                  # Project memory and institutional knowledge
-```
-
-## Getting Started
+## Quick start (real, working commands)
 
 ### Prerequisites
 
-- Python 3.13+
-- [uv](https://docs.astral.sh/uv/) package manager
+- Python `>=3.13`
+- [uv](https://docs.astral.sh/uv/) for Python dependency management
+- Node.js + npm for the frontend
 
-### Setup
+### 1) Install dependencies
 
 ```bash
-# Install dependencies
 uv sync
-
-# Run the backend
-uv run python main.py
-
-# Run tests
-uv run pytest
-
-# Run the frontend
-cd frontend && npm install && npm run dev
+cd frontend && npm install
 ```
 
-### Local Dev Account
+### 2) Start local stack
 
-A seeded test account exists for local browser testing. Do not use it in production.
+Use the repo helper (starts backend + frontend):
 
-| Field    | Value                                    |
-| -------- | ---------------------------------------- |
-| Email    | `newuser@test.com`                       |
-| Password | `testpass123`                            |
-| Agency   | `d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b` (name: Test) |
-| Role     | owner                                    |
+```bash
+./dev.sh
+```
 
-The smoke-test trip `trip_ops_smoke_001` (Amalfi Coast, proposal stage) lives in this agency and is used for Ops panel verification.
+Endpoints:
 
-### Key Commands
+- Backend API: `http://127.0.0.1:8000`
+- Backend health: `http://127.0.0.1:8000/health`
+- Frontend: `http://localhost:3000`
 
-| Command                      | Purpose                   |
-| ---------------------------- | ------------------------- |
-| `uv sync`                    | Install dependencies      |
-| `uv run python main.py`      | Run backend server        |
-| `uv run pytest`              | Run test suite            |
-| `uv run jupyter notebook`    | Open notebooks            |
-| `cd frontend && npm run dev` | Start frontend dev server |
+### 3) Run tests
 
-## Test Coverage
+```bash
+uv run pytest
+cd frontend && npm run test
+```
 
-| Area                                      | Tests                            | Status     |
-| ----------------------------------------- | -------------------------------- | ---------- |
-| Geography extraction                      | 10 tests                         | ✅ Passing |
-| Geography regression (concern separation) | 22 tests                         | ✅ Passing |
-| NB03 v0.2 strategy                        | 38 tests                         | ✅ Passing |
-| NB02 comprehensive                        | 81 tests (68 unit + 13 scenario) | ✅ Passing |
-| E2E freeze pack                           | Tests                            | ✅ Passing |
-| Follow-up mode                            | Tests                            | ✅ Passing |
-| Lifecycle retention                       | Tests                            | ✅ Passing |
+### 4) One-command verification
 
-## Tech Stack
+```bash
+./scripts/verify.sh
+```
 
-- **Backend**: Python 3.13, uv (package manager)
-- **Frontend**: Next.js (App Router), TypeScript, Zustand (state)
-- **AI/ML**: LLM-based extraction and decision inference
-- **Testing**: pytest, scenario-based testing
-- **Geography**: GeoNames dataset + world-cities.json (~590k cities)
+---
 
-> **License note:** GeoNames is CC-BY 4.0 and requires attribution. `world-cities.json` is supplemental and ODbL-1.0, so we keep it documented as licensed data rather than a proprietary dataset.
+## What this repo is for
 
-## Development Philosophy
+- **Agency intake normalization**: convert vague/contradictory inquiry text into structured packets
+- **Decision support**: classify blockers, confidence, and next-action state
+- **Strategy generation**: create internal operator guidance + traveler-safe messaging
+- **Operator workbench**: web UI for inbox, trip lifecycle, governance, settings, analytics, and review flows
 
-- **Preservation-first**: Never delete historical documentation or code
-- **Verification discipline**: Verify code works before moving to next task
-- **Reusable tools**: Build tools, not throwaway scripts
-- **Evidence-based**: Decisions backed by tests, specs, and real-world scenarios
+Core design principle: keep raw/internal decision context separate from traveler-facing output.
+
+---
+
+## Architecture at a glance
+
+### Pipeline flow
+
+```text
+Inquiry → NB01 Intake → NB02 Decision/Gaps → NB03 Strategy/Bundles → API/UI surfaces
+```
+
+### System diagram
+
+```mermaid
+flowchart LR
+  A[Inbound inquiry notes] --> B[NB01 Intake Normalization]
+  B --> C[NB02 Decision + Gap Analysis]
+  C --> D[NB03 Strategy + Bundle Construction]
+  D --> E[FastAPI surface<br/>spine_api/server.py]
+  E --> F[Next.js operator workbench]
+  E --> G[Traveler-safe outputs]
+  E --> H[Trip persistence + audit trails]
+```
+
+### Dual-output safety boundary
+
+- **Internal bundle**: includes richer context (decision state, confidence, strategy scaffolding)
+- **Traveler bundle**: excludes internal-only artifacts by design
+- **Leakage guard**: strict mode can block traveler output when unsafe terms are detected
+
+### Runtime surfaces
+
+- FastAPI app in `spine_api/server.py`
+- Next.js 16 frontend in `frontend/`
+- Legacy/prototype Streamlit app in `app.py` (not the main operator UI)
+
+---
+
+## Repository map (practical)
+
+```text
+spine_api/                      # FastAPI service, routers, contracts, persistence adapters
+src/intake/                     # Intake + decision + strategy pipeline implementation
+src/suitability/                # Suitability scoring and integration logic
+frontend/                       # Next.js operator workbench (React 19, TS)
+tests/                          # Python test suite
+frontend/src/**/__tests__/      # Frontend tests (Vitest)
+data/                           # Runtime and fixture data (see data notes below)
+alembic/                        # DB migrations
+Docs/                           # Specs, audits, status docs, implementation notes
+tools/                          # Reusable utilities and scripts
+```
+
+---
+
+## Configuration notes that matter
+
+### TripStore backend
+
+This codebase supports multiple trip persistence backends, selected via env.
+
+- `TRIPSTORE_BACKEND=sql` → PostgreSQL-backed trip persistence
+- Missing/other values can route to file-backed behavior in non-production contexts
+
+For consistent local behavior with agency data, keep `.env` aligned with SQL usage when expected.
+
+### Useful env vars (backend)
+
+- `SPINE_API_HOST` (default `127.0.0.1`)
+- `SPINE_API_PORT` (default `8000`)
+- `SPINE_API_CORS` (defaults include `localhost:3000`)
+- `TRAVELER_SAFE_STRICT` (`1/true/yes` to enforce strict leakage blocking)
+
+---
+
+## Developer workflows
+
+### Backend only
+
+```bash
+uv run uvicorn spine_api.server:app --port 8000 --reload
+```
+
+### Frontend only
+
+```bash
+cd frontend && npm run dev
+```
+
+### Lint and typecheck (frontend)
+
+```bash
+cd frontend && npm run lint && npm run typecheck
+```
+
+### Coverage (frontend)
+
+```bash
+cd frontend && npm run test:coverage
+```
+
+---
+
+## API surface (quick external map)
+
+The backend currently exposes a broad surface area (snapshot: `131` OpenAPI paths in `tests/fixtures/server_openapi_paths_snapshot.json`).
+
+Use this as a practical orientation map:
+
+| Domain | Representative endpoints |
+| --- | --- |
+| Health + run pipeline | `GET /health`, `POST /run`, `GET /runs/{run_id}` |
+| Auth + identity | `POST /api/auth/login`, `POST /api/auth/signup`, `GET /api/auth/me` |
+| Trips + lifecycle | `GET /trips`, `GET /trips/{trip_id}`, `POST /trips/{trip_id}/stage` |
+| Assignments | `GET /api/assignments/{trip_id}`, `POST /api/assignments/{trip_id}/assign` |
+| Settings + governance | `GET /api/settings`, `PUT /api/settings/pipeline`, `PUT /api/settings/autonomy` |
+| Analytics | `GET /analytics/summary`, `GET /analytics/pipeline`, `GET /analytics/revenue` |
+| Inbox + followups | `GET /inbox`, `GET /inbox/stats`, `POST /followups/{trip_id}/snooze` |
+| Integrations + public flows | `GET /api/integrations`, `POST /api/public-checker/run`, `POST /api/public/booking-collection/{agency_id}/{token}/submit` |
+
+### Auth expectations
+
+- Protected routes accept JWT auth via:
+  - `Authorization: Bearer <token>` header, or
+  - `access_token` cookie fallback
+- In local dev/test, auth can be bypassed when `SPINE_API_DISABLE_AUTH` is set (do **not** use this in production-like environments).
+
+### API discovery
+
+- Interactive docs: `http://127.0.0.1:8000/docs`
+- Route snapshots used in tests:
+  - `tests/fixtures/server_openapi_paths_snapshot.json`
+  - `tests/fixtures/server_route_snapshot.json`
+
+---
+
+## First 30 minutes in this repo
+
+If you are new (human or agent), this sequence gets you productive quickly.
+
+### Minute 0-5: boot and verify
+
+```bash
+uv sync
+cd frontend && npm install && cd ..
+./dev.sh
+```
+
+In another terminal:
+
+```bash
+curl -s http://127.0.0.1:8000/health
+```
+
+Expected: healthy JSON response and frontend reachable at `http://localhost:3000`.
+
+### Minute 5-15: run one backend + one frontend test slice
+
+```bash
+uv run pytest tests/test_inbox_router_contract.py -q
+cd frontend && npm run test -- src/app/(agency)/overview/__tests__/page.test.tsx
+```
+
+This confirms both stacks are wired before deep edits.
+
+### Minute 15-25: learn the main control points
+
+- Backend entry and router composition: `spine_api/server.py`
+- Pipeline orchestration: `src/intake/orchestration.py`
+- Contract models: `spine_api/contract.py`
+- Frontend route map/API client:
+  - `frontend/src/lib/route-map.ts`
+  - `frontend/src/lib/api-client.ts`
+
+### Minute 25-30: read project operating constraints
+
+Read these before proposing architecture or route changes:
+
+1. `AGENTS.md`
+2. `CLAUDE.md`
+3. `Docs/context/agent-start/AGENT_KICKOFF_PROMPT.txt`
+4. `Docs/context/agent-start/SESSION_CONTEXT.md`
+
+This avoids duplicate route creation, contract drift, and stale-context edits.
+
+---
+
+## Common failure modes (and fast fixes)
+
+| Symptom | Likely cause | Fast fix |
+| --- | --- | --- |
+| Frontend loads, but data appears empty or inconsistent | Backend is running with an unexpected TripStore mode | Confirm `.env` and runtime env include `TRIPSTORE_BACKEND=sql` when you expect SQL-backed trip data, then restart backend |
+| `./dev.sh` backend startup fails during SQL bootstrap | DB not reachable, migration drift, or invalid DB env | Check DB connection env vars, run `uv run alembic upgrade head`, then retry `./dev.sh` |
+| `http://localhost:3000` not reachable | Frontend dev server not running or port conflict | Run `cd frontend && npm run dev`; if port is occupied, free it or restart with a clean shell |
+| `http://127.0.0.1:8000/health` fails | Backend not running or failed at import/startup | Start backend with `uv run uvicorn spine_api.server:app --port 8000 --reload` and inspect terminal traceback |
+| Authenticated endpoints return `401` unexpectedly | Missing/expired JWT or cookie not present | Re-login via frontend, or send `Authorization: Bearer <token>` explicitly for API testing |
+| Tests fail after route/contract changes | Snapshot/contract files not aligned with current API | Re-run targeted tests and update contract snapshots only when intentional (`tests/fixtures/server_openapi_paths_snapshot.json`, `tests/fixtures/server_route_snapshot.json`) |
+
+---
+
+## API sanity checks (copy/paste)
+
+### Health + docs
+
+```bash
+curl -s http://127.0.0.1:8000/health
+open http://127.0.0.1:8000/docs
+```
+
+### Auth smoke check (token-based)
+
+```bash
+TOKEN="<paste-jwt-here>"
+curl -s http://127.0.0.1:8000/api/auth/me -H "Authorization: Bearer $TOKEN"
+```
+
+### Route map regression check
+
+```bash
+uv run pytest tests/test_inbox_router_contract.py -q
+```
+
+---
+
+## Pre-PR verification checklist
+
+Use this before opening or updating a PR.
+
+- [ ] Backend tests pass for changed scope
+  - `uv run pytest`
+- [ ] Frontend tests pass for changed scope
+  - `cd frontend && npm run test`
+- [ ] Frontend lint + typecheck pass
+  - `cd frontend && npm run lint && npm run typecheck`
+- [ ] Health endpoint works locally
+  - `curl -s http://127.0.0.1:8000/health`
+- [ ] API/contract changes were verified against real runtime behavior (not only mocks)
+- [ ] Docs updated for any user-facing or operator-facing behavior changes
+
+---
+
+## Contract-change rules
+
+If a PR changes API routes, response contracts, or request schemas:
+
+- Validate against running backend behavior (not mocks alone)
+- Update contract/snapshot artifacts intentionally:
+  `tests/fixtures/server_openapi_paths_snapshot.json` and
+  `tests/fixtures/server_route_snapshot.json`
+- Update docs in the same PR (`README.md` and/or `Docs/`)
+- Keep frontend route-map/client assumptions aligned:
+  `frontend/src/lib/route-map.ts` and `frontend/src/lib/api-client.ts`
+
+This repo treats contract drift as a regression, not a cleanup task.
+
+---
+
+## Local test account (for UI dogfooding)
+
+| Field | Value |
+| --- | --- |
+| Email | `newuser@test.com` |
+| Password | `testpass123` |
+| Agency ID | `d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b` |
+| Role | owner |
+
+Use only for local/dev verification.
+
+---
+
+## For coding agents (important)
+
+If you are an AI/coding agent working in this repo, read in this order:
+
+1. `/Users/pranay/AGENTS.md`
+2. `/Users/pranay/Projects/AGENTS.md`
+3. `AGENTS.md` and `CLAUDE.md` in this repo
+4. `Docs/context/agent-start/AGENT_KICKOFF_PROMPT.txt`
+5. `Docs/context/agent-start/SESSION_CONTEXT.md`
+
+Non-negotiables:
+
+- avoid destructive git operations unless explicitly requested
+- extend canonical routes/pipelines rather than creating duplicates
+- verify behavior with tests/commands before claiming completion
+- preserve documentation history; archive/move instead of deleting by default
+
+---
+
+## Documentation index
+
+- `Docs/` — product, architecture, review, status, and implementation artifacts
+- `Docs/review/assets/` — screenshot evidence for review docs
+- `TESTING_SETUP.md` — testing setup guidance
+- `AGENT_READINESS_SUMMARY.txt` / `AI_AGENT_SYSTEM_SUMMARY.txt` — readiness snapshots
+
+---
+
+## Tech stack
+
+- **Backend**: FastAPI, SQLAlchemy (async), Alembic, Pydantic v2
+- **Frontend**: Next.js 16, React 19, TypeScript, TanStack libs, Zustand
+- **Testing**: pytest + Vitest
+- **Observability**: OpenTelemetry wiring in backend and frontend deps
+
+---
+
+## Data + licensing notes
+
+- Geo/destination datasets in `data/` are treated as licensed inputs (not proprietary repo-authored datasets)
+- Keep attribution/compliance requirements intact when moving or replacing source files
+
+---
+
+## Current status
+
+This repository is active and evolving. Prefer the docs under `Docs/` and tests as runtime truth over stale summaries.
+
+---
 
 ## License
 
-Private — all rights reserved.
+Private repository. All rights reserved.

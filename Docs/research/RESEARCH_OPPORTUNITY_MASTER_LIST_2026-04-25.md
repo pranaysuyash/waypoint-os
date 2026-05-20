@@ -226,6 +226,7 @@ Each section lists specific research tasks that could be executed as standalone 
 - ❌ **Prompt injection security**: Travel-specific prompt injection risks
 - ❌ **Fine-tuning feasibility**: Is fine-tuning worth it for travel extraction by language?
 - ❌ **Model selection by task**: Which model for extraction vs planning vs generation vs translation?
+- ❌ **Waypoint Agent assisted enquiry review**: Research suggested summaries, missing details, suggested replies, app-level caching, background preparation, batch/backlog processing, privacy guardrails, and operator-first positioning. See `Docs/exploration/WAYPOINT_AGENT_ENQUIRY_REVIEW_RESEARCH_2026-05-19.md`.
 - 🔵 **RAG over agency's own data**: Building RAG pipelines over agency docs, past proposals, supplier contracts
 - 🔵 **Multimodal input research**: Passport scans, hotel brochures, handwritten notes, voice memos, photos of menus
 - 🔵 **Agent memory and learning**: How to make the AI learn agency preferences over time (not just per-trip)

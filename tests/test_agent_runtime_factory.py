@@ -83,7 +83,7 @@ class TestBuildAgentRuntimeConfig:
     def test_invalid_recovery_requeue_mode_fails(self, monkeypatch):
         from spine_api.services.agent_runtime_factory import build_agent_runtime_config
 
-        monkeypatch.setenv("AGENT_RECOVERY_REQUEUE_MODE", "sql_queue")
+        monkeypatch.setenv("AGENT_RECOVERY_REQUEUE_MODE", "invalid_mode")
         with pytest.raises(ValueError, match="AGENT_RECOVERY_REQUEUE_MODE"):
             build_agent_runtime_config()
 
@@ -209,6 +209,7 @@ class TestBuildAgentRuntimeFromConfigValidation:
             build_agent_runtime_from_config,
         )
 
-        config = AgentRuntimeConfig(recovery_requeue_mode="sql_queue")
+        config = AgentRuntimeConfig(recovery_requeue_mode="invalid_mode")
         with pytest.raises(ValueError, match="recovery_requeue_mode"):
             build_agent_runtime_from_config(config)
+

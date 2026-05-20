@@ -20,9 +20,10 @@ const baseSummary = {
       id: 'trip-1',
       priority: 'high',
       source: 'trip',
-      title: 'Trip is overdue',
-      subtitle: 'Japan family trip',
-      meta: 'Travel 24 May 2026',
+      label: 'Trip',
+      title: 'Japan family trip',
+      subtitle: 'Travel 24 May 2026',
+      meta: 'Planning overdue',
       reason: 'Customer details are still missing.',
       href: '/trips/trip_1',
       ctaLabel: 'Open trip',
@@ -193,7 +194,7 @@ describe('OverviewPage', () => {
 
     expect(screen.getByText('2 trips in planning · 5 enquiries · 1 quote to review')).toBeInTheDocument();
     expect(screen.getByText('Action Required')).toBeInTheDocument();
-    expect(screen.getByText('Trip is overdue')).toBeInTheDocument();
+    expect(screen.getByText('Japan family trip')).toBeInTheDocument();
     expect(screen.getByText('Customer details are still missing.')).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: /trips in planning/i })[0]).toHaveAttribute('href', ROUTES.workspaces);
     expect(screen.getAllByRole('link', { name: /new enquiries/i })[0]).toHaveAttribute('href', ROUTES.inbox);

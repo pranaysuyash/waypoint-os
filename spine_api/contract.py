@@ -592,6 +592,13 @@ class InboxStatsResponse(BaseModel):
     unassigned: int
     critical: int
     atRisk: int
+    breached: int = 0
+    incomplete: int = 0
+    missingCustomer: int = 0
+    missingTripBasics: int = 0
+    oldestWaitingDays: Optional[int] = None
+    oldestUnassignedWaitingDays: Optional[int] = None
+    statsCoverage: int = 0
 
 
 class AssignInboxRequest(BaseModel):

@@ -99,4 +99,53 @@ describe("resolveBackendPath", () => {
   it("maps the payments read-model queue endpoint through the proxy", () => {
     expect(resolveBackendPath(["payments"])).toBe("payments");
   });
+
+  it("maps integration status paths through the proxy", () => {
+    expect(resolveBackendPath(["integrations"])).toBe("api/integrations");
+    expect(resolveBackendPath(["integrations", "whatsapp"])).toBe(
+      "api/integrations/whatsapp"
+    );
+    expect(resolveBackendPath(["integrations", "gmail"])).toBe(
+      "api/integrations/gmail"
+    );
+  });
+
+  it("maps booking-task ops panel paths through the proxy", () => {
+    expect(resolveBackendPath(["booking-tasks", "trip_abc"])).toBe(
+      "api/booking-tasks/trip_abc"
+    );
+    expect(resolveBackendPath(["booking-tasks", "trip_abc", "generate"])).toBe(
+      "api/booking-tasks/trip_abc/generate"
+    );
+    expect(resolveBackendPath(["booking-tasks", "trip_abc", "task_1"])).toBe(
+      "api/booking-tasks/trip_abc/task_1"
+    );
+    expect(resolveBackendPath(["booking-tasks", "trip_abc", "task_1", "complete"])).toBe(
+      "api/booking-tasks/trip_abc/task_1/complete"
+    );
+    expect(resolveBackendPath(["booking-tasks", "trip_abc", "task_1", "cancel"])).toBe(
+      "api/booking-tasks/trip_abc/task_1/cancel"
+    );
+  });
+
+  it("maps confirmation and execution-timeline ops panel paths through the proxy", () => {
+    expect(resolveBackendPath(["trips", "trip_abc", "confirmations"])).toBe(
+      "api/trips/trip_abc/confirmations"
+    );
+    expect(resolveBackendPath(["trips", "trip_abc", "confirmations", "conf_1"])).toBe(
+      "api/trips/trip_abc/confirmations/conf_1"
+    );
+    expect(resolveBackendPath(["trips", "trip_abc", "confirmations", "conf_1", "record"])).toBe(
+      "api/trips/trip_abc/confirmations/conf_1/record"
+    );
+    expect(resolveBackendPath(["trips", "trip_abc", "confirmations", "conf_1", "verify"])).toBe(
+      "api/trips/trip_abc/confirmations/conf_1/verify"
+    );
+    expect(resolveBackendPath(["trips", "trip_abc", "confirmations", "conf_1", "void"])).toBe(
+      "api/trips/trip_abc/confirmations/conf_1/void"
+    );
+    expect(resolveBackendPath(["trips", "trip_abc", "execution-timeline"])).toBe(
+      "api/trips/trip_abc/execution-timeline"
+    );
+  });
 });

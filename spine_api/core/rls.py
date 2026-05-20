@@ -58,6 +58,8 @@ RLS_TENANT_TABLES: tuple[str, ...] = (
     "booking_tasks",
     "booking_confirmations",
     "execution_events",
+    # Integration enablement (Phase 6A)
+    "agency_integrations",
 )
 
 RLS_EXCLUDED_AGENCY_TABLES: dict[str, str] = {

@@ -256,6 +256,13 @@ export async function getInboxStats(): Promise<{
   unassigned: number;
   critical: number;
   atRisk: number;
+  breached: number;
+  incomplete: number;
+  missingCustomer: number;
+  missingTripBasics: number;
+  oldestWaitingDays: number | null;
+  oldestUnassignedWaitingDays: number | null;
+  statsCoverage: number;
 }> {
   return api.get('/api/inbox/stats');
 }

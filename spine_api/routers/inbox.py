@@ -21,7 +21,7 @@ from spine_api.contract import (
 )
 from spine_api.core.auth import get_current_agency
 from spine_api.models.tenant import Agency
-from spine_api.services.inbox_projection import build_inbox_response
+from spine_api.services.inbox_projection import InboxProjectionService, build_inbox_response
 
 try:
     from spine_api import persistence
@@ -123,22 +123,85 @@ def get_inbox_stats(
         payload = trip.get("analytics")
         return payload if isinstance(payload, dict) else {}
 
+    def has_known_value(value: object) -> bool:
+        if not isinstance(value, str):
+            return value is not None
+        cleaned = value.strip().lower()
+        return bool(cleaned) and cleaned not in {"tbd", "to confirm", "unknown", "not set", "n/a", "-"}
+
+    def has_customer_identity(value: object) -> bool:
+        if not isinstance(value, str):
+            return False
+        cleaned = value.strip().lower()
+        if not cleaned:
+            return False
+        return not (
+            cleaned.startswith("test_fixture")
+            or cleaned.startswith("fixture")
+            or cleaned.startswith("sample")
+            or cleaned.startswith("demo")
+            or cleaned.startswith("client ")
+        )
+
     agency_id = agency.id
     total = TripStore.count_trips(status=_INBOX_STATUSES, agency_id=agency_id)
 
-    trips = TripStore.list_trip_summaries(status=_INBOX_STATUSES, limit=500, agency_id=agency_id)
+    raw_trips = TripStore.list_trip_summaries(status=_INBOX_STATUSES, limit=max(1, min(total, 10000)), agency_id=agency_id)
+    projected_trips = InboxProjectionService().project_all(raw_trips)
 
-    unassigned = sum(1 for t in trips if not t.get("assigned_to"))
+    unassigned = sum(1 for t in projected_trips if not t.get("assignedTo"))
     critical = sum(
-        1 for t in trips
+        1 for t in raw_trips
         if analytics_payload(t).get("escalation_severity") in ("high", "critical")
     )
     at_risk = sum(
-        1 for t in trips
+        1 for t in projected_trips
+        if t.get("slaStatus") == "at_risk"
+    )
+    breached = sum(
+        1 for t in projected_trips
+        if t.get("slaStatus") == "breached"
+    )
+    incomplete = sum(
+        1 for t in projected_trips
+        if "incomplete" in t.get("flags", [])
+    )
+    missing_customer = sum(
+        1 for t in projected_trips
+        if not has_customer_identity(t.get("customerName"))
+    )
+    missing_trip_basics = sum(
+        1 for t in projected_trips
+        if not has_known_value(t.get("destination")) or not has_known_value(t.get("dateWindow"))
+    )
+    waiting_days = [
+        t.get("daysInCurrentStage")
+        for t in projected_trips
+        if isinstance(t.get("daysInCurrentStage"), int)
+    ]
+    unassigned_waiting_days = [
+        t.get("daysInCurrentStage")
+        for t in projected_trips
+        if not t.get("assignedTo") and isinstance(t.get("daysInCurrentStage"), int)
+    ]
+    legacy_at_risk = sum(
+        1 for t in raw_trips
         if analytics_payload(t).get("sla_status") == "at_risk"
     )
 
-    return {"total": total, "unassigned": unassigned, "critical": critical, "atRisk": at_risk}
+    return {
+        "total": total,
+        "unassigned": unassigned,
+        "critical": critical,
+        "atRisk": max(at_risk, legacy_at_risk),
+        "breached": breached,
+        "incomplete": incomplete,
+        "missingCustomer": missing_customer,
+        "missingTripBasics": missing_trip_basics,
+        "oldestWaitingDays": max(waiting_days) if waiting_days else None,
+        "oldestUnassignedWaitingDays": max(unassigned_waiting_days) if unassigned_waiting_days else None,
+        "statsCoverage": len(projected_trips),
+    }
 
 
 @router.post("/inbox/bulk")

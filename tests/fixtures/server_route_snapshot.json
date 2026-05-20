@@ -1,5 +1,5 @@
 {
-  "route_count": 148,
+  "route_count": 150,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -412,6 +412,22 @@
     {
       "path": "/api/drafts/{draft_id}/runs",
       "name": "get_draft_runs",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/integrations",
+      "name": "list_integrations",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/integrations/{provider}",
+      "name": "get_integration",
       "methods": [
         "GET"
       ],

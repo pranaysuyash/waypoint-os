@@ -33,12 +33,24 @@ describe('governance hook contract surface', () => {
   });
 
   it('returns inbox stats with null while loading and backend data once resolved', async () => {
-    vi.mocked(getInboxStats).mockResolvedValueOnce({ total: 5, unassigned: 2, critical: 1, atRisk: 3 });
+    vi.mocked(getInboxStats).mockResolvedValueOnce({
+      total: 5,
+      unassigned: 2,
+      critical: 1,
+      atRisk: 3,
+      breached: 1,
+      incomplete: 2,
+      missingCustomer: 1,
+      missingTripBasics: 2,
+      oldestWaitingDays: 8,
+      oldestUnassignedWaitingDays: 7,
+      statsCoverage: 5,
+    });
 
     const { result } = renderHook(() => useInboxStats(), { wrapper });
 
     expect(result.current.data).toBeNull();
-    await waitFor(() => expect(result.current.data).toEqual({ total: 5, unassigned: 2, critical: 1, atRisk: 3 }));
+    await waitFor(() => expect(result.current.data).toMatchObject({ total: 5, unassigned: 2, critical: 1, atRisk: 3 }));
     expect(getInboxStats).toHaveBeenCalledOnce();
   });
 });

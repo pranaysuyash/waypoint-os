@@ -45,6 +45,27 @@ If instructions conflict, follow the stricter rule and cite concrete file paths.
 - Note: default `clawpatch review` only targets features in `pending` or `error` status; explicit `--feature` is required to re-run review on an existing `needs-fix` feature.
 - Continue holding off on broader CI/tooling documentation until full adoption is complete.
 
+### Hermes Agent macOS `MallocStackLogging` Warnings (Harmless)
+
+When running `hermes-ui start` on macOS, you may see repeated warnings like:
+```
+Python(44004) MallocStackLogging: can't turn off malloc stack logging because it was not enabled.
+```
+
+**What's happening:** Hermes spawns Python file-search subprocesses that try to disable malloc logging, but it was never enabled. This is a benign macOS system message, not an error.
+
+**Suppress it:** Set `MALLOC_LOG_FILE=/dev/null` before running Hermes:
+```bash
+export MALLOC_LOG_FILE=/dev/null && hermes-ui start
+```
+
+Or add to your shell profile:
+```bash
+echo 'export MALLOC_LOG_FILE=/dev/null' >> ~/.zprofile
+```
+
+This prevents the system from managing malloc logging entirely, eliminating the warning without changing any behavior.
+
 ### Common Task → Right Skill
 
 | Task                 | Use This Skill                   | Location           |
