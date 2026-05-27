@@ -364,6 +364,14 @@ For each recommendation, document:
 - After verification, run tests.
 - Record key verification outcomes in docs.
 
+### Python Request Performance Verification (Pyinstrument)
+
+- When Python endpoint latency or backend slowness is in scope, use `pyinstrument` as needed and save reports under `Docs/profiling/pyinstrument/`.
+- Prefer ephemeral execution first:
+  - `uv run --with pyinstrument pyinstrument -r html --outfile Docs/profiling/pyinstrument/<name>.html -m pytest <target> -q`
+- For protected routes, profile authenticated requests (real session flow) instead of unauthenticated calls so dependency/auth DB costs are visible in the trace.
+- For in-process ASGI profiling, ensure app lifespan runs (for example with `asgi-lifespan`) to avoid false failures from uninitialized middleware state.
+
 ### API Contract Verification (Critical — Mandatory for FE/BE Integration Work)
 
 **Rule: Never assume the shape of API responses. Test the real contract first.**

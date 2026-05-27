@@ -6,6 +6,51 @@ The goal is not to make the smallest patch. The goal is to protect the project, 
 
 ---
 
+## 0. Boldness and Long-Term Build Mandate
+
+- Build for the **best app**, not the safest small change.
+- Do not optimize for "minimal risk" when that blocks the right long-term architecture.
+- Prefer bold, durable, first-principles solutions over narrow patchwork.
+- If a small fix is chosen, explicitly justify why it is still on the long-term path and not a dead-end workaround.
+- When tradeoffs appear, prioritize product quality, system coherence, and future leverage over local convenience.
+- Proceed with ownership and momentum; do not stall at plan-only mode when implementation is feasible.
+
+### 0.1 Missed-Anything Sweep (Required Before "Done")
+
+- Re-check instruction stack compliance (including `agent-start` and fallback loop).
+- Re-check canonical paths: no duplicate routes, no parallel truth sources, no shadow pipelines.
+- Re-check end-to-end flow: input -> processing -> storage -> output -> operator visibility.
+- State the exact end-user behavior changed by this work and the concrete value delivered across three levels: user value, business/team value, and internal/operational value.
+- Re-check for unclosed gaps: TODOs, stubs, disabled paths, placeholder logic, silent fallback behavior.
+- Re-check related files/tests touched by the same behavior, not just the edited file; remove warnings in those touched checks or explicitly document why they remain.
+- Re-check docs/tests/runtime evidence so completion claims match real behavior.
+- If any gap remains, report it explicitly with the concrete closure path; do not hide it behind "safe scope."
+
+### 0.2 Confidence Honesty Standard
+
+- Scope: this confidence standard applies to implementation, code review, search/discovery, suggestions, analysis, planning, and all agent outputs.
+- Do not claim "100% confident" unless there is direct evidence for that claim from the relevant mode (for example: code/runtime/tests for implementation, or primary-source verification for research/analysis).
+- Default to explicit confidence with proof: what is verified, what is inferred, and what remains uncertain.
+- Before calling work complete, list any fragile area and the concrete hardening path.
+- Never use confident language to hide unknowns, skipped checks, or unresolved edge cases.
+- Confidence gate loop (required):
+  - Ask: "Am I factually 100% confident in this output based on evidence?"
+  - If no: enumerate all plausible vulnerabilities, failure modes, contract gaps, and regression risks.
+  - Apply fixes/corrections for each confirmed risk, then re-run the relevant verification checks.
+  - Repeat this loop until no unverified critical risk remains; only then claim full confidence.
+
+### 0.3 Documentation and Exploration Continuity (Required)
+
+- Documentation is part of delivery, not optional polish. If work changed behavior, decisions, risks, contracts, workflows, exploration direction, or strategy, update durable project docs in the same pass.
+- Maintain a running project-intelligence trail while working: explorations, discussions, decisions, alternatives considered, evidence, what changed, what was verified, and what remains open.
+- Do not close a task with "implemented but undocumented" unless the user explicitly asks for code-only output.
+- If you discover a topic that meaningfully affects product direction, architecture, reliability, or research strategy, add it to the relevant exploration/research map immediately with context and why it matters.
+- Treat exploration/research maps as living systems: append new findings, reclassify stale assumptions, and link findings to concrete code paths or files where possible.
+- If documentation was skipped due to urgency, create an explicit documentation debt item with owner, scope, and closure criteria before marking done.
+- Prefer repo-local canonical locations for all notes, explorations, discussions, reviews, investigations, decisions, and maps; avoid scattering durable knowledge in ephemeral chat only.
+
+---
+
 ## 1. Core Context Requirements
 
 - **Instruction loop is mandatory**:
@@ -34,6 +79,8 @@ The goal is not to make the smallest patch. The goal is to protect the project, 
 - Code, tests, docs, prompts, screenshots, instruction files, generated-but-source-controlled files, investigation notes, and review artifacts may all be valid project work.
 - Do not discard anything merely because it is unrelated to the current task.
 - If multiple agents are active, expect state to change between one message and the next. Re-check before acting.
+- Parallel-agent activity is not a stop condition. Do not pause only because the tree is dirty or changing.
+- Continue delivery by rebasing your understanding on current files, preserving others' work, and applying focused additive edits on top of live state.
 
 ---
 
@@ -154,13 +201,15 @@ If another agent gives a summary, treat it as a hypothesis. Verify against curre
 
 ---
 
-## 6. “Pre-existing” Is Not an Excuse
+## 6. “Pre-existing” Is Not an Excuse — Fix It
 
 Agents must not use “pre-existing” as a way to skip work, avoid responsibility, or continue while the repo is broken.
 
-A failure being pre-existing only changes how it is scoped. It does not make the failure irrelevant.
+**Knowing about a pre-existing issue is not permission to leave it. It is a mandate to resolve it.**
 
-A failure is only pre-existing if:
+If you are aware of a pre-existing issue — whether from prior context, memory, a previous agent's handoff, or your own inspection — you are responsible for fixing it as part of the current work. Awareness removes the “I didn't know” defense entirely. Fix it now, following the same principles and quality bar as everything else in the session. Do not downgrade the fix standard because the issue predates you.
+
+A failure is only genuinely pre-existing if:
 
 - it existed on `origin/master` or a captured baseline before the current work, and
 - proof is documented with command output, and
@@ -168,23 +217,23 @@ A failure is only pre-existing if:
 
 If the failing file, dependency, type, route, contract, or behavior was touched in the current work sequence, assume the current work introduced or exposed the failure until proven otherwise.
 
-When an issue is genuinely pre-existing:
+**Blast radius rule:** When an issue is in the blast radius of current work — meaning the same file, module, dependency chain, or behavioral path was touched — fix the issue in the same pass. “Blast radius” is not limited to the exact line changed; it includes the full module, its callers, its tests, and its documentation.
 
-- document it clearly
+When an issue is genuinely pre-existing and clearly outside the blast radius:
+
+- document it clearly with proof (command output)
 - classify severity
 - check if current work made it worse
 - check if current work depends on it
 - check if an existing supersession, replacement, migration, or canonical path already solves it
-- decide whether to fix now, include in the current batch, or create a tracked follow-up
-- do not continue silently
+- fix it in the current session unless explicitly out of scope and explicitly approved to defer
 
 Pre-existing failures must be handled through one of these rules:
 
-1. **Fix now** — if security, data loss, contract breakage, broken build/typecheck, or user-facing regression.
+1. **Fix now (default)** — fix it. This is the default path. Pre-existing does not mean defer.
 2. **Supersession rule** — if there is a newer canonical implementation replacing the failing path, update callers/tests/docs to the canonical path or document deprecation.
-3. **Containment rule** — if unrelated and not safe to fix now, document exact repro, ownership, severity, and follow-up.
-4. **Baseline rule** — if truly unrelated and already known, provide proof and continue only with explicit approval.
-5. **No silent carry rule** — never leave a failing check unmentioned just because it predates the current local edit.
+3. **Containment rule** — only if the fix is genuinely out of scope for this session AND explicitly approved: document exact repro, ownership, severity, closure criteria, and create a tracked follow-up. This is not a get-out clause.
+4. **No silent carry rule** — never leave a failing check unmentioned just because it predates the current local edit. Every known issue must be explicitly acknowledged and dispositioned.
 
 Do not continue to the next group if typecheck/build/tests fail in touched areas.
 

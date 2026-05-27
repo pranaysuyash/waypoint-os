@@ -314,25 +314,29 @@ _agent_runtime_bundle = None
 _agent_work_coordinator = None
 _recovery_agent = None
 _agent_supervisor = None
+_requeue_worker_service = None
 
 
 def _build_agent_runtime_bundle():
     """Construct and wire the agent runtime bundle during lifespan startup."""
-    global _agent_runtime_bundle, _agent_work_coordinator, _recovery_agent, _agent_supervisor
+    global _agent_runtime_bundle, _agent_work_coordinator, _recovery_agent, _agent_supervisor, _requeue_worker_service
 
     from spine_api.routers import agent_runtime as agent_runtime_router
 
     bundle = build_agent_runtime(
         _trip_repo=_agent_trip_repo,
         _audit_sink=_agent_audit_sink,
+        _run_spine_fn=run_spine_once,
     )
     _agent_runtime_bundle = bundle
     _agent_work_coordinator = bundle.coordinator
     _recovery_agent = bundle.recovery_agent
     _agent_supervisor = bundle.supervisor
+    _requeue_worker_service = bundle.requeue_worker_service
     agent_runtime_router.configure_runtime(
         agent_supervisor=_agent_supervisor,
         recovery_agent=_recovery_agent,
+        requeue_worker_service=_requeue_worker_service,
         runtime_config=bundle.config.to_dict(),
     )
     return bundle
@@ -1002,6 +1006,8 @@ async def lifespan(app: FastAPI):
         _build_agent_runtime_bundle()
         _recovery_agent.start()
         _agent_supervisor.start()
+        if _requeue_worker_service is not None:
+            _requeue_worker_service.start()
         _zombie_reaper_start()
     # Note: We no longer auto-seed at startup.
     # Seeding is now done per-agency for test users in the /trips endpoint.
@@ -1010,6 +1016,8 @@ async def lifespan(app: FastAPI):
     # Shutdown
     if not os.environ.get("RUNNING_TESTS"):
         _zombie_reaper_stop()
+        if _requeue_worker_service is not None:
+            _requeue_worker_service.stop()
         _agent_supervisor.stop()
         _recovery_agent.stop()
     watchdog.stop()
@@ -1266,6 +1274,8 @@ def build_envelopes(data: dict[str, Any]) -> List[SourceEnvelope]:
             "pace_preference",
             "lead_source",
             "activity_provenance",
+            "trip_priorities",
+            "date_flexibility",
             "date_year_confidence",
         )
         if data.get(field)

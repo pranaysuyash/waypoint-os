@@ -164,6 +164,13 @@ class TestBuildAgentRuntimeFromConfig:
         assert "supervisor" in health
         assert "recovery_agent" in health
 
+    def test_sql_queue_with_runner_builds_requeue_worker_service(self, monkeypatch):
+        from spine_api.services.agent_runtime_factory import AgentRuntimeConfig, build_agent_runtime_from_config
+
+        config = AgentRuntimeConfig(recovery_requeue_mode="sql_queue")
+        bundle = build_agent_runtime_from_config(config, _run_spine_fn=lambda **kwargs: {"ok": True})
+        assert bundle.requeue_worker_service is not None
+
     def test_health_config_dict_format(self, monkeypatch):
         from spine_api.services.agent_runtime_factory import (
             AgentRuntimeConfig,
@@ -212,4 +219,3 @@ class TestBuildAgentRuntimeFromConfigValidation:
         config = AgentRuntimeConfig(recovery_requeue_mode="invalid_mode")
         with pytest.raises(ValueError, match="recovery_requeue_mode"):
             build_agent_runtime_from_config(config)
-

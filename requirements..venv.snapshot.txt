@@ -1,0 +1,7 @@
+# Generated: 2026-05-25T10:13:46.842275
+# Env path: /Users/pranay/Projects/travel_agency_agent/.venv
+# Project path: /Users/pranay/Projects/travel_agency_agent
+# Detected manager: uv
+# Project last modified: 2026-05-25T09:53:08.324542
+# Freeze status: ERROR: /Users/pranay/Projects/travel_agency_agent/.venv/bin/python: No module named pip
+

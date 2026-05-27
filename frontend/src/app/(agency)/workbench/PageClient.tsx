@@ -219,6 +219,15 @@ function WorkbenchContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // run once on mount — handles stale bookmarks / SOP links
 
+  // Fast-capture redirect: New Inquiry entry should land on canonical intake capture surface.
+  useEffect(() => {
+    const entry = getSearchParam('entry');
+    const captureMode = getSearchParam('capture_mode');
+    if (tripId || entry !== 'new' || captureMode !== 'call') return;
+    replace('/trips/new/intake?capture_mode=call&entry=new');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Draft hydration - load draft from backend and populate store
   const prevDraftRef = useRef<string | null>(null);
   const draftLoadingRef = useRef(false);

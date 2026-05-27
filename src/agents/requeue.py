@@ -173,7 +173,15 @@ class SQLSpineJobQueueRequeuePort:
         )
         if accepted:
             return RequeueResult(accepted=True, mode="sql_queue", job_id=job_id, reason=reason, retryable=False)
-        return RequeueResult(accepted=False, mode="sql_queue", job_id=job_id, reason="Duplicate requeue already enqueued")
+        return RequeueResult(accepted=True, mode="sql_queue", job_id=job_id, reason="Duplicate requeue already enqueued", retryable=False)
+
+    def get_trip_attempts(self, trip_id: str) -> int:
+        stats = self._job_store.trip_stats(trip_id)
+        return int(stats.get("attempts") or 0)
+
+    def is_trip_poisoned(self, trip_id: str) -> bool:
+        stats = self._job_store.trip_stats(trip_id)
+        return bool(stats.get("poisoned"))
 
 
 # ---------------------------------------------------------------------------

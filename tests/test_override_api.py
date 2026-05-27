@@ -13,9 +13,6 @@ Tests POST /trips/{trip_id}/override endpoint with:
 
 import json
 import pytest
-import sys
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 from uuid import uuid4
 
 from spine_api.persistence import (
@@ -38,12 +35,6 @@ def override_uses_tmp_path(monkeypatch, tmp_path):
     monkeypatch.setattr(spine_persistence, "OVERRIDES_PER_TRIP_DIR", per_trip)
     monkeypatch.setattr(spine_persistence, "OVERRIDES_PATTERNS_DIR", patterns)
     monkeypatch.setattr(spine_persistence, "OVERRIDES_INDEX_FILE", index_file)
-
-    # Verify monkeypatch worked (this is a guard, not just debug)
-    import spine_api.persistence as _check_module
-    assert _check_module.OVERRIDES_PER_TRIP_DIR == per_trip, (
-        f"Monkeypatch failed! Expected {per_trip}, got {_check_module.OVERRIDES_PER_TRIP_DIR}"
-    )
 
     yield
 

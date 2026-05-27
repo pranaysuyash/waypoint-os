@@ -19,8 +19,7 @@ from spine_api.contract import (
     InboxResponse,
     InboxStatsResponse,
 )
-from spine_api.core.auth import get_current_agency
-from spine_api.models.tenant import Agency
+from spine_api.core.auth import get_current_agency_id
 from spine_api.services.inbox_projection import InboxProjectionService, build_inbox_response
 
 try:
@@ -55,7 +54,7 @@ def get_inbox(
     maxValue: Optional[int] = Query(None),
     minUrgency: Optional[int] = Query(None),
     minImportance: Optional[int] = Query(None),
-    agency: Agency = Depends(get_current_agency),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """
     Canonical inbox endpoint — service-level projected, filtered, sorted, paginated.
@@ -64,8 +63,6 @@ def get_inbox(
     filterCounts are computed over the FULL projected dataset so tab counts
     are accurate regardless of active filter or page size.
     """
-    agency_id = agency.id
-
     raw_trips = TripStore.list_trip_summaries(
         status=_INBOX_STATUSES,
         limit=5000,
@@ -92,7 +89,7 @@ def get_inbox(
 @router.post("/inbox/assign", response_model=AssignInboxResponse)
 def assign_inbox_trips(
     body: AssignInboxRequest,
-    agency: Agency = Depends(get_current_agency),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """
     Assign inbox trips to an agent.
@@ -116,7 +113,7 @@ def assign_inbox_trips(
 
 @router.get("/inbox/stats", response_model=InboxStatsResponse)
 def get_inbox_stats(
-    agency: Agency = Depends(get_current_agency),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Return aggregate inbox statistics for Overview cards."""
     def analytics_payload(trip: dict) -> dict:
@@ -143,7 +140,6 @@ def get_inbox_stats(
             or cleaned.startswith("client ")
         )
 
-    agency_id = agency.id
     total = TripStore.count_trips(status=_INBOX_STATUSES, agency_id=agency_id)
 
     raw_trips = TripStore.list_trip_summaries(status=_INBOX_STATUSES, limit=max(1, min(total, 10000)), agency_id=agency_id)
@@ -207,13 +203,13 @@ def get_inbox_stats(
 @router.post("/inbox/bulk")
 def bulk_inbox_action(
     request: dict,
-    agency: Agency = Depends(get_current_agency),
+    agency_id: str = Depends(get_current_agency_id),
 ):
     """Apply bulk actions to inbox items."""
     action = request.get("action")
     trip_ids = request.get("trip_ids", [])
 
-    agency_trips = TripStore.list_trips(agency_id=agency.id, limit=10000)
+    agency_trips = TripStore.list_trips(agency_id=agency_id, limit=10000)
     agency_trip_ids = {t["id"] for t in agency_trips if t.get("id")}
     trip_ids = [tid for tid in trip_ids if tid in agency_trip_ids]
 

@@ -17,6 +17,8 @@ def test_intake_pipeline_hardening_new_fields():
         pace_preference="relaxed",
         lead_source="referral",
         activity_provenance="direct_call",
+        trip_priorities="Kid-friendly hotel, direct flights, beach access",
+        date_flexibility="moderate",
         date_year_confidence="high",
         stage="discovery",
         operating_mode="normal_intake"
@@ -48,6 +50,8 @@ def test_intake_pipeline_hardening_new_fields():
     assert facts.get("pace_preference").value == "relaxed"
     assert facts.get("lead_source").value == "referral"
     assert facts.get("activity_provenance").value == "direct_call"
+    assert facts.get("trip_priorities").value == "Kid-friendly hotel, direct flights, beach access"
+    assert facts.get("date_flexibility").value == "moderate"
     assert facts.get("date_year_confidence").value == "high"
 
     print("Intake pipeline hardening test passed!")

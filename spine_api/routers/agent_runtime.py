@@ -25,14 +25,22 @@ router = APIRouter()
 
 _agent_supervisor: Any = None
 _recovery_agent: Any = None
+_requeue_worker_service: Any = None
 _runtime_config: dict[str, Any] | None = None
 
 
-def configure_runtime(*, agent_supervisor: Any, recovery_agent: Any, runtime_config: dict[str, Any] | None = None) -> None:
+def configure_runtime(
+    *,
+    agent_supervisor: Any,
+    recovery_agent: Any,
+    requeue_worker_service: Any = None,
+    runtime_config: dict[str, Any] | None = None,
+) -> None:
     """Wire runtime singletons created by the FastAPI application shell."""
-    global _agent_supervisor, _recovery_agent, _runtime_config
+    global _agent_supervisor, _recovery_agent, _requeue_worker_service, _runtime_config
     _agent_supervisor = agent_supervisor
     _recovery_agent = recovery_agent
+    _requeue_worker_service = requeue_worker_service
     _runtime_config = runtime_config
 
 
@@ -65,13 +73,14 @@ def get_agent_runtime(
     result = {
         "registry": supervisor.registry.definitions(),
         "supervisor": supervisor.health(),
+        "requeue_worker": _requeue_worker_service.health() if _requeue_worker_service else None,
         "recovery_agent": {
             "name": "recovery_agent",
             "running": recovery.is_running,
             "trigger_contract": "Trips stuck beyond configured stage thresholds.",
             "input_contract": "Active trip with id, stage/state, and updated_at/updatedAt.",
             "output_contract": "Re-queue through runner when configured, else escalate review_status.",
-            "idempotency_contract": "Per-trip in-memory requeue count with max attempts before escalation.",
+            "idempotency_contract": "Durable queue-backed retry/poison ownership when sql_queue is enabled; in-memory fallback only for non-durable modes.",
             "failure_contract": "Fail closed by emitting agent_failed audit events.",
         },
     }

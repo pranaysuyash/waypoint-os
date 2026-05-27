@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional
@@ -327,6 +328,36 @@ class RequeueJobStore:
             "counts": counts,
         }
 
+    def trip_stats(self, trip_id: str) -> dict[str, Any]:
+        """Durable per-trip retry/poison introspection for recovery decisions."""
+        return _run_async_blocking(self._trip_stats(trip_id))
+
+    async def _trip_stats(self, trip_id: str) -> dict[str, Any]:
+        async with tripstore_session_maker() as session:
+            rows = (await session.execute(
+                text(
+                    """
+                    SELECT status, attempts, max_attempts
+                    FROM agent_requeue_jobs
+                    WHERE trip_id = :trip_id
+                    ORDER BY updated_at DESC
+                    """
+                ),
+                {"trip_id": trip_id},
+            )).mappings().all()
+        if not rows:
+            return {"attempts": 0, "poisoned": False, "active": False, "max_attempts": 0}
+        attempts = max(int(row.get("attempts") or 0) for row in rows)
+        poisoned = any(str(row.get("status")) == JOB_STATUS_POISONED for row in rows)
+        active = any(str(row.get("status")) in {JOB_STATUS_PENDING, JOB_STATUS_RUNNING, JOB_STATUS_FAILED} for row in rows)
+        max_attempts = max(int(row.get("max_attempts") or 0) for row in rows)
+        return {
+            "attempts": attempts,
+            "poisoned": poisoned,
+            "active": active,
+            "max_attempts": max_attempts,
+        }
+
 
 # ── Worker ──────────────────────────────────────────────────────────────
 
@@ -395,6 +426,52 @@ class RequeueWorker:
         except Exception:
             logger.exception("Failed to look up trip %s", trip_id)
         return None
+
+
+class RequeueWorkerService:
+    """Lifecycle-managed background runner for durable requeue jobs."""
+
+    def __init__(self, worker: RequeueWorker, interval_seconds: int = 5, max_jobs_per_pass: int = 5):
+        self._worker = worker
+        self._interval_seconds = interval_seconds
+        self._max_jobs_per_pass = max_jobs_per_pass
+        self._stop_event = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+        self._last_results: list[dict[str, Any]] = []
+
+    @property
+    def is_running(self) -> bool:
+        return self._thread is not None and self._thread.is_alive()
+
+    def start(self) -> None:
+        if self._thread is not None:
+            return
+        self._stop_event.clear()
+        self._thread = threading.Thread(target=self._run_loop, daemon=True, name="RequeueWorkerService")
+        self._thread.start()
+
+    def stop(self) -> None:
+        if self._thread is None:
+            return
+        self._stop_event.set()
+        self._thread.join(timeout=10)
+        self._thread = None
+
+    def _run_loop(self) -> None:
+        while not self._stop_event.is_set():
+            try:
+                self._last_results = self._worker.run_once(max_jobs=self._max_jobs_per_pass)
+            except Exception:
+                logger.exception("RequeueWorkerService: unhandled worker pass failure")
+            self._stop_event.wait(timeout=self._interval_seconds)
+
+    def health(self) -> dict[str, Any]:
+        return {
+            "running": self.is_running,
+            "interval_seconds": self._interval_seconds,
+            "max_jobs_per_pass": self._max_jobs_per_pass,
+            "last_results_count": len(self._last_results),
+        }
 
 
 def _job_from_row(row: dict[str, Any]) -> RequeueJob:

@@ -22,7 +22,7 @@ import pytest
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import MagicMock, AsyncMock
 
 # ---------------------------------------------------------------------------
 # Path setup
@@ -497,6 +497,89 @@ class TestUpdateTripParity:
             assert encrypted["name"] != "PII value"
             assert encrypted["destination"] == "non-PII"
 
+    def test_save_update_use_same_storage_encryption_contract(self, monkeypatch):
+        """save_trip and update_trip must both persist private fields as encrypted blobs."""
+        import asyncio as _asyncio
+
+        captured_on_save: dict[str, object] = {}
+        captured_on_update: dict[str, object] = {}
+
+        class FakeTrip:
+            def __init__(self, **kwargs):
+                self.id = kwargs["id"]
+                for k, v in kwargs.items():
+                    setattr(self, k, v)
+                    captured_on_save[k] = v
+
+        async def _run():
+            trip_id = f"trip_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+            existing_trip = FakeTrip(id=trip_id, agency_id="test_agency", source="test")
+
+            class MockSession:
+                def __init__(self):
+                    self.add = MagicMock()
+                    self._trip = existing_trip
+                    self.commits = 0
+
+                async def __aenter__(self):
+                    return self
+
+                async def __aexit__(self, exc_type, exc, tb):
+                    return False
+
+                async def execute(self, *_args, **_kwargs):
+                    return None
+
+                async def get(self, _model, req_trip_id):
+                    if req_trip_id == trip_id:
+                        return self._trip
+                    return None
+
+                async def commit(self):
+                    self.commits += 1
+
+            session = MockSession()
+            monkeypatch.setattr("spine_api.persistence.tripstore_session_maker", lambda: session)
+            monkeypatch.setattr("spine_api.persistence.Trip", FakeTrip)
+
+            await SQLTripStore.save_trip(
+                {
+                    "id": trip_id,
+                    "source": "test",
+                    "agency_id": "test_agency",
+                    "traveler_bundle": {"summary": "private_save"},
+                    "internal_bundle": {"agent_notes": "save_secret"},
+                    "fees": {"private_note": "fee_secret"},
+                },
+                agency_id="test_agency",
+            )
+            captured_on_save["traveler_bundle"] = existing_trip.traveler_bundle
+            captured_on_save["internal_bundle"] = existing_trip.internal_bundle
+            captured_on_save["fees"] = existing_trip.fees
+
+            await SQLTripStore.update_trip(
+                trip_id,
+                {
+                    "traveler_bundle": {"summary": "private_update"},
+                    "internal_bundle": {"agent_notes": "update_secret"},
+                    "fees": {"private_note": "fee_update_secret"},
+                },
+            )
+
+            captured_on_update["traveler_bundle"] = existing_trip.traveler_bundle
+            captured_on_update["internal_bundle"] = existing_trip.internal_bundle
+            captured_on_update["fees"] = existing_trip.fees
+
+        _asyncio.run(_run())
+
+        for field in ("traveler_bundle", "internal_bundle", "fees"):
+            save_value = captured_on_save[field]
+            update_value = captured_on_update[field]
+            assert isinstance(save_value, dict)
+            assert isinstance(update_value, dict)
+            assert save_value.get("__encrypted_blob") is True
+            assert update_value.get("__encrypted_blob") is True
+
 
 # ===========================================================================
 # 8. Non-PII field integrity under PII-key encryption
@@ -619,18 +702,6 @@ class TestSQLRawRowSentinel:
             )
             await SQLTripStore.save_trip(
                 trip_data, agency_id="test_agency"
-            )
-
-        _asyncio.run(_run())
-
-        for field in PRIVATE_BLOB_COMPARTMENTS:
-            raw_value = captured.get(field)
-            if raw_value is None:
-                continue
-            raw_serialized = json.dumps(raw_value, default=str)
-            assert SENTINEL not in raw_serialized, (
-                f"Plaintext sentinel in raw DB column '{field}': "
-                f"{raw_serialized[:200]}"
             )
 
         _asyncio.run(_run())

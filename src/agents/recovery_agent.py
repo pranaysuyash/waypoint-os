@@ -119,7 +119,7 @@ class RecoveryAgent:
             self._requeue_enabled = False
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
-        # In-memory tracking of requeue attempts per trip (cleared on restart)
+        # Fallback tracking for non-durable ports (durable sql_queue ports expose their own stats).
         self._requeue_counts: dict[str, int] = {}
 
     # ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -228,7 +228,7 @@ class RecoveryAgent:
                     trip_id=trip_id,
                     stage=stage,
                     hours_stuck=round(hours_stuck, 1),
-                    requeue_attempts=self._requeue_counts.get(trip_id, 0),
+                    requeue_attempts=self._get_requeue_attempts(trip_id),
                 ))
 
         logger.info("RecoveryAgent: %d stuck trips detected", len(stuck))
@@ -244,9 +244,29 @@ class RecoveryAgent:
           attempts < MAX_REQUEUE_ATTEMPTS and requeue enabled → try requeue via port
           otherwise → escalate (human review)
         """
+        if self._is_trip_poisoned(trip.trip_id):
+            return self._action_escalate(trip)
         if trip.requeue_attempts < _get_max_requeue_attempts() and self._requeue_enabled:
             return self._action_requeue(trip)
         return self._action_escalate(trip)
+
+    def _get_requeue_attempts(self, trip_id: str) -> int:
+        getter = getattr(self._requeue_port, "get_trip_attempts", None)
+        if callable(getter):
+            try:
+                return int(getter(trip_id))
+            except Exception:
+                logger.exception("RecoveryAgent: durable requeue attempt lookup failed for %s", trip_id)
+        return int(self._requeue_counts.get(trip_id, 0))
+
+    def _is_trip_poisoned(self, trip_id: str) -> bool:
+        checker = getattr(self._requeue_port, "is_trip_poisoned", None)
+        if callable(checker):
+            try:
+                return bool(checker(trip_id))
+            except Exception:
+                logger.exception("RecoveryAgent: durable poison lookup failed for %s", trip_id)
+        return False
 
     def _lookup_trip_record(self, trip_id: str) -> Optional[dict[str, Any]]:
         """Find the full trip record from the repo."""
@@ -275,7 +295,8 @@ class RecoveryAgent:
             attempt=trip.requeue_attempts + 1,
         )
         if result.accepted:
-            self._requeue_counts[trip.trip_id] = trip.requeue_attempts + 1
+            if not callable(getattr(self._requeue_port, "get_trip_attempts", None)):
+                self._requeue_counts[trip.trip_id] = trip.requeue_attempts + 1
             logger.info(
                 "RecoveryAgent: re-queued trip %s (attempt %d, stuck %.1fh in %s)",
                 trip.trip_id, trip.requeue_attempts + 1, trip.hours_stuck, trip.stage,

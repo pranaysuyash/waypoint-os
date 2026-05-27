@@ -18,6 +18,7 @@ from src.agents.requeue import build_requeue_port
 from src.agents.runtime import AgentSupervisor, build_default_registry
 from spine_api.services.agent_runtime_adapters import TripStoreAdapter, AuditStoreAdapter
 from spine_api.services.agent_work_coordinator import SQLWorkCoordinator
+from spine_api.services.agent_requeue_jobs import RequeueWorker, RequeueWorkerService
 
 logger = logging.getLogger("agent_runtime_factory")
 
@@ -76,6 +77,7 @@ class AgentRuntimeBundle:
     coordinator: Any  # WorkCoordinator | None
     recovery_agent: RecoveryAgent
     supervisor: AgentSupervisor
+    requeue_worker_service: Any = None
 
     def health(self) -> dict[str, Any]:
         return {
@@ -85,6 +87,7 @@ class AgentRuntimeBundle:
                 "name": "recovery_agent",
                 "running": self.recovery_agent.is_running,
             },
+            "requeue_worker": self.requeue_worker_service.health() if self.requeue_worker_service else None,
         }
 
 
@@ -205,10 +208,18 @@ def build_agent_runtime_from_config(
         coordinator = None  # AgentSupervisor uses InMemoryWorkCoordinator by default
 
     _job_store = None
+    requeue_worker_service = None
     if config.recovery_requeue_mode == "sql_queue":
         from spine_api.services.agent_requeue_jobs import RequeueJobStore
         _job_store = RequeueJobStore(lease_seconds=config.lease_seconds)
         _job_store.ensure_schema()
+        if _run_spine_fn is not None:
+            requeue_worker = RequeueWorker(
+                job_store=_job_store,
+                spine_runner=_run_spine_fn,
+                trip_repo=trip_repo,
+            )
+            requeue_worker_service = RequeueWorkerService(requeue_worker)
 
     requeue_port = build_requeue_port(
         config.recovery_requeue_mode,
@@ -235,6 +246,7 @@ def build_agent_runtime_from_config(
         coordinator=coordinator,
         recovery_agent=recovery_agent,
         supervisor=supervisor,
+        requeue_worker_service=requeue_worker_service,
     )
 
 

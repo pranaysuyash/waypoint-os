@@ -6,6 +6,7 @@ import { Trip, createTrip } from "@/lib/api-client";
 
 export interface CaptureCallPanelProps {
   onSave: (trip: Trip) => void;
+  onSaveAndProcess?: (trip: Trip, fields: CaptureCallFields) => Promise<void>;
   onCancel: () => void;
   defaultFollowUpHours?: number;
 }
@@ -107,6 +108,7 @@ function captureCallReducer(state: CaptureCallState, action: CaptureCallAction):
 
 export default function CaptureCallPanel({
   onSave,
+  onSaveAndProcess,
   onCancel,
   defaultFollowUpHours = 48,
 }: CaptureCallPanelProps) {
@@ -147,8 +149,7 @@ export default function CaptureCallPanel({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (mode: "save" | "save_and_process") => {
     dispatch({ type: "SET_ERROR", error: null });
 
     if (!validate()) {
@@ -170,7 +171,20 @@ export default function CaptureCallPanel({
       });
 
       dispatch({ type: "RESET_FORM" });
-      onSave(trip);
+      if (mode === "save_and_process" && onSaveAndProcess) {
+        await onSaveAndProcess(trip, {
+          rawNote: rawNote.trim(),
+          ownerNote: ownerNote.trim(),
+          followUpDueDate,
+          partyComposition: partyComposition.trim(),
+          pacePreference,
+          dateYearConfidence,
+          leadSource,
+          activityProvenance: activityProvenance.trim(),
+        });
+      } else {
+        onSave(trip);
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to save call";
       dispatch({ type: "SET_ERROR", error: errorMessage });
@@ -197,7 +211,13 @@ export default function CaptureCallPanel({
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void handleSubmit("save_and_process");
+        }}
+        className="flex-1 overflow-y-auto px-6 py-4 space-y-6"
+      >
         {/* API Error Alert */}
         {apiError && (
           <div className="p-3 bg-[rgba(var(--accent-red-rgb)/0.08)] dark:bg-[rgba(var(--accent-red-rgb)/0.18)] border border-[rgba(var(--accent-red-rgb)/0.25)] dark:border-[rgba(var(--accent-red-rgb)/0.40)] rounded-lg flex items-start gap-3">
@@ -405,12 +425,21 @@ export default function CaptureCallPanel({
           Cancel
         </button>
           <button
-            onClick={handleSubmit}
+            type="button"
+            onClick={() => void handleSubmit("save")}
             disabled={isSubmitting || !rawNote.trim()}
             className="flex-1 px-4 py-2 text-ui-sm font-medium text-white bg-[rgba(var(--accent-blue-rgb)/0.30)] hover:bg-[rgba(var(--accent-blue-rgb)/0.26)] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-            {isSubmitting ? "Saving…" : "Save"}
+            {isSubmitting ? "Saving…" : "Save Draft"}
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting || !rawNote.trim()}
+            className="flex-1 px-4 py-2 text-ui-sm font-medium text-white bg-[rgba(var(--accent-blue-rgb)/0.42)] hover:bg-[rgba(var(--accent-blue-rgb)/0.34)] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isSubmitting && <Loader2 className="size-4 animate-spin" />}
+            {isSubmitting ? "Saving…" : "Save and Process"}
           </button>
       </div>
     </div>

@@ -607,6 +607,17 @@ export interface TripResponse {
   extracted?: {
     [k: string]: unknown;
   } | null;
+  validation?: {
+    [k: string]: unknown;
+  } | null;
+  /** Phase 2 structured intake fields */
+  party_composition?: string | null;
+  pace_preference?: string | null;
+  date_year_confidence?: string | null;
+  lead_source?: string | null;
+  activity_provenance?: string | null;
+  trip_priorities?: string | null;
+  date_flexibility?: string | null;
 }
 export interface UnifiedStateResponse {
   canonical_total: number;

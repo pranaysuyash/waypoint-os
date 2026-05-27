@@ -288,6 +288,8 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   const searchParams = useSearchParams();
   const getSearchParam = searchParams.get.bind(searchParams);
   const fieldParam = getSearchParam('field');
+  const captureMode = getSearchParam('capture_mode');
+  const entry = getSearchParam('entry');
 
   // Auto-open editor when deep-linked from Trip Details
   useEffect(() => {
@@ -325,6 +327,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
 
   // CaptureCallPanel state
   const [showCapturePanel, setShowCapturePanel] = useState(false);
+  const autoOpenedCaptureRef = useRef(false);
 
   // Audit log for tracking field changes
   const { logChange } = useFieldAuditLog({
@@ -779,9 +782,70 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     push(getTripRoute(newTrip.id, 'packet'));
   }, [push]);
 
+  const handleCaptureCallSaveAndProcess = useCallback(async (
+    newTrip: Trip,
+    fields: {
+      rawNote: string;
+      ownerNote: string;
+      followUpDueDate: string;
+      partyComposition: string;
+      pacePreference: string;
+      dateYearConfidence: string;
+      leadSource: string;
+      activityProvenance: string;
+    }
+  ) => {
+    setShowCapturePanel(false);
+    setIsRunning(true);
+    setRunError(null);
+    setRunSuccess(false);
+    startRunTimer();
+
+    try {
+      const request: SpineRunRequest = {
+        raw_note: fields.rawNote || null,
+        owner_note: fields.ownerNote || null,
+        follow_up_due_date: fields.followUpDueDate || null,
+        pace_preference: fields.pacePreference || null,
+        date_year_confidence: fields.dateYearConfidence || null,
+        lead_source: fields.leadSource || null,
+        activity_provenance: fields.activityProvenance || null,
+        structured_json: fields.partyComposition
+          ? { party_composition: fields.partyComposition }
+          : null,
+        stage: store.stage,
+        operating_mode: store.operating_mode,
+        strict_leakage: store.strict_leakage,
+        scenario_id: store.scenario_id || null,
+        retention_consent: true,
+      };
+
+      const completedRun = await executeSpineRun(request);
+      const targetTripId = completedRun?.trip_id || newTrip.id;
+      setRunSuccess(true);
+      setTimeout(() => setRunSuccess(false), 3000);
+      push(getTripRoute(targetTripId, 'packet'));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Processing failed. Please try again.';
+      setRunError(message);
+      setTimeout(() => setRunError(null), 15000);
+      push(getTripRoute(newTrip.id, 'intake'));
+    } finally {
+      setIsRunning(false);
+      stopRunTimer();
+    }
+  }, [executeSpineRun, push, startRunTimer, stopRunTimer, store.operating_mode, store.scenario_id, store.stage, store.strict_leakage]);
+
   const handleCaptureCallCancel = useCallback(() => {
     setShowCapturePanel(false);
   }, []);
+
+  useEffect(() => {
+    if (!autoOpenedCaptureRef.current && entry === 'new' && captureMode === 'call') {
+      autoOpenedCaptureRef.current = true;
+      setShowCapturePanel(true);
+    }
+  }, [captureMode, entry]);
 
   const getPlanningEditorInitialValue = useCallback((detailId: PlanningDetailId): string => {
     if (detailId === 'origin') {
@@ -1571,6 +1635,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
         <div className='fixed right-0 top-0 h-full w-96 shadow-lg z-50'>
           <CaptureCallPanel
             onSave={handleCaptureCallSave}
+            onSaveAndProcess={handleCaptureCallSaveAndProcess}
             onCancel={handleCaptureCallCancel}
           />
         </div>

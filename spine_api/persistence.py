@@ -2031,13 +2031,6 @@ class OverrideStore:
                 json.dump(override_data, f)
                 f.write("\n")
         
-        # Verify the file was actually created (robustness check)
-        if not trip_overrides_file.exists():
-            raise IOError(
-                f"Failed to create override file at {trip_overrides_file}. "
-                f"OVERRIDES_PER_TRIP_DIR={OVERRIDES_PER_TRIP_DIR}"
-            )
-        
         # Update index under cross-process lock
         OverrideStore._update_index(override_id, safe_trip_id)
         

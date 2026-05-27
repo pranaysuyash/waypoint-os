@@ -86,3 +86,19 @@ Keep one canonical workflow and reduce interaction overhead by using entry-mode 
 
 ## Recommended New Goal
 Implement Phase 1 + Phase 2 as one cohesive slice: "`New Inquiry` opens fast capture by default and supports one-click `Save and Process` through the existing canonical trip + run pipeline."
+
+## Implemented Behavior (2026-05-26)
+- `New Inquiry` now links to `/workbench?draft=new&tab=intake&capture_mode=call&entry=new` in [frontend/src/components/layouts/Shell.tsx](/Users/pranay/Projects/travel_agency_agent/frontend/src/components/layouts/Shell.tsx).
+- Workbench fast-capture entry now redirects immediately to the canonical intake surface: `/trips/new/intake?capture_mode=call&entry=new` in [frontend/src/app/(agency)/workbench/PageClient.tsx](/Users/pranay/Projects/travel_agency_agent/frontend/src/app/(agency)/workbench/PageClient.tsx).
+- Intake auto-opens `CaptureCallPanel` once for `entry=new&capture_mode=call` in [frontend/src/components/workspace/panels/IntakePanel.tsx](/Users/pranay/Projects/travel_agency_agent/frontend/src/components/workspace/panels/IntakePanel.tsx).
+- `CaptureCallPanel` now exposes one primary action: `Save and Process`, plus fallback `Save Draft` in [frontend/src/components/workspace/panels/CaptureCallPanel.tsx](/Users/pranay/Projects/travel_agency_agent/frontend/src/components/workspace/panels/CaptureCallPanel.tsx).
+- `Save and Process` flow is canonical and additive:
+  - create trip (`createTrip` / existing `POST /api/trips` path),
+  - then run existing pipeline via existing `useSpineRun` (`POST /api/spine/run`, polled via existing run-status path),
+  - then navigate to packet for resulting trip id.
+
+## Current Contract Limits
+- `SpineRunRequest` does not accept `trip_id` (forbidden extra fields in backend contract), so run association is via canonical run output (`RunStatusResponse.trip_id`) and fallback navigation to the created trip id when needed.
+- To pass call-only details without new backend route or new request fields:
+  - `follow_up_due_date`, `pace_preference`, `lead_source`, `date_year_confidence`, and `activity_provenance` map directly to existing `SpineRunRequest` fields.
+  - `party_composition` is carried inside `structured_json.party_composition` for the run request while still being persisted canonically during trip creation.

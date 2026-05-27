@@ -216,6 +216,22 @@ class _FakeInlinePort:
         return RequeueResult(accepted=False, mode="inline", reason="transient error", retryable=True)
 
 
+class _FakeDurableQueuePort:
+    def __init__(self):
+        self.attempts = 0
+        self.poisoned = False
+
+    def requeue_trip(self, trip_id, trip_record, reason, attempt):
+        self.attempts = max(self.attempts, attempt)
+        return RequeueResult(accepted=True, mode="sql_queue", reason=reason)
+
+    def get_trip_attempts(self, trip_id):
+        return self.attempts
+
+    def is_trip_poisoned(self, trip_id):
+        return self.poisoned
+
+
 class TestRecoveryAgentWithPort:
     """RecoveryAgent integration with explicit requeue_port."""
 
@@ -278,10 +294,16 @@ class TestRecoveryAgentWithPort:
         assert results[0].action == "re_queue"
         assert results[0].success is False
 
-        # second run: attempt NOT incremented (not accepted), tries again
+    def test_durable_queue_port_escalates_when_poisoned(self):
+        now = datetime.now(timezone.utc)
+        repo = _TripRepo([{"id": "t2", "stage": "intake", "updated_at": (now - timedelta(hours=48)).isoformat()}])
+        audit = _Audit()
+        port = _FakeDurableQueuePort()
+        port.poisoned = True
+        agent = RecoveryAgent(interval_seconds=1, audit_store=audit, trip_repo=repo, requeue_port=port)
         results = agent.run_once()
-        assert results[0].action == "re_queue"
-        assert results[0].success is False
+        assert len(results) == 1
+        assert results[0].action == "escalate"
 
     def test_inline_port_failure_emits_agent_failed_audit(self):
         now = datetime.now(timezone.utc)

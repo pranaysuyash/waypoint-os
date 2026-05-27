@@ -211,7 +211,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {/* New Inquiry CTA - action, not a place. Icon-only on collapsed sidebar. */}
         <div className='px-2 md:px-4 pt-3 pb-1'>
           <Link
-            href='/workbench?draft=new&tab=intake'
+            href='/workbench?draft=new&tab=intake&capture_mode=call&entry=new'
             aria-label='New Inquiry'
             className='flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors border'
             style={{

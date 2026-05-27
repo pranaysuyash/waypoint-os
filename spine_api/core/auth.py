@@ -40,6 +40,12 @@ async def get_current_user(
     Extract and validate JWT from Authorization header or cookie,
     then load the user from the database.
     """
+    # Per-request cache to avoid duplicate JWT decode + user DB reads when
+    # multiple dependencies request the current user in the same request.
+    cached_user = getattr(request.state, "current_user", None)
+    if cached_user is not None:
+        return cached_user
+
     token = None
 
     # Try Authorization header first
@@ -85,6 +91,7 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    request.state.current_user = user
     return user
 
 

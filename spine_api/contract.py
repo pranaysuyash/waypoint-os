@@ -496,6 +496,16 @@ class TripResponse(BaseModel):
     customerName: Optional[str] = None
     follow_up_due_date: Optional[str] = None
     extracted: Optional[Dict[str, Any]] = None
+    validation: Optional[Dict[str, Any]] = None
+    # Phase 2 structured intake fields — stored as DB columns, returned verbatim.
+    # These are set by direct PATCH or extracted from call/intake pipeline.
+    party_composition: Optional[str] = None
+    pace_preference: Optional[str] = None
+    date_year_confidence: Optional[str] = None
+    lead_source: Optional[str] = None
+    activity_provenance: Optional[str] = None
+    trip_priorities: Optional[str] = None
+    date_flexibility: Optional[str] = None
 
     @classmethod
     def from_dict(cls, trip: Dict[str, Any]) -> "TripResponse":
@@ -533,6 +543,23 @@ class TripResponse(BaseModel):
             customerName=_derive_customer_name(trip, trip_id) or None,
             follow_up_due_date=trip.get("follow_up_due_date") or None,
             extracted=trip.get("extracted") or None,
+            validation=trip.get("validation") or None,
+            # Phase 2 structured fields — read directly from storage dict.
+            party_composition=trip.get("party_composition") or None,
+            pace_preference=trip.get("pace_preference") or None,
+            date_year_confidence=trip.get("date_year_confidence") or None,
+            lead_source=trip.get("lead_source") or None,
+            activity_provenance=trip.get("activity_provenance") or None,
+            trip_priorities=(
+                trip.get("trip_priorities")
+                or _get_nested(trip, "extracted.facts.trip_priorities.value", None)
+                or None
+            ),
+            date_flexibility=(
+                trip.get("date_flexibility")
+                or _get_nested(trip, "extracted.facts.date_flexibility.value", None)
+                or None
+            ),
         )
 
 

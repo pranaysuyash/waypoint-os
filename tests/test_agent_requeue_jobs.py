@@ -292,7 +292,8 @@ class TestSQLSpineJobQueueRequeuePort:
         port.requeue_trip("t1", {}, "stuck", 1)
         result = port.requeue_trip("t1", {}, "stuck", 1)
 
-        assert result.accepted is False
+        assert result.accepted is True
+        assert "Duplicate requeue" in result.reason
 
     def test_build_requeue_port_sql_queue(self):
         from spine_api.services.agent_requeue_jobs import RequeueJobStore
@@ -437,6 +438,22 @@ class TestRequeueWorker:
         assert len(runner.calls) == 1
         assert runner.calls[0]["envelopes"] == [{"raw_note": "hello"}]
         assert runner.calls[0]["stage"] == "intake"
+
+
+class TestRequeueJobStats:
+    def test_trip_stats_surface_attempts_and_poison(self):
+        from spine_api.services.agent_requeue_jobs import RequeueJobStore
+
+        store = RequeueJobStore()
+        accepted, job_id = store.enqueue("t_stats", "req:t_stats:stuck", "stuck", max_attempts=2)
+        assert accepted is True
+        store.fail(job_id, "err1", poison=False)
+        stats = store.trip_stats("t_stats")
+        assert stats["attempts"] == 1
+        assert stats["poisoned"] is False
+        store.fail(job_id, "fatal", poison=True)
+        stats = store.trip_stats("t_stats")
+        assert stats["poisoned"] is True
 
 
 # ── Factory integration tests ──────────────────────────────────────────
