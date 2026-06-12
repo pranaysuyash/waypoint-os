@@ -75,8 +75,27 @@ import type {
   UnifiedStateResponse,
   UpdateAutonomyPolicy,
   UpdateOperationalSettings,
+  CreateSeasonalCampaignRequest as SpineCreateSeasonalCampaignRequest,
+  SeasonalCampaignListResponse as SpineSeasonalCampaignListResponse,
+  SeasonalCampaignPlan,
+  SeasonDispatchResponse as SpineSeasonDispatchResponse,
+  SeasonPreflightResponse as SpineSeasonPreflightResponse,
+  SeasonSimulationResponse as SpineSeasonSimulationResponse,
+  UpdateSeasonalCampaignRequest as SpineUpdateSeasonalCampaignRequest,
 } from '@/types/generated/spine-api';
+import type {
+  CreateSeasonalCampaignRequest as ApiClientCreateSeasonalCampaignRequest,
+  SeasonalCampaign,
+  SeasonalCampaignListResponse,
+  SimulateSeasonalCampaignResponse,
+  SeasonDispatchResponse as ApiClientSeasonDispatchResponse,
+  SeasonPreflightResponse as ApiClientSeasonPreflightResponse,
+  SimulateSeasonalCampaignResponse as ApiClientSeasonSimulationResponse,
+  UpdateSeasonalCampaignRequest as ApiClientUpdateSeasonalCampaignRequest,
+} from '@/lib/api-client';
 
+type ContractMatch<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+type ContractAssert<T extends true> = T;
 function contract<T>(name: string): string {
   return name satisfies string;
 }
@@ -169,5 +188,58 @@ describe('public type contract surfaces', () => {
     ];
 
     expect(names).toContain('RunStatusResponse');
+  });
+
+  it('keeps seasonal API client campaign contracts aligned with generated backend contracts', () => {
+    const createMatch: ContractAssert<
+      ContractMatch<
+        ApiClientCreateSeasonalCampaignRequest,
+        SpineCreateSeasonalCampaignRequest
+      >
+    > = true;
+    const updateMatch: ContractAssert<
+      ContractMatch<
+        ApiClientUpdateSeasonalCampaignRequest,
+        SpineUpdateSeasonalCampaignRequest
+      >
+    > = true;
+    const campaignMatch: ContractAssert<
+      ContractMatch<
+        SeasonalCampaign,
+        SeasonalCampaignPlan
+      >
+    > = true;
+    const listMatch: ContractAssert<
+      ContractMatch<
+        SeasonalCampaignListResponse,
+        SpineSeasonalCampaignListResponse
+      >
+    > = true;
+    const simulateMatch: ContractAssert<
+      ContractMatch<
+        ApiClientSeasonSimulationResponse,
+        SpineSeasonSimulationResponse
+      >
+    > = true;
+    const preflightMatch: ContractAssert<
+      ContractMatch<
+        ApiClientSeasonPreflightResponse,
+        SpineSeasonPreflightResponse
+      >
+    > = true;
+    const dispatchMatch: ContractAssert<
+      ContractMatch<
+        ApiClientSeasonDispatchResponse,
+        SpineSeasonDispatchResponse
+      >
+    > = true;
+
+    expect(createMatch).toBe(true);
+    expect(updateMatch).toBe(true);
+    expect(campaignMatch).toBe(true);
+    expect(listMatch).toBe(true);
+    expect(simulateMatch).toBe(true);
+    expect(preflightMatch).toBe(true);
+    expect(dispatchMatch).toBe(true);
   });
 });

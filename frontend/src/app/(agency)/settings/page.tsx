@@ -8,23 +8,36 @@ import {
   ShieldCheck,
   Users,
   PlugZap,
+  CalendarDays,
   Save,
   RotateCcw,
   AlertCircle,
   CheckCircle2,
 } from 'lucide-react';
-import { useAgencySettings, useUpdateOperationalSettings, useUpdateAutonomyPolicy } from '@/hooks/useAgencySettings';
-import type { AgencySettings, UpdateOperationalPayload, UpdateAutonomyPayload } from '@/hooks/useAgencySettings';
+import {
+  useAgencySettings,
+  useUpdateOperationalSettings,
+  useUpdateAutonomyPolicy,
+  useUpdateSeasonalPolicy,
+} from '@/hooks/useAgencySettings';
+import type {
+  AgencySettings,
+  UpdateOperationalPayload,
+  UpdateAutonomyPayload,
+  UpdateSeasonalPayload,
+} from '@/hooks/useAgencySettings';
 import { ProfileTab } from './components/ProfileTab';
 import { OperationalTab } from './components/OperationalTab';
 import { AutonomyTab } from './components/AutonomyTab';
 import { PeopleTab } from './components/PeopleTab';
 import { IntegrationsTab } from './components/IntegrationsTab';
+import { SeasonalTab } from './components/SeasonalTab';
 
 const TABS = [
   { id: 'profile', label: 'Profile', icon: Building2 },
   { id: 'operations', label: 'Operations', icon: SlidersHorizontal },
   { id: 'autonomy', label: 'Approval Rules', icon: ShieldCheck },
+  { id: 'seasonal', label: 'Seasonal', icon: CalendarDays },
   { id: 'integrations', label: 'Integrations', icon: PlugZap },
   { id: 'people', label: 'People', icon: Users },
 ] as const;
@@ -52,6 +65,7 @@ function SettingsPageInner() {
   const { data: settings, isLoading, error, refetch } = useAgencySettings();
   const { mutate: updateOperational, isSaving: isSavingOperational, error: opError } = useUpdateOperationalSettings();
   const { mutate: updateAutonomy, isSaving: isSavingAutonomy, error: autonomyError } = useUpdateAutonomyPolicy();
+  const { mutate: updateSeasonal, isSaving: isSavingSeasonal, error: seasonalError } = useUpdateSeasonalPolicy();
 
   const [draft, setDraft] = useState<AgencySettings | null>(null);
   const [isDirty, setIsDirty] = useState(false);
@@ -137,6 +151,40 @@ function SettingsPageInner() {
       promises.push(updateAutonomy(autonomyPayload));
     }
 
+    // Detect seasonal policy changes
+    const seasonalPayload: UpdateSeasonalPayload = {};
+    const draftSeasonal = activeDraft.seasonal ?? settings.seasonal;
+    const liveSeasonal = settings.seasonal;
+
+    if (draftSeasonal.active_seasons_enabled !== liveSeasonal.active_seasons_enabled) {
+      seasonalPayload.active_seasons_enabled = draftSeasonal.active_seasons_enabled;
+    }
+    if (draftSeasonal.default_quarter_window_months !== liveSeasonal.default_quarter_window_months) {
+      seasonalPayload.default_quarter_window_months = draftSeasonal.default_quarter_window_months;
+    }
+    if (JSON.stringify(draftSeasonal.channel_mix) !== JSON.stringify(liveSeasonal.channel_mix)) {
+      seasonalPayload.channel_mix = draftSeasonal.channel_mix;
+    }
+    if (draftSeasonal.weather_risk_threshold !== liveSeasonal.weather_risk_threshold) {
+      seasonalPayload.weather_risk_threshold = draftSeasonal.weather_risk_threshold;
+    }
+    if (draftSeasonal.budget_guardrail_multiplier !== liveSeasonal.budget_guardrail_multiplier) {
+      seasonalPayload.budget_guardrail_multiplier = draftSeasonal.budget_guardrail_multiplier;
+    }
+    if (draftSeasonal.micro_seasonality_window_days !== liveSeasonal.micro_seasonality_window_days) {
+      seasonalPayload.micro_seasonality_window_days = draftSeasonal.micro_seasonality_window_days;
+    }
+    if (draftSeasonal.quarterly_recalibration_enabled !== liveSeasonal.quarterly_recalibration_enabled) {
+      seasonalPayload.quarterly_recalibration_enabled = draftSeasonal.quarterly_recalibration_enabled;
+    }
+    if (JSON.stringify(draftSeasonal.prelaunch_blocklist) !== JSON.stringify(liveSeasonal.prelaunch_blocklist)) {
+      seasonalPayload.prelaunch_blocklist = draftSeasonal.prelaunch_blocklist;
+    }
+
+    if (Object.keys(seasonalPayload).length > 0) {
+      promises.push(updateSeasonal(seasonalPayload));
+    }
+
     const results = await Promise.all(promises);
     const hasError = results.some((r) => r === null);
 
@@ -148,7 +196,14 @@ function SettingsPageInner() {
       refetch();
       setTimeout(() => setSaveStatus('idle'), 3000);
     }
-  }, [activeDraft, settings, updateOperational, updateAutonomy, refetch]);
+  }, [
+    activeDraft,
+    settings,
+    updateOperational,
+    updateAutonomy,
+    updateSeasonal,
+    refetch,
+  ]);
 
   const handleReset = useCallback(() => {
     if (settings) {
@@ -186,6 +241,9 @@ function SettingsPageInner() {
     );
   }
 
+  const isSaving =
+    isSavingOperational || isSavingAutonomy || isSavingSeasonal || saveStatus === 'saving';
+
   return (
     <div className="min-h-full bg-[#080a0c] text-[#e6edf3]">
       <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6 space-y-6">
@@ -212,7 +270,7 @@ function SettingsPageInner() {
             )}
             <button
               onClick={handleReset}
-              disabled={!isDirty || saveStatus === 'saving'}
+              disabled={!isDirty || isSaving}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#30363d] text-ui-sm text-[#8b949e] hover:text-[#e6edf3] hover:bg-[#161b22] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <RotateCcw className="size-3.5" />
@@ -220,20 +278,20 @@ function SettingsPageInner() {
             </button>
             <button
               onClick={handleSave}
-              disabled={!isDirty || saveStatus === 'saving'}
+              disabled={!isDirty || isSaving}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#58a6ff] text-[#0d1117] text-ui-sm font-medium hover:bg-[#79b8ff] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Save className="size-3.5" />
-              {saveStatus === 'saving' ? 'Saving…' : 'Save Changes'}
+              {isSaving ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
         </div>
 
         {/* Error summary */}
-        {(opError || autonomyError) && (
+        {(opError || autonomyError || seasonalError) && (
           <div className="rounded-lg border border-[#f85149]/30 bg-[#f85149]/10 p-3 flex items-center gap-2 text-ui-sm text-[#f85149]">
             <AlertCircle className="size-4 shrink-0" />
-            {opError?.message || autonomyError?.message}
+            {opError?.message || autonomyError?.message || seasonalError?.message}
           </div>
         )}
 
@@ -271,6 +329,9 @@ function SettingsPageInner() {
           )}
           {activeTab === 'autonomy' && (
             <AutonomyTab draft={activeDraft} onChange={updateDraft} />
+          )}
+          {activeTab === 'seasonal' && (
+            <SeasonalTab draft={activeDraft} onChange={updateDraft} />
           )}
           {activeTab === 'integrations' && (
             <IntegrationsTab />

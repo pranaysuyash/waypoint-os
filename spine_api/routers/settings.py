@@ -8,15 +8,25 @@ shell can keep moving toward route-module ownership without changing contracts.
 
 from __future__ import annotations
 
-from typing import List
+from datetime import datetime, timezone
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
 
 from spine_api.contract import (
     ApprovalThresholdConfig,
     PipelineStageConfig,
+    AgencySeasonalSettingsResponse,
+    CreateSeasonalCampaignRequest,
+    SeasonDispatchRequest,
+    SeasonPreflightCheck,
+    SeasonSimulationRequest,
+    SeasonalCampaignListResponse,
+    SeasonalCampaignPlan,
     UpdateAutonomyPolicy,
+    UpdateSeasonalCampaignRequest,
     UpdateOperationalSettings,
+    UpdateSeasonalPolicy,
 )
 from spine_api.core.auth import require_permission
 from src.intake.config.agency_settings import AgencySettingsStore
@@ -40,6 +50,7 @@ def get_agency_settings(
     settings = AgencySettingsStore.load(agency_id)
     return {
         "agency_id": settings.agency_id,
+        "seasonal": ConfigStore.get_seasonal_policy(agency_id),
         "profile": {
             "agency_name": settings.agency_name,
             "sub_brand": settings.sub_brand,
@@ -256,6 +267,270 @@ def update_agency_autonomy_settings(
         "allow_explicit_reassess": policy.allow_explicit_reassess,
         "auto_reprocess_stages": policy.auto_reprocess_stages,
         "changes": changes,
+    }
+
+
+def _to_float(value) -> Optional[float]:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if parsed != parsed:
+        return None
+    return parsed
+
+
+def _to_float_or_default(value, default: float) -> float:
+    parsed = _to_float(value)
+    return parsed if parsed is not None else default
+
+
+def _to_int_month(value) -> Optional[int]:
+    parsed = _to_float(value)
+    if parsed is None:
+        return None
+    if parsed != int(parsed):
+        return None
+    return int(parsed)
+
+
+def _coerce_campaign_channels(plan: dict) -> dict:
+    normalized = dict(plan)
+    raw_mix = plan.get("channel_mix", {})
+    if isinstance(raw_mix, dict):
+        normalized["channel_mix"] = {}
+        for channel, weight in raw_mix.items():
+            channel_key = str(channel).strip()
+            if not channel_key:
+                continue
+            try:
+                normalized_weight = float(weight)
+            except (TypeError, ValueError):
+                continue
+            if normalized_weight != normalized_weight:
+                continue
+            normalized["channel_mix"][channel_key] = normalized_weight
+    return normalized
+
+
+def _build_simulation_notes(plan: dict, scenario: str) -> list[str]:
+    notes = [
+        f"Simulating scenario '{scenario}' for campaign '{plan.get('name')}'",
+    ]
+    if not plan.get("destination"):
+        notes.append("Destination is open-ended; forecast uses demand baseline profile.")
+    if plan.get("status") == "active":
+        notes.append("Active campaign policy uses live channel mix and live guardrails.")
+    return notes
+
+
+@router.get("/api/settings/seasonal")
+def get_agency_seasonal_settings(
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:read"),
+):
+    payload = ConfigStore.get_seasonal_policy(agency_id)
+    return AgencySeasonalSettingsResponse(**payload)
+
+
+@router.put("/api/settings/seasonal")
+def update_agency_seasonal_settings(
+    request: UpdateSeasonalPolicy,
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:write"),
+):
+    payload = request.model_dump(exclude_none=True)
+    if not payload:
+        payload = {}
+    updated = ConfigStore.update_seasonal_policy(agency_id, payload)
+    return AgencySeasonalSettingsResponse(**updated)
+
+
+@router.get("/api/settings/seasonal/campaigns", response_model=SeasonalCampaignListResponse)
+def list_seasonal_campaigns(
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:read"),
+):
+    plans = ConfigStore.list_seasonal_campaigns(agency_id)
+    return SeasonalCampaignListResponse(items=[SeasonalCampaignPlan(**plan) for plan in plans], total=len(plans))
+
+
+@router.post("/api/settings/seasonal/campaigns", response_model=SeasonalCampaignPlan)
+def create_seasonal_campaign(
+    request: CreateSeasonalCampaignRequest,
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:write"),
+):
+    payload = request.model_dump()
+    try:
+        created = ConfigStore.create_seasonal_campaign(agency_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return SeasonalCampaignPlan(**_coerce_campaign_channels(created))
+
+
+@router.get("/api/settings/seasonal/campaigns/{plan_id}", response_model=SeasonalCampaignPlan)
+def get_seasonal_campaign(
+    plan_id: str,
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:read"),
+):
+    plan = ConfigStore.get_seasonal_campaign(agency_id, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Seasonal campaign not found")
+    return SeasonalCampaignPlan(**_coerce_campaign_channels(plan))
+
+
+@router.put("/api/settings/seasonal/campaigns/{plan_id}", response_model=SeasonalCampaignPlan)
+def update_seasonal_campaign(
+    plan_id: str,
+    request: UpdateSeasonalCampaignRequest,
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:write"),
+):
+    payload = request.model_dump(exclude_none=True)
+    updated = ConfigStore.update_seasonal_campaign(agency_id, plan_id, payload)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Seasonal campaign not found")
+    return SeasonalCampaignPlan(**_coerce_campaign_channels(updated))
+
+
+@router.delete("/api/settings/seasonal/campaigns/{plan_id}")
+def delete_seasonal_campaign(
+    plan_id: str,
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:write"),
+):
+    deleted = ConfigStore.delete_seasonal_campaign(agency_id, plan_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Seasonal campaign not found")
+    return {"ok": True, "plan_id": plan_id}
+
+
+@router.post("/api/settings/seasonal/campaigns/{plan_id}/simulate")
+def simulate_seasonal_campaign(
+    plan_id: str,
+    request: SeasonSimulationRequest,
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:read"),
+):
+    plan = ConfigStore.get_seasonal_campaign(agency_id, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Seasonal campaign not found")
+
+    base_budget = _to_float(plan.get("target_budget_min"))
+    if base_budget is None:
+        base_budget = _to_float(plan.get("target_budget_max"))
+    if base_budget is None:
+        base_budget = 10000.0
+
+    mix_weight = sum(_to_float_or_default(v, 0.0) for v in (plan.get("channel_mix") or {}).values())
+    month_window = 3
+    start_month = _to_int_month(plan.get("campaign_window_start_month"))
+    end_month = _to_int_month(plan.get("campaign_window_end_month"))
+    if start_month is not None and end_month is not None:
+        start = start_month
+        end = end_month
+        month_window = max(1, abs(end - start) + 1)
+
+    projected_leads = int(base_budget * max(1.0, mix_weight + 0.5) * month_window / 900)
+    projected_bookings = max(1, int(projected_leads * 0.42))
+    projected_margin_pct = max(0.0, min(42.0, 8.0 + (base_budget / 2000.0)))
+    confidence = 0.72 if request.scenario == "baseline" else 0.66
+
+    return {
+        "plan_id": plan_id,
+        "scenario": request.scenario,
+        "projected_leads": projected_leads,
+        "projected_bookings": projected_bookings,
+        "projected_margin_pct": round(projected_margin_pct, 2),
+        "confidence": round(confidence, 3),
+        "notes": _build_simulation_notes(plan, request.scenario),
+    }
+
+
+@router.post("/api/settings/seasonal/campaigns/{plan_id}/preflight")
+def preflight_seasonal_campaign(
+    plan_id: str,
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:read"),
+):
+    plan = ConfigStore.get_seasonal_campaign(agency_id, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Seasonal campaign not found")
+
+    checks = []
+    blocklist = plan.get("blocklist")
+    if not isinstance(blocklist, list):
+        blocklist = []
+
+    target_budget_min = _to_float(plan.get("target_budget_min"))
+    budget_check_status = (
+        "warn"
+        if target_budget_min is None
+        else ("pass" if target_budget_min >= 0 else "fail")
+    )
+    budget_check_message = (
+        "Budget target is unset; set lower bound for stronger preflight confidence."
+        if target_budget_min is None
+        else "Lower budget target must be non-negative."
+    )
+    checks.append(
+        SeasonPreflightCheck(
+            check="budget_boundaries",
+            status=budget_check_status,
+            details=budget_check_message,
+        )
+    )
+    checks.append(
+        SeasonPreflightCheck(
+            check="channel_mix_present",
+            status="pass" if isinstance(plan.get("channel_mix"), dict) else "warn",
+            details="Campaign channel mix controls distribution weighting for future planning.",
+        )
+    )
+    checks.append(
+        SeasonPreflightCheck(
+            check="window_defined",
+            status="pass" if plan.get("campaign_window_start_month") and plan.get("campaign_window_end_month") else "warn",
+            details="Define campaign start/end months for stronger simulation confidence.",
+        )
+    )
+
+    risk_score = round(
+        0.15
+        + 0.2 * len(blocklist)
+        + (0.45 if checks[0].status == "fail" else (0.2 if checks[0].status == "warn" else 0))
+        + (0 if checks[1].status == "pass" else 0.15)
+        + (0 if checks[2].status == "pass" else 0.15),
+        2,
+    )
+    return {
+        "plan_id": plan_id,
+        "ok": all(check.status != "fail" for check in checks),
+        "checks": checks,
+        "risk_score": risk_score,
+    }
+
+
+@router.post("/api/settings/seasonal/campaigns/{plan_id}/dispatch")
+def dispatch_seasonal_campaign(
+    plan_id: str,
+    request: SeasonDispatchRequest,
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:write"),
+):
+    plan = ConfigStore.get_seasonal_campaign(agency_id, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Seasonal campaign not found")
+
+    channels = sorted((plan.get("channel_mix") or {}).keys())
+    return {
+        "plan_id": plan_id,
+        "ok": True,
+        "dispatched_channels": channels,
+        "dry_run": bool(request.dry_run),
+        "executed_at": datetime.now(timezone.utc).isoformat(),
     }
 
 

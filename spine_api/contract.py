@@ -360,6 +360,145 @@ class UpdateAutonomyPolicy(BaseModel):
     auto_reprocess_stages: Optional[Dict[str, bool]] = None
 
 
+class UpdateSeasonalPolicy(BaseModel):
+    """Agency-level policy controls that govern seasonal campaign behavior."""
+
+    active_seasons_enabled: Optional[bool] = None
+    default_quarter_window_months: Optional[int] = Field(default=None, ge=1, le=24)
+    channel_mix: Optional[Dict[str, float]] = None
+    weather_risk_threshold: Optional[float] = None
+    budget_guardrail_multiplier: Optional[float] = Field(default=None, gt=0.0)
+    micro_seasonality_window_days: Optional[int] = Field(default=None, ge=1, le=365)
+    quarterly_recalibration_enabled: Optional[bool] = None
+    prelaunch_blocklist: Optional[List[str]] = None
+
+
+class SeasonSimulationRequest(BaseModel):
+    scenario: str = "baseline"
+
+
+class SeasonDispatchRequest(BaseModel):
+    dry_run: bool = True
+    scenario: Optional[str] = None
+
+
+class AgencySeasonalSettingsResponse(BaseModel):
+    active_seasons_enabled: bool
+    default_quarter_window_months: int
+    channel_mix: Dict[str, float]
+    weather_risk_threshold: float
+    budget_guardrail_multiplier: float
+    micro_seasonality_window_days: int
+    quarterly_recalibration_enabled: bool
+    prelaunch_blocklist: List[str]
+
+
+class SeasonalCampaignPlan(BaseModel):
+    """Canonical plan schema for campaign-level seasonal planning governance."""
+
+    plan_id: str
+    name: str
+    status: Literal["draft", "active", "paused", "archived"] = "draft"
+    destination: Optional[str] = None
+    campaign_window_start_month: Optional[int] = Field(default=None, ge=1, le=12)
+    campaign_window_end_month: Optional[int] = Field(default=None, ge=1, le=12)
+    channel_mix: Dict[str, float] = Field(default_factory=dict)
+    target_budget_min: Optional[float] = None
+    target_budget_max: Optional[float] = None
+    notes: Optional[str] = None
+    blocklist: List[str] = Field(default_factory=list)
+    created_by: Optional[str] = None
+    is_recalibrated: bool = False
+    score: Optional[float] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class CreateSeasonalCampaignRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    status: Literal["draft", "active", "paused", "archived"] = "draft"
+    destination: Optional[str] = None
+    campaign_window_start_month: Optional[int] = Field(default=None, ge=1, le=12)
+    campaign_window_end_month: Optional[int] = Field(default=None, ge=1, le=12)
+    channel_mix: Dict[str, float] = Field(default_factory=dict)
+    target_budget_min: Optional[float] = None
+    target_budget_max: Optional[float] = None
+    notes: Optional[str] = None
+    blocklist: List[str] = Field(default_factory=list)
+
+
+class UpdateSeasonalCampaignRequest(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    status: Optional[Literal["draft", "active", "paused", "archived"]] = None
+    destination: Optional[str] = None
+    campaign_window_start_month: Optional[int] = Field(default=None, ge=1, le=12)
+    campaign_window_end_month: Optional[int] = Field(default=None, ge=1, le=12)
+    channel_mix: Optional[Dict[str, float]] = None
+    target_budget_min: Optional[float] = None
+    target_budget_max: Optional[float] = None
+    notes: Optional[str] = None
+    blocklist: Optional[List[str]] = None
+    is_recalibrated: Optional[bool] = None
+
+
+class SeasonalCampaignListResponse(BaseModel):
+    items: List[SeasonalCampaignPlan] = Field(default_factory=list)
+    total: int
+
+
+class SeasonPreflightCheck(BaseModel):
+    check: str
+    status: Literal["pass", "warn", "fail"]
+    details: Optional[str] = None
+
+
+class SeasonPreflightResponse(BaseModel):
+    plan_id: str
+    ok: bool
+    checks: List[SeasonPreflightCheck] = Field(default_factory=list)
+    risk_score: float = 0.0
+
+
+class SeasonDispatchResponse(BaseModel):
+    plan_id: str
+    ok: bool
+    dispatched_channels: List[str] = Field(default_factory=list)
+    dry_run: bool
+    executed_at: str
+
+
+class SeasonSimulationResponse(BaseModel):
+    plan_id: str
+    scenario: str
+    projected_leads: int
+    projected_bookings: int
+    projected_margin_pct: float
+    confidence: float
+    notes: List[str] = Field(default_factory=list)
+
+
+class SeasonRecalibrationResponse(BaseModel):
+    plan_id: str
+    recalibrated: bool
+    before_status: Optional[str] = None
+    after_status: str
+    next_recalibration_due: Optional[str] = None
+    notes: List[str] = Field(default_factory=list)
+
+
+class SeasonExplorationCell(BaseModel):
+    destination: str
+    month: int
+    relative_demand: float
+    weather_risk: float
+    suggested_channels: List[str] = Field(default_factory=list)
+
+
+class SeasonExplorationMapResponse(BaseModel):
+    generated_at: str
+    cells: List[SeasonExplorationCell] = Field(default_factory=list)
+
+
 class ExplicitReassessRequest(BaseModel):
     reason: Optional[str] = None
     stage: Optional[str] = None
@@ -683,6 +822,20 @@ __all__ = [
     "TeamMember",
     "UpdateOperationalSettings",
     "UpdateAutonomyPolicy",
+    "UpdateSeasonalPolicy",
+    "AgencySeasonalSettingsResponse",
+    "CreateSeasonalCampaignRequest",
+    "UpdateSeasonalCampaignRequest",
+    "SeasonalCampaignPlan",
+    "SeasonalCampaignListResponse",
+    "SeasonSimulationRequest",
+    "SeasonDispatchRequest",
+    "SeasonPreflightCheck",
+    "SeasonPreflightResponse",
+    "SeasonDispatchResponse",
+    "SeasonSimulationResponse",
+    "SeasonRecalibrationResponse",
+    "SeasonExplorationMapResponse",
     "IntegrityMeta",
     "SystemicError",
     "IntegrityAction",

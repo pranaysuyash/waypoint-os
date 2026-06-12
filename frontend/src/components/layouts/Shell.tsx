@@ -24,6 +24,7 @@ import {
   Search,
   BookOpen,
   Send,
+  CalendarDays,
   type LucideProps,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -47,6 +48,7 @@ const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
   DollarSign,
   Briefcase,
   Search,
+  CalendarDays,
   BarChart2,
   BookOpen,
   Send,

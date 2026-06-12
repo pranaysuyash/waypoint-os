@@ -17,7 +17,7 @@ import os
 import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Any
+from typing import Any, Dict, List, Optional
 from uuid import uuid4
 from dataclasses import asdict, is_dataclass
 import logging
@@ -2296,10 +2296,18 @@ CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class ConfigStore:
-    """File-based configuration storage for pipeline stages and approval thresholds."""
+    """File-based configuration storage for pipeline stages and seasonals.
+
+    This store is intentionally lightweight and file-backed, with one canonical
+    JSON payload per surface. It avoids introducing a second settings persistence
+    layer for campaign governance while providing deterministic read/update
+    semantics for small scale production.
+    """
 
     PIPELINE_FILE = CONFIG_DIR / "pipeline.json"
     APPROVALS_FILE = CONFIG_DIR / "approvals.json"
+    SEASONAL_POLICY_FILE = CONFIG_DIR / "seasonal_policy.json"
+    SEASONAL_CAMPAIGNS_FILE = CONFIG_DIR / "seasonal_campaigns.json"
     _lock = threading.Lock()
 
     @staticmethod
@@ -2331,6 +2339,216 @@ class ConfigStore:
     def set_approval_thresholds(thresholds: list):
         with ConfigStore._lock:
             ConfigStore._save_file(ConfigStore.APPROVALS_FILE, thresholds)
+
+    @staticmethod
+    def _default_seasonal_policy() -> Dict[str, Any]:
+        return {
+            "active_seasons_enabled": True,
+            "default_quarter_window_months": 3,
+            "channel_mix": {
+                "organic": 0.35,
+                "email": 0.25,
+                "social": 0.20,
+                "paid": 0.20,
+            },
+            "weather_risk_threshold": 0.45,
+            "budget_guardrail_multiplier": 1.20,
+            "micro_seasonality_window_days": 14,
+            "quarterly_recalibration_enabled": True,
+            "prelaunch_blocklist": [
+                "budget_violation",
+                "destination_mismatch",
+                "channel_underweight",
+                "insufficient_coverage",
+            ],
+        }
+
+    @staticmethod
+    def _coerce_seasonal_policy_payload(payload: dict) -> Dict[str, Any]:
+        base = ConfigStore._default_seasonal_policy()
+        if not isinstance(payload, dict):
+            return base
+
+        raw_mix = payload.get("channel_mix", {})
+        if isinstance(raw_mix, dict):
+            base["channel_mix"] = {
+                str(channel): float(weight)
+                for channel, weight in raw_mix.items()
+                if isinstance(weight, (int, float))
+            }
+
+        blocklist = payload.get("prelaunch_blocklist")
+        if isinstance(blocklist, list):
+            base["prelaunch_blocklist"] = [
+                str(item).strip() for item in blocklist if str(item).strip()
+            ]
+
+        for key in (
+            "active_seasons_enabled",
+            "default_quarter_window_months",
+            "weather_risk_threshold",
+            "budget_guardrail_multiplier",
+            "micro_seasonality_window_days",
+            "quarterly_recalibration_enabled",
+        ):
+            if key in payload:
+                base[key] = payload.get(key)
+
+        return base
+
+    @staticmethod
+    def get_seasonal_policy(agency_id: str = "waypoint-hq") -> Dict[str, Any]:
+        raw = ConfigStore._read_json_map(ConfigStore.SEASONAL_POLICY_FILE)
+        policy = raw.get(agency_id, {})
+        return ConfigStore._coerce_seasonal_policy_payload(policy)
+
+    @staticmethod
+    def update_seasonal_policy(agency_id: str, payload: dict) -> Dict[str, Any]:
+        with ConfigStore._lock:
+            store = ConfigStore._read_json_map(ConfigStore.SEASONAL_POLICY_FILE)
+            current = store.get(agency_id, {})
+            merged = dict(current)
+            merged.update(payload)
+            normalized = ConfigStore._coerce_seasonal_policy_payload(merged)
+            store[agency_id] = normalized
+            ConfigStore._write_json_map(ConfigStore.SEASONAL_POLICY_FILE, store)
+        return dict(normalized)
+
+    @staticmethod
+    def _read_json_map(filepath: Path) -> Dict[str, Any]:
+        raw = ConfigStore._load_file(filepath)
+        return raw if isinstance(raw, dict) else {}
+
+    @staticmethod
+    def _write_json_map(filepath: Path, payload: Dict[str, Any]):
+        ConfigStore._save_file(filepath, payload)
+
+    @staticmethod
+    def _coerce_campaign_payload(plan_id: str, payload: dict, now_iso: str, is_new: bool = False) -> dict:
+        mix = payload.get("channel_mix", {}) if isinstance(payload.get("channel_mix"), dict) else {}
+        normalized_mix = {
+            str(key): float(value)
+            for key, value in mix.items()
+            if isinstance(value, (int, float))
+        }
+
+        blocklist = payload.get("blocklist")
+        if blocklist is None:
+            normalized_blocklist: List[str] = []
+        else:
+            normalized_blocklist = [str(item).strip() for item in blocklist if str(item).strip()]
+
+        return {
+            "plan_id": plan_id,
+            "name": str(payload.get("name") or ""),
+            "status": payload.get("status", "draft"),
+            "destination": payload.get("destination"),
+            "campaign_window_start_month": payload.get("campaign_window_start_month"),
+            "campaign_window_end_month": payload.get("campaign_window_end_month"),
+            "channel_mix": normalized_mix,
+            "target_budget_min": payload.get("target_budget_min"),
+            "target_budget_max": payload.get("target_budget_max"),
+            "notes": payload.get("notes"),
+            "blocklist": normalized_blocklist,
+            "created_by": payload.get("created_by") or None,
+            "is_recalibrated": bool(payload.get("is_recalibrated") or False),
+            "score": payload.get("score", None),
+            "created_at": payload.get("created_at") if not is_new else now_iso,
+            "updated_at": now_iso,
+        }
+
+    @staticmethod
+    def list_seasonal_campaigns(agency_id: str = "waypoint-hq") -> List[dict]:
+        raw = ConfigStore._read_json_map(ConfigStore.SEASONAL_CAMPAIGNS_FILE)
+        plans = raw.get(agency_id, [])
+        if not isinstance(plans, list):
+            return []
+        return plans
+
+    @staticmethod
+    def get_seasonal_campaign(agency_id: str, plan_id: str) -> Optional[dict]:
+        for plan in ConfigStore.list_seasonal_campaigns(agency_id):
+            if str(plan.get("plan_id")) == str(plan_id):
+                return dict(plan)
+        return None
+
+    @staticmethod
+    def create_seasonal_campaign(agency_id: str, payload: dict) -> dict:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        normalized = ConfigStore._coerce_campaign_payload(
+            f"season_{uuid4().hex[:12]}",
+            payload,
+            now_iso,
+            is_new=True,
+        )
+
+        if not normalized["name"]:
+            raise ValueError("Campaign name is required")
+
+        with ConfigStore._lock:
+            store = ConfigStore._read_json_map(ConfigStore.SEASONAL_CAMPAIGNS_FILE)
+            plans = store.get(agency_id)
+            if not isinstance(plans, list):
+                plans = []
+            plans.append(normalized)
+            store[agency_id] = plans
+            ConfigStore._write_json_map(ConfigStore.SEASONAL_CAMPAIGNS_FILE, store)
+
+        return dict(normalized)
+
+    @staticmethod
+    def update_seasonal_campaign(agency_id: str, plan_id: str, payload: dict) -> Optional[dict]:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        updated: Optional[dict] = None
+
+        with ConfigStore._lock:
+            store = ConfigStore._read_json_map(ConfigStore.SEASONAL_CAMPAIGNS_FILE)
+            plans = store.get(agency_id)
+            if not isinstance(plans, list):
+                return None
+
+            for index, plan in enumerate(plans):
+                if str(plan.get("plan_id")) != str(plan_id):
+                    continue
+
+                merged = dict(plan)
+                merged.update(payload)
+                merged["updated_at"] = now_iso
+
+                # Ensure channel mix and blocklist remain normalized through every write.
+                normalized = ConfigStore._coerce_campaign_payload(
+                    plan_id,
+                    merged,
+                    now_iso,
+                    is_new=False,
+                )
+                plans[index] = normalized
+                updated = dict(normalized)
+                break
+
+            if updated is None:
+                return None
+
+            store[agency_id] = plans
+            ConfigStore._write_json_map(ConfigStore.SEASONAL_CAMPAIGNS_FILE, store)
+
+        return updated
+
+    @staticmethod
+    def delete_seasonal_campaign(agency_id: str, plan_id: str) -> bool:
+        with ConfigStore._lock:
+            store = ConfigStore._read_json_map(ConfigStore.SEASONAL_CAMPAIGNS_FILE)
+            plans = store.get(agency_id)
+            if not isinstance(plans, list):
+                return False
+
+            filtered = [p for p in plans if str(p.get("plan_id")) != str(plan_id)]
+            if len(filtered) == len(plans):
+                return False
+
+            store[agency_id] = filtered
+            ConfigStore._write_json_map(ConfigStore.SEASONAL_CAMPAIGNS_FILE, store)
+            return True
 
 
 # Convenience functions

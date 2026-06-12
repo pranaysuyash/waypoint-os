@@ -58,14 +58,13 @@ class AgencyAutonomyPolicy:
     This is the D1 policy contract — the gate between NB02 judgment (raw verdict)
     and NB03 execution (what the agency allows).
     """
+
     approval_gates: Dict[str, Literal["auto", "review", "block"]] = field(
         default_factory=lambda: dict(_DEFAULT_APPROVAL_GATES)
     )
 
     mode_overrides: Dict[str, Dict[str, str]] = field(
-        default_factory=lambda: {
-            k: dict(v) for k, v in _DEFAULT_MODE_OVERRIDES.items()
-        }
+        default_factory=lambda: {k: dict(v) for k, v in _DEFAULT_MODE_OVERRIDES.items()}
     )
 
     auto_proceed_with_warnings: bool = False
@@ -96,8 +95,7 @@ class AgencyAutonomyPolicy:
                 self.approval_gates[state] = _DEFAULT_APPROVAL_GATES.get(state, "review")
 
         self.approval_gates = {
-            k: v for k, v in self.approval_gates.items()
-            if k in DECISION_STATES_FROZENSET
+            k: v for k, v in self.approval_gates.items() if k in DECISION_STATES_FROZENSET
         }
 
     def effective_gate(self, decision_state: str, operating_mode: str) -> str:
@@ -126,9 +124,14 @@ class AgencyAutonomyPolicy:
                 if isinstance(v, dict) or isinstance(v, str)
             }
 
-        for key in ("min_proceed_confidence", "min_draft_confidence",
-                    "auto_proceed_with_warnings", "learn_from_overrides",
-                    "auto_reprocess_on_edit", "allow_explicit_reassess"):
+        for key in (
+            "min_proceed_confidence",
+            "min_draft_confidence",
+            "auto_proceed_with_warnings",
+            "learn_from_overrides",
+            "auto_reprocess_on_edit",
+            "allow_explicit_reassess",
+        ):
             if key in data:
                 setattr(policy, key, data[key])
 
@@ -149,6 +152,7 @@ class AgencyAutonomyPolicy:
 @dataclass(slots=True)
 class LLMGuardSettings:
     """LLM usage guard configuration for an agency."""
+
     enabled: bool = True
     max_calls_per_hour: Optional[int] = None
     daily_budget: Optional[float] = None
@@ -157,8 +161,32 @@ class LLMGuardSettings:
 
 
 @dataclass(slots=True)
+class SeasonalPlanningPolicy:
+    """Campaign-and-season planning policy for long-horizon operations."""
+
+    active_seasons_enabled: bool = True
+    default_quarter_window_months: int = 3
+    channel_mix: Dict[str, float] = field(
+        default_factory=lambda: {"organic": 0.35, "email": 0.25, "social": 0.20, "paid": 0.20}
+    )
+    weather_risk_threshold: float = 0.45
+    budget_guardrail_multiplier: float = 1.20
+    micro_seasonality_window_days: int = 14
+    quarterly_recalibration_enabled: bool = True
+    prelaunch_blocklist: List[str] = field(
+        default_factory=lambda: [
+            "budget_violation",
+            "destination_mismatch",
+            "channel_underweight",
+            "insufficient_coverage",
+        ]
+    )
+
+
+@dataclass(slots=True)
 class AgencySettings:
     """Configuration set for an agency."""
+
     agency_id: str
 
     # -- Profile --
@@ -190,6 +218,9 @@ class AgencySettings:
     # -- LLM Usage Guard --
     llm_guard: LLMGuardSettings = field(default_factory=LLMGuardSettings)
 
+    # -- Seasonal Planning --
+    seasonal: SeasonalPlanningPolicy = field(default_factory=SeasonalPlanningPolicy)
+
     @classmethod
     def from_dict(cls, data: dict) -> "AgencySettings":
         """Load from dictionary, ignoring unknown keys."""
@@ -199,6 +230,10 @@ class AgencySettings:
         raw_autonomy = data.get("autonomy")
         if isinstance(raw_autonomy, dict):
             filtered["autonomy"] = AgencyAutonomyPolicy.from_legacy_dict(raw_autonomy)
+
+        raw_seasonal = data.get("seasonal")
+        if isinstance(raw_seasonal, dict):
+            filtered["seasonal"] = SeasonalPlanningPolicy(**raw_seasonal)
 
         raw_llm_guard = data.get("llm_guard")
         if isinstance(raw_llm_guard, dict):
@@ -215,19 +250,22 @@ class AgencySettings:
 # SQLite-backed persistence store
 # =============================================================================
 
+
 def _init_db() -> None:
     """Create the SQLite DB and table if they don't exist."""
     os.makedirs(_DATA_ROOT, exist_ok=True)
     conn = sqlite3.connect(_db_path())
     try:
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS agency_settings (
                 agency_id TEXT PRIMARY KEY,
                 config_json TEXT NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
         conn.commit()
     finally:
         conn.close()
@@ -274,8 +312,7 @@ class AgencySettingsStore:
         conn = sqlite3.connect(_db_path())
         try:
             row = conn.execute(
-                "SELECT config_json FROM agency_settings WHERE agency_id = ?",
-                (agency_id,)
+                "SELECT config_json FROM agency_settings WHERE agency_id = ?", (agency_id,)
             ).fetchone()
             if row is None:
                 # Seed defaults
@@ -306,7 +343,7 @@ class AgencySettingsStore:
                     config_json = excluded.config_json,
                     updated_at = CURRENT_TIMESTAMP
                 """,
-                (settings.agency_id, data)
+                (settings.agency_id, data),
             )
             conn.commit()
         except Exception as exc:

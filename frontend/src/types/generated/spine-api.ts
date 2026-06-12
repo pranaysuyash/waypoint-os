@@ -14,6 +14,18 @@
 /* Do not modify it by hand - just update the pydantic models and then re-run the script
 */
 
+export interface AgencySeasonalSettingsResponse {
+  active_seasons_enabled: boolean;
+  default_quarter_window_months: number;
+  channel_mix: {
+    [k: string]: number;
+  };
+  weather_risk_threshold: number;
+  budget_guardrail_multiplier: number;
+  micro_seasonality_window_days: number;
+  quarterly_recalibration_enabled: boolean;
+  prelaunch_blocklist: string[];
+}
 /**
  * Stored inside each trip_id.json natively under `"analytics"`
  */
@@ -92,6 +104,20 @@ export interface BottleneckCause {
   percentage: number;
   affectedTrips: number;
   suggestedAction: string;
+}
+export interface CreateSeasonalCampaignRequest {
+  name: string;
+  status?: "draft" | "active" | "paused" | "archived";
+  destination?: string | null;
+  campaign_window_start_month?: number | null;
+  campaign_window_end_month?: number | null;
+  channel_mix?: {
+    [k: string]: number;
+  };
+  target_budget_min?: number | null;
+  target_budget_max?: number | null;
+  notes?: string | null;
+  blocklist?: string[];
 }
 export interface DashboardStatsResponse {
   active: number;
@@ -432,6 +458,86 @@ export interface SafetyResult {
   leakage_passed?: boolean;
   leakage_errors?: string[];
 }
+export interface SeasonDispatchRequest {
+  dry_run?: boolean;
+  scenario?: string | null;
+}
+export interface SeasonDispatchResponse {
+  plan_id: string;
+  ok: boolean;
+  dispatched_channels?: string[];
+  dry_run: boolean;
+  executed_at: string;
+}
+export interface SeasonExplorationCell {
+  destination: string;
+  month: number;
+  relative_demand: number;
+  weather_risk: number;
+  suggested_channels?: string[];
+}
+export interface SeasonExplorationMapResponse {
+  generated_at: string;
+  cells?: SeasonExplorationCell[];
+}
+export interface SeasonPreflightCheck {
+  check: string;
+  status: "pass" | "warn" | "fail";
+  details?: string | null;
+}
+export interface SeasonPreflightResponse {
+  plan_id: string;
+  ok: boolean;
+  checks?: SeasonPreflightCheck[];
+  risk_score?: number;
+}
+export interface SeasonRecalibrationResponse {
+  plan_id: string;
+  recalibrated: boolean;
+  before_status?: string | null;
+  after_status: string;
+  next_recalibration_due?: string | null;
+  notes?: string[];
+}
+export interface SeasonSimulationRequest {
+  scenario?: string;
+}
+export interface SeasonSimulationResponse {
+  plan_id: string;
+  scenario: string;
+  projected_leads: number;
+  projected_bookings: number;
+  projected_margin_pct: number;
+  confidence: number;
+  notes?: string[];
+}
+export interface SeasonalCampaignListResponse {
+  items?: SeasonalCampaignPlan[];
+  total: number;
+}
+/**
+ * Canonical plan schema for campaign-level seasonal planning governance.
+ */
+export interface SeasonalCampaignPlan {
+  plan_id: string;
+  name: string;
+  status?: "draft" | "active" | "paused" | "archived";
+  destination?: string | null;
+  campaign_window_start_month?: number | null;
+  campaign_window_end_month?: number | null;
+  channel_mix?: {
+    [k: string]: number;
+  };
+  target_budget_min?: number | null;
+  target_budget_max?: number | null;
+  notes?: string | null;
+  blocklist?: string[];
+  created_by?: string | null;
+  is_recalibrated?: boolean;
+  score?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
 export interface SnoozeRequest {
   snooze_until: string;
 }
@@ -610,7 +716,6 @@ export interface TripResponse {
   validation?: {
     [k: string]: unknown;
   } | null;
-  /** Phase 2 structured intake fields */
   party_composition?: string | null;
   pace_preference?: string | null;
   date_year_confidence?: string | null;
@@ -661,4 +766,34 @@ export interface UpdateOperationalSettings {
   operating_days?: string[] | null;
   preferred_channels?: string[] | null;
   brand_tone?: string | null;
+}
+export interface UpdateSeasonalCampaignRequest {
+  name?: string | null;
+  status?: ("draft" | "active" | "paused" | "archived") | null;
+  destination?: string | null;
+  campaign_window_start_month?: number | null;
+  campaign_window_end_month?: number | null;
+  channel_mix?: {
+    [k: string]: number;
+  } | null;
+  target_budget_min?: number | null;
+  target_budget_max?: number | null;
+  notes?: string | null;
+  blocklist?: string[] | null;
+  is_recalibrated?: boolean | null;
+}
+/**
+ * Agency-level policy controls that govern seasonal campaign behavior.
+ */
+export interface UpdateSeasonalPolicy {
+  active_seasons_enabled?: boolean | null;
+  default_quarter_window_months?: number | null;
+  channel_mix?: {
+    [k: string]: number;
+  } | null;
+  weather_risk_threshold?: number | null;
+  budget_guardrail_multiplier?: number | null;
+  micro_seasonality_window_days?: number | null;
+  quarterly_recalibration_enabled?: boolean | null;
+  prelaunch_blocklist?: string[] | null;
 }

@@ -102,6 +102,7 @@ export const NAV_SECTIONS: NavSection[] = [
     label: 'ADMIN',
     items: [
       { href: '/settings', label: 'Settings', icon: 'Settings', description: 'Agency profile, rules, users, and preferences', enabled: true },
+      { href: '/seasons', label: 'Seasonal Campaigns', icon: 'CalendarDays', description: 'Campaign-level seasonal planning and launch control', enabled: true },
     ],
   },
 ];

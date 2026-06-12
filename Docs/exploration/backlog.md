@@ -118,6 +118,9 @@ A living document of areas to explore, ideas to investigate, and potential impro
 
 ## API & Server
 
+- [x] 2026-06-01: Seasonal campaign route + contract surface audited for duplicate removal risk.
+  - Outcome: no canonical duplicate path found; removal candidates restricted to dead local UI state only.
+  - Follow-up: contract parity check between TS client and Pydantic seasonal models is now in place.
 - [ ] spine_api performance optimization
 - [ ] Additional health check endpoints
 - [ ] Rate limiting and request queuing

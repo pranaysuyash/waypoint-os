@@ -8,6 +8,15 @@
 import type { ReviewStatus } from "@/types/governance";
 import type { ValidationReport, FeeCalculationResult, DecisionOutput, StrategyOutput, PromptBundle } from "@/types/spine";
 import type { IntegrityIssuesResponse } from "@/types/spine";
+import type {
+  CreateSeasonalCampaignRequest as BackendCreateSeasonalCampaignRequest,
+  SeasonDispatchResponse as BackendSeasonDispatchResponse,
+  SeasonalCampaignListResponse as BackendSeasonalCampaignListResponse,
+  SeasonalCampaignPlan,
+  SeasonPreflightResponse as BackendSeasonPreflightResponse,
+  SeasonSimulationResponse as BackendSeasonSimulationResponse,
+  UpdateSeasonalCampaignRequest as BackendUpdateSeasonalCampaignRequest,
+} from "@/types/generated/spine-api";
 
 // ============================================================================
 // TYPES
@@ -477,6 +486,7 @@ export async function createTrip(data: CreateTripRequest): Promise<Trip> {
 
 export interface AgencySettingsResponse {
   agency_id: string;
+  seasonal: AgencySeasonalSettings;
   profile: {
     agency_name: string;
     sub_brand: string;
@@ -498,6 +508,17 @@ export interface AgencySettingsResponse {
     brand_tone: string;
   };
   autonomy: AgencyAutonomyResponse;
+}
+
+export interface AgencySeasonalSettings {
+  active_seasons_enabled: boolean;
+  default_quarter_window_months: number;
+  channel_mix: Record<string, number>;
+  weather_risk_threshold: number;
+  budget_guardrail_multiplier: number;
+  micro_seasonality_window_days: number;
+  quarterly_recalibration_enabled: boolean;
+  prelaunch_blocklist: string[];
 }
 
 export interface AgencyAutonomyResponse {
@@ -539,10 +560,33 @@ export interface UpdateAgencyAutonomyRequest {
   auto_reprocess_stages?: Record<string, boolean>;
 }
 
+export interface UpdateAgencySeasonalRequest {
+  active_seasons_enabled?: boolean;
+  default_quarter_window_months?: number;
+  channel_mix?: Record<string, number>;
+  weather_risk_threshold?: number;
+  budget_guardrail_multiplier?: number;
+  micro_seasonality_window_days?: number;
+  quarterly_recalibration_enabled?: boolean;
+  prelaunch_blocklist?: string[];
+}
+
+export type SeasonalCampaign = SeasonalCampaignPlan;
+export type SeasonalCampaignListResponse = BackendSeasonalCampaignListResponse;
+export type CreateSeasonalCampaignRequest = BackendCreateSeasonalCampaignRequest;
+export type UpdateSeasonalCampaignRequest = BackendUpdateSeasonalCampaignRequest;
+export type SimulateSeasonalCampaignResponse = BackendSeasonSimulationResponse;
+export type SeasonPreflightResponse = BackendSeasonPreflightResponse;
+export type SeasonDispatchResponse = BackendSeasonDispatchResponse;
+
 export type AgencySettings = AgencySettingsResponse;
 export type AgencyAutonomy = AgencyAutonomyResponse;
+export type AgencySeasonal = AgencySeasonalSettings;
 export type UpdateOperationalPayload = UpdateAgencyOperationalRequest;
 export type UpdateAutonomyPayload = UpdateAgencyAutonomyRequest;
+export type UpdateSeasonalPayload = UpdateAgencySeasonalRequest;
+export type CreateSeasonalCampaignPayload = CreateSeasonalCampaignRequest;
+export type UpdateSeasonalCampaignPayload = UpdateSeasonalCampaignRequest;
 
 export async function getAgencySettings(): Promise<AgencySettingsResponse> {
   return api.get<AgencySettingsResponse>("/api/settings");
@@ -552,6 +596,65 @@ export async function updateAgencyOperational(
   request: UpdateAgencyOperationalRequest
 ): Promise<AgencySettingsResponse> {
   return api.post<AgencySettingsResponse>("/api/settings/operational", request);
+}
+
+export async function getAgencySeasonalSettings(): Promise<AgencySeasonalSettings> {
+  return api.get<AgencySeasonalSettings>("/api/settings/seasonal");
+}
+
+export async function updateAgencySeasonal(
+  request: UpdateAgencySeasonalRequest
+): Promise<AgencySeasonalSettings> {
+  return api.put<AgencySeasonalSettings>("/api/settings/seasonal", request);
+}
+
+export async function listSeasonalCampaigns(): Promise<SeasonalCampaignListResponse> {
+  return api.get<SeasonalCampaignListResponse>("/api/settings/seasonal/campaigns");
+}
+
+export async function getSeasonalCampaign(planId: string): Promise<SeasonalCampaign> {
+  return api.get<SeasonalCampaign>(`/api/settings/seasonal/campaigns/${encodeURIComponent(planId)}`);
+}
+
+export async function createSeasonalCampaign(
+  request: CreateSeasonalCampaignRequest
+): Promise<SeasonalCampaign> {
+  return api.post<SeasonalCampaign>("/api/settings/seasonal/campaigns", request);
+}
+
+export async function updateSeasonalCampaign(
+  planId: string,
+  request: UpdateSeasonalCampaignRequest
+): Promise<SeasonalCampaign> {
+  return api.put<SeasonalCampaign>(`/api/settings/seasonal/campaigns/${encodeURIComponent(planId)}`, request);
+}
+
+export async function deleteSeasonalCampaign(planId: string): Promise<{ ok: boolean; plan_id: string }> {
+  return api.delete<{ ok: boolean; plan_id: string }>(`/api/settings/seasonal/campaigns/${encodeURIComponent(planId)}`);
+}
+
+export async function simulateSeasonalCampaign(
+  planId: string,
+  scenario = "baseline"
+): Promise<SimulateSeasonalCampaignResponse> {
+  return api.post<SimulateSeasonalCampaignResponse>(
+    `/api/settings/seasonal/campaigns/${encodeURIComponent(planId)}/simulate`,
+    { scenario },
+  );
+}
+
+export async function preflightSeasonalCampaign(planId: string): Promise<SeasonPreflightResponse> {
+  return api.post<SeasonPreflightResponse>(`/api/settings/seasonal/campaigns/${encodeURIComponent(planId)}/preflight`);
+}
+
+export async function dispatchSeasonalCampaign(
+  planId: string,
+  dryRun = true
+): Promise<SeasonDispatchResponse> {
+  return api.post<SeasonDispatchResponse>(
+    `/api/settings/seasonal/campaigns/${encodeURIComponent(planId)}/dispatch`,
+    { dry_run: dryRun },
+  );
 }
 
 export async function updateAgencyAutonomy(

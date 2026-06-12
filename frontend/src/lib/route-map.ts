@@ -26,6 +26,12 @@ const BACKEND_ROUTE_ENTRIES: Array<[string, BackendRouteConfig]> = [
   ["settings/approvals", { backendPath: "api/settings/approvals" }],
   ["settings/autonomy", { backendPath: "api/settings/autonomy" }],
   ["settings/operational", { backendPath: "api/settings/operational" }],
+  ["settings/seasonal", { backendPath: "api/settings/seasonal" }],
+  ["settings/seasonal/campaigns", { backendPath: "api/settings/seasonal/campaigns" }],
+  ["settings/seasonal/campaigns/{id}", { backendPath: "api/settings/seasonal/campaigns/{id}" }],
+  ["settings/seasonal/campaigns/{id}/simulate", { backendPath: "api/settings/seasonal/campaigns/{id}/simulate" }],
+  ["settings/seasonal/campaigns/{id}/preflight", { backendPath: "api/settings/seasonal/campaigns/{id}/preflight" }],
+  ["settings/seasonal/campaigns/{id}/dispatch", { backendPath: "api/settings/seasonal/campaigns/{id}/dispatch" }],
 
   // ── Insights / Analytics ─────────────────────────────────────
   ["stats", { backendPath: "api/dashboard/stats" }],

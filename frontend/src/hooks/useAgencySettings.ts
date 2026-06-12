@@ -11,10 +11,13 @@ import {
   getAgencySettings,
   updateAgencyOperational,
   updateAgencyAutonomy,
+  updateAgencySeasonal,
   type AgencySettings as AgencySettingsType,
   type AgencyAutonomy as AgencyAutonomyType,
+  type AgencySeasonal as AgencySeasonalType,
   type UpdateOperationalPayload,
   type UpdateAutonomyPayload,
+  type UpdateSeasonalPayload,
 } from "@/lib/api-client";
 
 const SETTINGS_QUERY_KEY = ["agency", "settings"] as const;
@@ -22,7 +25,8 @@ const SETTINGS_STALE_TIME_MS = 60_000;
 
 export type AgencySettings = AgencySettingsType;
 export type AgencyAutonomy = AgencyAutonomyType;
-export type { UpdateOperationalPayload, UpdateAutonomyPayload };
+export type AgencySeasonal = AgencySeasonalType;
+export type { UpdateOperationalPayload, UpdateAutonomyPayload, UpdateSeasonalPayload };
 
 export function useAgencySettings() {
   const query = useQuery({
@@ -80,6 +84,27 @@ export function useUpdateAutonomyPolicy() {
       return await mutation.mutateAsync(payload);
     } catch (err) {
       console.error("Failed to update autonomy policy:", err);
+      return null;
+    }
+  };
+
+  return { mutate, isSaving: mutation.isPending, error: (mutation.error as Error) ?? null };
+}
+
+export function useUpdateSeasonalPolicy() {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: (payload: UpdateSeasonalPayload) => updateAgencySeasonal(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SETTINGS_QUERY_KEY });
+    },
+  });
+
+  const mutate = async (payload: UpdateSeasonalPayload): Promise<AgencySeasonal | null> => {
+    try {
+      return await mutation.mutateAsync(payload);
+    } catch (err) {
+      console.error("Failed to update seasonal policy:", err);
       return null;
     }
   };

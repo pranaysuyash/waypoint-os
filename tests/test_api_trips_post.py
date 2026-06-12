@@ -53,8 +53,52 @@ def patchable_trip_id():
         TripStore.delete_trip(trip_id)
 
 
+@pytest.fixture
+def trip_with_priority_facts_id():
+    unique_suffix = uuid4().hex[:12]
+    trip_id = f"tfu_priority_{unique_suffix}"
+    now = datetime.now(timezone.utc).isoformat()
+    TripStore.save_trip(
+        {
+            "id": trip_id,
+            "run_id": f"run_tfu_priority_{unique_suffix}",
+            "source": "pytest",
+            "status": "assigned",
+            "created_at": now,
+            "updated_at": now,
+            "extracted": {
+                "facts": {
+                    "trip_priorities": {"value": "Kid-friendly hotel, direct flights, beach access"},
+                    "date_flexibility": {"value": "moderate"},
+                }
+            },
+            "validation": {"is_valid": True, "errors": [], "warnings": []},
+            "decision": {
+                "decision_state": "ASK_FOLLOWUP",
+                "hard_blockers": [],
+                "soft_blockers": [],
+            },
+            "raw_input": {"fixture_id": "SC-PRIORITY"},
+        },
+        agency_id=AGENCY_ID,
+    )
+    try:
+        yield trip_id
+    finally:
+        TripStore.delete_trip(trip_id)
+
+
 class TestTripFollowUpDueDate:
     """Tests for follow_up_due_date field in Trip model."""
+
+    def test_get_trip_surfaces_priorities_and_date_flexibility_from_extracted_facts(self, session_client, trip_with_priority_facts_id):
+        """GET /trips/{trip_id} exposes readiness-critical intake facts as canonical fields."""
+        response = session_client.get(f"/trips/{trip_with_priority_facts_id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["trip_priorities"] == "Kid-friendly hotel, direct flights, beach access"
+        assert data["date_flexibility"] == "moderate"
 
     def test_get_trip_includes_follow_up_due_date_field(self, session_client):
         """GET /trips returns items, and trips should have follow_up_due_date field (can be null)."""
