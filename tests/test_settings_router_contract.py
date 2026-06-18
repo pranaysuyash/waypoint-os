@@ -8,6 +8,8 @@ def test_settings_router_returns_frontend_consumed_settings_shape(session_client
     payload = response.json()
 
     assert payload["agency_id"]
+    assert "tier" in payload
+    assert payload["tier"] in ("starter", "pro", "enterprise")
     assert set(payload["profile"]) >= {
         "agency_name",
         "sub_brand",
@@ -37,6 +39,28 @@ def test_settings_router_returns_frontend_consumed_settings_shape(session_client
         "min_proceed_confidence",
         "min_draft_confidence",
     }
+
+
+def test_settings_router_llm_guard_state_shape(session_client):
+    response = session_client.get("/api/settings/llm-guard")
+
+    assert response.status_code == 200
+    payload = response.json()
+
+    assert set(payload) >= {
+        "enabled",
+        "agency_id",
+        "max_calls_per_hour",
+        "max_calls_per_model",
+        "daily_budget",
+        "budget_mode",
+        "current_hourly_calls",
+        "current_daily_cost",
+    }
+    assert isinstance(payload["enabled"], bool)
+    assert isinstance(payload["max_calls_per_model"], dict)
+    assert isinstance(payload["current_hourly_calls"], int)
+    assert isinstance(payload["current_daily_cost"], (int, float))
 
 
 def test_settings_router_returns_autonomy_shape(session_client):

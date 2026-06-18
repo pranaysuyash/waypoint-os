@@ -71,6 +71,20 @@ class DashboardAggregator:
 
         now = datetime.now(timezone.utc)
 
+        # Pipeline stage breakdown — aggregate by trip stage (meta.stage or status)
+        pipeline_stages: Dict[str, int] = {}
+        pending_review_count = 0
+
+        # Per-status review counts (all trips that have interacted with the review system)
+        review_counts: Dict[str, int] = {
+            "pending": 0,
+            "approved": 0,
+            "rejected": 0,
+            "escalated": 0,
+            "revision_needed": 0,
+        }
+        total_pending_review_value = 0
+
         for trip in trips:
             status = trip.get("status")
             trip_id = trip.get("id", "missing_id")
@@ -83,6 +97,24 @@ class DashboardAggregator:
                     "status": status,
                     "created_at": trip.get("created_at")
                 })
+
+            # Pipeline stage breakdown (meta.stage or status fallback)
+            stage = trip.get("stage") or trip.get("meta", {}).get("stage") or status or "unknown"
+            pipeline_stages[stage] = pipeline_stages.get(stage, 0) + 1
+
+            # Review counts — compute from analytics.review_status and requires_review
+            analytics = trip.get("analytics")
+            if isinstance(analytics, dict):
+                if analytics.get("requires_review") is True:
+                    pending_review_count += 1
+                    # Sum value of pending reviews for the summary card
+                    packet = trip.get("packet") or {}
+                    budget = packet.get("budget") or {}
+                    total_pending_review_value += budget.get("value", 0)
+
+                review_status = analytics.get("review_status")
+                if review_status in review_counts:
+                    review_counts[review_status] += 1
 
             created_at_str = trip.get("created_at")
             if created_at_str:
@@ -120,6 +152,10 @@ class DashboardAggregator:
             t3 - t2, t3 - t0
         )
 
+        # Derive dashboard counts from trip statuses
+        workspace_trip_count = stages.get("assigned", 0) + stages.get("in_progress", 0)
+        inbox_lead_count = stages.get("new", 0)
+
         result = {
             "canonical_total": canonical_total,
             "stages": stages,
@@ -132,6 +168,12 @@ class DashboardAggregator:
                 "last_sync": now.isoformat()
             },
             "systemic_errors": systemic_errors,
+            "workspace_trip_count": workspace_trip_count,
+            "inbox_lead_count": inbox_lead_count,
+            "pending_review_count": pending_review_count,
+            "review_counts": review_counts,
+            "total_pending_review_value": total_pending_review_value,
+            "pipeline_stages": pipeline_stages,
         }
 
         # Store in cache

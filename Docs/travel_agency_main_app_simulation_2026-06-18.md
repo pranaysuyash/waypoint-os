@@ -267,3 +267,32 @@ The remaining gap is confidence:
 - the app still needs to feel more decisive after each operator action
 - the workflow should make it harder to wonder whether the system understood the save
 - the authenticated browser simulation still depends on actual session state, which is correct but limits a cold start clickthrough
+
+## Live Browser Clickthrough
+
+What I did:
+
+1. Opened the live Chrome session on `http://127.0.0.1:3101/login`.
+2. Authenticated with `newuser@test.com` and `testpass123`.
+3. Verified `/api/auth/me` returned the expected user, agency, and membership payload from the browser session.
+4. Navigated to `/overview`.
+5. Navigated to `/workbench?draft=new&tab=intake&capture_mode=call&entry=new`.
+
+What happened on screen:
+
+- the browser could authenticate at the API level
+- the app shell still stayed on `Checking your session…` on both overview and workbench after the login step
+- the page title changed correctly, but the authenticated content never surfaced in the browser
+- console noise was dominated by Next.js dev HMR websocket failures
+
+What that means:
+
+- the live auth contract works
+- the browser session can reach the backend through the frontend proxy
+- the client-side authenticated shell is still not completing hydration in this browser daemon flow
+
+Practical takeaway:
+
+- this is a real UX blocker for a cold browser clickthrough
+- it is not a doc issue or a missing credentials issue
+- the user-visible app state needs to move past session-checking reliably once auth succeeds

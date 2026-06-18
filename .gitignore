@@ -127,8 +127,8 @@ Archive/design_refs/
 # Browser/QA tool state
 .gstack/
 
-# Local dev-server runtime state
-.runtime/local/
+# Local runtime state (dev server/tool/local runtime artifacts)
+.runtime/
 
 # Responsive audit output
 Docs/responsive-audit/

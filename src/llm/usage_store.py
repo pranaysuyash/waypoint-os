@@ -26,7 +26,7 @@ import sqlite3
 import threading
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 from uuid import uuid4
 
 logger = logging.getLogger(__name__)
@@ -161,6 +161,7 @@ class LLMUsageStore:
         feature: str,
         estimated_cost: float,
         hourly_limit: Optional[int],
+        model_hourly_limit: Optional[int] = None,
         daily_budget: Optional[float],
         budget_mode: str,
         warning_thresholds: list[float],
@@ -221,7 +222,7 @@ class LLMUsageStore:
             warnings: list[str] = []
             block_reason: Optional[str] = None
 
-            # ── 1. rate limit ────────────────────────────────────────────────────
+            # ── 1. rate limit (per-agency, per-model scoped) ────────────────────
             if hourly_limit is not None and hourly_calls >= hourly_limit:
                 block_reason = "rate_limit_exceeded"
                 self._insert_blocked(
@@ -245,7 +246,31 @@ class LLMUsageStore:
                     "warnings": warnings,
                 }
 
-            # ── 2. budget block ───────────────────────────────────────────────────
+            # ── 2. per-model hourly limit ──────────────────────────────────────────
+            if model_hourly_limit is not None and hourly_calls >= model_hourly_limit:
+                block_reason = "model_rate_limit_exceeded"
+                self._insert_blocked(
+                    conn,
+                    request_id=request_id,
+                    agency_id=agency_id,
+                    model=model,
+                    feature=feature,
+                    usage_date=usage_date,
+                    created_at=now.isoformat(),
+                    estimated_cost=estimated_cost,
+                    block_reason=block_reason,
+                    warning_flags=json.dumps(warnings) if warnings else None,
+                )
+                conn.commit()
+                return False, {
+                    "hourly_calls": hourly_calls,
+                    "daily_cost": daily_cost,
+                    "projected_cost": projected_cost,
+                    "block_reason": block_reason,
+                    "warnings": warnings,
+                }
+
+            # ── 3. budget block ───────────────────────────────────────────────────
             if daily_budget is not None:
                 # warnings
                 for t in warning_thresholds:
@@ -284,7 +309,7 @@ class LLMUsageStore:
                         f"Daily budget exceeded: ₹{projected_cost:.2f} > ₹{daily_budget:.2f} (mode=warn)"
                     )
 
-            # ── 3. reserve ───────────────────────────────────────────────────────
+            # ── 4. reserve ───────────────────────────────────────────────────────
             cursor = conn.execute(
                 """
                 INSERT INTO usage_events
@@ -477,6 +502,7 @@ class InMemoryUsageStore(LLMUsageStore):
         feature: str,
         estimated_cost: float,
         hourly_limit: Optional[int],
+        model_hourly_limit: Optional[int] = None,
         daily_budget: Optional[float],
         budget_mode: str,
         warning_thresholds: list[float],
@@ -535,6 +561,33 @@ class InMemoryUsageStore(LLMUsageStore):
                     "daily_cost": daily_cost,
                     "projected_cost": projected_cost,
                     "block_reason": "rate_limit_exceeded",
+                    "warnings": warnings,
+                }
+
+            if model_hourly_limit is not None and hourly_calls >= model_hourly_limit:
+                event_id = self._next_id()
+                self._events.append(
+                    {
+                        "id": event_id,
+                        "request_id": request_id,
+                        "agency_id": agency_id,
+                        "model": model,
+                        "feature": feature,
+                        "created_at": now.isoformat(),
+                        "usage_date": usage_date,
+                        "status": "blocked",
+                        "estimated_cost": estimated_cost,
+                        "actual_cost": None,
+                        "block_reason": "model_rate_limit_exceeded",
+                        "warning_flags": json.dumps(warnings) if warnings else None,
+                    }
+                )
+                return {
+                    "event_id": event_id,
+                    "hourly_calls": hourly_calls,
+                    "daily_cost": daily_cost,
+                    "projected_cost": projected_cost,
+                    "block_reason": "model_rate_limit_exceeded",
                     "warnings": warnings,
                 }
 
@@ -649,17 +702,18 @@ class InMemoryUsageStore(LLMUsageStore):
 
 _LUA_CHECK_AND_RESERVE = """
 -- KEYS: {calls_key} {cost_key}
--- ARGV: request_id ts_now ts_cutoff hourly_limit daily_budget budget_mode estimated_cost
+-- ARGV: request_id ts_now ts_cutoff hourly_limit model_hourly_limit daily_budget budget_mode estimated_cost
 local calls_key  = KEYS[1]
 local cost_key   = KEYS[2]
 
-local request_id    = ARGV[1]
-local ts_now        = tonumber(ARGV[2])
-local ts_cutoff     = tonumber(ARGV[3])
-local hourly_limit  = tonumber(ARGV[4])   -- 0 means "no limit"
-local daily_budget  = tonumber(ARGV[5])   -- 0 means "no limit"
-local budget_mode   = ARGV[6]
-local estimated_cost = tonumber(ARGV[7])
+local request_id          = ARGV[1]
+local ts_now              = tonumber(ARGV[2])
+local ts_cutoff           = tonumber(ARGV[3])
+local hourly_limit        = tonumber(ARGV[4])   -- 0 means "no limit"
+local model_hourly_limit  = tonumber(ARGV[5])   -- 0 means "no limit"
+local daily_budget        = tonumber(ARGV[6])   -- 0 means "no limit"
+local budget_mode         = ARGV[7]
+local estimated_cost      = tonumber(ARGV[8])
 
 -- count calls in last hour
 redis.call('ZREMRANGEBYSCORE', calls_key, '-inf', ts_cutoff)
@@ -672,6 +726,10 @@ local projected  = daily_cost + estimated_cost
 -- check limits
 if hourly_limit > 0 and hourly_calls >= hourly_limit then
     return {0, hourly_calls, daily_cost, 'hourly_limit_reached'}
+end
+
+if model_hourly_limit > 0 and hourly_calls >= model_hourly_limit then
+    return {0, hourly_calls, daily_cost, 'model_rate_limit_exceeded'}
 end
 
 if daily_budget > 0 and projected > daily_budget and budget_mode == 'block' then
@@ -758,6 +816,7 @@ class RedisUsageStore(LLMUsageStore):
         feature: str,
         estimated_cost: float,
         hourly_limit: Optional[int],
+        model_hourly_limit: Optional[int] = None,
         daily_budget: Optional[float],
         budget_mode: str,
         warning_thresholds: list[float],
@@ -779,6 +838,7 @@ class RedisUsageStore(LLMUsageStore):
                     str(ts_now),
                     str(ts_cutoff),
                     str(hourly_limit or 0),
+                    str(model_hourly_limit or 0),
                     str(daily_budget or 0),
                     budget_mode,
                     str(estimated_cost),

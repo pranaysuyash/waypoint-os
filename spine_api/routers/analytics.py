@@ -187,6 +187,7 @@ def bulk_review_action(actions: List[dict]):
                 user_id="owner",
                 reassign_to=action.get("reassign_to"),
                 error_category=action.get("error_category"),
+                escalation_outcome=action.get("escalation_outcome"),
             )
             processed += 1
             results.append({"trip_id": trip_id, "status": "processed"})

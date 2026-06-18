@@ -431,29 +431,61 @@ def run_spine_once(
     }
 
     # --- Phase 3.2: Frontier Orchestration (Ghost Concierge & Sentiment) ---
-    with _otel_tracer.start_as_current_span("frontier") as span:
-        frontier_result = run_frontier_orchestration(packet, decision, agency_settings=actual_settings)
-        span.set_attribute("ghost_triggered", str(frontier_result.ghost_triggered))
-        span.set_attribute("sentiment_score", frontier_result.sentiment_score)
-    
-    # Record frontier metadata in decision rationale
-    decision.rationale["frontier"] = {
-        "ghost_triggered": frontier_result.ghost_triggered,
-        "ghost_workflow_id": frontier_result.ghost_workflow_id,
-        "sentiment_score": frontier_result.sentiment_score,
-        "anxiety_alert": frontier_result.anxiety_alert,
-        "intelligence_hits": frontier_result.intelligence_hits,
-        "specialty_knowledge": [
-            h.model_dump() if hasattr(h, "model_dump") else h
-            for h in (frontier_result.specialty_knowledge or [])
-        ],
-    }
+    # Gated by enable_frontier_orchestration (AiAgentSettings feature gate)
+    ai_agent_settings = getattr(actual_settings, 'ai_agent', None)
+    frontier_enabled = (
+        ai_agent_settings is None
+        or getattr(ai_agent_settings, 'enable_frontier_orchestration', True)
+    )
+    if frontier_enabled:
+        with _otel_tracer.start_as_current_span("frontier") as span:
+            frontier_result = run_frontier_orchestration(packet, decision, agency_settings=actual_settings)
+            span.set_attribute("ghost_triggered", str(frontier_result.ghost_triggered))
+            span.set_attribute("sentiment_score", frontier_result.sentiment_score)
+
+        # Record frontier metadata in decision rationale
+        decision.rationale["frontier"] = {
+            "ghost_triggered": frontier_result.ghost_triggered,
+            "ghost_workflow_id": frontier_result.ghost_workflow_id,
+            "sentiment_score": frontier_result.sentiment_score,
+            "anxiety_alert": frontier_result.anxiety_alert,
+            "intelligence_hits": frontier_result.intelligence_hits,
+            "specialty_knowledge": [
+                h.model_dump() if hasattr(h, "model_dump") else h
+                for h in (frontier_result.specialty_knowledge or [])
+            ],
+        }
+    else:
+        frontier_result = FrontierOrchestrationResult()
+        decision.rationale["frontier"] = {
+            "ghost_triggered": False,
+            "skipped": True,
+            "reason": "enable_frontier_orchestration is disabled",
+        }
 
     # --- Phase 4: Strategy ---
+    # Gated by enable_auto_proposal (AiAgentSettings feature gate)
+    auto_proposal_enabled = (
+        ai_agent_settings is None
+        or getattr(ai_agent_settings, 'enable_auto_proposal', True)
+    )
     _emit_stage_event("strategy", "entered")
     try:
         with _otel_tracer.start_as_current_span("strategy") as span:
-            strategy = build_session_strategy(decision, packet, agency_settings=actual_settings)
+            if auto_proposal_enabled:
+                strategy = build_session_strategy(decision, packet, agency_settings=actual_settings)
+            else:
+                # Proposal generation disabled — produce minimal strategy
+                from .strategy import SessionStrategy
+                strategy = SessionStrategy(
+                    session_goal="Proposal generation disabled by agency settings.",
+                    priority_sequence=[],
+                    tonal_guardrails=[],
+                    risk_flags=[],
+                    suggested_opening="",
+                    exit_criteria=[],
+                    next_action=decision.decision_state,
+                )
             span.set_attribute("session_goal", strategy.session_goal[:80] if strategy.session_goal else "")
     except Exception as e:
         _emit_stage_event("strategy", "failed", error=str(e))

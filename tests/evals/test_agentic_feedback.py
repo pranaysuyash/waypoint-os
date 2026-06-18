@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from src.evals.agentic_feedback import (
     AgenticEvalRecord,
     aggregate_eval_records,
+    build_routing_metrics,
     build_repeated_failure_signal,
     extract_metadata_signature,
     filter_eval_candidates,
@@ -146,3 +147,93 @@ def test_aggregate_eval_records_respects_window_minutes():
     assert summary["total_events_considered"] == 3
     assert summary["work_items"][0]["failure_signature"] == "new"
     assert summary["work_items"][0]["occurrences"] == 3
+
+
+def test_build_routing_metrics_calculates_fallback_and_review_health():
+    events = [
+        _event(
+            id="r1",
+            created_at=datetime(2026, 6, 18, 10, 0, tzinfo=timezone.utc),
+            event_metadata={
+                "fallback_trigger_reason": "schema_validation_retry_available",
+                "fallback_result": "succeeded_after_fallback",
+                "latency_ms": 100,
+                "cost_estimate_usd": 0.10,
+                "review_trigger_reason": "manual_review_required",
+                "review_outcome": "applied",
+            },
+        ),
+        _event(
+            id="r2",
+            created_at=datetime(2026, 6, 18, 10, 2, tzinfo=timezone.utc),
+            event_metadata={
+                "fallback_trigger_reason": "missing_data_retry_available",
+                "fallback_result": "exhausted",
+                "latency_ms": 200,
+                "cost_estimate_usd": 0.20,
+                "review_trigger_reason": "policy_review_required",
+                "review_outcome": "rejected",
+            },
+        ),
+        _event(
+            id="r3",
+            created_at=datetime(2026, 6, 18, 10, 4, tzinfo=timezone.utc),
+            event_metadata={
+                "review_trigger_reason": "quality_threshold",
+                "review_outcome": "manual_reject",
+            },
+        ),
+        _event(
+            id="r4",
+            created_at=datetime(2026, 6, 18, 10, 6, tzinfo=timezone.utc),
+            event_metadata={"failure_signature": "sig-a"},
+        ),
+    ]
+
+    metrics = build_routing_metrics(events)
+
+    assert metrics["fallback_trigger_count"] == 2
+    assert metrics["useful_fallback_count"] == 1
+    assert metrics["wasteful_fallback_count"] == 1
+    assert metrics["fallback_trigger_rate"] == 0.5
+    assert metrics["review_trigger_count"] == 3
+    assert metrics["review_accept_count"] == 1
+    assert metrics["review_reject_count"] == 2
+    assert metrics["review_correction_rate"] == 0.667
+    assert metrics["latency_by_candidates"]["count"] == 2
+    assert metrics["latency_by_candidates"]["avg_ms"] == 150.0
+    assert metrics["cost_usd"]["event_count_with_cost"] == 2
+    assert metrics["cost_usd"]["avg_per_eval_event"] == 0.075
+
+
+def test_build_routing_metrics_includes_explicit_escalation_outcomes_from_review_events():
+    events = [
+        _event(
+            id="r1",
+            created_at=datetime(2026, 6, 18, 10, 0, tzinfo=timezone.utc),
+            event_metadata={"failure_signature": "sig-a"},
+        )
+    ]
+    review_events = [
+        {
+            "type": "review_action",
+            "details": {"trip_id": "trip_001", "escalation_outcome": "false_escalation"},
+        },
+        {
+            "type": "review_action",
+            "details": {"trip_id": "trip_001", "escalation_outcome": "missed_escalation"},
+        },
+        {
+            "type": "review_action",
+            "details": {"trip_id": "trip_001", "escalation_outcome": "correct_escalation"},
+        },
+    ]
+
+    metrics = build_routing_metrics(events, review_events=review_events)
+
+    assert metrics["escalation_outcome_count"] == 3
+    assert metrics["false_escalation_count"] == 1
+    assert metrics["missed_escalation_count"] == 1
+    assert metrics["correct_escalation_count"] == 1
+    assert metrics["false_escalation_rate"] == 0.333
+    assert metrics["missed_escalation_rate"] == 0.333

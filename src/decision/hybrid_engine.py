@@ -541,6 +541,7 @@ class HybridDecisionEngine:
             completion_tokens_estimate = self.llm_client.count_tokens('{"result": "x"}')
             estimated_cost = self.llm_client.estimate_cost(prompt_tokens, completion_tokens_estimate)
 
+            usage_decision = None
             if _is_llm_guard_enabled() and get_usage_guard is not None:
                 try:
                     guard = get_usage_guard()
@@ -600,13 +601,12 @@ class HybridDecisionEngine:
                 f"model={llm_model}, cost=₹{cost:.2f}"
             )
 
-            if _is_llm_guard_enabled() and get_usage_guard is not None:
+            if usage_decision is not None and _is_llm_guard_enabled() and get_usage_guard is not None:
                 try:
                     guard = get_usage_guard()
                     guard.record_call(
-                        model=llm_model,
-                        estimated_cost=cost,
-                        feature="hybrid_engine",
+                        decision=usage_decision,
+                        actual_cost=cost,
                         success=True,
                     )
                 except Exception as guard_error:
@@ -623,13 +623,12 @@ class HybridDecisionEngine:
 
         except Exception as e:
             logger.error(f"LLM call failed for {decision_type}: {e}")
-            if _is_llm_guard_enabled() and get_usage_guard is not None:
+            if usage_decision is not None and _is_llm_guard_enabled() and get_usage_guard is not None:
                 try:
                     guard = get_usage_guard()
                     guard.record_call(
-                        model=llm_model,
-                        estimated_cost=estimated_cost,
-                        feature="hybrid_engine",
+                        decision=usage_decision,
+                        actual_cost=estimated_cost,
                         success=False,
                     )
                 except Exception:

@@ -8,10 +8,16 @@ shell can keep moving toward route-module ownership without changing contracts.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import List, Optional
 
+logger = logging.getLogger(__name__)
+
 from fastapi import APIRouter, HTTPException
+
+from src.llm.usage_guard import get_guard_for_agency, reload_guard_for_agency
+from src.llm.alert_service import alert_service_from_settings
 
 from spine_api.contract import (
     ApprovalThresholdConfig,
@@ -23,10 +29,13 @@ from spine_api.contract import (
     SeasonSimulationRequest,
     SeasonalCampaignListResponse,
     SeasonalCampaignPlan,
+    UpdateAiAgentSettings,
     UpdateAutonomyPolicy,
+    UpdateCommSettings,
     UpdateSeasonalCampaignRequest,
     UpdateOperationalSettings,
     UpdateSeasonalPolicy,
+    UpdateSupportSettings,
 )
 from spine_api.core.auth import require_permission
 from src.intake.config.agency_settings import AgencySettingsStore
@@ -44,6 +53,7 @@ router = APIRouter()
 def _build_agency_settings_payload(settings) -> dict:
     return {
         "agency_id": settings.agency_id,
+        "tier": settings.tier.value,
         "seasonal": ConfigStore.get_seasonal_policy(settings.agency_id),
         "profile": {
             "agency_name": settings.agency_name,
@@ -481,6 +491,446 @@ def dispatch_seasonal_campaign(
         "dry_run": bool(request.dry_run),
         "executed_at": datetime.now(timezone.utc).isoformat(),
     }
+
+
+@router.get("/api/settings/llm-guard")
+def get_llm_guard_state(
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:read"),
+):
+    """Return the current LLM usage guard state for an agency."""
+    guard = get_guard_for_agency(agency_id)
+    return guard.get_state()
+
+
+# ---------------------------------------------------------------------------
+# Alert Destinations (P4-05/P4-11)
+# ---------------------------------------------------------------------------
+
+@router.get("/api/settings/alert-destinations")
+def get_alert_destinations(
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:read"),
+):
+    """Return alert delivery destinations for the agency."""
+    settings = AgencySettingsStore.load(agency_id)
+    ad = settings.alert_destinations
+    # Redact SMTP passwords in the response
+    redacted_dests = []
+    for d in ad.destinations:
+        d_dict = {
+            "id": d.id,
+            "label": d.label,
+            "enabled": d.enabled,
+            "type": d.type,
+            "url": d.url,
+            "email_to": d.email_to,
+            "email_cc": d.email_cc,
+            "smtp_host": d.smtp_host,
+            "smtp_port": d.smtp_port,
+            "smtp_user": d.smtp_user,
+            "smtp_use_tls": d.smtp_use_tls,
+            "sender": d.sender,
+            "min_severity": d.min_severity,
+            "event_types": d.event_types,
+            "has_smtp_password": bool(d.smtp_password),
+        }
+        redacted_dests.append(d_dict)
+    return {
+        "enabled": ad.enabled,
+        "destinations": redacted_dests,
+    }
+
+
+@router.post("/api/settings/alert-destinations")
+def update_alert_destinations(
+    request: dict,
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:write"),
+):
+    """Update alert delivery destinations. SMTP passwords are only updated if provided."""
+    from src.intake.config.agency_settings import AlertDestinationsSettings, AlertDestination
+
+    settings = AgencySettingsStore.load(agency_id)
+    new_enabled = request.get("enabled", settings.alert_destinations.enabled)
+    raw_dests = request.get("destinations", [])
+
+    # Build destination list, preserving existing passwords when not provided
+    existing_map = {d.id: d for d in settings.alert_destinations.destinations}
+    destinations = []
+    for raw in raw_dests:
+        dest_id = raw.get("id", "")
+        existing = existing_map.get(dest_id)
+        destinations.append(AlertDestination(
+            id=dest_id,
+            label=raw.get("label", ""),
+            enabled=raw.get("enabled", True),
+            type=raw.get("type", "webhook"),
+            url=raw.get("url", ""),
+            email_to=raw.get("email_to", ""),
+            email_cc=raw.get("email_cc", ""),
+            smtp_host=raw.get("smtp_host", ""),
+            smtp_port=raw.get("smtp_port", 25),
+            smtp_user=raw.get("smtp_user", ""),
+            smtp_password=raw.get("smtp_password") or (existing.smtp_password if existing else ""),
+            smtp_use_tls=raw.get("smtp_use_tls", True),
+            sender=raw.get("sender", "no-reply@waypoint.ai"),
+            min_severity=raw.get("min_severity", "warning"),
+            event_types=raw.get("event_types", []),
+        ))
+
+    settings.alert_destinations = AlertDestinationsSettings(
+        enabled=new_enabled,
+        destinations=destinations,
+    )
+    AgencySettingsStore.save(settings)
+
+    # Hot-reload the per-agency guard so changes take effect immediately
+    try:
+        reload_guard_for_agency(agency_id)
+    except Exception:
+        logger.warning("Failed to hot-reload guard after alert destinations update (agency=%s)", agency_id)
+
+    return {"ok": True}
+
+
+@router.post("/api/settings/alert-destinations/test")
+def test_alert_destination(
+    request: dict,
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:write"),
+):
+    """Send a test alert to a destination."""
+    from src.llm.alert_service import AlertPayload, AlertEventType
+
+    dest_type = request.get("type", "webhook")
+    payload = AlertPayload(
+        event_type=AlertEventType.THRESHOLD_WARNING,
+        agency_id=agency_id,
+        title="Test Alert",
+        detail="This is a test alert from Waypoint AI to verify your alert destination configuration.",
+        severity="warning",
+    )
+
+    if dest_type == "webhook":
+        from src.llm.alert_service import WebhookChannel
+        url = request.get("url", "")
+        if not url:
+            raise HTTPException(status_code=400, detail="Webhook URL is required")
+        channel = WebhookChannel([url])
+        ok = channel.send(payload)
+        return {"ok": ok, "detail": "Webhook delivered" if ok else "Webhook delivery failed"}
+
+    elif dest_type == "email":
+        from src.llm.alert_service import EmailChannel
+        email_to = request.get("email_to", "")
+        if not email_to:
+            raise HTTPException(status_code=400, detail="Email recipient is required")
+        recipients = [r.strip() for r in email_to.split(",") if r.strip()]
+        channel = EmailChannel(
+            recipients=recipients,
+            sender=request.get("sender", "no-reply@waypoint.ai"),
+            smtp_host=request.get("smtp_host", "localhost"),
+            smtp_port=request.get("smtp_port", 25),
+            smtp_user=request.get("smtp_user") or None,
+            smtp_password=request.get("smtp_password") or None,
+        )
+        ok = channel.send(payload)
+        return {"ok": ok, "detail": "Email sent" if ok else "Email delivery failed"}
+
+    raise HTTPException(status_code=400, detail=f"Unknown destination type: {dest_type}")
+
+
+# ---------------------------------------------------------------------------
+# AI Agent Settings (P4-07)
+# ---------------------------------------------------------------------------
+
+@router.get("/api/settings/ai-agent")
+def get_ai_agent_settings(
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:read"),
+):
+    """Return AI agent behavior settings for the agency."""
+    settings = AgencySettingsStore.load(agency_id)
+    ai = settings.ai_agent
+    return {
+        "agency_id": settings.agency_id,
+        "enable_auto_intake": ai.enable_auto_intake,
+        "enable_auto_shortlist": ai.enable_auto_shortlist,
+        "enable_auto_proposal": ai.enable_auto_proposal,
+        "enable_auto_negotiation": ai.enable_auto_negotiation,
+        "enable_frontier_orchestration": ai.enable_frontier_orchestration,
+        "enable_checker_agent": ai.enable_checker_agent,
+        "enable_call_capture": ai.enable_call_capture,
+        "enable_document_extraction": ai.enable_document_extraction,
+        "preferred_model": ai.preferred_model,
+        "fallback_model": ai.fallback_model,
+        "extraction_model": ai.extraction_model,
+        "checker_model": ai.checker_model,
+        "max_negotiation_rounds": ai.max_negotiation_rounds,
+        "proposal_confidence_threshold": ai.proposal_confidence_threshold,
+        "auto_advance_stages": ai.auto_advance_stages,
+        "require_owner_review_above_value": ai.require_owner_review_above_value,
+        "brand_voice": ai.brand_voice,
+        "response_language": ai.response_language,
+        "max_follow_up_questions": ai.max_follow_up_questions,
+    }
+
+
+@router.post("/api/settings/ai-agent")
+def update_ai_agent_settings(
+    request: UpdateAiAgentSettings,
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:write"),
+):
+    """Update AI agent behavior settings for the agency."""
+    settings = AgencySettingsStore.load(agency_id)
+    ai = settings.ai_agent
+
+    if request.enable_auto_intake is not None:
+        ai.enable_auto_intake = request.enable_auto_intake
+    if request.enable_auto_shortlist is not None:
+        ai.enable_auto_shortlist = request.enable_auto_shortlist
+    if request.enable_auto_proposal is not None:
+        ai.enable_auto_proposal = request.enable_auto_proposal
+    if request.enable_auto_negotiation is not None:
+        ai.enable_auto_negotiation = request.enable_auto_negotiation
+    if request.enable_frontier_orchestration is not None:
+        ai.enable_frontier_orchestration = request.enable_frontier_orchestration
+    if request.enable_checker_agent is not None:
+        ai.enable_checker_agent = request.enable_checker_agent
+    if request.enable_call_capture is not None:
+        ai.enable_call_capture = request.enable_call_capture
+    if request.enable_document_extraction is not None:
+        ai.enable_document_extraction = request.enable_document_extraction
+    if request.preferred_model is not None:
+        ai.preferred_model = request.preferred_model
+    if request.fallback_model is not None:
+        ai.fallback_model = request.fallback_model
+    if request.extraction_model is not None:
+        ai.extraction_model = request.extraction_model
+    if request.checker_model is not None:
+        ai.checker_model = request.checker_model
+    if request.max_negotiation_rounds is not None:
+        ai.max_negotiation_rounds = max(1, request.max_negotiation_rounds)
+    if request.proposal_confidence_threshold is not None:
+        ai.proposal_confidence_threshold = max(0.0, min(1.0, request.proposal_confidence_threshold))
+    if request.auto_advance_stages is not None:
+        ai.auto_advance_stages = request.auto_advance_stages
+    if request.require_owner_review_above_value is not None:
+        ai.require_owner_review_above_value = request.require_owner_review_above_value
+    if request.brand_voice is not None:
+        if request.brand_voice in ("professional", "friendly", "luxury", "budget"):
+            ai.brand_voice = request.brand_voice
+    if request.response_language is not None:
+        ai.response_language = request.response_language
+    if request.max_follow_up_questions is not None:
+        ai.max_follow_up_questions = max(0, request.max_follow_up_questions)
+
+    AgencySettingsStore.save(settings)
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Support Settings (P4-08)
+# ---------------------------------------------------------------------------
+
+@router.get("/api/settings/support")
+def get_support_settings(
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:read"),
+):
+    """Return support channel configuration for the agency."""
+    settings = AgencySettingsStore.load(agency_id)
+    s = settings.support
+    return {
+        "agency_id": settings.agency_id,
+        "enable_email_support": s.enable_email_support,
+        "enable_chat_support": s.enable_chat_support,
+        "enable_phone_support": s.enable_phone_support,
+        "enable_whatsapp_support": s.enable_whatsapp_support,
+        "default_response_sla_hours": s.default_response_sla_hours,
+        "urgent_response_sla_hours": s.urgent_response_sla_hours,
+        "auto_route_by_destination": s.auto_route_by_destination,
+        "auto_route_by_language": s.auto_route_by_language,
+        "escalation_after_sla_breach": s.escalation_after_sla_breach,
+        "escalation_contact_email": s.escalation_contact_email,
+        "escalation_contact_phone": s.escalation_contact_phone,
+        "support_hours_start": s.support_hours_start,
+        "support_hours_end": s.support_hours_end,
+        "support_days": s.support_days,
+        "timezone": s.timezone,
+        "enable_auto_acknowledgement": s.enable_auto_acknowledgement,
+        "auto_acknowledgement_message": s.auto_acknowledgement_message,
+        "out_of_hours_message": s.out_of_hours_message,
+        "enable_csat_survey": s.enable_csat_survey,
+        "csat_trigger": s.csat_trigger,
+    }
+
+
+@router.post("/api/settings/support")
+def update_support_settings(
+    request: UpdateSupportSettings,
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:write"),
+):
+    """Update support channel configuration for the agency."""
+    settings = AgencySettingsStore.load(agency_id)
+    s = settings.support
+
+    if request.enable_email_support is not None:
+        s.enable_email_support = request.enable_email_support
+    if request.enable_chat_support is not None:
+        s.enable_chat_support = request.enable_chat_support
+    if request.enable_phone_support is not None:
+        s.enable_phone_support = request.enable_phone_support
+    if request.enable_whatsapp_support is not None:
+        s.enable_whatsapp_support = request.enable_whatsapp_support
+    if request.default_response_sla_hours is not None:
+        s.default_response_sla_hours = max(1, request.default_response_sla_hours)
+    if request.urgent_response_sla_hours is not None:
+        s.urgent_response_sla_hours = max(1, request.urgent_response_sla_hours)
+    if request.auto_route_by_destination is not None:
+        s.auto_route_by_destination = request.auto_route_by_destination
+    if request.auto_route_by_language is not None:
+        s.auto_route_by_language = request.auto_route_by_language
+    if request.escalation_after_sla_breach is not None:
+        s.escalation_after_sla_breach = request.escalation_after_sla_breach
+    if request.escalation_contact_email is not None:
+        s.escalation_contact_email = request.escalation_contact_email
+    if request.escalation_contact_phone is not None:
+        s.escalation_contact_phone = request.escalation_contact_phone
+    if request.support_hours_start is not None:
+        s.support_hours_start = request.support_hours_start
+    if request.support_hours_end is not None:
+        s.support_hours_end = request.support_hours_end
+    if request.support_days is not None:
+        s.support_days = request.support_days
+    if request.timezone is not None:
+        s.timezone = request.timezone
+    if request.enable_auto_acknowledgement is not None:
+        s.enable_auto_acknowledgement = request.enable_auto_acknowledgement
+    if request.auto_acknowledgement_message is not None:
+        s.auto_acknowledgement_message = request.auto_acknowledgement_message
+    if request.out_of_hours_message is not None:
+        s.out_of_hours_message = request.out_of_hours_message
+    if request.enable_csat_survey is not None:
+        s.enable_csat_survey = request.enable_csat_survey
+    if request.csat_trigger is not None:
+        if request.csat_trigger in ("after_resolution", "after_first_response", "never"):
+            s.csat_trigger = request.csat_trigger
+
+    AgencySettingsStore.save(settings)
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Communication Settings (P4-09)
+# ---------------------------------------------------------------------------
+
+@router.get("/api/settings/comm")
+def get_comm_settings(
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:read"),
+):
+    """Return communication preferences for the agency."""
+    settings = AgencySettingsStore.load(agency_id)
+    c = settings.comm
+    return {
+        "agency_id": settings.agency_id,
+        "default_outbound_channel": c.default_outbound_channel,
+        "allow_channel_switching": c.allow_channel_switching,
+        "enable_template_library": c.enable_template_library,
+        "default_greeting": c.default_greeting,
+        "default_sign_off": c.default_sign_off,
+        "respect_operating_hours": c.respect_operating_hours,
+        "send_immediately_during_hours": c.send_immediately_during_hours,
+        "queue_outside_hours": c.queue_outside_hours,
+        "max_emails_per_day_per_trip": c.max_emails_per_day_per_trip,
+        "max_whatsapp_per_day_per_trip": c.max_whatsapp_per_day_per_trip,
+        "auto_detect_language": c.auto_detect_language,
+        "default_language": c.default_language,
+        "supported_languages": c.supported_languages,
+        "translate_outbound": c.translate_outbound,
+        "enable_auto_followup": c.enable_auto_followup,
+        "auto_followup_delay_days": c.auto_followup_delay_days,
+        "max_auto_followups": c.max_auto_followups,
+        "followup_escalate_after_max": c.followup_escalate_after_max,
+        "notify_on_customer_reply": c.notify_on_customer_reply,
+        "notify_on_sla_warning": c.notify_on_sla_warning,
+        "notify_on_escalation": c.notify_on_escalation,
+        "digest_frequency": c.digest_frequency,
+        "include_agency_signature": c.include_agency_signature,
+        "include_unsubscribe_link": c.include_unsubscribe_link,
+        "compliance_footer": c.compliance_footer,
+    }
+
+
+@router.post("/api/settings/comm")
+def update_comm_settings(
+    request: UpdateCommSettings,
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:write"),
+):
+    """Update communication preferences for the agency."""
+    settings = AgencySettingsStore.load(agency_id)
+    c = settings.comm
+
+    if request.default_outbound_channel is not None:
+        if request.default_outbound_channel in ("email", "whatsapp", "sms"):
+            c.default_outbound_channel = request.default_outbound_channel
+    if request.allow_channel_switching is not None:
+        c.allow_channel_switching = request.allow_channel_switching
+    if request.enable_template_library is not None:
+        c.enable_template_library = request.enable_template_library
+    if request.default_greeting is not None:
+        c.default_greeting = request.default_greeting
+    if request.default_sign_off is not None:
+        c.default_sign_off = request.default_sign_off
+    if request.respect_operating_hours is not None:
+        c.respect_operating_hours = request.respect_operating_hours
+    if request.send_immediately_during_hours is not None:
+        c.send_immediately_during_hours = request.send_immediately_during_hours
+    if request.queue_outside_hours is not None:
+        c.queue_outside_hours = request.queue_outside_hours
+    if request.max_emails_per_day_per_trip is not None:
+        c.max_emails_per_day_per_trip = max(0, request.max_emails_per_day_per_trip)
+    if request.max_whatsapp_per_day_per_trip is not None:
+        c.max_whatsapp_per_day_per_trip = max(0, request.max_whatsapp_per_day_per_trip)
+    if request.auto_detect_language is not None:
+        c.auto_detect_language = request.auto_detect_language
+    if request.default_language is not None:
+        c.default_language = request.default_language
+    if request.supported_languages is not None:
+        c.supported_languages = request.supported_languages
+    if request.translate_outbound is not None:
+        c.translate_outbound = request.translate_outbound
+    if request.enable_auto_followup is not None:
+        c.enable_auto_followup = request.enable_auto_followup
+    if request.auto_followup_delay_days is not None:
+        c.auto_followup_delay_days = max(1, request.auto_followup_delay_days)
+    if request.max_auto_followups is not None:
+        c.max_auto_followups = max(0, request.max_auto_followups)
+    if request.followup_escalate_after_max is not None:
+        c.followup_escalate_after_max = request.followup_escalate_after_max
+    if request.notify_on_customer_reply is not None:
+        c.notify_on_customer_reply = request.notify_on_customer_reply
+    if request.notify_on_sla_warning is not None:
+        c.notify_on_sla_warning = request.notify_on_sla_warning
+    if request.notify_on_escalation is not None:
+        c.notify_on_escalation = request.notify_on_escalation
+    if request.digest_frequency is not None:
+        if request.digest_frequency in ("realtime", "hourly", "daily", "never"):
+            c.digest_frequency = request.digest_frequency
+    if request.include_agency_signature is not None:
+        c.include_agency_signature = request.include_agency_signature
+    if request.include_unsubscribe_link is not None:
+        c.include_unsubscribe_link = request.include_unsubscribe_link
+    if request.compliance_footer is not None:
+        c.compliance_footer = request.compliance_footer
+
+    AgencySettingsStore.save(settings)
+    return {"ok": True}
 
 
 @router.get("/api/settings/pipeline")

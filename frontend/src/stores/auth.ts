@@ -11,24 +11,13 @@
  */
 
 import { create } from "zustand";
+import type {
+  AuthAgency,
+  AuthMembership,
+  AuthUser,
+} from "@/types/auth-session";
 
-export interface AuthUser {
-  id: string;
-  email: string;
-  name?: string;
-}
-
-export interface AuthAgency {
-  id: string;
-  name: string;
-  slug: string;
-  logoUrl?: string;
-}
-
-export interface AuthMembership {
-  role: string;
-  isPrimary: boolean;
-}
+export type { AuthAgency, AuthMembership, AuthUser } from "@/types/auth-session";
 
 export interface AuthState {
   user: AuthUser | null;

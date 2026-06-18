@@ -1,38 +1,23 @@
 # Session Context
 
-- Generated: 2026-05-05T13:59:45Z
+- Generated: 2026-06-18T18:03:49Z
 - Project: `travel_agency_agent/spine_api`
 - Provider: `local`
 - Model: `BAAI/bge-m3`
 - Project collection: `projects_proj_travel_agency_agent_spine_api`
 - Shared collection: `projects_workspace_shared`
 
+## Project Motto
+
+- File: `/Users/pranay/Projects/travel_agency_agent/spine_api/motto_v3.md`
+- Legacy bridge: `/Users/pranay/Projects/travel_agency_agent/spine_api/motto_v2.md`
+- Source: `/Users/pranay/Downloads/motto_v3.md`
+- Sync status: `synced from /Users/pranay/Downloads/motto_v3.md; legacy motto_v2.md symlinked to motto_v3.md`
+- Guidance: read this before implementation or review on this project.
+
 ## Project-Focused Retrieval
 
-### Architecture Decisions
-- Collection: `projects_proj_travel_agency_agent_spine_api`
-- Query: `architecture decisions for travel_agency_agent/spine_api`
-_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent/spine_api` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
-
-### Project Management Workflow
-- Collection: `projects_proj_travel_agency_agent_spine_api`
-- Query: `project management workflow for travel_agency_agent/spine_api`
-_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent/spine_api` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
-
-### Known Issues and Worklogs
-- Collection: `projects_proj_travel_agency_agent_spine_api`
-- Query: `known issues and worklog for travel_agency_agent/spine_api`
-_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent/spine_api` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
-
-### Prompts and Guidelines
-- Collection: `projects_proj_travel_agency_agent_spine_api`
-- Query: `prompts and guidelines for travel_agency_agent/spine_api`
-_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent/spine_api` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
-
-### System Learning Graph
-- Collection: `projects_proj_travel_agency_agent_spine_api`
-- Query: `knowledge graph memory learning feedback loops autoresearch semantic taste graph for travel_agency_agent/spine_api`
-_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent/spine_api` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
+> NOTE: Project collection is temporarily locked by another index/search process; using shared workspace context for this run.
 
 ## Shared Cross-Project Retrieval
 
@@ -56,3 +41,21 @@ _Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `
 - Query: `knowledge graph memory learning feedback loops autoresearch semantic taste graph`
 _Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project travel_agency_agent/spine_api` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
 
+## Shared Eval Doctrine
+
+- Projects-level rule file: `/Users/pranay/Projects/AGENTIC_EVAL_RULES.md`
+- Shared skill: `/Users/pranay/Projects/skills/agentic-eval-loop/SKILL.md`
+- Use these when work touches prompts, schemas, routing, fallback, review, cost/latency, or repeated failures that should become work items.
+
+
+---
+## Agent Collaboration Style
+
+Pranay expects the agent to act as a genuine technical collaborator, not an instruction executor:
+- Have and express opinions on design, naming, logic, test quality
+- Push back when something is wrong - don't just flag it, fix it with a rationale
+- Catch bugs proactively without waiting to be asked
+- Discuss tradeoffs directly: here is why X is wrong and Y is better
+- The goal is two engineers reviewing each other's work, not a contractor following a spec
+
+This applies to code review, test quality, naming, architecture boundaries, commit grouping strategy, and anything that would affect the project long-term.

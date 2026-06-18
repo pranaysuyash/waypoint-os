@@ -8,11 +8,16 @@ import {
   ShieldCheck,
   Users,
   PlugZap,
+  Shield,
   CalendarDays,
   Save,
   RotateCcw,
   AlertCircle,
   CheckCircle2,
+  Bell,
+  Bot,
+  Headphones,
+  Send,
 } from 'lucide-react';
 import {
   useAgencySettings,
@@ -32,11 +37,21 @@ import { AutonomyTab } from './components/AutonomyTab';
 import { PeopleTab } from './components/PeopleTab';
 import { IntegrationsTab } from './components/IntegrationsTab';
 import { SeasonalTab } from './components/SeasonalTab';
+import { GuardTab } from './components/GuardTab';
+import { AlertDestinationsTab } from './components/AlertDestinationsTab';
+import { AiAgentTab } from './components/AiAgentTab';
+import { SupportSettingsTab } from './components/SupportSettingsTab';
+import { CommSettingsTab } from './components/CommSettingsTab';
 
 const TABS = [
   { id: 'profile', label: 'Profile', icon: Building2 },
   { id: 'operations', label: 'Operations', icon: SlidersHorizontal },
   { id: 'autonomy', label: 'Approval Rules', icon: ShieldCheck },
+  { id: 'guard', label: 'Guard', icon: Shield },
+  { id: 'alerts', label: 'Alerts', icon: Bell },
+  { id: 'ai-agent', label: 'AI Agent', icon: Bot },
+  { id: 'support', label: 'Support', icon: Headphones },
+  { id: 'comm', label: 'Comm', icon: Send },
   { id: 'seasonal', label: 'Seasonal', icon: CalendarDays },
   { id: 'integrations', label: 'Integrations', icon: PlugZap },
   { id: 'people', label: 'People', icon: Users },
@@ -335,6 +350,21 @@ function SettingsPageInner() {
           )}
           {activeTab === 'integrations' && (
             <IntegrationsTab />
+          )}
+          {activeTab === 'guard' && (
+            <GuardTab />
+          )}
+          {activeTab === 'alerts' && (
+            <AlertDestinationsTab />
+          )}
+          {activeTab === 'ai-agent' && (
+            <AiAgentTab />
+          )}
+          {activeTab === 'support' && (
+            <SupportSettingsTab />
+          )}
+          {activeTab === 'comm' && (
+            <CommSettingsTab />
           )}
           {activeTab === 'people' && (
             <PeopleTab />

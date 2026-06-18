@@ -14,6 +14,12 @@ export interface UnifiedState {
   meta?: {
     source: string;
   };
+  workspace_trip_count?: number;
+  inbox_lead_count?: number;
+  pending_review_count?: number;
+  review_counts?: Record<string, number>;
+  total_pending_review_value?: number;
+  pipeline_stages?: Record<string, number>;
 }
 
 /**

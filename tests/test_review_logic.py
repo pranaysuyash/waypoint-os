@@ -77,3 +77,29 @@ def test_audit_delta_capture(tmp_path, monkeypatch):
     assert "post_state" in payload
     assert payload["pre_state"]["review_status"] == "pending"
     assert payload["post_state"]["review_status"] == "rejected"
+
+
+def test_escalation_outcome_persists_in_review_metadata(tmp_path, monkeypatch):
+    monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
+    monkeypatch.setattr(persistence, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(persistence, "TRIPS_DIR", tmp_path / "trips")
+    (tmp_path / "trips").mkdir()
+
+    trip_id = "test-trip-004"
+    trip_file = tmp_path / "trips" / f"{trip_id}.json"
+    trip_file.write_text(json.dumps({
+        "trip_id": trip_id,
+        "assigned_to": "agent-1",
+        "analytics": {"requires_review": True, "review_status": "pending"}
+    }))
+
+    process_review_action(
+        trip_id,
+        "escalate",
+        "Needs owner review",
+        "owner",
+        escalation_outcome="false_escalation",
+    )
+
+    updated = TripStore.get_trip(trip_id)
+    assert updated["analytics"]["review_metadata"]["escalation_outcome"] == "false_escalation"

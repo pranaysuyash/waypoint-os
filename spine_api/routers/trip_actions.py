@@ -50,6 +50,7 @@ def post_review_action(
             user_id=user.id,
             reassign_to=request.reassign_to,
             error_category=request.error_category,
+            escalation_outcome=request.escalation_outcome,
         )
         return {"success": True, "trip": updated_trip}
     except KeyError as e:

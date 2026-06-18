@@ -21,6 +21,7 @@
 - **Workspace rules**: `/Users/pranay/Projects/AGENTS.md`
 - **Project rules**: `../AGENTS.md`
 - **Review/handoff checklist**: `../Docs/IMPLEMENTATION_AGENT_REVIEW_HANDOFF_CHECKLIST.md`
+- **Shared eval doctrine**: `/Users/pranay/Projects/AGENTIC_EVAL_RULES.md` and `~/Projects/skills/agentic-eval-loop/`
 
 ## Autonomous Review/Handoff Rule (Frontend)
 
@@ -40,6 +41,7 @@ For frontend implementation reviews and new task proposals:
 | UI testing | `webapp-testing` | ~/Projects/skills/ |
 | Visual QA | `design-review` | ~/.claude/skills/ |
 | Design system audit | `rendered-design-system-audit` | ~/.hermes/skills/frontend/ + `tools/rendered-design-system-audit/` |
+| Agentic evals | `agentic-eval-loop` | ~/Projects/skills/ |
 
 ---
 

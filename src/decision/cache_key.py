@@ -213,6 +213,22 @@ def _extract_visa_requirement(packet: CanonicalPacket) -> Optional[str]:
     return None
 
 
+def get_context_signature(
+    decision_type: str,
+    packet: CanonicalPacket,
+) -> Dict[str, Any]:
+    """
+    Return the relevant fields for a decision type as a readable context signature.
+
+    This is the same dict used to generate the cache key, but returned as a
+    readable dict (not hashed) for override pattern matching.
+
+    Used by the prompt tuning agent to match operator overrides against
+    future decision contexts.
+    """
+    return _get_relevant_fields(decision_type, packet)
+
+
 # For testing purposes
 def make_test_key(decision_type: str, inputs: Dict[str, Any]) -> str:
     """

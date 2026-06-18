@@ -86,6 +86,7 @@ This prevents the system from managing malloc logging entirely, eliminating the 
 - Keep changes small, explicit, and path-cited in summaries.
 - Do not claim platform limitations when the gap is implementable; state what is possible, what is implemented, and the concrete path.
 - For skill discovery, prioritize project-level skills under `/Users/pranay/Projects/skills/` before defaulting to other skill stores.
+- For any AI workflow, prompt, routing, fallback, review, or repeated-failure task, load `/Users/pranay/Projects/AGENTIC_EVAL_RULES.md` and use `~/Projects/skills/agentic-eval-loop/` as the shared first-pass doctrine.
 
 ## Working Style (User Preference)
 

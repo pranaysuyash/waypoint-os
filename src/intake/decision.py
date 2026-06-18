@@ -6,11 +6,14 @@ Consumes CanonicalPacket v0.2 from NB01, returns DecisionResult.
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import lru_cache
 from typing import Any, Dict, List, Literal, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 from .packet_models import (
     Ambiguity,
@@ -2189,6 +2192,26 @@ def run_gap_and_decision(
     # --- Phase 10: Risk flags (reuse cached feasibility) ---
     risk_flags = generate_risk_flags(packet, stage, cached_feasibility=feasibility)
 
+    # --- Phase 10a: Apply override adjustments (P3-03 feedback loop) ---
+    override_metadata = {}
+    try:
+        from src.decision.override_learning import apply_override_adjustments
+        learn_from = (
+            agency_settings is None
+            or (hasattr(agency_settings, 'autonomy')
+                and agency_settings.autonomy.learn_from_overrides)
+        )
+        if learn_from:
+            risk_flags, override_metadata = apply_override_adjustments(
+                risk_flags=risk_flags,
+                trip_id=packet.packet_id,
+                packet=packet,
+            )
+    except ImportError:
+        logger.debug("Override learning module not available — skipping override adjustments")
+    except Exception as exc:
+        logger.warning("Override adjustments failed: %s", exc)
+
     # --- Phase 10b: SuitabilityProfile (structured output for frontend) ---
     suitability_profile = _build_suitability_profile(risk_flags)
 
@@ -2228,6 +2251,11 @@ def run_gap_and_decision(
         "budget_total_low": budget_breakdown.total_estimated_low if budget_breakdown else None,
         "budget_total_high": budget_breakdown.total_estimated_high if budget_breakdown else None,
     }
+
+    # Enrich rationale with override adjustments if any were applied
+    if override_metadata:
+        rationale["overrides_applied"] = override_metadata.get("trip_overrides_applied", {})
+        rationale["pattern_hints"] = override_metadata.get("pattern_hints", {})
 
     return DecisionResult(
         packet_id=packet.packet_id,

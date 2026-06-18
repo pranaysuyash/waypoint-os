@@ -1,5 +1,5 @@
 {
-  "route_count": 150,
+  "route_count": 167,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -514,6 +514,46 @@
       "operation_id": null
     },
     {
+      "path": "/api/settings/ai-agent",
+      "name": "get_ai_agent_settings",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/ai-agent",
+      "name": "update_ai_agent_settings",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/alert-destinations",
+      "name": "get_alert_destinations",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/alert-destinations",
+      "name": "update_alert_destinations",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/alert-destinations/test",
+      "name": "test_alert_destination",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/settings/approvals",
       "name": "get_approval_thresholds",
       "methods": [
@@ -546,6 +586,14 @@
       "operation_id": null
     },
     {
+      "path": "/api/settings/llm-guard",
+      "name": "get_llm_guard_state",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/settings/operational",
       "name": "update_agency_operational_settings",
       "methods": [
@@ -566,6 +614,86 @@
       "name": "set_pipeline_stages",
       "methods": [
         "PUT"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/seasonal",
+      "name": "get_agency_seasonal_settings",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/seasonal",
+      "name": "update_agency_seasonal_settings",
+      "methods": [
+        "PUT"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/seasonal/campaigns",
+      "name": "list_seasonal_campaigns",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/seasonal/campaigns",
+      "name": "create_seasonal_campaign",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/seasonal/campaigns/{plan_id}",
+      "name": "delete_seasonal_campaign",
+      "methods": [
+        "DELETE"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/seasonal/campaigns/{plan_id}",
+      "name": "get_seasonal_campaign",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/seasonal/campaigns/{plan_id}",
+      "name": "update_seasonal_campaign",
+      "methods": [
+        "PUT"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/seasonal/campaigns/{plan_id}/dispatch",
+      "name": "dispatch_seasonal_campaign",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/seasonal/campaigns/{plan_id}/preflight",
+      "name": "preflight_seasonal_campaign",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/seasonal/campaigns/{plan_id}/simulate",
+      "name": "simulate_seasonal_campaign",
+      "methods": [
+        "POST"
       ],
       "operation_id": null
     },
@@ -628,6 +756,14 @@
     {
       "path": "/api/team/workload",
       "name": "get_workload_distribution",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/trips/{trip_id}/agentic-eval",
+      "name": "get_agentic_eval",
       "methods": [
         "GET"
       ],

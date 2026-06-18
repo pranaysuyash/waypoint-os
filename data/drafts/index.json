@@ -27,7 +27,8 @@
       "draft_0feac924d8e2",
       "draft_3721cf9ff7a9",
       "draft_0437632f279c",
-      "draft_7acf060c311c"
+      "draft_7acf060c311c",
+      "draft_9521574e2ebf"
     ],
     "80798bb0-20ce-4067-ba32-a4856ca72f77": [
       "draft_5756d1163fe4",
@@ -63,7 +64,8 @@
       "draft_0feac924d8e2",
       "draft_3721cf9ff7a9",
       "draft_0437632f279c",
-      "draft_7acf060c311c"
+      "draft_7acf060c311c",
+      "draft_9521574e2ebf"
     ],
     "fea210b4-1803-4f48-abda-3d868eb53f0e": [
       "draft_5756d1163fe4",
@@ -107,6 +109,9 @@
     "promoted": [
       "draft_3710223c3aef"
     ],
-    "processing": []
+    "processing": [],
+    "discarded": [
+      "draft_9521574e2ebf"
+    ]
   }
 }

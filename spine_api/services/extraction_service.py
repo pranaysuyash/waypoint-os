@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from typing import Optional, Protocol, Union
 
 from src.extraction.exceptions import ExtractionValidationError
+from src.extraction.model_chain import RETRIABLE_ERRORS
 from spine_api.services import execution_event_service
 from spine_api.services.private_fields import encrypt_blob, decrypt_blob
 
@@ -256,7 +257,6 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
     """
     from spine_api.models.tenant import DocumentExtraction, DocumentExtractionAttempt
     from src.extraction.vision_client import ExtractionProviderError, ERROR_CODES
-    from src.extraction.model_chain import RETRIABLE_ERRORS
     from src.extraction.pdf_utils import validate_pdf_pages
     from sqlalchemy import select
 
@@ -529,12 +529,20 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
 
 
 async def get_extraction_for_document(db, document_id: str, agency_id: str) -> Optional["DocumentExtraction"]:
-    """Get extraction for a document, scoped to agency."""
+    """Get extraction for a document, scoped to agency.
+
+    Eagerly loads the ``document`` relationship (via selectinload) so callers
+    can access ``extraction.document.document_type`` after a commit without
+    triggering a lazy-load that fails with MissingGreenlet on async sessions.
+    """
     from spine_api.models.tenant import DocumentExtraction
     from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
 
     result = (await db.execute(
-        select(DocumentExtraction).where(
+        select(DocumentExtraction)
+        .options(selectinload(DocumentExtraction.document))
+        .where(
             DocumentExtraction.document_id == document_id,
             DocumentExtraction.agency_id == agency_id,
         )

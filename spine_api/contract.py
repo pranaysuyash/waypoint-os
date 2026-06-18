@@ -273,6 +273,12 @@ class ReviewActionRequest(BaseModel):
     notes: str
     reassign_to: Optional[str] = None
     error_category: Optional[str] = None
+    escalation_outcome: Optional[Literal[
+        "false_escalation",
+        "missed_escalation",
+        "correct_escalation",
+        "not_applicable",
+    ]] = None
 
 
 class SuitabilityAcknowledgeRequest(BaseModel):
@@ -349,6 +355,82 @@ class UpdateOperationalSettings(BaseModel):
     operating_days: Optional[List[str]] = None
     preferred_channels: Optional[List[str]] = None
     brand_tone: Optional[str] = None
+
+
+class UpdateAiAgentSettings(BaseModel):
+    """Request model for updating AI agent settings."""
+    enable_auto_intake: Optional[bool] = None
+    enable_auto_shortlist: Optional[bool] = None
+    enable_auto_proposal: Optional[bool] = None
+    enable_auto_negotiation: Optional[bool] = None
+    enable_frontier_orchestration: Optional[bool] = None
+    enable_checker_agent: Optional[bool] = None
+    enable_call_capture: Optional[bool] = None
+    enable_document_extraction: Optional[bool] = None
+    preferred_model: Optional[str] = None
+    fallback_model: Optional[str] = None
+    extraction_model: Optional[str] = None
+    checker_model: Optional[str] = None
+    max_negotiation_rounds: Optional[int] = None
+    proposal_confidence_threshold: Optional[float] = None
+    auto_advance_stages: Optional[bool] = None
+    require_owner_review_above_value: Optional[float] = None
+    brand_voice: Optional[str] = None
+    response_language: Optional[str] = None
+    max_follow_up_questions: Optional[int] = None
+
+
+class UpdateSupportSettings(BaseModel):
+    """Request model for updating support channel settings."""
+    enable_email_support: Optional[bool] = None
+    enable_chat_support: Optional[bool] = None
+    enable_phone_support: Optional[bool] = None
+    enable_whatsapp_support: Optional[bool] = None
+    default_response_sla_hours: Optional[int] = None
+    urgent_response_sla_hours: Optional[int] = None
+    auto_route_by_destination: Optional[bool] = None
+    auto_route_by_language: Optional[bool] = None
+    escalation_after_sla_breach: Optional[bool] = None
+    escalation_contact_email: Optional[str] = None
+    escalation_contact_phone: Optional[str] = None
+    support_hours_start: Optional[str] = None
+    support_hours_end: Optional[str] = None
+    support_days: Optional[List[str]] = None
+    timezone: Optional[str] = None
+    enable_auto_acknowledgement: Optional[bool] = None
+    auto_acknowledgement_message: Optional[str] = None
+    out_of_hours_message: Optional[str] = None
+    enable_csat_survey: Optional[bool] = None
+    csat_trigger: Optional[str] = None
+
+
+class UpdateCommSettings(BaseModel):
+    """Request model for updating communication preferences."""
+    default_outbound_channel: Optional[str] = None
+    allow_channel_switching: Optional[bool] = None
+    enable_template_library: Optional[bool] = None
+    default_greeting: Optional[str] = None
+    default_sign_off: Optional[str] = None
+    respect_operating_hours: Optional[bool] = None
+    send_immediately_during_hours: Optional[bool] = None
+    queue_outside_hours: Optional[bool] = None
+    max_emails_per_day_per_trip: Optional[int] = None
+    max_whatsapp_per_day_per_trip: Optional[int] = None
+    auto_detect_language: Optional[bool] = None
+    default_language: Optional[str] = None
+    supported_languages: Optional[List[str]] = None
+    translate_outbound: Optional[bool] = None
+    enable_auto_followup: Optional[bool] = None
+    auto_followup_delay_days: Optional[int] = None
+    max_auto_followups: Optional[int] = None
+    followup_escalate_after_max: Optional[bool] = None
+    notify_on_customer_reply: Optional[bool] = None
+    notify_on_sla_warning: Optional[bool] = None
+    notify_on_escalation: Optional[bool] = None
+    digest_frequency: Optional[str] = None
+    include_agency_signature: Optional[bool] = None
+    include_unsubscribe_link: Optional[bool] = None
+    compliance_footer: Optional[str] = None
 
 
 class UpdateAutonomyPolicy(BaseModel):

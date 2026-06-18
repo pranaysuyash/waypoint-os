@@ -402,6 +402,7 @@ export interface ReviewActionRequest {
   notes: string;
   reassign_to?: string | null;
   error_category?: string | null;
+  escalation_outcome?: "false_escalation" | "missed_escalation" | "correct_escalation" | "not_applicable" | null;
 }
 /**
  * Returned immediately by POST /run — the run is queued, poll for status.

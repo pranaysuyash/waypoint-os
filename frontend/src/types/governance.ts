@@ -81,6 +81,7 @@ export interface ReviewActionRequest {
   action: 'approve' | 'reject' | 'escalate' | 'request_changes' | 'resolve';
   notes?: string;
   reassignTo?: string;
+  escalationOutcome?: 'false_escalation' | 'missed_escalation' | 'correct_escalation' | 'not_applicable';
 }
 
 // ============================================================================

@@ -65,33 +65,41 @@ def run_frontier_orchestration(
     # Triggered if decision state is ESCALATE_RECOVERY or manual emergency
     commercial_decision = str(decision.commercial_decision).upper()
     operating_mode = str(packet.operating_mode).lower()
+
+    # Resolve AI agent settings for feature gate checks
+    ai_agent = getattr(agency_settings, 'ai_agent', None) if agency_settings is not None else None
+    _gate = lambda name: getattr(ai_agent, name, True) if ai_agent is not None else True
+
     if commercial_decision == "ESCALATE_RECOVERY" or operating_mode == "emergency":
         result.ghost_triggered = True
         result.ghost_workflow_id = f"ghost_{packet.packet_id}_{uuid.uuid4().hex[:12]}"
         logger.info("Ghost Concierge triggered: %s", result.ghost_workflow_id)
 
-        # --- Checker-Agent Redundancy Logic ---
-        threshold = _resolve_checker_threshold(agency_settings)
-        overall_confidence = _resolve_overall_confidence(decision)
-        if overall_confidence is None or overall_confidence < threshold:
-            try:
-                audit_result = checker_agent.audit(packet, decision)
-                result.requires_manual_audit = audit_result.requires_manual
-                result.audit_reason = audit_result.reason
-                if audit_result.requires_manual:
-                    logger.warning(
-                        "AUDIT REQUIRED: Checker flagged Ghost Workflow %s: %s",
-                        result.ghost_workflow_id, audit_result.reason,
-                    )
-                else:
-                    logger.info(
-                        "Checker Agent verified Ghost Workflow %s: %s",
-                        result.ghost_workflow_id, audit_result.reason,
-                    )
-            except Exception:
-                logger.exception("Checker Agent audit failed for packet %s", packet.packet_id)
-                result.requires_manual_audit = True
-                result.audit_reason = "Checker Agent audit failed — defaulting to manual review"
+        # --- Checker-Agent Redundancy Logic (gated by enable_checker_agent) ---
+        if _gate("enable_checker_agent"):
+            threshold = _resolve_checker_threshold(agency_settings)
+            overall_confidence = _resolve_overall_confidence(decision)
+            if overall_confidence is None or overall_confidence < threshold:
+                try:
+                    audit_result = checker_agent.audit(packet, decision)
+                    result.requires_manual_audit = audit_result.requires_manual
+                    result.audit_reason = audit_result.reason
+                    if audit_result.requires_manual:
+                        logger.warning(
+                            "AUDIT REQUIRED: Checker flagged Ghost Workflow %s: %s",
+                            result.ghost_workflow_id, audit_result.reason,
+                        )
+                    else:
+                        logger.info(
+                            "Checker Agent verified Ghost Workflow %s: %s",
+                            result.ghost_workflow_id, audit_result.reason,
+                        )
+                except Exception:
+                    logger.exception("Checker Agent audit failed for packet %s", packet.packet_id)
+                    result.requires_manual_audit = True
+                    result.audit_reason = "Checker Agent audit failed — defaulting to manual review"
+        else:
+            logger.info("Checker Agent skipped — enable_checker_agent is disabled")
 
     # 3. Intelligence Pool Lookup
     dest = _extract_destination(packet)
@@ -130,14 +138,17 @@ def run_frontier_orchestration(
     except Exception:
         logger.exception("Specialty Knowledge detection failed for packet %s", packet.packet_id)
 
-    # 5. Agentic Negotiation Engine
-    try:
-        negotiation_logs = negotiation_service.analyze_and_trigger(packet, decision)
-        if negotiation_logs:
-            result.negotiation_active = True
-            result.negotiation_logs = list(negotiation_logs)
-    except Exception:
-        logger.exception("Negotiation engine failed for packet %s", packet.packet_id)
+    # 5. Agentic Negotiation Engine (gated by enable_auto_negotiation)
+    if _gate("enable_auto_negotiation"):
+        try:
+            negotiation_logs = negotiation_service.analyze_and_trigger(packet, decision)
+            if negotiation_logs:
+                result.negotiation_active = True
+                result.negotiation_logs = list(negotiation_logs)
+        except Exception:
+            logger.exception("Negotiation engine failed for packet %s", packet.packet_id)
+    else:
+        logger.info("Negotiation engine skipped — enable_auto_negotiation is disabled")
 
     return result
 

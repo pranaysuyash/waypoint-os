@@ -440,6 +440,204 @@ class TestLLMUsageGuard:
 
         assert guard.enabled is False
 
+    def test_from_env_parses_per_model_limits(self, monkeypatch):
+        """from_env parses LLM_MAX_CALLS_PER_MODEL env var."""
+        monkeypatch.setenv("LLM_MAX_CALLS_PER_MODEL", "gemini-2.0-flash:100,gemini-2.5-pro:20")
+
+        reset_usage_guard()
+        guard = LLMUsageGuard.from_env()
+
+        assert guard.max_calls_per_model == {"gemini-2.0-flash": 100, "gemini-2.5-pro": 20}
+
+    def test_from_env_per_model_empty(self, monkeypatch):
+        """from_env handles empty LLM_MAX_CALLS_PER_MODEL."""
+        monkeypatch.delenv("LLM_MAX_CALLS_PER_MODEL", raising=False)
+
+        reset_usage_guard()
+        guard = LLMUsageGuard.from_env()
+
+        assert guard.max_calls_per_model == {}
+
+
+class TestPerModelRateLimits:
+    """Tests for P4-04: per-model hourly rate limits."""
+
+    def _make_guard(self, **kwargs):
+        now = datetime(2026, 4, 26, 12, 0, 0)
+        store = kwargs.pop("store", InMemoryUsageStore())
+        return LLMUsageGuard(now_func=lambda: now, store=store, **kwargs)
+
+    def test_blocks_when_per_model_limit_exceeded(self):
+        """Per-model limit blocks after model-specific hourly cap."""
+        store = InMemoryUsageStore()
+        now = datetime(2026, 4, 26, 12, 0, 0)
+
+        guard = LLMUsageGuard(
+            enabled=True,
+            max_calls_per_hour=None,
+            max_calls_per_model={"gemini-2.0-flash": 3},
+            store=store,
+            now_func=lambda: now,
+        )
+
+        for i in range(3):
+            result = guard.check_before_call(
+                model="gemini-2.0-flash",
+                estimated_cost=0.5,
+                feature="hybrid_engine",
+            )
+            assert result.allowed is True, f"Call {i+1} should be allowed"
+            guard.record_call(result, actual_cost=0.5, success=True)
+
+        blocked = guard.check_before_call(
+            model="gemini-2.0-flash",
+            estimated_cost=0.5,
+            feature="hybrid_engine",
+        )
+        assert blocked.allowed is False
+        assert blocked.block_reason == "model_rate_limit_exceeded"
+        assert "per-model rate limit" in blocked.reason.lower()
+
+    def test_other_model_not_affected(self):
+        """Per-model limit for model A doesn't block model B."""
+        store = InMemoryUsageStore()
+        now = datetime(2026, 4, 26, 12, 0, 0)
+
+        guard = LLMUsageGuard(
+            enabled=True,
+            max_calls_per_hour=None,
+            max_calls_per_model={"gemini-2.0-flash": 2},
+            store=store,
+            now_func=lambda: now,
+        )
+
+        # Exhaust gemini-2.0-flash limit
+        for i in range(2):
+            result = guard.check_before_call(
+                model="gemini-2.0-flash",
+                estimated_cost=0.5,
+                feature="hybrid_engine",
+            )
+            assert result.allowed is True
+            guard.record_call(result, actual_cost=0.5, success=True)
+
+        # gemini-2.0-flash is now blocked
+        blocked = guard.check_before_call(
+            model="gemini-2.0-flash",
+            estimated_cost=0.5,
+            feature="hybrid_engine",
+        )
+        assert blocked.allowed is False
+
+        # gemini-2.5-pro should still be allowed (no limit configured for it)
+        allowed = guard.check_before_call(
+            model="gemini-2.5-pro",
+            estimated_cost=0.5,
+            feature="hybrid_engine",
+        )
+        assert allowed.allowed is True
+
+    def test_per_model_limit_independent_of_agency_limit(self):
+        """Per-model limit is independent of per-agency hourly limit."""
+        store = InMemoryUsageStore()
+        now = datetime(2026, 4, 26, 12, 0, 0)
+
+        guard = LLMUsageGuard(
+            enabled=True,
+            max_calls_per_hour=100,
+            max_calls_per_model={"gemini-2.0-flash": 2},
+            store=store,
+            now_func=lambda: now,
+        )
+
+        for i in range(2):
+            result = guard.check_before_call(
+                model="gemini-2.0-flash",
+                estimated_cost=0.5,
+                feature="hybrid_engine",
+            )
+            assert result.allowed is True
+            guard.record_call(result, actual_cost=0.5, success=True)
+
+        # Per-model limit hit (2/2) but agency limit (100) not hit
+        blocked = guard.check_before_call(
+            model="gemini-2.0-flash",
+            estimated_cost=0.5,
+            feature="hybrid_engine",
+        )
+        assert blocked.allowed is False
+        assert blocked.block_reason == "model_rate_limit_exceeded"
+        assert blocked.hourly_limit == 100  # agency limit intact
+
+    def test_unconfigured_model_has_no_limit(self):
+        """Models not in max_calls_per_model have no per-model limit."""
+        store = InMemoryUsageStore()
+        now = datetime(2026, 4, 26, 12, 0, 0)
+
+        guard = LLMUsageGuard(
+            enabled=True,
+            max_calls_per_hour=None,
+            max_calls_per_model={"gemini-2.0-flash": 1},
+            store=store,
+            now_func=lambda: now,
+        )
+
+        # gemini-2.5-pro not in config — should always be allowed
+        for i in range(10):
+            result = guard.check_before_call(
+                model="gemini-2.5-pro",
+                estimated_cost=0.5,
+                feature="hybrid_engine",
+            )
+            assert result.allowed is True, f"Call {i+1} should be allowed"
+            guard.record_call(result, actual_cost=0.5, success=True)
+
+    def test_both_limits_can_block(self):
+        """When both limits exist, the tighter one blocks first."""
+        store = InMemoryUsageStore()
+        now = datetime(2026, 4, 26, 12, 0, 0)
+
+        guard = LLMUsageGuard(
+            enabled=True,
+            max_calls_per_hour=5,
+            max_calls_per_model={"gemini-2.0-flash": 2},
+            store=store,
+            now_func=lambda: now,
+        )
+
+        # Model limit (2) is tighter than agency limit (5)
+        for i in range(2):
+            result = guard.check_before_call(
+                model="gemini-2.0-flash",
+                estimated_cost=0.5,
+                feature="hybrid_engine",
+            )
+            assert result.allowed is True
+            guard.record_call(result, actual_cost=0.5, success=True)
+
+        blocked = guard.check_before_call(
+            model="gemini-2.0-flash",
+            estimated_cost=0.5,
+            feature="hybrid_engine",
+        )
+        assert blocked.allowed is False
+        assert blocked.block_reason == "model_rate_limit_exceeded"
+
+    def test_get_state_includes_per_model_limits(self):
+        """get_state returns per-model limits for operators."""
+        store = InMemoryUsageStore()
+        now = datetime(2026, 4, 26, 12, 0, 0)
+
+        guard = LLMUsageGuard(
+            enabled=True,
+            max_calls_per_model={"gemini-2.0-flash": 100},
+            store=store,
+            now_func=lambda: now,
+        )
+
+        state = guard.get_state()
+        assert state["max_calls_per_model"] == {"gemini-2.0-flash": 100}
+
 
 class TestLLMUsageGuardIntegration:
     """Integration-style tests for guard + hybrid engine path."""

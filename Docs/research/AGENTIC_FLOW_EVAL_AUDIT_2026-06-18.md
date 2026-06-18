@@ -136,16 +136,13 @@ What is good:
 
 - The repo measures more than accuracy.
 - The extraction path already records attempt number and fallback rank.
+- Extraction run events now include prompt/schema/routing/dictionary/normalization provenance and path metadata for fallback/review outcomes.
 
 What is missing relative to the articles:
 
-- no canonical `fallback_trigger_reason`
-- no canonical `review_trigger_reason`
-- no canonical `review_outcome`
-- no canonical `accepted_after_fallback`
-- no canonical `false_escalation` and `missed_escalation` labels
-- no canonical `next_fix_layer`
-- no durable per-run provenance for prompt/schema/dictionary/routing versions
+- `accepted_after_fallback` and `fallback_success_rate` are not emitted as first-class metrics yet.
+- `false_escalation` and `missed_escalation` are not consistently labeled across all routing paths.
+- There is no project-wide consumer that joins execution events, run ledger, and review events into one eval surface.
 
 ### 5. The articles are highly useful, but need one more layer
 
@@ -286,15 +283,24 @@ Those artifacts intentionally encode the strongest lessons from the articles:
 - logs must preserve the path, not only the final score
 - repeated failures must map to the correct fix layer
 - review must be measured as part of the workflow, not treated as an opaque escape hatch
+- reusable templates now carry the canonical eval record and finding shape so future projects can adopt the same loop without redesigning it
 
 ## Suggested next implementation slice
 
-If this repo wants the highest-leverage real implementation next, the best slice is:
+Current status (2026-06-18) is stronger than initially:
 
-1. define one canonical `AgenticEvalRecord`
-2. emit it for extraction attempts, fallback attempts, and quality escalation
-3. add labels for `fallback_trigger_reason`, `review_trigger_reason`, and `review_outcome`
-4. create a simple reducer that groups repeated failures into proposed work items
-5. run that reducer on one golden/shadow subset before widening scope
+1. `src/evals/agentic_feedback.py` now defines a canonical `AgenticEvalRecord` and repeated-failure reducer.
+2. `spine_api/services/execution_event_service.py` and `src/evals/agentic_feedback.py` now produce route-level metrics, including fallback/review triggers, useful vs wasteful fallback counts, p50/p95 latency, and cost summary.
+3. `spine_api/services/agentic_eval_service.py` exposes `get_trip_agentic_eval_summary` so trip-scoped summaries can be reused by routes and dashboards.
+4. `spine_api/routers/confirmations.py` now exposes `/api/trips/{trip_id}/agentic-eval` for authenticated workflow summary retrieval.
+5. `src/analytics/review.py` now carries an explicit `escalation_outcome` through review metadata and audit logs.
+6. `tests/evals/test_agentic_feedback.py` now enforces routing metric contract edge-cases, including explicit escalation outcome counts from review events.
+7. `tests/evals/test_agentic_eval_endpoint.py` proves endpoint shape, filtering, workflow validation, and service-side merge of execution plus review audit events.
 
-That would move the repo from "good contracts and partial telemetry" to the start of a real eval-to-improvement loop.
+Next, highest-leverage work is:
+
+1. add one canonical eval join/query that merges events, decision signals, and review outcomes for the workflow
+2. start emitting `escalation_outcome` from more review entrypoints so false/missed escalation rates are available across the whole product
+3. require keep/revert gates in each generated finding before rollout
+4. run the reducer on one golden/shadow subset and add the rerun plan to this audit
+5. wire the shared templates into any future project-specific eval pack so the same finding format is reused everywhere

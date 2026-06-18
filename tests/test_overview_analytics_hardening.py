@@ -17,7 +17,7 @@ def test_inbox_stats_handles_non_dict_analytics(monkeypatch):
         ],
     )
 
-    stats = inbox.get_inbox_stats(agency=SimpleNamespace(id="agency-1"))
+    stats = inbox.get_inbox_stats(agency_id="agency-1")
 
     assert stats["total"] == 4
     assert stats["unassigned"] == 1

@@ -283,6 +283,28 @@ async def get_timeline(
     )
 
 
+async def get_events(
+    db: AsyncSession,
+    trip_id: str,
+    agency_id: str,
+    category: Optional[str] = None,
+    actor_type: Optional[str] = None,
+) -> list[ExecutionEvent]:
+    """Fetch raw execution events for internal services."""
+    q = select(ExecutionEvent).where(
+        ExecutionEvent.trip_id == trip_id,
+        ExecutionEvent.agency_id == agency_id,
+    ).order_by(ExecutionEvent.created_at)
+
+    if category is not None:
+        q = q.where(ExecutionEvent.event_category == category)
+    if actor_type is not None:
+        q = q.where(ExecutionEvent.actor_type == actor_type)
+
+    result = await db.execute(q)
+    return list(result.scalars().all())
+
+
 async def emit_event_best_effort(
     db: AsyncSession,
     *,

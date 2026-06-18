@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping
 
@@ -64,6 +65,124 @@ class AgenticEvalWorkItem:
     first_seen: datetime
     last_seen: datetime
     sample_events: list[str]
+
+
+def _safe_divide(numerator: int, denominator: int) -> float:
+    """Return a safe float ratio rounded to 3 decimals."""
+    if denominator <= 0:
+        return 0.0
+    return round(numerator / denominator, 3)
+
+
+def _safe_percentile(values: list[int], q: float) -> int | None:
+    """Compute a percentile using linear interpolation."""
+    if not values:
+        return None
+    if len(values) == 1:
+        return int(values[0])
+
+    ordered = sorted(values)
+    idx = (len(ordered) - 1) * q
+    lower = math.floor(idx)
+    upper = math.ceil(idx)
+    if lower == upper:
+        return ordered[lower]
+    weight = idx - lower
+    return int(round(ordered[lower] * (1.0 - weight) + ordered[upper] * weight))
+
+
+def build_routing_metrics(
+    events: list[ExecutionEvent],
+    *,
+    review_events: list[Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Compute execution-route metrics used by agentic eval loops."""
+    candidates = filter_eval_candidates(events)
+    total_candidates = len(candidates)
+    fallback_trigger_count = 0
+    fallback_success_count = 0
+    fallback_exhausted_count = 0
+    review_trigger_count = 0
+    review_outcomes: dict[str, int] = {}
+    escalation_outcomes: dict[str, int] = _collect_review_outcomes(review_events)
+
+    latency_ms_values: list[int] = []
+    cost_values: list[float] = []
+
+    for event in candidates:
+        metadata = event.event_metadata or {}
+
+        if metadata.get("fallback_trigger_reason"):
+            fallback_trigger_count += 1
+
+        fallback_result = metadata.get("fallback_result")
+        if fallback_result == "succeeded_after_fallback":
+            fallback_success_count += 1
+        elif fallback_result == "exhausted":
+            fallback_exhausted_count += 1
+
+        if metadata.get("review_trigger_reason"):
+            review_trigger_count += 1
+
+        review_outcome = metadata.get("review_outcome")
+        if isinstance(review_outcome, str):
+            review_outcomes[review_outcome] = review_outcomes.get(review_outcome, 0) + 1
+
+        escalation_outcome = metadata.get("escalation_outcome")
+        if isinstance(escalation_outcome, str):
+            escalation_outcomes[escalation_outcome] = escalation_outcomes.get(escalation_outcome, 0) + 1
+
+        latency_ms = metadata.get("latency_ms")
+        if isinstance(latency_ms, int):
+            latency_ms_values.append(latency_ms)
+        elif isinstance(latency_ms, float):
+            latency_ms_values.append(int(latency_ms))
+
+        cost = metadata.get("cost_estimate_usd")
+        if isinstance(cost, (int, float)):
+            cost_values.append(float(cost))
+
+    review_applied_count = review_outcomes.get("applied", 0) + review_outcomes.get("manual_apply", 0)
+    review_rejected_count = review_outcomes.get("rejected", 0) + review_outcomes.get("manual_reject", 0)
+    total_review_count = review_applied_count + review_rejected_count
+    false_escalation_count = escalation_outcomes.get("false_escalation", 0)
+    missed_escalation_count = escalation_outcomes.get("missed_escalation", 0)
+    correct_escalation_count = escalation_outcomes.get("correct_escalation", 0)
+    explicit_escalation_count = false_escalation_count + missed_escalation_count + correct_escalation_count
+    total_cost = sum(cost_values) if cost_values else 0.0
+
+    return {
+        "fallback_trigger_rate": _safe_divide(fallback_trigger_count, total_candidates),
+        "fallback_trigger_count": fallback_trigger_count,
+        "useful_fallback_count": fallback_success_count,
+        "wasteful_fallback_count": fallback_exhausted_count,
+        "useful_fallback_rate": _safe_divide(fallback_success_count, max(1, fallback_trigger_count)),
+        "review_trigger_rate": _safe_divide(review_trigger_count, total_candidates),
+        "review_trigger_count": review_trigger_count,
+        "review_accept_count": review_applied_count,
+        "review_reject_count": review_rejected_count,
+        "review_correction_rate": _safe_divide(review_rejected_count, max(1, total_review_count)),
+        "false_escalation_rate": _safe_divide(false_escalation_count, explicit_escalation_count) if explicit_escalation_count else None,
+        "false_escalation_count": false_escalation_count if explicit_escalation_count else None,
+        "missed_escalation_rate": _safe_divide(missed_escalation_count, explicit_escalation_count) if explicit_escalation_count else None,
+        "missed_escalation_count": missed_escalation_count if explicit_escalation_count else None,
+        "correct_escalation_count": correct_escalation_count if explicit_escalation_count else None,
+        "escalation_outcome_count": explicit_escalation_count if explicit_escalation_count else None,
+        "latency_by_candidates": {
+            "count": len(latency_ms_values),
+            "avg_ms": round(sum(latency_ms_values) / len(latency_ms_values), 2) if latency_ms_values else None,
+            "p50_ms": _safe_percentile(latency_ms_values, 0.5),
+            "p95_ms": _safe_percentile(latency_ms_values, 0.95),
+        },
+        "cost_usd": {
+            "total": round(total_cost, 4),
+            "avg_per_eval_event": round(total_cost / total_candidates, 4) if total_candidates else None,
+            "event_count_with_cost": len(cost_values),
+        },
+        "notes": [
+            "false_escalation and missed_escalation are populated when review events log escalation_outcome."
+        ],
+    }
 
 
 def build_repeated_failure_signal(
@@ -129,9 +248,41 @@ def filter_eval_candidates(events: list[ExecutionEvent]) -> list[ExecutionEvent]
                 "fallback_trigger_reason",
                 "review_trigger_reason",
                 "review_outcome",
+                "escalation_outcome",
             )
         )
     ]
+
+
+def _collect_review_outcomes(review_events: list[Mapping[str, Any]] | None) -> dict[str, int]:
+    """Collect escalation outcome counts from audit/review events."""
+    outcomes: dict[str, int] = {}
+    if not review_events:
+        return outcomes
+
+    for event in review_events:
+        if not isinstance(event, Mapping):
+            continue
+        if event.get("type") != "review_action":
+            continue
+        details = event.get("details")
+        if not isinstance(details, Mapping):
+            continue
+        escalation_outcome = details.get("escalation_outcome")
+        if isinstance(escalation_outcome, str):
+            outcomes[escalation_outcome] = outcomes.get(escalation_outcome, 0) + 1
+    return outcomes
+
+
+def _parse_event_timestamp(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError:
+            return None
+    return None
 
 
 def aggregate_eval_records(
@@ -140,6 +291,7 @@ def aggregate_eval_records(
     window_minutes: int = 24 * 60,
     *,
     reference_time: datetime | None = None,
+    review_events: list[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Return a compact eval summary object for dashboards or CI gating.
 
@@ -148,9 +300,17 @@ def aggregate_eval_records(
     """
     candidates = filter_eval_candidates(events)
     now = reference_time or datetime.now(timezone.utc)
+    filtered_review_events = review_events
     if window_minutes > 0:
         window_start = now - timedelta(minutes=window_minutes)
         candidates = [event for event in candidates if event.created_at >= window_start]
+        if review_events:
+            filtered_review_events = [
+                event
+                for event in review_events
+                if (timestamp := _parse_event_timestamp(event.get("timestamp") if isinstance(event, Mapping) else None))
+                and timestamp >= window_start
+            ]
 
     work_items = build_repeated_failure_signal(
         candidates,
@@ -160,6 +320,7 @@ def aggregate_eval_records(
         "total_events_considered": len(candidates),
         "window_minutes": window_minutes,
         "generated_at": now.isoformat(),
+        "routing_metrics": build_routing_metrics(candidates, review_events=filtered_review_events),
         "work_items": [
             {
                 "failure_signature": item.failure_signature,

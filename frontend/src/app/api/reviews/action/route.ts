@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { reviewId, action, notes, reassignTo, errorCategory } = body;
+    const { reviewId, action, notes, reassignTo, errorCategory, escalationOutcome } = body;
 
     if (!reviewId) {
       return bffJson({ error: "reviewId is required" }, 400);
@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
         notes,
         reassign_to: reassignTo,
         error_category: errorCategory,
+        escalation_outcome: escalationOutcome,
       }), cache: "no-store" }
     );
 

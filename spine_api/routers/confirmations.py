@@ -19,14 +19,14 @@ Auth model:
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from spine_api.core.rls import get_rls_db
 from spine_api.core.auth import get_current_agency_id, require_permission, get_current_membership
 from spine_api.models.tenant import EVENT_CATEGORIES, Membership
-from spine_api.services import confirmation_service, execution_event_service
+from spine_api.services import confirmation_service, execution_event_service, agentic_eval_service
 
 logger = logging.getLogger("spine_api.confirmations")
 
@@ -297,4 +297,32 @@ async def get_execution_timeline(
         "ok": True,
         "events": [_timeline_event_to_dict(e) for e in result.events],
         "summary": result.summary,
+    }
+
+
+@router.get("/{trip_id}/agentic-eval")
+async def get_agentic_eval(
+    trip_id: str,
+    workflow: str | None = None,
+    min_occurrences: int = Query(3, ge=1, le=20),
+    window_minutes: int = Query(24 * 60, ge=1, le=60 * 24 * 14),
+    agency_id: str = Depends(get_current_agency_id),
+    membership=require_permission("trips:read"),
+    db: AsyncSession = Depends(get_rls_db),
+):
+    if workflow is not None and workflow not in EVENT_CATEGORIES:
+        raise HTTPException(status_code=422, detail=f"Invalid workflow: {workflow}")
+    summary = await agentic_eval_service.get_trip_agentic_eval_summary(
+        db,
+        trip_id=trip_id,
+        agency_id=agency_id,
+        workflow=workflow,
+        min_occurrences=min_occurrences,
+        window_minutes=window_minutes,
+    )
+    return {
+        "ok": True,
+        "trip_id": trip_id,
+        "workflow": workflow,
+        "summary": summary,
     }

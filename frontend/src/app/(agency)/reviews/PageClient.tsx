@@ -16,6 +16,7 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 import { useReviews } from '@/hooks/useGovernance';
+import { useUnifiedState } from '@/hooks/useUnifiedState';
 import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { getTripRoute } from '@/lib/routes';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -200,9 +201,10 @@ export default function OwnerReviewsPage() {
   const [statusFilter, setStatusFilter] = useState<ReviewStatus | 'all'>('all');
   const [referenceNow] = useState(() => Date.now());
   const { data: reviews, isLoading, error, refetch, submitAction } = useReviews();
+  const { state: unifiedState } = useUnifiedState();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Filter reviews
+  // Filter reviews (page-local — acceptable per SSOT rule)
   const filteredReviews = reviews.filter((r) => {
     if (statusFilter === 'all') return true;
     return r.status === statusFilter;
@@ -255,13 +257,13 @@ export default function OwnerReviewsPage() {
     );
   }
 
-  const pendingCount = reviews.filter((r) => r.status === 'pending').length;
-  const approvedCount = reviews.filter((r) => r.status === 'approved').length;
-  const rejectedCount = reviews.filter((r) => r.status === 'rejected').length;
-  const escalatedCount = reviews.filter((r) => r.status === 'escalated').length;
-  const totalValue = reviews
-    .filter((r) => r.status === 'pending')
-    .reduce((sum, r) => sum + r.value, 0);
+  // Summary card counts from unified state (SSOT for dashboard-level stats)
+  const reviewCounts = unifiedState?.review_counts ?? {};
+  const pendingCount = unifiedState?.pending_review_count ?? reviewCounts['pending'] ?? 0;
+  const approvedCount = reviewCounts['approved'] ?? 0;
+  const rejectedCount = reviewCounts['rejected'] ?? 0;
+  const escalatedCount = reviewCounts['escalated'] ?? 0;
+  const totalValue = unifiedState?.total_pending_review_value ?? 0;
 
   return (
     <div className='p-5 max-w-[1400px] mx-auto space-y-5'>

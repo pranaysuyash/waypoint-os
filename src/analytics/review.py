@@ -37,7 +37,8 @@ def process_review_action(
     notes: str,
     user_id: str,
     reassign_to: Optional[str] = None,
-    error_category: Optional[str] = None
+    error_category: Optional[str] = None,
+    escalation_outcome: Optional[str] = None,
 ) -> dict:
     """Apply a review action to a trip and log an audit event.
 
@@ -85,6 +86,7 @@ def process_review_action(
         "notes": notes,
         "owner_approved": normalised == "approved",
         "reassigned_to": reassign_to,
+        "escalation_outcome": escalation_outcome,
     }
     analytics["review_metadata"] = review_meta
 
@@ -146,6 +148,7 @@ def process_review_action(
             "action": normalised,
             "notes": notes,
             "error_category": error_category,
+            "escalation_outcome": escalation_outcome,
             "pre_state": pre_state,
             "post_state": post_state,
             "timestamp": review_meta["reviewed_at"]

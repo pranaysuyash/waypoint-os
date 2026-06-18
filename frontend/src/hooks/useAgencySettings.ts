@@ -74,8 +74,11 @@ function asAgencySettings(value: unknown): AgencySettings | null {
       : false
     : false;
 
+  const VALID_TIERS = new Set(["starter", "pro", "enterprise"]);
+
   if (
     typeof value.agency_id !== "string" ||
+    (value.tier !== undefined && !VALID_TIERS.has(value.tier as string)) ||
     !isRecordLike(profile) ||
     !isRecordLike(operational) ||
     !isRecordLike(autonomy) ||

@@ -11,6 +11,7 @@ import {
 import { useTrips, usePipeline } from '@/hooks/useTrips';
 import { useInboxStats, useInboxTrips, useReviews } from '@/hooks/useGovernance';
 import { useIntegrityIssues } from '@/hooks/useIntegrityIssues';
+import { useUnifiedState } from '@/hooks/useUnifiedState';
 import { buildActionRequiredItems } from './buildActionRequiredItems';
 
 export type OverviewStateKey = 'green' | 'amber' | 'red' | 'blue';
@@ -97,8 +98,16 @@ export function useOverviewSummary() {
   const pendingReviews = useReviews({ status: 'pending' });
   const integrityIssues = useIntegrityIssues();
   const pipelineQuery = usePipeline();
+  const { state: unifiedState } = useUnifiedState();
+
+  // SSOT: summary card counts come from unified state when available,
+  // falling back to domain hooks during initial load.
+  const workspaceCount = unifiedState?.workspace_trip_count ?? workspace.total;
+  const inboxCount = unifiedState?.inbox_lead_count ?? inbox.total;
+  const pendingReviewCount = unifiedState?.pending_review_count ?? pendingReviews.total;
+
   const orphanCount = integrityIssues.total;
-  const pendingApprovalCount = pendingReviews.total;
+  const pendingApprovalCount = pendingReviewCount;
   const opsHealth = opsHealthSummary(
     integrityIssues.total,
     integrityIssues.isLoading,
@@ -109,34 +118,34 @@ export function useOverviewSummary() {
     () => [
       {
         title: 'Trips in Planning',
-        value: displayCount(workspace.total, workspace.isLoading, workspace.error),
+        value: displayCount(workspaceCount, workspace.isLoading, workspace.error),
         sub: displaySub(
           workspace.isLoading,
           workspace.error,
-          `${pluralize(workspace.total, 'trip', 'trips')} being planned`,
+          `${pluralize(workspaceCount, 'trip', 'trips')} being planned`,
           'Trips unavailable',
         ),
         ctaLabel: 'Open trips',
         href: '/trips',
         state: 'blue',
         icon: Briefcase,
-        isLoading: workspace.isLoading,
+        isLoading: workspace.isLoading && !unifiedState,
         error: workspace.error,
       },
       {
         title: 'New enquiries',
-        value: displayCount(inbox.total, inbox.isLoading, inbox.error),
+        value: displayCount(inboxCount, inbox.isLoading, inbox.error),
         sub: displaySub(
           inbox.isLoading,
           inbox.error,
-          `${pluralize(inbox.total, 'new enquiry', 'new enquiries')} to review`,
+          `${pluralize(inboxCount, 'new enquiry', 'new enquiries')} to review`,
           'Enquiries unavailable',
         ),
-        ctaLabel: inbox.total > 0 ? 'Review enquiries' : 'Open enquiries',
+        ctaLabel: inboxCount > 0 ? 'Review enquiries' : 'Open enquiries',
         href: '/inbox',
         state: 'amber',
         icon: Inbox,
-        isLoading: inbox.isLoading,
+        isLoading: inbox.isLoading && !unifiedState,
         error: inbox.error,
       },
       {
@@ -152,7 +161,7 @@ export function useOverviewSummary() {
         href: '/reviews',
         state: 'green',
         icon: CheckCircle2,
-        isLoading: pendingReviews.isLoading,
+        isLoading: pendingReviews.isLoading && !unifiedState,
         error: pendingReviews.error,
       },
       {
@@ -170,16 +179,17 @@ export function useOverviewSummary() {
     [
       inbox.error,
       inbox.isLoading,
-      inbox.total,
+      inboxCount,
       integrityIssues.isLoading,
       pendingApprovalCount,
       pendingReviews.error,
       pendingReviews.isLoading,
       opsHealth.sub,
       opsHealth.value,
+      unifiedState,
       workspace.error,
       workspace.isLoading,
-      workspace.total,
+      workspaceCount,
     ]
   );
 
@@ -189,10 +199,10 @@ export function useOverviewSummary() {
         href: '/inbox',
         label: 'New enquiries',
         sub: displayNavSub(
-          inbox.total,
+          inboxCount,
           inbox.isLoading,
           inbox.error,
-          `${pluralize(inbox.total, 'new enquiry', 'new enquiries')} to review`,
+          `${pluralize(inboxCount, 'new enquiry', 'new enquiries')} to review`,
         ),
         subColor: 'var(--accent-amber)',
         icon: Inbox,
@@ -201,10 +211,10 @@ export function useOverviewSummary() {
         href: '/trips',
         label: 'Trips in Planning',
         sub: displayNavSub(
-          workspace.total,
+          workspaceCount,
           workspace.isLoading,
           workspace.error,
-          `${pluralize(workspace.total, 'trip', 'trips')} being planned`,
+          `${pluralize(workspaceCount, 'trip', 'trips')} being planned`,
         ),
         subColor: 'var(--accent-blue)',
         icon: Briefcase,
@@ -229,7 +239,7 @@ export function useOverviewSummary() {
         icon: AlertTriangle,
       },
     ],
-    [inbox.total, inbox.isLoading, inbox.error, opsHealth.sub, pendingApprovalCount, pendingReviews.isLoading, pendingReviews.error, workspace.total, workspace.isLoading, workspace.error]
+    [inboxCount, inbox.isLoading, inbox.error, opsHealth.sub, pendingApprovalCount, pendingReviews.isLoading, pendingReviews.error, workspaceCount, workspace.isLoading, workspace.error]
   );
 
   const pipeline = useMemo(() => {
@@ -246,21 +256,22 @@ export function useOverviewSummary() {
       return 'Some overview counts are unavailable';
     }
 
-    if (anyPrimaryLoading) {
+    if (anyPrimaryLoading && !unifiedState) {
       return 'Loading overview counts…';
     }
 
-    return `${pluralize(workspace.total, 'trip', 'trips')} in planning · ${pluralize(inbox.total, 'enquiry', 'enquiries')} · ${pluralize(pendingApprovalCount, 'quote', 'quotes')} to review`;
+    return `${pluralize(workspaceCount, 'trip', 'trips')} in planning · ${pluralize(inboxCount, 'enquiry', 'enquiries')} · ${pluralize(pendingApprovalCount, 'quote', 'quotes')} to review`;
   }, [
     inbox.error,
     inbox.isLoading,
-    inbox.total,
+    inboxCount,
     pendingApprovalCount,
     pendingReviews.error,
     pendingReviews.isLoading,
+    unifiedState,
     workspace.error,
     workspace.isLoading,
-    workspace.total,
+    workspaceCount,
   ]);
 
   const actionRequiredItems = useMemo(
@@ -269,7 +280,7 @@ export function useOverviewSummary() {
         workspaceTrips: workspace.data,
         pendingReviews: pendingReviews.data,
         inboxTrips: inbox.data,
-        inboxTotal: inbox.total,
+        inboxTotal: inboxCount,
         inboxStats: inboxStats.data ?? undefined,
       }),
     [
@@ -321,11 +332,11 @@ export function useOverviewSummary() {
     recentTrips: workspace.data,
     recentTripsLoading: workspace.isLoading,
     recentTripsError: workspace.error,
-    planningTripsTotal: workspace.total,
-    planningTripsLoading: workspace.isLoading,
+    planningTripsTotal: workspaceCount,
+    planningTripsLoading: workspace.isLoading && !unifiedState,
     planningTripsError: workspace.error,
-    leadInboxTotal: inbox.total,
-    leadInboxLoading: inbox.isLoading,
+    leadInboxTotal: inboxCount,
+    leadInboxLoading: inbox.isLoading && !unifiedState,
     leadInboxError: inbox.error,
   };
 }

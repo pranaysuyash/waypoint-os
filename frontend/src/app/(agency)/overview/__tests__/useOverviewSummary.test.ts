@@ -17,13 +17,26 @@ vi.mock('@/hooks/useIntegrityIssues', () => ({
   useIntegrityIssues: vi.fn(),
 }));
 
+vi.mock('@/hooks/useUnifiedState', () => ({
+  useUnifiedState: vi.fn(),
+}));
+
 import { useTrips, usePipeline } from '@/hooks/useTrips';
 import { useInboxStats, useInboxTrips, useReviews } from '@/hooks/useGovernance';
 import { useIntegrityIssues } from '@/hooks/useIntegrityIssues';
+import { useUnifiedState } from '@/hooks/useUnifiedState';
 
 describe('useOverviewSummary', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    vi.mocked(useUnifiedState).mockReturnValue({
+      state: null,
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+      isConsistent: true,
+    });
 
     vi.mocked(useTrips).mockReturnValue({
       data: [],

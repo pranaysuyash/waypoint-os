@@ -1009,6 +1009,47 @@ async def lifespan(app: FastAPI):
         if _requeue_worker_service is not None:
             _requeue_worker_service.start()
         _zombie_reaper_start()
+
+    # Wire per-agency usage guards so each agency gets its own rate limits,
+    # budget caps, and alert destinations.
+    try:
+        from src.llm.usage_guard import get_usage_guard, get_guard_for_agency
+        from src.llm.alert_service import alert_service_from_settings, alert_service_from_env
+
+        if not os.environ.get("RUNNING_TESTS"):
+            alert_agency_id = os.environ.get("LLM_ALERT_AGENCY_ID", "waypoint-hq")
+            try:
+                # Initialize the per-agency guard from persisted settings.
+                # This creates a guard instance keyed by agency_id with its own
+                # limits, budget, and alert destinations.
+                agency_guard = get_guard_for_agency(alert_agency_id)
+                logger.info(
+                    "Per-agency usage guard initialized (agency=%s, enabled=%s, budget=%s)",
+                    alert_agency_id, agency_guard.enabled, agency_guard.daily_budget,
+                )
+                # Health check: verify at least one alert destination is configured
+                # when alerts are enabled. A silent no-destination config means threshold
+                # warnings and rate-limit blocks will be silently dropped.
+                ad = AgencySettingsStore.load(alert_agency_id).alert_destinations
+                if ad.enabled and not ad.destinations:
+                    logger.warning(
+                        "ALERT HEALTH: Alerts enabled for agency=%s but no destinations configured. "
+                        "Alerts will be silently dropped. Configure at least one destination in "
+                        "Settings > Alert Destinations.",
+                        alert_agency_id,
+                    )
+            except Exception:
+                # Settings store unavailable — fall back to default env-based guard
+                default_guard = get_usage_guard()
+                default_guard.set_alert_service(alert_service_from_env())
+                logger.info("Fallback default usage guard configured from env")
+        else:
+            # Test mode: default guard with env-var alert service
+            default_guard = get_usage_guard()
+            default_guard.set_alert_service(alert_service_from_env())
+    except Exception as exc:
+        logger.warning("Failed to configure usage guard: %s", exc)
+
     # Note: We no longer auto-seed at startup.
     # Seeding is now done per-agency for test users in the /trips endpoint.
     logger.info("Spine API startup complete")

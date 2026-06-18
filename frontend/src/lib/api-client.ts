@@ -491,8 +491,11 @@ export async function createTrip(data: CreateTripRequest): Promise<Trip> {
 // AGENCY SETTINGS API
 // ============================================================================
 
+export type AgencyTier = "starter" | "pro" | "enterprise";
+
 export interface AgencySettingsResponse {
   agency_id: string;
+  tier: AgencyTier;
   seasonal: AgencySeasonalSettings;
   profile: {
     agency_name: string;
@@ -671,6 +674,196 @@ export async function updateAgencyAutonomy(
 }
 
 // ============================================================================
+// LLM GUARD API
+// ============================================================================
+
+export interface LlmGuardState {
+  enabled: boolean;
+  agency_id: string;
+  max_calls_per_hour: number | null;
+  max_calls_per_model: Record<string, number>;
+  daily_budget: number | null;
+  budget_mode: string;
+  current_hourly_calls: number;
+  current_daily_cost: number;
+}
+
+export async function getLlmGuardState(): Promise<LlmGuardState> {
+  return api.get<LlmGuardState>("/api/settings/llm-guard");
+}
+
+// ============================================================================
+// ALERT DESTINATIONS API
+// ============================================================================
+
+export interface AlertDestinationConfig {
+  id: string;
+  label: string;
+  enabled: boolean;
+  type: "webhook" | "email";
+  url: string;
+  email_to: string;
+  email_cc: string;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_user: string;
+  smtp_use_tls: boolean;
+  sender: string;
+  min_severity: "warning" | "critical";
+  event_types: string[];
+  has_smtp_password: boolean;
+}
+
+export interface AlertDestinationsResponse {
+  enabled: boolean;
+  destinations: AlertDestinationConfig[];
+}
+
+export interface TestAlertRequest {
+  type: "webhook" | "email";
+  url?: string;
+  email_to?: string;
+  smtp_host?: string;
+  smtp_port?: number;
+  smtp_user?: string;
+  smtp_password?: string;
+  sender?: string;
+}
+
+export async function getAlertDestinations(): Promise<AlertDestinationsResponse> {
+  return api.get<AlertDestinationsResponse>("/api/settings/alert-destinations");
+}
+
+export async function updateAlertDestinations(data: {
+  enabled: boolean;
+  destinations: AlertDestinationConfig[];
+}): Promise<{ ok: boolean }> {
+  return api.post<{ ok: boolean }>("/api/settings/alert-destinations", data);
+}
+
+export async function testAlertDestination(data: TestAlertRequest): Promise<{ ok: boolean; detail: string }> {
+  return api.post<{ ok: boolean; detail: string }>("/api/settings/alert-destinations/test", data);
+}
+
+// ============================================================================
+// AI AGENT SETTINGS API (P4-07)
+// ============================================================================
+
+export interface AiAgentSettings {
+  agency_id: string;
+  enable_auto_intake: boolean;
+  enable_auto_shortlist: boolean;
+  enable_auto_proposal: boolean;
+  enable_auto_negotiation: boolean;
+  enable_frontier_orchestration: boolean;
+  enable_checker_agent: boolean;
+  enable_call_capture: boolean;
+  enable_document_extraction: boolean;
+  preferred_model: string;
+  fallback_model: string;
+  extraction_model: string;
+  checker_model: string;
+  max_negotiation_rounds: number;
+  proposal_confidence_threshold: number;
+  auto_advance_stages: boolean;
+  require_owner_review_above_value: number;
+  brand_voice: "professional" | "friendly" | "luxury" | "budget";
+  response_language: string;
+  max_follow_up_questions: number;
+}
+
+export type UpdateAiAgentPayload = Partial<Omit<AiAgentSettings, "agency_id">>;
+
+export async function getAiAgentSettings(): Promise<AiAgentSettings> {
+  return api.get<AiAgentSettings>("/api/settings/ai-agent");
+}
+
+export async function updateAiAgentSettings(data: UpdateAiAgentPayload): Promise<{ ok: boolean }> {
+  return api.post<{ ok: boolean }>("/api/settings/ai-agent", data);
+}
+
+// ============================================================================
+// SUPPORT SETTINGS API (P4-08)
+// ============================================================================
+
+export interface SupportSettings {
+  agency_id: string;
+  enable_email_support: boolean;
+  enable_chat_support: boolean;
+  enable_phone_support: boolean;
+  enable_whatsapp_support: boolean;
+  default_response_sla_hours: number;
+  urgent_response_sla_hours: number;
+  auto_route_by_destination: boolean;
+  auto_route_by_language: boolean;
+  escalation_after_sla_breach: boolean;
+  escalation_contact_email: string;
+  escalation_contact_phone: string;
+  support_hours_start: string;
+  support_hours_end: string;
+  support_days: string[];
+  timezone: string;
+  enable_auto_acknowledgement: boolean;
+  auto_acknowledgement_message: string;
+  out_of_hours_message: string;
+  enable_csat_survey: boolean;
+  csat_trigger: "after_resolution" | "after_first_response" | "never";
+}
+
+export type UpdateSupportPayload = Partial<Omit<SupportSettings, "agency_id">>;
+
+export async function getSupportSettings(): Promise<SupportSettings> {
+  return api.get<SupportSettings>("/api/settings/support");
+}
+
+export async function updateSupportSettings(data: UpdateSupportPayload): Promise<{ ok: boolean }> {
+  return api.post<{ ok: boolean }>("/api/settings/support", data);
+}
+
+// ============================================================================
+// COMMUNICATION SETTINGS API (P4-09)
+// ============================================================================
+
+export interface CommSettings {
+  agency_id: string;
+  default_outbound_channel: "email" | "whatsapp" | "sms";
+  allow_channel_switching: boolean;
+  enable_template_library: boolean;
+  default_greeting: string;
+  default_sign_off: string;
+  respect_operating_hours: boolean;
+  send_immediately_during_hours: boolean;
+  queue_outside_hours: boolean;
+  max_emails_per_day_per_trip: number;
+  max_whatsapp_per_day_per_trip: number;
+  auto_detect_language: boolean;
+  default_language: string;
+  supported_languages: string[];
+  translate_outbound: boolean;
+  enable_auto_followup: boolean;
+  auto_followup_delay_days: number;
+  max_auto_followups: number;
+  followup_escalate_after_max: boolean;
+  notify_on_customer_reply: boolean;
+  notify_on_sla_warning: boolean;
+  notify_on_escalation: boolean;
+  digest_frequency: "realtime" | "hourly" | "daily" | "never";
+  include_agency_signature: boolean;
+  include_unsubscribe_link: boolean;
+  compliance_footer: string;
+}
+
+export type UpdateCommPayload = Partial<Omit<CommSettings, "agency_id">>;
+
+export async function getCommSettings(): Promise<CommSettings> {
+  return api.get<CommSettings>("/api/settings/comm");
+}
+
+export async function updateCommSettings(data: UpdateCommPayload): Promise<{ ok: boolean }> {
+  return api.post<{ ok: boolean }>("/api/settings/comm", data);
+}
+
+// ============================================================================
 // TRIP REVIEW API
 // ============================================================================
 
@@ -678,9 +871,15 @@ export async function submitTripReviewAction(
   tripId: string,
   action: string,
   notes?: string,
-  errorCategory?: string
+  errorCategory?: string,
+  escalationOutcome?: "false_escalation" | "missed_escalation" | "correct_escalation" | "not_applicable"
 ): Promise<{ success: boolean; review: any }> {
-  return api.post(`/api/trips/${tripId}/review/action`, { action, notes, error_category: errorCategory });
+  return api.post(`/api/trips/${tripId}/review/action`, {
+    action,
+    notes,
+    error_category: errorCategory,
+    escalation_outcome: escalationOutcome,
+  });
 }
 
 // ============================================================================

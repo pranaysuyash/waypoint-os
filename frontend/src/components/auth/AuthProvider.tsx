@@ -11,26 +11,32 @@
  * Usage: Wrap the app in layout.tsx inside the Shell.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AUTH_UNAUTHORIZED_EVENT, ApiException, api } from "@/lib/api-client";
 import { formatAuthRedirectLabel } from "@/lib/auth-redirect";
 import { Modal } from '@/components/ui/modal';
 import { useAuthStore } from "@/stores/auth";
+import type { AuthSession } from "@/types/auth-session";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/logout", "/"];
 function isPublic(path: string) {
   return PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"));
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider(
+  { children, initialSession }: { children: React.ReactNode; initialSession?: AuthSession | null },
+) {
   const hydrate = useAuthStore((s) => s.hydrate);
+  const setAuth = useAuthStore((s) => s.setAuth);
   const isLoading = useAuthStore((s) => s.isLoading);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const pathname = usePathname();
   const { push } = useRouter();
+  const hasInitialSession = Boolean(initialSession);
   const needsLogin = !isLoading && !isAuthenticated && !isPublic(pathname);
+  const shouldBlockForHydration = isLoading && !hasInitialSession;
 
   type LoginFormState = { email: string; password: string; showPassword: boolean; submitting: boolean; error: string };
   const [loginForm, setLoginForm] = useState<LoginFormState>({ email: "", password: "", showPassword: false, submitting: false, error: "" });
@@ -43,10 +49,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [pathname]);
   const redirectLabel = useMemo(() => formatAuthRedirectLabel(redirectTarget), [redirectTarget]);
 
-  // Hydrate once on mount
+  // Seed the store from the server-rendered session before the first paint.
+  useLayoutEffect(() => {
+    if (!initialSession) return;
+    setAuth(initialSession.user, initialSession.agency, initialSession.membership);
+  }, [initialSession, setAuth]);
+
+  // Hydrate once on mount when the server could not preload a valid session.
   useEffect(() => {
+    if (initialSession) return;
     hydrate();
-  }, [hydrate]);
+  }, [hydrate, initialSession]);
 
   // Keep auth state synchronized when any protected API request returns 401.
   useEffect(() => {
@@ -59,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [hydrate]);
 
   // Still hydrating - block everything
-  if (isLoading) {
+  if (shouldBlockForHydration) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3 text-center">

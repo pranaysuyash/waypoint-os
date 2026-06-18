@@ -27,6 +27,7 @@ import {
   type SeasonalCampaignListResponse,
   simulateSeasonalCampaign,
   dispatchSeasonalCampaign,
+  submitTripReviewAction,
   type UpdateSeasonalCampaignRequest,
   updateAgencyAutonomy,
   updateAgencyOperational,
@@ -85,6 +86,7 @@ describe('api-client public contract surface', () => {
     };
     const agencySettingsResponse: AgencySettingsResponse = {
       agency_id: 'waypoint-hq',
+      tier: 'starter',
       profile: {
         agency_name: 'Updated Agency',
         sub_brand: '',
@@ -387,6 +389,31 @@ describe('api-client public contract surface', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ dry_run: false }),
+      }),
+    );
+  });
+
+  it('passes escalation outcome through the trip review action client', async () => {
+    const fetchMock = vi.mocked(fetch);
+
+    await submitTripReviewAction(
+      'trip-1',
+      'escalate',
+      'Needs owner review',
+      'quality_issue',
+      'false_escalation',
+    );
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/trips/trip-1/review/action',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'escalate',
+          notes: 'Needs owner review',
+          error_category: 'quality_issue',
+          escalation_outcome: 'false_escalation',
+        }),
       }),
     );
   });

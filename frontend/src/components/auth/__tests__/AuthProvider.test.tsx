@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { AuthProvider } from '../AuthProvider';
 
 const mockUseAuthStore = vi.fn();
+const mockSetAuth = vi.fn();
 const mockRouterPush = vi.fn();
 let mockPathname = '/overview';
 
@@ -43,6 +44,7 @@ describe('AuthProvider', () => {
     const hydrate = vi.fn();
     mockUseAuthStore.mockReturnValue({
       hydrate,
+      setAuth: mockSetAuth,
       isLoading: true,
       isAuthenticated: false,
     });
@@ -61,6 +63,7 @@ describe('AuthProvider', () => {
     const hydrate = vi.fn();
     mockUseAuthStore.mockReturnValue({
       hydrate,
+      setAuth: mockSetAuth,
       isLoading: false,
       isAuthenticated: false,
     });
@@ -89,6 +92,7 @@ describe('AuthProvider', () => {
     });
     mockUseAuthStore.mockReturnValue({
       hydrate,
+      setAuth: mockSetAuth,
       isLoading: false,
       isAuthenticated: false,
     });
@@ -111,6 +115,7 @@ describe('AuthProvider', () => {
     mockPathname = '/login';
     mockUseAuthStore.mockReturnValue({
       hydrate,
+      setAuth: mockSetAuth,
       isLoading: false,
       isAuthenticated: false,
     });
@@ -130,6 +135,7 @@ describe('AuthProvider', () => {
     mockPathname = '/trips';
     mockUseAuthStore.mockReturnValue({
       hydrate,
+      setAuth: mockSetAuth,
       isLoading: false,
       isAuthenticated: false,
     });
@@ -142,5 +148,35 @@ describe('AuthProvider', () => {
 
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(mockRouterPush).toHaveBeenCalledWith('/login?redirect=%2Ftrips');
+  });
+
+  it('renders immediately when a server session is preloaded', () => {
+    const hydrate = vi.fn();
+    const initialSession = {
+      user: { id: 'user_1', email: 'newuser@test.com', name: 'New User' },
+      agency: { id: 'agency_1', name: 'Test', slug: 'test' },
+      membership: { role: 'owner', isPrimary: true },
+    };
+
+    mockUseAuthStore.mockReturnValue({
+      hydrate,
+      setAuth: mockSetAuth,
+      isLoading: true,
+      isAuthenticated: false,
+    });
+
+    render(
+      <AuthProvider initialSession={initialSession as any}>
+        <div>protected app</div>
+      </AuthProvider>
+    );
+
+    expect(screen.queryByText(/checking your session/i)).not.toBeInTheDocument();
+    expect(screen.getByText('protected app')).toBeInTheDocument();
+    expect(mockSetAuth).toHaveBeenCalledWith(
+      initialSession.user,
+      initialSession.agency,
+      initialSession.membership
+    );
   });
 });
