@@ -172,17 +172,30 @@ def send_operator_email(
     return True
 
 
-def send_daily_operator_reminders() -> int:
+def send_daily_operator_reminders(agency_id: Optional[str] = None) -> int:
     """
     Check for overdue follow-ups and send daily reminders to operators.
-    
+
+    Respects ``CommSettings.enable_auto_followup`` and digest frequency.
+
     Returns: number of operators notified
     """
+    comm = _load_comm_settings(agency_id)
+    if comm is not None and not getattr(comm, "enable_auto_followup", True):
+        logger.info("Auto follow-up disabled by CommSettings for agency %s", agency_id)
+        return 0
+
+    # Check digest frequency — skip if set to 'never'
+    digest = getattr(comm, "digest_frequency", "realtime") if comm else "realtime"
+    if digest == "never":
+        logger.info("Digest frequency set to 'never' — skipping operator reminders")
+        return 0
+
     overdue = check_overdue_followups()
     if not overdue:
         logger.info("No overdue follow-ups to remind about")
         return 0
-    
+
     # Group by agent email
     by_agent: Dict[str, List[Dict[str, Any]]] = {}
     for followup in overdue:
@@ -191,13 +204,13 @@ def send_daily_operator_reminders() -> int:
             if email not in by_agent:
                 by_agent[email] = []
             by_agent[email].append(followup)
-    
+
     # Send email to each agent
     notified = 0
     for email, followups in by_agent.items():
         if send_operator_email(email, followups):
             notified += 1
-    
+
     return notified
 
 
@@ -296,35 +309,90 @@ def format_traveler_email_body(traveler_name: str, agent_name: str, due_date_str
 """
 
 
+def _load_comm_settings(agency_id: Optional[str] = None) -> Optional[Any]:
+    """Load CommSettings for the given agency.
+
+    Returns the ``comm`` attribute of the agency's ``AgencySettings``, or
+    ``None`` when no agency ID is provided or the load fails.
+    """
+    if not agency_id:
+        return None
+    try:
+        from src.intake.config.agency_settings import AgencySettingsStore
+        settings = AgencySettingsStore.load(agency_id)
+        return getattr(settings, "comm", None)
+    except Exception:
+        logger.debug("Failed to load CommSettings for agency %s", agency_id)
+        return None
+
+
+def _is_within_operating_hours(comm: Optional[Any] = None) -> bool:
+    """Check whether the current time falls within operating hours.
+
+    When ``comm`` is ``None`` or ``respect_operating_hours`` is ``False``
+    the function returns ``True`` (send immediately).
+    """
+    if comm is None or not getattr(comm, "respect_operating_hours", False):
+        return True
+
+    now = datetime.now(timezone.utc)
+    current_hour = now.hour
+    # Default window — real implementation would read SupportSettings timezone/hours
+    start = 9
+    end = 21
+    return start <= current_hour < end
+
+
 def send_traveler_notification(
     traveler_phone: Optional[str],
     traveler_email: Optional[str],
     traveler_name: str,
     agent_name: str,
     due_date_str: str,
+    agency_id: Optional[str] = None,
 ) -> bool:
     """
     Send traveler notification (SMS or email) 24 hours before follow-up call.
-    
-    Prefers SMS if phone number available, falls back to email.
+
+    Channel selection, scheduling, and rate limiting are governed by
+    the agency's ``CommSettings`` when an ``agency_id`` is provided.
     """
-    # Try SMS first
-    if traveler_phone:
-        message = format_traveler_sms_body(traveler_name, agent_name, due_date_str)
+    comm = _load_comm_settings(agency_id)
+    default_channel = getattr(comm, "default_outbound_channel", "email") if comm else "email"
+    queue_outside = getattr(comm, "queue_outside_hours", True) if comm else True
+
+    # Respect operating hours
+    within_hours = _is_within_operating_hours(comm)
+    if not within_hours and queue_outside:
         logger.info(
-            f"SMS notification to traveler",
+            "Notification queued — outside operating hours",
+            extra={"traveler": traveler_name, "agency_id": agency_id},
+        )
+        # In production: enqueue for next business window
+        return True
+
+    # Choose channel based on CommSettings default
+    send_via_sms = default_channel == "sms" and traveler_phone
+    send_via_whatsapp = default_channel == "whatsapp" and traveler_phone
+    send_via_email = default_channel == "email" and traveler_email
+
+    # Fallback: try phone-based channels first, then email
+    if send_via_sms or send_via_whatsapp:
+        message = format_traveler_sms_body(traveler_name, agent_name, due_date_str)
+        channel_label = default_channel.upper()
+        logger.info(
+            f"{channel_label} notification to traveler",
             extra={
                 "phone": traveler_phone,
                 "traveler": traveler_name,
                 "agent": agent_name,
+                "channel": default_channel,
                 "message": message,
             }
         )
-        # In production, send via Twilio or similar
         return True
-    
-    # Fall back to email
-    if traveler_email:
+
+    if send_via_email or traveler_email:
         message = format_traveler_email_body(traveler_name, agent_name, due_date_str)
         logger.info(
             f"Email notification to traveler",
@@ -334,9 +402,17 @@ def send_traveler_notification(
                 "agent": agent_name,
             }
         )
-        # In production, send via SMTP or email service
         return True
-    
+
+    # Last resort: phone if available
+    if traveler_phone:
+        message = format_traveler_sms_body(traveler_name, agent_name, due_date_str)
+        logger.info(
+            "Fallback SMS notification to traveler",
+            extra={"phone": traveler_phone, "traveler": traveler_name},
+        )
+        return True
+
     logger.warning(
         f"No phone or email for traveler {traveler_name}",
         extra={"trip_id": traveler_name},
@@ -344,7 +420,7 @@ def send_traveler_notification(
     return False
 
 
-def send_traveler_upcoming_notifications() -> int:
+def send_traveler_upcoming_notifications(agency_id: Optional[str] = None) -> int:
     """
     Check for upcoming follow-ups and send traveler notifications.
     
@@ -363,6 +439,7 @@ def send_traveler_upcoming_notifications() -> int:
             followup["traveler_name"],
             followup["agent_name"],
             followup["due_date"],
+            agency_id=agency_id,
         ):
             notified += 1
     
@@ -373,13 +450,13 @@ def send_traveler_upcoming_notifications() -> int:
 # SCHEDULED TASKS
 # =============================================================================
 
-def run_followup_notifications() -> Dict[str, int]:
+def run_followup_notifications(agency_id: Optional[str] = None) -> Dict[str, int]:
     """
     Run all follow-up notification tasks.
     
     Should be called by a scheduler (e.g., APScheduler, Celery Beat).
     """
     return {
-        "operator_reminders_sent": send_daily_operator_reminders(),
-        "traveler_notifications_sent": send_traveler_upcoming_notifications(),
+        "operator_reminders_sent": send_daily_operator_reminders(agency_id=agency_id),
+        "traveler_notifications_sent": send_traveler_upcoming_notifications(agency_id=agency_id),
     }

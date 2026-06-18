@@ -17,6 +17,33 @@ SLA_THRESHOLDS = {
     "assigned": timedelta(hours=24),
 }
 
+
+def _resolve_sla_thresholds(agency_id: Optional[str] = None) -> Dict[str, timedelta]:
+    """Resolve SLA thresholds from SupportSettings, falling back to defaults.
+
+    The dashboard aggregator reads the agency's configured SLA targets so that
+    operator-configured response times are enforced at runtime instead of using
+    hardcoded values.
+    """
+    defaults = dict(SLA_THRESHOLDS)
+    if agency_id is None:
+        return defaults
+    try:
+        from src.intake.config.agency_settings import AgencySettingsStore
+        settings = AgencySettingsStore.load(agency_id)
+        support = getattr(settings, "support", None)
+        if support is None:
+            return defaults
+        # Map SupportSettings SLA hours → dashboard thresholds
+        default_h = getattr(support, "default_response_sla_hours", 24)
+        urgent_h = getattr(support, "urgent_response_sla_hours", 4)
+        # 'new' trips use urgent SLA (first response), 'assigned' use default
+        defaults["new"] = timedelta(hours=max(1, urgent_h))
+        defaults["assigned"] = timedelta(hours=max(1, default_h))
+    except Exception:
+        logger.debug("Failed to load SupportSettings for SLA thresholds, using defaults")
+    return defaults
+
 # ---------------------------------------------------------------------------
 # Simple in-memory TTL cache for unified-state and dashboard-stats.
 # Keyed by agency_id (None = global). Avoids redundant DB round-trips on
@@ -68,6 +95,9 @@ class DashboardAggregator:
         stages = {stage: 0 for stage in VALID_STAGES}
         sla_breached = 0
         orphans = []
+
+        # Resolve SLA thresholds from SupportSettings (falls back to defaults)
+        sla_thresholds = _resolve_sla_thresholds(agency_id)
 
         now = datetime.now(timezone.utc)
 
@@ -132,9 +162,9 @@ class DashboardAggregator:
 
                     age = now - created_at
 
-                    if status == "new" and age > SLA_THRESHOLDS["new"]:
+                    if status == "new" and age > sla_thresholds["new"]:
                         sla_breached += 1
-                    elif status == "assigned" and age > SLA_THRESHOLDS["assigned"]:
+                    elif status == "assigned" and age > sla_thresholds["assigned"]:
                         sla_breached += 1
                 except (ValueError, TypeError):
                     pass
@@ -206,6 +236,11 @@ class DashboardAggregator:
 
         now = datetime.now(timezone.utc)
 
+        # Resolve SLA thresholds from SupportSettings (once, before the loop)
+        sla_t = _resolve_sla_thresholds(agency_id)
+        new_limit_h = sla_t["new"].total_seconds() / 3600
+        assigned_limit_h = sla_t["assigned"].total_seconds() / 3600
+
         completed = 0
         ready_to_book = 0
         needs_attention = 0
@@ -241,9 +276,9 @@ class DashboardAggregator:
 
                     age_hours = (now - created_at).total_seconds() / 3600
 
-                    if status == "new" and age_hours > 3:
+                    if status == "new" and age_hours > new_limit_h * 0.75:
                         needs_attention += 1
-                    elif status == "assigned" and age_hours > 18:
+                    elif status == "assigned" and age_hours > assigned_limit_h * 0.75:
                         needs_attention += 1
                     elif quality_score < 50:
                         needs_attention += 1

@@ -231,7 +231,13 @@ def run_spine_once(
             payload["error"] = error
         stage_callback(stage_name, payload)
 
+    # Resolve AI agent feature gates once for the pipeline
+    ai_agent_settings = getattr(actual_settings, 'ai_agent', None)
+    _gate = lambda name: getattr(ai_agent_settings, name, True) if ai_agent_settings is not None else True
+
     # --- Phase 1: Extraction ---
+    # Gated by enable_auto_intake (AiAgentSettings feature gate)
+    auto_intake_enabled = _gate('enable_auto_intake')
     _emit_stage_event("packet", "entered")
     pipeline = ExtractionPipeline()
     try:
@@ -239,9 +245,13 @@ def run_spine_once(
             packet = pipeline.extract(envelopes, stage=stage)
             span.set_attribute("envelope_count", len(envelopes))
             span.set_attribute("trip_id", packet.packet_id)
+            if not auto_intake_enabled:
+                span.set_attribute("auto_intake_disabled", True)
     except Exception as e:
         _emit_stage_event("packet", "failed", error=str(e))
         raise
+    if not auto_intake_enabled:
+        packet.metadata.setdefault("agent_flags", {})['auto_intake_disabled'] = True
 
     # Override stage and operating mode if specified
     packet.stage = stage
@@ -432,11 +442,7 @@ def run_spine_once(
 
     # --- Phase 3.2: Frontier Orchestration (Ghost Concierge & Sentiment) ---
     # Gated by enable_frontier_orchestration (AiAgentSettings feature gate)
-    ai_agent_settings = getattr(actual_settings, 'ai_agent', None)
-    frontier_enabled = (
-        ai_agent_settings is None
-        or getattr(ai_agent_settings, 'enable_frontier_orchestration', True)
-    )
+    frontier_enabled = _gate('enable_frontier_orchestration')
     if frontier_enabled:
         with _otel_tracer.start_as_current_span("frontier") as span:
             frontier_result = run_frontier_orchestration(packet, decision, agency_settings=actual_settings)
@@ -464,11 +470,8 @@ def run_spine_once(
         }
 
     # --- Phase 4: Strategy ---
-    # Gated by enable_auto_proposal (AiAgentSettings feature gate)
-    auto_proposal_enabled = (
-        ai_agent_settings is None
-        or getattr(ai_agent_settings, 'enable_auto_proposal', True)
-    )
+    # Gated by enable_auto_proposal + enable_auto_shortlist (AiAgentSettings feature gates)
+    auto_proposal_enabled = _gate('enable_auto_proposal')
     _emit_stage_event("strategy", "entered")
     try:
         with _otel_tracer.start_as_current_span("strategy") as span:

@@ -4,7 +4,7 @@ import os
 import sqlite3
 from dataclasses import dataclass, field, asdict
 from enum import Enum
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -354,6 +354,71 @@ class AgencyTier(str, Enum):
     STARTER = "starter"
     PRO = "pro"
     ENTERPRISE = "enterprise"
+
+
+# ---------------------------------------------------------------------------
+# Tier Feature Gating (P4-10)
+# ---------------------------------------------------------------------------
+
+_TIER_FEATURE_LIMITS: Dict[str, Dict[str, Any]] = {
+    # Starter: core pipeline only. No frontier, negotiation, or call capture.
+    "starter": {
+        "max_trips_per_month": 50,
+        "max_team_members": 3,
+        "enable_auto_negotiation": False,
+        "enable_frontier_orchestration": False,
+        "enable_call_capture": False,
+        "enable_auto_followup": False,
+        "max_negotiation_rounds": 0,
+        "require_owner_review_above_value": 1000.0,
+    },
+    # Pro: full pipeline, limited frontier.
+    "pro": {
+        "max_trips_per_month": 500,
+        "max_team_members": 15,
+        "enable_auto_negotiation": True,
+        "enable_frontier_orchestration": True,
+        "enable_call_capture": False,
+        "enable_auto_followup": True,
+        "max_negotiation_rounds": 3,
+        "require_owner_review_above_value": 5000.0,
+    },
+    # Enterprise: everything enabled, higher limits.
+    "enterprise": {
+        "max_trips_per_month": None,  # unlimited
+        "max_team_members": None,  # unlimited
+        "enable_auto_negotiation": True,
+        "enable_frontier_orchestration": True,
+        "enable_call_capture": True,
+        "enable_auto_followup": True,
+        "max_negotiation_rounds": 5,
+        "require_owner_review_above_value": 10000.0,
+    },
+}
+
+
+def get_tier_limits(tier: AgencyTier) -> Dict[str, Any]:
+    """Return the feature limits for a given agency tier.
+
+    This is the single source of truth for tier-based feature gating.
+    Downstream code should call this instead of hardcoding tier checks.
+    """
+    return dict(_TIER_FEATURE_LIMITS.get(tier.value, _TIER_FEATURE_LIMITS["starter"]))
+
+
+def tier_allows_feature(tier: AgencyTier, feature_name: str) -> bool:
+    """Check if a feature is allowed for the given tier.
+
+    Returns True if the feature is not explicitly disabled by tier limits.
+    """
+    limits = get_tier_limits(tier)
+    feature_value = limits.get(feature_name)
+    if feature_value is None:
+        # Feature not mentioned in tier limits — default to allowed
+        return True
+    if isinstance(feature_value, bool):
+        return feature_value
+    return True
 
 
 @dataclass(slots=True)

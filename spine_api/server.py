@@ -354,6 +354,7 @@ try:
     from spine_api.routers import followups as followups_router
     from spine_api.routers import team as team_router
     from spine_api.routers import settings as settings_router
+    from spine_api.routers import settings_health as settings_health_router
     from spine_api.routers import drafts as drafts_router
     from spine_api.routers import inbox as inbox_router
     from spine_api.routers import agent_runtime as agent_runtime_router
@@ -1107,6 +1108,7 @@ app.include_router(system_dashboard_router.router)
 app.include_router(followups_router.router)
 app.include_router(team_router.router)
 app.include_router(settings_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(settings_health_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(drafts_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(inbox_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(agent_runtime_router.router, dependencies=[Depends(_auth_or_skip)])
@@ -3119,6 +3121,11 @@ async def extract_document(
     from spine_api.services.extraction_service import run_extraction, get_extractor, ExtractionValidationError
     from spine_api.services.document_service import get_document_by_id
     from spine_api.services.document_storage import get_document_storage
+
+    # Gated by enable_document_extraction (AiAgentSettings feature gate)
+    _ext_ai = AgencySettingsStore.load(agency.id).ai_agent
+    if not getattr(_ext_ai, 'enable_document_extraction', True):
+        raise HTTPException(status_code=403, detail="Document extraction is disabled by agency settings")
 
     trip = await _ts(TripStore.get_trip_for_agency, trip_id, agency.id)
     if not trip:
