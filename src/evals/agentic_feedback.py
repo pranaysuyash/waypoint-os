@@ -28,7 +28,6 @@ class AgenticEvalRecord:
     review_outcome: str | None
     provider: str | None
     model: str | None
-    failure_cost_placeholder: float | None
     created_at: datetime
 
     @classmethod
@@ -50,7 +49,6 @@ class AgenticEvalRecord:
             review_outcome=metadata.get("review_outcome"),
             provider=metadata.get("provider"),
             model=metadata.get("model"),
-            failure_cost_placeholder=None,
             created_at=event.created_at,
         )
 
@@ -78,7 +76,6 @@ def build_repeated_failure_signal(
     at least ``min_occurrences`` times, because that is the point where
     one-off flukes stop being noise and become curriculum material.
     """
-    groups: dict[str, list[AgenticEvalWorkItem]] = {}
     by_signature: dict[str, list[AgenticEvalRecord]] = {}
     for event in events:
         record = AgenticEvalRecord.from_event(event)
@@ -140,14 +137,28 @@ def filter_eval_candidates(events: list[ExecutionEvent]) -> list[ExecutionEvent]
 def aggregate_eval_records(
     events: list[ExecutionEvent],
     min_occurrences: int = 3,
+    window_minutes: int = 24 * 60,
+    *,
+    reference_time: datetime | None = None,
 ) -> dict[str, Any]:
-    """Return a compact eval summary object for dashboards or CI gating."""
+    """Return a compact eval summary object for dashboards or CI gating.
+
+    The summary currently returns only repeated failure work items with enough
+    occurrences to indicate signal instead of noise.
+    """
     candidates = filter_eval_candidates(events)
-    work_items = build_repeated_failure_signal(candidates, min_occurrences=min_occurrences)
-    now = datetime.now(timezone.utc)
+    now = reference_time or datetime.now(timezone.utc)
+    if window_minutes > 0:
+        window_start = now - timedelta(minutes=window_minutes)
+        candidates = [event for event in candidates if event.created_at >= window_start]
+
+    work_items = build_repeated_failure_signal(
+        candidates,
+        min_occurrences=min_occurrences,
+    )
     return {
         "total_events_considered": len(candidates),
-        "window_minutes": 60 * 24,
+        "window_minutes": window_minutes,
         "generated_at": now.isoformat(),
         "work_items": [
             {
@@ -162,4 +173,3 @@ def aggregate_eval_records(
             for item in work_items
         ],
     }
-
