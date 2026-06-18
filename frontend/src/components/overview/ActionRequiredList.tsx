@@ -72,8 +72,8 @@ export function ActionRequiredList({
         </p>
       ) : (
         <ul className='divide-y' style={{ borderColor: 'var(--border-default)' }}>
-          {items.map((item) => (
-            <li key={item.id} className='py-2.5 first:pt-0 last:pb-0'>
+          {items.map((item, itemIndex) => (
+            <li key={`${item.id || 'item'}-${itemIndex}`} className='py-2.5 first:pt-0 last:pb-0'>
               <div className='grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start'>
                 <div className='min-w-0 space-y-1'>
                   <div className='flex flex-wrap items-center gap-2'>
@@ -128,10 +128,13 @@ export function ActionRequiredList({
                       {item.nextAction}
                     </p>
                   ) : null}
-                  {item.examples?.length ? (
+                    {item.examples?.length ? (
                     <ol className='mt-2 space-y-1.5'>
                       {item.examples.map((example, index) => (
-                        <li key={example.id} className='grid grid-cols-[1.25rem_minmax(0,1fr)] gap-1.5 text-[12px]'>
+                        <li
+                          key={`${item.id || 'item'}-${itemIndex}-${example.id || `example-${index}-${example.title}`}-${index}`}
+                          className='grid grid-cols-[1.25rem_minmax(0,1fr)] gap-1.5 text-[12px]'
+                        >
                           <span className='tabular-nums' style={{ color: 'var(--text-tertiary)' }}>
                             {index + 1}.
                           </span>

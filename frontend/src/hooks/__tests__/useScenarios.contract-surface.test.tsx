@@ -2,8 +2,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useScenario } from '../useScenarios';
-import { getScenario } from '@/lib/api-client';
+import { useScenarios, useScenario } from '../useScenarios';
+import { getScenario, getScenarios } from '@/lib/api-client';
 
 vi.mock('@/lib/api-client', () => ({
   getScenarios: vi.fn(),
@@ -34,5 +34,16 @@ describe('useScenario', () => {
     const enabled = renderHook(() => useScenario('scenario-1'), { wrapper });
     await waitFor(() => expect(enabled.result.current.data?.id).toBe('scenario-1'));
     expect(getScenario).toHaveBeenCalledWith('scenario-1');
+  });
+
+  it('normalizes malformed scenario list payloads to an empty array', async () => {
+    vi.mocked(getScenarios).mockResolvedValue({} as never);
+
+    const { result } = renderHook(() => useScenarios(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.data).toEqual([]);
+    expect(result.current.error).toBeNull();
   });
 });

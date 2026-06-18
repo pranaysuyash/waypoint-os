@@ -1,5 +1,6 @@
 import type { Trip } from '@/lib/api-client';
 import { formatDateWindowDisplay, formatLeadTitle } from '@/lib/lead-display';
+import { getTripRoute } from '@/lib/routes';
 import type { InboxTrip, RiskFlag, TripReview } from '@/types/governance';
 
 export type ActionRequiredPriority = 'urgent' | 'high' | 'normal' | 'low';
@@ -324,6 +325,28 @@ function reviewReason(review: TripReview): string {
   return review.reason?.trim() || 'Quote approval needed';
 }
 
+function slugIdPart(value: unknown): string {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (!normalized) return '';
+  return normalized
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function buildStableId(prefix: string, parts: Array<unknown>, fallback: string): string {
+  const slugParts = parts.map(slugIdPart).filter(Boolean);
+  return `${prefix}-${slugParts.join('-') || fallback}`;
+}
+
+function buildExampleId(groupKey: string, index: number, example: RankedItem): string {
+  return buildStableId(
+    'example',
+    [groupKey, index, example.id, example.title, example.subtitle, example.reference, example.meta],
+    `item-${index + 1}`,
+  );
+}
+
 function enquirySubtitle(enquiry: InboxTrip): string {
   const customer = isInternalLookingName(enquiry.customerName) ? 'Unnamed customer' : enquiry.customerName.trim();
   return joinParts([customer, formatPax(enquiry.partySize), formatTravel(enquiry.dateWindow), enquiry.assignedTo ? undefined : 'Not assigned']);
@@ -423,7 +446,7 @@ export function buildActionRequiredItems({
       subtitle: tripSubtitle(trip),
       meta: trip.overdue ? 'Planning overdue' : 'Red status',
       reason: tripReason(trip),
-      href: `/trips/${trip.id}`,
+      href: getTripRoute(trip.id, 'intake'),
       ctaLabel: 'Open trip',
       criticalityLabel: tripCriticality(trip, referenceNow),
       pendingActions: tripPendingActions(trip),
@@ -440,8 +463,16 @@ export function buildActionRequiredItems({
     return compareNullableNumbersAsc(parseTimestamp(a.submittedAt), parseTimestamp(b.submittedAt));
   });
   for (const review of sortedReviews) {
+    const stableId = buildStableId('quote', [
+      review.id,
+      review.tripReference,
+      review.tripId,
+      review.submittedAt,
+      review.reason,
+    ], `review-${rankedItems.length + 1}`);
+
     rankedItems.push({
-      id: `quote-${review.id}`,
+      id: stableId,
       priority: reviewPriority(review, referenceNow),
       source: 'quote',
       label: 'Quote',
@@ -545,10 +576,10 @@ function collapseRepeatedWork(
     const pendingActions = first.source === 'lead' && inboxStats
       ? summarizeLeadStatsPendingActions(inboxStats, groupItems)
       : summarizePendingActions(groupItems);
-    const examples = groupItems.slice(0, maxExamples).map((item) => {
+    const examples = groupItems.slice(0, maxExamples).map((item, exampleIndex) => {
       const waitingLabel = extractWaitingLabel(item.meta);
       return {
-        id: item.id,
+        id: buildExampleId(key, exampleIndex, item),
         title: first.source === 'lead' ? waitingLabel ?? item.title : item.title,
         detail: joinParts([first.source === 'lead' ? null : item.title, item.subtitle, first.source === 'lead' ? null : waitingLabel, item.reference]),
         href: item.href,

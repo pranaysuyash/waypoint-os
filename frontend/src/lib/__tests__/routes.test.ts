@@ -1,5 +1,30 @@
 import { describe, it, expect } from 'vitest';
-import { getTripRoute, getPostRunTripRoute, type WorkspaceStage } from '../routes';
+import {
+  getTripRoute,
+  getPostRunTripRoute,
+  getWorkbenchTripHref,
+  getWorkbenchTripId,
+  type WorkspaceStage,
+} from '../routes';
+
+describe('getWorkbenchTripHref', () => {
+  it('builds workbench trip query path with canonical trip param', () => {
+    expect(getWorkbenchTripHref('trip_123')).toBe('/workbench?trip=trip_123');
+  });
+
+  it('falls back to /workbench when tripId is missing', () => {
+    expect(getWorkbenchTripHref(null)).toBe('/workbench');
+    expect(getWorkbenchTripHref(undefined)).toBe('/workbench');
+  });
+});
+
+describe('getWorkbenchTripId', () => {
+  it('prefers trip and falls back to tripId when canonical param is missing', () => {
+    expect(getWorkbenchTripId(new URLSearchParams('trip=trip_1&tripId=trip_old'))).toBe('trip_1');
+    expect(getWorkbenchTripId(new URLSearchParams('tripId=trip_2'))).toBe('trip_2');
+    expect(getWorkbenchTripId(new URLSearchParams('tab=ops'))).toBeNull();
+  });
+});
 
 describe('getTripRoute', () => {
   it('generates correct URL for ops stage', () => {

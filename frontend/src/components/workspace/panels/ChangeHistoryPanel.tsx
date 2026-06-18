@@ -7,6 +7,7 @@ import { ClientDate, ClientDateTime } from '@/hooks/useClientDate';
 import { getChangeDescription, formatFieldLabel, getChangeSummary } from '@/types/audit';
 import { useState } from 'react';
 import type { Trip } from '@/lib/api-client';
+import { useAuthStore } from '@/stores/auth';
 
 interface ChangeHistoryPanelProps {
   tripId: string;
@@ -14,8 +15,10 @@ interface ChangeHistoryPanelProps {
 }
 
 export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
+  const membership = useAuthStore((state) => state.membership);
   const { getChanges, isLoading, exportChanges } = useFieldAuditLog({ tripId });
   const [expandedChanges, setExpandedChanges] = useState<Set<string>>(new Set());
+  const canExportHistory = Boolean(membership && membership.role !== 'viewer');
 
   const changes = useMemo(() => {
     return getChanges();
@@ -87,13 +90,15 @@ export function ChangeHistoryPanel({ tripId, trip }: ChangeHistoryPanelProps) {
             {changes.length}
           </span>
         </div>
-        <button
+        {canExportHistory ? (
+          <button
           onClick={handleExport}
           className='text-ui-xs text-accent-blue hover:text-[#79b8ff]'
           title='Export uses privacy redaction by default'
         >
           Export
         </button>
+        ) : null}
       </div>
 
       {/* Summary */}

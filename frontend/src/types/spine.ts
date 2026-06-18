@@ -13,6 +13,7 @@ export type {
   SafetyResult,
   AssertionResult,
   AutonomyOutcome,
+  FrontierOrchestrationResult,
   RunMeta,
   SpineRunRequest,
   SpineRunResponse,
@@ -76,6 +77,7 @@ export interface RunStatusResponse {
   block_reason?: string | null;
   validation?: ValidationReport | null;
   packet?: unknown;
+  frontier_result?: FrontierOrchestrationResult | null;
   decision_state?: string | null;
   follow_up_questions?: Array<Record<string, unknown>> | null;
   hard_blockers?: string[] | null;

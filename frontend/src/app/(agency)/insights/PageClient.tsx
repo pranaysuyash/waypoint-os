@@ -20,6 +20,7 @@ import { RevenueChart, PipelineFunnel, TeamPerformanceChart } from '@/components
 import type { DrillDownMetric } from '@/components/visual/TeamPerformanceChart';
 import { MetricDrillDownDrawer } from '@/components/workspace/panels/MetricDrillDownDrawer';
 import { AnalyticsEmptyState } from '@/components/visual/AnalyticsEmptyState';
+import { getWorkbenchTripHref } from '@/lib/routes';
 
 const VALID_TIME_RANGES = new Set<TimeRange>(['7d', '30d', '90d', 'mtd', 'ytd', 'custom']);
 
@@ -173,7 +174,7 @@ const CriticalAlertBanner = memo(function CriticalAlertBanner({
             </div>
             <div className='flex items-center gap-2'>
               <a 
-                href={`/workbench?tripId=${alert.tripId}`}
+                href={getWorkbenchTripHref(alert.tripId)}
                 className={`px-3 py-1.5 text-ui-xs font-medium border rounded-md transition-colors ${
                   isBreached
                     ? 'bg-[#ff7b72] text-[#2b1011] border-[#ff7b72] hover:bg-[#ff7b72]/90'
@@ -312,11 +313,16 @@ export default function OwnerInsightsPage() {
   const { data: alertsData, dismiss: dismissAlert } = useOperationalAlerts();
   const { state: unifiedState } = useUnifiedState();
 
+  const safePipelineMetrics = pipelineMetrics ?? [];
+  const safeTeamMetrics = teamMetrics ?? [];
+  const safeBottlenecks = bottlenecks ?? [];
+  const safeAlerts = alertsData ?? [];
+
   const isLoading = isSummaryLoading || isPipelineLoading || isTeamLoading || isBottlenecksLoading || isRevenueLoading;
   const hasError = summaryError || pipelineError || teamError || bottlenecksError || revenueError;
 
   const handleMetricDrillDown = (agentId: string, metric: DrillDownMetric) => {
-    const agent = teamMetrics.find((m) => m.userId === agentId);
+    const agent = safeTeamMetrics.find((m) => m.userId === agentId);
     setDrillDownState({
       isOpen: true,
       agentId,
@@ -330,8 +336,8 @@ export default function OwnerInsightsPage() {
   };
 
   const maxStageTime = useMemo(() => 
-    pipelineMetrics.length > 0 ? Math.max(...pipelineMetrics.map(m => m.avgTimeInStage)) : 100
-  , [pipelineMetrics]);
+    safePipelineMetrics.length > 0 ? Math.max(...safePipelineMetrics.map(m => m.avgTimeInStage)) : 100
+  , [safePipelineMetrics]);
 
   return (
     <div className='p-5 pb-4 max-w-[1400px] mx-auto space-y-5'>
@@ -371,7 +377,7 @@ export default function OwnerInsightsPage() {
 
       {/* Wave 10: Critical Alert Banner */}
       <CriticalAlertBanner 
-        alerts={alertsData} 
+        alerts={safeAlerts} 
         onDismiss={dismissAlert} 
       />
 
@@ -485,7 +491,7 @@ export default function OwnerInsightsPage() {
           <h2 className='text-ui-base font-semibold text-[#e6edf3] mb-4'>Stage Breakdown</h2>
           
           <div className='space-y-3'>
-            {pipelineMetrics.map((stage) => (
+            {safePipelineMetrics.map((stage) => (
               <div key={stage.stageId} className='flex items-center justify-between'>
                 <div className='flex-1'>
                   <div className='flex items-center justify-between mb-1'>
@@ -510,8 +516,8 @@ export default function OwnerInsightsPage() {
 
         {/* Pipeline Funnel */}
         <div className='lg:col-span-2'>
-          {pipelineMetrics.length > 0 ? (
-            <PipelineFunnel data={pipelineMetrics} />
+          {safePipelineMetrics.length > 0 ? (
+            <PipelineFunnel data={safePipelineMetrics} />
           ) : (
             <AnalyticsEmptyState
               title='No pipeline data yet'
@@ -539,9 +545,9 @@ export default function OwnerInsightsPage() {
 
         {/* Team Performance Chart */}
         <div className='lg:col-span-2'>
-          {teamMetrics.length > 0 ? (
+          {safeTeamMetrics.length > 0 ? (
             <TeamPerformanceChart
-              data={teamMetrics.map(member => ({
+              data={safeTeamMetrics.map(member => ({
                 name: member.name,
                 userId: member.userId,
                 conversionRate: member.conversionRate,
@@ -576,7 +582,7 @@ export default function OwnerInsightsPage() {
                 </tr>
               </thead>
               <tbody>
-                {teamMetrics.map((member) => (
+                {safeTeamMetrics.map((member) => (
                   <TeamMemberRow key={member.userId} member={member} />
                 ))}
               </tbody>
@@ -588,9 +594,9 @@ export default function OwnerInsightsPage() {
         <div className='lg:col-span-2'>
           <h2 className='text-ui-base font-semibold text-[#e6edf3] mb-3'>Bottleneck Analysis</h2>
           
-          {bottlenecks.length > 0 ? (
+          {safeBottlenecks.length > 0 ? (
             <div className='space-y-3'>
-              {bottlenecks.map((bottleneck) => (
+              {safeBottlenecks.map((bottleneck) => (
                 <BottleneckCard key={bottleneck.stageId} analysis={bottleneck} />
               ))}
             </div>

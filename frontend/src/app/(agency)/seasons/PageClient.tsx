@@ -39,6 +39,15 @@ import {
 const SCENARIO_OPTIONS = ['baseline', 'aggressive', 'conservative'];
 
 type CampaignSummaryRecord<T> = Record<string, T>;
+type ActionMessageState = Record<
+  string,
+  {
+    simulate?: string | null;
+    preflight?: string | null;
+    dispatch_dry_run?: string | null;
+    dispatch_live?: string | null;
+  }
+>;
 
 function isMonthString(value: string): boolean {
   if (!value.trim()) return true;
@@ -120,10 +129,21 @@ export default function SeasonsPageClient() {
   const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
   const [editingForm, setEditingForm] = useState<CampaignFormState>(makeEmptyCampaignForm());
   const [formError, setFormError] = useState<string | null>(null);
+  const [simulateByCampaignRunning, setSimulateByCampaignRunning] = useState<Record<string, boolean>>({});
+  const [preflightByCampaignRunning, setPreflightByCampaignRunning] = useState<Record<string, boolean>>({});
+  const [dispatchDryByCampaignRunning, setDispatchDryByCampaignRunning] = useState<Record<string, boolean>>({});
+  const [dispatchLiveByCampaignRunning, setDispatchLiveByCampaignRunning] = useState<Record<string, boolean>>({});
+  const [actionMessagesByCampaign, setActionMessagesByCampaign] = useState<ActionMessageState>({});
   const [scenarioByCampaign, setScenarioByCampaign] = useState<Record<string, string>>({});
-  const [simulationByCampaign, setSimulationByCampaign] = useState<CampaignSummaryRecord<SimulateSeasonalCampaignResponse>>({});
-  const [preflightByCampaign, setPreflightByCampaign] = useState<CampaignSummaryRecord<SeasonPreflightResponse>>({});
-  const [dispatchByCampaign, setDispatchByCampaign] = useState<CampaignSummaryRecord<SeasonDispatchResponse>>({});
+  const [simulationByCampaign, setSimulationByCampaign] = useState<
+    CampaignSummaryRecord<SimulateSeasonalCampaignResponse | null>
+  >({});
+  const [preflightByCampaign, setPreflightByCampaign] = useState<
+    CampaignSummaryRecord<SeasonPreflightResponse | null>
+  >({});
+  const [dispatchByCampaign, setDispatchByCampaign] = useState<
+    CampaignSummaryRecord<SeasonDispatchResponse | null>
+  >({});
 
   const sortedCampaigns = useMemo(
     () => [...campaigns].sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? '')),
@@ -202,24 +222,117 @@ export default function SeasonsPageClient() {
 
   const handleRunSimulation = async (planId: string) => {
     const scenario = scenarioByCampaign[planId] || 'baseline';
+    setActionMessagesByCampaign((prev) => ({
+      ...prev,
+      [planId]: { ...prev[planId], simulate: null },
+    }));
+    setSimulationByCampaign((prev) => ({
+      ...prev,
+      [planId]: null,
+    }));
+    setSimulateByCampaignRunning((prev) => ({ ...prev, [planId]: true }));
     const nextSimulation = await simulateCampaign.mutate(planId, scenario);
+    setSimulateByCampaignRunning((prev) => ({ ...prev, [planId]: false }));
     if (nextSimulation) {
       setSimulationByCampaign((prev) => ({ ...prev, [planId]: nextSimulation }));
+      setActionMessagesByCampaign((prev) => ({
+        ...prev,
+        [planId]: { ...prev[planId], simulate: null },
+      }));
+      return;
     }
+    setActionMessagesByCampaign((prev) => ({
+      ...prev,
+      [planId]: {
+        ...prev[planId],
+        simulate: simulateCampaign.error?.message || 'Simulation failed to run. Try again.',
+      },
+    }));
   };
 
   const handleRunPreflight = async (planId: string) => {
+    setActionMessagesByCampaign((prev) => ({
+      ...prev,
+      [planId]: { ...prev[planId], preflight: null },
+    }));
+    setPreflightByCampaign((prev) => ({
+      ...prev,
+      [planId]: null,
+    }));
+    setPreflightByCampaignRunning((prev) => ({ ...prev, [planId]: true }));
     const nextPreflight = await preflightCampaign.mutate(planId);
+    setPreflightByCampaignRunning((prev) => ({ ...prev, [planId]: false }));
     if (nextPreflight) {
       setPreflightByCampaign((prev) => ({ ...prev, [planId]: nextPreflight }));
+      setActionMessagesByCampaign((prev) => ({
+        ...prev,
+        [planId]: { ...prev[planId], preflight: null },
+      }));
+      return;
     }
+    setActionMessagesByCampaign((prev) => ({
+      ...prev,
+      [planId]: {
+        ...prev[planId],
+        preflight: preflightCampaign.error?.message || 'Preflight failed to run. Try again.',
+      },
+    }));
   };
 
   const handleDispatch = async (planId: string, dryRun: boolean) => {
+    const dispatchMode = dryRun ? 'dispatch_dry_run' : 'dispatch_live';
+    const runningUpdater = dryRun ? setDispatchDryByCampaignRunning : setDispatchLiveByCampaignRunning;
+    setActionMessagesByCampaign((prev) => ({
+      ...prev,
+      [planId]: { ...prev[planId], [dispatchMode]: null },
+    }));
+    setDispatchByCampaign((prev) => ({
+      ...prev,
+      [planId]: null,
+    }));
+    runningUpdater((prev) => ({ ...prev, [planId]: true }));
     const nextDispatch = await dispatchCampaign.mutate(planId, dryRun);
+    runningUpdater((prev) => ({ ...prev, [planId]: false }));
     if (nextDispatch) {
       setDispatchByCampaign((prev) => ({ ...prev, [planId]: nextDispatch }));
+      setActionMessagesByCampaign((prev) => ({
+        ...prev,
+        [planId]: { ...prev[planId], [dispatchMode]: null },
+      }));
+      return;
     }
+    const dispatchErrorMessage =
+      dispatchCampaign.error?.message || `${dryRun ? 'Dry run' : 'Dispatch'} failed to run. Try again.`;
+    setActionMessagesByCampaign((prev) => ({
+      ...prev,
+      [planId]: {
+        ...prev[planId],
+        [dispatchMode]: dispatchErrorMessage,
+      },
+    }));
+  };
+
+  const handleClearActions = (planId: string) => {
+    setSimulationByCampaign((prev) => {
+      const next = { ...prev };
+      delete next[planId];
+      return next;
+    });
+    setPreflightByCampaign((prev) => {
+      const next = { ...prev };
+      delete next[planId];
+      return next;
+    });
+    setDispatchByCampaign((prev) => {
+      const next = { ...prev };
+      delete next[planId];
+      return next;
+    });
+    setActionMessagesByCampaign((prev) => {
+      const next = { ...prev };
+      delete next[planId];
+      return next;
+    });
   };
 
   const handleDelete = async (planId: string) => {
@@ -716,41 +829,41 @@ export default function SeasonsPageClient() {
                     <button
                       type="button"
                       onClick={() => handleRunSimulation(campaign.plan_id)}
-                      disabled={simulateCampaign.isRunning}
+                      disabled={!!simulateByCampaignRunning[campaign.plan_id]}
                       className="inline-flex items-center gap-1 rounded-lg border border-[#30363d] px-3 py-1.5 text-ui-xs text-[#e6edf3] hover:bg-[#1c2128]"
                     >
                       <Play className="size-3.5" />
-                      Simulate
+                      {simulateByCampaignRunning[campaign.plan_id] ? 'Simulating…' : 'Simulate'}
                     </button>
 
                     <button
                       type="button"
                       onClick={() => handleRunPreflight(campaign.plan_id)}
-                      disabled={preflightCampaign.isRunning}
+                      disabled={!!preflightByCampaignRunning[campaign.plan_id]}
                       className="inline-flex items-center gap-1 rounded-lg border border-[#30363d] px-3 py-1.5 text-ui-xs text-[#e6edf3] hover:bg-[#1c2128]"
                     >
                       <CheckCircle2 className="size-3.5" />
-                      Preflight
+                      {preflightByCampaignRunning[campaign.plan_id] ? 'Checking…' : 'Preflight'}
                     </button>
 
                     <button
                       type="button"
                       onClick={() => handleDispatch(campaign.plan_id, true)}
-                      disabled={dispatchCampaign.isRunning}
+                      disabled={!!dispatchDryByCampaignRunning[campaign.plan_id]}
                       className="inline-flex items-center gap-1 rounded-lg border border-[#30363d] px-3 py-1.5 text-ui-xs text-[#e6edf3] hover:bg-[#1c2128]"
                     >
                       <Send className="size-3.5" />
-                      Dry run
+                      {dispatchDryByCampaignRunning[campaign.plan_id] ? 'Dry run…' : 'Dry run'}
                     </button>
 
                     <button
                       type="button"
                       onClick={() => handleDispatch(campaign.plan_id, false)}
-                      disabled={dispatchCampaign.isRunning}
+                      disabled={!!dispatchLiveByCampaignRunning[campaign.plan_id]}
                       className="inline-flex items-center gap-1 rounded-lg border border-[#2ea043] text-[#2ea043] px-3 py-1.5 text-ui-xs hover:bg-[#2ea043]/12"
                     >
                       <Play className="size-3.5" />
-                      Dispatch
+                      {dispatchLiveByCampaignRunning[campaign.plan_id] ? 'Dispatching…' : 'Dispatch'}
                     </button>
 
                     {!isEditing ? (
@@ -773,18 +886,61 @@ export default function SeasonsPageClient() {
                       <Trash2 className="size-3.5" />
                       Delete
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => handleClearActions(campaign.plan_id)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-[#8b949e]/40 text-[#8b949e] px-3 py-1.5 text-ui-xs hover:bg-[#1c2128]"
+                    >
+                      Clear action results
+                    </button>
                   </div>
 
-                  {(simulationByCampaign[campaign.plan_id] || preflightByCampaign[campaign.plan_id] || dispatchByCampaign[campaign.plan_id]) && (
+                  {(
+                    actionMessagesByCampaign[campaign.plan_id]?.simulate ||
+                    actionMessagesByCampaign[campaign.plan_id]?.preflight ||
+                    actionMessagesByCampaign[campaign.plan_id]?.dispatch_dry_run ||
+                    actionMessagesByCampaign[campaign.plan_id]?.dispatch_live ||
+                    simulationByCampaign[campaign.plan_id] ||
+                    preflightByCampaign[campaign.plan_id] ||
+                    dispatchByCampaign[campaign.plan_id]
+                  ) && (
                     <div className="grid grid-cols-1 xl:grid-cols-3 gap-2 text-ui-xs">
+                      {actionMessagesByCampaign[campaign.plan_id]?.simulate ? (
+                        <div className="rounded-lg border border-[#f85149]/30 bg-[#2c1414] p-2">
+                          <p className="text-[#f85149] font-medium">Simulation error</p>
+                          <p className="text-[#f7b9b8]">{actionMessagesByCampaign[campaign.plan_id]!.simulate}</p>
+                        </div>
+                      ) : null}
+
+                      {actionMessagesByCampaign[campaign.plan_id]?.preflight ? (
+                        <div className="rounded-lg border border-[#f85149]/30 bg-[#2c1414] p-2">
+                          <p className="text-[#f85149] font-medium">Preflight error</p>
+                          <p className="text-[#f7b9b8]">{actionMessagesByCampaign[campaign.plan_id]!.preflight}</p>
+                        </div>
+                      ) : null}
+
+                      {actionMessagesByCampaign[campaign.plan_id]?.dispatch_dry_run ? (
+                        <div className="rounded-lg border border-[#f85149]/30 bg-[#2c1414] p-2">
+                          <p className="text-[#f85149] font-medium">Dry-run error</p>
+                          <p className="text-[#f7b9b8]">{actionMessagesByCampaign[campaign.plan_id]!.dispatch_dry_run}</p>
+                        </div>
+                      ) : null}
+
+                      {actionMessagesByCampaign[campaign.plan_id]?.dispatch_live ? (
+                        <div className="rounded-lg border border-[#f85149]/30 bg-[#2c1414] p-2">
+                          <p className="text-[#f85149] font-medium">Dispatch error</p>
+                          <p className="text-[#f7b9b8]">{actionMessagesByCampaign[campaign.plan_id]!.dispatch_live}</p>
+                        </div>
+                      ) : null}
+
                       {simulationByCampaign[campaign.plan_id] ? (
                         <div className="rounded-lg border border-[#30363d] bg-[#161b22] p-2">
                           <p className="text-[#c9d1d9] font-medium">Simulation</p>
-                          <p className="text-[#8b949e]">Leads: {simulationByCampaign[campaign.plan_id]!.projected_leads}</p>
-                          <p className="text-[#8b949e]">Bookings: {simulationByCampaign[campaign.plan_id]!.projected_bookings}</p>
-                          <p className="text-[#8b949e]">Margin: {simulationByCampaign[campaign.plan_id]!.projected_margin_pct}%</p>
-                          <p className="text-[#8b949e]">Confidence: {simulationByCampaign[campaign.plan_id]!.confidence}</p>
-                          <p className="text-[#8b949e]">Notes: {simulationByCampaign[campaign.plan_id]!.notes.join(' • ')}</p>
+                          <p className="text-[#8b949e]">Leads: {simulationByCampaign[campaign.plan_id]?.projected_leads}</p>
+                          <p className="text-[#8b949e]">Bookings: {simulationByCampaign[campaign.plan_id]?.projected_bookings}</p>
+                          <p className="text-[#8b949e]">Margin: {simulationByCampaign[campaign.plan_id]?.projected_margin_pct}%</p>
+                          <p className="text-[#8b949e]">Confidence: {simulationByCampaign[campaign.plan_id]?.confidence}</p>
+                          <p className="text-[#8b949e]">Notes: {(simulationByCampaign[campaign.plan_id]?.notes ?? []).join(' • ')}</p>
                         </div>
                       ) : null}
 
@@ -792,11 +948,11 @@ export default function SeasonsPageClient() {
                         <div className="rounded-lg border border-[#30363d] bg-[#161b22] p-2">
                           <p className="text-[#c9d1d9] font-medium">Preflight</p>
                           <p className="text-[#8b949e]">
-                            Status: {preflightByCampaign[campaign.plan_id]!.ok ? 'Pass' : 'Needs attention'}
+                            Status: {preflightByCampaign[campaign.plan_id]?.ok ? 'Pass' : 'Needs attention'}
                           </p>
-                          <p className="text-[#8b949e]">Risk score: {preflightByCampaign[campaign.plan_id]!.risk_score}</p>
+                          <p className="text-[#8b949e]">Risk score: {preflightByCampaign[campaign.plan_id]?.risk_score}</p>
                           <ul className="mt-1 space-y-1">
-                            {preflightByCampaign[campaign.plan_id]!.checks.map((item) => (
+                            {(preflightByCampaign[campaign.plan_id]?.checks ?? []).map((item) => (
                               <li key={item.check}>
                                 {item.check}: {item.status}
                               </li>
@@ -808,11 +964,11 @@ export default function SeasonsPageClient() {
                       {dispatchByCampaign[campaign.plan_id] ? (
                         <div className="rounded-lg border border-[#30363d] bg-[#161b22] p-2">
                           <p className="text-[#c9d1d9] font-medium">Dispatch</p>
-                          <p className="text-[#8b949e]">Status: {dispatchByCampaign[campaign.plan_id]!.ok ? 'Ready' : 'Blocked'}</p>
-                          <p className="text-[#8b949e]">Dry run: {dispatchByCampaign[campaign.plan_id]!.dry_run ? 'Yes' : 'No'}</p>
-                          <p className="text-[#8b949e]">Executed at: {dispatchByCampaign[campaign.plan_id]!.executed_at}</p>
+                          <p className="text-[#8b949e]">Status: {dispatchByCampaign[campaign.plan_id]?.ok ? 'Ready' : 'Blocked'}</p>
+                          <p className="text-[#8b949e]">Dry run: {dispatchByCampaign[campaign.plan_id]?.dry_run ? 'Yes' : 'No'}</p>
+                          <p className="text-[#8b949e]">Executed at: {dispatchByCampaign[campaign.plan_id]?.executed_at}</p>
                           <p className="text-[#8b949e]">
-                            Channels: {dispatchByCampaign[campaign.plan_id]!.dispatched_channels.join(', ')}
+                            Channels: {(dispatchByCampaign[campaign.plan_id]?.dispatched_channels ?? []).join(', ')}
                           </p>
                         </div>
                       ) : null}

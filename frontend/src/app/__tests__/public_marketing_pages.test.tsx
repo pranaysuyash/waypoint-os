@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import HomePage from '@/app/page';
 import ItineraryCheckerPage from '@/app/(traveler)/itinerary-checker/page';
+import { api } from '@/lib/api-client';
 
 // Mock gsap — animations are irrelevant in JSDOM and cause timeouts
 vi.mock('gsap', () => ({
@@ -229,7 +230,116 @@ describe('public marketing pages', () => {
     await userEvent.upload(fileInput, file);
 
     expect(await screen.findByText(/Live review/i, {}, { timeout: 10_000 })).toBeInTheDocument();
-    expect(screen.getByText(/PROCEED_TRAVELER_SAFE/i)).toBeInTheDocument();
+    expect(screen.getByText(/Your plan looks broadly workable/i)).toBeInTheDocument();
     expect(screen.getByText(/Current weather:/i)).toBeInTheDocument();
+  });
+
+  it('shows traveler-safe wording for thin extraction results', async () => {
+    vi.mocked(api.post).mockResolvedValueOnce({
+      run_id: 'run_thin',
+      state: 'blocked',
+      trip_id: 'trip_thin',
+      stage: 'discovery',
+      operating_mode: 'normal_intake',
+      agency_id: 'waypoint-hq',
+      created_at: '2026-05-01T00:00:00.000Z',
+      started_at: '2026-05-01T00:00:00.000Z',
+      completed_at: '2026-05-01T00:00:02.000Z',
+      total_ms: 2000,
+      steps_completed: ['intake'],
+      events: [],
+      validation: {
+        overall_score: 42,
+      },
+      decision_state: 'STOP_NEEDS_REVIEW',
+      follow_up_questions: [],
+      hard_blockers: ['extraction_quality'],
+      soft_blockers: [],
+      packet: {},
+    });
+
+    render(<ItineraryCheckerPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Paste itinerary/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Paste your day-by-day plan here/i), {
+      target: {
+        value: 'Fly to Singapore for 5 days with family in October. Need help checking the trip.',
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Score My Itinerary/i }));
+
+    expect(await screen.findByText(/We found important gaps that need a closer look/i, {}, { timeout: 10_000 })).toBeInTheDocument();
+    expect(screen.getByText(/We scored the plan, but we could not confidently pull out the key trip details yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/We could not confidently read the key trip details from this plan yet/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^extraction_quality$/i)).not.toBeInTheDocument();
+  });
+
+  it('shows packet-derived trip understanding and clarifications in the app results', async () => {
+    vi.mocked(api.post).mockResolvedValueOnce({
+      run_id: 'run_packet',
+      state: 'blocked',
+      trip_id: 'trip_packet',
+      stage: 'discovery',
+      operating_mode: 'normal_intake',
+      agency_id: 'waypoint-hq',
+      created_at: '2026-05-01T00:00:00.000Z',
+      started_at: '2026-05-01T00:00:00.000Z',
+      completed_at: '2026-05-01T00:00:02.000Z',
+      total_ms: 2000,
+      steps_completed: ['packet', 'validation'],
+      events: [],
+      validation: {
+        overall_score: 42,
+        errors: [
+          {
+            message: "Required field 'date_window' not present",
+          },
+        ],
+        ambiguity_report: [
+          {
+            field: 'destination_candidates',
+            raw_value: 'Singapore or Marina Bay',
+          },
+        ],
+      },
+      decision_state: 'STOP_NEEDS_REVIEW',
+      follow_up_questions: [],
+      hard_blockers: ['extraction_quality'],
+      soft_blockers: [],
+      packet: {
+        facts: {
+          destination_candidates: { value: ['Singapore', 'Marina Bay'] },
+          party_size: { value: 5 },
+          party_composition: { value: { adults: 2, elderly: 2, children: 1 } },
+          trip_purpose: { value: 'family leisure' },
+          traveler_plan: { value: 'nothing_booked' },
+          soft_preferences: { value: ['minimal long walks', 'one free afternoon for rest'] },
+        },
+        unknowns: [
+          { field_name: 'date_window' },
+          { field_name: 'origin_city' },
+        ],
+      },
+    });
+
+    render(<ItineraryCheckerPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Paste itinerary/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Paste your day-by-day plan here/i), {
+      target: {
+        value: 'Singapore family trip with grandparents and a toddler. Comfortable pace please.',
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Score My Itinerary/i }));
+
+    expect(await screen.findByText(/Trip Summary \(Extracted\)/i, {}, { timeout: 10_000 })).toBeInTheDocument();
+    expect(screen.getByText(/Singapore, Marina Bay/i)).toBeInTheDocument();
+    expect(screen.getByText(/^5$/i)).toBeInTheDocument();
+    expect(screen.getByText(/family leisure/i)).toBeInTheDocument();
+    expect(screen.getByText(/minimal long walks, one free afternoon for rest/i)).toBeInTheDocument();
+    expect(screen.getByText(/What to clarify next/i)).toBeInTheDocument();
+    expect(screen.getByText(/Add travel dates\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Add departure city\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Clarify destination \(Singapore or Marina Bay\)\./i)).toBeInTheDocument();
   });
 });

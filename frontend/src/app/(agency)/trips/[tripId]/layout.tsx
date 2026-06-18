@@ -7,9 +7,11 @@ import { AlertTriangle, ChevronLeft, Lock, PanelRightClose, PanelRightOpen } fro
 import { ErrorBoundary, InlineError } from "@/components/error-boundary";
 import { InlineLoading } from "@/components/ui/loading";
 import { toast } from "@/lib/toast-store";
+import { ClientDateTime } from "@/hooks/useClientDate";
 import { useTrip } from "@/hooks/useTrips";
 import {
   canAccessPlanningStage,
+  canAccessOpsWorkspace,
   getPlanningBlockerBody,
   getPlanningBlockerTitle,
   getPlanningHeaderTitle,
@@ -110,7 +112,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   const planningQueueLine = getPlanningQueueLine(trip);
   const planningUnlockHint = getPlanningUnlockHint(trip);
   const visibleTabs = STAGE_TABS.filter((tab) => {
-    if (tab.id === 'ops') return trip?.stage === 'proposal' || trip?.stage === 'booking';
+    if (tab.id === 'ops') return canAccessOpsWorkspace(trip);
     return true;
   });
   const stageProgressItems = useMemo(() => getPlanningStageProgressItems(trip), [trip]);
@@ -264,6 +266,11 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                     {planningIdentity && (
                       <span className="text-[var(--ui-text-xs)] text-[var(--text-tertiary)]">
                         {planningIdentity}
+                      </span>
+                    )}
+                    {trip.updatedAt && (
+                      <span className="text-[var(--ui-text-xs)] text-[var(--text-muted)]">
+                        Last updated: <ClientDateTime value={trip.updatedAt} />
                       </span>
                     )}
                     <span className="text-[var(--ui-text-xs)] text-[var(--border-default)]">

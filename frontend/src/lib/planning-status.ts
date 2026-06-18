@@ -10,6 +10,7 @@ import {
 
 const CORE_DETAIL_SOFT_BLOCKERS = new Set(["incomplete_intake"]);
 const BLOCKED_PLANNING_ALLOWED_STAGES = new Set(["intake", "packet", "timeline"]);
+const OPS_WORKSPACE_STAGES = new Set(["proposal", "booking"]);
 
 export type PlanningBriefStatus =
   | "complete"
@@ -148,6 +149,14 @@ export function canAccessPlanningStage(
   if (!trip) return true;
   if (getPlanningBriefStatus(trip) !== "missing_required_details") return true;
   return BLOCKED_PLANNING_ALLOWED_STAGES.has(stage);
+}
+
+export function isOpsWorkspaceStage(stage: string | null | undefined): boolean {
+  return OPS_WORKSPACE_STAGES.has(stage ?? "");
+}
+
+export function canAccessOpsWorkspace(trip: Trip | null | undefined): boolean {
+  return isOpsWorkspaceStage(trip?.stage);
 }
 
 export function getPlanningStageGateReason(trip?: Trip | null, stage?: string): string | null {

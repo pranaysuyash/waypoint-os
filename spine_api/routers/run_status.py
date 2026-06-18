@@ -15,6 +15,7 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException
 
 from spine_api.contract import RunStatusResponse
+import spine_api.persistence as persistence
 from spine_api.core.auth import get_current_agency_id
 from spine_api.run_events import get_run_events
 from spine_api.run_ledger import RunLedger
@@ -75,11 +76,13 @@ def get_run_status(
     follow_up_questions: list[dict[str, Any]] = []
     hard_blockers: list[str] = []
     soft_blockers: list[str] = []
+    frontier_result: Any = None
     if isinstance(decision_data, dict):
         decision_state = decision_data.get("decision_state")
         follow_up_questions = decision_data.get("follow_up_questions") or []
         hard_blockers = decision_data.get("hard_blockers") or []
         soft_blockers = decision_data.get("soft_blockers") or []
+        frontier_result = decision_data.get("frontier_result") or None
 
     # Extract validation and packet from blocked_result or individual steps
     validation_data = None
@@ -87,10 +90,18 @@ def get_run_status(
     if blocked_result_data:
         validation_data = blocked_result_data.get("validation")
         packet_data = blocked_result_data.get("packet")
+        frontier_result = blocked_result_data.get("frontier_result") or frontier_result
     if not validation_data and "validation" in steps:
         validation_data = steps["validation"].get("data")
     if not packet_data and "packet" in steps:
         packet_data = steps["packet"].get("data")
+
+    if not frontier_result and meta.get("trip_id"):
+        trip = persistence.TripStore.get_trip_for_agency(
+            str(meta.get("trip_id")),
+            agency_id,
+        )
+        frontier_result = trip.get("frontier_result") if isinstance(trip, dict) else None
 
     return RunStatusResponse(
         **meta,
@@ -102,6 +113,7 @@ def get_run_status(
         soft_blockers=soft_blockers,
         validation=validation_data,
         packet=packet_data,
+        frontier_result=frontier_result,
     )
 
 

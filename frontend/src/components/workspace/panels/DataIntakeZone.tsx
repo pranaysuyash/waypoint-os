@@ -17,6 +17,7 @@ import {
   acceptPendingBookingData,
   rejectPendingBookingData,
 } from '@/lib/api-client';
+import { safeWriteClipboardText } from '@/lib/clipboard';
 import PaymentTrackingCard from './PaymentTrackingCard';
 
 interface DataIntakeZoneProps {
@@ -209,7 +210,8 @@ export default function DataIntakeZone({
 
   const handleCopyLink = useCallback(() => {
     if (!displayUrl) return;
-    navigator.clipboard.writeText(displayUrl).then(() => {
+    void safeWriteClipboardText(displayUrl).then((copied) => {
+      if (!copied) return;
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
     });

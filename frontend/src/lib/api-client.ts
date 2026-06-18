@@ -6,7 +6,14 @@
  */
 
 import type { ReviewStatus } from "@/types/governance";
-import type { ValidationReport, FeeCalculationResult, DecisionOutput, StrategyOutput, PromptBundle } from "@/types/spine";
+import type {
+  ValidationReport,
+  FeeCalculationResult,
+  DecisionOutput,
+  StrategyOutput,
+  PromptBundle,
+  FrontierOrchestrationResult,
+} from "@/types/spine";
 import type { IntegrityIssuesResponse } from "@/types/spine";
 import type {
   CreateSeasonalCampaignRequest as BackendCreateSeasonalCampaignRequest,
@@ -299,7 +306,7 @@ export interface Trip {
   traveler_bundle?: PromptBundle;
   safety?: unknown;
   fees?: FeeCalculationResult;
-  frontier_result?: unknown;
+  frontier_result?: FrontierOrchestrationResult | null;
   agentOperations?: AgentOperationsMetadata;
   rawInput?: unknown;
   // Input fields (returned by mock API)
@@ -604,8 +611,8 @@ export async function getAgencySeasonalSettings(): Promise<AgencySeasonalSetting
 
 export async function updateAgencySeasonal(
   request: UpdateAgencySeasonalRequest
-): Promise<AgencySeasonalSettings> {
-  return api.put<AgencySeasonalSettings>("/api/settings/seasonal", request);
+): Promise<AgencySettingsResponse> {
+  return api.put<AgencySettingsResponse>("/api/settings/seasonal", request);
 }
 
 export async function listSeasonalCampaigns(): Promise<SeasonalCampaignListResponse> {
@@ -659,8 +666,8 @@ export async function dispatchSeasonalCampaign(
 
 export async function updateAgencyAutonomy(
   request: UpdateAgencyAutonomyRequest
-): Promise<AgencyAutonomyResponse> {
-  return api.post<AgencyAutonomyResponse>("/api/settings/autonomy", request);
+): Promise<AgencySettingsResponse> {
+  return api.post<AgencySettingsResponse>("/api/settings/autonomy", request);
 }
 
 // ============================================================================

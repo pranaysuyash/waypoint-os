@@ -16,6 +16,7 @@ import {
   rejectExtraction,
 } from '@/lib/api-client';
 import { ExtractionHistoryPanel } from '@/components/workspace/panels/ExtractionHistoryPanel';
+import { useAuthStore } from '@/stores/auth';
 
 interface DocumentsZoneProps {
   tripId: string;
@@ -25,6 +26,8 @@ interface DocumentsZoneProps {
 }
 
 export default function DocumentsZone({ tripId, canUpload, travelers = [], onDocumentsChange }: DocumentsZoneProps) {
+  const membership = useAuthStore((state) => state.membership);
+  const canManageDocuments = Boolean(membership && membership.role !== 'viewer');
   const [documents, setDocuments] = useState<BookingDocument[]>([]);
   const [docsLoading, setDocsLoading] = useState(false);
   const [docUploading, setDocUploading] = useState(false);
@@ -187,7 +190,7 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
     <div data-testid="ops-documents" className="border border-[#30363d] rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-sm font-medium text-[#e6edf3]">Documents</h4>
-        {canUpload && (
+        {canUpload && canManageDocuments && (
           <div className="flex items-center gap-2">
             <select
               value={uploadDocType}
@@ -260,7 +263,7 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
                 )}
               </div>
               <div className="flex items-center gap-1">
-                {doc.status === 'pending_review' && (
+                {canManageDocuments && doc.status === 'pending_review' && (
                   <>
                     <button
                       data-testid={`ops-document-${doc.id}-accept-btn`}
@@ -280,7 +283,7 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
                     </button>
                   </>
                 )}
-                {doc.status === 'accepted' && (
+                {canManageDocuments && doc.status === 'accepted' && (
                   <>
                     <button
                       data-testid={`ops-document-${doc.id}-download-btn`}
@@ -299,7 +302,7 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
                     </button>
                   </>
                 )}
-                {doc.status === 'rejected' && (
+                {canManageDocuments && doc.status === 'rejected' && (
                   <button
                     data-testid={`ops-document-${doc.id}-delete-btn`}
                     className="text-xs px-2 py-1 rounded bg-red-900/50 text-red-300 hover:bg-red-800/50 disabled:opacity-50"
@@ -310,7 +313,7 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
                   </button>
                 )}
                 {/* Extract button (pending_review or accepted) */}
-                {(doc.status === 'pending_review' || doc.status === 'accepted') && !extractions[doc.id] && (
+                {canManageDocuments && (doc.status === 'pending_review' || doc.status === 'accepted') && !extractions[doc.id] && (
                   <button
                     data-testid={`ops-doc-extract-btn-${doc.id}`}
                     className="text-xs px-2 py-1 rounded bg-purple-900/50 text-purple-300 hover:bg-purple-800/50 disabled:opacity-50"
@@ -340,9 +343,9 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
                     )}
                   </div>
                   <div data-testid={`ops-extraction-fields-${doc.id}`} className="space-y-1">
-                    {extractions[doc.id].fields.flatMap((f) => f.present ? [(
+                        {extractions[doc.id].fields.flatMap((f) => f.present ? [(
                       <div key={f.field_name} className="flex items-center gap-2 text-xs">
-                        {extractions[doc.id].status === 'pending_review' && (
+                        {canManageDocuments && extractions[doc.id].status === 'pending_review' && (
                           <input
                             type="checkbox"
                             data-testid={`ops-extraction-field-cb-${doc.id}-${f.field_name}`}
@@ -371,7 +374,7 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
                       </div>
                     )] : [])}
                   </div>
-                  {extractions[doc.id].status === 'pending_review' && (
+                      {canManageDocuments && extractions[doc.id].status === 'pending_review' && (
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-xs">
                         <span className="text-[#8b949e]">Apply to:</span>
@@ -394,7 +397,7 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
                           ))}
                         </select>
                       </div>
-                      {extractionConflicts[doc.id] && extractionConflicts[doc.id].length > 0 && (
+                          {canManageDocuments && extractionConflicts[doc.id] && extractionConflicts[doc.id].length > 0 && (
                         <div data-testid={`ops-extraction-conflicts-${doc.id}`} className="text-xs space-y-1 bg-yellow-900/20 border border-yellow-800/30 rounded p-2">
                           <div className="text-yellow-300 font-medium">Conflicts detected:</div>
                           {extractionConflicts[doc.id].map((c) => (
@@ -418,31 +421,35 @@ export default function DocumentsZone({ tripId, canUpload, travelers = [], onDoc
                         </div>
                       )}
                       <div className="flex items-center gap-2">
-                        <button
-                          data-testid={`ops-extraction-apply-btn-${doc.id}`}
-                          className="text-xs px-2 py-1 rounded bg-emerald-900/50 text-emerald-300 hover:bg-emerald-800/50 disabled:opacity-50"
-                          onClick={() => {
-                            const sel = extractionSelections[doc.id];
-                            if (sel?.travelerId && sel.selectedFields.length > 0) {
-                              handleApplyExtraction(doc.id, sel.travelerId, sel.selectedFields, false);
+                        {canManageDocuments && (
+                          <button
+                            data-testid={`ops-extraction-apply-btn-${doc.id}`}
+                            className="text-xs px-2 py-1 rounded bg-emerald-900/50 text-emerald-300 hover:bg-emerald-800/50 disabled:opacity-50"
+                            onClick={() => {
+                              const sel = extractionSelections[doc.id];
+                              if (sel?.travelerId && sel.selectedFields.length > 0) {
+                                handleApplyExtraction(doc.id, sel.travelerId, sel.selectedFields, false);
+                              }
+                            }}
+                            disabled={
+                              extractionAction === doc.id ||
+                              !extractionSelections[doc.id]?.travelerId ||
+                              !(extractionSelections[doc.id]?.selectedFields.length > 0)
                             }
-                          }}
-                          disabled={
-                            extractionAction === doc.id ||
-                            !extractionSelections[doc.id]?.travelerId ||
-                            !(extractionSelections[doc.id]?.selectedFields.length > 0)
-                          }
-                        >
-                          {extractionAction === doc.id ? 'Applying…' : 'Apply selected'}
-                        </button>
-                        <button
-                          data-testid={`ops-extraction-reject-btn-${doc.id}`}
-                          className="text-xs px-2 py-1 rounded bg-red-900/50 text-red-300 hover:bg-red-800/50 disabled:opacity-50"
-                          onClick={() => handleRejectExtraction(doc.id)}
-                          disabled={extractionAction === doc.id}
-                        >
-                          Reject
-                        </button>
+                          >
+                            {extractionAction === doc.id ? 'Applying…' : 'Apply selected'}
+                          </button>
+                        )}
+                        {canManageDocuments && (
+                          <button
+                            data-testid={`ops-extraction-reject-btn-${doc.id}`}
+                            className="text-xs px-2 py-1 rounded bg-red-900/50 text-red-300 hover:bg-red-800/50 disabled:opacity-50"
+                            onClick={() => handleRejectExtraction(doc.id)}
+                            disabled={extractionAction === doc.id}
+                          >
+                            Reject
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}

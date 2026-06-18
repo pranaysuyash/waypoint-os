@@ -25,7 +25,7 @@ const baseSummary = {
       subtitle: 'Travel 24 May 2026',
       meta: 'Planning overdue',
       reason: 'Customer details are still missing.',
-      href: '/trips/trip_1',
+      href: '/trips/trip_1/intake',
       ctaLabel: 'Open trip',
     },
   ],
@@ -194,8 +194,8 @@ describe('OverviewPage', () => {
 
     expect(screen.getByText('2 trips in planning · 5 enquiries · 1 quote to review')).toBeInTheDocument();
     expect(screen.getByText('Action Required')).toBeInTheDocument();
-    expect(screen.getByText('Japan family trip')).toBeInTheDocument();
-    expect(screen.getByText('Customer details are still missing.')).toBeInTheDocument();
+    expect(screen.getAllByText('Japan family trip').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Customer details are still missing.').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('link', { name: /trips in planning/i })[0]).toHaveAttribute('href', ROUTES.workspaces);
     expect(screen.getAllByRole('link', { name: /new enquiries/i })[0]).toHaveAttribute('href', ROUTES.inbox);
     expect(screen.getAllByRole('link', { name: /quote review/i })[0]).toHaveAttribute('href', ROUTES.approvals);
@@ -213,6 +213,15 @@ describe('OverviewPage', () => {
     const pos = actionHeading.compareDocumentPosition(metricTitle);
 
     expect(pos & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('surfaces the highest-priority item as the start here banner', () => {
+    render(<OverviewPage />);
+
+    const banner = screen.getByLabelText('Start Here');
+    expect(within(banner).getByText('Start here')).toBeInTheDocument();
+    expect(within(banner).getByText('Japan family trip')).toBeInTheDocument();
+    expect(within(banner).getByRole('link', { name: /open trip/i })).toHaveAttribute('href', '/trips/trip_1/intake');
   });
 
   it('does not show totals-only lead or system rows in Action Required', () => {

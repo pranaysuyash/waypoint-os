@@ -427,6 +427,7 @@ export default function CaptureCallPanel({
           <button
             type="button"
             onClick={() => void handleSubmit("save")}
+            aria-label={isSubmitting ? "Saving" : "Save Draft"}
             disabled={isSubmitting || !rawNote.trim()}
             className="flex-1 px-4 py-2 text-ui-sm font-medium text-white bg-[rgba(var(--accent-blue-rgb)/0.30)] hover:bg-[rgba(var(--accent-blue-rgb)/0.26)] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
@@ -435,6 +436,7 @@ export default function CaptureCallPanel({
           </button>
           <button
             type="submit"
+            aria-label={isSubmitting ? "Saving" : "Save and Process"}
             disabled={isSubmitting || !rawNote.trim()}
             className="flex-1 px-4 py-2 text-ui-sm font-medium text-white bg-[rgba(var(--accent-blue-rgb)/0.42)] hover:bg-[rgba(var(--accent-blue-rgb)/0.34)] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >

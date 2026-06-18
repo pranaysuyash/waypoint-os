@@ -28,6 +28,7 @@ from uuid import uuid4
 
 import pytest
 
+from spine_api.contract import TripResponse
 from spine_api.persistence import TripStore, TEST_AGENCY_ID
 
 pytestmark = pytest.mark.require_postgres
@@ -283,3 +284,17 @@ class TestTripResponseShape:
         assert set(patch_result.keys()) == set(get_result.keys()), (
             "PATCH and GET must return the same TripResponse field set"
         )
+
+    def test_from_dict_normalizes_list_trip_priorities(self):
+        """Legacy/mis-shaped list values should still serialize into the string contract."""
+        trip = {
+            "id": "trip_listy",
+            "status": "assigned",
+            "trip_priorities": ["budget conscious", "relaxed pace"],
+            "date_flexibility": ["plus or minus 2 days"],
+        }
+
+        result = TripResponse.from_dict(trip)
+
+        assert result.trip_priorities == "budget conscious, relaxed pace"
+        assert result.date_flexibility == "plus or minus 2 days"

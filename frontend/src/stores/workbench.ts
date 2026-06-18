@@ -6,6 +6,7 @@ import type {
   SpineRunResponse,
   DecisionOutput,
   StrategyOutput,
+  FrontierOrchestrationResult,
   PromptBundle,
   FeeCalculationResult,
   ValidationReport,
@@ -86,9 +87,7 @@ interface WorkbenchResultState {
   result_traveler_bundle: unknown;
   result_safety: SafetyResult | null;
   result_fees: FeeCalculationResult | null;
-  // PARKED (Frontier Phase 0): Reserved for future intelligence integration.
-  // Do not expose in production UI without a real data path.
-  result_frontier: any | null;
+  result_frontier: FrontierOrchestrationResult | null;
   result_run_ts: string | null;
   // Suitability acknowledgment - cross-tab session state.
   // Populated optimistically when an operator acknowledges a Tier 1 flag;
@@ -102,7 +101,7 @@ interface WorkbenchResultState {
   setResultTravelerBundle: (value: unknown) => void;
   setResultSafety: (value: SafetyResult | null) => void;
   setResultFees: (value: FeeCalculationResult | null) => void;
-  setResultFrontier: (value: any | null) => void;
+  setResultFrontier: (value: FrontierOrchestrationResult | null) => void;
   setResultRunTs: (value: string | null) => void;
   acknowledgeFlag: (flagType: string) => void;
   clearResults: () => void;

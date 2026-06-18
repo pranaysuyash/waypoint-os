@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState, useRef, useReducer, type CSSProperties, type RefObject, DragEvent } from 'react';
 import gsap from 'gsap';
 import { api } from '@/lib/api-client';
+import { safeWriteClipboardText } from '@/lib/clipboard';
 import type { RunStatusResponse } from '@/types/spine';
 import {
   Activity, ArrowRight, Check, Clock, DollarSign,
@@ -754,14 +755,26 @@ function UploadCard({
           />
           <div style={{
             padding: '10px 16px', borderTop: `1px solid ${T.b0}`,
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            rowGap: 10,
           }}>
-            <span style={{ fontSize: 12, color: T.t4 }}>
-              {text.length > 0 ? `${text.length} characters` : 'Messy inputs work fine'}
-            </span>
-            <button onClick={() => onAnalyze(text, { kind: 'paste', source: 'typed', retention_consent: retentionConsent })} disabled={text.length < 10 || isBusy || isProcessingFile} style={primaryButtonStyle(text.length >= 10 && !isBusy)}>
-              {isBusy ? 'Scoring…' : 'Score My Itinerary'} <ArrowRight size={13} />
-            </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: T.t4 }}>
+                {text.length > 0 ? `${text.length} characters` : 'Messy inputs work fine'}
+              </span>
+              <button
+                onClick={() => onAnalyze(text, { kind: 'paste', source: 'typed', retention_consent: retentionConsent })}
+                disabled={text.length < 10 || isBusy || isProcessingFile}
+                style={primaryButtonStyle(text.length >= 10 && !isBusy)}
+              >
+                {isBusy ? 'Scoring…' : 'Score My Itinerary'} <ArrowRight size={13} />
+              </button>
+            </div>
+            <ConsentToggle
+              checked={retentionConsent}
+              onChange={(next) => dispatch({ type: 'setRetentionConsent', retentionConsent: next })}
+            />
           </div>
         </div>
       ) : (
@@ -784,23 +797,10 @@ function UploadCard({
           <div style={{ fontSize: 12, color: T.t3, marginBottom: 20 }}>
             {activeTab === 'screenshot' ? 'JPG, PNG, or WEBP up to 25 MB' : 'PDF, JPG, PNG, or .txt up to 25 MB'}
           </div>
-          <div style={{
-            padding: '0 16px 14px',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 10,
-          }}>
-            <input
-              type='checkbox'
-              checked={retentionConsent}
-              onChange={(e) => dispatch({ type: 'setRetentionConsent', retentionConsent: e.target.checked })}
-              style={{ marginTop: 3, accentColor: T.cyan }}
-            />
-            <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.45 }}>
-              Store my upload, extracted text, and score for product improvement and future training.
-              I can turn this off for a one-time analysis.
-            </div>
-          </div>
+          <ConsentToggle
+            checked={retentionConsent}
+            onChange={(next) => dispatch({ type: 'setRetentionConsent', retentionConsent: next })}
+          />
           <div style={{ position: 'relative', display: 'inline-flex' }}>
             <span
               style={primaryButtonStyle(!(isBusy || isProcessingFile), 42, '0 20px')}
@@ -1076,8 +1076,9 @@ function UploadHeroSection({
           </h1>
 
           <p style={{ fontSize: 16, lineHeight: 1.72, color: T.t2, maxWidth: '43ch', marginBottom: 30 }}>
-            Upload an itinerary, paste your own travel plan, or drop a screenshot. The checker spots weak points,
-            travel friction, and upgrade ideas before you book or bring it to your agent.
+            Upload an itinerary, paste your own travel plan, or drop a screenshot. The checker shows what it
+            understood, flags missing or risky parts, and gives you a clearer starting point before you book or
+            send it onward.
           </p>
 
           <div className='itinerary-stagger' style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 28 }}>
@@ -1097,9 +1098,9 @@ function UploadHeroSection({
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12, maxWidth: 560 }}>
             {[
-              { stat: '60 sec', label: 'to spot weak points' },
+              { stat: '60 sec', label: 'to score the plan and flag issues' },
               { stat: 'PDF + paste', label: 'works from messy inputs' },
-              { stat: 'Shareable', label: 'send the brief onward' },
+              { stat: 'Shareable', label: 'export or pass the result along' },
             ].map(s => (
               <div key={s.stat} style={{
                 padding: '14px 16px', borderRadius: 16,
@@ -1239,10 +1240,11 @@ function ExampleFindingsSection() {
                 letterSpacing: '-0.03em', color: T.t1, fontFamily: T.fDisplay,
                 marginBottom: 18, lineHeight: 1.1,
               }}>
-                Real upgrades, not generic warnings
+                Specific signals, not vague travel advice
               </h2>
               <p style={{ fontSize: 15, color: T.t2, lineHeight: 1.7, marginBottom: 28, maxWidth: '38ch' }}>
-                Every finding is specific to the plan you already have - the actual route, the exact dates, the specific travelers, and the most useful upgrade points for you or your agent.
+                The best results are specific to the plan you gave us. When the input is thinner, the checker still
+                shows what it understood, what feels risky, and what details need to be clarified next.
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {[
@@ -1307,10 +1309,11 @@ function SampleBriefPreviewSection() {
 	              fontSize: 'clamp(26px, 3vw, 38px)', fontWeight: 600,
               letterSpacing: '-0.03em', color: T.t1, fontFamily: T.fDisplay, marginBottom: 14,
             }}>
-              A structured brief your advisor can act on
+              A scored trip snapshot you can review or share
             </h2>
             <p style={{ fontSize: 15, color: T.t2, maxWidth: '44ch', margin: '0 auto', lineHeight: 1.65 }}>
-              Not a vague summary. A scored, categorized, advisor-ready document - shareable with one click.
+              Not just a raw paste box. You get a score, extracted trip details when available, and clearly grouped
+              flags you can keep, export, or send onward.
             </p>
           </div>
 
@@ -1480,7 +1483,8 @@ function FinalCtaSection() {
           </h2>
 
           <p style={{ fontSize: 15, color: T.t2, lineHeight: 1.7, marginBottom: 36, maxWidth: '40ch', margin: '0 auto 36px' }}>
-            60 seconds is all it takes. Upload now and see the route, the friction, and the upgrade points before you book.
+            Upload now and see what the checker understood, where the plan still feels weak, and what to tighten
+            before you book.
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
@@ -1584,8 +1588,434 @@ function summaryFromAnalysis(analysis: RunStatusResponse | null): string {
   const hardBlockers = analysis.hard_blockers?.length ?? 0;
   const softBlockers = analysis.soft_blockers?.length ?? 0;
   const followUps = analysis.follow_up_questions?.length ?? 0;
+  const summaryLead =
+    decisionState === 'PROCEED_TRAVELER_SAFE'
+      ? 'Your plan looks broadly workable.'
+      : decisionState === 'PROCEED_INTERNAL_DRAFT'
+        ? 'Your plan is usable, with a few things worth tightening.'
+        : decisionState === 'ASK_FOLLOWUP'
+          ? 'We found a few details worth clarifying before you rely on this plan.'
+          : decisionState === 'STOP_NEEDS_REVIEW'
+            ? 'We found important gaps that need a closer look before this plan is ready to trust.'
+            : 'We completed a live review of your plan.';
 
-  return `Live analysis: ${decisionState} · ${hardBlockers} hard blockers · ${softBlockers} soft blockers · ${followUps} follow-up questions`;
+  return `${summaryLead} ${hardBlockers} critical issues · ${softBlockers} warnings · ${followUps} follow-up questions`;
+}
+
+function formatTravelerBlockerItem(item: string): string {
+  if (item === 'extraction_quality') {
+    return 'We could not confidently read the key trip details from this plan yet. Please add clearer dates, route details, and traveler info.';
+  }
+
+  if (item === 'incomplete_intake') {
+    return 'A few core intake details are still missing. Add travel dates, budget and traveler count to move this from draft to reliable recommendations.';
+  }
+
+  return item.replaceAll('_', ' ');
+}
+
+function getTravelerTripSummaryFallback(
+  analysis: RunStatusResponse | null | undefined,
+  errorMessage: string | null | undefined,
+): { l: string; v: string } {
+  if (errorMessage) {
+    return {
+      l: 'Status',
+      v: 'We could not finish the live review this time. Please try again.',
+    };
+  }
+
+  if (analysis) {
+    return {
+      l: 'Status',
+      v: 'We scored the plan, but we could not confidently pull out the key trip details yet.',
+    };
+  }
+
+  return {
+    l: 'Status',
+    v: 'Waiting for your live review to finish.',
+  };
+}
+
+function getPacketFactValue(packet: Record<string, unknown> | null | undefined, key: string): unknown {
+  const facts = packet?.facts;
+  if (!facts || typeof facts !== 'object') return undefined;
+  const factEntry = (facts as Record<string, unknown>)[key];
+  if (!factEntry || typeof factEntry !== 'object') return undefined;
+  return (factEntry as Record<string, unknown>).value;
+}
+
+function getBooleanFromUnknown(value: unknown): boolean | null {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  return null;
+}
+
+type PublicCheckerReportStorageSummary = {
+  loading: boolean;
+  retentionConsented: boolean | null;
+  hasStoredUpload: boolean;
+  uploadFileName: string | null;
+};
+
+function pickPublicCheckerReportStorage(payload: unknown): PublicCheckerReportStorageSummary {
+  const safe: PublicCheckerReportStorageSummary = {
+    loading: false,
+    retentionConsented: null,
+    hasStoredUpload: false,
+    uploadFileName: null,
+  };
+
+  if (!payload || typeof payload !== 'object') {
+    return safe;
+  }
+
+  const artifactManifest = (payload as Record<string, unknown>).artifact_manifest;
+  if (artifactManifest && typeof artifactManifest === 'object') {
+    const uploadedFile = (artifactManifest as Record<string, unknown>).uploaded_file;
+    if (uploadedFile && typeof uploadedFile === 'object') {
+      const fileNameValue = (uploadedFile as Record<string, unknown>).file_name;
+      if (typeof fileNameValue === 'string' && fileNameValue.trim().length > 0) {
+        safe.uploadFileName = fileNameValue.trim();
+      }
+    }
+    safe.hasStoredUpload = true;
+  }
+
+  const trip = (payload as Record<string, unknown>).trip;
+  if (!trip || typeof trip !== 'object') {
+    return safe;
+  }
+
+  const rawInput = (trip as Record<string, unknown>).raw_input;
+  if (!rawInput || typeof rawInput !== 'object') {
+    return safe;
+  }
+
+  const rawInputRecord = rawInput as Record<string, unknown>;
+  const submission = rawInputRecord.submission;
+  if (submission && typeof submission === 'object') {
+    const consentFromSubmission = getBooleanFromUnknown((submission as Record<string, unknown>).retention_consent);
+    if (typeof consentFromSubmission === 'boolean') {
+      safe.retentionConsented = consentFromSubmission;
+      return safe;
+    }
+
+    const submissionSourcePayload = (submission as Record<string, unknown>).source_payload;
+    if (submissionSourcePayload && typeof submissionSourcePayload === 'object') {
+      const sourcePayloadConsent = getBooleanFromUnknown((submissionSourcePayload as Record<string, unknown>).retention_consent);
+      if (typeof sourcePayloadConsent === 'boolean') {
+        safe.retentionConsented = sourcePayloadConsent;
+        return safe;
+      }
+    }
+  }
+
+  const sourcePayload = rawInputRecord.source_payload;
+  if (sourcePayload && typeof sourcePayload === 'object') {
+    const sourcePayloadConsent = getBooleanFromUnknown((sourcePayload as Record<string, unknown>).retention_consent);
+    if (typeof sourcePayloadConsent === 'boolean') {
+      safe.retentionConsented = sourcePayloadConsent;
+      return safe;
+    }
+  }
+
+  const directFlag = getBooleanFromUnknown(rawInputRecord.retention_consent);
+  if (typeof directFlag === 'boolean') {
+    safe.retentionConsented = directFlag;
+  }
+
+  return safe;
+}
+
+function ConsentToggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <div style={{
+      padding: '0 16px 10px',
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: 10,
+    }}>
+      <input
+        type='checkbox'
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        style={{ marginTop: 3, accentColor: T.cyan }}
+      />
+      <div style={{ fontSize: 12, color: T.t2, lineHeight: 1.45 }}>
+        Store my typed input/uploaded text, extracted facts, and score for product improvement and future training.
+        You can uncheck this for a one-time analysis.
+      </div>
+    </div>
+  );
+}
+
+function normalizeFactValue(value: unknown): unknown | null {
+  if (value == null) return null;
+
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    const normalized = value
+      .map(normalizeFactValue)
+      .filter((item): item is string | number | boolean => item !== null);
+    if (normalized.length === 0) return null;
+    return normalized.slice(0, 4);
+  }
+
+  if (typeof value === 'object') {
+    const valueField = (value as Record<string, unknown>).value;
+    if (valueField !== undefined) {
+      return normalizeFactValue(valueField);
+    }
+
+    const amountField = (value as Record<string, unknown>).amount;
+    if (amountField !== undefined) {
+      return normalizeFactValue(amountField);
+    }
+
+    const startDate = (value as Record<string, unknown>).start_date;
+    const endDate = (value as Record<string, unknown>).end_date;
+    if (startDate != null && endDate != null) {
+      const start = normalizeFactValue(startDate);
+      const end = normalizeFactValue(endDate);
+      if (start != null && end != null) {
+        const startText = formatTravelerValue(start);
+        const endText = formatTravelerValue(end);
+        if (startText && endText) {
+          return `${startText} → ${endText}`;
+        }
+      }
+    }
+
+    const rawWindow = (value as Record<string, unknown>).raw_window;
+    if (rawWindow != null) return normalizeFactValue(rawWindow);
+  }
+
+  return null;
+}
+
+function formatTravelerValue(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed.replaceAll('_', ' ') : null;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    const items = value
+      .map((item) => formatTravelerValue(item))
+      .filter((item): item is string => Boolean(item));
+    return items.length > 0 ? items.join(', ') : null;
+  }
+
+  if (value && typeof value === 'object') {
+    const objectItems = Object.entries(value as Record<string, unknown>)
+      .map(([key, entryValue]) => {
+        const formatted = formatTravelerValue(entryValue);
+        if (!formatted) return null;
+        return `${key.replaceAll('_', ' ')} ${formatted}`;
+      })
+      .filter((item): item is string => Boolean(item));
+    return objectItems.length > 0 ? objectItems.join(', ') : null;
+  }
+
+  return null;
+}
+
+function formatTravelerFactValue(value: unknown): string | null {
+  const normalized = normalizeFactValue(value);
+  if (Array.isArray(normalized)) {
+    const items = normalized
+      .map((item) => formatTravelerValue(item))
+      .filter((item): item is string => Boolean(item));
+    if (items.length === 0) return null;
+    const dedup = [...new Set(items)];
+    const filtered = dedup.filter((item) => item.toLowerCase() !== 'day');
+    const finalItems = filtered.length > 0 ? filtered : dedup;
+    return finalItems.slice(0, 4).join(', ');
+  }
+
+  return formatTravelerValue(normalized);
+}
+
+function buildSummaryFactItem(packet: Record<string, unknown> | null | undefined, key: string, label: string): ResultSummaryItem | null {
+  const value = formatTravelerFactValue(getPacketFactValue(packet, key));
+  if (!value) return null;
+  return {
+    l: label,
+    v: value,
+  };
+}
+
+function formatUnknownFieldLabel(raw: string): string {
+  const normalized = formatClarificationLabel(raw).toLowerCase();
+  if (normalized === 'date window') return 'travel dates';
+  if (normalized === 'origin city') return 'departure city';
+  if (normalized === 'destination candidates') return 'destination';
+  return normalized;
+}
+
+function buildUnknownFieldHints(
+  validation: Record<string, unknown> | null | undefined,
+  packet: Record<string, unknown> | null | undefined,
+): string[] {
+  const unknownFields = new Set<string>();
+
+  const validationErrors = Array.isArray(validation?.errors) ? validation.errors : [];
+  for (const item of validationErrors) {
+    if (!item || typeof item !== 'object') continue;
+    const field = String((item as Record<string, unknown>).field ?? '').trim();
+    if (field) unknownFields.add(field);
+  }
+
+  const packetUnknowns = Array.isArray((packet as Record<string, unknown> | null | undefined)?.unknowns)
+    ? ((packet as Record<string, unknown>).unknowns as unknown[])
+    : [];
+  for (const item of packetUnknowns) {
+    if (!item || typeof item !== 'object') continue;
+    const field = String((item as Record<string, unknown>).field_name ?? '').trim();
+    if (field) unknownFields.add(field);
+  }
+
+  const observedUnknowns = Array.from(unknownFields)
+    .map(formatUnknownFieldLabel)
+    .filter((field) => field.length > 0);
+
+  return observedUnknowns.slice(0, 3);
+}
+
+function buildTravelerSummaryPreamble(
+  validation: Record<string, unknown> | null | undefined,
+  packet: Record<string, unknown> | null | undefined,
+): string[] {
+  const lines: string[] = [];
+  const origin = formatTravelerFactValue(getPacketFactValue(packet, 'origin_city'));
+  if (origin) lines.push(`Departure identified as ${origin}`);
+
+  const budget = formatTravelerFactValue(getPacketFactValue(packet, 'budget_raw_text'));
+  if (budget) lines.push(`Budget context found (${budget})`);
+
+  const unknowns = buildUnknownFieldHints(validation, packet);
+  if (unknowns.length > 0) {
+    lines.push(`Next inputs needed: ${unknowns.join(', ')}`);
+  }
+
+  return lines.slice(0, 2);
+}
+
+function buildTravelerTripSummary(
+  analysis: RunStatusResponse | null | undefined,
+  liveChecks: Record<string, any> | undefined,
+): ResultSummaryItem[] {
+  const packet = (analysis?.packet as Record<string, unknown> | null | undefined) ?? null;
+  const destinationFromFacts =
+    buildSummaryFactItem(packet, 'destination', 'Destination')
+    || buildSummaryFactItem(packet, 'destination_candidates', 'Destination candidates');
+  const dateWindowFromFacts = buildSummaryFactItem(packet, 'date_window', 'Travel window');
+  const travelWindowFromLiveChecks = liveChecks?.travel_window?.start_date && liveChecks?.travel_window?.end_date
+    ? { l: 'Travel window', v: `${String(liveChecks.travel_window.start_date)} -> ${String(liveChecks.travel_window.end_date)}` }
+    : null;
+  const partySizeFromFacts = buildSummaryFactItem(packet, 'party_size', 'Travelers');
+  const partyMixFromFacts = buildSummaryFactItem(packet, 'party_composition', 'Group');
+  const purposeFromFacts = buildSummaryFactItem(packet, 'trip_purpose', 'Trip type');
+  const preferencesFromFacts = buildSummaryFactItem(packet, 'soft_preferences', 'Trip notes');
+  const travelerPlanFromFacts = buildSummaryFactItem(packet, 'traveler_plan', 'Booking stage');
+  const destinationStatusFromFacts = buildSummaryFactItem(packet, 'destination_status', 'Destination status');
+  const budgetFromFacts = buildSummaryFactItem(packet, 'budget_scope', 'Budget');
+  const sourceFromLiveChecks = liveChecks?.source ? { l: 'Live source', v: String(liveChecks.source) } : null;
+
+  const summaryLines = [
+    ...buildTravelerSummaryPreamble(
+      (analysis?.validation as Record<string, unknown> | null | undefined) ?? null,
+      packet,
+    ).map((line) => ({
+      l: 'Signal',
+      v: line,
+    })),
+    destinationFromFacts,
+    travelWindowFromLiveChecks,
+    dateWindowFromFacts,
+    partySizeFromFacts,
+    partyMixFromFacts,
+    purposeFromFacts,
+    budgetFromFacts,
+    travelerPlanFromFacts,
+    preferencesFromFacts,
+    destinationStatusFromFacts,
+    sourceFromLiveChecks,
+  ].filter((item): item is ResultSummaryItem => Boolean(item));
+
+  return summaryLines.slice(0, 8);
+}
+
+function formatClarificationLabel(raw: string): string {
+  const normalized = raw.replaceAll('_', ' ').trim();
+  if (normalized === 'date window') return 'Travel dates';
+  if (normalized === 'origin city') return 'Departure city';
+  if (normalized === 'budget raw text') return 'Budget';
+  if (normalized === 'destination candidates') return 'Destination';
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function buildTravelerClarifications(analysis: RunStatusResponse | null | undefined): string[] {
+  const packet = (analysis?.packet as Record<string, unknown> | null | undefined) ?? null;
+  const validation = (analysis?.validation as Record<string, unknown> | null | undefined) ?? null;
+
+  const unknowns = Array.isArray(packet?.unknowns) ? packet.unknowns : [];
+  const ambiguityReport = Array.isArray(validation?.ambiguity_report) ? validation.ambiguity_report : [];
+  const validationErrors = Array.isArray(validation?.errors) ? validation.errors : [];
+  const followUps = Array.isArray(analysis?.follow_up_questions) ? analysis.follow_up_questions : [];
+
+  const items = [
+    ...unknowns.map((item) => {
+      const fieldName = typeof item === 'object' && item && 'field_name' in item ? String((item as Record<string, unknown>).field_name ?? '') : '';
+      if (!fieldName) return null;
+      const reason = typeof item === 'object' && item && 'reason' in item ? String((item as Record<string, unknown>).reason ?? '') : '';
+      if (reason && reason !== 'None' && reason.toLowerCase() !== 'null') {
+        return `Add ${formatClarificationLabel(fieldName).toLowerCase()} (${reason.replaceAll('_', ' ')}).`;
+      }
+      return `Add ${formatClarificationLabel(fieldName).toLowerCase()}.`;
+    }),
+    ...ambiguityReport.map((item) => {
+      const rawField = typeof item === 'object' && item && 'field' in item ? String((item as Record<string, unknown>).field ?? '') : '';
+      const rawValue = typeof item === 'object' && item && 'raw_value' in item ? String((item as Record<string, unknown>).raw_value ?? '') : '';
+      if (!rawField) return null;
+      return rawValue
+        ? `Clarify ${formatClarificationLabel(rawField).toLowerCase()} (${rawValue}).`
+        : `Clarify ${formatClarificationLabel(rawField).toLowerCase()}.`;
+    }),
+    ...validationErrors.map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const message = (item as Record<string, unknown>).message;
+      return typeof message === 'string' && message.trim().length > 0 ? message.trim() : null;
+    }),
+    ...followUps.map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const prompt =
+        (item as Record<string, unknown>).question ??
+        (item as Record<string, unknown>).prompt ??
+        (item as Record<string, unknown>).message;
+      return typeof prompt === 'string' && prompt.trim().length > 0 ? prompt.trim() : null;
+    }),
+  ]
+    .filter((item): item is string => Boolean(item))
+    .filter((item, index, array) => array.indexOf(item) === index);
+
+  return items.slice(0, 4);
 }
 
 const rSevColor = (sev: string) => sev === 'Critical' ? 'Critical' : sev === 'Warning' ? 'Warning' : 'Info';
@@ -1674,6 +2104,7 @@ function ResultsHeaderGrid({
   blockerItems,
   tripSummary,
   liveChecks,
+  clarificationItems,
   sent,
   email,
   setEmail,
@@ -1684,6 +2115,7 @@ function ResultsHeaderGrid({
   onExport,
   onDelete,
   onReportRevision,
+  storageCopy,
 }: {
   score: number;
   circumference: number;
@@ -1693,6 +2125,7 @@ function ResultsHeaderGrid({
   blockerItems: string[];
   tripSummary: ResultSummaryItem[];
   liveChecks?: Record<string, any>;
+  clarificationItems: string[];
   sent: boolean;
   email: string;
   setEmail: (email: string) => void;
@@ -1703,6 +2136,7 @@ function ResultsHeaderGrid({
   onExport: () => Promise<void>;
   onDelete: () => Promise<void>;
   onReportRevision: (revisionOutcome: RevisionOutcome) => Promise<void>;
+  storageCopy: string;
 }) {
   const SCORE = score;
   const handleExport = onExport;
@@ -1763,7 +2197,7 @@ function ResultsHeaderGrid({
                 Trip Summary (Extracted)
               </div>
               <div className='itinerary-stagger' style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-                {(tripSummary.length > 0 ? tripSummary : [{ l: 'Status', v: errorMessage ? 'No live analysis returned' : 'Waiting for parsed itinerary details' }]).map(f => (
+                {(tripSummary.length > 0 ? tripSummary : [getTravelerTripSummaryFallback(analysis, errorMessage)]).map(f => (
                   <div key={f.l}>
                     <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: T.t4 }}>{f.l}</div>
                     <div style={{ fontSize: 12.5, color: T.t1, marginTop: 2, fontFamily: T.fMono }}>{f.v}</div>
@@ -1813,6 +2247,19 @@ function ResultsHeaderGrid({
               </div>
             ) : null}
 
+            {clarificationItems.length > 0 ? (
+              <div style={{ padding: '16px 18px', borderRadius: 14, background: 'rgba(255,193,122,0.05)', border: '1px solid rgba(255,193,122,0.18)' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: T.t1, marginBottom: 6 }}>What to clarify next</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {clarificationItems.map((item) => (
+                    <div key={item} style={{ fontSize: 12, color: T.t2, lineHeight: 1.5 }}>
+                      • {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             {/* Email gate */}
             <div style={{ padding: '16px 18px', borderRadius: 14, background: 'rgba(57,208,216,0.05)', border: '1px solid rgba(57,208,216,0.18)' }}>
               {sent ? (
@@ -1825,8 +2272,8 @@ function ResultsHeaderGrid({
                 </div>
               ) : (
                 <>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: T.t1, marginBottom: 3 }}>Get your full report</div>
-                  <div style={{ fontSize: 12, color: T.t2, marginBottom: 10 }}>Detailed findings + advisor-ready brief sent to your inbox.</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.t1, marginBottom: 3 }}>Email this result to yourself</div>
+                  <div style={{ fontSize: 12, color: T.t2, marginBottom: 10 }}>Send a copy of this trip check so you can revisit it or forward it later.</div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <div style={S.emailInputFrame}>
                       <Mail size={14} color={T.t4} />
@@ -1847,7 +2294,7 @@ function ResultsHeaderGrid({
                       Send →
                     </button>
                   </div>
-                  <div style={{ fontSize: 12, color: T.t4, marginTop: 7 }}>Stored only with consent. Not shared. Delete anytime.</div>
+                  <div style={{ fontSize: 12, color: T.t4, marginTop: 7 }}>{storageCopy}</div>
                   {manageMessage ? (
                     <div style={{ fontSize: 12, color: T.t3, marginTop: 7 }}>{manageMessage}</div>
                   ) : null}
@@ -1858,7 +2305,7 @@ function ResultsHeaderGrid({
             <div style={{ padding: '16px 18px', borderRadius: 14, background: 'rgba(57,208,216,0.04)', border: '1px solid rgba(57,208,216,0.16)' }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: T.t1, marginBottom: 3 }}>Manage your saved data</div>
               <div style={{ fontSize: 12, color: T.t2, marginBottom: 10 }}>
-                Your report is stored only if you opted in. Export or delete the saved record with this report ID.
+                {storageCopy}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button
@@ -1949,7 +2396,9 @@ function ResultsFindingsSection({
                       {severity}
                     </span>
                     <div>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: T.t1, lineHeight: 1.55 }}>{item}</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: T.t1, lineHeight: 1.55 }}>
+                        {formatTravelerBlockerItem(item)}
+                      </div>
                     </div>
                   </div>
                 );
@@ -2020,29 +2469,68 @@ function ResultsView({
   const [sent,  setSent]  = useState(false);
   const [manageMessage, setManageMessage] = useState<string | null>(null);
   const [manageBusy, setManageBusy] = useState<'export' | 'delete' | null>(null);
+  const [reportStorage, setReportStorage] = useState<PublicCheckerReportStorageSummary>({
+    loading: false,
+    retentionConsented: null,
+    hasStoredUpload: false,
+    uploadFileName: null,
+  });
 
   const SCORE = scoreFromAnalysis(analysis ?? null);
   const summaryCopy = summaryFromAnalysis(analysis ?? null);
   const circumference = 2 * Math.PI * 36;
   const tripId = analysis?.trip_id ?? null;
   const liveChecks = ((analysis?.packet as Record<string, any> | null | undefined)?.public_checker_live_checks as Record<string, any> | undefined) ?? undefined;
-  const tripSummary = [
-    liveChecks?.destination ? { l: 'Destination', v: String(liveChecks.destination) } : null,
-    liveChecks?.travel_window?.start_date && liveChecks?.travel_window?.end_date
-      ? { l: 'Travel window', v: `${String(liveChecks.travel_window.start_date)} → ${String(liveChecks.travel_window.end_date)}` }
-      : null,
-    liveChecks?.climate?.precipitation_mm_avg != null
-      ? { l: 'Avg rain', v: `${String(liveChecks.climate.precipitation_mm_avg)} mm` }
-      : null,
-    liveChecks?.current_conditions?.current?.temperature_c != null
-      ? { l: 'Current temp', v: `${String(liveChecks.current_conditions.current.temperature_c)}°C` }
-      : null,
-    liveChecks?.source ? { l: 'Live source', v: String(liveChecks.source) } : null,
-  ].filter((item): item is { l: string; v: string } => Boolean(item));
+  const tripSummary = buildTravelerTripSummary(analysis ?? null, liveChecks);
+  const clarificationItems = buildTravelerClarifications(analysis ?? null);
   const blockerItems = [
     ...(Array.isArray(analysis?.hard_blockers) ? analysis?.hard_blockers : []),
     ...(Array.isArray(analysis?.soft_blockers) ? analysis?.soft_blockers : []),
   ];
+
+  useEffect(() => {
+    if (!tripId) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadReportData = async () => {
+      try {
+        if (!isMounted) return;
+        setReportStorage((state) => ({ ...state, loading: true }));
+        const response = await fetch(`/api/public-checker/${tripId}`);
+        if (!response.ok) throw new Error('Could not read report metadata');
+        const payload = await response.json();
+        if (!isMounted) return;
+        setReportStorage({
+          ...pickPublicCheckerReportStorage(payload),
+          loading: false,
+        });
+      } catch {
+        if (!isMounted) return;
+        setReportStorage((state) => ({ ...state, loading: false }));
+      }
+    };
+
+    void loadReportData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [tripId]);
+
+  const storageCopy = reportStorage.loading
+    ? 'Checking storage mode...'
+    : reportStorage.retentionConsented === true
+      ? reportStorage.hasStoredUpload
+        ? `Report and upload were saved${reportStorage.uploadFileName ? ` (file: ${reportStorage.uploadFileName})` : ''}.`
+        : 'Report was saved with your consent.'
+      : reportStorage.retentionConsented === false
+        ? 'You ran this as a one-time analysis. No uploaded document text was retained.'
+        : reportStorage.hasStoredUpload
+          ? 'Uploaded details were retained for this report.'
+          : 'Storage mode could not be determined.';
 
   const handleExport = async () => {
     if (!tripId) return;
@@ -2114,7 +2602,7 @@ function ResultsView({
 
     if (shareChannel === 'copy_paste') {
       try {
-        await navigator.clipboard.writeText(shareText);
+        await safeWriteClipboardText(shareText);
         await onEmitEvent(
           'action_packet_copied',
           {
@@ -2177,6 +2665,7 @@ function ResultsView({
           blockerItems={blockerItems}
           tripSummary={tripSummary}
           liveChecks={liveChecks}
+          clarificationItems={clarificationItems}
           sent={sent}
           email={email}
           setEmail={setEmail}
@@ -2187,6 +2676,7 @@ function ResultsView({
           onExport={handleExport}
           onDelete={handleDelete}
           onReportRevision={handleReportRevision}
+          storageCopy={storageCopy}
         />
         <ResultsFindingsSection blockerItems={blockerItems} analysis={analysis} />
         <ResultsConversionSection onShareReport={handleShareReport} />

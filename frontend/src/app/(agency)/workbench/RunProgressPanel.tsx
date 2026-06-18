@@ -20,6 +20,7 @@ interface RunProgressPanelProps {
   onRetry: () => void;
   onFixDetails?: () => void;
   onViewTrip?: () => void;
+  onViewFrontier?: () => void;
 }
 
 const steps = [
@@ -83,7 +84,15 @@ function getStepStatuses(
   });
 }
 
-export function RunProgressPanel({ runId, runState, error, onRetry, onFixDetails, onViewTrip }: RunProgressPanelProps) {
+export function RunProgressPanel({
+  runId,
+  runState,
+  error,
+  onRetry,
+  onFixDetails,
+  onViewTrip,
+  onViewFrontier,
+}: RunProgressPanelProps) {
   const durationRef = useRef<HTMLSpanElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -176,17 +185,18 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onFixDetails
         <div className="px-4 py-3 space-y-2.5">
           <div className="flex items-center gap-2 text-[var(--accent-amber)] text-ui-sm font-medium">
             <AlertTriangle className="size-4" />
-            Trip Details Need Attention
+            Trip is ready for your next follow-up step
           </div>
           <p className="text-ui-xs text-[var(--text-muted)] leading-relaxed">
-            {runState?.block_reason || "Required details are missing before quote options can be built."}
+            {runState?.block_reason ||
+              "Draft is saved, but trip details are incomplete. Open Trip Details and fill the remaining fields before planning can continue."}
           </p>
           <button
             type="button"
             onClick={onFixDetails || onRetry}
             className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[var(--accent-amber)]/10 border border-[var(--accent-amber)]/30 text-[var(--accent-amber)] text-ui-xs font-medium rounded-md hover:bg-[var(--accent-amber)]/20 transition-colors"
           >
-            Fix Missing Details
+            Open Missing Details
           </button>
           <button
             type="button"
@@ -265,15 +275,29 @@ export function RunProgressPanel({ runId, runState, error, onRetry, onFixDetails
               Intake saved, but quote-building stages did not run. Add missing details and reprocess.
             </p>
           )}
-          {(runState?.trip_id || onViewTrip) && (
-            <button
-              type="button"
-              onClick={onViewTrip || (() => { window.location.href = `/trips/${runState!.trip_id}/intake`; })}
-              className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#238636] text-white text-ui-xs font-medium rounded-md hover:bg-[#2ea043] transition-colors"
-            >
-              View Trip
-              <ChevronRight className="size-3" />
-            </button>
+          {(runState?.trip_id || onViewTrip || onViewFrontier) && (
+            <>
+              {onViewFrontier && (
+                <button
+                  type="button"
+                  onClick={onViewFrontier}
+                  className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#388bfd]/10 text-[#58a6ff] border border-[#388bfd]/40 text-ui-xs font-medium rounded-md hover:bg-[#58a6ff]/20 transition-colors"
+                >
+                  View Frontier
+                  <ChevronRight className="size-3" />
+                </button>
+              )}
+              {(runState?.trip_id || onViewTrip) && (
+                <button
+                  type="button"
+                  onClick={onViewTrip || (() => { window.location.href = `/trips/${runState!.trip_id}/intake`; })}
+                  className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[#238636] text-white text-ui-xs font-medium rounded-md hover:bg-[#2ea043] transition-colors"
+                >
+                  View Trip
+                  <ChevronRight className="size-3" />
+                </button>
+              )}
+            </>
           )}
           {!(runState?.trip_id || onViewTrip) && !isIntakeOnlyCompletion && (
             <div className="flex items-center gap-1.5 text-[#3fb950] text-ui-xs">

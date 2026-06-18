@@ -27,6 +27,14 @@ export type WorkbenchTab = 'intake' | 'packet' | 'decision' | 'strategy' | 'safe
 
 const _warnedTripIds = new Set<string>();
 
+type SearchParamsLike = {
+  get(name: string): string | null;
+};
+
+export function getWorkbenchTripId(searchParams: SearchParamsLike): string | null {
+  return searchParams.get('trip') ?? searchParams.get('tripId');
+}
+
 export function getTripRoute(
   tripId: string | undefined | null,
   stage: WorkspaceStage = 'intake',
@@ -41,6 +49,14 @@ export function getTripRoute(
     return '/trips';
   }
   return `/trips/${tripId}/${stage}`;
+}
+
+export function getWorkbenchTripHref(tripId: string | undefined | null): string {
+  if (!tripId) {
+    return '/workbench';
+  }
+  const params = new URLSearchParams({ trip: tripId });
+  return `/workbench?${params.toString()}`;
 }
 
 /**

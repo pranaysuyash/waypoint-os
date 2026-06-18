@@ -39,6 +39,20 @@ const QK = {
 
 const DEFAULT_STALE_TIME = 30_000;
 
+function isRecordLike(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function asRecordOrNull<T>(value: unknown): T | null {
+  if (!isRecordLike(value)) return null;
+  if (Object.keys(value).length === 0) return null;
+  return value as T;
+}
+
 export function useWorkspace() {
   const queryClient = useQueryClient();
   const query = useQuery({
@@ -126,7 +140,12 @@ export function useInsightsSummary(timeRange: TimeRange = "30d") {
     staleTime: DEFAULT_STALE_TIME,
   });
 
-  return { data: query.data ?? null, isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch };
+  return {
+    data: asRecordOrNull<InsightsSummary>(query.data),
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: query.refetch,
+  };
 }
 
 export function usePipelineMetrics(timeRange: TimeRange = "30d") {
@@ -136,7 +155,12 @@ export function usePipelineMetrics(timeRange: TimeRange = "30d") {
     staleTime: DEFAULT_STALE_TIME,
   });
 
-  return { data: query.data ?? [], isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch };
+  return {
+    data: asArray<StageMetrics>(query.data as unknown),
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: query.refetch,
+  };
 }
 
 export function useTeamMetrics(timeRange: TimeRange = "30d") {
@@ -146,7 +170,12 @@ export function useTeamMetrics(timeRange: TimeRange = "30d") {
     staleTime: DEFAULT_STALE_TIME,
   });
 
-  return { data: query.data ?? [], isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch };
+  return {
+    data: asArray<TeamMemberMetrics>(query.data as unknown),
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: query.refetch,
+  };
 }
 
 export function useBottleneckAnalysis(timeRange: TimeRange = "30d") {
@@ -156,7 +185,12 @@ export function useBottleneckAnalysis(timeRange: TimeRange = "30d") {
     staleTime: DEFAULT_STALE_TIME,
   });
 
-  return { data: query.data ?? [], isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch };
+  return {
+    data: asArray<BottleneckAnalysis>(query.data as unknown),
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: query.refetch,
+  };
 }
 
 export function useRevenueMetrics(timeRange: TimeRange = "30d") {
@@ -166,7 +200,12 @@ export function useRevenueMetrics(timeRange: TimeRange = "30d") {
     staleTime: DEFAULT_STALE_TIME,
   });
 
-  return { data: query.data ?? null, isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch };
+  return {
+    data: asRecordOrNull<RevenueMetrics>(query.data),
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: query.refetch,
+  };
 }
 
 export function useOperationalAlerts() {
@@ -185,7 +224,13 @@ export function useOperationalAlerts() {
     );
   };
 
-  return { data: query.data ?? [], isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch, dismiss };
+  return {
+    data: asArray<OperationalAlert>(query.data as unknown),
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: query.refetch,
+    dismiss,
+  };
 }
 
 export function useTeamMembers() {
@@ -249,7 +294,12 @@ export function useWorkloadDistribution() {
     staleTime: DEFAULT_STALE_TIME,
   });
 
-  return { data: query.data ?? [], isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch };
+  return {
+    data: asArray<WorkloadDistribution>(query.data as unknown),
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: query.refetch,
+  };
 }
 
 export function useInboxTrips(

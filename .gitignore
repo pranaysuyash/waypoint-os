@@ -86,6 +86,8 @@ data/cities.json
 # Data files — generated/accumulated at runtime
 data/accumulated_cities.json
 data/accumulated_cities.lock
+data/assignments/
+data/config/seasonal_policy.json
 
 # Ignore dogfood cookies
 dogfood_cookies.txt
@@ -95,6 +97,7 @@ data/decision_cache/
 data/audit/
 !data/decision_cache/.gitkeep
 !data/audit/.gitkeep
+data/drafts/draft_*.json
 
 # Product B runtime event logs
 data/product_b_events/*.jsonl

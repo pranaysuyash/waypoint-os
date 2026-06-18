@@ -1,6 +1,7 @@
 """Extraction service: OCR/document extraction with encrypted PII storage."""
 
 import logging
+import hashlib
 import os
 import time
 from dataclasses import dataclass, field
@@ -17,6 +18,31 @@ VALID_EXTRACTION_FIELDS = frozenset({
     "nationality", "visa_type", "visa_number", "visa_expiry",
     "insurance_provider", "insurance_policy_number",
 })
+
+_EVAL_DEFAULTS = {
+    "prompt_version": "v1",
+    "schema_version": "v1",
+    "routing_version": "v1",
+    "dictionary_version": "v1",
+    "normalization_version": "v1",
+}
+
+_FAILURE_LAYER_BY_ERROR = {
+    "schema_validation_failed": "schema",
+    "empty_response": "model",
+    "unsupported_mime_type": "input_validation",
+    "api_auth_error": "provider",
+    "api_timeout": "provider",
+    "api_rate_limit": "provider",
+    "api_server_error": "provider",
+}
+
+_NEXT_FIX_BY_FAILURE_LAYER = {
+    "provider": "provider_stack",
+    "schema": "schema_contract",
+    "model": "prompt_contract",
+    "input_validation": "input_preprocessing",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -153,6 +179,71 @@ def _get_model_chain(extractor) -> list[tuple[str, object]]:
     return [(model, extractor)]
 
 
+def _get_eval_metadata(document_type: str) -> dict[str, Optional[str]]:
+    prompt_version = os.environ.get("EXTRACTION_PROMPT_VERSION", _EVAL_DEFAULTS["prompt_version"])
+    schema_version = os.environ.get("EXTRACTION_SCHEMA_VERSION", _EVAL_DEFAULTS["schema_version"])
+    routing_version = os.environ.get("EXTRACTION_ROUTING_VERSION", _EVAL_DEFAULTS["routing_version"])
+    dictionary_version = os.environ.get("EXTRACTION_DICTIONARY_VERSION", _EVAL_DEFAULTS["dictionary_version"])
+    normalization_version = os.environ.get("EXTRACTION_NORMALIZATION_VERSION", _EVAL_DEFAULTS["normalization_version"])
+
+    prompt_text = os.environ.get("EXTRACTION_PROMPT_TEXT")
+    prompt_hash: Optional[str]
+    if prompt_text:
+        prompt_hash = hashlib.sha256(prompt_text.encode("utf-8")).hexdigest()[:12]
+    else:
+        prompt_hash = os.environ.get("EXTRACTION_PROMPT_HASH")
+
+    return {
+        "prompt_version": prompt_version,
+        "prompt_hash": prompt_hash,
+        "schema_version": schema_version,
+        "routing_version": routing_version,
+        "dictionary_version": dictionary_version,
+        "normalization_version": normalization_version,
+        "document_type": document_type,
+    }
+
+
+def _failure_layer(error_code: str | None) -> str:
+    if not error_code:
+        return "model"
+    return _FAILURE_LAYER_BY_ERROR.get(error_code, "model")
+
+
+def _next_fix_layer(error_code: str | None) -> str:
+    return _NEXT_FIX_BY_FAILURE_LAYER.get(_failure_layer(error_code), "prompt_contract")
+
+
+def _fallback_trigger_reason(
+    error_code: str | None,
+    has_more_candidates: bool,
+) -> str:
+    if error_code in RETRIABLE_ERRORS:
+        return "fallback_available" if has_more_candidates else "retriable_exhausted"
+    if error_code == "unsupported_mime_type":
+        return "input_validation_blocked"
+    if error_code == "schema_validation_failed":
+        return "schema_validation_retry_not_available"
+    if error_code == "api_auth_error":
+        return "provider_auth_blocked"
+    if error_code in {"api_timeout", "api_rate_limit", "api_server_error"}:
+        return "provider_fallback_after_retry"
+    return "hard_failure"
+
+
+def _failure_signature(
+    document_type: str,
+    error_code: str | None,
+    model: str | None,
+    attempt_number: int,
+    fallback_rank: int | None,
+) -> str:
+    normalized_model = model or "unknown"
+    normalized_fallback_rank = fallback_rank if fallback_rank is not None else 0
+    normalized_error = error_code or "unknown"
+    return f"{document_type}|{normalized_model}|attempt-{attempt_number}|fb-{normalized_fallback_rank}|{normalized_error}"
+
+
 # ---------------------------------------------------------------------------
 # CRUD functions
 # ---------------------------------------------------------------------------
@@ -220,6 +311,8 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
 
     primary_model = models_to_try[0][0] if models_to_try else "unknown"
     primary_provider = _resolve_provider_name(primary_model)
+    eval_metadata = _get_eval_metadata(document.document_type)
+    attempt_failure_reasons: list[dict[str, str]] = []
 
     await execution_event_service.emit_event_best_effort(
         db, agency_id=agency_id, trip_id=document.trip_id,
@@ -227,17 +320,13 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
         event_type="extraction_run_started", event_category="extraction",
         status_from="failed" if is_retry else None, status_to="running",
         actor_type="system", actor_id=None, source="system_generation",
-        event_metadata={
-            "document_type": document.document_type,
-            "provider": primary_provider,
-            "model": primary_model,
-            "run_count": extraction.run_count,
-        },
+        event_metadata={**eval_metadata, "provider": primary_provider, "model": primary_model, "run_count": extraction.run_count},
     )
 
     try:
         for rank, (model_name, model_extractor) in enumerate(models_to_try):
             attempt_number = attempt_base + rank + 1
+            is_last_candidate = rank >= len(models_to_try) - 1
 
             attempt = DocumentExtractionAttempt(
                 extraction_id=extraction.id,
@@ -264,6 +353,17 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
                 attempt.extracted_fields_encrypted = None  # explicit: no PII on failure
                 await db.commit()
                 extraction.attempt_count = attempt_number
+                fallback_reason = _fallback_trigger_reason(attempt.error_code, not is_last_candidate)
+                layer = _failure_layer(attempt.error_code)
+                next_fix = _next_fix_layer(attempt.error_code)
+                signature = _failure_signature(document.document_type, attempt.error_code, attempt.model_name, attempt_number, attempt.fallback_rank)
+                attempt_failure_reasons.append({
+                    "error_code": attempt.error_code,
+                    "fallback_reason": fallback_reason,
+                    "failure_layer": layer,
+                    "next_fix_layer": next_fix,
+                    "failure_signature": signature,
+                })
 
                 await execution_event_service.emit_event_best_effort(
                     db, agency_id=agency_id, trip_id=document.trip_id,
@@ -272,12 +372,17 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
                     status_from=None, status_to="failed",
                     actor_type="system", actor_id=None, source="system_generation",
                     event_metadata={
+                        **eval_metadata,
                         "provider": attempt.provider_name,
                         "model": attempt.model_name,
                         "attempt_number": attempt.attempt_number,
                         "fallback_rank": attempt.fallback_rank,
                         "error_code": attempt.error_code,
                         "latency_ms": attempt.latency_ms,
+                        "fallback_trigger_reason": fallback_reason,
+                        "failure_layer": layer,
+                        "next_fix_layer": next_fix,
+                        "failure_signature": signature,
                     },
                 )
 
@@ -316,12 +421,17 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
                 status_from=None, status_to="success",
                 actor_type="system", actor_id=None, source="system_generation",
                 event_metadata={
+                    **eval_metadata,
                     "provider": attempt.provider_name,
                     "model": attempt.model_name,
                     "attempt_number": attempt.attempt_number,
                     "fallback_rank": attempt.fallback_rank,
                     "field_count": attempt.field_count,
                     "latency_ms": attempt.latency_ms,
+                    "failure_layer": None,
+                    "failure_signature": None,
+                    "next_fix_layer": None,
+                    "fallback_result": "succeeded_after_fallback" if attempt.fallback_rank > 0 else "no_fallback_needed",
                 },
             )
 
@@ -342,6 +452,7 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
 
     # --- Step 4: Update extraction aggregate ---
     if success_attempt:
+        final_reason = attempt_failure_reasons[-1] if attempt_failure_reasons else {}
         extraction.status = "pending_review"
         extraction.current_attempt_id = success_attempt.id
         extraction.extracted_fields_encrypted = success_attempt.extracted_fields_encrypted
@@ -367,6 +478,7 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
     await db.refresh(extraction)
 
     if success_attempt:
+        fallback_result = "no_fallback" if success_attempt.fallback_rank == 0 else "succeeded_after_fallback"
         await execution_event_service.emit_event_best_effort(
             db, agency_id=agency_id, trip_id=document.trip_id,
             subject_type="document_extraction", subject_id=extraction.id,
@@ -374,6 +486,7 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
             status_from="running", status_to="pending_review",
             actor_type="system", actor_id=None, source="system_generation",
             event_metadata={
+                **eval_metadata,
                 "document_type": document.document_type,
                 "provider": extraction.provider_name,
                 "model": extraction.model_name,
@@ -381,9 +494,16 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
                 "field_count": extraction.field_count,
                 "overall_confidence": extraction.overall_confidence,
                 "latency_ms": extraction.latency_ms,
+                "review_trigger_reason": "manual_review_required",
+                "fallback_result": fallback_result,
+                "fallback_trigger_reason": final_reason.get("fallback_reason"),
+                "next_fix_layer": final_reason.get("next_fix_layer"),
+                "failure_signature": final_reason.get("failure_signature"),
+                "failure_layer": final_reason.get("failure_layer"),
             },
         )
     else:
+        final_reason = attempt_failure_reasons[-1] if attempt_failure_reasons else {}
         await execution_event_service.emit_event_best_effort(
             db, agency_id=agency_id, trip_id=document.trip_id,
             subject_type="document_extraction", subject_id=extraction.id,
@@ -391,10 +511,17 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
             status_from="running", status_to="failed",
             actor_type="system", actor_id=None, source="system_generation",
             event_metadata={
+                **eval_metadata,
                 "document_type": document.document_type,
                 "error_code": extraction.error_code,
                 "attempt_count": extraction.attempt_count,
                 "latency_ms": extraction.latency_ms,
+                "fallback_result": "exhausted",
+                "fallback_trigger_reason": final_reason.get("fallback_reason"),
+                "next_fix_layer": final_reason.get("next_fix_layer"),
+                "failure_signature": final_reason.get("failure_signature"),
+                "failure_layer": final_reason.get("failure_layer"),
+                "review_trigger_reason": "manual_review_required",
             },
         )
 
@@ -418,7 +545,9 @@ async def get_extraction_for_document(db, document_id: str, agency_id: str) -> O
 async def apply_extraction(db, document, extraction, fields_to_apply: list[str],
                            traveler_id: str, reviewed_by: str,
                            allow_overwrite: bool = False,
-                           create_traveler_if_missing: bool = False) -> dict:
+                           create_traveler_if_missing: bool = False,
+                           review_trigger_reason: str = "manual_apply",
+                           review_outcome: str = "applied") -> dict:
     """Apply selected extraction fields to booking_data. Returns {applied, conflicts, extraction}."""
     from spine_api.models.tenant import DocumentExtraction
 
@@ -534,6 +663,9 @@ async def apply_extraction(db, document, extraction, fields_to_apply: list[str],
         status_from="pending_review", status_to="applied",
         actor_type="agent", actor_id=reviewed_by, source="agent_action",
         event_metadata={
+            "review_trigger_reason": review_trigger_reason,
+            "review_outcome": review_outcome,
+            "next_fix_layer": None,
             "document_type": document.document_type,
             "fields_applied_count": len(fields_to_apply),
             "allow_overwrite": allow_overwrite,
@@ -561,7 +693,15 @@ async def reject_extraction(db, extraction, reviewed_by: str) -> "DocumentExtrac
         event_type="extraction_rejected", event_category="extraction",
         status_from="pending_review", status_to="rejected",
         actor_type="agent", actor_id=reviewed_by, source="agent_action",
-        event_metadata={},
+        event_metadata={
+            "review_trigger_reason": "manual_reject",
+            "review_outcome": "rejected",
+            "next_fix_layer": "prompt_contract",
+            "error_code": extraction.error_code,
+            "document_type": getattr(
+                getattr(extraction, "document", None), "document_type", None
+            ),
+        },
     )
 
     return extraction

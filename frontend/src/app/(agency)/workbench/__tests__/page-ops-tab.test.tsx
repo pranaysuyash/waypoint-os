@@ -22,9 +22,10 @@ vi.mock('next/link', () => ({
 }));
 
 const mockRouterReplace = vi.fn();
+const mockRouterPush = vi.fn();
 vi.mock('next/navigation', () => ({
   useSearchParams: vi.fn(),
-  useRouter: () => ({ push: vi.fn(), replace: mockRouterReplace }),
+  useRouter: () => ({ push: mockRouterPush, replace: mockRouterReplace }),
   usePathname: () => '/workbench',
 }));
 
@@ -38,6 +39,10 @@ vi.mock('./PipelineFlow', () => ({
 
 // Capture the tabs prop to test visibility
 let renderedTabs: { id: string; label: string }[] = [];
+let mockSpineRunState: { state: string | null; frontier_result?: Record<string, unknown> | null } = {
+  state: null,
+  frontier_result: null,
+};
 vi.mock('@/components/ui/tabs', () => ({
   Tabs: ({ tabs }: { tabs: { id: string; label: string }[] }) => {
     renderedTabs = tabs;
@@ -46,6 +51,7 @@ vi.mock('@/components/ui/tabs', () => ({
 }));
 
 let mockTripData: Record<string, unknown> | null = null;
+let mockFrontierData: Record<string, unknown> | null = null;
 vi.mock('@/hooks/useTrips', () => ({
   useTrip: () => ({
     data: mockTripData,
@@ -65,7 +71,7 @@ vi.mock('@/hooks/useSpineRun', () => ({
     error: null,
     reset: vi.fn(),
     runId: null,
-    state: null,
+    state: mockSpineRunState,
   }),
 }));
 
@@ -76,7 +82,7 @@ vi.mock('@/stores/workbench', () => ({
     result_decision: null,
     result_packet: null,
     result_validation: null,
-    result_frontier: null,
+    result_frontier: mockFrontierData,
     input_raw_note: '',
     input_owner_note: '',
     input_structured_json: '',
@@ -127,6 +133,8 @@ describe('Workbench ops tab visibility', () => {
     vi.clearAllMocks();
     renderedTabs = [];
     mockTripData = null;
+    mockFrontierData = null;
+    mockSpineRunState = { state: null, frontier_result: null };
   });
 
   it('does not show ops tab at discovery stage', () => {
@@ -192,6 +200,51 @@ describe('Workbench ops tab visibility', () => {
       expect(renderedTabs.map((t) => t.id)).not.toContain('ops');
     }
   });
+
+  it('shows frontier tab when frontier result exists', () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as never);
+    mockTripData = { id: 't1', stage: 'discovery' };
+    mockFrontierData = { sentiment_score: 0.82 };
+
+    render(<WorkbenchPage />);
+
+    const tabIds = renderedTabs.map((t) => t.id);
+    expect(tabIds).toContain('frontier');
+  });
+
+  it('auto-switches to frontier tab when run completes with frontier result', () => {
+    mockSpineRunState = {
+      state: 'completed',
+      frontier_result: { sentiment_score: 0.82 },
+    };
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as never);
+    mockTripData = { id: 't1', stage: 'discovery' };
+
+    render(<WorkbenchPage />);
+
+    expect(mockRouterReplace).toHaveBeenCalledWith('?tab=frontier', { scroll: false });
+  });
+
+  it('switches to frontier if frontier appears after completed state is already set', () => {
+    mockSpineRunState = {
+      state: 'completed',
+      frontier_result: null,
+    };
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as never);
+    mockTripData = { id: 't1', stage: 'discovery' };
+
+    const { rerender } = render(<WorkbenchPage />);
+    expect(mockRouterReplace).toHaveBeenCalledTimes(0);
+
+    mockRouterReplace.mockClear();
+    mockSpineRunState = {
+      state: 'completed',
+      frontier_result: { sentiment_score: 0.82 },
+    };
+    rerender(<WorkbenchPage />);
+
+    expect(mockRouterReplace).toHaveBeenCalledWith('?tab=frontier', { scroll: false });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -237,6 +290,7 @@ describe('Workbench ?tab=ops compatibility redirect', () => {
     vi.clearAllMocks();
     renderedTabs = [];
     mockTripData = null;
+    mockSpineRunState = { state: null, frontier_result: null };
   });
 
   it('replaces history (not pushes) when redirecting ?tab=ops with a trip ID', () => {
@@ -245,19 +299,51 @@ describe('Workbench ?tab=ops compatibility redirect', () => {
 
     render(<WorkbenchPage />);
 
+    const opsRedirectCalls = mockRouterReplace.mock.calls
+      .map(([to]) => to)
+      .filter((to) => to === '/trips/trip_123/ops');
+    expect(opsRedirectCalls).toHaveLength(1);
     expect(mockRouterReplace).toHaveBeenCalledWith('/trips/trip_123/ops');
-    // push should NOT be called for this alias redirect
-    expect(mockRouterReplace).toHaveBeenCalledTimes(1);
+    expect(mockRouterPush).not.toHaveBeenCalled();
   });
 
-  it('adds notice=ops-requires-trip when ?tab=ops is opened without a trip', () => {
-    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('tab=ops') as never);
+  it('supports legacy ?tab=ops&tripId alias for the same redirect behavior', () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('tab=ops&tripId=trip_456') as never);
+    mockTripData = { id: 'trip_456', stage: 'proposal' };
+
+    render(<WorkbenchPage />);
+
+    expect(mockRouterReplace).toHaveBeenCalledWith('/trips/trip_456/ops');
+    expect(mockRouterPush).not.toHaveBeenCalled();
+  });
+
+  it('uses canonical trip over legacy tripId when both are present', () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('tab=ops&trip=trip_123&tripId=trip_456') as never);
+    mockTripData = { id: 'trip_123', stage: 'proposal' };
+
+    render(<WorkbenchPage />);
+
+    expect(mockRouterReplace).toHaveBeenCalledWith('/trips/trip_123/ops');
+    expect(mockRouterReplace).not.toHaveBeenCalledWith('/trips/trip_456/ops');
+    expect(mockRouterPush).not.toHaveBeenCalled();
+  });
+
+  it('falls back to intake tab when ?tab=ops is opened without a trip', () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('tab=ops&foo=bar') as never);
     mockTripData = null;
 
     render(<WorkbenchPage />);
 
-    expect(mockRouterReplace).toHaveBeenCalledWith(
-      expect.stringContaining('notice=ops-requires-trip'),
-    );
+    const redirectArg = mockRouterReplace.mock.calls.at(-1)?.[0];
+    expect(typeof redirectArg).toBe('string');
+    if (typeof redirectArg === 'string') {
+      const redirectedParams = new URLSearchParams(redirectArg.replace('/workbench?', ''));
+      expect(redirectedParams.get('tab')).toBe('intake');
+      expect(redirectedParams.get('foo')).toBe('bar');
+      expect(redirectedParams.get('notice')).toBeNull();
+      expect(redirectedParams.get('trip')).toBeNull();
+      expect(redirectedParams.get('tripId')).toBeNull();
+    }
+    expect(mockRouterPush).not.toHaveBeenCalled();
   });
 });

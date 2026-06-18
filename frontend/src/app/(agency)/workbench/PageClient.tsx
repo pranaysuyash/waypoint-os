@@ -3,7 +3,7 @@
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Suspense, useState, useCallback, useEffect, useRef, useReducer } from 'react';
-import { ClientTime, ClientDateTime } from '@/hooks/useClientDate';
+import { ClientDateTime, ClientTime } from '@/hooks/useClientDate';
 import { Tabs } from '@/components/ui/tabs';
 import { PipelineFlow, type PipelineStageId } from './PipelineFlow';
 import {
@@ -36,7 +36,7 @@ import type {
 } from '@/types/spine';
 import type { Trip } from '@/lib/api-client';
 import { submitTripReviewAction, createDraft, getDraft, patchDraft, discardDraft, promoteDraft } from '@/lib/api-client';
-import { getTripRoute, getPostRunTripRoute } from '@/lib/routes';
+import { getTripRoute, getPostRunTripRoute, getWorkbenchTripId } from '@/lib/routes';
 import type { WorkbenchStore, DraftStatus, SaveState } from '@/stores/workbench';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { RunProgressPanel } from './RunProgressPanel';
@@ -45,6 +45,11 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 const IntakeTab = dynamic(() => import('./IntakeTab'));
 const PacketTab = dynamic(() => import('./PacketTab'));
 const SafetyTab = dynamic(() => import('./SafetyTab'));
+const FrontierDashboard = dynamic(() =>
+  import('@/components/workspace/FrontierDashboard').then((mod) => ({
+    default: mod.FrontierDashboard,
+  })),
+);
 const SettingsPanel = dynamic(() => import('./SettingsPanel'));
 const ScenarioLab = dynamic(() => import('./ScenarioLab'));
 const OutputPanel = dynamic(
@@ -69,6 +74,7 @@ const workspaceTabs = [
   { id: 'intake', label: 'New Inquiry' },
   { id: 'packet', label: 'Trip Details' },
   { id: 'safety', label: 'Risk Review' },
+  { id: 'frontier', label: 'Frontier OS' },
 ] as const;
 
 type WorkspaceTabId = (typeof workspaceTabs)[number]['id'];
@@ -108,7 +114,7 @@ function toWorkspaceTabId(value: string | null): WorkspaceTabId | null {
  * PipelineFlow shows processing progress (intake → packet → decision → strategy → safety),
  * not which tab the user clicked.
  * Output and Feedback are workspace sections, not core pipeline stages.
- * Frontier OS has been removed from the workbench UI (parked for future intelligence integration).
+ * Frontier OS is surfaced in its own workbench tab when frontier output exists.
  */
 function getPipelineStageForWorkbench(
   trip: Trip | null | undefined,
@@ -162,10 +168,10 @@ function useHydrateStoreFromTrip(trip: Trip | null | undefined) {
 // react-doctor-disable-next-line react-doctor/prefer-useReducer — too many independent state slices to consolidate meaningfully
 function WorkbenchContent() {
   const searchParams = useSearchParams();
-  const getSearchParam = searchParams.get.bind(searchParams);
   const { push, refresh, replace } = useRouter();
   const pathname = usePathname();
-  const tripId = getSearchParam('trip');
+  const getSearchParam = searchParams.get.bind(searchParams);
+  const tripId = getWorkbenchTripId(searchParams);
   const draftParam = getSearchParam('draft');
   const stageParam = getSearchParam('stage');
   const scenarioParam = getSearchParam('scenario');
@@ -191,9 +197,21 @@ function WorkbenchContent() {
     Boolean(store.result_validation) ||
     store.draft_status === 'blocked' ||
     store.draft_status === 'failed';
+  const {
+    execute: executeSpineRun,
+    isLoading: isSpineRunning,
+    error: spineError,
+    reset: resetSpine,
+    runId: spineRunId,
+    state: spineRunState,
+  } = useSpineRun();
+
+  const runFrontier = spineRunState?.frontier_result;
+  const showFrontier = Boolean(trip?.frontier_result) || Boolean(store.result_frontier) || Boolean(runFrontier);
 
   const visibleTabs = workspaceTabs.filter((tab) => {
     if (tab.id === 'packet') return showPacket;
+    if (tab.id === 'frontier') return showFrontier;
     return true;
   });
 
@@ -210,21 +228,27 @@ function WorkbenchContent() {
     if (tripId) {
       replace(getTripRoute(tripId, 'ops'));
     } else {
-      // No trip context — ops requires a specific trip. Show notice and fall back to intake.
+      // No trip context — ops requires a specific trip. Route back to intake surface.
       const params = new URLSearchParams(searchParams.toString());
       params.set('tab', 'intake');
-      params.set('notice', 'ops-requires-trip');
       replace(`${pathname}?${params.toString()}`);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // run once on mount — handles stale bookmarks / SOP links
 
-  // Fast-capture redirect: New Inquiry entry should land on canonical intake capture surface.
+  // Fast-capture entry stays on Workbench until a real trip exists.
   useEffect(() => {
     const entry = getSearchParam('entry');
     const captureMode = getSearchParam('capture_mode');
     if (tripId || entry !== 'new' || captureMode !== 'call') return;
-    replace('/trips/new/intake?capture_mode=call&entry=new');
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('draft', 'new');
+    params.set('tab', 'intake');
+    const nextUrl = `${pathname}?${params.toString()}`;
+    const currentUrl = `${pathname}?${searchParams.toString()}`;
+    if (nextUrl !== currentUrl) {
+      replace(nextUrl);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -320,14 +344,6 @@ function WorkbenchContent() {
     },
     [pathname, replace, searchParams]
   );
-  const {
-    execute: executeSpineRun,
-    isLoading: isSpineRunning,
-    error: spineError,
-    reset: resetSpine,
-    runId: spineRunId,
-    state: spineRunState,
-  } = useSpineRun();
 
   // Populate store with validation/packet from run status so blocked runs
   // still show specific field-level errors in the UI.
@@ -338,7 +354,13 @@ function WorkbenchContent() {
     if (spineRunState?.packet) {
       store.setResultPacket(spineRunState.packet);
     }
-  }, [spineRunState, store.setResultValidation, store.setResultPacket]);
+    store.setResultFrontier(spineRunState?.frontier_result ?? null);
+  }, [
+    spineRunState,
+    store.setResultValidation,
+    store.setResultPacket,
+    store.setResultFrontier,
+  ]);
 
   // Update draft status based on run state, and refetch after terminal states
   // to pick up backend lifecycle changes (version bumps, status updates).
@@ -365,20 +387,36 @@ function WorkbenchContent() {
   // This prevents the user from missing field-level validation errors that are rendered
   // in the Trip Details (packet) tab or other stage-specific tabs.
   const prevRunStateRef = useRef<string | null>(null);
+  const prevCompletedRunFrontierRef = useRef(false);
   useEffect(() => {
     const currentState = spineRunState?.state ?? null;
     const prevState = prevRunStateRef.current;
+    const completedWithRunFrontier = currentState === 'completed' && Boolean(runFrontier);
 
-    // Only act when transitioning into a terminal error state
+    // Navigate the most useful tab after terminal transitions.
+    // Blocked/failed flows still land on Trip Details for immediate validation context.
+    // Completed runs with frontier output land on Frontier for immediate intelligence visibility.
     if (
       currentState !== prevState &&
       (currentState === 'blocked' || currentState === 'failed')
     ) {
       handleTabChange('packet');
+    } else if (
+      currentState === 'completed' &&
+      completedWithRunFrontier &&
+      (!prevCompletedRunFrontierRef.current || prevState !== 'completed')
+    ) {
+      handleTabChange('frontier');
+    }
+
+    if (currentState !== 'completed') {
+      prevCompletedRunFrontierRef.current = false;
+    } else if (completedWithRunFrontier) {
+      prevCompletedRunFrontierRef.current = true;
     }
 
     prevRunStateRef.current = currentState;
-  }, [spineRunState, handleTabChange]);
+  }, [spineRunState, handleTabChange, runFrontier]);
 
   const { mutate: saveTrip, isSaving } = useUpdateTrip();
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -749,6 +787,16 @@ function WorkbenchContent() {
     trip?.analytics?.feedback_reopen === true ||
     trip?.analytics?.recovery_status === 'IN_RECOVERY';
 
+  const validationGateOrStage = store.result_validation
+    ? (store.result_validation.gate || store.result_validation.stage || '')
+    : '';
+  const validationNeedsInput = Boolean(
+    store.result_validation &&
+      (store.result_validation.stage === 'intake_completion' ||
+        validationGateOrStage === 'intake_completion' ||
+        validationGateOrStage === 'NB01'),
+  );
+
   const pipelineStage = getPipelineStageForWorkbench(trip, store);
 
   return (
@@ -777,15 +825,6 @@ function WorkbenchContent() {
         </p>
       </div>
 
-      {/* Notice: ops-requires-trip — shown when /workbench?tab=ops is opened without a trip */}
-      {getSearchParam('notice') === 'ops-requires-trip' && (
-        <div data-testid="ops-requires-trip-notice" className="mx-6 mt-4 rounded-xl border border-[#30363d] bg-[#0f1115] px-5 py-3">
-          <p className="text-sm text-[#8b949e]">
-            Booking operations are available after a trip reaches proposal or booking stage. Select a trip to continue.
-          </p>
-        </div>
-      )}
-
       {/* Persistent blocked-state banner */}
       {store.result_validation && (
         store.result_validation.is_valid === false ||
@@ -799,13 +838,15 @@ function WorkbenchContent() {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h3 className="text-ui-sm font-semibold text-[#f85149]">
-                    {validationLabelFor(store.result_validation.gate || store.result_validation.stage, 'alert_title')}
+                    {validationNeedsInput
+                      ? 'Trip Details Need Your Input'
+                      : validationLabelFor(validationGateOrStage, 'alert_title')}
                   </h3>
                   <p className="text-ui-xs text-[#ffa198] mt-0.5">
                     {store.result_validation.reasons?.length
                       ? store.result_validation.reasons.join("; ")
-                      : "Some details need attention."}
-                    {" "}Check the <button
+                    : "This run is incomplete, but your draft is saved. "}
+                    Add the missing details and then return to this trip. {" "}Check the <button
                       onClick={() => handleTabChange('packet')}
                       className="text-[#58a6ff] underline hover:no-underline font-medium inline"
                     >Trip Details</button> tab for specifics.
@@ -816,7 +857,7 @@ function WorkbenchContent() {
                     onClick={() => handleTabChange('packet')}
                     className="px-3 py-1.5 bg-[#f85149]/10 border border-[#f85149]/30 text-[#f85149] text-ui-xs font-medium rounded-md hover:bg-[#f85149]/20 transition-colors"
                   >
-                    View Details
+                    Review Missing Fields
                   </button>
                   <button
                     onClick={() => handleTabChange('intake')}
@@ -896,9 +937,9 @@ function WorkbenchContent() {
                 Failed to load draft: {draftError}
               </p>
             )}
-            {store.result_run_ts && (
+            {trip?.updatedAt && (
               <p className='text-ui-xs text-[#8b949e] mt-1'>
-                Last processed: <ClientDateTime value={store.result_run_ts} />
+                Last processed: <ClientDateTime value={trip.updatedAt} />
               </p>
             )}
           </div>
@@ -912,7 +953,7 @@ function WorkbenchContent() {
                   spineRunState.validation.status === "BLOCKED"
                 ) ? (
                   <div className='flex flex-col'>
-                    <span className='font-medium'>Validation failed</span>
+                    <span className='font-medium'>We need a quick follow-up from the traveler</span>
                     <span className='text-ui-xs text-[#ffa198]'>
                       {spineRunState.validation.reasons?.length
                         ? spineRunState.validation.reasons.join("; ")
@@ -1021,6 +1062,7 @@ function WorkbenchContent() {
                   resetSpine();
                   setCompletedTripId(null);
                 }}
+                onViewFrontier={showFrontier ? () => handleTabChange('frontier') : undefined}
                 onFixDetails={() => {
                   resetSpine();
                   handleTabChange(showPacket ? 'packet' : 'intake');
@@ -1131,6 +1173,8 @@ function WorkbenchContent() {
             <Suspense fallback={<InlineLoading message='Loading…' />}>
               {effectiveTab === 'safety' ? (
                 <SafetyTab trip={trip} />
+              ) : effectiveTab === 'frontier' ? (
+                <FrontierDashboard />
               ) : effectiveTab === 'packet' ? (
                 <PacketTab trip={trip} />
               ) : (

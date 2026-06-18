@@ -3,7 +3,9 @@ import {
   acceptDocument,
   applyExtraction,
   createBookingTask,
+  createSeasonalCampaign,
   deleteDocument,
+  deleteSeasonalCampaign,
   extractDocument,
   getDocumentDownloadUrl,
   getDocuments,
@@ -12,15 +14,32 @@ import {
   getOverride,
   getOverrides,
   getPaymentsQueue,
+  getSeasonalCampaign,
   listDrafts,
+  listSeasonalCampaigns,
   rejectDocument,
   rejectExtraction,
   reassessTrip,
+  preflightSeasonalCampaign,
+  type AgencySettingsResponse,
+  type CreateSeasonalCampaignRequest,
+  type SeasonalCampaign,
+  type SeasonalCampaignListResponse,
+  simulateSeasonalCampaign,
+  dispatchSeasonalCampaign,
+  type UpdateSeasonalCampaignRequest,
+  updateAgencyAutonomy,
+  updateAgencyOperational,
+  updateAgencySeasonal,
+  updateSeasonalCampaign,
   uploadDocument,
   type AnalyticsPipelineStage,
   type ApiError,
   type ApplyConflict,
   type BookingPayer,
+  type UpdateAgencyAutonomyRequest,
+  type UpdateAgencyOperationalRequest,
+  type UpdateAgencySeasonalRequest,
   type BookingTaskCreateRequest,
   type DraftSummary,
   type ExplicitReassessRequest,
@@ -42,6 +61,111 @@ describe('api-client public contract surface', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it('keeps settings update endpoints wired to canonical paths and payloads', async () => {
+    const fetchMock = vi.mocked(fetch);
+    const operationalRequest: UpdateAgencyOperationalRequest = {
+      agency_name: 'Updated Agency',
+      target_margin_pct: 24.5,
+      default_currency: 'USD',
+      operating_hours_start: '08:00',
+      operating_hours_end: '18:00',
+      operating_days: ['monday'],
+      preferred_channels: ['email'],
+      brand_tone: 'warm',
+    };
+    const autonomyRequest: UpdateAgencyAutonomyRequest = {
+      allow_explicit_reassess: false,
+      approval_gates: { DRAFT: 'auto' },
+    };
+    const seasonalRequest: UpdateAgencySeasonalRequest = {
+      quarterly_recalibration_enabled: false,
+      weather_risk_threshold: 1.5,
+    };
+    const agencySettingsResponse: AgencySettingsResponse = {
+      agency_id: 'waypoint-hq',
+      profile: {
+        agency_name: 'Updated Agency',
+        sub_brand: '',
+        plan_label: 'standard',
+        contact_email: 'ops@waypoint.travel',
+        contact_phone: '',
+        logo_url: '',
+        website: 'https://waypoint.travel',
+      },
+      operational: {
+        target_margin_pct: 24.5,
+        default_currency: 'USD',
+        operating_hours: { start: '08:00', end: '18:00' },
+        operating_days: ['monday'],
+        preferred_channels: ['email'],
+        brand_tone: 'warm',
+      },
+      autonomy: {
+        approval_gates: {
+          STOP_NEEDS_REVIEW: 'block',
+          DRAFT: 'auto',
+          PROPOSAL: 'review',
+        },
+        mode_overrides: {},
+        auto_proceed_with_warnings: true,
+        learn_from_overrides: false,
+        auto_reprocess_on_edit: false,
+        allow_explicit_reassess: false,
+        auto_reprocess_stages: {
+          discovery: true,
+          shortlist: false,
+          proposal: false,
+          booking: true,
+        },
+        min_proceed_confidence: 0.72,
+        min_draft_confidence: 0.64,
+      },
+      seasonal: {
+        active_seasons_enabled: true,
+        default_quarter_window_months: 6,
+        channel_mix: { direct: 0.4, partner: 0.6 },
+        weather_risk_threshold: 1.5,
+        budget_guardrail_multiplier: 1.2,
+        micro_seasonality_window_days: 90,
+        quarterly_recalibration_enabled: false,
+        prelaunch_blocklist: [],
+      },
+    };
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(agencySettingsResponse));
+    await updateAgencyOperational(operationalRequest);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/settings/operational',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify(operationalRequest),
+        credentials: 'include',
+      }),
+    );
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(agencySettingsResponse));
+    await updateAgencyAutonomy(autonomyRequest);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/settings/autonomy',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify(autonomyRequest),
+        credentials: 'include',
+      }),
+    );
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(agencySettingsResponse));
+    await updateAgencySeasonal(seasonalRequest);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/settings/seasonal',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify(seasonalRequest),
+        credentials: 'include',
+      }),
+    );
   });
 
   it('keeps override, reassessment, draft, and booking-task endpoints wired to canonical BFF paths', async () => {
@@ -162,6 +286,108 @@ describe('api-client public contract surface', () => {
     expect(fetchMock).toHaveBeenLastCalledWith(
       '/api/trips/trip-1/documents/doc-1/extraction/reject',
       expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('keeps seasonal campaign endpoints wired to canonical BFF paths and shapes', async () => {
+    const fetchMock = vi.mocked(fetch);
+    const createRequest: CreateSeasonalCampaignRequest = { name: 'Regression Campaign' };
+    const campaign: SeasonalCampaign = {
+      plan_id: 'campaign-1',
+      name: 'Regression Campaign',
+      status: 'draft',
+      destination: null,
+      campaign_window_start_month: null,
+      campaign_window_end_month: null,
+      channel_mix: {},
+      target_budget_min: null,
+      target_budget_max: null,
+      notes: null,
+      blocklist: [],
+      created_by: null,
+      is_recalibrated: false,
+      score: null,
+      created_at: null,
+      updated_at: null,
+    };
+    const updateRequest: UpdateSeasonalCampaignRequest = { status: 'active', destination: 'Barcelona' };
+    const listResponse: SeasonalCampaignListResponse = { items: [campaign], total: 1 };
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(campaign));
+    await createSeasonalCampaign(createRequest);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/settings/seasonal/campaigns',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify(createRequest),
+        credentials: 'include',
+      }),
+    );
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(listResponse));
+    await listSeasonalCampaigns();
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/settings/seasonal/campaigns',
+      expect.objectContaining({ method: 'GET', credentials: 'include' }),
+    );
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(campaign));
+    await getSeasonalCampaign('campaign-1');
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/settings/seasonal/campaigns/campaign-1',
+      expect.objectContaining({ method: 'GET', credentials: 'include' }),
+    );
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(campaign));
+    await updateSeasonalCampaign('campaign-1', updateRequest);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/settings/seasonal/campaigns/campaign-1',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify(updateRequest),
+        credentials: 'include',
+      }),
+    );
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true, plan_id: 'campaign-1' }));
+    await deleteSeasonalCampaign('campaign-1');
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/settings/seasonal/campaigns/campaign-1',
+      expect.objectContaining({ method: 'DELETE', credentials: 'include' }),
+    );
+  });
+
+  it('keeps seasonal campaign control endpoints wired to canonical BFF paths', async () => {
+    const fetchMock = vi.mocked(fetch);
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ plan_id: 'campaign-1', projected_leads: 120, projected_bookings: 14, projected_margin_pct: 18.2, confidence: 0.81, scenario: 'baseline', notes: [] }));
+    await simulateSeasonalCampaign('campaign-1', 'baseline');
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/settings/seasonal/campaigns/campaign-1/simulate',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ scenario: 'baseline' }),
+      }),
+    );
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ plan_id: 'campaign-1', ok: true, checks: [], risk_score: 0.22 }));
+    await preflightSeasonalCampaign('campaign-1');
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/settings/seasonal/campaigns/campaign-1/preflight',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'include',
+      }),
+    );
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ plan_id: 'campaign-1', ok: false, dry_run: true, executed_at: '2026-06-17T00:00:00Z', dispatched_channels: ['email'] }));
+    await dispatchSeasonalCampaign('campaign-1', false);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/settings/seasonal/campaigns/campaign-1/dispatch',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ dry_run: false }),
+      }),
     );
   });
 

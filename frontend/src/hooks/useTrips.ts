@@ -22,6 +22,31 @@ const QK = {
 
 const DEFAULT_STALE_TIME = 30_000;
 
+function isRecordLike(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
+function asTripStats(value: unknown): TripStats | null {
+  if (!isRecordLike(value)) return null;
+
+  const { active, pendingReview, readyToBook, needsAttention } = value;
+
+  if (
+    typeof active !== "number" ||
+    typeof pendingReview !== "number" ||
+    typeof readyToBook !== "number" ||
+    typeof needsAttention !== "number"
+  ) {
+    return null;
+  }
+
+  return { active, pendingReview, readyToBook, needsAttention };
+}
+
 export function useTrips(params?: {
   state?: string;
   limit?: number;
@@ -76,7 +101,12 @@ export function useTripStats() {
     staleTime: DEFAULT_STALE_TIME,
   });
 
-  return { data: query.data ?? null, isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch };
+  return {
+    data: asTripStats(query.data),
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: query.refetch,
+  };
 }
 
 export function useUpdateTrip() {
@@ -148,5 +178,10 @@ export function usePipeline() {
     staleTime: DEFAULT_STALE_TIME,
   });
 
-  return { data: query.data ?? [], isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch };
+  return {
+    data: asArray<PipelineStage>(query.data as unknown),
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: query.refetch,
+  };
 }

@@ -257,6 +257,58 @@ describe('IntakePanel', () => {
     expect(screen.getAllByRole('button', { name: /Draft follow-up/i }).length).toBeGreaterThanOrEqual(1);
   });
 
+  it('shows a saved-next-step hint after saving a planning field', async () => {
+    const user = userEvent.setup();
+    mockSaveTrip.mockResolvedValueOnce({
+      id: 'TRIP-123',
+      destination: 'Singapore',
+      type: 'Vacation',
+      budget: '$5000',
+      party: '2',
+      dateWindow: 'Next month',
+      age: '1d',
+      state: 'blue',
+      status: 'incomplete',
+      validation: {
+        warnings: [
+          {
+            severity: 'warning',
+            code: 'ORIGIN_CITY_MISSING',
+            message: 'Field origin_city missing',
+            field: 'origin_city',
+          },
+        ],
+      },
+    } as any);
+
+    render(
+      <IntakePanel
+        tripId="TRIP-123"
+        trip={{
+          id: 'TRIP-123',
+          destination: 'Singapore',
+          type: 'Vacation',
+          origin: '',
+          budget: '',
+          party: 2,
+          dateWindow: 'Next month',
+          age: '1d',
+          state: 'blue',
+          status: 'incomplete',
+        } as any}
+      />
+    );
+
+    await user.click(screen.getAllByRole('button', { name: /Add budget/i })[0]);
+    const budgetInput = screen.getByPlaceholderText('Approximate budget');
+    await user.clear(budgetInput);
+    await user.type(budgetInput, '5000');
+    await user.click(screen.getByRole('button', { name: /Save budget/i }));
+
+    expect(await screen.findByText(/Saved Budget range\. Next: Origin city\./i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Continue to Origin city/i })).toBeInTheDocument();
+  });
+
   it('prioritizes missing-customer-details workflow above generic notes when planning is blocked', () => {
     render(
       <IntakePanel

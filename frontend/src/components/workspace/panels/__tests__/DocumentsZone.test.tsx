@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DocumentsZone from '../DocumentsZone';
+import { useAuthStore } from '@/stores/auth';
 
 const mockApi = {
   getDocuments: vi.fn(),
@@ -14,6 +15,27 @@ const mockApi = {
   applyExtraction: vi.fn(),
   rejectExtraction: vi.fn(),
 };
+
+function createAuthState(role: 'owner' | 'viewer' | null = 'owner') {
+  const baseState = {
+    user: null,
+    agency: null,
+    membership: role ? { role, isPrimary: true } : null,
+    isAuthenticated: Boolean(role),
+    isLoading: false,
+    error: null,
+    setAuth: vi.fn(),
+    logout: vi.fn(),
+    hydrate: vi.fn(),
+    clearError: vi.fn(),
+  };
+
+  vi.mocked(useAuthStore).mockImplementation((selector) => selector(baseState as never));
+}
+
+vi.mock('@/stores/auth', () => ({
+  useAuthStore: vi.fn(),
+}));
 
 vi.mock('@/lib/api-client', () => ({
   getDocuments: (...args: unknown[]) => mockApi.getDocuments(...args),
@@ -56,6 +78,7 @@ describe('DocumentsZone', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockApi.getDocuments.mockResolvedValue({ documents: [] });
+    createAuthState('owner');
   });
 
   it('renders document section container', async () => {
@@ -144,6 +167,22 @@ describe('DocumentsZone', () => {
 
     await waitFor(() => {
       expect(mockApi.deleteDocument).toHaveBeenCalledWith('trip_1', 'doc_1');
+    });
+  });
+
+  it('hides document actions for viewer role', async () => {
+    mockApi.getDocuments.mockResolvedValue({
+      documents: [docFixture('doc_1', 'accepted')],
+    });
+    createAuthState('viewer');
+
+    render(<DocumentsZone tripId="trip_1" canUpload={true} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ops-document-doc_1')).toBeInTheDocument();
+      expect(screen.queryByTestId('ops-document-upload-btn')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('ops-document-doc_1-delete-btn')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('ops-document-doc_1-download-btn')).not.toBeInTheDocument();
     });
   });
 

@@ -1,19 +1,6 @@
 import React from 'react';
 import { useWorkbenchStore } from '@/stores/workbench';
-
-interface FrontierResult {
-  ghost_triggered?: boolean;
-  ghost_workflow_id?: string;
-  sentiment_score?: number;
-  anxiety_alert?: boolean;
-  intelligence_hits?: Array<{ message?: string; type?: string; source?: string; severity?: string }>;
-  specialty_knowledge?: Array<{ topic?: string; detail?: string }>;
-  mitigation_applied?: boolean;
-  requires_manual_audit?: boolean;
-  audit_reason?: string;
-  negotiation_active?: boolean;
-  negotiation_logs?: Array<{ step?: string; outcome?: string }>;
-}
+import type { FrontierOrchestrationResult } from '@/types/spine';
 
 interface FrontierDashboardProps {
   /** Fallback packet ID - used when no store data available */
@@ -23,7 +10,7 @@ interface FrontierDashboardProps {
 export const FrontierDashboard: React.FC<FrontierDashboardProps> = ({
   packetId,
 }) => {
-  const resultFrontier = useWorkbenchStore((s) => s.result_frontier) as FrontierResult | null;
+  const resultFrontier = useWorkbenchStore((s) => s.result_frontier) as FrontierOrchestrationResult | null;
   const resultPacket = useWorkbenchStore((s) => s.result_packet) as { packet_id?: string } | null;
 
   // Derive from store, with null-safe defaults
@@ -38,6 +25,7 @@ export const FrontierDashboard: React.FC<FrontierDashboardProps> = ({
   const activePacketId = packetId ?? resultPacket?.packet_id ?? '-';
 
   const hasRealData = resultFrontier !== null && resultFrontier !== undefined;
+  const specialtyKnowledge = frontier.specialty_knowledge ?? [];
 
   return (
     <div className="bento-grid animate-fade-in">
@@ -111,6 +99,40 @@ export const FrontierDashboard: React.FC<FrontierDashboardProps> = ({
           )) : (
             <p className="text-ui-sm text-secondary italic">
               {hasRealData ? 'No active risks detected in this sector.' : 'Run a pipeline to see federated intelligence.'}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* 3b. Specialty Knowledge */}
+      <div className="bento-item col-span-1 md:col-span-2">
+        <h3 className="text-ui-xs font-mono text-tertiary mb-2 uppercase tracking-widest">Specialty Intelligence</h3>
+        <div className="space-y-3">
+          {specialtyKnowledge.length > 0 ? (
+            specialtyKnowledge.map((knowledge, index) => (
+              <div
+                key={`specialty-${knowledge.niche || index}`}
+                className="p-2 bg-lg-glass-bg rounded-lg border border-lg-glass-border"
+              >
+                <p className="text-ui-sm font-medium">{knowledge.niche || 'Specialty domain'}</p>
+                {!!knowledge.urgency && (
+                  <p className="text-ui-xs text-muted">Urgency: {knowledge.urgency}</p>
+                )}
+                {!!knowledge.safety_notes && (
+                  <p className="text-ui-xs text-accent-blue mt-1">Safety: {knowledge.safety_notes}</p>
+                )}
+                {!!knowledge.checklists?.length && (
+                  <ul className="text-ui-xs text-secondary mt-1 list-disc pl-4">
+                    {knowledge.checklists.map((item, itemIndex) => (
+                      <li key={`${knowledge.niche ?? "specialty"}-${itemIndex}`}>{item}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))
+          ) : (
+            <p className="text-ui-sm text-secondary italic">
+              No specialty intelligence items are available yet.
             </p>
           )}
         </div>

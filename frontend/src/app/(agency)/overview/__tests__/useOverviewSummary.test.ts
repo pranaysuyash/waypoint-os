@@ -357,8 +357,8 @@ describe('useOverviewSummary', () => {
 
     const { result } = renderHook(() => useOverviewSummary());
     expect(result.current.actionRequiredItems.map((item) => item.source)).toEqual([
-      'trip',
       'quote',
+      'trip',
       'lead',
     ]);
   });

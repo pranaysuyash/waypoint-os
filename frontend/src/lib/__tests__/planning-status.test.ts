@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { Trip } from "@/lib/api-client";
 import {
   canAccessPlanningStage,
+  canAccessOpsWorkspace,
+  isOpsWorkspaceStage,
   getPlanningBriefStatus,
   getPlanningFollowUpDraft,
   getPlanningLockedTabHint,
@@ -139,5 +141,29 @@ describe("planning-status", () => {
     expect(getPlanningNextAction(trip)).toBe("Next: confirm budget before building options.");
     expect(getPlanningFollowUpDraft(trip)).toContain("your approximate budget range");
     expect(getPlanningFollowUpDraft(trip)).not.toContain("your departure city");
+  });
+
+  it("defines ops workspace eligibility by stage, not by trip blockers", () => {
+    const blockedTrip = makeTrip({
+      decision: {
+        decision_state: "ASK_FOLLOWUP",
+        hard_blockers: ["incomplete_intake"],
+        soft_blockers: ["incomplete_intake"],
+        contradictions: [],
+        risk_flags: [],
+        follow_up_questions: [],
+        branch_options: [],
+        rationale: {} as any,
+        confidence: {} as any,
+        commercial_decision: "NONE",
+        budget_breakdown: null,
+      } as any,
+      stage: "proposal",
+    });
+
+    expect(isOpsWorkspaceStage("proposal")).toBe(true);
+    expect(isOpsWorkspaceStage("booking")).toBe(true);
+    expect(isOpsWorkspaceStage("discovery")).toBe(false);
+    expect(canAccessOpsWorkspace(blockedTrip)).toBe(true);
   });
 });

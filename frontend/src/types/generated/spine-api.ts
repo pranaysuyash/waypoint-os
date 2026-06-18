@@ -452,6 +452,7 @@ export interface RunStatusResponse {
   }[];
   hard_blockers?: string[];
   soft_blockers?: string[];
+  frontier_result?: FrontierOrchestrationResult | null;
 }
 export interface SafetyResult {
   strict_leakage?: boolean;

@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import Link from 'next/link';
 import { useTripContext } from '@/contexts/TripContext';
 import OpsPanel from '@/app/(agency)/workbench/OpsPanel';
+import { canAccessOpsWorkspace } from '@/lib/planning-status';
 import { getTripRoute } from '@/lib/routes';
 
 const MIGRATION_BANNER_KEY = 'waypoint:ops-migration-banner-dismissed:v1';
@@ -55,7 +56,7 @@ export default function OpsPageClient() {
 
   if (!tripId || !trip) return null;
 
-  const canAccessOps = trip.stage === 'proposal' || trip.stage === 'booking';
+  const canAccessOps = canAccessOpsWorkspace(trip);
 
   if (!canAccessOps) {
     return (

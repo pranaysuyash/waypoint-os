@@ -57,14 +57,14 @@ describe("CaptureCallPanel", () => {
     expect(followUpInput.value).toBeTruthy();
 
     expect(screen.getByRole("button", { name: /Cancel/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Save/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Save Draft/i })).toBeInTheDocument();
   });
 
   // Test 2: Save button is disabled if raw_note is empty
   it("disables save button when raw_note is empty", () => {
     render(<CaptureCallPanel {...defaultProps} />);
 
-    const saveButton = screen.getByRole("button", { name: /Save/i });
+    const saveButton = screen.getByRole("button", { name: /Save Draft/i });
     expect(saveButton).toBeDisabled();
   });
 
@@ -76,7 +76,7 @@ describe("CaptureCallPanel", () => {
     const rawNoteInput = screen.getByLabelText("What did the customer tell you?");
     await user.type(rawNoteInput, "Family wants to explore Japan");
 
-    const saveButton = screen.getByRole("button", { name: /Save/i });
+    const saveButton = screen.getByRole("button", { name: /Save Draft/i });
     expect(saveButton).not.toBeDisabled();
   });
 
@@ -85,7 +85,7 @@ describe("CaptureCallPanel", () => {
     const user = userEvent.setup();
     render(<CaptureCallPanel {...defaultProps} />);
 
-    const saveButton = screen.getByRole("button", { name: /Save/i });
+    const saveButton = screen.getByRole("button", { name: /Save Draft/i });
     
     // Button should be disabled because raw_note is empty
     expect(saveButton).toBeDisabled();
@@ -168,7 +168,7 @@ describe("CaptureCallPanel", () => {
     await user.type(rawNoteInput, "Family of 4 wants to explore Japan");
     await user.type(ownerNoteInput, "Budget concerns mentioned");
 
-    const saveButton = screen.getByRole("button", { name: /Save/i });
+    const saveButton = screen.getByRole("button", { name: /Save Draft/i });
     fireEvent.click(saveButton);
 
     await waitFor(() => {
@@ -201,7 +201,7 @@ describe("CaptureCallPanel", () => {
     await user.type(rawNoteInput, "Test data");
     await user.type(ownerNoteInput, "Test owner note");
 
-    const saveButton = screen.getByRole("button", { name: /Save/i });
+    const saveButton = screen.getByRole("button", { name: /Save Draft/i });
     fireEvent.click(saveButton);
 
     await waitFor(() => {
@@ -264,11 +264,11 @@ describe("CaptureCallPanel", () => {
     const rawNoteInput = screen.getByLabelText("What did the customer tell you?");
     await user.type(rawNoteInput, "Family wants Japan");
 
-    const saveButton = screen.getByRole("button", { name: /Save/i });
+    const saveButton = screen.getByRole("button", { name: /Save Draft/i });
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Saving/i })).toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: /Saving/i })).toHaveLength(2);
       expect(saveButton).toBeDisabled();
     });
 
@@ -293,7 +293,7 @@ describe("CaptureCallPanel", () => {
     const rawNoteInput = screen.getByLabelText("What did the customer tell you?");
     await user.type(rawNoteInput, "Family wants Japan");
 
-    const saveButton = screen.getByRole("button", { name: /Save/i });
+    const saveButton = screen.getByRole("button", { name: /Save Draft/i });
     fireEvent.click(saveButton);
 
     await waitFor(() => {
@@ -316,7 +316,7 @@ describe("CaptureCallPanel", () => {
     const rawNoteInput = screen.getByLabelText("What did the customer tell you?");
     await user.type(rawNoteInput, "Just the raw note");
 
-    const saveButton = screen.getByRole("button", { name: /Save/i });
+    const saveButton = screen.getByRole("button", { name: /Save Draft/i });
     fireEvent.click(saveButton);
 
     await waitFor(() => {
@@ -342,7 +342,7 @@ describe("CaptureCallPanel", () => {
     const rawNoteInput = screen.getByLabelText("What did the customer tell you?");
     await user.type(rawNoteInput, "   ");
 
-    const saveButton = screen.getByRole("button", { name: /Save/i });
+    const saveButton = screen.getByRole("button", { name: /Save Draft/i });
     expect(saveButton).toBeDisabled();
     expect(mockCreateTrip).not.toHaveBeenCalled();
   });
@@ -363,7 +363,7 @@ describe("CaptureCallPanel", () => {
     // Clear the follow-up date
     fireEvent.change(followUpInput, { target: { value: "" } });
 
-    const saveButton = screen.getByRole("button", { name: /Save/i });
+    const saveButton = screen.getByRole("button", { name: /Save Draft/i });
     fireEvent.click(saveButton);
 
     await waitFor(() => {
@@ -396,7 +396,7 @@ describe("CaptureCallPanel", () => {
     const rawNoteInput = screen.getByLabelText("What did the customer tell you?");
     await user.type(rawNoteInput, "Test");
 
-    const saveButton = screen.getByRole("button", { name: /Save/i });
+    const saveButton = screen.getByRole("button", { name: /Save Draft/i });
     fireEvent.click(saveButton);
 
     await waitFor(() => {
@@ -487,7 +487,7 @@ describe("CaptureCallPanel", () => {
     const rawNoteInput = screen.getByLabelText("What did the customer tell you?");
     await user.type(rawNoteInput, "Customer wants to travel");
 
-    const saveButton = screen.getByRole("button", { name: /Save/i });
+    const saveButton = screen.getByRole("button", { name: /Save Draft/i });
     fireEvent.click(saveButton);
 
     await waitFor(() => {
@@ -530,7 +530,7 @@ describe("CaptureCallPanel", () => {
     await user.selectOptions(leadSelect, "referral");
     await user.type(activityInput, "hiking, museums");
 
-    const saveButton = screen.getByRole("button", { name: /Save/i });
+    const saveButton = screen.getByRole("button", { name: /Save Draft/i });
     fireEvent.click(saveButton);
 
     await waitFor(() => {
@@ -588,7 +588,7 @@ describe("CaptureCallPanel", () => {
     await user.type(partyInput, "Solo traveler");
     await user.selectOptions(paceSelect, "rushed");
 
-    const saveButton = screen.getByRole("button", { name: /Save/i });
+    const saveButton = screen.getByRole("button", { name: /Save Draft/i });
     fireEvent.click(saveButton);
 
     await waitFor(() => {
@@ -652,7 +652,7 @@ describe("CaptureCallPanel", () => {
     await user.type(partyInput, "  2 adults, 1 child  ");
     await user.type(activityInput, "  hiking, museums  ");
 
-    const saveButton = screen.getByRole("button", { name: /Save/i });
+    const saveButton = screen.getByRole("button", { name: /Save Draft/i });
     fireEvent.click(saveButton);
 
     await waitFor(() => {
@@ -677,7 +677,7 @@ describe("CaptureCallPanel", () => {
     await user.type(partyInput, "2 adults");
     await user.selectOptions(paceSelect, "normal");
 
-    const saveButton = screen.getByRole("button", { name: /Save/i });
+    const saveButton = screen.getByRole("button", { name: /Save Draft/i });
     // Save button should still be disabled because raw_note is empty
     expect(saveButton).toBeDisabled();
 

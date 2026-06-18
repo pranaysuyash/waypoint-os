@@ -41,16 +41,10 @@ ConfigStore = persistence.ConfigStore
 router = APIRouter()
 
 
-@router.get("/api/settings")
-def get_agency_settings(
-    agency_id: str = "waypoint-hq",
-    _perm=require_permission("settings:read"),
-):
-    """Return the complete agency configuration (profile + operational + autonomy)."""
-    settings = AgencySettingsStore.load(agency_id)
+def _build_agency_settings_payload(settings) -> dict:
     return {
         "agency_id": settings.agency_id,
-        "seasonal": ConfigStore.get_seasonal_policy(agency_id),
+        "seasonal": ConfigStore.get_seasonal_policy(settings.agency_id),
         "profile": {
             "agency_name": settings.agency_name,
             "sub_brand": settings.sub_brand,
@@ -85,6 +79,15 @@ def get_agency_settings(
     }
 
 
+@router.get("/api/settings")
+def get_agency_settings(
+    agency_id: str = "waypoint-hq",
+    _perm=require_permission("settings:read"),
+):
+    settings = AgencySettingsStore.load(agency_id)
+    return _build_agency_settings_payload(settings)
+
+
 @router.post("/api/settings/operational")
 def update_agency_operational_settings(
     request: UpdateOperationalSettings,
@@ -96,78 +99,40 @@ def update_agency_operational_settings(
     Only fields provided in the request are modified; others remain unchanged.
     """
     settings = AgencySettingsStore.load(agency_id)
-    changes: list[str] = []
 
     if request.agency_name is not None:
         settings.agency_name = request.agency_name
-        changes.append("agency_name")
     if request.sub_brand is not None:
         settings.sub_brand = request.sub_brand
-        changes.append("sub_brand")
     if request.plan_label is not None:
         settings.plan_label = request.plan_label
-        changes.append("plan_label")
     if request.contact_email is not None:
         settings.contact_email = request.contact_email
-        changes.append("contact_email")
     if request.contact_phone is not None:
         settings.contact_phone = request.contact_phone
-        changes.append("contact_phone")
     if request.logo_url is not None:
         settings.logo_url = request.logo_url
-        changes.append("logo_url")
     if request.website is not None:
         settings.website = request.website
-        changes.append("website")
 
     if request.target_margin_pct is not None:
         settings.target_margin_pct = request.target_margin_pct
-        changes.append("target_margin_pct")
     if request.default_currency is not None:
         settings.default_currency = request.default_currency
-        changes.append("default_currency")
     if request.operating_hours_start is not None:
         settings.operating_hours_start = request.operating_hours_start
-        changes.append("operating_hours_start")
     if request.operating_hours_end is not None:
         settings.operating_hours_end = request.operating_hours_end
-        changes.append("operating_hours_end")
     if request.operating_days is not None:
         settings.operating_days = request.operating_days
-        changes.append("operating_days")
     if request.preferred_channels is not None:
         settings.preferred_channels = request.preferred_channels
-        changes.append("preferred_channels")
     if request.brand_tone is not None:
         settings.brand_tone = request.brand_tone
-        changes.append("brand_tone")
 
     AgencySettingsStore.save(settings)
 
-    return {
-        "agency_id": settings.agency_id,
-        "changes": changes,
-        "profile": {
-            "agency_name": settings.agency_name,
-            "sub_brand": settings.sub_brand,
-            "plan_label": settings.plan_label,
-            "contact_email": settings.contact_email,
-            "contact_phone": settings.contact_phone,
-            "logo_url": settings.logo_url,
-            "website": settings.website,
-        },
-        "operational": {
-            "target_margin_pct": settings.target_margin_pct,
-            "default_currency": settings.default_currency,
-            "operating_hours": {
-                "start": settings.operating_hours_start,
-                "end": settings.operating_hours_end,
-            },
-            "operating_days": settings.operating_days,
-            "preferred_channels": settings.preferred_channels,
-            "brand_tone": settings.brand_tone,
-        },
-    }
+    return _build_agency_settings_payload(settings)
 
 
 @router.get("/api/settings/autonomy")
@@ -203,7 +168,6 @@ def update_agency_autonomy_settings(
     """
     settings = AgencySettingsStore.load(agency_id)
     policy = settings.autonomy
-    changes: list[str] = []
 
     if request.approval_gates is not None:
         for state, action in request.approval_gates.items():
@@ -218,30 +182,24 @@ def update_agency_autonomy_settings(
                     detail=f"Invalid action '{action}' for state '{state}'. Must be auto|review|block.",
                 )
             policy.approval_gates[state] = action
-        changes.append("approval_gates")
 
     if request.mode_overrides is not None:
         policy.mode_overrides = {
             k: dict(v) if isinstance(v, dict) else {}
             for k, v in request.mode_overrides.items()
         }
-        changes.append("mode_overrides")
 
     if request.auto_proceed_with_warnings is not None:
         policy.auto_proceed_with_warnings = request.auto_proceed_with_warnings
-        changes.append("auto_proceed_with_warnings")
 
     if request.learn_from_overrides is not None:
         policy.learn_from_overrides = request.learn_from_overrides
-        changes.append("learn_from_overrides")
 
     if request.auto_reprocess_on_edit is not None:
         policy.auto_reprocess_on_edit = request.auto_reprocess_on_edit
-        changes.append("auto_reprocess_on_edit")
 
     if request.allow_explicit_reassess is not None:
         policy.allow_explicit_reassess = request.allow_explicit_reassess
-        changes.append("allow_explicit_reassess")
 
     if request.auto_reprocess_stages is not None:
         allowed_stages = {"discovery", "shortlist", "proposal", "booking"}
@@ -253,21 +211,10 @@ def update_agency_autonomy_settings(
         for stage in allowed_stages:
             sanitized.setdefault(stage, policy.auto_reprocess_stages.get(stage, True))
         policy.auto_reprocess_stages = sanitized
-        changes.append("auto_reprocess_stages")
 
     AgencySettingsStore.save(settings)
 
-    return {
-        "agency_id": settings.agency_id,
-        "approval_gates": policy.approval_gates,
-        "mode_overrides": policy.mode_overrides,
-        "auto_proceed_with_warnings": policy.auto_proceed_with_warnings,
-        "learn_from_overrides": policy.learn_from_overrides,
-        "auto_reprocess_on_edit": policy.auto_reprocess_on_edit,
-        "allow_explicit_reassess": policy.allow_explicit_reassess,
-        "auto_reprocess_stages": policy.auto_reprocess_stages,
-        "changes": changes,
-    }
+    return _build_agency_settings_payload(settings)
 
 
 def _to_float(value) -> Optional[float]:
@@ -342,8 +289,10 @@ def update_agency_seasonal_settings(
     payload = request.model_dump(exclude_none=True)
     if not payload:
         payload = {}
-    updated = ConfigStore.update_seasonal_policy(agency_id, payload)
-    return AgencySeasonalSettingsResponse(**updated)
+    ConfigStore.update_seasonal_policy(agency_id, payload)
+    return _build_agency_settings_payload(
+        AgencySettingsStore.load(agency_id)
+    )
 
 
 @router.get("/api/settings/seasonal/campaigns", response_model=SeasonalCampaignListResponse)

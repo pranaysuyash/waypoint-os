@@ -165,6 +165,7 @@ class RunStatusResponse(BaseModel):
     follow_up_questions: List[Dict[str, Any]] = Field(default_factory=list)
     hard_blockers: List[str] = Field(default_factory=list)
     soft_blockers: List[str] = Field(default_factory=list)
+    frontier_result: Optional[FrontierOrchestrationResult] = None
 
 
 class PublicCheckerArtifactUpload(BaseModel):
@@ -669,6 +670,20 @@ class TripResponse(BaseModel):
                 return None
             return v
 
+        def _clean_text_value(value: Any) -> Optional[str]:
+            if value is None:
+                return None
+            if isinstance(value, list):
+                joined = ", ".join(
+                    item.strip() for item in value if isinstance(item, str) and item.strip()
+                )
+                return _clean_str(joined or None)
+            if isinstance(value, (int, float, bool)):
+                return _clean_str(str(value))
+            if isinstance(value, str):
+                return _clean_str(value.strip())
+            return None
+
         return cls(
             id=trip_id,
             status=trip.get("status", "new"),
@@ -689,15 +704,13 @@ class TripResponse(BaseModel):
             date_year_confidence=trip.get("date_year_confidence") or None,
             lead_source=trip.get("lead_source") or None,
             activity_provenance=trip.get("activity_provenance") or None,
-            trip_priorities=(
+            trip_priorities=_clean_text_value(
                 trip.get("trip_priorities")
                 or _get_nested(trip, "extracted.facts.trip_priorities.value", None)
-                or None
             ),
-            date_flexibility=(
+            date_flexibility=_clean_text_value(
                 trip.get("date_flexibility")
                 or _get_nested(trip, "extracted.facts.date_flexibility.value", None)
-                or None
             ),
         )
 

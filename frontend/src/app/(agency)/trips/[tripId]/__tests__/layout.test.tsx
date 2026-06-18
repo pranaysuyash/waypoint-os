@@ -130,6 +130,7 @@ describe("trips/[tripId]/layout", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Bali family trip" })).toBeInTheDocument();
+    expect(screen.getByText(/last updated/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Intake" })).toHaveAttribute(
       "aria-current",
       "page",

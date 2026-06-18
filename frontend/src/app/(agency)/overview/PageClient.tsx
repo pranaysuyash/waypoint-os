@@ -532,6 +532,7 @@ function OverviewPageContent() {
     () => Object.entries(STATE_META) as [StateKey, StateMeta][],
     []
   );
+  const featuredAction = actionRequiredItems[0] ?? null;
   const { get } = searchParams;
   const systemCheckOpen = get.call(searchParams, 'panel') === 'system-check';
   const closeSystemCheck = () => {
@@ -586,6 +587,78 @@ function OverviewPageContent() {
         isLoading={actionRequiredLoading}
         error={actionRequiredError}
       />
+
+      {featuredAction ? (
+        <section
+          className='rounded-xl border p-4'
+          style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}
+          aria-label='Start Here'
+        >
+          <div className='flex items-center justify-between gap-3 flex-wrap'>
+            <div className='flex items-center gap-2'>
+              <span
+                className='inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider'
+                style={{
+                  color: 'var(--accent-blue)',
+                  borderColor: 'rgba(88,166,255,0.28)',
+                  background: 'rgba(88,166,255,0.08)',
+                }}
+              >
+                Start here
+              </span>
+              <span className='text-[12px] font-medium' style={{ color: 'var(--text-secondary)' }}>
+                Highest-priority action from the queue
+              </span>
+            </div>
+            <div className='flex items-center gap-2'>
+              <span
+                className='inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider'
+                style={{
+                  color: 'var(--text-tertiary)',
+                  borderColor: 'var(--border-default)',
+                  background: 'rgba(139,148,158,0.08)',
+                }}
+              >
+                {featuredAction.label}
+              </span>
+              <span className='text-[12px]' style={{ color: 'var(--text-muted)' }}>
+                {featuredAction.priority.toUpperCase()}
+              </span>
+            </div>
+          </div>
+          <div className='mt-3 flex items-start justify-between gap-4 flex-wrap'>
+            <div className='min-w-0'>
+              <p className='text-[15px] font-semibold' style={{ color: 'var(--text-primary)' }}>
+                {featuredAction.title}
+              </p>
+              <p className='text-[13px] mt-1' style={{ color: 'var(--text-secondary)' }}>
+                {featuredAction.reason}
+              </p>
+              <p className='text-[12px] mt-1.5' style={{ color: 'var(--text-muted)' }}>
+                {featuredAction.nextAction ?? featuredAction.subtitle}
+              </p>
+            </div>
+            <div className='flex flex-wrap items-center gap-3 shrink-0'>
+              <Link
+                href={featuredAction.href}
+                className='inline-flex items-center gap-1 text-[13px] font-medium'
+                style={{ color: 'var(--accent-blue)' }}
+              >
+                {featuredAction.ctaLabel} <ArrowRight className='size-3.5' aria-hidden='true' />
+              </Link>
+              {featuredAction.secondaryHref && featuredAction.secondaryCtaLabel ? (
+                <Link
+                  href={featuredAction.secondaryHref}
+                  className='inline-flex items-center gap-1 text-[12px] font-medium'
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  {featuredAction.secondaryCtaLabel} <ArrowRight className='size-3.5' aria-hidden='true' />
+                </Link>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {/* Stat cards: metric-first instruments */}
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Copy, RefreshCw, Users, Check, AlertCircle, Shield } from 'lucide-react';
 import { useWorkspace } from '@/hooks/useGovernance';
 import { useTeamMembers } from '@/hooks/useGovernance';
+import { safeWriteClipboardText } from '@/lib/clipboard';
 
 // ── WorkspaceCodePanel ────────────────────────────────────────────────────────
 
@@ -31,7 +32,8 @@ function WorkspaceCodePanel() {
   async function handleCopy() {
     if (!joinUrl) return;
     try {
-      await navigator.clipboard.writeText(joinUrl);
+      const copied = await safeWriteClipboardText(joinUrl);
+      if (!copied) return;
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {

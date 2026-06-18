@@ -81,6 +81,7 @@ describe('buildActionRequiredItems', () => {
       title: 'Japan family trip',
       priority: 'urgent',
       meta: 'Planning overdue',
+      href: '/trips/trip_overdue/intake',
     });
     expect(items[0]?.subtitle).toContain('Travel');
 
@@ -297,19 +298,18 @@ describe('buildActionRequiredItems', () => {
       nextAction: 'Open oldest, clear basics, continue by age.',
     });
     expect(items[0]?.examples).toHaveLength(2);
+    expect(items[0]?.examples).toHaveLength(2);
     expect(items[0]?.examples).toEqual([
-      {
-        id: 'lead-oldest',
+      expect.objectContaining({
         title: '25d waiting',
         detail: 'Unnamed customer · 1 pax · Travel TBD · Not assigned · Ref SC-901',
         href: '/inbox',
-      },
-      {
-        id: 'lead-middle',
+      }),
+      expect.objectContaining({
         title: '14d waiting',
         detail: 'Unnamed customer · 5 pax · Travel Feb 9-14, 2026 · Not assigned · Ref SC-902',
         href: '/inbox',
-      },
+      }),
     ]);
 
     vi.useRealTimers();
@@ -448,5 +448,59 @@ describe('buildActionRequiredItems', () => {
     expect(items).toHaveLength(4);
     expect(items.some((item) => item.variant === 'group')).toBe(true);
     expect(items.map((item) => item.title)).toContain('Trips needing review');
+  });
+
+  it('generates unique quote ids when review ids are empty', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-19T00:00:00Z'));
+
+    const items = buildActionRequiredItems({
+      workspaceTrips: [],
+      pendingReviews: [
+        {
+          id: '',
+          tripId: 'trip_1',
+          tripReference: 'TRIP-1',
+          destination: 'Italy',
+          tripType: 'honeymoon',
+          partySize: 2,
+          dateWindow: 'June 2026',
+          value: 3000,
+          currency: 'USD',
+          agentId: 'agent_1',
+          agentName: 'Agent',
+          submittedAt: '2026-05-15T00:00:00Z',
+          status: 'pending',
+          reason: 'Awaiting owner approval.',
+          riskFlags: [],
+        },
+        {
+          id: '',
+          tripId: 'trip_2',
+          tripReference: 'TRIP-2',
+          destination: 'Japan',
+          tripType: 'family',
+          partySize: 4,
+          dateWindow: 'July 2026',
+          value: 4200,
+          currency: 'USD',
+          agentId: 'agent_2',
+          agentName: 'Agent',
+          submittedAt: '2026-05-16T00:00:00Z',
+          status: 'pending',
+          reason: 'Needs review.',
+          riskFlags: [],
+        },
+      ],
+      inboxTrips: [],
+    });
+
+    const quoteItems = items.filter((item) => item.source === 'quote');
+    expect(quoteItems).toHaveLength(2);
+    expect(new Set(quoteItems.map((item) => item.id)).size).toBe(2);
+    expect(quoteItems[0]?.id).toMatch(/^quote-/);
+    expect(quoteItems[1]?.id).toMatch(/^quote-/);
+
+    vi.useRealTimers();
   });
 });

@@ -321,6 +321,30 @@ describe("BFF trip adapters", () => {
     });
   });
 
+  it("preserves frontier_result on trip transform without reshaping payload", () => {
+    const tripWithFrontier = transformSpineTripToTrip(
+      {
+        ...spineTrip,
+        frontier_result: {
+          ghost_triggered: true,
+          ghost_workflow_id: "fw-7",
+          sentiment_score: 0.91,
+          anxiety_alert: false,
+          specialty_knowledge: [{ niche: "visa", checklists: ["check passport"], urgency: "high" }],
+        },
+      },
+      now
+    );
+
+    expect(tripWithFrontier).toMatchObject({
+      frontier_result: {
+        ghost_triggered: true,
+        ghost_workflow_id: "fw-7",
+        sentiment_score: 0.91,
+      },
+    });
+  });
+
   it("handles manual field edits stored at top-level (three-tier fallback)", () => {
     const tripWithManualEdits = {
       id: "trip-manual-123",

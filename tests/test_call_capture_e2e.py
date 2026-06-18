@@ -395,6 +395,75 @@ class TestCallCaptureFollowUpDueDate:
         missing_resp = session_client.get(f"/api/public-checker/{trip_id}")
         assert missing_resp.status_code == 404
 
+    def test_public_checker_export_and_delete_routes_work_anonymously(self, disable_audit_logging, tmp_path, monkeypatch, session_client):
+        """The public checker report-management routes should work without auth for public checker records."""
+        from spine_api import persistence
+
+        monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
+        monkeypatch.setattr(persistence, "DATA_DIR", tmp_path, raising=False)
+        monkeypatch.setattr(persistence, "TRIPS_DIR", tmp_path / "trips", raising=False)
+        monkeypatch.setattr(persistence, "ASSIGNMENTS_DIR", tmp_path / "assignments", raising=False)
+        monkeypatch.setattr(persistence, "AUDIT_DIR", tmp_path / "audit", raising=False)
+        monkeypatch.setattr(persistence, "PUBLIC_CHECKER_DIR", tmp_path / "public_checker", raising=False)
+        monkeypatch.setattr(persistence, "PUBLIC_CHECKER_UPLOADS_DIR", tmp_path / "public_checker" / "uploads", raising=False)
+        monkeypatch.setattr(persistence, "PUBLIC_CHECKER_MANIFESTS_DIR", tmp_path / "public_checker" / "manifests", raising=False)
+
+        for directory in (
+            persistence.TRIPS_DIR,
+            persistence.ASSIGNMENTS_DIR,
+            persistence.AUDIT_DIR,
+            persistence.PUBLIC_CHECKER_UPLOADS_DIR,
+            persistence.PUBLIC_CHECKER_MANIFESTS_DIR,
+        ):
+            directory.mkdir(parents=True, exist_ok=True)
+
+        trip_id = persistence.save_processed_trip(
+            {
+                "run_id": str(uuid.uuid4()),
+                "packet": {"raw_input": {"fixture_id": "public_checker_route_fixture"}},
+                "validation": {"valid": True},
+                "decision": {"decision_type": "accept"},
+                "meta": {
+                    "stage": "discovery",
+                    "submission": {
+                        "retention_consent": True,
+                        "source_payload": {
+                            "kind": "file_upload",
+                            "uploaded_file": {
+                                "file_name": "route.txt",
+                                "mime_type": "text/plain",
+                                "file_size": 4,
+                                "extraction_method": "direct_text",
+                                "extracted_text": "Plan",
+                                "content_base64": base64.b64encode(b"Plan").decode("ascii"),
+                            },
+                        },
+                    },
+                },
+            },
+            source="public_checker",
+            agency_id=TEST_AGENCY_ID,
+            trip_status="new",
+        )
+
+        export_resp = session_client.get(
+            f"/api/public-checker/{trip_id}/export",
+            headers={"Authorization": ""},
+        )
+        assert export_resp.status_code == 200
+        export_json = export_resp.json()
+        assert export_json["trip_id"] == trip_id
+
+        delete_resp = session_client.delete(
+            f"/api/public-checker/{trip_id}",
+            headers={"Authorization": ""},
+        )
+        assert delete_resp.status_code == 200
+        delete_json = delete_resp.json()
+        assert delete_json["ok"] is True
+        assert delete_json["deleted_trip"] is True
+        assert delete_json["deleted_artifacts"] is True
+
     def test_follow_up_due_date_iso8601_format_validation(self, disable_audit_logging):
         """Test: follow_up_due_date accepts valid ISO-8601 formats."""
         valid_timestamps = [

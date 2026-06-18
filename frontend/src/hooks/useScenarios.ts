@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { getScenarios, getScenario, type ScenarioListItem, type ScenarioDetail } from "@/lib/api-client";
 
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
 export function useScenarios() {
   const query = useQuery({
     queryKey: ["scenarios", "list"],
@@ -8,7 +12,12 @@ export function useScenarios() {
     staleTime: 30_000,
   });
 
-  return { data: query.data ?? [], isLoading: query.isLoading, error: query.error as Error | null, refetch: query.refetch };
+  return {
+    data: asArray<ScenarioListItem>(query.data as unknown),
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
+    refetch: query.refetch,
+  };
 }
 
 export function useScenario(id: string | null) {

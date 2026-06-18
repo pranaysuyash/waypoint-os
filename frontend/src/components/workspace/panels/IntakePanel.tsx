@@ -46,6 +46,7 @@ import {
 } from '@/lib/planning-status';
 import { Button } from '@/components/ui/button';
 import { useFieldAuditLog } from '@/hooks/useFieldAuditLog';
+import { safeWriteClipboardText } from '@/lib/clipboard';
 import { getTravelerPromptForPlanningDetail } from '@/lib/traveler-prompts';
 import CaptureCallPanel from './CaptureCallPanel';
 import { EditableField, BudgetField, PlanningDetailSection } from './IntakeFieldComponents';
@@ -93,6 +94,35 @@ function getSpineProgressStage(elapsedSeconds: number) {
 }
 
 export type PlanningDetailId = 'budget' | 'customerName' | 'dates' | 'destination' | 'origin' | 'priorities' | 'flexibility';
+
+const PLANNING_DETAIL_LABEL_TO_ID: Record<string, PlanningDetailId> = {
+  'Budget range': 'budget',
+  Destination: 'destination',
+  'Origin city': 'origin',
+  'Travel window': 'dates',
+  'Trip priorities / must-haves': 'priorities',
+  'Date flexibility': 'flexibility',
+  'Contact name': 'customerName',
+};
+
+function formatPlanningDetailName(detailId: PlanningDetailId): string {
+  switch (detailId) {
+    case 'budget':
+      return 'Budget range';
+    case 'customerName':
+      return 'Contact name';
+    case 'dates':
+      return 'Travel window';
+    case 'destination':
+      return 'Destination';
+    case 'origin':
+      return 'Origin city';
+    case 'priorities':
+      return 'Trip priorities / must-haves';
+    case 'flexibility':
+      return 'Date flexibility';
+  }
+}
 
 export interface PlanningDetailRow {
   id: PlanningDetailId;
@@ -317,6 +347,8 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   const { mutate: startPlanning, isStarting: isStartingPlanning } = useStartPlanning();
   const { replaceTrip, refetchTrip } = useTripContext();
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
+  const [saveNextDetailId, setSaveNextDetailId] = useState<PlanningDetailId | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [startPlanningSuccess, setStartPlanningSuccess] = useState(false);
   const [startPlanningError, setStartPlanningError] = useState<string | null>(null);
@@ -603,6 +635,8 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   const handleSave = useCallback(async () => {
     if (!tripId) return;
     setSaveError(null);
+    setSaveSuccessMessage(null);
+    setSaveNextDetailId(null);
 
     // Prepare update data with editable fields
     const updateData: Partial<Trip> = {
@@ -627,9 +661,20 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     const result = await saveTrip(tripId, updateData);
     if (result) {
       replaceTrip(result);
+      const missingAfterSave = getPlanningMissingDetails(result);
+      const nextRequiredDetail = missingAfterSave.find((detail) => detail.requirement === 'Required');
+      const nextDetailId = nextRequiredDetail ? PLANNING_DETAIL_LABEL_TO_ID[nextRequiredDetail.label] ?? null : null;
       setSaveSuccess(true);
+      setSaveSuccessMessage(
+        nextRequiredDetail
+          ? `Trip changes saved. Next: ${nextRequiredDetail.label}.`
+          : 'Trip changes saved.'
+      );
+      setSaveNextDetailId(nextDetailId);
       setEditingField(null);
       setTimeout(() => setSaveSuccess(false), 3000);
+      setTimeout(() => setSaveSuccessMessage(null), 3000);
+      setTimeout(() => setSaveNextDetailId(null), 3000);
     } else {
       setSaveError('Failed to save. Check connection and try again.');
       setTimeout(() => setSaveError(null), 8000);
@@ -916,6 +961,8 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   const savePlanningEditor = useCallback(async (detailId: PlanningDetailId) => {
     if (!tripId) return;
     setSaveError(null);
+    setSaveSuccessMessage(null);
+    setSaveNextDetailId(null);
 
     let updateData: Partial<Trip> = {};
     let updatedOwnerNote = trip?.agentNotes ?? '';
@@ -956,12 +1003,23 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     const result = await saveTrip(tripId, updateData);
     if (result) {
       replaceTrip(result);
+      const missingAfterSave = getPlanningMissingDetails(result);
+      const nextRequiredDetail = missingAfterSave.find((detail) => detail.requirement === 'Required');
+      const nextDetailId = nextRequiredDetail ? PLANNING_DETAIL_LABEL_TO_ID[nextRequiredDetail.label] ?? null : null;
       if (Object.prototype.hasOwnProperty.call(updateData, 'agentNotes')) {
         setInputOwnerNote(updatedOwnerNote);
       }
       setSaveSuccess(true);
+      setSaveSuccessMessage(
+        nextRequiredDetail
+          ? `Saved ${formatPlanningDetailName(detailId)}. Next: ${nextRequiredDetail.label}.`
+          : `Saved ${formatPlanningDetailName(detailId)}.`
+      );
+      setSaveNextDetailId(nextDetailId);
       closePlanningEditor();
       setTimeout(() => setSaveSuccess(false), 3000);
+      setTimeout(() => setSaveSuccessMessage(null), 3000);
+      setTimeout(() => setSaveNextDetailId(null), 3000);
       return;
     }
 
@@ -1181,7 +1239,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
                 onClick={() => {
                   setInputRawNote(followUpDraft);
                   setOperatingMode('follow_up');
-                  void navigator.clipboard?.writeText(followUpDraft);
+                  void safeWriteClipboardText(followUpDraft);
                 }}
                 variant='secondary'
                 size='sm'
@@ -1460,7 +1518,18 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
           {saveSuccess && (
             <div className='flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-green)]/10 border border-[var(--accent-green)]/30 rounded-lg text-[var(--ui-text-xs)] text-[var(--accent-green)]'>
               <CheckCircle className='size-3' />
-              Saved
+              <span>{saveSuccessMessage ?? 'Saved'}</span>
+              {saveNextDetailId ? (
+                <Button
+                  type='button'
+                  size='sm'
+                  variant='ghost'
+                  className='ml-1 h-6 px-2 text-[var(--accent-green)] hover:text-[var(--text-primary)]'
+                  onClick={() => openPlanningEditor(saveNextDetailId)}
+                >
+                  Continue to {formatPlanningDetailName(saveNextDetailId)}
+                </Button>
+              ) : null}
             </div>
           )}
           {saveError && (

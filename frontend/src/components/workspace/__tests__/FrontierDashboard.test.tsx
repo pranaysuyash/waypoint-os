@@ -32,6 +32,14 @@ describe('FrontierDashboard', () => {
         requires_manual_audit: true,
         audit_reason: 'Supplier reliability check',
         negotiation_active: true,
+        specialty_knowledge: [
+          {
+            niche: 'visa',
+            checklists: ['visa docs verified', 'travel insurance present'],
+            urgency: 'normal',
+            safety_notes: 'Review passport validity and extension timeline.',
+          },
+        ],
       },
     };
 
@@ -41,6 +49,9 @@ describe('FrontierDashboard', () => {
     expect(screen.getByText('82%')).toBeInTheDocument();
     expect(screen.getByText('Visa timing risk')).toBeInTheDocument();
     expect(screen.getByText('Reason: Supplier reliability check')).toBeInTheDocument();
+    expect(screen.getByText('Specialty Intelligence')).toBeInTheDocument();
+    expect(screen.getByText('visa')).toBeInTheDocument();
+    expect(screen.getByText('visa docs verified')).toBeInTheDocument();
     expect(screen.getByText('LIVE DATA')).toBeInTheDocument();
   });
 });
