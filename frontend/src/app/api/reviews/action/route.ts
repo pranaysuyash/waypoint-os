@@ -9,7 +9,15 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { reviewId, action, notes, reassignTo, errorCategory, escalationOutcome } = body;
+    const {
+      reviewId,
+      action,
+      notes,
+      reassignTo,
+      errorCategory,
+      escalationOutcome,
+      reviewWorkflowUnitId,
+    } = body;
 
     if (!reviewId) {
       return bffJson({ error: "reviewId is required" }, 400);
@@ -23,6 +31,7 @@ export async function POST(request: NextRequest) {
         reassign_to: reassignTo,
         error_category: errorCategory,
         escalation_outcome: escalationOutcome,
+        review_workflow_unit_id: reviewWorkflowUnitId,
       }), cache: "no-store" }
     );
 

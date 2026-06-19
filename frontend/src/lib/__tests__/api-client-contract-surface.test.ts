@@ -418,6 +418,33 @@ describe('api-client public contract surface', () => {
     );
   });
 
+  it('passes workflow unit id through the trip review action client', async () => {
+    const fetchMock = vi.mocked(fetch);
+
+    await submitTripReviewAction(
+      'trip-1',
+      'escalate',
+      'Needs owner review',
+      'quality_issue',
+      'false_escalation',
+      'unit-1',
+    );
+
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/trips/trip-1/review/action',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'escalate',
+          notes: 'Needs owner review',
+          error_category: 'quality_issue',
+          escalation_outcome: 'false_escalation',
+          review_workflow_unit_id: 'unit-1',
+        }),
+      }),
+    );
+  });
+
   it('keeps type-only API contracts importable for integration consumers', () => {
     const apiError: ApiError = { message: 'Bad request', status: 400, details: [{ field: 'budget' }] };
     const options: RequestOptions = { timeout: 1000, retry: 1, retryDelay: 10 };

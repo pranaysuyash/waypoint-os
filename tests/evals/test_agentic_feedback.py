@@ -8,6 +8,7 @@ from src.evals.agentic_feedback import (
     aggregate_eval_records,
     build_routing_metrics,
     build_repeated_failure_signal,
+    build_canonical_evidence_records,
     extract_metadata_signature,
     filter_eval_candidates,
 )
@@ -69,6 +70,10 @@ def test_build_repeated_failure_signal_aggregates_once_threshold_is_met():
     assert item.occurrences == 3
     assert item.failure_signature == "sig-a"
     assert item.sample_events == ["e1", "e2", "e3"]
+    assert item.severity == "low"
+    assert item.owner == "schema-platform"
+    assert item.proposed_change == "Adjust schema constraints, optionality, and failure messaging."
+    assert item.rerun_subset is not None
 
 
 def test_build_repeated_failure_signal_ignores_sub_threshold_signals():
@@ -93,6 +98,43 @@ def test_filter_eval_candidates_selects_eval_ready_events():
     candidates = filter_eval_candidates(events)
 
     assert [event.id for event in candidates] == ["e2"]
+
+
+def test_build_repeated_failure_signal_severity_increases_with_repetition():
+    base = datetime(2026, 6, 18, 10, 0, tzinfo=timezone.utc)
+    events = [
+        _event(
+            id=f"e{idx}",
+            created_at=base + timedelta(minutes=idx),
+            event_metadata={"failure_signature": "sig-a", "failure_layer": "routing", "next_fix_layer": "routing"},
+        )
+        for idx in range(12)
+    ]
+
+    work_items = build_repeated_failure_signal(events, min_occurrences=3)
+
+    assert len(work_items) == 1
+    assert work_items[0].failure_signature == "sig-a"
+    assert work_items[0].severity == "high"
+    assert "routing" in (work_items[0].proposed_change or "")
+
+
+def test_build_canonical_evidence_records_maps_non_extraction_events():
+    records = build_canonical_evidence_records(
+        [
+            _event(
+                id="doc-1",
+                event_type="document_accepted",
+                event_category="document",
+                subject_type="booking_document",
+                event_metadata={"input_artifact_id": "doc-xyz", "review_outcome": "accepted"},
+            )
+        ]
+    )
+
+    assert len(records) == 1
+    assert records[0]["workflow_type"] == "document"
+    assert records[0]["final_acceptance_status"] == "accepted"
 
 
 def test_extract_metadata_signature_is_stable():
@@ -147,6 +189,105 @@ def test_aggregate_eval_records_respects_window_minutes():
     assert summary["total_events_considered"] == 3
     assert summary["work_items"][0]["failure_signature"] == "new"
     assert summary["work_items"][0]["occurrences"] == 3
+
+
+def test_aggregate_eval_records_includes_canonical_evidence_records():
+    now = datetime(2026, 6, 18, 10, 0, tzinfo=timezone.utc)
+    events = [
+        _event(
+            id="r1",
+            created_at=now,
+            event_type="extraction_run_completed",
+            event_metadata={
+                "failure_signature": "sig-a",
+                "failure_layer": "schema",
+                "next_fix_layer": "schema_contract",
+                "input_artifact_id": "doc-a",
+                "prompt_version": "p1",
+                "schema_version": "s1",
+                "fallback_result": "succeeded_after_fallback",
+                "review_trigger_reason": "manual_review_required",
+                "review_outcome": "applied",
+                "latency_ms": 120,
+                "cost_estimate_usd": 0.12,
+            },
+        )
+    ]
+
+    summary = aggregate_eval_records(
+        events,
+        min_occurrences=1,
+        window_minutes=120,
+        reference_time=now,
+    )
+
+    records = summary["canonical_evidence_records"]
+    assert len(records) == 1
+    assert records[0]["workflow_unit_id"] == "r1"
+    assert records[0]["workflow_type"] == "extraction"
+    assert records[0]["input_artifact_id"] == "doc-a"
+    assert records[0]["prompt_version"] == "p1"
+    assert records[0]["schema_version"] == "s1"
+    assert records[0]["final_acceptance_status"] == "pending_review"
+
+
+def test_build_canonical_evidence_records_limits_output():
+    now = datetime(2026, 6, 18, 10, 0, tzinfo=timezone.utc)
+    events = [
+        _event(
+            id=f"evt-{idx}",
+            created_at=now,
+            event_type="extraction_run_failed",
+            event_metadata={"failure_signature": "sig-a", "failure_layer": "schema"},
+        )
+        for idx in range(201)
+    ]
+
+    records = build_canonical_evidence_records(events)
+
+    assert len(records) == 200
+
+
+def test_build_canonical_evidence_records_uses_review_escalation_outcome_by_workflow_unit():
+    now = datetime(2026, 6, 18, 10, 0, tzinfo=timezone.utc)
+    events = [
+        _event(
+            id="r1",
+            created_at=now,
+            event_type="extraction_run_failed",
+            event_metadata={"failure_signature": "sig-a", "failure_layer": "schema", "next_fix_layer": "schema_contract"},
+        ),
+        _event(
+            id="r2",
+            created_at=now,
+            event_type="extraction_run_failed",
+            event_metadata={"failure_signature": "sig-b", "failure_layer": "schema", "next_fix_layer": "schema_contract"},
+        ),
+    ]
+    review_events = [
+        {
+            "type": "review_action",
+            "details": {
+                "trip_id": "trip_001",
+                "review_workflow_unit_id": "r1",
+                "escalation_outcome": "false_escalation",
+            },
+        },
+        {
+            "type": "review_action",
+            "details": {
+                "trip_id": "trip_001",
+                "review_workflow_unit_id": "r2",
+                "escalation_outcome": "missed_escalation",
+            },
+        },
+    ]
+
+    records = build_canonical_evidence_records(events, review_events=review_events)
+
+    escalations = {row["workflow_unit_id"]: row["escalation_outcome"] for row in records}
+    assert escalations["r1"] == "false_escalation"
+    assert escalations["r2"] == "missed_escalation"
 
 
 def test_build_routing_metrics_calculates_fallback_and_review_health():
@@ -237,3 +378,82 @@ def test_build_routing_metrics_includes_explicit_escalation_outcomes_from_review
     assert metrics["correct_escalation_count"] == 1
     assert metrics["false_escalation_rate"] == 0.333
     assert metrics["missed_escalation_rate"] == 0.333
+
+
+def test_build_routing_metrics_scopes_escalation_outcomes_to_candidate_unit_ids():
+    events = [
+        _event(
+            id="r1",
+            created_at=datetime(2026, 6, 18, 10, 0, tzinfo=timezone.utc),
+            event_metadata={"failure_signature": "sig-a"},
+        ),
+        _event(
+            id="r2",
+            created_at=datetime(2026, 6, 18, 10, 2, tzinfo=timezone.utc),
+            event_metadata={"failure_signature": "sig-b"},
+        ),
+    ]
+    review_events = [
+        {
+            "type": "review_action",
+            "details": {
+                "trip_id": "trip_001",
+                "review_workflow_unit_id": "r1",
+                "escalation_outcome": "false_escalation",
+            },
+        },
+        {
+            "type": "review_action",
+            "details": {
+                "trip_id": "trip_001",
+                "review_workflow_unit_id": "r2",
+                "escalation_outcome": "missed_escalation",
+            },
+        },
+        {
+            "type": "review_action",
+            "details": {
+                "trip_id": "trip_001",
+                "escalation_outcome": "correct_escalation",
+            },
+        },
+    ]
+
+    metrics = build_routing_metrics(
+        events,
+        review_events=review_events,
+        workflow_unit_ids={"r1"},
+    )
+
+    assert metrics["escalation_outcome_count"] == 1
+    assert metrics["false_escalation_count"] == 1
+    assert metrics["missed_escalation_count"] == 0
+    assert metrics["correct_escalation_count"] == 0
+
+
+def test_build_routing_metrics_uses_legacy_outcomes_without_unit_links():
+    events = [
+        _event(
+            id="r1",
+            created_at=datetime(2026, 6, 18, 10, 0, tzinfo=timezone.utc),
+            event_metadata={"failure_signature": "sig-a"},
+        )
+    ]
+    review_events = [
+        {
+            "type": "review_action",
+            "details": {
+                "trip_id": "trip_001",
+                "escalation_outcome": "correct_escalation",
+            },
+        },
+    ]
+
+    metrics = build_routing_metrics(
+        events,
+        review_events=review_events,
+        workflow_unit_ids={"r1"},
+    )
+
+    assert metrics["escalation_outcome_count"] == 1
+    assert metrics["correct_escalation_count"] == 1

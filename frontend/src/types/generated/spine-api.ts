@@ -403,6 +403,7 @@ export interface ReviewActionRequest {
   reassign_to?: string | null;
   error_category?: string | null;
   escalation_outcome?: "false_escalation" | "missed_escalation" | "correct_escalation" | "not_applicable" | null;
+  review_workflow_unit_id?: string | null;
 }
 /**
  * Returned immediately by POST /run — the run is queued, poll for status.

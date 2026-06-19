@@ -872,14 +872,19 @@ export async function submitTripReviewAction(
   action: string,
   notes?: string,
   errorCategory?: string,
-  escalationOutcome?: "false_escalation" | "missed_escalation" | "correct_escalation" | "not_applicable"
+  escalationOutcome?: "false_escalation" | "missed_escalation" | "correct_escalation" | "not_applicable",
+  reviewWorkflowUnitId?: string,
 ): Promise<{ success: boolean; review: any }> {
-  return api.post(`/api/trips/${tripId}/review/action`, {
+  const payload: Record<string, unknown> = {
     action,
     notes,
     error_category: errorCategory,
     escalation_outcome: escalationOutcome,
-  });
+  };
+  if (reviewWorkflowUnitId) {
+    payload.review_workflow_unit_id = reviewWorkflowUnitId;
+  }
+  return api.post(`/api/trips/${tripId}/review/action`, payload);
 }
 
 // ============================================================================

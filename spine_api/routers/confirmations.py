@@ -304,6 +304,7 @@ async def get_execution_timeline(
 async def get_agentic_eval(
     trip_id: str,
     workflow: str | None = None,
+    workflow_unit_id: str | None = None,
     min_occurrences: int = Query(3, ge=1, le=20),
     window_minutes: int = Query(24 * 60, ge=1, le=60 * 24 * 14),
     agency_id: str = Depends(get_current_agency_id),
@@ -317,6 +318,7 @@ async def get_agentic_eval(
         trip_id=trip_id,
         agency_id=agency_id,
         workflow=workflow,
+        workflow_unit_id=workflow_unit_id,
         min_occurrences=min_occurrences,
         window_minutes=window_minutes,
     )

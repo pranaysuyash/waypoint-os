@@ -51,6 +51,7 @@ def post_review_action(
             reassign_to=request.reassign_to,
             error_category=request.error_category,
             escalation_outcome=request.escalation_outcome,
+            review_workflow_unit_id=request.review_workflow_unit_id,
         )
         return {"success": True, "trip": updated_trip}
     except KeyError as e:

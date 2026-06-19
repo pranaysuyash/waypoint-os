@@ -82,6 +82,7 @@ export interface ReviewActionRequest {
   notes?: string;
   reassignTo?: string;
   escalationOutcome?: 'false_escalation' | 'missed_escalation' | 'correct_escalation' | 'not_applicable';
+  reviewWorkflowUnitId?: string;
 }
 
 // ============================================================================

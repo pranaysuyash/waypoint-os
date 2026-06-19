@@ -39,6 +39,7 @@ def process_review_action(
     reassign_to: Optional[str] = None,
     error_category: Optional[str] = None,
     escalation_outcome: Optional[str] = None,
+    review_workflow_unit_id: Optional[str] = None,
 ) -> dict:
     """Apply a review action to a trip and log an audit event.
 
@@ -48,6 +49,7 @@ def process_review_action(
         notes: Free-text owner notes.
         user_id: Identity of the reviewer (defaults to "owner").
         reassign_to: Optional user_id to reassign the trip to.
+        review_workflow_unit_id: Optional workflow unit ID linked to this review.
 
     Returns:
         The updated trip dict as stored on disk.
@@ -87,6 +89,7 @@ def process_review_action(
         "owner_approved": normalised == "approved",
         "reassigned_to": reassign_to,
         "escalation_outcome": escalation_outcome,
+        "review_workflow_unit_id": review_workflow_unit_id,
     }
     analytics["review_metadata"] = review_meta
 
@@ -149,6 +152,7 @@ def process_review_action(
             "notes": notes,
             "error_category": error_category,
             "escalation_outcome": escalation_outcome,
+            "review_workflow_unit_id": review_workflow_unit_id,
             "pre_state": pre_state,
             "post_state": post_state,
             "timestamp": review_meta["reviewed_at"]

@@ -279,6 +279,7 @@ class ReviewActionRequest(BaseModel):
         "correct_escalation",
         "not_applicable",
     ]] = None
+    review_workflow_unit_id: Optional[str] = None
 
 
 class SuitabilityAcknowledgeRequest(BaseModel):

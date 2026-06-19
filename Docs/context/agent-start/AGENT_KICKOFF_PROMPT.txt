@@ -9,7 +9,6 @@ Use sources in this order:
 8) travel_agency_agent/Docs/context/AGENT_INTELLIGENCE_GRAPH.md (if present)
 9) travel_agency_agent/Docs/context/agent-start/SESSION_CONTEXT.md
 10) /Users/pranay/Projects/workspace_memory/sources/...
-11) /Users/pranay/Projects/AGENTIC_EVAL_RULES.md for any AI workflow, prompt, routing, fallback, review, or repeated-failure task
 
 Rules:
 - Cite concrete file paths for decisions or constraints.
@@ -18,7 +17,6 @@ Rules:
 - Treat travel_agency_agent/motto_v3.md as the canonical project operating motto whenever it exists.
 - Treat travel_agency_agent/motto_v2.md as a compatibility bridge only; if it conflicts with motto_v3.md, rerun /Users/pranay/Projects/agent-start.
 - Treat travel_agency_agent/.agent/* as compatibility mirrors only.
-- Treat `/Users/pranay/Projects/AGENTIC_EVAL_RULES.md` and `~/Projects/skills/agentic-eval-loop/` as the shared Projects-level eval doctrine when the work touches prompts, schemas, routing, fallback, review, cost/latency, or repeated failures.
 - Begin with a read-only status and drift check: inspect current code, docs, worklogs, and relevant repo status because parallel agents may have changed the ground truth.
 - Before editing and before finalizing, re-check the files and docs you rely on, then adapt to newer evidence.
 - Use relevant skills after checking the configured skill locations; do not default to one toolset when a better domain skill exists.
