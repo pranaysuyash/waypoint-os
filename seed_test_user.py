@@ -1,11 +1,11 @@
-"""
-Standalone script to seed test user + agency + owner membership, then mock trips.
+"""Standalone script to seed test users + agency + memberships, then mock trips.
 
 Usage: cd /Users/pranay/Projects/travel_agency_agent && uv run python seed_test_user.py
 
 Creates (idempotently):
   - User: newuser@test.com / testpass123  (role=owner → all permissions)
-  - Agency + Membership + WorkspaceCode
+  - User: agent@test.com / testpass123     (role=junior_agent → limited permissions)
+  - Agency + Memberships + WorkspaceCode
   - Mock trips from scenario_alpha.json
 """
 import asyncio
@@ -30,6 +30,11 @@ FIXTURE_PATH = PROJECT_ROOT / "data" / "fixtures" / "scenario_alpha.json"
 TEST_USER_EMAIL = os.environ.get("TEST_USER_EMAIL", "newuser@test.com")
 TEST_USER_PASSWORD = os.environ.get("TEST_USER_PASSWORD", "testpass123")
 TEST_USER_NAME = os.environ.get("TEST_USER_NAME", "Test User")
+
+# Second test user (junior_agent role → limited permissions)
+AGENT_USER_EMAIL = os.environ.get("AGENT_USER_EMAIL", "agent@test.com")
+AGENT_USER_PASSWORD = os.environ.get("AGENT_USER_PASSWORD", "testpass123")
+AGENT_USER_NAME = os.environ.get("AGENT_USER_NAME", "Agent User")
 
 
 async def seed_scenario_for_agency(agency_id: str, fixture_path: Path) -> int:
@@ -165,8 +170,67 @@ async def ensure_test_user() -> dict:
     return {"user_id": user_id, "agency_id": agency_id, "role": "owner"}
 
 
+async def ensure_agent_user(agency_id: str) -> dict:
+    """Ensure the agent test user exists with junior_agent role in the same agency.
+
+    Idempotent: skips creation if the user already exists.
+    Returns a dict with user_id, agency_id, and role for logging.
+    """
+    import uuid as _uuid
+
+    from sqlalchemy import text
+    from spine_api.core.database import async_session_maker
+    from spine_api.core.security import hash_password
+
+    now = datetime.now(timezone.utc)
+    pw_hash = hash_password(AGENT_USER_PASSWORD)
+
+    async with async_session_maker() as conn:
+        # 1. Check if user exists
+        row = (await conn.execute(
+            text("SELECT id FROM users WHERE email = :email"),
+            {"email": AGENT_USER_EMAIL},
+        )).mappings().first()
+
+        if row:
+            user_id = row["id"]
+            print(f"  User {AGENT_USER_EMAIL} already exists (id={user_id[:8]}...)")
+        else:
+            user_id = str(_uuid.uuid4())
+            await conn.execute(
+                text(
+                    "INSERT INTO users (id, email, password_hash, name, is_active, created_at) "
+                    "VALUES (:id, :email, :pw, :name, true, :now)"
+                ),
+                {"id": user_id, "email": AGENT_USER_EMAIL, "pw": pw_hash, "name": AGENT_USER_NAME, "now": now},
+            )
+            print(f"  Created user: {AGENT_USER_EMAIL} (id={user_id[:8]}...)")
+
+        # 2. Check if user already has a membership in this agency
+        row = (await conn.execute(
+            text("SELECT role FROM memberships WHERE user_id = :uid AND agency_id = :aid"),
+            {"uid": user_id, "aid": agency_id},
+        )).mappings().first()
+
+        if row:
+            print(f"  Membership exists for {AGENT_USER_EMAIL} (agency={agency_id[:8]}..., role={row['role']})")
+        else:
+            await conn.execute(
+                text(
+                    "INSERT INTO memberships (id, user_id, agency_id, role, is_primary, status, created_at) "
+                    "VALUES (:id, :uid, :aid, 'junior_agent', false, 'active', :now)"
+                ),
+                {"id": str(_uuid.uuid4()), "uid": user_id, "aid": agency_id, "now": now},
+            )
+            print(f"  Created junior_agent membership for {AGENT_USER_EMAIL} (agency={agency_id[:8]}...)")
+
+        await conn.commit()
+
+    return {"user_id": user_id, "agency_id": agency_id, "role": "junior_agent"}
+
+
 async def main():
-    print("=== Test User Bootstrap ===")
+    print("=== Owner User Bootstrap ===")
     print(f"  Email    : {TEST_USER_EMAIL}")
     print(f"  Password : {TEST_USER_PASSWORD}")
     print(f"  Role     : owner (all permissions)")
@@ -174,6 +238,15 @@ async def main():
 
     user_info = await ensure_test_user()
     agency_id = user_info["agency_id"]
+
+    print()
+    print("=== Agent User Bootstrap ===")
+    print(f"  Email    : {AGENT_USER_EMAIL}")
+    print(f"  Password : {AGENT_USER_PASSWORD}")
+    print(f"  Role     : junior_agent (limited permissions)")
+    print()
+
+    await ensure_agent_user(agency_id)
 
     print()
     print("=== Trip Seeding ===")
@@ -189,7 +262,8 @@ async def main():
     # Verify
     all_trips = await TripStore.alist_trips(agency_id=agency_id, limit=1000)
     print(f"Total trips for agency now: {len(all_trips)}")
-    print(f"Login: POST /api/auth/login with {{email: \"{TEST_USER_EMAIL}\", password: \"{TEST_USER_PASSWORD}\"}}")
+    print(f"Owner login:  POST /api/auth/login with {{email: \"{TEST_USER_EMAIL}\", password: \"{TEST_USER_PASSWORD}\"}}")
+    print(f"Agent login:  POST /api/auth/login with {{email: \"{AGENT_USER_EMAIL}\", password: \"{AGENT_USER_PASSWORD}\"}}")
 
 
 if __name__ == "__main__":
