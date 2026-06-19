@@ -336,16 +336,117 @@ This repo treats contract drift as a regression, not a cleanup task.
 
 ---
 
-## Local test account (for UI dogfooding)
+## Local testing setup
+
+### Test user credentials
 
 | Field | Value |
 | --- | --- |
 | Email | `newuser@test.com` |
 | Password | `testpass123` |
+| Role | `owner` (all permissions) |
 | Agency ID | `d1e3b2b6-5509-4c27-b123-4b1e02b0bf5b` |
-| Role | owner |
 
-Use only for local/dev verification.
+The owner role grants `["*"]` — every permission in the system. This is intentional for local testing so you hit no permission blockers.
+
+The Agency ID is deterministic (from `persistence.py`) and matches `PUBLIC_CHECKER_AGENCY_ID` in `.env`.
+
+### Bootstrapping the test user
+
+Run the seed script to create the user (idempotent — safe to repeat):
+
+```bash
+uv run python seed_test_user.py
+```
+
+This creates:
+- User `newuser@test.com` with owner role + all permissions
+- A test agency with mock trips from `scenario_alpha.json`
+- An `owner` membership (is_primary=True)
+- A workspace invitation code
+
+### Quick token for API testing (no DB lookup)
+
+For fast `curl`/Postman testing without logging in through the full auth flow:
+
+```bash
+# Enable the test-token endpoint
+export ENABLE_TEST_TOKEN=1
+
+# Get a JWT instantly (no DB query)
+curl -s -X POST http://127.0.0.1:8000/api/auth/test-token \
+  -c cookies.txt | python3 -m json.tool
+
+# Use the token
+curl -s http://127.0.0.1:8000/api/auth/me \
+  -b cookies.txt | python3 -m json.tool
+```
+
+The test-token endpoint accepts optional params:
+
+| Param | Default | Description |
+| --- | --- | --- |
+| `email` | `newuser@test.com` | User email in the JWT |
+| `role` | `owner` | Role in the JWT (`owner`/`admin`/`senior_agent`/`junior_agent`/`viewer`) |
+| `agency_id` | auto-derived | Agency ID in the JWT |
+| `name` | `Test User` | Display name |
+
+Example — get an admin token for a different user:
+
+```bash
+curl -s -X POST 'http://127.0.0.1:8000/api/auth/test-token?email=agent@test.com&role=admin' \
+  -c cookies.txt
+```
+
+### Login via API (full auth flow)
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email": "newuser@test.com", "password": "testpass123"}' \
+  -c cookies.txt | python3 -m json.tool
+```
+
+### Role permissions matrix
+
+| Role | Permissions |
+| --- | --- |
+| `owner` | `*` (all) |
+| `admin` | `team:manage`, `trips:read/write/assign/reassign/escalate`, `settings:read/write`, `customers:read/write`, `ai_workforce:manage`, `reports:read`, `audit:read` |
+| `senior_agent` | `trips:read/write/claim`, `customers:read/write`, `reports:read:own` |
+| `junior_agent` | `trips:read:assigned`, `trips:write:assigned`, `customers:read:assigned` |
+| `viewer` | `trips:read`, `customers:read`, `reports:read` |
+
+### Auth bypass (no token needed)
+
+For testing endpoints without any auth at all:
+
+```bash
+export SPINE_API_DISABLE_AUTH=1
+```
+
+**Do not use this in production-like environments.**
+
+### Creating additional test users
+
+Use the team invite endpoint (requires owner/admin role):
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/team/invite \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <token>' \
+  -d '{"email": "agent@test.com", "name": "Agent", "role": "junior_agent"}'
+```
+
+Or use the signup endpoint directly:
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/auth/signup \
+  -H 'Content-Type: application/json' \
+  -d '{"email": "agent@test.com", "password": "testpass123", "name": "Agent"}'
+```
+
+**Note:** Signups with `@test.com` emails auto-create test agencies in development mode.
 
 ---
 
