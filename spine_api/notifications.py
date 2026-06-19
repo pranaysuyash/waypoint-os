@@ -326,21 +326,56 @@ def _load_comm_settings(agency_id: Optional[str] = None) -> Optional[Any]:
         return None
 
 
-def _is_within_operating_hours(comm: Optional[Any] = None) -> bool:
+def _is_within_operating_hours(
+    comm: Optional[Any] = None,
+    agency_id: Optional[str] = None,
+) -> bool:
     """Check whether the current time falls within operating hours.
 
+    Uses the agency's ``SupportSettings`` for timezone and hours.
     When ``comm`` is ``None`` or ``respect_operating_hours`` is ``False``
     the function returns ``True`` (send immediately).
     """
     if comm is None or not getattr(comm, "respect_operating_hours", False):
         return True
 
-    now = datetime.now(timezone.utc)
-    current_hour = now.hour
-    # Default window — real implementation would read SupportSettings timezone/hours
-    start = 9
-    end = 21
-    return start <= current_hour < end
+    # Load SupportSettings for timezone and hours
+    tz_name = "UTC"
+    start_str = "09:00"
+    end_str = "21:00"
+    try:
+        from src.intake.config.agency_settings import AgencySettingsStore
+        settings = AgencySettingsStore.load(agency_id or "default")
+        support = getattr(settings, "support", None)
+        if support is not None:
+            tz_name = getattr(support, "timezone", "UTC") or "UTC"
+            start_str = getattr(support, "support_hours_start", "09:00") or "09:00"
+            end_str = getattr(support, "support_hours_end", "21:00") or "21:00"
+    except Exception:
+        logger.debug("Failed to load SupportSettings for agency %s — using UTC defaults", agency_id)
+
+    # Resolve timezone via zoneinfo (stdlib 3.9+), fall back to UTC
+    try:
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo(tz_name)
+    except (ImportError, KeyError):
+        tz = timezone.utc
+
+    now = datetime.now(tz)
+    start_hour = _parse_hour(start_str)
+    end_hour = _parse_hour(end_str)
+    return start_hour <= now.hour < end_hour
+
+
+def _parse_hour(time_str: str) -> int:
+    """Parse a ``HH:MM`` string and return the hour component.
+
+    Falls back to 0 on any parse error.
+    """
+    try:
+        return int(time_str.split(":")[0])
+    except (ValueError, IndexError, AttributeError):
+        return 0
 
 
 def send_traveler_notification(
@@ -362,7 +397,7 @@ def send_traveler_notification(
     queue_outside = getattr(comm, "queue_outside_hours", True) if comm else True
 
     # Respect operating hours
-    within_hours = _is_within_operating_hours(comm)
+    within_hours = _is_within_operating_hours(comm, agency_id=agency_id)
     if not within_hours and queue_outside:
         logger.info(
             "Notification queued — outside operating hours",
