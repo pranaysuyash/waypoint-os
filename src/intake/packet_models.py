@@ -420,6 +420,9 @@ class CanonicalPacket:
     event_cursor: int = 0
     events: List[Dict[str, Any]] = field(default_factory=list)
 
+    # Feature gate metadata (e.g. agent_flags)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
     # ------------------------------------------------------------------
     # Initialisation — wrap raw dicts with _EventTrackingDict
     # ------------------------------------------------------------------
@@ -731,4 +734,5 @@ class CanonicalPacket:
             "revision_count": self.revision_count,
             "event_cursor": self.event_cursor,
             "events": self.events,
+            "metadata": self.metadata,
         }
