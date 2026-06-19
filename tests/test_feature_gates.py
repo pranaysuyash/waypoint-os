@@ -394,7 +394,7 @@ class TestFrontierNegotiationGate:
             ]
             packet = _make_frontier_test_packet()
             decision = _make_frontier_test_decision()
-            settings = _settings_with(enable_auto_negotiation=True)
+            settings = _settings_with_tier(AgencyTier.PRO, enable_auto_negotiation=True)
 
             from src.intake.frontier_orchestrator import run_frontier_orchestration
 
@@ -450,6 +450,101 @@ class TestFrontierNegotiationGate:
 # =============================================================================
 # SECTION 5: Combined gate interaction tests
 # =============================================================================
+
+
+# =============================================================================
+# SECTION 5: Tier override tests — tier limits override AiAgentSettings
+# =============================================================================
+
+
+def _settings_with_tier(tier: AgencyTier, **gate_overrides) -> AgencySettings:
+    """Build AgencySettings with a specific tier and optional AiAgentSettings overrides."""
+    ai = AiAgentSettings(**gate_overrides)
+    return AgencySettings(agency_id="test-tier-agency", tier=tier, ai_agent=ai)
+
+
+class TestTierOverridesAiAgentSettings:
+    """Tier limits take precedence over AiAgentSettings at runtime."""
+
+    def test_starter_tier_disables_frontier_even_when_ai_agent_enables(self):
+        """Starter tier disables frontier — even if AiAgentSettings says True."""
+        settings = _settings_with_tier(
+            AgencyTier.STARTER,
+            enable_frontier_orchestration=True,  # explicitly enabled
+        )
+        result = run_spine_once(
+            envelopes=_make_envelope(),
+            stage="discovery",
+            agency_settings=settings,
+        )
+        assert not result.early_exit, f"NB01 gate escalated: {result.early_exit_reason}"
+        # Frontier should be skipped because tier disables it
+        assert result.frontier_result.ghost_triggered is False
+        frontier_rationale = result.decision.rationale.get("frontier", {})
+        assert frontier_rationale.get("skipped") is True
+
+    def test_starter_tier_disables_negotiation_via_frontier(self):
+        """Starter tier disables negotiation — even if AiAgentSettings says True."""
+        settings = _settings_with_tier(
+            AgencyTier.STARTER,
+            enable_auto_negotiation=True,  # explicitly enabled
+        )
+        packet = _make_frontier_test_packet()
+        decision = _make_frontier_test_decision()
+        with patch("src.intake.frontier_orchestrator.negotiation_service") as mock_neg:
+            from src.intake.frontier_orchestrator import run_frontier_orchestration
+
+            result = run_frontier_orchestration(packet, decision, agency_settings=settings)
+            # Negotiation should NOT be called because tier disables it
+            mock_neg.analyze_and_trigger.assert_not_called()
+            assert result.negotiation_active is False
+
+    def test_enterprise_tier_allows_all_gates(self):
+        """Enterprise tier allows everything — no tier override blocks any gate."""
+        settings = _settings_with_tier(AgencyTier.ENTERPRISE)
+        result = run_spine_once(
+            envelopes=_make_envelope(),
+            stage="discovery",
+            agency_settings=settings,
+        )
+        assert not result.early_exit, f"NB01 gate escalated: {result.early_exit_reason}"
+        # Frontier should be enabled (no skip)
+        frontier_rationale = result.decision.rationale.get("frontier", {})
+        assert frontier_rationale.get("skipped") is not True
+
+    def test_pro_tier_allows_frontier_and_negotiation(self):
+        """Pro tier allows frontier and negotiation."""
+        settings = _settings_with_tier(AgencyTier.PRO)
+        packet = _make_frontier_test_packet()
+        decision = _make_frontier_test_decision()
+        with patch("src.intake.frontier_orchestrator.negotiation_service") as mock_neg:
+            mock_neg.analyze_and_trigger.return_value = []
+            from src.intake.frontier_orchestrator import run_frontier_orchestration
+
+            result = run_frontier_orchestration(packet, decision, agency_settings=settings)
+            # Negotiation IS called because pro tier allows it
+            mock_neg.analyze_and_trigger.assert_called_once()
+
+    def test_pro_tier_still_disables_call_capture(self):
+        """Pro tier disables call_capture — only enterprise allows it."""
+        assert tier_allows_feature(AgencyTier.PRO, "enable_call_capture") is False
+        assert tier_allows_feature(AgencyTier.ENTERPRISE, "enable_call_capture") is True
+
+    def test_starter_tier_tier_limit_overrides_ai_agent_settings(self):
+        """Starter tier disables frontier even when AiAgentSettings explicitly enables it."""
+        settings = _settings_with_tier(
+            AgencyTier.STARTER,
+            enable_frontier_orchestration=True,  # explicitly enabled in AiAgentSettings
+        )
+        result = run_spine_once(
+            envelopes=_make_envelope(),
+            stage="discovery",
+            agency_settings=settings,
+        )
+        assert not result.early_exit, f"NB01 gate escalated: {result.early_exit_reason}"
+        # Frontier should be skipped because tier disables it
+        frontier_rationale = result.decision.rationale.get("frontier", {})
+        assert frontier_rationale.get("skipped") is True
 
 
 class TestCombinedGates:

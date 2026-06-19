@@ -15,6 +15,7 @@ import uuid
 
 from .packet_models import CanonicalPacket
 from .decision import DecisionResult
+from .config.agency_settings import tier_allows_feature, AgencyTier
 from .federated_intelligence import intelligence_service
 from .negotiation_engine import negotiation_service
 from .checker_agent import checker_agent
@@ -66,9 +67,18 @@ def run_frontier_orchestration(
     commercial_decision = str(decision.commercial_decision).upper()
     operating_mode = str(packet.operating_mode).lower()
 
-    # Resolve AI agent settings for feature gate checks
+    # Resolve AI agent settings for feature gate checks.
+    # Tier limits override AiAgentSettings — a starter-tier agency that
+    # manually enables negotiation/checker will still have them disabled.
     ai_agent = getattr(agency_settings, 'ai_agent', None) if agency_settings is not None else None
-    _gate = lambda name: getattr(ai_agent, name, True) if ai_agent is not None else True
+    _tier = getattr(agency_settings, 'tier', AgencyTier.STARTER)
+
+    def _gate(name: str) -> bool:
+        if not tier_allows_feature(_tier, name):
+            return False
+        if ai_agent is not None:
+            return ai_agent.is_enabled(name)
+        return True
 
     if commercial_decision == "ESCALATE_RECOVERY" or operating_mode == "emergency":
         result.ghost_triggered = True

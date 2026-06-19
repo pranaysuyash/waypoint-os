@@ -53,7 +53,7 @@ from .safety import (
     enforce_no_leakage,
     SanitizedPacketView,
 )
-from .config.agency_settings import AgencySettings
+from .config.agency_settings import AgencySettings, tier_allows_feature, AgencyTier
 from .gates import NB01CompletionGate, NB02JudgmentGate, GateVerdict, AutonomyOutcome
 from .constants import PipelineStage, GateIdentifier
 from src.fees.calculation import calculate_trip_fees
@@ -231,9 +231,18 @@ def run_spine_once(
             payload["error"] = error
         stage_callback(stage_name, payload)
 
-    # Resolve AI agent feature gates once for the pipeline
+    # Resolve AI agent feature gates once for the pipeline.
+    # Tier limits override AiAgentSettings — a starter-tier agency that
+    # manually enables frontier/negotiation will still have it disabled.
     ai_agent_settings = getattr(actual_settings, 'ai_agent', None)
-    _gate = lambda name: getattr(ai_agent_settings, name, True) if ai_agent_settings is not None else True
+    _tier = getattr(actual_settings, 'tier', AgencyTier.STARTER)
+
+    def _gate(name: str) -> bool:
+        if not tier_allows_feature(_tier, name):
+            return False
+        if ai_agent_settings is not None:
+            return ai_agent_settings.is_enabled(name)
+        return True
 
     # --- Phase 1: Extraction ---
     # Gated by enable_auto_intake (AiAgentSettings feature gate)
