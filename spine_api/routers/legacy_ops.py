@@ -206,6 +206,47 @@ def create_override(
     }
     override_id = OverrideStore.save_override(trip_id, override_data)
 
+    # --- Closed-loop learning pipeline (P0) ---
+    rollout_metadata: dict = {}
+    mutations_applied: list[str] = []
+    cache_invalidated = False
+    rule_graduated = False
+    pattern_learning_queued = request.scope == "pattern"
+    rollout_mode: str | None = None
+    warnings: list[str] = []
+
+    try:
+        from src.intake.config.agency_settings import AgencySettingsStore
+        settings = AgencySettingsStore.load(agency.id)
+        learn_enabled = settings.autonomy.learn_from_overrides
+    except Exception:
+        learn_enabled = True  # default when settings unavailable
+
+    if learn_enabled:
+        try:
+            from src.decision.override_learning import learn_from_operator_override
+            override_data_full = dict(override_data)
+            override_data_full["override_id"] = override_id
+            # TODO(P1): pass live cache key from decision context for cache invalidation
+            override_data_full["cache_key"] = None
+            rollout_metadata = learn_from_operator_override(
+                trip_id=trip_id,
+                override_data=override_data_full,
+                learn_from_overrides_enabled=True,
+            )
+            mutations_applied = rollout_metadata.get("mutations_applied", [])
+            cache_invalidated = rollout_metadata.get("cache_invalidated", False)
+            rule_graduated = "rule_graduated" in mutations_applied
+            rollout_mode = rollout_metadata.get("rollout_mode")
+            if "pattern_context_enriched" in mutations_applied:
+                pattern_learning_queued = True
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Closed-loop learning failed for override %s: %s", override_id, exc
+            )
+            warnings.append(f"Learning pipeline skipped: {exc}")
+
     audit_event_id = f"evt_{uuid.uuid4().hex[:12]}"
     AuditStore.log_event("override_created", request.overridden_by, {
         "trip_id": trip_id,
@@ -213,6 +254,8 @@ def create_override(
         "flag": request.flag,
         "action": request.action,
         "reason": request.reason,
+        "rollout_mode": rollout_mode,
+        "mutations_applied": mutations_applied,
     })
 
     return OverrideResponse(
@@ -222,10 +265,12 @@ def create_override(
         flag=request.flag,
         action=request.action,
         new_severity=request.new_severity,
-        cache_invalidated=False,
-        rule_graduated=False,
-        pattern_learning_queued=request.scope == "pattern",
-        warnings=[],
+        cache_invalidated=cache_invalidated,
+        rule_graduated=rule_graduated,
+        pattern_learning_queued=pattern_learning_queued,
+        rollout_mode=rollout_mode,
+        mutations_applied=mutations_applied,
+        warnings=warnings,
         audit_event_id=audit_event_id,
     )
 

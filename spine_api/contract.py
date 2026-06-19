@@ -226,6 +226,8 @@ class OverrideResponse(BaseModel):
     cache_invalidated: bool = False
     rule_graduated: bool = False
     pattern_learning_queued: bool = False
+    rollout_mode: Optional[str] = None
+    mutations_applied: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
     audit_event_id: str
 
