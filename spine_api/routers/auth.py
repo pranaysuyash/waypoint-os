@@ -361,6 +361,67 @@ async def post_confirm_password_reset(
 
 
 # ---------------------------------------------------------------------------
+# Test Token (development only — no DB lookup)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/test-token")
+async def post_test_token(
+    request: Request,
+    response: Response,
+    email: str = "newuser@test.com",
+    agency_id: str | None = None,
+    role: str = "owner",
+    name: str = "Test User",
+):
+    """
+    Return a valid JWT without a DB lookup — for faster local testing.
+
+    Only available when ``ENABLE_TEST_TOKEN=1`` (or ``ENVIRONMENT=development``
+    with ``ENABLE_TEST_TOKEN=1``).  Disabled in production.
+
+    Defaults to newuser@test.com with owner role (all permissions).
+    """
+    if os.environ.get("ENABLE_TEST_TOKEN") != "1":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found",
+        )
+
+    from spine_api.core.security import create_access_token, create_refresh_token
+
+    # If no agency_id provided, derive a deterministic one from the email
+    if not agency_id:
+        import hashlib
+        agency_id = "test-agency-" + hashlib.md5(email.encode()).hexdigest()[:12]
+
+    user_id = f"test-user-{hashlib.md5(email.encode()).hexdigest()[:12]}"
+
+    access_token = create_access_token(
+        user_id=user_id,
+        agency_id=agency_id,
+        role=role,
+    )
+    refresh_token = create_refresh_token(user_id=user_id)
+
+    _set_auth_cookies(response, access_token, refresh_token)
+
+    logger.info(
+        "Test token issued: email=%s role=%s agency=%s",
+        email, role, agency_id,
+    )
+
+    return {
+        "ok": True,
+        "user": {"id": user_id, "email": email, "name": name},
+        "agency": {"id": agency_id, "name": "Test Agency", "slug": agency_id},
+        "membership": {"role": role, "is_primary": True},
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Workspace code — validate and join
 # ---------------------------------------------------------------------------
 
