@@ -343,6 +343,14 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
             await db.commit()
             await db.refresh(attempt)
 
+            # Capture immutable version snapshot for this attempt
+            from src.intake.version_snapshot import capture_version_snapshot
+            version_snapshot = capture_version_snapshot(
+                document_type=document.document_type,
+                rollout_metadata={"attempt_number": attempt_number, "fallback_rank": rank},
+            )
+            attempt.version_snapshot = version_snapshot.to_dict()
+
             start = time.monotonic()
             try:
                 result = await model_extractor.extract(file_data, document.mime_type, document.document_type)
