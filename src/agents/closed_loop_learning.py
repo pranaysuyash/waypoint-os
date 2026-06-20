@@ -387,10 +387,19 @@ class ClosedLoopLearningAgent:
             # Step 2: Build FixCandidate
             candidate = build_fix_candidate(work_item_data)
 
-            # Step 3: Retrieve sample event metadata for shadow testing
+            # Step 3: Retrieve sample event metadata for shadow testing.
+            # Look up the trip to access its execution events, then extract
+            # real metadata instead of returning stubs.
+            trip = self._lookup_trip(work_item.trip_id, trip_repo)
             sample_events = self._retrieve_sample_event_metadata(
-                work_item.trip_id, payload.get("sample_events", [])
-            )
+                trip, payload.get("sample_events", [])
+            ) if trip else []
+
+            if not sample_events and payload.get("sample_events"):
+                logger.warning(
+                    "ClosedLoopLearningAgent: no sample event metadata found for %d IDs on trip %s",
+                    len(payload["sample_events"]), work_item.trip_id,
+                )
 
             # Step 4: Run shadow test
             shadow_result = run_shadow_test(candidate, sample_events)
@@ -446,6 +455,13 @@ class ClosedLoopLearningAgent:
             )
 
     # -- Internal helpers -----------------------------------------------------
+
+    def _lookup_trip(self, trip_id: str, trip_repo: TripRepository) -> Optional[Any]:
+        """Find a trip by ID from the repository's active list."""
+        for trip in trip_repo.list_active():
+            if str(get_field(trip, "id") or "") == trip_id:
+                return trip
+        return None
 
     def _extract_eval_events(self, trip: Any) -> list[Any]:
         """Extract execution events from a trip record that have eval metadata.
@@ -504,34 +520,39 @@ class ClosedLoopLearningAgent:
 
     def _retrieve_sample_event_metadata(
         self,
-        trip_id: str,
+        trip: Any,
         sample_event_ids: list[str],
     ) -> list[dict[str, Any]]:
-        """Retrieve metadata for specific sample events.
+        """Retrieve real metadata for specific sample events from the trip.
 
-        In a real implementation this would query the execution event store
-        via ``execution_event_service.get_events()``.  For now, it returns
-        minimal metadata stubs keyed by event ID so the shadow test can run
-        against realistic-looking payloads.
+        Uses the trip's execution events (already extracted via
+        ``_extract_eval_events``) and returns the raw event dicts
+        matching the requested IDs.  Missing events are skipped
+        gracefully — the shadow test handles partial data.
         """
         if not sample_event_ids:
             return []
 
-        # NOTE: This is a P0 scaffold. A production implementation would
-        # query the DB for each event ID and populate real failure_layer /
-        # failure_signature / review_outcome fields.  The shadow test
-        # already handles 'unknown' layers gracefully (they count as
-        # 'unchanged'), so stubs are safe here.
+        # Build an index of the trip's raw execution events by ID.
+        raw_events = first_non_empty(
+            get_field(trip, "execution_events"),
+            get_nested(trip, "events"),
+            get_nested(trip, "analytics.execution_events"),
+            [],
+        )
+        if not isinstance(raw_events, list):
+            return []
+
+        events_by_id: dict[str, dict[str, Any]] = {}
+        for raw in raw_events:
+            if isinstance(raw, dict):
+                eid = raw.get("id")
+                if eid:
+                    events_by_id[str(eid)] = raw
+
+        # Return metadata for requested events, skipping any not found.
         return [
-            {
-                "id": event_id,
-                "trip_id": trip_id,
-                "event_metadata": {
-                    "failure_signature": "",
-                    "failure_layer": "unknown",
-                    "review_outcome": None,
-                    "fallback_result": None,
-                },
-            }
+            events_by_id[event_id]
             for event_id in sample_event_ids
+            if event_id in events_by_id
         ]
