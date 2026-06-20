@@ -56,6 +56,23 @@ class _Audit:
         self.events.append({"event_type": event_type, "trip_id": trip_id, "payload": payload, "user_id": user_id})
 
 
+def test_default_registry_includes_closed_loop_learning_agent():
+    definitions = build_default_registry().definitions()
+    names = {definition["name"] for definition in definitions}
+
+    assert "closed_loop_learning_agent" in names
+
+    # Verify the agent's definition has all required contract fields
+    cl_agent = next(d for d in definitions if d["name"] == "closed_loop_learning_agent")
+    assert cl_agent["trigger_contract"]
+    assert cl_agent["input_contract"]
+    assert cl_agent["output_contract"]
+    assert cl_agent["idempotency_contract"]
+    assert cl_agent["failure_contract"]
+    assert cl_agent["retry_policy"]["max_attempts"] == 3
+    assert cl_agent["description"]  # non-empty description
+
+
 def test_default_registry_exposes_operational_product_agents_beyond_recovery():
     definitions = build_default_registry().definitions()
     names = {definition["name"] for definition in definitions}
