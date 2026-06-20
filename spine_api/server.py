@@ -369,6 +369,7 @@ try:
     from spine_api.routers import trip_actions as trip_actions_router
     from spine_api.routers import trip_observability as trip_observability_router
     from spine_api.routers import trip_lifecycle as trip_lifecycle_router
+    from spine_api.routers import extraction as extraction_router
 except (ImportError, ValueError):
     import importlib.util
     _base = Path(__file__).resolve().parent
@@ -1121,8 +1122,8 @@ app.include_router(public_checker_router.router)
 app.include_router(public_collection_router.router)
 app.include_router(legacy_ops_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(trip_actions_router.router, dependencies=[Depends(_auth_or_skip)])
-app.include_router(trip_observability_router.router)
-app.include_router(trip_lifecycle_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(trip_observability_router.router)    app.include_router(trip_lifecycle_router.router, dependencies=[Depends(_auth_or_skip)])
+    app.include_router(extraction_router.router, dependencies=[Depends(_auth_or_skip)])
 
 
 def _seed_scenario(agency_id: Optional[str] = None):

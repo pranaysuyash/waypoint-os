@@ -733,6 +733,41 @@ def _filter_confidence(confidence_scores: dict) -> dict:
     return {k: v for k, v in confidence_scores.items() if k in VALID_EXTRACTION_FIELDS}
 
 
+async def get_version_snapshot_for_attempt(
+    db,
+    attempt_id: str,
+    agency_id: str,
+) -> Optional[dict]:
+    """Return the immutable version snapshot for a specific extraction attempt.
+
+    Returns the ``version_snapshot`` JSON dict stored on the attempt row,
+    or ``None`` if the attempt does not exist or belongs to a different agency.
+    """
+    from spine_api.models.tenant import DocumentExtractionAttempt
+    from sqlalchemy import select
+
+    result = (await db.execute(
+        select(DocumentExtractionAttempt).where(
+            DocumentExtractionAttempt.id == attempt_id,
+            DocumentExtractionAttempt.agency_id == agency_id,
+        )
+    )).scalar_one_or_none()
+
+    if result is None:
+        return None
+
+    return {
+        "attempt_id": result.id,
+        "extraction_id": result.extraction_id,
+        "trip_id": result.trip_id,
+        "provider_name": result.provider_name,
+        "model_name": result.model_name,
+        "status": result.status,
+        "version_snapshot": result.version_snapshot,
+        "created_at": result.created_at.isoformat() if result.created_at else None,
+    }
+
+
 def _mask_value(val: str, visible_chars: int = 2) -> str:
     """Mask a value for conflict display: 'John Doe' → 'Jo***e'."""
     if len(val) <= visible_chars * 2:
