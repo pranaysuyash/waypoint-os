@@ -428,6 +428,195 @@ class TestClosedLoopLearningAgentExecute:
 # AgentDefinition tests
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Integration test: full scan → execute → shadow-test cycle
+# ---------------------------------------------------------------------------
+
+
+class TestClosedLoopLearningIntegration:
+    """Integration test that runs the full scan→execute→shadow-test cycle
+    against a trip with real execution_events.
+
+    This verifies the end-to-end flow:
+    1. Trip has execution_events with repeated failure signatures
+    2. scan() discovers the trip and yields WorkItems
+    3. execute() builds a FixCandidate, retrieves real event metadata,
+       runs shadow test, and updates the trip
+    4. The shadow test operates on actual event metadata (not stubs)
+    """
+
+    def _make_real_events(self, trip_id: str = "trip_test_001", count: int = 5) -> list[dict[str, Any]]:
+        """Create execution_events that mirror real extraction failure events.
+
+        These match the shape emitted by extraction_service.py:
+        - event_metadata has failure_signature, failure_layer, next_fix_layer,
+          review_outcome, fallback_result, provider, model
+        - Each event has a unique id for sample_events lookup
+        """
+        events = []
+        for i in range(count):
+            events.append({
+                "id": f"evt_extraction_fail_{i:03d}",
+                "trip_id": trip_id,
+                "event_category": "extraction",
+                "event_type": "extraction_attempt_failed",
+                "subject_type": "document_extraction_attempt",
+                "subject_id": f"attempt_{i:03d}",
+                "created_at": (NOW - timedelta(days=7 - i)).isoformat(),
+                "event_metadata": {
+                    "failure_signature": "passport_expiry|openai|gpt-4o|attempt-1|fb-0|schema_validation_failed",
+                    "failure_layer": "extraction",
+                    "next_fix_layer": "prompt",
+                    "review_outcome": None,
+                    "fallback_result": "retriable_exhausted",
+                    "provider": "openai",
+                    "model": "gpt-4o",
+                    "error_code": "schema_validation_failed",
+                    "attempt_number": 1,
+                    "fallback_rank": 0,
+                },
+            })
+        return events
+
+    def test_full_scan_execute_shadow_cycle(self):
+        """Trip with 5 real extraction failure events → scan discovers it,
+        execute builds candidate from real event metadata, shadow test runs
+        on the actual events, and trip is updated with the verdict."""
+        events = self._make_real_events(count=5)
+        trip = _make_trip(eval_events=events)
+        repo = FakeTripRepo([trip])
+
+        agent = ClosedLoopLearningAgent(min_occurrences=3)
+
+        # --- Phase 1: scan discovers the trip ---
+        work_items = list(agent.scan(repo))
+        assert len(work_items) >= 1, "scan should yield work items for repeated failures"
+        work_item = work_items[0]
+        assert work_item.agent_name == "closed_loop_learning_agent"
+        assert work_item.trip_id == "trip_test_001"
+        assert work_item.payload["failure_signature"] == "passport_expiry|openai|gpt-4o|attempt-1|fb-0|schema_validation_failed"
+        assert work_item.payload["occurrences"] >= 3
+        # sample_events should contain real event IDs from the trip
+        assert len(work_item.payload["sample_events"]) > 0
+        sample_ids = work_item.payload["sample_events"]
+        real_ids = {e["id"] for e in events}
+        assert all(sid in real_ids for sid in sample_ids), \
+            f"sample_events should reference real event IDs, got {sample_ids}"
+
+        # --- Phase 2: execute runs the full pipeline ---
+        result = agent.execute(work_item, repo)
+
+        assert result.success is True
+        assert result.status == WorkStatus.COMPLETED
+
+        # Verify fix candidate was built
+        assert "fix_candidate" in result.output
+        candidate = result.output["fix_candidate"]
+        assert candidate["failure_signature"] == work_item.payload["failure_signature"]
+        assert candidate["failure_layer"] == "extraction"
+        assert candidate["next_fix_layer"] == "prompt"
+        assert candidate["candidate_id"].startswith("fix_")
+        assert candidate["occurrences"] >= 3
+
+        # Verify shadow test ran on real event metadata (not stubs)
+        assert "shadow_test" in result.output
+        shadow = result.output["shadow_test"]
+        assert shadow["sample_count"] > 0, "shadow test should have processed real events"
+        assert shadow["verdict"] in ("proceed", "defer", "reject")
+        # confidence_delta can be 0.0 when no events match the fix layer
+        # (failure_layer='extraction' vs next_fix_layer='prompt') — this is valid.
+        # The key check is that sample_count > 0 and shadow ran on real events.
+        assert shadow["rationale"]  # should have descriptive text
+
+        # Verify trip was updated
+        updated_trip = repo._trips["trip_test_001"]
+        assert "closed_loop_fix_candidate" in updated_trip
+        assert "closed_loop_shadow_test" in updated_trip
+        assert "closed_loop_verdict" in updated_trip
+        assert updated_trip["last_agent_action"] == "closed_loop_learning_agent"
+        # The stored candidate should match what was returned
+        assert updated_trip["closed_loop_fix_candidate"]["candidate_id"] == candidate["candidate_id"]
+        assert updated_trip["closed_loop_verdict"] == shadow["verdict"]
+
+    def test_execute_shadow_test_uses_real_event_metadata(self):
+        """Verify that shadow test operates on real event metadata,
+        not 'unknown' stubs. This is the key regression test for the
+        _retrieve_sample_event_metadata fix."""
+        # Events with failure_layer="prompt" — these should be counted as
+        # 'simulated_fixes' since the candidate targets prompt layer
+        events = self._make_real_events(count=4)
+        # Override the failure_layer to match next_fix_layer (prompt)
+        for event in events:
+            event["event_metadata"]["failure_layer"] = "prompt"
+
+        trip = _make_trip(eval_events=events)
+        repo = FakeTripRepo([trip])
+        agent = ClosedLoopLearningAgent(min_occurrences=3)
+
+        work_items = list(agent.scan(repo))
+        assert len(work_items) >= 1
+        result = agent.execute(work_items[0], repo)
+
+        assert result.success is True
+        shadow = result.output["shadow_test"]
+        # build_repeated_failure_signal caps sample_events to last 3 records,
+        # so sample_count is 3 even though we created 4 events. All events
+        # fail at 'prompt' which matches next_fix_layer → all should be fixes.
+        assert shadow["sample_count"] > 0, "shadow test should have processed real events"
+        assert shadow["simulated_fixes"] == shadow["sample_count"], \
+            f"Expected all {shadow['sample_count']} sample events to be fixes, got {shadow['simulated_fixes']}"
+        assert shadow["simulated_regressions"] == 0
+        assert shadow["verdict"] == "proceed"
+
+    def test_cycle_idempotent_on_existing_candidate(self):
+        """Once a trip has a fix candidate, scan should not produce new work items
+        for the same failure signature."""
+        events = self._make_real_events(count=5)
+        existing_candidate = {
+            "candidate_id": "fix_existing",
+            "failure_signature": "passport_expiry|openai|gpt-4o|attempt-1|fb-0|schema_validation_failed",
+        }
+        trip = _make_trip(eval_events=events, existing_candidate=existing_candidate)
+        repo = FakeTripRepo([trip])
+        agent = ClosedLoopLearningAgent(min_occurrences=3)
+
+        work_items = list(agent.scan(repo))
+        assert len(work_items) == 0, "scan should skip trips with existing candidates"
+
+    def test_multiple_distinct_failure_signatures_produce_separate_candidates(self):
+        """Two different failure signatures in the same trip should yield
+        separate work items and separate fix candidates."""
+        events_a = self._make_real_events(count=3)
+        for e in events_a:
+            e["id"] = e["id"].replace("evt_extraction_fail", "evt_sig_a")
+            e["event_metadata"]["failure_signature"] = "sig_a|openai|gpt-4o|attempt-1|fb-0|api_timeout"
+            e["event_metadata"]["failure_layer"] = "provider"
+            e["event_metadata"]["error_code"] = "api_timeout"
+
+        events_b = self._make_real_events(count=3)
+        for e in events_b:
+            e["id"] = e["id"].replace("evt_extraction_fail", "evt_sig_b")
+            e["event_metadata"]["failure_signature"] = "sig_b|gemini|gemini-pro|attempt-1|fb-0|schema_validation_failed"
+            e["event_metadata"]["failure_layer"] = "extraction"
+            e["event_metadata"]["error_code"] = "schema_validation_failed"
+
+        trip = _make_trip(eval_events=events_a + events_b)
+        repo = FakeTripRepo([trip])
+        agent = ClosedLoopLearningAgent(min_occurrences=3)
+
+        work_items = list(agent.scan(repo))
+        signatures = {wi.payload["failure_signature"] for wi in work_items}
+        assert len(signatures) == 2, f"Expected 2 distinct failure signatures, got {len(signatures)}: {signatures}"
+
+        # Execute each and verify they produce different candidate IDs
+        candidates = set()
+        for wi in work_items:
+            result = agent.execute(wi, repo)
+            assert result.success is True
+            candidates.add(result.output["fix_candidate"]["candidate_id"])
+        assert len(candidates) == 2, f"Expected 2 distinct candidate IDs, got {len(candidates)}"
+
+
 class TestAgentDefinition:
     def test_definition_is_complete(self):
         defn = ClosedLoopLearningAgent.definition
