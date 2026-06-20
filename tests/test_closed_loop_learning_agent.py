@@ -617,6 +617,209 @@ class TestClosedLoopLearningIntegration:
         assert len(candidates) == 2, f"Expected 2 distinct candidate IDs, got {len(candidates)}"
 
 
+# ---------------------------------------------------------------------------
+# Supervisor-level integration test: run_once() with real events
+# ---------------------------------------------------------------------------
+
+
+class TestSupervisorRunOnceIntegration:
+    """Verify AgentSupervisor.run_once() drives ClosedLoopLearningAgent through
+    the full scan → lease → execute → audit pipeline against a trip with
+    real execution_events.
+
+    This is one level above TestClosedLoopLearningIntegration — it exercises the
+    supervisor's work-coordination (acquire/complete/fail), audit event emission,
+    and result aggregation.
+    """
+
+    @staticmethod
+    def _make_real_events(
+        trip_id: str = "trip_test_001", count: int = 5
+    ) -> list[dict[str, Any]]:
+        events = []
+        for i in range(count):
+            events.append({
+                "id": f"evt_extraction_fail_{i:03d}",
+                "trip_id": trip_id,
+                "event_category": "extraction",
+                "event_type": "extraction_attempt_failed",
+                "subject_type": "document_extraction_attempt",
+                "subject_id": f"attempt_{i:03d}",
+                "created_at": (NOW - timedelta(days=7 - i)).isoformat(),
+                "event_metadata": {
+                    "failure_signature": "passport_expiry|openai|gpt-4o|attempt-1|fb-0|schema_validation_failed",
+                    "failure_layer": "extraction",
+                    "next_fix_layer": "prompt",
+                    "review_outcome": None,
+                    "fallback_result": "retriable_exhausted",
+                    "provider": "openai",
+                    "model": "gpt-4o",
+                    "error_code": "schema_validation_failed",
+                    "attempt_number": 1,
+                    "fallback_rank": 0,
+                },
+            })
+        return events
+
+    def _build_supervisor(
+        self, repo: FakeTripRepo
+    ) -> tuple[AgentSupervisor, list[dict[str, Any]]]:
+        """Create an AgentSupervisor with only ClosedLoopLearningAgent registered.
+
+        Returns (supervisor, audit_events) where audit_events is a mutable list
+        that receives every audit log call.
+        """
+        from src.agents.runtime import (
+            AgentRegistry,
+            AgentSupervisor,
+            InMemoryWorkCoordinator,
+        )
+
+        agent = ClosedLoopLearningAgent(min_occurrences=3)
+        registry = AgentRegistry([agent])
+        coordinator = InMemoryWorkCoordinator(lease_seconds=300)
+        audit_events: list[dict[str, Any]] = []
+
+        class _FakeAuditSink:
+            def log(self, event_type: str, trip_id: str, payload: dict[str, Any], user_id: str | None = None) -> None:
+                audit_events.append({"event_type": event_type, "trip_id": trip_id, "payload": payload})
+
+        supervisor = AgentSupervisor(
+            registry=registry,
+            trip_repo=repo,
+            audit=_FakeAuditSink(),  # type: ignore[arg-type]
+            coordinator=coordinator,
+        )
+        return supervisor, audit_events
+
+    def test_run_once_full_cycle(self):
+        """run_once() should scan for work items, lease them, execute the
+        ClosedLoopLearningAgent, complete the lease, emit audit events, and
+        update the trip with the fix candidate and shadow verdict."""
+        events = self._make_real_events(count=5)
+        trip = _make_trip(eval_events=events)
+        repo = FakeTripRepo([trip])
+        supervisor, audit_events = self._build_supervisor(repo)
+
+        results = supervisor.run_once()
+
+        # --- Result list ---
+        assert len(results) >= 1, "run_once should produce at least one result"
+        result = results[0]
+        assert result.success is True
+        assert result.status == WorkStatus.COMPLETED
+        assert result.work_item.agent_name == "closed_loop_learning_agent"
+        assert result.work_item.trip_id == "trip_test_001"
+
+        # --- Fix candidate in output ---
+        candidate = result.output["fix_candidate"]
+        assert candidate["failure_signature"] == "passport_expiry|openai|gpt-4o|attempt-1|fb-0|schema_validation_failed"
+        assert candidate["candidate_id"].startswith("fix_")
+        assert candidate["occurrences"] >= 3
+
+        # --- Shadow test in output ---
+        shadow = result.output["shadow_test"]
+        assert shadow["sample_count"] > 0, "shadow test should have processed real events"
+        assert shadow["verdict"] in ("proceed", "defer", "reject")
+        assert shadow["rationale"]
+
+        # --- Trip was updated ---
+        updated_trip = repo._trips["trip_test_001"]
+        assert updated_trip["closed_loop_fix_candidate"]["candidate_id"] == candidate["candidate_id"]
+        assert updated_trip["closed_loop_verdict"] == shadow["verdict"]
+        assert updated_trip["last_agent_action"] == "closed_loop_learning_agent"
+
+        # --- Audit events were emitted ---
+        # The audit sink stores event.to_dict() as payload, so the actual
+        # event payload (containing 'decision', 'success', etc.) is nested
+        # one level deeper at e["payload"]["payload"].
+        agent_events = [e for e in audit_events if e["payload"].get("agent_name") == "closed_loop_learning_agent"]
+        event_types = {e["event_type"] for e in agent_events}
+        assert "agent_event" in event_types, "supervisor should emit agent_event audit entries"
+        # Verify we see decision (execute) and action (completed) events
+        decisions = [e for e in agent_events if e["payload"].get("payload", {}).get("decision") == "execute"]
+        actions = [e for e in agent_events if e["payload"].get("payload", {}).get("success") is True]
+        assert len(decisions) >= 1, "supervisor should emit an execute decision event"
+        assert len(actions) >= 1, "supervisor should emit a success action event"
+
+        # --- Coordinator recorded the lease as completed ---
+        snapshot = supervisor.coordinator.snapshot()
+        assert snapshot["completed"] >= 1, "coordinator should show at least one completed lease"
+
+    def test_run_once_idempotent_on_second_pass(self):
+        """A second run_once() call should not re-execute for the same failure
+        signature because the trip now has a fix candidate (scan skips it)."""
+        events = self._make_real_events(count=5)
+        trip = _make_trip(eval_events=events)
+        repo = FakeTripRepo([trip])
+        supervisor, _ = self._build_supervisor(repo)
+
+        # First pass — should produce results
+        results_pass1 = supervisor.run_once()
+        assert len(results_pass1) >= 1
+
+        # Second pass — scan should skip the trip (existing candidate)
+        results_pass2 = supervisor.run_once()
+        assert len(results_pass2) == 0, "second pass should produce no new results"
+
+    def test_run_once_returns_empty_when_no_qualifying_trips(self):
+        """run_once() should return an empty list when no trips have qualifying
+        failure signatures."""
+        # Only 2 events — below min_occurrences=3 threshold
+        events = self._make_real_events(count=2)
+        trip = _make_trip(eval_events=events)
+        repo = FakeTripRepo([trip])
+        supervisor, _ = self._build_supervisor(repo)
+
+        results = supervisor.run_once()
+        assert len(results) == 0
+
+    def test_run_once_targeted_agent_name(self):
+        """run_once(agent_name=...) should only run the specified agent."""
+        events = self._make_real_events(count=5)
+        trip = _make_trip(eval_events=events)
+        repo = FakeTripRepo([trip])
+        supervisor, _ = self._build_supervisor(repo)
+
+        results = supervisor.run_once(agent_name="closed_loop_learning_agent")
+        assert len(results) >= 1
+        assert all(r.work_item.agent_name == "closed_loop_learning_agent" for r in results)
+
+    def test_run_once_health_reflects_registration(self):
+        """health() should list closed_loop_learning_agent in registered_agents."""
+        repo = FakeTripRepo([])
+        supervisor, _ = self._build_supervisor(repo)
+
+        health = supervisor.health()
+        assert "closed_loop_learning_agent" in health["registered_agents"]
+        assert health["running"] is False  # not started via start()
+
+    def test_run_once_multiple_trips_with_different_signatures(self):
+        """Two trips with different failure signatures should both produce results."""
+        events_a = self._make_real_events(trip_id="trip_a", count=3)
+        for e in events_a:
+            e["event_metadata"]["failure_signature"] = "sig_a|openai|gpt-4o|attempt-1|fb-0|timeout"
+            e["trip_id"] = "trip_a"
+
+        events_b = self._make_real_events(trip_id="trip_b", count=3)
+        for e in events_b:
+            e["event_metadata"]["failure_signature"] = "sig_b|gemini|gemini-pro|attempt-1|fb-0|schema_fail"
+            e["trip_id"] = "trip_b"
+
+        trips = [
+            _make_trip(trip_id="trip_a", eval_events=events_a),
+            _make_trip(trip_id="trip_b", eval_events=events_b),
+        ]
+        repo = FakeTripRepo(trips)
+        supervisor, _ = self._build_supervisor(repo)
+
+        results = supervisor.run_once()
+        trip_ids = {r.work_item.trip_id for r in results}
+        assert len(results) >= 2, f"Expected at least 2 results for 2 trips, got {len(results)}"
+        assert "trip_a" in trip_ids
+        assert "trip_b" in trip_ids
+
+
 class TestAgentDefinition:
     def test_definition_is_complete(self):
         defn = ClosedLoopLearningAgent.definition
