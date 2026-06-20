@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from string import Formatter
 from typing import Any, Protocol
 
-from src.agents.tool_contracts import ToolFreshnessPolicy, ToolResult
+from src.agents.tool_contracts import ToolFreshnessPolicy, ToolResult, validate_tool_input, validate_tool_output, sanitize_tool_data
 
 
 class WeatherTool(Protocol):
@@ -253,17 +253,17 @@ class HTTPFlightStatusTool:
         payload = _get_json(url, self.timeout_seconds, self.headers)
         status = _first_nested(payload, ["status", "flight_status", "data.0.status", "data.0.flight_status", "flights.0.status"])
         delay_minutes = _number(_first_nested(payload, ["delay_minutes", "delay", "data.0.delay_minutes", "data.0.delay", "flights.0.delay_minutes"]))
-        data = {
+        normalized = {
             "status": status or "unknown",
             "delay_minutes": delay_minutes,
             "provider": self.provider_name,
-            "provider_payload": payload,
             "mode": "live",
         }
+        validated = validate_tool_output(self.provider_name + "_flight_status", normalized)
         return ToolResult.from_static(
             tool_name=f"{self.provider_name}_flight_status",
             query=mapping,
-            data=data,
+            data=validated,
             source=self.provider_name,
             freshness=ToolFreshnessPolicy(max_age_seconds=900),
             confidence=0.75 if status else 0.45,
@@ -290,19 +290,19 @@ class HTTPPriceWatchTool:
         drift_percent = None
         if quoted_price and current_price:
             drift_percent = round(((current_price - quoted_price) / quoted_price) * 100, 2)
-        data = {
+        normalized = {
             "quoted_price": quoted_price,
             "current_price": current_price,
             "currency": _first_nested(payload, ["currency", "data.currency", "offers.0.currency"]) or mapping.get("currency") or "USD",
             "drift_percent": drift_percent,
             "provider": self.provider_name,
-            "provider_payload": payload,
             "mode": "live",
         }
+        validated = validate_tool_output(self.provider_name + "_price_watch", normalized)
         return ToolResult.from_static(
             tool_name=f"{self.provider_name}_price_watch",
             query={"quote_id": mapping.get("quote_id") or mapping.get("id")},
-            data=data,
+            data=validated,
             source=self.provider_name,
             freshness=ToolFreshnessPolicy(max_age_seconds=900),
             confidence=0.72 if current_price is not None else 0.4,
