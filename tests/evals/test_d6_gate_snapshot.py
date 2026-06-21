@@ -318,3 +318,91 @@ def test_pipeline_category_passes_when_accuracy_above_threshold():
     )
     assert meets is True
     assert "accuracy_below_threshold" not in reasons
+
+
+# --- live pipeline results tests ---
+
+
+def test_build_gate_snapshot_with_live_pipeline_results():
+    """Live pipeline results should override the self-consistent baseline."""
+    snapshot = build_gate_snapshot()
+    baseline_acc = snapshot["pipeline_health"]["overall_accuracy"]
+    # Baseline is 1.0 (self-consistent)
+    assert baseline_acc == 1.0
+
+    # Now provide partial live results (only one fixture matches perfectly)
+    from src.evals.audit.rules.pipeline import load_pipeline_fixtures
+    fixtures = load_pipeline_fixtures(Path("data/fixtures/pipeline/pipeline_golden.json"))
+    live_results = {
+        fixtures[0].fixture_id: {
+            "extraction": fixtures[0].expected_extraction,
+            "agents": fixtures[0].expected_agents,
+            "decision": fixtures[0].expected_decision,
+        },
+    }
+    degraded = build_gate_snapshot(pipeline_live_results=live_results)
+    degraded_acc = degraded["pipeline_health"]["overall_accuracy"]
+    # Accuracy should drop because only 1 of 7 fixtures has actual results
+    assert degraded_acc < baseline_acc
+    assert degraded_acc > 0.0
+
+
+def test_pipeline_live_results_accuracy_degrades_to_warning():
+    """Partial live results should produce warning status (0.50-0.80)."""
+    from src.evals.audit.rules.pipeline import load_pipeline_fixtures
+    fixtures = load_pipeline_fixtures(Path("data/fixtures/pipeline/pipeline_golden.json"))
+    # Provide results for 2 of 7 fixtures
+    live_results = {
+        fixtures[0].fixture_id: {
+            "extraction": fixtures[0].expected_extraction,
+            "agents": fixtures[0].expected_agents,
+            "decision": fixtures[0].expected_decision,
+        },
+        fixtures[1].fixture_id: {
+            "extraction": fixtures[1].expected_extraction,
+            "agents": fixtures[1].expected_agents,
+            "decision": fixtures[1].expected_decision,
+        },
+    }
+    snapshot = build_gate_snapshot(pipeline_live_results=live_results)
+    ph = snapshot["pipeline_health"]
+    # 2/7 fixtures with perfect results → accuracy ~0.28
+    assert ph["overall_accuracy"] < 0.80
+    assert ph["status"] in ("failing", "warning")
+
+
+def test_pipeline_live_results_empty_degrades_to_failing():
+    """Empty live results should produce failing status."""
+    snapshot = build_gate_snapshot(pipeline_live_results={})
+    ph = snapshot["pipeline_health"]
+    assert ph["overall_accuracy"] < 0.50
+    assert ph["status"] == "failing"
+    assert ph["blocks_ci"] is True
+
+
+def test_pipeline_live_results_blocks_ci_when_below_threshold():
+    """Low accuracy with gating status should block CI via manifest category."""
+    snapshot = build_gate_snapshot(pipeline_live_results={})
+    pipeline_cat = snapshot["categories"]["pipeline"]
+    assert pipeline_cat["status"] == "gating"
+    assert pipeline_cat["meets_thresholds"] is False
+    assert pipeline_cat["blocks_ci"] is True
+
+
+def test_write_gate_snapshot_with_live_results(tmp_path: Path):
+    """write_gate_snapshot should accept pipeline_live_results."""
+    from src.evals.audit.rules.pipeline import load_pipeline_fixtures
+    fixtures = load_pipeline_fixtures(Path("data/fixtures/pipeline/pipeline_golden.json"))
+    live_results = {
+        fixtures[0].fixture_id: {
+            "extraction": fixtures[0].expected_extraction,
+            "agents": fixtures[0].expected_agents,
+            "decision": fixtures[0].expected_decision,
+        },
+    }
+    output = tmp_path / "d6_gate_snapshot.json"
+    write_gate_snapshot(output_path=output, pipeline_live_results=live_results)
+    payload = json.loads(output.read_text())
+    ph = payload["pipeline_health"]
+    assert ph["overall_accuracy"] < 1.0
+    assert ph["overall_accuracy"] > 0.0

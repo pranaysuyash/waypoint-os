@@ -79,15 +79,24 @@ def _run_extraction_baseline(
 def _run_pipeline_baseline(
     *,
     pipeline_fixture_path: Path = DEFAULT_PIPELINE_FIXTURE_PATH,
+    live_results: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Run pipeline eval against golden fixtures using expected outputs as actuals.
+    """Run pipeline eval against golden fixtures.
 
     Returns a JSON-serialisable summary suitable for the gate snapshot.
-    The baseline uses expected outputs as the actual results, which
-    validates the comparison logic and establishes a 100%-accuracy
-    reference point.  When live pipeline results are available, they
-    should be passed as ``actual_results`` to measure real accuracy
-    against the golden fixtures.
+    When ``live_results`` is provided, they are used as the actual
+    pipeline outputs and compared against the golden fixtures.  When
+    ``live_results`` is ``None``, the expected outputs are used as
+    actuals (self-consistent baseline) to validate comparison logic.
+
+    Parameters
+    ----------
+    pipeline_fixture_path
+        Path to the golden pipeline fixtures JSON.
+    live_results
+        Actual pipeline outputs keyed by fixture_id.  Each value is a
+        dict with ``extraction``, ``agents``, and ``decision`` keys.
+        When ``None``, expected outputs are used as actuals.
     """
     if not pipeline_fixture_path.exists():
         return {
@@ -98,16 +107,21 @@ def _run_pipeline_baseline(
             "blocks_ci": False,
         }
     fixtures = load_pipeline_fixtures(pipeline_fixture_path)
-    # Build self-consistent actual results from expected outputs.
-    # This validates the comparison logic and produces a 100%-accuracy
-    # reference baseline.  Live results override this at runtime.
-    actual_results: dict[str, dict[str, Any]] = {}
-    for fixture in fixtures:
-        actual_results[fixture.fixture_id] = {
-            "extraction": fixture.expected_extraction,
-            "agents": fixture.expected_agents,
-            "decision": fixture.expected_decision,
-        }
+    if live_results is not None:
+        actual_results = live_results
+        note = "Live pipeline results used for accuracy evaluation."
+    else:
+        # Build self-consistent actual results from expected outputs.
+        # This validates the comparison logic and produces a 100%-accuracy
+        # reference baseline.
+        actual_results = {}
+        for fixture in fixtures:
+            actual_results[fixture.fixture_id] = {
+                "extraction": fixture.expected_extraction,
+                "agents": fixture.expected_agents,
+                "decision": fixture.expected_decision,
+            }
+        note = "Baseline using expected outputs as actuals. Override with real pipeline results at runtime."
     report = run_pipeline_eval(fixtures, actual_results)
     summary = report.summary()
     overall_acc = summary["overall_accuracy"]
@@ -125,7 +139,7 @@ def _run_pipeline_baseline(
         "fixtures_failing": summary["fixtures_failing"],
         "stage_accuracies": summary["stage_accuracies"],
         "blocks_ci": status == "failing",
-        "note": "Baseline using expected outputs as actuals. Override with real pipeline results at runtime.",
+        "note": note,
     }
 
 
@@ -133,6 +147,7 @@ def build_gate_snapshot(
     *,
     fixture_root: Path = DEFAULT_FIXTURE_ROOT,
     golden_dataset_path: Path = DEFAULT_GOLDEN_DATASET_PATH,
+    pipeline_live_results: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     fixtures = load_fixtures(fixture_root)
     manifest = load_manifest()
@@ -147,7 +162,9 @@ def build_gate_snapshot(
     )
 
     # --- pipeline end-to-end eval gate ---
-    pipeline_health = _run_pipeline_baseline()
+    pipeline_health = _run_pipeline_baseline(
+        live_results=pipeline_live_results,
+    )
 
     # --- manifest gate evaluation ---
     # Pass per-category accuracy values for categories that use
@@ -197,8 +214,13 @@ def write_gate_snapshot(
     output_path: Path = DEFAULT_SNAPSHOT_PATH,
     fixture_root: Path = DEFAULT_FIXTURE_ROOT,
     golden_dataset_path: Path = DEFAULT_GOLDEN_DATASET_PATH,
+    pipeline_live_results: dict[str, dict[str, Any]] | None = None,
 ) -> Path:
-    snapshot = build_gate_snapshot(fixture_root=fixture_root, golden_dataset_path=golden_dataset_path)
+    snapshot = build_gate_snapshot(
+        fixture_root=fixture_root,
+        golden_dataset_path=golden_dataset_path,
+        pipeline_live_results=pipeline_live_results,
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(snapshot, indent=2, sort_keys=True))
     return output_path
@@ -252,8 +274,13 @@ def verify_gate_snapshot_file(
     snapshot_path: Path = DEFAULT_SNAPSHOT_PATH,
     fixture_root: Path = DEFAULT_FIXTURE_ROOT,
     golden_dataset_path: Path = DEFAULT_GOLDEN_DATASET_PATH,
+    pipeline_live_results: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[bool, dict[str, Any], dict[str, Any] | None]:
-    expected = build_gate_snapshot(fixture_root=fixture_root, golden_dataset_path=golden_dataset_path)
+    expected = build_gate_snapshot(
+        fixture_root=fixture_root,
+        golden_dataset_path=golden_dataset_path,
+        pipeline_live_results=pipeline_live_results,
+    )
     if not snapshot_path.exists():
         return False, expected, None
     try:
