@@ -60,6 +60,35 @@ class TestPipelineFixtureLoading:
         assert f.fixture_id == "test_fixture"
         assert f.raw_input["raw_note"] == "test"
 
+    def test_from_dict_raises_on_missing_fixture_id(self):
+        import pytest
+
+        with pytest.raises(KeyError, match="fixture_id"):
+            PipelineFixture.from_dict({"description": "no id"})
+
+    def test_from_dict_raises_on_missing_expected_agents(self):
+        import pytest
+
+        with pytest.raises(ValueError, match="expected_agents"):
+            PipelineFixture.from_dict({"fixture_id": "x", "expected_decision": {}})
+
+    def test_from_dict_raises_on_missing_expected_decision(self):
+        import pytest
+
+        with pytest.raises(ValueError, match="expected_decision"):
+            PipelineFixture.from_dict({"fixture_id": "x", "expected_agents": {}})
+
+    def test_from_dict_accepts_minimal_valid_dict(self):
+        data = {
+            "fixture_id": "min",
+            "expected_agents": {},
+            "expected_decision": {},
+        }
+        f = PipelineFixture.from_dict(data)
+        assert f.fixture_id == "min"
+        assert f.difficulty == "medium"  # default
+        assert f.expected_agents == {}
+
 
 class TestValuesMatch:
     def test_both_none(self):
@@ -239,3 +268,45 @@ class TestPipelineEvalReport:
         summary = report.summary()
         assert summary["fixtures_passing"] == 0
         assert summary["fixtures_failing"] == 5
+
+    def test_custom_stage_threshold_tighter(self):
+        """A stricter threshold (0.95) rejects fixtures that barely pass at 0.8."""
+        fixtures = load_pipeline_fixtures(FIXTURE_PATH)
+        actuals = {}
+        for f in fixtures:
+            actuals[f.fixture_id] = {
+                "extraction": f.expected_extraction,
+                "agents": f.expected_agents,
+                "decision": f.expected_decision,
+            }
+        # At default 0.8 all pass
+        report_default = run_pipeline_eval(fixtures, actuals)
+        assert report_default.summary()["fixtures_passing"] == 5
+
+        # At 1.0 threshold, still passes (perfect match)
+        report_strict = run_pipeline_eval(fixtures, actuals, stage_threshold=1.0)
+        assert report_strict.summary()["fixtures_passing"] == 5
+
+    def test_custom_stage_threshold_relaxed(self):
+        """A very low threshold (0.0) marks all stages as passing."""
+        fixtures = load_pipeline_fixtures(FIXTURE_PATH)
+        report = run_pipeline_eval(fixtures, stage_threshold=0.0)
+        summary = report.summary()
+        assert summary["fixtures_passing"] == 5
+
+    def test_stage_threshold_on_comparison(self):
+        """Compare a single fixture with different thresholds."""
+        fixtures = load_pipeline_fixtures(FIXTURE_PATH)
+        f = fixtures[0]
+        actual = {
+            "extraction": f.expected_extraction,
+            "agents": {},  # 0% agents match
+            "decision": f.expected_decision,
+        }
+        # Default threshold: agents stage fails
+        comp_default = compare_pipeline_fixture(f, actual)
+        assert comp_default.stages["agents"].passed is False
+
+        # Very relaxed threshold: agents stage passes
+        comp_relaxed = compare_pipeline_fixture(f, actual, stage_threshold=0.0)
+        assert comp_relaxed.stages["agents"].passed is True

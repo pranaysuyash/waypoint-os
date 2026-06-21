@@ -42,8 +42,34 @@ class PipelineFixture:
     expected_agents: dict[str, dict[str, Any]]
     expected_decision: dict[str, Any]
 
+    _REQUIRED_KEYS = ("fixture_id",)
+    _RECOMMENDED_KEYS = ("expected_agents", "expected_decision")
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "PipelineFixture":
+        """Build a PipelineFixture from a raw dict, validating required keys.
+
+        Raises
+        ------
+        KeyError
+            If ``fixture_id`` is missing.
+        ValueError
+            If any of ``expected_agents`` or ``expected_decision`` are missing.
+        """
+        missing_required = [k for k in cls._REQUIRED_KEYS if k not in data]
+        if missing_required:
+            raise KeyError(
+                f"PipelineFixture missing required key(s): {', '.join(missing_required)}"
+            )
+        missing_recommended = [
+            k for k in cls._RECOMMENDED_KEYS if k not in data
+        ]
+        if missing_recommended:
+            raise ValueError(
+                f"PipelineFixture '{data.get('fixture_id', '<unknown>')}' missing "
+                f"recommended key(s): {', '.join(missing_recommended)}. "
+                f"These should be provided for meaningful eval comparison."
+            )
         return cls(
             fixture_id=data["fixture_id"],
             description=data.get("description", ""),
@@ -104,9 +130,11 @@ class StageResult:
     def accuracy(self) -> float:
         return self.matched_fields / self.total_fields if self.total_fields > 0 else 0.0
 
+    stage_threshold: float = 0.8
+
     @property
     def passed(self) -> bool:
-        return self.accuracy >= 0.8  # 80% threshold for stage pass
+        return self.accuracy >= self.stage_threshold
 
 
 @dataclass(slots=True)
@@ -191,11 +219,25 @@ def _compare_dict(
 def compare_pipeline_fixture(
     fixture: PipelineFixture,
     actual: dict[str, Any] | None = None,
+    *,
+    stage_threshold: float = 0.8,
 ) -> PipelineComparison:
     """Compare a pipeline fixture's expected outputs against actuals.
 
-    When ``actual`` is None, all fields are treated as missing (false negatives
-    for non-null expected values).  This establishes a baseline worst-case.
+    Parameters
+    ----------
+    fixture
+        The pipeline fixture with expected outputs.
+    actual
+        Actual outputs dict (keyed by stage name).  When ``None``, all
+        fields are treated as missing (false negatives).
+    stage_threshold
+        Minimum accuracy for a stage to be considered passing.
+
+    Returns
+    -------
+    PipelineComparison
+        Comparison result with per-stage accuracy and pass/fail.
     """
     comp = PipelineComparison(fixture=fixture)
 
@@ -220,6 +262,7 @@ def compare_pipeline_fixture(
             total_fields=len(field_results),
             matched_fields=matched,
             field_results=field_results,
+            stage_threshold=stage_threshold,
         )
 
     return comp
@@ -259,6 +302,8 @@ class PipelineEvalReport:
 def run_pipeline_eval(
     fixtures: list[PipelineFixture],
     actual_results: dict[str, dict[str, Any]] | None = None,
+    *,
+    stage_threshold: float = 0.8,
 ) -> PipelineEvalReport:
     """Run the pipeline eval over a set of fixtures.
 
@@ -269,6 +314,8 @@ def run_pipeline_eval(
     actual_results
         Pre-computed actual outputs keyed by fixture_id.  When None,
         all fields are treated as missing (baseline worst-case).
+    stage_threshold
+        Minimum accuracy for a stage to be considered passing.
     """
     if actual_results is None:
         actual_results = {}
@@ -276,7 +323,9 @@ def run_pipeline_eval(
     comparisons: list[PipelineComparison] = []
     for fixture in fixtures:
         actual = actual_results.get(fixture.fixture_id)
-        comp = compare_pipeline_fixture(fixture, actual)
+        comp = compare_pipeline_fixture(
+            fixture, actual, stage_threshold=stage_threshold,
+        )
         comparisons.append(comp)
 
     # Overall accuracy
