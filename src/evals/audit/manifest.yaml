@@ -35,14 +35,15 @@ categories:
     min_precision: 0.90
     min_recall: 0.85
     min_severity_accuracy: 0.85
-  # Reference-only: extraction accuracy is evaluated separately via
-  # _run_extraction_baseline() in snapshot.py using its own F1 system.
-  # The real gate is extraction_health.blocks_ci in the snapshot.
+  # Extraction accuracy is evaluated via _run_extraction_baseline() in
+  # snapshot.py using the golden dataset.  overall_f1 feeds into
+  # min_accuracy; precision/recall/severity_accuracy are reference-only.
   extraction:
     status: shadow
     min_precision: 0.85
     min_recall: 0.85
     min_severity_accuracy: 0.80
+    min_accuracy: 0.85
   # Pipeline end-to-end accuracy is evaluated via _run_pipeline_baseline()
   # in snapshot.py using golden fixtures as the reference.
   # blocks_ci when accuracy falls below the threshold.

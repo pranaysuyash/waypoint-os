@@ -187,6 +187,28 @@ def test_extraction_health_manifest_category_present():
     assert extraction_cat["blocks_ci"] is False
 
 
+def test_extraction_manifest_category_evaluated_with_accuracy():
+    """Extraction category should receive overall_f1 from extraction_health."""
+    snapshot = build_gate_snapshot()
+    extraction_cat = snapshot["categories"]["extraction"]
+    eh = snapshot["extraction_health"]
+    # Baseline with no live results: f1=0.0, below min_accuracy=0.85
+    assert extraction_cat["status"] == "shadow"
+    # Shadow status means blocks_ci is always False regardless of accuracy
+    assert extraction_cat["blocks_ci"] is False
+    # The accuracy_below_threshold reason should be present (f1=0.0 < 0.85)
+    assert "accuracy_below_threshold" in extraction_cat["reasons"]
+
+
+def test_extraction_manifest_category_min_accuracy_threshold():
+    """Verify the extraction category uses min_accuracy from manifest.yaml."""
+    from src.evals.audit.manifest import load_manifest
+    manifest = load_manifest()
+    extraction_config = manifest.categories["extraction"]
+    assert extraction_config.min_accuracy == 0.85
+    assert extraction_config.status == "shadow"
+
+
 # --- pipeline_health gate tests ---
 
 

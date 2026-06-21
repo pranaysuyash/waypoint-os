@@ -151,12 +151,15 @@ def build_gate_snapshot(
 
     # --- manifest gate evaluation ---
     # Pass per-category accuracy values for categories that use
-    # min_accuracy thresholds (e.g. pipeline) instead of the standard
-    # precision/recall/severity metrics.
+    # min_accuracy thresholds instead of the standard precision/recall/
+    # severity metrics.
     category_accuracy: dict[str, float] = {}
     pipeline_acc = pipeline_health.get("overall_accuracy")
     if pipeline_acc is not None:
         category_accuracy["pipeline"] = pipeline_acc
+    extraction_f1 = extraction_eval_report.get("overall_f1")
+    if extraction_f1 is not None:
+        category_accuracy["extraction"] = extraction_f1
     gate = evaluate_report_against_manifest(
         report, manifest, category_accuracy=category_accuracy,
     )
