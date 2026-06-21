@@ -53,7 +53,7 @@ class TestPipelineFixtureLoading:
             "tags": ["test"],
             "raw_input": {"raw_note": "test"},
             "expected_extraction": {"passport": {"full_name": "TEST"}},
-            "expected_agents": {"front_door": {"is_real_lead": True}},
+            "expected_agents": {"front_door_agent": {"is_real_lead": True}},
             "expected_decision": {"trip_status": "in_progress"},
         }
         f = PipelineFixture.from_dict(data)

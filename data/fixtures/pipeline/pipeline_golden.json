@@ -30,16 +30,16 @@
       }
     },
     "expected_agents": {
-      "front_door": {
+      "front_door_agent": {
         "is_real_lead": true,
         "priority": "high",
         "missing_fields": ["travel_dates", "hotel_preference"]
       },
-      "document_readiness": {
+      "document_readiness_agent": {
         "risk_level": "medium",
         "checklist_items": ["passport_validity", "visa_status", "insurance_coverage"]
       },
-      "constraint_feasibility": {
+      "constraint_feasibility_agent": {
         "feasibility_status": "feasible",
         "hard_blockers": [],
         "soft_constraints": ["budget_tight"]
@@ -74,16 +74,16 @@
       "insurance": null
     },
     "expected_agents": {
-      "front_door": {
+      "front_door_agent": {
         "is_real_lead": true,
         "priority": "urgent",
         "missing_fields": ["valid_passport", "travel_dates", "insurance"]
       },
-      "document_readiness": {
+      "document_readiness_agent": {
         "risk_level": "high",
         "checklist_items": ["passport_renewal_required", "schengen_visa_needed", "travel_insurance"]
       },
-      "constraint_feasibility": {
+      "constraint_feasibility_agent": {
         "feasibility_status": "blocked",
         "hard_blockers": ["expired_passport"],
         "soft_constraints": ["tight_budget"]
@@ -127,16 +127,16 @@
       }
     },
     "expected_agents": {
-      "front_door": {
+      "front_door_agent": {
         "is_real_lead": true,
         "priority": "normal",
         "missing_fields": []
       },
-      "document_readiness": {
+      "document_readiness_agent": {
         "risk_level": "low",
         "checklist_items": ["passport_valid", "visa_valid", "insurance_valid"]
       },
-      "constraint_feasibility": {
+      "constraint_feasibility_agent": {
         "feasibility_status": "feasible",
         "hard_blockers": [],
         "soft_constraints": []
@@ -175,17 +175,17 @@
       }
     },
     "expected_agents": {
-      "front_door": {
+      "front_door_agent": {
         "is_real_lead": true,
         "priority": "high",
         "missing_fields": ["specific_dates", "accommodation_preference"]
       },
-      "destination_intelligence": {
+      "destination_intelligence_agent": {
         "risk_level": "high",
         "weather_signals": ["typhoon_risk", "september_peak"],
         "recommendations": ["travel_insurance_with_weather_coverage", "flexible_booking"]
       },
-      "constraint_feasibility": {
+      "constraint_feasibility_agent": {
         "feasibility_status": "conditional",
         "hard_blockers": [],
         "soft_constraints": ["weather_uncertainty", "typhoon_season"]
@@ -229,16 +229,16 @@
       }
     },
     "expected_agents": {
-      "front_door": {
+      "front_door_agent": {
         "is_real_lead": true,
         "priority": "high",
         "missing_fields": ["specific_dates_per_destination", "accommodation_preferences"]
       },
-      "document_readiness": {
+      "document_readiness_agent": {
         "risk_level": "high",
         "checklist_items": ["indian_visa", "thai_visa", "singapore_visa", "multi_country_insurance"]
       },
-      "constraint_feasibility": {
+      "constraint_feasibility_agent": {
         "feasibility_status": "conditional",
         "hard_blockers": [],
         "soft_constraints": ["complex_logistics", "tight_budget_for_multi_destination"]
