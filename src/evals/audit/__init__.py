@@ -1,5 +1,6 @@
 """D6 audit evaluation scaffold."""
 
+from .comparison import normalise, values_match
 from .fixtures import AuditFixture, ExpectedAbsentFinding, ExpectedFinding, load_fixtures
 from .gates import CategoryGateDecision, EvalGateReport, evaluate_report_against_manifest
 from .manifest import EvalCategoryConfig, EvalManifest, load_manifest
@@ -38,6 +39,8 @@ __all__ = [
     "load_fixtures",
     "load_golden_dataset",
     "load_manifest",
+    "normalise",
     "run_eval_suite",
     "run_extraction_eval",
+    "values_match",
 ]

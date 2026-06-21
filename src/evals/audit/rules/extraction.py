@@ -68,49 +68,10 @@ def load_golden_dataset(path: Path | str) -> list[ExtractionFixture]:
 
 
 # ---------------------------------------------------------------------------
-# Normalisation & comparison
+# Normalisation & comparison (shared utilities)
 # ---------------------------------------------------------------------------
 
-def _normalise(value: str | None) -> str | None:
-    """Lower-case, collapse whitespace, strip — the canonical comparison form."""
-    if value is None:
-        return None
-    collapsed = " ".join(value.lower().split())
-    return collapsed.strip()
-
-
-def values_match(
-    expected: str | None,
-    actual: str | None,
-    *,
-    mode: Literal["exact", "contains"] = "exact",
-) -> bool:
-    """Compare two field values under the chosen matching mode.
-
-    Modes
-    -----
-    exact
-        Normalised strings must be identical.
-    contains
-        The normalised actual value must *contain* the normalised expected
-        value.  Useful when the extractor appends extra context (e.g.
-        ``"BRITISH CITIZEN"`` extracted as ``"BRITISH CITIZEN (UNITED KINGDOM)"``).
-    """
-    exp_n = _normalise(expected)
-    act_n = _normalise(actual)
-
-    # Both absent — true negative
-    if exp_n is None and act_n is None:
-        return True
-    # One absent, other present — mismatch
-    if exp_n is None or act_n is None:
-        return False
-
-    if mode == "exact":
-        return exp_n == act_n
-    if mode == "contains":
-        return exp_n in act_n or act_n in exp_n
-    return exp_n == act_n
+from src.evals.audit.comparison import normalise as _normalise, values_match
 
 
 # ---------------------------------------------------------------------------

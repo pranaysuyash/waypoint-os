@@ -74,27 +74,10 @@ def load_pipeline_fixtures(path: Path | str) -> list[PipelineFixture]:
 
 
 # ---------------------------------------------------------------------------
-# Per-field comparison
+# Per-field comparison (uses shared utilities)
 # ---------------------------------------------------------------------------
 
-def _normalise(value: Any) -> str | None:
-    """Lower-case, collapse whitespace, strip — the canonical comparison form."""
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        return str(value).strip()
-    return " ".join(value.lower().split()).strip()
-
-
-def _values_match(expected: Any, actual: Any) -> bool:
-    """Compare two values with normalised string comparison."""
-    exp_n = _normalise(expected)
-    act_n = _normalise(actual)
-    if exp_n is None and act_n is None:
-        return True
-    if exp_n is None or act_n is None:
-        return False
-    return exp_n == act_n
+from src.evals.audit.comparison import normalise as _normalise, values_match as _values_match
 
 
 @dataclass(slots=True)
