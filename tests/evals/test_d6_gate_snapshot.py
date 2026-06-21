@@ -200,7 +200,7 @@ def test_build_gate_snapshot_includes_pipeline_health():
     assert "fixtures_passing" in ph
     assert "fixtures_failing" in ph
     assert "stage_accuracies" in ph
-    assert ph["total_fixtures"] == 5
+    assert ph["total_fixtures"] == 7
     # Baseline with no live results: low accuracy expected
     assert ph["status"] in ("failing", "warning")
     assert ph["overall_accuracy"] < 0.2
@@ -227,7 +227,7 @@ def test_write_gate_snapshot_includes_pipeline_health(tmp_path: Path):
     payload = json.loads(output.read_text())
     assert "pipeline_health" in payload
     ph = payload["pipeline_health"]
-    assert ph["total_fixtures"] == 5
+    assert ph["total_fixtures"] == 7
     assert isinstance(ph["stage_accuracies"], dict)
 
 

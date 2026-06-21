@@ -250,5 +250,118 @@
       "owner_action_required": true,
       "escalation_needed": false
     }
+  },
+  {
+    "fixture_id": "pipeline_france_escalation_blocked",
+    "description": "French passport holder with expired passport and visa denial — multiple hard blockers require quality escalation to human review",
+    "difficulty": "medium",
+    "tags": ["french", "escalation", "blocked", "expired_passport", "visa_denial"],
+    "raw_input": {
+      "raw_note": "Traveler from Paris with French passport wants to visit Kenya in October 2027. Passport expired in March 2026 and had a previous visa denial for Kenya. Budget €3,500.",
+      "source": "email",
+      "inquiry_type": "new_trip"
+    },
+    "expected_extraction": {
+      "passport": {
+        "full_name": "JEAN-PIERRE MARTIN",
+        "date_of_birth": "30/01/1975",
+        "passport_number": "FR1234567",
+        "passport_expiry": "15/03/2026",
+        "nationality": "FRENCH"
+      },
+      "visa": null,
+      "insurance": null
+    },
+    "expected_agents": {
+      "front_door_agent": {
+        "is_real_lead": true,
+        "priority": "urgent",
+        "missing_fields": ["valid_passport", "visa_history", "insurance"]
+      },
+      "document_readiness_agent": {
+        "risk_level": "high",
+        "checklist_items": ["passport_renewal_required", "kenya_visa_risk", "travel_insurance"]
+      },
+      "constraint_feasibility_agent": {
+        "feasibility_status": "blocked",
+        "hard_blockers": ["expired_passport", "previous_visa_denial"],
+        "soft_constraints": []
+      },
+      "quality_escalation_agent": {
+        "review_status": "escalated",
+        "escalation_reason": "expired_passport_and_visa_denial"
+      },
+      "sales_activation_agent": {
+        "follow_up_due_date": null,
+        "follow_up_draft": "Trip blocked pending passport renewal and visa reapplication guidance."
+      }
+    },
+    "expected_decision": {
+      "trip_status": "escalated",
+      "stage": "human_review",
+      "owner_action_required": true,
+      "escalation_needed": true
+    }
+  },
+  {
+    "fixture_id": "pipeline_canada_sales_activation",
+    "description": "Canadian passport holder with complete docs and feasible budget — qualified lead ready for proposal and sales follow-up",
+    "difficulty": "easy",
+    "tags": ["canadian", "qualified_lead", "sales_activation", "proposal_ready", "feasible"],
+    "raw_input": {
+      "raw_note": "Couple from Toronto, both Canadian passport holders, want to visit Santorini for 7 days in June 2027. Budget is CAD 6,000. Already have travel insurance and valid passports.",
+      "source": "phone",
+      "inquiry_type": "new_trip"
+    },
+    "expected_extraction": {
+      "passport": {
+        "full_name": "PIERRE-ANDRE DUBOIS",
+        "date_of_birth": "11/08/1983",
+        "passport_number": "AB1234567",
+        "passport_expiry": "05/03/2032",
+        "nationality": "CANADIAN"
+      },
+      "visa": {
+        "full_name": "PIERRE-ANDRE DUBOIS",
+        "visa_type": "SCHENGEN C",
+        "visa_expiry": "20/12/2027",
+        "passport_number": "AB1234567"
+      },
+      "insurance": {
+        "full_name": "PIERRE-ANDRE DUBOIS",
+        "insurance_provider": "TRAVELGUARD (AIG)",
+        "insurance_policy_number": "TG-2026-112233"
+      }
+    },
+    "expected_agents": {
+      "front_door_agent": {
+        "is_real_lead": true,
+        "priority": "high",
+        "missing_fields": []
+      },
+      "document_readiness_agent": {
+        "risk_level": "low",
+        "checklist_items": ["passport_valid", "schengen_visa_valid", "insurance_valid"]
+      },
+      "constraint_feasibility_agent": {
+        "feasibility_status": "feasible",
+        "hard_blockers": [],
+        "soft_constraints": []
+      },
+      "quality_escalation_agent": {
+        "review_status": "not_escalated",
+        "escalation_reason": null
+      },
+      "sales_activation_agent": {
+        "follow_up_due_date": "2026-06-22T00:00:00Z",
+        "follow_up_draft": "Hi Pierre, we have great options for Santorini in June. Shall I prepare a personalized proposal with boutique hotel picks and island-hopping itinerary?"
+      }
+    },
+    "expected_decision": {
+      "trip_status": "in_progress",
+      "stage": "proposal",
+      "owner_action_required": false,
+      "escalation_needed": false
+    }
   }
 ]

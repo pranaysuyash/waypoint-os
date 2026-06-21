@@ -154,11 +154,25 @@
     "total_fixtures": 50
   },
   "fixture_root": "data/fixtures/audit",
-  "generated_at": "2026-06-21T05:34:15.726218+00:00",
+  "generated_at": "2026-06-21T06:52:27.050203+00:00",
   "manifest_version": 1,
+  "pipeline_health": {
+    "blocks_ci": true,
+    "fixtures_failing": 5,
+    "fixtures_passing": 0,
+    "note": "Baseline with no live pipeline results. Override with actual results at runtime.",
+    "overall_accuracy": 0.06,
+    "stage_accuracies": {
+      "agents": 0.0,
+      "decision": 0.0,
+      "extraction": 0.2
+    },
+    "status": "failing",
+    "total_fixtures": 5
+  },
   "routing_health": {
     "blocks_ci": false,
-    "checked_at": "2026-06-21T05:34:15.725431+00:00",
+    "checked_at": "2026-06-21T06:52:27.048911+00:00",
     "status": "healthy",
     "thresholds": {
       "fallback_trigger_rate_critical": 0.5,

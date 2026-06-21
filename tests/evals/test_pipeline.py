@@ -20,7 +20,7 @@ FIXTURE_PATH = Path("data/fixtures/pipeline/pipeline_golden.json")
 class TestPipelineFixtureLoading:
     def test_loads_golden_pipeline_fixtures(self):
         fixtures = load_pipeline_fixtures(FIXTURE_PATH)
-        assert len(fixtures) == 5
+        assert len(fixtures) == 7
 
     def test_fixture_fields_are_populated(self):
         fixtures = load_pipeline_fixtures(FIXTURE_PATH)
@@ -196,11 +196,11 @@ class TestPipelineEvalReport:
     def test_baseline_report(self):
         fixtures = load_pipeline_fixtures(FIXTURE_PATH)
         report = run_pipeline_eval(fixtures)
-        assert report.total_fixtures == 5
+        assert report.total_fixtures == 7
         # Baseline: no actuals. Null expected fields (visa=null) match absent
         # actual → non-zero accuracy for null-matched fields. Verify low baseline.
         assert report.overall_accuracy < 0.15
-        assert len(report.comparisons) == 5
+        assert len(report.comparisons) == 7
 
     def test_perfect_report(self):
         fixtures = load_pipeline_fixtures(FIXTURE_PATH)
@@ -259,7 +259,7 @@ class TestPipelineEvalReport:
             }
         report = run_pipeline_eval(fixtures, actuals)
         summary = report.summary()
-        assert summary["fixtures_passing"] == 5
+        assert summary["fixtures_passing"] == 7
         assert summary["fixtures_failing"] == 0
 
     def test_fixture_failing_count_baseline(self):
@@ -267,7 +267,7 @@ class TestPipelineEvalReport:
         report = run_pipeline_eval(fixtures)
         summary = report.summary()
         assert summary["fixtures_passing"] == 0
-        assert summary["fixtures_failing"] == 5
+        assert summary["fixtures_failing"] == 7
 
     def test_custom_stage_threshold_tighter(self):
         """A stricter threshold (0.95) rejects fixtures that barely pass at 0.8."""
@@ -281,18 +281,18 @@ class TestPipelineEvalReport:
             }
         # At default 0.8 all pass
         report_default = run_pipeline_eval(fixtures, actuals)
-        assert report_default.summary()["fixtures_passing"] == 5
+        assert report_default.summary()["fixtures_passing"] == 7
 
         # At 1.0 threshold, still passes (perfect match)
         report_strict = run_pipeline_eval(fixtures, actuals, stage_threshold=1.0)
-        assert report_strict.summary()["fixtures_passing"] == 5
+        assert report_strict.summary()["fixtures_passing"] == 7
 
     def test_custom_stage_threshold_relaxed(self):
         """A very low threshold (0.0) marks all stages as passing."""
         fixtures = load_pipeline_fixtures(FIXTURE_PATH)
         report = run_pipeline_eval(fixtures, stage_threshold=0.0)
         summary = report.summary()
-        assert summary["fixtures_passing"] == 5
+        assert summary["fixtures_passing"] == 7
 
     def test_stage_threshold_on_comparison(self):
         """Compare a single fixture with different thresholds."""
