@@ -7,13 +7,9 @@
  *   Inbox  = intake queue. Trips that haven't been acted on yet (state: 'blue').
  *   Workspace = execution queue. Trips that are actively being worked (state: 'green' | 'amber' | 'red').
  *
- * The filter constant below is the single authoritative definition.
- * Both this page and any future API filter params should reference it.
- *
- * TODO (Wave 2+): Move this filter to a shared lib/trip-domain.ts once the
- * backend trip model exposes an explicit stage/phase field rather than inferring
- * from lifecycle status. For now, `assigned` and `in_progress` are the
- * canonical workspace-entry statuses.
+ * The workspace-status list now lives in `lib/trip-domain.ts` and is reused
+ * by the trips and pipeline API routes. If client-side filtering returns here,
+ * it should import that shared helper instead of redefining the statuses.
  */
 
 import Link from 'next/link';
@@ -32,6 +28,7 @@ import type { Trip } from '@/lib/api-client';
 import { PlanningTripCard } from '@/components/workspace/PlanningTripCard';
 import { getPlanningListSummary, getPlanningStageLabel } from '@/lib/planning-list-display';
 import { getPlanningBriefStatus, hasPlanningBriefBlocker } from '@/lib/planning-status';
+import { groupTripsByOverviewSignature } from '@/lib/trip-grouping';
 import { WorkspaceTable, type SortField, type SortDirection } from './WorkspaceTable';
 
 // ============================================================================
@@ -286,6 +283,11 @@ export default function WorkspacesPage() {
     () => sortTrips(workspaceTrips, sortField, sortDirection),
     [workspaceTrips, sortField, sortDirection],
   );
+  const groupedTrips = useMemo(
+    () => groupTripsByOverviewSignature(sortedTrips),
+    [sortedTrips],
+  );
+  const isCardGrouped = groupedTrips.length < sortedTrips.length;
 
   const handleSort = useCallback((field: SortField) => {
     setSortField((current) => {
@@ -359,18 +361,25 @@ export default function WorkspacesPage() {
       {!error && workspaceTrips.length > 0 && (
         <>
           {viewMode === 'card' ? (
-            sortedTrips.length === 1 ? (
-              <div className='grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4 items-start'>
-                <PlanningTripCard trip={sortedTrips[0]!} variant='workspace' />
-                <SingleTripNextStepPanel trip={sortedTrips[0]!} />
-              </div>
-            ) : (
-              <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'>
-                {sortedTrips.map((trip) => (
-                  <PlanningTripCard key={trip.id} trip={trip} variant='workspace' />
-                ))}
-              </div>
-            )
+            <div className='space-y-4'>
+              {isCardGrouped ? (
+                <p className='text-ui-sm text-[var(--text-muted)]'>
+                  Showing {groupedTrips.length.toLocaleString('en-IN')} grouped cards from {sortedTrips.length.toLocaleString('en-IN')} trips.
+                </p>
+              ) : null}
+              {groupedTrips.length === 1 ? (
+                <div className='grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-4 items-start'>
+                  <PlanningTripCard trip={groupedTrips[0]!.primaryTrip} variant='workspace' similarTripCount={groupedTrips[0]!.count} />
+                  <SingleTripNextStepPanel trip={groupedTrips[0]!.primaryTrip} />
+                </div>
+              ) : (
+                <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3'>
+                  {groupedTrips.map((group) => (
+                    <PlanningTripCard key={group.key} trip={group.primaryTrip} variant='workspace' similarTripCount={group.count} />
+                  ))}
+                </div>
+              )}
+            </div>
           ) : (
             <WorkspaceTable
               trips={sortedTrips}

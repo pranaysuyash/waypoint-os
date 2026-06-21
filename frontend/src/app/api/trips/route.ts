@@ -4,13 +4,12 @@ import {
   transformSpineTripsResponseToTrips,
   isWorkspaceTrip,
 } from "@/lib/bff-trip-adapters";
+import { WORKSPACE_TRIP_STATUSES } from "@/lib/trip-domain";
 import type { SpineRunRequest } from "@/types/generated/spine-api";
 
 // Kill switch for call capture feature
 // Set DISABLE_CALL_CAPTURE=true to disable POST /api/trips
 // Read at call time (not module level) so env changes are picked up at runtime
-
-const WORKSPACE_STATUSES = "assigned,in_progress,ready_to_quote,ready_to_book,blocked";
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +22,7 @@ export async function GET(request: NextRequest) {
     // workspace view: pass workspace statuses to backend so filtering,
     // pagination, and total are all server-side.
     if (view === "workspace") {
-      upstreamParams.set("status", WORKSPACE_STATUSES);
+      upstreamParams.set("status", WORKSPACE_TRIP_STATUSES);
     }
 
     const query = upstreamParams.toString();

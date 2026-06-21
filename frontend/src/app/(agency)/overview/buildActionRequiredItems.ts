@@ -576,15 +576,29 @@ function collapseRepeatedWork(
     const pendingActions = first.source === 'lead' && inboxStats
       ? summarizeLeadStatsPendingActions(inboxStats, groupItems)
       : summarizePendingActions(groupItems);
-    const examples = groupItems.slice(0, maxExamples).map((item, exampleIndex) => {
+    const examples: ActionRequiredExample[] = [];
+    const seenExampleKeys = new Set<string>();
+    for (const item of groupItems) {
+      if (examples.length >= maxExamples) break;
       const waitingLabel = extractWaitingLabel(item.meta);
-      return {
-        id: buildExampleId(key, exampleIndex, item),
+      const example = {
         title: first.source === 'lead' ? waitingLabel ?? item.title : item.title,
-        detail: joinParts([first.source === 'lead' ? null : item.title, item.subtitle, first.source === 'lead' ? null : waitingLabel, item.reference]),
+        detail: joinParts([
+          first.source === 'lead' ? null : item.title,
+          item.subtitle,
+          first.source === 'lead' ? null : waitingLabel,
+          item.reference,
+        ]),
         href: item.href,
       };
-    });
+      const exampleKey = `${example.title}::${example.detail}::${example.href}`;
+      if (seenExampleKeys.has(exampleKey)) continue;
+      seenExampleKeys.add(exampleKey);
+      examples.push({
+        id: buildExampleId(key, examples.length, item),
+        ...example,
+      });
+    }
 
     const title =
       first.source === 'lead'

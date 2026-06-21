@@ -274,6 +274,36 @@ describe('OverviewPage', () => {
     expect(screen.getByRole('link', { name: /review enquiries/i })).toHaveAttribute('href', ROUTES.inbox);
   });
 
+  it('groups identical recent trips into a single overview card cluster', () => {
+    const duplicateTrip = {
+      id: 'trip_dup_1',
+      destination: 'Bali',
+      type: 'leisure',
+      state: 'amber',
+      age: 'Today',
+      createdAt: '2026-04-30T00:00:00Z',
+      updatedAt: '2026-04-30T00:00:00Z',
+      party: 2,
+      dateWindow: 'August 2026',
+      origin: 'Mumbai',
+      budget: '₹3L',
+      status: 'in_progress',
+      rawInput: {},
+      decision: null,
+      validation: null,
+    } as const;
+
+    mockUseOverviewSummary.mockReturnValue({
+      ...baseSummary,
+      recentTrips: [duplicateTrip, { ...duplicateTrip, id: 'trip_dup_2' }, { ...duplicateTrip, id: 'trip_unique', destination: 'Singapore' }],
+    });
+
+    render(<OverviewPage />);
+
+    expect(screen.getByText(/Showing 2 grouped cards from 3 trips\./i)).toBeInTheDocument();
+    expect(screen.getByText(/2 matching trips/i)).toBeInTheDocument();
+  });
+
   it('shows a true empty-account state when there are no leads or trips', () => {
     mockUseOverviewSummary.mockReturnValue({
       ...baseSummary,
@@ -303,14 +333,15 @@ describe('OverviewPage', () => {
   it('renders planning work as a rich trip card instead of a sparse activity row', () => {
     render(<OverviewPage />);
 
-    const planningCardHeading = screen.getByText('Singapore family trip');
+    const planningCardHeading = screen.getByText('Trip details incomplete');
     const planningCard = planningCardHeading.closest('[class*="rounded-2xl"]');
 
     expect(planningCardHeading).toBeInTheDocument();
     expect(planningCard).not.toBeNull();
     expect(within(planningCard as HTMLElement).getByText(/5 pax.*Around Feb 9–14/i)).toBeInTheDocument();
-    expect(within(planningCard as HTMLElement).getByText('Need Customer Details')).toBeInTheDocument();
+    expect(within(planningCard as HTMLElement).getByText('Missing customer details')).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).getByText(/Add budget/i)).toBeInTheDocument();
+    expect(within(planningCard as HTMLElement).getByText(/Add origin/i)).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).getByText('In planning')).toBeInTheDocument();
     expect(within(planningCard as HTMLElement).getByText('Waiting on customer')).toBeInTheDocument();
     expect(screen.getByText(/Ref 4B9E/i)).toBeInTheDocument();
@@ -318,6 +349,24 @@ describe('OverviewPage', () => {
     expect(screen.queryByText('trip_4b9e0d894872')).not.toBeInTheDocument();
     expect(screen.queryByText(/Most in Assigned/i)).not.toBeInTheDocument();
     expect(screen.getByText('Latest Trips Status · showing 1 of 2')).toBeInTheDocument();
+  });
+
+  it('explains when recent trips are collapsed into grouped cards', () => {
+    mockUseOverviewSummary.mockReturnValue({
+      ...baseSummary,
+      recentTrips: [
+        baseSummary.recentTrips[0]!,
+        {
+          ...baseSummary.recentTrips[0]!,
+          id: 'trip_4b9e0d894873',
+        },
+      ],
+    });
+
+    render(<OverviewPage />);
+
+    expect(screen.getByText(/Showing 1 grouped card from 2 trips\./i)).toBeInTheDocument();
+    expect(screen.getByText(/2 matching trips/i)).toBeInTheDocument();
   });
 
   it('shows single-stage collapsed pipeline with stage name in copy', () => {

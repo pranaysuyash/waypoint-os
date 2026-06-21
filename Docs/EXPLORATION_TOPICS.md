@@ -358,6 +358,8 @@ Legend:
 
 **Overview**: We have 30 scenarios, but are they the *right* scenarios? Do real agents recognize these?
 
+**Current live evidence (2026-06-21)**: The authenticated workbench and overview are now live-tested with `newuser@test.com` / `testpass123`. The owner/operator path reaches the overview, captures a new inquiry, and surfaces a blocked processing state with clearer trip-detail guidance than before. Two concrete live runs now anchor the readout: a thin Mumbai-to-Bali request blocked on missing origin, budget, and trip purpose; a richer Nairobi-to-Zanzibar request processed first, then returned a clearer details checklist. The overview planning cards now also collapse exact duplicates into a single grouped card with a visible matching-trip badge and grouped-count summary line, grouped quote clusters show explicit counts, the `/trips` card view now uses the same grouped-card logic with a grouped-count summary, incomplete trips now headline as `Trip details incomplete` instead of a raw trip type while still showing the actual missing-field set, the badge copy across overview/trips/intake/shell now consistently reads `Missing customer details`, and the trips/pipeline routes now share a single workspace-status constant in `lib/trip-domain.ts`. That reduces queue noise without hiding real work. Remaining validation work is no longer “does the shell load?” but “does each blocked state explain itself fast enough for a small agency owner and a high-volume team?”
+
 **Key Questions**:
 - How do we find beta travel agencies?
 - What should we validate? (scenarios, pricing, features)

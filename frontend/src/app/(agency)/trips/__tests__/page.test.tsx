@@ -77,12 +77,12 @@ describe('WorkspacesPage', () => {
     expect(screen.getByText('Trips your team is actively working on')).toBeInTheDocument();
     expect(screen.queryByText('Workspaces')).not.toBeInTheDocument();
 
-    const tripCardHeading = screen.getByText('Singapore family trip');
+    const tripCardHeading = screen.getByText('Trip details incomplete');
     const tripCard = tripCardHeading.closest('[class*="rounded-2xl"]');
     expect(tripCard).not.toBeNull();
 
     expect(within(tripCard as HTMLElement).getByText(/5 pax.*Around Feb 9–14/i)).toBeInTheDocument();
-    expect(within(tripCard as HTMLElement).getByText('Need Customer Details')).toBeInTheDocument();
+    expect(within(tripCard as HTMLElement).getByText('Missing customer details')).toBeInTheDocument();
     expect(within(tripCard as HTMLElement).getByText(/Add budget/i)).toBeInTheDocument();
     expect(within(tripCard as HTMLElement).getByText(/Add origin/i)).toBeInTheDocument();
     expect(within(tripCard as HTMLElement).getByText('In planning')).toBeInTheDocument();
@@ -103,5 +103,75 @@ describe('WorkspacesPage', () => {
     missingDetailLinks.forEach((link) => {
       expect(link).toHaveAttribute('href', '/trips/trip_4b9e0d894872/intake');
     });
+  });
+
+  it('collapses identical workspace cards into grouped trip clusters', () => {
+    vi.mocked(useTrips).mockReturnValue({
+      data: [
+        {
+          id: 'trip_1',
+          destination: 'Bali',
+          type: 'Family Leisure',
+          state: 'amber',
+          age: 'Today',
+          party: 2,
+          dateWindow: 'August 2026',
+          origin: 'Mumbai',
+          budget: '₹3L',
+          status: 'assigned',
+          rawInput: { fixture_id: 'SC-901' },
+          decision: {
+            decision_state: 'ASK_FOLLOWUP',
+            hard_blockers: [],
+            soft_blockers: ['incomplete_intake'],
+          },
+          validation: {
+            warnings: [
+              { field: 'budget_raw_text' },
+              { field: 'origin_city' },
+            ],
+          },
+          createdAt: '2026-04-29T20:02:40.764703+00:00',
+          updatedAt: '2026-04-30T12:23:15.851953+00:00',
+        },
+        {
+          ...({
+            id: 'trip_2',
+            destination: 'Bali',
+            type: 'Family Leisure',
+            state: 'amber',
+            age: 'Today',
+            party: 2,
+            dateWindow: 'August 2026',
+            origin: 'Mumbai',
+            budget: '₹3L',
+            status: 'assigned',
+            rawInput: { fixture_id: 'SC-901' },
+            decision: {
+              decision_state: 'ASK_FOLLOWUP',
+              hard_blockers: [],
+              soft_blockers: ['incomplete_intake'],
+            },
+            validation: {
+              warnings: [
+                { field: 'budget_raw_text' },
+                { field: 'origin_city' },
+              ],
+            },
+            createdAt: '2026-04-29T20:02:40.764703+00:00',
+            updatedAt: '2026-04-30T12:23:15.851953+00:00',
+          } as const),
+        },
+      ],
+      total: 2,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<WorkspacesPage />);
+
+    expect(screen.getByText(/Showing 1 grouped cards from 2 trips\./i)).toBeInTheDocument();
+    expect(screen.getByText(/2 matching trips/i)).toBeInTheDocument();
   });
 });

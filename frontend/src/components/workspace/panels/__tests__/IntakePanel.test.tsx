@@ -242,7 +242,7 @@ describe('IntakePanel', () => {
       />
     );
 
-    expect(screen.getByText('Missing customer details')).toBeInTheDocument();
+    expect(screen.getAllByText('Missing customer details').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Confirm budget range before building options.')).toBeInTheDocument();
     expect(screen.getByText('Suggested Next Move')).toBeInTheDocument();
     expect(screen.getByText('Ask the traveler for budget range.')).toBeInTheDocument();
@@ -358,7 +358,7 @@ describe('IntakePanel', () => {
       />
     );
 
-    expect(screen.getByText('Missing Customer Details')).toBeInTheDocument();
+    expect(screen.getAllByText('Missing customer details').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Required missing fields')).toBeInTheDocument();
     expect(screen.getByText('Recommended details')).toBeInTheDocument();
     expect(screen.getByText('Budget range')).toBeInTheDocument();

@@ -12,6 +12,7 @@ import {
   CircleSlash,
 } from "lucide-react";
 import type { RunStatusResponse } from "@/types/spine";
+import { getWorkbenchBlockCopy, formatWorkbenchBlockReasonList } from "@/lib/workbench-blocking-copy";
 
 interface RunProgressPanelProps {
   runId: string | null;
@@ -180,23 +181,24 @@ export function RunProgressPanel({
 
   // Blocked: compact result - details are shown in the inline banner
   if (isBlocked) {
+    const blockCopy = getWorkbenchBlockCopy({ runState });
     return (
       <div className="rounded-xl border border-[var(--accent-amber)]/30 bg-[#0d1117] overflow-hidden min-w-[240px] shadow-lg">
         <div className="px-4 py-3 space-y-2.5">
           <div className="flex items-center gap-2 text-[var(--accent-amber)] text-ui-sm font-medium">
             <AlertTriangle className="size-4" />
-            Trip is ready for your next follow-up step
+            {blockCopy.title}
           </div>
           <p className="text-ui-xs text-[var(--text-muted)] leading-relaxed">
-            {runState?.block_reason ||
-              "Draft is saved, but trip details are incomplete. Open Trip Details and fill the remaining fields before planning can continue."}
+            {blockCopy.summary}
+            {blockCopy.details.length > 1 ? ` ${formatWorkbenchBlockReasonList(blockCopy.details.slice(1))}.` : ''}
           </p>
           <button
             type="button"
             onClick={onFixDetails || onRetry}
             className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-[var(--accent-amber)]/10 border border-[var(--accent-amber)]/30 text-[var(--accent-amber)] text-ui-xs font-medium rounded-md hover:bg-[var(--accent-amber)]/20 transition-colors"
           >
-            Open Missing Details
+            {blockCopy.actionLabel}
           </button>
           <button
             type="button"

@@ -200,7 +200,7 @@ export function getPlanningStatusTone(trip?: Trip | null): Trip["state"] {
 
 export function getPlanningStatusLabel(trip?: Trip | null): string {
   if (!trip) return "Need Trip Options";
-  if (hasPlanningBriefBlocker(trip)) return "Need Customer Details";
+  if (hasPlanningBriefBlocker(trip)) return "Missing customer details";
   if (trip.state === "red") return "Needs Review";
   if (trip.status === "in_progress") return "In Progress";
   return "Need Trip Options";
@@ -208,6 +208,7 @@ export function getPlanningStatusLabel(trip?: Trip | null): string {
 
 export function getPlanningHeaderTitle(trip?: Trip | null): string {
   if (!trip) return "Trip planning";
+  if (getPlanningBriefStatus(trip) === "missing_required_details") return "Trip details incomplete";
   const cleanDestination = isMissingDisplayValue(trip.destination) ? null : trip.destination;
   const simplifiedType = trip.type?.replace(/\bleisure\b/gi, "").replace(/\s+/g, " ").trim();
   return formatLeadTitle(cleanDestination, simplifiedType || trip.type);

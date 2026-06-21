@@ -6,6 +6,7 @@ import {
   isOpsWorkspaceStage,
   getPlanningBriefStatus,
   getPlanningFollowUpDraft,
+  getPlanningHeaderTitle,
   getPlanningLockedTabHint,
   getPlanningNextAction,
   getPlanningPrimaryActionLabel,
@@ -88,6 +89,10 @@ describe("planning-status", () => {
 
   it("keeps draft follow-up as the primary action while required fields are missing", () => {
     expect(getPlanningPrimaryActionLabel(makeTrip())).toBe("Draft follow-up");
+  });
+
+  it("uses an explicit incomplete title while required planning details are missing", () => {
+    expect(getPlanningHeaderTitle(makeTrip())).toBe("Trip details incomplete");
   });
 
   it("unlocks options once required fields are complete but recommended details remain", () => {

@@ -20,6 +20,7 @@ import { useTrip } from '@/hooks/useTrips';
 import { useWorkbenchStore } from '@/stores/workbench';
 import { useSpineRun } from '@/hooks/useSpineRun';
 import { useUpdateTrip } from '@/hooks/useTrips';
+import { getWorkbenchBlockCopy, formatWorkbenchBlockReasonList } from '@/lib/workbench-blocking-copy';
 import type {
   SpineRunRequest,
   SpineStage,
@@ -29,7 +30,6 @@ import type {
   PromptBundle,
   ValidationReport,
 } from '@/types/spine';
-import { validationLabelFor } from '@/types/spine';
 import type {
   SafetyResult,
   FeeCalculationResult,
@@ -787,16 +787,6 @@ function WorkbenchContent() {
     trip?.analytics?.feedback_reopen === true ||
     trip?.analytics?.recovery_status === 'IN_RECOVERY';
 
-  const validationGateOrStage = store.result_validation
-    ? (store.result_validation.gate || store.result_validation.stage || '')
-    : '';
-  const validationNeedsInput = Boolean(
-    store.result_validation &&
-      (store.result_validation.stage === 'intake_completion' ||
-        validationGateOrStage === 'intake_completion' ||
-        validationGateOrStage === 'NB01'),
-  );
-
   const pipelineStage = getPipelineStageForWorkbench(trip, store);
 
   return (
@@ -837,20 +827,38 @@ function WorkbenchContent() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-ui-sm font-semibold text-[#f85149]">
-                    {validationNeedsInput
-                      ? 'Trip Details Need Your Input'
-                      : validationLabelFor(validationGateOrStage, 'alert_title')}
-                  </h3>
-                  <p className="text-ui-xs text-[#ffa198] mt-0.5">
-                    {store.result_validation.reasons?.length
-                      ? store.result_validation.reasons.join("; ")
-                    : "This run is incomplete, but your draft is saved. "}
-                    Add the missing details and then return to this trip. {" "}Check the <button
-                      onClick={() => handleTabChange('packet')}
-                      className="text-[#58a6ff] underline hover:no-underline font-medium inline"
-                    >Trip Details</button> tab for specifics.
-                  </p>
+                  {(() => {
+                    const blockCopy = getWorkbenchBlockCopy({ validation: store.result_validation });
+                    return (
+                      <>
+                        <h3 className="text-ui-sm font-semibold text-[#f85149]">
+                          {blockCopy.title}
+                        </h3>
+                        <p className="text-ui-xs text-[#ffa198] mt-0.5">
+                          {blockCopy.summary}
+                          {blockCopy.details.length > 1 ? (
+                            <span className='block mt-1 space-y-0.5'>
+                              {blockCopy.details.slice(1).map((reason) => (
+                                <span key={reason} className='block'>
+                                  • {reason}
+                                </span>
+                              ))}
+                            </span>
+                          ) : null}
+                          <span className='block mt-1'>
+                            Add the missing details and then return to this trip. Check the{' '}
+                            <button
+                              onClick={() => handleTabChange('packet')}
+                              className='text-[#58a6ff] underline hover:no-underline font-medium inline'
+                            >
+                              Trip Details
+                            </button>{' '}
+                            tab for specifics.
+                          </span>
+                        </p>
+                      </>
+                    );
+                  })()}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
@@ -953,13 +961,19 @@ function WorkbenchContent() {
                   spineRunState.validation.status === "BLOCKED"
                 ) ? (
                   <div className='flex flex-col'>
-                    <span className='font-medium'>We need a quick follow-up from the traveler</span>
-                    <span className='text-ui-xs text-[#ffa198]'>
-                      {spineRunState.validation.reasons?.length
-                        ? spineRunState.validation.reasons.join("; ")
-                        : "Trip details are incomplete."}
-                      {" "}Check the Trip Details tab.
-                    </span>
+                    {(() => {
+                      const blockCopy = getWorkbenchBlockCopy({ validation: spineRunState.validation });
+                      return (
+                        <>
+                          <span className='font-medium'>{blockCopy.title}</span>
+                          <span className='text-ui-xs text-[#ffa198]'>
+                            {blockCopy.summary}
+                            {blockCopy.details.length > 1 ? ` ${formatWorkbenchBlockReasonList(blockCopy.details.slice(1))}.` : ''}
+                            {" "}Check the Trip Details tab.
+                          </span>
+                        </>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <span className='max-w-xs truncate'>{runError}</span>

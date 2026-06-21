@@ -432,7 +432,7 @@ function TripDetailsFallback({ tripId, trip }: { tripId: string; trip: Trip | nu
     { label: "Party size", value: formatPartySizeDisplay(trip.party), source: trip.party && trip.party > 0 ? "Manual" : "System", field: "party" },
     { label: "Dates", value: formatDateWindowDisplay(trip.dateWindow), source: trip.dateWindow && !["TBD",""].includes(trip.dateWindow) ? "Manual" : "System", field: "dateWindow" },
     { label: "Budget", value: formatBudgetDisplay(trip.budget), source: trip.budget && formatBudgetDisplay(trip.budget) !== "Budget missing" ? "Manual" : "System", field: "budget" },
-    { label: "Origin", value: requiredFields.includes("Origin city") ? "Origin missing" : trip.origin || "Origin missing", source: trip.origin && !["TBD","","patna"].includes(trip.origin) ? "Manual" : trip.origin === "patna" ? "Manual" : "System", field: "origin" },
+    { label: "Origin", value: requiredFields.includes("Origin city") ? "Origin missing" : trip.origin || "Origin missing", source: trip.origin && !["TBD", ""].includes(trip.origin) ? "Manual" : "System", field: "origin" },
     { label: "Date flexibility", value: trip.dateFlexibility || "Date flexibility missing", source: trip.dateFlexibility ? "Manual" : "System", field: "dateFlexibility" },
     { label: "Priorities", value: trip.tripPriorities || "Priorities missing", source: trip.tripPriorities ? "Manual" : "System", field: "tripPriorities" },
   ];

@@ -373,6 +373,69 @@ describe('buildActionRequiredItems', () => {
     vi.useRealTimers();
   });
 
+  it('deduplicates identical examples inside grouped quote items', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-19T00:00:00Z'));
+
+    const items = buildActionRequiredItems({
+      workspaceTrips: [],
+      pendingReviews: [
+        {
+          id: 'review_1',
+          tripId: 'trip_1',
+          tripReference: 'TRIP-1',
+          destination: 'Italy',
+          tripType: 'honeymoon',
+          partySize: 2,
+          dateWindow: 'June 2026',
+          value: 3000,
+          currency: 'USD',
+          agentId: 'agent_1',
+          agentName: 'Agent',
+          submittedAt: '2026-05-15T00:00:00Z',
+          status: 'pending',
+          reason: 'Awaiting owner approval.',
+          riskFlags: [],
+        },
+        {
+          id: 'review_2',
+          tripId: 'trip_2',
+          tripReference: 'TRIP-1',
+          destination: 'Italy',
+          tripType: 'honeymoon',
+          partySize: 2,
+          dateWindow: 'June 2026',
+          value: 3000,
+          currency: 'USD',
+          agentId: 'agent_1',
+          agentName: 'Agent',
+          submittedAt: '2026-05-15T00:00:00Z',
+          status: 'pending',
+          reason: 'Awaiting owner approval.',
+          riskFlags: [],
+        },
+      ],
+      inboxTrips: [],
+    });
+
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      variant: 'group',
+      title: 'Quotes to review',
+      itemCount: 2,
+      ctaLabel: 'Review quote',
+      nextAction: 'Review riskiest quote first.',
+    });
+    expect(items[0]?.examples).toHaveLength(1);
+    expect(items[0]?.examples?.[0]).toMatchObject({
+      title: 'Italy honeymoon quote',
+      detail: 'Italy honeymoon quote · 2 pax · Travel Jun 2026 · Owner Agent · 4d waiting · Ref TRIP-1',
+      href: '/reviews',
+    });
+
+    vi.useRealTimers();
+  });
+
   it('limits output by visible work groups instead of raw records', () => {
     const items = buildActionRequiredItems({
       workspaceTrips: [

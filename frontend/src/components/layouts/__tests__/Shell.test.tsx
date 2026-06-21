@@ -42,8 +42,8 @@ describe('SidebarTripContext', () => {
 
     expect(screen.getByRole('region', { name: 'Current trip context' })).toBeInTheDocument();
     expect(screen.getByText('Current trip')).toBeInTheDocument();
-    expect(screen.getByText('Need Customer Details')).toBeInTheDocument();
-    expect(screen.getByText('Bali family trip')).toBeInTheDocument();
+    expect(screen.getByText('Missing customer details')).toBeInTheDocument();
+    expect(screen.getByText('Trip details incomplete')).toBeInTheDocument();
     expect(screen.getByText(/Next: confirm travel window before building options/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open missing details' })).toHaveAttribute(
       'href',

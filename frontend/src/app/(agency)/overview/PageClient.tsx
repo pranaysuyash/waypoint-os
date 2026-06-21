@@ -18,6 +18,7 @@ import {
   getPlanningStatusTone,
 } from '@/lib/planning-status';
 import { useOverviewSummary } from './useOverviewSummary';
+import { groupTripsByOverviewSignature } from '@/lib/trip-grouping';
 import { EmptyStateOnboarding } from '@/components/overview/EmptyStateOnboarding';
 import { ActionRequiredList } from '@/components/overview/ActionRequiredList';
 import SystemCheckPanel from '@/components/system/SystemCheckPanel';
@@ -56,7 +57,7 @@ const STATE_META: Record<StateKey, StateMeta> = {
     fg: '#58a6ff',
     bg: 'rgba(88,166,255,0.10)',
     border: 'rgba(88,166,255,0.25)',
-    label: 'Need Customer Details',
+    label: 'Missing customer details',
   },
 };
 
@@ -66,6 +67,10 @@ function getAssignmentLabel(trip: Trip): string {
   if (trip.status === 'completed') return 'Completed';
   if (trip.status === 'in_progress') return 'In progress';
   return 'In planning';
+}
+
+function pluralize(count: number, singular: string, plural: string): string {
+  return `${count} ${count === 1 ? singular : plural}`;
 }
 
 // ── StatCard: metric-first operational instrument ─────────────────────────
@@ -491,11 +496,25 @@ function RecentTrips({
     );
   }
 
+  const groupedTrips = groupTripsByOverviewSignature(trips);
+  const groupedCount = groupedTrips.length;
+  const totalCount = trips.length;
+
   return (
     <div className='p-4'>
+      {groupedCount < totalCount ? (
+        <p className='mb-3 text-[12px]' style={{ color: 'var(--text-muted)' }}>
+          Showing {pluralize(groupedCount, 'grouped card', 'grouped cards')} from {totalCount.toLocaleString('en-IN')} trips.
+        </p>
+      ) : null}
       <div className='grid grid-cols-1 gap-4'>
-        {trips.map((trip) => (
-          <PlanningTripCard key={trip.id} trip={trip} variant='overview' />
+        {groupedTrips.map((group) => (
+          <PlanningTripCard
+            key={group.key}
+            trip={group.primaryTrip}
+            variant='overview'
+            similarTripCount={group.count}
+          />
         ))}
       </div>
     </div>

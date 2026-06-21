@@ -58,4 +58,32 @@ describe('ActionRequiredList', () => {
 
     warnSpy.mockRestore();
   });
+
+  it('shows a count badge for grouped non-lead action items', () => {
+    const items: ActionRequiredItem[] = [
+      {
+        id: 'group-quote:review:normal',
+        priority: 'normal',
+        source: 'quote',
+        label: 'Quote',
+        variant: 'group',
+        title: 'Quotes to review',
+        subtitle: '2 quote items need attention',
+        meta: 'Submitted today',
+        reason: 'Review quote',
+        href: '/reviews',
+        ctaLabel: 'Review quote',
+        itemCount: 2,
+        examples: [
+          { id: 'example-1', title: 'Today', detail: 'Quote A', href: '/reviews' },
+          { id: 'example-2', title: 'Today', detail: 'Quote B', href: '/reviews' },
+        ],
+        hidePriorityBadge: true,
+      },
+    ];
+
+    const { getByText } = render(<ActionRequiredList items={items} />);
+
+    expect(getByText('2 matching quotes')).toBeInTheDocument();
+  });
 });

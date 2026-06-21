@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import PacketTab from '../PacketTab';
 
@@ -61,7 +61,7 @@ describe('PacketTab', () => {
     expect(screen.getByText(/Value: family leisure; Source: message hints \(90%\)/)).toBeInTheDocument();
   });
 
-  it('shows operator-friendly prompts for unknown fields', () => {
+  it('keeps verbose validation prompts behind the details toggle', () => {
     mockStore.mockReturnValue({
       result_packet: {
         facts: {
@@ -74,15 +74,24 @@ describe('PacketTab', () => {
         ambiguities: [],
         contradictions: [],
       },
-      result_validation: null,
+      result_validation: {
+        is_valid: false,
+        status: 'BLOCKED',
+        gate: 'NB01',
+        stage: 'intake_completion',
+        reasons: ['MVB_MISSING'],
+      },
       debug_raw_json: false,
       setDebugRawJson: vi.fn(),
     });
 
     render(<PacketTab />);
 
-    expect(
-      screen.getAllByText(/Prompt: Which city will the travelers depart from\?/).length,
-    ).toBeGreaterThan(0);
+    expect(screen.getByText(/Missing fields: Origin City/)).toBeInTheDocument();
+    expect(screen.queryByText(/Prompt: Which city will the travelers depart from\?/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /view details/i }));
+
+    expect(screen.getByText(/Prompt: Which city will the travelers depart from\?/)).toBeInTheDocument();
   });
 });

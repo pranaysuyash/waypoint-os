@@ -41,4 +41,23 @@ describe("PacketPanel trip details fallback", () => {
     expect(screen.getByText("Priorities")).toBeInTheDocument();
     expect(screen.getByText("Kid-friendly hotel, direct flights, beach access")).toBeInTheDocument();
   });
+
+  it("treats any concrete origin value as manual instead of special-casing a city name", () => {
+    const trip: Trip = {
+      id: "trip-origin-label",
+      destination: "TBD",
+      type: "Family leisure",
+      state: "green",
+      age: "1h",
+      createdAt: "2026-05-27T00:00:00Z",
+      updatedAt: "2026-05-27T00:00:00Z",
+      origin: "Patna",
+    };
+
+    render(<PacketPanel tripId={trip.id} trip={trip} />);
+
+    expect(screen.getByText("Origin")).toBeInTheDocument();
+    expect(screen.getByText("Patna")).toBeInTheDocument();
+    expect(screen.getByText("Manual")).toBeInTheDocument();
+  });
 });

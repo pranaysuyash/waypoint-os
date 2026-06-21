@@ -3,17 +3,24 @@ import React from "react";
 import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import { WorkspaceTripLayoutShell } from "../layout";
 import type { Trip } from "@/lib/api-client";
+import * as apiClient from "@/lib/api-client";
 import * as navigation from "next/navigation";
-import * as tripsHook from "@/hooks/useTrips";
 
 vi.mock("next/navigation", () => ({
   useParams: vi.fn(),
   usePathname: vi.fn(),
 }));
 
-vi.mock("@/hooks/useTrips", () => ({
-  useTrip: vi.fn(),
-}));
+vi.mock("@/lib/api-client", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api-client")>("@/lib/api-client");
+  return {
+    ...actual,
+    api: {
+      ...actual.api,
+      get: vi.fn(),
+    },
+  };
+});
 
 vi.mock("@/components/error-boundary", () => ({
   ErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -69,16 +76,13 @@ describe("trips/[tripId]/layout", () => {
     vi.mocked(navigation.useParams).mockReturnValue({ tripId: "TRIP-123" });
     vi.mocked(navigation.usePathname).mockReturnValue("/trips/TRIP-123/intake");
     mockTimelineFetch();
+    vi.mocked(apiClient.api.get).mockResolvedValue(baseTrip as Trip);
   });
 
   it("renders loading state while trip is pending", () => {
-    vi.mocked(tripsHook.useTrip).mockReturnValue({
-      data: null,
-      isLoading: true,
-      error: null,
-      refetch: vi.fn(),
-      replaceTrip: vi.fn(),
-    });
+    vi.mocked(apiClient.api.get).mockImplementation(
+      () => new Promise<Trip>(() => {})
+    );
 
     act(() => {
       render(
@@ -92,36 +96,30 @@ describe("trips/[tripId]/layout", () => {
   });
 
   it("renders trip header and stage tabs", async () => {
-    vi.mocked(tripsHook.useTrip).mockReturnValue({
-      data: {
-        ...baseTrip,
-        status: "assigned",
-        party: 4,
-        dateWindow: "Feb 9-14",
-        budget: "$6000",
-        origin: "Delhi",
-        decision: {
-          decision_state: "PROCEED_INTERNAL_DRAFT",
-          hard_blockers: [],
-          soft_blockers: [],
-          contradictions: [],
-          risk_flags: [],
-          follow_up_questions: [],
-          rationale: {} as any,
-          confidence: {} as any,
-          branch_options: [],
-          commercial_decision: "NONE",
-          budget_breakdown: null,
-        },
-        validation: {
-          warnings: [],
-        },
-      } as any,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-      replaceTrip: vi.fn(),
-    });
+    vi.mocked(apiClient.api.get).mockResolvedValue({
+      ...baseTrip,
+      status: "assigned",
+      party: 4,
+      dateWindow: "Feb 9-14",
+      budget: "$6000",
+      origin: "Delhi",
+      decision: {
+        decision_state: "PROCEED_INTERNAL_DRAFT",
+        hard_blockers: [],
+        soft_blockers: [],
+        contradictions: [],
+        risk_flags: [],
+        follow_up_questions: [],
+        rationale: {} as any,
+        confidence: {} as any,
+        branch_options: [],
+        commercial_decision: "NONE",
+        budget_breakdown: null,
+      },
+      validation: {
+        warnings: [],
+      },
+    } as any);
 
     render(
       <WorkspaceTripLayoutShell>
@@ -141,22 +139,16 @@ describe("trips/[tripId]/layout", () => {
   });
 
   it("uses lead-review header copy for incomplete leads", async () => {
-    vi.mocked(tripsHook.useTrip).mockReturnValue({
-      data: {
-        ...baseTrip,
-        id: "trip_4b9e0d894872",
-        destination: "Singapore",
-        type: "Family Leisure",
-        status: "incomplete",
-        state: "blue",
-        party: 5,
-        dateWindow: "around 9th to 14th Feb",
-        budget: "$0",
-      },
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-      replaceTrip: vi.fn(),
+    vi.mocked(apiClient.api.get).mockResolvedValue({
+      ...baseTrip,
+      id: "trip_4b9e0d894872",
+      destination: "Singapore",
+      type: "Family Leisure",
+      status: "incomplete",
+      state: "blue",
+      party: 5,
+      dateWindow: "around 9th to 14th Feb",
+      budget: "$0",
     });
 
     render(
@@ -177,42 +169,36 @@ describe("trips/[tripId]/layout", () => {
   });
 
   it("uses planning header copy for trips in planning that still need customer details", async () => {
-    vi.mocked(tripsHook.useTrip).mockReturnValue({
-      data: {
-        ...baseTrip,
-        id: "trip_4b9e0d894872",
-        destination: "Singapore",
-        type: "Family Leisure",
-        status: "assigned",
-        state: "amber",
-        party: 5,
-        dateWindow: "around 9th to 14th Feb",
-        budget: "$0",
-        rawInput: { fixture_id: "SC-901" },
-        decision: {
-          decision_state: "ASK_FOLLOWUP",
-          hard_blockers: [],
-          soft_blockers: ["incomplete_intake"],
-          contradictions: [],
-          risk_flags: [],
-          follow_up_questions: [],
-          rationale: {} as any,
-          confidence: {} as any,
-          branch_options: [],
-          commercial_decision: "NONE",
-          budget_breakdown: null,
-        },
-        validation: {
-          warnings: [
-            { severity: "warning", code: "QUOTE_READY_INCOMPLETE", message: "budget missing", field: "budget_raw_text" },
-          ],
-        },
-      } as any,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-      replaceTrip: vi.fn(),
-    });
+    vi.mocked(apiClient.api.get).mockResolvedValue({
+      ...baseTrip,
+      id: "trip_4b9e0d894872",
+      destination: "Singapore",
+      type: "Family Leisure",
+      status: "assigned",
+      state: "amber",
+      party: 5,
+      dateWindow: "around 9th to 14th Feb",
+      budget: "$0",
+      rawInput: { fixture_id: "SC-901" },
+      decision: {
+        decision_state: "ASK_FOLLOWUP",
+        hard_blockers: [],
+        soft_blockers: ["incomplete_intake"],
+        contradictions: [],
+        risk_flags: [],
+        follow_up_questions: [],
+        rationale: {} as any,
+        confidence: {} as any,
+        branch_options: [],
+        commercial_decision: "NONE",
+        budget_breakdown: null,
+      },
+      validation: {
+        warnings: [
+          { severity: "warning", code: "QUOTE_READY_INCOMPLETE", message: "budget missing", field: "budget_raw_text" },
+        ],
+      },
+    } as any);
 
     render(
       <WorkspaceTripLayoutShell>
@@ -228,44 +214,38 @@ describe("trips/[tripId]/layout", () => {
   });
 
   it("keeps blocked planning stages visible but gated while required fields are missing", async () => {
-    vi.mocked(tripsHook.useTrip).mockReturnValue({
-      data: {
-        ...baseTrip,
-        id: "trip_4b9e0d894872",
-        destination: "Singapore",
-        type: "Family Leisure",
-        status: "assigned",
-        state: "amber",
-        party: 5,
-        dateWindow: "around 9th to 14th Feb",
-        budget: "$0",
-        origin: "TBD",
-        rawInput: { fixture_id: "SC-901" },
-        decision: {
-          decision_state: "ASK_FOLLOWUP",
-          hard_blockers: [],
-          soft_blockers: ["incomplete_intake"],
-          contradictions: [],
-          risk_flags: [],
-          follow_up_questions: [],
-          rationale: {} as any,
-          confidence: {} as any,
-          branch_options: [],
-          commercial_decision: "NONE",
-          budget_breakdown: null,
-        },
-        validation: {
-          warnings: [
-            { severity: "warning", code: "QUOTE_READY_INCOMPLETE", message: "origin missing", field: "origin_city" },
-            { severity: "warning", code: "QUOTE_READY_INCOMPLETE", message: "budget missing", field: "budget_raw_text" },
-          ],
-        },
-      } as any,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-      replaceTrip: vi.fn(),
-    });
+    vi.mocked(apiClient.api.get).mockResolvedValue({
+      ...baseTrip,
+      id: "trip_4b9e0d894872",
+      destination: "Singapore",
+      type: "Family Leisure",
+      status: "assigned",
+      state: "amber",
+      party: 5,
+      dateWindow: "around 9th to 14th Feb",
+      budget: "$0",
+      origin: "TBD",
+      rawInput: { fixture_id: "SC-901" },
+      decision: {
+        decision_state: "ASK_FOLLOWUP",
+        hard_blockers: [],
+        soft_blockers: ["incomplete_intake"],
+        contradictions: [],
+        risk_flags: [],
+        follow_up_questions: [],
+        rationale: {} as any,
+        confidence: {} as any,
+        branch_options: [],
+        commercial_decision: "NONE",
+        budget_breakdown: null,
+      },
+      validation: {
+        warnings: [
+          { severity: "warning", code: "QUOTE_READY_INCOMPLETE", message: "origin missing", field: "origin_city" },
+          { severity: "warning", code: "QUOTE_READY_INCOMPLETE", message: "budget missing", field: "budget_raw_text" },
+        ],
+      },
+    } as any);
 
     render(
       <WorkspaceTripLayoutShell>

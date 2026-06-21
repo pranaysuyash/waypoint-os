@@ -4,23 +4,16 @@ import {
   transformSpineTripsResponseToTrips,
   isWorkspaceTrip,
 } from "@/lib/bff-trip-adapters";
+import { WORKSPACE_TRIP_STATUS_LIST, WORKSPACE_TRIP_STATUSES } from "@/lib/trip-domain";
 
 const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";
 
-const WORKSPACE_STATUSES = "assigned,in_progress,ready_to_quote,ready_to_book,blocked";
-
-const PIPELINE_ORDER = [
-  "assigned",
-  "in_progress",
-  "ready_to_quote",
-  "ready_to_book",
-  "blocked",
-] as const;
+const PIPELINE_ORDER = WORKSPACE_TRIP_STATUS_LIST;
 
 export async function GET(request: NextRequest) {
   try {
     const response = await fetch(
-      `${SPINE_API_URL}/trips?status=${WORKSPACE_STATUSES}&limit=10000`,
+      `${SPINE_API_URL}/trips?status=${WORKSPACE_TRIP_STATUSES}&limit=10000`,
       {
         ...bffFetchOptions(request, "GET"),
         cache: "no-store",

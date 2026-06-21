@@ -14,6 +14,7 @@ interface PacketTabProps {
 export default function PacketTab({ trip }: PacketTabProps) {
   const { result_packet, result_validation, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
   const [showRawJson, setShowRawJson] = useState(false);
+  const [showValidationDetails, setShowValidationDetails] = useState(false);
 
   const activePacket = result_packet || trip?.packet;
   const activeValidation = result_validation || (trip?.validation as ValidationReport | null);
@@ -56,6 +57,8 @@ export default function PacketTab({ trip }: PacketTabProps) {
   const legacyErrors = validation?.errors ?? [];
   const legacyWarnings = validation?.warnings ?? [];
   const unknownFields = (bookingRequest.unknowns || []) as PacketUnknown[];
+  const visibleMissingFields = unknownFields.slice(0, 3);
+  const hiddenMissingFieldCount = Math.max(0, unknownFields.length - visibleMissingFields.length);
 
   const hasLegacyErrors = legacyErrors.length > 0;
   const hasLegacyWarnings = legacyWarnings.length > 0;
@@ -75,73 +78,91 @@ export default function PacketTab({ trip }: PacketTabProps) {
               <h3 className="text-ui-sm font-semibold text-[#f85149] mb-1">
                 {validationLabelFor(validation.gate || validation.stage, 'alert_title')}
               </h3>
-              {validation?.reasons && validation.reasons.length > 0 && (
-                <p className="text-ui-xs text-[#ffa198] mb-3">
-                  {validation.reasons.join("; ")}
+              <div className="space-y-2">
+                {validation?.reasons && validation.reasons.length > 0 && (
+                  <p className="text-ui-xs text-[#ffa198]">
+                    {validation.reasons[0]}
+                    {validation.reasons.length > 1 ? ` (+${validation.reasons.length - 1} more)` : ''}
+                  </p>
+                )}
+                {unknownFields.length > 0 && (
+                  <p className="text-ui-xs text-[#8b949e]">
+                    Missing fields: {visibleMissingFields.map((unk) => labelOrTitle(FIELD_LABELS, unk.field_name)).join(', ')}
+                    {hiddenMissingFieldCount > 0 ? ` +${hiddenMissingFieldCount} more` : ''}
+                  </p>
+                )}
+                <p className="text-ui-xs text-[#a8b3c1]">
+                  Go back to the <span className="text-[#58a6ff] font-medium">New Inquiry</span> tab, add the missing details, and try again.
                 </p>
-              )}
-              {/* Legacy error list */}
-              {(hasLegacyErrors || hasLegacyWarnings) && (
-                <div className="space-y-1.5 mb-3">
-                  {legacyErrors.map((err, i) => (
-                    <div
-                      key={`err-${err.code}-${err.field}`}
-                      className="flex items-start gap-2 px-3 py-2 rounded-lg text-ui-xs bg-[#f85149]/10 border border-[#f85149]/30"
-                    >
-                      <XCircle className="size-3.5 text-[#f85149] shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-medium text-[#e6edf3]">
-                          {err.field ? labelOrTitle(FIELD_LABELS, err.field) : err.field}
-                        </span>
-                        <span className="text-[#a8b3c1] ml-1">{err.message}</span>
-                      </div>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {(hasLegacyErrors || hasLegacyWarnings || unknownFields.length > 0) && (
+                  <button
+                    type="button"
+                    onClick={() => setShowValidationDetails((value) => !value)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(88,166,255,0.28)] bg-[rgba(88,166,255,0.08)] px-3 py-1.5 text-ui-xs font-medium text-[#58a6ff] hover:bg-[rgba(88,166,255,0.14)] transition-colors"
+                  >
+                    {showValidationDetails ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                    {showValidationDetails ? 'Hide details' : 'View details'}
+                  </button>
+                )}
+              </div>
+              {showValidationDetails && (
+                <div className="mt-3 space-y-3">
+                  {(hasLegacyErrors || hasLegacyWarnings) && (
+                    <div className="space-y-1.5">
+                      {legacyErrors.map((err) => (
+                        <div
+                          key={`err-${err.code}-${err.field}`}
+                          className="flex items-start gap-2 px-3 py-2 rounded-lg text-ui-xs bg-[#f85149]/10 border border-[#f85149]/30"
+                        >
+                          <XCircle className="size-3.5 text-[#f85149] shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-medium text-[#e6edf3]">
+                              {err.field ? labelOrTitle(FIELD_LABELS, err.field) : err.field}
+                            </span>
+                            <span className="text-[#a8b3c1] ml-1">{err.message}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {legacyWarnings.map((warn) => (
+                        <div
+                          key={`warn-${warn.code}-${warn.field}`}
+                          className="flex items-start gap-2 px-3 py-2 rounded-lg text-ui-xs bg-[#d29922]/10 border border-[#d29922]/30"
+                        >
+                          <AlertTriangle className="size-3.5 text-[#d29922] shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-medium text-[#e6edf3]">
+                              {warn.field ? labelOrTitle(FIELD_LABELS, warn.field) : warn.field}
+                            </span>
+                            <span className="text-[#a8b3c1] ml-1">{warn.message}</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                  {legacyWarnings.map((warn, i) => (
-                    <div
-                      key={`warn-${warn.code}-${warn.field}`}
-                      className="flex items-start gap-2 px-3 py-2 rounded-lg text-ui-xs bg-[#d29922]/10 border border-[#d29922]/30"
-                    >
-                      <AlertTriangle className="size-3.5 text-[#d29922] shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-medium text-[#e6edf3]">
-                          {warn.field ? labelOrTitle(FIELD_LABELS, warn.field) : warn.field}
-                        </span>
-                        <span className="text-[#a8b3c1] ml-1">{warn.message}</span>
-                      </div>
+                  )}
+                  {unknownFields.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-ui-xs text-[#a8b3c1] font-medium mb-1">Missing fields:</p>
+                      {unknownFields.map((unk) => (
+                        <div
+                          key={`unk-${unk.field_name}`}
+                          className="flex items-start gap-2 px-3 py-2 rounded-lg text-ui-xs bg-[#58a6ff]/10 border border-[#58a6ff]/30"
+                        >
+                          <Info className="size-3.5 text-[#58a6ff] shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-medium text-[#e6edf3]">
+                              {labelOrTitle(FIELD_LABELS, unk.field_name)}
+                            </span>
+                            <span className="text-[#8b949e] ml-1 font-mono">({unk.field_name})</span>
+                            <span className="text-[#a8b3c1] ml-1">- {unk.reason.replace(/_/g, " ")}</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
-              {/* Missing fields from packet unknowns */}
-              {unknownFields.length > 0 && (
-                <div className="space-y-1.5">
-                  <p className="text-ui-xs text-[#a8b3c1] font-medium mb-1">Missing fields:</p>
-                  {unknownFields.map((unk, i) => (
-                    <div
-                      key={`unk-${unk.field_name}`}
-                      className="flex items-start gap-2 px-3 py-2 rounded-lg text-ui-xs bg-[#58a6ff]/10 border border-[#58a6ff]/30"
-                    >
-                      <Info className="size-3.5 text-[#58a6ff] shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-medium text-[#e6edf3]">
-                          {labelOrTitle(FIELD_LABELS, unk.field_name)}
-                        </span>
-                        <span className="text-[#8b949e] ml-1 font-mono">({unk.field_name})</span>
-                        <span className="text-[#a8b3c1] ml-1">- {unk.reason.replace(/_/g, " ")}</span>
-                        {getTravelerPromptForUnknownField(unk.field_name) && (
-                          <p className="text-[#8b949e] mt-1">
-                            Prompt: {getTravelerPromptForUnknownField(unk.field_name)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <p className="text-ui-xs text-[#a8b3c1] mt-3">
-                Go back to the <span className="text-[#58a6ff] font-medium">New Inquiry</span> tab, provide the missing details in the Customer Message or Agent Notes, and try again.
-              </p>
             </div>
           </div>
         </div>
@@ -283,27 +304,38 @@ export default function PacketTab({ trip }: PacketTabProps) {
         <div>
           <h3 className="text-ui-base font-semibold text-[#58a6ff] mb-3">Unknowns</h3>
           <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4">
-            <ul className="space-y-2">
-              {unknowns.map((unk, idx) => (
-                <li key={`unk-${unk.field_name}`} className="flex items-start gap-2 py-1.5 border-b border-[#30363d] last:border-0">
-                  <span className="text-[#58a6ff] shrink-0 mt-0.5 text-ui-sm">!</span>
-                  <div>
-                    <span className="text-ui-sm font-medium text-[#e6edf3]">
-                      {labelOrTitle(FIELD_LABELS, unk.field_name)}
-                    </span>
-                    <span className="text-ui-sm text-[#a8b3c1] ml-1">- {unk.reason}</span>
-                    {unk.notes && (
-                      <p className="text-ui-xs text-[#8b949e] mt-0.5">{unk.notes}</p>
-                    )}
-                    {getTravelerPromptForUnknownField(unk.field_name) && (
-                      <p className="text-ui-xs text-[#8b949e] mt-0.5">
-                        Prompt: {getTravelerPromptForUnknownField(unk.field_name)}
-                      </p>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
+            {showValidationDetails ? (
+              <ul className="space-y-2">
+                {unknowns.map((unk) => (
+                  <li key={`unk-${unk.field_name}`} className="flex items-start gap-2 py-1.5 border-b border-[#30363d] last:border-0">
+                    <span className="text-[#58a6ff] shrink-0 mt-0.5 text-ui-sm">!</span>
+                    <div>
+                      <span className="text-ui-sm font-medium text-[#e6edf3]">
+                        {labelOrTitle(FIELD_LABELS, unk.field_name)}
+                      </span>
+                      <span className="text-ui-sm text-[#a8b3c1] ml-1">- {unk.reason}</span>
+                      {unk.notes && (
+                        <p className="text-ui-xs text-[#8b949e] mt-0.5">{unk.notes}</p>
+                      )}
+                      {getTravelerPromptForUnknownField(unk.field_name) && (
+                        <p className="text-ui-xs text-[#8b949e] mt-0.5">
+                          Prompt: {getTravelerPromptForUnknownField(unk.field_name)}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="space-y-1.5">
+                <p className="text-ui-xs text-[#8b949e] font-medium">
+                  {unknowns.length} missing field{unknowns.length > 1 ? 's' : ''} still need attention.
+                </p>
+                <p className="text-ui-xs text-[#8b949e]">
+                  Open the details above to see which traveler prompts are still needed.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -31,9 +31,10 @@ const fieldParam: Record<string, string> = {
 interface PlanningTripCardProps {
   trip: Trip;
   variant?: 'default' | 'compact' | 'overview' | 'workspace';
+  similarTripCount?: number;
 }
 
-export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant = 'default' }: PlanningTripCardProps) {
+export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant = 'default', similarTripCount = 1 }: PlanningTripCardProps) {
   const summary = getPlanningListSummary(trip);
   const freshness = getTripFreshnessLabel(trip);
   const fc = freshnessColors[freshness.tone] ?? freshnessColors.neutral;
@@ -57,9 +58,24 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
           <span className={`${isCompact ? 'text-[14px]' : 'text-[16px]'} font-semibold`} style={{ color: 'var(--text-primary)' }}>
             {summary.title}
           </span>
-          <span className='text-[12px] font-semibold uppercase tracking-wide' style={{ color: meta.fg }}>
-            {summary.statusLabel}
-          </span>
+          <div className='flex items-center gap-2'>
+            {similarTripCount > 1 ? (
+              <span
+                className='inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide'
+                style={{
+                  color: 'var(--text-tertiary)',
+                  borderColor: 'rgba(139,148,158,0.24)',
+                  background: 'rgba(139,148,158,0.08)',
+                }}
+                title={`${similarTripCount} trips share this same overview pattern`}
+              >
+                {similarTripCount} matching trips
+              </span>
+            ) : null}
+            <span className='text-[12px] font-semibold uppercase tracking-wide' style={{ color: meta.fg }}>
+              {summary.statusLabel}
+            </span>
+          </div>
         </div>
       </div>
       <div className='space-y-4 px-1'>
@@ -108,7 +124,7 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
           <div className='rounded-xl border px-3.5 py-3' style={{ borderColor: 'rgba(210,153,34,0.25)', background: 'rgba(210,153,34,0.04)' }}>
             <p className='text-[12px] font-semibold uppercase tracking-[0.16em]' style={{ color: 'var(--accent-amber)' }}>Missing trip details</p>
             <div className='mt-3 flex flex-wrap gap-2'>
-              {summary.missingBadges.slice(0, isOverview ? 1 : 2).map((badge) => {
+              {summary.missingBadges.slice(0, isOverview ? 3 : 2).map((badge) => {
                 const param = fieldParam[badge];
                 const fieldName = badge.replace(/ missing$/i, '').toLowerCase();
                 return (
@@ -122,6 +138,15 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
                   </Link>
                 );
               })}
+              {isOverview && summary.missingBadges.length > 3 ? (
+                <span
+                  className='inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[12px] font-medium'
+                  style={{ color: 'var(--text-muted)', background: 'rgba(139,148,158,0.08)', borderColor: 'rgba(139,148,158,0.18)' }}
+                  title={`${summary.missingBadges.length - 3} more missing fields`}
+                >
+                  +{summary.missingBadges.length - 3} more
+                </span>
+              ) : null}
             </div>
           </div>
         )}

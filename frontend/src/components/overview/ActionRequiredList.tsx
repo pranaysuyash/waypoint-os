@@ -51,6 +51,20 @@ function toExampleKey(itemKey: string, example: { id: string; title: string }, i
     .join('-');
 }
 
+function formatItemCountBadge(source: ActionRequiredItem['source'], itemCount?: number): string | null {
+  if (!itemCount || itemCount <= 1 || source === 'lead') return null;
+
+  const noun = source === 'quote'
+    ? itemCount === 1
+      ? 'quote'
+      : 'quotes'
+    : itemCount === 1
+      ? 'trip'
+      : 'trips';
+
+  return `${itemCount.toLocaleString('en-IN')} matching ${noun}`;
+}
+
 export function ActionRequiredList({
   items,
   isLoading = false,
@@ -96,6 +110,7 @@ export function ActionRequiredList({
         <ul className='divide-y' style={{ borderColor: 'var(--border-default)' }}>
           {items.map((item, itemIndex) => {
             const itemKey = toItemKey(item, itemIndex);
+            const itemCountBadge = formatItemCountBadge(item.source, item.itemCount);
             return (
               <li key={itemKey} className='py-2.5 first:pt-0 last:pb-0'>
                 <div className='grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start'>
@@ -111,6 +126,18 @@ export function ActionRequiredList({
                           }}
                         >
                           {PRIORITY_STYLES[item.priority].label}
+                        </span>
+                      ) : null}
+                      {itemCountBadge ? (
+                        <span
+                          className='inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider'
+                          style={{
+                            color: 'var(--text-secondary)',
+                            borderColor: 'rgba(139,148,158,0.24)',
+                            background: 'rgba(139,148,158,0.06)',
+                          }}
+                        >
+                          {itemCountBadge}
                         </span>
                       ) : null}
                       <span

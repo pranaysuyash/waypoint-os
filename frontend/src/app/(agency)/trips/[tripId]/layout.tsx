@@ -8,7 +8,7 @@ import { ErrorBoundary, InlineError } from "@/components/error-boundary";
 import { InlineLoading } from "@/components/ui/loading";
 import { toast } from "@/lib/toast-store";
 import { ClientDateTime } from "@/hooks/useClientDate";
-import { useTrip } from "@/hooks/useTrips";
+import { api, type Trip } from "@/lib/api-client";
 import {
   canAccessPlanningStage,
   canAccessOpsWorkspace,
@@ -93,7 +93,9 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   const params = useParams<{ tripId?: string | string[] }>();
   const pathname = usePathname();
   const tripId = parseTripId(params?.tripId);
-  const { data: trip, isLoading, error, refetch: refetchTrip, replaceTrip } = useTrip(tripId);
+  const [trip, setTrip] = useState<Trip | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [isRailOpen, setIsRailOpen] = useState(false);
   const [timelineState, dispatchTimeline] = useReducer(timelineRailReducer, {
     status: "idle",
@@ -119,6 +121,61 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   const timelineEvents = timelineState.timeline?.events ?? [];
   const timelineLoading = timelineState.status === "loading";
   const timelineError = timelineState.error;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchTrip() {
+      if (!tripId) {
+        setTrip(null);
+        setError(new Error("Trip not found"));
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const loadedTrip = await api.get<Trip>(`/api/trips/${encodeURIComponent(tripId)}`);
+        if (cancelled) return;
+        setTrip(loadedTrip);
+        setIsLoading(false);
+      } catch (err) {
+        if (cancelled) return;
+        setTrip(null);
+        setError(err instanceof Error ? err : new Error("Failed to load workspace trip"));
+        setIsLoading(false);
+      }
+    }
+
+    void fetchTrip();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tripId]);
+
+  const refetchTrip = () => {
+    if (!tripId) return;
+    setIsLoading(true);
+    setError(null);
+    void api
+      .get<Trip>(`/api/trips/${encodeURIComponent(tripId)}`)
+      .then((loadedTrip) => {
+        setTrip(loadedTrip);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        setTrip(null);
+        setError(err instanceof Error ? err : new Error("Failed to load workspace trip"));
+        setIsLoading(false);
+      });
+  };
+
+  const replaceTrip = (nextTrip: Trip) => {
+    setTrip(nextTrip);
+  };
 
   useEffect(() => {
     hasRailPreferenceRef.current = false;

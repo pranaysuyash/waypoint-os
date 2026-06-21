@@ -1215,7 +1215,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
         <div className='grid grid-cols-1 gap-4 xl:grid-cols-12'>
           <div className='bg-[var(--bg-elevated)] border border-[rgba(210,153,34,0.25)] rounded-xl p-4 xl:col-span-7'>
             <div className='mb-4'>
-              <h3 className='text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)]'>Missing Customer Details</h3>
+              <h3 className='text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)]'>Missing customer details</h3>
               <p className='mt-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)]'>
                 Each missing field can be fixed here or pushed into a traveler follow-up.
               </p>
