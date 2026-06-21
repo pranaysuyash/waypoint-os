@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from src.evals.agentic_feedback import (
     AgenticEvalRecord,
+    RoutingHealthAlert,
+    RoutingHealthReport,
     aggregate_eval_records,
     build_routing_metrics,
     build_repeated_failure_signal,
     build_canonical_evidence_records,
+    check_routing_health,
     extract_metadata_signature,
     filter_eval_candidates,
 )
@@ -429,6 +433,155 @@ def test_build_routing_metrics_scopes_escalation_outcomes_to_candidate_unit_ids(
     assert metrics["false_escalation_count"] == 1
     assert metrics["missed_escalation_count"] == 0
     assert metrics["correct_escalation_count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# check_routing_health tests
+# ---------------------------------------------------------------------------
+
+
+def test_check_routing_health_healthy_when_all_normal():
+    metrics = {
+        "fallback_trigger_rate": 0.1,
+        "false_escalation_rate": 0.05,
+        "missed_escalation_rate": 0.05,
+        "review_correction_rate": 0.1,
+        "latency_by_candidates": {"p50_ms": 1000, "p95_ms": 3000},
+    }
+    report = check_routing_health(metrics)
+    assert report.status == "healthy"
+    assert report.alerts == []
+    assert isinstance(report.checked_at, datetime)
+    assert report.metrics_snapshot is metrics
+
+
+def test_check_routing_health_warning_on_fallback_rate():
+    metrics = {
+        "fallback_trigger_rate": 0.35,
+        "false_escalation_rate": 0.05,
+        "latency_by_candidates": {"p50_ms": 1000, "p95_ms": 3000},
+    }
+    report = check_routing_health(metrics)
+    assert report.status == "warning"
+    assert len(report.alerts) == 1
+    assert report.alerts[0].metric == "fallback_trigger_rate"
+    assert report.alerts[0].severity == "warning"
+    assert report.alerts[0].actual_value == 0.35
+
+
+def test_check_routing_health_critical_on_false_escalation():
+    metrics = {
+        "fallback_trigger_rate": 0.1,
+        "false_escalation_rate": 0.45,
+        "latency_by_candidates": {"p50_ms": 1000, "p95_ms": 3000},
+    }
+    report = check_routing_health(metrics)
+    assert report.status == "critical"
+    assert len(report.alerts) == 1
+    assert report.alerts[0].severity == "critical"
+    assert report.alerts[0].metric == "false_escalation_rate"
+
+
+def test_check_routing_health_critical_overrides_warning():
+    metrics = {
+        "fallback_trigger_rate": 0.35,  # warning
+        "false_escalation_rate": 0.45,  # critical
+        "latency_by_candidates": {"p50_ms": 1000, "p95_ms": 3000},
+    }
+    report = check_routing_health(metrics)
+    assert report.status == "critical"
+    assert len(report.alerts) == 2
+    severities = {a.severity for a in report.alerts}
+    assert "warning" in severities
+    assert "critical" in severities
+
+
+def test_check_routing_health_latency_alerts():
+    metrics = {
+        "fallback_trigger_rate": 0.05,
+        "latency_by_candidates": {"p50_ms": 12_000, "p95_ms": 35_000},
+    }
+    report = check_routing_health(metrics)
+    assert report.status == "critical"
+    latency_alerts = [a for a in report.alerts if "latency" in a.metric]
+    assert len(latency_alerts) == 2
+    p50_alert = next(a for a in latency_alerts if "p50" in a.metric)
+    assert p50_alert.severity == "critical"  # 12000 >= 10000 critical
+    p95_alert = next(a for a in latency_alerts if "p95" in a.metric)
+    assert p95_alert.severity == "critical"  # 35000 >= 30000 critical
+
+
+def test_check_routing_health_skips_none_values():
+    metrics = {
+        "fallback_trigger_rate": 0.1,
+        "false_escalation_rate": None,
+        "missed_escalation_rate": None,
+        "latency_by_candidates": {},
+    }
+    report = check_routing_health(metrics)
+    assert report.status == "healthy"
+    assert report.alerts == []
+
+
+def test_check_routing_health_custom_thresholds():
+    metrics = {
+        "fallback_trigger_rate": 0.15,
+        "latency_by_candidates": {"p50_ms": 3000, "p95_ms": 8000},
+    }
+    custom = {
+        "fallback_trigger_rate_warning": 0.1,
+        "fallback_trigger_rate_critical": 0.2,
+        "latency_p50_ms_warning": 2000,
+        "latency_p50_ms_critical": 5000,
+        "latency_p95_ms_warning": 5000,
+        "latency_p95_ms_critical": 10000,
+    }
+    report = check_routing_health(metrics, thresholds=custom)
+    assert report.status == "warning"
+    assert len(report.alerts) == 3  # fallback + p50 + p95
+    alert_metrics = {a.metric for a in report.alerts}
+    assert "fallback_trigger_rate" in alert_metrics
+    assert "latency_p50_ms" in alert_metrics
+    assert "latency_p95_ms" in alert_metrics
+
+
+def test_check_routing_health_review_correction_rate():
+    metrics = {
+        "fallback_trigger_rate": 0.05,
+        "review_correction_rate": 0.55,
+        "latency_by_candidates": {"p50_ms": 1000, "p95_ms": 3000},
+    }
+    report = check_routing_health(metrics)
+    assert report.status == "critical"
+    rc_alerts = [a for a in report.alerts if a.metric == "review_correction_rate"]
+    assert len(rc_alerts) == 1
+    assert rc_alerts[0].severity == "critical"
+
+
+def test_check_routing_health_missed_escalation_rate():
+    metrics = {
+        "fallback_trigger_rate": 0.05,
+        "missed_escalation_rate": 0.25,
+        "latency_by_candidates": {"p50_ms": 1000, "p95_ms": 3000},
+    }
+    report = check_routing_health(metrics)
+    assert report.status == "warning"
+    me_alerts = [a for a in report.alerts if a.metric == "missed_escalation_rate"]
+    assert len(me_alerts) == 1
+    assert me_alerts[0].severity == "warning"
+
+
+def test_check_routing_health_summary_json_serialisable():
+    metrics = {
+        "fallback_trigger_rate": 0.6,
+        "latency_by_candidates": {"p50_ms": 12_000, "p95_ms": 40_000},
+    }
+    report = check_routing_health(metrics)
+    summary = report.summary()
+    serialised = json.dumps(summary)
+    assert "critical" in serialised
+    assert summary["status"] == "critical"
+    assert summary["alert_count"] == 3  # fallback + p50 + p95
 
 
 def test_build_routing_metrics_uses_legacy_outcomes_without_unit_links():

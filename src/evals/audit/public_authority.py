@@ -18,6 +18,45 @@ _DEFAULT_SNAPSHOT_PATH = Path("data/evals/d6_audit_gate_snapshot.json")
 
 
 @dataclass(slots=True)
+class RoutingHealthAuthority:
+    """Routing health gate status from the D6 snapshot."""
+
+    status: str  # "healthy" | "warning" | "critical"
+    blocks_ci: bool
+    source: str  # "eval_snapshot" | "manifest_fallback"
+    thresholds: dict[str, float]
+
+
+def resolve_routing_health_authority() -> RoutingHealthAuthority:
+    """Return the routing health gate status from the D6 snapshot.
+
+    Falls back to a healthy baseline when no snapshot is available.
+    """
+    snapshot = _load_snapshot()
+    if snapshot:
+        rh = snapshot.get("routing_health")
+        if isinstance(rh, dict):
+            status = str(rh.get("status") or "healthy")
+            blocks_ci = _normalize_bool(rh.get("blocks_ci"))
+            thresholds = rh.get("thresholds")
+            if not isinstance(thresholds, dict):
+                thresholds = {}
+            return RoutingHealthAuthority(
+                status=status,
+                blocks_ci=blocks_ci,
+                source="eval_snapshot",
+                thresholds={k: float(v) for k, v in thresholds.items() if isinstance(v, (int, float))},
+            )
+
+    return RoutingHealthAuthority(
+        status="healthy",
+        blocks_ci=False,
+        source="manifest_fallback",
+        thresholds={},
+    )
+
+
+@dataclass(slots=True)
 class CategoryPublicAuthority:
     category: str
     authority: str

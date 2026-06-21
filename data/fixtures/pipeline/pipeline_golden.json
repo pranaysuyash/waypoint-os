@@ -1,0 +1,254 @@
+[
+  {
+    "fixture_id": "pipeline_india_family_thailand_visa",
+    "description": "Indian family of 4 planning Thailand trip in December — passport, visa, and insurance extraction needed, followed by feasibility and document readiness checks",
+    "difficulty": "easy",
+    "tags": ["indian", "thailand", "visa", "family", "complete"],
+    "raw_input": {
+      "raw_note": "Family of 4 from Mumbai wants to visit Bangkok and Phuket in December 2026. Parents are Rajesh and Priya Sharma (kids ages 8 and 12). Budget is ₹3,00,000 total. Need help with visa and hotel bookings.",
+      "source": "whatsapp",
+      "inquiry_type": "new_trip"
+    },
+    "expected_extraction": {
+      "passport": {
+        "full_name": "RAJESH KUMAR SHARMA",
+        "date_of_birth": "15/03/1985",
+        "passport_number": "R1234567",
+        "passport_expiry": "20/07/2030",
+        "nationality": "INDIAN"
+      },
+      "visa": {
+        "full_name": "RAJESH KUMAR SHARMA",
+        "visa_type": "TOURIST",
+        "visa_expiry": "15/01/2027",
+        "passport_number": "R1234567"
+      },
+      "insurance": {
+        "full_name": "RAJESH KUMAR SHARMA",
+        "insurance_provider": "BAJAJ ALLIANZ GENERAL INSURANCE",
+        "insurance_policy_number": "BAL-789012345"
+      }
+    },
+    "expected_agents": {
+      "front_door": {
+        "is_real_lead": true,
+        "priority": "high",
+        "missing_fields": ["travel_dates", "hotel_preference"]
+      },
+      "document_readiness": {
+        "risk_level": "medium",
+        "checklist_items": ["passport_validity", "visa_status", "insurance_coverage"]
+      },
+      "constraint_feasibility": {
+        "feasibility_status": "feasible",
+        "hard_blockers": [],
+        "soft_constraints": ["budget_tight"]
+      }
+    },
+    "expected_decision": {
+      "trip_status": "in_progress",
+      "stage": "document_check",
+      "owner_action_required": true,
+      "escalation_needed": false
+    }
+  },
+  {
+    "fixture_id": "pipeline_us_solo_europe_budget",
+    "description": "US passport holder planning solo Europe trip with tight budget — expired passport detected, budget constraints flagged",
+    "difficulty": "medium",
+    "tags": ["us", "europe", "expired_passport", "budget_constraint", "solo"],
+    "raw_input": {
+      "raw_note": "Solo traveler from NYC, US passport holder, wants to visit Paris and Rome in March 2027. Budget is $2,500. Has old passport from 2018 that might be expired.",
+      "source": "email",
+      "inquiry_type": "new_trip"
+    },
+    "expected_extraction": {
+      "passport": {
+        "full_name": "JOHN MICHAEL DOE",
+        "date_of_birth": "22/11/1990",
+        "passport_number": "567890123",
+        "passport_expiry": "15/06/2020",
+        "nationality": "UNITED STATES OF AMERICA"
+      },
+      "visa": null,
+      "insurance": null
+    },
+    "expected_agents": {
+      "front_door": {
+        "is_real_lead": true,
+        "priority": "urgent",
+        "missing_fields": ["valid_passport", "travel_dates", "insurance"]
+      },
+      "document_readiness": {
+        "risk_level": "high",
+        "checklist_items": ["passport_renewal_required", "schengen_visa_needed", "travel_insurance"]
+      },
+      "constraint_feasibility": {
+        "feasibility_status": "blocked",
+        "hard_blockers": ["expired_passport"],
+        "soft_constraints": ["tight_budget"]
+      }
+    },
+    "expected_decision": {
+      "trip_status": "needs_review",
+      "stage": "escalation",
+      "owner_action_required": true,
+      "escalation_needed": true
+    }
+  },
+  {
+    "fixture_id": "pipeline_uk_couple_bali_complete",
+    "description": "UK couple with complete documents for Bali trip — all extractions expected to succeed, feasible decision",
+    "difficulty": "easy",
+    "tags": ["uk", "bali", "couple", "complete", "feasible"],
+    "raw_input": {
+      "raw_note": "Couple from London, both UK passport holders, want to visit Bali for 10 days in August 2027. Budget is £4,000. Have travel insurance already.",
+      "source": "phone",
+      "inquiry_type": "new_trip"
+    },
+    "expected_extraction": {
+      "passport": {
+        "full_name": "EMMA JANE WILSON",
+        "date_of_birth": "08/07/1988",
+        "passport_number": "530123456",
+        "passport_expiry": "12/09/2029",
+        "nationality": "BRITISH CITIZEN"
+      },
+      "visa": {
+        "full_name": "EMMA JANE WILSON",
+        "visa_type": "SOCIAL/CULTURAL VISA",
+        "visa_expiry": "12/12/2027",
+        "passport_number": "530123456"
+      },
+      "insurance": {
+        "full_name": "EMMA JANE WILSON",
+        "insurance_provider": "AXA TRAVEL INSURANCE",
+        "insurance_policy_number": "AXA-TI-9876543"
+      }
+    },
+    "expected_agents": {
+      "front_door": {
+        "is_real_lead": true,
+        "priority": "normal",
+        "missing_fields": []
+      },
+      "document_readiness": {
+        "risk_level": "low",
+        "checklist_items": ["passport_valid", "visa_valid", "insurance_valid"]
+      },
+      "constraint_feasibility": {
+        "feasibility_status": "feasible",
+        "hard_blockers": [],
+        "soft_constraints": []
+      }
+    },
+    "expected_decision": {
+      "trip_status": "in_progress",
+      "stage": "proposal",
+      "owner_action_required": false,
+      "escalation_needed": false
+    }
+  },
+  {
+    "fixture_id": "pipeline_japan_group_weather_risk",
+    "description": "Japanese passport holder with group trip during typhoon season — weather risk intelligence expected",
+    "difficulty": "hard",
+    "tags": ["japanese", "japan", "group", "weather_risk", "typhoon_season"],
+    "raw_input": {
+      "raw_note": "Group of 3 friends from Tokyo, all Japanese passport holders, planning trip to Okinawa in September 2027. Worried about typhoon season. Budget ¥500,000.",
+      "source": "whatsapp",
+      "inquiry_type": "new_trip"
+    },
+    "expected_extraction": {
+      "passport": {
+        "full_name": "TANAKA YUKI",
+        "date_of_birth": "03/05/1992",
+        "passport_number": "TK1234567",
+        "passport_expiry": "18/11/2027",
+        "nationality": "JAPANESE"
+      },
+      "visa": null,
+      "insurance": {
+        "full_name": "TANAKA YUKI",
+        "insurance_provider": "SOMPO INSURANCE",
+        "insurance_policy_number": "SOMPO-TRV-2026-111"
+      }
+    },
+    "expected_agents": {
+      "front_door": {
+        "is_real_lead": true,
+        "priority": "high",
+        "missing_fields": ["specific_dates", "accommodation_preference"]
+      },
+      "destination_intelligence": {
+        "risk_level": "high",
+        "weather_signals": ["typhoon_risk", "september_peak"],
+        "recommendations": ["travel_insurance_with_weather_coverage", "flexible_booking"]
+      },
+      "constraint_feasibility": {
+        "feasibility_status": "conditional",
+        "hard_blockers": [],
+        "soft_constraints": ["weather_uncertainty", "typhoon_season"]
+      }
+    },
+    "expected_decision": {
+      "trip_status": "needs_review",
+      "stage": "weather_advisory",
+      "owner_action_required": true,
+      "escalation_needed": false
+    }
+  },
+  {
+    "fixture_id": "pipeline_german_multi_destination_complex",
+    "description": "German passport holder with complex multi-destination itinerary — multiple visa types needed, budget constraints",
+    "difficulty": "hard",
+    "tags": ["german", "multi_destination", "complex", "multiple_visas", "budget"],
+    "raw_input": {
+      "raw_note": "German traveler wants to visit India (2 weeks), then Thailand (1 week), then Singapore (3 days) in October-November 2027. Budget €5,000. Has Schengen passport but needs visas for all three destinations.",
+      "source": "email",
+      "inquiry_type": "new_trip"
+    },
+    "expected_extraction": {
+      "passport": {
+        "full_name": "HANS PETER MULLER",
+        "date_of_birth": "19/02/1978",
+        "passport_number": "C01X23456",
+        "passport_expiry": "25/04/2029",
+        "nationality": "GERMAN"
+      },
+      "visa": {
+        "full_name": "HANS PETER MULLER",
+        "visa_type": "E-TOURIST VISA",
+        "visa_expiry": "15/12/2027",
+        "passport_number": "C01X23456"
+      },
+      "insurance": {
+        "full_name": "HANS PETER MULLER",
+        "insurance_provider": "ALLIANZ GLOBAL ASSISTANCE",
+        "insurance_policy_number": "AGA-TR-2026-777888"
+      }
+    },
+    "expected_agents": {
+      "front_door": {
+        "is_real_lead": true,
+        "priority": "high",
+        "missing_fields": ["specific_dates_per_destination", "accommodation_preferences"]
+      },
+      "document_readiness": {
+        "risk_level": "high",
+        "checklist_items": ["indian_visa", "thai_visa", "singapore_visa", "multi_country_insurance"]
+      },
+      "constraint_feasibility": {
+        "feasibility_status": "conditional",
+        "hard_blockers": [],
+        "soft_constraints": ["complex_logistics", "tight_budget_for_multi_destination"]
+      }
+    },
+    "expected_decision": {
+      "trip_status": "needs_review",
+      "stage": "complex_planning",
+      "owner_action_required": true,
+      "escalation_needed": false
+    }
+  }
+]

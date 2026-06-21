@@ -628,6 +628,176 @@ def _parse_event_timestamp(value: Any) -> datetime | None:
     return None
 
 
+# ---------------------------------------------------------------------------
+# Routing health checks
+# ---------------------------------------------------------------------------
+
+DEFAULT_ROUTING_HEALTH_THRESHOLDS: dict[str, float] = {
+    "fallback_trigger_rate_warning": 0.3,
+    "fallback_trigger_rate_critical": 0.5,
+    "false_escalation_rate_warning": 0.2,
+    "false_escalation_rate_critical": 0.4,
+    "missed_escalation_rate_warning": 0.2,
+    "missed_escalation_rate_critical": 0.4,
+    "review_correction_rate_warning": 0.3,
+    "review_correction_rate_critical": 0.5,
+    "latency_p50_ms_warning": 5_000,
+    "latency_p50_ms_critical": 10_000,
+    "latency_p95_ms_warning": 15_000,
+    "latency_p95_ms_critical": 30_000,
+}
+
+
+@dataclass(slots=True)
+class RoutingHealthAlert:
+    """A single routing health alert when a metric exceeds a threshold."""
+
+    metric: str
+    severity: str  # "warning" | "critical"
+    actual_value: float | None
+    threshold: float
+    message: str
+
+
+@dataclass(slots=True)
+class RoutingHealthReport:
+    """Aggregated routing health status with per-metric alerts."""
+
+    status: str  # "healthy" | "warning" | "critical"
+    alerts: list[RoutingHealthAlert]
+    checked_at: datetime
+    metrics_snapshot: dict[str, Any]
+
+    def summary(self) -> dict[str, Any]:
+        """Return a JSON-serialisable summary."""
+        return {
+            "status": self.status,
+            "alert_count": len(self.alerts),
+            "alerts": [
+                {
+                    "metric": a.metric,
+                    "severity": a.severity,
+                    "actual_value": a.actual_value,
+                    "threshold": a.threshold,
+                    "message": a.message,
+                }
+                for a in self.alerts
+            ],
+            "checked_at": self.checked_at.isoformat(),
+        }
+
+
+def _check_threshold_alert(
+    metric_name: str,
+    actual: float | int | None,
+    warning_threshold: float,
+    critical_threshold: float,
+    unit: str = "",
+) -> RoutingHealthAlert | None:
+    """Check a metric against warning/critical thresholds.
+
+    Parameters
+    ----------
+    unit
+        Suffix for the message (e.g. ``"ms"`` for latency).  If empty the
+        value is formatted as a raw float.
+    """
+    if actual is None:
+        return None
+    actual_f = float(actual)
+    if actual_f >= critical_threshold:
+        return RoutingHealthAlert(
+            metric=metric_name,
+            severity="critical",
+            actual_value=actual_f,
+            threshold=critical_threshold,
+            message=f"{metric_name}={actual_f:g}{unit} >= critical threshold {critical_threshold:g}{unit}",
+        )
+    if actual_f >= warning_threshold:
+        return RoutingHealthAlert(
+            metric=metric_name,
+            severity="warning",
+            actual_value=actual_f,
+            threshold=warning_threshold,
+            message=f"{metric_name}={actual_f:g}{unit} >= warning threshold {warning_threshold:g}{unit}",
+        )
+    return None
+
+
+def check_routing_health(
+    routing_metrics: dict[str, Any],
+    *,
+    thresholds: dict[str, float] | None = None,
+    reference_time: datetime | None = None,
+) -> RoutingHealthReport:
+    """Check routing health against configurable alert thresholds.
+
+    Consumes the output of :func:`build_routing_metrics` and evaluates
+    each metric against warning / critical thresholds.  Returns a
+    :class:`RoutingHealthReport` with per-metric alerts and an overall
+    status ("healthy", "warning", or "critical").
+
+    Parameters
+    ----------
+    routing_metrics
+        Dict returned by :func:`build_routing_metrics`.
+    thresholds
+        Override default thresholds.  Keys match
+        :data:`DEFAULT_ROUTING_HEALTH_THRESHOLDS`.
+    reference_time
+        Timestamp for the report (defaults to ``datetime.now(timezone.utc)``).
+    """
+    t = {**DEFAULT_ROUTING_HEALTH_THRESHOLDS, **(thresholds or {})}
+    alerts: list[RoutingHealthAlert] = []
+
+    # --- rate checks ---
+    for metric_name, warn_key, crit_key in [
+        ("fallback_trigger_rate", "fallback_trigger_rate_warning", "fallback_trigger_rate_critical"),
+        ("false_escalation_rate", "false_escalation_rate_warning", "false_escalation_rate_critical"),
+        ("missed_escalation_rate", "missed_escalation_rate_warning", "missed_escalation_rate_critical"),
+        ("review_correction_rate", "review_correction_rate_warning", "review_correction_rate_critical"),
+    ]:
+        alert = _check_threshold_alert(
+            metric_name,
+            routing_metrics.get(metric_name),
+            t[warn_key],
+            t[crit_key],
+        )
+        if alert:
+            alerts.append(alert)
+
+    # --- latency checks ---
+    latency = routing_metrics.get("latency_by_candidates") or {}
+    for key, warn_key, crit_key in [
+        ("p50_ms", "latency_p50_ms_warning", "latency_p50_ms_critical"),
+        ("p95_ms", "latency_p95_ms_warning", "latency_p95_ms_critical"),
+    ]:
+        alert = _check_threshold_alert(
+            f"latency_{key}",
+            latency.get(key),
+            t[warn_key],
+            t[crit_key],
+            unit="ms",
+        )
+        if alert:
+            alerts.append(alert)
+
+    # --- overall status ---
+    if any(a.severity == "critical" for a in alerts):
+        status = "critical"
+    elif alerts:
+        status = "warning"
+    else:
+        status = "healthy"
+
+    return RoutingHealthReport(
+        status=status,
+        alerts=alerts,
+        checked_at=reference_time or datetime.now(timezone.utc),
+        metrics_snapshot=routing_metrics,
+    )
+
+
 def aggregate_eval_records(
     events: list[ExecutionEvent],
     min_occurrences: int = 3,

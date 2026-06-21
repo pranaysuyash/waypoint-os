@@ -41,6 +41,17 @@
       ],
       "status": "planned"
     },
+    "extraction": {
+      "authoritative_for_public_surface": false,
+      "blocks_ci": false,
+      "meets_thresholds": false,
+      "metrics": null,
+      "reasons": [
+        "no_metrics_for_category",
+        "category_status_shadow"
+      ],
+      "status": "shadow"
+    },
     "logistics": {
       "authoritative_for_public_surface": false,
       "blocks_ci": false,
@@ -86,8 +97,83 @@
       "status": "shadow"
     }
   },
+  "extraction_health": {
+    "blocks_ci": true,
+    "by_difficulty": {
+      "easy": {
+        "f1": 0.0,
+        "fixture_accuracy": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "total_fixtures": 24
+      },
+      "hard": {
+        "f1": 0.0,
+        "fixture_accuracy": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "total_fixtures": 12
+      },
+      "medium": {
+        "f1": 0.0,
+        "fixture_accuracy": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "total_fixtures": 14
+      }
+    },
+    "by_document_type": {
+      "insurance": {
+        "f1": 0.0,
+        "fixture_accuracy": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "total_fixtures": 10
+      },
+      "passport": {
+        "f1": 0.0,
+        "fixture_accuracy": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "total_fixtures": 27
+      },
+      "visa": {
+        "f1": 0.0,
+        "fixture_accuracy": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "total_fixtures": 13
+      }
+    },
+    "fixture_accuracy": 0.0,
+    "note": "Baseline with no live extraction results. Override with actual results at runtime.",
+    "overall_f1": 0.0,
+    "overall_precision": 0.0,
+    "overall_recall": 0.0,
+    "status": "failing",
+    "total_fixtures": 50
+  },
   "fixture_root": "data/fixtures/audit",
-  "generated_at": "2026-05-12T03:40:53.650228+00:00",
+  "generated_at": "2026-06-21T05:34:15.726218+00:00",
   "manifest_version": 1,
+  "routing_health": {
+    "blocks_ci": false,
+    "checked_at": "2026-06-21T05:34:15.725431+00:00",
+    "status": "healthy",
+    "thresholds": {
+      "fallback_trigger_rate_critical": 0.5,
+      "fallback_trigger_rate_warning": 0.3,
+      "false_escalation_rate_critical": 0.4,
+      "false_escalation_rate_warning": 0.2,
+      "latency_p50_ms_critical": 10000,
+      "latency_p50_ms_warning": 5000,
+      "latency_p95_ms_critical": 30000,
+      "latency_p95_ms_warning": 15000,
+      "missed_escalation_rate_critical": 0.4,
+      "missed_escalation_rate_warning": 0.2,
+      "review_correction_rate_critical": 0.5,
+      "review_correction_rate_warning": 0.3
+    }
+  },
   "total_fixtures": 2
 }

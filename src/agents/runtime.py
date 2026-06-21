@@ -3113,6 +3113,10 @@ def _normalize_name(value: Any) -> str:
 
 
 def build_default_registry() -> AgentRegistry:
+    # Lazy import to avoid circular dependency:
+    # closed_loop_learning.py imports from runtime.py.
+    from src.agents.closed_loop_learning import ClosedLoopLearningAgent
+
     return AgentRegistry([
         FrontDoorAgent(),
         SalesActivationAgent(),
@@ -3130,4 +3134,5 @@ def build_default_registry() -> AgentRegistry:
         SupplierIntelligenceAgent(),
         FollowUpAgent(),
         QualityEscalationAgent(),
+        ClosedLoopLearningAgent(),
     ])

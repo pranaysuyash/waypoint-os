@@ -396,6 +396,9 @@ class DocumentExtractionAttempt(Base):
     overall_confidence: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     confidence_method: Mapped[str] = mapped_column(String(30), server_default="model")
 
+    # Immutable version snapshot — JSON dict captured at attempt creation.
+    version_snapshot: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
     )

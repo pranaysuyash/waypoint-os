@@ -35,3 +35,11 @@ categories:
     min_precision: 0.90
     min_recall: 0.85
     min_severity_accuracy: 0.85
+  # Reference-only: extraction accuracy is evaluated separately via
+  # _run_extraction_baseline() in snapshot.py using its own F1 system.
+  # The real gate is extraction_health.blocks_ci in the snapshot.
+  extraction:
+    status: shadow
+    min_precision: 0.85
+    min_recall: 0.85
+    min_severity_accuracy: 0.80

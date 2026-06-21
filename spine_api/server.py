@@ -1122,8 +1122,9 @@ app.include_router(public_checker_router.router)
 app.include_router(public_collection_router.router)
 app.include_router(legacy_ops_router.router, dependencies=[Depends(_auth_or_skip)])
 app.include_router(trip_actions_router.router, dependencies=[Depends(_auth_or_skip)])
-app.include_router(trip_observability_router.router)    app.include_router(trip_lifecycle_router.router, dependencies=[Depends(_auth_or_skip)])
-    app.include_router(extraction_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(trip_observability_router.router)
+app.include_router(trip_lifecycle_router.router, dependencies=[Depends(_auth_or_skip)])
+app.include_router(extraction_router.router, dependencies=[Depends(_auth_or_skip)])
 
 
 def _seed_scenario(agency_id: Optional[str] = None):
