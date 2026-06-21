@@ -124,7 +124,29 @@ def build_gate_snapshot(
     fixtures = load_fixtures(fixture_root)
     manifest = load_manifest()
     report = run_eval_suite(fixtures, rule_runner=_rule_dispatch)
-    gate = evaluate_report_against_manifest(report, manifest)
+
+    # --- routing health gate ---
+    routing_health = check_routing_health({})
+
+    # --- extraction accuracy gate ---
+    extraction_eval_report = _run_extraction_baseline(
+        golden_dataset_path=golden_dataset_path,
+    )
+
+    # --- pipeline end-to-end eval gate ---
+    pipeline_health = _run_pipeline_baseline()
+
+    # --- manifest gate evaluation ---
+    # Pass per-category accuracy values for categories that use
+    # min_accuracy thresholds (e.g. pipeline) instead of the standard
+    # precision/recall/severity metrics.
+    category_accuracy: dict[str, float] = {}
+    pipeline_acc = pipeline_health.get("overall_accuracy")
+    if pipeline_acc is not None:
+        category_accuracy["pipeline"] = pipeline_acc
+    gate = evaluate_report_against_manifest(
+        report, manifest, category_accuracy=category_accuracy,
+    )
 
     categories: dict[str, Any] = {}
     for name, decision in gate.categories.items():
@@ -136,28 +158,6 @@ def build_gate_snapshot(
             "reasons": list(decision.reasons),
             "metrics": asdict(decision.metrics) if decision.metrics is not None else None,
         }
-
-    # --- routing health gate ---
-    # Evaluate routing health against default thresholds using empty metrics
-    # (no live data at snapshot generation time).  This establishes a
-    # baseline "healthy" state that can be overridden at runtime when
-    # actual routing metrics are available.
-    routing_health = check_routing_health({})
-
-    # --- extraction accuracy gate ---
-    # Run the extraction eval against the golden dataset with no live
-    # extraction results (baseline: all fields are None → all non-null
-    # expected fields are false negatives).  This establishes baseline
-    # metrics that will be overridden when actual extraction results
-    # are available at runtime.
-    extraction_eval_report = _run_extraction_baseline(
-        golden_dataset_path=golden_dataset_path,
-    )
-
-    # --- pipeline end-to-end eval gate ---
-    # Run pipeline eval against golden fixtures with no live results.
-    # Baseline: all expected fields are false negatives.
-    pipeline_health = _run_pipeline_baseline()
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),

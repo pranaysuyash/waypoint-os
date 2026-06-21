@@ -43,3 +43,9 @@ categories:
     min_precision: 0.85
     min_recall: 0.85
     min_severity_accuracy: 0.80
+  # Reference-only: pipeline accuracy is evaluated separately via
+  # _run_pipeline_baseline() in snapshot.py using its own accuracy system.
+  # The real gate is pipeline_health.blocks_ci in the snapshot.
+  pipeline:
+    status: shadow
+    min_accuracy: 0.80

@@ -16,6 +16,7 @@ class EvalCategoryConfig(BaseModel):
     min_precision: float = Field(default=0.0, ge=0.0, le=1.0)
     min_recall: float = Field(default=0.0, ge=0.0, le=1.0)
     min_severity_accuracy: float = Field(default=0.0, ge=0.0, le=1.0)
+    min_accuracy: float = Field(default=0.0, ge=0.0, le=1.0)
 
 
 class EvalManifest(BaseModel):

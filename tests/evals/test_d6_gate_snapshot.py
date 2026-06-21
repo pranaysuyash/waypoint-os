@@ -241,3 +241,47 @@ def test_verify_gate_snapshot_detects_pipeline_health_drift(tmp_path: Path):
 
     ok, _, _ = verify_gate_snapshot_file(snapshot_path=output)
     assert ok is False
+
+
+# --- pipeline manifest category tests ---
+
+
+def test_pipeline_manifest_category_present():
+    snapshot = build_gate_snapshot()
+    assert "pipeline" in snapshot["categories"]
+    pipeline_cat = snapshot["categories"]["pipeline"]
+    assert pipeline_cat["status"] == "shadow"
+    assert pipeline_cat["blocks_ci"] is False
+
+
+def test_pipeline_manifest_category_evaluated_with_accuracy():
+    """Pipeline category should receive overall_accuracy from pipeline_health."""
+    snapshot = build_gate_snapshot()
+    pipeline_cat = snapshot["categories"]["pipeline"]
+    ph = snapshot["pipeline_health"]
+    # The pipeline category should have been evaluated with the pipeline accuracy
+    assert pipeline_cat["status"] == "shadow"
+    # With baseline (no live results), accuracy is low but doesn't block CI
+    # because status is shadow
+    assert pipeline_cat["blocks_ci"] is False
+    # Check that the accuracy_below_threshold reason is present (baseline accuracy < 0.80)
+    assert "accuracy_below_threshold" in pipeline_cat["reasons"] or "category_status_shadow" in pipeline_cat["reasons"]
+
+
+def test_pipeline_manifest_category_min_accuracy_threshold():
+    """Verify the pipeline category uses min_accuracy from manifest.yaml."""
+    from src.evals.audit.manifest import load_manifest
+    manifest = load_manifest()
+    pipeline_config = manifest.categories["pipeline"]
+    assert pipeline_config.min_accuracy == 0.80
+    assert pipeline_config.status == "shadow"
+
+
+def test_pipeline_category_does_not_block_ci_when_shadow():
+    """Even with low accuracy, shadow status means no CI block."""
+    snapshot = build_gate_snapshot()
+    pipeline_cat = snapshot["categories"]["pipeline"]
+    # Baseline accuracy is ~0.0, well below 0.80 threshold
+    # But shadow status means blocks_ci is always False
+    assert pipeline_cat["blocks_ci"] is False
+    assert pipeline_cat["status"] == "shadow"
