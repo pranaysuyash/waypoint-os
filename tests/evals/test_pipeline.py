@@ -310,3 +310,92 @@ class TestPipelineEvalReport:
         # Very relaxed threshold: agents stage passes
         comp_relaxed = compare_pipeline_fixture(f, actual, stage_threshold=0.0)
         assert comp_relaxed.stages["agents"].passed is True
+
+
+class TestPerFixtureThreshold:
+    def test_per_fixture_threshold_overrides_global(self):
+        """A fixture with stage_threshold=0.0 always passes, even with missing agents."""
+        data = {
+            "fixture_id": "custom_threshold",
+            "expected_agents": {"front_door_agent": {"is_real_lead": True}},
+            "expected_decision": {"trip_status": "in_progress"},
+            "stage_threshold": 0.0,
+        }
+        f = PipelineFixture.from_dict(data)
+        actual = {"agents": {}, "decision": {}}  # 0% match on agents
+        comp = compare_pipeline_fixture(f, actual)
+        assert comp.all_stages_pass is True
+        for sr in comp.stages.values():
+            assert sr.stage_threshold == 0.0
+
+    def test_per_fixture_threshold_none_uses_global(self):
+        """A fixture with stage_threshold=None falls back to the global param."""
+        data = {
+            "fixture_id": "default_threshold",
+            "expected_agents": {"front_door_agent": {"is_real_lead": True}},
+            "expected_decision": {"trip_status": "in_progress"},
+        }
+        f = PipelineFixture.from_dict(data)
+        assert f.stage_threshold is None
+        actual = {"agents": {}, "decision": {}}  # 0% match on agents
+        comp = compare_pipeline_fixture(f, actual, stage_threshold=0.5)
+        assert comp.all_stages_pass is False
+        for sr in comp.stages.values():
+            assert sr.stage_threshold == 0.5
+
+    def test_per_fixture_threshold_from_dict(self):
+        data = {
+            "fixture_id": "t",
+            "expected_agents": {},
+            "expected_decision": {},
+            "stage_threshold": 0.95,
+        }
+        f = PipelineFixture.from_dict(data)
+        assert f.stage_threshold == 0.95
+
+    def test_per_fixture_threshold_absent_defaults_to_none(self):
+        data = {
+            "fixture_id": "t",
+            "expected_agents": {},
+            "expected_decision": {},
+        }
+        f = PipelineFixture.from_dict(data)
+        assert f.stage_threshold is None
+
+    def test_per_fixture_threshold_wins_over_global_in_run_pipeline_eval(self):
+        """Per-fixture threshold takes precedence over the run_pipeline_eval global."""
+        strict_fixture = PipelineFixture(
+            fixture_id="strict",
+            description="per-fixture 0.0 threshold",
+            difficulty="easy",
+            tags=[],
+            raw_input={},
+            expected_extraction={},
+            expected_agents={"a": {"x": 1}},
+            expected_decision={},
+            stage_threshold=0.0,  # always pass
+        )
+        default_fixture = PipelineFixture(
+            fixture_id="default",
+            description="uses global threshold",
+            difficulty="easy",
+            tags=[],
+            raw_input={},
+            expected_extraction={},
+            expected_agents={"a": {"x": 1}},
+            expected_decision={},
+            stage_threshold=None,  # use global
+        )
+        # Global threshold = 1.0 (strict)
+        report = run_pipeline_eval(
+            [strict_fixture, default_fixture],
+            stage_threshold=1.0,
+        )
+        passing_ids = {
+            c.fixture.fixture_id
+            for c in report.comparisons
+            if c.all_stages_pass
+        }
+        # strict_fixture (threshold=0.0) passes; default_fixture (threshold=1.0) fails
+        assert "strict" in passing_ids
+        assert "default" not in passing_ids

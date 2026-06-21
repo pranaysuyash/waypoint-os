@@ -41,6 +41,7 @@ class PipelineFixture:
     expected_extraction: dict[str, Any]
     expected_agents: dict[str, dict[str, Any]]
     expected_decision: dict[str, Any]
+    stage_threshold: float | None = None  # per-fixture override (None = use global)
 
     _REQUIRED_KEYS = ("fixture_id",)
     _RECOMMENDED_KEYS = ("expected_agents", "expected_decision")
@@ -79,6 +80,7 @@ class PipelineFixture:
             expected_extraction=data.get("expected_extraction", {}),
             expected_agents=data.get("expected_agents", {}),
             expected_decision=data.get("expected_decision", {}),
+            stage_threshold=float(data["stage_threshold"]) if "stage_threshold" in data and data["stage_threshold"] is not None else None,
         )
 
 
@@ -244,6 +246,13 @@ def compare_pipeline_fixture(
     if actual is None:
         actual = {}
 
+    # Per-fixture override takes precedence over the global parameter
+    effective_threshold = (
+        fixture.stage_threshold
+        if fixture.stage_threshold is not None
+        else stage_threshold
+    )
+
     stage_map = {
         "extraction": (fixture.expected_extraction, actual.get("extraction", {})),
         "agents": (fixture.expected_agents, actual.get("agents", {})),
@@ -262,7 +271,7 @@ def compare_pipeline_fixture(
             total_fields=len(field_results),
             matched_fields=matched,
             field_results=field_results,
-            stage_threshold=stage_threshold,
+            stage_threshold=effective_threshold,
         )
 
     return comp
