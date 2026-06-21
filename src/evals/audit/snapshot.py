@@ -18,11 +18,13 @@ from .gates import evaluate_report_against_manifest
 from .manifest import load_manifest
 from .rules.activity import run_activity_fixture
 from .rules.extraction import load_golden_dataset, run_extraction_eval
+from .rules.pipeline import load_pipeline_fixtures, run_pipeline_eval
 from .runner import run_eval_suite
 
 DEFAULT_FIXTURE_ROOT = Path("data/fixtures/audit")
 DEFAULT_SNAPSHOT_PATH = Path("data/evals/d6_audit_gate_snapshot.json")
 DEFAULT_GOLDEN_DATASET_PATH = Path("data/fixtures/extraction/golden_dataset.json")
+DEFAULT_PIPELINE_FIXTURE_PATH = Path("data/fixtures/pipeline/pipeline_golden.json")
 
 
 def _rule_dispatch(fixture: AuditFixture):
@@ -74,6 +76,46 @@ def _run_extraction_baseline(
     }
 
 
+def _run_pipeline_baseline(
+    *,
+    pipeline_fixture_path: Path = DEFAULT_PIPELINE_FIXTURE_PATH,
+) -> dict[str, Any]:
+    """Run pipeline eval against golden fixtures with no live results.
+
+    Returns a JSON-serialisable summary suitable for the gate snapshot.
+    When no actual pipeline results are available, all expected fields
+    become false negatives — the worst-case baseline.
+    """
+    if not pipeline_fixture_path.exists():
+        return {
+            "status": "unavailable",
+            "reason": "pipeline_fixture_missing",
+            "total_fixtures": 0,
+            "overall_accuracy": 0.0,
+            "blocks_ci": False,
+        }
+    fixtures = load_pipeline_fixtures(pipeline_fixture_path)
+    report = run_pipeline_eval(fixtures)
+    summary = report.summary()
+    overall_acc = summary["overall_accuracy"]
+    if overall_acc >= 0.80:
+        status = "passing"
+    elif overall_acc >= 0.50:
+        status = "warning"
+    else:
+        status = "failing"
+    return {
+        "status": status,
+        "overall_accuracy": overall_acc,
+        "total_fixtures": summary["total_fixtures"],
+        "fixtures_passing": summary["fixtures_passing"],
+        "fixtures_failing": summary["fixtures_failing"],
+        "stage_accuracies": summary["stage_accuracies"],
+        "blocks_ci": status == "failing",
+        "note": "Baseline with no live pipeline results. Override with actual results at runtime.",
+    }
+
+
 def build_gate_snapshot(
     *,
     fixture_root: Path = DEFAULT_FIXTURE_ROOT,
@@ -112,6 +154,11 @@ def build_gate_snapshot(
         golden_dataset_path=golden_dataset_path,
     )
 
+    # --- pipeline end-to-end eval gate ---
+    # Run pipeline eval against golden fixtures with no live results.
+    # Baseline: all expected fields are false negatives.
+    pipeline_health = _run_pipeline_baseline()
+
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "manifest_version": manifest.version,
@@ -125,6 +172,7 @@ def build_gate_snapshot(
             "checked_at": routing_health.checked_at.isoformat(),
         },
         "extraction_health": extraction_eval_report,
+        "pipeline_health": pipeline_health,
     }
 
 
@@ -163,6 +211,15 @@ def stable_snapshot_view(snapshot: dict[str, Any]) -> dict[str, Any]:
             "by_document_type": extraction_health.get("by_document_type"),
             "by_difficulty": extraction_health.get("by_difficulty"),
         }
+    pipeline_health = snapshot.get("pipeline_health")
+    stable_pipeline: dict[str, Any] | None = None
+    if isinstance(pipeline_health, dict):
+        stable_pipeline = {
+            "status": pipeline_health.get("status"),
+            "overall_accuracy": pipeline_health.get("overall_accuracy"),
+            "total_fixtures": pipeline_health.get("total_fixtures"),
+            "blocks_ci": pipeline_health.get("blocks_ci"),
+        }
     return {
         "manifest_version": snapshot.get("manifest_version"),
         "fixture_root": snapshot.get("fixture_root"),
@@ -170,6 +227,7 @@ def stable_snapshot_view(snapshot: dict[str, Any]) -> dict[str, Any]:
         "categories": snapshot.get("categories"),
         "routing_health": stable_routing,
         "extraction_health": stable_extraction,
+        "pipeline_health": stable_pipeline,
     }
 
 

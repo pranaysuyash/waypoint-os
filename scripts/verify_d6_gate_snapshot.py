@@ -46,6 +46,14 @@ def _check_blocks_ci(snapshot: dict) -> list[dict]:
             "reason": f"extraction_health.blocks_ci is true (f1={extraction_health.get('overall_f1', 0)})",
         })
 
+    pipeline_health = snapshot.get("pipeline_health")
+    if isinstance(pipeline_health, dict) and pipeline_health.get("blocks_ci"):
+        blockers.append({
+            "gate": "pipeline_health",
+            "status": pipeline_health.get("status", "unknown"),
+            "reason": f"pipeline_health.blocks_ci is true (accuracy={pipeline_health.get('overall_accuracy', 0)})",
+        })
+
     categories = snapshot.get("categories")
     if isinstance(categories, dict):
         for cat_name, cat_data in categories.items():

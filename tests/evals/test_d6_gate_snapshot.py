@@ -185,3 +185,59 @@ def test_extraction_health_manifest_category_present():
     extraction_cat = snapshot["categories"]["extraction"]
     assert extraction_cat["status"] == "shadow"
     assert extraction_cat["blocks_ci"] is False
+
+
+# --- pipeline_health gate tests ---
+
+
+def test_build_gate_snapshot_includes_pipeline_health():
+    snapshot = build_gate_snapshot()
+    ph = snapshot["pipeline_health"]
+    assert isinstance(ph, dict)
+    assert "status" in ph
+    assert "overall_accuracy" in ph
+    assert "total_fixtures" in ph
+    assert "fixtures_passing" in ph
+    assert "fixtures_failing" in ph
+    assert "stage_accuracies" in ph
+    assert ph["total_fixtures"] == 5
+    # Baseline with no live results: low accuracy expected
+    assert ph["status"] in ("failing", "warning")
+    assert ph["overall_accuracy"] < 0.2
+    assert ph["blocks_ci"] is True
+
+
+def test_stable_snapshot_view_strips_pipeline_health_volatile_fields():
+    snapshot = build_gate_snapshot()
+    stable = stable_snapshot_view(snapshot)
+    ph = stable["pipeline_health"]
+    assert isinstance(ph, dict)
+    assert "status" in ph
+    assert "overall_accuracy" in ph
+    assert "total_fixtures" in ph
+    assert "blocks_ci" in ph
+    # Volatile note and stage_accuracies must not be present
+    assert "note" not in ph
+    assert "stage_accuracies" not in ph
+
+
+def test_write_gate_snapshot_includes_pipeline_health(tmp_path: Path):
+    output = tmp_path / "d6_gate_snapshot.json"
+    write_gate_snapshot(output_path=output)
+    payload = json.loads(output.read_text())
+    assert "pipeline_health" in payload
+    ph = payload["pipeline_health"]
+    assert ph["total_fixtures"] == 5
+    assert isinstance(ph["stage_accuracies"], dict)
+
+
+def test_verify_gate_snapshot_detects_pipeline_health_drift(tmp_path: Path):
+    output = tmp_path / "d6_gate_snapshot.json"
+    write_gate_snapshot(output_path=output)
+
+    payload = json.loads(output.read_text())
+    payload["pipeline_health"]["overall_accuracy"] = 0.99
+    output.write_text(json.dumps(payload, indent=2))
+
+    ok, _, _ = verify_gate_snapshot_file(snapshot_path=output)
+    assert ok is False
