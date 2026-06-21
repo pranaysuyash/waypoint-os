@@ -406,3 +406,62 @@ def test_write_gate_snapshot_with_live_results(tmp_path: Path):
     ph = payload["pipeline_health"]
     assert ph["overall_accuracy"] < 1.0
     assert ph["overall_accuracy"] > 0.0
+
+
+# --- pipeline baseline drift detection tests ---
+
+
+def test_pipeline_baseline_drift_fields_present():
+    """Pipeline health should include expected_baseline_accuracy and baseline_drifted."""
+    snapshot = build_gate_snapshot()
+    ph = snapshot["pipeline_health"]
+    assert "expected_baseline_accuracy" in ph
+    assert "baseline_drifted" in ph
+    assert ph["expected_baseline_accuracy"] == 1.0
+
+
+def test_pipeline_baseline_no_drift_by_default():
+    """Self-consistent baseline should produce no drift."""
+    snapshot = build_gate_snapshot()
+    ph = snapshot["pipeline_health"]
+    assert ph["baseline_drifted"] is False
+    assert ph["overall_accuracy"] == ph["expected_baseline_accuracy"]
+
+
+def test_pipeline_baseline_drift_detected_with_live_results():
+    """Live results that diverge from expected should trigger drift."""
+    snapshot = build_gate_snapshot(pipeline_live_results={})
+    ph = snapshot["pipeline_health"]
+    assert ph["baseline_drifted"] is True
+    assert ph["overall_accuracy"] < ph["expected_baseline_accuracy"]
+
+
+def test_pipeline_baseline_drift_in_stable_view():
+    """Drift fields should appear in stable snapshot view for drift detection."""
+    snapshot = build_gate_snapshot()
+    stable = stable_snapshot_view(snapshot)
+    ph = stable["pipeline_health"]
+    assert "expected_baseline_accuracy" in ph
+    assert "baseline_drifted" in ph
+    # Volatile note and stage_accuracies must not be present
+    assert "note" not in ph
+    assert "stage_accuracies" not in ph
+
+
+def test_pipeline_baseline_drift_detected_by_verify(tmp_path: Path):
+    """Tampering with pipeline accuracy should be detected as drift."""
+    output = tmp_path / "d6_gate_snapshot.json"
+    write_gate_snapshot(output_path=output)
+
+    payload = json.loads(output.read_text())
+    payload["pipeline_health"]["overall_accuracy"] = 0.50
+    output.write_text(json.dumps(payload, indent=2))
+
+    ok, _, _ = verify_gate_snapshot_file(snapshot_path=output)
+    assert ok is False
+
+
+def test_pipeline_baseline_accuracy_constant_matches():
+    """EXPECTED_PIPELINE_BASELINE_ACCURACY should equal 1.0."""
+    from src.evals.audit.snapshot import EXPECTED_PIPELINE_BASELINE_ACCURACY
+    assert EXPECTED_PIPELINE_BASELINE_ACCURACY == 1.0

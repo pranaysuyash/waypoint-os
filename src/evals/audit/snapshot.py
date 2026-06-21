@@ -26,6 +26,12 @@ DEFAULT_SNAPSHOT_PATH = Path("data/evals/d6_audit_gate_snapshot.json")
 DEFAULT_GOLDEN_DATASET_PATH = Path("data/fixtures/extraction/golden_dataset.json")
 DEFAULT_PIPELINE_FIXTURE_PATH = Path("data/fixtures/pipeline/pipeline_golden.json")
 
+# Expected baseline accuracy when the pipeline eval runs with self-consistent
+# expected-as-actual results.  This value is stored in the snapshot and
+# compared during drift detection — if the golden fixtures or comparison
+# logic change, the computed accuracy will diverge from this constant.
+EXPECTED_PIPELINE_BASELINE_ACCURACY = 1.0
+
 
 def _rule_dispatch(fixture: AuditFixture):
     if fixture.category == "activity":
@@ -139,6 +145,8 @@ def _run_pipeline_baseline(
         "fixtures_failing": summary["fixtures_failing"],
         "stage_accuracies": summary["stage_accuracies"],
         "blocks_ci": status == "failing",
+        "expected_baseline_accuracy": EXPECTED_PIPELINE_BASELINE_ACCURACY,
+        "baseline_drifted": overall_acc != EXPECTED_PIPELINE_BASELINE_ACCURACY,
         "note": note,
     }
 
@@ -255,6 +263,8 @@ def stable_snapshot_view(snapshot: dict[str, Any]) -> dict[str, Any]:
         stable_pipeline = {
             "status": pipeline_health.get("status"),
             "overall_accuracy": pipeline_health.get("overall_accuracy"),
+            "expected_baseline_accuracy": pipeline_health.get("expected_baseline_accuracy"),
+            "baseline_drifted": pipeline_health.get("baseline_drifted"),
             "total_fixtures": pipeline_health.get("total_fixtures"),
             "blocks_ci": pipeline_health.get("blocks_ci"),
         }
