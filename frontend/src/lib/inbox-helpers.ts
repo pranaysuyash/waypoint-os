@@ -353,8 +353,10 @@ export type MetricField =
   | 'stage';
 
 const METRIC_ROW_CONFIG: Record<ViewProfile, MetricField[]> = {
-  operations: ['partySize', 'dateWindow', 'value', 'daysInCurrentStage'],
-  teamLead: ['assignedToName', 'slaStatus', 'daysInCurrentStage', 'priority'],
+  // Keep the operations queue compact: the SLA chip already shows recency.
+  operations: ['partySize', 'dateWindow', 'value'],
+  // Team leads need ownership + urgency more than a repeated age counter.
+  teamLead: ['assignedToName', 'slaStatus', 'priority'],
   finance: ['value', 'stage', 'dateWindow', 'priority'],
   fulfillment: ['dateWindow', 'assignedToName', 'stage', 'partySize'],
 };
@@ -424,4 +426,22 @@ const MICRO_LABELS: Record<string, string> = {
  */
 export function getMicroLabel(value: string): string | undefined {
   return MICRO_LABELS[value];
+}
+
+/**
+ * Convert backend enum-style labels into operator-facing title case.
+ *
+ * Examples:
+ * - `options` -> `Options`
+ * - `in_review` -> `In Review`
+ */
+export function formatStageLabel(stage: string): string {
+  if (!stage) return 'Unknown stage';
+  return stage
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
 }

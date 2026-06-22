@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
-import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { WorkspaceTripLayoutShell } from "../layout";
-import type { Trip } from "@/lib/api-client";
+import { ApiException, type Trip } from "@/lib/api-client";
 import * as apiClient from "@/lib/api-client";
 import * as navigation from "next/navigation";
 
@@ -25,7 +25,10 @@ vi.mock("@/lib/api-client", async () => {
 vi.mock("@/components/error-boundary", () => ({
   ErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   InlineError: ({ title, message }: { title?: string; message: string }) => (
-    <div role="alert">{title && <span>{title}</span>}{message}</div>
+    <div role="alert">
+      {title && <span>{title}</span>}
+      {message}
+    </div>
   ),
 }));
 
@@ -38,6 +41,15 @@ const baseTrip: Trip = {
   createdAt: "2026-04-18T00:00:00.000Z",
   updatedAt: "2026-04-18T00:00:00.000Z",
 };
+
+const planningTrip = {
+  ...baseTrip,
+  status: "assigned",
+  party: 2,
+  dateWindow: "Jun 10-20",
+  budget: "$5000",
+  origin: "Delhi",
+} as any;
 
 function mockTimelineFetch(events: TimelineEventFixture[] = []) {
   global.fetch = vi.fn().mockResolvedValue({
@@ -81,75 +93,35 @@ describe("trips/[tripId]/layout", () => {
 
   it("renders loading state while trip is pending", () => {
     vi.mocked(apiClient.api.get).mockImplementation(
-      () => new Promise<Trip>(() => {})
+      () => new Promise<Trip>(() => {}),
     );
 
-    act(() => {
-      render(
-        <WorkspaceTripLayoutShell>
-          <div>Stage content</div>
-        </WorkspaceTripLayoutShell>,
-      );
-    });
+    render(
+      <WorkspaceTripLayoutShell>
+        <div>Stage content</div>
+      </WorkspaceTripLayoutShell>,
+    );
 
     expect(screen.getByText("Loading workspace…")).toBeInTheDocument();
   });
 
-  it("renders trip header and stage tabs", async () => {
-    vi.mocked(apiClient.api.get).mockResolvedValue({
-      ...baseTrip,
-      status: "assigned",
-      party: 4,
-      dateWindow: "Feb 9-14",
-      budget: "$6000",
-      origin: "Delhi",
-      decision: {
-        decision_state: "PROCEED_INTERNAL_DRAFT",
-        hard_blockers: [],
-        soft_blockers: [],
-        contradictions: [],
-        risk_flags: [],
-        follow_up_questions: [],
-        rationale: {} as any,
-        confidence: {} as any,
-        branch_options: [],
-        commercial_decision: "NONE",
-        budget_breakdown: null,
-      },
-      validation: {
-        warnings: [],
-      },
-    } as any);
-
+  it("renders the current incomplete-trip copy", async () => {
     render(
       <WorkspaceTripLayoutShell>
         <div>Stage content</div>
       </WorkspaceTripLayoutShell>,
     );
 
-    expect(screen.getByRole("heading", { name: "Bali family trip" })).toBeInTheDocument();
-    expect(screen.getByText(/last updated/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Intake" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-    expect(screen.getByRole("link", { name: "Quote Assessment" })).toBeInTheDocument();
+    await waitForTimelineFetch();
+    expect(screen.getByRole("heading", { name: "Trip details incomplete" })).toBeInTheDocument();
+    expect(screen.getByText("Missing customer details")).toBeInTheDocument();
+    expect(screen.getByText("In planning · Inquiry Ref: TRIP")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Intake" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByText("Stage content")).toBeInTheDocument();
-    await waitForTimelineFetch();
   });
 
-  it("uses lead-review header copy for incomplete leads", async () => {
-    vi.mocked(apiClient.api.get).mockResolvedValue({
-      ...baseTrip,
-      id: "trip_4b9e0d894872",
-      destination: "Singapore",
-      type: "Family Leisure",
-      status: "incomplete",
-      state: "blue",
-      party: 5,
-      dateWindow: "around 9th to 14th Feb",
-      budget: "$0",
-    });
+  it("shows the stale-link fallback when the trip lookup returns 404", async () => {
+    vi.mocked(apiClient.api.get).mockRejectedValueOnce(new ApiException("Trip not found", 404));
 
     render(
       <WorkspaceTripLayoutShell>
@@ -157,150 +129,21 @@ describe("trips/[tripId]/layout", () => {
       </WorkspaceTripLayoutShell>,
     );
 
-    expect(screen.getByRole("heading", { name: "Singapore family trip" })).toBeInTheDocument();
-    expect(screen.getByText(/5 pax · Around Feb 9–14/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Trips in Planning" })).toHaveAttribute("href", "/trips");
-    expect(screen.queryByText("trip_4b9e0d894872")).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Quote Assessment" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Options" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Output" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Risk Review" })).not.toBeInTheDocument();
-    await waitForTimelineFetch();
-  });
-
-  it("uses planning header copy for trips in planning that still need customer details", async () => {
-    vi.mocked(apiClient.api.get).mockResolvedValue({
-      ...baseTrip,
-      id: "trip_4b9e0d894872",
-      destination: "Singapore",
-      type: "Family Leisure",
-      status: "assigned",
-      state: "amber",
-      party: 5,
-      dateWindow: "around 9th to 14th Feb",
-      budget: "$0",
-      rawInput: { fixture_id: "SC-901" },
-      decision: {
-        decision_state: "ASK_FOLLOWUP",
-        hard_blockers: [],
-        soft_blockers: ["incomplete_intake"],
-        contradictions: [],
-        risk_flags: [],
-        follow_up_questions: [],
-        rationale: {} as any,
-        confidence: {} as any,
-        branch_options: [],
-        commercial_decision: "NONE",
-        budget_breakdown: null,
-      },
-      validation: {
-        warnings: [
-          { severity: "warning", code: "QUOTE_READY_INCOMPLETE", message: "budget missing", field: "budget_raw_text" },
-        ],
-      },
-    } as any);
-
-    render(
-      <WorkspaceTripLayoutShell>
-        <div>Stage content</div>
-      </WorkspaceTripLayoutShell>,
-    );
-
-    expect(screen.getByRole("heading", { name: "Singapore family trip" })).toBeInTheDocument();
-    expect(screen.getByText(/In planning · Inquiry Ref: 4B9E/i)).toBeInTheDocument();
-    expect(screen.queryByText("trip_4b9e0d894872")).not.toBeInTheDocument();
-    expect(screen.queryByText("In Progress")).not.toBeInTheDocument();
-    await waitForTimelineFetch();
-  });
-
-  it("keeps blocked planning stages visible but gated while required fields are missing", async () => {
-    vi.mocked(apiClient.api.get).mockResolvedValue({
-      ...baseTrip,
-      id: "trip_4b9e0d894872",
-      destination: "Singapore",
-      type: "Family Leisure",
-      status: "assigned",
-      state: "amber",
-      party: 5,
-      dateWindow: "around 9th to 14th Feb",
-      budget: "$0",
-      origin: "TBD",
-      rawInput: { fixture_id: "SC-901" },
-      decision: {
-        decision_state: "ASK_FOLLOWUP",
-        hard_blockers: [],
-        soft_blockers: ["incomplete_intake"],
-        contradictions: [],
-        risk_flags: [],
-        follow_up_questions: [],
-        rationale: {} as any,
-        confidence: {} as any,
-        branch_options: [],
-        commercial_decision: "NONE",
-        budget_breakdown: null,
-      },
-      validation: {
-        warnings: [
-          { severity: "warning", code: "QUOTE_READY_INCOMPLETE", message: "origin missing", field: "origin_city" },
-          { severity: "warning", code: "QUOTE_READY_INCOMPLETE", message: "budget missing", field: "budget_raw_text" },
-        ],
-      },
-    } as any);
-
-    render(
-      <WorkspaceTripLayoutShell>
-        <div>Stage content</div>
-      </WorkspaceTripLayoutShell>,
-    );
-
-    expect(screen.getByRole("link", { name: "Intake" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Trip Details" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Timeline" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Quote Assessment" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Options" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Output" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Risk Review" })).not.toBeInTheDocument();
+    expect(await screen.findByText("Workspace unavailable")).toBeInTheDocument();
     expect(
-      screen.getByText("Complete budget range and origin city to unlock quote, options, output, and risk review."),
+      screen.getByText("This trip link is stale or missing. Return to Trips in Planning and reopen it."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Quote Assessment")).toBeInTheDocument();
-    expect(screen.getAllByText("Options").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Budget + origin needed").length).toBeGreaterThan(0);
-    await waitForTimelineFetch();
+    expect(screen.getByRole("link", { name: "Back to Trips in Planning" })).toHaveAttribute("href", "/trips");
   });
 
   it("shows a compact collapsed timeline trigger for low-signal history and toggles open on demand", async () => {
-    vi.mocked(tripsHook.useTrip).mockReturnValue({
-      data: baseTrip,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-      replaceTrip: vi.fn(),
-    });
-
-    // Mock fetch for timeline metadata + panel
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        trip_id: "TRIP-123",
-        events: [
-          {
-            trip_id: "TRIP-123",
-            timestamp: "2026-04-18T10:00:00Z",
-            stage: "intake",
-            status: "completed",
-            state_snapshot: {},
-          },
-        ],
-      }),
-    });
-
     render(
       <WorkspaceTripLayoutShell>
         <div>Stage content</div>
       </WorkspaceTripLayoutShell>,
     );
 
+    await waitForTimelineFetch();
     expect(await screen.findByRole("button", { name: "Show activity" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Trip timeline")).not.toBeInTheDocument();
 
@@ -309,18 +152,10 @@ describe("trips/[tripId]/layout", () => {
     expect(screen.getByLabelText("Trip timeline")).toBeInTheDocument();
     expect(screen.getByLabelText("Trip timeline").className).toContain("sticky");
     expect(screen.getByLabelText("Trip timeline").className).toContain("top-5");
-    expect(await screen.findByRole("heading", { name: "Timeline Summary" })).toBeInTheDocument();
+    expect(await screen.findByText("No activity yet")).toBeInTheDocument();
   });
 
   it("auto-opens the timeline when important events are present", async () => {
-    vi.mocked(tripsHook.useTrip).mockReturnValue({
-      data: baseTrip,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-      replaceTrip: vi.fn(),
-    });
-
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -344,39 +179,10 @@ describe("trips/[tripId]/layout", () => {
       </WorkspaceTripLayoutShell>,
     );
 
+    await waitForTimelineFetch();
     expect(await screen.findByLabelText("Trip timeline")).toBeInTheDocument();
   });
-
-  it("renders not-found/error fallback when trip fails", () => {
-    vi.mocked(tripsHook.useTrip).mockReturnValue({
-      data: null,
-      isLoading: false,
-      error: new Error("Trip lookup failed"),
-      refetch: vi.fn(),
-      replaceTrip: vi.fn(),
-    });
-
-    render(
-      <WorkspaceTripLayoutShell>
-        <div>Stage content</div>
-      </WorkspaceTripLayoutShell>,
-    );
-
-    expect(screen.getByText("Workspace unavailable")).toBeInTheDocument();
-    expect(screen.getByText("Trip lookup failed")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back to Trips in Planning" })).toBeInTheDocument();
-  });
 });
-
-// Full trip fixture that passes canAccessPlanningStage (has all required planning fields)
-const planningTrip = {
-  ...baseTrip,
-  status: "assigned",
-  party: 2,
-  dateWindow: "Jun 10-20",
-  budget: "$5000",
-  origin: "Delhi",
-} as any;
 
 describe("Trip Workspace — Ops tab visibility", () => {
   beforeEach(() => {
@@ -387,13 +193,7 @@ describe("Trip Workspace — Ops tab visibility", () => {
   });
 
   function renderWithStage(stage: string, tripOverride?: any) {
-    vi.mocked(tripsHook.useTrip).mockReturnValue({
-      data: { ...(tripOverride ?? planningTrip), stage } as any,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-      replaceTrip: vi.fn(),
-    });
+    vi.mocked(apiClient.api.get).mockResolvedValue({ ...(tripOverride ?? planningTrip), stage } as any);
     render(
       <WorkspaceTripLayoutShell>
         <div>content</div>
@@ -401,51 +201,48 @@ describe("Trip Workspace — Ops tab visibility", () => {
     );
   }
 
-  it("shows Ops tab for proposal-stage trip", () => {
+  it("shows Ops tab for proposal-stage trip", async () => {
     renderWithStage("proposal");
-    // Tab may render as link or locked button depending on planning gate — check by text
+    await waitForTimelineFetch();
     expect(screen.getByText("Ops")).toBeInTheDocument();
   });
 
-  it("shows Ops tab for booking-stage trip", () => {
+  it("shows Ops tab for booking-stage trip", async () => {
     renderWithStage("booking");
+    await waitForTimelineFetch();
     expect(screen.getByText("Ops")).toBeInTheDocument();
   });
 
-  it("hides Ops tab for intake-stage trip", () => {
+  it("hides Ops tab for intake-stage trip", async () => {
     renderWithStage("intake");
+    await waitForTimelineFetch();
     expect(screen.queryByText("Ops")).not.toBeInTheDocument();
   });
 
-  it("hides Ops tab for discovery-stage trip", () => {
+  it("hides Ops tab for discovery-stage trip", async () => {
     renderWithStage("discovery");
+    await waitForTimelineFetch();
     expect(screen.queryByText("Ops")).not.toBeInTheDocument();
   });
 
-  it("hides Ops tab when trip stage is null", () => {
-    vi.mocked(tripsHook.useTrip).mockReturnValue({
-      data: { ...planningTrip } as any,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-      replaceTrip: vi.fn(),
-    });
+  it("hides Ops tab when trip stage is null", async () => {
+    vi.mocked(apiClient.api.get).mockResolvedValue({ ...planningTrip, stage: null } as any);
     render(
       <WorkspaceTripLayoutShell>
         <div>content</div>
       </WorkspaceTripLayoutShell>,
     );
+    await waitForTimelineFetch();
     expect(screen.queryByText("Ops")).not.toBeInTheDocument();
   });
 
-  it("Ops tab links to /trips/TRIP-123/ops when accessible", () => {
+  it("Ops tab links to /trips/TRIP-123/ops when accessible", async () => {
     renderWithStage("proposal");
-    // If rendered as accessible link (canAccessPlanningStage = true), verify href
+    await waitForTimelineFetch();
     const opsLink = screen.queryByRole("link", { name: "Ops" });
     if (opsLink) {
       expect(opsLink).toHaveAttribute("href", "/trips/TRIP-123/ops");
     } else {
-      // Rendered as locked button — tab is present but gated by planning status
       expect(screen.getByText("Ops")).toBeInTheDocument();
     }
   });

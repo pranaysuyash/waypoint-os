@@ -82,7 +82,7 @@ describe('InboxPage', () => {
     expect(screen.getByText('New customer inquiries sorted by urgency.')).toBeInTheDocument();
     expect(screen.getByText('1 lead total')).toBeInTheDocument();
     // v2 card asserts: destination shown, metrics row, view link
-    expect(screen.getByTestId('trip-card-destination')).toHaveTextContent('Singapore family');
+    expect(screen.getByTestId('trip-card-destination')).toHaveTextContent('Singapore family trip');
     expect(screen.getByTestId('trip-card-metrics')).toBeInTheDocument();
     expect(screen.getByTestId('trip-card-view-link')).toHaveAttribute(
       'href',

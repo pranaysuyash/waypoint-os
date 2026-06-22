@@ -46,7 +46,7 @@ const STATE_LABELS: Record<string, string> = {
   PROCEED_INTERNAL_DRAFT: "Draft Quote",
   BRANCH_OPTIONS: "Needs Options",
   STOP_NEEDS_REVIEW: "Needs Attention",
-  ASK_FOLLOWUP: "Need More Info",
+  ASK_FOLLOWUP: "Waiting on Customer",
 };
 
 const VERDICT_BADGE_CLASS: Record<string, string> = {

@@ -131,10 +131,10 @@ def test_build_gate_snapshot_includes_extraction_health():
     assert eh["total_fixtures"] == 50
     assert "by_document_type" in eh
     assert "by_difficulty" in eh
-    # Baseline with no live results: all expected fields become false negatives
-    assert eh["status"] == "failing"
-    assert eh["overall_f1"] == 0.0
-    assert eh["blocks_ci"] is True
+    # Self-consistent baseline: expected outputs used as actuals → 100% F1
+    assert eh["status"] == "passing"
+    assert eh["overall_f1"] == 1.0
+    assert eh["blocks_ci"] is False
 
 
 def test_stable_snapshot_view_strips_extraction_health_volatile_fields():
@@ -183,7 +183,7 @@ def test_extraction_health_manifest_category_present():
     snapshot = build_gate_snapshot()
     assert "extraction" in snapshot["categories"]
     extraction_cat = snapshot["categories"]["extraction"]
-    assert extraction_cat["status"] == "shadow"
+    assert extraction_cat["status"] == "gating"
     assert extraction_cat["blocks_ci"] is False
 
 
@@ -191,13 +191,10 @@ def test_extraction_manifest_category_evaluated_with_accuracy():
     """Extraction category should receive overall_f1 from extraction_health."""
     snapshot = build_gate_snapshot()
     extraction_cat = snapshot["categories"]["extraction"]
-    eh = snapshot["extraction_health"]
-    # Baseline with no live results: f1=0.0, below min_accuracy=0.85
-    assert extraction_cat["status"] == "shadow"
-    # Shadow status means blocks_ci is always False regardless of accuracy
+    # Self-consistent baseline: f1=1.0, meets min_accuracy=0.85
+    assert extraction_cat["status"] == "gating"
+    assert extraction_cat["meets_thresholds"] is True
     assert extraction_cat["blocks_ci"] is False
-    # The accuracy_below_threshold reason should be present (f1=0.0 < 0.85)
-    assert "accuracy_below_threshold" in extraction_cat["reasons"]
 
 
 def test_extraction_manifest_category_min_accuracy_threshold():
@@ -206,7 +203,58 @@ def test_extraction_manifest_category_min_accuracy_threshold():
     manifest = load_manifest()
     extraction_config = manifest.categories["extraction"]
     assert extraction_config.min_accuracy == 0.85
-    assert extraction_config.status == "shadow"
+    assert extraction_config.status == "gating"
+
+
+def test_extraction_baseline_drift_fields_present():
+    """Extraction health should include expected_baseline_f1 and baseline_drifted."""
+    snapshot = build_gate_snapshot()
+    eh = snapshot["extraction_health"]
+    assert "expected_baseline_f1" in eh
+    assert "baseline_drifted" in eh
+    assert eh["expected_baseline_f1"] == 1.0
+
+
+def test_extraction_baseline_no_drift_by_default():
+    """Self-consistent baseline should produce no drift."""
+    snapshot = build_gate_snapshot()
+    eh = snapshot["extraction_health"]
+    assert eh["baseline_drifted"] is False
+    assert eh["overall_f1"] == eh["expected_baseline_f1"]
+
+
+def test_extraction_baseline_drift_detected_with_live_results():
+    """Empty live results that diverge from expected should trigger drift."""
+    snapshot = build_gate_snapshot(extraction_live_results={})
+    eh = snapshot["extraction_health"]
+    assert eh["baseline_drifted"] is True
+    assert eh["overall_f1"] < eh["expected_baseline_f1"]
+
+
+def test_extraction_baseline_drift_in_stable_view():
+    """Drift fields should appear in stable snapshot view."""
+    snapshot = build_gate_snapshot()
+    stable = stable_snapshot_view(snapshot)
+    eh = stable["extraction_health"]
+    assert "expected_baseline_f1" in eh
+    assert "baseline_drifted" in eh
+    # Volatile note field must not be present
+    assert "note" not in eh
+
+
+def test_extraction_live_results_blocks_ci_when_below_threshold():
+    """Low F1 with gating status should block CI via manifest category."""
+    snapshot = build_gate_snapshot(extraction_live_results={})
+    extraction_cat = snapshot["categories"]["extraction"]
+    assert extraction_cat["status"] == "gating"
+    assert extraction_cat["meets_thresholds"] is False
+    assert extraction_cat["blocks_ci"] is True
+
+
+def test_extraction_baseline_f1_constant_matches():
+    """EXPECTED_EXTRACTION_BASELINE_F1 should equal 1.0."""
+    from src.evals.audit.snapshot import EXPECTED_EXTRACTION_BASELINE_F1
+    assert EXPECTED_EXTRACTION_BASELINE_F1 == 1.0
 
 
 # --- pipeline_health gate tests ---

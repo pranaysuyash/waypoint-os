@@ -446,8 +446,9 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   }, [trip?.budget]);
 
   const currencyOptions = getCurrencyOptions();
-  const isLeadReview = trip?.status === 'new' || trip?.status === 'incomplete';
-  const planningBriefBlocked = !isLeadReview && hasPlanningBriefBlocker(trip);
+  const planningBriefStatus = getPlanningBriefStatus(trip);
+  const isLeadReview = planningBriefStatus === "missing_required_details";
+  const planningBriefBlocked = isLeadReview;
   const tripPriorities = normalizePlanningDisplayValue(
     trip?.tripPriorities ?? readTaggedNoteValue(trip?.agentNotes, NOTE_DETAIL_PREFIX.priorities) ?? trip?.activityProvenance
   );
@@ -545,7 +546,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
       ? 'Draft follow-up'
       : trip?.status === 'in_progress'
         ? 'Build trip options'
-        : 'Continue to options';
+        : 'Build trip options';
   const tripUiKey = tripId || '__new_trip__';
   const followUpDraftTemplate = useMemo(
     () => buildFollowUpDraftFromRows(planningDetails),
@@ -1060,6 +1061,10 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   const decisionState = decision?.decision_state ?? null;
   const leadNeedsConfirmation = isLeadReview;
   const watchPointLabels = softBlockers.map((blocker) => blocker.replace(/_/g, ' '));
+  const planningDetailsPanelTitle = requiredPlanningDetails.length > 0 ? 'Missing customer details' : 'Recommended details';
+  const planningDetailsPanelDescription = requiredPlanningDetails.length > 0
+    ? 'Each missing field can be fixed here or pushed into a traveler follow-up.'
+    : 'These details can improve the plan without blocking the next step.';
 
   return (
     <div className='space-y-6'>
@@ -1145,6 +1150,8 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
                 const firstRecommended = recommendedPlanningDetails[0];
                 if (firstRecommended) {
                   openPlanningEditor(firstRecommended.id);
+                } else if (tripId) {
+                  push(`/trips/${tripId}/strategy`);
                 }
               }}
               className='mt-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[var(--border-default)] text-[12px] font-medium text-[var(--text-primary)] hover:bg-elevated transition-colors'
@@ -1215,9 +1222,9 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
         <div className='grid grid-cols-1 gap-4 xl:grid-cols-12'>
           <div className='bg-[var(--bg-elevated)] border border-[rgba(210,153,34,0.25)] rounded-xl p-4 xl:col-span-7'>
             <div className='mb-4'>
-              <h3 className='text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)]'>Missing customer details</h3>
+              <h3 className='text-[var(--ui-text-sm)] font-semibold text-[var(--text-primary)]'>{planningDetailsPanelTitle}</h3>
               <p className='mt-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)]'>
-                Each missing field can be fixed here or pushed into a traveler follow-up.
+                {planningDetailsPanelDescription}
               </p>
             </div>
             <div className='space-y-3'>

@@ -27,6 +27,7 @@ describe('currency utilities', () => {
 
   it('parses common agency budget strings without losing the source currency', () => {
     expect(parseBudgetString('2.5 lakh INR')).toEqual({ amount: 250000, currency: 'INR' });
+    expect(parseBudgetString('Budget INR 2.5L')).toEqual({ amount: 250000, currency: 'INR' });
     expect(parseBudgetString('5000 USD')).toEqual({ amount: 5000, currency: 'USD' });
     expect(parseBudgetString('')).toBeNull();
   });

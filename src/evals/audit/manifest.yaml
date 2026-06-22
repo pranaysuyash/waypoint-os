@@ -38,8 +38,9 @@ categories:
   # Extraction accuracy is evaluated via _run_extraction_baseline() in
   # snapshot.py using the golden dataset.  overall_f1 feeds into
   # min_accuracy; precision/recall/severity_accuracy are reference-only.
+  # blocks_ci when F1 falls below the threshold.
   extraction:
-    status: shadow
+    status: gating
     min_precision: 0.85
     min_recall: 0.85
     min_severity_accuracy: 0.80

@@ -72,12 +72,12 @@ export function getPlanningStageLabel(trip?: Trip | null): string {
   return "Details";
 }
 
-function getPlanningStageProgress(trip?: Trip | null): string[] {
+export function getPlanningStageProgress(trip?: Trip | null): string[] {
   const allStages = ["Intake", "Details", "Options", "Quote Review", "Output"];
   const current = getPlanningStageLabel(trip);
   const currentIdx = allStages.indexOf(current);
   return allStages.map((stage, i) =>
-    i < currentIdx ? `${stage} ✓` : stage === current ? `${stage} →` : stage
+    i < currentIdx ? `${stage} ✓` : stage
   );
 }
 
@@ -90,9 +90,9 @@ export function getPlanningStageProgressItems(trip?: Trip | null): Array<{ label
   return allStages.map((stage, i) => {
     if (i < currentIdx) return { label: `${stage} ✓`, color: '#3fb950' };
     if (stage === current) {
-      if (briefStatus === "missing_required_details") return { label: `${stage} →`, color: '#f85149' };
-      if (briefStatus === "missing_recommended_details") return { label: `${stage} →`, color: '#d29922' };
-      return { label: `${stage} →`, color: '#58a6ff' };
+      if (briefStatus === "missing_required_details") return { label: stage, color: '#f85149' };
+      if (briefStatus === "missing_recommended_details") return { label: stage, color: '#d29922' };
+      return { label: stage, color: '#58a6ff' };
     }
     return { label: stage, color: '#484f58' };
   });

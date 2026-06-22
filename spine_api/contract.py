@@ -722,6 +722,7 @@ class TripResponse(BaseModel):
     follow_up_due_date: Optional[str] = None
     extracted: Optional[Dict[str, Any]] = None
     validation: Optional[Dict[str, Any]] = None
+    strategy: Optional[Dict[str, Any]] = None
     # Phase 2 structured intake fields — stored as DB columns, returned verbatim.
     # These are set by direct PATCH or extracted from call/intake pipeline.
     party_composition: Optional[str] = None
@@ -783,6 +784,7 @@ class TripResponse(BaseModel):
             follow_up_due_date=trip.get("follow_up_due_date") or None,
             extracted=trip.get("extracted") or None,
             validation=trip.get("validation") or None,
+            strategy=trip.get("strategy") or None,
             # Phase 2 structured fields — read directly from storage dict.
             party_composition=trip.get("party_composition") or None,
             pace_preference=trip.get("pace_preference") or None,

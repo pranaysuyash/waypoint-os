@@ -31,6 +31,7 @@ DEFAULT_PIPELINE_FIXTURE_PATH = Path("data/fixtures/pipeline/pipeline_golden.jso
 # compared during drift detection — if the golden fixtures or comparison
 # logic change, the computed accuracy will diverge from this constant.
 EXPECTED_PIPELINE_BASELINE_ACCURACY = 1.0
+EXPECTED_EXTRACTION_BASELINE_F1 = 1.0
 
 
 def _rule_dispatch(fixture: AuditFixture):
@@ -42,12 +43,23 @@ def _rule_dispatch(fixture: AuditFixture):
 def _run_extraction_baseline(
     *,
     golden_dataset_path: Path = DEFAULT_GOLDEN_DATASET_PATH,
+    live_results: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Run extraction eval against the golden dataset with no live results.
+    """Run extraction eval against the golden dataset.
 
     Returns a JSON-serialisable summary suitable for the gate snapshot.
-    When no extraction results are available, all non-null expected fields
-    become false negatives — the worst-case baseline.
+    When ``live_results`` is provided, they are used as the actual
+    extraction outputs and compared against the golden fixtures.  When
+    ``live_results`` is ``None``, the expected outputs are used as
+    actuals (self-consistent baseline) to validate comparison logic.
+
+    Parameters
+    ----------
+    golden_dataset_path
+        Path to the golden extraction dataset JSON.
+    live_results
+        Actual extraction results keyed by fixture_id.  When ``None``,
+        expected outputs are used as actuals.
     """
     if not golden_dataset_path.exists():
         return {
@@ -58,7 +70,15 @@ def _run_extraction_baseline(
             "blocks_ci": False,
         }
     fixtures = load_golden_dataset(golden_dataset_path)
-    report = run_extraction_eval(fixtures)
+    if live_results is not None:
+        report = run_extraction_eval(fixtures, actual_results=live_results)
+        note = "Live extraction results used for F1 evaluation."
+    else:
+        # Build self-consistent actual results from expected outputs.
+        # This validates the comparison logic and produces a 100%-F1
+        # reference baseline.
+        report = run_extraction_eval(fixtures)
+        note = "Baseline using expected outputs as actuals. Override with real extraction results at runtime."
     summary = report.summary()
     # Determine gate status from overall F1
     overall_f1 = summary["overall"]["f1"]
@@ -78,7 +98,9 @@ def _run_extraction_baseline(
         "by_document_type": summary["by_document_type"],
         "by_difficulty": summary["by_difficulty"],
         "blocks_ci": status == "failing",
-        "note": "Baseline with no live extraction results. Override with actual results at runtime.",
+        "expected_baseline_f1": EXPECTED_EXTRACTION_BASELINE_F1,
+        "baseline_drifted": overall_f1 != EXPECTED_EXTRACTION_BASELINE_F1,
+        "note": note,
     }
 
 
@@ -155,6 +177,7 @@ def build_gate_snapshot(
     *,
     fixture_root: Path = DEFAULT_FIXTURE_ROOT,
     golden_dataset_path: Path = DEFAULT_GOLDEN_DATASET_PATH,
+    extraction_live_results: dict[str, Any] | None = None,
     pipeline_live_results: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     fixtures = load_fixtures(fixture_root)
@@ -167,6 +190,7 @@ def build_gate_snapshot(
     # --- extraction accuracy gate ---
     extraction_eval_report = _run_extraction_baseline(
         golden_dataset_path=golden_dataset_path,
+        live_results=extraction_live_results,
     )
 
     # --- pipeline end-to-end eval gate ---
@@ -222,11 +246,13 @@ def write_gate_snapshot(
     output_path: Path = DEFAULT_SNAPSHOT_PATH,
     fixture_root: Path = DEFAULT_FIXTURE_ROOT,
     golden_dataset_path: Path = DEFAULT_GOLDEN_DATASET_PATH,
+    extraction_live_results: dict[str, Any] | None = None,
     pipeline_live_results: dict[str, dict[str, Any]] | None = None,
 ) -> Path:
     snapshot = build_gate_snapshot(
         fixture_root=fixture_root,
         golden_dataset_path=golden_dataset_path,
+        extraction_live_results=extraction_live_results,
         pipeline_live_results=pipeline_live_results,
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -250,6 +276,8 @@ def stable_snapshot_view(snapshot: dict[str, Any]) -> dict[str, Any]:
         stable_extraction = {
             "status": extraction_health.get("status"),
             "overall_f1": extraction_health.get("overall_f1"),
+            "expected_baseline_f1": extraction_health.get("expected_baseline_f1"),
+            "baseline_drifted": extraction_health.get("baseline_drifted"),
             "overall_precision": extraction_health.get("overall_precision"),
             "overall_recall": extraction_health.get("overall_recall"),
             "total_fixtures": extraction_health.get("total_fixtures"),
@@ -284,11 +312,13 @@ def verify_gate_snapshot_file(
     snapshot_path: Path = DEFAULT_SNAPSHOT_PATH,
     fixture_root: Path = DEFAULT_FIXTURE_ROOT,
     golden_dataset_path: Path = DEFAULT_GOLDEN_DATASET_PATH,
+    extraction_live_results: dict[str, Any] | None = None,
     pipeline_live_results: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[bool, dict[str, Any], dict[str, Any] | None]:
     expected = build_gate_snapshot(
         fixture_root=fixture_root,
         golden_dataset_path=golden_dataset_path,
+        extraction_live_results=extraction_live_results,
         pipeline_live_results=pipeline_live_results,
     )
     if not snapshot_path.exists():

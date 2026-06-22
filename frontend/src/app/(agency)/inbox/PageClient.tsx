@@ -418,9 +418,7 @@ function InboxPageWithSearchParams() {
           />
 
           <span className='text-ui-sm text-[#8b949e]'>
-          <span className="text-ui-sm text-[#8b949e]">
-          {isLoading ? 'Loading…' : leadCountLabel(inboxTotal)}
-        </span>
+            {isLoading ? 'Loading…' : leadCountLabel(inboxTotal)}
           </span>
           <div className='flex items-center gap-2'>
             <label htmlFor='inbox-limit' className='text-ui-xs text-[#8b949e]'>Rows</label>

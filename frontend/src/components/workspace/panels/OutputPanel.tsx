@@ -37,6 +37,8 @@ export default function OutputPanel({ trip: propTrip, tripId: propTripId }: Outp
   // Fallback chain: Store (transient) > Trip (persisted)
   const internalBundle = (result_internal_bundle || trip?.internal_bundle) as PromptBundle | null;
   const travelerBundle = (result_traveler_bundle || trip?.traveler_bundle) as PromptBundle | null;
+  const hasStrategyContext = Boolean(trip?.strategy);
+  const hasDecisionContext = Boolean(trip?.decision);
   const reviewStatus = trip?.review_status ?? null;
   const reviewBlocksSend = reviewStatus !== null && reviewStatus !== "approved";
   const policyBlocksSend = Boolean(trip?.analytics?.approvalRequiredForSend);
@@ -55,16 +57,32 @@ export default function OutputPanel({ trip: propTrip, tripId: propTripId }: Outp
   };
 
   if (!internalBundle && !travelerBundle) {
+    const emptyStateHref = hasDecisionContext
+      ? `/trips/${tripId}/decision`
+      : hasStrategyContext
+        ? `/trips/${tripId}/strategy`
+        : `/trips/${tripId}/strategy`;
+    const emptyStateLinkLabel = hasDecisionContext
+      ? "Go to Quote Assessment"
+      : hasStrategyContext
+        ? "Go to Options"
+        : "Go to Options";
+    const emptyStateDescription = hasDecisionContext
+      ? "Quote assessment is available, but the traveler-safe output bundle still needs to be generated."
+      : hasStrategyContext
+        ? "Trip options are available, but the traveler-safe output bundle still needs to be generated."
+        : "Build trip options and complete quote review before preparing customer-facing output.";
+
     return (
       <div className="p-6 text-center">
         <h2 className="text-ui-xl font-semibold text-text-primary">No traveler-ready output yet</h2>
-        <p className="text-ui-sm text-text-muted mt-2">Build trip options and complete quote review before preparing customer-facing output.</p>
+        <p className="text-ui-sm text-text-muted mt-2">{emptyStateDescription}</p>
         <div className="mt-6 flex flex-wrap gap-3 justify-center">
           <Link
-            href={`/trips/${tripId}/strategy`}
+            href={emptyStateHref}
             className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-primary transition-colors hover:bg-elevated"
           >
-            Go to Options
+            {emptyStateLinkLabel}
           </Link>
         </div>
       </div>

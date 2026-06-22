@@ -118,7 +118,7 @@ _OR_DESTINATION_RE = re.compile(
 
 # Destination metadata labels to exclude (caller, referral, etc.)
 _DESTINATION_METADATA_LABELS_RE = re.compile(
-    r"^\s*(call\s+received|caller|referral|party|pace(?:\s+reference)?|budget|interests?|follow[\s-]*up|toddler\s+needs?|elderly\s+needs?)\s*:",
+    r"^\s*(call\s+received|caller|referral|party|pace(?:\s+reference)?|budget|interests?|follow[\s-]*up|toddler\s+needs?|elderly\s+needs?|origin(?:\s+city)?|departure(?:\s+city)?|departing\s+from|from\s+city)\s*:",
     re.IGNORECASE,
 )
 
@@ -172,6 +172,16 @@ _DAY_RANGE_TEXT_RE = re.compile(
     r"(\d{1,2})(?:st|nd|rd|th)?\s*(?:to|-|–|—|\bto\b)\s*(\d{1,2})(?:st|nd|rd|th)?\s+"
     r"(" + _MONTH_ABBR + r")\b"
     r"(?:\s+(\d{4}))?",
+)
+
+# Month-day range patterns like "July 10 to July 16" or "July 10-16".
+_MONTH_DAY_RANGE_RE = re.compile(
+    r"\b((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)\s+"
+    r"(\d{1,2})(?:st|nd|rd|th)?\s*(?:to|-|–|—|\bto\b)\s*"
+    r"(?:(?:((?:January|February|March|April|May|June|July|August|September|October|November|December)\w*)\s+))?"
+    r"(\d{1,2})(?:st|nd|rd|th)?"
+    r"(?:\s+(\d{4}))?",
+    re.IGNORECASE,
 )
 
 # Date range pattern
@@ -405,9 +415,22 @@ def _is_likely_origin(text: str, dest_match: str) -> bool:
     if _FROM_STARTING_DEPARTING_RE.search(context_before):
         return True
 
+    # Explicit origin labels: "Origin city: Nairobi", "Departure city: Delhi",
+    # "From city: Mumbai". These are common in structured intake notes and should
+    # never be treated as destination candidates.
+    label_window = lowered[max(0, match_idx - 30):match_idx]
+    if re.search(r"\b(origin(?:\s+city)?|departure(?:\s+city)?|from\s+city|departing\s+from)\s*:\s*$", label_window):
+        return True
+
     # Hinglish/Odia postposition after: "Bangalore se", "Bangalore ru", "Bangalore side"
     context_after = lowered[match_idx + len(dest_match):match_idx + len(dest_match) + 15]
     if _SE_RU_SIDE_RE.search(context_after):
+        return True
+
+    # Agency/location descriptors like "Nairobi-based agency request" should not
+    # be treated as trip destinations. The city is describing the source agency,
+    # not the trip intent.
+    if re.match(r"^[\s-]*based\b", context_after):
         return True
 
     return False
@@ -607,6 +630,23 @@ def _extract_dates(text: str) -> Optional[Tuple[str, Optional[str], Optional[str
         raw = iso_match.group(0)
         return raw, iso_match.group(1), iso_match.group(2), "exact"
 
+    # Month/day range: "July 10 to July 16", "July 10-16", "July 10 to 16"
+    month_day_range = _MONTH_DAY_RANGE_RE.search(text)
+    if month_day_range:
+        start_month = month_day_range.group(1)
+        start_day = month_day_range.group(2)
+        end_month = month_day_range.group(3) or start_month
+        end_day = month_day_range.group(4)
+        explicit_year = month_day_range.group(5)
+        year = explicit_year or _infer_year_from_context(text)
+        start_month_num = _month_to_num(start_month)
+        end_month_num = _month_to_num(end_month)
+        if start_month_num and end_month_num:
+            start_iso = f"{year}-{start_month_num:02d}-{int(start_day):02d}"
+            end_iso = f"{year}-{end_month_num:02d}-{int(end_day):02d}"
+            raw = month_day_range.group(0).strip()
+            return raw, start_iso, end_iso, "tentative"
+
     # Day range: "9th to 14th Feb", "around 9th to 14th Feb 2025"
     day_range = _DAY_RANGE_TEXT_RE.search(text_lower)
     if day_range:
@@ -677,12 +717,52 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
     """
     text_lower = text.lower()
 
+    def _currency_code(token: Optional[str]) -> str:
+        normalized = (token or "").strip().lower()
+        currency_map = {
+            "$": "USD",
+            "usd": "USD",
+            "€": "EUR",
+            "eur": "EUR",
+            "£": "GBP",
+            "gbp": "GBP",
+            "₹": "INR",
+            "rs": "INR",
+            "inr": "INR",
+            "aud": "AUD",
+            "cad": "CAD",
+            "sgd": "SGD",
+        }
+        return currency_map.get(normalized, "INR")
+
     def _looks_like_date_token(raw_val: str) -> bool:
         token = raw_val.strip()
         return bool(
             re.fullmatch(r"\d{4}\s*[-/]\s*\d{1,2}(?:\s*[-/]\s*\d{1,2})?", token)
             or re.fullmatch(r"\d{4}-\d{2}-\d{2}", token)
         )
+
+    explicit_label_match = re.search(
+        r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*"
+        r"(?:(usd|inr|eur|gbp|aud|cad|sgd|₹|\$|€|£)\s*)?"
+        r"(\d[\d,]*(?:\.\d+)?)\s*(l|k|lac|lakh|lakhs|thousand)?\b",
+        text_lower,
+    )
+    if explicit_label_match:
+        raw_amount = explicit_label_match.group(2).replace(",", "").strip()
+        unit = (explicit_label_match.group(3) or "").strip().lower()
+        if not _looks_like_date_token(raw_amount):
+            parsed_value = float(raw_amount)
+            if unit in ("l", "lac", "lakh", "lakhs"):
+                parsed_value *= 100000
+            elif unit in ("k", "thousand"):
+                parsed_value *= 1000
+            return {
+                "raw_text": explicit_label_match.group(0).strip(),
+                "min": int(parsed_value),
+                "max": int(parsed_value),
+                "currency": _currency_code(explicit_label_match.group(1)),
+            }
 
     # Look for budget-like patterns
     patterns = [
@@ -1482,8 +1562,8 @@ class ExtractionPipeline:
                     budget_result.get("raw_text", ""), eid,
                 ))
             packet.set_fact("budget_currency", self._make_slot(
-                "INR", 0.9, AuthorityLevel.EXPLICIT_USER,
-                "Default currency", eid,
+                budget_result.get("currency", "INR"), 0.9, AuthorityLevel.EXPLICIT_USER,
+                budget_result.get("raw_text", ""), eid,
             ))
 
         date_flex = _extract_date_flexibility(text)
@@ -1543,21 +1623,38 @@ class ExtractionPipeline:
             ))
 
         # --- ORIGIN ---
+        label_origin_match = re.search(
+            r"\b(?:origin city|origin|departure city)\b\s*[:\-]\s*([A-Za-z][A-Za-z\s]{0,40}?)(?=,|\.|\n|\||$)",
+            text,
+            re.IGNORECASE,
+        )
+        if label_origin_match:
+            city_raw = label_origin_match.group(1).strip()
+            city, was_normalized = Normalizer.normalize_city(city_raw)
+            mode = ExtractionMode.NORMALIZED if was_normalized else ExtractionMode.DIRECT_EXTRACT
+            if is_known_city(city) or len(city_raw.split()) > 1:
+                packet.set_fact("origin_city", self._make_slot(
+                    city, 0.9, AuthorityLevel.EXPLICIT_USER,
+                    label_origin_match.group(0), eid, extraction_mode=mode,
+                ))
+
         # Bounded extraction: limit to ~3 words after "from/starting/departing"
         # to prevent conversational spillover into unrelated sentence parts.
-        airport_match = re.search(r"\b(from|starting|departing)\s+([A-Z]{3})\b", text)
-        if airport_match:
-            city, was_normalized = Normalizer.normalize_city(airport_match.group(2))
-            mode = ExtractionMode.NORMALIZED if was_normalized else ExtractionMode.DIRECT_EXTRACT
-            packet.set_fact("origin_city", self._make_slot(
-                city, 0.95, AuthorityLevel.EXPLICIT_USER,
-                airport_match.group(0), eid, extraction_mode=mode,
-            ))
-        else:
+        if not packet.facts.get("origin_city"):
+            airport_match = re.search(r"\b(from|starting|departing)\s+([A-Z]{3})\b", text)
+            if airport_match:
+                city, was_normalized = Normalizer.normalize_city(airport_match.group(2))
+                mode = ExtractionMode.NORMALIZED if was_normalized else ExtractionMode.DIRECT_EXTRACT
+                packet.set_fact("origin_city", self._make_slot(
+                    city, 0.95, AuthorityLevel.EXPLICIT_USER,
+                    airport_match.group(0), eid, extraction_mode=mode,
+                ))
+
+        if not packet.facts.get("origin_city"):
             # Match max 3 words after "from" before hitting a delimiter
-            # Delimiters: to, comma, period, newline, or sentence-ending patterns
+            # Delimiters: to/for/budget/need/comma/period/newline to avoid spillover
             origin_match = re.search(
-                r"\b(from|starting|departing)\s+((?:[A-Za-z]+\s*){1,3}?)(?:\bto\b|,|\.|\$|\n)",
+                r"\b(from|starting|departing)\s+((?:[A-Za-z]+\s*){1,3}?)(?:\bto\b|\bfor\b|\bbudget\b|\bneed\b|,|\.|\$|\n)",
                 text,
                 re.IGNORECASE,
             )
@@ -1670,9 +1767,10 @@ class ExtractionPipeline:
                 ))
         elif pv:
             for field_name, value in pv.items():
-                packet.set_derived_signal(field_name, Slot(
-                    value=value, confidence=0.7,
-                    authority_level="derived_signal",
+                packet.set_derived_signal(field_name, self._make_slot(
+                    value, 0.7, AuthorityLevel.DERIVED_SIGNAL,
+                    f"Stage-gated passport/visa concern detected for {field_name}",
+                    eid, extraction_mode="derived", maturity="heuristic",
                 ))
 
         # --- TRAVELER PLAN ---

@@ -70,6 +70,30 @@ describe('TimelinePanel', () => {
     });
   });
 
+  it('shows a friendly label when the stage is unknown', async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        trip_id: 'test-trip',
+        events: [
+          {
+            trip_id: 'test-trip',
+            timestamp: '2026-04-23T10:00:00Z',
+            stage: 'unknown',
+            status: 'started',
+            state_snapshot: { stage: 'unknown', status: 'started' },
+          },
+        ],
+      }),
+    });
+
+    render(<TimelinePanel tripId="test-trip" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Stage not set')).toBeInTheDocument();
+    });
+  });
+
   it('displays event count summary', async () => {
     (global.fetch as any).mockResolvedValueOnce({
       ok: true,

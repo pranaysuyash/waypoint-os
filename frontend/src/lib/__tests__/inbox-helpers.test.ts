@@ -14,6 +14,7 @@ import {
   incrementInboxVisitCount,
   shouldShowMicroLabels,
   getMicroLabel,
+  formatStageLabel,
   getSavedViewProfile,
   saveViewProfile,
   roleToViewProfile,
@@ -265,7 +266,6 @@ describe('inbox-helpers', () => {
         'partySize',
         'dateWindow',
         'value',
-        'daysInCurrentStage',
       ]);
     });
 
@@ -273,7 +273,6 @@ describe('inbox-helpers', () => {
       expect(getMetricsForProfile('teamLead')).toEqual([
         'assignedToName',
         'slaStatus',
-        'daysInCurrentStage',
         'priority',
       ]);
     });
@@ -337,6 +336,14 @@ describe('inbox-helpers', () => {
 
     it('returns undefined for unknown values', () => {
       expect(getMicroLabel('unknown')).toBeUndefined();
+    });
+  });
+
+  describe('formatStageLabel', () => {
+    it('formats stage enums into operator-facing labels', () => {
+      expect(formatStageLabel('options')).toBe('Options');
+      expect(formatStageLabel('in_review')).toBe('In Review');
+      expect(formatStageLabel('')).toBe('Unknown stage');
     });
   });
 

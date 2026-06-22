@@ -78,6 +78,7 @@ frontend/.next/
 
 # Playwright MCP
 .playwright-mcp/
+.playwright-profile*/
 
 # Data files — downloaded datasets (186MB total)
 data/cities5000.txt

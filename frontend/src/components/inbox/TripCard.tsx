@@ -7,9 +7,11 @@ import { Card } from '@/components/ui/card';
 import { PriorityIndicator } from '@/components/ui/PriorityIndicator';
 import type { InboxTrip } from '@/types/governance';
 import type { ViewProfile, MetricField } from '@/lib/inbox-helpers';
+import { formatDateWindowDisplay, formatLeadTitle } from '@/lib/lead-display';
 import { focusNextOutside } from '@/lib/accessibility';
 import {
   formatContextualSLA,
+  formatStageLabel,
   getMicroLabel,
   getMetricsForProfile,
   shouldShowMicroLabels,
@@ -64,16 +66,16 @@ const ASSIGNED_BG: Record<string, { bg: string; text: string; border: string }> 
 
 const METRIC_FORMATTERS: Record<MetricField, (trip: InboxTrip) => string> = {
   partySize: (t) => `${t.partySize} pax`,
-  dateWindow: (t) => (t.dateWindow || 'Dates TBD'),
+  dateWindow: (t) => formatDateWindowDisplay(t.dateWindow),
   value: (t) => {
-    if (!t.value || t.value <= 0) return 'Value TBD';
+    if (!t.value || t.value <= 0) return 'Value to confirm';
     return t.value >= 1000 ? `$${(t.value / 1000).toFixed(1)}k` : `$${t.value}`;
   },
   daysInCurrentStage: (t) => `${t.daysInCurrentStage}d`,
   assignedToName: (t) => t.assignedToName || (t.assignedTo ? 'Assigned' : 'Unassigned'),
   slaStatus: (t) => t.slaStatus.replace('_', ' '),
   priority: (t) => t.priority.charAt(0).toUpperCase() + t.priority.slice(1),
-  stage: (t) => t.stage,
+  stage: (t) => formatStageLabel(t.stage),
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -128,7 +130,7 @@ function FlagBadgeRow({ trip, showMicroLabels }: { trip: InboxTrip; showMicroLab
 
 function TripCardSLA({ trip }: { trip: InboxTrip }) {
   const slaHours = DEFAULT_STAGE_SLA_HOURS[trip.stage] || 168;
-  const contextualText = `${trip.daysInCurrentStage}d · ${formatContextualSLA(trip.daysInCurrentStage, slaHours)}`;
+  const contextualText = formatContextualSLA(trip.daysInCurrentStage, slaHours);
   const style = SLA_BADGE[trip.slaStatus] || SLA_BADGE.on_track;
 
   return (
@@ -197,7 +199,7 @@ function TripCardStageBadge({ stage }: { stage: string }) {
         border: `1px solid ${style.border}`,
       }}
     >
-      {stage}
+      {formatStageLabel(stage)}
     </span>
   );
 }
@@ -446,7 +448,11 @@ export const TripCard = memo(function TripCard({
   const showMicroLabels = shouldShowMicroLabels();
 
   const reviewHref = `/trips/${trip.id}/intake`;
-  const title = `${trip.destination} ${trip.tripType.toLowerCase()}`.trim();
+  const cleanDestination = trip.destination?.trim();
+  const destinationKnown = Boolean(cleanDestination) && !['tbd', 'to confirm', 'unknown', 'not set', 'n/a', '-', '-'].includes(cleanDestination!.toLowerCase());
+  const title = destinationKnown
+    ? formatLeadTitle(cleanDestination, trip.tripType)
+    : 'Trip details incomplete';
 
   return (
     <Card

@@ -20,6 +20,8 @@ import { useUnifiedState } from '@/hooks/useUnifiedState';
 import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
 import { getTripRoute } from '@/lib/routes';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { formatLeadTitle } from '@/lib/lead-display';
+import { titleCase } from '@/lib/label-maps';
 import type { TripReview, ReviewStatus, RiskFlag } from '@/types/governance';
 
 const REVIEW_STATUS_MAP = {
@@ -31,6 +33,17 @@ const REVIEW_STATUS_MAP = {
 };
 
 const DAY_MS = 1000 * 60 * 60 * 24;
+
+function hasKnownDestination(value?: string | null): boolean {
+  const cleaned = value?.trim();
+  if (!cleaned) return false;
+  return !['tbd', 'to confirm', 'unknown', 'not set', 'n/a', '-'].includes(cleaned.toLowerCase());
+}
+
+function getReviewTitle(review: TripReview): string {
+  if (!hasKnownDestination(review.destination)) return 'Trip details incomplete';
+  return formatLeadTitle(review.destination, review.tripType);
+}
 
 function getDaysWaiting(submittedAt: string, referenceNow: number) {
   return Math.floor((referenceNow - new Date(submittedAt).getTime()) / DAY_MS);
@@ -90,12 +103,12 @@ const ReviewCard = memo(function ReviewCard({
           </div>
           
           <h3 className='text-ui-base font-semibold text-[#e6edf3] mb-1'>
-            {review.destination}
+            {getReviewTitle(review)}
           </h3>
           
           <div className='flex items-center gap-4 text-ui-xs text-[#8b949e] mb-2'>
             <span className='flex items-center gap-1'>
-              <MapPin className='size-3' /> {review.tripType}
+              <MapPin className='size-3' /> {titleCase(review.tripType)}
             </span>
             <span className='flex items-center gap-1'>
               <User className='size-3' /> {review.partySize} pax

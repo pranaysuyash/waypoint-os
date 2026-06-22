@@ -487,7 +487,16 @@ def _extract_risk_flags(risk_flags: List[Any]) -> List[str]:
         else:
             # Handle string or other formats
             flags.append(str(r))
-    return flags
+
+    deduped: List[str] = []
+    seen: set[str] = set()
+    for flag in flags:
+        normalized = flag.strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped.append(normalized)
+    return deduped
 
 
 def _build_priority_sequence(

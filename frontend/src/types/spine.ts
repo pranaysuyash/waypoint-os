@@ -357,7 +357,7 @@ export function validationLabelFor(gateKey: string | undefined, context?: string
   const label = LABELS[gateKey] ?? LEGACY_LABELS[gateKey] ?? gateKey;
   // Some contexts need a qualifier
   if (context === 'alert_title') {
-    if (gateKey === 'intake_completion' || gateKey === 'NB01') return 'Trip Details Need Attention';
+    if (gateKey === 'intake_completion' || gateKey === 'NB01') return 'Trip details need attention';
     if (gateKey === 'decision_readiness' || gateKey === 'NB02') return 'Quote Readiness Check';
     return `${label} - Needs Attention`;
   }

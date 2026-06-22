@@ -167,21 +167,24 @@ export function parseBudgetString(input: string): Money | null {
   let currency: SupportedCurrency = 'INR'; // Default
   currency = (trimmed.match(CURRENCY_CODE_PATTERN)?.[1] as SupportedCurrency | undefined) ?? currency;
 
-  // Extract number - handle formats like "2 lac", "200000", "10k", "2.5L"
-  let amountStr = trimmed
-    .replace(/[^\d.\-LK]/gi, '') // Remove everything except digits, dots, minus, L, K
-    .replace(/L/g, '00000')
-    .replace(/K/g, '000');
-
-  // Handle "lac" specifically
-  if (trimmed.includes('LAC') || trimmed.includes('LAKH')) {
-    const numMatch = trimmed.match(/[\d.]+/);
-    if (numMatch) {
-      amountStr = (parseFloat(numMatch[0]) * 100000).toString();
-    }
+  const lakhMatch = trimmed.match(/(\d+(?:\.\d+)?)\s*(LAC|LAKH|L)\b/);
+  if (lakhMatch) {
+    const amount = parseFloat(lakhMatch[1]);
+    if (isNaN(amount)) return null;
+    return { amount: amount * 100000, currency };
   }
 
-  const amount = parseFloat(amountStr);
+  const thousandMatch = trimmed.match(/(\d+(?:\.\d+)?)\s*(K)\b/);
+  if (thousandMatch) {
+    const amount = parseFloat(thousandMatch[1]);
+    if (isNaN(amount)) return null;
+    return { amount: amount * 1000, currency };
+  }
+
+  const numberMatch = trimmed.match(/(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d{4,}(?:\.\d+)?)/);
+  if (!numberMatch) return null;
+
+  const amount = parseFloat(numberMatch[1].replace(/,/g, ""));
   if (isNaN(amount)) return null;
 
   return { amount, currency };

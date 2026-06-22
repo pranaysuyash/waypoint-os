@@ -191,6 +191,37 @@ class Normalizer:
             result["confidence"] = "exact"
             return result
 
+        # Month-day range: "July 10 to July 16", "July 10-16"
+        month_day_range = re.search(
+            r"((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\w*)\s+"
+            r"(\d{1,2})(?:st|nd|rd|th)?\s*(?:to|-|–|—|\bto\b)\s*"
+            r"(?:(?:((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\w*)\s+))?"
+            r"(\d{1,2})(?:st|nd|rd|th)?"
+            r"(?:\s+(\d{4}))?",
+            raw,
+            re.IGNORECASE,
+        )
+        if month_day_range:
+            start_month = month_day_range.group(1)
+            start_day = month_day_range.group(2)
+            end_month = month_day_range.group(3) or start_month
+            end_day = month_day_range.group(4)
+            explicit_year = month_day_range.group(5)
+            year = explicit_year or str(datetime.now().year)
+            month_lookup = {
+                "jan": 1, "january": 1, "feb": 2, "february": 2, "mar": 3, "march": 3,
+                "apr": 4, "april": 4, "may": 5, "jun": 6, "june": 6,
+                "jul": 7, "july": 7, "aug": 8, "august": 8, "sep": 9, "sept": 9, "september": 9,
+                "oct": 10, "october": 10, "nov": 11, "november": 11, "dec": 12, "december": 12,
+            }
+            start_num = month_lookup.get(start_month.lower()[:3]) or month_lookup.get(start_month.lower())
+            end_num = month_lookup.get(end_month.lower()[:3]) or month_lookup.get(end_month.lower())
+            if start_num and end_num:
+                result["start"] = f"{year}-{start_num:02d}-{int(start_day):02d}"
+                result["end"] = f"{year}-{end_num:02d}-{int(end_day):02d}"
+                result["confidence"] = "tentative"
+                return result
+
         # Month window: "March or April 2026", "June-July 2026"
         month_window = re.search(
             r"((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\w*)"

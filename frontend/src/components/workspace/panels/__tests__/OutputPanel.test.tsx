@@ -41,6 +41,43 @@ describe('OutputPanel', () => {
     expect(screen.getByText(/No traveler-ready output yet/i)).toBeInTheDocument();
   });
 
+  it('routes quote-ready trips to quote assessment from the empty output state', () => {
+    (useWorkbenchStore as any).mockReturnValue({
+      ...mockStore,
+      result_internal_bundle: null,
+      result_traveler_bundle: null,
+    });
+
+    render(
+      <OutputPanel
+        tripId="TRIP-123"
+        trip={{
+          id: 'TRIP-123',
+          strategy: {
+            session_goal: 'Plan Bali',
+            priority_sequence: ['Keep budget anchored to 75000'],
+            tonal_guardrails: ['Stay concise'],
+            risk_flags: [],
+            suggested_opening: 'Here’s the options plan for Bali.',
+            exit_criteria: ['Options are structured and easy to compare'],
+            next_action: 'PROCEED_INTERNAL_DRAFT',
+            assumptions: [],
+            suggested_tone: 'professional',
+          } as any,
+          decision: {
+            decision_state: 'PROCEED_INTERNAL_DRAFT',
+          } as any,
+        } as any}
+      />
+    );
+
+    expect(screen.getByText(/Quote assessment is available/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Go to Quote Assessment/i })).toHaveAttribute(
+      'href',
+      '/trips/TRIP-123/decision'
+    );
+  });
+
   it('renders agent and customer bundles side-by-side', () => {
     render(<OutputPanel tripId="TRIP-123" />);
 

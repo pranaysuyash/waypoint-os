@@ -482,6 +482,23 @@ class CanonicalPacket:
                     extraction_mode="merged",
                     evidence_refs=existing.evidence_refs + slot.evidence_refs,
                 )
+            elif field_name == "party_composition" and isinstance(new_val, dict) and isinstance(old_val, dict):
+                merged = dict(old_val)
+                for key, value in new_val.items():
+                    if isinstance(value, int):
+                        merged[key] = max(int(merged.get(key, 0) or 0), value)
+                    elif key not in merged:
+                        merged[key] = value
+                slot = Slot(
+                    value=merged,
+                    confidence=max(existing.confidence, slot.confidence),
+                    authority_level="explicit_user",
+                    extraction_mode="merged",
+                    evidence_refs=existing.evidence_refs + slot.evidence_refs,
+                )
+            elif field_name == "party_size" and isinstance(new_val, int) and isinstance(old_val, int):
+                if new_val < old_val and slot.confidence <= existing.confidence:
+                    return
             elif slot.confidence < existing.confidence:
                 return
 

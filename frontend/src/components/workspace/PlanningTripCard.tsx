@@ -36,6 +36,7 @@ interface PlanningTripCardProps {
 
 export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant = 'default', similarTripCount = 1 }: PlanningTripCardProps) {
   const summary = getPlanningListSummary(trip);
+  const progressItems = getPlanningStageProgressItems(trip).slice(1);
   const freshness = getTripFreshnessLabel(trip);
   const fc = freshnessColors[freshness.tone] ?? freshnessColors.neutral;
   const meta = PLANNING_LIST_STATE_META[summary.statusTone] ?? PLANNING_LIST_STATE_META.blue;
@@ -156,15 +157,19 @@ export const PlanningTripCard = memo(function PlanningTripCard({ trip, variant =
           <div className='flex items-center gap-1.5 py-1'>
             <span className='text-[12px] font-semibold' style={{ color: 'var(--text-secondary)' }}>Stage:</span>
             <span className='text-[12px] font-semibold' style={{ color: 'var(--accent-blue)' }}>{summary.stage}</span>
-            <span className='text-[12px]' style={{ color: 'var(--text-muted)' }}>·</span>
-            <span className='text-[12px]' style={{ color: 'var(--text-secondary)' }}>
-              {getPlanningStageProgressItems(trip).map((item, i) => (
-                <span key={item.label}>
-                  {i > 0 && <span className='mx-1'>·</span>}
-                  <span style={{ color: item.color }}>{item.label}</span>
+            {progressItems.length > 0 ? (
+              <>
+                <span className='text-[12px]' style={{ color: 'var(--text-muted)' }}>·</span>
+                <span className='text-[12px]' style={{ color: 'var(--text-secondary)' }}>
+                  {progressItems.map((item, i) => (
+                    <span key={item.label}>
+                      {i > 0 ? ' · ' : ''}
+                      <span style={{ color: item.color }}>{item.label}</span>
+                    </span>
+                  ))}
                 </span>
-              ))}
-            </span>
+              </>
+            ) : null}
           </div>
         )}
 

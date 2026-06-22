@@ -24,7 +24,7 @@ const STATE_LABELS: Record<string, string> = {
   BRANCH_OPTIONS: "Needs Options",
   STOP_NEEDS_REVIEW: "Needs Attention",
   STOP_REVIEW: "Needs Attention",
-  ASK_FOLLOWUP: "Need More Info",
+  ASK_FOLLOWUP: "Waiting on Customer",
 };
 
 const BUCKET_DISPLAY: Record<string, string> = {

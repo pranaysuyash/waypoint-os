@@ -10,10 +10,13 @@ import {
   getPlanningLockedTabHint,
   getPlanningNextAction,
   getPlanningPrimaryActionLabel,
+  getPlanningSuggestedNextMove,
   getPlanningStageGateReason,
+  getPlanningStatusLabel,
   getRecommendedPlanningFields,
   getRequiredPlanningFields,
 } from "../planning-status";
+import { getPlanningStageProgress } from "../planning-list-display";
 
 function makeTrip(overrides: Partial<Trip> = {}): Trip {
   return {
@@ -95,6 +98,95 @@ describe("planning-status", () => {
     expect(getPlanningHeaderTitle(makeTrip())).toBe("Trip details incomplete");
   });
 
+  it("uses the destination, not the origin, in the trip title when both are present", () => {
+    const trip = makeTrip({
+      origin: "Nairobi",
+      destination: "Zanzibar",
+      budget: "$5000",
+      validation: {
+        is_valid: true,
+        errors: [],
+        warnings: [],
+      } as any,
+      decision: {
+        decision_state: "ASK_FOLLOWUP",
+        hard_blockers: [],
+        soft_blockers: [],
+        contradictions: [],
+        risk_flags: [],
+        follow_up_questions: [],
+        branch_options: [],
+        rationale: {} as any,
+        confidence: {} as any,
+        commercial_decision: "NONE",
+        budget_breakdown: null,
+      } as any,
+    });
+
+    expect(getPlanningHeaderTitle(trip)).toBe("Zanzibar family trip");
+  });
+
+  it("uses operator-facing planning status language for trips that are ready to build options", () => {
+    const trip = makeTrip({
+      origin: "Mumbai",
+      budget: "$5000",
+      validation: {
+        is_valid: true,
+        errors: [],
+        warnings: [],
+      } as any,
+      decision: {
+        decision_state: "ASK_FOLLOWUP",
+        hard_blockers: [],
+        soft_blockers: [],
+        contradictions: [],
+        risk_flags: [],
+        follow_up_questions: [],
+        branch_options: [],
+        rationale: {} as any,
+        confidence: {} as any,
+        commercial_decision: "NONE",
+        budget_breakdown: null,
+      } as any,
+    });
+
+    expect(getPlanningStatusLabel(trip)).toBe("Ready to build options");
+  });
+
+  it("returns clean stage progress labels without duplicating separator punctuation", () => {
+    const trip = makeTrip({
+      origin: "Mumbai",
+      budget: "$5000",
+      validation: {
+        is_valid: true,
+        errors: [],
+        warnings: [],
+      } as any,
+      decision: {
+        decision_state: "ASK_FOLLOWUP",
+        hard_blockers: [],
+        soft_blockers: [],
+        contradictions: [],
+        risk_flags: [],
+        follow_up_questions: [],
+        branch_options: [],
+        rationale: {} as any,
+        confidence: {} as any,
+        commercial_decision: "NONE",
+        budget_breakdown: null,
+      } as any,
+    });
+
+    expect(getPlanningStageProgress(trip)).toEqual([
+      "Intake ✓",
+      "Details ✓",
+      "Options",
+      "Quote Review",
+      "Output",
+    ]);
+    expect(getPlanningStageProgress(trip).join(" ")).not.toContain("→");
+  });
+
   it("unlocks options once required fields are complete but recommended details remain", () => {
     const trip = makeTrip({
       origin: "Mumbai",
@@ -122,6 +214,36 @@ describe("planning-status", () => {
     expect(getPlanningBriefStatus(trip)).toBe("missing_recommended_details");
     expect(canAccessPlanningStage(trip, "strategy")).toBe(true);
     expect(getPlanningPrimaryActionLabel(trip)).toBe("Continue to options");
+  });
+
+  it("uses a clean continue prompt when the brief is fully complete", () => {
+    const trip = makeTrip({
+      origin: "Mumbai",
+      budget: "$5000",
+      dateFlexibility: "firm",
+      tripPriorities: "Beachfront hotel",
+      validation: {
+        is_valid: true,
+        errors: [],
+        warnings: [],
+      } as any,
+      decision: {
+        decision_state: "ASK_FOLLOWUP",
+        hard_blockers: [],
+        soft_blockers: [],
+        contradictions: [],
+        risk_flags: [],
+        follow_up_questions: [],
+        branch_options: [],
+        rationale: {} as any,
+        confidence: {} as any,
+        commercial_decision: "NONE",
+        budget_breakdown: null,
+      } as any,
+    });
+
+    expect(getPlanningBriefStatus(trip)).toBe("complete");
+    expect(getPlanningSuggestedNextMove(false, trip)).toBe("Continue to options.");
   });
 
   it("updates follow-up copy and locked-tab hint as individual blockers are resolved", () => {

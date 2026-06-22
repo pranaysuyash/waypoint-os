@@ -8,12 +8,13 @@ import { ErrorBoundary, InlineError } from "@/components/error-boundary";
 import { InlineLoading } from "@/components/ui/loading";
 import { toast } from "@/lib/toast-store";
 import { ClientDateTime } from "@/hooks/useClientDate";
-import { api, type Trip } from "@/lib/api-client";
+import { ApiException, api, type Trip } from "@/lib/api-client";
 import {
   canAccessPlanningStage,
   canAccessOpsWorkspace,
   getPlanningBlockerBody,
   getPlanningBlockerTitle,
+  getPlanningBriefStatus,
   getPlanningHeaderTitle,
   getPlanningIdentityLine,
   getPlanningLockedTabHint,
@@ -96,7 +97,10 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   const [trip, setTrip] = useState<Trip | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [isRailOpen, setIsRailOpen] = useState(false);
+  const [railState, setRailState] = useState<{ tripId: string | null; open: boolean }>({
+    tripId: tripId ?? null,
+    open: false,
+  });
   const [timelineState, dispatchTimeline] = useReducer(timelineRailReducer, {
     status: "idle",
     timeline: null,
@@ -104,7 +108,13 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
   });
   const hasRailPreferenceRef = useRef(false);
   const activeStage = useMemo(() => getActiveStage(pathname), [pathname]);
-  const isLeadReview = trip?.status === "new" || trip?.status === "incomplete";
+  const planningBriefStatus = getPlanningBriefStatus(trip);
+  const isLeadReview = planningBriefStatus === "missing_required_details";
+  const isRailOpen = activeStage === "timeline"
+    ? false
+    : railState.tripId === tripId
+      ? railState.open
+      : false;
   const planningTone = getPlanningStatusTone(trip);
   const accent = STATE_ACCENT[planningTone ?? "blue"] ?? STATE_ACCENT.blue;
   const backHref = "/trips";
@@ -177,19 +187,6 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
     setTrip(nextTrip);
   };
 
-  useEffect(() => {
-    hasRailPreferenceRef.current = false;
-    setIsRailOpen(false);
-    // Resets rail on trip change - ref + state are coupled and cannot be batched
-  }, [tripId]);
-
-  // Auto-close side rail when on Timeline tab (avoids duplicate activity views)
-  useEffect(() => {
-    if (activeStage === 'timeline') {
-      setIsRailOpen(false);
-    }
-  }, [activeStage]);
-
 // react-doctor-disable-next-line react-doctor/no-fetch-in-effect, react-doctor/nextjs-no-client-fetch-for-server-data — dynamic tripId + auth via credentials:include
   useEffect(() => {
     if (!tripId || isLoading || !trip) return;
@@ -208,7 +205,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
         if (cancelled) return;
         dispatchTimeline({ type: "loaded", timeline: data });
         if (!hasRailPreferenceRef.current) {
-          setIsRailOpen(hasImportantTimelineEvent(data.events ?? []));
+          setRailState({ tripId, open: hasImportantTimelineEvent(data.events ?? []) });
         }
       } catch (err) {
         if (cancelled) return;
@@ -221,7 +218,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
     return () => {
       cancelled = true;
     };
-  }, [tripId, isLoading, trip?.id]);
+  }, [tripId, isLoading, trip]);
 
   if (isLoading && !trip) {
     return (
@@ -233,7 +230,10 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
 
   if (error || !tripId || !trip) {
     const fallbackTitle = "Workspace unavailable";
-    const fallbackMessage = "Trip not found. Please return to Trips in Planning and try again.";
+    const isMissingTrip = error instanceof ApiException && error.status === 404;
+    const fallbackMessage = isMissingTrip
+      ? "This trip link is stale or missing. Return to Trips in Planning and reopen it."
+      : "Trip not found. Please return to Trips in Planning and try again.";
     const fallbackHref = "/trips";
     const fallbackLabel = "Back to Trips in Planning";
     return (
@@ -241,7 +241,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
         <div className="max-w-[900px] mx-auto rounded-xl border border-[#1c2128] bg-[#0f1115] p-6 space-y-4">
           <InlineError
             title={fallbackTitle}
-            message={error?.message ?? fallbackMessage}
+            message={isMissingTrip ? fallbackMessage : (error?.message ?? fallbackMessage)}
           />
           <Link
             href={fallbackHref}
@@ -286,7 +286,7 @@ export function WorkspaceTripLayoutShell({ children }: { children: ReactNode }) 
                   type="button"
                   onClick={() => {
                     hasRailPreferenceRef.current = true;
-                    setIsRailOpen((open) => !open);
+                    setRailState({ tripId, open: !isRailOpen });
                   }}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-ui-xs rounded-lg border border-[var(--border-default)] hover:bg-[#161b22] transition-colors text-[var(--text-muted)] hover:text-[#e6edf3]"
                   aria-expanded={isRailOpen}

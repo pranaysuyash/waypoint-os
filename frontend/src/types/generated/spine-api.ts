@@ -341,6 +341,8 @@ export interface OverrideResponse {
   cache_invalidated?: boolean;
   rule_graduated?: boolean;
   pattern_learning_queued?: boolean;
+  rollout_mode?: string | null;
+  mutations_applied?: string[];
   warnings?: string[];
   audit_event_id: string;
 }
@@ -402,7 +404,7 @@ export interface ReviewActionRequest {
   notes: string;
   reassign_to?: string | null;
   error_category?: string | null;
-  escalation_outcome?: "false_escalation" | "missed_escalation" | "correct_escalation" | "not_applicable" | null;
+  escalation_outcome?: ("false_escalation" | "missed_escalation" | "correct_escalation" | "not_applicable") | null;
   review_workflow_unit_id?: string | null;
 }
 /**
@@ -719,6 +721,9 @@ export interface TripResponse {
   validation?: {
     [k: string]: unknown;
   } | null;
+  strategy?: {
+    [k: string]: unknown;
+  } | null;
   party_composition?: string | null;
   pace_preference?: string | null;
   date_year_confidence?: string | null;
@@ -737,6 +742,30 @@ export interface UnifiedStateResponse {
   integrity_meta: IntegrityMeta;
   systemic_errors: SystemicError[];
 }
+/**
+ * Request model for updating AI agent settings.
+ */
+export interface UpdateAiAgentSettings {
+  enable_auto_intake?: boolean | null;
+  enable_auto_shortlist?: boolean | null;
+  enable_auto_proposal?: boolean | null;
+  enable_auto_negotiation?: boolean | null;
+  enable_frontier_orchestration?: boolean | null;
+  enable_checker_agent?: boolean | null;
+  enable_call_capture?: boolean | null;
+  enable_document_extraction?: boolean | null;
+  preferred_model?: string | null;
+  fallback_model?: string | null;
+  extraction_model?: string | null;
+  checker_model?: string | null;
+  max_negotiation_rounds?: number | null;
+  proposal_confidence_threshold?: number | null;
+  auto_advance_stages?: boolean | null;
+  require_owner_review_above_value?: number | null;
+  brand_voice?: string | null;
+  response_language?: string | null;
+  max_follow_up_questions?: number | null;
+}
 export interface UpdateAutonomyPolicy {
   approval_gates?: {
     [k: string]: string;
@@ -753,6 +782,36 @@ export interface UpdateAutonomyPolicy {
   auto_reprocess_stages?: {
     [k: string]: boolean;
   } | null;
+}
+/**
+ * Request model for updating communication preferences.
+ */
+export interface UpdateCommSettings {
+  default_outbound_channel?: string | null;
+  allow_channel_switching?: boolean | null;
+  enable_template_library?: boolean | null;
+  default_greeting?: string | null;
+  default_sign_off?: string | null;
+  respect_operating_hours?: boolean | null;
+  send_immediately_during_hours?: boolean | null;
+  queue_outside_hours?: boolean | null;
+  max_emails_per_day_per_trip?: number | null;
+  max_whatsapp_per_day_per_trip?: number | null;
+  auto_detect_language?: boolean | null;
+  default_language?: string | null;
+  supported_languages?: string[] | null;
+  translate_outbound?: boolean | null;
+  enable_auto_followup?: boolean | null;
+  auto_followup_delay_days?: number | null;
+  max_auto_followups?: number | null;
+  followup_escalate_after_max?: boolean | null;
+  notify_on_customer_reply?: boolean | null;
+  notify_on_sla_warning?: boolean | null;
+  notify_on_escalation?: boolean | null;
+  digest_frequency?: string | null;
+  include_agency_signature?: boolean | null;
+  include_unsubscribe_link?: boolean | null;
+  compliance_footer?: string | null;
 }
 export interface UpdateOperationalSettings {
   agency_name?: string | null;
@@ -799,4 +858,29 @@ export interface UpdateSeasonalPolicy {
   micro_seasonality_window_days?: number | null;
   quarterly_recalibration_enabled?: boolean | null;
   prelaunch_blocklist?: string[] | null;
+}
+/**
+ * Request model for updating support channel settings.
+ */
+export interface UpdateSupportSettings {
+  enable_email_support?: boolean | null;
+  enable_chat_support?: boolean | null;
+  enable_phone_support?: boolean | null;
+  enable_whatsapp_support?: boolean | null;
+  default_response_sla_hours?: number | null;
+  urgent_response_sla_hours?: number | null;
+  auto_route_by_destination?: boolean | null;
+  auto_route_by_language?: boolean | null;
+  escalation_after_sla_breach?: boolean | null;
+  escalation_contact_email?: string | null;
+  escalation_contact_phone?: string | null;
+  support_hours_start?: string | null;
+  support_hours_end?: string | null;
+  support_days?: string[] | null;
+  timezone?: string | null;
+  enable_auto_acknowledgement?: boolean | null;
+  auto_acknowledgement_message?: string | null;
+  out_of_hours_message?: string | null;
+  enable_csat_survey?: boolean | null;
+  csat_trigger?: string | null;
 }

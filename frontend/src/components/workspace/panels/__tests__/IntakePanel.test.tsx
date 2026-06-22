@@ -243,18 +243,91 @@ describe('IntakePanel', () => {
     );
 
     expect(screen.getAllByText('Missing customer details').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('Confirm budget range before building options.')).toBeInTheDocument();
+    expect(screen.getByText('Budget and trip details need confirmation.')).toBeInTheDocument();
     expect(screen.getByText('Suggested Next Move')).toBeInTheDocument();
-    expect(screen.getByText('Ask the traveler for budget range.')).toBeInTheDocument();
+    expect(screen.getByText('Review the lead and confirm missing details with the traveler.')).toBeInTheDocument();
     expect(screen.getByText('Watch')).toBeInTheDocument();
-    expect(screen.getByText('Blocked by missing details.')).toBeInTheDocument();
+    expect(screen.getByText('Incomplete intake.')).toBeInTheDocument();
     expect(screen.getByText('Inquiry Ref')).toBeInTheDocument();
     expect(screen.getAllByText(/4B9E/i).length).toBeGreaterThan(0);
     expect(screen.queryByText('trip_4b9e0d894872')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Mark ready/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Process trip/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Continue planning/i })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /Draft follow-up/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole('button', { name: /Add budget range/i })).toBeInTheDocument();
+  });
+
+  it('shows ready-to-build copy when the brief is complete even if the backend status is still incomplete', () => {
+    render(
+      <IntakePanel
+        tripId="trip_ready_1"
+        trip={{
+          id: 'trip_ready_1',
+          destination: 'Nairobi',
+          origin: 'Nairobi',
+          type: 'Family Leisure',
+          budget: 'Budget: USD 4,500',
+          party: 2,
+          dateWindow: 'in Jun',
+          state: 'amber',
+          age: 'Today',
+          createdAt: '2026-04-23T08:00:00.000Z',
+          updatedAt: '2026-04-23T08:15:00.000Z',
+          status: 'incomplete',
+          validation: {
+            is_valid: true,
+            errors: [],
+            warnings: [],
+          },
+        } as any}
+      />
+    );
+
+    expect(screen.getAllByText('Ready to build options').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Required trip details are complete.')).toBeInTheDocument();
+    expect(screen.getByText('Add recommended details or continue to options.')).toBeInTheDocument();
+    expect(screen.getAllByText('Recommended details').length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText('Missing before planning')).not.toBeInTheDocument();
+    expect(screen.queryByText('Incomplete intake.')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Open options/i })).toBeInTheDocument();
+  });
+
+  it('routes to strategy when there are no recommended details left', async () => {
+    const { useRouter } = await import('next/navigation');
+    const mockRouter = { push: vi.fn(), replace: vi.fn() };
+    (useRouter as any).mockReturnValue(mockRouter);
+    const user = userEvent.setup();
+
+    render(
+      <IntakePanel
+        tripId="trip_ready_2"
+        trip={{
+          id: 'trip_ready_2',
+          destination: 'Zanzibar',
+          origin: 'Nairobi',
+          type: 'Family Leisure',
+          budget: 'Budget: USD 4,000',
+          party: 3,
+          dateWindow: 'in Dec',
+          tripPriorities: 'beach access',
+          state: 'blue',
+          age: 'Today',
+          createdAt: '2026-04-23T08:00:00.000Z',
+          updatedAt: '2026-04-23T08:15:00.000Z',
+          status: 'incomplete',
+          validation: {
+            is_valid: true,
+            errors: [],
+            warnings: [],
+          },
+        } as any}
+      />
+    );
+
+    const continueButtons = screen.getAllByRole('button', { name: /Continue to options/i });
+    await user.click(continueButtons[0]!);
+
+    expect(mockRouter.push).toHaveBeenCalledWith('/trips/trip_ready_2/strategy');
   });
 
   it('shows a saved-next-step hint after saving a planning field', async () => {
@@ -524,6 +597,42 @@ describe('IntakePanel', () => {
 
     const processButton = screen.getByRole('button', { name: /Process trip/i });
     expect(processButton).toBeDisabled();
+  });
+
+  it('labels the ready-state action as building trip options rather than continuing navigation', () => {
+    (useWorkbenchStore as any).mockReturnValue({
+      ...mockStore,
+      input_raw_note: '',
+      input_owner_note: '',
+    });
+
+    render(
+      <IntakePanel
+        tripId="trip_ready_ui"
+        trip={{
+          id: 'trip_ready_ui',
+          destination: 'Bali',
+          origin: 'Sydney',
+          type: 'Leisure',
+          budget: '₹75,000',
+          party: 2,
+          dateWindow: '12-16 Aug 2026',
+          state: 'blue',
+          age: 'Today',
+          createdAt: '2026-04-23T08:00:00.000Z',
+          updatedAt: '2026-04-23T08:15:00.000Z',
+          status: 'incomplete',
+          validation: {
+            is_valid: true,
+            errors: [],
+            warnings: [],
+          },
+        } as any}
+      />
+    );
+
+    const buildButton = screen.getByRole('button', { name: /Build trip options/i });
+    expect(buildButton).toBeDisabled();
   });
 
   it('shows ready-gate failure details when mark ready is rejected', async () => {

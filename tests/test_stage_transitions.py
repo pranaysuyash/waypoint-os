@@ -170,6 +170,50 @@ class TestStagePersistence:
         )
         assert result["stage"] == "discovery"
 
+    def test_build_processed_trip_synthesizes_strategy_when_missing(self):
+        """Verify a saved trip still gets a usable strategy even when the run payload omits one."""
+        from spine_api.persistence import _build_processed_trip
+
+        spine_output = {
+            "meta": {"stage": "discovery"},
+            "packet": {},
+            "validation": {},
+            "decision": {
+                "decision_state": "ASK_FOLLOWUP",
+                "operating_mode": "normal_intake",
+                "confidence": {"overall": 0.55},
+                "rationale": {},
+                "risk_flags": [],
+                "soft_blockers": ["budget_raw_text"],
+                "ambiguities": [],
+                "follow_up_questions": [
+                    {
+                        "field_name": "origin_city",
+                        "priority": "critical",
+                        "question": "Which city will the travelers depart from?",
+                    }
+                ],
+                "branch_options": [],
+            },
+        }
+
+        result = _build_processed_trip(
+            spine_output=spine_output,
+            source="test",
+            user_id="user-1",
+            follow_up_due_date=None,
+            party_composition=None,
+            pace_preference=None,
+            date_year_confidence=None,
+            lead_source=None,
+            activity_provenance=None,
+            trip_status="new",
+        )
+
+        assert result["strategy"] is not None
+        assert result["strategy"]["suggested_opening"]
+        assert "origin_city" in " ".join(result["strategy"]["priority_sequence"])
+
 
 # ---------------------------------------------------------------------------
 # Stage transition endpoint tests

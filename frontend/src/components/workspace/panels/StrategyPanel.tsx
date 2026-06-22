@@ -1,8 +1,9 @@
 "use client";
 
+import { useTripContext } from "@/contexts/TripContext";
+import { buildTripStrategyPreview } from "@/lib/strategy-preview";
 import { useWorkbenchStore } from "@/stores/workbench";
 import type { StrategyOutput } from "@/types/spine";
-import Link from "next/link";
 import { isDebugJsonAllowed } from "@/lib/privacy-controls";
 
 interface StrategyPanelProps {
@@ -10,23 +11,19 @@ interface StrategyPanelProps {
 }
 
 export function StrategyPanel({ tripId }: StrategyPanelProps) {
+  const tripContext = useTripContext({ optional: true });
   const { result_strategy, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
   const debugJsonAllowed = isDebugJsonAllowed();
-  const strategy = result_strategy as StrategyOutput | null;
+  const strategy = (result_strategy as StrategyOutput | null) ?? buildTripStrategyPreview(tripContext?.trip);
 
   if (!strategy) {
     return (
       <div className="p-6 text-center">
         <h2 className="text-ui-xl font-semibold text-text-primary">Ready to build trip options</h2>
-        <p className="text-ui-sm text-text-muted mt-2">Required trip details are complete. Option generation will appear here once the options builder is connected.</p>
-        <div className="mt-4 text-ui-xs text-text-muted">
-          Recommended details missing: trip priorities / must-haves.
-        </div>
+        <p className="text-ui-sm text-text-muted mt-2">Trip details are still loading. Once the planner state is available, we’ll show a concrete options brief instead of a dead stub.</p>
         <div className="mt-6 flex flex-wrap gap-3 justify-center">
-          <span
-            className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-muted opacity-50 cursor-not-allowed"
-          >
-            Options builder not connected yet
+          <span className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-muted opacity-50 cursor-not-allowed">
+            Waiting for trip context
           </span>
         </div>
       </div>

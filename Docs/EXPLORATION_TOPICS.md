@@ -358,7 +358,9 @@ Legend:
 
 **Overview**: We have 30 scenarios, but are they the *right* scenarios? Do real agents recognize these?
 
-**Current live evidence (2026-06-21)**: The authenticated workbench and overview are now live-tested with `newuser@test.com` / `testpass123`. The owner/operator path reaches the overview, captures a new inquiry, and surfaces a blocked processing state with clearer trip-detail guidance than before. Two concrete live runs now anchor the readout: a thin Mumbai-to-Bali request blocked on missing origin, budget, and trip purpose; a richer Nairobi-to-Zanzibar request processed first, then returned a clearer details checklist. The overview planning cards now also collapse exact duplicates into a single grouped card with a visible matching-trip badge and grouped-count summary line, grouped quote clusters show explicit counts, the `/trips` card view now uses the same grouped-card logic with a grouped-count summary, incomplete trips now headline as `Trip details incomplete` instead of a raw trip type while still showing the actual missing-field set, the badge copy across overview/trips/intake/shell now consistently reads `Missing customer details`, and the trips/pipeline routes now share a single workspace-status constant in `lib/trip-domain.ts`. That reduces queue noise without hiding real work. Remaining validation work is no longer “does the shell load?” but “does each blocked state explain itself fast enough for a small agency owner and a high-volume team?”
+**Current live evidence (2026-06-21)**: The authenticated workbench and overview are now live-tested with `newuser@test.com` / `testpass123`. The owner/operator path reaches the overview, captures new inquiries, and surfaces both blocked and planning-ready processing states with clearer trip-detail guidance than before. Two concrete live runs now anchor the readout: a thin Mumbai-to-Bali request blocked on missing origin, budget, and trip purpose; after a backend restart, an explicit `Origin city: Nairobi` / `Budget: USD 4,500` request promoted to `Ready to build options` instead of stalling. The ready path now shows optional refinements as `Recommended details` with `Add recommended details or continue to options.` rather than blocker copy. A follow-up live rerun of the Zanzibar scenario confirmed the backend trip record now stores `destination: Zanzibar` instead of leaking the origin city into destination candidates, and the authenticated trip page now opens as `Zanzibar family trip`. The lead inbox default operations profile now avoids repeating the same age signal twice on each card, rows with missing destinations now headline as `Trip details incomplete`, the inbox header count label no longer has duplicated wrapper markup, the team-lead inbox profile now shows ownership, SLA, and priority without repeating the same recency signal in the metrics row, finance/fulfillment now humanize stage as `Options` instead of leaking raw lowercase enum text, grouped quote examples now avoid repeating the same title twice, the quote review queue now falls back to `Trip details incomplete` for unknown destinations instead of showing `Unknown leisure`, and the trips planning stage trail now renders as a clean plain-language progress line instead of a punctuation mashup. That makes dense queues easier to scan at a glance. The overview planning cards now also collapse exact duplicates into a single grouped card with a visible matching-trip badge and grouped-count summary line, grouped quote clusters show explicit counts, the `/trips` card view now uses the same grouped-card logic with a grouped-count summary, incomplete trips now headline as `Trip details incomplete` instead of a raw trip type while still showing the actual missing-field set, the status badge copy across overview/trips/intake/shell now consistently reads `Missing customer details`, the amber planning label now reads `Ready to build options`, and the trips/pipeline routes now share a single workspace-status constant in `lib/trip-domain.ts`. A valid deep link to `/trips/tc_roundtrip_b3bbea85678b/intake` also loaded the real Bali workspace, while a stale deep link correctly fell back to a recovery screen. The latest Bali simulation also proved two contract fixes in the intake pipeline: month-day date ranges like `July 10 to July 16` now parse correctly, and the derived `visa_concerns_present` signal now carries heuristic maturity instead of hard-failing discovery validation. The remaining handoff gap is that clicking `View Trip` after a completed workbench run still lands on `Unauthorized` in the generated trip route. That reduces queue noise without hiding real work. Remaining validation work is no longer “does the shell load?” but “does each blocked state explain itself fast enough for a small agency owner and a high-volume team?”
+
+**Current build wording**: Decision-state labels now say `Waiting on Customer` instead of `Need More Info`.
 
 **Key Questions**:
 - How do we find beta travel agencies?
@@ -376,7 +378,7 @@ Legend:
 
 **Deliverable**: Validation playbook, interview templates, pilot design
 
-**Detailed Research**: [research/REAL_WORLD_VALIDATION.md](research/REAL_WORLD_VALIDATION.md) *(create when started)*
+**Detailed Research**: [research/REAL_WORLD_VALIDATION.md](research/REAL_WORLD_VALIDATION.md) *(create when started)*; [main simulation doc](travel_agency_main_app_simulation_2026-06-21.md)
 
 **Related Topics**: All persona scenarios (validation), Pricing (willingness to pay)
 
@@ -648,6 +650,7 @@ Legend:
 - Pilot partner selection criteria
 - Scope limits and safety gates
 - Feature flags for gradual rollout
+- Live inbox verification now also covers operator-facing label cleanup, including stage humanization in finance and fulfillment views, so queue scans read like the app promise rather than backend payloads.
 - Pricing model options (per quote vs subscription)
 - Success metrics (business, product, technical)
 - Risk mitigation strategies
@@ -828,3 +831,62 @@ These are **blocking** for moving from notebooks to real implementation.
 ---
 
 *This is a living document. Update it as the project evolves.*
+
+## Live Validation Note
+
+- The June 21 live Chrome pass covered a small-agency intake scenario in addition to the Bali scenario.
+- That pass exposed two real product gaps:
+  - party composition was being downgraded from `3 pax` to `1 pax`
+  - INR budgets like `2.5L` were being displayed as `₹3`
+- Both issues are now fixed in the intake parser / shared budget formatter and are worth keeping in the exploration map because they came from a real operator workflow, not a synthetic unit test.
+
+## Live Validation Note: Options Surface Contract
+
+- The June 21 live Chrome pass now covers the trip strategy route as well as intake and workbench handoff.
+- The options page no longer shows the dead `Options builder not connected yet` state when trip context is available.
+- The trip response now exposes `strategy`, which reduces frontend guesswork and keeps the route aligned with the persisted trip state.
+- This is a real operator pain point because the user sees a planning-ready trip, but the previous placeholder implied the app was still disconnected.
+
+## Live Validation Note: Destination Disambiguation
+
+- A Nairobi-based agency scenario showed the parser initially mistaking an agency-origin prefix for the trip destination.
+- After the filter fix, the same request resolved correctly to Zanzibar instead of Nairobi.
+- This keeps agency metadata separate from traveler intent and prevents wrong trip titles from leaking into the operator surface.
+- The same live rerun also revealed duplicate internal-data warnings in the strategy brief, which are now deduped.
+
+## Live Validation Note: Ready CTA Advance
+
+- The Zanzibar trip intake page had a `Continue to options` CTA that was enabled but previously did nothing.
+- The live fix now routes that control to the strategy page when the trip is ready and has no recommended details left.
+- That makes the final intake action honest and prevents a silent workflow dead-end at the exact handoff point.
+
+## Live Validation Note: Ready CTA Copy Alignment
+
+- A ready Bali trip with INR budget, destination, and dates exposed a second mismatch: the footer CTA looked like navigation even when it was a processing action.
+- The footer label now reads `Build trip options`, which makes the action honest and distinct from the top `Open options` route link.
+- This is worth keeping in the exploration map because it came straight from a live operator clickthrough and clarified the difference between route navigation and background processing.
+
+## Live Validation Note: Strategy Placeholder Cleanup
+
+- The Bali trip strategy preview originally showed `Check TBD and Bali together` when origin was missing.
+- The preview builder now uses a human fallback sentence instead of echoing placeholder text, so the generated options brief stays polished even when context is incomplete.
+- This is worth keeping in the exploration map because it surfaced from a live operator page, not a synthetic fixture.
+
+## Live Validation Note: Output Empty-State Handoff
+
+- The Bali trip output page initially pushed the operator back to Options even though quote-assessment context was already present.
+- The empty-state routing now prefers Quote Assessment when that context exists, which better matches the actual trip lifecycle.
+- This is worth keeping in the exploration map because it removes a stale fallback that would have sent operators one stage too far backward.
+
+## Live Validation Note: Timeline Stage Label Cleanup
+
+- The trip timeline originally showed raw `Unknown` for an unset stage badge during the live Chrome simulation.
+- The shared timeline helper now renders `Stage not set`, which keeps the history view human-readable and aligned with the rest of the app’s labels.
+- This is worth keeping in the exploration map because it was a real operator-facing mismatch, not just a synthetic test fixture issue.
+
+## Live Validation Note: Overview Queue Language Cleanup
+
+- The overview command center originally showed `Travel TBD` in enquiry and quote cards when the date window was missing.
+- The shared date-window formatter now normalizes that sentinel into `Travel Dates to confirm`, which makes the queue feel like an operational surface instead of a temporary scaffold.
+- Quote cards with synthetic `TRIP-UNKNOWN` references now hide that fake id, so the queue no longer treats placeholder metadata like a real trip reference.
+- This is worth keeping in the exploration map because it came from the busiest live surface in the app, where placeholder language has the highest trust cost.

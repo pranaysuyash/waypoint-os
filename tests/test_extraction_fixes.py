@@ -35,6 +35,7 @@ from src.intake.extractors import (
     ExtractionPipeline,
 )
 from src.intake.packet_models import SourceEnvelope
+from src.intake.validation import validate_packet
 
 
 # =============================================================================
@@ -359,6 +360,15 @@ class TestExtractDestination:
         assert "pace" not in lowered
         assert "not" not in lowered
 
+    def test_agency_based_city_does_not_override_real_destination(self):
+        candidates, status, raw = _extract_destination_candidates(
+            "Nairobi-based agency request: family of 5 from Nairobi for 7N Zanzibar in December."
+        )
+        lowered = [c.lower() for c in candidates]
+        assert "nairobi" not in lowered
+        assert "zanzibar" in lowered
+        assert status in ("definite", "semi_open")
+
 
 # =============================================================================
 # _extract_dates — date range parsing
@@ -403,6 +413,26 @@ class TestExtractDates:
         if result is not None:
             _, _, _, confidence = result
             assert confidence in ("tentative", "exact")
+
+    def test_month_day_range_with_repeated_month(self):
+        result = _extract_dates("Travel dates: July 10 to July 16")
+        assert result is not None
+        window, start, end, confidence = result
+        assert "july" in window.lower()
+        assert start is not None and end is not None
+        assert start.endswith("-07-10"), start
+        assert end.endswith("-07-16"), end
+        assert confidence == "tentative"
+
+    def test_month_day_range_without_repeated_month(self):
+        result = _extract_dates("Travel dates: July 10-16")
+        assert result is not None
+        window, start, end, confidence = result
+        assert "july" in window.lower()
+        assert start is not None and end is not None
+        assert start.endswith("-07-10"), start
+        assert end.endswith("-07-16"), end
+        assert confidence == "tentative"
 
 
 # =============================================================================
@@ -536,6 +566,13 @@ class TestBudgetHinglish:
         assert result is not None
         assert result["min"] == 300000
 
+    def test_budget_label_with_currency_symbol(self):
+        result = _extract_budget("Budget: USD 4,500")
+        assert result is not None
+        assert result["min"] == 4500
+        assert result["max"] == 4500
+        assert result["currency"] == "USD"
+
 
 # ---------------------------------------------------------------------------
 # Origin: Hinglish/Odia postpositions (se, ru, side)
@@ -565,6 +602,30 @@ class TestOriginHinglish:
         origin = packet.facts.get("origin_city")
         assert origin is not None, "origin_city should be set"
         assert origin.value == "Bangalore", f"Expected Bangalore, got {origin.value}"
+
+    def test_label_style_origin_extracted(self):
+        """'Origin city: Nairobi' should populate origin_city via pipeline."""
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform(
+            "Origin city: Nairobi. Couple wants 6 nights in Zanzibar in June. Budget: USD 4,500.",
+            "test",
+        )
+        packet = pipeline.extract([env])
+        origin = packet.facts.get("origin_city")
+        budget = packet.facts.get("budget_min")
+        currency = packet.facts.get("budget_currency")
+        assert origin is not None, "origin_city should be set for label-style origin"
+        assert origin.value == "Nairobi", f"Expected Nairobi, got {origin.value}"
+        assert budget is not None, "budget_min should be set for label-style budget"
+        assert budget.value == 4500
+        assert currency is not None
+        assert currency.value == "USD"
+
+        destination = packet.facts.get("destination_candidates")
+        assert destination is not None, "destination_candidates should be set"
+        lowered = [c.lower() for c in destination.value]
+        assert "nairobi" not in lowered, f"Origin city leaked into destination candidates: {destination.value}"
+        assert "zanzibar" in lowered, f"Expected Zanzibar destination candidate, got {destination.value}"
 
     # --- New: Hinglish "se" ---
     def test_bangalore_se_excludes_from_destination(self):
@@ -795,6 +856,54 @@ class TestRuntimeInquiryRegressionCoverage:
         assert trip_purpose is not None
         assert trip_purpose.value == "family leisure"
         assert "origin_city" not in packet.facts
+
+    def test_bali_trip_with_explicit_dates_is_valid_for_discovery(self):
+        text = (
+            "Origin city: Mumbai. Party size: 2 adults. Destination: Bali. Travel dates: July 10 to July 16. "
+            "Budget: INR 4,00,000 total fixed. Vegetarian meals, anniversary trip, airport transfers, one day trip, and visa risks."
+        )
+
+        packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text, "runtime-regression")])
+        report = validate_packet(packet, stage="discovery")
+
+        assert packet.facts["date_window"].value == "July 10 to July 16"
+        assert packet.derived_signals["visa_concerns_present"].maturity == "heuristic"
+        assert report.is_valid, [(e.code, e.field, e.message) for e in report.errors]
+
+    def test_budget_with_inr_and_lakh_suffix_parses_full_amount(self):
+        result = _extract_budget("Budget INR 2.5L")
+
+        assert result is not None
+        assert result["raw_text"].lower() == "budget inr 2.5l"
+        assert result["min"] == 250000
+        assert result["max"] == 250000
+        assert result["currency"] == "INR"
+
+    def test_small_agency_family_note_keeps_full_party_and_budget(self):
+        text = (
+            "Family from Chennai for 5N Singapore in September. Budget INR 2.5L. "
+            "2 adults and 1 child. Need kid-friendly hotel, airport transfers, vegetarian meals, "
+            "and a quote by this evening. Passport expires in 5 months."
+        )
+
+        packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text, "runtime-regression")])
+
+        assert packet.facts["party_size"].value == 3
+        assert packet.facts["party_composition"].value == {"adults": 2, "children": 1}
+        assert packet.facts["budget_min"].value == 250000
+        assert packet.facts["budget_max"].value == 250000
+
+    def test_origin_from_phrase_stops_before_for(self):
+        text = (
+            "Large agency request: family of 9 from Mumbai for 6N Bali in August. "
+            "4 adults, 3 children ages 7, 10, and 13, plus 2 grandparents. Budget INR 12L total."
+        )
+
+        packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text, "runtime-regression")])
+
+        assert packet.facts["origin_city"].value == "Mumbai"
+        assert packet.facts["party_size"].value == 9
+        assert packet.facts["budget_min"].value == 1200000
 
 
 # ---------------------------------------------------------------------------

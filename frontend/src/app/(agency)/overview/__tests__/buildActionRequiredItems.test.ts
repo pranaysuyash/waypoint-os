@@ -180,7 +180,7 @@ describe('buildActionRequiredItems', () => {
 
     expect(items[0]).toMatchObject({
       title: 'Leisure enquiry',
-      subtitle: 'Unnamed customer · 1 pax · Travel TBD · Not assigned',
+      subtitle: 'Unnamed customer · 1 pax · Travel Dates to confirm · Not assigned',
       meta: 'Received 23 Apr · 26d waiting',
       reason: 'Qualification overdue',
       priority: 'urgent',
@@ -302,7 +302,7 @@ describe('buildActionRequiredItems', () => {
     expect(items[0]?.examples).toEqual([
       expect.objectContaining({
         title: '25d waiting',
-        detail: 'Unnamed customer · 1 pax · Travel TBD · Not assigned · Ref SC-901',
+        detail: 'Unnamed customer · 1 pax · Travel Dates to confirm · Not assigned · Ref SC-901',
         href: '/inbox',
       }),
       expect.objectContaining({
@@ -429,8 +429,45 @@ describe('buildActionRequiredItems', () => {
     expect(items[0]?.examples).toHaveLength(1);
     expect(items[0]?.examples?.[0]).toMatchObject({
       title: 'Italy honeymoon quote',
-      detail: 'Italy honeymoon quote · 2 pax · Travel Jun 2026 · Owner Agent · 4d waiting · Ref TRIP-1',
+      detail: '2 pax · Travel Jun 2026 · Owner Agent · 4d waiting · Ref TRIP-1',
       href: '/reviews',
+    });
+
+    vi.useRealTimers();
+  });
+
+  it('suppresses synthetic quote references from the prominent copy', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-19T00:00:00Z'));
+
+    const items = buildActionRequiredItems({
+      workspaceTrips: [],
+      pendingReviews: [
+        {
+          id: 'review_1',
+          tripId: 'trip_1',
+          tripReference: 'TRIP-UNKNOWN',
+          destination: 'Italy',
+          tripType: 'honeymoon',
+          partySize: 2,
+          dateWindow: 'June 2026',
+          value: 3000,
+          currency: 'USD',
+          agentId: 'agent_1',
+          agentName: 'Agent',
+          submittedAt: '2026-05-15T00:00:00Z',
+          status: 'pending',
+          reason: 'Awaiting owner approval.',
+          riskFlags: [],
+        },
+      ],
+      inboxTrips: [],
+    });
+
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      title: 'Italy honeymoon quote',
+      reference: undefined,
     });
 
     vi.useRealTimers();

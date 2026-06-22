@@ -3,7 +3,38 @@
 **Status**: 🔵 Specification — From Lab to Production  
 **Topic ID**: 19  
 **Parent**: [EXPLORATION_TOPICS.md](../EXPLORATION_TOPICS.md)  
-**Last Updated**: 2026-04-09
+**Last Updated**: 2026-06-21
+
+### Current Live Evidence (2026-06-21)
+
+- Authenticated login works with `newuser@test.com` / `testpass123`.
+- The main overview loads as a live command center.
+- The planning list groups duplicate-looking work into fewer cards.
+- The planning status label now reads `Ready to build options` instead of `Need Trip Options`.
+- A valid trip deep link opens a real trip workspace.
+- A stale deep link now falls back to a recovery screen that tells the operator to return to Trips in Planning and reopen the trip.
+- A thin Dubai intake still blocks on missing origin/budget, which is the right call for a first quote.
+- After restarting the backend, an explicit `Origin city: Nairobi` / `Budget: USD 4,500` intake now promotes to `Ready to build options`.
+- Ready trips now show `Recommended details` as optional refinements instead of sounding like blockers.
+- The Zanzibar intake rerun now stores `destination: Zanzibar` in the trip record, which fixes the earlier origin-leak regression.
+- The inbox operations cards now keep recency in a single SLA chip instead of duplicating it in the metrics row, making the dense queue easier to scan.
+- Lead inbox rows with missing destinations now fall back to trip type instead of rendering `Unknown leisure`.
+- Lead inbox rows with missing destinations now headline as `Trip details incomplete` for faster queue scanning.
+- The inbox header count label no longer has duplicate wrapper markup after the role-view cleanup.
+- The team-lead inbox profile now shows ownership, SLA, and priority without repeating the recency metric.
+- Finance and fulfillment inbox profiles now show `Options` for stage instead of the raw `options` enum, which makes the queue read more like an operator surface than a backend payload.
+- Grouped quote examples now avoid repeating the same title twice, so the quote list reads more like a summary and less like a duplicated payload.
+- The quote review queue now falls back to `Trip details incomplete` for unknown destinations instead of showing `Unknown leisure`.
+- The trips planning stage trail now renders as a clean plain-language progress line instead of a punctuation mashup.
+- The Bali intake now completes when the traveler message uses explicit origin, party size, destination, travel dates, budget, and visa-risk wording.
+- The date parser now understands common month-day ranges like `July 10 to July 16`.
+- `visa_concerns_present` now carries heuristic maturity, which removes the discovery validation hard-fail from the live Bali flow.
+- The generated trip route still returns `Unauthorized` after clicking `View Trip`, so the workbench handoff into the trip workspace remains a separate bug.
+- The live simulation doc is available at [Docs/travel_agency_main_app_simulation_2026-06-21.md](../travel_agency_main_app_simulation_2026-06-21.md).
+
+### Current Build Wording
+
+- Decision-state labels now say `Waiting on Customer` instead of `Need More Info`.
 
 ---
 
@@ -428,3 +459,69 @@ def can_use_feature(agency_id: str, feature: str) -> bool:
 ---
 
 *This is a roadmap for getting from lab to production.*
+
+## Live Chrome Verification Addendum
+
+- Verified in the original Chrome session via CDP/Playwright on `http://localhost:3010`
+- A small-agency call capture for `Singapore` with `2 adults and 1 child` now preserves `party_size = 3` instead of collapsing to `1`
+- `Budget INR 2.5L` now parses to `250000` and displays as compact INR `₹2.5L` instead of `₹3`
+- The workbench → trip-page handoff remains healthy after the parser and formatter fix
+
+## Live Chrome Addendum: Strategy Route Preview
+
+- Verified in the original Chrome session via CDP/Playwright on `http://localhost:3010/trips/trip_a4cd135cf395/strategy`
+- The trip options page now renders an actual strategy brief instead of the previous `Options builder not connected yet` placeholder
+- The live page shows the operator-facing structure we want: session goal, suggested opening, priority sequence, tone, guardrails, and assumptions when needed
+- The backend trip response now exposes `strategy`, which keeps the persisted trip contract aligned with the UI
+- This closes the specific gap where the app was already doing the work but the route still behaved like it was disconnected
+
+## Live Chrome Addendum: Destination Disambiguation
+
+- Verified in the original Chrome session via CDP/Playwright on `http://localhost:3010/workbench?draft=new&tab=intake&capture_mode=call&entry=new`
+- A Nairobi-based agency request initially misread `Nairobi` as the trip destination, producing a bad `Nairobi leisure trip` title
+- After tightening the destination filter and rerunning the same scenario, the stored trip resolved to `Zanzibar` with `Origin Nairobi`
+- The same rerun also showed the strategy brief no longer repeating the same internal-data warning twice
+- This is the kind of live issue that matters because agency metadata should never override the traveler’s real destination intent
+
+## Live Chrome Addendum: Ready CTA Advance
+
+- Verified in the original Chrome session via CDP/Playwright on the Zanzibar trip intake page
+- The `Continue to options` CTA now routes to the strategy page in the no-recommended-details state
+- Before the fix the button was enabled but did nothing, which made the ready state feel broken
+- This keeps the last intake action aligned with the promise the app makes when it says the trip is ready
+
+## Live Chrome Addendum: Ready CTA Copy Alignment
+
+- Verified in the original Chrome session via CDP/Playwright on a ready Bali trip with INR budget, destination, and dates captured
+- The footer CTA was updated from `Continue to options` to `Build trip options` so the label matches the actual processing action
+- The route to options remains available through the top `Open options` link, so navigation and processing are now visually distinct
+- This removes a confusing promise mismatch right at the moment the trip becomes ready
+
+## Live Chrome Addendum: Strategy Placeholder Cleanup
+
+- Verified in the original Chrome session via CDP/Playwright on the ready Bali trip strategy page
+- The strategy preview previously rendered `Check TBD and Bali together` when origin was missing
+- The preview builder now falls back to `Check the trip details around Bali`, which avoids leaking placeholder tokens into the live options brief
+- This is a small wording change, but it materially improves the operator’s trust in the generated brief
+
+## Live Chrome Addendum: Output Empty-State Handoff
+
+- Verified in the original Chrome session via CDP/Playwright on the Bali trip output page
+- The output page previously routed the operator back to Options even when quote assessment context already existed
+- The empty state now routes to Quote Assessment when that context is present, which is a better reflection of the trip lifecycle
+- The copy now explicitly says the traveler-safe output bundle still needs to be generated, so the page no longer implies the wrong next step
+
+## Live Chrome Addendum: Timeline Stage Label Cleanup
+
+- Verified in the original Chrome session on the trip timeline page after restoring the live auth session
+- The timeline card badge previously showed raw `Unknown` for an unset stage
+- The shared timeline label helper now renders `Stage not set`, which keeps the operational timeline readable and consistent with the rest of the app
+- This is a small label fix, but it removes a confusing raw enum leak from the operator-facing history view
+
+## Live Chrome Addendum: Overview Queue Language Cleanup
+
+- Verified in the original Chrome session on the overview page after normalizing the shared date-window formatter
+- The queue previously showed `Travel TBD` in enquiry and quote cards when the date window was missing
+- The same queue now renders `Travel Dates to confirm`, which reads as an actual planning state rather than a placeholder
+- Quote rows with synthetic `TRIP-UNKNOWN` references now suppress that fake id entirely, which keeps the queue from presenting placeholder metadata as if it were a real trip reference
+- This is worth keeping in the validation log because it was visible in the busiest command-center surface, not just in a low-traffic detail panel

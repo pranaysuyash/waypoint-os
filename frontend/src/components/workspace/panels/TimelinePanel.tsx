@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import type { Trip } from "@/lib/api-client";
 import type { TimelineEvent, TimelineResponse, SuitabilityFlag, OverrideData } from "@/types/spine";
 import { STAGE_LABELS, STATUS_LABELS, labelOrTitle } from "@/lib/label-maps";
+import { getTimelineStageLabel } from "@/lib/timeline-rail";
 import { SuitabilitySignal } from "./SuitabilitySignal";
 import { OverrideTimelineEvent } from "./OverrideTimelineEvent";
 
@@ -60,7 +61,7 @@ function TimelineEventCard({
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-wrap">
               <span className={`text-ui-xs font-semibold px-2 py-1 rounded ${colors.badge}`}>
-                {labelOrTitle(STAGE_LABELS, event.stage)}
+                {getTimelineStageLabel(event.stage)}
               </span>
               <span className="text-ui-sm font-medium text-text-secondary">
                 {labelOrTitle(STATUS_LABELS, event.status)}

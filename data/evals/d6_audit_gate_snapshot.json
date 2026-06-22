@@ -162,7 +162,7 @@
     "total_fixtures": 50
   },
   "fixture_root": "data/fixtures/audit",
-  "generated_at": "2026-06-21T08:02:50.117494+00:00",
+  "generated_at": "2026-06-21T08:58:57.910945+00:00",
   "manifest_version": 1,
   "pipeline_health": {
     "baseline_drifted": false,
@@ -182,7 +182,7 @@
   },
   "routing_health": {
     "blocks_ci": false,
-    "checked_at": "2026-06-21T08:02:50.113574+00:00",
+    "checked_at": "2026-06-21T08:58:57.909485+00:00",
     "status": "healthy",
     "thresholds": {
       "fallback_trigger_rate_critical": 0.5,

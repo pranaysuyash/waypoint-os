@@ -45,7 +45,7 @@ const STATE_META: Record<StateKey, StateMeta> = {
     fg: '#d29922',
     bg: 'rgba(210,153,34,0.10)',
     border: 'rgba(210,153,34,0.25)',
-    label: 'Need Trip Options',
+    label: 'Ready to build options',
   },
   red: {
     fg: '#f85149',

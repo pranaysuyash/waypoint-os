@@ -86,7 +86,12 @@ describe('TripCard v2 - priority indicator', () => {
 describe('TripCard v2 - primary context (row 1)', () => {
   it('renders destination and trip type as title', () => {
     render(<TripCard trip={mockTrip} isSelected={false} onSelect={vi.fn()} />);
-    expect(screen.getByTestId('trip-card-destination')).toHaveTextContent('Bali leisure');
+    expect(screen.getByTestId('trip-card-destination')).toHaveTextContent('Bali leisure trip');
+  });
+
+  it('falls back to trip type when destination is unknown', () => {
+    render(<TripCard trip={{ ...mockTrip, destination: 'Unknown' }} isSelected={false} onSelect={vi.fn()} />);
+    expect(screen.getByTestId('trip-card-destination')).toHaveTextContent('Trip details incomplete');
   });
 
   it('renders customer name below title', () => {
@@ -96,27 +101,82 @@ describe('TripCard v2 - primary context (row 1)', () => {
 
   it('renders stage badge', () => {
     render(<TripCard trip={mockTrip} isSelected={false} onSelect={vi.fn()} />);
-    expect(screen.getByTestId('trip-card-stage')).toHaveTextContent('intake');
+    expect(screen.getByTestId('trip-card-stage')).toHaveTextContent('Intake');
   });
 });
 
 describe('TripCard v2 - metrics row (role-dependent)', () => {
-  it('operations view shows party · date · value · days', () => {
+  it('operations view shows party · date · value and keeps SLA recency in the badge', () => {
     render(<TripCard trip={mockTrip} isSelected={false} onSelect={vi.fn()} viewProfile="operations" />);
     const metrics = screen.getByTestId('trip-card-metrics');
     expect(metrics).toHaveTextContent('4 pax');
-    expect(metrics).toHaveTextContent('June 2026');
+    expect(metrics).toHaveTextContent('Jun 2026');
     expect(metrics).toHaveTextContent('$15.0k');
-    expect(metrics).toHaveTextContent('6d');
+    expect(metrics).not.toHaveTextContent('6d');
+    expect(screen.getByTestId('trip-card-sla')).toHaveTextContent('6d · 600% of SLA');
   });
 
-  it('teamLead view shows assignee · SLA · days · priority', () => {
+  it('uses human fallback labels for missing date and value metrics', () => {
+    render(
+      <TripCard
+        trip={{ ...mockTrip, dateWindow: '', value: 0 }}
+        isSelected={false}
+        onSelect={vi.fn()}
+        viewProfile="operations"
+      />,
+    );
+    const metrics = screen.getByTestId('trip-card-metrics');
+    expect(metrics).toHaveTextContent('Dates to confirm');
+    expect(metrics).toHaveTextContent('Value to confirm');
+  });
+
+  it('normalizes TBD date windows in the metrics row', () => {
+    render(
+      <TripCard
+        trip={{ ...mockTrip, dateWindow: 'TBD' }}
+        isSelected={false}
+        onSelect={vi.fn()}
+        viewProfile="operations"
+      />,
+    );
+    expect(screen.getByTestId('trip-card-metrics')).toHaveTextContent('Dates to confirm');
+  });
+
+  it('teamLead view shows assignee · SLA · priority without repeating recency', () => {
     render(<TripCard trip={mockTrip} isSelected={false} onSelect={vi.fn()} viewProfile="teamLead" />);
     const metrics = screen.getByTestId('trip-card-metrics');
     expect(metrics).toHaveTextContent('Alex Agent');
     expect(metrics).toHaveTextContent('at risk');
-    expect(metrics).toHaveTextContent('6d');
     expect(metrics).toHaveTextContent('High');
+    expect(metrics).not.toHaveTextContent('6d');
+  });
+
+  it('finance view humanizes stage labels in the metrics row', () => {
+    render(
+      <TripCard
+        trip={{ ...mockTrip, stage: 'options' }}
+        isSelected={false}
+        onSelect={vi.fn()}
+        viewProfile="finance"
+      />,
+    );
+    const metrics = screen.getByTestId('trip-card-metrics');
+    expect(metrics).toHaveTextContent('Options');
+    expect(metrics).not.toHaveTextContent('options');
+  });
+
+  it('fulfillment view humanizes stage labels in the metrics row', () => {
+    render(
+      <TripCard
+        trip={{ ...mockTrip, stage: 'options' }}
+        isSelected={false}
+        onSelect={vi.fn()}
+        viewProfile="fulfillment"
+      />,
+    );
+    const metrics = screen.getByTestId('trip-card-metrics');
+    expect(metrics).toHaveTextContent('Options');
+    expect(metrics).not.toHaveTextContent('options');
   });
 });
 
@@ -124,8 +184,7 @@ describe('TripCard v2 - status row (row 3)', () => {
   it('renders contextual SLA badge with days and percentage', () => {
     render(<TripCard trip={mockTrip} isSelected={false} onSelect={vi.fn()} />);
     const sla = screen.getByTestId('trip-card-sla');
-    expect(sla).toHaveTextContent('6d');
-    expect(sla).toHaveTextContent('600%');
+    expect(sla).toHaveTextContent('6d · 600% of SLA');
   });
 
   it('renders assigned agent badge when assigned', () => {

@@ -1,3 +1,5 @@
+import { formatMoney, formatMoneyCompact, parseBudgetString } from "@/lib/currency";
+
 const MONTH_MAP: Record<string, string> = {
   jan: 'Jan',
   january: 'Jan',
@@ -75,6 +77,13 @@ export function formatBudgetDisplay(value?: string | null): string {
   const trimmed = value.trim();
   if (trimmed === '$0' || trimmed === '0' || trimmed === '₹0' || trimmed === '€0' || trimmed === '£0') return 'Budget missing';
   if (/^\D*0(\.0+)?\D*$/.test(trimmed)) return 'Budget missing';
+  const parsed = parseBudgetString(trimmed);
+  if (parsed && parsed.amount > 0) {
+    if (parsed.currency === 'INR' && parsed.amount >= 100000) {
+      return formatMoneyCompact(parsed.amount, parsed.currency);
+    }
+    return formatMoney(parsed.amount, parsed.currency);
+  }
   return trimmed;
 }
 
@@ -126,6 +135,9 @@ export function formatDateWindowDisplay(value?: string | null, fallback = 'Dates
   if (!value) return fallback;
 
   const trimmed = value.replace(/^dates\s+/i, '').trim();
+  if (['tbd', 'to confirm', 'unknown', 'not set', 'n/a', '-'].includes(trimmed.toLowerCase())) {
+    return fallback;
+  }
   const formattedRange = formatSimpleDateRange(trimmed);
   if (formattedRange) return formattedRange;
 

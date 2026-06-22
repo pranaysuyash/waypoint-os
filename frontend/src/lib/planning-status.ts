@@ -199,11 +199,11 @@ export function getPlanningStatusTone(trip?: Trip | null): Trip["state"] {
 }
 
 export function getPlanningStatusLabel(trip?: Trip | null): string {
-  if (!trip) return "Need Trip Options";
+  if (!trip) return "Ready to build options";
   if (hasPlanningBriefBlocker(trip)) return "Missing customer details";
   if (trip.state === "red") return "Needs Review";
   if (trip.status === "in_progress") return "In Progress";
-  return "Need Trip Options";
+  return "Ready to build options";
 }
 
 export function getPlanningHeaderTitle(trip?: Trip | null): string {
@@ -268,6 +268,10 @@ export function getPlanningSuggestedNextMove(isLeadReview: boolean, trip?: Trip 
   const recommendedFields = getRecommendedPlanningFields(trip);
   if (recommendedFields.length > 0) {
     return "Add recommended details or continue to options.";
+  }
+
+  if (getPlanningBriefStatus(trip) === "complete") {
+    return "Continue to options.";
   }
 
   const decisionState = trip?.decision?.decision_state;

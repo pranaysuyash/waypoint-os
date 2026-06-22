@@ -218,6 +218,8 @@ function isInternalLookingName(value?: string | null): boolean {
 function formatReference(value?: string | null): string | undefined {
   const reference = value?.trim();
   if (!reference) return undefined;
+  if (['tbd', 'to confirm', 'unknown', 'not set', 'n/a', '-'].includes(reference.toLowerCase())) return undefined;
+  if (/^trip[-_]?unknown$/i.test(reference)) return undefined;
   return `Ref ${reference}`;
 }
 
@@ -226,7 +228,7 @@ function formatPax(value?: number | null): string {
 }
 
 function formatTravel(value?: string | null): string {
-  return `Travel ${formatDateWindowDisplay(value, 'TBD')}`;
+  return `Travel ${formatDateWindowDisplay(value)}`;
 }
 
 function hasKnownValue(value?: string | null): boolean {
@@ -581,10 +583,11 @@ function collapseRepeatedWork(
     for (const item of groupItems) {
       if (examples.length >= maxExamples) break;
       const waitingLabel = extractWaitingLabel(item.meta);
+      const exampleTitle = first.source === 'lead' ? waitingLabel ?? item.title : item.title;
       const example = {
-        title: first.source === 'lead' ? waitingLabel ?? item.title : item.title,
+        title: exampleTitle,
         detail: joinParts([
-          first.source === 'lead' ? null : item.title,
+          first.source === 'lead' || item.title === exampleTitle ? null : item.title,
           item.subtitle,
           first.source === 'lead' ? null : waitingLabel,
           item.reference,

@@ -1533,12 +1533,45 @@ def _build_processed_trip(
     preserve_trip_id: Optional[str] = None,
     preserve_created_at: Optional[str] = None,
 ) -> dict:
+    from types import SimpleNamespace
+
+    from src.intake.strategy import build_session_strategy
+
     packet = spine_output.get("packet", {}) or {}
     validation = spine_output.get("validation", {}) or {}
     decision = spine_output.get("decision", {}) or {}
     safety = spine_output.get("safety", {}) or {}
     frontier_result = spine_output.get("frontier_result")
     fees = spine_output.get("fees")
+
+    strategy = spine_output.get("strategy")
+    if not strategy and decision:
+        confidence_payload = decision.get("confidence") or {}
+        decision_proxy = SimpleNamespace(
+            decision_state=decision.get("decision_state", "ASK_FOLLOWUP"),
+            operating_mode=decision.get("operating_mode", "normal_intake"),
+            confidence=SimpleNamespace(
+                overall=float(confidence_payload.get("overall") or 0.0),
+            ),
+            rationale=decision.get("rationale") or {},
+            risk_flags=decision.get("risk_flags") or [],
+            soft_blockers=decision.get("soft_blockers") or [],
+            ambiguities=[
+                SimpleNamespace(
+                    field_name=amb.get("field_name", "") if isinstance(amb, dict) else str(amb),
+                    severity=amb.get("severity", "advisory") if isinstance(amb, dict) else "advisory",
+                    raw_value=amb.get("raw_value", "") if isinstance(amb, dict) else str(amb),
+                )
+                for amb in (decision.get("ambiguities") or [])
+            ],
+            follow_up_questions=decision.get("follow_up_questions") or [],
+            branch_options=decision.get("branch_options") or [],
+        )
+        try:
+            strategy = build_session_strategy(decision_proxy, None)
+        except Exception as exc:
+            logger.warning("Failed to synthesize trip strategy for %s: %s", spine_output.get("run_id"), exc)
+            strategy = None
 
     trip = {
         "id": preserve_trip_id or f"trip_{uuid4().hex[:12]}",
@@ -1561,7 +1594,7 @@ def _build_processed_trip(
         "extracted": packet,
         "validation": validation,
         "decision": decision,
-        "strategy": spine_output.get("strategy"),
+        "strategy": strategy.to_dict() if hasattr(strategy, "to_dict") else strategy,
         "traveler_bundle": spine_output.get("traveler_bundle"),
         "internal_bundle": spine_output.get("internal_bundle"),
         "safety": safety,
