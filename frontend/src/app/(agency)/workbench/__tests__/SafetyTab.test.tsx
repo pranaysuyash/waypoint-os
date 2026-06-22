@@ -78,6 +78,21 @@ const DECISION_WITHOUT_FRONTIER = {
   rationale: {},
 };
 
+const DECISION_WITH_FOLLOWUP = {
+  decision_state: 'ASK_FOLLOWUP',
+  confidence: { overall: 0.72 },
+  hard_blockers: ['resolved_destination'],
+  soft_blockers: ['date_flexibility'],
+  follow_up_questions: [
+    {
+      field_name: 'destination',
+      question: 'Which island or region are you leaning toward?',
+      priority: 'high',
+    },
+  ],
+  rationale: {},
+};
+
 describe('SafetyTab - Special Handling Controls', () => {
   beforeEach(() => {
     mockStore.result_safety = null;
@@ -125,6 +140,20 @@ describe('SafetyTab - Special Handling Controls', () => {
     render(<SafetyTab />);
 
     expect(screen.queryByText('Special Handling Controls')).toBeNull();
+  });
+
+  it('shows decision state even when safety bundle is absent', () => {
+    mockStore.result_safety = null;
+    mockStore.result_decision = DECISION_WITH_FOLLOWUP;
+
+    render(<SafetyTab />);
+
+    expect(screen.getByText('Decision State')).toBeDefined();
+    expect(screen.getByText('Waiting on Customer')).toBeDefined();
+    expect(screen.getByText('resolved_destination')).toBeDefined();
+    expect(screen.getByText('date_flexibility')).toBeDefined();
+    expect(screen.getByText('Which island or region are you leaning toward?')).toBeDefined();
+    expect(screen.getByText('Safety bundle is not available for this run, but the decision state above is still available for review.')).toBeDefined();
   });
 
   it('renders CRITICAL urgency badge', () => {

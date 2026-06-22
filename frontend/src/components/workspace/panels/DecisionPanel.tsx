@@ -99,7 +99,11 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
   };
   const stateColor = STATE_COLORS[STATE_KEY[decision.decision_state] ?? "neutral"];
 
-  const confidence = Math.round((decision.confidence?.overall || 0) * 100);
+  const confidence = decision.confidence?.overall;
+  const confidenceLabel =
+    typeof confidence === "number" && Number.isFinite(confidence)
+      ? `${Math.round(confidence * 100)}%`
+      : "Confidence unavailable";
 
   return (
     <div className="space-y-5">
@@ -118,14 +122,12 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
               {STATE_LABELS[decision.decision_state] || "Review Required"}
             </div>
           </div>
-          {confidence > 0 && (
-            <div className="text-right shrink-0">
-              <div className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-text-placeholder mb-1">Confidence</div>
-              <div className="text-ui-2xl font-black" style={{ color: stateColor.color, fontFamily: "'Outfit', sans-serif" }}>
-                {confidence}%
-              </div>
+          <div className="text-right shrink-0">
+            <div className="text-[var(--ui-text-xs)] font-bold uppercase tracking-widest text-text-placeholder mb-1">Confidence</div>
+            <div className="text-ui-2xl font-black" style={{ color: stateColor.color, fontFamily: "'Outfit', sans-serif" }}>
+              {confidenceLabel}
             </div>
-          )}
+          </div>
         </div>
       </div>
 

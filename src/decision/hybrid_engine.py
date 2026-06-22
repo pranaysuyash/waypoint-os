@@ -27,6 +27,11 @@ from .cache_key import generate_cache_key
 from .telemetry import get_telemetry
 from .health import get_health_checker
 
+# Confidence constants (replace hardcoded 0.9/0.8 throughout)
+RULE_CONFIDENCE = 0.9
+LLM_CONFIDENCE = 0.8
+DEFAULT_CONFIDENCE = 0.5
+
 
 @lru_cache(maxsize=1)
 def _is_llm_guard_enabled() -> bool:
@@ -302,7 +307,7 @@ class HybridDecisionEngine:
 
             logger.debug("Registered 18 built-in decision rules")
         except ImportError as e:
-            logger.warning(f"Failed to import built-in rules: {e}")
+            logger.warning("Failed to import built-in rules: %s", e)
 
     def register_rule(
         self,
@@ -325,7 +330,7 @@ class HybridDecisionEngine:
         if decision_type not in self._rules:
             self._rules[decision_type] = []
         self._rules[decision_type].append(rule_fn)
-        logger.debug(f"Registered rule for {decision_type}")
+        logger.debug("Registered rule for %s", decision_type)
 
     def decide(
         self,
@@ -406,7 +411,7 @@ class HybridDecisionEngine:
                 return DecisionResult(
                     decision=rule_result,
                     source="rule",
-                    confidence=0.9,  # Rules have high confidence
+                    confidence=RULE_CONFIDENCE,
                     rule_hit=True,
                     decision_type=decision_type,
                 )
@@ -441,7 +446,7 @@ class HybridDecisionEngine:
                 return DecisionResult(
                     decision=llm_result["decision"],
                     source="llm",
-                    confidence=llm_result.get("confidence", 0.8),
+                    confidence=llm_result.get("confidence", LLM_CONFIDENCE),
                     llm_used=True,
                     llm_model=llm_result["model"],
                     cost_inr=llm_result["cost"],
@@ -455,7 +460,7 @@ class HybridDecisionEngine:
         # Step 4: Fallback to default
         self.metrics.default_fallbacks += 1
         default = self.DEFAULT_DECISIONS.get(decision_type, {})
-        logger.warning(f"Using default decision for {decision_type}")
+        logger.warning("Using default decision for %s", decision_type)
         latency_ms = (time.time() - start_time) * 1000
         # Record telemetry
         telemetry = get_telemetry()
@@ -468,7 +473,7 @@ class HybridDecisionEngine:
         return DecisionResult(
             decision=default,
             source="default",
-            confidence=0.5,
+            confidence=DEFAULT_CONFIDENCE,
             decision_type=decision_type,
         )
 
@@ -485,11 +490,11 @@ class HybridDecisionEngine:
             if cached:
                 min_success_rate = 0.7  # Default minimum success rate
                 if cached.success_rate >= min_success_rate:
-                    logger.debug(f"Cache hit for {decision_type}: {cache_key[:8]}...")
+                    logger.debug("Cache hit for %s: %s...", decision_type, cache_key[:8])
                     return cached
 
         except Exception as e:
-            logger.warning(f"Cache check failed: {e}")
+            logger.warning("Cache check failed: %s", e)
 
         return None
 
@@ -505,10 +510,10 @@ class HybridDecisionEngine:
             try:
                 result = rule_fn(packet)
                 if result is not None:
-                    logger.debug(f"Rule hit for {decision_type}: {rule_fn.__name__}")
+                    logger.debug("Rule hit for %s: %s", decision_type, rule_fn.__name__)
                     return result
             except Exception as e:
-                logger.warning(f"Rule {rule_fn.__name__} failed: {e}")
+                logger.warning("Rule %s failed: %s", rule_fn.__name__, e)
 
         return None
 
@@ -581,7 +586,7 @@ class HybridDecisionEngine:
                         )
                 except Exception as guard_error:
                     logger.warning(
-                        f"LLM usage guard check failed (failing open): {guard_error}"
+                        "LLM usage guard check failed (failing open): %s", guard_error
                     )
             elif not _is_llm_guard_enabled():
                 logger.debug("LLM usage guard disabled via LLM_GUARD_ENABLED=0")
@@ -597,8 +602,8 @@ class HybridDecisionEngine:
             self.metrics.total_cost_inr += cost
 
             logger.info(
-                f"LLM call for {decision_type}: "
-                f"model={llm_model}, cost=₹{cost:.2f}"
+                "LLM call for %s: model=%s, cost=₹%.2f",
+                decision_type, llm_model, cost,
             )
 
             if usage_decision is not None and _is_llm_guard_enabled() and get_usage_guard is not None:
@@ -611,18 +616,18 @@ class HybridDecisionEngine:
                     )
                 except Exception as guard_error:
                     logger.warning(
-                        f"LLM usage guard record failed (ignoring): {guard_error}"
+                        "LLM usage guard record failed (ignoring): %s", guard_error
                     )
 
             return {
                 "decision": decision,
                 "model": llm_model,
                 "cost": cost,
-                "confidence": 0.8,
+                "confidence": LLM_CONFIDENCE,
             }
 
         except Exception as e:
-            logger.error(f"LLM call failed for {decision_type}: {e}")
+            logger.error("LLM call failed for %s: %s", decision_type, e)
             if usage_decision is not None and _is_llm_guard_enabled() and get_usage_guard is not None:
                 try:
                     guard = get_usage_guard()
@@ -737,7 +742,7 @@ Consider age diversity, mobility requirements, and special needs.""",
                 cache_key=cache_key,
                 decision_type=decision_type,
                 decision=decision,
-                confidence=0.9 if source == "rule_engine" else 0.8,
+                confidence=RULE_CONFIDENCE if source == "rule_engine" else LLM_CONFIDENCE,
                 source=source,
                 llm_model_used=llm_model,
                 created_at=now,
@@ -752,10 +757,10 @@ Consider age diversity, mobility requirements, and special needs.""",
                 decision_type=decision_type,
                 decision=cached,
             )
-            logger.debug(f"Cached decision for {decision_type}: {cache_key[:8]}...")
+            logger.debug("Cached decision for %s: %s...", decision_type, cache_key[:8])
 
         except Exception as e:
-            logger.warning(f"Failed to cache decision: {e}")
+            logger.warning("Failed to cache decision: %s", e)
 
     def get_metrics(self) -> EngineMetrics:
         """Get current engine metrics."""

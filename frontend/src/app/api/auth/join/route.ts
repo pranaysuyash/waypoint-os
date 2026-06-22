@@ -17,6 +17,19 @@ import { bffFetchOptions, bffJson, isAuthStatus } from "@/lib/bff-auth";
 import { parse as parseSetCookie } from "set-cookie-parser";
 import { NextResponse } from "next/server";
 
+function getSetCookieHeaders(headers: Headers): string[] {
+  const headersAny = headers as Headers & {
+    getSetCookie?: () => string[];
+  };
+
+  if (typeof headersAny.getSetCookie === "function") {
+    return headersAny.getSetCookie();
+  }
+
+  const singleHeader = headers.get("set-cookie");
+  return singleHeader ? [singleHeader] : [];
+}
+
 export async function POST(request: NextRequest) {
   let body: unknown;
   try {
@@ -33,7 +46,7 @@ export async function POST(request: NextRequest) {
       bffFetchOptions(request, "POST", "access_only", { "Content-Type": "application/json" }, body)
     );
 
-    const rawCookies = response.headers.getSetCookie();
+    const rawCookies = getSetCookieHeaders(response.headers);
 
     if (!response.ok) {
       if (isAuthStatus(response.status)) {

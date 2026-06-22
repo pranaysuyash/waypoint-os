@@ -729,6 +729,24 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
             "₹": "INR",
             "rs": "INR",
             "inr": "INR",
+            "₦": "NGN",
+            "ngn": "NGN",
+            "r": "ZAR",
+            "zar": "ZAR",
+            "kes": "KES",
+            "ghs": "GHS",
+            "aed": "AED",
+            "sar": "SAR",
+            "jpy": "JPY",
+            "cny": "CNY",
+            "npr": "NPR",
+            "lkr": "LKR",
+            "php": "PHP",
+            "myr": "MYR",
+            "thb": "THB",
+            "idr": "IDR",
+            "mxn": "MXN",
+            "brl": "BRL",
             "aud": "AUD",
             "cad": "CAD",
             "sgd": "SGD",
@@ -742,40 +760,80 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
             or re.fullmatch(r"\d{4}-\d{2}-\d{2}", token)
         )
 
+    currency_token_pattern = (
+        r"(usd|inr|eur|gbp|ngn|zar|kes|ghs|aed|sar|jpy|cny|npr|lkr|php|myr|thb|idr|mxn|brl|aud|cad|sgd|₹|\$|€|£|₦|R)"
+    )
+    amount_unit_pattern = (
+        r"(\d[\d,]*(?:\.\d+)?)\s*(l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?"
+    )
     explicit_label_match = re.search(
         r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*"
-        r"(?:(usd|inr|eur|gbp|aud|cad|sgd|₹|\$|€|£)\s*)?"
-        r"(\d[\d,]*(?:\.\d+)?)\s*(l|k|lac|lakh|lakhs|thousand)?\b",
+        r"(?:(?P<currency>" + currency_token_pattern + r")\s*)?"
+        r"(?P<amount>\d[\d,]*(?:\.\d+)?)\s*(?P<unit>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?\b",
         text_lower,
     )
     if explicit_label_match:
-        raw_amount = explicit_label_match.group(2).replace(",", "").strip()
-        unit = (explicit_label_match.group(3) or "").strip().lower()
+        raw_amount = explicit_label_match.group("amount").replace(",", "").strip()
+        unit = (explicit_label_match.group("unit") or "").strip().lower()
         if not _looks_like_date_token(raw_amount):
             parsed_value = float(raw_amount)
             if unit in ("l", "lac", "lakh", "lakhs"):
                 parsed_value *= 100000
             elif unit in ("k", "thousand"):
                 parsed_value *= 1000
+            elif unit in ("m", "mn", "million", "millions"):
+                parsed_value *= 1000000
+            elif unit in ("cr", "crore", "crores"):
+                parsed_value *= 10000000
+            elif unit in ("b", "bn", "billion", "billions"):
+                parsed_value *= 1000000000
             return {
                 "raw_text": explicit_label_match.group(0).strip(),
                 "min": int(parsed_value),
                 "max": int(parsed_value),
-                "currency": _currency_code(explicit_label_match.group(1)),
+                "currency": _currency_code(explicit_label_match.group("currency")),
+            }
+
+    trailing_budget_match = re.search(
+        r"(?:(?P<currency>" + currency_token_pattern + r")\s*)?"
+        r"(?P<amount>\d[\d,]*(?:\.\d+)?)\s*(?P<unit>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?"
+        r"\s*\bbudget\b",
+        text_lower,
+    )
+    if trailing_budget_match:
+        raw_amount = trailing_budget_match.group("amount").replace(",", "").strip()
+        unit = (trailing_budget_match.group("unit") or "").strip().lower()
+        if not _looks_like_date_token(raw_amount):
+            parsed_value = float(raw_amount)
+            if unit in ("l", "lac", "lakh", "lakhs"):
+                parsed_value *= 100000
+            elif unit in ("k", "thousand"):
+                parsed_value *= 1000
+            elif unit in ("m", "mn", "million", "millions"):
+                parsed_value *= 1000000
+            elif unit in ("cr", "crore", "crores"):
+                parsed_value *= 10000000
+            elif unit in ("b", "bn", "billion", "billions"):
+                parsed_value *= 1000000000
+            return {
+                "raw_text": trailing_budget_match.group(0).strip(),
+                "min": int(parsed_value),
+                "max": int(parsed_value),
+                "currency": _currency_code(trailing_budget_match.group("currency")),
             }
 
     # Look for budget-like patterns
     patterns = [
         # Explicit budget with numeric range and optional unit suffix.
-        r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*(\d+(?:\.\d+)?\s*(?:-|–|—|\bto\b)\s*\d+(?:\.\d+)?\s*(?:l|k|lac|lakh|lakhs|thousand)?)\b",
+        r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*(\d+(?:\.\d+)?\s*(?:-|–|—|\bto\b)\s*\d+(?:\.\d+)?\s*(?:l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?)\b",
         # Explicit budget with single value + unit.
-        r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*(\d+(?:\.\d+)?\s*(?:l|k|lac|lakh|lakhs|thousand))\b",
+        r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*(\d+(?:\.\d+)?\s*(?:l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand))\b",
         # Budget-like value with unit when budget keyword may be omitted.
-        r"\b(?:around|about|approx(?:imately)?)\s+(\d+(?:\.\d+)?\s*(?:l|k|lac|lakh|lakhs|thousand))\b",
+        r"\b(?:around|about|approx(?:imately)?)\s+(\d+(?:\.\d+)?\s*(?:l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand))\b",
         # Plain number only accepted with explicit budget keyword.
         r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*(\d{4,})\b",
         # Bare number with L/K suffix (no keyword needed).
-        r"\b((?:\d+(?:\.\d+)?)\s*(?:l|k|lac|lakh|lakhs|thousand))\b",
+        r"\b((?:\d+(?:\.\d+)?)\s*(?:l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand))\b",
     ]
     for pat in patterns:
         m = re.search(pat, text_lower)
@@ -903,6 +961,12 @@ def _extract_party(text: str) -> Dict[str, Any]:
     for pattern, group, count in _FAMILY_PATTERNS:
         if re.search(pattern, text_lower):
             composition[group] = composition.get(group, 0) + count
+
+    # Couple / pair / duo phrasing is a common shorthand for two adults.
+    # Only infer this when no other party composition has already been stated,
+    # so explicit counts or richer composition cues still win.
+    if not composition and re.search(r"\b(?:a\s+)?(?:couple|pair|duo)\b", text_lower):
+        composition["adults"] = 2
 
     # Child with decimal age: "1.7 year old kid", "2.5yr old"
     dec_age = re.search(r"(\d+\.?\d*)\s*(?:years?|yr|y)[\s-]*(?:old|aged?)\s+(?:kid|child|baby|toddler|son|daughter)", text_lower)

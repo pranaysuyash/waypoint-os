@@ -1,5 +1,5 @@
 import { useWorkbenchStore } from "@/stores/workbench";
-import type { SafetyResult, PromptBundle, DecisionOutput } from "@/types/spine";
+import type { SafetyResult, PromptBundle, DecisionOutput, FollowUpQuestion } from "@/types/spine";
 import type { Trip } from "@/lib/api-client";
 import styles from "@/components/workbench/workbench.module.css";
 
@@ -45,29 +45,89 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
     return Array.isArray(sk) ? sk : [];
   })();
 
-  if (!activeSafety) {
-    return (
-      <div className={styles.emptyState}>
-        <p>No risk review data yet. Process a trip from the &ldquo;New Inquiry&rdquo; section first.</p>
-      </div>
-    );
-  }
-
-  const safety = activeSafety;
+  const safety = activeSafety as SafetyResult;
   const travelerBundle = activeTravelerBundle;
   const internalBundle = activeInternalBundle;
-
-  const strippedFields = safety.leakage_errors || [];
-  const isStrictFail = safety.strict_leakage && !safety.leakage_passed;
+  const strippedFields = safety?.leakage_errors || [];
+  const isStrictFail = Boolean(safety?.strict_leakage && !safety?.leakage_passed);
+  const decisionState = activeDecision?.decision_state ?? null;
+  const hardBlockers = (activeDecision as any)?.hard_blockers ?? [];
+  const softBlockers = (activeDecision as any)?.soft_blockers ?? [];
+  const followUpQuestions: FollowUpQuestion[] = (activeDecision as any)?.follow_up_questions ?? [];
+  const overallConfidence = activeDecision?.confidence?.overall;
+  const confidenceLabel =
+    typeof overallConfidence === "number" && Number.isFinite(overallConfidence)
+      ? `${Math.round(overallConfidence * 100)}%`
+      : "Confidence unavailable";
 
   return (
     <div>
+      {activeDecision && (
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Decision State</h3>
+          <div className={styles.card}>
+            <span className={`${styles.badge} ${URGENCY_STYLES.NORMAL}`}>
+              {decisionState === "ASK_FOLLOWUP" ? "Waiting on Customer" : decisionState || "Review Required"}
+            </span>
+            <div style={{ marginTop: "12px", fontSize: "13px", color: "var(--color-text-muted)" }}>
+              Overall Confidence: {confidenceLabel}
+            </div>
+            {hardBlockers.length > 0 && (
+              <div style={{ marginTop: "12px" }}>
+                <strong style={{ color: "var(--color-danger)" }}>Hard Blockers:</strong>
+                <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
+                  {hardBlockers.map((b: string) => <li key={`hard-${b}`}>{b}</li>)}
+                </ul>
+              </div>
+            )}
+            {softBlockers.length > 0 && (
+              <div style={{ marginTop: "12px" }}>
+                <strong style={{ color: "var(--color-warning)" }}>Soft Blockers:</strong>
+                <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
+                  {softBlockers.map((b: string) => <li key={`soft-${b}`}>{b}</li>)}
+                </ul>
+              </div>
+            )}
+            {followUpQuestions.length > 0 && (
+              <div style={{ marginTop: "12px" }}>
+                <strong style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Follow-up Questions</strong>
+                <ul style={{ margin: "4px 0 0 16px", fontSize: "13px" }}>
+                  {followUpQuestions.map((question, index) => (
+                    <li key={`fu-${question.field_name || index}`} style={{ marginBottom: "4px" }}>
+                      <strong>[{question.priority || "normal"}]</strong> {question.question}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!activeSafety && !activeDecision && (
+        <div className={styles.emptyState}>
+          <p>No risk review data yet. Process a trip from the &ldquo;New Inquiry&rdquo; section first.</p>
+        </div>
+      )}
+
+      {!activeSafety && activeDecision && (
+        <div className={styles.section}>
+          <div className={styles.card}>
+            <p style={{ fontSize: "13px", color: "var(--color-text-muted)", margin: 0 }}>
+              Safety bundle is not available for this run, but the decision state above is still available for review.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {activeSafety && (
+        <>
       <div className={styles.section}>
         <h3 className={styles.sectionTitle}>Risk Gate</h3>
         <p style={{ fontSize: "12px", color: "var(--color-text-muted)", margin: "0 0 10px 0" }}>
           Final send-readiness check for customer-safe language and compliance-sensitive terms.
         </p>
-        {safety.leakage_passed ? (
+      {safety.leakage_passed ? (
           <div className={styles.leakagePass}>
             <div className={styles.leakageTitle}>
               <span className={`${styles.listIcon} ${styles.iconSuccess}`} style={{ marginRight: "8px" }}>✓</span>
@@ -234,6 +294,8 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
             internal_bundle: activeInternalBundle,
           }, null, 2)}</pre>
         </div>
+      )}
+        </>
       )}
     </div>
   );

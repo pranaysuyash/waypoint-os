@@ -220,13 +220,14 @@ class TestGetExtractorFactory:
             ext = get_extractor()
             assert ext.__class__.__name__ == "OpenAIVisionExtractor"
 
-    def test_unknown_provider_local_env_falls_back(self):
+    def test_unknown_provider_any_env_raises(self):
+        """Silent noop fallback removed — unknown provider always raises."""
         with patch.dict(os.environ, {
             "EXTRACTION_PROVIDER": "imaginary_provider",
             "APP_ENV": "local",
         }):
-            ext = get_extractor()
-            assert isinstance(ext, NoopExtractor)
+            with pytest.raises(RuntimeError, match="Unknown EXTRACTION_PROVIDER"):
+                get_extractor()
 
     def test_unknown_provider_production_raises(self):
         with patch.dict(os.environ, {
@@ -390,7 +391,7 @@ class TestMIMEPrevalidation:
                 fields={"full_name": "TEST"},
                 confidence_scores={"full_name": 0.9},
                 overall_confidence=0.9,
-                confidence_method="heuristic_presence",
+                confidence_method="validation",
                 provider_metadata={"model_name": "gpt-5.4-nano", "latency_ms": 100},
             ))
             mock_get.return_value = mock_extractor
@@ -444,7 +445,7 @@ class TestMIMEPrevalidation:
                 fields={"full_name": "TEST"},
                 confidence_scores={"full_name": 0.9},
                 overall_confidence=0.9,
-                confidence_method="heuristic_presence",
+                confidence_method="validation",
                 provider_metadata={"model_name": "gpt-4o", "latency_ms": 100,
                                    "prompt_tokens": 50, "completion_tokens": 25,
                                    "total_tokens": 75, "cost_estimate_usd": None},

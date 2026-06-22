@@ -16,7 +16,8 @@ if [ ! -f "$MOTTO_FILE" ]; then
   exit 0
 fi
 
-if ! grep -qF "## 20. Commit Attribution Rule — No Agent Co-Author Trailers" "$MOTTO_FILE"; then
+if ! grep -qF "## 20. Commit Attribution Rule — No Agent Co-Author Trailers" "$MOTTO_FILE" && \
+   ! grep -qF "## 20. Commit Attribution Rule - No Agent Co-Author Trailers" "$MOTTO_FILE"; then
   echo ""
   echo "ERROR: motto_v2.md Section 20 heading is missing."
   echo "  A parallel agent has likely deleted the 'No Agent Co-Author Trailers' rule."

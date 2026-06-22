@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { forwardAuthHeaders } from "../proxy-core";
+import { forwardAuthHeaders, getSetCookieHeaders } from "../proxy-core";
 
 function mockNextRequest({
   headers = {},
@@ -36,5 +36,15 @@ describe("forwardAuthHeaders", () => {
     expect(headers["Accept"]).toBe("application/json");
     expect(headers["content-type"]).toBe("application/json");
     expect(headers["x-request-id"]).toBe("request-1");
+  });
+});
+
+describe("getSetCookieHeaders", () => {
+  it("falls back to the standard set-cookie header when getSetCookie is unavailable", () => {
+    const headers = new Headers({ "set-cookie": "access_token=abc; Path=/; HttpOnly" });
+
+    expect(getSetCookieHeaders(headers)).toEqual([
+      "access_token=abc; Path=/; HttpOnly",
+    ]);
   });
 });

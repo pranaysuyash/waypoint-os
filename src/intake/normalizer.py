@@ -54,6 +54,17 @@ class Normalizer:
         "lakh": 100000,
         "lakhs": 100000,
         "thousand": 1000,
+        "m": 1000000,
+        "mn": 1000000,
+        "million": 1000000,
+        "millions": 1000000,
+        "cr": 10000000,
+        "crore": 10000000,
+        "crores": 10000000,
+        "b": 1000000000,
+        "bn": 1000000000,
+        "billion": 1000000000,
+        "billions": 1000000000,
     }
 
     # Ambiguity detection patterns
@@ -124,33 +135,95 @@ class Normalizer:
         """
         result: Dict[str, Any] = {"raw": raw, "min": None, "max": None, "currency": "INR"}
 
+        def _currency_code(token: Optional[str]) -> str:
+            normalized = (token or "").strip().lower()
+            currency_map = {
+                "$": "USD",
+                "usd": "USD",
+                "€": "EUR",
+                "eur": "EUR",
+                "£": "GBP",
+                "gbp": "GBP",
+                "₹": "INR",
+                "rs": "INR",
+                "inr": "INR",
+                "₦": "NGN",
+                "ngn": "NGN",
+                "r": "ZAR",
+                "zar": "ZAR",
+                "kes": "KES",
+                "ghs": "GHS",
+                "aed": "AED",
+                "sar": "SAR",
+                "jpy": "JPY",
+                "cny": "CNY",
+                "npr": "NPR",
+                "lkr": "LKR",
+                "php": "PHP",
+                "myr": "MYR",
+                "thb": "THB",
+                "idr": "IDR",
+                "mxn": "MXN",
+                "brl": "BRL",
+                "aud": "AUD",
+                "cad": "CAD",
+                "sgd": "SGD",
+            }
+            return currency_map.get(normalized, "INR")
+
+        def _parse_amount(token: str, unit_str: str = "") -> int:
+            value = float(token)
+            multiplier = cls.BUDGET_UNITS.get(unit_str.lower(), 1)
+            return int(value * multiplier)
+
         # Try range: "4-5L", "4 to 5L", "400K-500K", "4–5L"
         range_match = re.search(
-            r"(\d+(?:\.\d+)?)\s*(?:-|–|—|\bto\b)\s*(\d+(?:\.\d+)?)\s*(l|k|lac|lakh|lakhs|thousand)?\b",
+            r"(?:(usd|inr|eur|gbp|ngn|zar|kes|ghs|aed|sar|jpy|cny|npr|lkr|php|myr|thb|idr|mxn|brl|aud|cad|sgd|₹|\$|€|£|₦|R)\s*)?"
+            r"(\d+(?:\.\d+)?)\s*(?:-|–|—|\bto\b)\s*"
+            r"(\d+(?:\.\d+)?)\s*(l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?\b",
             raw,
             re.IGNORECASE,
         )
         if range_match:
-            low = float(range_match.group(1))
-            high = float(range_match.group(2))
-            unit_str = (range_match.group(3) or "").lower()
-            multiplier = cls.BUDGET_UNITS.get(unit_str, 1)
-            result["min"] = int(low * multiplier)
-            result["max"] = int(high * multiplier)
+            currency_token = range_match.group(1)
+            low = range_match.group(2)
+            high = range_match.group(3)
+            unit_str = (range_match.group(4) or "").lower()
+            result["min"] = _parse_amount(low, unit_str)
+            result["max"] = _parse_amount(high, unit_str)
+            result["currency"] = _currency_code(currency_token)
             return result
 
         # Try single value: "2L", "400000", "4L"
         single_match = re.search(
-            r"(\d+(?:\.\d+)?)\s*(l|k|lac|lakh|lakhs|thousand)\b",
+            r"(?:(usd|inr|eur|gbp|ngn|zar|kes|ghs|aed|sar|jpy|cny|npr|lkr|php|myr|thb|idr|mxn|brl|aud|cad|sgd|₹|\$|€|£|₦|R)\s*)?"
+            r"(\d+(?:\.\d+)?)\s*(l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)\b",
             raw,
             re.IGNORECASE,
         )
         if single_match:
-            val = float(single_match.group(1))
-            unit_str = single_match.group(2).lower()
-            multiplier = cls.BUDGET_UNITS.get(unit_str, 1)
-            result["min"] = int(val * multiplier)
-            result["max"] = int(val * multiplier)
+            currency_token = single_match.group(1)
+            val = single_match.group(2)
+            unit_str = single_match.group(3).lower()
+            amount = _parse_amount(val, unit_str)
+            result["min"] = amount
+            result["max"] = amount
+            result["currency"] = _currency_code(currency_token)
+            return result
+
+        # Numeric amount with an explicit currency and no suffix, such as
+        # "NGN 2500000" or "ZAR 3000000".
+        plain_currency_match = re.search(
+            r"(?:(usd|inr|eur|gbp|ngn|zar|kes|ghs|aed|sar|jpy|cny|npr|lkr|php|myr|thb|idr|mxn|brl|aud|cad|sgd|₹|\$|€|£|₦|R)\s*)"
+            r"(\d{4,}(?:\.\d+)?)\b",
+            raw,
+            re.IGNORECASE,
+        )
+        if plain_currency_match:
+            val = int(float(plain_currency_match.group(2)))
+            result["min"] = val
+            result["max"] = val
+            result["currency"] = _currency_code(plain_currency_match.group(1))
             return result
 
         # Plain number (no unit) — assume INR if >= 1000

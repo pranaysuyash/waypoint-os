@@ -154,6 +154,19 @@ function buildResponseHeaders(
   return headers;
 }
 
+export function getSetCookieHeaders(headers: Headers): string[] {
+  const headersAny = headers as Headers & {
+    getSetCookie?: () => string[];
+  };
+
+  if (typeof headersAny.getSetCookie === "function") {
+    return headersAny.getSetCookie();
+  }
+
+  const singleHeader = headers.get("set-cookie");
+  return singleHeader ? [singleHeader] : [];
+}
+
 /**
  * Set cookies on a NextResponse using NextResponse.cookies.set().
  *
@@ -202,7 +215,7 @@ export async function proxyRequest(
 
     const backendResponse = await fetch(targetUrl, fetchOptions);
 
-    const rawCookies = backendResponse.headers.getSetCookie();
+    const rawCookies = getSetCookieHeaders(backendResponse.headers);
     const responseHeaders = buildResponseHeaders(backendResponse.headers, opts);
 
     // 204 No Content → short-circuit without touching body

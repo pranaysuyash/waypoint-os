@@ -35,10 +35,14 @@ class GeminiVisionExtractor:
             prompt=prompt,
         )
 
+        confidence_method = (vision_result.provider_metadata or {}).get(
+            "confidence_method", "validation"
+        )
+
         return ExtractionResult(
             fields=vision_result.fields,
             confidence_scores=vision_result.confidence_scores,
             overall_confidence=vision_result.overall_confidence,
-            confidence_method="heuristic_presence",
+            confidence_method=confidence_method,
             provider_metadata=vision_result.provider_metadata,
         )

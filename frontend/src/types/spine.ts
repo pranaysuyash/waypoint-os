@@ -8,6 +8,8 @@
  * To regenerate: uv run python scripts/generate_types.py
  */
 
+import type { FrontierOrchestrationResult } from '@/types/generated/spine-api';
+
 // Re-export all generated contract types
 export type {
   SafetyResult,

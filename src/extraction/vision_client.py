@@ -47,26 +47,164 @@ class VisionClient(Protocol):
     ) -> VisionExtractionResult: ...
 
 
+# ---------------------------------------------------------------------------
+# Shared post-processing: JSON parse → field validation → confidence → result
+# ---------------------------------------------------------------------------
+
+
+def _parse_and_validate_response(
+    output_text: str,
+    json_schema: dict,
+) -> dict[str, Optional[str]]:
+    """Parse provider output text as JSON and validate against schema fields.
+
+    Shared by all vision clients to eliminate duplicate post-processing.
+    Returns validated field dict with string/None values.
+    Raises ExtractionProviderError on parse or validation failure.
+    """
+    import json
+
+    if not output_text or not output_text.strip():
+        raise ExtractionProviderError("empty_response")
+
+    try:
+        parsed = json.loads(output_text)
+    except (json.JSONDecodeError, ValueError):
+        raise ExtractionProviderError("schema_validation_failed")
+
+    if not isinstance(parsed, dict):
+        raise ExtractionProviderError("schema_validation_failed")
+
+    validated: dict[str, Optional[str]] = {}
+    allowed = set(json_schema.get("properties", {}).keys())
+    for key, value in parsed.items():
+        if key not in allowed:
+            continue  # drop unknown fields
+        if value is None:
+            validated[key] = None
+        elif isinstance(value, str):
+            validated[key] = value
+        else:
+            raise ExtractionProviderError("schema_validation_failed")
+
+    if not validated:
+        raise ExtractionProviderError("empty_response")
+
+    return validated
+
+
+def _build_extraction_result(
+    *,
+    provider_name: str,
+    model: str,
+    output_text: str,
+    latency_ms: int,
+    validated: dict[str, Optional[str]],
+    logprobs_data: Optional[list] = None,
+    prompt_tokens: Optional[int] = None,
+    completion_tokens: Optional[int] = None,
+    total_tokens: Optional[int] = None,
+    extra_metadata: Optional[dict] = None,
+) -> VisionExtractionResult:
+    """Build a VisionExtractionResult with confidence scoring.
+
+    Shared by all vision clients. Computes validation-based confidence
+    (with optional logprobs blend) and assembles provider_metadata.
+    """
+    from src.extraction.confidence import compute_field_confidences, compute_overall_confidence
+    from src.extraction.pricing import calculate_cost, PRICING_TABLE_SOURCE
+
+    confidence_scores, confidence_method_used = compute_field_confidences(
+        validated, logprobs_data=logprobs_data, output_text=output_text,
+    )
+    overall_confidence = compute_overall_confidence(confidence_scores, logprobs_data=logprobs_data)
+
+    cost_estimate_usd = None
+    if prompt_tokens is not None and completion_tokens is not None:
+        cost_estimate_usd = calculate_cost(model, prompt_tokens, completion_tokens)
+
+    metadata = {
+        "provider_name": provider_name,
+        "model_name": model,
+        "latency_ms": latency_ms,
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens": total_tokens,
+        "cost_estimate_usd": cost_estimate_usd,
+        "pricing_source": PRICING_TABLE_SOURCE,
+        "confidence_method": confidence_method_used,
+    }
+    if extra_metadata:
+        metadata.update(extra_metadata)
+
+    return VisionExtractionResult(
+        fields=validated,
+        confidence_scores=confidence_scores,
+        overall_confidence=overall_confidence,
+        provider_metadata=metadata,
+    )
+
+
+def _extract_logprobs(response: object) -> Optional[list]:
+    """Extract token-level logprobs from a provider response object.
+
+    Checks Responses API output items first, then top-level logprobs
+    (Chat Completions compatibility). Returns None if unavailable.
+    """
+    try:
+        # Responses API stores logprobs on the output content items
+        output_items = getattr(response, "output", None) or []
+        for item in output_items:
+            content_list = getattr(item, "content", None) or []
+            for content_item in content_list:
+                lp = getattr(content_item, "logprobs", None)
+                if lp is not None:
+                    return list(lp) if not isinstance(lp, list) else lp
+        # Also check top-level logprobs (Chat Completions compatibility)
+        top_logprobs = getattr(response, "logprobs", None)
+        if top_logprobs is not None:
+            content_logprobs = getattr(top_logprobs, "content", None)
+            if content_logprobs is not None:
+                return list(content_logprobs) if not isinstance(content_logprobs, list) else content_logprobs
+    except (AttributeError, TypeError):
+        pass
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Typed error classification
+# ---------------------------------------------------------------------------
+
 def _classify_openai_error(exc: Exception) -> str:
-    """Map an OpenAI SDK exception to a classified error_code."""
-    exc_name = type(exc).__name__
-    exc_module = type(exc).__module__ or ""
+    """Map an OpenAI SDK exception to a classified error_code.
 
-    if "Timeout" in exc_name:
-        return "api_timeout"
-    if "AuthenticationError" in exc_name or "AuthError" in exc_name:
-        return "api_auth_error"
-    if "RateLimitError" in exc_name or "RateLimit" in exc_name:
-        return "api_rate_limit"
-    if "InternalServerError" in exc_name or "ServerError" in exc_name:
-        return "api_server_error"
+    Uses isinstance() checks on typed SDK exceptions first (deterministic,
+    testable), then falls back to string matching for unknown SDK versions.
+    """
+    # Typed checks — prefer SDK exception hierarchy over string matching
+    try:
+        import openai
+        if isinstance(exc, openai.APITimeoutError):
+            return "api_timeout"
+        if isinstance(exc, openai.AuthenticationError):
+            return "api_auth_error"
+        if isinstance(exc, openai.RateLimitError):
+            return "api_rate_limit"
+        if isinstance(exc, (openai.InternalServerError, openai.APIStatusError)):
+            # APIStatusError covers 5xx; narrow below if needed
+            status = getattr(exc, "status_code", 0)
+            if isinstance(exc, openai.InternalServerError) or (500 <= status < 600):
+                return "api_server_error"
+    except (ImportError, AttributeError):
+        pass  # openai SDK not installed or exception types changed
 
+    # String-matching fallback — handles edge cases and unknown SDK versions
     msg = str(exc).lower()
     if "timeout" in msg or "timed out" in msg:
         return "api_timeout"
     if "auth" in msg or "api key" in msg or "unauthorized" in msg:
         return "api_auth_error"
-    if "rate" in msg:
+    if "rate" in msg or "429" in msg:
         return "api_rate_limit"
     if "server" in msg or "500" in msg or "502" in msg or "503" in msg:
         return "api_server_error"
@@ -141,44 +279,17 @@ class OpenAIVisionClient:
 
         latency_ms = int((time.monotonic() - start) * 1000)
 
-        # Parse response
+        # Extract output text
         try:
             output_text = response.output_text
         except AttributeError:
             output_text = ""
 
-        if not output_text or not output_text.strip():
-            raise ExtractionProviderError("empty_response")
+        # Shared post-processing: parse JSON, validate fields
+        validated = _parse_and_validate_response(output_text, json_schema)
 
-        import json
-        try:
-            parsed = json.loads(output_text)
-        except (json.JSONDecodeError, ValueError):
-            raise ExtractionProviderError("schema_validation_failed")
-
-        # Validate: must be dict with string/null values
-        if not isinstance(parsed, dict):
-            raise ExtractionProviderError("schema_validation_failed")
-
-        validated: dict[str, Optional[str]] = {}
-        allowed = set(json_schema.get("properties", {}).keys())
-        for key, value in parsed.items():
-            if key not in allowed:
-                continue  # drop unknown fields
-            if value is None:
-                validated[key] = None
-            elif isinstance(value, str):
-                validated[key] = value
-            else:
-                raise ExtractionProviderError("schema_validation_failed")
-
-        if not validated:
-            raise ExtractionProviderError("empty_response")
-
-        # Heuristic confidence: present=0.9, null=0.0
-        confidence_scores = {k: (0.9 if v is not None else 0.0) for k, v in validated.items()}
-        present_count = sum(1 for v in validated.values() if v is not None)
-        overall_confidence = (present_count / len(validated)) * 0.9 if validated else 0.0
+        # Extract logprobs from response if available
+        logprobs_data = _extract_logprobs(response)
 
         # Token usage from response
         usage = getattr(response, "usage", None)
@@ -186,27 +297,14 @@ class OpenAIVisionClient:
         completion_tokens = getattr(usage, "output_tokens", None) if usage else None
         total_tokens = (prompt_tokens or 0) + (completion_tokens or 0) if (prompt_tokens is not None and completion_tokens is not None) else None
 
-        # Cost estimate from pricing table
-        cost_estimate_usd = None
-        if prompt_tokens is not None and completion_tokens is not None:
-            from src.extraction.pricing import calculate_cost
-            cost_estimate_usd = calculate_cost(self._model, prompt_tokens, completion_tokens)
-
-        # Pricing source for audit provenance
-        from src.extraction.pricing import PRICING_TABLE_SOURCE
-
-        return VisionExtractionResult(
-            fields=validated,
-            confidence_scores=confidence_scores,
-            overall_confidence=overall_confidence,
-            provider_metadata={
-                "provider_name": "openai_vision",
-                "model_name": self._model,
-                "latency_ms": latency_ms,
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-                "total_tokens": total_tokens,
-                "cost_estimate_usd": cost_estimate_usd,
-                "pricing_source": PRICING_TABLE_SOURCE,
-            },
+        return _build_extraction_result(
+            provider_name="openai_vision",
+            model=self._model,
+            output_text=output_text,
+            latency_ms=latency_ms,
+            validated=validated,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            logprobs_data=logprobs_data,
         )

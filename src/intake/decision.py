@@ -68,7 +68,7 @@ def _get_hybrid_engine():
             return None
         except Exception as e:
             # Log but don't fail - fall back to rule engine
-            print(f"Warning: Failed to initialize hybrid engine: {e}")
+            logger.warning("Failed to initialize hybrid engine: %s", e)
             return None
 
     return _hybrid_engine_instance
@@ -149,7 +149,7 @@ def _generate_risk_flags_with_hybrid_engine(
 
         except Exception as e:
             # Log but continue with other decision types
-            print(f"Warning: Hybrid engine failed for {decision_type}: {e}")
+            logger.warning("Hybrid engine failed for %s: %s", decision_type, e)
             continue
 
     return risks
@@ -1324,64 +1324,7 @@ def generate_risk_flags(
             pass
         except Exception as e:
             # Don't fail risk generation if suitability has issues
-            print(f"Warning: Suitability risk generation failed: {e}")
-
-    # Coordination risk (multi-party)
-    sub_groups = packet.facts.get("sub_groups")
-    if sub_groups and isinstance(sub_groups.value, dict):
-        groups = sub_groups.value
-        budget_slot = packet.facts.get("budget_min")
-        if budget_slot and budget_slot.value:
-            total_budget = budget_slot.value
-            budget_shares = [
-                g.budget_share if hasattr(g, 'budget_share') else g.get('budget_share', 0)
-                for g in groups.values()
-            ]
-            budget_shares = [b for b in budget_shares if b]
-            if budget_shares and total_budget:
-                spread = max(budget_shares) - min(budget_shares)
-                if spread > 0.3 * total_budget:
-                    risks.append({
-                        "flag": "coordination_risk",
-                        "severity": "medium",
-                        "message": f"Budget spread of ₹{spread:,} across groups — coordination risk",
-                    })
-
-    # Traveler-safe leakage risk
-    # Triggered by: hypotheses, contradictions, ambiguities, or internal-only owner fields
-    has_internal_data = bool(packet.hypotheses) or bool(packet.contradictions)
-    has_blocking_ambiguities = any(
-        a.ambiguity_type in ("unresolved_alternatives", "destination_open", "value_vague")
-        for a in packet.ambiguities
-    )
-    has_internal_owner = False
-    oc = packet.facts.get("owner_constraints")
-    if oc and oc.value:
-        constraints = oc.value
-        if isinstance(constraints, list):
-            has_internal_owner = any(
-                getattr(c, 'visibility', None) == "internal_only" or
-                (isinstance(c, dict) and c.get("visibility") == "internal_only")
-                for c in constraints
-            )
-
-    if has_internal_data or has_blocking_ambiguities or has_internal_owner:
-        internal = packet.derived_signals.get("internal_data_present")
-        reasons = []
-        if packet.hypotheses:
-            reasons.append(f"{len(packet.hypotheses)} hypotheses")
-        if packet.contradictions:
-            reasons.append(f"{len(packet.contradictions)} contradictions")
-        if has_blocking_ambiguities:
-            reasons.append("blocking ambiguities")
-        if has_internal_owner:
-            reasons.append("internal-only owner constraints")
-
-        risks.append({
-            "flag": "traveler_safe_leakage_risk",
-            "severity": "critical",
-            "message": f"Internal data present ({', '.join(reasons)}) — ensure traveler-safe boundary",
-        })
+            logger.warning("Suitability risk generation failed: %s", e)
 
     return risks
 

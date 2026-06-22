@@ -92,7 +92,7 @@ class TestServiceFallback:
             fields=fields or {"full_name": "TEST"},
             confidence_scores={"full_name": 0.9},
             overall_confidence=0.9,
-            confidence_method="heuristic_presence",
+            confidence_method="validation",
             provider_metadata={"model_name": "test-model", "latency_ms": 100},
         )
 

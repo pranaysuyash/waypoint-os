@@ -121,6 +121,11 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
     (decision.decision_state as string) || 'ASK_FOLLOWUP',
   ) as DecisionState;
   const badgeClass = STATE_BADGE_CLASS[decisionState] ?? styles.stateBlue;
+  const overallConfidence = decision.confidence?.overall;
+  const confidenceLabel =
+    typeof overallConfidence === "number" && Number.isFinite(overallConfidence)
+      ? `${Math.round(overallConfidence * 100)}%`
+      : "Confidence unavailable";
 
   const hardBlockers: string[] = (decision as any).hard_blockers ?? [];
   const softBlockers: string[] = (decision as any).soft_blockers ?? [];
@@ -142,7 +147,7 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
             {STATE_LABELS[decisionState] || "Review Required"}
           </span>
           <div style={{ marginTop: "12px", fontSize: "13px", color: "var(--color-text-muted)" }}>
-            Overall Confidence: {Math.round((decision.confidence?.overall || 0) * 100)}%
+            Overall Confidence: {confidenceLabel}
           </div>
         </div>
       </div>

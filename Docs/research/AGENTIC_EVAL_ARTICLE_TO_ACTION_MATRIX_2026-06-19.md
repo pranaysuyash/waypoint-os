@@ -39,6 +39,8 @@ This is the practical follow-up from your request to make these learnings reusab
   - `GET /api/trips/{trip_id}/agentic-eval`
     - inputs: workflow + optional `workflow_unit_id`, thresholds
     - outputs: canonical evidence list + repeated-failure work items + routing metrics.
+- Retry provenance is part of the logged workflow path:
+  - provider retry count is allowed in event metadata and emitted on extraction attempt events.
 - Frontend contract:
   - API client contract test proves `workflow_unit_id` propagation into review actions and eval responses.
 - Runtime safety and contract tests:
@@ -54,6 +56,8 @@ This is the practical follow-up from your request to make these learnings reusab
   - We can produce work items; we are not yet enforcing keep/revert/rollout gates in operator tooling.
 4. Decision counterfactuals
    - We still need explicit side-by-side baseline-vs-alternative metrics for routing/fallback edits before change.
+5. Retry-policy counterfactuals
+   - We now log provider retry counts, but we still need explicit baseline-vs-retry comparisons before changing retry policy.
 
 ## I/O map for current loop
 

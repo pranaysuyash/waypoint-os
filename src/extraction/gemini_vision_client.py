@@ -6,12 +6,13 @@ import logging
 import os
 import tempfile
 import time
-from typing import Optional
 
 from src.extraction.vision_client import (
     ERROR_CODES,
     ExtractionProviderError,
     VisionExtractionResult,
+    _parse_and_validate_response,
+    _build_extraction_result,
 )
 
 logger = logging.getLogger(__name__)
@@ -89,44 +90,14 @@ class GeminiVisionClient:
 
         latency_ms = int((time.monotonic() - start) * 1000)
 
-        # Parse response
+        # Extract output text
         try:
             text = result.text
         except AttributeError:
             text = ""
 
-        if not text or not text.strip():
-            raise ExtractionProviderError("empty_response")
-
-        import json
-        try:
-            parsed = json.loads(text)
-        except (json.JSONDecodeError, ValueError):
-            raise ExtractionProviderError("schema_validation_failed")
-
-        if not isinstance(parsed, dict):
-            raise ExtractionProviderError("schema_validation_failed")
-
-        # Validate fields
-        validated: dict[str, Optional[str]] = {}
-        allowed = set(json_schema.get("properties", {}).keys())
-        for key, value in parsed.items():
-            if key not in allowed:
-                continue
-            if value is None:
-                validated[key] = None
-            elif isinstance(value, str):
-                validated[key] = value
-            else:
-                raise ExtractionProviderError("schema_validation_failed")
-
-        if not validated:
-            raise ExtractionProviderError("empty_response")
-
-        # Confidence
-        confidence_scores = {k: (0.9 if v is not None else 0.0) for k, v in validated.items()}
-        present_count = sum(1 for v in validated.values() if v is not None)
-        overall_confidence = (present_count / len(validated)) * 0.9 if validated else 0.0
+        # Shared post-processing: parse JSON, validate fields
+        validated = _parse_and_validate_response(text, json_schema)
 
         # Token usage
         usage_metadata = getattr(result, "usage_metadata", None)
@@ -134,25 +105,16 @@ class GeminiVisionClient:
         completion_tokens = getattr(usage_metadata, "candidates_token_count", None) if usage_metadata else None
         total_tokens = getattr(usage_metadata, "total_token_count", None) if usage_metadata else None
 
-        # Cost estimate
-        from src.extraction.pricing import calculate_cost, PRICING_TABLE_SOURCE
-        cost_estimate_usd = None
-        if prompt_tokens is not None and completion_tokens is not None:
-            cost_estimate_usd = calculate_cost(self._model, prompt_tokens, completion_tokens)
-
-        return VisionExtractionResult(
-            fields=validated,
-            confidence_scores=confidence_scores,
-            overall_confidence=overall_confidence,
-            provider_metadata={
-                "provider_name": "gemini",
-                "model_name": self._model,
-                "latency_ms": latency_ms,
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-                "total_tokens": total_tokens,
-                "cost_estimate_usd": cost_estimate_usd,
-                "pricing_source": PRICING_TABLE_SOURCE,
+        return _build_extraction_result(
+            provider_name="gemini",
+            model=self._model,
+            output_text=text,
+            latency_ms=latency_ms,
+            validated=validated,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            extra_metadata={
                 "provider_file_retention": "gemini_48h" if mime_type == "application/pdf" else None,
             },
         )

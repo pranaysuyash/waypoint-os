@@ -34,6 +34,7 @@ from src.intake.extractors import (
     _extract_date_flexibility,
     ExtractionPipeline,
 )
+from src.intake.normalizer import Normalizer
 from src.intake.packet_models import SourceEnvelope
 from src.intake.validation import validate_packet
 
@@ -258,6 +259,11 @@ class TestExtractParty:
         result = _extract_party("me and my wife")
         assert result["party_size"] == 2
         assert "children" not in result.get("party_composition", {})
+
+    def test_couple_phrase_infers_two_adults(self):
+        result = _extract_party("Couple from Mumbai for Bali in July")
+        assert result["party_size"] == 2
+        assert result["party_composition"].get("adults") == 2
 
     def test_solo(self):
         result = _extract_party("just me traveling")
@@ -572,6 +578,33 @@ class TestBudgetHinglish:
         assert result["min"] == 4500
         assert result["max"] == 4500
         assert result["currency"] == "USD"
+
+    def test_budget_with_african_currency_and_million_suffix(self):
+        result = _extract_budget("Budget NGN 2.5m")
+        assert result is not None
+        assert result["min"] == 2500000
+        assert result["max"] == 2500000
+        assert result["currency"] == "NGN"
+
+    def test_budget_with_rand_and_million_suffix(self):
+        result = _extract_budget("Budget ZAR 3m")
+        assert result is not None
+        assert result["min"] == 3000000
+        assert result["max"] == 3000000
+        assert result["currency"] == "ZAR"
+
+    def test_budget_with_plain_number_keeps_explicit_currency(self):
+        result = Normalizer.parse_budget("NGN 2500000")
+        assert result["min"] == 2500000
+        assert result["max"] == 2500000
+        assert result["currency"] == "NGN"
+
+    def test_budget_with_plain_number_and_trailing_keyword_keeps_currency(self):
+        result = _extract_budget("NGN 2500000 budget")
+        assert result is not None
+        assert result["min"] == 2500000
+        assert result["max"] == 2500000
+        assert result["currency"] == "NGN"
 
 
 # ---------------------------------------------------------------------------

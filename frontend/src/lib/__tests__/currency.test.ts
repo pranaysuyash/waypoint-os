@@ -29,6 +29,8 @@ describe('currency utilities', () => {
     expect(parseBudgetString('2.5 lakh INR')).toEqual({ amount: 250000, currency: 'INR' });
     expect(parseBudgetString('Budget INR 2.5L')).toEqual({ amount: 250000, currency: 'INR' });
     expect(parseBudgetString('5000 USD')).toEqual({ amount: 5000, currency: 'USD' });
+    expect(parseBudgetString('NGN 2.5m')).toEqual({ amount: 2500000, currency: 'NGN' });
+    expect(parseBudgetString('ZAR 3m')).toEqual({ amount: 3000000, currency: 'ZAR' });
     expect(parseBudgetString('')).toBeNull();
   });
 
@@ -40,5 +42,6 @@ describe('currency utilities', () => {
 
     expect(getCurrencyOptions()).toHaveLength(Object.keys(CURRENCY_CONFIG).length);
     expect(getCurrencyOptions()).toContainEqual(expect.objectContaining({ value: 'INR', label: 'Indian Rupee' }));
+    expect(getCurrencyOptions()).toContainEqual(expect.objectContaining({ value: 'NGN', label: 'Nigerian Naira' }));
   });
 });

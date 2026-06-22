@@ -598,6 +598,7 @@ ALLOWED_EVENT_METADATA_KEYS = frozenset({
     "failure_signature", "failure_layer", "next_fix_layer",
     # Phase 5C — attempt metadata
     "run_number", "attempt_number", "fallback_rank",
+    "provider_retry", "max_provider_retries",
     "fields_applied_count", "allow_overwrite",
 })
 

@@ -8,7 +8,9 @@ from dataclasses import dataclass, field
 from typing import Optional, Protocol, Union
 
 from src.extraction.exceptions import ExtractionValidationError
-from src.extraction.model_chain import RETRIABLE_ERRORS
+import asyncio
+
+from src.extraction.model_chain import RETRIABLE_ERRORS, MAX_PROVIDER_RETRIES, retry_backoff_delay
 from spine_api.services import execution_event_service
 from spine_api.services.private_fields import encrypt_blob, decrypt_blob
 
@@ -59,7 +61,7 @@ class ExtractionResult:
     fields: dict[str, Optional[str]]
     confidence_scores: dict[str, float]
     overall_confidence: float
-    confidence_method: str = "model"  # "model" for noop, "heuristic_presence" for vision
+    confidence_method: str = "model"  # "model" for noop, "validation" for vision providers
     provider_metadata: Optional[dict] = field(default=None)
 
 
@@ -118,11 +120,11 @@ def get_extractor() -> Union[DocumentExtractor, "ModelChain"]:
             from src.extraction.openai_vision_extractor import OpenAIVisionExtractor
             return OpenAIVisionExtractor()
         else:
-            app_env = os.environ.get("APP_ENV", "production").lower()
-            if app_env in ("local", "test", "development"):
-                logger.warning("Unknown EXTRACTION_PROVIDER '%s' in %s, falling back to noop", provider, app_env)
-                return NoopExtractor()
-            raise RuntimeError(f"Unknown EXTRACTION_PROVIDER '{provider}'")
+            raise RuntimeError(
+                f"Unknown EXTRACTION_PROVIDER '{provider}'. "
+                f"Set EXTRACTION_PROVIDER=noop for mock extraction, or use a valid provider (openai_vision). "
+                f"Silent noop fallback has been removed to prevent misconfiguration.",
+            )
 
     models = [m.strip() for m in chain_str.split(",") if m.strip()]
     if not models:
@@ -302,6 +304,7 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
 
     run_number = extraction.run_count
     attempt_base = extraction.attempt_count
+    attempt_counter = attempt_base
 
     # --- Step 3: Run extractor chain with per-call attempt tracking ---
     extractor = get_extractor()
@@ -325,59 +328,156 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
 
     try:
         for rank, (model_name, model_extractor) in enumerate(models_to_try):
-            attempt_number = attempt_base + rank + 1
             is_last_candidate = rank >= len(models_to_try) - 1
+            provider_resolved = False  # True when this provider succeeded or hit non-retriable
 
-            attempt = DocumentExtractionAttempt(
-                extraction_id=extraction.id,
-                agency_id=agency_id,
-                trip_id=document.trip_id,
-                run_number=run_number,
-                attempt_number=attempt_number,
-                fallback_rank=rank,
-                provider_name=_resolve_provider_name(model_name),
-                model_name=model_name,
-                status="failed",  # pessimistic default
-            )
-            db.add(attempt)
-            await db.commit()
-            await db.refresh(attempt)
+            for provider_retry in range(1 + MAX_PROVIDER_RETRIES):
+                attempt_counter += 1
+                attempt_number = attempt_counter
+                retry_metadata = {
+                    "provider_retry": provider_retry,
+                    "max_provider_retries": MAX_PROVIDER_RETRIES,
+                }
 
-            # Capture immutable version snapshot for this attempt
-            from src.intake.version_snapshot import capture_version_snapshot
-            version_snapshot = capture_version_snapshot(
-                document_type=document.document_type,
-                rollout_metadata={"attempt_number": attempt_number, "fallback_rank": rank},
-            )
-            attempt.version_snapshot = version_snapshot.to_dict()
-
-            start = time.monotonic()
-            try:
-                result = await model_extractor.extract(file_data, document.mime_type, document.document_type)
-            except ExtractionProviderError as e:
-                attempt.error_code = e.error_code
-                attempt.error_summary = ERROR_CODES.get(e.error_code, "Unknown error")
-                attempt.latency_ms = int((time.monotonic() - start) * 1000)
-                attempt.extracted_fields_encrypted = None  # explicit: no PII on failure
+                # Create a fresh attempt row for each provider call (including retries)
+                attempt = DocumentExtractionAttempt(
+                    extraction_id=extraction.id,
+                    agency_id=agency_id,
+                    trip_id=document.trip_id,
+                    run_number=run_number,
+                    attempt_number=attempt_number,
+                    fallback_rank=rank,
+                    provider_name=_resolve_provider_name(model_name),
+                    model_name=model_name,
+                    status="failed",  # pessimistic default
+                )
+                db.add(attempt)
                 await db.commit()
-                extraction.attempt_count = attempt_number
-                fallback_reason = _fallback_trigger_reason(attempt.error_code, not is_last_candidate)
-                layer = _failure_layer(attempt.error_code)
-                next_fix = _next_fix_layer(attempt.error_code)
-                signature = _failure_signature(document.document_type, attempt.error_code, attempt.model_name, attempt_number, attempt.fallback_rank)
-                attempt_failure_reasons.append({
-                    "error_code": attempt.error_code,
-                    "fallback_reason": fallback_reason,
-                    "failure_layer": layer,
-                    "next_fix_layer": next_fix,
-                    "failure_signature": signature,
-                })
+                await db.refresh(attempt)
+
+                # Capture immutable version snapshot for this attempt
+                from src.intake.version_snapshot import capture_version_snapshot
+                version_snapshot = capture_version_snapshot(
+                    document_type=document.document_type,
+                    rollout_metadata={"attempt_number": attempt_number, "fallback_rank": rank},
+                )
+                attempt.version_snapshot = version_snapshot.to_dict()
+
+                start = time.monotonic()
+                try:
+                    result = await model_extractor.extract(
+                        file_data, document.mime_type, document.document_type
+                    )
+                except ExtractionProviderError as e:
+                    attempt.error_code = e.error_code
+                    attempt.error_summary = ERROR_CODES.get(e.error_code, "Unknown error")
+                    attempt.latency_ms = int((time.monotonic() - start) * 1000)
+                    attempt.extracted_fields_encrypted = None  # explicit: no PII on failure
+                    await db.commit()
+
+                    fallback_reason = _fallback_trigger_reason(attempt.error_code, not is_last_candidate)
+                    layer = _failure_layer(attempt.error_code)
+                    next_fix = _next_fix_layer(attempt.error_code)
+                    signature = _failure_signature(
+                        document.document_type,
+                        attempt.error_code,
+                        attempt.model_name,
+                        attempt.attempt_number,
+                        attempt.fallback_rank,
+                    )
+                    await execution_event_service.emit_event_best_effort(
+                        db, agency_id=agency_id, trip_id=document.trip_id,
+                        subject_type="document_extraction_attempt", subject_id=attempt.id,
+                        event_type="extraction_attempt_failed", event_category="extraction",
+                        status_from=None, status_to="failed",
+                        actor_type="system", actor_id=None, source="system_generation",
+                        event_metadata={
+                            **eval_metadata,
+                            "provider": attempt.provider_name,
+                            "model": attempt.model_name,
+                            "attempt_number": attempt.attempt_number,
+                            "fallback_rank": attempt.fallback_rank,
+                            "error_code": attempt.error_code,
+                            "latency_ms": attempt.latency_ms,
+                            "fallback_trigger_reason": fallback_reason,
+                            "failure_layer": layer,
+                            "next_fix_layer": next_fix,
+                            "failure_signature": signature,
+                            **retry_metadata,
+                        },
+                    )
+
+                    # Non-retriable error → stop entirely and record the work item once.
+                    if e.error_code not in RETRIABLE_ERRORS:
+                        last_error = e
+                        attempt_failure_reasons.append({
+                            "error_code": attempt.error_code,
+                            "fallback_reason": fallback_reason,
+                            "failure_layer": layer,
+                            "next_fix_layer": next_fix,
+                            "failure_signature": signature,
+                        })
+                        provider_resolved = True
+                        break
+
+                    # Retriable error → retry within provider if retries remain.
+                    last_error = e
+                    if provider_retry < MAX_PROVIDER_RETRIES:
+                        delay = retry_backoff_delay(provider_retry)
+                        logger.warning(
+                            "Model %s failed with %s, retrying in %.1fs (retry %d/%d)",
+                            model_name, e.error_code, delay,
+                            provider_retry + 1, MAX_PROVIDER_RETRIES,
+                        )
+                        await asyncio.sleep(delay)
+                        continue  # retry same provider
+
+                    # Retries exhausted → fall through to next model, and record the work item once.
+                    logger.warning(
+                        "Model %s failed with %s after %d retries, falling through",
+                        model_name, e.error_code, MAX_PROVIDER_RETRIES,
+                    )
+                    attempt_failure_reasons.append({
+                        "error_code": attempt.error_code,
+                        "fallback_reason": fallback_reason,
+                        "failure_layer": layer,
+                        "next_fix_layer": next_fix,
+                        "failure_signature": signature,
+                    })
+                    provider_resolved = True
+                    break  # break inner retry loop, outer loop continues
+
+                # --- Success path ---
+                filtered_fields = {
+                    k: v for k, v in result.fields.items() if k in VALID_EXTRACTION_FIELDS
+                }
+                encrypted = encrypt_blob(filtered_fields)
+                fields_present = {
+                    k: k in filtered_fields and filtered_fields[k] is not None
+                    for k in VALID_EXTRACTION_FIELDS
+                }
+                field_count = sum(1 for v in fields_present.values() if v)
+                meta = result.provider_metadata or {}
+
+                attempt.status = "success"
+                attempt.extracted_fields_encrypted = encrypted
+                attempt.fields_present = fields_present
+                attempt.field_count = field_count
+                attempt.confidence_scores = _filter_confidence(result.confidence_scores)
+                attempt.overall_confidence = result.overall_confidence
+                attempt.confidence_method = result.confidence_method
+                attempt.latency_ms = meta.get("latency_ms")
+                attempt.prompt_tokens = meta.get("prompt_tokens")
+                attempt.completion_tokens = meta.get("completion_tokens")
+                attempt.total_tokens = meta.get("total_tokens")
+                attempt.cost_estimate_usd = meta.get("cost_estimate_usd")
+                await db.commit()
 
                 await execution_event_service.emit_event_best_effort(
                     db, agency_id=agency_id, trip_id=document.trip_id,
                     subject_type="document_extraction_attempt", subject_id=attempt.id,
-                    event_type="extraction_attempt_failed", event_category="extraction",
-                    status_from=None, status_to="failed",
+                    event_type="extraction_attempt_completed", event_category="extraction",
+                    status_from=None, status_to="success",
                     actor_type="system", actor_id=None, source="system_generation",
                     event_metadata={
                         **eval_metadata,
@@ -385,67 +485,29 @@ async def run_extraction(db, document, storage, agency_id: str) -> "DocumentExtr
                         "model": attempt.model_name,
                         "attempt_number": attempt.attempt_number,
                         "fallback_rank": attempt.fallback_rank,
-                        "error_code": attempt.error_code,
+                        "field_count": attempt.field_count,
                         "latency_ms": attempt.latency_ms,
-                        "fallback_trigger_reason": fallback_reason,
-                        "failure_layer": layer,
-                        "next_fix_layer": next_fix,
-                        "failure_signature": signature,
+                        "failure_layer": None,
+                        "failure_signature": None,
+                        "next_fix_layer": None,
+                        "fallback_result": "succeeded_after_fallback" if attempt.fallback_rank > 0 else "no_fallback_needed",
+                        **retry_metadata,
                     },
                 )
 
-                if e.error_code not in RETRIABLE_ERRORS:
-                    last_error = e
-                    break
-                last_error = e
-                logger.warning("Model %s failed with %s, trying next", model_name, e.error_code)
-                continue
+                success_attempt = attempt
+                extraction.attempt_count = attempt_counter
+                provider_resolved = True
+                break  # success → break inner retry loop
 
-            # --- Success path ---
-            filtered_fields = {k: v for k, v in result.fields.items() if k in VALID_EXTRACTION_FIELDS}
-            encrypted = encrypt_blob(filtered_fields)
-            fields_present = {k: k in filtered_fields and filtered_fields[k] is not None for k in VALID_EXTRACTION_FIELDS}
-            field_count = sum(1 for v in fields_present.values() if v)
-            meta = result.provider_metadata or {}
-
-            attempt.status = "success"
-            attempt.extracted_fields_encrypted = encrypted
-            attempt.fields_present = fields_present
-            attempt.field_count = field_count
-            attempt.confidence_scores = _filter_confidence(result.confidence_scores)
-            attempt.overall_confidence = result.overall_confidence
-            attempt.confidence_method = result.confidence_method
-            attempt.latency_ms = meta.get("latency_ms")
-            attempt.prompt_tokens = meta.get("prompt_tokens")
-            attempt.completion_tokens = meta.get("completion_tokens")
-            attempt.total_tokens = meta.get("total_tokens")
-            attempt.cost_estimate_usd = meta.get("cost_estimate_usd")
-            await db.commit()
-
-            await execution_event_service.emit_event_best_effort(
-                db, agency_id=agency_id, trip_id=document.trip_id,
-                subject_type="document_extraction_attempt", subject_id=attempt.id,
-                event_type="extraction_attempt_completed", event_category="extraction",
-                status_from=None, status_to="success",
-                actor_type="system", actor_id=None, source="system_generation",
-                event_metadata={
-                    **eval_metadata,
-                    "provider": attempt.provider_name,
-                    "model": attempt.model_name,
-                    "attempt_number": attempt.attempt_number,
-                    "fallback_rank": attempt.fallback_rank,
-                    "field_count": attempt.field_count,
-                    "latency_ms": attempt.latency_ms,
-                    "failure_layer": None,
-                    "failure_signature": None,
-                    "next_fix_layer": None,
-                    "fallback_result": "succeeded_after_fallback" if attempt.fallback_rank > 0 else "no_fallback_needed",
-                },
+            # After inner loop: break outer if provider succeeded or hit non-retriable error.
+            non_retriable_stopped = (
+                provider_resolved
+                and last_error is not None
+                and last_error.error_code not in RETRIABLE_ERRORS
             )
-
-            success_attempt = attempt
-            extraction.attempt_count = attempt_number
-            break
+            if success_attempt or non_retriable_stopped:
+                break
 
     except Exception:
         # Unexpected exception (not ExtractionProviderError) — try to mark as failed
@@ -589,7 +651,6 @@ async def apply_extraction(db, document, extraction, fields_to_apply: list[str],
 
     # Get booking_data from trip store (decrypted)
     from spine_api.persistence import TripStore
-    import asyncio
     booking_data = await asyncio.to_thread(TripStore.get_booking_data, extraction.trip_id)
     if not booking_data:
         booking_data = {"travelers": []}

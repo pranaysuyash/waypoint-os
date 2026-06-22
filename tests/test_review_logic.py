@@ -1,6 +1,6 @@
 import pytest
 import json
-from src.analytics.review import process_review_action
+from src.analytics.review import process_review_action, trip_to_review
 from spine_api import persistence
 from spine_api.persistence import TripStore, AuditStore
 
@@ -103,3 +103,18 @@ def test_escalation_outcome_persists_in_review_metadata(tmp_path, monkeypatch):
 
     updated = TripStore.get_trip(trip_id)
     assert updated["analytics"]["review_metadata"]["escalation_outcome"] == "false_escalation"
+
+
+def test_trip_to_review_falls_back_to_generic_id_field():
+    review = trip_to_review(
+        {
+            "id": "trip-abc123",
+            "assigned_to": "agent-1",
+            "analytics": {"requires_review": True, "review_status": "pending"},
+            "packet": {"destination": "Italy", "trip_type": "leisure", "party_size": 2},
+        }
+    )
+
+    assert review["id"] == "trip-abc123"
+    assert review["tripId"] == "trip-abc123"
+    assert review["tripReference"] == "TRIP-ABC123"

@@ -193,7 +193,7 @@ def trip_to_review(trip: dict) -> dict:
     value = budget.get("value", 0)
     currency = budget.get("currency", "INR")
 
-    trip_id = trip.get("trip_id", "")
+    trip_id = str(trip.get("trip_id") or trip.get("id") or "").strip()
     review_status = analytics.get("review_status", "pending")
     review_meta = analytics.get("review_metadata") or {}
 

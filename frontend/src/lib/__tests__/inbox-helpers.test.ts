@@ -72,8 +72,9 @@ describe('inbox-helpers', () => {
 
   describe('formatContextualSLA', () => {
     it('formats contextual SLA string', () => {
-      expect(formatContextualSLA(6, 24)).toBe('6d · 600% of SLA');
+      expect(formatContextualSLA(6, 24)).toBe('6d · 6x SLA');
       expect(formatContextualSLA(6, 336)).toBe('6d · 43% of SLA');
+      expect(formatContextualSLA(0, 0)).toBe('0d · SLA unavailable');
     });
   });
 

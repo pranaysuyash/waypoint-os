@@ -13,6 +13,8 @@ export type SupportedCurrency =
   | 'EUR'
   | 'GBP'
   | 'AED'
+  | 'NGN'
+  | 'ZAR'
   | 'SGD'
   | 'THB'
   | 'AUD'
@@ -43,6 +45,8 @@ export const CURRENCY_CONFIG: Record<SupportedCurrency, CurrencyConfig> = {
   EUR: { code: 'EUR', symbol: '€', name: 'Euro', locale: 'de-DE', decimals: 0, flag: '🇪🇺' },
   GBP: { code: 'GBP', symbol: '£', name: 'British Pound', locale: 'en-GB', decimals: 0, flag: '🇬🇧' },
   AED: { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham', locale: 'ar-AE', decimals: 0, flag: '🇦🇪' },
+  NGN: { code: 'NGN', symbol: '₦', name: 'Nigerian Naira', locale: 'en-NG', decimals: 0, flag: '🇳🇬' },
+  ZAR: { code: 'ZAR', symbol: 'R', name: 'South African Rand', locale: 'en-ZA', decimals: 0, flag: '🇿🇦' },
   SGD: { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar', locale: 'en-SG', decimals: 0, flag: '🇸🇬' },
   THB: { code: 'THB', symbol: '฿', name: 'Thai Baht', locale: 'th-TH', decimals: 0, flag: '🇹🇭' },
   AUD: { code: 'AUD', symbol: 'A$', name: 'Australian Dollar', locale: 'en-AU', decimals: 0, flag: '🇦🇺' },
@@ -80,6 +84,18 @@ const CURRENCY_FORMATTERS: Record<SupportedCurrency, Intl.NumberFormat> = {
   AED: new Intl.NumberFormat('ar-AE', {
     style: 'currency',
     currency: 'AED',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }),
+  NGN: new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }),
+  ZAR: new Intl.NumberFormat('en-ZA', {
+    style: 'currency',
+    currency: 'ZAR',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }),
@@ -155,7 +171,7 @@ export function formatMoneyCompact(amount: number, currency: SupportedCurrency =
 }
 
 /**
- * Parse a budget string like "2 lac", "5000 USD", "$10k" into Money.
+ * Parse a budget string like "2 lac", "5000 USD", "$10k", "NGN 2.5m" into Money.
  * Detects currency from the string or defaults to INR.
  */
 export function parseBudgetString(input: string): Money | null {
@@ -172,6 +188,20 @@ export function parseBudgetString(input: string): Money | null {
     const amount = parseFloat(lakhMatch[1]);
     if (isNaN(amount)) return null;
     return { amount: amount * 100000, currency };
+  }
+
+  const millionMatch = trimmed.match(/(\d+(?:\.\d+)?)\s*(M|MN|MILLION|MILLIONS)\b/);
+  if (millionMatch) {
+    const amount = parseFloat(millionMatch[1]);
+    if (isNaN(amount)) return null;
+    return { amount: amount * 1000000, currency };
+  }
+
+  const croreMatch = trimmed.match(/(\d+(?:\.\d+)?)\s*(CR|CRORE|CRORES)\b/);
+  if (croreMatch) {
+    const amount = parseFloat(croreMatch[1]);
+    if (isNaN(amount)) return null;
+    return { amount: amount * 10000000, currency };
   }
 
   const thousandMatch = trimmed.match(/(\d+(?:\.\d+)?)\s*(K)\b/);

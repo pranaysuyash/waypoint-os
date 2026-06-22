@@ -24,6 +24,9 @@
   - `ReviewActionRequest.review_workflow_unit_id` is now accepted by the trip-review API.
   - Review audit events persist `review_workflow_unit_id` and `escalation_outcome`.
   - Agentic eval aggregation joins `review_action` events to matching execution workflow units.
+- Added provider-retry provenance to extraction attempt events:
+  - `provider_retry` and `max_provider_retries` are now part of the canonical event metadata allowlist.
+  - Retry failures stay internal to the logical provider attempt while still surfacing the retry path.
 - Added optional `workflow_unit_id` query parameter to `/api/trips/{trip_id}/agentic-eval` to pull unit-level summaries.
 
 ## Tests added

@@ -92,8 +92,20 @@ export function formatContextualSLA(
   daysInCurrentStage: number,
   slaHours: number,
 ): string {
-  const percentage = computeSLAPercentage(daysInCurrentStage, slaHours);
-  return `${daysInCurrentStage}d · ${percentage} of SLA`;
+  const percentage = (daysInCurrentStage * 24) / slaHours * 100;
+  if (!slaHours || slaHours <= 0) {
+    return `${daysInCurrentStage}d · SLA unavailable`;
+  }
+
+  if (percentage >= 100) {
+    const multiple = percentage / 100;
+    const displayMultiple = multiple >= 10
+      ? Math.round(multiple).toString()
+      : multiple.toFixed(multiple >= 2 ? 0 : 1);
+    return `${daysInCurrentStage}d · ${displayMultiple}x SLA`;
+  }
+
+  return `${daysInCurrentStage}d · ${Math.round(percentage)}% of SLA`;
 }
 
 /**

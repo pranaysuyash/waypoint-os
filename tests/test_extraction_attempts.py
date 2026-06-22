@@ -72,7 +72,7 @@ def _mock_extractor(model="gpt-5.4-nano", result=None, error=None):
             fields={"full_name": "TEST"},
             confidence_scores={"full_name": 0.9},
             overall_confidence=0.9,
-            confidence_method="heuristic_presence",
+            confidence_method="validation",
             provider_metadata={"model_name": model, "latency_ms": 100},
         ))
     return mock
@@ -119,8 +119,9 @@ class TestAttemptCreation:
         trip_id = _make_trip()
         doc_id = _upload_and_accept(session_client, trip_id)
 
-        # First: fail
-        with patch("spine_api.services.extraction_service.get_extractor") as mock_get:
+        # Patch module-level constant directly (env var doesn't work after import)
+        with patch("spine_api.services.extraction_service.get_extractor") as mock_get, \
+             patch("spine_api.services.extraction_service.MAX_PROVIDER_RETRIES", 0):
             mock_get.return_value = _mock_extractor(error=ExtractionProviderError("api_timeout"))
             resp1 = session_client.post(f"/trips/{trip_id}/documents/{doc_id}/extract")
 
@@ -165,7 +166,10 @@ class TestAttemptCreation:
 
 class TestFallbackHistory:
     def test_primary_timeout_secondary_success_two_attempts(self, session_client):
-        """Primary timeout + secondary success → two attempt rows."""
+        """Primary timeout + secondary success → two attempt rows.
+
+        Disables within-provider retries to test fallback behavior specifically.
+        """
         from src.extraction.vision_client import ExtractionProviderError
         from src.extraction.model_chain import ModelChain
 
@@ -177,7 +181,8 @@ class TestFallbackHistory:
 
         chain = ModelChain([("gemini-2.5-flash", ext1), ("gpt-5.4-nano", ext2)])
 
-        with patch("spine_api.services.extraction_service.get_extractor", return_value=chain):
+        with patch("spine_api.services.extraction_service.get_extractor", return_value=chain), \
+             patch("spine_api.services.extraction_service.MAX_PROVIDER_RETRIES", 0):
             resp = session_client.post(f"/trips/{trip_id}/documents/{doc_id}/extract")
 
         try:
@@ -256,7 +261,8 @@ class TestClosureProofs:
         ext2 = _mock_extractor(model="gpt-5.4-nano")
         chain = ModelChain([("gemini-2.5-flash", ext1), ("gpt-5.4-nano", ext2)])
 
-        with patch("spine_api.services.extraction_service.get_extractor", return_value=chain):
+        with patch("spine_api.services.extraction_service.get_extractor", return_value=chain), \
+             patch("spine_api.services.extraction_service.MAX_PROVIDER_RETRIES", 0):
             resp = session_client.post(f"/trips/{trip_id}/documents/{doc_id}/extract")
 
         try:
@@ -289,8 +295,9 @@ class TestClosureProofs:
             session_client, trip_id, mime="application/pdf", content=pdf_bytes
         )
 
-        # First: fail with a normal error
-        with patch("spine_api.services.extraction_service.get_extractor") as mock_get:
+        # First: fail with a normal error (disable retries so it fails fast)
+        with patch("spine_api.services.extraction_service.get_extractor") as mock_get, \
+             patch("spine_api.services.extraction_service.MAX_PROVIDER_RETRIES", 0):
             mock_get.return_value = _mock_extractor(error=ExtractionProviderError("api_timeout"))
             resp1 = session_client.post(f"/trips/{trip_id}/documents/{doc_id}/extract")
 
@@ -423,6 +430,67 @@ class TestNoopAttempt:
 # ---------------------------------------------------------------------------
 # TestRetryEndpoint
 # ---------------------------------------------------------------------------
+
+
+class TestWithinProviderRetry:
+    """Tests for retry-within-provider before falling through to next model."""
+
+    def test_retriable_error_retries_before_fallback(self, session_client):
+        """With MAX_PROVIDER_RETRIES=1, a retriable error retries once then falls through."""
+        from src.extraction.vision_client import ExtractionProviderError
+        from src.extraction.model_chain import ModelChain
+
+        trip_id = _make_trip()
+        doc_id = _upload_and_accept(session_client, trip_id)
+
+        ext1 = _mock_extractor(model="gemini-2.5-flash", error=ExtractionProviderError("api_timeout"))
+        ext2 = _mock_extractor(model="gpt-5.4-nano")
+        chain = ModelChain([("gemini-2.5-flash", ext1), ("gpt-5.4-nano", ext2)])
+
+        # Patch module-level constants directly (env vars don't work after import)
+        with patch("spine_api.services.extraction_service.get_extractor", return_value=chain), \
+             patch("spine_api.services.extraction_service.MAX_PROVIDER_RETRIES", 1), \
+             patch("spine_api.services.extraction_service.retry_backoff_delay", lambda attempt: 0.0):
+            resp = session_client.post(f"/trips/{trip_id}/documents/{doc_id}/extract")
+
+        try:
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["status"] == "pending_review"
+            # 1 initial + 1 retry for gemini, 1 for gpt = 3 attempts
+            assert body["attempt_count"] == 3
+
+            # gemini was called twice (initial + 1 retry)
+            assert ext1.extract.call_count == 2
+            # gpt was called once
+            assert ext2.extract.call_count == 1
+        finally:
+            _cleanup_trip(trip_id)
+
+    def test_non_retriable_skips_retry(self, session_client):
+        """Auth error skips retry entirely, falls through immediately."""
+        from src.extraction.vision_client import ExtractionProviderError
+        from src.extraction.model_chain import ModelChain
+
+        trip_id = _make_trip()
+        doc_id = _upload_and_accept(session_client, trip_id)
+
+        ext1 = _mock_extractor(model="gemini-2.5-flash", error=ExtractionProviderError("api_auth_error"))
+        ext2 = _mock_extractor(model="gpt-5.4-nano")
+        chain = ModelChain([("gemini-2.5-flash", ext1), ("gpt-5.4-nano", ext2)])
+
+        # Patch module-level constant directly
+        with patch("spine_api.services.extraction_service.get_extractor", return_value=chain), \
+             patch("spine_api.services.extraction_service.MAX_PROVIDER_RETRIES", 2):
+            resp = session_client.post(f"/trips/{trip_id}/documents/{doc_id}/extract")
+
+        try:
+            assert resp.status_code == 422
+            # Auth error is non-retriable: no retry, no fallback
+            assert ext1.extract.call_count == 1
+            assert ext2.extract.call_count == 0
+        finally:
+            _cleanup_trip(trip_id)
 
 
 class TestRetryEndpoint:

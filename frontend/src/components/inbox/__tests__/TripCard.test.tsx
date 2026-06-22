@@ -113,7 +113,7 @@ describe('TripCard v2 - metrics row (role-dependent)', () => {
     expect(metrics).toHaveTextContent('Jun 2026');
     expect(metrics).toHaveTextContent('$15.0k');
     expect(metrics).not.toHaveTextContent('6d');
-    expect(screen.getByTestId('trip-card-sla')).toHaveTextContent('6d · 600% of SLA');
+    expect(screen.getByTestId('trip-card-sla')).toHaveTextContent('6d · 6x SLA');
   });
 
   it('uses human fallback labels for missing date and value metrics', () => {
@@ -184,7 +184,7 @@ describe('TripCard v2 - status row (row 3)', () => {
   it('renders contextual SLA badge with days and percentage', () => {
     render(<TripCard trip={mockTrip} isSelected={false} onSelect={vi.fn()} />);
     const sla = screen.getByTestId('trip-card-sla');
-    expect(sla).toHaveTextContent('6d · 600% of SLA');
+    expect(sla).toHaveTextContent('6d · 6x SLA');
   });
 
   it('renders assigned agent badge when assigned', () => {

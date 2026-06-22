@@ -354,11 +354,55 @@ function WorkbenchContent() {
     if (spineRunState?.packet) {
       store.setResultPacket(spineRunState.packet);
     }
+    if (
+      spineRunState?.decision_state ||
+      spineRunState?.follow_up_questions ||
+      spineRunState?.hard_blockers ||
+      spineRunState?.soft_blockers
+    ) {
+      const normalizedFollowUps = Array.isArray(spineRunState.follow_up_questions)
+        ? spineRunState.follow_up_questions.map((question) => {
+            const record = question as Record<string, unknown>;
+            return {
+              field_name: typeof record.field_name === 'string' ? record.field_name : '',
+              question: typeof record.question === 'string' ? record.question : '',
+              priority: typeof record.priority === 'string' ? record.priority : 'medium',
+              suggested_values: Array.isArray(record.suggested_values) ? record.suggested_values : [],
+            };
+          })
+        : [];
+      store.setResultDecision({
+        decision_state: spineRunState.decision_state ?? 'ASK_FOLLOWUP',
+        hard_blockers: spineRunState.hard_blockers ?? [],
+        soft_blockers: spineRunState.soft_blockers ?? [],
+        contradictions: [],
+        risk_flags: [],
+        follow_up_questions: normalizedFollowUps as DecisionOutput['follow_up_questions'],
+        rationale: {
+          hard_blockers: [],
+          soft_blockers: [],
+          contradictions: [],
+          confidence: 0,
+          confidence_scorecard: { data: 0, judgment: 0, commercial: 0 },
+          feasibility: '',
+        },
+        confidence: {
+          overall: NaN,
+          data_quality: NaN,
+          judgment_confidence: NaN,
+          commercial_confidence: NaN,
+        },
+        branch_options: [],
+        commercial_decision: 'NONE',
+        budget_breakdown: null,
+      });
+    }
     store.setResultFrontier(spineRunState?.frontier_result ?? null);
   }, [
     spineRunState,
     store.setResultValidation,
     store.setResultPacket,
+    store.setResultDecision,
     store.setResultFrontier,
   ]);
 
@@ -392,15 +436,25 @@ function WorkbenchContent() {
     const currentState = spineRunState?.state ?? null;
     const prevState = prevRunStateRef.current;
     const completedWithRunFrontier = currentState === 'completed' && Boolean(runFrontier);
+    const needsFollowUpReview =
+      currentState === 'completed' &&
+      (
+        spineRunState?.decision_state === 'ASK_FOLLOWUP' ||
+        (spineRunState?.hard_blockers?.length ?? 0) > 0 ||
+        (spineRunState?.soft_blockers?.length ?? 0) > 0
+      );
 
     // Navigate the most useful tab after terminal transitions.
     // Blocked/failed flows still land on Trip Details for immediate validation context.
-    // Completed runs with frontier output land on Frontier for immediate intelligence visibility.
+    // Completed runs with follow-up blockers land on Risk Review first.
+    // Otherwise, completed runs with frontier output land on Frontier for immediate intelligence visibility.
     if (
       currentState !== prevState &&
       (currentState === 'blocked' || currentState === 'failed')
     ) {
       handleTabChange('packet');
+    } else if (needsFollowUpReview) {
+      handleTabChange('safety');
     } else if (
       currentState === 'completed' &&
       completedWithRunFrontier &&
@@ -410,6 +464,8 @@ function WorkbenchContent() {
     }
 
     if (currentState !== 'completed') {
+      prevCompletedRunFrontierRef.current = false;
+    } else if (needsFollowUpReview) {
       prevCompletedRunFrontierRef.current = false;
     } else if (completedWithRunFrontier) {
       prevCompletedRunFrontierRef.current = true;
@@ -951,7 +1007,13 @@ function WorkbenchContent() {
               </p>
             )}
           </div>
-          <div className='flex items-center gap-3 flex-wrap'>
+          <form
+            className='flex items-center gap-3 flex-wrap'
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleProcessTrip();
+            }}
+          >
             {runError && (
               <div className='flex items-center gap-2 px-3 py-2 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg text-ui-sm text-[#f85149]'>
                 <AlertTriangle className='size-4' />
@@ -999,8 +1061,7 @@ function WorkbenchContent() {
               </div>
             )}
             <button
-              type='button'
-              onClick={handleProcessTrip}
+              type='submit'
               disabled={
                 isRunning ||
                 isSpineRunning ||
@@ -1151,7 +1212,7 @@ function WorkbenchContent() {
             >
               <Settings className='size-4' aria-hidden='true' />
             </button>
-          </div>
+          </form>
         </header>
 
         {process.env.NEXT_PUBLIC_ENABLE_SCENARIO_LAB === '1' && (

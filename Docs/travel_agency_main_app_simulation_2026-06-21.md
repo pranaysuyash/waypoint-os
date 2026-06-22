@@ -1,5 +1,263 @@
 # Travel Agency Main App Simulation
 
+Date: 2026-06-22
+Mode: Live authenticated app simulation, plus scenario-based reasoning from the current codebase and workspace data
+
+## Scope
+
+This document focuses on the main agency app experience, not the marketing site or the traveler-facing public checker.
+
+What I simulated:
+- A small owner-led agency using the app to process new work quickly
+- A larger agency using the app as a high-volume command center
+- An India-first agency where trip planning is naturally INR- and family-centric
+- An Africa-focused distributed team that needs the app to stay clear across time zones and variable connectivity
+- A global leisure operator handling repeat planning work and deep links into a specific trip
+- A Lagos-based family inquiry for Zanzibar, which stressed non-Indian currency parsing and family/celebration context
+
+Live proof points from the current app session:
+- Login succeeded with `newuser@test.com` / `testpass123`
+- The clean frontend on `:3101` loaded the authenticated workbench and intake flow
+- A live Lagos/Zanzibar inquiry processed successfully from the intake form
+- The Risk Review tab showed `PROCEED_INTERNAL_DRAFT`, the soft blocker `soft_preferences`, and the follow-up question about must-haves
+- The app kept the customer message visible in the live form while the agent note stayed separate as internal context
+- The budget parser now preserves `NGN` and `ZAR` in both compact and plain-number forms, so the app no longer falls back to INR just because the amount is large
+- `NGN 2.5m` and `NGN 2500000` now resolve as Nigerian Naira, and the same applies to `ZAR 3m` / `ZAR 3000000`
+- The workbench still surfaced the decision state even where the safety bundle was not available, which is better than hiding the run result
+- A fresh small-agency intake scenario for `Couple from Mumbai for 6N Bali in July, beach villa preference, INR 3-4L budget, vegetarian meals, anniversary trip` saved correctly as `draft_d8fb558ed0ab` and later autosaved again as `draft_dbafd68b5b8a`
+- The same live session showed that the top-level `Process Inquiry` action did not produce a `draft_process_started` event or a visible in-flight state during the test window, so the workflow still has a trust gap at the primary CTA
+- The workbench session eventually fell back to the sign-in modal after prolonged interaction, which means long simulations need auth stability checked alongside workflow behavior
+
+Current build wording:
+- Decision-state labels now say `Waiting on Customer` instead of `Need More Info`
+- The main intake flow is now clearer about when it needs origin and budget versus when it can unlock planning
+
+## Scenario 1: Small Agency, Owner-Only Operator
+
+Who this is:
+- One person handles intake, planning, follow-up, and booking
+- The operator needs to move fast and cannot spend time decoding internal structure
+
+What worked:
+- The overview gives a strong “what needs attention now” feeling
+- The planning work is surfaced as an action queue instead of a passive dashboard
+- The trip workspace opens directly on a real trip when the id is valid
+- The missing-details language is clearer than old status-heavy wording
+
+What felt good:
+- The app points to the next move instead of making the operator hunt for it
+- Trip detail pages stay anchored to the actual trip instead of a generic shell
+- Compact group summaries reduce noise when many similar trips exist
+
+What felt slow or repetitive:
+- Repeated-looking rows still make the queue feel busier than it really is
+- A small operator still has to scan more than they should before deciding what to touch first
+
+Workaround:
+- Treat the top action in overview as the source of truth
+- Use the trip deep link once the trip id is known, rather than hunting through lists again
+- For the moment, stay in the workbench or queue view after processing instead of relying on the generated trip route
+
+Live intake note:
+- The Lagos/Zanzibar inquiry now stays readable as a family request with a real market currency instead of collapsing into an INR assumption
+- The workbench gives a follow-up draft rather than pretending the trip is ready when the key traveler preferences are still soft
+
+## Scenario 2: Large Agency, Multi-Agent Command Center
+
+Who this is:
+- Several operators are sharing the queue
+- One team member may be qualifying, another quoting, another checking review pressure
+
+What worked:
+- The app already behaves like a command center rather than a static CRM
+- Grouped cards and grouped counts help hide duplicate-looking noise
+- The `/trips` list now communicates that it is showing grouped cards from a larger raw trip count
+
+What felt good:
+- Queue scale is visible without the page collapsing into chaos
+- The app makes it easier to see what is unique work versus repeated work
+
+What still needs help:
+- Ownership clarity could be even more explicit in dense queues
+- When the queue is very large, repeated work still costs attention even after grouping
+
+Workaround:
+- Use the grouped summary first, then drill into the lead card in each cluster
+- Let the raw count stay in the background unless a specific repeat needs investigation
+
+Live note:
+- The inbox SLA badge now reads as `15X SLA` / `6X SLA` style overages instead of `1500% OF SLA`, which is easier for a team lead to scan in a crowded queue
+- That keeps the signal honest while avoiding a metric that looks broken at first glance
+
+## Scenario 8: Trip Workspace Follow-Through
+
+Who this is:
+- An operator who has already completed intake and now needs to move from trip details into options building
+- The operator wants the next step to feel like a real workspace handoff, not a dead button
+
+What worked:
+- The live `Open options` control from the completed trip workspace routes to the strategy tab
+- The strategy tab renders a concrete options brief instead of a placeholder stub
+- The page title and route both reflect the options stage clearly, which makes the handoff feel trustworthy
+
+What felt good:
+- The strategy brief starts with a session goal and suggested opening, so the operator has something usable immediately
+- The priority sequence and assumptions are visible, which helps an agent understand what needs review before sending anything out
+
+What still needs help:
+- The debug-data toggle is intentionally hidden behind a privacy policy gate, so deep technical inspection still requires a secure environment
+- The trip workspace still depends on a live authenticated session, so stale browser state can make route verification noisier than the route itself
+
+Workaround:
+- Use the strategy tab as the primary “next move” after intake
+- Treat the trip URL as the durable workspace handoff, then reopen from the canonical route if the browser session gets stale
+
+## Scenario 9: Workbench Process Path, Small Agency Owner
+
+Who this is:
+- A small owner-led agency operator using the new-inquiry workbench as the primary command surface
+- The operator expects the app to save the draft quickly, then move into a visible processing state when `Process Inquiry` is pressed
+
+What worked:
+- Customer and agent notes saved cleanly in the workbench draft
+- Autosave created durable draft records with the same scenario text, so the app is not losing the live intake
+- The saved draft remains recoverable after a browser/session interruption
+
+What felt good:
+- The intake canvas is legible enough for a real owner to write the traveler request and internal note without extra scaffolding
+- The workbench preserves the difference between customer-facing message and internal planning note
+
+What still needs help:
+- The primary `Process Inquiry` action did not produce a visible run state during the live test
+- No `draft_process_started` event appeared for the saved Bali draft in the audit trail during the interaction window
+- The workbench session expired into a sign-in modal during the longer simulation, which interrupts momentum for an operator doing real work
+
+Workaround:
+- Save the draft first, then reopen the saved draft if the session goes stale
+- Treat the draft itself as the durable work artifact until the process path is made visibly reliable
+
+Live note:
+- The saved draft id changed from `draft_d8fb558ed0ab` to `draft_dbafd68b5b8a` through autosave, which confirms persistence but also shows how easy it is for the operator to lose a clear sense of “what just happened” without a stronger processing response
+
+## Scenario 3: India-First Agency
+
+Who this is:
+- The agency works with Indian travelers, Indian pricing expectations, and family-led decision making
+- The operator needs clear missing-detail prompts, not generic CRM language
+
+What worked:
+- The app’s current operating context already feels India-friendly
+- The live settings and pricing assumptions are grounded in INR
+- The “Missing customer details” phrasing is much easier to scan than internal process language
+
+What felt good:
+- The app is acting on real trip readiness, not just status labels
+- The default view now helps an operator know whether they should ask the customer for more information or continue planning
+
+What still needs help:
+- Some surfaces still read like internal workflow artifacts instead of plain human outcomes
+- The app should continue leaning toward family-travel language, not software-process language
+- Stage labels in role-specific metrics must stay humanized so finance and fulfillment do not see backend enum casing
+- Example summaries in grouped action-required quotes must keep avoiding repeated title text as more variants are added
+
+Workaround:
+- Keep using the top-level banner and trip detail summary as the daily operating vocabulary
+- Treat missing details as a checklist, not a failure state
+
+Live intake note:
+- A label-style `Budget: USD 4,500` now resolves in the backend after the extractor restart, so clear budget wording can unlock planning instead of stalling
+- The Bali intake now works with plain-language dates instead of requiring ISO-like formatting
+
+## Scenario 4: Africa-Focused Distributed Agency
+
+Who this is:
+- The team may be split across cities or time zones
+- Communication is often asynchronous, and connectivity can be uneven
+
+What worked:
+- The app can serve as a shared state container instead of a live call-by-call dependency
+- Valid deep links into a trip workspace make handoff possible without re-explaining the whole case
+- The fallback on invalid links is at least honest about the record being unavailable
+
+What still needs help:
+- The app does not yet signal remote-team friction in a special way
+- There is no explicit low-bandwidth or delayed-sync comfort layer in the UI
+- The current experience assumes the operator can refresh and re-enter quickly
+
+Workaround:
+- Use deep links as the handoff artifact
+- If a link is stale, return to the planning list and re-open the trip from the canonical queue
+
+Live intake note:
+- The explicit `Origin city: Nairobi` run now promotes to a planning-ready trip after the backend restart, which is the right behavior for a distributed team that needs clear handoff language
+
+## Scenario 5: Global Leisure Operator
+
+Who this is:
+- The agency handles trips across destinations and needs repeatable planning behavior
+- The team needs the app to stay understandable across many trip types and markets
+
+What worked:
+- The same trip workspace pattern held up for a real Bali trip deep link
+- The app did not need a special-case route for that trip
+- The structure stays consistent across different destinations and trip sizes
+
+What felt good:
+- Once the trip exists and the id is valid, the app gets you to the right trip without detours
+- The workspace keeps the live trip context visible while still exposing the stage tabs
+
+What still needs help:
+- The app still depends on a valid route id; stale ids fall back to a generic unavailable screen
+- For global teams, the app should keep getting better at expressing location-specific assumptions in plain language
+- The generated trip route now opens cleanly in a fresh authenticated session for the Lagos/Zanzibar trip, so the trip-details drilldown is usable after a completed run
+
+Workaround:
+- Treat the trip URL as the durable handoff token
+- If a route is stale, go back to Trips in Planning and reopen from the canonical list
+- Until the handoff is fixed, use the workbench completion view as the closing step
+
+Live rerun note:
+- After the intake/parser fixes, the same workbench flow now lands on a clear risk-review state for the Lagos/Zanzibar request
+- The `NGN 2.5m` style note now preserves the full market currency instead of collapsing into the default INR assumption
+
+## Scenario 6: Small Agency Call Capture
+
+Who this is:
+- A smaller boutique agency that wants to move fast and keep each inquiry simple
+- The operator needs the app to preserve the traveler’s real party size, not just the last partial mention in the note
+
+What worked:
+- The intake flow accepted a casual WhatsApp-style call summary without needing special formatting
+- The app kept the traveler’s destination, date window, and must-haves visible immediately after processing
+- The trip workspace opened from the completed workbench run without the earlier unauthorized bounce
+
+What we found:
+- Before the patch, the trip card collapsed `2 adults and 1 child` into `1 pax`
+- The budget parser also dropped the `L` in `Budget INR 2.5L`, which made the planning surface show `₹3` instead of the real amount
+- That meant the app was technically processing the request, but it was still hiding important planning context from the operator
+
+Fix/workaround:
+- Preserve richer party facts when later passes are less complete
+- Parse `INR 2.5L` as `250000`
+- Render INR budgets in compact form so the UI matches how agents actually speak about them
+
+## Scenario 7: Timeline Review, Human Labels Only
+
+Who this is:
+- An operator checking the decision timeline after a trip has moved through several stages
+- The operator wants to understand the trip history quickly without decoding raw enum values
+
+What worked:
+- The timeline page loaded the real trip history in the original Chrome session
+- The page kept the stage/status progression readable enough for a quick scan
+- The shared timeline helper now renders `Stage not set` instead of leaking `Unknown`
+
+What felt good:
+- The event card reads like a human timeline, not a debugging dump
+- The stage badge stays consistent with the rest of the app’s friendly labels
+
+What still needs help:
+- The timeline surface still depends on a live authenticated session, so browser auth matters for validation
 Date: 2026-06-21
 Mode: Live authenticated app simulation, plus scenario-based reasoning from the current codebase and workspace data
 
@@ -16,6 +274,7 @@ What I simulated:
 
 Live proof points from the current app session:
 - Login succeeded with `newuser@test.com` / `testpass123`
+- The original `:3010` dev server was stale, so I brought up a clean frontend on `:3101` and used that live session for the authenticated validation
 - `/overview` loaded the live command center
 - `/trips` loaded the grouped planning list
 - The planning label now reads `Ready to build options` instead of `Need Trip Options`
@@ -38,7 +297,7 @@ Live proof points from the current app session:
 - The Bali intake now completes when the traveler message uses explicit origin, party size, destination, travel dates, budget, and visa-risk wording
 - The date parser now understands common month-day ranges like `July 10 to July 16`
 - `visa_concerns_present` now carries heuristic maturity, so discovery packets no longer hard-fail just because the signal exists
-- Clicking `View Trip` from the completed workbench still lands on `Workspace unavailable` / `Unauthorized` on the generated trip route, so the handoff into the trip workspace remains a separate bug
+- The generated trip route now opens cleanly in a fresh authenticated browser session for the completed Lagos/Zanzibar trip, so the handoff into the trip workspace is working as intended
 
 Current build wording:
 - Decision-state labels now say `Waiting on Customer` instead of `Need More Info`
@@ -167,7 +426,7 @@ What felt good:
 What still needs help:
 - The app still depends on a valid route id; stale ids fall back to a generic unavailable screen
 - For global teams, the app should keep getting better at expressing location-specific assumptions in plain language
-- The generated trip route currently returns `Unauthorized`, so the handoff from a completed workbench run is still broken
+- The trip workspace is now reachable from a clean authenticated session; stale route handling is still the main edge to watch
 
 Workaround:
 - Treat the trip URL as the durable handoff token
@@ -264,7 +523,7 @@ Workaround:
 - Stale direct links are handled honestly, but the fallback is still generic
 - Remote/distributed operation is supported only implicitly, not with special affordances
 - Some ready trips still carry recommended refinements, so the user has to distinguish optional polish from real blockers
-- The generated trip route can still fail with `Unauthorized` after a successful workbench run
+- The earlier browser-daemon session made trip-route verification noisy until we checked the same path in a fresh authenticated browser
 - Before the parser/display fix, the app also under-read party size and budget for a live small-agency call capture
 
 ## Time Savers
@@ -499,3 +758,112 @@ Time wasters:
 
 Clean takeaway:
 - The output page is more trustworthy when its empty-state handoff reflects the current trip stage instead of a generic fallback
+
+## Scenario 15: Owner Quote Review Queue -> Trip Identity Contract
+
+Who this is:
+- An owner or senior operator reviewing quotes that need approval before they go out to travelers
+- The operator needs each card to be uniquely identifiable, actionable, and legible in a dense queue
+
+Live note:
+- In the original Chrome session on `:3101`, the quote review page loaded successfully after login
+- Before the backend fix, the queue contained 19 anonymous cards with `TRIP-UNKNOWN` and blank `id` values
+- After fixing the canonical review mapper, the same queue now shows real references such as `TRIP-83C845`
+
+What worked:
+- Authenticated owner review rendered in the live app instead of crashing
+- The page now gives each quote card a real trip reference and a usable `View Details` link
+- The queue is finally skimmable as a review surface instead of a wall of identical placeholders
+
+What was bad:
+- The backend review mapper only read `trip_id`, but stored reviewable trips can carry `id`
+- That caused the review queue to emit blank ids and `TRIP-UNKNOWN`, which also made review actions unreliable
+- The stale `:3010` server was still serving the old broken shape, which made the problem look worse in the original browser session
+
+Fix/workaround:
+- Use `trip.get("trip_id") or trip.get("id")` as the canonical review identity
+- Keep the frontend rendering logic simple; it should display the canonical id, not invent a second identity system
+
+Time savers:
+- The owner can now distinguish cards at a glance and click through to a specific trip
+- Review actions now have a stable id to target
+
+Time wasters:
+- Blank review ids
+- Identical placeholder references that make every card look like the same trip
+- Debugging against a stale local server instead of a fresh live session
+
+Clean takeaway:
+- The review queue only feels like a command center when the backend owns a stable identity contract for each card
+
+## Scenario 16: Small Agency Couple Inquiry -> Natural-Language Party Size
+
+Who this is:
+- A small owner-led agency capturing a real inquiry from a traveler who says “couple” instead of spelling out a headcount
+- The operator wants the app to understand normal human wording and keep the flow moving
+
+Live note:
+- The exact inquiry used in the live browser session was: `Couple from Mumbai for 6N Bali in July, beach villa preference, INR 3-4L budget, vegetarian meals, anniversary trip.`
+- After the backend restart, the same inquiry now processes successfully and the Trip Details tab shows `Party Size 2`
+- The processed run is also materially better than the old blocked state: the page now shows `Processed successfully`, `View Trip`, and `Promote Draft`
+
+What worked:
+- “Couple” now resolves to a two-person party in the real pipeline
+- The Trip Details tab shows `Party Size 2` and `Party Composition Adults: 2`
+- The inquiry no longer gets stuck on a missing party-size prompt when the user already implied it
+
+What was bad:
+- Before the restart, the live workbench kept showing the old `Party Size` missing blocker even though the extractor logic had already been improved
+- That made the flow feel broken even when the underlying extraction code was actually ready
+
+Fix/workaround:
+- Teach the extractor that `couple`, `pair`, and `duo` imply two adults when no other party structure is present
+- Restart the backend worker so the live pipeline picks up the new extraction logic
+
+Time savers:
+- The operator can speak naturally instead of translating every inquiry into a structured form first
+- The app accepts a common shorthand and keeps the inquiry moving
+
+Time wasters:
+- Forcing users to type an explicit `2 pax` when they already said `couple`
+- A stale backend worker that keeps surfacing an old blocker after the code is fixed
+
+Clean takeaway:
+- The intake flow is better when it understands ordinary agent language first and only asks follow-up questions for genuinely missing information
+
+## Scenario 17: Workbench Risk Review -> Run-State Decision Visibility
+
+Who this is:
+- A small agency operator staying inside the workbench after processing an inquiry
+- The operator needs the Risk Review tab to show the run decision and follow-up questions immediately, without waiting for a separate trip-shell refresh
+
+Live note:
+- In the fresh browser session on `:3101`, the inquiry `Couple from Mumbai for 6N Bali in July, beach villa preference, INR 3-4L budget, vegetarian meals, anniversary trip.` was processed again through the workbench
+- The live run completed with a decision state and follow-up data, but the Risk Review tab initially showed an empty state because the workbench store was not hydrating the run decision from `spineRunState`
+- After wiring the run-state decision into the store, the same Risk Review tab now shows `Decision State`, `PROCEED_INTERNAL_DRAFT`, `Soft Blockers`, and the follow-up question `Any specific preferences or must-haves for this trip?`
+
+What worked:
+- The workbench now exposes the operator-facing decision state in the same place the operator expects to review risk and follow-up state
+- The decision view appears even when there is no separate safety bundle yet
+- The follow-up question is readable in the live app instead of being hidden behind a blank panel
+- The UI now says `Confidence unavailable` instead of inventing a fake percentage when the terminal run status does not provide a score
+
+What was bad:
+- The Risk Review tab only rendered when a safety bundle existed, so a valid run could look like “no risk review data” even though the pipeline had already produced a decision and follow-up request
+- The run response itself already contained the useful state, but the workbench never hydrated it into the UI store
+- The confidence box originally showed `0%`, which was misleading because it looked like an actual score rather than a missing one
+
+Fix/workaround:
+- Hydrate `decision_state`, `hard_blockers`, `soft_blockers`, and `follow_up_questions` from the terminal run status into the workbench decision store
+- Keep the Risk Review tab useful for both safety-backed and decision-only runs
+
+Time savers:
+- The operator can stay in one tab and immediately see why the system wants follow-up
+- Follow-up phrasing is visible at the same time as the decision state
+
+Time wasters:
+- A blank Risk Review panel after a successful run
+- Requiring a full trip-shell refresh just to see the decision that already exists in the run response
+
+Clean takeaway:
+- The workbench should surface run-state decisions directly, because the operator’s next move depends on that state more than on the later trip-shell handoff
