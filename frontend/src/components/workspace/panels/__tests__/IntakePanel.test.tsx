@@ -9,6 +9,7 @@ import { formatInquiryReference } from '@/lib/lead-display';
 
 const mockSaveTrip = vi.fn();
 const mockStartPlanning = vi.fn();
+const mockExecuteSpineRun = vi.fn();
 
 // Mock dependencies
 vi.mock('@/stores/workbench', () => ({
@@ -21,7 +22,7 @@ vi.mock('@/stores/auth', () => ({
 
 vi.mock('@/hooks/useSpineRun', () => ({
   useSpineRun: vi.fn(() => ({
-    execute: vi.fn(),
+    execute: mockExecuteSpineRun,
     isLoading: false,
     error: null,
     reset: vi.fn(),
@@ -91,6 +92,7 @@ describe('IntakePanel', () => {
     vi.clearAllMocks();
     mockSaveTrip.mockResolvedValue(null);
     mockStartPlanning.mockResolvedValue({ success: true, trip_id: 'TRIP-123', assigned_to: 'Alex Agent' });
+    mockExecuteSpineRun.mockResolvedValue({ trip_id: 'trip_new', state: 'completed' });
     (useWorkbenchStore as any).mockReturnValue(mockStore);
     (useAuthStore as any).mockImplementation((selector: any) =>
       selector({
@@ -490,6 +492,60 @@ describe('IntakePanel', () => {
     await user.click(continueButtons[0]!);
 
     expect(mockRouter.push).toHaveBeenCalledWith('/trips/trip_ready_2/strategy');
+  });
+
+  it('sends the repaired canonical trip snapshot into the build run', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <IntakePanel
+        tripId='trip_ready_3'
+        trip={{
+          id: 'trip_ready_3',
+          destination: 'Bali',
+          origin: 'Mumbai',
+          type: 'Family Leisure',
+          tripPurpose: 'family holiday',
+          tripPriorities: 'kid-friendly, vegetarian food',
+          dateFlexibility: 'firm',
+          budget: '₹3.5L',
+          party: 4,
+          dateWindow: 'in Jul',
+          state: 'blue',
+          age: 'Today',
+          createdAt: '2026-04-23T08:00:00.000Z',
+          updatedAt: '2026-04-23T08:15:00.000Z',
+          status: 'assigned',
+          validation: {
+            is_valid: true,
+            errors: [],
+            warnings: [],
+          },
+        } as any}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /build trip options/i }));
+
+    await waitFor(() => {
+      expect(mockExecuteSpineRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          raw_note: 'Test raw note',
+          owner_note: 'Test owner note',
+          structured_json: expect.objectContaining({
+            origin: 'Mumbai',
+            destination: 'Bali',
+            trip_purpose: 'family holiday',
+            travelers: 4,
+            budget: '₹3.5L',
+            dates: 'in Jul',
+            trip_priorities: 'kid-friendly, vegetarian food',
+            date_flexibility: 'firm',
+            type: 'Family Leisure',
+          }),
+        })
+      );
+    });
   });
 
   it('shows a saved-next-step hint after saving a planning field', async () => {

@@ -10,6 +10,7 @@
 import React, { useEffect, useReducer, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { SuitabilityPanel, type SuitabilityFlag } from '@/components/workspace/panels/SuitabilityPanel';
+import { api } from '@/lib/api-client';
 
 type SuitabilityPageState =
   | { status: 'loading'; flags: SuitabilityFlag[]; error: null }
@@ -53,20 +54,14 @@ export default function SuitabilityPage() {
     // OK: fetch is run once on mount for suitability assessment
     const fetchTrip = async () => {
       try {
-        const response = await fetch(`/api/trips/${tripId}`, {
-          credentials: "include",
-          cache: "no-store",
-        });
-        // cache: no-store ensures fresh trip data every render
-        if (!response.ok) throw new Error('Failed to fetch trip');
-
-        const trip = await response.json();
+        const trip = await api.get<{ suitability_flags?: SuitabilityFlag[] }>(`/api/trips/${tripId}`);
 
         // Convert suitability_flags to SuitabilityFlag format
         const formattedFlags: SuitabilityFlag[] = (
           trip.suitability_flags || []
         ).map((flag: any) => {
           return {
+            flag: flag.flag_type,
             flag_type: flag.flag_type,
             severity: flag.severity,
             reason: flag.reason,
@@ -88,14 +83,9 @@ export default function SuitabilityPage() {
   const handleAcknowledge = async (flagIds: string[]) => {
     try {
       // Submit acknowledgments to backend
-      const response = await fetch(`/api/trips/${tripId}/suitability/acknowledge`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: "include",
-        body: JSON.stringify({ acknowledged_flags: flagIds }),
+      await api.post(`/api/trips/${tripId}/suitability/acknowledge`, {
+        acknowledged_flags: flagIds,
       });
-
-      if (!response.ok) throw new Error('Failed to submit acknowledgments');
 
       setAcknowledgedFlags(flagIds);
 

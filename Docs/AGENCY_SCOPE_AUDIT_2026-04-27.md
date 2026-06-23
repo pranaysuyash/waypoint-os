@@ -19,15 +19,14 @@ This audit verifies whether the current application flows are scoped to an agenc
 ### 1. Product positioning and strategy
 
 - `memory/MEMORY.md` explicitly states: "This is a white-label B2B SaaS platform, NOT a direct-to-consumer agency."
-- `README.md` and `app.py` describe the product as:
+- `README.md` and the Next.js frontend describe the product as:
   - Intake & Normalization for agency inboxes
   - Strategy and internal operator packets
   - Workbench UI for operators to review and execute the pipeline
-- `Docs/SINGLE_TENANT_MVP_STRATEGY.md` remains in the repo as a historical draft, but it is clearly marked as **deprecated** and superseded by a multi-tenant direction.
+- The legacy Streamlit prototype has been retired, so the product docs and runtime entrypoints now align on the FastAPI + Next.js path.
 
 ### 2. App flow and UI evidence
 
-- `app.py` is titled **Operator Workbench — Agency Flow Simulator**.
 - The sidebar feeds and labels are operator-centric:
   - "Operating Mode"
   - "Owner Note (optional)"

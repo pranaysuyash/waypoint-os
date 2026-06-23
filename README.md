@@ -113,7 +113,7 @@ flowchart LR
 
 - FastAPI app in `spine_api/server.py`
 - Next.js 16 frontend in `frontend/`
-- Legacy/prototype Streamlit app in `app.py` (not the main operator UI)
+- Legacy Streamlit prototype retired; the current app surface is FastAPI + Next.js.
 
 ---
 

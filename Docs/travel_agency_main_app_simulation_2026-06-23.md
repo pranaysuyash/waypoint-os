@@ -406,6 +406,10 @@ What worked:
 - The inline budget editor is a real time saver once you click the exact field action, because it keeps the operator on the same trip page instead of bouncing them into a separate flow.
 - Saving budget and origin now preserve the manual edits in the reassessment payload, so later auto-reprocess passes can keep the agent-entered values instead of reverting them to stale raw-note defaults.
 - The live browser replay now opens the budget editor again after the button-type fix, which makes the edit affordance feel like part of the trip workflow instead of a silent page submit.
+- The mock-free live route replay also exposed a missing auth-refresh import in `bff-auth.ts`; fixing that makes the same session-refresh path usable in the real app instead of only in the earlier mocked test harness.
+- Missing budget now stays missing in the trip payload instead of being fabricated as `0`, which keeps the trip detail card truthful and prevents the operator from reading a fake budget as if it were confirmed data.
+- The client transport tests now run against tiny real HTTP servers instead of fetch spies, so the auth/body contract is being checked the same way a browser would actually use it.
+- The suitability page used to do its own raw fetch for the trip and acknowledgments, which meant an expired session could fail there even after the shared client had been hardened; it now goes through the same auth-refresh-aware client as the rest of the app.
 
 What felt weak:
 
@@ -431,3 +435,71 @@ Time waster:
 - A clickable-looking `Start Planning` action that does not visibly advance the trip is friction for the operator and needs clearer feedback or gating.
 - Before the overlay fix, repeated partial saves risked erasing the previous manual edit, which would have forced the agent to re-enter work that should have been preserved.
 - A form-submit side effect on edit buttons was a pure time sink because it made the page look interactive while quietly discarding the intended edit gesture.
+- A missing refresh helper import is a hard stop for auth recovery because it turns an expired cookie into a 502 instead of a seamless retry.
+- Surfacing `0` for an unknown budget is misleading in the same way as a fake completion state: it is cheap to render but expensive to trust.
+- A page-level raw fetch bypass on suitability review is a hidden auth-failure trap, because it makes one stage behave differently from the rest of the trip workspace.
+
+## Scenario 12: Agent-only live new-trip simulation
+
+Live browser path:
+
+- Sign in at `/login` with `newuser@test.com` / `testpass123`.
+- Open `/workbench?draft=new&tab=intake&capture_mode=call&entry=new`.
+- Enter a realistic family-trip brief plus a separate internal agent note.
+- Process the inquiry, resolve the missing-origin blocker in place, and push the trip toward options build.
+
+What worked:
+
+- The login screen is straightforward and the authenticated overview loads cleanly after sign-in.
+- The workbench intake surface is focused: one traveler message field, one agent note field, and a visible `Process Inquiry` action.
+- The first pass surfaced a real blocker instead of pretending the request was complete: `Please provide origin city to generate a quote.`
+- The missing field stayed visible in the trip workspace, which made the follow-up obvious instead of forcing the operator to reconstruct the problem.
+- The inline origin fix path worked in-place. After entering `Mumbai`, the trip moved to `Ready to build options`.
+- The saved trip details stayed visible after the fix, which makes the page feel like a real operator checkpoint.
+
+What felt weak:
+
+- The origin prompt appears only after processing. It is truthful, but it still adds a round trip when the missing field is obvious from the start.
+- The `Add origin` versus `Add origin city` label collision is a tiny but real friction point because the operator has to disambiguate two nearly identical fast paths.
+- After the options-build transition, the packet view showed `Origin City` as missing again even though the intake view had just been repaired. That looks like a state split between the repaired trip and the generated packet.
+- The packet view currently does not offer an inline repair path for that stale missing-origin state.
+
+Workaround:
+
+- Keep using the in-place trip-details editor for the first unblock; that part of the flow is genuinely good.
+- Avoid trusting the packet view as the sole source of truth until it stays synchronized with the repaired intake state.
+- Tighten the origin-action labels so the operator does not have to pick between near-duplicates at the exact moment they want the fastest fix.
+
+Time saver:
+
+- The app gives the operator an explicit missing-field question and a one-click follow-up message.
+- The inline origin editor avoids a separate modal or a full restart of the trip flow.
+
+Time waster:
+
+- The options/packet transition reintroduced stale missing-origin state after the trip was already repaired.
+- The packet page makes the operator read a second state instead of continuing the same repaired trip.
+- Duplicate-looking origin labels create avoidable selection friction in a high-intent path.
+
+Evidence captured:
+
+- `scratch/webwright_agent_sim/01-login.png`
+- `scratch/webwright_agent_sim/03-overview.png`
+- `scratch/webwright_agent_sim/05-workbench-intake.png`
+- `scratch/webwright_agent_sim/06-inquiry-filled.png`
+- `scratch/webwright_agent_sim/08-after-wait.png`
+- `scratch/webwright_agent_sim/10-trip-intake.png`
+- `scratch/webwright_agent_sim/11-add-origin-open.png`
+- `scratch/webwright_agent_sim/12-origin-saved.png`
+- `scratch/webwright_agent_sim/14-options-complete.png`
+
+Clean findings addendum:
+
+- Good: the intake workspace gives the agent a truthful blocker and a usable in-place origin fix.
+- Bad: the packet/build transition can reintroduce stale missing-origin state after the trip was already repaired.
+- Bad: the packet page currently does not give an inline repair path for that stale state.
+- Good: the first-pass follow-up message is concise enough to send without rewriting.
+
+Remaining watchout addendum:
+
+- The new-trip intake path still needs to keep the trip packet in sync with the repaired intake state after options build, or the operator will keep seeing two contradictory versions of the same trip.

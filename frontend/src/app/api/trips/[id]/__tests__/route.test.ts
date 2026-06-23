@@ -1,77 +1,68 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import { parse as parseSetCookie } from "set-cookie-parser";
+import { NextRequest } from "next/server";
 import { GET } from "../route";
-import type { NextRequest } from "next/server";
-import { refreshAuthCookies } from "@/lib/bff-auth";
 
-vi.mock("@/lib/bff-auth", async (importOriginal) => {
-  const actual: Record<string, unknown> = await importOriginal() as Record<string, unknown>;
-  return {
-    ...actual,
-    bffFetchOptions: vi.fn(() => ({
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      cache: "no-store" as RequestCache,
-    })),
-    refreshAuthCookies: vi.fn(async () => ["access_token=new_access; Path=/; HttpOnly"]),
-    mergeCookieHeader: vi.fn(() => "access_token=new_access; refresh_token=valid"),
-  };
-});
+const TRIP_ID = "trip_2333bff6434d";
 
-function asNextRequest(request: Request): NextRequest {
-  return request as unknown as NextRequest;
+function buildCookieHeaderFromSetCookies(rawSetCookies: string[]): string {
+  const cookies = parseSetCookie(rawSetCookies);
+  return cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join("; ");
 }
 
-describe("/api/trips/[id] GET - auth refresh retry", () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
+async function loginCookieHeader(): Promise<string> {
+  const response = await fetch("http://127.0.0.1:8000/api/auth/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email: "newuser@test.com",
+      password: "testpass123",
+    }),
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+  expect(response.ok).toBe(true);
 
-  it("refreshes auth cookies and retries the trip fetch after a 401", async () => {
-    const fetchMock = vi.spyOn(global, "fetch");
+  const headersAny = response.headers as Headers & {
+    getSetCookie?: () => string[];
+  };
+  const rawSetCookies =
+    typeof headersAny.getSetCookie === "function"
+      ? headersAny.getSetCookie()
+      : response.headers.get("set-cookie")
+        ? [response.headers.get("set-cookie") as string]
+        : [];
 
-    fetchMock
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: "unauthorized" }), {
-          status: 401,
-          headers: { "Content-Type": "application/json" },
-        })
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            id: "trip_123",
-            destination: "Zanzibar",
-            origin: "Nairobi",
-            status: "assigned",
-            created_at: "2026-06-23T00:00:00.000Z",
-            updated_at: "2026-06-23T00:00:00.000Z",
-            extracted: { facts: {} },
-            validation: { warnings: [] },
-            decision: { hard_blockers: [], soft_blockers: [] },
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          }
-        )
-      );
+  expect(rawSetCookies.length).toBeGreaterThan(0);
+  return buildCookieHeaderFromSetCookies(rawSetCookies);
+}
 
-    const request = new Request("http://localhost:3000/api/trips/trip_123", {
+describe("/api/trips/[id] GET - live auth refresh retry", () => {
+  it("refreshes auth cookies and returns the real trip payload from the live backend", async () => {
+    const cookieHeader = await loginCookieHeader();
+    const request = new NextRequest(`http://localhost:3000/api/trips/${TRIP_ID}`, {
       headers: {
-        cookie: "access_token=expired; refresh_token=valid",
+        cookie: cookieHeader.replace(/access_token=[^;]+/, "access_token=invalid"),
       },
     });
 
-    const response = await GET(asNextRequest(request), { params: Promise.resolve({ id: "trip_123" }) });
+    const response = await GET(request, { params: Promise.resolve({ id: TRIP_ID }) });
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data).toHaveProperty("id", "trip_123");
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(vi.mocked(refreshAuthCookies)).toHaveBeenCalledTimes(1);
+    expect(data).toMatchObject({
+      id: TRIP_ID,
+      destination: "Italy",
+      tripPurpose: "family leisure",
+      validation: {
+        warnings: expect.arrayContaining([
+          expect.objectContaining({
+            field: "budget_raw_text",
+          }),
+        ]),
+      },
+    });
+    expect(data.budget).toBe("Budget missing");
   });
 });

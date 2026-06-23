@@ -17,14 +17,78 @@ from .fixtures import AuditFixture, load_fixtures
 from .gates import evaluate_report_against_manifest
 from .manifest import load_manifest
 from .rules.activity import run_activity_fixture
-from .rules.extraction import load_golden_dataset, run_extraction_eval
+from .rules.extraction import ExtractionFixture, load_golden_dataset, run_extraction_eval
 from .rules.pipeline import load_pipeline_fixtures, run_pipeline_eval
 from .runner import run_eval_suite
+
+try:
+    from src.intake.extractors import ExtractionPipeline
+    from src.intake.packet_models import SourceEnvelope
+    _HAS_INTAKE_PIPELINE = True
+except ImportError:
+    _HAS_INTAKE_PIPELINE = False
 
 DEFAULT_FIXTURE_ROOT = Path("data/fixtures/audit")
 DEFAULT_SNAPSHOT_PATH = Path("data/evals/d6_audit_gate_snapshot.json")
 DEFAULT_GOLDEN_DATASET_PATH = Path("data/fixtures/extraction/golden_dataset.json")
 DEFAULT_PIPELINE_FIXTURE_PATH = Path("data/fixtures/pipeline/pipeline_golden.json")
+DEFAULT_BUDGET_GOLDEN_DATASET_PATH = Path("data/fixtures/budget/golden_dataset.json")
+
+# Budget field mapping: pipeline fact name -> golden dataset field name.
+# The extraction pipeline stores budget data as budget_max, budget_currency,
+# budget_scope, budget_flexibility in the CanonicalPacket.facts dict.
+# The golden dataset expects budget_amount, budget_currency, budget_scope,
+# budget_flexibility as string values.
+_BUDGET_FIELD_MAP = {
+    "budget_amount": "budget_max",
+    "budget_currency": "budget_currency",
+    "budget_scope": "budget_scope",
+    "budget_flexibility": "budget_flexibility",
+}
+
+
+def _collect_live_budget_results(
+    golden_dataset_path: Path = DEFAULT_BUDGET_GOLDEN_DATASET_PATH,
+) -> dict[str, dict[str, str | None]]:
+    """Run the real extraction pipeline on budget golden dataset fixtures.
+
+    Loads the raw JSON (which retains ``raw_input`` not captured by
+    ``ExtractionFixture``), feeds each fixture's ``raw_input`` through
+    ``ExtractionPipeline``, and maps the resulting CanonicalPacket facts
+    back to the golden-dataset field names so that ``run_extraction_eval``
+    can compare them against ``expected_extracted_fields``.
+
+    Returns a dict keyed by ``fixture_id`` with the mapped extracted
+    fields.  Returns an empty dict when the intake pipeline is not
+    importable or the golden dataset is missing.
+    """
+    if not _HAS_INTAKE_PIPELINE or not golden_dataset_path.exists():
+        return {}
+    raw_data = json.loads(golden_dataset_path.read_text())
+    pipeline = ExtractionPipeline()
+    results: dict[str, dict[str, str | None]] = {}
+    for item in raw_data:
+        fixture_id = item["fixture_id"]
+        raw_input = item.get("raw_input", "")
+        if not raw_input:
+            continue
+        envelope = SourceEnvelope.from_freeform(
+            raw_input,
+            source="agency_notes",
+            actor="agent",
+        )
+        packet = pipeline.extract([envelope])
+        # Map pipeline fact names to golden dataset field names.
+        extracted: dict[str, str | None] = {}
+        for golden_field, pipeline_fact in _BUDGET_FIELD_MAP.items():
+            slot = packet.facts.get(pipeline_fact)
+            if slot is not None and slot.value is not None:
+                extracted[golden_field] = str(slot.value)
+            else:
+                extracted[golden_field] = None
+        results[fixture_id] = extracted
+    return results
+
 
 # Expected baseline accuracy when the pipeline eval runs with self-consistent
 # expected-as-actual results.  This value is stored in the snapshot and
@@ -32,6 +96,7 @@ DEFAULT_PIPELINE_FIXTURE_PATH = Path("data/fixtures/pipeline/pipeline_golden.jso
 # logic change, the computed accuracy will diverge from this constant.
 EXPECTED_PIPELINE_BASELINE_ACCURACY = 1.0
 EXPECTED_EXTRACTION_BASELINE_F1 = 1.0
+EXPECTED_BUDGET_BASELINE_F1 = 1.0
 
 
 def _rule_dispatch(fixture: AuditFixture):
@@ -177,12 +242,85 @@ def _run_pipeline_baseline(
     }
 
 
+def _run_budget_baseline(
+    *,
+    golden_dataset_path: Path = DEFAULT_BUDGET_GOLDEN_DATASET_PATH,
+    live_results: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Run budget extraction eval against the golden dataset.
+
+    Returns a JSON-serialisable summary suitable for the gate snapshot.
+    Uses the same extraction eval framework since budget fixtures follow
+    the same schema (fixture_id, expected_extracted_fields, etc.).
+
+    Parameters
+    ----------
+    golden_dataset_path
+        Path to the budget golden dataset JSON.
+    live_results
+        Actual budget extraction results keyed by fixture_id.  When
+        ``None``, expected outputs are used as actuals (self-consistent
+        baseline).
+    """
+    if not golden_dataset_path.exists():
+        return {
+            "status": "unavailable",
+            "reason": "budget_golden_dataset_missing",
+            "total_fixtures": 0,
+            "overall_f1": 0.0,
+            "blocks_ci": False,
+        }
+    fixtures = load_golden_dataset(golden_dataset_path)
+    if live_results is not None:
+        report = run_extraction_eval(fixtures, saved_results=live_results)
+        note = "Live budget results used for F1 evaluation."
+    else:
+        # Attempt to collect live results from the real extraction pipeline.
+        live = _collect_live_budget_results(golden_dataset_path)
+        if live:
+            report = run_extraction_eval(fixtures, saved_results=live)
+            note = "Live pipeline extraction results used for budget F1 evaluation."
+        else:
+            # Fallback: self-consistent baseline (expected as actuals).
+            # This validates comparison logic when the intake pipeline is not
+            # importable (e.g. in CI without full dependencies).
+            saved_results = {
+                fixture.fixture_id: fixture.expected_extracted_fields
+                for fixture in fixtures
+            }
+            report = run_extraction_eval(fixtures, saved_results=saved_results)
+            note = "Baseline using expected outputs as actuals (intake pipeline unavailable)."
+    summary = report.summary()
+    overall_f1 = summary["overall"]["f1"]
+    if overall_f1 >= 0.95:
+        status = "passing"
+    elif overall_f1 >= 0.80:
+        status = "warning"
+    else:
+        status = "failing"
+    return {
+        "status": status,
+        "overall_f1": overall_f1,
+        "overall_precision": summary["overall"]["precision"],
+        "overall_recall": summary["overall"]["recall"],
+        "total_fixtures": summary["total_fixtures"],
+        "fixture_accuracy": summary["overall"]["fixture_accuracy"],
+        "by_document_type": summary["by_document_type"],
+        "by_difficulty": summary["by_difficulty"],
+        "blocks_ci": status == "failing",
+        "expected_baseline_f1": EXPECTED_BUDGET_BASELINE_F1,
+        "baseline_drifted": overall_f1 != EXPECTED_BUDGET_BASELINE_F1,
+        "note": note,
+    }
+
+
 def build_gate_snapshot(
     *,
     fixture_root: Path = DEFAULT_FIXTURE_ROOT,
     golden_dataset_path: Path = DEFAULT_GOLDEN_DATASET_PATH,
     extraction_live_results: dict[str, Any] | None = None,
     pipeline_live_results: dict[str, dict[str, Any]] | None = None,
+    budget_live_results: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     fixtures = load_fixtures(fixture_root)
     manifest = load_manifest()
@@ -202,6 +340,11 @@ def build_gate_snapshot(
         live_results=pipeline_live_results,
     )
 
+    # --- budget extraction eval gate ---
+    budget_health = _run_budget_baseline(
+        live_results=budget_live_results,
+    )
+
     # --- manifest gate evaluation ---
     # Pass per-category accuracy values for categories that use
     # min_accuracy thresholds instead of the standard precision/recall/
@@ -213,6 +356,9 @@ def build_gate_snapshot(
     extraction_f1 = extraction_eval_report.get("overall_f1")
     if extraction_f1 is not None:
         category_accuracy["extraction"] = extraction_f1
+    budget_f1 = budget_health.get("overall_f1")
+    if budget_f1 is not None:
+        category_accuracy["budget"] = budget_f1
     gate = evaluate_report_against_manifest(
         report, manifest, category_accuracy=category_accuracy,
     )
@@ -242,6 +388,7 @@ def build_gate_snapshot(
         },
         "extraction_health": extraction_eval_report,
         "pipeline_health": pipeline_health,
+        "budget_health": budget_health,
     }
 
 
@@ -252,12 +399,14 @@ def write_gate_snapshot(
     golden_dataset_path: Path = DEFAULT_GOLDEN_DATASET_PATH,
     extraction_live_results: dict[str, Any] | None = None,
     pipeline_live_results: dict[str, dict[str, Any]] | None = None,
+    budget_live_results: dict[str, Any] | None = None,
 ) -> Path:
     snapshot = build_gate_snapshot(
         fixture_root=fixture_root,
         golden_dataset_path=golden_dataset_path,
         extraction_live_results=extraction_live_results,
         pipeline_live_results=pipeline_live_results,
+        budget_live_results=budget_live_results,
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(snapshot, indent=2, sort_keys=True))
@@ -300,6 +449,19 @@ def stable_snapshot_view(snapshot: dict[str, Any]) -> dict[str, Any]:
             "total_fixtures": pipeline_health.get("total_fixtures"),
             "blocks_ci": pipeline_health.get("blocks_ci"),
         }
+    budget_health = snapshot.get("budget_health")
+    stable_budget: dict[str, Any] | None = None
+    if isinstance(budget_health, dict):
+        stable_budget = {
+            "status": budget_health.get("status"),
+            "overall_f1": budget_health.get("overall_f1"),
+            "expected_baseline_f1": budget_health.get("expected_baseline_f1"),
+            "baseline_drifted": budget_health.get("baseline_drifted"),
+            "overall_precision": budget_health.get("overall_precision"),
+            "overall_recall": budget_health.get("overall_recall"),
+            "total_fixtures": budget_health.get("total_fixtures"),
+            "blocks_ci": budget_health.get("blocks_ci"),
+        }
     return {
         "manifest_version": snapshot.get("manifest_version"),
         "fixture_root": snapshot.get("fixture_root"),
@@ -308,6 +470,7 @@ def stable_snapshot_view(snapshot: dict[str, Any]) -> dict[str, Any]:
         "routing_health": stable_routing,
         "extraction_health": stable_extraction,
         "pipeline_health": stable_pipeline,
+        "budget_health": stable_budget,
     }
 
 
@@ -318,12 +481,14 @@ def verify_gate_snapshot_file(
     golden_dataset_path: Path = DEFAULT_GOLDEN_DATASET_PATH,
     extraction_live_results: dict[str, Any] | None = None,
     pipeline_live_results: dict[str, dict[str, Any]] | None = None,
+    budget_live_results: dict[str, Any] | None = None,
 ) -> tuple[bool, dict[str, Any], dict[str, Any] | None]:
     expected = build_gate_snapshot(
         fixture_root=fixture_root,
         golden_dataset_path=golden_dataset_path,
         extraction_live_results=extraction_live_results,
         pipeline_live_results=pipeline_live_results,
+        budget_live_results=budget_live_results,
     )
     if not snapshot_path.exists():
         return False, expected, None

@@ -237,6 +237,32 @@ function normalizePlanningDisplayValue(value?: string | null): string | null {
   return normalized;
 }
 
+function buildTripStructuredJsonSnapshot(trip: Trip | null | undefined): Record<string, unknown> | null {
+  if (!trip) return null;
+
+  const snapshot: Record<string, unknown> = {};
+  const origin = normalizePlanningDisplayValue(trip.origin);
+  const destination = normalizePlanningDisplayValue(trip.destination);
+  const tripPurpose = normalizePlanningDisplayValue(trip.tripPurpose);
+  const priorities = normalizePlanningDisplayValue(trip.tripPriorities);
+  const flexibility = normalizePlanningDisplayValue(trip.dateFlexibility);
+  const dateWindow = normalizePlanningDisplayValue(trip.dateWindow);
+  const budget = normalizePlanningDisplayValue(trip.budget);
+
+  if (origin) snapshot.origin = origin;
+  if (destination) snapshot.destination = destination;
+  if (tripPurpose) snapshot.trip_purpose = tripPurpose;
+  if (typeof trip.party === 'number' && trip.party > 0) snapshot.travelers = trip.party;
+  if (budget) snapshot.budget = budget;
+  if (dateWindow) snapshot.dates = dateWindow;
+  if (priorities) snapshot.trip_priorities = priorities;
+  if (flexibility) snapshot.date_flexibility = flexibility;
+  if (normalizePlanningDisplayValue(trip.type)) snapshot.type = normalizePlanningDisplayValue(trip.type);
+  if (normalizePlanningDisplayValue(trip.contactName)) snapshot.contact_name = normalizePlanningDisplayValue(trip.contactName);
+
+  return Object.keys(snapshot).length > 0 ? snapshot : null;
+}
+
 function readTaggedNoteValue(note: string | undefined, prefix: string): string | null {
   if (!note) return null;
 
@@ -583,7 +609,14 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
       const request: SpineRunRequest = {
         raw_note: store.input_raw_note || null,
         owner_note: store.input_owner_note || null,
-        structured_json: store.input_structured_json ? JSON.parse(store.input_structured_json) : null,
+        structured_json: (() => {
+          const rawStructured = store.input_structured_json ? JSON.parse(store.input_structured_json) : null;
+          const tripSnapshot = buildTripStructuredJsonSnapshot(trip);
+          if (rawStructured && tripSnapshot) {
+            return { ...rawStructured, ...tripSnapshot };
+          }
+          return rawStructured || tripSnapshot;
+        })(),
         itinerary_text: store.input_itinerary_text || null,
         stage: store.stage,
         operating_mode: store.operating_mode,
@@ -623,7 +656,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
       setIsRunning(false);
       stopRunTimer();
     }
-  }, [store, executeSpineRun, push, tripId, startRunTimer, stopRunTimer]);
+  }, [store, executeSpineRun, push, trip, tripId, startRunTimer, stopRunTimer]);
 
   const handlePrepareFollowUp = useCallback(() => {
     setOperatingMode('follow_up');

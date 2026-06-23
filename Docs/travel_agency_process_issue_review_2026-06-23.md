@@ -1,46 +1,33 @@
-# Travel Agency Process Issue Review
+# travel_agency_agent process issue review
 
 Date: 2026-06-23
 
-## Issue
+## Question
 
-The live workbench treated a global corporate request with the phrasing `18-traveler` as if party size was missing, even though the count was explicitly present in the customer message.
+Is the repo-root `app.py` the old Streamlit app rather than the current B2B app?
+
+## Verdict
+
+Yes. The root `app.py` was the legacy Streamlit workbench, and it has now been removed from the repo.
 
 ## Evidence
 
-- Live authenticated browser replay on the main workbench processed:
-  - `Lagos agency handling a 18-traveler corporate offsite from Lagos to Cape Town in September 2026. Budget NGN 15m, needs visa support, rooming list, airport transfers, and a fast internal approval-ready summary.`
-- Before the fix, the Risk Review tab showed:
-  - `WAITING ON CUSTOMER`
-  - `Please provide party size to generate a quote.`
-- The same message is a valid 18-person group request.
+- The deleted repo-root `app.py` was a Streamlit app and imported `streamlit as st`.
+- [`README.md`](../README.md#L112) lists `spine_api/server.py` and `frontend/` as the runtime surfaces and now treats the Streamlit prototype as retired.
+- [`dev.sh`](../dev.sh#L3) starts `spine_api` and the Next.js frontend; it does not launch `app.py`.
+- [`Docs/FRONTEND_PRODUCT_SPEC_FULL_2026-04-15.md`](./FRONTEND_PRODUCT_SPEC_FULL_2026-04-15.md#L349) says there is `No Streamlit layer in the implementation path`.
+- [`Docs/status/NEXTJS_IMPLEMENTATION_TRACK_2026-04-15.md`](./status/NEXTJS_IMPLEMENTATION_TRACK_2026-04-15.md#L9) says the implementation path is `Next.js App Router only` and that no Streamlit runtime path is active.
 
-## Root Cause
+## Supersession Analysis
 
-`src/intake/extractors.py::_extract_party()` recognized space-separated forms like `18 travelers` but did not accept the hyphenated variant `18-traveler`.
+- Candidate: repo-root `app.py`
+- Replacement/canonical path: `spine_api/server.py` + `frontend/`
+- Supersession status: product-path superseded and deleted
 
-The party parser therefore left `party_size` unset, which triggered the downstream incomplete-intake blocker.
+The legacy Streamlit workbench is no longer part of the repository, so the product docs and runtime entrypoints now agree on the FastAPI + Next.js path.
 
-## Fix
+## Practical Conclusion
 
-- `src/intake/extractors.py`
-  - Expand explicit traveler-count parsing to accept hyphenated and dash-separated phrasing.
-  - Keep the same logic for plural `travelers`, `travellers`, `people`, `persons`, and `pax`.
-- `tests/test_extraction_fixes.py`
-  - Added a regression test for the exact live request phrasing.
-
-## Validation
-
-- Targeted tests
-  - `3 passed`
-- Direct parser check
-  - `party_size = 18`
-- Live browser verification
-  - The same workbench request now promotes to a durable trip with `18 pax`
-  - The saved trip page shows `Cape Town business trip`
-  - The trip details preserve `₦15,000,000` and procurement-sharing guidance
-
-## Remaining Follow-Up
-
-- Keep adding real operator phrasing to the extractor regression set.
-- Global-market phrases should keep working even when they use punctuation-heavy shorthand from WhatsApp or call summaries.
+- The current B2B app is not `app.py`.
+- The current B2B app is the FastAPI backend plus the Next.js frontend.
+- `app.py` has been retired; no remaining runtime path should reference it.

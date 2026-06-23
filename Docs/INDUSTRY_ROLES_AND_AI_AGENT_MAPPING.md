@@ -410,7 +410,7 @@ This is the most heavily served role in the system. The entire NB01→NB02→NB0
 | **Decision engine** | Hybrid rule + LLM + cache for cost optimization | `src/decision/` (13 files) |
 | **Canonical packet** | Single source of truth with provenance, authority levels, mutation audit trail | `src/intake/packet_models.py` |
 | **Session strategy** | Operating-mode-specific goals, openings, exit criteria | `src/intake/strategy.py` |
-| **Workbench UI** | 5-tab view: Intake, Decision, Strategy, Safety, Flow | `app.py` (Streamlit) |
+| **Workbench UI** | 5-tab view: Intake, Decision, Strategy, Safety, Flow | `frontend/src/app/(agency)/workbench/` + shared workspace panels |
 | **Workspace UI** | Per-trip deep views: intake, packet, decision, strategy, safety, output, timeline, suitability | 10+ Next.js pages |
 | **Lifecycle scoring** | Ghost risk, window-shopper risk, repeat likelihood | `src/intake/decision.py` |
 | **Fee calculation** | Risk-adjusted pricing by service type | `src/fees/calculation.py` |

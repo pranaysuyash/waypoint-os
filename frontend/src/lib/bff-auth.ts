@@ -16,6 +16,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { parse as parseSetCookie } from "set-cookie-parser";
+import { forwardAuthHeaders } from "@/lib/proxy-core";
 
 const PROXY_TIMEOUT_MS = 10_000;
 const SPINE_API_URL = process.env.SPINE_API_URL || "http://127.0.0.1:8000";

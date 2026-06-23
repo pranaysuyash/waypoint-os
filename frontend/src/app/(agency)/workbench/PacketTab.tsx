@@ -11,6 +11,20 @@ interface PacketTabProps {
   trip?: Trip | null;
 }
 
+function normalizeTripDisplayValue(value?: string | number | null): string | null {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function makeCanonicalSlot(value: unknown): SlotValue {
+  return {
+    value,
+    confidence: 1,
+    authority_level: "explicit_user",
+  } as SlotValue;
+}
+
 export default function PacketTab({ trip }: PacketTabProps) {
   const { result_packet, result_validation, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
   const [showRawJson, setShowRawJson] = useState(false);
@@ -30,19 +44,48 @@ export default function PacketTab({ trip }: PacketTabProps) {
   const bookingRequest = activePacket as Record<string, unknown>;
   const validation = activeValidation;
 
-  const facts = (bookingRequest.facts || {}) as Record<string, SlotValue>;
+  const canonicalTripFacts: Record<string, SlotValue> = {};
+  const canonicalOrigin = normalizeTripDisplayValue(trip?.origin);
+  const canonicalDestination = normalizeTripDisplayValue(trip?.destination);
+  const canonicalBudget = normalizeTripDisplayValue(trip?.budget);
+  const canonicalDates = normalizeTripDisplayValue(trip?.dateWindow);
+  const canonicalPurpose = normalizeTripDisplayValue(trip?.tripPurpose);
+  const canonicalParty = typeof trip?.party === 'number' && Number.isFinite(trip.party) ? trip.party : null;
+
+  if (canonicalOrigin) canonicalTripFacts.origin_city = makeCanonicalSlot(canonicalOrigin);
+  if (canonicalDestination) canonicalTripFacts.destination_candidates = makeCanonicalSlot([canonicalDestination]);
+  if (canonicalBudget) {
+    canonicalTripFacts.budget_raw_text = makeCanonicalSlot(canonicalBudget);
+    canonicalTripFacts.budget = makeCanonicalSlot(canonicalBudget);
+  }
+  if (canonicalDates) canonicalTripFacts.date_window = makeCanonicalSlot(canonicalDates);
+  if (canonicalPurpose) canonicalTripFacts.trip_purpose = makeCanonicalSlot(canonicalPurpose);
+  if (canonicalParty !== null) canonicalTripFacts.party_size = makeCanonicalSlot(canonicalParty);
+
+  const facts = {
+    ...((bookingRequest.facts || {}) as Record<string, SlotValue>),
+    ...canonicalTripFacts,
+  };
   const derivedSignals = (bookingRequest.derived_signals || {}) as Record<string, SlotValue>;
   const ambiguities = (bookingRequest.ambiguities || []) as Ambiguity[];
-  const unknowns = (bookingRequest.unknowns || []) as PacketUnknown[];
+  const unknowns = ((bookingRequest.unknowns || []) as PacketUnknown[]).filter((unknown) => {
+    if (unknown.field_name === "origin_city" && canonicalOrigin) return false;
+    if (unknown.field_name === "destination_candidates" && canonicalDestination) return false;
+    if (unknown.field_name === "budget_raw_text" && canonicalBudget) return false;
+    if (unknown.field_name === "date_window" && canonicalDates) return false;
+    if (unknown.field_name === "trip_purpose" && canonicalPurpose) return false;
+    if (unknown.field_name === "party_size" && canonicalParty !== null) return false;
+    return true;
+  });
   const contradictions = (bookingRequest.contradictions || []) as PacketContradiction[];
 
   const summaryData = {
-    Destination: _getFactValue(facts, "destination_candidates") || "-",
-    Origin: _getFactValue(facts, "origin_city") || "-",
-    Dates: _getFactValue(facts, "date_window") || _getFactValue(facts, "date_start") || "-",
-    Purpose: _getFactValue(facts, "trip_purpose") || _getFactValue(derivedSignals, "trip_purpose") || "-",
-    Budget: _getFactValue(facts, "budget_raw_text") || "-",
-    Party: _getFactValue(facts, "party_size") || "-",
+    Destination: _getFactValue(facts, "destination_candidates") || canonicalDestination || "-",
+    Origin: _getFactValue(facts, "origin_city") || canonicalOrigin || "-",
+    Dates: _getFactValue(facts, "date_window") || _getFactValue(facts, "date_start") || canonicalDates || "-",
+    Purpose: _getFactValue(facts, "trip_purpose") || _getFactValue(derivedSignals, "trip_purpose") || canonicalPurpose || "-",
+    Budget: _getFactValue(facts, "budget_raw_text") || canonicalBudget || "-",
+    Party: _getFactValue(facts, "party_size") || canonicalParty || "-",
   };
   const groupLogistics = [
     _formatRoomingSummary(_getFactValue(facts, "rooming_list_count"), _getFactValue(facts, "rooming_requirements")),

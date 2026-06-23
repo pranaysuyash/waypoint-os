@@ -52,7 +52,8 @@ export class ApiException extends Error {
   }
 }
 
-export interface RequestOptions extends RequestInit {
+export interface RequestOptions extends Omit<RequestInit, "body"> {
+  body?: unknown;
   timeout?: number;
   retry?: number;
   retryDelay?: number;
@@ -78,10 +79,20 @@ function notifyUnauthorized(): void {
   window.dispatchEvent(new CustomEvent(AUTH_UNAUTHORIZED_EVENT));
 }
 
-async function refreshAuthSession(): Promise<boolean> {
-  if (typeof window === "undefined") return false;
+function buildAuthRefreshUrl(baseUrl?: string): string {
+  if (baseUrl) {
+    return new URL("/api/auth/refresh", baseUrl).toString();
+  }
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return new URL("/api/auth/refresh", window.location.origin).toString();
+  }
+  return "/api/auth/refresh";
+}
+
+async function refreshAuthSession(baseUrl?: string): Promise<boolean> {
+  if (typeof window === "undefined" && !baseUrl) return false;
   if (!authRefreshInFlight) {
-    authRefreshInFlight = fetch("/api/auth/refresh", {
+    authRefreshInFlight = fetch(buildAuthRefreshUrl(baseUrl), {
       method: "POST",
       credentials: "include",
     })
@@ -103,7 +114,7 @@ async function refreshAuthSession(): Promise<boolean> {
 // CLIENT
 // ============================================================================
 
-class ApiClient {
+export class ApiClient {
   private baseUrl: string;
   private defaultTimeout: number;
   private defaultRetry: number;
@@ -148,18 +159,19 @@ class ApiClient {
           "Content-Type": "application/json",
           ...(incomingHeaders || {}),
         };
+        const requestBody: BodyInit | undefined =
+          body === undefined || fetchOptions.method === "GET" || fetchOptions.method === "HEAD"
+            ? undefined
+            : typeof body === "string"
+              ? body
+              : JSON.stringify(body);
 
         const response = await fetch(url, {
           ...fetchOptions,
           signal: controller.signal,
           headers,
           credentials: "include",   // ensures cookies travel even after subdomain splits / CDN
-          body:
-            body === undefined || fetchOptions.method === "GET" || fetchOptions.method === "HEAD"
-              ? undefined
-              : typeof body === "string"
-                ? body
-                : JSON.stringify(body),
+          body: requestBody,
         });
 
         clearTimeout(timeoutId);
@@ -167,7 +179,7 @@ class ApiClient {
         // Handle non-OK responses
         if (!response.ok) {
           if (response.status === 401 && !authRetryUsed) {
-            const refreshed = await refreshAuthSession();
+            const refreshed = await refreshAuthSession(this.baseUrl);
             if (refreshed) {
               return requestAttempt(attempt, true);
             }

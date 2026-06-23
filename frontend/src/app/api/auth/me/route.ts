@@ -10,7 +10,7 @@ import {
 export async function GET(request: NextRequest) {
   try {
     const spineApiUrl = `${process.env.SPINE_API_URL || "http://127.0.0.1:8000"}/api/auth/me`;
-    const fetchOptions = { ...bffFetchOptions(request, "GET"), cache: "no-store" };
+    const fetchOptions: RequestInit = { ...bffFetchOptions(request, "GET"), cache: "no-store" };
     let response = await fetch(
       spineApiUrl,
       fetchOptions

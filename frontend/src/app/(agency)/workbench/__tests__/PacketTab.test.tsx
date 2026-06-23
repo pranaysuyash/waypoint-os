@@ -120,4 +120,45 @@ describe('PacketTab', () => {
     expect(screen.getByText(/2 rooming lists/)).toBeInTheDocument();
     expect(screen.getByText(/Shareable with procurement/)).toBeInTheDocument();
   });
+
+  it('prefers repaired trip fields over stale packet unknowns', () => {
+    mockStore.mockReturnValue({
+      result_packet: {
+        facts: {},
+        derived_signals: {},
+        unknowns: [
+          { field_name: 'origin_city', reason: 'missing', notes: null },
+          { field_name: 'budget_raw_text', reason: 'missing', notes: null },
+        ],
+        ambiguities: [],
+        contradictions: [],
+      },
+      result_validation: null,
+      debug_raw_json: false,
+      setDebugRawJson: vi.fn(),
+    });
+
+    render(
+      <PacketTab
+        trip={{
+          id: 'trip-repaired',
+          destination: 'Singapore',
+          type: 'family leisure',
+          state: 'green',
+          age: '1h',
+          createdAt: '2026-05-27T00:00:00Z',
+          updatedAt: '2026-05-27T00:00:00Z',
+          origin: 'Mumbai',
+          budget: '₹4L',
+          dateWindow: 'Dec 2026',
+          party: 4,
+        } as Trip}
+      />
+    );
+
+    expect(screen.getAllByText('Mumbai').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('₹4L').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Missing fields:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Origin City/i)).toBeInTheDocument();
+  });
 });

@@ -66,6 +66,8 @@ from starlette.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import text, select
+from sqlalchemy.exc import SQLAlchemyError
+import asyncpg
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # --- OpenTelemetry instrumentation ---
@@ -588,7 +590,7 @@ async def _ensure_agencies_schema_compatibility() -> None:
                 ADD COLUMN IF NOT EXISTS jurisdiction VARCHAR(10) DEFAULT 'other'
             """))
             logger.info("Schema compatibility check complete for agencies table")
-    except Exception as e:
+    except (SQLAlchemyError, asyncpg.PostgresError) as e:
         logger.error("Failed agencies schema compatibility check: %s", e)
         raise
 
@@ -635,7 +637,7 @@ async def _ensure_memberships_schema_compatibility() -> None:
                 ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()
             """))
             logger.info("Schema compatibility check complete for memberships table")
-    except Exception as e:
+    except (SQLAlchemyError, asyncpg.PostgresError) as e:
         logger.error("Failed memberships schema compatibility check: %s", e)
         raise
 
@@ -750,7 +752,7 @@ async def _ensure_users_have_memberships() -> None:
                 )
 
             logger.info("Users membership backfill complete")
-    except Exception as e:
+    except (SQLAlchemyError, asyncpg.PostgresError) as e:
         logger.error("Failed users membership backfill: %s", e)
         raise
 
@@ -783,7 +785,7 @@ async def _ensure_rls_no_force_on_auth_tables() -> None:
                     continue
                 await conn.execute(text(f"ALTER TABLE {table} NO FORCE ROW LEVEL SECURITY"))
                 logger.info("Removed FORCE RLS from %s (auth exempt)", table)
-        except Exception as e:
+        except (SQLAlchemyError, asyncpg.PostgresError) as e:
             logger.error("Failed to remove FORCE RLS from %s: %s", table, e)
 
 
@@ -843,7 +845,7 @@ async def _deduplicate_memberships_and_agencies() -> None:
                 logger.info("Deleted %d orphan agencies (no memberships)", deleted_agencies)
 
             logger.info("Membership and agency cleanup complete")
-    except Exception as e:
+    except (SQLAlchemyError, asyncpg.PostgresError) as e:
         logger.error("Failed membership/agency cleanup: %s", e)
 
 
@@ -903,6 +905,9 @@ async def _validate_public_checker_agency_configuration() -> None:
     except RuntimeError:
         raise
     except Exception as exc:
+        # Broad catch is intentional: startup invariant wraps ALL exceptions
+        # (including non-DB errors like config validation) in RuntimeError.
+        # Verified by test_startup_invariant_sql_wraps_unexpected_exception.
         raise RuntimeError(f"Failed public checker agency validation: {exc}") from exc
 
 
@@ -942,6 +947,8 @@ async def _validate_rls_runtime_posture_configuration() -> None:
             await _apply_startup_db_timeouts(conn)
             posture = await inspect_rls_runtime_posture(conn)
     except Exception as exc:
+        # Broad catch is intentional: startup invariant wraps ALL exceptions
+        # in RuntimeError for clean operator-facing failure messages.
         raise RuntimeError(f"Failed RLS runtime posture validation: {exc}") from exc
 
     if posture.is_enforced_for_runtime_role:
@@ -1430,6 +1437,9 @@ def _reap_zombies() -> None:
                 except ChildProcessError:
                     break
         except Exception:
+            # Broad catch is intentional: background thread must never crash.
+            # Covers os.waitpid failures, ChildProcessError edge cases, and
+            # any OS-level surprises during zombie reaping.
             pass
         _zombie_stop.wait(5)  # check every 5 seconds
 

@@ -104,7 +104,7 @@ describe("PacketPanel trip details fallback", () => {
     render(<PacketPanel tripId={trip.id} trip={trip} />);
 
     expect(screen.getByText("Purpose")).toBeInTheDocument();
-    expect(screen.getByText("family holiday")).toBeInTheDocument();
+    expect(screen.getAllByText("family holiday").length).toBeGreaterThan(0);
   });
 
   it("shows group logistics when rooming and procurement signals are captured", () => {
@@ -168,5 +168,37 @@ describe("PacketPanel trip details fallback", () => {
     expect(screen.getByText("Origin")).toBeInTheDocument();
     expect(screen.getByText("Patna")).toBeInTheDocument();
     expect(screen.getByText("Manual")).toBeInTheDocument();
+  });
+
+  it("prefers repaired trip fields over stale packet unknowns", () => {
+    const trip: Trip = {
+      id: "trip-repaired-origin",
+      destination: "Singapore",
+      type: "Family leisure",
+      state: "green",
+      age: "1h",
+      createdAt: "2026-05-27T00:00:00Z",
+      updatedAt: "2026-05-27T00:00:00Z",
+      party: 4,
+      dateWindow: "Dec 2026",
+      budget: "₹4L",
+      origin: "Mumbai",
+      packet: {
+        facts: {},
+        derived_signals: {},
+        unknowns: [
+          { field_name: "origin_city", reason: "missing", notes: null },
+          { field_name: "budget_raw_text", reason: "missing", notes: null },
+        ],
+        ambiguities: [],
+        contradictions: [],
+      } as never,
+    };
+
+    render(<PacketPanel tripId={trip.id} trip={trip} />);
+
+    expect(screen.getAllByText("Mumbai").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("₹4L").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Missing Details/)).not.toBeInTheDocument();
   });
 });

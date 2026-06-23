@@ -560,7 +560,7 @@
         {
           "id": "frontend",
           "label": "frontend/ (Next.js)",
-          "desc": "Next.js frontend \u2014 workflow visualization, Streamlit wrapper, UI components."
+          "desc": "Next.js frontend \u2014 workflow visualization, operator workbench, UI components."
         },
         {
           "id": "todesktop",
@@ -1923,7 +1923,7 @@
           "label": "Frontend Build (Next.js)",
           "input": "Source code + dependencies",
           "output": "Static build artifacts",
-          "description": "Next.js frontend is built. Includes the workflow visualization page, Streamlit wrapper, and all UI components. Outputs optimized static assets.",
+          "description": "Next.js frontend is built. Includes the workflow visualization page, operator workbench, and all UI components. Outputs optimized static assets.",
           "data_passed": "src/** \u2192 build/ (static HTML/JS/CSS)"
         },
         {

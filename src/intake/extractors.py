@@ -134,8 +134,11 @@ _YEAR_RE = re.compile(r"\b(20\d{2})\b")
 _FROM_STARTING_DEPARTING_RE = re.compile(r'\b(from|starting|departing)\s+$', re.IGNORECASE)
 _SE_RU_SIDE_RE = re.compile(r'^\s+(se|ru|side)\b', re.IGNORECASE)
 _MAYBE_RE = re.compile(r"\bmaybe\s+(\w+)", re.IGNORECASE)
-_MAYBE_SOMEWHERE_LIKE_RE = re.compile(r"\bmaybe\s+somewhere\s+like\s+(\w+(?:\s+\w+)*)", re.IGNORECASE)
-_SOMEWHERE_LIKE_RE = re.compile(r"\bsomewhere\s+like\s+(\w+(?:\s+\w+)*)", re.IGNORECASE)
+# "maybe somewhere like X" / "somewhere like X" — negative lookahead stops at
+# common trailing prepositions ("for", "with", etc.) to prevent over-capturing
+# context like "goa for a beach vacation" → "goa". Capped at 4 words.
+_MAYBE_SOMEWHERE_LIKE_RE = re.compile(r"\bmaybe\s+somewhere\s+like\s+(\w+(?:\s+(?!(?:for|with|that|and|or|but|from|to|in|on|at|by|of|the|a|an)\b)\w+){0,3})", re.IGNORECASE)
+_SOMEWHERE_LIKE_RE = re.compile(r"\bsomewhere\s+like\s+(\w+(?:\s+(?!(?:for|with|that|and|or|but|from|to|in|on|at|by|of|the|a|an)\b)\w+){0,3})", re.IGNORECASE)
 _THIS_WEEKEND_RE = re.compile(
     r"\bthis\s+(weekend|friday|saturday|sunday|monday|tuesday|wednesday|thursday)\b",
     re.IGNORECASE,

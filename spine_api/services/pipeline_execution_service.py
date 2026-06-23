@@ -40,6 +40,9 @@ def _update_draft_for_terminal_state(
             run_snapshot=snapshot,
         )
     except Exception as exc:
+        # Broad catch is intentional: draft state update is an observability
+        # side-effect that must never crash the pipeline. Covers asyncpg,
+        # serialization, and any DB transient errors.
         logger.debug("Draft state update skipped for run %s: %s", run_id, exc)
 
 
@@ -102,6 +105,9 @@ def execute_spine_pipeline(
             if "strategy" not in existing and hasattr(result, "strategy"):
                 run_ledger.save_step(run_id, "strategy", to_dict(result.strategy))
         except Exception as e:
+            # Broad catch is intentional: result checkpointing is an observability
+            # side-effect that must never crash the pipeline. Covers asyncpg,
+            # serialization, to_dict failures, and any DB transient errors.
             logger.error("Wave A: result step checkpointing failed for run %s: %s", run_id, e)
 
     try:
@@ -142,6 +148,9 @@ def execute_spine_pipeline(
                     "scenario_id": request.scenario_id,
                 })
             except Exception as draft_err:
+                # Broad catch is intentional: draft state update is an observability
+                # side-effect that must never interrupt pipeline startup. Covers
+                # asyncpg, serialization, and any DB transient errors.
                 logger.warning("Failed to update draft state for draft_id=%s: %s", draft_id, draft_err)
 
         emit_run_started_fn(
@@ -202,6 +211,9 @@ def execute_spine_pipeline(
                 )
                 current_stage = stage_name
             except Exception as e:
+                # Broad catch is intentional: stage checkpointing is an observability
+                # side-effect that must never interrupt the pipeline. Covers asyncpg,
+                # serialization, to_dict failures, and any DB transient errors.
                 logger.error("Wave A: mid-run checkpoint failed stage=%s error=%s", stage_name, e)
 
         with otel_tracer.start_as_current_span("spine_pipeline") as pipeline_span:
@@ -418,6 +430,9 @@ def execute_spine_pipeline(
             _update_draft_for_terminal_state(run_id, "completed", logger, run_ledger, draft_store, trip_id=trip_id_saved, snapshot={"trip_id": trip_id_saved})
             emit_run_completed_fn(run_id=run_id, trip_id=trip_id_saved, total_ms=execution_ms)
         except Exception as e:
+            # Broad catch is intentional: ledger completion is an observability
+            # side-effect that must never crash the pipeline after successful
+            # trip save. Covers asyncpg, serialization, and any DB transient errors.
             logger.error("Wave A: ledger complete failed for run %s: %s", run_id, e)
 
     except ValueError as e:
@@ -444,9 +459,16 @@ def execute_spine_pipeline(
                 trip_id=None,
             )
         except Exception as ledger_err:
+            # Broad catch is intentional: block ledger update is an observability
+            # side-effect that must never crash the pipeline during error handling.
+            # Covers asyncpg, serialization, and any DB transient errors.
             logger.error("Wave A: block ledger failed for run %s: %s", run_id, ledger_err)
 
     except Exception as e:
+        # Broad catch is intentional: this is the top-level pipeline error handler.
+        # It must catch ALL exception types (asyncpg, SQLAlchemy, ValueError-like
+        # subclasses, serialization, and unexpected errors) to mark the run as
+        # FAILED and emit terminal events. The pipeline must never crash silently.
         execution_ms = (time.perf_counter() - t0) * 1000
         logger.error(
             "spine_run error run_id=%s type=%s error=%s execution_ms=%.2f",
@@ -468,6 +490,9 @@ def execute_spine_pipeline(
                 trip_id=None,
             )
         except Exception as ledger_err:
+            # Broad catch is intentional: fail ledger update is an observability
+            # side-effect that must never crash the pipeline during error handling.
+            # Covers asyncpg, serialization, and any DB transient errors.
             logger.error("Wave A: fail ledger failed for run %s: %s", run_id, ledger_err)
 
     finally:

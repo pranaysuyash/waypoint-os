@@ -448,6 +448,168 @@ class TestAmbiguityOnSourceSpans:
         has_dest_amb = any(t in amb_types for t in ("destination_open", "unresolved_alternatives", "value_vague"))
         assert has_dest_amb, f"Should detect ambiguity in 'maybe somewhere like Andaman', got {amb_types}"
 
+    def test_somewhere_like_andaman_without_maybe(self):
+        text = "Somewhere like Andaman, family of 4, budget 3L."
+        pkt = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text)])
+
+        # Should detect value_vague from 'somewhere like' pattern
+        amb_types = [a.ambiguity_type for a in pkt.ambiguities]
+        assert "value_vague" in amb_types, \
+            f"Should detect value_vague for 'somewhere like Andaman' without 'maybe', got {amb_types}"
+
+        # Destination should still be extracted
+        assert "destination_candidates" in pkt.facts
+        dests = pkt.facts["destination_candidates"].value
+        assert "Andaman" in dests, f"Andaman should be extracted as destination, got {dests}"
+
+    def test_maybe_somewhere_like_sri_lanka(self):
+        """Multi-word destination after 'maybe somewhere like'."""
+        text = "Maybe somewhere like Sri Lanka? 2 adults, budget 5L."
+        pkt = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text)])
+
+        # Should extract Sri Lanka as destination
+        assert "destination_candidates" in pkt.facts
+        dests = pkt.facts["destination_candidates"].value
+        assert "Sri Lanka" in dests, f"Sri Lanka should be extracted, got {dests}"
+
+        # Should detect ambiguity
+        amb_types = [a.ambiguity_type for a in pkt.ambiguities]
+        has_dest_amb = any(t in amb_types for t in ("destination_open", "unresolved_alternatives", "value_vague"))
+        assert has_dest_amb, f"Should detect ambiguity for 'maybe somewhere like Sri Lanka', got {amb_types}"
+
+    def test_somewhere_like_goa(self):
+        """Single-word destination after 'somewhere like' without 'maybe'."""
+        text = "Somewhere like Goa for a beach vacation."
+        pkt = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text)])
+
+        # Should extract Goa
+        assert "destination_candidates" in pkt.facts
+        dests = pkt.facts["destination_candidates"].value
+        assert "Goa" in dests, f"Goa should be extracted, got {dests}"
+
+        # Should detect value_vague
+        amb_types = [a.ambiguity_type for a in pkt.ambiguities]
+        assert "value_vague" in amb_types, \
+            f"Should detect value_vague for 'somewhere like Goa', got {amb_types}"
+
+    def test_maybe_somewhere_like_lowercase(self):
+        """Lowercase destination should be title-cased."""
+        text = "Maybe somewhere like bali? Family trip."
+        pkt = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text)])
+
+        # Should extract Bali (title-cased)
+        assert "destination_candidates" in pkt.facts
+        dests = pkt.facts["destination_candidates"].value
+        assert "Bali" in dests, f"Bali should be extracted (title-cased), got {dests}"
+
+    def test_somewhere_like_with_punctuation(self):
+        """Destination extraction should handle punctuation after the pattern."""
+        text = "Somewhere like Goa, budget 3L."
+        pkt = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text)])
+
+        # Should extract Goa (not bleed into "budget")
+        assert "destination_candidates" in pkt.facts
+        dests = pkt.facts["destination_candidates"].value
+        assert "Goa" in dests, f"Goa should be extracted, got {dests}"
+
+    def test_maybe_somewhere_like_in_sentence(self):
+        """Pattern should work within a longer sentence."""
+        text = "The customer is thinking maybe somewhere like Maldives for their honeymoon."
+        pkt = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text)])
+
+        # Should extract Maldives
+        assert "destination_candidates" in pkt.facts
+        dests = pkt.facts["destination_candidates"].value
+        assert "Maldives" in dests, f"Maldives should be extracted, got {dests}"
+
+    def test_somewhere_like_sri_lanka(self):
+        """Multi-word destination after 'somewhere like' without 'maybe'."""
+        text = "Somewhere like Sri Lanka for a family trip, budget 5L."
+        pkt = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text)])
+
+        # Should extract Sri Lanka (2 words)
+        assert "destination_candidates" in pkt.facts
+        dests = pkt.facts["destination_candidates"].value
+        assert "Sri Lanka" in dests, f"Sri Lanka should be extracted, got {dests}"
+
+        # Should detect value_vague
+        amb_types = [a.ambiguity_type for a in pkt.ambiguities]
+        assert "value_vague" in amb_types, \
+            f"Should detect value_vague for 'somewhere like Sri Lanka', got {amb_types}"
+
+    def test_somewhere_like_not_unknown_destination(self):
+        """Unknown destination after 'somewhere like' should not be extracted."""
+        text = "Somewhere like Xanadu, budget 2L."
+        pkt = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text)])
+
+        # Pattern should still set destination_candidates (open status) even for unknown destination
+        assert "destination_candidates" in pkt.facts, "Pattern should still set destination_candidates (open status)"
+        dests = pkt.facts["destination_candidates"].value
+        dest_list = dests if isinstance(dests, list) else [dests]
+        assert "Xanadu" not in dest_list, f"Xanadu should not be extracted, got {dests}"
+
+    def test_multi_word_without_conjunction_united_arab_emirates(self):
+        """3-word destination without conjunction — should be fully captured."""
+        text = "Maybe somewhere like United Arab Emirates for a holiday."
+        pkt = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text)])
+
+        assert "destination_candidates" in pkt.facts
+        dests = pkt.facts["destination_candidates"].value
+        assert "United Arab Emirates" in dests, \
+            f"United Arab Emirates should be fully captured, got {dests}"
+
+        amb_types = [a.ambiguity_type for a in pkt.ambiguities]
+        assert "value_vague" in amb_types, \
+            f"Should detect value_vague, got {amb_types}"
+
+    def test_multi_word_without_conjunction_hong_kong(self):
+        """2-word destination without conjunction — should be fully captured."""
+        text = "Somewhere like Hong Kong for shopping, budget 3L."
+        pkt = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text)])
+
+        assert "destination_candidates" in pkt.facts
+        dests = pkt.facts["destination_candidates"].value
+        assert "Hong Kong" in dests, f"Hong Kong should be captured, got {dests}"
+
+        amb_types = [a.ambiguity_type for a in pkt.ambiguities]
+        assert "value_vague" in amb_types, \
+            f"Should detect value_vague, got {amb_types}"
+
+    def test_conjunction_destination_truncated_to_known_part(self):
+        """'Trinidad and Tobago' — regex stops at 'and', but 'Trinidad' is known."""
+        text = "Maybe somewhere like Trinidad and Tobago for carnival."
+        pkt = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text)])
+
+        # Regex captures 'Trinidad' (stops at 'and'), which is a known destination
+        assert "destination_candidates" in pkt.facts
+        dests = pkt.facts["destination_candidates"].value
+        assert "Trinidad" in dests, \
+            f"'Trinidad' should be captured (stops at 'and'), got {dests}"
+
+        amb_types = [a.ambiguity_type for a in pkt.ambiguities]
+        assert "value_vague" in amb_types, \
+            f"Should detect value_vague, got {amb_types}"
+
+    def test_conjunction_destination_both_parts_unknown(self):
+        """'Bosnia and Herzegovina' — neither part is known, so no extraction."""
+        text = "Somewhere like Bosnia and Herzegovina for hiking."
+        pkt = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text)])
+
+        # Neither 'Bosnia' nor 'Herzegovina' is in the geography DB,
+        # so the pipeline returns empty candidates with open status
+        assert "destination_candidates" in pkt.facts
+        dests = pkt.facts["destination_candidates"].value
+        dest_list = dests if isinstance(dests, list) else [dests]
+        # Bosnia and Herzegovina should NOT appear as extracted
+        for partial in ("Bosnia", "Herzegovina"):
+            assert partial not in dest_list, \
+                f"'{partial}' is not a known destination, should not be extracted, got {dests}"
+
+        # value_vague should still fire because 'somewhere like' is present
+        amb_types = [a.ambiguity_type for a in pkt.ambiguities]
+        assert "value_vague" in amb_types, \
+            f"Should detect value_vague for 'somewhere like Bosnia...', got {amb_types}"
+
 
 class TestStrictLeakageEnforcement:
     """Prove strict leakage enforcement raises ValueError when enabled."""

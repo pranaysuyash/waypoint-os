@@ -1,0 +1,218 @@
+[
+  {
+    "fixture_id": "budget_simple_001",
+    "description": "Simple budget statement \u2014 explicit amount and currency",
+    "difficulty": "easy",
+    "raw_input": "We want to go to Bali for 10 days. Budget is around $3000 total.",
+    "expected_extracted_fields": {
+      "budget_amount": "3000",
+      "budget_currency": "USD",
+      "budget_scope": "total",
+      "budget_flexibility": "soft"
+    },
+    "expected_field_count": 4,
+    "tags": [
+      "explicit_amount",
+      "simple"
+    ],
+    "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_simple_002",
+    "description": "Per-person budget statement",
+    "difficulty": "easy",
+    "raw_input": "Looking for a trip to Europe, budget about 2000 per person.",
+    "expected_extracted_fields": {
+      "budget_amount": "2000",
+      "budget_currency": "USD",
+      "budget_scope": "per_person",
+      "budget_flexibility": "soft"
+    },
+    "expected_field_count": 4,
+    "tags": [
+      "per_person",
+      "simple"
+    ],
+    "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_simple_003",
+    "description": "Firm budget ceiling",
+    "difficulty": "easy",
+    "raw_input": "Max budget is 5000 USD for the family trip to Japan.",
+    "expected_extracted_fields": {
+      "budget_amount": "5000",
+      "budget_currency": "USD",
+      "budget_scope": "total",
+      "budget_flexibility": "firm"
+    },
+    "expected_field_count": 4,
+    "tags": [
+      "firm",
+      "ceiling"
+    ],
+    "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_medium_001",
+    "description": "Budget with range",
+    "difficulty": "medium",
+    "raw_input": "We have between 4000 and 6000 to spend on a 2-week trip to Thailand.",
+    "expected_extracted_fields": {
+      "budget_amount": "4000-6000",
+      "budget_currency": "USD",
+      "budget_scope": "total",
+      "budget_flexibility": "soft"
+    },
+    "expected_field_count": 4,
+    "tags": [
+      "range",
+      "flexible"
+    ],
+    "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_medium_002",
+    "description": "Budget embedded in longer context",
+    "difficulty": "medium",
+    "raw_input": "My wife and I want to visit Iceland in December. We've been saving up and have about 7500 dollars to work with. We like nice hotels but don't need anything crazy.",
+    "expected_extracted_fields": {
+      "budget_amount": "7500",
+      "budget_currency": "USD",
+      "budget_scope": "total",
+      "budget_flexibility": "soft"
+    },
+    "expected_field_count": 4,
+    "tags": [
+      "embedded_context",
+      "couple"
+    ],
+    "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_medium_003",
+    "description": "Non-USD currency budget",
+    "difficulty": "medium",
+    "raw_input": "Budget is around \u20ac2500 for a trip to Portugal next spring.",
+    "expected_extracted_fields": {
+      "budget_amount": "2500",
+      "budget_currency": "EUR",
+      "budget_scope": "total",
+      "budget_flexibility": "soft"
+    },
+    "expected_field_count": 4,
+    "tags": [
+      "euro",
+      "non_usd"
+    ],
+    "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_hard_001",
+    "description": "Vague budget \u2014 no explicit number",
+    "difficulty": "hard",
+    "raw_input": "We want something affordable for a quick getaway to the coast.",
+    "expected_extracted_fields": {
+      "budget_amount": null,
+      "budget_currency": null,
+      "budget_scope": null,
+      "budget_flexibility": null
+    },
+    "expected_field_count": 4,
+    "tags": [
+      "vague",
+      "no_number"
+    ],
+    "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_hard_002",
+    "description": "Budget with mixed signals \u2014 luxury words but low number",
+    "difficulty": "hard",
+    "raw_input": "We want the best luxury resort in Maldives but our budget is only 3000 dollars.",
+    "expected_extracted_fields": {
+      "budget_amount": "3000",
+      "budget_currency": "USD",
+      "budget_scope": "total",
+      "budget_flexibility": "firm"
+    },
+    "expected_field_count": 4,
+    "tags": [
+      "mixed_signals",
+      "luxury_vs_budget"
+    ],
+    "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_hard_003",
+    "description": "Budget expressed as daily rate",
+    "difficulty": "hard",
+    "raw_input": "Looking to spend about 200 bucks a day for a 10-day trip to Vietnam.",
+    "expected_extracted_fields": {
+      "budget_amount": "200/day",
+      "budget_currency": "USD",
+      "budget_scope": "daily",
+      "budget_flexibility": "soft"
+    },
+    "expected_field_count": 4,
+    "tags": [
+      "daily_rate",
+      "per_day"
+    ],
+    "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_hard_004",
+    "description": "Multiple budget mentions \u2014 use the primary/intended budget",
+    "difficulty": "hard",
+    "raw_input": "Originally I was thinking 5000 but after some research I think 8000 is more realistic for a family of 4 to visit Costa Rica.",
+    "expected_extracted_fields": {
+      "budget_amount": "8000",
+      "budget_currency": "USD",
+      "budget_scope": "total",
+      "budget_flexibility": "soft"
+    },
+    "expected_field_count": 4,
+    "tags": [
+      "multiple_mentions",
+      "family"
+    ],
+    "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_easy_001",
+    "description": "Clear round-trip budget with currency symbol",
+    "difficulty": "easy",
+    "raw_input": "Trip budget: $4,500 for two people going to Greece.",
+    "expected_extracted_fields": {
+      "budget_amount": "4500",
+      "budget_currency": "USD",
+      "budget_scope": "total",
+      "budget_flexibility": "soft"
+    },
+    "expected_field_count": 4,
+    "tags": [
+      "clear",
+      "two_people"
+    ],
+    "document_type": "budget"
+  },
+  {
+    "fixture_id": "budget_easy_002",
+    "description": "Budget with no currency \u2014 default to USD",
+    "difficulty": "easy",
+    "raw_input": "We have 3500 to spend on a safari in Kenya.",
+    "expected_extracted_fields": {
+      "budget_amount": "3500",
+      "budget_currency": "USD",
+      "budget_scope": "total",
+      "budget_flexibility": "soft"
+    },
+    "expected_field_count": 4,
+    "tags": [
+      "no_currency",
+      "default_usd"
+    ],
+    "document_type": "budget"
+  }
+]
