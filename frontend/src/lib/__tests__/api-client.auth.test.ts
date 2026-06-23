@@ -47,4 +47,24 @@ describe("api client auth transport", () => {
     expect(headers.get("Content-Type")).toBe("application/json");
     expect(init?.credentials).toBe("include");
   });
+
+  it("sends JSON request bodies exactly once through post", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+
+    await api.post("/api/auth/login", {
+      email: "newuser@test.com",
+      password: "testpass123",
+    });
+
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    const [, init] = fetchSpy.mock.calls[0];
+
+    expect(init?.method).toBe("POST");
+    expect(init?.body).toBe(JSON.stringify({
+      email: "newuser@test.com",
+      password: "testpass123",
+    }));
+  });
 });

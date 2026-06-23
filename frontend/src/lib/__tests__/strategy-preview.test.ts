@@ -47,6 +47,65 @@ describe("buildTripStrategyPreview", () => {
     expect(buildTripStrategyPreview(trip)).toEqual(trip.strategy);
   });
 
+  it("falls back to a derived preview when a persisted escalation strategy conflicts with a quote-ready trip", () => {
+    const trip = makeTrip({
+      validation: {
+        readiness: {
+          highest_ready_tier: "quote_ready",
+        },
+      } as never,
+      strategy: {
+        session_goal: "Escalate to senior review due to critical contradictions.",
+        priority_sequence: ["Document contradictions and evidence"],
+        tonal_guardrails: ["Focus questions on gaps"],
+        risk_flags: ["Critical review"],
+        suggested_opening: "I need to escalate this to a senior agent to review some inconsistencies.",
+        exit_criteria: ["Escalation brief prepared"],
+        next_action: "STOP_NEEDS_REVIEW",
+        assumptions: [],
+        suggested_tone: "professional",
+      },
+    });
+
+    const preview = buildTripStrategyPreview(trip);
+
+    expect(preview).not.toEqual(trip.strategy);
+    expect(preview?.session_goal).toContain("Bali");
+    expect(preview?.suggested_opening).toContain("options plan");
+  });
+
+  it("falls back to a derived preview when a persisted internal draft conflicts with a quote-ready trip", () => {
+    const trip = makeTrip({
+      destination: "Singapore",
+      origin: "Mumbai",
+      tripPurpose: "business",
+      budget: "USD 42,000",
+      party: 18,
+      validation: {
+        readiness: {
+          highest_ready_tier: "quote_ready",
+        },
+      } as never,
+      strategy: {
+        session_goal: "Generate internal business-travel draft for Singapore with documented assumptions for agent review.",
+        priority_sequence: ["Preserve the corporate/group shape"],
+        tonal_guardrails: ["Focus questions on gaps"],
+        risk_flags: ["Visa requirement unknown"],
+        suggested_opening: "(Internal draft) Generating preliminary business-travel options for Singapore.",
+        exit_criteria: ["Internal draft completed"],
+        next_action: "PROCEED_INTERNAL_DRAFT",
+        assumptions: ["Assuming procurement notes stay visible"],
+        suggested_tone: "professional",
+      },
+    });
+
+    const preview = buildTripStrategyPreview(trip);
+
+    expect(preview).not.toEqual(trip.strategy);
+    expect(preview?.session_goal).toContain("business trip");
+    expect(preview?.suggested_opening).toContain("options plan for Singapore");
+  });
+
   it("synthesizes a preview from trip context when strategy is absent", () => {
     const preview = buildTripStrategyPreview(makeTrip());
 
@@ -63,5 +122,23 @@ describe("buildTripStrategyPreview", () => {
     expect(preview).not.toBeNull();
     expect(preview?.priority_sequence[0]).toBe("Check the trip details around Bali");
     expect(preview?.priority_sequence.join(" ")).not.toContain("TBD and Bali together");
+  });
+
+  it("uses corporate language when the trip purpose is business", () => {
+    const preview = buildTripStrategyPreview(makeTrip({
+      destination: "Singapore",
+      origin: "Mumbai",
+      tripPurpose: "business",
+      party: 18,
+      budget: "USD 42,000",
+    }));
+
+    expect(preview).not.toBeNull();
+    expect(preview?.session_goal).toContain("business trip");
+    expect(preview?.session_goal).toContain("$42,000");
+    expect(preview?.priority_sequence.join(" ")).toContain("corporate/group shape");
+    expect(preview?.suggested_opening).toContain("business requirements");
+    expect(preview?.priority_sequence.join(" ")).not.toContain("Trip priorities / must-haves");
+    expect(preview?.assumptions.join(" ")).not.toContain("Trip priorities / must-haves");
   });
 });

@@ -1,3 +1,82 @@
 {
-  "waypoint-hq": []
+  "waypoint-hq": [
+    {
+      "plan_id": "season_7edcc9bd6b49",
+      "name": "Monsoon Push",
+      "status": "draft",
+      "destination": "Bali",
+      "campaign_window_start_month": 6,
+      "campaign_window_end_month": 8,
+      "channel_mix": {
+        "organic": 30.0,
+        "email": 30.0,
+        "social": 20.0,
+        "paid": 20.0
+      },
+      "target_budget_min": 1000.0,
+      "target_budget_max": 5000.0,
+      "notes": "Target family travelers; keep offers simple and price-led.",
+      "blocklist": [
+        "school-exam-period",
+        "visa-risks"
+      ],
+      "created_by": null,
+      "is_recalibrated": false,
+      "score": null,
+      "created_at": "2026-06-22T17:32:13.056829+00:00",
+      "updated_at": "2026-06-22T17:32:13.056829+00:00"
+    },
+    {
+      "plan_id": "season_d48ab52431a4",
+      "name": "Monsoon Kerala Small Agency",
+      "status": "draft",
+      "destination": "Kerala",
+      "campaign_window_start_month": 6,
+      "campaign_window_end_month": 9,
+      "channel_mix": {
+        "organic": 0.45,
+        "email": 0.2,
+        "social": 0.2,
+        "paid": 0.15
+      },
+      "target_budget_min": 15000.0,
+      "target_budget_max": 28000.0,
+      "notes": "Small Indian agency, monsoon inspiration, family + honeymoon tone, budget-sensitive mix.",
+      "blocklist": [
+        "budget_violation",
+        "destination_mismatch"
+      ],
+      "created_by": null,
+      "is_recalibrated": false,
+      "score": null,
+      "created_at": "2026-06-23T04:29:35.407069+00:00",
+      "updated_at": "2026-06-23T04:29:35.407069+00:00"
+    },
+    {
+      "plan_id": "season_0a40349a98b4",
+      "name": "Global Holiday Portfolio",
+      "status": "active",
+      "destination": "Dubai + London + Tokyo",
+      "campaign_window_start_month": 10,
+      "campaign_window_end_month": 12,
+      "channel_mix": {
+        "organic": 0.2,
+        "email": 0.25,
+        "social": 0.15,
+        "paid": 0.4
+      },
+      "target_budget_min": 50000.0,
+      "target_budget_max": 180000.0,
+      "notes": "Large global agency, multi-market holiday push, premium premium-lead mix, paid-heavy with email nurture.",
+      "blocklist": [
+        "luxury_mismatch",
+        "flight_unavailable"
+      ],
+      "created_by": null,
+      "is_recalibrated": false,
+      "score": null,
+      "created_at": "2026-06-23T04:30:20.455840+00:00",
+      "updated_at": "2026-06-23T04:30:20.455840+00:00"
+    }
+  ]
 }

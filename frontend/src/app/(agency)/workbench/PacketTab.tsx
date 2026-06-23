@@ -40,17 +40,25 @@ export default function PacketTab({ trip }: PacketTabProps) {
     Destination: _getFactValue(facts, "destination_candidates") || "-",
     Origin: _getFactValue(facts, "origin_city") || "-",
     Dates: _getFactValue(facts, "date_window") || _getFactValue(facts, "date_start") || "-",
+    Purpose: _getFactValue(facts, "trip_purpose") || _getFactValue(derivedSignals, "trip_purpose") || "-",
     Budget: _getFactValue(facts, "budget_raw_text") || "-",
     Party: _getFactValue(facts, "party_size") || "-",
   };
+  const groupLogistics = [
+    _formatRoomingSummary(_getFactValue(facts, "rooming_list_count"), _getFactValue(facts, "rooming_requirements")),
+    _getFactValue(facts, "procurement_share_needed") ? "Shareable with procurement" : null,
+  ].filter(Boolean);
 
-  const summaryCards = Object.entries(summaryData).map((entry) => {
+  const summaryCards = [
+    ...Object.entries(summaryData).map((entry) => {
     const [label, value] = entry;
     return {
       label,
       value: _formatValue(value),
     };
-  });
+    }),
+    ...(groupLogistics.length > 0 ? [{ label: "Group Logistics", value: groupLogistics.join(" · ") }] : []),
+  ];
 
   // Derive issues from either legacy shape (errors/warnings arrays) or
   // current backend shape (status/gate/reasons + packet.unknowns).
@@ -204,7 +212,7 @@ export default function PacketTab({ trip }: PacketTabProps) {
       )}
 
       {/* Summary Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {summaryCards.map((card) => (
           <div
             key={card.label}
@@ -419,4 +427,14 @@ function _formatValue(value: unknown): string {
 function _formatConfidence(confidence: number | undefined): string {
   if (confidence === undefined || confidence === null) return "-";
   return `${Math.round(confidence * 100)}%`;
+}
+
+function _formatRoomingSummary(count: unknown, requirement: unknown): string | null {
+  if (typeof count === "number" && count > 0) {
+    return `${count} rooming list${count === 1 ? "" : "s"}`;
+  }
+  if (typeof requirement === "string" && requirement.trim()) {
+    return requirement.trim();
+  }
+  return null;
 }

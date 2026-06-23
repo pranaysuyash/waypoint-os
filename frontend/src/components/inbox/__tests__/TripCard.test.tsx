@@ -35,6 +35,7 @@ const mockTrip: InboxTrip = {
   reference: 'REF-123',
   destination: 'Bali',
   tripType: 'Leisure',
+  tripPurpose: 'family holiday',
   partySize: 4,
   dateWindow: 'June 2026',
   value: 15000,
@@ -86,7 +87,7 @@ describe('TripCard v2 - priority indicator', () => {
 describe('TripCard v2 - primary context (row 1)', () => {
   it('renders destination and trip type as title', () => {
     render(<TripCard trip={mockTrip} isSelected={false} onSelect={vi.fn()} />);
-    expect(screen.getByTestId('trip-card-destination')).toHaveTextContent('Bali leisure trip');
+    expect(screen.getByTestId('trip-card-destination')).toHaveTextContent('Bali family holiday trip');
   });
 
   it('falls back to trip type when destination is unknown', () => {

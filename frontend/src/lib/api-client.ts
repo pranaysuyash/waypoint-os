@@ -111,6 +111,7 @@ class ApiClient {
       timeout = this.defaultTimeout,
       retry = this.defaultRetry,
       retryDelay = this.defaultRetryDelay,
+      body,
       ...fetchOptions
     } = options;
 
@@ -135,6 +136,12 @@ class ApiClient {
           signal: controller.signal,
           headers,
           credentials: "include",   // ensures cookies travel even after subdomain splits / CDN
+          body:
+            body === undefined || fetchOptions.method === "GET" || fetchOptions.method === "HEAD"
+              ? undefined
+              : typeof body === "string"
+                ? body
+                : JSON.stringify(body),
         });
 
         clearTimeout(timeoutId);
@@ -237,7 +244,7 @@ class ApiClient {
     return this.request<T>(endpoint, {
       ...options,
       method: "POST",
-      body: JSON.stringify(data),
+      body: data,
     });
   }
 
@@ -245,7 +252,7 @@ class ApiClient {
     return this.request<T>(endpoint, {
       ...options,
       method: "PUT",
-      body: JSON.stringify(data),
+      body: data,
     });
   }
 
@@ -253,7 +260,7 @@ class ApiClient {
     return this.request<T>(endpoint, {
       ...options,
       method: "PATCH",
-      body: JSON.stringify(data),
+      body: data,
     });
   }
 
@@ -294,6 +301,7 @@ export interface Trip {
   action?: string;
   overdue?: boolean;
   origin?: string;
+  tripPurpose?: string;
   budget?: string;
   status?: string;
   stage?: string;
@@ -659,11 +667,12 @@ export async function preflightSeasonalCampaign(planId: string): Promise<SeasonP
 
 export async function dispatchSeasonalCampaign(
   planId: string,
-  dryRun = true
+  dryRun = true,
+  scenario?: string,
 ): Promise<SeasonDispatchResponse> {
   return api.post<SeasonDispatchResponse>(
     `/api/settings/seasonal/campaigns/${encodeURIComponent(planId)}/dispatch`,
-    { dry_run: dryRun },
+    { dry_run: dryRun, ...(scenario ? { scenario } : {}) },
   );
 }
 

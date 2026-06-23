@@ -326,6 +326,38 @@ def get_mode_specific_goal(decision_state: DecisionState, operating_mode: str) -
     return "Advance the trip planning process."
 
 
+def _slot_text(packet: Optional[CanonicalPacket], field_name: str) -> str:
+    if not packet:
+        return ""
+    slot = packet.facts.get(field_name)
+    value = getattr(slot, "value", slot)
+    if isinstance(value, str):
+        return value.strip().lower()
+    if isinstance(value, (int, float, bool)):
+        return str(value).strip().lower()
+    return ""
+
+
+def _is_corporate_context(packet: Optional[CanonicalPacket]) -> bool:
+    if not packet:
+        return False
+
+    purpose = _slot_text(packet, "trip_purpose")
+    raw_note = (packet.raw_note or "").lower()
+    party_size_text = _slot_text(packet, "party_size")
+    party_size = 0
+    try:
+        party_size = int(float(party_size_text))
+    except (TypeError, ValueError):
+        party_size = 0
+
+    return (
+        any(keyword in purpose for keyword in ("business", "corporate", "conference", "meeting", "procurement", "offsite", "work"))
+        or any(keyword in raw_note for keyword in ("corporate group", "procurement", "rooming list", "business trip", "company", "work trip"))
+        or party_size >= 10
+    )
+
+
 def get_mode_specific_opening(
     decision_state: DecisionState,
     operating_mode: str,
@@ -447,9 +479,33 @@ def build_session_strategy(
     # Get mode-specific goal and opening
     session_goal = get_mode_specific_goal(decision.decision_state, decision.operating_mode)
     suggested_opening = get_mode_specific_opening(decision.decision_state, decision.operating_mode)
+    corporate_context = decision.decision_state == "PROCEED_INTERNAL_DRAFT" and _is_corporate_context(packet)
+
+    if corporate_context:
+        destination = ""
+        if packet is not None:
+            dest_slot = packet.facts.get("destination_candidates")
+            dest_value = getattr(dest_slot, "value", dest_slot)
+            if isinstance(dest_value, list) and dest_value:
+                destination = str(dest_value[0]).strip()
+            elif isinstance(dest_value, str):
+                destination = dest_value.strip()
+
+        if destination:
+            session_goal = f"Generate internal business-travel draft for {destination} with documented assumptions for agent review."
+            suggested_opening = f"(Internal draft) Generating preliminary business-travel options for {destination}."
+        else:
+            session_goal = "Generate internal business-travel draft with documented assumptions for agent review."
+            suggested_opening = "(Internal draft) Generating preliminary business-travel options for agent review."
 
     # Build priority sequence based on decision state
     priority_sequence = _build_priority_sequence(decision, packet)
+    if corporate_context:
+        priority_sequence = [
+            "Preserve the corporate/group shape",
+            "Keep rooming lists and procurement context visible",
+            *priority_sequence,
+        ][:5]
 
     # Extract risk flags from decision (handle both dict and object formats)
     risk_flags = _extract_risk_flags(decision.risk_flags) if decision.risk_flags else []
@@ -461,6 +517,13 @@ def build_session_strategy(
     assumptions = []
     if decision.decision_state == "PROCEED_INTERNAL_DRAFT":
         assumptions = _build_assumptions(decision, packet)
+        if corporate_context and assumptions:
+            assumptions = [
+                assumption if "corporate" in assumption.lower() or "procurement" in assumption.lower() else assumption
+                for assumption in assumptions
+            ]
+            if not any("procurement" in assumption.lower() for assumption in assumptions):
+                assumptions.insert(0, "Assuming procurement notes and rooming-list needs stay visible during option building")
 
     return SessionStrategy(
         session_goal=session_goal,

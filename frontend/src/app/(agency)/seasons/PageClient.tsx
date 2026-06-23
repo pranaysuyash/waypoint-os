@@ -281,6 +281,7 @@ export default function SeasonsPageClient() {
 
   const handleDispatch = async (planId: string, dryRun: boolean) => {
     const dispatchMode = dryRun ? 'dispatch_dry_run' : 'dispatch_live';
+    const scenario = scenarioByCampaign[planId] || 'baseline';
     const runningUpdater = dryRun ? setDispatchDryByCampaignRunning : setDispatchLiveByCampaignRunning;
     setActionMessagesByCampaign((prev) => ({
       ...prev,
@@ -291,7 +292,7 @@ export default function SeasonsPageClient() {
       [planId]: null,
     }));
     runningUpdater((prev) => ({ ...prev, [planId]: true }));
-    const nextDispatch = await dispatchCampaign.mutate(planId, dryRun);
+    const nextDispatch = await dispatchCampaign.mutate(planId, dryRun, scenario);
     runningUpdater((prev) => ({ ...prev, [planId]: false }));
     if (nextDispatch) {
       setDispatchByCampaign((prev) => ({ ...prev, [planId]: nextDispatch }));
@@ -801,7 +802,7 @@ export default function SeasonsPageClient() {
                   ) : (
                     <div className="rounded-lg border border-[#1c2128] bg-[#161b22] p-3 text-ui-xs text-[#8b949e]">
                       <p className="font-medium text-[#e6edf3]">Channel mix</p>
-                      <p>{Object.entries(campaign.channel_mix).map(([key, value]) => `${key}: ${value}`).join(' • ') || 'No mix set'}</p>
+                      <p>{Object.entries(campaign.channel_mix ?? {}).map(([key, value]) => `${key}: ${value}`).join(' • ') || 'No mix set'}</p>
                     </div>
                   )}
 
@@ -936,6 +937,9 @@ export default function SeasonsPageClient() {
                       {simulationByCampaign[campaign.plan_id] ? (
                         <div className="rounded-lg border border-[#30363d] bg-[#161b22] p-2">
                           <p className="text-[#c9d1d9] font-medium">Simulation</p>
+                          <p className="text-[#8b949e]">
+                            Scenario: {simulationByCampaign[campaign.plan_id]?.scenario}
+                          </p>
                           <p className="text-[#8b949e]">Leads: {simulationByCampaign[campaign.plan_id]?.projected_leads}</p>
                           <p className="text-[#8b949e]">Bookings: {simulationByCampaign[campaign.plan_id]?.projected_bookings}</p>
                           <p className="text-[#8b949e]">Margin: {simulationByCampaign[campaign.plan_id]?.projected_margin_pct}%</p>
@@ -964,6 +968,9 @@ export default function SeasonsPageClient() {
                       {dispatchByCampaign[campaign.plan_id] ? (
                         <div className="rounded-lg border border-[#30363d] bg-[#161b22] p-2">
                           <p className="text-[#c9d1d9] font-medium">Dispatch</p>
+                          <p className="text-[#8b949e]">
+                            Scenario: {scenarioByCampaign[campaign.plan_id] || 'baseline'}
+                          </p>
                           <p className="text-[#8b949e]">Status: {dispatchByCampaign[campaign.plan_id]?.ok ? 'Ready' : 'Blocked'}</p>
                           <p className="text-[#8b949e]">Dry run: {dispatchByCampaign[campaign.plan_id]?.dry_run ? 'Yes' : 'No'}</p>
                           <p className="text-[#8b949e]">Executed at: {dispatchByCampaign[campaign.plan_id]?.executed_at}</p>

@@ -1825,6 +1825,16 @@ def patch_trip(
                 }
                 fields_to_clear.add("trip_priorities")
 
+        if "tripPurpose" in incoming_updates:
+            purpose_value = _trimmed_string(incoming_updates.get("tripPurpose"))
+            if purpose_value:
+                facts["trip_purpose"] = {
+                    "value": purpose_value,
+                    "confidence": 1.0,
+                    "authority_level": "explicit_user",
+                }
+                fields_to_clear.add("trip_purpose")
+
         if "date_flexibility" in incoming_updates:
             flexibility_value = _trimmed_string(incoming_updates.get("date_flexibility"))
             if flexibility_value:

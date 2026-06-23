@@ -4,6 +4,7 @@ export const FIELD_LABELS: Record<string, string> = {
   date_window: "Travel Dates",
   date_start: "Start Date",
   date_end: "End Date",
+  flight_hotel_mismatch: "Flight / Hotel Mismatch",
   budget_raw_text: "Budget",
   party_size: "Party Size",
   trip_purpose: "Trip Purpose",

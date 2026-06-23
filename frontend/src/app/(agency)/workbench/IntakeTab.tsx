@@ -18,6 +18,7 @@ import { useId } from 'react';
 import type { Trip } from '@/lib/api-client';
 import { useWorkbenchStore } from '@/stores/workbench';
 import type { SpineStage, OperatingMode } from '@/types/spine';
+import { getTravelerPromptForUnknownField } from '@/lib/traveler-prompts';
 
 const stages: { value: SpineStage; label: string }[] = [
   { value: 'discovery', label: 'Discovery' },
@@ -66,6 +67,7 @@ function IntakeTabInner({ trip }: IntakeTabProps) {
   const budget = trip?.budget || '-';
   const party = trip?.party || '-';
   const dateWindow = trip?.dateWindow || '-';
+  const tripPurposePrompt = getTravelerPromptForUnknownField('trip_purpose');
   const stageHelp: Record<SpineStage, string> = {
     discovery: 'Use this when you are still qualifying the inquiry and need missing essentials.',
     shortlist: 'Use this when core details are known and you are preparing curated options.',
@@ -143,9 +145,17 @@ function IntakeTabInner({ trip }: IntakeTabProps) {
             </label>
           </div>
           <p className='mb-2 text-ui-xs text-[#8b949e]'>
-            Paste the exact traveler-facing request: destination ideas, travel window, party details, budget hints, constraints,
+            Paste the exact traveler-facing request: destination ideas, travel window, party details, trip purpose, budget hints, constraints,
             preferences, and any channel transcript (email/WhatsApp/call summary).
           </p>
+          {tripPurposePrompt && (
+            <div className='mb-3 rounded-lg border border-[#30363d] bg-[#0f1115] px-3 py-2 text-ui-xs text-[#c9d1d9] flex items-start gap-2'>
+              <Lightbulb className='size-3.5 mt-0.5 text-[#58a6ff] shrink-0' />
+              <p>
+                Need the purpose fast? {tripPurposePrompt}
+              </p>
+            </div>
+          )}
           <textarea
             id={id1}
             value={input_raw_note}
@@ -166,6 +176,9 @@ function IntakeTabInner({ trip }: IntakeTabProps) {
           <p className='mb-2 text-ui-xs text-[#8b949e]'>
             Add internal context not meant for the traveler: qualification signals, risk flags, supplier constraints, margin targets,
             urgency, and next-step instructions for the team.
+          </p>
+          <p className='mb-2 text-ui-xs text-[#8b949e]'>
+            For sparse global-market requests, add the trip purpose here so the first pass can move past `WAITING ON CUSTOMER` when the destination and budget are already clear.
           </p>
           <textarea
             id={id2}

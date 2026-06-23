@@ -1,5 +1,5 @@
 {
-  "route_count": 167,
+  "route_count": 174,
   "routes": [
     {
       "path": "/agents/runtime",
@@ -274,6 +274,14 @@
       "operation_id": null
     },
     {
+      "path": "/api/auth/test-token",
+      "name": "post_test_token",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/auth/validate-code/{code}",
       "name": "get_validate_code",
       "methods": [
@@ -412,6 +420,14 @@
     {
       "path": "/api/drafts/{draft_id}/runs",
       "name": "get_draft_runs",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/extractions/{attempt_id}/version-snapshot",
+      "name": "get_version_snapshot",
       "methods": [
         "GET"
       ],
@@ -586,6 +602,30 @@
       "operation_id": null
     },
     {
+      "path": "/api/settings/comm",
+      "name": "get_comm_settings",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/comm",
+      "name": "update_comm_settings",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/health",
+      "name": "get_settings_health",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
       "path": "/api/settings/llm-guard",
       "name": "get_llm_guard_state",
       "methods": [
@@ -692,6 +732,22 @@
     {
       "path": "/api/settings/seasonal/campaigns/{plan_id}/simulate",
       "name": "simulate_seasonal_campaign",
+      "methods": [
+        "POST"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/support",
+      "name": "get_support_settings",
+      "methods": [
+        "GET"
+      ],
+      "operation_id": null
+    },
+    {
+      "path": "/api/settings/support",
+      "name": "update_support_settings",
       "methods": [
         "POST"
       ],

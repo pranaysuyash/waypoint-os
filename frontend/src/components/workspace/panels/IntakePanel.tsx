@@ -27,6 +27,7 @@ import { useStartPlanning, useUpdateTrip } from '@/hooks/useTrips';
 import { useTripContext } from '@/contexts/TripContext';
 import { getTripRoute } from '@/lib/routes';
 import type { SpineStage, OperatingMode, SpineRunRequest } from '@/types/spine';
+import { FIELD_LABELS, labelOrTitle } from '@/lib/label-maps';
 import {
   CURRENCY_CONFIG,
   type SupportedCurrency,
@@ -101,6 +102,7 @@ const PLANNING_DETAIL_LABEL_TO_ID: Record<string, PlanningDetailId> = {
   'Origin city': 'origin',
   'Travel window': 'dates',
   'Trip priorities / must-haves': 'priorities',
+  'Priorities or must-haves': 'priorities',
   'Date flexibility': 'flexibility',
   'Contact name': 'customerName',
 };
@@ -427,6 +429,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   const [editValues, setEditValues] = useState({
     destination: trip?.destination || '',
     type: trip?.type || '',
+    tripPurpose: trip?.tripPurpose || '',
     party: trip?.party?.toString() || '',
     dateWindow: trip?.dateWindow || '',
     origin: trip?.origin || '',
@@ -512,7 +515,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     if (!tripPriorities) {
       rows.push({
         id: 'priorities',
-        label: 'Trip priorities / must-haves',
+        label: 'Priorities or must-haves',
         requirement: 'Recommended',
         addLabel: 'Add priorities',
         askLabel: 'Ask traveler',
@@ -749,6 +752,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
       setEditValues({
         destination: trip.destination || '',
         type: trip.type || '',
+        tripPurpose: trip.tripPurpose || '',
         party: trip.party?.toString() || '',
         dateWindow: trip.dateWindow || '',
         origin: trip.origin || '',
@@ -776,6 +780,11 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
         previousValue = trip?.type || null;
         newValue = editValues.type;
         updateData.type = editValues.type;
+        break;
+      case 'tripPurpose':
+        previousValue = trip?.tripPurpose || null;
+        newValue = editValues.tripPurpose;
+        updateData.tripPurpose = editValues.tripPurpose;
         break;
       case 'party':
         previousValue = trip?.party || null;
@@ -1059,8 +1068,37 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
   const hardBlockers = decision?.hard_blockers ?? [];
   const softBlockers = decision?.soft_blockers ?? [];
   const decisionState = decision?.decision_state ?? null;
+  const packetContradictions = ((trip?.packet as { contradictions?: Array<{ field_name?: string; values?: Array<{ value?: string } | string>; sources?: string[] }> } | null | undefined)?.contradictions ?? []);
+  const packetFacts = ((trip?.packet as { facts?: Record<string, { value?: unknown }> } | null | undefined)?.facts ?? {});
   const leadNeedsConfirmation = isLeadReview;
   const watchPointLabels = softBlockers.map((blocker) => blocker.replace(/_/g, ' '));
+  const contradictionCards = packetContradictions.map((contradiction) => ({
+    label: labelOrTitle(FIELD_LABELS, contradiction.field_name ?? 'contradiction'),
+    values: (contradiction.values ?? [])
+      .map((value) => typeof value === 'string' ? value : (value?.value ?? ''))
+      .filter(Boolean),
+  })).filter((item) => item.label !== 'Contradiction' || item.values.length > 0);
+  const roomingListCount = normalizePlanningDisplayValue(String(packetFacts.rooming_list_count?.value ?? '')) ?? null;
+  const roomingListRequirements = normalizePlanningDisplayValue(String(packetFacts.rooming_requirements?.value ?? '')) ?? null;
+  const procurementShareNeeded = Boolean(packetFacts.procurement_share_needed?.value);
+  const procurementNotes = normalizePlanningDisplayValue(String(packetFacts.procurement_notes?.value ?? '')) ?? null;
+  const childAges = Array.isArray(packetFacts.child_ages?.value)
+    ? packetFacts.child_ages?.value.filter((age): age is number => typeof age === 'number')
+    : [];
+  const childCount = typeof packetFacts.party_composition?.value === 'object' && packetFacts.party_composition?.value !== null
+    ? Number((packetFacts.party_composition.value as Record<string, unknown>).children ?? 0)
+    : 0;
+  const familyDetailsSummary = childAges.length > 0
+    ? `${childCount > 0 ? `${childCount} children · ` : ''}ages ${childAges.join(', ')}`
+    : childCount > 0
+      ? `${childCount} children`
+      : null;
+  const groupLogisticsSummary = [
+    roomingListCount ? `${roomingListCount} rooming list${roomingListCount === '1' ? '' : 's'}` : null,
+    roomingListRequirements,
+    procurementShareNeeded ? 'shareable with procurement' : null,
+  ].filter(Boolean).join(' · ');
+  const summaryCardCount = 2 + Number(Boolean(groupLogisticsSummary)) + Number(Boolean(familyDetailsSummary));
   const planningDetailsPanelTitle = requiredPlanningDetails.length > 0 ? 'Missing customer details' : 'Recommended details';
   const planningDetailsPanelDescription = requiredPlanningDetails.length > 0
     ? 'Each missing field can be fixed here or pushed into a traveler follow-up.'
@@ -1070,7 +1108,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
     <div className='space-y-6'>
 
       {/* Compact guidance strip */}
-      <div className='grid grid-cols-1 gap-2 rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3 md:grid-cols-3'>
+      <div className={`grid grid-cols-1 gap-2 rounded-xl border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3 ${contradictionCards.length > 0 ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
         <div className='min-w-0 rounded-lg bg-[rgba(210,153,34,0.05)] px-3 py-2'>
           <p className='text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-amber)]'>
             {getPlanningBlockerTitle(isLeadReview, trip)}
@@ -1161,14 +1199,33 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
           )}
         </div>
 
+        {contradictionCards.length > 0 && (
+          <div className='min-w-0 rounded-lg bg-[rgba(248,81,73,0.08)] px-3 py-2'>
+            <p className='text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-red)]'>Critical Issue</p>
+            <p className='mt-1 text-[13px] leading-5 text-[var(--text-rationale)]'>{contradictionCards[0]!.label}</p>
+            {contradictionCards[0]!.values.length > 0 && (
+              <p className='mt-1 text-[12px] leading-5 text-[var(--text-secondary)]'>
+                {contradictionCards[0]!.values.join(' · ')}
+              </p>
+            )}
+            <p className='mt-2 text-[12px] leading-5 text-[var(--text-placeholder)]'>
+              Move the hotel check-in or choose an earlier flight.
+            </p>
+          </div>
+        )}
+
         <div className='min-w-0 rounded-lg bg-[rgba(88,166,255,0.04)] px-3 py-2'>
           <p className='text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-blue)]'>Watch</p>
           {isLeadReview ? (
             <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>Incomplete intake.</p>
+          ) : contradictionCards.length > 0 ? (
+            <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>
+              {contradictionCards.length} issue{contradictionCards.length !== 1 ? 's' : ''} need attention.
+            </p>
           ) : hasPlanningBriefBlocker(trip) ? (
             <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>Blocked by missing details.</p>
           ) : getPlanningBriefStatus(trip) === "missing_recommended_details" ? (
-            <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>Recommended details missing: {getRecommendedPlanningFields(trip).join(", ")}.</p>
+            <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>Recommended details missing: {getRecommendedPlanningFields(trip).map((label) => label === 'Trip priorities / must-haves' ? 'Priorities or must-haves' : label).join(", ")}.</p>
           ) : watchPointLabels.length > 0 ? (
             <p className='mt-1 text-[13px] leading-5 text-[var(--text-secondary)]'>
               {watchPointLabels.slice(0, 2).join(' · ')}
@@ -1273,7 +1330,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
         </div>
         {trip ? (
           <div className='space-y-4'>
-            <div className='grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-3'>
+            <div className='grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-8 gap-3'>
               <EditableField
                 label='Origin'
                 value={editValues.origin}
@@ -1304,6 +1361,17 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
                 displayValue={trip.type}
                 field='type'
                 isEditing={editingField === 'type'}
+                onStartEdit={startEditing}
+                onSaveEdit={saveFieldEdit}
+                onCancelEdit={cancelEditing}
+                onEditValueChange={(f, v) => setEditValues(prev => ({ ...prev, [f]: v }))}
+              />
+              <EditableField
+                label='Purpose'
+                value={editValues.tripPurpose}
+                displayValue={trip.tripPurpose || '-'}
+                field='tripPurpose'
+                isEditing={editingField === 'tripPurpose'}
                 onStartEdit={startEditing}
                 onSaveEdit={saveFieldEdit}
                 onCancelEdit={cancelEditing}
@@ -1355,7 +1423,7 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
                 </p>
               </div>
             </div>
-            <div className='grid grid-cols-1 lg:grid-cols-2 gap-3'>
+            <div className={`grid grid-cols-1 gap-3 ${summaryCardCount >= 4 ? 'lg:grid-cols-4' : summaryCardCount === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
               <div className='rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3'>
                 <div className='flex items-center justify-between gap-3'>
                   <div>
@@ -1382,6 +1450,35 @@ function IntakePanelInner({ tripId, trip }: IntakePanelProps) {
                   </Button>
                 </div>
               </div>
+              {groupLogisticsSummary && (
+                <div className='rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3'>
+                  <div className='flex items-center justify-between gap-3'>
+                    <div>
+                      <p className='text-[var(--ui-text-xs)] uppercase tracking-[0.18em] text-[var(--text-secondary)]'>Group logistics</p>
+                      <p className='mt-1 text-[var(--ui-text-sm)] text-[var(--text-primary)]'>
+                        {groupLogisticsSummary}
+                      </p>
+                      {procurementNotes && (
+                        <p className='mt-1 text-[var(--ui-text-xs)] text-[var(--text-secondary)]'>
+                          {procurementNotes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {familyDetailsSummary && (
+                <div className='rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3'>
+                  <div className='flex items-center justify-between gap-3'>
+                    <div>
+                      <p className='text-[var(--ui-text-xs)] uppercase tracking-[0.18em] text-[var(--text-secondary)]'>Family details</p>
+                      <p className='mt-1 text-[var(--ui-text-sm)] text-[var(--text-primary)]'>
+                        {familyDetailsSummary}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             {(activePlanningEditor === 'priorities' || activePlanningEditor === 'flexibility') && (
               <div className='rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] p-3'>

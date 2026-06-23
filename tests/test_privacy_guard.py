@@ -225,6 +225,11 @@ class TestBenignDataAllowed:
         trip = {"notes": "Short"}
         check_trip_data(trip)
 
+    def test_generated_draft_id_does_not_trigger_phone_detection(self):
+        trip = _make_real_trip()
+        trip["draft_id"] = "draft_7384426978f4"
+        check_trip_data(trip)
+
 
 class TestHeuristicDetails:
     """Unit tests for individual heuristic functions."""

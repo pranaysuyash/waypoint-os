@@ -110,6 +110,118 @@ class TestOriginAndDestinationSeparation:
                 assert "Paris" in dests or "paris" in str(dests).lower()
                 assert "Mumbai" not in dests
 
+    def test_cape_town_to_mauritius_destination(self):
+        """Cape Town origin + Mauritius destination should resolve as a real trip target."""
+        text = "Small Cape Town agency handling a family holiday from Cape Town to Mauritius in September 2026."
+        packet = e2e_extract(text)
+
+        assert "origin_city" in packet.facts
+        assert packet.facts["origin_city"].value == "Cape Town"
+        assert "destination_candidates" in packet.facts
+        dests = packet.facts["destination_candidates"].value
+
+        if isinstance(dests, list):
+            assert "Mauritius" in dests
+            assert "Cape Town" not in dests
+
+    def test_nairobi_to_seychelles_destination(self):
+        """Nairobi origin + Seychelles destination should resolve as a real trip target."""
+        text = "Small Nairobi agency handling a family holiday from Nairobi to Seychelles in October 2026."
+        packet = e2e_extract(text)
+
+        assert "origin_city" in packet.facts
+        assert packet.facts["origin_city"].value == "Nairobi"
+        assert "destination_candidates" in packet.facts
+        dests = packet.facts["destination_candidates"].value
+
+        if isinstance(dests, list):
+            assert "Seychelles" in dests
+            assert "Nairobi" not in dests
+
+    def test_johannesburg_to_namibia_destination(self):
+        """Johannesburg origin + Namibia destination should resolve as a real trip target."""
+        text = "Small Johannesburg agency handling a family holiday from Johannesburg to Namibia in November 2026."
+        packet = e2e_extract(text)
+
+        assert "origin_city" in packet.facts
+        assert packet.facts["origin_city"].value == "Johannesburg"
+        assert "destination_candidates" in packet.facts
+        dests = packet.facts["destination_candidates"].value
+
+        if isinstance(dests, list):
+            assert "Namibia" in dests
+            assert "Johannesburg" not in dests
+
+    def test_reykjavik_to_iceland_destination(self):
+        """Reykjavik origin + Iceland destination should resolve as a real trip target."""
+        text = "Small Reykjavik agency handling a family holiday from Reykjavik to Iceland in December 2026."
+        packet = e2e_extract(text)
+
+        assert "origin_city" in packet.facts
+        assert packet.facts["origin_city"].value == "Reykjavik"
+        assert "destination_candidates" in packet.facts
+        dests = packet.facts["destination_candidates"].value
+
+        if isinstance(dests, list):
+            assert "Iceland" in dests
+            assert "Reykjavik" not in dests
+
+    def test_tbilisi_to_georgia_destination(self):
+        """Tbilisi origin + Georgia destination should resolve as a real trip target."""
+        text = "Small Tbilisi agency handling a family holiday from Tbilisi to Georgia in March 2027."
+        packet = e2e_extract(text)
+
+        assert "origin_city" in packet.facts
+        assert packet.facts["origin_city"].value == "Tbilisi"
+        assert "destination_candidates" in packet.facts
+        dests = packet.facts["destination_candidates"].value
+
+        if isinstance(dests, list):
+            assert "Georgia" in dests
+            assert "Tbilisi" not in dests
+
+    def test_dubai_to_bahrain_destination(self):
+        """Dubai origin + Bahrain destination should resolve as a real trip target."""
+        text = "Small Dubai agency handling a family holiday from Dubai to Bahrain in February 2027."
+        packet = e2e_extract(text)
+
+        assert "origin_city" in packet.facts
+        assert packet.facts["origin_city"].value == "Dubai"
+        assert "destination_candidates" in packet.facts
+        dests = packet.facts["destination_candidates"].value
+
+        if isinstance(dests, list):
+            assert "Bahrain" in dests
+            assert "Dubai" not in dests
+
+    def test_accra_to_ghana_destination(self):
+        """Accra origin + Ghana destination should resolve as a real trip target."""
+        text = "Small Accra agency handling a family holiday from Accra to Ghana in April 2027."
+        packet = e2e_extract(text)
+
+        assert "origin_city" in packet.facts
+        assert packet.facts["origin_city"].value == "Accra"
+        assert "destination_candidates" in packet.facts
+        dests = packet.facts["destination_candidates"].value
+
+        if isinstance(dests, list):
+            assert "Ghana" in dests
+            assert "Accra" not in dests
+
+    def test_zagreb_to_croatia_destination(self):
+        """Zagreb origin + Croatia destination should resolve as a real trip target."""
+        text = "Small Zagreb agency handling a family holiday from Zagreb to Croatia in May 2027."
+        packet = e2e_extract(text)
+
+        assert "origin_city" in packet.facts
+        assert packet.facts["origin_city"].value == "Zagreb"
+        assert "destination_candidates" in packet.facts
+        dests = packet.facts["destination_candidates"].value
+
+        if isinstance(dests, list):
+            assert "Croatia" in dests
+            assert "Zagreb" not in dests
+
 
 # =============================================================================
 # TEST 3: Past-trip city + current destination in same note (should not leak)

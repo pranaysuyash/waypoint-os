@@ -75,6 +75,23 @@ def test_settings_affect_budget_margin():
     result_100 = check_budget_feasibility(packet_simple, agency_settings=settings_100)
     assert result_100["status"] == "infeasible"
 
+
+def test_non_inr_budget_skips_inr_heuristic_table():
+    packet = CanonicalPacket(
+        packet_id="test-packet-usd",
+        operating_mode="normal_intake",
+        facts={
+            "resolved_destination": Slot(value="Singapore", confidence=1.0, authority_level=AuthorityLevel.EXPLICIT_USER),
+            "party_size": Slot(value=18, confidence=1.0, authority_level=AuthorityLevel.EXPLICIT_USER),
+            "budget_min": Slot(value=42000, confidence=1.0, authority_level=AuthorityLevel.EXPLICIT_USER),
+            "budget_currency": Slot(value="USD", confidence=1.0, authority_level=AuthorityLevel.EXPLICIT_USER),
+        }
+    )
+
+    result = check_budget_feasibility(packet)
+    assert result["status"] == "unknown"
+    assert "currency" in result["reason"].lower()
+
 def test_settings_affect_brand_tone():
     # Setup a decision result
     decision = DecisionResult(

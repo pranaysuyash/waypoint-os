@@ -22,6 +22,7 @@ import { getTripRoute } from '@/lib/routes';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { formatLeadTitle } from '@/lib/lead-display';
 import { titleCase } from '@/lib/label-maps';
+import { CURRENCY_CONFIG, formatBudgetWithCode, type SupportedCurrency } from '@/lib/currency';
 import type { TripReview, ReviewStatus, RiskFlag } from '@/types/governance';
 
 const REVIEW_STATUS_MAP = {
@@ -47,6 +48,11 @@ function getReviewTitle(review: TripReview): string {
 
 function getDaysWaiting(submittedAt: string, referenceNow: number) {
   return Math.floor((referenceNow - new Date(submittedAt).getTime()) / DAY_MS);
+}
+
+function toSupportedCurrency(currency: string): SupportedCurrency {
+  const normalized = currency.trim().toUpperCase();
+  return normalized in CURRENCY_CONFIG ? (normalized as SupportedCurrency) : 'USD';
 }
 
 const RiskFlagBadge = memo(function RiskFlagBadge({ flag }: { flag: RiskFlag }) {
@@ -115,7 +121,7 @@ const ReviewCard = memo(function ReviewCard({
             </span>
             <span className='flex items-center gap-1'>
               <DollarSign className='size-3' /> 
-              ${review.value.toLocaleString()}
+              {formatBudgetWithCode(review.value, toSupportedCurrency(review.currency))}
             </span>
             <span className='flex items-center gap-1'>
               <Clock className='size-3' /> {daysWaiting}d waiting
@@ -277,6 +283,8 @@ export default function OwnerReviewsPage() {
   const rejectedCount = reviewCounts['rejected'] ?? 0;
   const escalatedCount = reviewCounts['escalated'] ?? 0;
   const totalValue = unifiedState?.total_pending_review_value ?? 0;
+  const hasSummaryBacklog = pendingCount > 0 && reviews.length === 0;
+  const hasMoreLoadedReviewsThanVisible = statusFilter === 'all' && reviews.length > 0 && pendingCount > reviews.length;
 
   return (
     <div className='p-5 max-w-[1400px] mx-auto space-y-5'>
@@ -354,6 +362,12 @@ export default function OwnerReviewsPage() {
 
       {/* Review Queue */}
       <div className='space-y-3'>
+        {hasMoreLoadedReviewsThanVisible && (
+          <div className='rounded-xl border border-[#d29922]/25 bg-[#d29922]/10 px-4 py-3 text-ui-sm text-[#d29922]'>
+            Showing {reviews.length} loaded quotes while the summary reports {pendingCount} pending quotes.
+            Refresh if you expect the queue to have grown since the last load.
+          </div>
+        )}
         {isLoading && reviews.length === 0 ? (
           <div className='flex flex-col items-center justify-center py-20 gap-4 text-[#8b949e]'>
             <div className='size-8 border-2 border-[#58a6ff]/30 border-t-[#58a6ff] rounded-full animate-spin' />
@@ -362,7 +376,14 @@ export default function OwnerReviewsPage() {
         ) : sortedReviews.length === 0 ? (
           <div className='text-center py-12 text-[#8b949e]'>
             <p>No quotes to review</p>
-            <p className='text-ui-xs mt-2'>Trips will appear here after options are prepared and ready for approval.</p>
+            {hasSummaryBacklog ? (
+              <p className='text-ui-xs mt-2 max-w-md mx-auto'>
+                Summary counts show {pendingCount} pending quotes, but no detailed review cards are loaded in this view yet.
+                Refresh if you expect new approvals to have arrived.
+              </p>
+            ) : (
+              <p className='text-ui-xs mt-2'>Trips will appear here after options are prepared and ready for approval.</p>
+            )}
           </div>
         ) : (
           sortedReviews.map((review, index) => (

@@ -10,6 +10,8 @@ import { CheckCircle, Send } from "lucide-react";
 import Link from "next/link";
 import styles from "@/components/workbench/workbench.module.css";
 import { isDebugJsonAllowed } from "@/lib/privacy-controls";
+import { safeWriteClipboardText } from "@/lib/clipboard";
+import { buildTripOutputPreview } from "@/lib/output-preview";
 
 interface OutputPanelProps {
   trip?: Trip | null;
@@ -29,14 +31,16 @@ export default function OutputPanel({ trip: propTrip, tripId: propTripId }: Outp
   const tripId = propTripId || trip?.id || context?.tripId || "";
 
   const { result_internal_bundle, result_traveler_bundle, debug_raw_json, setDebugRawJson } = useWorkbenchStore();
+  const derivedPreview = buildTripOutputPreview(trip);
 
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
   const debugJsonAllowed = isDebugJsonAllowed();
 
   // Fallback chain: Store (transient) > Trip (persisted)
-  const internalBundle = (result_internal_bundle || trip?.internal_bundle) as PromptBundle | null;
-  const travelerBundle = (result_traveler_bundle || trip?.traveler_bundle) as PromptBundle | null;
+  const internalBundle = (result_internal_bundle || trip?.internal_bundle || derivedPreview.internalBundle) as PromptBundle | null;
+  const travelerBundle = (result_traveler_bundle || trip?.traveler_bundle || derivedPreview.travelerBundle) as PromptBundle | null;
+  const isDerivedPreview = derivedPreview.isDerived && !result_internal_bundle && !result_traveler_bundle && !trip?.internal_bundle && !trip?.traveler_bundle;
   const hasStrategyContext = Boolean(trip?.strategy);
   const hasDecisionContext = Boolean(trip?.decision);
   const reviewStatus = trip?.review_status ?? null;
@@ -46,14 +50,30 @@ export default function OutputPanel({ trip: propTrip, tripId: propTripId }: Outp
     trip?.analytics?.sendPolicyReason ||
     (reviewBlocksSend ? "Trip must be approved by owner before sending." : "");
 
-  const handleSendToCustomer = () => {
+  const buildCustomerDraftText = () => {
+    const lines: string[] = [];
+    const tripName = trip?.destination ? `${trip.destination} trip` : "Customer draft";
+
+    lines.push(`Subject: ${tripName}`);
+    lines.push("");
+    lines.push(travelerBundle?.user_message || "Customer message not available yet.");
+
+    if (travelerBundle?.follow_up_sequence?.length) {
+      lines.push("");
+      lines.push("Follow-up questions:");
+      for (const item of travelerBundle.follow_up_sequence) {
+        lines.push(`- ${item.question}`);
+      }
+    }
+
+    return lines.join("\n");
+  };
+
+  const handlePrepareCustomerDraft = async () => {
     setIsSending(true);
-    // Mocking delivery for Wave 8
-    setTimeout(() => {
-      setIsSending(false);
-      setSendSuccess(true);
-      setTimeout(() => setSendSuccess(false), 5000);
-    }, 1500);
+    const copied = await safeWriteClipboardText(buildCustomerDraftText());
+    setIsSending(false);
+    setSendSuccess(copied);
   };
 
   if (!internalBundle && !travelerBundle) {
@@ -91,6 +111,18 @@ export default function OutputPanel({ trip: propTrip, tripId: propTripId }: Outp
 
   return (
     <div className="flex flex-col gap-8">
+      {isDerivedPreview && (
+        <div className="rounded-lg border border-[var(--border-default)] bg-elevated px-4 py-3 text-ui-sm text-text-muted flex items-center justify-between gap-3">
+          <p>Showing a derived preview from the current strategy and decision because the persisted output bundle has not been saved yet.</p>
+          <Link
+            href={hasDecisionContext ? `/trips/${tripId}/decision` : `/trips/${tripId}/strategy`}
+            className="inline-flex shrink-0 items-center rounded-md border border-[var(--border-default)] px-3 py-2 text-ui-xs font-medium text-text-primary transition-colors hover:bg-sidebar"
+          >
+            {hasDecisionContext ? "Open Quote Assessment" : "Open Options"}
+          </Link>
+        </div>
+      )}
+
       {/* Review Workflow - Wave 8 */}
       {trip && (
         <ReviewControls 
@@ -183,27 +215,29 @@ export default function OutputPanel({ trip: propTrip, tripId: propTripId }: Outp
       <div className={styles.deliveryActions}>
         {policyBlocksSend && (
           <div className="mb-3 rounded-md border border-[#f85149]/40 bg-[#f85149]/10 px-3 py-2 text-ui-xs text-[#ffb4b4]">
-            <strong>Send blocked by policy:</strong> {sendBlockReason}
+            <strong>Customer draft blocked by policy:</strong> {sendBlockReason}
           </div>
         )}
         {sendSuccess ? (
           <div className="flex items-center gap-2 text-[#3fb950] font-medium mr-4">
             <CheckCircle className="size-5" />
-            Sent Successfully
+            Customer draft copied
           </div>
         ) : (
           <button 
             className={styles.sendButton}
-            onClick={handleSendToCustomer}
+            onClick={() => {
+              void handlePrepareCustomerDraft();
+            }}
             disabled={isSending || reviewBlocksSend || policyBlocksSend}
             title={reviewBlocksSend || policyBlocksSend ? sendBlockReason : ""}
           >
             {isSending ? (
-              "Sending…"
+              "Preparing…"
             ) : (
               <>
                 <Send className="size-4" />
-                Send to Customer
+                Copy Customer Draft
               </>
             )}
           </button>

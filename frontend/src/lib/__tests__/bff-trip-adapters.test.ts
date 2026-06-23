@@ -17,15 +17,16 @@ const spineTrip = {
   updated_at: "2026-04-26T12:00:00.000Z",
   assigned_to: "agent-1",
   assigned_to_name: "Asha",
-  extracted: {
-    facts: {
-      destination_candidates: { value: ["Kyoto"] },
-      primary_intent: { value: ["culture"] },
-      party_profile: { value: 4 },
-      budget: { value: 125000 },
-      date_window: { value: "May 1-8" },
-      origin_city: { value: "Delhi" },
-    },
+    extracted: {
+      facts: {
+        destination_candidates: { value: ["Kyoto"] },
+        primary_intent: { value: ["culture"] },
+        trip_purpose: { value: ["family holiday"] },
+        party_profile: { value: 4 },
+        budget: { value: 125000 },
+        date_window: { value: "May 1-8" },
+        origin_city: { value: "Delhi" },
+      },
     events: [{ timestamp: "2026-04-20T12:00:00.000Z" }],
   },
   analytics: {
@@ -55,6 +56,12 @@ const spineTrip = {
     decision_state: "ASK_FOLLOWUP",
     confidence_score: 0.25,
     hard_blockers: ["missing_passport"],
+    contradictions: [
+      {
+        field_name: "flight_hotel_mismatch",
+        values: ["Flight arrives after check-in", "Hotel check-in is same-day"],
+      },
+    ],
     risk_flags: ["visa_gap"],
     budget_breakdown: null,
   },
@@ -71,6 +78,7 @@ describe("BFF trip adapters", () => {
       id: "trip-123456",
       destination: "Kyoto",
       type: "culture",
+      tripPurpose: "family holiday",
       state: "amber",
       age: "2d",
       createdAt: "2026-04-25T12:00:00.000Z",
@@ -89,6 +97,7 @@ describe("BFF trip adapters", () => {
 
     expect(trip.analytics?.requiresReview).toBe(true);
     expect(trip.decision?.decision_state).toBe("ASK_FOLLOWUP");
+    expect(trip.decision?.contradictions).toEqual(["flight_hotel_mismatch"]);
     expect(trip.rawInput).toEqual({ fixture_id: "FIX-001" });
 
     // packet is hydrated directly from extracted without reshaping
@@ -155,6 +164,7 @@ describe("BFF trip adapters", () => {
       reference: "1234",
       destination: "Kyoto",
       tripType: "culture",
+      tripPurpose: "family holiday",
       partySize: 4,
       dateWindow: "May 1-8",
       value: 125000,

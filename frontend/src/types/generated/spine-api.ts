@@ -206,6 +206,7 @@ export interface InboxTripItem {
   reference: string;
   destination: string;
   tripType: string;
+  tripPurpose?: string | null;
   partySize: number;
   dateWindow: string;
   value: number;
@@ -713,6 +714,7 @@ export interface TripResponse {
   budget?: number | string | null;
   party?: number | null;
   tripType?: string | null;
+  tripPurpose?: string | null;
   customerName?: string | null;
   follow_up_due_date?: string | null;
   extracted?: {

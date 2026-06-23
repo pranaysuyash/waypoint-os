@@ -79,6 +79,32 @@ describe('Trip Workspace Ops page', () => {
       .toHaveAttribute('href', '/trips/TRIP-OPS-1/intake');
   });
 
+  it('routes to options when booking ops are unavailable but planning details are complete', () => {
+    const planningReadyTrip = {
+      ...TRIP,
+      stage: 'discovery',
+      origin: 'Nairobi',
+      destination: 'Maldives',
+      dateWindow: 'Aug 2026',
+      budget: '₹7,500',
+      party: '2 pax',
+    } as Trip;
+
+    render(
+      <TripContextProvider value={{
+        tripId: 'TRIP-OPS-1',
+        trip: planningReadyTrip,
+        isLoading: false, error: null, refetchTrip: vi.fn(), replaceTrip: vi.fn(),
+      }}>
+        <OpsPageClient />
+      </TripContextProvider>,
+    );
+
+    expect(screen.getByTestId('ops-stage-gate')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /return to options/i }))
+      .toHaveAttribute('href', '/trips/TRIP-OPS-1/strategy');
+  });
+
   it('renders OpsPanel for the current trip', () => {
     renderWithContext();
     expect(screen.getByTestId('ops-panel-stub')).toBeInTheDocument();

@@ -77,6 +77,72 @@ export function formatBudgetDisplay(value?: string | null): string {
   const trimmed = value.trim();
   if (trimmed === '$0' || trimmed === '0' || trimmed === '₹0' || trimmed === '€0' || trimmed === '£0') return 'Budget missing';
   if (/^\D*0(\.0+)?\D*$/.test(trimmed)) return 'Budget missing';
+
+  const rangeMatch = trimmed.match(
+    /^(?:budget\s*[:\-]?\s*)?(?:(?<currency>USD|INR|EUR|GBP|AED|NGN|ZAR|SGD|THB|AUD|CAD|JPY|KES|GHS|R|\$|₹|€|£|₦)\s*)?(?<low>\d[\d,]*(?:\.\d+)?)\s*(?<lowUnit>L|K|M|MN|MILLION|MILLIONS|LAC|LAKH|LAKHS|CRORE|CRORES|CR|BN|B|BILLION|BILLIONS|THOUSAND)?\s*(?:-|–|—|\bto\b)\s*(?<high>\d[\d,]*(?:\.\d+)?)(?<highUnit>L|K|M|MN|MILLION|MILLIONS|LAC|LAKH|LAKHS|CRORE|CRORES|CR|BN|B|BILLION|BILLIONS|THOUSAND)?$/i
+  );
+  if (rangeMatch?.groups) {
+    const unit = (rangeMatch.groups.lowUnit ?? rangeMatch.groups.highUnit ?? '').toLowerCase();
+    const currencyToken = rangeMatch.groups.currency;
+    const low = Number(rangeMatch.groups.low.replace(/,/g, ''));
+    const high = Number(rangeMatch.groups.high.replace(/,/g, ''));
+    if (!Number.isNaN(low) && !Number.isNaN(high)) {
+      const currency = (() => {
+        const token = (currencyToken ?? '').trim().toUpperCase();
+        switch (token) {
+          case 'USD':
+          case '$':
+            return 'USD';
+          case 'EUR':
+          case '€':
+            return 'EUR';
+          case 'GBP':
+          case '£':
+            return 'GBP';
+          case 'AED':
+            return 'AED';
+          case 'NGN':
+          case '₦':
+            return 'NGN';
+          case 'ZAR':
+          case 'R':
+            return 'ZAR';
+          case 'SGD':
+            return 'SGD';
+          case 'THB':
+            return 'THB';
+          case 'AUD':
+            return 'AUD';
+          case 'CAD':
+            return 'CAD';
+          case 'JPY':
+            return 'JPY';
+          case 'INR':
+          case '₹':
+          default:
+            return 'INR';
+        }
+      })();
+      const scale = unit === 'l' || unit === 'lac' || unit === 'lakh' || unit === 'lakhs'
+        ? 100000
+        : unit === 'k' || unit === 'thousand'
+          ? 1000
+          : unit === 'm' || unit === 'mn' || unit === 'million' || unit === 'millions'
+            ? 1000000
+            : unit === 'cr' || unit === 'crore' || unit === 'crores'
+              ? 10000000
+              : unit === 'b' || unit === 'bn' || unit === 'billion' || unit === 'billions'
+                ? 1000000000
+                : 1;
+      const formatAmount = (amount: number) => (
+        currency === 'INR' && amount >= 100000
+          ? formatMoneyCompact(amount, currency)
+          : formatMoney(amount, currency)
+      );
+      return `${formatAmount(low * scale)} - ${formatAmount(high * scale)}`;
+    }
+  }
+
   const parsed = parseBudgetString(trimmed);
   if (parsed && parsed.amount > 0) {
     if (parsed.currency === 'INR' && parsed.amount >= 100000) {

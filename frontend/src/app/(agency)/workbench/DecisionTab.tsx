@@ -245,7 +245,7 @@ export default function DecisionTab({ trip }: DecisionTabProps) {
               {contradictions.map((item, i) => (
                 <li key={`contra-${item}`} className={styles.listItem}>
                   <span className={`${styles.listIcon} ${styles.iconDanger}`}>X</span>
-                  {item}
+                  {titleCase(item)}
                 </li>
               ))}
             </ul>

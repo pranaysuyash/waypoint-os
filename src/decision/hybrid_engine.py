@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional, Callable
 from dataclasses import dataclass, field
 
 from src.intake.packet_models import CanonicalPacket
-from .cache_schema import CachedDecision, CacheStats
+from .cache_schema import CachedDecision, CacheStats, CACHE_MIN_SUCCESS_RATE
 from .cache_storage import DecisionCacheStorage, get_default_storage
 from .cache_key import generate_cache_key
 from .telemetry import get_telemetry
@@ -488,8 +488,7 @@ class HybridDecisionEngine:
 
             # Validate cache entry meets requirements
             if cached:
-                min_success_rate = 0.7  # Default minimum success rate
-                if cached.success_rate >= min_success_rate:
+                if cached.success_rate >= CACHE_MIN_SUCCESS_RATE:
                     logger.debug("Cache hit for %s: %s...", decision_type, cache_key[:8])
                     return cached
 

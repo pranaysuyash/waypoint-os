@@ -137,6 +137,21 @@ function asStringArray(value: unknown): string[] {
     : [];
 }
 
+function asDecisionContradictionStrings(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (typeof item === "string") return [item];
+    if (!isRecord(item)) return [];
+    const label = firstPresent(
+      optionalString(item.field_name),
+      optionalString(item.type),
+      optionalString(item.message),
+      optionalString(item.label),
+    );
+    return label ? [label] : [];
+  });
+}
+
 function asUnknownArray(value: unknown): unknown[] | undefined {
   return Array.isArray(value) ? value : undefined;
 }
@@ -248,6 +263,21 @@ function tripTypeValue(spineTrip: unknown): unknown {
     extractedValue(spineTrip, "primary_intent", undefined),
     extractedValue(spineTrip, "trip_purpose", undefined),
     "leisure"
+  );
+}
+
+function tripPurposeValue(spineTrip: unknown): unknown {
+  const topLevel = getNestedValue(spineTrip, "tripPurpose", undefined)
+    ?? getNestedValue(spineTrip, "trip_purpose", undefined);
+  if (topLevel !== undefined && topLevel !== null && topLevel !== "") {
+    return topLevel;
+  }
+  return firstPresent(
+    getNestedValue(spineTrip, "extracted.facts.trip_purpose.value.0", undefined),
+    getNestedValue(spineTrip, "extracted.facts.trip_purpose.value", undefined),
+    getNestedValue(spineTrip, "extracted.trip_metadata.trip_purpose.value.0", undefined),
+    extractedValue(spineTrip, "trip_purpose", undefined),
+    extractedValue(spineTrip, "primary_intent", undefined)
   );
 }
 
@@ -417,6 +447,7 @@ export function transformSpineTripToTrip(
     destination: asString(destinationValue(trip), "Unknown"),
     contactName: asString(firstPresent(trip.customerName, getNestedValue(trip, "contactName", "")), ""),
     type: asString(tripTypeValue(trip), "leisure"),
+    tripPurpose: asString(tripPurposeValue(trip), ""),
     state: STATUS_TO_STATE[status] ?? "blue",
     age: calculateAge(createdAt, now),
     createdAt,
@@ -485,7 +516,7 @@ export function transformSpineTripToTrip(
       hard_blockers: asStringArray(decision.hard_blockers),
       soft_blockers: asStringArray(decision.soft_blockers),
       ambiguities: Array.isArray(decision.ambiguities) ? decision.ambiguities : [],
-      contradictions: asStringArray(decision.contradictions),
+      contradictions: asDecisionContradictionStrings(decision.contradictions),
       follow_up_questions: Array.isArray(decision.follow_up_questions)
         ? decision.follow_up_questions
         : [],
@@ -619,6 +650,7 @@ export function transformSpineTripToInboxTrip(
     reference: deriveInboxReference(source, trip.id),
     destination: trip.destination,
     tripType: trip.type,
+    tripPurpose: asString(trip.tripPurpose, "") || undefined,
     partySize: trip.party ?? 1,
     dateWindow: trip.dateWindow ?? "TBD",
     value: canonicalBudgetNumeric,

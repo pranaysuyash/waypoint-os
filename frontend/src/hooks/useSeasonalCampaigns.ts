@@ -172,16 +172,17 @@ export function usePreflightSeasonalCampaign() {
 
 export function useDispatchSeasonalCampaign() {
   const mutation = useMutation({
-    mutationFn: ({ planId, dryRun }: { planId: string; dryRun: boolean }) =>
-      dispatchSeasonalCampaign(planId, dryRun),
+    mutationFn: ({ planId, dryRun, scenario }: { planId: string; dryRun: boolean; scenario?: string }) =>
+      dispatchSeasonalCampaign(planId, dryRun, scenario),
   });
 
   const mutate = async (
     planId: string,
     dryRun: boolean,
+    scenario?: string,
   ): Promise<SeasonDispatchResponse | null> => {
     try {
-      return await mutation.mutateAsync({ planId, dryRun });
+      return await mutation.mutateAsync({ planId, dryRun, scenario });
     } catch (err) {
       console.error('Failed to dispatch campaign:', err);
       return null;

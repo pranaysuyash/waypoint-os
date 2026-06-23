@@ -41,6 +41,21 @@ describe('PipelineFunnel', () => {
     expect(screen.getByText('75%')).toBeInTheDocument();
   });
 
+  it('shows a neutral fallback when the comparison is invalid or exceeds 100%', () => {
+    render(
+      <PipelineFunnel
+        data={[
+          { stageId: 'intake', stageName: 'New Inquiry', tripCount: 10 },
+          { stageId: 'packet', stageName: 'Trip Details', tripCount: 12 },
+          { stageId: 'decision', stageName: 'Ready to Quote?', tripCount: 0 },
+        ]}
+      />
+    );
+
+    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.queryByText('120%')).not.toBeInTheDocument();
+  });
+
   it('renders empty state when no data provided', () => {
     render(<PipelineFunnel data={[]} />);
     expect(screen.getByText('No pipeline data available.')).toBeInTheDocument();

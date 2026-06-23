@@ -350,6 +350,7 @@ CONTRADICTION_FIELD_MAP = {
     "travel_dates": "date_conflict",
     "date_start": "date_conflict",
     "date_end": "date_conflict",
+    "flight_hotel_mismatch": "itinerary_mismatch",
     "budget_min": "budget_conflict",
     "budget_max": "budget_conflict",
     "budget_range": "budget_conflict",
@@ -369,6 +370,7 @@ CONTRADICTION_ACTIONS = {
     # discovery/shortlist -> non-critical contradiction + soft blocker,
     # proposal/booking -> hard blocker.
     "budget_feasibility":   {"decision": "ASK_FOLLOWUP",       "priority": "high"},
+    "itinerary_mismatch":   {"decision": "ASK_FOLLOWUP",       "priority": "critical"},
     "party_conflict":       {"decision": "ASK_FOLLOWUP",       "priority": "high"},
     "origin_conflict":      {"decision": "ASK_FOLLOWUP",       "priority": "high"},
     "document_conflict":    {"decision": "STOP_NEEDS_REVIEW",  "priority": "critical"},
@@ -860,6 +862,20 @@ def check_budget_feasibility(
     budget_min = get_numeric_budget(packet)
     if budget_min is None:
         return {"status": "unknown", "gap": None, "maturity": "heuristic"}
+
+    currency_slot = packet.facts.get("budget_currency")
+    budget_currency = str(currency_slot.value).upper() if currency_slot and currency_slot.value else "INR"
+
+    # The feasibility table is INR-denominated. If the lead budget is not INR,
+    # do not compare the raw numeric value against the INR heuristic table.
+    # That would understate foreign-currency budgets and create false budget risk.
+    if budget_currency != "INR":
+        return {
+            "status": "unknown",
+            "gap": None,
+            "maturity": "heuristic",
+            "reason": f"Budget currency is {budget_currency}; INR heuristic table not applied without conversion.",
+        }
 
     # Prefer resolved_destination (single target) over destination_candidates
     resolved = packet.facts.get("resolved_destination")
@@ -1780,6 +1796,7 @@ QUESTIONS = {
     "trip_purpose": "What's the main purpose of this trip? (leisure, business, pilgrimage, etc.)",
     "soft_preferences": "Any specific preferences or must-haves for this trip?",
     "budget_feasibility": "The current budget may be too low for your destination and group size. Can we adjust?",
+    "flight_hotel_mismatch": "Your flight arrives after hotel check-in. Should we move hotel check-in or choose an earlier flight?",
     "selected_itinerary": "Which itinerary option do you prefer?",
     "passport_status": "We'll need passport details for booking. Are all passports valid?",
     "visa_status": "Do you have the required visas, or do you need help with that?",

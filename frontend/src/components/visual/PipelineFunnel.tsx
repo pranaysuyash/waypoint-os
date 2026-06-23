@@ -15,6 +15,23 @@ interface ChartData {
   conversion: string;
 }
 
+function formatConversionRate(currentTrips: number, previousTrips?: number): string {
+  if (previousTrips === undefined) {
+    return '100%';
+  }
+
+  if (!Number.isFinite(currentTrips) || !Number.isFinite(previousTrips) || previousTrips <= 0) {
+    return '—';
+  }
+
+  const ratio = (currentTrips / previousTrips) * 100;
+  if (!Number.isFinite(ratio) || ratio < 0 || ratio > 100) {
+    return '—';
+  }
+
+  return `${Math.round(ratio)}%`;
+}
+
 const ResponsiveContainer = dynamic(() => import('recharts').then((mod) => mod.ResponsiveContainer), { ssr: false });
 const BarChart = dynamic(() => import('recharts').then((mod) => mod.BarChart), { ssr: false });
 const Bar = dynamic(() => import('recharts').then((mod) => mod.Bar), { ssr: false });
@@ -51,9 +68,7 @@ export function PipelineFunnel({ data }: { data: PipelineStage[] }) {
   const chartData: ChartData[] = data.map((stage, index) => ({
     name: stage.stageName,
     trips: stage.tripCount,
-    conversion: index > 0
-      ? `${Math.round((stage.tripCount / data[index - 1].tripCount) * 100)}%`
-      : '100%',
+    conversion: formatConversionRate(stage.tripCount, data[index - 1]?.tripCount),
   }));
 
   const barColors = ['#3fb950', '#58a6ff', '#d29922', '#f85149', '#79b8ff'];
@@ -63,7 +78,7 @@ export function PipelineFunnel({ data }: { data: PipelineStage[] }) {
       <h2 className='text-base font-semibold text-[#e6edf3] mb-4'>Conversion Funnel</h2>
 
       {isMounted ? (
-        <ResponsiveContainer width='100%' height={300}>
+        <ResponsiveContainer width='100%' height={300} minWidth={0} minHeight={300}>
           <BarChart
             data={chartData}
             layout='vertical'

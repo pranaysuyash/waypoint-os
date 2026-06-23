@@ -29,7 +29,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LiveRegion } from '@/lib/accessibility';
-import { toast } from '@/lib/toast-store';
 import { useUnifiedState } from '@/hooks/useUnifiedState';
 import { useAgencySettings } from '@/hooks/useAgencySettings';
 import { NAV_SECTIONS } from '@/lib/nav-modules';
@@ -258,8 +257,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
                       <li key={item.href}>
                         <button
                           type="button"
-                          onClick={() => toast(`${item.label} is coming soon. We'll notify you when it's ready.`, 'info')}
-                          className='w-full flex items-center justify-center md:justify-start gap-2.5 px-2.5 py-2 rounded-md opacity-40 cursor-pointer select-none hover:opacity-60 transition-opacity'
+                          disabled
+                          className='w-full flex items-center justify-center md:justify-start gap-2.5 px-2.5 py-2 rounded-md opacity-40 cursor-not-allowed select-none transition-opacity'
                           title={`${item.description} - Coming soon`}
                           aria-disabled='true'
                           aria-label={`${item.label}, coming soon`}

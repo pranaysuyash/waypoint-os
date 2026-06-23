@@ -5,7 +5,15 @@ import SafetyTab from '../SafetyTab';
 // Mock the workbench store
 const mockStore = {
   result_safety: null as unknown,
-  result_traveler_bundle: null,
+  result_traveler_bundle: {
+    system_context: 'Session Goal: Prepare a clear options plan.',
+    user_message: 'Here’s the options plan for Zanzibar.',
+    follow_up_sequence: [],
+    branch_prompts: [],
+    internal_notes: '',
+    constraints: [],
+    audience: 'traveler',
+  },
   result_internal_bundle: null,
   result_decision: null as unknown,
   debug_raw_json: false,
@@ -153,7 +161,9 @@ describe('SafetyTab - Special Handling Controls', () => {
     expect(screen.getByText('resolved_destination')).toBeDefined();
     expect(screen.getByText('date_flexibility')).toBeDefined();
     expect(screen.getByText('Which island or region are you leaning toward?')).toBeDefined();
-    expect(screen.getByText('Safety bundle is not available for this run, but the decision state above is still available for review.')).toBeDefined();
+    expect(screen.getByText('Safety bundle is not available for this run, so this view falls back to the decision and output preview.')).toBeDefined();
+    expect(screen.getByText('Customer Message Preview')).toBeDefined();
+    expect(screen.getByText('Here’s the options plan for Zanzibar.')).toBeDefined();
   });
 
   it('renders CRITICAL urgency badge', () => {

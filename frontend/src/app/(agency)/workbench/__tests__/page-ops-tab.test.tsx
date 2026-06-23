@@ -39,9 +39,18 @@ vi.mock('./PipelineFlow', () => ({
 
 // Capture the tabs prop to test visibility
 let renderedTabs: { id: string; label: string }[] = [];
-let mockSpineRunState: { state: string | null; frontier_result?: Record<string, unknown> | null } = {
+let mockSpineRunState: {
+  state: string | null;
+  frontier_result?: Record<string, unknown> | null;
+  decision_state?: string | null;
+  hard_blockers?: string[];
+  soft_blockers?: string[];
+} = {
   state: null,
   frontier_result: null,
+  decision_state: null,
+  hard_blockers: [],
+  soft_blockers: [],
 };
 vi.mock('@/components/ui/tabs', () => ({
   Tabs: ({ tabs }: { tabs: { id: string; label: string }[] }) => {
@@ -134,7 +143,7 @@ describe('Workbench ops tab visibility', () => {
     renderedTabs = [];
     mockTripData = null;
     mockFrontierData = null;
-    mockSpineRunState = { state: null, frontier_result: null };
+    mockSpineRunState = { state: null, frontier_result: null, decision_state: null, hard_blockers: [], soft_blockers: [] };
   });
 
   it('does not show ops tab at discovery stage', () => {
@@ -216,6 +225,9 @@ describe('Workbench ops tab visibility', () => {
     mockSpineRunState = {
       state: 'completed',
       frontier_result: { sentiment_score: 0.82 },
+      decision_state: null,
+      hard_blockers: [],
+      soft_blockers: [],
     };
     vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as never);
     mockTripData = { id: 't1', stage: 'discovery' };
@@ -225,10 +237,53 @@ describe('Workbench ops tab visibility', () => {
     expect(mockRouterReplace).toHaveBeenCalledWith('?tab=frontier', { scroll: false });
   });
 
-  it('switches to frontier if frontier appears after completed state is already set', () => {
+  it('keeps Trip Details open when a completed run already includes follow-up blockers', () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('tab=safety') as never);
+    mockTripData = { id: 't1', stage: 'discovery' };
     mockSpineRunState = {
       state: 'completed',
       frontier_result: null,
+      decision_state: 'ASK_FOLLOWUP',
+      hard_blockers: [],
+      soft_blockers: ['soft_preferences'],
+    };
+
+    const { rerender } = render(<WorkbenchPage />);
+    mockRouterReplace.mockClear();
+
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('tab=packet') as never);
+    rerender(<WorkbenchPage />);
+
+    expect(mockRouterReplace).not.toHaveBeenCalledWith('?tab=safety', { scroll: false });
+  });
+
+  it('keeps Trip Details open after a frontier result once the run has already completed', () => {
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('tab=frontier') as never);
+    mockTripData = { id: 't1', stage: 'discovery' };
+    mockSpineRunState = {
+      state: 'completed',
+      frontier_result: { sentiment_score: 0.82 },
+      decision_state: null,
+      hard_blockers: [],
+      soft_blockers: [],
+    };
+
+    const { rerender } = render(<WorkbenchPage />);
+    mockRouterReplace.mockClear();
+
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('tab=packet') as never);
+    rerender(<WorkbenchPage />);
+
+    expect(mockRouterReplace).not.toHaveBeenCalledWith('?tab=frontier', { scroll: false });
+  });
+
+  it('switches to frontier when the run completes and frontier is present', () => {
+    mockSpineRunState = {
+      state: null,
+      frontier_result: null,
+      decision_state: null,
+      hard_blockers: [],
+      soft_blockers: [],
     };
     vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as never);
     mockTripData = { id: 't1', stage: 'discovery' };
@@ -240,6 +295,9 @@ describe('Workbench ops tab visibility', () => {
     mockSpineRunState = {
       state: 'completed',
       frontier_result: { sentiment_score: 0.82 },
+      decision_state: null,
+      hard_blockers: [],
+      soft_blockers: [],
     };
     rerender(<WorkbenchPage />);
 

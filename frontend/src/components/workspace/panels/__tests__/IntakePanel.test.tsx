@@ -104,6 +104,7 @@ describe('IntakePanel', () => {
       id: 'TRIP-123',
       destination: 'Test Destination',
       type: 'Vacation',
+      tripPurpose: 'family holiday',
       budget: '$5000',
       party: '2',
       dateWindow: 'Next month',
@@ -115,6 +116,8 @@ describe('IntakePanel', () => {
 
     // Check if trip details are rendered
     expect(screen.getAllByText('Test Destination').length).toBeGreaterThan(0);
+    expect(screen.getByText('Purpose')).toBeInTheDocument();
+    expect(screen.getByText('family holiday')).toBeInTheDocument();
     expect(screen.getAllByText(formatInquiryReference('TRIP-123')).length).toBeGreaterThan(0);
     
     // Check if configuration elements are rendered
@@ -255,6 +258,165 @@ describe('IntakePanel', () => {
     expect(screen.queryByRole('button', { name: /Process trip/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Continue planning/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Add budget range/i })).toBeInTheDocument();
+  });
+
+  it('surfaces packet contradictions prominently on the intake page', () => {
+    render(
+      <IntakePanel
+        tripId="trip_4b9e0d894872"
+        trip={{
+          id: 'trip_4b9e0d894872',
+          destination: 'Bali',
+          type: 'Family Leisure',
+          budget: '$3500',
+          party: 3,
+          dateWindow: 'Jul 10-16',
+          state: 'blue',
+          age: 'Today',
+          createdAt: '2026-04-23T08:00:00.000Z',
+          updatedAt: '2026-04-23T08:15:00.000Z',
+          status: 'assigned',
+          packet: {
+            contradictions: [
+              {
+                field_name: 'flight_hotel_mismatch',
+                values: [
+                  { value: 'Flight arrives 22:30 on 10 july' },
+                  { value: 'Hotel check-in is afternoon on 10 july' },
+                ],
+                sources: ['flight_arrival', 'hotel_check_in'],
+              },
+            ],
+          },
+          decision: {
+            decision_state: 'ASK_FOLLOWUP',
+            hard_blockers: [],
+            soft_blockers: [],
+            contradictions: [],
+            risk_flags: [],
+            follow_up_questions: [],
+            rationale: {},
+            confidence: {},
+            branch_options: [],
+            commercial_decision: 'NONE',
+            budget_breakdown: null,
+          },
+          validation: {
+            is_valid: true,
+            errors: [],
+            warnings: [],
+          },
+        } as any}
+      />
+    );
+
+    expect(screen.getAllByText('Critical Issue').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Flight / Hotel Mismatch')).toBeInTheDocument();
+    expect(screen.getByText(/Move the hotel check-in or choose an earlier flight/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 issue need attention/i)).toBeInTheDocument();
+  });
+
+  it('shows group logistics for procurement-heavy trips in the trip details section', () => {
+    render(
+      <IntakePanel
+        tripId="trip_group_1"
+        trip={{
+          id: 'trip_group_1',
+          destination: 'Singapore',
+          origin: 'Nairobi',
+          type: 'Business',
+          budget: '$42,000',
+          party: 18,
+          dateWindow: 'Oct 2026',
+          state: 'blue',
+          age: 'Today',
+          createdAt: '2026-04-23T08:00:00.000Z',
+          updatedAt: '2026-04-23T08:15:00.000Z',
+          status: 'assigned',
+          packet: {
+            facts: {
+              rooming_list_count: { value: 2 },
+              rooming_requirements: { value: 'two separate rooming lists for procurement' },
+              procurement_share_needed: { value: true },
+              procurement_notes: { value: 'Fast quote for procurement' },
+            },
+          },
+          decision: {
+            decision_state: 'PROCEED_INTERNAL_DRAFT',
+            hard_blockers: [],
+            soft_blockers: [],
+            contradictions: [],
+            risk_flags: [],
+            follow_up_questions: [],
+            rationale: {},
+            confidence: {},
+            branch_options: [],
+            commercial_decision: 'NONE',
+            budget_breakdown: null,
+          },
+          validation: {
+            is_valid: true,
+            errors: [],
+            warnings: [],
+          },
+        } as any}
+      />
+    );
+
+    expect(screen.getByText('Group logistics')).toBeInTheDocument();
+    expect(screen.getByText(/2 rooming lists/i)).toBeInTheDocument();
+    expect(screen.getByText(/two separate rooming lists for procurement/i)).toBeInTheDocument();
+    expect(screen.getByText(/shareable with procurement/i)).toBeInTheDocument();
+    expect(screen.getByText(/Fast quote for procurement/i)).toBeInTheDocument();
+  });
+
+  it('shows family details when child ages are present in the packet', () => {
+    render(
+      <IntakePanel
+        tripId="trip_family_1"
+        trip={{
+          id: 'trip_family_1',
+          destination: 'Bali',
+          origin: 'Mumbai',
+          type: 'Leisure',
+          budget: '₹3.5L',
+          party: 5,
+          dateWindow: 'Jul',
+          state: 'blue',
+          age: 'Today',
+          createdAt: '2026-04-23T08:00:00.000Z',
+          updatedAt: '2026-04-23T08:15:00.000Z',
+          status: 'assigned',
+          packet: {
+            facts: {
+              child_ages: { value: [6, 9, 12] },
+              party_composition: { value: { adults: 2, children: 3 } },
+            },
+          },
+          decision: {
+            decision_state: 'PROCEED_INTERNAL_DRAFT',
+            hard_blockers: [],
+            soft_blockers: [],
+            contradictions: [],
+            risk_flags: [],
+            follow_up_questions: [],
+            rationale: {},
+            confidence: {},
+            branch_options: [],
+            commercial_decision: 'NONE',
+            budget_breakdown: null,
+          },
+          validation: {
+            is_valid: true,
+            errors: [],
+            warnings: [],
+          },
+        } as any}
+      />
+    );
+
+    expect(screen.getByText('Family details')).toBeInTheDocument();
+    expect(screen.getByText(/3 children · ages 6, 9, 12/i)).toBeInTheDocument();
   });
 
   it('shows ready-to-build copy when the brief is complete even if the backend status is still incomplete', () => {
@@ -435,7 +597,7 @@ describe('IntakePanel', () => {
     expect(screen.getByText('Required missing fields')).toBeInTheDocument();
     expect(screen.getByText('Recommended details')).toBeInTheDocument();
     expect(screen.getByText('Budget range')).toBeInTheDocument();
-    expect(screen.getByText('Trip priorities / must-haves')).toBeInTheDocument();
+    expect(screen.getByText('Priorities or must-haves')).toBeInTheDocument();
     expect(screen.getByText('Origin city')).toBeInTheDocument();
     expect(screen.getAllByText('Date flexibility').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: /Add budget/i }).length).toBeGreaterThanOrEqual(1);

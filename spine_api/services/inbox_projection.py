@@ -193,11 +193,34 @@ def _destination_value(source: Dict[str, Any]) -> str:
 def _trip_type_value(source: Dict[str, Any]) -> str:
     candidates = [
         _get_nested(source, "extracted.facts.primary_intent.value.0", None),
+        _get_nested(source, "extracted.facts.primary_intent.value", None),
         _get_nested(source, "extracted.facts.trip_purpose.value.0", None),
+        _get_nested(source, "extracted.facts.trip_purpose.value", None),
         _get_nested(source, "extracted.primary_intent.value.0", None),
+        _get_nested(source, "extracted.primary_intent.value", None),
         _get_nested(source, "extracted.trip_purpose.value.0", None),
+        _get_nested(source, "extracted.trip_purpose.value", None),
         source.get("trip_type"),
         source.get("tripType"),
+    ]
+    for cand in candidates:
+        if isinstance(cand, str) and cand.strip():
+            return cand.strip().lower()
+    return "leisure"
+
+
+def _trip_purpose_value(source: Dict[str, Any]) -> str:
+    candidates = [
+        _get_nested(source, "trip_purpose", None),
+        _get_nested(source, "tripPurpose", None),
+        _get_nested(source, "extracted.facts.trip_purpose.value.0", None),
+        _get_nested(source, "extracted.facts.trip_purpose.value", None),
+        _get_nested(source, "extracted.trip_metadata.trip_purpose.value.0", None),
+        _get_nested(source, "extracted.trip_purpose.value.0", None),
+        _get_nested(source, "extracted.trip_purpose.value", None),
+        _get_nested(source, "extracted.trip_purpose", None),
+        _get_nested(source, "raw_input.trip_purpose", None),
+        _get_nested(source, "raw_input.tripPurpose", None),
     ]
     for cand in candidates:
         if isinstance(cand, str) and cand.strip():
@@ -276,12 +299,14 @@ def resolve_trip_field(source: Dict[str, Any], field: str) -> Any:
     functions below are implementation details of this function.
 
     Supported fields:
-        destination, trip_type, party_size, budget, date_window, origin
+        destination, trip_type, trip_purpose, party_size, budget, date_window, origin
     """
     if field == "destination":
         return _destination_value(source)
     if field == "trip_type":
         return _trip_type_value(source)
+    if field == "trip_purpose":
+        return _trip_purpose_value(source)
     if field == "party_size":
         return _party_size_value(source)
     if field == "budget":
@@ -449,6 +474,7 @@ class InboxProjectionService:
             "reference": _derive_reference(source, trip_id),
             "destination": resolve_trip_field(source, "destination"),
             "tripType": resolve_trip_field(source, "trip_type"),
+            "tripPurpose": resolve_trip_field(source, "trip_purpose"),
             "partySize": resolve_trip_field(source, "party_size"),
             "dateWindow": resolve_trip_field(source, "date_window"),
             "origin": resolve_trip_field(source, "origin"),

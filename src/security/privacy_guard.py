@@ -42,7 +42,7 @@ def _load_fixture_ids() -> None:
         from data.fixtures.raw_fixtures import RAW_FIXTURES
 
         KNOWN_FIXTURE_IDS.update(RAW_FIXTURES.keys())
-    except Exception:
+    except ImportError:
         # Fallback: try scanning the raw_fixtures.py for fixture_id keys
         try:
             import ast
@@ -56,7 +56,7 @@ def _load_fixture_ids() -> None:
                     if isinstance(node, ast.Call) and getattr(node.func, "attr", None) == "get":
                         if len(node.args) >= 2 and isinstance(node.args[1], ast.Constant):
                             KNOWN_FIXTURE_IDS.add(node.args[1].value)
-        except Exception:
+        except (SyntaxError, ValueError, OSError, AttributeError):
             pass
 
 
@@ -79,6 +79,10 @@ _SYNTHETIC_PATTERNS = {
 _EMAIL_PATTERN = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
 _PHONE_PATTERN = re.compile(
     r"(\+91[-\s]?)?((\d{5}[-\s]?\d{5})|(\d{10})|(\d{3}[-\s]?\d{3}[-\s]?\d{4}))"
+)
+_GENERATED_ID_PATTERN = re.compile(
+    r"^(?:draft|trip|pkt|run|ref|pkt_[a-z0-9]+|draft_[a-z0-9]+|trip_[a-z0-9]+|run_[a-z0-9]+)$",
+    re.IGNORECASE,
 )
 _MEDICAL_KEYWORDS = re.compile(
     r"\b(diabetic|diabetes|wheelchair|mobility|medical|health|allerg|disabil|chronic|insulin|epilepsy|asthma|heart|bp|blood pressure|pregnant|pregnancy)\b",
@@ -200,6 +204,9 @@ def _has_email(data: Dict[str, Any]) -> Optional[str]:
 def _has_phone(data: Dict[str, Any]) -> Optional[str]:
     """Return offending string if a phone-like number is found, else None."""
     for s in _extract_strings(data):
+        cleaned = s.strip()
+        if _GENERATED_ID_PATTERN.match(cleaned):
+            continue
         if _PHONE_PATTERN.search(s):
             s_clean = re.sub(r"[^\d\+]", "", s)
             if len(s_clean) >= 10:

@@ -718,6 +718,7 @@ class TripResponse(BaseModel):
     budget: Optional[Union[float, str]] = None
     party: Optional[int] = None
     tripType: Optional[str] = None
+    tripPurpose: Optional[str] = None
     customerName: Optional[str] = None
     follow_up_due_date: Optional[str] = None
     extracted: Optional[Dict[str, Any]] = None
@@ -746,9 +747,18 @@ class TripResponse(BaseModel):
         budget_raw = _get_nested(trip, "extracted.facts.budget_raw_text.value", None)
         if budget_raw and not budget_raw.strip():
             budget_raw = None
+        budget_min = _get_nested(trip, "extracted.facts.budget_min.value", None)
+        budget_max = _get_nested(trip, "extracted.facts.budget_max.value", None)
         budget: Optional[Union[float, str]] = (
             float(budget_numeric) if budget_numeric else (budget_raw or None)
         )
+        if (
+            budget_raw
+            and budget_min is not None
+            and budget_max is not None
+            and str(budget_min) != str(budget_max)
+        ):
+            budget = budget_raw
 
         # Normalize sentinel strings to None for clean Optional contract.
         def _clean_str(v: Optional[str]) -> Optional[str]:
@@ -780,6 +790,7 @@ class TripResponse(BaseModel):
             budget=budget,
             party=resolve_trip_field(trip, "party_size") or None,
             tripType=resolve_trip_field(trip, "trip_type") or None,
+            tripPurpose=_clean_text_value(resolve_trip_field(trip, "trip_purpose")),
             customerName=_derive_customer_name(trip, trip_id) or None,
             follow_up_due_date=trip.get("follow_up_due_date") or None,
             extracted=trip.get("extracted") or None,
@@ -824,6 +835,7 @@ class InboxTripItem(BaseModel):
     reference: str
     destination: str
     tripType: str
+    tripPurpose: Optional[str] = None
     partySize: int
     dateWindow: str
     value: int

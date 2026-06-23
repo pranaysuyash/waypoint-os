@@ -1134,7 +1134,7 @@ Never trade long-term correctness for short-term neatness without explicit appro
 
 ---
 
-## 20. Commit Attribution Rule — No Agent Co-Author Trailers
+## 20. Commit Attribution Rule - No Agent Co-Author Trailers
 
 Do not add AI-agent co-author trailers to commits.
 

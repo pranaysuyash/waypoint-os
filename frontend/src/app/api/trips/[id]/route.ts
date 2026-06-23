@@ -56,6 +56,7 @@ const PATCHABLE_FIELDS = new Set([
   "activity_provenance",
   "trip_priorities",
   "date_flexibility",
+  "tripPurpose",
   "tripPriorities",
   "dateFlexibility",
   "contactName",

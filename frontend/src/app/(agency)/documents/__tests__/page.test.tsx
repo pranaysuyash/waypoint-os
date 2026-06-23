@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import DocumentsPage from '../PageClient';
@@ -7,6 +9,7 @@ vi.mock('@/hooks/useTrips', () => ({
     data: [
       { id: 'trip-1', destination: 'Paris', type: 'family' },
       { id: 'trip-2', destination: 'Tokyo', type: 'honeymoon' },
+      { id: 'trip_bc27d5cadcae' },
     ],
     isLoading: false,
   }),
@@ -30,5 +33,9 @@ describe('DocumentsPage', () => {
     expect(screen.getByTestId('documents-trip-select')).toBeInTheDocument();
     expect(screen.getByTestId('ops-panel-mode')).toHaveTextContent('documents');
   });
-});
 
+  it('uses the trip reference when destination data is incomplete', () => {
+    render(<DocumentsPage />);
+    expect(screen.getByRole('option', { name: /Trip details incomplete · Updated recently · BC27/i })).toBeInTheDocument();
+  });
+});

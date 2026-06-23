@@ -102,6 +102,7 @@ describe("planning-status", () => {
     const trip = makeTrip({
       origin: "Nairobi",
       destination: "Zanzibar",
+      tripPurpose: "family holiday",
       budget: "$5000",
       validation: {
         is_valid: true,
@@ -123,13 +124,16 @@ describe("planning-status", () => {
       } as any,
     });
 
-    expect(getPlanningHeaderTitle(trip)).toBe("Zanzibar family trip");
+    expect(getPlanningHeaderTitle(trip)).toBe("Zanzibar family holiday trip");
   });
 
   it("uses operator-facing planning status language for trips that are ready to build options", () => {
     const trip = makeTrip({
       origin: "Mumbai",
       budget: "$5000",
+      dateWindow: "10-16 July 2026",
+      dateFlexibility: "flexible",
+      tripPriorities: "Beach access",
       validation: {
         is_valid: true,
         errors: [],
@@ -244,6 +248,34 @@ describe("planning-status", () => {
 
     expect(getPlanningBriefStatus(trip)).toBe("complete");
     expect(getPlanningSuggestedNextMove(false, trip)).toBe("Continue to options.");
+  });
+
+  it("uses traveler-facing wording for internal draft next steps", () => {
+    const trip = makeTrip({
+      origin: "Mumbai",
+      budget: "$5000",
+      validation: {
+        is_valid: true,
+        errors: [],
+        warnings: [],
+      } as any,
+      decision: {
+        decision_state: "PROCEED_INTERNAL_DRAFT",
+        hard_blockers: [],
+        soft_blockers: [],
+        contradictions: [],
+        risk_flags: [],
+        follow_up_questions: [],
+        branch_options: [],
+        rationale: {} as any,
+        confidence: {} as any,
+        commercial_decision: "NONE",
+        budget_breakdown: null,
+      } as any,
+      status: "new",
+    });
+
+    expect(getPlanningSuggestedNextMove(false, trip)).toBe("Prepare the traveler-ready draft before sending.");
   });
 
   it("updates follow-up copy and locked-tab hint as individual blockers are resolved", () => {

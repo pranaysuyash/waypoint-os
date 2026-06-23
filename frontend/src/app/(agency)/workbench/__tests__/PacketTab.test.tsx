@@ -56,6 +56,8 @@ describe('PacketTab', () => {
 
     expect(screen.queryByText(/\[object Object\]/)).not.toBeInTheDocument();
     expect(screen.getAllByText(/City: Bali; Country: Indonesia; Confidence: 0.86/).length).toBeGreaterThan(0);
+    expect(screen.getByText('Purpose')).toBeInTheDocument();
+    expect(screen.getAllByText(/Value: family leisure; Source: message hints/).length).toBeGreaterThan(0);
     expect(screen.getByText(/properties with long transfers \(internal only\)/)).toBeInTheDocument();
     expect(screen.getByText(/vegetarian food \(traveler safe transformable\)/)).toBeInTheDocument();
     expect(screen.getByText(/Value: family leisure; Source: message hints \(90%\)/)).toBeInTheDocument();
@@ -93,5 +95,29 @@ describe('PacketTab', () => {
     fireEvent.click(screen.getByRole('button', { name: /view details/i }));
 
     expect(screen.getByText(/Prompt: Which city will the travelers depart from\?/)).toBeInTheDocument();
+  });
+
+  it('shows group logistics when rooming and procurement details are captured', () => {
+    mockStore.mockReturnValue({
+      result_packet: {
+        facts: {
+          rooming_list_count: slot(2),
+          procurement_share_needed: slot(true),
+        },
+        derived_signals: {},
+        unknowns: [],
+        ambiguities: [],
+        contradictions: [],
+      },
+      result_validation: null,
+      debug_raw_json: false,
+      setDebugRawJson: vi.fn(),
+    });
+
+    render(<PacketTab />);
+
+    expect(screen.getByText('Group Logistics')).toBeInTheDocument();
+    expect(screen.getByText(/2 rooming lists/)).toBeInTheDocument();
+    expect(screen.getByText(/Shareable with procurement/)).toBeInTheDocument();
   });
 });

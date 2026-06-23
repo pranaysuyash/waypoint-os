@@ -34,6 +34,7 @@ from src.intake.extractors import (
     _extract_date_flexibility,
     ExtractionPipeline,
 )
+from src.intake.decision import run_gap_and_decision
 from src.intake.normalizer import Normalizer
 from src.intake.packet_models import SourceEnvelope
 from src.intake.validation import validate_packet
@@ -375,6 +376,16 @@ class TestExtractDestination:
         assert "zanzibar" in lowered
         assert status in ("definite", "semi_open")
 
+    def test_beach_resort_does_not_become_destination(self):
+        candidates, status, raw = _extract_destination_candidates(
+            "Small Nairobi agency handling a family holiday for 4 adults and 2 children from Nairobi to Zanzibar in August 2026. "
+            "Budget KES 480,000. 6 nights. Beach resort, airport transfers, vegetarian meals."
+        )
+        lowered = [c.lower() for c in candidates]
+        assert "beach" not in lowered
+        assert "zanzibar" in lowered
+        assert status in ("definite", "semi_open")
+
 
 # =============================================================================
 # _extract_dates — date range parsing
@@ -456,6 +467,12 @@ class TestExtractTripIntent:
 
     def test_business_purpose(self):
         result = _extract_trip_intent("business conference in Dubai")
+        assert result.get("trip_purpose") == "business"
+
+    def test_corporate_group_prefers_business_purpose(self):
+        result = _extract_trip_intent(
+            "Large Nairobi agency managing a corporate group of 18 travelers from Nairobi to Singapore in October 2026. Need a fast quote that can be shared with procurement and two separate rooming lists."
+        )
         assert result.get("trip_purpose") == "business"
 
     def test_adventure_purpose(self):
@@ -636,6 +653,27 @@ class TestOriginHinglish:
         assert origin is not None, "origin_city should be set"
         assert origin.value == "Bangalore", f"Expected Bangalore, got {origin.value}"
 
+    def test_from_nairobi_planning_extracted(self):
+        """Origin extraction should handle natural-language phrasing like 'from Nairobi planning...'."""
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform(
+            "Family of 4 from Nairobi planning 7 nights in Bali in August. Budget USD 3500-4500.",
+            "test",
+        )
+        packet = pipeline.extract([env])
+        origin = packet.facts.get("origin_city")
+        assert origin is not None, "origin_city should be set for planning phrasing"
+        assert origin.value == "Nairobi", f"Expected Nairobi, got {origin.value}"
+
+    def test_agency_descriptor_does_not_pollute_destination_candidates(self):
+        """Source-city descriptors like 'Mumbai agency' should not become destination candidates."""
+        candidates, status, raw = _extract_destination_candidates(
+            "Small Mumbai agency handling a family holiday for 4 adults and 2 kids from Mumbai to Bali in August 2026."
+        )
+        lowered = [c.lower() for c in candidates]
+        assert "mumbai" not in lowered, f"Mumbai should not be a destination here, got {candidates}"
+        assert "bali" in lowered, f"Bali should remain the destination, got {candidates}"
+
     def test_label_style_origin_extracted(self):
         """'Origin city: Nairobi' should populate origin_city via pipeline."""
         pipeline = ExtractionPipeline()
@@ -745,6 +783,73 @@ class TestPartyHinglish:
     def test_bache_variant(self):
         result = _extract_party("2 adults 1 bache")
         assert result["party_composition"].get("children") == 1
+
+    def test_child_ages_with_commas_are_all_captured(self):
+        result = _extract_party("2 adults and 3 children ages 6, 9, and 12")
+        assert result["child_ages"] == [6, 9, 12]
+
+    def test_generic_child_ages_phrase_does_not_invent_a_child(self):
+        result = _extract_party("Keep child ages and rooming setup visible")
+        assert result["party_composition"].get("children") is None
+        assert result["child_ages"] == []
+
+
+class TestGroupBookingSignals:
+    """Tests for group booking and procurement signal extraction."""
+
+    def test_rooming_lists_and_procurement_are_captured(self):
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform(
+            "Large Nairobi agency managing a corporate group of 18 travelers from Nairobi to Singapore in October 2026. Budget is USD 42,000. Need 6 nights, mid-to-upscale hotel blocks, airport transfers, partial sightseeing, two separate rooming lists, and a fast quote that can be shared with procurement.",
+            "test",
+        )
+        packet = pipeline.extract([env])
+
+        rooming_count = packet.facts.get("rooming_list_count")
+        rooming_requested = packet.facts.get("rooming_list_requested")
+        procurement_share = packet.facts.get("procurement_share_needed")
+        rooming_requirements = packet.facts.get("rooming_requirements")
+
+        assert rooming_count is not None, "rooming_list_count should be captured"
+        assert rooming_count.value == 2, f"Expected 2 rooming lists, got {rooming_count.value}"
+        assert rooming_requested is not None and rooming_requested.value is True
+        assert procurement_share is not None and procurement_share.value is True
+        assert rooming_requirements is not None
+        assert "rooming lists" in str(rooming_requirements.value).lower()
+
+    def test_rooming_lists_prefers_customer_message_over_agent_note_noise(self):
+        pipeline = ExtractionPipeline()
+        customer = SourceEnvelope.from_freeform(
+            "Corporate group of 18 travelers from Nairobi to Singapore in October 2026. Need two separate rooming lists for procurement.",
+            "customer",
+        )
+        notes = SourceEnvelope.from_freeform(
+            "Fast quote for procurement. Keep rooming list separation visible.",
+            "agent_notes",
+        )
+        packet = pipeline.extract([customer, notes])
+
+        rooming_count = packet.facts.get("rooming_list_count")
+        rooming_requirements = packet.facts.get("rooming_requirements")
+
+        assert rooming_count is not None, "rooming_list_count should be captured"
+        assert rooming_count.value == 2, f"Expected the customer message to win with 2 rooming lists, got {rooming_count.value}"
+        assert rooming_requirements is not None
+        assert "two separate rooming lists" in str(rooming_requirements.value).lower()
+
+    def test_hyphenated_traveler_count_sets_party_size(self):
+        pipeline = ExtractionPipeline()
+        env = SourceEnvelope.from_freeform(
+            "Lagos agency handling a 18-traveler corporate offsite from Lagos to Cape Town in September 2026. "
+            "Budget NGN 15m, needs visa support, rooming list, airport transfers, and a fast internal approval-ready summary.",
+            "test",
+        )
+        packet = pipeline.extract([env])
+
+        party = packet.facts.get("party_size")
+
+        assert party is not None, "party_size should be captured for hyphenated traveler phrasing"
+        assert party.value == 18, f"Expected 18, got {party.value if party else None}"
 
 
 # ---------------------------------------------------------------------------
@@ -890,6 +995,61 @@ class TestRuntimeInquiryRegressionCoverage:
         assert trip_purpose.value == "family leisure"
         assert "origin_city" not in packet.facts
 
+    def test_family_of_four_with_kid_friendly_language_keeps_full_party_size(self):
+        text = (
+            "Family of 4 from Nairobi planning 7 nights in Bali in August. Budget USD 7000-9000. "
+            "Wants a kid-friendly villa, smooth airport transfers, and two flexible sightseeing days. "
+            "First international trip for the kids."
+        )
+
+        packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text, "runtime-regression")])
+
+        assert packet.facts["party_size"].value == 4
+        assert packet.facts["origin_city"].value == "Nairobi"
+        assert packet.facts["destination_candidates"].value == ["Bali"]
+        assert packet.facts["budget_min"].value == 7000
+
+    def test_single_destination_is_not_downgraded_by_rooming_language(self):
+        text = (
+            "Small Cape Town agency handling a family trip for 5 travelers from Cape Town to Dubai in December 2026. "
+            "Budget is ZAR 120,000. Need 5 nights, a family room or adjacent rooms, airport transfers, "
+            "and a quick quote that can be sent to the client and WhatsApp group. "
+            "They are flexible on exact dates within the month."
+        )
+
+        packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text, "runtime-regression")])
+
+        destination = packet.facts.get("destination_candidates")
+        origin = packet.facts.get("origin_city")
+
+        assert destination is not None
+        assert destination.value == ["Dubai"], f"Expected Dubai only, got {destination.value}"
+        assert origin is not None
+        assert origin.value == "Cape Town"
+        assert not any(
+            amb.field_name == "destination_candidates"
+            and amb.ambiguity_type == "unresolved_alternatives"
+            for amb in packet.ambiguities
+        ), [(amb.field_name, amb.ambiguity_type, amb.raw_value) for amb in packet.ambiguities if amb.field_name == "destination_candidates"]
+
+    def test_date_flexibility_does_not_create_budget_flex_ambiguity(self):
+        text = (
+            "Small Cape Town agency handling a family trip for 5 travelers from Cape Town to Dubai in December 2026. "
+            "Budget is ZAR 120,000. Need 5 nights, a family room or adjacent rooms, airport transfers, "
+            "and a quick quote that can be sent to the client and WhatsApp group. "
+            "They are flexible on exact dates within the month."
+        )
+
+        packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text, "runtime-regression")])
+
+        assert packet.facts.get("date_flexibility") is not None
+        assert packet.facts.get("budget_flexibility") is None
+        assert not any(
+            amb.field_name == "budget_flexibility"
+            and amb.ambiguity_type == "unresolved_alternatives"
+            for amb in packet.ambiguities
+        ), [(amb.field_name, amb.ambiguity_type, amb.raw_value) for amb in packet.ambiguities if amb.field_name == "budget_flexibility"]
+
     def test_bali_trip_with_explicit_dates_is_valid_for_discovery(self):
         text = (
             "Origin city: Mumbai. Party size: 2 adults. Destination: Bali. Travel dates: July 10 to July 16. "
@@ -911,6 +1071,14 @@ class TestRuntimeInquiryRegressionCoverage:
         assert result["min"] == 250000
         assert result["max"] == 250000
         assert result["currency"] == "INR"
+
+    def test_budget_range_with_currency_parses_min_and_max(self):
+        result = _extract_budget("Budget USD 7000-9000")
+
+        assert result is not None
+        assert result["min"] == 7000
+        assert result["max"] == 9000
+        assert result["currency"] == "USD"
 
     def test_small_agency_family_note_keeps_full_party_and_budget(self):
         text = (
@@ -937,6 +1105,48 @@ class TestRuntimeInquiryRegressionCoverage:
         assert packet.facts["origin_city"].value == "Mumbai"
         assert packet.facts["party_size"].value == 9
         assert packet.facts["budget_min"].value == 1200000
+
+    def test_flight_arrival_after_hotel_checkin_flags_itinerary_mismatch(self):
+        text = (
+            "Family of 4 from Mumbai to Bali in July. Outbound flight lands at 22:30 on 10 July, "
+            "but the hotel is set to check in on 10 July afternoon. Please flag any mismatch and suggest the cleanest fix."
+        )
+
+        packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text, "runtime-regression")])
+        decision = run_gap_and_decision(packet)
+
+        assert any(
+            contradiction.get("field_name") == "flight_hotel_mismatch"
+            for contradiction in packet.contradictions
+        ), packet.contradictions
+        assert any(
+            contradiction.get("field_name") == "flight_hotel_mismatch"
+            for contradiction in decision.contradictions
+        ), decision.contradictions
+        assert any(
+            q.get("field_name") == "flight_hotel_mismatch"
+            and "flight" in q.get("question", "").lower()
+            and "hotel" in q.get("question", "").lower()
+            for q in decision.follow_up_questions
+        ), decision.follow_up_questions
+
+    def test_flight_arrival_after_hotel_checkin_flags_itinerary_mismatch_label_first(self):
+        text = (
+            "Family of 4 from Mumbai to Bali in July. Outbound flight lands at 22:30 on 10 July, "
+            "but the hotel check-in is afternoon on 10 July. Please flag any mismatch and suggest the cleanest fix."
+        )
+
+        packet = ExtractionPipeline().extract([SourceEnvelope.from_freeform(text, "runtime-regression")])
+        decision = run_gap_and_decision(packet)
+
+        assert any(
+            contradiction.get("field_name") == "flight_hotel_mismatch"
+            for contradiction in packet.contradictions
+        ), packet.contradictions
+        assert any(
+            contradiction.get("field_name") == "flight_hotel_mismatch"
+            for contradiction in decision.contradictions
+        ), decision.contradictions
 
 
 # ---------------------------------------------------------------------------

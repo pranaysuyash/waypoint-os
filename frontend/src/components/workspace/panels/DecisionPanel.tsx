@@ -146,10 +146,19 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
           proposal_ready: "Proposal Ready",
           booking_ready: "Booking Ready",
         };
-        const label = tierLabel[readiness.highest_ready_tier ?? ""] ?? "Not Ready";
         const missing = readiness.missing_for_next ?? [];
         const currentStage = trip?.stage ?? (trip?.packet as Record<string, unknown> | undefined)?.stage as string ?? "discovery";
-        const canAdvance = readiness.suggested_next_stage && readiness.highest_ready_tier && readiness.suggested_next_stage !== currentStage && tripId;
+        const baseLabel = tierLabel[readiness.highest_ready_tier ?? ""] ?? "Not Ready";
+        const label = missing.length > 0 && readiness.highest_ready_tier === "quote_ready"
+          ? "Quote Ready - needs shortlist details"
+          : baseLabel;
+        const canAutoAdvance = Boolean(
+          readiness.suggested_next_stage &&
+          readiness.highest_ready_tier &&
+          readiness.suggested_next_stage !== currentStage &&
+          tripId &&
+          missing.length === 0,
+        );
         return (
           <div className="rounded-xl p-3 border border-[rgba(var(--accent-blue-rgb)/0.2)] bg-[rgba(var(--accent-blue-rgb)/0.04)]">
             <div className="flex items-center gap-2 flex-wrap">
@@ -160,14 +169,18 @@ export function DecisionPanel({ trip: propTrip, tripId: propTripId }: DecisionPa
                   {missing.length} field{missing.length !== 1 ? "s" : ""} needed for {tierLabel[readiness.suggested_next_stage] ?? readiness.suggested_next_stage}
                 </span>
               )}
-              {canAdvance && (
+              {canAutoAdvance ? (
                 <StageAdvanceButton
                   tripId={tripId}
                   currentStage={currentStage}
                   targetStage={readiness.suggested_next_stage}
                   tierLabel={tierLabel[readiness.suggested_next_stage] ?? readiness.suggested_next_stage}
                 />
-              )}
+              ) : missing.length > 0 ? (
+                <span className="text-ui-xs text-text-placeholder">
+                  Complete the missing fields to enable automatic advancement.
+                </span>
+              ) : null}
             </div>
           </div>
         );

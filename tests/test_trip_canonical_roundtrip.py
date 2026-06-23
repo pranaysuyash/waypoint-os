@@ -14,6 +14,7 @@ Patchable canonical fields (as named in TripResponse):
     dateWindow  — PATCH key: "dateWindow" → extracted.facts.date_window.value
     party       — PATCH key: "party"     → extracted.facts.party_size.value
     budget      — PATCH key: "budget"    → extracted.facts.budget.value
+    tripPurpose — PATCH key: "tripPurpose" → extracted.facts.trip_purpose.value
 
 Note: tripType is intentionally NOT patchable via PATCH /trips/{id};
 _sync_manual_trip_fields does not handle it.
@@ -205,6 +206,29 @@ class TestBudgetRoundtrip:
         assert result["budget"] == "flexible"
 
 
+class TestTripPurposeRoundtrip:
+    def test_patch_trip_purpose_appears_in_patch_response(self, session_client, canonical_trip_id):
+        result = _patch_trip(session_client, canonical_trip_id, {"tripPurpose": "family holiday"})
+        assert result["tripPurpose"] == "family holiday"
+
+    def test_patch_trip_purpose_persists_to_get(self, session_client, canonical_trip_id):
+        _patch_trip(session_client, canonical_trip_id, {"tripPurpose": "honeymoon"})
+        result = _get_trip(session_client, canonical_trip_id)
+        assert result["tripPurpose"] == "honeymoon"
+
+    def test_patch_trip_purpose_dual_write_visible_in_extracted(self, session_client, canonical_trip_id):
+        _patch_trip(session_client, canonical_trip_id, {"tripPurpose": "business"})
+        result = _get_trip(session_client, canonical_trip_id)
+        facts = (result.get("extracted") or {}).get("facts", {})
+        assert facts.get("trip_purpose", {}).get("value") == "business"
+
+    def test_patch_trip_purpose_business_promotes_trip_type(self, session_client, canonical_trip_id):
+        """Corporate intent should surface as tripType business instead of default leisure."""
+        _patch_trip(session_client, canonical_trip_id, {"tripPurpose": "business"})
+        result = _get_trip(session_client, canonical_trip_id)
+        assert result["tripType"] == "business"
+
+
 # ---------------------------------------------------------------------------
 # Cross-field preservation
 # ---------------------------------------------------------------------------
@@ -219,7 +243,7 @@ class TestCrossFieldPreservation:
         assert result["origin"] == "Chicago"
 
     def test_compound_patch_all_fields_resolved(self, session_client, canonical_trip_id):
-        """All five fields patched in a single request must appear in TripResponse."""
+        """All core fields patched in a single request must appear in TripResponse."""
         _patch_trip(
             session_client,
             canonical_trip_id,
@@ -270,7 +294,7 @@ class TestTripResponseShape:
         """GET /trips/{id} must return all TripResponse canonical fields."""
         result = _get_trip(session_client, canonical_trip_id)
         required = {"id", "status"}
-        optional_canonical = {"origin", "destination", "dateWindow", "party", "budget", "tripType", "customerName"}
+        optional_canonical = {"origin", "destination", "dateWindow", "party", "budget", "tripType", "tripPurpose", "customerName"}
         assert required <= set(result), f"Missing required fields: {required - set(result)}"
         # All optional canonical fields present in schema (may be null)
         for field in optional_canonical:

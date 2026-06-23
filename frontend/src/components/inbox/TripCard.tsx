@@ -449,9 +449,10 @@ export const TripCard = memo(function TripCard({
 
   const reviewHref = `/trips/${trip.id}/intake`;
   const cleanDestination = trip.destination?.trim();
+  const cleanPurpose = trip.tripPurpose?.trim();
   const destinationKnown = Boolean(cleanDestination) && !['tbd', 'to confirm', 'unknown', 'not set', 'n/a', '-', '-'].includes(cleanDestination!.toLowerCase());
   const title = destinationKnown
-    ? formatLeadTitle(cleanDestination, trip.tripType)
+    ? formatLeadTitle(cleanDestination, cleanPurpose || trip.tripType)
     : 'Trip details incomplete';
 
   return (

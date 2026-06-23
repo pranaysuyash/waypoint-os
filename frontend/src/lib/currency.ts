@@ -14,6 +14,7 @@ export type SupportedCurrency =
   | 'GBP'
   | 'AED'
   | 'NGN'
+  | 'KES'
   | 'ZAR'
   | 'SGD'
   | 'THB'
@@ -46,6 +47,7 @@ export const CURRENCY_CONFIG: Record<SupportedCurrency, CurrencyConfig> = {
   GBP: { code: 'GBP', symbol: '£', name: 'British Pound', locale: 'en-GB', decimals: 0, flag: '🇬🇧' },
   AED: { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham', locale: 'ar-AE', decimals: 0, flag: '🇦🇪' },
   NGN: { code: 'NGN', symbol: '₦', name: 'Nigerian Naira', locale: 'en-NG', decimals: 0, flag: '🇳🇬' },
+  KES: { code: 'KES', symbol: 'KSh', name: 'Kenyan Shilling', locale: 'en-KE', decimals: 0, flag: '🇰🇪' },
   ZAR: { code: 'ZAR', symbol: 'R', name: 'South African Rand', locale: 'en-ZA', decimals: 0, flag: '🇿🇦' },
   SGD: { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar', locale: 'en-SG', decimals: 0, flag: '🇸🇬' },
   THB: { code: 'THB', symbol: '฿', name: 'Thai Baht', locale: 'th-TH', decimals: 0, flag: '🇹🇭' },
@@ -90,6 +92,12 @@ const CURRENCY_FORMATTERS: Record<SupportedCurrency, Intl.NumberFormat> = {
   NGN: new Intl.NumberFormat('en-NG', {
     style: 'currency',
     currency: 'NGN',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }),
+  KES: new Intl.NumberFormat('en-KE', {
+    style: 'currency',
+    currency: 'KES',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }),
@@ -139,6 +147,10 @@ const CURRENCY_FORMATTERS: Record<SupportedCurrency, Intl.NumberFormat> = {
  * Format a money value with currency symbol and locale-specific formatting.
  */
 export function formatMoney(amount: number, currency: SupportedCurrency = 'INR'): string {
+  if (currency === 'KES') {
+    const compact = Number.isInteger(amount) ? amount.toLocaleString('en-US', { maximumFractionDigits: 0 }) : amount.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    return `KSh${compact}`;
+  }
   return CURRENCY_FORMATTERS[currency].format(amount);
 }
 
@@ -153,12 +165,19 @@ export function formatMoneyCompact(amount: number, currency: SupportedCurrency =
   if (absAmount >= 100000) {
     // For INR: lakhs (1L), for others: k/M
     if (currency === 'INR') {
-      compactValue = `${(amount / 100000).toFixed(1)}L`;
+      const lakhs = amount / 100000;
+      compactValue = Number.isInteger(lakhs) ? `${lakhs}L` : `${lakhs.toFixed(1)}L`;
+    } else if (currency === 'KES') {
+      compactValue = absAmount >= 1000000
+        ? `${(amount / 1000000).toFixed(1)}M`
+        : `${(amount / 1000).toFixed(0)}k`;
     } else {
       compactValue = `${(amount / 1000000).toFixed(1)}M`;
     }
   } else if (absAmount >= 1000) {
     if (currency === 'INR') {
+      compactValue = `${(amount / 1000).toFixed(0)}k`;
+    } else if (currency === 'KES') {
       compactValue = `${(amount / 1000).toFixed(0)}k`;
     } else {
       compactValue = `${(amount / 1000).toFixed(1)}k`;
@@ -181,6 +200,10 @@ export function parseBudgetString(input: string): Money | null {
 
   // Try to extract currency code
   let currency: SupportedCurrency = 'INR'; // Default
+  const aliasMatch = trimmed.match(/\b(KSH|KES)(?=\d|\s|,|\.|$)/);
+  if (aliasMatch) {
+    currency = 'KES';
+  }
   currency = (trimmed.match(CURRENCY_CODE_PATTERN)?.[1] as SupportedCurrency | undefined) ?? currency;
 
   const lakhMatch = trimmed.match(/(\d+(?:\.\d+)?)\s*(LAC|LAKH|L)\b/);

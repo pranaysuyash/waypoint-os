@@ -80,6 +80,13 @@ _DESTINATION_HINT_VERBS = frozenset({
     "honeymoon", "getaway", "weekend",
 })
 
+_NON_DESTINATION_PLACEHOLDERS = frozenset({
+    "beach",
+    "hotel",
+    "resort",
+    "villa",
+})
+
 
 # =============================================================================
 # SECTION 1: DESTINATION DETECTION
@@ -223,7 +230,10 @@ _TODDLER_RE = re.compile(r"\b(?:a\s+)?(?:toddler|toddlers?)\b", re.IGNORECASE)
 _TODDLER_AGE_RE = re.compile(r"toddler\s+(?:age\s+)?(\d+)", re.IGNORECASE)
 _ELDERLY_RE = re.compile(rf"(?:(({_COUNT_TOKEN_RE})\s+))?(?:elderly|seniors?|grandparents?|grandma|grandpa|grandmother|grandfather)", re.IGNORECASE)
 _ELDERLY_AGE_RE = re.compile(r"\b(?:elderly|seniors?)\b", re.IGNORECASE)
-_PEOPLE_RE = re.compile(rf"({_COUNT_TOKEN_RE})\s+(?:people|persons?|pax|travelers?)", re.IGNORECASE)
+_PEOPLE_RE = re.compile(
+    rf"({_COUNT_TOKEN_RE})\s*(?:[-–—]?\s*)?(?:people|persons?|pax|travelers?|travellers?)",
+    re.IGNORECASE,
+)
 
 # Age patterns
 _AGE_RE = re.compile(r"(\d+\.?\d*)\s*(?:years?|yr|y)[\s-]*(?:old|aged?)\s+(\w+)", re.IGNORECASE)
@@ -433,6 +443,17 @@ def _is_likely_origin(text: str, dest_match: str) -> bool:
     if re.match(r"^[\s-]*based\b", context_after):
         return True
 
+    # Travel intent phrasing often includes the origin city immediately before
+    # the destination ("from Mumbai to Bali"). Treat the source city as origin,
+    # not a current destination candidate.
+    if re.match(r"^\s*to\b", context_after):
+        return True
+
+    # Descriptive phrases like "Mumbai agency" or "Delhi request" are source
+    # context, not destination intent.
+    if re.match(r"^\s*(agency|request|lead|team|office|market|branch)\b", context_after):
+        return True
+
     return False
 
 
@@ -452,6 +473,12 @@ def _is_valid_destination_candidate(span: str, context: str) -> bool:
 
     # Common stop words that should never be destinations
     if lower in _STOP_WORDS:
+        return False
+
+    # Generic amenity nouns often appear in preference phrases like
+    # "beach resort" or "hotel stay" and should not be treated as trip
+    # destinations even when they are capitalized in the source text.
+    if lower in _NON_DESTINATION_PLACEHOLDERS:
         return False
 
     if is_known_destination(lower):
@@ -554,6 +581,7 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
                     candidate = " ".join(words[start:end])
                     title = candidate.title()
                     if (is_known_destination(title)
+                        and _is_valid_destination_candidate(title, destination_text)
                         and title.lower() not in _MONTH_NAMES
                         and title.lower() not in _DESTINATION_STOP_WORDS):
                         best = (candidate, title, end)
@@ -602,6 +630,7 @@ def _extract_destination_candidates(text: str) -> Tuple[List[str], str, Optional
                     seen_lower.add(dest_lower)
                     continue
                 if (is_known_destination(title)
+                    and _is_valid_destination_candidate(title, destination_text)
                     and not _is_likely_origin(destination_text, dest)
                     and not _is_past_trip_mention(destination_text, dest)):
                     candidates.append(title)
@@ -766,34 +795,6 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
     amount_unit_pattern = (
         r"(\d[\d,]*(?:\.\d+)?)\s*(l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?"
     )
-    explicit_label_match = re.search(
-        r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*"
-        r"(?:(?P<currency>" + currency_token_pattern + r")\s*)?"
-        r"(?P<amount>\d[\d,]*(?:\.\d+)?)\s*(?P<unit>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?\b",
-        text_lower,
-    )
-    if explicit_label_match:
-        raw_amount = explicit_label_match.group("amount").replace(",", "").strip()
-        unit = (explicit_label_match.group("unit") or "").strip().lower()
-        if not _looks_like_date_token(raw_amount):
-            parsed_value = float(raw_amount)
-            if unit in ("l", "lac", "lakh", "lakhs"):
-                parsed_value *= 100000
-            elif unit in ("k", "thousand"):
-                parsed_value *= 1000
-            elif unit in ("m", "mn", "million", "millions"):
-                parsed_value *= 1000000
-            elif unit in ("cr", "crore", "crores"):
-                parsed_value *= 10000000
-            elif unit in ("b", "bn", "billion", "billions"):
-                parsed_value *= 1000000000
-            return {
-                "raw_text": explicit_label_match.group(0).strip(),
-                "min": int(parsed_value),
-                "max": int(parsed_value),
-                "currency": _currency_code(explicit_label_match.group("currency")),
-            }
-
     trailing_budget_match = re.search(
         r"(?:(?P<currency>" + currency_token_pattern + r")\s*)?"
         r"(?P<amount>\d[\d,]*(?:\.\d+)?)\s*(?P<unit>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?"
@@ -820,6 +821,72 @@ def _extract_budget(text: str) -> Optional[Dict[str, Any]]:
                 "min": int(parsed_value),
                 "max": int(parsed_value),
                 "currency": _currency_code(trailing_budget_match.group("currency")),
+            }
+
+    range_budget_match = re.search(
+        r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*"
+        r"(?:(?P<currency>" + currency_token_pattern + r")\s*)?"
+        r"(?P<low>\d[\d,]*(?:\.\d+)?)\s*(?:-|–|—|\bto\b)\s*"
+        r"(?P<low_unit>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?\s*"
+        r"(?P<high>\d[\d,]*(?:\.\d+)?)\s*"
+        r"(?P<high_unit>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?\b",
+        text_lower,
+    )
+    if range_budget_match:
+        low = range_budget_match.group("low").replace(",", "").strip()
+        high = range_budget_match.group("high").replace(",", "").strip()
+        unit = (range_budget_match.group("low_unit") or range_budget_match.group("high_unit") or "").strip().lower()
+        if not _looks_like_date_token(low) and not _looks_like_date_token(high):
+            low_value = float(low)
+            high_value = float(high)
+            if unit in ("l", "lac", "lakh", "lakhs"):
+                low_value *= 100000
+                high_value *= 100000
+            elif unit in ("k", "thousand"):
+                low_value *= 1000
+                high_value *= 1000
+            elif unit in ("m", "mn", "million", "millions"):
+                low_value *= 1000000
+                high_value *= 1000000
+            elif unit in ("cr", "crore", "crores"):
+                low_value *= 10000000
+                high_value *= 10000000
+            elif unit in ("b", "bn", "billion", "billions"):
+                low_value *= 1000000000
+                high_value *= 1000000000
+            return {
+                "raw_text": range_budget_match.group(0).strip(),
+                "min": int(low_value),
+                "max": int(high_value),
+                "currency": _currency_code(range_budget_match.group("currency")),
+            }
+
+    explicit_label_match = re.search(
+        r"\bbudget\b(?:\s+(?:of|is|around|about|approx(?:imately)?))?\s*[:\-]?\s*"
+        r"(?:(?P<currency>" + currency_token_pattern + r")\s*)?"
+        r"(?P<amount>\d[\d,]*(?:\.\d+)?)\s*(?P<unit>l|k|m|mn|million|millions|lac|lakh|lakhs|crore|crores|cr|b|bn|billion|billions|thousand)?\b",
+        text_lower,
+    )
+    if explicit_label_match:
+        raw_amount = explicit_label_match.group("amount").replace(",", "").strip()
+        unit = (explicit_label_match.group("unit") or "").strip().lower()
+        if not _looks_like_date_token(raw_amount):
+            parsed_value = float(raw_amount)
+            if unit in ("l", "lac", "lakh", "lakhs"):
+                parsed_value *= 100000
+            elif unit in ("k", "thousand"):
+                parsed_value *= 1000
+            elif unit in ("m", "mn", "million", "millions"):
+                parsed_value *= 1000000
+            elif unit in ("cr", "crore", "crores"):
+                parsed_value *= 10000000
+            elif unit in ("b", "bn", "billion", "billions"):
+                parsed_value *= 1000000000
+            return {
+                "raw_text": explicit_label_match.group(0).strip(),
+                "min": int(parsed_value),
+                "max": int(parsed_value),
+                "currency": _currency_code(explicit_label_match.group("currency")),
             }
 
     # Look for budget-like patterns
@@ -894,6 +961,64 @@ def _extract_budget_scope(text: str) -> str:
     return "unknown"
 
 
+def _extract_flight_hotel_mismatch(text: str) -> Optional[Dict[str, str]]:
+    """Detect a likely flight-arrival vs hotel-check-in timing mismatch."""
+    text_lower = text.lower()
+    if "flight" not in text_lower or "hotel" not in text_lower:
+        return None
+
+    flight_match = re.search(
+        r"(?:flight|arriv\w+|lands?)\D{0,40}(?:at\s+)?(?P<time>\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\D{0,20}on\s+(?P<date>\d{1,2}\s+[a-z]+)",
+        text_lower,
+    )
+    hotel_patterns = (
+        # "hotel check-in is afternoon on 10 july"
+        r"(?:hotel|check[- ]?in).*?(?P<label>morning|afternoon|evening|late|same day|later that day).*?on\s+(?P<date>\d{1,2}\s+[a-z]+)",
+        # "hotel check-in on 10 july afternoon"
+        r"(?:hotel|check[- ]?in).*?on\s+(?P<date>\d{1,2}\s+[a-z]+)(?:\s+(?P<label>morning|afternoon|evening|late|same day|later that day))?",
+    )
+    hotel_match = None
+    for pattern in hotel_patterns:
+        hotel_match = re.search(pattern, text_lower)
+        if hotel_match:
+            break
+    if not flight_match or not hotel_match:
+        return None
+
+    flight_date = flight_match.group("date")
+    hotel_date = hotel_match.group("date")
+    if flight_date != hotel_date:
+        return None
+
+    label = (hotel_match.group("label") or "").strip()
+    if label not in {"afternoon", "evening", "late", "same day", "later that day"}:
+        return None
+
+    time_text = flight_match.group("time").strip()
+    time_match = re.search(r"(?P<hour>\d{1,2})(?::(?P<minute>\d{2}))?\s*(?P<meridiem>am|pm)?", time_text)
+    if not time_match:
+        return None
+
+    hour = int(time_match.group("hour"))
+    minute = int(time_match.group("minute") or "0")
+    meridiem = time_match.group("meridiem")
+    if meridiem == "pm" and hour != 12:
+        hour += 12
+    elif meridiem == "am" and hour == 12:
+        hour = 0
+
+    # Flag only clearly late arrivals on same-day check-in requests.
+    if hour < 18 and not (hour == 17 and minute >= 30):
+        return None
+
+    return {
+        "flight_date": flight_date,
+        "hotel_date": hotel_date,
+        "arrival_time": time_text,
+        "hotel_label": label,
+    }
+
+
 def _extract_budget_stretch_max(text: str) -> Optional[int]:
     """
     Extract explicit maximum budget from stretch phrases.
@@ -949,6 +1074,7 @@ def _extract_party(text: str) -> Dict[str, Any]:
     composition: Dict[str, int] = {}
     child_ages: List[float] = []
     text_lower = text.lower()
+    family_group_size = 0
 
     # Family composition from natural language
     _FAMILY_PATTERNS = [
@@ -962,6 +1088,13 @@ def _extract_party(text: str) -> Dict[str, Any]:
         if re.search(pattern, text_lower):
             composition[group] = composition.get(group, 0) + count
 
+    family_size_match = re.search(
+        rf"\b(?:family|group)\s+(?:of\s+)?(?P<count>{_COUNT_TOKEN_RE})",
+        text_lower,
+    )
+    if family_size_match:
+        family_group_size = _count_token_to_int(family_size_match.group("count")) or 0
+
     # Couple / pair / duo phrasing is a common shorthand for two adults.
     # Only infer this when no other party composition has already been stated,
     # so explicit counts or richer composition cues still win.
@@ -973,9 +1106,12 @@ def _extract_party(text: str) -> Dict[str, Any]:
     if dec_age:
         composition["children"] = composition.get("children", 0) + 1
         child_ages.append(float(dec_age.group(1)))
-    elif not dec_age:
+    elif not dec_age and not family_group_size:
         # Singular child without number: "our kid", "a toddler", or bare "bachha"
-        singular_child = re.search(r"\b(?:(?:my|our|a)\s+)?(?:kid|child|baby|toddler|son|daughter|bachha)\b", text_lower)
+        singular_child = re.search(
+            r"\b(?:(?:my|our|a)\s+)?(?:kid|child|baby|toddler|son|daughter|bachha)\b(?!\s+ages?\b)(?!\s+age\b)",
+            text_lower,
+        )
         if singular_child:
             composition["children"] = composition.get("children", 0) + 1
             if not child_ages:
@@ -1001,7 +1137,7 @@ def _extract_party(text: str) -> Dict[str, Any]:
             composition["children"] = child_count
     # Try to extract ages: "kids ages 8 and 12", "children aged 5, 7", "child age 3"
     ages_match = re.search(
-        r"(?:kids?|children?|child|ages?|bachhe|bache|baccha)\s+(?:ages?\s+)?(\d+(?:\s+(?:and|,)\s*\d+)*)",
+        r"(?:kids?|children?|child|ages?|bachhe|bache|baccha)\s+(?:ages?\s+)?(\d+(?:\s*,\s*\d+)*(?:\s*,?\s*and\s*\d+)?)",
         text_lower,
     )
     if ages_match:
@@ -1027,6 +1163,9 @@ def _extract_party(text: str) -> Dict[str, Any]:
     # Total party size
     party_size = sum(composition.values())
 
+    if family_group_size > party_size:
+        party_size = family_group_size
+
     # Prefer explicit stated headcount when present (e.g., "6 pax", "6 people").
     # If explicit and inferred counts conflict, explicit caller-provided count wins.
     explicit_size_match = _PEOPLE_RE.search(text_lower)
@@ -1034,17 +1173,14 @@ def _extract_party(text: str) -> Dict[str, Any]:
     if explicit_party_size and explicit_party_size > 0:
         party_size = explicit_party_size
 
-    # Fallback: "family of N", "group of N", "N people"
+    # Fallback: "N people"
     if party_size == 0:
-        size_match = re.search(
-            rf"(?:family|group)\s+(?:of\s+)?(?P<count>{_COUNT_TOKEN_RE})", text_lower
+        pax_match = re.search(
+            rf"(?P<count>{_COUNT_TOKEN_RE})\s*(?:[-–—]?\s*)?(?:people|persons?|pax|travelers?|travellers?)",
+            text_lower,
         )
-        if size_match:
-            party_size = _count_token_to_int(size_match.group("count")) or 0
-        else:
-            pax_match = re.search(rf"(?P<count>{_COUNT_TOKEN_RE})\s+(?:people|persons|pax|travelers)", text_lower)
-            if pax_match:
-                party_size = _count_token_to_int(pax_match.group("count")) or 0
+        if pax_match:
+            party_size = _count_token_to_int(pax_match.group("count")) or 0
 
     return {
         "party_size": party_size,
@@ -1067,7 +1203,7 @@ def _extract_trip_intent(text: str) -> Dict[str, Any]:
         "pilgrimage": r"\b(pilgrimage|yatra|char dham|temple\s+visit)\b",
         "family leisure": r"\b(family\s+(?:leisure|vacation|holiday|trip))\b",
         "honeymoon": r"\b(honeymoon|romantic)\b",
-        "business": r"\b(business|conference|meeting)\b",
+        "business": r"\b(business|conference|meeting|corporate|company|work\s+trip|workshop|training|procurement|offsite|team\s+offsite|incentive)\b",
         "adventure": r"\b(adventure|trekking|rafting)\b",
         "beach": r"\b(beach\s+(?:vacation|holiday|trip))\b",
         "cultural": r"\b(cultural|heritage|sightseeing)\b",
@@ -1563,8 +1699,13 @@ class ExtractionPipeline:
                     packet.add_ambiguity(amb)
             # Also run ambiguity detection on the relevant source text span
             # around the destination mention for richer detection.
+            #
+            # Keep this pass limited to genuinely open destination states.
+            # Broad destination context can include unrelated "or" phrases
+            # from rooming or logistics requests and should not downgrade an
+            # explicit single destination into an unresolved alternative.
             dest_context = _extract_relevant_span(text, dest_raw or "", window=80)
-            if dest_context and dest_context != dest_raw:
+            if dest_status != "definite" and dest_context and dest_context != dest_raw:
                 for amb in Normalizer.detect_ambiguities("destination_candidates", dest_context):
                     # Avoid duplicate ambiguity types
                     if not any(a.ambiguity_type == amb.ambiguity_type for a in packet.ambiguities):
@@ -1651,8 +1792,21 @@ class ExtractionPipeline:
                 "Derived from budget context", eid,
             ))
 
-        # Check for budget stretch ambiguity and extract explicit max if present
-        if "stretch" in text_lower or "flexible" in text_lower:
+        flight_hotel_mismatch = _extract_flight_hotel_mismatch(text)
+        if flight_hotel_mismatch:
+            packet.add_contradiction(
+                "flight_hotel_mismatch",
+                [
+                    f"Flight arrives {flight_hotel_mismatch['arrival_time']} on {flight_hotel_mismatch['flight_date']}",
+                    f"Hotel check-in is {flight_hotel_mismatch['hotel_label']} on {flight_hotel_mismatch['hotel_date']}",
+                ],
+                ["flight_arrival", "hotel_check_in"],
+            )
+
+        # Check for budget stretch ambiguity and extract explicit max if present.
+        # Only run this when the text actually signals budget flexibility, not
+        # when "flexible" refers to dates or other non-budget constraints.
+        if budget_flex != "unknown":
             # Use full text for stretch extraction (don't truncate at punctuation)
             stretch_text = text_lower
             
@@ -1716,9 +1870,10 @@ class ExtractionPipeline:
 
         if not packet.facts.get("origin_city"):
             # Match max 3 words after "from" before hitting a delimiter
-            # Delimiters: to/for/budget/need/comma/period/newline to avoid spillover
+            # Delimiters: to/for/budget/need or common continuation phrases,
+            # plus punctuation/newline, to avoid spillover into the rest of the sentence.
             origin_match = re.search(
-                r"\b(from|starting|departing)\s+((?:[A-Za-z]+\s*){1,3}?)(?:\bto\b|\bfor\b|\bbudget\b|\bneed\b|,|\.|\$|\n)",
+                r"\b(from|starting|departing)\s+((?:[A-Za-z]+\s*){1,3}?)(?:\bto\b|\bfor\b|\bbudget\b|\bneed\b|\bplanning\b|\bgoing\b|\btravel(?:ing|ling)?\b|\blooking\b|\bseeking\b|\bstaying\b|\bwith\b|,|\.|\$|\n)",
                 text,
                 re.IGNORECASE,
             )
@@ -1790,6 +1945,60 @@ class ExtractionPipeline:
                     value, 0.8, AuthorityLevel.EXPLICIT_USER,
                     value, eid,
                 ))
+
+        # --- GROUP BOOKING / PROCUREMENT SIGNALS ---
+        rooming_matches = []
+        for rooming_match in re.finditer(
+            r"\b(?:(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+)?(?:separate\s+)?rooming\s+lists?\b",
+            text_lower,
+        ):
+            count_token = rooming_match.group(1)
+            rooming_count = _count_token_to_int(count_token) if count_token else 1
+            phrase = rooming_match.group(0).strip()
+            rooming_matches.append((
+                rooming_count or 1,
+                "separate" in phrase,
+                len(phrase),
+                phrase,
+            ))
+
+        if rooming_matches:
+            rooming_count, _, _, rooming_phrase = max(
+                rooming_matches,
+                key=lambda item: (item[0], item[1], item[2]),
+            )
+            existing_rooming_slot = packet.facts.get("rooming_list_count")
+            existing_rooming_count = getattr(existing_rooming_slot, "value", None)
+            existing_rooming_count_num = existing_rooming_count if isinstance(existing_rooming_count, int) else None
+            should_update_rooming = existing_rooming_count_num is None or rooming_count > existing_rooming_count_num
+
+            if should_update_rooming and rooming_count > 0:
+                packet.set_fact("rooming_list_count", self._make_slot(
+                    rooming_count, 0.9, AuthorityLevel.EXPLICIT_USER,
+                    rooming_phrase, eid,
+                ))
+                packet.set_fact("rooming_list_requested", self._make_slot(
+                    True, 0.9, AuthorityLevel.EXPLICIT_USER,
+                    rooming_phrase, eid,
+                ))
+                packet.set_fact("rooming_requirements", self._make_slot(
+                    rooming_phrase, 0.85, AuthorityLevel.EXPLICIT_USER,
+                    rooming_phrase, eid,
+                ))
+
+        procurement_match = re.search(
+            r"\b(procurement|purchasing|approvals?|finance)\b",
+            text_lower,
+        )
+        if procurement_match:
+            packet.set_fact("procurement_share_needed", self._make_slot(
+                True, 0.85, AuthorityLevel.EXPLICIT_USER,
+                procurement_match.group(0), eid,
+            ))
+            packet.set_fact("procurement_notes", self._make_slot(
+                "shareable with procurement", 0.8, AuthorityLevel.EXPLICIT_USER,
+                procurement_match.group(0), eid,
+            ))
 
         # --- OWNER / AGENCY CONTEXT ---
         owner_ctx = _extract_owner_context(text)

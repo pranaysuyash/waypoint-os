@@ -11,7 +11,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from .models import ParticipantRef, SuitabilityContext
-from .scoring import evaluate_activity
+from .scoring import evaluate_activity, FIELD_CONFIDENCE_PARTIAL
 from .catalog import get_activity, STATIC_ACTIVITIES
 
 logger = logging.getLogger(__name__)
@@ -379,7 +379,7 @@ def assess_activity_suitability(packet) -> List[Any]:
             flag_type=risk.get("flag", "suitability_coherence"),
             severity=severity_map.get(risk.get("severity", "low"), "low"),
             reason=risk.get("message", ""),
-            confidence=0.8,
+            confidence=FIELD_CONFIDENCE_PARTIAL,
             details=risk.get("details", {}),
             affected_travelers=risk.get("affected_travelers", []),
         )

@@ -60,7 +60,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
         <>
           <div className='h-[260px] w-full'>
             {isMounted ? (
-              <ResponsiveContainer width='100%' height='100%'>
+              <ResponsiveContainer width='100%' height='100%' minWidth={0} minHeight={260}>
                 <ComposedChart data={data}>
                   <CartesianGrid stroke='#30363d' strokeDasharray='3 3' vertical={false} />
                   <XAxis dataKey='month' tick={{ fill: '#8b949e', fontSize: 12 }} axisLine={{ stroke: '#30363d' }} tickLine={false} />

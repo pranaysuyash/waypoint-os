@@ -48,7 +48,7 @@ export default function AuditPage() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (!cancelled) {
-          dispatch({ type: "loaded", events: data.items ?? [] });
+          dispatch({ type: "loaded", events: data.entries ?? data.items ?? [] });
         }
       } catch (err) {
         if (!cancelled) {

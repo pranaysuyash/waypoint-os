@@ -41,6 +41,8 @@ import type { WorkbenchStore, DraftStatus, SaveState } from '@/stores/workbench'
 import { ErrorBoundary } from '@/components/error-boundary';
 import { RunProgressPanel } from './RunProgressPanel';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useAuthStore } from '@/stores/auth';
+import { ProtectedSurfaceNotice } from '@/components/auth/ProtectedSurfaceNotice';
 
 const IntakeTab = dynamic(() => import('./IntakeTab'));
 const PacketTab = dynamic(() => import('./PacketTab'));
@@ -107,6 +109,32 @@ function toOperatingMode(value: string | null): OperatingMode | null {
 
 function toWorkspaceTabId(value: string | null): WorkspaceTabId | null {
   return workspaceTabs.find((tab) => tab.id === value)?.id ?? null;
+}
+
+export function extractCompletedTripIdFromDraft(draft: Record<string, unknown> | null | undefined): string | null {
+  if (!draft || typeof draft !== "object") return null;
+
+  const promotedTripId = draft.promoted_trip_id;
+  if (typeof promotedTripId === "string" && promotedTripId.trim()) {
+    return promotedTripId.trim();
+  }
+
+  const runSnapshots = Array.isArray(draft.run_snapshots) ? draft.run_snapshots : [];
+  for (let index = runSnapshots.length - 1; index >= 0; index -= 1) {
+    const snapshotEntry = runSnapshots[index];
+    if (!snapshotEntry || typeof snapshotEntry !== "object") continue;
+
+    const record = snapshotEntry as Record<string, unknown>;
+    const snapshot = record.snapshot;
+    if (!snapshot || typeof snapshot !== "object") continue;
+
+    const tripId = (snapshot as Record<string, unknown>).trip_id;
+    if (typeof tripId === "string" && tripId.trim()) {
+      return tripId.trim();
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -241,6 +269,7 @@ function WorkbenchContent() {
     const entry = getSearchParam('entry');
     const captureMode = getSearchParam('capture_mode');
     if (tripId || entry !== 'new' || captureMode !== 'call') return;
+    if (draftParam && draftParam !== 'new') return;
     const params = new URLSearchParams(searchParams.toString());
     params.set('draft', 'new');
     params.set('tab', 'intake');
@@ -262,6 +291,7 @@ function WorkbenchContent() {
     if (draftParam === 'new') {
       if (prevDraftRef.current !== 'new') {
         clearDraft();
+        setCompletedTripId(null);
         prevDraftRef.current = 'new';
       }
       return;
@@ -274,10 +304,12 @@ function WorkbenchContent() {
     getDraft(draftParam)
       .then((draft) => {
         hydrateFromDraft(draft);
+        setCompletedTripId(extractCompletedTripIdFromDraft(draft));
         draftLoadingRef.current = false;
       })
       .catch((err) => {
         setDraftError(err instanceof Error ? err.message : 'Failed to load draft');
+        setCompletedTripId(null);
         draftLoadingRef.current = false;
       });
   }, [draftParam, clearDraft, hydrateFromDraft]);
@@ -446,18 +478,19 @@ function WorkbenchContent() {
 
     // Navigate the most useful tab after terminal transitions.
     // Blocked/failed flows still land on Trip Details for immediate validation context.
-    // Completed runs with follow-up blockers land on Risk Review first.
+    // Completed runs with follow-up blockers land on Risk Review first unless the operator is already on Trip Details.
     // Otherwise, completed runs with frontier output land on Frontier for immediate intelligence visibility.
     if (
       currentState !== prevState &&
       (currentState === 'blocked' || currentState === 'failed')
     ) {
       handleTabChange('packet');
-    } else if (needsFollowUpReview) {
+    } else if (currentState !== prevState && needsFollowUpReview && activeTab !== 'packet') {
       handleTabChange('safety');
     } else if (
       currentState === 'completed' &&
       completedWithRunFrontier &&
+      currentState !== prevState &&
       (!prevCompletedRunFrontierRef.current || prevState !== 'completed')
     ) {
       handleTabChange('frontier');
@@ -472,7 +505,7 @@ function WorkbenchContent() {
     }
 
     prevRunStateRef.current = currentState;
-  }, [spineRunState, handleTabChange, runFrontier]);
+  }, [spineRunState, handleTabChange, runFrontier, activeTab]);
 
   const { mutate: saveTrip, isSaving } = useUpdateTrip();
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -518,19 +551,23 @@ function WorkbenchContent() {
       scenario_id: currentScenario || null,
       strict_leakage: store.strict_leakage,
     });
-    store.setDraftMeta({
-      draft_id: result.draft_id,
-      name: result.name,
-      status: result.status as DraftStatus,
-      version: 1,
-      created_at: result.created_at,
-    });
-    // Update URL
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('draft', result.draft_id);
-    if (!params.get('tab')) params.set('tab', 'intake');
-    replace(`?${params.toString()}`, { scroll: false });
-    store.setSaveState('saved');
+    // Defer hydration so the same submit turn can continue straight into the
+    // Spine run. Immediate route/state churn here can pre-empt the first-submit
+    // flow before the run request is issued in the browser.
+    window.setTimeout(() => {
+      store.setDraftMeta({
+        draft_id: result.draft_id,
+        name: result.name,
+        status: result.status as DraftStatus,
+        version: 1,
+        created_at: result.created_at,
+      });
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('draft', result.draft_id);
+      if (!params.get('tab')) params.set('tab', 'intake');
+      window.history.replaceState(null, '', `?${params.toString()}`);
+      store.setSaveState('saved');
+    }, 0);
     return result.draft_id;
   }, [store, searchParams, replace, spineStage, currentMode, currentScenario]);
 
@@ -1087,18 +1124,6 @@ function WorkbenchContent() {
             </button>
             {completedTripId && (
               <>
-                <button
-                  type='button'
-                  onClick={() => push(getPostRunTripRoute({
-                    tripId: completedTripId,
-                    tripStage: spineRunState?.stage ?? trip?.stage,
-                    validationStatus: spineRunState?.validation?.status,
-                  }))}
-                  className='flex items-center gap-2 px-4 py-2 bg-[#3fb950] text-[#0d1117] rounded-lg font-medium hover:bg-[#4cc764] transition-colors'
-                >
-                  <CheckCircle className='size-4' />
-                  View Trip
-                </button>
                 {store.draft_id && (
                   <button
                     type='button'
@@ -1284,10 +1309,31 @@ export default function WorkbenchPage() {
   return (
     <ErrorBoundary>
       <Suspense fallback={<WorkbenchLoading />}>
-        <WorkbenchContent />
+        <WorkbenchPageGate />
       </Suspense>
     </ErrorBoundary>
   );
+}
+
+function WorkbenchPageGate() {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const authIsLoading = useAuthStore((state) => state.isLoading);
+  const authIsAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const searchQuery = searchParams.toString();
+  const redirectTarget = `${pathname}${searchQuery ? `?${searchQuery}` : ''}`;
+
+  if (!authIsLoading && !authIsAuthenticated) {
+    return (
+      <ProtectedSurfaceNotice
+        surfaceName='Workbench'
+        redirectTarget={redirectTarget}
+        description='This browser session is not signed in yet. Sign in to capture a new inquiry, process a trip, and continue the agency workflow.'
+      />
+    );
+  }
+
+  return <WorkbenchContent />;
 }
 
 function WorkbenchLoading() {

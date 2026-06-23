@@ -2,10 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import OutputPanel from '../OutputPanel';
 import { useWorkbenchStore } from '@/stores/workbench';
+import { safeWriteClipboardText } from '@/lib/clipboard';
 
 // Mock dependencies
 vi.mock('@/stores/workbench', () => ({
   useWorkbenchStore: vi.fn(),
+}));
+
+vi.mock('@/lib/clipboard', () => ({
+  safeWriteClipboardText: vi.fn().mockResolvedValue(true),
 }));
 
 describe('OutputPanel', () => {
@@ -41,7 +46,7 @@ describe('OutputPanel', () => {
     expect(screen.getByText(/No traveler-ready output yet/i)).toBeInTheDocument();
   });
 
-  it('routes quote-ready trips to quote assessment from the empty output state', () => {
+  it('routes quote-ready trips to quote assessment from the derived output preview', () => {
     (useWorkbenchStore as any).mockReturnValue({
       ...mockStore,
       result_internal_bundle: null,
@@ -71,11 +76,49 @@ describe('OutputPanel', () => {
       />
     );
 
-    expect(screen.getByText(/Quote assessment is available/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Go to Quote Assessment/i })).toHaveAttribute(
+    expect(screen.getByText(/derived preview from the current strategy and decision/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Open Quote Assessment/i })).toHaveAttribute(
       'href',
       '/trips/TRIP-123/decision'
     );
+  });
+
+  it('renders a derived output preview when the persisted bundle is missing', () => {
+    (useWorkbenchStore as any).mockReturnValue({
+      ...mockStore,
+      result_internal_bundle: null,
+      result_traveler_bundle: null,
+    });
+
+    render(
+      <OutputPanel
+        tripId="TRIP-123"
+        trip={{
+          id: 'TRIP-123',
+          destination: 'Bali',
+          strategy: {
+            session_goal: 'Prepare a clear options plan for Bali while keeping budget aligned.',
+            priority_sequence: ['Check origin and destination together'],
+            tonal_guardrails: ['Keep the options concise and decision-friendly'],
+            risk_flags: [],
+            suggested_opening: 'Here’s the options plan for Bali.',
+            exit_criteria: ['Options are structured and easy to compare'],
+            next_action: 'PROCEED_INTERNAL_DRAFT',
+            assumptions: [],
+            suggested_tone: 'professional',
+          } as any,
+          decision: {
+            decision_state: 'PROCEED_TRAVELER_SAFE',
+            operating_mode: 'normal_intake',
+            follow_up_questions: [],
+          } as any,
+        } as any}
+      />
+    );
+
+    expect(screen.getByText(/derived preview from the current strategy and decision/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Here’s the options plan for Bali\./i).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByRole('button', { name: /Copy Customer Draft/i })).toBeInTheDocument();
   });
 
   it('renders agent and customer bundles side-by-side', () => {
@@ -125,13 +168,13 @@ describe('OutputPanel', () => {
     expect(elements.length).toBeGreaterThan(1); // One in UI, one in JSON
   });
 
-  it('keeps send enabled when review status is undefined', () => {
+  it('keeps customer draft copy enabled when review status is undefined', () => {
     render(<OutputPanel tripId="TRIP-123" trip={{ id: "TRIP-123" } as any} />);
-    const sendButton = screen.getByRole('button', { name: /Send to Customer/i });
-    expect(sendButton).not.toBeDisabled();
+    const draftButton = screen.getByRole('button', { name: /Copy Customer Draft/i });
+    expect(draftButton).not.toBeDisabled();
   });
 
-  it('blocks send with policy reason when approval is required', () => {
+  it('blocks customer draft copy with policy reason when approval is required', () => {
     render(
       <OutputPanel
         tripId="TRIP-123"
@@ -144,10 +187,21 @@ describe('OutputPanel', () => {
         } as any}
       />
     );
-    expect(screen.getByText(/Send blocked by policy/i)).toBeInTheDocument();
-    const sendButton = screen.getByRole('button', { name: /Send to Customer/i });
-    expect(sendButton).toBeDisabled();
-    expect(sendButton).toHaveAttribute('title', expect.stringContaining('Confidence below threshold'));
+    expect(screen.getByText(/Customer draft blocked by policy/i)).toBeInTheDocument();
+    const draftButton = screen.getByRole('button', { name: /Copy Customer Draft/i });
+    expect(draftButton).toBeDisabled();
+    expect(draftButton).toHaveAttribute('title', expect.stringContaining('Confidence below threshold'));
+  });
+
+  it('copies the customer-safe draft to the clipboard', async () => {
+    const clipboardSpy = vi.mocked(safeWriteClipboardText);
+
+    render(<OutputPanel tripId="TRIP-123" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Copy Customer Draft/i }));
+
+    expect(clipboardSpy).toHaveBeenCalledWith(expect.stringContaining('Traveler Message Test'));
+    expect(await screen.findByText(/Customer draft copied/i)).toBeInTheDocument();
   });
 
   it('keeps Technical Data blocked by default policy', () => {

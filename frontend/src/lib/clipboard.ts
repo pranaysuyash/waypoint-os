@@ -5,8 +5,27 @@ export async function safeWriteClipboardText(text: string): Promise<boolean> {
 
   try {
     if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
+      let clipboardDenied = false;
+      const permissions = navigator.permissions;
+      if (permissions?.query) {
+        try {
+          const result = await permissions.query({ name: 'clipboard-write' as PermissionName });
+          if (result.state === 'denied') {
+            clipboardDenied = true;
+          }
+        } catch {
+          // If permissions are unavailable or the permission is denied, fall through to the fallback path below.
+        }
+      }
+
+      if (!clipboardDenied) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch {
+          // Fall back below.
+        }
+      }
     }
   } catch {
     // Fall back below.

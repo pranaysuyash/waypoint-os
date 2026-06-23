@@ -281,6 +281,33 @@ def _build_simulation_notes(plan: dict, scenario: str) -> list[str]:
     return notes
 
 
+def _simulation_profile(scenario: str) -> dict[str, float | str]:
+    normalized = str(scenario).strip().lower()
+    if normalized == "aggressive":
+        return {
+            "lead_multiplier": 1.18,
+            "booking_rate": 0.40,
+            "margin_adjust": -1.8,
+            "confidence": 0.66,
+            "note": "Aggressive pacing increases reach while trading off some margin discipline.",
+        }
+    if normalized == "conservative":
+        return {
+            "lead_multiplier": 0.84,
+            "booking_rate": 0.44,
+            "margin_adjust": 1.2,
+            "confidence": 0.79,
+            "note": "Conservative pacing protects margin and narrows the top-of-funnel forecast.",
+        }
+    return {
+        "lead_multiplier": 1.0,
+        "booking_rate": 0.42,
+        "margin_adjust": 0.0,
+        "confidence": 0.72,
+        "note": "Baseline pacing reflects the current plan shape with neutral risk assumptions.",
+    }
+
+
 @router.get("/api/settings/seasonal")
 def get_agency_seasonal_settings(
     agency_id: str = "waypoint-hq",
@@ -392,10 +419,18 @@ def simulate_seasonal_campaign(
         end = end_month
         month_window = max(1, abs(end - start) + 1)
 
-    projected_leads = int(base_budget * max(1.0, mix_weight + 0.5) * month_window / 900)
-    projected_bookings = max(1, int(projected_leads * 0.42))
-    projected_margin_pct = max(0.0, min(42.0, 8.0 + (base_budget / 2000.0)))
-    confidence = 0.72 if request.scenario == "baseline" else 0.66
+    profile = _simulation_profile(request.scenario)
+    projected_leads = int(
+        base_budget * max(1.0, mix_weight + 0.5) * month_window / 900 * float(profile["lead_multiplier"])
+    )
+    projected_bookings = max(1, int(projected_leads * float(profile["booking_rate"])))
+    projected_margin_pct = max(
+        0.0,
+        min(42.0, 8.0 + (base_budget / 2000.0) + float(profile["margin_adjust"])),
+    )
+    confidence = float(profile["confidence"])
+    notes = _build_simulation_notes(plan, request.scenario)
+    notes.append(str(profile["note"]))
 
     return {
         "plan_id": plan_id,
@@ -404,7 +439,7 @@ def simulate_seasonal_campaign(
         "projected_bookings": projected_bookings,
         "projected_margin_pct": round(projected_margin_pct, 2),
         "confidence": round(confidence, 3),
-        "notes": _build_simulation_notes(plan, request.scenario),
+        "notes": notes,
     }
 
 

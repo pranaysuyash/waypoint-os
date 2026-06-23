@@ -211,7 +211,8 @@ export function getPlanningHeaderTitle(trip?: Trip | null): string {
   if (getPlanningBriefStatus(trip) === "missing_required_details") return "Trip details incomplete";
   const cleanDestination = isMissingDisplayValue(trip.destination) ? null : trip.destination;
   const simplifiedType = trip.type?.replace(/\bleisure\b/gi, "").replace(/\s+/g, " ").trim();
-  return formatLeadTitle(cleanDestination, simplifiedType || trip.type);
+  const cleanPurpose = trip.tripPurpose?.trim();
+  return formatLeadTitle(cleanDestination, cleanPurpose || simplifiedType || trip.type);
 }
 
 export function getPlanningIdentityLine(trip?: Trip | null): string {
@@ -267,6 +268,9 @@ export function getPlanningSuggestedNextMove(isLeadReview: boolean, trip?: Trip 
 
   const recommendedFields = getRecommendedPlanningFields(trip);
   if (recommendedFields.length > 0) {
+    if (trip?.decision?.decision_state === "PROCEED_INTERNAL_DRAFT") {
+      return "Prepare the traveler-ready draft before sending.";
+    }
     return "Add recommended details or continue to options.";
   }
 
@@ -280,7 +284,7 @@ export function getPlanningSuggestedNextMove(isLeadReview: boolean, trip?: Trip 
     case "PROCEED_TRAVELER_SAFE":
       return "Send quote to traveler.";
     case "PROCEED_INTERNAL_DRAFT":
-      return "Finalize internal draft before sending.";
+      return "Prepare the traveler-ready draft before sending.";
     case "BRANCH_OPTIONS":
       return "Prepare multiple options for traveler.";
     case "STOP_NEEDS_REVIEW":

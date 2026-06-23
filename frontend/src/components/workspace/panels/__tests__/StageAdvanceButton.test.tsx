@@ -214,6 +214,57 @@ describe("DecisionPanel stage advance button", () => {
     expect(screen.queryByTestId("stage-advance-btn")).not.toBeInTheDocument();
   });
 
+  it("hides the advance button when fields are still missing for the next stage", () => {
+    const trip: Trip = {
+      id: "TRIP-ADV-6",
+      destination: "Singapore",
+      type: "Family",
+      state: "green",
+      age: "1h",
+      stage: "discovery",
+      decision: baseDecision as any,
+      validation: {
+        is_valid: true,
+        errors: [],
+        warnings: [],
+        readiness: {
+          ...readinessWithAdvance,
+          missing_for_next: ["destination", "budget"],
+        },
+      } as any,
+    } as any;
+
+    render(<DecisionPanel trip={trip} />);
+
+    expect(screen.queryByTestId("stage-advance-btn")).not.toBeInTheDocument();
+    expect(screen.getByText(/Complete the missing fields to enable automatic advancement/i)).toBeInTheDocument();
+  });
+
+  it("downgrades the readiness label when quote-ready still needs shortlist details", () => {
+    const trip: Trip = {
+      id: "TRIP-ADV-7",
+      destination: "Singapore",
+      type: "Family",
+      state: "green",
+      age: "1h",
+      stage: "discovery",
+      decision: baseDecision as any,
+      validation: {
+        is_valid: true,
+        errors: [],
+        warnings: [],
+        readiness: {
+          ...readinessWithAdvance,
+          missing_for_next: ["destination"],
+        },
+      } as any,
+    } as any;
+
+    render(<DecisionPanel trip={trip} />);
+
+    expect(screen.getByText(/Quote Ready - needs shortlist details/i)).toBeInTheDocument();
+  });
+
   it("never auto-advances - button requires explicit click", async () => {
     const { transitionTripStage } = await import("@/lib/api-client");
 

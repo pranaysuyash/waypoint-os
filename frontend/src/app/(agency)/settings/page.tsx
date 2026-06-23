@@ -42,6 +42,8 @@ import { AlertDestinationsTab } from './components/AlertDestinationsTab';
 import { AiAgentTab } from './components/AiAgentTab';
 import { SupportSettingsTab } from './components/SupportSettingsTab';
 import { CommSettingsTab } from './components/CommSettingsTab';
+import { useAuthStore } from '@/stores/auth';
+import { ProtectedSurfaceNotice } from '@/components/auth/ProtectedSurfaceNotice';
 
 const TABS = [
   { id: 'profile', label: 'Profile', icon: Building2 },
@@ -65,6 +67,27 @@ function isValidTab(tab: string | null): tab is TabId {
 
 function cloneSettings(settings: AgencySettings): AgencySettings {
   return JSON.parse(JSON.stringify(settings)) as AgencySettings;
+}
+
+function SettingsPageGate() {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const authIsLoading = useAuthStore((state) => state.isLoading);
+  const authIsAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const searchQuery = searchParams.toString();
+  const redirectTarget = useMemo(() => `${pathname}${searchQuery ? `?${searchQuery}` : ''}`, [pathname, searchQuery]);
+
+  if (!authIsLoading && !authIsAuthenticated) {
+    return (
+      <ProtectedSurfaceNotice
+        surfaceName='Agency Settings'
+        redirectTarget={redirectTarget}
+        description='Your session is not active in this browser yet. Sign in to load the agency settings, automation rules, and operational preferences.'
+      />
+    );
+  }
+
+  return <SettingsPageInner />;
 }
 
 function SettingsPageInner() {
@@ -378,7 +401,7 @@ function SettingsPageInner() {
 export default function SettingsPage() {
   return (
     <Suspense fallback={<div className="p-6 text-[#8b949e] animate-pulse">Loading settings…</div>}>
-      <SettingsPageInner />
+      <SettingsPageGate />
     </Suspense>
   );
 }

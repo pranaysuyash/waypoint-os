@@ -2,16 +2,17 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import OpsPanel from '@/app/(agency)/workbench/OpsPanel';
+import OpsPanel from '../workbench/OpsPanel';
 import { useTrip, useTrips } from '@/hooks/useTrips';
 import { BackToOverviewLink } from '@/components/navigation/BackToOverviewLink';
+import { formatTripPickerLabel } from '@/lib/trip-picker-label';
 
 export default function DocumentsPage() {
   const { data: trips, isLoading } = useTrips({ view: 'workspace', limit: 100 });
   const [selectedTripId, setSelectedTripId] = useState<string>('');
 
   const tripOptions = useMemo(
-    () => trips.map((trip) => ({ id: trip.id, label: `${trip.destination} (${trip.type})` })),
+    () => trips.map((trip) => ({ id: trip.id, label: formatTripPickerLabel(trip) })),
     [trips],
   );
   const selectedTripExists = trips.some((trip) => trip.id === selectedTripId);

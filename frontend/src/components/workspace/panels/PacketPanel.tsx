@@ -79,10 +79,19 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
     Destination: _getFactValue(facts, "destination_candidates") || "-",
     Origin: _getFactValue(facts, "origin_city") || "-",
     Dates: _getFactValue(facts, "date_window") || _getFactValue(facts, "date_start") || "-",
+    Purpose: _getFactValue(facts, "trip_purpose") || _getFactValue(derivedSignals, "trip_purpose") || trip?.tripPurpose || "-",
     Budget: _getFactValue(facts, "budget_raw_text") || "-",
     Party: _getFactValue(facts, "party_size") || "-",
   };
-  const summaryCards = Object.entries(summaryData).map(([label, value]) => ({ label, value: _formatValue(value) }));
+  const groupLogistics = [
+    _formatRoomingSummary(_getFactValue(facts, "rooming_list_count"), _getFactValue(facts, "rooming_requirements")),
+    _getFactValue(facts, "procurement_share_needed") ? "Shareable with procurement" : null,
+  ].filter(Boolean);
+
+  const summaryCards = [
+    ...Object.entries(summaryData).map(([label, value]) => ({ label, value: _formatValue(value) })),
+    ...(groupLogistics.length > 0 ? [{ label: "Group Logistics", value: groupLogistics.join(" · ") }] : []),
+  ];
 
   return (
     <div className="space-y-8">
@@ -95,7 +104,7 @@ export function PacketPanel({ tripId, trip }: PacketPanelProps) {
         />
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
         {summaryCards.map((card) => {
           return (
             <div key={card.label} className="bg-elevated p-3 rounded-xl border border-[var(--border-default)]">
@@ -634,4 +643,14 @@ function _formatValue(value: unknown): string {
 function _formatConfidence(confidence: number | undefined): string {
   if (confidence === undefined || confidence === null) return "-";
   return `${Math.round(confidence * 100)}%`;
+}
+
+function _formatRoomingSummary(count: unknown, requirement: unknown): string | null {
+  if (typeof count === "number" && count > 0) {
+    return `${count} rooming list${count === 1 ? "" : "s"}`;
+  }
+  if (typeof requirement === "string" && requirement.trim()) {
+    return requirement.trim();
+  }
+  return null;
 }

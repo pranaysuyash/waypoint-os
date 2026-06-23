@@ -20,7 +20,9 @@ export function StrategyPanel({ tripId }: StrategyPanelProps) {
     return (
       <div className="p-6 text-center">
         <h2 className="text-ui-xl font-semibold text-text-primary">Ready to build trip options</h2>
-        <p className="text-ui-sm text-text-muted mt-2">Trip details are still loading. Once the planner state is available, we’ll show a concrete options brief instead of a dead stub.</p>
+        <p className="text-ui-sm text-text-muted mt-2">
+          Trip details are still loading. Once the planner state is available, we’ll show a concrete options brief.
+        </p>
         <div className="mt-6 flex flex-wrap gap-3 justify-center">
           <span className="inline-flex items-center rounded-lg border border-[var(--border-default)] px-3 py-2 text-ui-sm font-medium text-text-muted opacity-50 cursor-not-allowed">
             Waiting for trip context

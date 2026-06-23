@@ -93,7 +93,11 @@ _COUNTRY_DESTINATIONS: Set[str] = {
     # Indian territories/regions commonly used as destinations
     "Andaman",
     # Africa
-    "South Africa", "Egypt", "Morocco", "Kenya", "Tanzania",
+    "South Africa", "Egypt", "Morocco", "Kenya", "Tanzania", "Mauritius", "Seychelles",
+    "Namibia", "Botswana", "Rwanda", "Uganda", "Zimbabwe", "Tunisia", "Iceland",
+    "Georgia", "Azerbaijan", "Uzbekistan", "Kazakhstan", "Bahrain", "Saudi Arabia",
+    "Nigeria", "Ethiopia", "Ghana", "Senegal", "Croatia", "Serbia", "Slovenia",
+    "Slovakia", "Czech Republic", "Hungary", "Moldova",
     # Oceania
     "Australia", "New Zealand", "Fiji", "Maldives",
     # Long multi-word

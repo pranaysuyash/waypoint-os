@@ -279,7 +279,7 @@ def _check_pattern_override(
             "action": best_match.get("action", "suppress"),
         }
 
-    except Exception as e:
+    except (OSError, KeyError, TypeError, AttributeError) as e:
         logger.warning("Pattern override check failed for %s: %s", flag_name, e)
         return None
 
@@ -316,7 +316,7 @@ def _record_cache_feedback(
         )
         return True
 
-    except Exception as e:
+    except (OSError, KeyError, AttributeError) as e:
         logger.warning("Cache feedback recording failed: %s", e)
         return False
 
@@ -559,7 +559,7 @@ def _extract_trip_context_signature(
 
         return context if context else None
 
-    except Exception as exc:
+    except (OSError, KeyError, TypeError, AttributeError) as exc:
         logger.debug(
             "Context extraction failed for trip %s / %s: %s",
             trip_id, decision_type, exc,
@@ -632,7 +632,7 @@ def _enrich_pattern_with_context(
         )
         return True
 
-    except Exception as exc:
+    except (OSError, KeyError, AttributeError) as exc:
         logger.warning("Pattern enrichment failed: %s", exc)
         return False
 
@@ -724,7 +724,7 @@ def _check_and_graduate(
                                 override_count += 1
                                 act = rec.get("action", "suppress")
                                 action_counts[act] = action_counts.get(act, 0) + 1
-                except Exception:
+                except (OSError, ValueError, KeyError):
                     continue
         if action_counts:
             dominant_action = max(action_counts, key=action_counts.get)  # type: ignore[arg-type]
@@ -757,6 +757,6 @@ def _check_and_graduate(
         )
         return graduated
 
-    except Exception as exc:
+    except (OSError, KeyError, TypeError, AttributeError) as exc:
         logger.warning("Graduation check failed: %s", exc)
         return None

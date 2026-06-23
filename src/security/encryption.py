@@ -4,7 +4,7 @@ Encryption utilities for Waypoint OS.
 
 import os
 from functools import lru_cache
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 import logging
 
 logger = logging.getLogger(__name__)
@@ -48,6 +48,6 @@ def decrypt(token: str) -> str:
         return token
     try:
         return _get_fernet().decrypt(token.encode()).decode()
-    except Exception as e:
-        logger.warning(f"Decryption failed: {e}")
+    except InvalidToken as e:
+        logger.warning("Decryption failed: %s", e)
         return token  # Fallback to original if decryption fails (might be plaintext from old data)

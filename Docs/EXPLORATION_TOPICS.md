@@ -367,6 +367,75 @@ The same fresh session also confirmed the trip workspace follow-through works cl
 
 **Current live evidence (2026-06-22 later pass)**: A fresh owner-led workbench simulation for `Couple from Mumbai for 6N Bali in July, beach villa preference, INR 3-4L budget, vegetarian meals, anniversary trip` persisted the draft cleanly, but the primary `Process Inquiry` action did not surface a visible in-flight state or a matching `draft_process_started` event during the browser test window. The same long session eventually fell back to the sign-in modal, which means auth/session stability should be part of the validation checklist whenever we test longer end-to-end agency flows.
 
+**Current live evidence (2026-06-22 clean browser recheck)**: A fresh `:3102` frontend session authenticated with `newuser@test.com` / `testpass123`, then processed `Family of 6 from Lagos for 8N Zanzibar in August, beachfront resort, NGN 2.5m budget, halal meals, kids activities, anniversary + family celebration.` into `draft_6bb50ae710ab` and landed on `Frontier OS` with `Processed successfully`. This confirms the intake-to-frontier handoff in a clean browser/server combination and shows the app can carry the global-market request through to the post-run operator surface.
+
+**Current live evidence (2026-06-22 quote review follow-up)**: A fresh `:3102` browser session also found that the `Quote Review` page could show `Pending Quotes 22` while rendering no detailed review cards. That mismatch is now explained in the UI so larger-team operators can tell summary backlog from detailed approvals without reading a contradiction.
+
+**Current live evidence (2026-06-22 seasonal-campaign pass)**: A fresh authenticated `:3102` browser session created a `Monsoon Push` campaign, then successfully ran `Simulate`, `Preflight`, and `Dry run` dispatch. This confirms the seasonal planning module is live and not a stub: it produces projected leads/bookings/margin, a named preflight check set, and a dispatch summary for owner-led planning.
+
+**Current live evidence (2026-06-23 seasonal-scenario pass)**: A fresh browser replay on `/seasons` created `Monsoon Kerala Small Agency` and `Global Holiday Portfolio`, then reran simulation in baseline/aggressive/conservative modes. After the backend fix, the planner now produces materially different outputs per scenario: the small-agency plan moved from `Leads: 100 / Margin: 15.5% / Confidence: 0.72` in baseline to `Leads: 118 / Margin: 13.7% / Confidence: 0.66` in aggressive and `Leads: 84 / Margin: 16.7% / Confidence: 0.79` in conservative. That closes the gap where the scenario selector only changed a label instead of a planning outcome.
+
+**Current live evidence (2026-06-23 seasonal dispatch follow-through)**: A fresh browser replay on the same `Monsoon Kerala Small Agency` card selected `conservative`, ran `Dry run`, and the result card now preserved `Scenario: conservative` alongside `Status: Ready`, `Dry run: Yes`, and the dispatch timestamp. That confirms the planner keeps its assumption visible all the way from what-if simulation into the action step instead of dropping context at the last moment.
+
+**Current live evidence (2026-06-23 quote-ready escalation mismatch)**: A fresh browser replay on `/trips/trip_631a3149d1a8/strategy` initially rendered `Escalate to senior review due to critical contradictions.` for a trip whose intake surface already said `Ready to build options` and whose trip payload showed `highest_ready_tier: quote_ready`. The strategy preview now falls back to a derived options brief in that case, so the operator sees `Prepare a clear options plan for Zanzibar while keeping kid-friendly, beach access, relaxed pace and $5,000 - $6,000 aligned.` instead of an over-conservative escalation script. That closes a trust gap between intake readiness and the options page opening line.
+
+**Current live evidence (2026-06-23 safety bundle fallback)**: The workbench safety tab now keeps a useful customer-message QA preview visible even when the persisted safety bundle is absent. Before the fallback, the tab only said the safety bundle was unavailable; after the change, the operator still sees the decision state plus the traveler message preview, which makes the review step feel like a continuation of the workflow instead of a dead end.
+
+**Current live evidence (2026-06-23 browser-backed handoff)**: A live Chrome replay on `:3101` processed `Family of 3 from Nairobi planning 4N Zanzibar in January. 2 adults and 1 child, beachfront hotel, airport transfers, budget USD 4500-5500.` and opened the resulting trip workspace at `/trips/trip_107b6580a60a/intake`. The trip view showed `Zanzibar family leisure trip`, `Ready to build options`, `Origin Nairobi`, `Destination Zanzibar`, `Type leisure`, `Purpose family leisure`, `Party Size 3 pax`, `Dates in Jan`, `Budget $4,500 - $5,500`, and `Must-haves beach access, kid-friendly`. That confirms the purpose cue now survives into the trip workspace and the remaining opportunity is richer narrative context, not a missing core field.
+
+**Current live evidence (2026-06-23 inbox contract recheck)**: A fresh browser replay on `:3103` logged in successfully, opened overview/workbench/inbox, and searched the inbox for `9E7D`. The live queue returned `trip_9e7d8d596519` with `tripPurpose: family leisure`, `destination: Zanzibar`, and the visible card title `Zanzibar family leisure trip`. That proves the purpose field now survives into the inbox contract and that the main app keeps the same trip cue visible across intake, queue, and planning surfaces.
+
+**Current live evidence (2026-06-23 process-path recheck)**: The workbench primary action still submits a real run when the form is submitted directly. A live Nairobi/Zanzibar replay advanced the app to `Risk Review`, showed `Processed successfully`, and surfaced the follow-up `Please provide trip purpose to generate a quote.` This is the correct operator-facing response for a sparse request: the system does not overstate readiness and instead asks for the missing planning intent.
+
+**Current live evidence (2026-06-23 procurement-heavy corporate quote)**: A fresh authenticated workbench replay on `:3101` processed `Large Nairobi agency managing a corporate group of 18 travelers from Nairobi to Singapore in October 2026. Budget is USD 42,000. Need 6 nights, mid-to-upscale hotel blocks, airport transfers, two separate rooming lists, and a fast quote that can be shared with procurement.` The run produced `POST /api/drafts` and `POST /api/spine/run`, advanced into `Processing`, and surfaced `PROCEED_INTERNAL_DRAFT` with a `soft_preferences` blocker plus a concrete follow-up question. That proves the main app handles procurement-heavy group quotes as a real operator flow rather than a stub.
+
+**Current live evidence (2026-06-23 itinerary mismatch replay)**: A fresh authenticated workbench replay on `:3101` processed `Family of 3 from Bangalore to Bali. Travel dates: July 10-16, 2026. Flight lands at 22:30 on 10 July, but the hotel check-in is afternoon on 10 July.` The run advanced to `Risk Review` with `WAITING ON CUSTOMER` and a concrete follow-up: `Your flight arrives after hotel check-in. Should we move hotel check-in or choose an earlier flight?` The saved trip packet kept the structured `flight_hotel_mismatch` contradiction, which confirms the operator-facing safety question now survives the real browser path for the phrasing people actually use.
+The trip intake page for the saved trip now also shows a red `Critical Issue` card with `Flight / Hotel Mismatch` and the same move-hotel-or-choose-earlier-flight guidance, so the signal is visible both in the safety run and in the trip workspace.
+
+**Current live evidence (2026-06-23 corporate procurement replay)**: A fresh authenticated workbench replay on `:3101` processed `Large Nairobi agency managing a corporate group of 18 travelers from Nairobi to Singapore in October 2026. Budget is USD 42,000. Need 6 nights, mid-to-upscale hotel blocks, airport transfers, and two separate rooming lists for procurement.` The resulting trip workspace now preserves the group shape with `Group logistics`, `2 rooming lists`, and `shareable with procurement`. That confirms the app no longer flattens procurement-heavy quotes into a generic business trip, and the rooming-list detail survives from the live intake all the way into the saved trip page.
+
+**Current live evidence (2026-06-23 quote-review backlog visibility)**: A fresh browser replay on `:3103/reviews` showed `Pending Quotes 47` while only 25 quote cards were loaded in the view. The page now states that explicitly with `Showing 25 loaded quotes while the summary reports 47 pending quotes. Refresh if you expect the queue to have grown since the last load.` That closes a trust gap where the queue could look complete even though only a loaded subset was visible.
+
+**Current live evidence (2026-06-23 Africa/Europe country replay)**: A fresh `:3101` browser replay processed `Small Accra agency handling a family holiday for 2 adults and 1 child from Accra to Ghana in April 2027. Budget USD 6,500. 5 nights. Beach resort, airport transfers, vegetarian meals.` The saved trip page now opens as `Ghana family leisure trip` with `Origin: Accra` and `Destination: Ghana`. A companion geography regression also keeps `Zagreb -> Croatia` working. This matters because the app now handles a small African agency request the same way it handles the better-covered Bali/Zanzibar-style requests: the trip becomes planning-ready instead of stopping on a missing-country fallback.
+
+**Current live evidence (2026-06-23 corporate procurement replay)**: A fresh `:3101` browser replay processed `Large Mumbai agency managing a corporate group of 18 travelers from Mumbai to Singapore in October 2026. Budget USD 42,000. Need 6 nights, mid-to-upscale hotel blocks, airport transfers, two separate rooming lists, and a fast quote that can be shared with procurement.` The saved trip page opened as `Singapore business trip` with `Origin: Mumbai`, `Destination: Singapore`, `Trip Purpose: business`, and `Group logistics: 2 rooming lists · Shareable with procurement`. This is the useful opposite of the Accra family case: a larger agency sees its procurement shape survive into the operator surface instead of getting flattened into a generic leisure trip.
+
+**Current live evidence (2026-06-23 hyphenated traveler-count replay)**: A fresh `:3100` browser replay exposed a parser miss on `18-traveler corporate offsite` phrasing. Before the fix, the Risk Review tab asked for party size even though the number was present. After updating the party extractor to accept hyphenated traveler counts, the same request now resolves `party_size = 18`, the trip page shows `18 pax`, and the corporate trip carries `NGN 15,000,000` plus `shareable with procurement` into the durable trip view.
+
+**Current live evidence (2026-06-23 documents picker pass)**: A fresh browser replay on `/documents` confirmed the page is a real canonical document shell, not a parallel workflow. The trip picker now stays readable for incomplete trips by falling back to a trip reference instead of `Unknown (...)`, which matters when an operator has to scan a large queue quickly.
+
+**Current live evidence (2026-06-23 suppliers route pass)**: A fresh browser replay on `/suppliers` found that the nav item had been a 404. The route now opens as a real shell with a trip selector, supplier-risk context, and a link back to the trip workspace, so the app no longer advertises a dead destination to an operator exploring the main app.
+
+**Current live evidence (2026-06-23 corporate type-label fix)**: The same Mumbai/Singapore replay initially surfaced a stale `Type: leisure` label on the trip intake shell even though the request was clearly corporate. The canonical trip-field resolver was updated so `tripType` now follows the stored business purpose, and a fresh browser reload now shows `Type: business` alongside `Purpose: business`. This matters because the operator-facing label should not contradict the real request shape when a larger agency is trying to move fast.
+
+**Current live evidence (2026-06-23 strategy-handoff fix)**: The same Mumbai/Singapore replay also showed that the strategy/options page had been serving the old generic internal-draft boilerplate. The backend strategy builder and the strategy tab now prefer business-aware phrasing when the trip context is clearly corporate, and the live page now opens with `Prepare a clear options plan for Singapore for the business trip while keeping budget usd 42,000 aligned.` plus `Here’s the options plan for Singapore with the business requirements in view.` The follow-up wording now says `priorities or must-haves` instead of leaking the raw field label, which keeps the first read on the options page more truthful and more useful for the operator.
+
+**Current live evidence (2026-06-23 budget-format cleanup)**: The same strategy replay now also formats the budget cleanly as `$42,000` rather than a raw lowercase string, which makes the options page read like a real planning artifact rather than a stitched-together debug view.
+
+**Current live evidence (2026-06-23 ops fallback improvement)**: A browser replay on `/trips/tc_roundtrip_a069120cb3c6/ops` still shows the ops gate for a discovery-stage trip, but the fallback link now says `Return to Options` rather than `Return to Intake` when the trip already has enough planning context. This keeps the operator in the planning flow instead of sending them backwards to start over.
+
+**Current live evidence (2026-06-23 processed-draft rehydration)**: A fresh browser replay on the same Lagos/Zanzibar draft showed that the workbench now restores the completed trip handoff after reload by reading the persisted `run_snapshots[].snapshot.trip_id` from the draft payload. Reopening `draft_4f291c1da41b` now shows `Promote Draft`, and promoting it lands on `/trips/trip_c5cc2e04e021/intake` with `Zanzibar family leisure trip`, `Ready to build options`, `5 pax`, `in Dec`, and `₦2,500,000`. That closes a trust gap where a successful run could previously vanish on refresh even though the draft had already recorded the created trip id.
+
+**Current live evidence (2026-06-23 output-preview fallback)**: A fresh authenticated browser replay on `/trips/trip_c5cc2e04e021/output` now shows a derived preview instead of a blank dead end when the persisted traveler bundle is missing. The page keeps the operator on the same trip, shows `Showing a derived preview from the current strategy and decision because the persisted output bundle has not been saved yet.`, and the customer-facing draft now reads `Here’s the options plan for Zanzibar.` instead of leaking the generic internal-draft boilerplate. That makes the output stage truthful, useful, and safe for a small-agency handoff.
+
+**Current live evidence (2026-06-23 quote-assessment clarity pass)**: A fresh authenticated browser replay on `/trips/trip_c5cc2e04e021/decision` now shows `Waiting on Customer`, `Quote Ready`, and `2 fields needed for shortlist`, but the stage-advance button is hidden until the missing shortlist fields are complete. The page now explains that the missing fields must be completed first instead of suggesting an advance that would have been confusing or premature. That keeps the quote-review flow honest for a real operator.
+
+**Current live evidence (2026-06-23 planning-helper wording pass)**: The planning helper that drives the intake/trip shell next-step copy now says `Prepare the traveler-ready draft before sending.` for internal-draft states, so the operator sees traveler-facing language instead of internal boilerplate when a trip is past intake but not yet ready to send.
+
+**Current live evidence (2026-06-23 insights recovery pass)**: The `/insights` route briefly regressed to 500 because Turbopack cache state had gone bad after a stale parse error, and the browser replay confirmed the route recovered after the dev server was restarted with a clean cache. The live page now responds 200 again, the browser title is `Waypoint OS — Insights`, and the funnel copy no longer shows impossible conversion rates when adjacent stage counts are not comparable. The remaining UI note is a Recharts width warning during initial load, which is visible in the dev console but does not stop the route from rendering.
+
+**Current live evidence (2026-06-23 shell honesty pass)**: The agency shell navigation now keeps genuinely planned sections inert instead of rendering them as fake clickable actions that only trigger a toast. That matters because the shell should not overpromise navigation affordances for routes that do not exist yet, even if the label is still useful as a roadmap signal.
+
+**Current live evidence (2026-06-23 auth-boundary pass)**: A clean browser session on `/workbench` and `/settings` still shows the loading shell until sign-in happens, and the browser console records a 401 from `/api/auth/me`. The same backend login credentials (`newuser@test.com` / `testpass123`) do work, and once authenticated the protected settings endpoint returns the full agency payload. That means the route contracts are healthy, but live browser validation needs an authenticated session before protected surfaces can be judged fairly.
+**Current live evidence (2026-06-23 auth-boundary follow-up)**: The protected workbench and settings pages now surface an explicit sign-in notice instead of leaving the browser on a frozen-looking loader when the session is missing. The authenticated path is unchanged; this only makes the unauthenticated state more truthful and easier to recover from.
+**Current live evidence (2026-06-23 queue-density pass)**: A fresh signed-in browser session reached `/trips` and loaded the real workspace queue with `100 in planning` and `96 needs details`. The card view collapsed the queue into `12 grouped cards`, which keeps the large-list triage surface readable, but also raises a product question about how much of the queue should be summarized versus fully enumerated for larger agencies.
+
+**Current live evidence (2026-06-23 audit contract fix)**: The audit log page now reads the backend's `entries` payload instead of `items`, which means the owner/admin audit surface can actually display returned rows rather than a false empty state. This came directly from comparing the live frontend fetch with the `/api/audit` route contract.
+
+**Current live evidence (2026-06-23 global quote-review currency fix)**: The quote review cards now format each row using the quote's own currency code instead of hardcoding a dollar sign. This closes a real multi-market truth gap for Indian, African, and global agencies because review values now match the currency already carried in the review payload.
+**Current live evidence (2026-06-23 route-shell density pass)**: The Documents and Suppliers route shells are truthful and not dead links, but a fresh authenticated browser replay showed that their trip pickers become noisy on a large queue because many rows repeat the same short surface label. This is not a correctness break, but it is a real operator-readability issue for larger agencies and should be treated as a follow-on UX improvement rather than a placeholder success.
+**Current live evidence (2026-06-23 route-shell density follow-up)**: The Documents and Suppliers pickers now use a tail-segment reference in each option label, so the large queue rows are distinguishable as `1294`, `C2DD`, `A22A`, and so on instead of collapsing into the same `TC_R`-style label. The route shells remain truthful, but now the picker is actually scannable in a large workspace.
+
 **Current build wording**: Decision-state labels now say `Waiting on Customer` instead of `Need More Info`.
 
 **Key Questions**:
@@ -385,7 +454,7 @@ The same fresh session also confirmed the trip workspace follow-through works cl
 
 **Deliverable**: Validation playbook, interview templates, pilot design
 
-**Detailed Research**: [research/REAL_WORLD_VALIDATION.md](research/REAL_WORLD_VALIDATION.md) *(create when started)*; [main simulation doc](travel_agency_main_app_simulation_2026-06-21.md)
+**Detailed Research**: [research/REAL_WORLD_VALIDATION.md](research/REAL_WORLD_VALIDATION.md) *(create when started)*; [main simulation doc](travel_agency_main_app_simulation_2026-06-21.md); [issue review](travel_agency_process_issue_review_2026-06-19.md)
 
 **Related Topics**: All persona scenarios (validation), Pricing (willingness to pay)
 
@@ -897,3 +966,157 @@ These are **blocking** for moving from notebooks to real implementation.
 - The shared date-window formatter now normalizes that sentinel into `Travel Dates to confirm`, which makes the queue feel like an operational surface instead of a temporary scaffold.
 - Quote cards with synthetic `TRIP-UNKNOWN` references now hide that fake id, so the queue no longer treats placeholder metadata like a real trip reference.
 - This is worth keeping in the exploration map because it came from the busiest live surface in the app, where placeholder language has the highest trust cost.
+
+## Live Validation Note: Auth Transport + Origin Recovery
+
+- The fresh `:3103` browser replay confirmed two main-app issues from the same operator flow:
+  - login transport was double-encoding JSON and failing the auth contract
+  - natural-language origin phrasing like `from Nairobi planning...` was not being recovered into the canonical packet
+- The login path now works again because the shared API client serializes JSON only once before it reaches the BFF route.
+- The origin parser now recognizes the conversational phrasing from the browser replay, so the flow no longer gets stuck on `incomplete_intake` for that sentence shape.
+- The remaining blocker in the tested live scenario is budget feasibility, which is the more honest next question for an owner/operator to answer.
+- This belongs in the exploration map because it came from a real browser replay of the main app, not from a synthetic fixture.
+
+## Live Validation Note: Party Size and Budget Range Preservation
+
+- The larger-agency replay of `Family of 4 from Nairobi planning 7 nights in Bali in August. Budget USD 7000-9000...` initially exposed two trust losses:
+  - party size collapsed to `1 pax`
+  - budget range collapsed to a single visible number
+- The extractor now respects the explicit family count over generic child keywords, so the trip shell shows `4 pax`.
+- The budget contract now preserves both bounds and the shared budget display renders `$7,000 - $9,000`.
+- This belongs in the exploration map because it was caught by a live operator replay on the main app, and it materially improves the honesty of the summary screen for larger-agency workflows.
+
+## Live Validation Note: Global-Market Purpose Capture
+
+- A Lagos/Zanzibar replay showed that the intake flow still needs a clearer purpose cue for global-market operators.
+- Without an explicit trip purpose, the run correctly fell back to `WAITING ON CUSTOMER` and `incomplete_intake`.
+- With `Trip purpose: family vacation` added to the agent note, the same request advanced to `PROCEED_INTERNAL_DRAFT` with `soft_preferences`.
+- This belongs in the exploration map because it is a real operator friction point: the app knows how to proceed once the purpose exists, but the surface does not yet make that requirement obvious enough.
+
+## Live Validation Note: Canonical Purpose Prompt Surfaced in Intake
+
+- The workbench intake screen now renders the canonical `trip_purpose` prompt from `frontend/src/lib/traveler-prompts.ts`.
+- That keeps the visible helper copy aligned with the extraction vocabulary and makes the missing-detail cue clear before the operator presses `Process Inquiry`.
+- This belongs in the exploration map because it closes the loop between the live simulation finding and the operator-facing remedy.
+
+## Live Validation Note: Purpose Visible in Packet Summary
+
+- The trip-details packet summary now includes `Purpose` alongside destination, origin, dates, budget, and party size.
+- That keeps the extracted trip intent visible after processing instead of burying it only in the inferred-details section.
+- This belongs in the exploration map because it strengthens the operator’s post-process summary with the same global-market signal that the intake surface now asks for up front.
+
+## Live Validation Note: Trip Details Stays Reachable After Completion
+
+- After the terminal run settles, selecting `Trip Details` now keeps the workbench on the packet view instead of snapping the operator back to the terminal review tab.
+- The live packet view shows the purpose card together with destination, dates, budget, and party size, which makes the post-run handoff much more useful for global-market operators.
+- This belongs in the exploration map because it removes an interaction trap discovered by browser replay, not by static code inspection.
+
+## Live Validation Note: Global-Market Pattern Generalizes
+
+- A second browser replay with a Nairobi/Zanzibar family request showed the same purpose-card and trip-summary behavior.
+- The packet view preserved the budget range, party count, and purpose details, which suggests the fix is not just a Lagos-specific happy path.
+- This belongs in the exploration map because it gives us a second market/persona confirmation for the same user-facing pattern.
+
+## Live Validation Note: Compact India-First Honeymoon Replay
+
+- A shorter Mumbai/Goa honeymoon replay also preserved purpose, budget, origin, destination, and party size in the packet view.
+- INR formatting stayed human-readable and the summary remained concise, which is important for owner-led agencies that do not want a verbose template.
+- This belongs in the exploration map because it confirms the same behavior on a compact India-first request, not only on the longer family-market scenarios.
+
+## Live Validation Note: Source-City Descriptors Must Not Become Destination Candidates
+
+- A live browser replay of `Small Mumbai agency handling a family holiday for 4 adults and 2 kids from Mumbai to Bali in August 2026...` initially produced `destination_candidates = ["Mumbai", "Bali"]`.
+- That caused the workbench to ask the operator to choose between Mumbai and Bali, even though Mumbai was the origin and Bali was the destination.
+- The destination extractor now drops source-city descriptors like `Mumbai agency` and origin phrasing like `from Mumbai to Bali`, so the same sentence now resolves to `destination_candidates = ["Bali"]`.
+- This belongs in the exploration map because it came from a real browser replay of the main app and it directly changed the quality of the intake handoff.
+
+## Live Validation Note: Date Flexibility Should Stay Separate From Budget Flexibility
+
+- A later Cape Town/Dubai replay still surfaced a bogus `budget_flexibility` ambiguity because the request said `They are flexible on exact dates within the month.`
+- That wording is about timing, not budget stretch, so it created unnecessary commercial noise in an otherwise clean family quote.
+- The budget-flex trigger is now limited to actual budget-flex phrases, and the same replay comes back with an empty ambiguity report.
+- This belongs in the exploration map because it shows the parser needs typed flexibility signals, not a generic `flexible` keyword bucket.
+
+## Live Validation Note: Fully Explicit Intake Advances to Frontier OS
+
+- After the origin/destination fix, the same browser replay with an explicit `from Mumbai to Bali` request advanced beyond `WAITING ON CUSTOMER`.
+- The workbench switched to `tab=frontier` and showed the Frontier OS panel instead of staying blocked on a false destination ambiguity.
+- This matters because it proves the main app can move a complete intake forward once the parser is not tripping over source-city noise.
+- The live run now shows one `View Trip` action and one `View Frontier` action in the processed state, which is a cleaner operator handoff.
+
+## Live Validation Note: USD Budgets Are No Longer Treated As INR
+
+- A large-agency Singapore replay with `Budget is USD 42,000` initially hit a false `budget_feasibility` block because the numeric amount was compared against an INR heuristic table.
+- The extractor already had the currency fact, so the issue was not missing data but a currency-blind decision rule.
+- The feasibility check now skips the INR table for non-INR budgets, and the same replay advances to `tab=frontier` instead of inventing a budget problem.
+- This belongs in the exploration map because it is a high-trust global-market failure mode: currency-aware decisions matter as much as destination logic.
+
+## Live Validation Note: Group Logistics Stay Visible for Large Agencies
+
+- The large-agency Singapore replay now surfaces `Group Logistics` in the Trip Details tab.
+- The summary reads `2 rooming lists · Shareable with procurement`, which keeps the operational logistics visible at a glance.
+- The extracted information table also preserves the rooming and procurement facts for deeper review.
+- This belongs in the exploration map because large agencies need rooming/procurement context as much as destination and budget.
+
+## Live Validation Note: Generated Draft IDs Should Not Trip Phone Detection
+
+- A dogfood-mode replay initially failed because the privacy guard mistook the generated draft id for a phone number.
+- The guard now exempts obvious generated ids such as `draft_...`, so the same replay completes normally.
+- This belongs in the exploration map because a false privacy block is a real operator failure, even if the underlying data was safe.
+
+## Live Validation Note: Corporate Group Purpose Is Business, Not Cultural
+
+- A large Nairobi-to-Singapore corporate replay originally surfaced `PURPOSE cultural` even though the lead was procurement-heavy and described a corporate group.
+- The intent classifier now recognizes corporate/procurement language as business purpose.
+- The live packet now shows `PURPOSE business`, which matches the operator framing better for a procurement-managed quote.
+- This belongs in the exploration map because purpose labels drive tone and planning lens, especially on large agency requests.
+
+## Live Validation Note: Generic Amenity Words Must Not Become Destinations
+
+- A fresh Nairobi-to-Zanzibar family replay initially produced `destination_candidates = ["Zanzibar", "Beach"]`.
+- That caused the workbench to ask an unnecessary `Between Zanzibar and Beach` follow-up, even though `beach resort` was only a preference.
+- The destination extractor now excludes generic amenity nouns like `Beach`, `Hotel`, `Resort`, and `Villa` from destination candidates.
+- The same replay now advances to `PROCEED_INTERNAL_DRAFT` and the saved trip remains a Zanzibar family leisure trip.
+- This belongs in the exploration map because amenity nouns are a common global-market preference signal and should not be mistaken for trip targets.
+
+## Live Validation Note: KES Budgets Must Not Fall Back to INR
+
+- A fresh Nairobi family replay with `KES 480,000` initially rendered as `₹4.8L` in the saved trip summary.
+- The frontend budget helper now recognizes KES source text and renders the budget as `KSh480,000`.
+- The live trip page keeps the African-market currency intact, which matches the operator’s commercial context.
+- This belongs in the exploration map because currency is part of the trip truth and should survive from intake through display.
+
+## Live Validation Note: Mauritius Must Resolve as a Destination
+
+- A fresh Cape Town replay with `from Cape Town to Mauritius` initially fell back to `destination = Unknown`.
+- Mauritius is now included in the canonical destination synonym set, so the same replay resolves to a real Mauritius trip.
+- The live trip page now shows `Mauritius family leisure trip` with origin `Cape Town`.
+- This belongs in the exploration map because clearly stated country destinations should not require extra clarification.
+
+## Live Validation Note: Seychelles Must Resolve as a Destination
+
+- A fresh Nairobi replay with `from Nairobi to Seychelles` initially produced no destination candidates.
+- Seychelles is now included in the canonical destination synonym set, so the same replay resolves to a real Seychelles trip.
+- The live trip page now shows `Seychelles family leisure trip` with origin `Nairobi`.
+- This belongs in the exploration map because Seychelles is a common market destination and should behave like one in the canonical flow.
+
+## Live Validation Note: Namibia Must Resolve as a Destination
+
+- A fresh Johannesburg replay with `from Johannesburg to Namibia` initially produced no destination candidates.
+- Namibia is now included in the canonical destination synonym set, so the same replay resolves to a real Namibia trip.
+- The live trip page now shows `Namibia family leisure trip` with origin `Johannesburg`.
+- This belongs in the exploration map because Namibia is a common regional travel target and should behave like one in the canonical flow.
+
+## Live Validation Note: Iceland Must Resolve as a Destination
+
+- A fresh Reykjavik replay with `from Reykjavik to Iceland` initially produced no destination candidates.
+- Iceland is now included in the canonical destination synonym set, so the same replay resolves to a real Iceland trip.
+- The live trip page now shows `Iceland family leisure trip` with origin `Reykjavik`.
+- This belongs in the exploration map because Iceland is a common travel destination and should behave like one in the canonical flow.
+
+## Live Validation Note: Georgia Must Resolve as a Destination
+
+- A fresh Tbilisi replay with `from Tbilisi to Georgia` initially produced no destination candidates.
+- Georgia is now included in the canonical destination synonym set, so the same replay resolves to a real Georgia trip.
+- The live trip page now shows `Georgia family leisure trip` with origin `Tbilisi`.
+- This belongs in the exploration map because Georgia is a common travel destination and should behave like one in the canonical flow.

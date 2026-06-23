@@ -8,9 +8,45 @@ Cached decisions are persisted to disk and reused when the same inputs occur.
 from __future__ import annotations
 
 import json
+import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from functools import lru_cache
 from typing import Any, Dict, Optional
+
+logger = logging.getLogger(__name__)
+
+# Minimum success rate for a cached decision to be considered valid.
+# Used by CachedDecision.is_valid() and hybrid_engine._check_cache().
+# Overridable via DECISION_CACHE_MIN_SUCCESS_RATE env var.
+_DEFAULT_CACHE_MIN_SUCCESS_RATE = 0.7
+
+
+@lru_cache(maxsize=1)
+def _resolve_cache_min_success_rate() -> float:
+    """Resolve CACHE_MIN_SUCCESS_RATE from env var or default."""
+    raw = os.environ.get("DECISION_CACHE_MIN_SUCCESS_RATE")
+    if raw is not None:
+        try:
+            value = float(raw)
+            if 0.0 <= value <= 1.0:
+                return value
+            logger.warning(
+                "DECISION_CACHE_MIN_SUCCESS_RATE=%s out of range [0.0, 1.0], "
+                "using default %s",
+                raw, _DEFAULT_CACHE_MIN_SUCCESS_RATE,
+            )
+        except (ValueError, TypeError):
+            logger.warning(
+                "DECISION_CACHE_MIN_SUCCESS_RATE=%r not a valid float, "
+                "using default %s",
+                raw, _DEFAULT_CACHE_MIN_SUCCESS_RATE,
+            )
+    return _DEFAULT_CACHE_MIN_SUCCESS_RATE
+
+
+CACHE_MIN_SUCCESS_RATE = _resolve_cache_min_success_rate()
 
 
 @dataclass(slots=True)
@@ -107,13 +143,13 @@ class CachedDecision:
         else:
             self.success_rate = alpha * (1.0 if success else 0.0) + (1 - alpha) * self.success_rate
 
-    def is_valid(self, max_age_days: int = 30, min_success_rate: float = 0.7) -> bool:
+    def is_valid(self, max_age_days: int = 30, min_success_rate: float = CACHE_MIN_SUCCESS_RATE) -> bool:
         """
         Check if this cached decision is still valid to use.
 
         Args:
             max_age_days: Maximum age in days (default 30)
-            min_success_rate: Minimum success rate (default 0.7)
+            min_success_rate: Minimum success rate (default CACHE_MIN_SUCCESS_RATE)
 
         Returns:
             True if the cache entry should be used

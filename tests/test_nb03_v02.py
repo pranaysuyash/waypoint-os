@@ -393,6 +393,45 @@ class TestInternalDraftAssumptions:
             )
             assert has_soft_blocker_mention or has_low_confidence or decision.confidence.overall < 0.8
 
+    def test_corporate_internal_draft_uses_business_context(self):
+        """Corporate/internal drafts should surface business-travel framing in the stored strategy."""
+        pkt = make_minimal_packet()
+        pkt.facts["trip_purpose"] = Slot(
+            value="business",
+            confidence=1.0,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+            evidence_refs=[],
+        )
+        pkt.facts["party_size"] = Slot(
+            value=18,
+            confidence=1.0,
+            authority_level=AuthorityLevel.EXPLICIT_USER,
+            evidence_refs=[],
+        )
+        pkt.raw_note = (
+            "Large Mumbai agency managing a corporate group of 18 travelers from Mumbai to Singapore "
+            "in October 2026. Need two separate rooming lists and a fast quote that can be shared with procurement."
+        )
+
+        decision = DecisionResult(
+            packet_id=pkt.packet_id,
+            current_stage="discovery",
+            operating_mode="normal_intake",
+            decision_state="PROCEED_INTERNAL_DRAFT",
+            confidence=ConfidenceScorecard(
+                overall=0.55,
+                data_quality=0.55,
+                judgment_confidence=0.55,
+                commercial_confidence=0.55,
+            ),
+        )
+
+        strategy = build_session_strategy(decision, pkt)
+
+        assert "business-travel" in strategy.session_goal.lower()
+        assert "procurement" in " ".join(strategy.priority_sequence).lower()
+        assert any("procurement" in a.lower() for a in strategy.assumptions)
+
 
 # ===========================================================================
 # TEST 9: PROCEED_TRAVELER_SAFE → grounded in facts

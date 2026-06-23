@@ -383,12 +383,12 @@ describe('api-client public contract surface', () => {
     );
 
     fetchMock.mockResolvedValueOnce(jsonResponse({ plan_id: 'campaign-1', ok: false, dry_run: true, executed_at: '2026-06-17T00:00:00Z', dispatched_channels: ['email'] }));
-    await dispatchSeasonalCampaign('campaign-1', false);
+    await dispatchSeasonalCampaign('campaign-1', false, 'aggressive');
     expect(fetchMock).toHaveBeenLastCalledWith(
       '/api/settings/seasonal/campaigns/campaign-1/dispatch',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ dry_run: false }),
+        body: JSON.stringify({ dry_run: false, scenario: 'aggressive' }),
       }),
     );
   });

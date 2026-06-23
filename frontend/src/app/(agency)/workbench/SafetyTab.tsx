@@ -51,6 +51,7 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
   const strippedFields = safety?.leakage_errors || [];
   const isStrictFail = Boolean(safety?.strict_leakage && !safety?.leakage_passed);
   const decisionState = activeDecision?.decision_state ?? null;
+  const hasDerivedSafetyContext = !activeSafety && Boolean(activeDecision);
   const hardBlockers = (activeDecision as any)?.hard_blockers ?? [];
   const softBlockers = (activeDecision as any)?.soft_blockers ?? [];
   const followUpQuestions: FollowUpQuestion[] = (activeDecision as any)?.follow_up_questions ?? [];
@@ -112,11 +113,25 @@ export default function SafetyTab({ trip }: SafetyTabProps) {
 
       {!activeSafety && activeDecision && (
         <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Customer Message QA</h3>
           <div className={styles.card}>
             <p style={{ fontSize: "13px", color: "var(--color-text-muted)", margin: 0 }}>
-              Safety bundle is not available for this run, but the decision state above is still available for review.
+              Safety bundle is not available for this run, so this view falls back to the decision and output preview.
+            </p>
+            <p style={{ fontSize: "13px", color: "var(--color-text-muted)", margin: "8px 0 0 0" }}>
+              The decision state above is still available for review.
             </p>
           </div>
+          {travelerBundle && hasDerivedSafetyContext && (
+            <div className={styles.card} style={{ marginTop: "12px" }}>
+              <div style={{ fontSize: "12px", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Customer Message Preview
+              </div>
+              <p style={{ fontSize: "13px", margin: "6px 0 0 0", whiteSpace: "pre-wrap" }}>
+                {travelerBundle.user_message || "-"}
+              </p>
+            </div>
+          )}
         </div>
       )}
 

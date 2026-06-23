@@ -17,6 +17,7 @@ describe('currency utilities', () => {
   it('formats money values with locale-aware and compact display helpers', () => {
     expect(formatMoney(200000, 'INR')).toContain('2,00,000');
     expect(formatMoneyCompact(250000, 'INR')).toContain('2.5L');
+    expect(formatMoneyCompact(1200000, 'INR')).toContain('12L');
     expect(formatMoneyCompact(5400, 'USD')).toContain('5.4k');
 
     const money: Money = { amount: 1200, currency: 'USD' };
@@ -30,6 +31,7 @@ describe('currency utilities', () => {
     expect(parseBudgetString('Budget INR 2.5L')).toEqual({ amount: 250000, currency: 'INR' });
     expect(parseBudgetString('5000 USD')).toEqual({ amount: 5000, currency: 'USD' });
     expect(parseBudgetString('NGN 2.5m')).toEqual({ amount: 2500000, currency: 'NGN' });
+    expect(parseBudgetString('KSh480,000')).toEqual({ amount: 480000, currency: 'KES' });
     expect(parseBudgetString('ZAR 3m')).toEqual({ amount: 3000000, currency: 'ZAR' });
     expect(parseBudgetString('')).toBeNull();
   });
@@ -43,5 +45,6 @@ describe('currency utilities', () => {
     expect(getCurrencyOptions()).toHaveLength(Object.keys(CURRENCY_CONFIG).length);
     expect(getCurrencyOptions()).toContainEqual(expect.objectContaining({ value: 'INR', label: 'Indian Rupee' }));
     expect(getCurrencyOptions()).toContainEqual(expect.objectContaining({ value: 'NGN', label: 'Nigerian Naira' }));
+    expect(getCurrencyOptions()).toContainEqual(expect.objectContaining({ value: 'KES', label: 'Kenyan Shilling' }));
   });
 });

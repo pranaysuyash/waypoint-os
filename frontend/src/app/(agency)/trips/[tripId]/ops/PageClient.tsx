@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 import Link from 'next/link';
 import { useTripContext } from '@/contexts/TripContext';
 import OpsPanel from '@/app/(agency)/workbench/OpsPanel';
-import { canAccessOpsWorkspace } from '@/lib/planning-status';
+import { canAccessOpsWorkspace, getPlanningBriefStatus } from '@/lib/planning-status';
 import { getTripRoute } from '@/lib/routes';
 
 const MIGRATION_BANNER_KEY = 'waypoint:ops-migration-banner-dismissed:v1';
@@ -57,6 +57,10 @@ export default function OpsPageClient() {
   if (!tripId || !trip) return null;
 
   const canAccessOps = canAccessOpsWorkspace(trip);
+  const returnHref = getPlanningBriefStatus(trip) === 'missing_required_details'
+    ? getTripRoute(tripId, 'intake')
+    : getTripRoute(tripId, 'strategy');
+  const returnLabel = returnHref.endsWith('/strategy') ? 'Return to Options' : 'Return to Intake';
 
   if (!canAccessOps) {
     return (
@@ -67,10 +71,10 @@ export default function OpsPageClient() {
             Booking operations unlock when this trip reaches proposal or booking stage.
           </p>
           <Link
-            href={getTripRoute(tripId, 'intake')}
+            href={returnHref}
             className="inline-block text-sm text-[#58a6ff] hover:underline"
           >
-            Return to Intake
+            {returnLabel}
           </Link>
         </div>
       </div>

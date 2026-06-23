@@ -146,6 +146,7 @@ export interface InboxTrip {
   reference: string;
   destination: string;
   tripType: string;
+  tripPurpose?: string;
   partySize: number;
   dateWindow: string;
   value: number;

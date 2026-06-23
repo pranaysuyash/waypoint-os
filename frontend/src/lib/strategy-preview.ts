@@ -1,9 +1,26 @@
 import type { Trip } from "@/lib/api-client";
+import { formatBudgetDisplay } from "@/lib/lead-display";
 import { getPlanningBriefStatus, getRequiredPlanningFields, getRecommendedPlanningFields } from "@/lib/planning-status";
 import type { StrategyOutput } from "@/types/spine";
 
 function formatFieldList(fields: string[]): string {
   return fields.length > 0 ? fields.join(", ") : "the trip details";
+}
+
+function prettyPlanningFieldLabel(field: string): string {
+  const normalized = field.trim().toLowerCase();
+  if (normalized === "trip priorities / must-haves") return "priorities or must-haves";
+  if (normalized === "date flexibility") return "date flexibility";
+  if (normalized === "budget range") return "budget";
+  if (normalized === "travel window") return "travel window";
+  if (normalized === "origin city") return "origin";
+  if (normalized === "traveler count") return "group size";
+  return normalized;
+}
+
+function formatPrettyFieldList(fields: string[]): string {
+  const pretty = fields.map(prettyPlanningFieldLabel);
+  return formatFieldList(pretty);
 }
 
 function cleanTripText(value: unknown): string | null {
@@ -14,27 +31,62 @@ function cleanTripText(value: unknown): string | null {
   return trimmed;
 }
 
+function isGenericStoredStrategy(strategy: NonNullable<Trip["strategy"]> | null | undefined): boolean {
+  if (!strategy) return false;
+  return strategy.session_goal?.trim() === "Generate internal trip draft with documented assumptions for agent review.";
+}
+
+function isReadyToBuildOptions(trip: Trip): boolean {
+  const highestReadyTier = trip.validation?.readiness?.highest_ready_tier;
+  return highestReadyTier === "quote_ready" || highestReadyTier === "proposal_ready" || highestReadyTier === "booking_ready";
+}
+
+function isStaleEscalationStrategy(strategy: NonNullable<Trip["strategy"]> | null | undefined, trip: Trip): boolean {
+  if (!strategy) return false;
+  if (strategy.next_action !== "STOP_NEEDS_REVIEW") return false;
+  return isReadyToBuildOptions(trip);
+}
+
+function isStaleInternalDraftStrategy(strategy: NonNullable<Trip["strategy"]> | null | undefined, trip: Trip): boolean {
+  if (!strategy) return false;
+  if (strategy.next_action !== "PROCEED_INTERNAL_DRAFT") return false;
+  if (!isReadyToBuildOptions(trip)) return false;
+
+  const goal = strategy.session_goal?.toLowerCase() ?? "";
+  const opening = strategy.suggested_opening?.toLowerCase() ?? "";
+  return goal.includes("internal") || goal.includes("draft") || opening.includes("internal draft");
+}
+
 export function buildTripStrategyPreview(trip?: Trip | null): StrategyOutput | null {
   if (!trip) return null;
 
-  if (trip.strategy) {
+  if (
+    trip.strategy &&
+    !isGenericStoredStrategy(trip.strategy) &&
+    !isStaleEscalationStrategy(trip.strategy, trip) &&
+    !isStaleInternalDraftStrategy(trip.strategy, trip)
+  ) {
     return trip.strategy as StrategyOutput;
   }
 
   const briefStatus = getPlanningBriefStatus(trip);
   const requiredFields = getRequiredPlanningFields(trip);
   const recommendedFields = getRecommendedPlanningFields(trip);
-  const missingRequired = formatFieldList(requiredFields);
-  const missingRecommended = formatFieldList(recommendedFields);
   const destination = cleanTripText(trip.destination) || "this trip";
   const origin = cleanTripText(trip.origin);
-  const budget = cleanTripText(trip.budget) || "the stated budget";
+  const budget = formatBudgetDisplay(trip.budget) || "the stated budget";
   const priorities = cleanTripText(trip.tripPriorities) || "trip priorities";
+  const purpose = cleanTripText(trip.tripPurpose)?.toLowerCase() || null;
+  const isCorporate = Boolean(
+    purpose && /(business|corporate|conference|meeting|procurement|offsite|work)/.test(purpose)
+  );
+  const tripDescriptor = isCorporate ? "business trip" : "trip";
+  const openingSuffix = isCorporate ? "with the business requirements in view" : "";
 
   if (briefStatus === "missing_required_details") {
     return {
-      session_goal: `Confirm ${missingRequired} so the planner can build a real option set for ${destination}.`,
-      priority_sequence: requiredFields.map((field) => `Confirm ${field.toLowerCase()}`).slice(0, 5),
+      session_goal: `Confirm ${formatPrettyFieldList(requiredFields)} so the planner can build a real option set for ${destination}.`,
+      priority_sequence: requiredFields.map((field) => `Confirm ${prettyPlanningFieldLabel(field)}`).slice(0, 5),
       tonal_guardrails: [
         "Stay concise and operator-friendly",
         "Use plain customer language",
@@ -54,21 +106,25 @@ export function buildTripStrategyPreview(trip?: Trip | null): StrategyOutput | n
   }
 
   return {
-    session_goal: `Prepare a clear options plan for ${destination} while keeping ${priorities} and ${budget} aligned.`,
+    session_goal: isCorporate
+      ? `Prepare a clear options plan for ${destination} for the ${tripDescriptor} while keeping ${budget} aligned.`
+      : `Prepare a clear options plan for ${destination} while keeping ${priorities} and ${budget} aligned.`,
     priority_sequence: [
       origin ? `Check ${origin} and ${destination} together` : `Check the trip details around ${destination}`,
-      `Shape options around ${priorities}`,
+      isCorporate ? "Preserve the corporate/group shape" : `Shape options around ${priorities}`,
       `Keep the budget anchored to ${budget}`,
-    ].concat(recommendedFields.length > 0 ? [`Tighten ${missingRecommended}`] : []).slice(0, 5),
+    ].concat(recommendedFields.length > 0 ? [`Tighten ${formatPrettyFieldList(recommendedFields)}`] : []).slice(0, 5),
     tonal_guardrails: [
       "Keep the options concise and decision-friendly",
       "Balance clarity with speed",
       "Call out assumptions only when they matter",
     ],
     risk_flags: recommendedFields.length > 0
-      ? [`Recommended details missing: ${missingRecommended}`]
+      ? [`Recommended details missing: ${formatPrettyFieldList(recommendedFields)}`]
       : [],
-    suggested_opening: `Here’s the options plan for ${destination}.`,
+    suggested_opening: isCorporate
+      ? `Here’s the options plan for ${destination} ${openingSuffix}.`
+      : `Here’s the options plan for ${destination}.`,
     exit_criteria: [
       "Options are structured and easy to compare",
       "Budget and pacing are visible",
@@ -76,7 +132,9 @@ export function buildTripStrategyPreview(trip?: Trip | null): StrategyOutput | n
     ],
     next_action: "PROCEED_INTERNAL_DRAFT",
     assumptions: recommendedFields.length > 0
-      ? [`Assuming ${missingRecommended} can be refined during option building`]
+      ? [isCorporate
+        ? `Assuming ${formatPrettyFieldList(recommendedFields)} can be refined during business option building`
+        : `Assuming ${formatPrettyFieldList(recommendedFields)} can be refined during option building`]
       : [],
     suggested_tone: "professional",
   };

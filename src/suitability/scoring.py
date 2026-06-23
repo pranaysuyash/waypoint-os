@@ -23,6 +23,24 @@ TIER_SCORE = {
     "strong_recommend": 0.9,
 }
 
+# --- Confidence constants for field_confidence dict ---
+# High confidence when the field is present and well-formed
+FIELD_CONFIDENCE_PRESENT = 0.95
+# Medium confidence when partial data is available
+FIELD_CONFIDENCE_PARTIAL = 0.8
+# Lower confidence for less critical fields
+FIELD_CONFIDENCE_LOWER = 0.6
+# Weight bounds confidence when present
+FIELD_CONFIDENCE_WEIGHT_PRESENT = 0.9
+# Weight bounds confidence when absent
+FIELD_CONFIDENCE_WEIGHT_ABSENT = 0.5
+# Confidence when field is completely absent
+FIELD_CONFIDENCE_ABSENT = 0.0
+
+# --- Intensity tier adjustment thresholds ---
+INTENSITY_DOWNGRADE_THRESHOLD = 0.3
+INTENSITY_UPGRADE_THRESHOLD = 0.8
+
 TAG_RULES: Dict[Tuple[str, str], Tuple[str, str]] = {
     ("water_based", "toddler"): ("exclude", "Water-based activity is unsafe for toddlers."),
     ("height_required", "toddler"): (
@@ -206,19 +224,19 @@ def evaluate_activity(
         
         # Adjust tier based on intensity score
         intensity_score = score_components.get("intensity", 0.5)
-        if intensity_score < 0.3:
+        if intensity_score < INTENSITY_DOWNGRADE_THRESHOLD:
             tier = _downgrade_tier(tier)
-        elif intensity_score > 0.8:
+        elif intensity_score > INTENSITY_UPGRADE_THRESHOLD:
             tier = _upgrade_tier(tier)
 
     score = TIER_SCORE[tier]
 
     field_confidence = {
-        "intensity": 0.95 if activity.intensity in {"light", "moderate", "high", "extreme"} else 0.4,
-        "age_bounds": 0.95 if activity.min_age is not None or activity.max_age is not None else 0.6,
-        "tags": 0.8 if activity.tags else 0.0,
-        "duration": 0.8 if activity.duration_hours is not None else 0.0,
-        "weight_bounds": 0.9 if activity.max_weight_kg is not None else 0.5,
+        "intensity": FIELD_CONFIDENCE_PRESENT if activity.intensity in {"light", "moderate", "high", "extreme"} else 0.4,
+        "age_bounds": FIELD_CONFIDENCE_PRESENT if activity.min_age is not None or activity.max_age is not None else FIELD_CONFIDENCE_LOWER,
+        "tags": FIELD_CONFIDENCE_PARTIAL if activity.tags else FIELD_CONFIDENCE_ABSENT,
+        "duration": FIELD_CONFIDENCE_PARTIAL if activity.duration_hours is not None else FIELD_CONFIDENCE_ABSENT,
+        "weight_bounds": FIELD_CONFIDENCE_WEIGHT_PRESENT if activity.max_weight_kg is not None else FIELD_CONFIDENCE_WEIGHT_ABSENT,
     }
     confidence = compute_confidence(field_confidence)
     missing_signals = collect_missing_signals(activity, context)
