@@ -318,6 +318,24 @@ Workaround:
 
 - Teach the party parser to recognize hyphenated traveler counts like `18-traveler`, not just the space-separated `18 travelers` form.
 
+## Scenario 10: Payments queue on a large live agency
+
+What worked:
+
+- The payments queue now returns a real, tenant-wide read for a live authenticated agency with more than 11k trips.
+- The live backend call completed in under a second and returned the first page of queue items instead of stalling on a hidden per-trip lookup loop.
+- The queue is now usable as an operator triage surface for overdue and due-soon work on a large account.
+
+What felt weak:
+
+- The browser replay still hit a session-checking state because the browser profile was not authenticated in that tab.
+- The queue still depends on authenticated browser state before the user can see the live rows in that tab.
+
+Workaround:
+
+- Keep the queue read batched so large agencies stay responsive.
+- Treat browser authentication as a separate setup step when verifying protected surfaces live.
+
 ## Clean findings
 
 - Good: the planning and strategy surfaces are directionally right.
@@ -326,6 +344,8 @@ Workaround:
 - Bad: output could become a dead end when the generated bundle was missing.
 - Bad: the operator had to infer readiness from a blank state instead of seeing a usable preview.
 - Bad: a fake "send" action would have hidden the real work.
+- Good: the payments queue now stays responsive on a large agency instead of timing out on a hidden N+1 read.
+- Bad: the browser profile still needs explicit sign-in before protected surfaces can be judged as healthy.
 
 ## What changed after the simulation
 
@@ -348,6 +368,9 @@ Workaround:
 - Seasonal dry-run and dispatch now keep the chosen scenario visible in the result card, so the planner does not drop context between what-if analysis and action.
 - Quote-ready trips now fall back to a derived options brief when a stored escalation strategy conflicts with the live readiness signal, which keeps the planning surface aligned with the trip state.
 - Safety review now keeps a useful customer-message QA preview visible even when the persisted safety bundle is missing, instead of only showing a dead-end warning.
+- Payments queue now reads tenant data in batches instead of fetching booking data one trip at a time, which keeps the large-agency surface responsive.
+- Payments queue now also derives a readable fallback title when the stored trip name is missing, so sparse records no longer render as blank rows.
+- Shared clipboard actions now prefer the safe fallback path unless clipboard permission is explicitly granted, which keeps overview and workbench copy actions from surfacing browser permission errors in restricted sessions.
 
 ## Remaining watchout
 
@@ -363,3 +386,48 @@ Workaround:
 - The documents and suppliers pickers now expose a clearer tail reference per row, which keeps large queues usable for an operator scanning a shared workspace.
 - The suppliers route now shows actual supplier context instead of a dead-end 404, which keeps the nav truthful for an operator exploring the app.
 - The knowledge base now has a real shell and redirect path, so the app no longer advertises a memory surface it cannot open.
+- The payments queue now uses a batched tenant read, and sparse rows get a readable fallback title instead of a blank cell.
+
+## Scenario 11: Authenticated agent intake on the main app browser
+
+Live browser path:
+
+- Sign in at `/login` with `newuser@test.com` / `testpass123`.
+- Open the authenticated overview at `/overview`.
+- Jump into the core agent flow with `/workbench?draft=new&tab=intake&capture_mode=call&entry=new`.
+- Inspect a real lead in `/inbox`.
+- Open `/trips/trip_2333bff6434d/intake` for a live trip that still needs planning details.
+
+What worked:
+
+- The authenticated overview is coherent and clearly routes into the main operational surfaces.
+- The trip intake screen is useful in the right way: it exposes the missing fields, the suggested traveler follow-up, and the planning stage ladder.
+- `Copy message` worked without triggering the browser clipboard permission failure that showed up earlier in the session.
+- The inline budget editor is a real time saver once you click the exact field action, because it keeps the operator on the same trip page instead of bouncing them into a separate flow.
+- Saving budget and origin now preserve the manual edits in the reassessment payload, so later auto-reprocess passes can keep the agent-entered values instead of reverting them to stale raw-note defaults.
+- The live browser replay now opens the budget editor again after the button-type fix, which makes the edit affordance feel like part of the trip workflow instead of a silent page submit.
+
+What felt weak:
+
+- `Start Planning` looked enabled but did not give the user a clear visible transition when the trip was still incomplete, which makes it feel inert even when the page is doing work.
+- The page initially looked like a dead end until I used the exact inline field actions; the affordance could be clearer for agents who just want the next unblock step.
+- Before the reassessment overlay fix, saving one planning field could wash out the previous one on the next auto-run, which is the kind of silent regression that destroys trust in partial edits.
+- Before the `type="button"` fix, the inline edit controls behaved like form submits, so the browser could accept the click without actually entering edit mode.
+
+Workaround:
+
+- Use the inline `Add budget range` / `Add origin` actions first, then save each field from the same trip page.
+- Keep the reassessment request carrying the current trip fields forward so the planner works from the latest agent truth instead of the original raw note alone.
+- Keep the inline edit controls out of form-submit behavior by making them explicit buttons and continue using the shared budget parser for compact units like lakhs.
+
+Time saver:
+
+- The generated follow-up copy is concise enough to send back to the traveler without rewriting it from scratch.
+- The planning page already tells the agent exactly which fields are still blocking the next stage.
+- Once the edit controls truly open the editor, the operator can correct origin and budget in-place instead of rerunning the trip or chasing a separate modal.
+
+Time waster:
+
+- A clickable-looking `Start Planning` action that does not visibly advance the trip is friction for the operator and needs clearer feedback or gating.
+- Before the overlay fix, repeated partial saves risked erasing the previous manual edit, which would have forced the agent to re-enter work that should have been preserved.
+- A form-submit side effect on edit buttons was a pure time sink because it made the page look interactive while quietly discarding the intended edit gesture.

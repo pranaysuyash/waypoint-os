@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DataIntakeZone from '../DataIntakeZone';
@@ -37,6 +37,10 @@ describe('DataIntakeZone', () => {
     });
     mockApi.getCollectionLink.mockRejectedValue(new Error('not found'));
     mockApi.getPendingBookingData.mockRejectedValue(new Error('not found'));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('shows collection link section at proposal stage', async () => {
@@ -123,7 +127,12 @@ describe('DataIntakeZone', () => {
     });
 
     const user = userEvent.setup();
-    const clipboardSpy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
+    const clipboardSpy = vi.fn().mockResolvedValue(undefined);
+    const permissionsSpy = vi.fn().mockResolvedValue({ state: 'granted' });
+    vi.stubGlobal('navigator', {
+      clipboard: { writeText: clipboardSpy },
+      permissions: { query: permissionsSpy },
+    });
 
     render(<DataIntakeZone tripId="trip_1" canGenerateLink={true} />);
 
@@ -134,7 +143,7 @@ describe('DataIntakeZone', () => {
     await user.click(screen.getByTestId('ops-copy-link-btn'));
 
     expect(clipboardSpy).toHaveBeenCalledWith(STATUS_URL);
-    clipboardSpy.mockRestore();
+    expect(permissionsSpy).toHaveBeenCalledWith({ name: 'clipboard-write' });
   });
 
   it('generates collection link and shows URL', async () => {

@@ -395,8 +395,8 @@ class TestCallCaptureFollowUpDueDate:
         missing_resp = session_client.get(f"/api/public-checker/{trip_id}")
         assert missing_resp.status_code == 404
 
-    def test_public_checker_export_and_delete_routes_work_anonymously(self, disable_audit_logging, tmp_path, monkeypatch, session_client):
-        """The public checker report-management routes should work without auth for public checker records."""
+    def test_public_checker_export_and_delete_routes_require_auth(self, disable_audit_logging, tmp_path, monkeypatch, session_client):
+        """Export/delete routes should require authentication — anonymous access is not permitted for trip data."""
         from spine_api import persistence
 
         monkeypatch.setenv("TRIPSTORE_BACKEND", "file")
@@ -450,19 +450,13 @@ class TestCallCaptureFollowUpDueDate:
             f"/api/public-checker/{trip_id}/export",
             headers={"Authorization": ""},
         )
-        assert export_resp.status_code == 200
-        export_json = export_resp.json()
-        assert export_json["trip_id"] == trip_id
+        assert export_resp.status_code == 401
 
         delete_resp = session_client.delete(
             f"/api/public-checker/{trip_id}",
             headers={"Authorization": ""},
         )
-        assert delete_resp.status_code == 200
-        delete_json = delete_resp.json()
-        assert delete_json["ok"] is True
-        assert delete_json["deleted_trip"] is True
-        assert delete_json["deleted_artifacts"] is True
+        assert delete_resp.status_code == 401
 
     def test_follow_up_due_date_iso8601_format_validation(self, disable_audit_logging):
         """Test: follow_up_due_date accepts valid ISO-8601 formats."""

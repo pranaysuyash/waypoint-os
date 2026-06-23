@@ -1,7 +1,7 @@
 'use client';
 
-import { useSyncExternalStore, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import { useElementSize } from './useElementSize';
 
 type RevenuePoint = {
   month: string;
@@ -19,7 +19,6 @@ const CURRENCY_FORMATTER = new Intl.NumberFormat('en-US', {
   currency: 'USD',
   maximumFractionDigits: 0,
 });
-const ResponsiveContainer = dynamic(() => import('recharts').then((mod) => mod.ResponsiveContainer), { ssr: false });
 const ComposedChart = dynamic(() => import('recharts').then((mod) => mod.ComposedChart), { ssr: false });
 const XAxis = dynamic(() => import('recharts').then((mod) => mod.XAxis), { ssr: false });
 const YAxis = dynamic(() => import('recharts').then((mod) => mod.YAxis), { ssr: false });
@@ -29,14 +28,8 @@ const Bar = dynamic(() => import('recharts').then((mod) => mod.Bar), { ssr: fals
 const Line = dynamic(() => import('recharts').then((mod) => mod.Line), { ssr: false });
 
 export function RevenueChart({ data }: RevenueChartProps) {
-  const isMounted = useSyncExternalStore(
-    useCallback((onStoreChange) => {
-      const timer = setTimeout(onStoreChange, 0);
-      return () => clearTimeout(timer);
-    }, []),
-    () => true,
-    () => false
-  );
+  const { ref, size } = useElementSize<HTMLDivElement>();
+  const chartWidth = size.width;
 
   return (
     <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5'>
@@ -58,54 +51,52 @@ export function RevenueChart({ data }: RevenueChartProps) {
         <p className='py-10 text-center text-sm text-[#8b949e]'>No revenue data available.</p>
       ) : (
         <>
-          <div className='h-[260px] w-full'>
-            {isMounted ? (
-              <ResponsiveContainer width='100%' height='100%' minWidth={0} minHeight={260}>
-                <ComposedChart data={data}>
-                  <CartesianGrid stroke='#30363d' strokeDasharray='3 3' vertical={false} />
-                  <XAxis dataKey='month' tick={{ fill: '#8b949e', fontSize: 12 }} axisLine={{ stroke: '#30363d' }} tickLine={false} />
-                  <YAxis
-                    yAxisId='revenue'
-                    tick={{ fill: '#8b949e', fontSize: 12 }}
-                    axisLine={{ stroke: '#30363d' }}
-                    tickLine={false}
-                    tickFormatter={(value: number) => `$${Math.round(value / 1000)}k`}
-                  />
-                  <YAxis
-                    yAxisId='booked'
-                    orientation='right'
-                    tick={{ fill: '#8b949e', fontSize: 12 }}
-                    axisLine={{ stroke: '#30363d' }}
-                    tickLine={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#161b22',
-                      border: '1px solid #30363d',
-                      borderRadius: '0.5rem',
-                      color: '#e6edf3',
-                    }}
-                    formatter={(value, name) => {
-                      const numericValue = typeof value === 'number' ? value : Number(value ?? 0);
+          <div ref={ref} className='h-[260px] w-full'>
+            {chartWidth > 0 ? (
+              <ComposedChart width={chartWidth} height={260} data={data}>
+                <CartesianGrid stroke='#30363d' strokeDasharray='3 3' vertical={false} />
+                <XAxis dataKey='month' tick={{ fill: '#8b949e', fontSize: 12 }} axisLine={{ stroke: '#30363d' }} tickLine={false} />
+                <YAxis
+                  yAxisId='revenue'
+                  tick={{ fill: '#8b949e', fontSize: 12 }}
+                  axisLine={{ stroke: '#30363d' }}
+                  tickLine={false}
+                  tickFormatter={(value: number) => `$${Math.round(value / 1000)}k`}
+                />
+                <YAxis
+                  yAxisId='booked'
+                  orientation='right'
+                  tick={{ fill: '#8b949e', fontSize: 12 }}
+                  axisLine={{ stroke: '#30363d' }}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#161b22',
+                    border: '1px solid #30363d',
+                    borderRadius: '0.5rem',
+                    color: '#e6edf3',
+                  }}
+                  formatter={(value, name) => {
+                    const numericValue = typeof value === 'number' ? value : Number(value ?? 0);
 
-                      if (name === 'revenue') {
-                        return [CURRENCY_FORMATTER.format(numericValue), 'Revenue'];
-                      }
-                      return [numericValue, 'Booked'];
-                    }}
-                  />
-                  <Bar yAxisId='revenue' dataKey='revenue' fill='#58a6ff' radius={[6, 6, 0, 0]} />
-                  <Line
-                    yAxisId='booked'
-                    type='monotone'
-                    dataKey='booked'
-                    stroke='#3fb950'
-                    strokeWidth={2}
-                    dot={{ r: 3, fill: '#3fb950', stroke: '#3fb950' }}
-                    activeDot={{ r: 5 }}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
+                    if (name === 'revenue') {
+                      return [CURRENCY_FORMATTER.format(numericValue), 'Revenue'];
+                    }
+                    return [numericValue, 'Booked'];
+                  }}
+                />
+                <Bar yAxisId='revenue' dataKey='revenue' fill='#58a6ff' radius={[6, 6, 0, 0]} />
+                <Line
+                  yAxisId='booked'
+                  type='monotone'
+                  dataKey='booked'
+                  stroke='#3fb950'
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: '#3fb950', stroke: '#3fb950' }}
+                  activeDot={{ r: 5 }}
+                />
+              </ComposedChart>
             ) : (
               <div className='flex h-full items-center justify-center text-sm text-[#8b949e]'>
                 Loading chart…

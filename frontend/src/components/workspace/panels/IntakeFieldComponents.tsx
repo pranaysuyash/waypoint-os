@@ -44,6 +44,7 @@ export function EditableField({
           <span className='text-[var(--ui-text-xs)] text-[var(--accent-blue)] uppercase tracking-wide'>{label}</span>
           <div className='flex items-center gap-1'>
             <button
+              type='button'
               onClick={() => onSaveEdit(field)}
               className='p-1 bg-[var(--accent-green)] text-[var(--text-on-accent)] rounded hover:opacity-80'
               title='Save'
@@ -52,6 +53,7 @@ export function EditableField({
               <CheckCircle className='size-3' />
             </button>
             <button
+              type='button'
               onClick={onCancelEdit}
               className='p-1 bg-[var(--accent-red)] text-[var(--text-on-accent)] rounded hover:opacity-80'
               title='Cancel'
@@ -79,6 +81,7 @@ export function EditableField({
           <span className='text-[var(--ui-text-xs)] text-[var(--accent-blue)] uppercase tracking-wide'>{label}</span>
           <div className='flex items-center gap-1'>
             <button
+              type='button'
               onClick={() => onSaveEdit(field)}
               className='p-1 bg-[var(--accent-green)] text-[var(--text-on-accent)] rounded hover:opacity-80'
               title='Save'
@@ -87,6 +90,7 @@ export function EditableField({
               <CheckCircle className='size-3' />
             </button>
             <button
+              type='button'
               onClick={onCancelEdit}
               className='p-1 bg-[var(--accent-red)] text-[var(--text-on-accent)] rounded hover:opacity-80'
               title='Cancel'
@@ -135,6 +139,7 @@ export function EditableField({
             />
           )}
           <button
+            type='button'
             onClick={() => onSaveEdit(field)}
             className='p-1 bg-[var(--accent-green)] text-[var(--text-on-accent)] rounded hover:opacity-80'
             title='Save'
@@ -143,6 +148,7 @@ export function EditableField({
             <CheckCircle className='size-3' />
           </button>
           <button
+            type='button'
             onClick={onCancelEdit}
             className='p-1 bg-[var(--accent-red)] text-[var(--text-on-accent)] rounded hover:opacity-80'
             title='Cancel'
@@ -162,6 +168,7 @@ export function EditableField({
         {Icon && <Icon className='size-3 text-[var(--text-secondary)]' />}
         {displayValue || value}
         <button
+          type='button'
           onClick={() => onStartEdit(field, value)}
           className='ml-1 opacity-[0.3] group-hover:opacity-100 transition-opacity'
           title={`Edit ${label}`}
@@ -227,6 +234,7 @@ export function BudgetField({
             ))}
           </select>
           <button
+            type='button'
             onClick={onSaveEdit}
             className='p-1 bg-[var(--accent-green)] text-[var(--text-on-accent)] rounded hover:opacity-80'
             title='Save'
@@ -235,6 +243,7 @@ export function BudgetField({
             <CheckCircle className='size-3' />
           </button>
           <button
+            type='button'
             onClick={onCancelEdit}
             className='p-1 bg-[var(--accent-red)] text-[var(--text-on-accent)] rounded hover:opacity-80'
             title='Cancel'
@@ -254,6 +263,7 @@ export function BudgetField({
         <Wallet className='size-3 text-[var(--accent-green)]' />
         {displayBudget}
         <button
+          type='button'
           onClick={onStartEdit}
           className='ml-1 opacity-[0.3] group-hover:opacity-100 transition-opacity'
           title='Edit Budget'

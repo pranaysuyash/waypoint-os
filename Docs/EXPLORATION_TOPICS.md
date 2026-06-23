@@ -428,7 +428,12 @@ The trip intake page for the saved trip now also shows a red `Critical Issue` ca
 
 **Current live evidence (2026-06-23 auth-boundary pass)**: A clean browser session on `/workbench` and `/settings` still shows the loading shell until sign-in happens, and the browser console records a 401 from `/api/auth/me`. The same backend login credentials (`newuser@test.com` / `testpass123`) do work, and once authenticated the protected settings endpoint returns the full agency payload. That means the route contracts are healthy, but live browser validation needs an authenticated session before protected surfaces can be judged fairly.
 **Current live evidence (2026-06-23 auth-boundary follow-up)**: The protected workbench and settings pages now surface an explicit sign-in notice instead of leaving the browser on a frozen-looking loader when the session is missing. The authenticated path is unchanged; this only makes the unauthenticated state more truthful and easier to recover from.
+**Current live evidence (2026-06-23 intake edit-controls replay)**: A fresh browser replay on the live trip intake page found that the inline budget/origin edit controls were sitting inside the parent form without explicit `type="button"` behavior, so clicks could act like accidental submits instead of opening the editor. The buttons now open the inline editor correctly, and the backend budget patch path now reuses the shared parser so compact values like `₹3.5L` stay truthful instead of collapsing into a raw decimal fragment. That makes the main agent workflow feel like a real edit-and-save loop rather than a flaky form shim.
 **Current live evidence (2026-06-23 queue-density pass)**: A fresh signed-in browser session reached `/trips` and loaded the real workspace queue with `100 in planning` and `96 needs details`. The card view collapsed the queue into `12 grouped cards`, which keeps the large-list triage surface readable, but also raises a product question about how much of the queue should be summarized versus fully enumerated for larger agencies.
+
+**Current live evidence (2026-06-23 payments-queue scale pass)**: The authenticated live backend now serves `/payments` for a large agency with `11,373` queue items in under a second, instead of stalling on a per-trip booking lookup loop. The queue also derives a readable fallback title when a trip is missing its stored name, so sparse rows no longer render as blank operator cells.
+
+**Current implementation note (2026-06-23 clipboard hardening)**: Shared clipboard actions now only use the async clipboard API when permission is explicitly granted and otherwise fall back to the safer copy path. That should reduce browser permission noise on overview/workbench copy actions in restricted sessions without changing the operator-facing action.
 
 **Current live evidence (2026-06-23 audit contract fix)**: The audit log page now reads the backend's `entries` payload instead of `items`, which means the owner/admin audit surface can actually display returned rows rather than a false empty state. This came directly from comparing the live frontend fetch with the `/api/audit` route contract.
 
@@ -1120,3 +1125,9 @@ These are **blocking** for moving from notebooks to real implementation.
 - Georgia is now included in the canonical destination synonym set, so the same replay resolves to a real Georgia trip.
 - The live trip page now shows `Georgia family leisure trip` with origin `Tbilisi`.
 - This belongs in the exploration map because Georgia is a common travel destination and should behave like one in the canonical flow.
+
+## Live Validation Note: Manual Planning Edits Must Survive Auto-Reassess
+
+- A live trip intake simulation on `/trips/trip_2333bff6434d/intake` showed that budget and origin edits can be made inline from the agent page.
+- The reassessment request now carries the current trip fields forward as a structured overlay, so manual edits do not get wiped by the next auto-reprocess run.
+- This belongs in the exploration map because preserving agent-entered truth across auto-reassess is a core trust boundary for the planning workflow.

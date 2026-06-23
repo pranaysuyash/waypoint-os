@@ -1,7 +1,7 @@
 'use client';
 
-import { useSyncExternalStore, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import { useElementSize } from './useElementSize';
 
 export interface PipelineStage {
   stageId: string;
@@ -32,7 +32,6 @@ function formatConversionRate(currentTrips: number, previousTrips?: number): str
   return `${Math.round(ratio)}%`;
 }
 
-const ResponsiveContainer = dynamic(() => import('recharts').then((mod) => mod.ResponsiveContainer), { ssr: false });
 const BarChart = dynamic(() => import('recharts').then((mod) => mod.BarChart), { ssr: false });
 const Bar = dynamic(() => import('recharts').then((mod) => mod.Bar), { ssr: false });
 const XAxis = dynamic(() => import('recharts').then((mod) => mod.XAxis), { ssr: false });
@@ -40,19 +39,8 @@ const YAxis = dynamic(() => import('recharts').then((mod) => mod.YAxis), { ssr: 
 const CartesianGrid = dynamic(() => import('recharts').then((mod) => mod.CartesianGrid), { ssr: false });
 const Tooltip = dynamic(() => import('recharts').then((mod) => mod.Tooltip), { ssr: false });
 
-function useHydrated(): boolean {
-  return useSyncExternalStore(
-    useCallback((onStoreChange) => {
-      const timer = setTimeout(onStoreChange, 0);
-      return () => clearTimeout(timer);
-    }, []),
-    () => true,
-    () => false
-  );
-}
-
 export function PipelineFunnel({ data }: { data: PipelineStage[] }) {
-  const isMounted = useHydrated();
+  const { ref, size } = useElementSize<HTMLDivElement>();
 
   if (data.length === 0) {
     return (
@@ -77,9 +65,11 @@ export function PipelineFunnel({ data }: { data: PipelineStage[] }) {
     <div className='rounded-xl border border-[#1c2128] bg-[#0f1115] p-5'>
       <h2 className='text-base font-semibold text-[#e6edf3] mb-4'>Conversion Funnel</h2>
 
-      {isMounted ? (
-        <ResponsiveContainer width='100%' height={300} minWidth={0} minHeight={300}>
+      {size.width > 0 ? (
+        <div ref={ref} className='h-[300px] w-full'>
           <BarChart
+            width={size.width}
+            height={300}
             data={chartData}
             layout='vertical'
             margin={{ top: 5, right: 30, left: 200, bottom: 5 }}
@@ -106,9 +96,9 @@ export function PipelineFunnel({ data }: { data: PipelineStage[] }) {
               animationDuration={300}
             />
           </BarChart>
-        </ResponsiveContainer>
+        </div>
       ) : (
-        <div className='h-[300px] flex items-center justify-center'>
+        <div ref={ref} className='h-[300px] flex items-center justify-center'>
           <p className='text-sm text-[#8b949e]'>Loading funnel…</p>
         </div>
       )}

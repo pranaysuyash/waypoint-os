@@ -71,13 +71,17 @@ def _run_extraction_baseline(
         }
     fixtures = load_golden_dataset(golden_dataset_path)
     if live_results is not None:
-        report = run_extraction_eval(fixtures, actual_results=live_results)
+        report = run_extraction_eval(fixtures, saved_results=live_results)
         note = "Live extraction results used for F1 evaluation."
     else:
         # Build self-consistent actual results from expected outputs.
         # This validates the comparison logic and produces a 100%-F1
         # reference baseline.
-        report = run_extraction_eval(fixtures)
+        saved_results = {
+            fixture.fixture_id: fixture.expected_extracted_fields
+            for fixture in fixtures
+        }
+        report = run_extraction_eval(fixtures, saved_results=saved_results)
         note = "Baseline using expected outputs as actuals. Override with real extraction results at runtime."
     summary = report.summary()
     # Determine gate status from overall F1

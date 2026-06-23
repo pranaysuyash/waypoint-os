@@ -66,7 +66,7 @@ def _get_hybrid_engine():
         except ImportError:
             # Hybrid engine not available
             return None
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError, OSError) as e:
             # Log but don't fail - fall back to rule engine
             logger.warning("Failed to initialize hybrid engine: %s", e)
             return None
@@ -147,7 +147,7 @@ def _generate_risk_flags_with_hybrid_engine(
                         "recommendations": result.decision.get("recommendations", []),
                     })
 
-        except Exception as e:
+        except (TypeError, ValueError, AttributeError, KeyError, NameError) as e:
             # Log but continue with other decision types
             logger.warning("Hybrid engine failed for %s: %s", decision_type, e)
             continue
@@ -1338,7 +1338,7 @@ def generate_risk_flags(
         except ImportError:
             # Suitability module not available yet
             pass
-        except Exception as e:
+        except (TypeError, ValueError, AttributeError) as e:
             # Don't fail risk generation if suitability has issues
             logger.warning("Suitability risk generation failed: %s", e)
 
@@ -2169,7 +2169,7 @@ def run_gap_and_decision(
             )
     except ImportError:
         logger.debug("Override learning module not available — skipping override adjustments")
-    except Exception as exc:
+    except (TypeError, ValueError, AttributeError, KeyError) as exc:
         logger.warning("Override adjustments failed: %s", exc)
 
     # --- Phase 10b: SuitabilityProfile (structured output for frontend) ---

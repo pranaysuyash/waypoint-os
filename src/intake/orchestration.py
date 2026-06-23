@@ -124,7 +124,7 @@ def _emit_audit_event(
             decision_type=decision_type,
             reason=reason,
         )
-    except Exception as e:
+    except (ImportError, AttributeError, TypeError, OSError) as e:
         import logging
         logger = logging.getLogger("orchestration.audit")
         logger.warning(f"Failed to emit audit event for trip {trip_id}: {e}")
@@ -256,7 +256,7 @@ def run_spine_once(
             span.set_attribute("trip_id", packet.packet_id)
             if not auto_intake_enabled:
                 span.set_attribute("auto_intake_disabled", True)
-    except Exception as e:
+    except (ValueError, TypeError, KeyError, AttributeError, OSError) as e:
         _emit_stage_event("packet", "failed", error=str(e))
         raise
     if not auto_intake_enabled:
@@ -284,7 +284,7 @@ def run_spine_once(
     try:
         with _otel_tracer.start_as_current_span("validation"):
             validation = validate_packet(packet, stage=stage)
-    except Exception as e:
+    except (ValueError, TypeError, KeyError, AttributeError) as e:
         _emit_stage_event("validation", "failed", error=str(e))
         raise
 
@@ -380,7 +380,7 @@ def run_spine_once(
             decision = run_gap_and_decision(packet, feasibility_table=feasibility_table, agency_settings=actual_settings)
             span.set_attribute("decision_state", decision.decision_state)
             span.set_attribute("hard_blocker_count", len(decision.hard_blockers))
-    except Exception as e:
+    except (ValueError, TypeError, KeyError, AttributeError) as e:
         _emit_stage_event("decision", "failed", error=str(e))
         raise
 
@@ -499,7 +499,7 @@ def run_spine_once(
                     next_action=decision.decision_state,
                 )
             span.set_attribute("session_goal", strategy.session_goal[:80] if strategy.session_goal else "")
-    except Exception as e:
+    except (ValueError, TypeError, KeyError, AttributeError) as e:
         _emit_stage_event("strategy", "failed", error=str(e))
         raise
 
@@ -541,7 +541,7 @@ def run_spine_once(
                 "internal_bundle": _obj_to_dict(internal_bundle),
                 "traveler_bundle": _obj_to_dict(traveler_bundle),
             })
-    except Exception as e:
+    except (ValueError, TypeError, KeyError, AttributeError) as e:
         _emit_stage_event("output", "failed", error=str(e))
         raise
 
@@ -567,7 +567,7 @@ def run_spine_once(
 
         if stage_callback:
             _emit_stage_event("safety", "completed", leakage_result)
-    except Exception as e:
+    except (ValueError, TypeError, KeyError, AttributeError) as e:
         _emit_stage_event("safety", "failed", error=str(e))
         raise
     else:

@@ -498,6 +498,37 @@ class FileTripStore:
         return trip.get("booking_data") if trip else None
 
     @staticmethod
+    def list_trip_payment_records_for_agency(agency_id: str, limit: int = 100, offset: int = 0) -> list[dict]:
+        """List agency trips with payment payloads in a single pass.
+
+        This keeps the payments read model from doing a per-trip booking-data
+        lookup while still preserving tenant isolation and paging semantics.
+        """
+        records: list[dict] = []
+        matched = 0
+
+        for filepath in sorted(TRIPS_DIR.glob("trip_*.json"), reverse=True):
+            try:
+                with open(filepath) as f:
+                    trip = json.load(f)
+            except Exception:
+                continue
+
+            if trip.get("agency_id") != agency_id:
+                continue
+
+            if matched < offset:
+                matched += 1
+                continue
+
+            records.append(trip)
+            matched += 1
+            if len(records) >= limit:
+                break
+
+        return records
+
+    @staticmethod
     def get_pending_booking_data_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
         """Get pending_booking_data only if the trip belongs to the given agency."""
         trip = FileTripStore.get_trip_for_agency(trip_id, agency_id)
@@ -1197,6 +1228,37 @@ class SQLTripStore:
             return SQLTripStore._decrypt_field_from_storage("booking_data", trip_obj.booking_data)
 
     @staticmethod
+    async def list_trip_payment_records_for_agency(agency_id: str, limit: int = 100, offset: int = 0) -> list[dict]:
+        """List agency trips with payment payloads for read-model assembly."""
+        async with SQLTripStore._rls_session_for_agency(agency_id) as session:
+            from sqlalchemy import select
+
+            query = (
+                select(
+                    Trip.id,
+                    Trip.status,
+                    Trip.updated_at,
+                    Trip.booking_data,
+                )
+                .where(Trip.agency_id == agency_id)
+                .order_by(Trip.created_at.desc())
+                .offset(offset)
+                .limit(limit)
+            )
+            result = await session.execute(query)
+            records: list[dict] = []
+            for row in result.all():
+                records.append(
+                    {
+                        "id": row.id,
+                        "status": row.status,
+                        "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+                        "booking_data": SQLTripStore._decrypt_field_from_storage("booking_data", row.booking_data),
+                    }
+                )
+            return records
+
+    @staticmethod
     async def get_pending_booking_data_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:
         """Get pending_booking_data only if the trip belongs to the given agency."""
         async with SQLTripStore._rls_session_for_agency(agency_id) as session:
@@ -1506,6 +1568,16 @@ class TripStore:
         if backend is FileTripStore:
             return FileTripStore.get_booking_data_for_agency(trip_id, agency_id)
         return _run_async_blocking(SQLTripStore.get_booking_data_for_agency(trip_id, agency_id))
+
+    @staticmethod
+    def list_trip_payment_records_for_agency(agency_id: str, limit: int = 100, offset: int = 0) -> list[dict]:
+        """List trips with payment payloads for the payments read model."""
+        backend = TripStore._backend()
+        if backend is FileTripStore:
+            return FileTripStore.list_trip_payment_records_for_agency(agency_id, limit=limit, offset=offset)
+        return _run_async_blocking(
+            SQLTripStore.list_trip_payment_records_for_agency(agency_id=agency_id, limit=limit, offset=offset)
+        )
 
     @staticmethod
     def get_pending_booking_data_for_agency(trip_id: str, agency_id: str) -> Optional[dict]:

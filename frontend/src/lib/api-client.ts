@@ -67,6 +67,7 @@ const DEFAULT_RETRY = 0;
 const DEFAULT_RETRY_DELAY = 1000;
 const AUTH_UNAUTHORIZED_EVENT = "waypoint:auth-unauthorized";
 let lastUnauthorizedEventAt = 0;
+let authRefreshInFlight: Promise<boolean> | null = null;
 
 function notifyUnauthorized(): void {
   if (typeof window === "undefined") return;
@@ -75,6 +76,23 @@ function notifyUnauthorized(): void {
   if (now - lastUnauthorizedEventAt < 1500) return;
   lastUnauthorizedEventAt = now;
   window.dispatchEvent(new CustomEvent(AUTH_UNAUTHORIZED_EVENT));
+}
+
+async function refreshAuthSession(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  if (!authRefreshInFlight) {
+    authRefreshInFlight = fetch("/api/auth/refresh", {
+      method: "POST",
+      credentials: "include",
+    })
+      .then((response) => response.ok)
+      .catch(() => false)
+      .finally(() => {
+        authRefreshInFlight = null;
+      });
+  }
+
+  return authRefreshInFlight;
 }
 
 // ============================================================================
@@ -118,7 +136,7 @@ class ApiClient {
     const url = `${this.baseUrl}${endpoint}`;
     let lastError: Error | null = null;
 
-    const requestAttempt = async (attempt: number): Promise<T> => {
+    const requestAttempt = async (attempt: number, authRetryUsed: boolean = false): Promise<T> => {
       try {
         // Create abort controller for timeout
         const controller = new AbortController();
@@ -148,7 +166,11 @@ class ApiClient {
 
         // Handle non-OK responses
         if (!response.ok) {
-          if (response.status === 401) {
+          if (response.status === 401 && !authRetryUsed) {
+            const refreshed = await refreshAuthSession();
+            if (refreshed) {
+              return requestAttempt(attempt, true);
+            }
             notifyUnauthorized();
           }
           let errorData: ApiError = { message: response.statusText };
@@ -182,12 +204,12 @@ class ApiClient {
           throw error;
         }
 
-        if (attempt < retry) {
-          // Exponential backoff before the next retry attempt.
-          await new Promise((resolve) =>
-            setTimeout(resolve, retryDelay * Math.pow(2, attempt))
-          );
-          return requestAttempt(attempt + 1);
+          if (attempt < retry) {
+            // Exponential backoff before the next retry attempt.
+            await new Promise((resolve) =>
+              setTimeout(resolve, retryDelay * Math.pow(2, attempt))
+            );
+          return requestAttempt(attempt + 1, authRetryUsed);
         }
 
         throw error;

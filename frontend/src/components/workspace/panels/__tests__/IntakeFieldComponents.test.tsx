@@ -44,6 +44,19 @@ describe('EditableField', () => {
     expect(baseProps.onStartEdit).toHaveBeenCalledWith('party', '2');
   });
 
+  it('does not submit the parent form when edit is clicked', () => {
+    const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault());
+    render(
+      <form onSubmit={onSubmit}>
+        <EditableField {...baseProps} />
+      </form>
+    );
+
+    fireEvent.click(screen.getByLabelText('Edit Party'));
+    expect(baseProps.onStartEdit).toHaveBeenCalledWith('party', '2');
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it('renders input when editing a generic field', () => {
     render(<EditableField {...baseProps} isEditing={true} value="4" />);
     const input = screen.getByDisplayValue('4');
@@ -182,6 +195,19 @@ describe('BudgetField', () => {
     render(<BudgetField {...baseProps} />);
     fireEvent.click(screen.getByLabelText('Edit budget'));
     expect(baseProps.onStartEdit).toHaveBeenCalled();
+  });
+
+  it('does not submit the parent form when budget edit is clicked', () => {
+    const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault());
+    render(
+      <form onSubmit={onSubmit}>
+        <BudgetField {...baseProps} />
+      </form>
+    );
+
+    fireEvent.click(screen.getByLabelText('Edit budget'));
+    expect(baseProps.onStartEdit).toHaveBeenCalled();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it('renders amount input and currency select when editing', () => {

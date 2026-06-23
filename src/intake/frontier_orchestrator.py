@@ -104,7 +104,7 @@ def run_frontier_orchestration(
                             "Checker Agent verified Ghost Workflow %s: %s",
                             result.ghost_workflow_id, audit_result.reason,
                         )
-                except Exception:
+                except (TypeError, ValueError, AttributeError, KeyError):
                     logger.exception("Checker Agent audit failed for packet %s", packet.packet_id)
                     result.requires_manual_audit = True
                     result.audit_reason = "Checker Agent audit failed — defaulting to manual review"
@@ -121,7 +121,7 @@ def run_frontier_orchestration(
                 "Intelligence Pool returned %d hits for packet %s",
                 len(result.intelligence_hits), packet.packet_id,
             )
-        except Exception:
+        except (TypeError, ValueError, AttributeError, KeyError):
             logger.exception("Intelligence Pool lookup failed for packet %s", packet.packet_id)
 
     # 4. Specialty Knowledge Detection
@@ -145,7 +145,7 @@ def run_frontier_orchestration(
                 if urgency == "CRITICAL":
                     result.requires_manual_audit = True
                     result.audit_reason = "Critical Specialty Niche detected"
-    except Exception:
+    except (TypeError, ValueError, AttributeError, KeyError):
         logger.exception("Specialty Knowledge detection failed for packet %s", packet.packet_id)
 
     # 5. Agentic Negotiation Engine (gated by enable_auto_negotiation)
@@ -155,7 +155,7 @@ def run_frontier_orchestration(
             if negotiation_logs:
                 result.negotiation_active = True
                 result.negotiation_logs = list(negotiation_logs)
-        except Exception:
+        except (TypeError, ValueError, AttributeError, KeyError):
             logger.exception("Negotiation engine failed for packet %s", packet.packet_id)
     else:
         logger.info("Negotiation engine skipped — enable_auto_negotiation is disabled")

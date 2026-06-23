@@ -193,6 +193,13 @@ class TestBudgetRoundtrip:
         result = _patch_trip(session_client, canonical_trip_id, {"budget": "$8,500"})
         assert result["budget"] == 8500.0
 
+    def test_patch_budget_compact_lakh_string_parsed_to_numeric(self, session_client, canonical_trip_id):
+        """_parse_budget_amount must preserve compact units like lakhs."""
+        result = _patch_trip(session_client, canonical_trip_id, {"budget": "₹3.5L"})
+        assert result["budget"] == 350000.0
+        facts = (result.get("extracted") or {}).get("facts", {})
+        assert facts.get("budget", {}).get("value") == 350000.0
+
     def test_patch_budget_dual_write_numeric_in_extracted(self, session_client, canonical_trip_id):
         _patch_trip(session_client, canonical_trip_id, {"budget": "3000"})
         result = _get_trip(session_client, canonical_trip_id)

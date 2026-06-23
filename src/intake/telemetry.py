@@ -66,7 +66,7 @@ def emit_telemetry(
         with open(telemetry_file, "a") as f:
             f.write(json.dumps(event) + "\n")
             
-    except Exception as e:
+    except (OSError, ValueError, TypeError) as e:
         # Telemetry should never block or fail visibly
         logger.debug(f"Telemetry emission failed: {e}")
 

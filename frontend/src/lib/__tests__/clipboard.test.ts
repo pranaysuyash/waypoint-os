@@ -7,6 +7,38 @@ describe('safeWriteClipboardText', () => {
     vi.restoreAllMocks();
   });
 
+  it('uses navigator.clipboard when permission is granted', async () => {
+    const writeText = vi.fn();
+    const query = vi.fn().mockResolvedValue({ state: 'granted' });
+    const execCommand = vi.fn().mockReturnValue(true);
+
+    vi.stubGlobal('navigator', {
+      clipboard: { writeText },
+      permissions: { query },
+    });
+    vi.stubGlobal('document', {
+      createElement: vi.fn(() => ({
+        value: '',
+        setAttribute: vi.fn(),
+        style: {},
+        select: vi.fn(),
+        setSelectionRange: vi.fn(),
+      })),
+      body: {
+        appendChild: vi.fn(),
+        removeChild: vi.fn(),
+      },
+      execCommand,
+    });
+
+    const result = await safeWriteClipboardText('https://example.com/join/abc');
+
+    expect(result).toBe(true);
+    expect(query).toHaveBeenCalledWith({ name: 'clipboard-write' });
+    expect(writeText).toHaveBeenCalledWith('https://example.com/join/abc');
+    expect(execCommand).not.toHaveBeenCalled();
+  });
+
   it('falls back to execCommand when clipboard permission is denied', async () => {
     const writeText = vi.fn();
     const query = vi.fn().mockResolvedValue({ state: 'denied' });
@@ -35,6 +67,36 @@ describe('safeWriteClipboardText', () => {
 
     expect(result).toBe(true);
     expect(query).toHaveBeenCalledWith({ name: 'clipboard-write' });
+    expect(writeText).not.toHaveBeenCalled();
+    expect(execCommand).toHaveBeenCalledWith('copy');
+  });
+
+  it('falls back to execCommand when clipboard permission is unavailable', async () => {
+    const writeText = vi.fn();
+    const execCommand = vi.fn().mockReturnValue(true);
+
+    vi.stubGlobal('navigator', {
+      clipboard: { writeText },
+      permissions: { query: vi.fn().mockRejectedValue(new Error('unsupported')) },
+    });
+    vi.stubGlobal('document', {
+      createElement: vi.fn(() => ({
+        value: '',
+        setAttribute: vi.fn(),
+        style: {},
+        select: vi.fn(),
+        setSelectionRange: vi.fn(),
+      })),
+      body: {
+        appendChild: vi.fn(),
+        removeChild: vi.fn(),
+      },
+      execCommand,
+    });
+
+    const result = await safeWriteClipboardText('https://example.com/join/abc');
+
+    expect(result).toBe(true);
     expect(writeText).not.toHaveBeenCalled();
     expect(execCommand).toHaveBeenCalledWith('copy');
   });

@@ -117,47 +117,40 @@ class TestPaymentsQueueApi:
     def test_full_tenant_scope_not_limited_to_initial_5000(self, session_client, monkeypatch, agency_id):
         total_trips = 5002
 
-        def _trip_row(idx: int) -> dict:
-            return {
-                "id": f"trip_{idx}",
-                "trip_name": f"Trip {idx}",
-                "status": "assigned",
-                "start_date": None,
-                "updated_at": None,
-            }
-
         call_offsets: list[int] = []
+        booking_lookup_called = False
 
-        def fake_list_trip_summaries_for_agency(*, agency_id: str, status=None, limit: int = 100, offset: int = 0):
+        def fake_list_trip_payment_records_for_agency(*, agency_id: str, limit: int = 100, offset: int = 0):
             assert agency_id
             call_offsets.append(offset)
             if offset >= total_trips:
                 return []
             end = min(offset + limit, total_trips)
-            return [_trip_row(i) for i in range(offset, end)]
-
-        def fake_get_booking_data_for_agency(trip_id: str, agency_id: str):
-            idx = int(trip_id.split("_")[1])
-            if idx >= 5000:
-                return {
-                    "payment_tracking": {
-                        "payment_status": "partially_paid",
-                        "refund_status": "not_applicable",
-                        "agreed_amount": 1000,
-                        "amount_paid": 200,
-                        "final_payment_due": (date.today() + timedelta(days=2)).isoformat(),
-                    }
+            return [
+                {
+                    "id": f"trip_{idx}",
+                    "status": "assigned",
+                    "start_date": None,
+                    "updated_at": None,
+                    "booking_data": {
+                        "payment_tracking": {
+                            "payment_status": "partially_paid" if idx >= 5000 else "paid",
+                            "refund_status": "not_applicable",
+                            "agreed_amount": 1000,
+                            "amount_paid": 200 if idx >= 5000 else 1000,
+                            "final_payment_due": (date.today() + timedelta(days=2)).isoformat() if idx >= 5000 else None,
+                        }
+                    },
                 }
-            return {
-                "payment_tracking": {
-                    "payment_status": "paid",
-                    "refund_status": "not_applicable",
-                    "agreed_amount": 1000,
-                    "amount_paid": 1000,
-                }
-            }
+                for idx in range(offset, end)
+            ]
 
-        monkeypatch.setattr(server.TripStore, "list_trip_summaries_for_agency", fake_list_trip_summaries_for_agency)
+        def fake_get_booking_data_for_agency(*args, **kwargs):
+            nonlocal booking_lookup_called
+            booking_lookup_called = True
+            raise AssertionError("payments queue should not do per-trip booking lookups anymore")
+
+        monkeypatch.setattr(server.TripStore, "list_trip_payment_records_for_agency", fake_list_trip_payment_records_for_agency)
         monkeypatch.setattr(server.TripStore, "get_booking_data_for_agency", fake_get_booking_data_for_agency)
 
         resp = session_client.get("/payments?queue_status=due_soon&limit=10&offset=0")
@@ -169,9 +162,12 @@ class TestPaymentsQueueApi:
         assert body["summary"]["by_queue_status"]["due_soon"] == 2
         assert body["pagination"]["returned"] == 2
         assert [item["trip_id"] for item in body["items"]] == ["trip_5000", "trip_5001"]
+        assert body["items"][0]["trip_name"].startswith("Trip details incomplete")
+        assert body["items"][1]["trip_name"].startswith("Trip details incomplete")
 
-        # Ensure backend iterated beyond the initial 5000 records.
+        # Ensure backend iterated beyond the initial 5000 records without N+1 booking fetches.
         assert any(offset >= 5000 for offset in call_offsets)
+        assert booking_lookup_called is False
 
     def test_tenant_isolation(self, session_client, agency_id, agency_ids, trip_factory):
         trip_id = trip_factory("payments_queue_tenant")

@@ -1,9 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import { PipelineFunnel } from '../PipelineFunnel';
 import type { PipelineStage } from '../PipelineFunnel';
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 describe('PipelineFunnel', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   const mockData: PipelineStage[] = [
     { stageId: 'intake', stageName: 'New Inquiry', tripCount: 50 },
     { stageId: 'packet', stageName: 'Trip Details', tripCount: 40 },
@@ -13,6 +17,18 @@ describe('PipelineFunnel', () => {
   ];
 
   it('renders funnel title and stage names', () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      width: 960,
+      height: 300,
+      top: 0,
+      left: 0,
+      right: 960,
+      bottom: 300,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+
     render(<PipelineFunnel data={mockData} />);
     expect(screen.getByText('Conversion Funnel')).toBeInTheDocument();
     expect(screen.getByText('New Inquiry')).toBeInTheDocument();
@@ -23,6 +39,18 @@ describe('PipelineFunnel', () => {
   });
 
   it('renders all stage names in conversion rates section', () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      width: 960,
+      height: 300,
+      top: 0,
+      left: 0,
+      right: 960,
+      bottom: 300,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+
     render(<PipelineFunnel data={mockData} />);
     expect(screen.getByText('Stage Conversion Rates')).toBeInTheDocument();
     // Verify all stage names appear in the conversion rates list
@@ -34,6 +62,18 @@ describe('PipelineFunnel', () => {
   });
 
   it('renders conversion percentages between stages', () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      width: 960,
+      height: 300,
+      top: 0,
+      left: 0,
+      right: 960,
+      bottom: 300,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+
     render(<PipelineFunnel data={mockData} />);
     // 40/50 = 80%
     expect(screen.getByText('80%')).toBeInTheDocument();
@@ -42,6 +82,18 @@ describe('PipelineFunnel', () => {
   });
 
   it('shows a neutral fallback when the comparison is invalid or exceeds 100%', () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      width: 960,
+      height: 300,
+      top: 0,
+      left: 0,
+      right: 960,
+      bottom: 300,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+
     render(
       <PipelineFunnel
         data={[

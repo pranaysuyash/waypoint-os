@@ -49,6 +49,18 @@ def build_reassessment_request_from_trip(
     raw_input = trip.get("raw_input") if isinstance(trip.get("raw_input"), dict) else {}
     submission = raw_input.get("submission") if isinstance(raw_input.get("submission"), dict) else {}
     extracted = trip.get("extracted") if isinstance(trip.get("extracted"), dict) else {}
+    structured_overlay: dict[str, Any] = {}
+
+    def _set_overlay(field_name: str, trip_value: Any) -> None:
+        if trip_value is None:
+            return
+        if isinstance(trip_value, str):
+            normalized = trip_value.strip()
+            if not normalized:
+                return
+            structured_overlay[field_name] = normalized
+            return
+        structured_overlay[field_name] = trip_value
 
     request_dict: dict[str, Any] = {
         "raw_note": submission.get("raw_note"),
@@ -66,6 +78,29 @@ def build_reassessment_request_from_trip(
         "activity_provenance": trip.get("activity_provenance"),
         "date_year_confidence": trip.get("date_year_confidence"),
     }
+
+    _set_overlay("origin", trip.get("origin"))
+    _set_overlay("destination", trip.get("destination"))
+    _set_overlay("budget", trip.get("budget"))
+    _set_overlay("dates", trip.get("dateWindow"))
+    _set_overlay("date_window", trip.get("dateWindow"))
+    _set_overlay("trip_purpose", trip.get("tripPurpose"))
+    _set_overlay("trip_priorities", trip.get("tripPriorities"))
+    _set_overlay("date_flexibility", trip.get("dateFlexibility"))
+    _set_overlay("follow_up_due_date", trip.get("follow_up_due_date"))
+    _set_overlay("pace_preference", trip.get("pace_preference"))
+    _set_overlay("lead_source", trip.get("lead_source"))
+    _set_overlay("activity_provenance", trip.get("activity_provenance"))
+    _set_overlay("date_year_confidence", trip.get("date_year_confidence"))
+
+    existing_structured_json = request_dict.get("structured_json")
+    if isinstance(existing_structured_json, dict):
+        merged_structured_json = dict(existing_structured_json)
+        merged_structured_json.update(structured_overlay)
+        if merged_structured_json:
+            request_dict["structured_json"] = merged_structured_json
+    elif structured_overlay:
+        request_dict["structured_json"] = structured_overlay
 
     if not any(request_dict.get(k) for k in ("raw_note", "owner_note", "structured_json", "itinerary_text")):
         request_dict["structured_json"] = {"extracted_snapshot": extracted}

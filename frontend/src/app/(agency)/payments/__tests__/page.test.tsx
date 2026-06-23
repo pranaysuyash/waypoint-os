@@ -102,6 +102,59 @@ describe('payments page', () => {
     expect(screen.getByText('Showing 2 of 2')).toBeInTheDocument();
   });
 
+  it('falls back to destination or trip id when trip name is missing', () => {
+    mockUsePaymentsQueue.mockReturnValueOnce({
+      data: {
+        summary: {
+          total: 1,
+          by_queue_status: { overdue: 1 },
+          overdue_count: 1,
+          due_soon_count: 0,
+          not_configured_count: 0,
+          paid_complete_count: 0,
+          refund_in_progress_count: 0,
+          due_within_7_days_count: 0,
+        },
+        pagination: {
+          limit: 25,
+          offset: 0,
+          returned: 1,
+          total: 1,
+          has_more: false,
+        },
+        items: [
+          {
+            trip_id: 'trip-blank',
+            trip_name: '',
+            destination: '',
+            start_date: null,
+            status: 'assigned',
+            queue_status: 'overdue',
+            payment_status: 'overdue',
+            refund_status: 'not_applicable',
+            agreed_amount: null,
+            amount_paid: null,
+            balance_due: null,
+            currency: 'USD',
+            final_payment_due: null,
+            payment_reference_present: false,
+            payment_proof_url_present: false,
+            refund_paid_by_agency: false,
+            updated_at: null,
+          },
+        ],
+      },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(<PageClient />);
+
+    expect(screen.getByText('trip-blank')).toBeInTheDocument();
+    expect(screen.getByText('Destination pending')).toBeInTheDocument();
+  });
+
   it('passes filter params to payments queue hook', () => {
     render(<PageClient />);
     expect(mockUsePaymentsQueue).toHaveBeenCalledWith(

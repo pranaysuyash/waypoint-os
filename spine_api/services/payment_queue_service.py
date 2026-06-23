@@ -91,6 +91,29 @@ def _derive_due_bucket(final_payment_due: Optional[date], today: date) -> str:
     return "none"
 
 
+def _tail_trip_reference(trip_id: str) -> str:
+    tail = trip_id.split("_")[-1].strip()
+    if not tail:
+        return "unknown"
+    if len(tail) <= 4:
+        return tail.upper()
+    return tail[-4:].upper()
+
+
+def _derive_trip_name(
+    trip: dict[str, Any],
+    booking_data: dict[str, Any],
+    destination: Optional[str],
+    trip_id: str,
+) -> str:
+    candidate = str(trip.get("trip_name") or booking_data.get("trip_name") or "").strip()
+    if candidate:
+        return candidate
+    if destination:
+        return f"{destination} trip"
+    return f"Trip details incomplete · {_tail_trip_reference(trip_id)}"
+
+
 def _derive_queue_status(
     payment_status: str,
     refund_status: str,
@@ -161,13 +184,24 @@ def _build_item(
     if isinstance(destination_details, dict):
         destination = destination_details.get("destination") or destination_details.get("city") or destination_details.get("country")
     if not destination:
-        destination = trip.get("destination_raw")
+        booking_destination = booking_data.get("destination")
+        if isinstance(booking_destination, dict):
+            destination = (
+                booking_destination.get("destination")
+                or booking_destination.get("city")
+                or booking_destination.get("country")
+            )
+        if not destination:
+            destination = trip.get("destination_raw") or booking_data.get("destination_raw")
+
+    start_date = trip.get("start_date") or booking_data.get("start_date")
+    trip_name = _derive_trip_name(trip, booking_data, destination, str(trip.get("id") or ""))
 
     return {
         "trip_id": str(trip.get("id") or ""),
-        "trip_name": str(trip.get("trip_name") or ""),
+        "trip_name": trip_name,
         "destination": destination,
-        "start_date": trip.get("start_date"),
+        "start_date": start_date,
         "status": trip.get("status"),
         "queue_status": queue_status,
         "payment_status": payment_status if payment_status in PAYMENT_STATUSES else "unknown",
@@ -319,7 +353,7 @@ def build_payment_queue_response_for_agency(
 
     raw_offset = 0
     while True:
-        trips = TripStore.list_trip_summaries_for_agency(
+        trips = TripStore.list_trip_payment_records_for_agency(
             agency_id=agency_id,
             limit=batch_size,
             offset=raw_offset,
@@ -332,8 +366,7 @@ def build_payment_queue_response_for_agency(
             if not trip_id:
                 continue
 
-            booking_data = TripStore.get_booking_data_for_agency(trip_id, agency_id)
-            item = _build_item(trip, booking_data, today)
+            item = _build_item(trip, trip.get("booking_data"), today)
 
             if not _matches_filters(
                 item,

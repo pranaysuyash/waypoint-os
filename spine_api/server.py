@@ -156,6 +156,7 @@ from spine_api.contract import (
     SuitabilityFlagsResponse,
     TripResponse,
 )
+from src.intake.normalizer import Normalizer
 from spine_api.services.live_checker_service import (
     apply_live_checker_adjustments,
     build_consented_submission,
@@ -1761,6 +1762,13 @@ def patch_trip(
         if not raw_budget:
             return None
         normalized = raw_budget.replace(",", "")
+        parsed = Normalizer.parse_budget(normalized)
+        budget_min = parsed.get("min")
+        budget_max = parsed.get("max")
+        if isinstance(budget_min, (int, float)) and budget_min > 0:
+            return float(budget_min)
+        if isinstance(budget_max, (int, float)) and budget_max > 0:
+            return float(budget_max)
         match = re.search(r"(\d+(?:\.\d+)?)", normalized)
         if not match:
             return None
